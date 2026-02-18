@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import asyncio
+import time
 from typing import List, Dict
 from dotenv import load_dotenv
 
@@ -53,7 +54,7 @@ async def start():
 
 @cl.on_message
 async def main(message: cl.Message):
-    """Handle user message with Gemini-like UX."""
+    """Handle user message with Gemini-like UX and Timing."""
     user_id = cl.user_session.get("user_id")
     session_id = cl.user_session.get("session_id")
     
@@ -64,16 +65,17 @@ async def main(message: cl.Message):
     runner = Runner(agent=root_agent, app_name="data_agent_ui", session_service=session_service)
     content = types.Content(role='user', parts=[types.Part(text=message.content)])
     
-    # Thinking Step
+    # ⏱️ Start Timer for Thinking Process
+    thinking_start_time = time.time()
     thinking_step = cl.Step(name="Thinking Process", type="process")
     await thinking_step.send()
     
     final_msg = cl.Message(content="")
     shown_artifacts = set()
     current_tool_step = None
+    tool_start_time = 0
     is_thinking = True
     
-    # Capture full text for report generation
     full_response_text = ""
     
     try:
@@ -83,26 +85,39 @@ async def main(message: cl.Message):
             if event.content and event.content.parts:
                 for part in event.content.parts:
                     
-                    # Tool Call
+                    # --- Tool Call ---
                     if part.function_call:
-                        if current_tool_step: await current_tool_step.update()
+                        if current_tool_step:
+                            # Close previous tool if open (edge case)
+                            await current_tool_step.update()
+                        
                         tool_name = part.function_call.name
+                        # ⏱️ Start Timer for Tool
+                        tool_start_time = time.time()
+                        
                         current_tool_step = cl.Step(name=tool_name, type="tool", parent_id=thinking_step.id)
                         args_str = str(part.function_call.args)
                         current_tool_step.input = args_str[:500] + "..." if len(args_str) > 500 else args_str
                         await current_tool_step.send()
 
-                    # Tool Response
+                    # --- Tool Response ---
                     if part.function_response:
                         if current_tool_step:
+                            # ⏱️ Calculate Tool Duration
+                            duration = time.time() - tool_start_time
+                            current_tool_step.name += f" ({duration:.2f}s)"
                             current_tool_step.output = "✅ Tool execution successful"
                             await current_tool_step.update()
                             current_tool_step = None
 
-                    # Text Output
+                    # --- Text Output ---
                     if part.text:
                         if is_thinking:
+                            # ⏱️ Calculate Total Thinking Duration
+                            total_duration = time.time() - thinking_start_time
+                            thinking_step.name += f" ({total_duration:.2f}s)"
                             await thinking_step.update() 
+                            
                             is_thinking = False
                             await final_msg.send() 
 
@@ -127,21 +142,29 @@ async def main(message: cl.Message):
                             await cl.Message(content="", elements=elements).send()
 
         # Cleanup
-        if is_thinking: await thinking_step.update()
-        if current_tool_step: await current_tool_step.update()
+        if is_thinking: 
+            # If no text was produced but process finished (rare)
+            total_duration = time.time() - thinking_start_time
+            thinking_step.name += f" ({total_duration:.2f}s)"
+            await thinking_step.update()
+            
+        if current_tool_step: 
+            duration = time.time() - tool_start_time
+            current_tool_step.name += f" ({duration:.2f}s)"
+            await current_tool_step.update()
+            
         await final_msg.update()
         
-        # Save full text to session for export
+        # Save session data
         cl.user_session.set("last_response_text", full_response_text)
         
-        # Show Export Action (Fix: Add payload)
         actions = [
             cl.Action(
                 name="export_report", 
                 value="docx", 
                 label="📄 导出 Word 报告", 
                 description="将本次分析结果导出为文档",
-                payload={"format": "docx"} # Adding payload to satisfy pydantic
+                payload={"format": "docx"}
             )
         ]
         await cl.Message(content="分析完成。您可以下载相关文件或导出完整报告。", actions=actions).send()
@@ -163,11 +186,9 @@ async def on_export_report(action: cl.Action):
     await msg.send()
     
     try:
-        # Generate DOCX
         output_path = os.path.join(os.path.dirname(__file__), "Analysis_Report.docx")
         generate_word_report(text, output_path)
         
-        # Send file
         await cl.Message(content="✅ 报告已生成：", elements=[
             cl.File(path=output_path, name="Analysis_Report.docx", display="inline")
         ]).send()

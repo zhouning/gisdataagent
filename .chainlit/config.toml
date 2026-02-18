@@ -1,5 +1,6 @@
 [project]
-name = "GIS Data Agent"
+# 🟢 CHANGE: Browser Tab Title
+name = "Data Agent"
 user_env = []
 duration = 0
 
@@ -11,7 +12,8 @@ multi_modal = true
 speech_to_text = true
 
 [UI]
-name = "GIS Data Agent"
+# 🟢 CHANGE: Header Name
+name = "Data Agent"
 description = "AI-powered Spatial Optimization Platform"
 show_readme_as_new_chat_button = true
 default_theme = "light"
@@ -24,7 +26,7 @@ enabled = true
 accept = ["text/csv", "application/zip", ".shp", ".shx", ".dbf"]
 max_size_mb = 500
 
-# Starters (Quick Actions)
+# Starters
 [[starters]]
 label = "分析斑竹村数据 (Demo)"
 message = "请对 D:/adk/斑竹村10000.shp 进行完整的空间布局优化分析，包括 FFI 计算和 DRL 优化，并生成对比图。"
