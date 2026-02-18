@@ -41,3 +41,14 @@ The goal is to replace the generic `adk web` interface with a custom, specialize
 ## 6. Constraints
 *   Must run in the existing Python `.venv` environment.
 *   Must reuse existing `data_agent` logic without modifying core algorithms.
+
+## 7. Gemini-like Experience (v2.0 Upgrade)
+*   **Nested Thinking**: Intermediate tool calls (describe, ffi, drl) MUST be collapsed under a single parent step labeled "Thinking Process" or "Processing...", similar to Gemini's "Show work". They should not clutter the main chat unless expanded.
+*   **Clean UI**: 
+    -   Custom Avatar for the Agent (GIS Bot icon).
+    -   Welcome Screen with "Starters" (Quick Action buttons).
+    -   Removed verbose system prompts from the visible chat history.
+*   **Step Logic**: 
+    -   Start a "Thinking" step when the user sends a message.
+    -   Update this step with sub-steps for each tool call.
+    -   Close the step when the final text response begins streaming.

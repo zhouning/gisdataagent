@@ -9,30 +9,26 @@ from dotenv import load_dotenv
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# 🟢 CRITICAL FIX: Load environment variables explicitly
+# Load env
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
     load_dotenv(env_path)
-    print(f"✅ Loaded environment from {env_path}")
-else:
-    print("⚠️ Warning: .env file not found in data_agent directory")
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-# Import the root agent
+# Import agent
 try:
     from data_agent.agent import root_agent
 except ImportError:
     import agent
     root_agent = agent.root_agent
 
-# Initialize Session Service (Global for this simple app)
 session_service = InMemorySessionService()
 
 def extract_file_paths(text: str) -> List[Dict[str, str]]:
-    """Extract file paths from text and determine their type."""
+    """Extract file paths from text."""
     artifacts = []
     pattern = r'(?:[a-zA-Z]:\\|/)[^<>:"|?*]+\.(png|html|shp|zip|csv)'
     matches = re.finditer(pattern, text, re.IGNORECASE)
@@ -45,50 +41,85 @@ def extract_file_paths(text: str) -> List[Dict[str, str]]:
 
 @cl.on_chat_start
 async def start():
-    """Initialize the session."""
+    """Initialize session."""
     user_id = "user"
     session_id = cl.user_session.get("id")
     await session_service.create_session(app_name="data_agent_ui", user_id=user_id, session_id=session_id)
     cl.user_session.set("user_id", user_id)
     cl.user_session.set("session_id", session_id)
     
-    await cl.Message(
-        content="👋 **欢迎使用 GIS 智能分析平台**\n\n请上传数据文件（SHP/CSV）或直接输入文件路径开始分析。\n*(系统已就绪，环境配置检测通过)*",
-        author="System"
-    ).send()
+    # We don't send a welcome message here because chainlit.md handles the welcome screen.
+    # But we can send a "System Ready" toast if we wanted.
 
 @cl.on_message
 async def main(message: cl.Message):
-    """Handle user message."""
+    """Handle user message with Gemini-like UX."""
     user_id = cl.user_session.get("user_id")
     session_id = cl.user_session.get("session_id")
     
-    # Check credentials before running
     if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
-        await cl.Message(content="❌ Error: `GOOGLE_CLOUD_PROJECT` environment variable not found. Please check .env file.").send()
+        await cl.Message(content="❌ Error: `GOOGLE_CLOUD_PROJECT` not found.").send()
         return
 
     runner = Runner(agent=root_agent, app_name="data_agent_ui", session_service=session_service)
     content = types.Content(role='user', parts=[types.Part(text=message.content)])
     
-    final_msg = cl.Message(content="")
-    await final_msg.send()
+    # 🌟 Gemini UX: Thinking Process Container
+    # We create a parent step "Thinking Process" that will hold all tool calls.
+    # It starts immediately and closes when the first text token arrives.
+    thinking_step = cl.Step(name="Thinking Process", type="process")
+    await thinking_step.send()
     
+    # Prepare Final Message
+    final_msg = cl.Message(content="")
+    
+    # State tracking
     shown_artifacts = set()
-    current_step = None
+    current_tool_step = None
+    is_thinking = True
     
     try:
-        # Run ADK Stream
         events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content)
         
         async for event in events:
             if event.content and event.content.parts:
                 for part in event.content.parts:
                     
-                    # 1. Text Output
+                    # --- 1. Tool Call (Sub-step inside Thinking) ---
+                    if part.function_call:
+                        # Create a child step nested under 'thinking_step'
+                        if current_tool_step: await current_tool_step.update()
+                        
+                        tool_name = part.function_call.name
+                        current_tool_step = cl.Step(
+                            name=tool_name, 
+                            type="tool", 
+                            parent_id=thinking_step.id
+                        )
+                        # Truncate args if too long for cleaner UI
+                        args_str = str(part.function_call.args)
+                        current_tool_step.input = args_str[:500] + "..." if len(args_str) > 500 else args_str
+                        await current_tool_step.send()
+
+                    # --- 2. Tool Response ---
+                    if part.function_response:
+                        if current_tool_step:
+                            # We don't show full output in UI to keep it clean, just a checkmark
+                            current_tool_step.output = "✅ Tool execution successful"
+                            await current_tool_step.update()
+                            current_tool_step = None
+
+                    # --- 3. Text Output (The Answer) ---
                     if part.text:
+                        # Close thinking step on first text token
+                        if is_thinking:
+                            await thinking_step.update() # Close the step
+                            is_thinking = False
+                            await final_msg.send() # Start the final message stream
+
                         await final_msg.stream_token(part.text)
                         
+                        # Real-time Artifact Rendering (The "Magic")
                         found = extract_file_paths(part.text)
                         elements = []
                         for artifact in found:
@@ -97,32 +128,28 @@ async def main(message: cl.Message):
                             
                             name = os.path.basename(path)
                             if artifact['type'] == 'png':
+                                # Gemini-like: Inline images
                                 elements.append(cl.Image(path=path, name=name, display="inline"))
                                 shown_artifacts.add(path)
                             elif artifact['type'] == 'html':
+                                # Provide download
                                 elements.append(cl.File(path=path, name=name))
                                 shown_artifacts.add(path)
                         
                         if elements:
-                            await cl.Message(content=f"📂 生成了新的分析资源：", elements=elements).send()
+                            # Attach elements to the final message dynamically? 
+                            # Chainlit allows updating elements of an existing message?
+                            # Yes, assuming we send them. Or we can send a small sub-message.
+                            # For better UX, let's append to final_msg if possible, or send separate.
+                            # Sending separate avoids re-rendering the whole text block.
+                            await cl.Message(content="", elements=elements).send()
 
-                    # 2. Tool Calls
-                    if part.function_call:
-                        if current_step: await current_step.update()
-                        current_step = cl.Step(name=part.function_call.name, type="tool")
-                        current_step.input = str(part.function_call.args)
-                        await current_step.send()
-                    
-                    # 3. Tool Responses
-                    if part.function_response:
-                        if current_step:
-                            current_step.output = "✅ Completed"
-                            await current_step.update()
-                            current_step = None
-
+        # Final cleanup
+        if is_thinking: await thinking_step.update()
+        if current_tool_step: await current_tool_step.update()
         await final_msg.update()
         
     except Exception as e:
-        error_msg = f"❌ 运行时错误: {str(e)}"
-        print(error_msg)
-        await cl.Message(content=error_msg).send()
+        err_msg = f"❌ Error: {str(e)}"
+        print(err_msg)
+        await cl.Message(content=err_msg).send()

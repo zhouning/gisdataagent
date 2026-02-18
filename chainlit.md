@@ -1,14 +1,11 @@
-# Welcome to Chainlit! 🚀🤖
+# 欢迎使用 GIS 智能分析平台 🌍
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+我是您的 **空间数据智能顾问**。我可以协助您完成：
+1.  **数据体检**：自动诊断 Shapefile/CSV 数据的几何与属性健康度。
+2.  **破碎化分析**：计算 FFI (耕地破碎化指数)，评估农业生产风险。
+3.  **智能布局优化**：基于深度强化学习 (DRL) 模型，提供“退耕还林”与“宜耕开发”的空间置换方案。
+4.  **决策支持**：生成三联对比图、交互式地图及政策建议报告。
 
-## Useful Links 🔗
-
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/k73SQ3FyUh) to ask questions, share your projects, and connect with other developers! 💬
-
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
-
-## Welcome screen
-
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+---
+### 🚀 快速开始
+点击下方的示例问题，或者直接上传您的 `.shp` / `.zip` 数据文件。
