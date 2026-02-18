@@ -13,6 +13,7 @@ The goal is to replace the generic `adk web` interface with a custom, specialize
 *   **US-003**: As a user, I want generated static charts (PNG) to appear directly in the chat window, not just as file paths.
 *   **US-004**: As a user, I want to explore optimization results on an interactive map (HTML) embedded within the chat interface.
 *   **US-005**: As a user, I want to download the final result files (SHP, Reports) via clickable buttons.
+*   **US-006**: As a user, I want to one-click export the full analysis conversation (Text + Images) into a formatted Word (.docx) report.
 
 ## 4. Functional Requirements
 
@@ -52,3 +53,11 @@ The goal is to replace the generic `adk web` interface with a custom, specialize
     -   Start a "Thinking" step when the user sends a message.
     -   Update this step with sub-steps for each tool call.
     -   Close the step when the final text response begins streaming.
+
+## 8. Report Export (v2.1 Feature)
+*   **Trigger**: Action button "📄 Export Report" appearing after analysis completion.
+*   **Format**: Microsoft Word (.docx).
+*   **Content**:
+    *   Full Markdown text from the Agent's response.
+    *   Inline images (from `.png` paths detected in text) embedded into the Word document.
+*   **Implementation**: Use `python-docx` and `markdown2` (or custom parser) to convert Markdown + Images to Docx.

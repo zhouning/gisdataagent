@@ -18,12 +18,15 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-# Import agent
+# Import agent and report generator
 try:
     from data_agent.agent import root_agent
+    from data_agent.report_generator import generate_word_report
 except ImportError:
     import agent
+    import report_generator
     root_agent = agent.root_agent
+    generate_word_report = report_generator.generate_word_report
 
 session_service = InMemorySessionService()
 
@@ -47,9 +50,6 @@ async def start():
     await session_service.create_session(app_name="data_agent_ui", user_id=user_id, session_id=session_id)
     cl.user_session.set("user_id", user_id)
     cl.user_session.set("session_id", session_id)
-    
-    # We don't send a welcome message here because chainlit.md handles the welcome screen.
-    # But we can send a "System Ready" toast if we wanted.
 
 @cl.on_message
 async def main(message: cl.Message):
@@ -64,19 +64,17 @@ async def main(message: cl.Message):
     runner = Runner(agent=root_agent, app_name="data_agent_ui", session_service=session_service)
     content = types.Content(role='user', parts=[types.Part(text=message.content)])
     
-    # 🌟 Gemini UX: Thinking Process Container
-    # We create a parent step "Thinking Process" that will hold all tool calls.
-    # It starts immediately and closes when the first text token arrives.
+    # Thinking Step
     thinking_step = cl.Step(name="Thinking Process", type="process")
     await thinking_step.send()
     
-    # Prepare Final Message
     final_msg = cl.Message(content="")
-    
-    # State tracking
     shown_artifacts = set()
     current_tool_step = None
     is_thinking = True
+    
+    # Capture full text for report generation
+    full_response_text = ""
     
     try:
         events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content)
@@ -85,41 +83,32 @@ async def main(message: cl.Message):
             if event.content and event.content.parts:
                 for part in event.content.parts:
                     
-                    # --- 1. Tool Call (Sub-step inside Thinking) ---
+                    # Tool Call
                     if part.function_call:
-                        # Create a child step nested under 'thinking_step'
                         if current_tool_step: await current_tool_step.update()
-                        
                         tool_name = part.function_call.name
-                        current_tool_step = cl.Step(
-                            name=tool_name, 
-                            type="tool", 
-                            parent_id=thinking_step.id
-                        )
-                        # Truncate args if too long for cleaner UI
+                        current_tool_step = cl.Step(name=tool_name, type="tool", parent_id=thinking_step.id)
                         args_str = str(part.function_call.args)
                         current_tool_step.input = args_str[:500] + "..." if len(args_str) > 500 else args_str
                         await current_tool_step.send()
 
-                    # --- 2. Tool Response ---
+                    # Tool Response
                     if part.function_response:
                         if current_tool_step:
-                            # We don't show full output in UI to keep it clean, just a checkmark
                             current_tool_step.output = "✅ Tool execution successful"
                             await current_tool_step.update()
                             current_tool_step = None
 
-                    # --- 3. Text Output (The Answer) ---
+                    # Text Output
                     if part.text:
-                        # Close thinking step on first text token
                         if is_thinking:
-                            await thinking_step.update() # Close the step
+                            await thinking_step.update() 
                             is_thinking = False
-                            await final_msg.send() # Start the final message stream
+                            await final_msg.send() 
 
                         await final_msg.stream_token(part.text)
+                        full_response_text += part.text
                         
-                        # Real-time Artifact Rendering (The "Magic")
                         found = extract_file_paths(part.text)
                         elements = []
                         for artifact in found:
@@ -128,28 +117,60 @@ async def main(message: cl.Message):
                             
                             name = os.path.basename(path)
                             if artifact['type'] == 'png':
-                                # Gemini-like: Inline images
                                 elements.append(cl.Image(path=path, name=name, display="inline"))
                                 shown_artifacts.add(path)
                             elif artifact['type'] == 'html':
-                                # Provide download
                                 elements.append(cl.File(path=path, name=name))
                                 shown_artifacts.add(path)
                         
                         if elements:
-                            # Attach elements to the final message dynamically? 
-                            # Chainlit allows updating elements of an existing message?
-                            # Yes, assuming we send them. Or we can send a small sub-message.
-                            # For better UX, let's append to final_msg if possible, or send separate.
-                            # Sending separate avoids re-rendering the whole text block.
                             await cl.Message(content="", elements=elements).send()
 
-        # Final cleanup
+        # Cleanup
         if is_thinking: await thinking_step.update()
         if current_tool_step: await current_tool_step.update()
         await final_msg.update()
+        
+        # Save full text to session for export
+        cl.user_session.set("last_response_text", full_response_text)
+        
+        # Show Export Action (Fix: Add payload)
+        actions = [
+            cl.Action(
+                name="export_report", 
+                value="docx", 
+                label="📄 导出 Word 报告", 
+                description="将本次分析结果导出为文档",
+                payload={"format": "docx"} # Adding payload to satisfy pydantic
+            )
+        ]
+        await cl.Message(content="分析完成。您可以下载相关文件或导出完整报告。", actions=actions).send()
         
     except Exception as e:
         err_msg = f"❌ Error: {str(e)}"
         print(err_msg)
         await cl.Message(content=err_msg).send()
+
+@cl.action_callback("export_report")
+async def on_export_report(action: cl.Action):
+    """Handle report export action."""
+    text = cl.user_session.get("last_response_text")
+    if not text:
+        await cl.Message(content="❌ 无法获取报告内容").send()
+        return
+        
+    msg = cl.Message(content="正在生成报告...")
+    await msg.send()
+    
+    try:
+        # Generate DOCX
+        output_path = os.path.join(os.path.dirname(__file__), "Analysis_Report.docx")
+        generate_word_report(text, output_path)
+        
+        # Send file
+        await cl.Message(content="✅ 报告已生成：", elements=[
+            cl.File(path=output_path, name="Analysis_Report.docx", display="inline")
+        ]).send()
+        
+    except Exception as e:
+        await cl.Message(content=f"❌ 生成失败: {str(e)}").send()
