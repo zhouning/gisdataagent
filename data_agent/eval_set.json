@@ -1,0 +1,79 @@
+{
+  "eval_set_id": "gis_pipeline_eval",
+  "name": "GIS Optimization Pipeline Standard Test",
+  "description": "Evaluate the full land use optimization workflow",
+  "eval_cases": [
+    {
+      "eval_id": "case_standard_flow",
+      "conversation": [
+        {
+          "invocation_id": "inv_001",
+          "user_content": {
+            "parts": [
+              {
+                "text": "请对数据 D:/adk/斑竹村10000.shp 进行空间布局优化分析。"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "### 🚩 执行摘要 (Executive Summary)\n本报告基于对斑竹村耕地破碎化现状的深度诊断。诊断出当前耕地破碎化程度高 (FFI: 0.7580)，存在大量陡坡耕地。通过运用深度强化学习 (DRL) 模型，执行 100 次空间置换，成功实现了耕地与林地的优化布局。此次优化显著降低了耕地平均坡度，提升了耕地连片度。\n\n### 🛡️ 耕地破碎化与适宜性诊断\n#### 1. FFI 指数分析\n斑竹村耕地破碎化指数 (FFI) 高达 **0.7580**，处于**高风险等级**。\n* **高斑块数量 (NP: 6737)** 和 **低最大斑块指数 (LPI: 0.0148)** 表明耕地细碎。\n* **低聚合指数 (AI: 0.0000)** 显示空间离散度高。\n\n### 🚀 空间布局优化方案 (DRL Optimization)\n**核心成果**:\n* 模型执行 **100 次** 空间置换。\n* **坡度改善**：将高坡度耕地置换为林地，显著降低耕地平均坡度。\n\n**可视化证据**:\n请参阅 **三联对比图** (comparison_*.png)。\n* **红色退耕区域**：优化前为耕地，优化后为林地。位于高坡度区域，符合“退耕还林”政策。\n* **蓝色宜耕开发区域**：优化前为林地，优化后为耕地。位于低坡度区域，结合“高标准农田建设”进行开发。\n\n### 📂 数据交付物清单\n* **增强型原始数据**: `enhanced_*.shp`\n* **优化后数据**: `optimized_data_*.shp`\n* **优化对比图**: `comparison_*.png`\n* **交互式地图**: `interactive_comparison_*.html`\n\n### 📋 政策建议与实施路径\n1. **近期建议 (优先实施)**：针对**红色区域**实施退耕还林，减少水土流失。\n2. **远期规划 (高标准农田)**：针对**蓝色区域**进行集中整治，提升耕地连片度，促进农业现代化。"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "describe_geodataframe",
+                "args": {
+                  "file_path": "D:/adk/斑竹村10000.shp"
+                }
+              },
+              {
+                "name": "engineer_spatial_features",
+                "args": {
+                  "file_path": "D:/adk/斑竹村10000.shp"
+                }
+              },
+              {
+                "name": "ffi",
+                "args": {
+                  "data_path": "D:/adk/enhanced_47c89368.shp"
+                }
+              },
+              {
+                "name": "drl_model",
+                "args": {
+                  "data_path": "D:/adk/enhanced_47c89368.shp"
+                }
+              },
+              {
+                "name": "visualize_optimization_comparison",
+                "args": {
+                   "original_data_path": "D:/adk/enhanced_47c89368.shp",
+                   "optimized_data_path": "D:/adk/optimized_data_1532b445.shp"
+                }
+              },
+              {
+                "name": "visualize_interactive_map",
+                "args": {
+                   "original_data_path": "D:/adk/enhanced_47c89368.shp",
+                   "optimized_data_path": "D:/adk/optimized_data_1532b445.shp"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "eval_test",
+        "user_id": "eval_user",
+        "state": {}
+      }
+    }
+  ]
+}
