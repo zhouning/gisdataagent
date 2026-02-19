@@ -18,11 +18,15 @@ from pysal.explore import esda
 from pysal.lib import weights
 import contextily as cx
 import yaml
+import torch
 from sb3_contrib import MaskablePPO
+from stable_baselines3.common.monitor import Monitor
 
 # Import modules
 from . import drl_engine
 from .FFI import ffi as calculate_ffi
+# Import the custom policy to ensure it is registered for loading
+from .parcel_scoring_policy import ParcelScoringPolicy
 
 # Load prompts from YAML file
 PROMPTS_FILE = os.path.join(os.path.dirname(__file__), 'prompts.yaml')
@@ -117,9 +121,34 @@ def drl_model(data_path: str) -> str:
         # If it's a CSV, engineer_spatial_features would have already converted it to SHP.
         res_data_path = _resolve_path(data_path)
         
-        model_path = os.path.join(os.path.dirname(__file__), 'land_use_model_v2.zip')
-        env = drl_engine.LandUseOptEnv(res_data_path, max_swaps=100)
-        model = MaskablePPO.load(model_path)
+        # v7: Load weights from .pt file to avoid optimizer loading issues with .zip
+        weights_path = os.path.join(os.path.dirname(__file__), 'scorer_weights_v7.pt')
+        
+        # v7: Update max_swaps to 200 (max_conversions)
+        env = drl_engine.LandUseOptEnv(res_data_path, max_conversions=200)
+        env_mon = Monitor(env)
+        
+        # Load checkpoint metadata
+        checkpoint = torch.load(weights_path, map_location='cpu')
+        
+        # Initialize model with correct architecture
+        model = MaskablePPO(
+            ParcelScoringPolicy,
+            env_mon,
+            policy_kwargs=dict(
+                k_parcel=checkpoint.get('k_parcel', 6),
+                k_global=checkpoint.get('k_global', 8),
+                scorer_hiddens=checkpoint.get('scorer_hiddens', [128, 64]),
+                value_hiddens=checkpoint.get('value_hiddens', [128, 64]),
+            ),
+            device='cpu',
+        )
+        
+        # Load learned weights
+        model.policy.scorer_net.load_state_dict(checkpoint['scorer_net'])
+        model.policy.value_net.load_state_dict(checkpoint['value_net'])
+        model.policy.eval()
+        
         obs, info = env.reset()
         terminated, truncated = False, False
         while not (terminated or truncated):
@@ -129,7 +158,7 @@ def drl_model(data_path: str) -> str:
             obs, reward, terminated, truncated, info = env.step(action)
 
         out_map = _generate_output_path("optimized_map")
-        _plot_land_use_result(env.gdf, env.land_use, "基于 PPO v2 的耕地布局优化", out_map)
+        _plot_land_use_result(env.gdf, env.land_use, "基于 PPO v7 的耕地布局优化", out_map)
         
         # Use short field name 'Opt_Type' for Shapefile compatibility
         out_shp = _generate_output_path("optimized_data", "shp")
@@ -137,9 +166,17 @@ def drl_model(data_path: str) -> str:
         gdf_out['Opt_Type'] = env.land_use
         gdf_out.to_file(out_shp)
         
-        summary = f"Optimization Complete.\nSwaps: {info.get('completed_swaps', 0)}\nResult SHP: {out_shp}\nVisualization: {out_map}"
+        # v7 info dict keys: completed_conversions, completed_pairs, farmland_change
+        summary = f"Optimization Complete (v7).\n" \
+                  f"Conversions: {info.get('completed_conversions', 0)}\n" \
+                  f"Pairs: {info.get('completed_pairs', 0)}\n" \
+                  f"Net Change: {info.get('farmland_change', 0)}\n" \
+                  f"Result SHP: {out_shp}\nVisualization: {out_map}"
         return {"output_path": out_map, "optimized_data_path": out_shp, "summary": summary}
-    except Exception as e: return f"Error: {str(e)}"
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"Error: {str(e)}"
 
 def visualize_optimization_comparison(original_data_path: str, optimized_data_path: str) -> str:
     """生成优化前后对比图。"""

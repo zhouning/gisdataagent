@@ -2,6 +2,21 @@
 
 All notable changes to the Data Agent project will be documented in this file.
 
+## [v2.6.0-beta] - 2026-02-19
+
+### 🚀 AI Model Upgrade (v7)
+- **New Inference Engine**: Integrated **v7 Maskable PPO** model (`drl_engine.py` update).
+    - **Paired Swaps**: Implements a "pair bonus" strategy to ensure farmland quantity balance (net change ~0).
+    - **Reduced Penalty**: Lowered count deviation penalty to prevent reward drowning during exploration.
+    - **Extended Horizon**: Fixed episode length to 200 steps (100 pairs) without early stopping for maximum global optimization.
+- **Robust Inference**:
+    - Replaced `.zip` model loading with direct **Weights Loading** (`scorer_weights_v7.pt`) to bypass optimizer state mismatches.
+    - Implemented `ParcelScoringPolicy` with permutation-invariant architecture for variable-sized inputs.
+
+### 📝 Prompt Engineering
+- Updated `DataAnalysis` prompt to reflect v7's 200-step paired swap logic.
+- Updated `DataSummary` prompt to emphasize "Balanced Optimization" and interpret the red/blue change patterns.
+
 ## [v2.5.0] - 2026-02-18
 
 ### 🌟 New Features (UI/UX)

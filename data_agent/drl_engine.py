@@ -1,15 +1,18 @@
 """
-Custom Gymnasium environment for land use optimization (v2).
+Custom Gymnasium environment for land use optimization (v7).
 
-v2 changes vs v1:
-  - Early termination when a swap pair yields negative reward.
-    The episode ends automatically if the combined slope+contiguity
-    reward for a completed swap pair is < 0, meaning the swap was
-    not beneficial.  This allows the model to perform a variable
-    number of swaps per episode instead of always doing max_swaps.
-  - Added 'completed_swaps' counter exposed in info dict.
-  - Added 'early_stop' flag in info dict indicating whether the
-    episode ended due to negative reward.
+v7 changes vs v6:
+  - Drastically reduces COUNT_PENALTY_WEIGHT from 100,000 to 500.
+    v6's penalty was catastrophically large for 200-step episodes:
+    random exploration caused deviation ~90 parcels, penalty ~17.8/step,
+    total ~-1,243 per episode, drowning all gradient signal.
+    With weight=500, random exploration penalty is ~6.3 total (manageable),
+    while single-direction becomes unprofitable at ~6 removals.
+  - Increases PAIR_BONUS from 0.5 to 1.0, making paired strategy
+    clearly dominant: ~1.4 per pair (0.7/step) vs ~0.2/step single.
+  - Keeps no early termination (full 200 steps) from v6.
+  - All other features preserved: free flip, action masking,
+    incremental metrics, no-undo mechanism.
 """
 
 import numpy as np
@@ -26,23 +29,38 @@ FOREST = 2
 FARMLAND_TYPES = {'旱地', '水田'}
 FOREST_TYPES = {'果园', '有林地'}
 
+# Per-parcel feature count
+K_PARCEL = 6
+# Global feature count
+K_GLOBAL = 8
+
+# Reward weights
+SLOPE_REWARD_WEIGHT = 1000.0
+CONT_REWARD_WEIGHT = 500.0
+COUNT_PENALTY_WEIGHT = 500.0     # v7: drastically reduced from 100,000
+PAIR_BONUS = 1.0                 # v7: increased from 0.5
+
 
 class LandUseOptEnv(gym.Env):
     """
-    Land use optimization environment with action masking (v2).
+    Land use optimization environment (v7).
 
-    Each episode alternates between two phases:
-      Phase 0: Agent selects a farmland parcel → converts to forest
-      Phase 1: Agent selects a forest parcel → converts to farmland
-    This ensures paired swaps that maintain total farmland/forest counts.
+    Each step, the agent selects any swappable parcel to flip:
+      - If farmland -> converts to forest
+      - If forest  -> converts to farmland
 
-    v2: Episode terminates early when a swap pair yields negative reward,
-    allowing the model to adaptively decide how many swaps to perform.
+    Key v7 design: reduced penalty + stronger pair bonus + no early termination.
+    v6 failed because COUNT_PENALTY_WEIGHT=100,000 created catastrophic
+    negative rewards during random exploration, preventing any learning.
+    v7 reduces it to 500 so that:
+      - Random exploration total penalty ~6.3 (vs v6's ~1,243)
+      - Single-direction becomes unprofitable after ~6 removals
+      - Paired strategy yields ~0.7/step, clearly dominating single's ~0.2/step
     """
 
     metadata = {"render_modes": []}
 
-    def __init__(self, shp_path, max_swaps=100):
+    def __init__(self, shp_path, max_conversions=200):
         super().__init__()
 
         # Load shapefile
@@ -50,23 +68,11 @@ class LandUseOptEnv(gym.Env):
         self.gdf = gpd.read_file(shp_path)
         self.n_parcels = len(self.gdf)
 
-        # Episode length
-        self.max_swaps = max_swaps
-        self.max_steps = max_swaps * 2
+        # Episode length (each step = one conversion)
+        self.max_steps = max_conversions
 
         # Extract attributes
-        # Ensure 'Slope' and 'DLMC' exist
-        if 'Slope' not in self.gdf.columns:
-             # Fallback if Slope is missing, though real data should have it
-             print("Warning: 'Slope' column missing, initializing with zeros.")
-             self.gdf['Slope'] = 0.0
-        
         self.slopes = self.gdf['Slope'].values.astype(np.float64)
-        
-        if 'DLMC' not in self.gdf.columns:
-             print("Warning: 'DLMC' column missing, initializing with default.")
-             self.gdf['DLMC'] = 'Unknown'
-             
         dlmc = self.gdf['DLMC'].values
 
         # Classify parcels
@@ -89,6 +95,14 @@ class LandUseOptEnv(gym.Env):
         self.slope_range = self.slope_max - self.slope_min + 1e-8
         self.slopes_norm = ((self.slopes - self.slope_min) / self.slope_range).astype(np.float32)
 
+        # Normalize areas to [0, 1]
+        areas = self.gdf['Shape_Area'].values.astype(np.float64)
+        self.areas = areas
+        area_min = float(areas.min())
+        area_max = float(areas.max())
+        area_range = area_max - area_min + 1e-8
+        self.areas_norm = ((areas - area_min) / area_range).astype(np.float32)
+
         # Build spatial adjacency graph
         print("Building adjacency graph...")
         self._build_adjacency()
@@ -97,6 +111,19 @@ class LandUseOptEnv(gym.Env):
         self.total_nbr_count = np.array(
             [len(self.adjacency[i]) for i in range(self.n_parcels)], dtype=np.float32
         )
+
+        # Pre-compute static per-parcel features for swappable parcels
+        si = self.swappable_indices
+        self._static_slopes_norm = self.slopes_norm[si].copy()
+        self._static_areas_norm = self.areas_norm[si].copy()
+
+        # Pre-compute neighbor average slope (static)
+        self._nbr_avg_slope_norm = np.zeros(self.n_parcels, dtype=np.float32)
+        for i in range(self.n_parcels):
+            nbrs = self.adjacency[i]
+            if len(nbrs) > 0:
+                self._nbr_avg_slope_norm[i] = self.slopes_norm[nbrs].mean()
+        self._static_nbr_avg_slope = self._nbr_avg_slope_norm[si].copy()
 
         # Pre-compute initial metrics (used for fast reset)
         self.land_use = self.initial_types.copy()
@@ -109,28 +136,28 @@ class LandUseOptEnv(gym.Env):
             'total_farmland_adj': self.total_farmland_adj,
         }
 
-        # Pre-compute static per-parcel slope features for swappable parcels
-        self._swappable_slopes_norm = self.slopes_norm[self.swappable_indices]
-
         # Define spaces
         self.action_space = spaces.Discrete(self.n_swappable)
-        # Obs: per-swappable type (n_swappable) + global features (8)
-        obs_dim = self.n_swappable + 8
+        obs_dim = self.n_swappable * K_PARCEL + K_GLOBAL
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
 
         # Print summary
-        init_slope = self._cache['total_farmland_slope'] / max(self._cache['n_farmland'], 1)
-        init_cont = self._cache['total_farmland_adj'] / max(self._cache['n_farmland'], 1)
-        print(f"Environment initialized (v2 - early stop on negative reward):")
+        init_slope = self._cache['total_farmland_slope'] / self._cache['n_farmland']
+        init_cont = self._cache['total_farmland_adj'] / self._cache['n_farmland']
+        print(f"Environment initialized (v7 - reduced penalty + pair bonus + no early termination):")
         print(f"  Total parcels: {self.n_parcels}")
         print(f"  Swappable: {self.n_swappable} "
               f"(farmland={self._cache['n_farmland']}, forest={self._cache['n_forest']})")
         print(f"  Initial avg farmland slope: {init_slope:.4f}")
         print(f"  Initial farmland contiguity: {init_cont:.4f}")
+        print(f"  Per-parcel features: {K_PARCEL}, Global features: {K_GLOBAL}")
         print(f"  Observation dim: {obs_dim}, Action dim: {self.n_swappable}")
-        print(f"  Max steps/episode: {self.max_steps} (may terminate earlier)")
+        print(f"  Max steps/episode: {self.max_steps}")
+        print(f"  Count penalty: quadratic, weight={COUNT_PENALTY_WEIGHT} (v6: 100,000)")
+        print(f"  Pair bonus: {PAIR_BONUS} (v6: 0.5)")
+        print(f"  Early termination: DISABLED (full episode)")
 
         # Track converted parcels (prevents undo within episode)
         self._converted = np.zeros(self.n_swappable, dtype=bool)
@@ -142,10 +169,6 @@ class LandUseOptEnv(gym.Env):
     def _build_adjacency(self):
         """Build adjacency lists using geopandas spatial join."""
         gdf_idx = gpd.GeoDataFrame(geometry=self.gdf.geometry)
-        # Use only geometries that are valid
-        if not gdf_idx.is_valid.all():
-             gdf_idx['geometry'] = gdf_idx.geometry.buffer(0)
-             
         joined = gpd.sjoin(gdf_idx, gdf_idx, predicate='intersects', how='inner')
         joined = joined[joined.index != joined['index_right']]
 
@@ -188,7 +211,7 @@ class LandUseOptEnv(gym.Env):
     # ------------------------------------------------------------------
 
     def _swap_to_forest(self, k):
-        """Convert parcel k: farmland → forest. Update metrics incrementally."""
+        """Convert parcel k: farmland -> forest. Update metrics incrementally."""
         self.total_farmland_adj -= self.farmland_nbr_count[k]
         self.total_farmland_slope -= self.slopes[k]
 
@@ -202,7 +225,7 @@ class LandUseOptEnv(gym.Env):
                 self.total_farmland_adj -= 1
 
     def _swap_to_farmland(self, k):
-        """Convert parcel k: forest → farmland. Update metrics incrementally."""
+        """Convert parcel k: forest -> farmland. Update metrics incrementally."""
         self.land_use[k] = FARMLAND
         self.n_farmland += 1
         self.n_forest -= 1
@@ -220,36 +243,40 @@ class LandUseOptEnv(gym.Env):
     # ------------------------------------------------------------------
 
     def _get_obs(self):
-        """Build observation vector: per-parcel types + global features."""
+        """Build observation: per-parcel features (N*K) + global features (G)."""
         si = self.swappable_indices
-
-        # Per-parcel: current type (1.0=farmland, 0.0=forest)
-        types = (self.land_use[si] == FARMLAND).astype(np.float32)
-
-        # Global features
         avg_sl = self.avg_farmland_slope
+
+        # Per-parcel features (K=6 per parcel)
+        f_slope = self._static_slopes_norm
+        f_type = (self.land_use[si] == FARMLAND).astype(np.float32)
+        f_nbr_ratio = self.farmland_nbr_count[si].astype(np.float32) / np.maximum(self.total_nbr_count[si], 1.0)
+        f_nbr_slope = self._static_nbr_avg_slope
+        f_area = self._static_areas_norm
+        f_slope_vs = ((self.slopes[si] - avg_sl) / (abs(avg_sl) + 1e-8)).astype(np.float32)
+
+        per_parcel = np.column_stack([f_slope, f_type, f_nbr_ratio, f_nbr_slope, f_area, f_slope_vs])
+
+        # Global features (G=8)
         cont = self.contiguity
+        farmland_dev = (self.n_farmland - self.initial_n_farmland_count) / self.initial_n_farmland_count
         global_f = np.array([
-            (avg_sl - self.slope_min) / self.slope_range,   # normalized avg slope
-            cont / 10.0,                                     # normalized contiguity
-            float(self.phase),                                # current phase
-            self.step_count / self.max_steps,                 # progress
-            self.n_farmland / self.n_parcels,                 # farmland fraction
-            self.n_forest / self.n_parcels,                   # forest fraction
+            (avg_sl - self.slope_min) / self.slope_range,
+            cont / 10.0,
+            farmland_dev,
+            self.step_count / self.max_steps,
+            self.n_farmland / self.n_parcels,
+            self.n_forest / self.n_parcels,
             (avg_sl - self.initial_avg_slope) / (abs(self.initial_avg_slope) + 1e-8),
             (cont - self.initial_contiguity) / (abs(self.initial_contiguity) + 1e-8),
         ], dtype=np.float32)
 
-        return np.concatenate([types, global_f])
+        return np.concatenate([per_parcel.ravel(), global_f])
 
     def action_masks(self):
         """Return boolean mask of valid actions (size = n_swappable)."""
         si = self.swappable_indices
-        if self.phase == 0:
-            mask = (self.land_use[si] == FARMLAND)
-        else:
-            mask = (self.land_use[si] == FOREST)
-        # Exclude parcels already converted this episode (prevents undo)
+        mask = (self.land_use[si] == FARMLAND) | (self.land_use[si] == FOREST)
         mask = mask & ~self._converted
         return mask
 
@@ -265,81 +292,79 @@ class LandUseOptEnv(gym.Env):
         self.total_farmland_adj = self._cache['total_farmland_adj']
 
         self.step_count = 0
-        self.phase = 0
-        self.completed_swaps = 0
-        self.early_stopped = False
+        self.completed_conversions = 0
+        self.completed_pairs = 0
         self._converted[:] = False
 
         # Record initial metrics for reward computation
         self.initial_avg_slope = self.avg_farmland_slope
         self.initial_contiguity = self.contiguity
+        self.initial_n_farmland_count = self.n_farmland
         self.prev_avg_slope = self.initial_avg_slope
         self.prev_contiguity = self.initial_contiguity
 
         info = {
             'avg_slope': self.avg_farmland_slope,
             'contiguity': self.contiguity,
-            'completed_swaps': 0,
+            'completed_conversions': 0,
+            'completed_pairs': 0,
+            'farmland_change': 0,
             'early_stop': False,
         }
         return self._get_obs(), info
 
     def step(self, action):
         action = int(action)
-        # Map action index to actual parcel index
         parcel_idx = self.swappable_indices[action]
 
         # Mark parcel as converted (prevents undo)
         self._converted[action] = True
 
-        # Execute swap based on current phase
-        if self.phase == 0:
+        # Flip based on current type
+        if self.land_use[parcel_idx] == FARMLAND:
             self._swap_to_forest(parcel_idx)
         else:
             self._swap_to_farmland(parcel_idx)
 
         self.step_count += 1
+        self.completed_conversions += 1
 
-        # Compute reward after each swap pair (phase 1 completes a pair)
-        reward = 0.0
-        pair_completed = (self.phase == 1)
-        if pair_completed:
-            avg_sl = self.avg_farmland_slope
-            cont = self.contiguity
+        # Compute reward
+        avg_sl = self.avg_farmland_slope
+        cont = self.contiguity
 
-            # Normalized slope improvement (positive = good)
-            slope_r = (self.prev_avg_slope - avg_sl) / (abs(self.initial_avg_slope) + 1e-8)
-            # Normalized contiguity change (positive = good)
-            cont_r = (cont - self.prev_contiguity) / (abs(self.initial_contiguity) + 1e-8)
+        slope_r = (self.prev_avg_slope - avg_sl) / (abs(self.initial_avg_slope) + 1e-8)
+        cont_r = (cont - self.prev_contiguity) / (abs(self.initial_contiguity) + 1e-8)
+        count_dev = abs(self.n_farmland - self.initial_n_farmland_count) / self.initial_n_farmland_count
 
-            # Weighted reward: prioritize slope reduction, penalize contiguity loss
-            reward = 1000.0 * slope_r + 500.0 * cont_r
+        reward = (SLOPE_REWARD_WEIGHT * slope_r
+                  + CONT_REWARD_WEIGHT * cont_r
+                  - COUNT_PENALTY_WEIGHT * count_dev * count_dev)
 
-            self.prev_avg_slope = avg_sl
-            self.prev_contiguity = cont
-            self.completed_swaps += 1
+        # Pair completion bonus
+        if self.n_farmland == self.initial_n_farmland_count:
+            reward += PAIR_BONUS
+            self.completed_pairs += 1
 
-        # Toggle phase
-        self.phase = 1 - self.phase
+        self.prev_avg_slope = avg_sl
+        self.prev_contiguity = cont
 
-        # Check termination
+        # NO early termination — only terminate at max_steps or no valid actions
         terminated = self.step_count >= self.max_steps
-
-        # v2: Early termination when swap pair yields negative reward
-        if not terminated and pair_completed and reward < 0:
-            terminated = True
-            self.early_stopped = True
 
         if not terminated:
             mask = self.action_masks()
             if not mask.any():
                 terminated = True
 
+        farmland_change = self.n_farmland - self.initial_n_farmland_count
         info = {
             'avg_slope': self.avg_farmland_slope,
             'contiguity': self.contiguity,
-            'completed_swaps': self.completed_swaps,
-            'early_stop': self.early_stopped,
+            'completed_conversions': self.completed_conversions,
+            'completed_pairs': self.completed_pairs,
+            'farmland_change': farmland_change,
+            'early_stop': False,  # v7: never early stops
         }
 
         return self._get_obs(), float(reward), terminated, False, info
