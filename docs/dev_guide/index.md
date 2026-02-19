@@ -13,7 +13,9 @@ data_agent/
 ├── app.py              # Chainlit 入口 (UI)
 ├── prompts.yaml        # 智能体 Prompt 集合
 ├── FFI.py              # 破碎化指数计算引擎
-├── drl_engine.py       # 深度强化学习环境 (Gymnasium)
+├── drl_engine.py       # 深度强化学习环境 (Gymnasium - v7 Balanced)
+├── parcel_scoring_policy.py # [New] 置换不变性策略网络 (Maskable Actor-Critic)
+├── scorer_weights_v7.pt # [New] 预训练模型权重 (用于推理)
 ├── report_generator.py # Word 报告生成器
 ├── test_*.py           # 单元测试与集成测试
 └── eval_set.json       # 智能体评估数据集
@@ -21,13 +23,19 @@ data_agent/
 
 ## 3. 开发指引
 
-### 3.1 添加新工具
+### 3.1 DRL 模型集成 (v7)
+系统目前集成的是 **v7 Maskable PPO** 模型，具有以下关键特性：
+*   **Permutation Invariant (置换不变性)**: 使用 `ParcelScoringPolicy` 架构。该网络对每个地块独立打分 (Scorer Net) 并结合全局特征 (Value Net)，从而支持**变长输入**（任意数量的地块）。
+*   **权重加载机制**: 为了解决跨环境推理时的优化器状态不匹配问题，推理时不直接加载 `.zip` 模型，而是手动初始化 `MaskablePPO` 实例并加载 `scorer_weights_v7.pt` 权重文件。
+*   **环境逻辑**: `drl_engine.py` 实现了 v7 环境，包含**成对置换奖励 (Pair Bonus)** 和 **低数量惩罚**，引导模型在保持总量的同时优化坡度。
+
+### 3.2 添加新工具
 1.  在 `agent.py` 中编写 Python 函数（如 `def new_tool(file_path: str): ...`）。
 2.  在对应的 Agent 定义中注册该工具（如 `tools=[new_tool]`）。
 3.  在 `prompts.yaml` 中更新 Agent 指令，告诉它何时使用该工具。
 4.  编写单元测试 `test_new_tool.py` 进行验证。
 
-### 3.2 UI 定制
+### 3.3 UI 定制
 *   修改 `.chainlit/config.toml` 可调整主题、名称、快捷按钮。
 *   修改 `app.py` 中的 `extract_file_paths` 可增加新的文件类型预览支持。
 

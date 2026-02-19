@@ -26,7 +26,13 @@ pip install -r requirements.txt
 # 注意：GDAL/Fiona 在 Windows 下可能需要下载 whl 文件手动安装
 ```
 
-### 2.4 环境变量配置
+### 2.4 模型文件检查
+确保 `data_agent/` 目录下存在以下核心模型文件：
+*   `scorer_weights_v7.pt`: **[必需]** v7 模型的权重文件，用于推理。
+*   `parcel_scoring_policy.py`: **[必需]** 定义模型网络结构的 Python 模块。
+*   `land_use_model_v7.zip`: (可选) 完整训练模型备份。
+
+### 2.5 环境变量配置
 在项目根目录创建 `.env` 文件，填入以下关键配置：
 ```ini
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
