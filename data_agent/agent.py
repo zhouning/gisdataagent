@@ -27,6 +27,15 @@ from . import drl_engine
 from .FFI import ffi as calculate_ffi
 # Import the custom policy to ensure it is registered for loading
 from .parcel_scoring_policy import ParcelScoringPolicy
+# Import new GIS processors
+from .gis_processors import (
+    generate_tessellation, 
+    raster_to_polygon, 
+    pairwise_clip, 
+    tabulate_intersection, 
+    surface_parameters, 
+    zonal_statistics_as_table
+)
 
 # Load prompts from YAML file
 PROMPTS_FILE = os.path.join(os.path.dirname(__file__), 'prompts.yaml')
@@ -424,7 +433,23 @@ DATASTORE_ID = os.environ.get("DATASTORE_ID", "projects/gen-lang-client-09775776
 
 knowledge_agent = Agent(name="vertex_search_agent", model="gemini-2.5-flash", instruction=prompts['knowledge_agent_instruction'], description="Vertex AI Search 企业文档搜索助手", output_key="domain_knowledge", tools=[VertexAiSearchTool(data_store_id=DATASTORE_ID)])
 data_exploration_agent=LlmAgent(name="DataExploration", instruction=prompts['data_exploration_agent_instruction'], description="数据探查专家", model="gemini-2.5-flash", output_key="data_profile", tools=[describe_geodataframe])
-data_processing_agent=LlmAgent(name="DataProcessing", instruction=prompts['data_processing_agent_instruction'], description="特征工程与预处理专家", model="gemini-2.5-flash", output_key="processed_data", tools=[reproject_spatial_data, engineer_spatial_features])
+data_processing_agent=LlmAgent(
+    name="DataProcessing", 
+    instruction=prompts['data_processing_agent_instruction'], 
+    description="特征工程与预处理专家", 
+    model="gemini-2.5-flash", 
+    output_key="processed_data", 
+    tools=[
+        reproject_spatial_data, 
+        engineer_spatial_features,
+        generate_tessellation, 
+        raster_to_polygon, 
+        pairwise_clip, 
+        tabulate_intersection, 
+        surface_parameters, 
+        zonal_statistics_as_table
+    ]
+)
 data_engineering_agent=SequentialAgent(name="DataEngineering", sub_agents=[data_exploration_agent, data_processing_agent])
 data_analysis_agent=LlmAgent(name="DataAnalysis", instruction=prompts['data_analysis_agent_instruction'], description="空间分析与优化专家", model="gemini-2.5-flash", output_key="analysis_report", tools=[ffi, drl_model])
 data_visualization_agent=LlmAgent(name="DataVisualization", instruction=prompts['data_visualization_agent_instruction'], description="制图与可视化专家", model="gemini-2.5-flash", output_key="visualizations", tools=[visualize_geodataframe, visualize_optimization_comparison, visualize_interactive_map])

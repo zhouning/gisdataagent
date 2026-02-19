@@ -2,6 +2,18 @@
 
 All notable changes to the Data Agent project will be documented in this file.
 
+## [v2.7.0] - 2026-02-19
+
+### 🛠️ Advanced GIS Toolbox (Open Source Implementation)
+- **New GIS Processors**: Implemented 6 core GIS tools using pure Python (`geopandas`, `rasterio`, `rasterstats`), replicating ArcGIS/ArcPy functionality without commercial license requirements:
+    - **Generate Tessellation**: Create square or hexagonal grids over any extent.
+    - **Raster to Polygon**: Vectorize raster datasets (GeoTIFF) into Shapefiles.
+    - **Pairwise Clip**: Precise vector-on-vector clipping.
+    - **Tabulate Intersection**: Cross-tabulate area proportions between two layers.
+    - **Surface Parameters**: Calculate **Slope** and **Aspect** directly from DEM rasters using NumPy gradients.
+    - **Zonal Statistics As Table**: Summarize raster values (mean, sum, etc.) within vector zones.
+- **Enhanced DataProcessing Agent**: Updated the agent's knowledge and instructions to leverage these advanced spatial operations autonomously.
+
 ## [v2.6.0-beta] - 2026-02-19
 
 ### 🚀 AI Model Upgrade (v7)
