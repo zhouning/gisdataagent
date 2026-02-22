@@ -12,18 +12,36 @@ data_agent/
 ├── agent.py            # ADK Agent 定义与工具封装 (Core)
 ├── app.py              # Chainlit 入口 (UI)
 ├── prompts.yaml        # 智能体 Prompt 集合
+├── gis_processors.py   # [New] GIS 核心算法 (网格, 矢量化, 拓扑)
+├── doc_auditor.py      # [New] PDF 文档指标提取与核对
+├── geocoding.py        # [New] Excel 地址转坐标 (OpenStreetMap)
+├── report_generator.py # [Upgrade] 报告生成器 (支持表格渲染)
 ├── FFI.py              # 破碎化指数计算引擎
-├── drl_engine.py       # 深度强化学习环境 (Gymnasium - v7 Balanced)
-├── parcel_scoring_policy.py # [New] 置换不变性策略网络 (Maskable Actor-Critic)
-├── scorer_weights_v7.pt # [New] 预训练模型权重 (用于推理)
-├── report_generator.py # Word 报告生成器
+├── drl_engine.py       # 深度强化学习环境
 ├── test_*.py           # 单元测试与集成测试
 └── eval_set.json       # 智能体评估数据集
 ```
 
 ## 3. 开发指引
 
-### 3.1 DRL 模型集成 (v7)
+### 3.1 核心模块架构
+
+#### GIS 处理层 (`gis_processors.py`)
+为了摆脱对 ArcPy 的依赖，我们使用开源栈重写了核心 GIS 工具：
+*   **Geopandas**: 负责矢量操作（Clip, Intersection）。
+*   **Rasterio**: 负责栅格操作（Slope Calculation, Vectorization）。
+*   **Shapely**: 负责拓扑检查（Overlaps, Validity）。
+
+#### 地址解析层 (`geocoding.py`)
+*   **输入**: Excel/CSV。
+*   **引擎**: 默认使用 `Nominatim` (OSM)，每秒限流 1 次。
+*   **输出**: 带有 Geometry 的 Shapefile。
+
+#### 报告生成层 (`report_generator.py`)
+*   **Markdown 解析**: 手写了一个简单的 Markdown 解析器，专门识别 `|---|` 表格语法。
+*   **Docx 渲染**: 使用 `python-docx` 绘制原生表格，支持设置边框、底色和加粗字体，确保报告符合政务公文规范。
+
+### 3.2 DRL 模型集成 (v7)
 系统目前集成的是 **v7 Maskable PPO** 模型，具有以下关键特性：
 *   **Permutation Invariant (置换不变性)**: 使用 `ParcelScoringPolicy` 架构。该网络对每个地块独立打分 (Scorer Net) 并结合全局特征 (Value Net)，从而支持**变长输入**（任意数量的地块）。
 *   **权重加载机制**: 为了解决跨环境推理时的优化器状态不匹配问题，推理时不直接加载 `.zip` 模型，而是手动初始化 `MaskablePPO` 实例并加载 `scorer_weights_v7.pt` 权重文件。
