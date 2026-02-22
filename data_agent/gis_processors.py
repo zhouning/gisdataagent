@@ -302,3 +302,84 @@ def zonal_statistics_as_table(zone_vector: str, value_raster: str, stats: list[s
         
     except Exception as e:
         return f"Error in zonal_statistics_as_table: {str(e)}"
+
+def check_topology(file_path: str) -> dict[str, any]:
+    """
+    [Governance Tool] Scans GIS data for topological errors: self-intersections, overlaps, and multi-part geometries.
+    
+    Returns:
+        A dictionary summarizing errors and paths to error-highlighting layers.
+    """
+    try:
+        gdf = gpd.read_file(_resolve_path(file_path))
+        report = {"total_features": len(gdf), "errors": {}}
+        
+        # 1. Invalid Geometries (Self-intersections)
+        invalid_mask = ~gdf.geometry.is_valid
+        n_invalid = int(invalid_mask.sum())
+        if n_invalid > 0:
+            out_invalid = _generate_output_path("err_invalid", "shp")
+            gdf[invalid_mask].to_file(out_invalid)
+            report["errors"]["self_intersections"] = {"count": n_invalid, "layer": out_invalid}
+            
+        # 2. Overlaps (Crucial for To G)
+        # We use a spatial join with itself to find intersections that aren't the same feature
+        overlaps = []
+        sindex = gdf.sindex
+        for i, geom in enumerate(gdf.geometry):
+            # Find candidate neighbors
+            possible_matches_index = list(sindex.intersection(geom.bounds))
+            possible_matches = gdf.iloc[possible_matches_index]
+            for j, other_geom in possible_matches.geometry.items():
+                if i < j: # Avoid double counting
+                    if geom.overlaps(other_geom):
+                        overlaps.append({"id_a": i, "id_b": j, "geometry": geom.intersection(other_geom)})
+        
+        if overlaps:
+            gdf_overlaps = gpd.GeoDataFrame(overlaps, crs=gdf.crs)
+            out_overlaps = _generate_output_path("err_overlaps", "shp")
+            gdf_overlaps.to_file(out_overlaps)
+            report["errors"]["overlaps"] = {"count": len(overlaps), "layer": out_overlaps}
+
+        # 3. Multi-part Geometries (Often discouraged in standardization)
+        is_multi = gdf.geometry.type.str.contains("Multi")
+        n_multi = int(is_multi.sum())
+        if n_multi > 0:
+            report["errors"]["multi_part"] = {"count": n_multi, "message": "Recommend exploding to single parts"}
+
+        report["status"] = "pass" if not report["errors"] else "fail"
+        return report
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def check_field_standards(file_path: str, standard_schema: dict) -> dict[str, any]:
+    """
+    [Governance Tool] Validates attribute data against a standard schema (field names, types, and allowed values).
+    
+    Args:
+        file_path: Path to the data file.
+        standard_schema: Dict e.g. {"DLMC": {"type": "string", "allowed": ["水田", "旱地", "有林地"]}}
+    """
+    try:
+        gdf = gpd.read_file(_resolve_path(file_path))
+        results = {"missing_fields": [], "type_mismatches": [], "invalid_values": []}
+        
+        for field, rules in standard_schema.items():
+            if field not in gdf.columns:
+                results["missing_fields"].append(field)
+                continue
+            
+            # Check values if 'allowed' list exists
+            if "allowed" in rules:
+                invalid = gdf[~gdf[field].isin(rules["allowed"])]
+                if not invalid.empty:
+                    results["invalid_values"].append({
+                        "field": field, 
+                        "count": len(invalid), 
+                        "sample": invalid[field].unique().tolist()[:5]
+                    })
+        
+        results["is_standard"] = not (results["missing_fields"] or results["invalid_values"])
+        return results
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

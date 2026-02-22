@@ -18,7 +18,9 @@ from data_agent.gis_processors import (
     pairwise_clip, 
     tabulate_intersection, 
     surface_parameters, 
-    zonal_statistics_as_table
+    zonal_statistics_as_table,
+    check_topology,
+    check_field_standards
 )
 
 class TestGISProcessors(unittest.TestCase):
@@ -106,6 +108,55 @@ class TestGISProcessors(unittest.TestCase):
         self.assertEqual(len(df), 2)
         self.assertIn('mean', df.columns)
         print(f"  Zonal Stats:\n{df.head()}")
+
+    def test_governance_topology(self):
+        print("\nTesting check_topology (Governance)...")
+        # Create topology error data: Overlapping polygons
+        topo_err_path = os.path.join(self.test_dir, "topo_err.shp")
+        gpd.GeoDataFrame(
+            {'id': [1, 2]},
+            geometry=[
+                box(0, 0, 100, 100),    # Poly A
+                box(50, 0, 150, 100)    # Poly B (Overlaps A by 50x100)
+            ],
+            crs="EPSG:3857"
+        ).to_file(topo_err_path)
+        
+        report = check_topology(topo_err_path)
+        
+        # Verify
+        self.assertEqual(report["status"], "fail")
+        self.assertIn("overlaps", report["errors"])
+        self.assertEqual(report["errors"]["overlaps"]["count"], 1) # One overlap event
+        self.assertIn("layer", report["errors"]["overlaps"])
+        print(f"  Topology Audit: Detected {report['errors']['overlaps']['count']} overlap(s). Error layer: {report['errors']['overlaps']['layer']}")
+
+    def test_governance_standards(self):
+        print("\nTesting check_field_standards (Governance)...")
+        # Create data with schema violations
+        # Standard: DLMC must be '水田' or '旱地'
+        # Data: DLMC includes '非法用地'
+        std_err_path = os.path.join(self.test_dir, "std_err.shp")
+        gpd.GeoDataFrame(
+            {'DLMC': ['水田', '非法用地'], 'KSL': [1.0, 2.0]},
+            geometry=[Point(0,0), Point(1,1)],
+            crs="EPSG:3857"
+        ).to_file(std_err_path)
+        
+        schema = {
+            "DLMC": {"type": "string", "allowed": ["水田", "旱地"]},
+            "KSL": {"type": "float"}
+        }
+        
+        result = check_field_standards(std_err_path, schema)
+        
+        # Verify
+        self.assertFalse(result["is_standard"])
+        self.assertEqual(len(result["invalid_values"]), 1)
+        self.assertEqual(result["invalid_values"][0]["field"], "DLMC")
+        self.assertEqual(result["invalid_values"][0]["count"], 1)
+        self.assertIn("非法用地", result["invalid_values"][0]["sample"])
+        print(f"  Standard Audit: Detected invalid value '{result['invalid_values'][0]['sample'][0]}' in field '{result['invalid_values'][0]['field']}'")
 
 if __name__ == "__main__":
     unittest.main()

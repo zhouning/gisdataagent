@@ -34,7 +34,9 @@ from .gis_processors import (
     pairwise_clip, 
     tabulate_intersection, 
     surface_parameters, 
-    zonal_statistics_as_table
+    zonal_statistics_as_table,
+    check_topology,
+    check_field_standards
 )
 
 # Load prompts from YAML file
@@ -432,7 +434,18 @@ def engineer_spatial_features(file_path: str) -> dict[str, any]:
 DATASTORE_ID = os.environ.get("DATASTORE_ID", "projects/gen-lang-client-0977577668/locations/global/collections/default_collection/dataStores/adktest20260101_1767273453936")
 
 knowledge_agent = Agent(name="vertex_search_agent", model="gemini-2.5-flash", instruction=prompts['knowledge_agent_instruction'], description="Vertex AI Search 企业文档搜索助手", output_key="domain_knowledge", tools=[VertexAiSearchTool(data_store_id=DATASTORE_ID)])
-data_exploration_agent=LlmAgent(name="DataExploration", instruction=prompts['data_exploration_agent_instruction'], description="数据探查专家", model="gemini-2.5-flash", output_key="data_profile", tools=[describe_geodataframe])
+data_exploration_agent=LlmAgent(
+    name="DataExploration", 
+    instruction=prompts['data_exploration_agent_instruction'], 
+    description="数据质量审计与治理专家", 
+    model="gemini-2.5-flash", 
+    output_key="data_profile", 
+    tools=[
+        describe_geodataframe, 
+        check_topology, 
+        check_field_standards
+    ]
+)
 data_processing_agent=LlmAgent(
     name="DataProcessing", 
     instruction=prompts['data_processing_agent_instruction'], 
