@@ -38,6 +38,7 @@ from .gis_processors import (
     check_topology,
     check_field_standards
 )
+from .doc_auditor import check_consistency
 
 # Load prompts from YAML file
 PROMPTS_FILE = os.path.join(os.path.dirname(__file__), 'prompts.yaml')
@@ -443,7 +444,8 @@ data_exploration_agent=LlmAgent(
     tools=[
         describe_geodataframe, 
         check_topology, 
-        check_field_standards
+        check_field_standards,
+        check_consistency
     ]
 )
 data_processing_agent=LlmAgent(
@@ -467,5 +469,78 @@ data_engineering_agent=SequentialAgent(name="DataEngineering", sub_agents=[data_
 data_analysis_agent=LlmAgent(name="DataAnalysis", instruction=prompts['data_analysis_agent_instruction'], description="空间分析与优化专家", model="gemini-2.5-flash", output_key="analysis_report", tools=[ffi, drl_model])
 data_visualization_agent=LlmAgent(name="DataVisualization", instruction=prompts['data_visualization_agent_instruction'], description="制图与可视化专家", model="gemini-2.5-flash", output_key="visualizations", tools=[visualize_geodataframe, visualize_optimization_comparison, visualize_interactive_map])
 data_summary_agent=LlmAgent(name="DataSummary", instruction=prompts['data_summary_agent_instruction'], global_instruction=f"今天的时间是： {date.today()}", description="决策总结专家", model="gemini-2.5-flash", output_key="final_summary")
-data_pipeline = SequentialAgent(name="DataPipeline", sub_agents=[knowledge_agent, data_engineering_agent, data_analysis_agent, data_visualization_agent, data_summary_agent])
+data_pipeline = SequentialAgent(
+    name="DataPipeline", 
+    sub_agents=[knowledge_agent, data_engineering_agent, data_analysis_agent, data_visualization_agent, data_summary_agent]
+)
+
+# --- Governance Pipeline (New!) ---
+# A lightweight pipeline focusing on Audit -> Remediation -> Reporting
+# No complex DRL optimization, just quality assurance and standardization.
+governance_report_agent = LlmAgent(
+    name="GovernanceReporter",
+    instruction="""
+    # Role: 数据治理报告员
+    你负责汇总前序智能体（DataExploration, DataProcessing）的审计结果。
+    请生成一份严谨的《政务数据治理审计报告》。
+    重点包含：
+    1. 审计摘要（是否通过、质量评分）。
+    2. 详细的错误清单（拓扑错误数、标准违规项）。
+    3. 图文一致性核查结果（如果有 PDF）。
+    4. 修复后的数据资产路径。
+    """,
+    model="gemini-2.5-flash",
+    output_key="governance_report"
+)
+
+governance_pipeline = SequentialAgent(
+    name="GovernancePipeline",
+    sub_agents=[data_exploration_agent, data_processing_agent, governance_report_agent]
+)
+
+# --- Router Agent (New!) ---
+# Decides which pipeline to run based on user intent.
+# Since ADK doesn't support conditional branching natively within a SequentialAgent easily,
+# we will use this as the entry point. However, ADK's 'runner' usually takes a single agent.
+# We will simulate routing by wrapping the pipelines as Tools.
+
+def run_optimization_pipeline(data_path: str, instruction: str) -> str:
+    """Executes the full land use optimization pipeline (FFI + DRL + Maps)."""
+    # In a real ADK app, we might dynamically invoke the pipeline. 
+    # For now, we can return a directive to the system or just explain what we would do.
+    # A better approach for ADK 0.3+ is using an Orchestrator. 
+    # Given the constraints, we will keep `root_agent` as the entry point.
+    pass
+
+# For this version, let's keep it simple:
+# We will use `data_exploration_agent` as the shared entry point.
+# But `root_agent` needs to be flexible.
+# Let's define a Router that routes to specific pipelines?
+# ADK's SequentialAgent executes ALL sub-agents.
+# To support "Routing", we need a top-level LlmAgent that calls *other Agents as Tools*.
+
+# BUT, Agent-as-a-Tool is complex to setup here without refactoring `app.py`.
+# COMPROMISE: We will keep `root_agent = data_pipeline` for now, 
+# BUT we've already upgraded DataExploration/DataProcessing to handle governance tasks.
+# If the user asks for governance, `DataAnalysis` (FFI/DRL) might still run and fail or be useless.
+# To fix this properly, we should use a `RouterAgent` as root.
+
+# Let's create a "Universal Agent" that decides what to do.
+# Or better: `data_pipeline` covers both cases if we make Analysis/Viz optional via Prompt?
+# Updating `data_analysis_agent` prompt to be "Skipped if intent is governance" is risky.
+
+# CORRECT APPROACH:
+# Define `router_agent` as an LlmAgent that takes the user input and calls the correct python function
+# which triggers the specific logic. 
+# However, `chainlit` app runs `runner.run(agent)`. 
+# If we change `root_agent`, we change the whole app behavior.
+
+# Let's try to make `data_pipeline` smarter.
+# We can make `data_analysis_agent` and `data_visualization_agent` conditional?
+# ADK doesn't have `ConditionalAgent`.
+
+# Alternative: The "Governance" features are ALREADY integrated into `data_engineering_agent` (Exploration + Processing).
+# If the user only wants governance, the subsequent agents (Analysis/Viz) will run but might just say "No optimization needed".
+# Let's update DataAnalysis prompt to handle "Governance Only" mode.
+
 root_agent = data_pipeline

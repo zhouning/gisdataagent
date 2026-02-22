@@ -22,6 +22,8 @@ from data_agent.gis_processors import (
     check_topology,
     check_field_standards
 )
+from data_agent.doc_auditor import check_consistency
+from unittest.mock import patch
 
 class TestGISProcessors(unittest.TestCase):
     def setUp(self):
@@ -157,6 +159,49 @@ class TestGISProcessors(unittest.TestCase):
         self.assertEqual(result["invalid_values"][0]["count"], 1)
         self.assertIn("非法用地", result["invalid_values"][0]["sample"])
         print(f"  Standard Audit: Detected invalid value '{result['invalid_values'][0]['sample'][0]}' in field '{result['invalid_values'][0]['field']}'")
+
+    @patch('data_agent.doc_auditor.extract_metrics_from_pdf')
+    def test_doc_consistency(self, mock_extract):
+        print("\nTesting check_consistency (Governance)...")
+        
+        # 1. Create a SHP with known areas
+        # 2 Features: "水田" (Area 1000), "有林地" (Area 2000)
+        # Total Area: 3000
+        shp_path = os.path.join(self.test_dir, "consistency_test.shp")
+        gpd.GeoDataFrame(
+            {'DLMC': ['水田', '有林地'], 'Shape_Area': [1000.0, 2000.0]},
+            geometry=[box(0,0,10,100), box(10,0,30,100)], # 10x100=1000, 20x100=2000
+            crs="EPSG:3857"
+        ).to_file(shp_path)
+        
+        # 2. Mock PDF content (The "Report" says we have 1050 Water, 1900 Forest)
+        # Water: 1000 vs 1050 (Diff -50, ~4.7% -> MATCH)
+        # Forest: 2000 vs 1900 (Diff +100, ~5.2% -> MISMATCH)
+        mock_extract.return_value = {
+            "metrics": {
+                "耕地": 1050.0,  # "水田" should match "耕地" logic
+                "林地": 1900.0
+            }
+        }
+        
+        # 3. Run Check
+        report = check_consistency("dummy.pdf", shp_path, area_field='Shape_Area')
+        
+        # 4. Verify
+        self.assertEqual(report['status'], 'success')
+        self.assertEqual(len(report['report']), 2)
+        
+        # Check Water (耕地)
+        res_water = next(r for r in report['report'] if r['category'] == '耕地')
+        self.assertEqual(res_water['data_value'], 1000.0)
+        self.assertEqual(res_water['status'], 'MATCH')
+        
+        # Check Forest (林地)
+        res_forest = next(r for r in report['report'] if r['category'] == '林地')
+        self.assertEqual(res_forest['data_value'], 2000.0)
+        self.assertEqual(res_forest['status'], 'MISMATCH (>5%)')
+        
+        print(f"  Consistency Audit: Verified {len(report['report'])} metrics. Found MISMATCH for 林地 as expected.")
 
 if __name__ == "__main__":
     unittest.main()
