@@ -128,11 +128,14 @@ def ffi(data_path: str) -> str:
     try:
         gdf = gpd.read_file(data_path)
         
-        # Ensure DLMC exists
-        if 'DLMC' not in gdf.columns:
-            return "Error: Input data missing 'DLMC' column."
+        # Ensure DLMC exists (Case Insensitive Check)
+        columns_lower = {c.lower(): c for c in gdf.columns}
+        if 'dlmc' not in columns_lower:
+            return f"Error: Input data missing 'DLMC' column. Available: {list(gdf.columns)}"
+        
+        dlmc_col = columns_lower['dlmc']
             
-        gdf['Land_Use_Category'] = gdf['DLMC'].apply(lambda x: '耕地' if x in ['旱地', '水田'] else x)
+        gdf['Land_Use_Category'] = gdf[dlmc_col].apply(lambda x: '耕地' if x in ['旱地', '水田'] else x)
         farmland_gdf = gdf[gdf['Land_Use_Category'] == '耕地'].copy() # Use copy to avoid SettingWithCopy
 
         if farmland_gdf.empty:

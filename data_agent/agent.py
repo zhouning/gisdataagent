@@ -40,6 +40,7 @@ from .gis_processors import (
 )
 from .doc_auditor import check_consistency
 from .geocoding import batch_geocode
+from .database_tools import query_database, list_tables
 
 # Load prompts from YAML file
 PROMPTS_FILE = os.path.join(os.path.dirname(__file__), 'prompts.yaml')
@@ -446,7 +447,9 @@ data_exploration_agent=LlmAgent(
         describe_geodataframe, 
         check_topology, 
         check_field_standards,
-        check_consistency
+        check_consistency,
+        query_database,
+        list_tables
     ]
 )
 data_processing_agent=LlmAgent(
@@ -484,7 +487,7 @@ governance_exploration_agent = LlmAgent(
     description="数据质量审计员", 
     model="gemini-2.5-flash", 
     output_key="data_profile", 
-    tools=[describe_geodataframe, check_topology, check_field_standards, check_consistency]
+    tools=[describe_geodataframe, check_topology, check_field_standards, check_consistency, query_database, list_tables]
 )
 governance_processing_agent = LlmAgent(
     name="GovProcessing", 
@@ -507,6 +510,42 @@ governance_report_agent = LlmAgent(
 governance_pipeline = SequentialAgent(
     name="GovernancePipeline",
     sub_agents=[governance_exploration_agent, governance_processing_agent, governance_report_agent]
+)
+
+# --- General Pipeline (New! for Excel/Maps) ---
+general_processing_agent = LlmAgent(
+    name="GeneralProcessing",
+    instruction=prompts['data_processing_agent_instruction'], # Re-use robust prompt
+    description="通用数据处理",
+    model="gemini-2.5-flash",
+    output_key="processed_data",
+    tools=[reproject_spatial_data, engineer_spatial_features, batch_geocode]
+)
+general_viz_agent = LlmAgent(
+    name="GeneralViz",
+    instruction="""
+    # Role: 通用可视化专家
+    你负责将处理好的数据（Shapefile）进行可视化。
+    1. 调用 `visualize_interactive_map` 生成交互地图。
+    2. 调用 `visualize_geodataframe` 生成静态缩略图。
+    """,
+    model="gemini-2.5-flash",
+    output_key="visualizations",
+    tools=[visualize_geodataframe, visualize_interactive_map]
+)
+general_summary_agent = LlmAgent(
+    name="GeneralSummary",
+    instruction="""
+    # Role: 分析总结
+    简单总结分析结果，告诉用户地图已生成，并提供下载链接。
+    """,
+    model="gemini-2.5-flash",
+    output_key="final_summary"
+)
+
+general_pipeline = SequentialAgent(
+    name="GeneralPipeline",
+    sub_agents=[general_processing_agent, general_viz_agent, general_summary_agent]
 )
 
 root_agent = data_pipeline

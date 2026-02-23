@@ -71,9 +71,19 @@ class LandUseOptEnv(gym.Env):
         # Episode length (each step = one conversion)
         self.max_steps = max_conversions
 
+        # Case-insensitive column handling
+        columns_lower = {c.lower(): c for c in self.gdf.columns}
+        
         # Extract attributes
-        self.slopes = self.gdf['Slope'].values.astype(np.float64)
-        dlmc = self.gdf['DLMC'].values
+        slope_col = columns_lower.get('slope', 'Slope')
+        if slope_col not in self.gdf.columns:
+             raise KeyError(f"Column 'Slope' not found (tried '{slope_col}'). Available: {list(self.gdf.columns)}")
+        self.slopes = self.gdf[slope_col].values.astype(np.float64)
+        
+        dlmc_col = columns_lower.get('dlmc', 'DLMC')
+        if dlmc_col not in self.gdf.columns:
+             raise KeyError(f"Column 'DLMC' not found (tried '{dlmc_col}'). Available: {list(self.gdf.columns)}")
+        dlmc = self.gdf[dlmc_col].values
 
         # Classify parcels
         self.initial_types = np.full(self.n_parcels, OTHER, dtype=np.int8)
@@ -96,7 +106,12 @@ class LandUseOptEnv(gym.Env):
         self.slopes_norm = ((self.slopes - self.slope_min) / self.slope_range).astype(np.float32)
 
         # Normalize areas to [0, 1]
-        areas = self.gdf['Shape_Area'].values.astype(np.float64)
+        shape_area_col = columns_lower.get('shape_area', 'Shape_Area')
+        # Some SHPs use AREA
+        if shape_area_col not in self.gdf.columns:
+             shape_area_col = columns_lower.get('area', 'Shape_Area')
+             
+        areas = self.gdf[shape_area_col].values.astype(np.float64)
         self.areas = areas
         area_min = float(areas.min())
         area_max = float(areas.max())
