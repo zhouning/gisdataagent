@@ -17,6 +17,7 @@ name = "Data Agent"
 description = "AI-powered Spatial Optimization Platform"
 show_readme_as_new_chat_button = true
 default_theme = "light"
+custom_js = "/public/register_link.js"
 
 [meta]
 generated_by = "0.7.700"
