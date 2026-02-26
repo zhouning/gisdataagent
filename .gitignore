@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Environment variables (sensitive)
+data_agent/.env
+
+# ADK session database
+data_agent/.adk/
+
+# Generated output files
+*.png
+*.html
+*.tif
+*.docx
+comparison_*.png
+optimized_map_*.png
+visualization_*.png
+interactive_map_*.html
+interactive_comparison_*.html
+enhanced_*.shp
+enhanced_*.dbf
+enhanced_*.prj
+enhanced_*.shx
+enhanced_*.cpg
+optimized_data_*.shp
+optimized_data_*.dbf
+optimized_data_*.prj
+optimized_data_*.shx
+optimized_data_*.cpg
+reprojected_*.shp
+reprojected_*.dbf
+reprojected_*.prj
+reprojected_*.shx
+reprojected_*.cpg
+
+# User uploads
+data_agent/uploads/
+
+# Claude Code settings (local)
+.claude/
+
+# Temporary/generated data files
+simple_test.docx
+test_governance_report.docx
+Analysis_Report*.docx
+
+# Chinese-named data files (local test data)
+和平村8000.*
+斑竹村*
+政务数据汇交样本*
+斑竹村_治理演示样本*
+
+# Generated comparison/analysis output in root
+comparison_*.png
+interactive_comparison_*.html
+interactive_map_*.html
+optimized_map_*.png
+optimized_data_*
+enhanced_*
+reprojected_*
