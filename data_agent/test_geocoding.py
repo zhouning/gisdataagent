@@ -58,6 +58,27 @@ class TestGeocoding(unittest.TestCase):
         print(f"  First point: {first_pt.x:.4f}, {first_pt.y:.4f}")
         self.assertAlmostEqual(first_pt.x, 116.39, delta=0.1)
 
+    def test_confidence_columns_present(self):
+        """Verify gc_match, gc_level, gc_src columns exist in geocoded output."""
+        result = batch_geocode(self.xlsx_path, address_col="Address")
+        if result['status'] == 'error':
+            print(f"Skipping (network issue): {result['message']}")
+            return
+        gdf = gpd.read_file(result['output_path'])
+        self.assertIn('gc_match', gdf.columns)
+        self.assertIn('gc_level', gdf.columns)
+        self.assertIn('gc_src', gdf.columns)
+        # All successful geocodes should have non-empty gc_match
+        self.assertTrue(all(gdf['gc_match'].str.len() > 0))
+
+    def test_confidence_summary_in_result(self):
+        """Verify confidence_summary is included in return dict."""
+        result = batch_geocode(self.xlsx_path, address_col="Address")
+        if result['status'] == 'error':
+            return
+        self.assertIn('confidence_summary', result)
+        self.assertIsInstance(result['confidence_summary'], dict)
+
 
 class TestAmapPolylineParsing(unittest.TestCase):
     """Unit tests for _parse_amap_polyline (no network needed)."""
@@ -192,6 +213,33 @@ class TestAdminBoundary(unittest.TestCase):
         # Beijing has 16 districts + the parent = 17
         self.assertGreater(len(gdf), 1)
         print(f"  Got {len(gdf)} districts: {', '.join(gdf['name'].tolist()[:5])}...")
+
+
+class TestConfidenceMapping(unittest.TestCase):
+    """Unit tests for _map_confidence (no network needed)."""
+
+    def test_high_confidence_levels(self):
+        from data_agent.geocoding import _map_confidence
+        self.assertEqual(_map_confidence("门牌号"), "高")
+        self.assertEqual(_map_confidence("兴趣点"), "高")
+        self.assertEqual(_map_confidence("地铁站"), "高")
+
+    def test_medium_confidence_levels(self):
+        from data_agent.geocoding import _map_confidence
+        self.assertEqual(_map_confidence("道路"), "中")
+        self.assertEqual(_map_confidence("村庄"), "中")
+        self.assertEqual(_map_confidence("乡镇"), "中")
+
+    def test_low_confidence_levels(self):
+        from data_agent.geocoding import _map_confidence
+        self.assertEqual(_map_confidence("城市"), "低")
+        self.assertEqual(_map_confidence("省"), "低")
+        self.assertEqual(_map_confidence("国家"), "低")
+
+    def test_unknown_level_defaults_to_medium(self):
+        from data_agent.geocoding import _map_confidence
+        self.assertEqual(_map_confidence(""), "中")
+        self.assertEqual(_map_confidence("未知类型"), "中")
 
 
 if __name__ == "__main__":

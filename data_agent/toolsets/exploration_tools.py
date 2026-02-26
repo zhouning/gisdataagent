@@ -86,6 +86,15 @@ def describe_geodataframe(file_path: str) -> dict:
             warns.append(f"数据包含混合几何类型: {geom_types}")
             recs.append("建议统一几何类型后再分析")
 
+        # Geocoding confidence check
+        gc_conf_counts = None
+        if "gc_match" in gdf.columns:
+            gc_conf_counts = gdf["gc_match"].value_counts().to_dict()
+            low_conf = gc_conf_counts.get("低", 0) + gc_conf_counts.get("未知", 0)
+            if low_conf > 0:
+                warns.append(f"地理编码置信度: {gc_conf_counts}，其中 {low_conf} 条低置信/未知")
+                recs.append("低置信度编码结果可能定位不准确，建议人工核查")
+
         numeric_cols = gdf.select_dtypes(include=[np.number]).columns.tolist()
         attr_stats = {}
         for col in numeric_cols[:10]:
@@ -118,6 +127,7 @@ def describe_geodataframe(file_path: str) -> dict:
                 "recommendations": recs if recs else ["可直接进行分析"],
                 "ready_for_analysis": not warns,
             },
+            "geocoding_confidence": gc_conf_counts,
             "file_path": _resolve_path(file_path),
         }
         return {"status": "success", "summary": summary}

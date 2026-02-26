@@ -9,12 +9,27 @@ import os
 from .gis_processors import _generate_output_path
 
 
+# Amap geocode level → confidence tier mapping
+_AMAP_LEVEL_CONFIDENCE = {
+    "门牌号": "高", "兴趣点": "高", "道路交叉路口": "高",
+    "公交站台": "高", "地铁站": "高",
+    "道路": "中", "村庄": "中", "热点商圈": "中", "乡镇": "中", "开发区": "中",
+    "区县": "低", "城市": "低", "省": "低", "国家": "低",
+}
+
+
+def _map_confidence(level: str) -> str:
+    """Map Amap geocode level to confidence tier (高/中/低)."""
+    return _AMAP_LEVEL_CONFIDENCE.get(level, "中")
+
+
 def _geocode_amap(address: str, city: str = None) -> tuple:
     """
     Geocode a single address using Amap (高德) API.
 
     Returns:
-        (longitude, latitude) tuple on success, None on failure.
+        (longitude, latitude, confidence_dict) on success, None on failure.
+        confidence_dict: {"level": str, "conf": "高/中/低"}
     """
     api_key = os.environ.get("GAODE_API_KEY")
     if not api_key:
@@ -36,9 +51,12 @@ def _geocode_amap(address: str, city: str = None) -> tuple:
         data = resp.json()
 
         if data.get("status") == "1" and data.get("geocodes"):
-            location_str = data["geocodes"][0]["location"]  # "116.397128,39.916527"
+            gc = data["geocodes"][0]
+            location_str = gc["location"]  # "116.397128,39.916527"
             lng, lat = location_str.split(",")
-            return (float(lng), float(lat))
+            level = gc.get("level", "")
+            conf = _map_confidence(level)
+            return (float(lng), float(lat), {"level": level, "conf": conf})
         return None
     except Exception:
         return None
@@ -132,22 +150,29 @@ def batch_geocode(file_path: str, address_col: str, city: str = None) -> dict:
 
             try:
                 lng, lat = None, None
+                gc_level = ""
+                gc_conf = "未知"
 
                 if use_amap:
                     result = _geocode_amap(addr, city=city)
                     if result:
-                        lng, lat = result
+                        lng, lat, conf_info = result
+                        gc_level = conf_info.get("level", "")
+                        gc_conf = conf_info.get("conf", "中")
                 else:
                     location = nominatim_geocode(query)
                     if location:
                         lng, lat = location.longitude, location.latitude
+                        gc_level = "Nominatim"
+                        gc_conf = "未知"
 
                 if lng is not None and lat is not None:
                     results.append({
                         "geometry": gpd.points_from_xy([lng], [lat])[0],
                         **row.to_dict(),
-                        "geocode_match": "High",
-                        "geocode_provider": provider_name
+                        "gc_match": gc_conf,
+                        "gc_level": gc_level,
+                        "gc_src": provider_name[:10],
                     })
                     success_count += 1
                 else:
@@ -165,13 +190,17 @@ def batch_geocode(file_path: str, address_col: str, city: str = None) -> dict:
         out_path = _generate_output_path("geocoded", "shp")
         gdf.to_file(out_path, encoding='utf-8')
 
+        conf_counts = gdf["gc_match"].value_counts().to_dict() if "gc_match" in gdf.columns else {}
+
         return {
             "status": "success",
             "output_path": out_path,
             "total": len(df),
             "success": success_count,
             "provider": provider_name,
-            "message": f"Geocoded {success_count}/{len(df)} addresses via {provider_name}."
+            "confidence_summary": conf_counts,
+            "message": f"Geocoded {success_count}/{len(df)} addresses via {provider_name}. "
+                       f"Confidence: {conf_counts}"
         }
 
     except Exception as e:
@@ -237,6 +266,7 @@ def reverse_geocode(file_path: str, lng_col: str = None, lat_col: str = None) ->
             nominatim_reverse = RateLimiter(geolocator.reverse, min_delay_seconds=1.1)
 
         addresses, provinces, cities, districts = [], [], [], []
+        gc_confs, gc_srcs = [], []
         success_count = 0
 
         print(f"Starting reverse geocoding for {len(coords)} records via {provider_name}...")
@@ -252,6 +282,8 @@ def reverse_geocode(file_path: str, lng_col: str = None, lat_col: str = None) ->
                     provinces.append(result["province"])
                     cities.append(result["city"])
                     districts.append(result["district"])
+                    gc_confs.append("高")
+                    gc_srcs.append("Amap")
                     success_count += 1
                 elif nominatim_reverse:
                     location = nominatim_reverse(f"{lat}, {lng}")
@@ -260,29 +292,39 @@ def reverse_geocode(file_path: str, lng_col: str = None, lat_col: str = None) ->
                         provinces.append("")
                         cities.append("")
                         districts.append("")
+                        gc_confs.append("未知")
+                        gc_srcs.append("Nominatim")
                         success_count += 1
                     else:
                         addresses.append("")
                         provinces.append("")
                         cities.append("")
                         districts.append("")
+                        gc_confs.append("")
+                        gc_srcs.append("")
                 else:
                     addresses.append("")
                     provinces.append("")
                     cities.append("")
                     districts.append("")
+                    gc_confs.append("")
+                    gc_srcs.append("")
             except Exception as e:
                 print(f"  [Warn] Reverse geocode failed for ({lng},{lat}): {e}")
                 addresses.append("")
                 provinces.append("")
                 cities.append("")
                 districts.append("")
+                gc_confs.append("")
+                gc_srcs.append("")
 
         # Add columns
         df["address"] = addresses
         df["province"] = provinces
         df["city"] = cities
         df["district"] = districts
+        df["gc_match"] = gc_confs
+        df["gc_src"] = gc_srcs
 
         # Build output GeoDataFrame
         geom = gpd.points_from_xy([c[0] for c in coords], [c[1] for c in coords])
