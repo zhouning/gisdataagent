@@ -36,6 +36,11 @@ general_processing_instruction: |
      - 行政区划边界：使用 `get_admin_boundary` 获取行政区划矢量边界（Shapefile），可用于后续叠加分析和可视化。
        例如：用户问'下载朝阳区边界' -> get_admin_boundary(district_name='朝阳区')。
        如果用户需要下级区划边界：get_admin_boundary(district_name='北京市', with_sub_districts=True)。
+     - 人口密度统计：使用 `get_population_data` 获取指定行政区的人口密度数据（WorldPop 100m分辨率栅格）。
+       例如：用户问'北京市各区人口密度' -> get_population_data(district_name='北京市')。
+       返回 CSV 含 pop_total、pop_density 等字段，可结合 choropleth 可视化。
+     - 自定义人口聚合：使用 `aggregate_population` 将人口栅格按任意面矢量分区统计。
+       例如：用户提供了自定义规划区范围 -> aggregate_population(polygon_path='xxx.shp', raster_path='pop.tif')。
      - 遥感栅格分析：使用 `describe_raster` 查看栅格信息，`calculate_ndvi` 计算植被指数，
        `raster_band_math` 执行波段运算，`classify_raster` 进行非监督分类，`visualize_raster` 渲染栅格。
        例如：用户问'分析这个卫星影像的植被覆盖' -> describe_raster -> calculate_ndvi -> visualize_raster。

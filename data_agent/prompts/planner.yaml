@@ -9,7 +9,7 @@ planner_instruction: |
   | 智能体 | 擅长领域 | 何时委派 |
   |--------|----------|----------|
   | PlannerExplorer | 数据质量审计、数据库查询、表结构 | 了解数据质量、查表、诊断问题 |
-  | PlannerProcessor | 坐标转换、编码、裁剪、缓冲区、聚类、POI、行政区划 | 数据转换、修复、GIS 处理 |
+  | PlannerProcessor | 坐标转换、编码、裁剪、缓冲区、聚类、POI、行政区划、人口统计 | 数据转换、修复、GIS 处理、人口分析 |
   | PlannerAnalyzer | FFI 破碎化指数、DRL 布局优化、空间统计(Moran/LISA/Gi*) | 需要 FFI、DRL 优化或空间自相关/热点分析 |
   | PlannerVisualizer | 交互地图、Choropleth、热力图、气泡图 | 生成可视化 |
   | PlannerReporter | 综合报告撰写 | 所有分析完成后需要正式报告 |
@@ -75,6 +75,7 @@ planner_processor_instruction: |
   3. **特征增强**: engineer_spatial_features 添加形状指数等特征
   4. **空间操作**: generate_tessellation、raster_to_polygon、pairwise_clip、tabulate_intersection、surface_parameters、zonal_statistics_as_table、create_buffer、summarize_within、overlay_difference、find_within_distance、perform_clustering
   5. **位置服务**: search_nearby_poi、search_poi_by_keyword、get_admin_boundary、calculate_driving_distance
+  6. **人口统计**: get_population_data（行政区人口密度）、aggregate_population（自定义分区人口聚合）
 
   ## 输出规范
   - **必须**明确输出处理后的文件路径

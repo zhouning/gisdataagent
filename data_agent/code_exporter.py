@@ -44,6 +44,9 @@ TOOL_IMPORT_MAP = {
     "search_nearby_poi": "from data_agent.geocoding import search_nearby_poi",
     "search_poi_by_keyword": "from data_agent.geocoding import search_poi_by_keyword",
     "get_admin_boundary": "from data_agent.geocoding import get_admin_boundary",
+    # Population data tools
+    "get_population_data": "from data_agent.population_data import get_population_data",
+    "aggregate_population": "from data_agent.population_data import aggregate_population",
     # Analysis tools
     "ffi": "from data_agent.toolsets.analysis_tools import ffi",
     "drl_model": "from data_agent.toolsets.analysis_tools import drl_model",
@@ -116,6 +119,7 @@ API_KEY_TOOLS = {
     "search_nearby_poi": "GAODE_API_KEY",
     "search_poi_by_keyword": "GAODE_API_KEY",
     "get_admin_boundary": "GAODE_API_KEY",
+    "get_population_data": "GAODE_API_KEY",
 }
 
 

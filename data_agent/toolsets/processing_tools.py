@@ -29,6 +29,7 @@ from ..geocoding import (
     search_poi_by_keyword,
     get_admin_boundary,
 )
+from ..population_data import get_population_data, aggregate_population
 
 # ArcPy tools (optional)
 ARCPY_AVAILABLE = False
@@ -80,6 +81,8 @@ _CORE_FUNCS = [
     search_nearby_poi,
     search_poi_by_keyword,
     get_admin_boundary,
+    get_population_data,
+    aggregate_population,
 ]
 
 
