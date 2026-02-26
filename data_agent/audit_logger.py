@@ -25,6 +25,9 @@ ACTION_FILE_DELETE = "file_delete"
 ACTION_TABLE_SHARE = "table_share"
 ACTION_RBAC_DENIED = "rbac_denied"
 ACTION_CODE_EXPORT = "code_export"
+ACTION_TEMPLATE_CREATE = "template_create"
+ACTION_TEMPLATE_APPLY = "template_apply"
+ACTION_TEMPLATE_DELETE = "template_delete"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -40,6 +43,9 @@ ACTION_LABELS = {
     ACTION_TABLE_SHARE: "共享数据表",
     ACTION_RBAC_DENIED: "权限拒绝",
     ACTION_CODE_EXPORT: "脚本导出",
+    ACTION_TEMPLATE_CREATE: "创建模板",
+    ACTION_TEMPLATE_APPLY: "应用模板",
+    ACTION_TEMPLATE_DELETE: "删除模板",
 }
 
 

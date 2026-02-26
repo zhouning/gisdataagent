@@ -1,10 +1,22 @@
 import os
+import re
 import pandas as pd
 import geopandas as gpd
 from sqlalchemy import create_engine, text
 from .gis_processors import _generate_output_path
+from .user_context import current_user_id, current_user_role
 
 import urllib.parse
+
+# --- System table name constants (prefixed to avoid collisions in shared DB) ---
+TABLE_PREFIX = "agent_"
+T_APP_USERS = f"{TABLE_PREFIX}app_users"
+T_USER_MEMORIES = f"{TABLE_PREFIX}user_memories"
+T_TOKEN_USAGE = f"{TABLE_PREFIX}token_usage"
+T_TABLE_OWNERSHIP = f"{TABLE_PREFIX}table_ownership"
+T_SHARE_LINKS = f"{TABLE_PREFIX}share_links"
+T_AUDIT_LOG = f"{TABLE_PREFIX}audit_log"
+T_ANALYSIS_TEMPLATES = f"{TABLE_PREFIX}analysis_templates"
 
 def get_db_connection_url():
     """Constructs database URL from environment variables."""
@@ -13,85 +25,305 @@ def get_db_connection_url():
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
     db = os.environ.get("POSTGRES_DATABASE")
-    
+
     if not all([user, password, db]):
         return None
-        
+
     password = urllib.parse.quote_plus(password)
     return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+
+def get_async_db_url():
+    """Async database URL for DatabaseSessionService (asyncpg driver)."""
+    sync_url = get_db_connection_url()
+    if not sync_url:
+        return None
+    return sync_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+
+def _inject_user_context(conn):
+    """Inject user identity and role into PostgreSQL session for RLS.
+
+    Sets two session-level GUC variables:
+    - app.current_user: the username string
+    - app.current_user_role: admin/analyst/viewer
+
+    Both are transaction-local (reset when transaction ends).
+    """
+    uid = current_user_id.get()
+    role = current_user_role.get()
+    if uid and uid != "anonymous":
+        conn.execute(text("SELECT set_config('app.current_user', :uid, true)"), {"uid": uid})
+        conn.execute(text("SELECT set_config('app.current_user_role', :role, true)"), {"role": role})
+    else:
+        conn.execute(text("SELECT set_config('app.current_user', 'anonymous', true)"))
+        conn.execute(text("SELECT set_config('app.current_user_role', 'viewer', true)"))
+
 
 def query_database(sql_query: str) -> dict:
     """
     [Database Tool] Executes a SQL query against the configured PostgreSQL/PostGIS database.
-    
+
     Args:
         sql_query: The SQL statement to execute. SELECT statements return data.
-    
+
     Returns:
         Dict with status, message, and path to results (CSV/SHP).
     """
     db_url = get_db_connection_url()
     if not db_url:
         return {"status": "error", "message": "Database credentials not configured in .env"}
-        
+
     try:
         engine = create_engine(db_url)
-        
-        # Check if it's a spatial query (contains 'geometry' or 'geom')
-        # Also assume SELECT * on a known spatial table is spatial.
-        # But for safety, just check for common geometry column names.
-        is_spatial = any(k in sql_query.lower() for k in ['geometry', 'geom', 'the_geom'])
-        
-        # Special case: If it's "SELECT *", we might not see the column name in the query string.
-        # We can inspect the result cursor description?
-        # For simplicity, let's just make the test query explicit or assume it returns geometry if the user asks for it.
-        # BUT for the test case "SELECT * FROM banzhu...", it failed.
-        
-        # Better approach: Try reading with Pandas first? No, we want GeoPandas for geometry.
-        # Let's inspect the columns using SQLAlchemy first?
-        
+
         with engine.connect() as conn:
+            # Inject user context for RLS (Row-Level Security)
+            _inject_user_context(conn)
+
             # Execute query to get cursor/result proxy
             result_proxy = conn.execute(text(sql_query))
             keys = list(result_proxy.keys())
-            
+
             # Check if any column looks like geometry
             geom_col = next((k for k in keys if k.lower() in ['geometry', 'geom', 'shape']), None)
-            
+
             if geom_col:
-                # Use GeoPandas
-                # We need to re-execute or fetch from result_proxy? 
-                # gpd.read_postgis requires a connection or engine, and SQL.
-                # It executes the SQL again.
                 gdf = gpd.read_postgis(sql_query, conn, geom_col=geom_col)
                 out_path = _generate_output_path("query_result", "shp")
-                # Fix for Shapefile field length limit (10 chars)
-                # Rename columns if needed or warn?
-                # For now just save.
                 gdf.to_file(out_path, encoding='utf-8')
                 return {
-                    "status": "success", 
-                    "output_path": out_path, 
+                    "status": "success",
+                    "output_path": out_path,
                     "rows": len(gdf),
                     "message": f"Spatial query returned {len(gdf)} rows. Saved to {out_path}"
                 }
             else:
-                # Use Pandas
-                # result_proxy is already executed/consumed? No, we just read keys.
-                # fetchall
                 df = pd.DataFrame(result_proxy.fetchall(), columns=keys)
                 out_path = _generate_output_path("query_result", "csv")
                 df.to_csv(out_path, index=False)
                 return {
-                    "status": "success", 
-                    "output_path": out_path, 
+                    "status": "success",
+                    "output_path": out_path,
                     "rows": len(df),
                     "message": f"Query returned {len(df)} rows. Saved to {out_path}"
                 }
-                
+
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+
 def list_tables() -> dict:
-    """[Database Tool] Lists all tables in the database."""
-    return query_database("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+    """[Database Tool] Lists tables the current user can access (owned + shared).
+    Uses the table_ownership registry with RLS to auto-filter by user access."""
+    db_url = get_db_connection_url()
+    if not db_url:
+        return {"status": "error", "message": "Database credentials not configured in .env"}
+
+    try:
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+
+            # Check if table_ownership exists
+            has_registry = conn.execute(text(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                f"WHERE table_schema = 'public' AND table_name = '{T_TABLE_OWNERSHIP}')"
+            )).scalar()
+
+            if has_registry:
+                # Query table_ownership (RLS auto-filters: user sees own + shared + admin sees all)
+                rows = conn.execute(text(f"""
+                    SELECT t.table_name, t.is_shared, t.owner_username,
+                           CASE WHEN gc.f_table_name IS NOT NULL THEN TRUE ELSE FALSE END AS is_spatial
+                    FROM {T_TABLE_OWNERSHIP} t
+                    LEFT JOIN geometry_columns gc
+                        ON gc.f_table_name = t.table_name AND gc.f_table_schema = 'public'
+                    ORDER BY t.table_name
+                """)).fetchall()
+
+                annotated = []
+                for r in rows:
+                    name, shared, owner, spatial = r
+                    label = name
+                    if spatial:
+                        label += " (Spatial)"
+                    if shared:
+                        label += " [Shared]"
+                    annotated.append(label)
+            else:
+                # Fallback: no registry yet, show all tables (pre-migration behavior)
+                rows = conn.execute(text(
+                    "SELECT table_name FROM information_schema.tables "
+                    "WHERE table_schema = 'public' ORDER BY table_name"
+                )).fetchall()
+                spatial_rows = conn.execute(text(
+                    "SELECT f_table_name FROM geometry_columns WHERE f_table_schema = 'public'"
+                )).fetchall()
+                spatial_set = {r[0] for r in spatial_rows}
+                annotated = []
+                for r in rows:
+                    label = r[0]
+                    if r[0] in spatial_set:
+                        label += " (Spatial)"
+                    annotated.append(label)
+
+            return {
+                "status": "success",
+                "tables": annotated,
+                "message": f"Found {len(annotated)} accessible tables:\n" +
+                           "\n".join(f"- {t}" for t in annotated),
+            }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def describe_table(table_name: str) -> dict:
+    """[Database Tool] Returns columns and data types for a table the user can access."""
+    if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+        return {"status": "error", "message": "Invalid table name format."}
+
+    db_url = get_db_connection_url()
+    if not db_url:
+        return {"status": "error", "message": "Database credentials not configured in .env"}
+
+    # System tables that don't require ownership check
+    system_tables = {
+        'spatial_ref_sys', 'geometry_columns', 'geography_columns',
+        T_APP_USERS, T_USER_MEMORIES, T_TOKEN_USAGE, T_TABLE_OWNERSHIP, T_SHARE_LINKS,
+    }
+
+    try:
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+
+            # Check table access via table_ownership (RLS auto-filters)
+            if table_name not in system_tables:
+                has_registry = conn.execute(text(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    f"WHERE table_schema = 'public' AND table_name = '{T_TABLE_OWNERSHIP}')"
+                )).scalar()
+
+                if has_registry:
+                    access = conn.execute(text(
+                        f"SELECT COUNT(*) FROM {T_TABLE_OWNERSHIP} WHERE table_name = :t"
+                    ), {"t": table_name}).scalar()
+                    if access == 0:
+                        return {"status": "error",
+                                "message": f"Table '{table_name}' not found or access denied."}
+
+            # Describe the table
+            result = conn.execute(text(
+                "SELECT column_name, data_type FROM information_schema.columns "
+                "WHERE table_name = :t ORDER BY ordinal_position"
+            ), {"t": table_name}).fetchall()
+
+            if not result:
+                return {"status": "error", "message": f"Table '{table_name}' not found."}
+
+            cols_info = [{"column_name": r[0], "data_type": r[1]} for r in result]
+            return {
+                "status": "success",
+                "columns": cols_info,
+                "message": f"Table '{table_name}' has columns:\n" +
+                           "\n".join(f"- {c['column_name']} ({c['data_type']})" for c in cols_info),
+            }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def register_table_ownership(table_name: str, owner_username: str,
+                             is_shared: bool = False, description: str = "") -> dict:
+    """Register a newly imported table in the ownership registry."""
+    db_url = get_db_connection_url()
+    if not db_url:
+        return {"status": "error", "message": "Database not configured"}
+
+    try:
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            conn.execute(text(f"""
+                INSERT INTO {T_TABLE_OWNERSHIP} (table_name, owner_username, is_shared, description)
+                VALUES (:t, :u, :s, :d)
+                ON CONFLICT (table_name) DO UPDATE
+                SET owner_username = :u, is_shared = :s, description = :d
+            """), {"t": table_name, "u": owner_username, "s": is_shared, "d": description})
+            conn.commit()
+        return {"status": "success", "message": f"Registered table '{table_name}' owned by '{owner_username}'"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def share_table(table_name: str) -> dict:
+    """[Admin Tool] Mark a table as shared so all users can access it."""
+    if current_user_role.get() != 'admin':
+        return {"status": "error", "message": "Only admin can share tables."}
+
+    db_url = get_db_connection_url()
+    if not db_url:
+        return {"status": "error", "message": "Database not configured"}
+
+    try:
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            result = conn.execute(text(
+                f"UPDATE {T_TABLE_OWNERSHIP} SET is_shared = TRUE WHERE table_name = :t"
+            ), {"t": table_name})
+            conn.commit()
+            if result.rowcount > 0:
+                try:
+                    from .audit_logger import record_audit, ACTION_TABLE_SHARE
+                    record_audit(current_user_id.get(), ACTION_TABLE_SHARE,
+                                 details={"table_name": table_name})
+                except Exception:
+                    pass
+                return {"status": "success", "message": f"Table '{table_name}' is now shared."}
+            return {"status": "error", "message": f"Table '{table_name}' not found in registry."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def ensure_table_ownership_table():
+    """Create table_ownership table if not exists. Called at startup."""
+    db_url = get_db_connection_url()
+    if not db_url:
+        return
+
+    try:
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS {T_TABLE_OWNERSHIP} (
+                    id SERIAL PRIMARY KEY,
+                    table_name VARCHAR(200) UNIQUE NOT NULL,
+                    owner_username VARCHAR(100) NOT NULL,
+                    is_shared BOOLEAN DEFAULT FALSE,
+                    description TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """))
+            conn.execute(text(
+                f"CREATE INDEX IF NOT EXISTS idx_table_ownership_owner ON {T_TABLE_OWNERSHIP} (owner_username)"
+            ))
+            conn.execute(text(
+                f"CREATE INDEX IF NOT EXISTS idx_table_ownership_shared ON {T_TABLE_OWNERSHIP} (is_shared)"
+            ))
+            conn.commit()
+
+            # Check if agent_user is superuser/bypassrls (RLS would be ineffective)
+            try:
+                row = conn.execute(text(
+                    "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
+                )).fetchone()
+                if row and (row[0] or row[1]):
+                    print("[DB] WARNING: Current database role is SUPERUSER or BYPASSRLS. "
+                          "RLS policies will NOT be enforced! "
+                          "Run: ALTER ROLE agent_user NOSUPERUSER NOBYPASSRLS;")
+            except Exception:
+                pass  # pg_roles may not be accessible
+
+        print("[DB] Table ownership registry ready.")
+    except Exception as e:
+        print(f"[DB] Error initializing table_ownership: {e}")
