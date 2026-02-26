@@ -8,6 +8,7 @@ import zipfile
 import shutil
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,28 +20,964 @@ if os.path.exists(env_path):
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from google.adk.agents.run_config import RunConfig
 from google.genai import types
+
+# Configure raw Gemini client for Routing (outside ADK agents)
+if "GOOGLE_API_KEY" in os.environ:
+    genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
 # Import agent and report generator
 try:
-    from data_agent.agent import root_agent
+    from data_agent.agent import (
+        root_agent,
+        governance_pipeline,
+        general_pipeline,
+        data_pipeline,
+        planner_agent,
+        _load_spatial_data,
+        ARCPY_AVAILABLE,
+    )
     from data_agent.report_generator import generate_word_report
+    from data_agent.user_context import (
+        current_user_id, current_session_id, current_user_role,
+        get_user_upload_dir
+    )
+    from data_agent.auth import ensure_users_table
+    from data_agent.memory import ensure_memory_table
+    from data_agent.token_tracker import ensure_token_table
+    from data_agent.database_tools import ensure_table_ownership_table
+    from data_agent.sharing import ensure_share_links_table
+    from data_agent.audit_logger import (
+        ensure_audit_table, record_audit,
+        ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
+        ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
+        ACTION_USER_REGISTER,
+    )
 except ImportError:
     import agent
     import report_generator
+    from user_context import (
+        current_user_id, current_session_id, current_user_role,
+        get_user_upload_dir
+    )
+    from auth import ensure_users_table
+    from memory import ensure_memory_table
+    from token_tracker import ensure_token_table
+    from database_tools import ensure_table_ownership_table
+    from sharing import ensure_share_links_table
+    from audit_logger import (
+        ensure_audit_table, record_audit,
+        ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
+        ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
+        ACTION_USER_REGISTER,
+    )
     root_agent = agent.root_agent
+    governance_pipeline = agent.governance_pipeline
+    general_pipeline = agent.general_pipeline
+    data_pipeline = agent.data_pipeline
+    planner_agent = agent.planner_agent
+    _load_spatial_data = agent._load_spatial_data
     generate_word_report = report_generator.generate_word_report
+    ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
-session_service = InMemorySessionService()
+# Initialize auth (create users table if needed)
+ensure_users_table()
+ensure_memory_table()
+ensure_token_table()
+ensure_table_ownership_table()
+ensure_share_links_table()
+ensure_audit_table()
+from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
+from data_agent.gis_processors import sync_to_obs
+ensure_obs_connection()
+if ARCPY_AVAILABLE:
+    print("[ArcPy] ArcPy engine available and connected.")
 
-# Directory for uploads
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+DYNAMIC_PLANNER = os.environ.get("DYNAMIC_PLANNER", "true").lower() in ("true", "1", "yes")
+if DYNAMIC_PLANNER:
+    print("[Planner] Dynamic Planner mode enabled.")
+
+# --- Session Service: persistent DB or in-memory fallback ---
+def _create_session_service():
+    """Prefer DatabaseSessionService (PostgreSQL) with fallback to InMemory."""
+    try:
+        from data_agent.database_tools import get_async_db_url
+        async_url = get_async_db_url()
+        if async_url:
+            from google.adk.sessions import DatabaseSessionService
+            svc = DatabaseSessionService(db_url=async_url)
+            print("[Session] Using DatabaseSessionService (PostgreSQL).")
+            return svc
+    except ImportError as e:
+        print(f"[Session] DatabaseSessionService unavailable ({e}). "
+              "Install asyncpg: pip install asyncpg")
+    except Exception as e:
+        print(f"[Session] DatabaseSessionService init failed: {e}")
+    print("[Session] Falling back to InMemorySessionService.")
+    return InMemorySessionService()
+
+session_service = _create_session_service()
+
+# ---------------------------------------------------------------------------
+# Self-Registration Routes (mounted on Chainlit's FastAPI app)
+# ---------------------------------------------------------------------------
+from fastapi import Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from starlette.routing import Route
+from chainlit.server import app as chainlit_app
+from data_agent.auth import register_user
+
+_REGISTER_HTML = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>注册 - Data Agent</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:#f5f5f5;display:flex;justify-content:center;
+       align-items:center;min-height:100vh}
+  .card{background:#fff;border-radius:12px;padding:40px;
+        box-shadow:0 2px 12px rgba(0,0,0,.1);width:100%;max-width:420px}
+  h2{text-align:center;margin-bottom:24px;color:#333}
+  .field{margin-bottom:16px}
+  label{display:block;margin-bottom:4px;font-size:14px;color:#555}
+  input{width:100%;padding:10px 12px;border:1px solid #ddd;
+        border-radius:8px;font-size:14px}
+  input:focus{outline:none;border-color:#6366f1}
+  .btn{width:100%;padding:12px;border:none;border-radius:8px;
+       background:#6366f1;color:#fff;font-size:16px;cursor:pointer;margin-top:8px}
+  .btn:hover{background:#4f46e5}
+  .btn:disabled{background:#999;cursor:not-allowed}
+  .msg{margin-top:12px;padding:10px;border-radius:8px;font-size:14px;display:none}
+  .msg.error{display:block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+  .msg.success{display:block;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+  .link{text-align:center;margin-top:16px;font-size:14px}
+  .link a{color:#6366f1;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>注册 Data Agent</h2>
+  <div id="msg" class="msg"></div>
+  <form id="regForm">
+    <div class="field">
+      <label>用户名 (3-30位字母/数字/下划线)</label>
+      <input name="username" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+">
+    </div>
+    <div class="field">
+      <label>显示名称</label>
+      <input name="display_name" placeholder="可选">
+    </div>
+    <div class="field">
+      <label>密码 (8位以上，含字母和数字)</label>
+      <input name="password" type="password" required minlength="8">
+    </div>
+    <div class="field">
+      <label>确认密码</label>
+      <input name="confirm" type="password" required>
+    </div>
+    <button class="btn" type="submit">注册</button>
+  </form>
+  <div class="link"><a href="/">返回登录</a></div>
+</div>
+<script>
+document.getElementById('regForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target),msg=document.getElementById('msg');
+  msg.className='msg';msg.style.display='none';
+  if(fd.get('password')!==fd.get('confirm')){
+    msg.className='msg error';msg.textContent='两次密码不一致';msg.style.display='block';return;
+  }
+  const btn=e.target.querySelector('button');
+  btn.disabled=true;btn.textContent='注册中...';
+  try{
+    const resp=await fetch('/auth/register',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:fd.get('username'),password:fd.get('password'),
+                           display_name:fd.get('display_name')||''})
+    });
+    const data=await resp.json();
+    if(data.status==='success'){
+      msg.className='msg success';msg.textContent=data.message;msg.style.display='block';
+      setTimeout(()=>{window.location.href='/';},1500);
+    }else{
+      msg.className='msg error';msg.textContent=data.message;msg.style.display='block';
+    }
+  }catch(err){
+    msg.className='msg error';msg.textContent='网络错误: '+err.message;msg.style.display='block';
+  }finally{btn.disabled=false;btn.textContent='注册';}
+});
+</script>
+</body>
+</html>"""
+
+
+@chainlit_app.post("/auth/register")
+async def api_register(request: Request):
+    """Handle registration API call."""
+    body = await request.json()
+    result = register_user(
+        username=body.get("username", ""),
+        password=body.get("password", ""),
+        display_name=body.get("display_name", ""),
+    )
+    try:
+        record_audit(
+            body.get("username", "unknown"), ACTION_USER_REGISTER,
+            status="success" if result["status"] == "success" else "failure",
+            details={"display_name": body.get("display_name", "")},
+        )
+    except Exception:
+        pass
+    status_code = 200 if result["status"] == "success" else 400
+    return JSONResponse(content=result, status_code=status_code)
+
+
+async def _serve_register_page(request: Request):
+    return HTMLResponse(content=_REGISTER_HTML)
+
+# Insert GET /register BEFORE Chainlit's catch-all /{full_path:path}
+_register_route = Route("/register", endpoint=_serve_register_page, methods=["GET"])
+for _i, _r in enumerate(chainlit_app.router.routes):
+    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+        chainlit_app.router.routes.insert(_i, _register_route)
+        break
+else:
+    chainlit_app.router.routes.append(_register_route)
+
+print("[Auth] Self-registration enabled at /register")
+
+# --- Result Sharing Routes (public, no auth) ---
+from data_agent.sharing import (
+    SHARE_VIEWER_HTML, validate_share_token, get_share_file_path
+)
+from fastapi.responses import FileResponse
+import mimetypes
+
+
+@chainlit_app.post("/api/share/{token}/validate")
+async def api_share_validate_post(token: str, request: Request):
+    """Validate a share token (POST, supports password)."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    password = body.get("password")
+    result = validate_share_token(token, password)
+    status_map = {"not_found": 404, "expired": 410,
+                  "password_required": 401, "wrong_password": 403}
+    code = status_map.get(result.get("reason"), 200) if result["status"] == "error" else 200
+    return JSONResponse(content=result, status_code=code)
+
+
+@chainlit_app.get("/api/share/{token}/validate")
+async def api_share_validate_get(token: str):
+    """Validate a share token (GET, passwordless links)."""
+    result = validate_share_token(token, None)
+    status_map = {"not_found": 404, "expired": 410,
+                  "password_required": 401, "wrong_password": 403}
+    code = status_map.get(result.get("reason"), 200) if result["status"] == "error" else 200
+    return JSONResponse(content=result, status_code=code)
+
+
+async def _serve_share_page(request: Request):
+    """Serve the share viewer HTML page."""
+    return HTMLResponse(content=SHARE_VIEWER_HTML)
+
+
+async def _serve_share_file(request: Request):
+    """Serve a file from a share link."""
+    token = request.path_params["token"]
+    filename = request.path_params["filename"]
+    file_path = get_share_file_path(token, filename)
+    if not file_path:
+        return JSONResponse(content={"error": "File not found"}, status_code=404)
+    content_type, _ = mimetypes.guess_type(filename)
+    if filename.endswith('.html'):
+        return FileResponse(file_path, media_type="text/html")
+    elif filename.endswith('.png'):
+        return FileResponse(file_path, media_type="image/png")
+    else:
+        return FileResponse(file_path, filename=filename,
+                            media_type=content_type or "application/octet-stream")
+
+
+_share_page_route = Route("/s/{token}", endpoint=_serve_share_page, methods=["GET"])
+_share_file_route = Route(
+    "/api/share/{token}/file/{filename:path}",
+    endpoint=_serve_share_file, methods=["GET"]
+)
+for _i, _r in enumerate(chainlit_app.router.routes):
+    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+        chainlit_app.router.routes.insert(_i, _share_page_route)
+        chainlit_app.router.routes.insert(_i, _share_file_route)
+        break
+
+print("[Sharing] Public share routes enabled at /s/{token}")
+
+# --- Admin Audit Viewer Routes ---
+import hmac
+import hashlib as _hashlib
+import time as _time
+from data_agent.audit_logger import get_user_audit_log, get_audit_stats
+
+_AUDIT_SECRET = os.environ.get("CHAINLIT_AUTH_SECRET", "default-secret-key")
+
+
+def _make_admin_token(username: str) -> str:
+    """Generate short-lived HMAC token for admin API (valid 1 hour)."""
+    ts = str(int(_time.time()) // 3600)
+    msg = f"{username}:{ts}".encode()
+    return hmac.new(_AUDIT_SECRET.encode(), msg, _hashlib.sha256).hexdigest()
+
+
+def _verify_admin_token(token: str) -> bool:
+    """Verify an admin HMAC token (current hour or previous hour)."""
+    for offset in (0, -1):
+        ts = str(int(_time.time()) // 3600 + offset)
+        for user_candidate in ("admin",):
+            msg = f"{user_candidate}:{ts}".encode()
+            expected = hmac.new(_AUDIT_SECRET.encode(), msg, _hashlib.sha256).hexdigest()
+            if hmac.compare_digest(token, expected):
+                return True
+    return False
+
+
+_AUDIT_VIEWER_HTML = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>审计日志 — Data Agent Admin</title>
+<meta name="admin-token" content="{admin_token}">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:#f5f5f5;color:#333;line-height:1.6}
+.container{max-width:1100px;margin:0 auto;padding:24px 16px}
+header{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;
+       box-shadow:0 1px 3px rgba(0,0,0,.1)}
+header h1{font-size:1.4em;color:#1a1a2e;margin-bottom:8px}
+.stats-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:10px;padding:16px 20px;flex:1;min-width:150px;
+           box-shadow:0 1px 3px rgba(0,0,0,.1);text-align:center}
+.stat-card .num{font-size:1.8em;font-weight:700;color:#6366f1}
+.stat-card .label{font-size:.85em;color:#888;margin-top:4px}
+.filters{background:#fff;border-radius:10px;padding:16px 20px;margin-bottom:16px;
+         box-shadow:0 1px 3px rgba(0,0,0,.1);display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.filters label{font-size:.85em;color:#666;display:block;margin-bottom:4px}
+.filters input,.filters select{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:.9em}
+.filters button{padding:8px 20px;background:#6366f1;color:#fff;border:none;border-radius:6px;
+                font-size:.9em;cursor:pointer}
+.filters button:hover{background:#4f46e5}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;
+      box-shadow:0 1px 3px rgba(0,0,0,.1)}
+th{background:#f8f9fa;padding:12px 14px;text-align:left;font-size:.85em;color:#555;
+   border-bottom:2px solid #e8e8e8}
+td{padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:.88em}
+tr:hover{background:#fafafa}
+.s-success{color:#10b981;font-weight:600}
+.s-failure{color:#ef4444;font-weight:600}
+.s-denied{color:#f59e0b;font-weight:600}
+.detail-cell{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+             font-size:.82em;color:#666}
+.load-more{text-align:center;padding:16px}
+.load-more button{padding:10px 32px;background:#e8e8ff;color:#6366f1;border:none;
+                  border-radius:8px;cursor:pointer;font-size:.9em}
+.load-more button:hover{background:#d0d0ff}
+.empty{text-align:center;padding:40px;color:#aaa}
+footer{text-align:center;color:#aaa;font-size:.8em;padding:24px 0}
+</style>
+</head>
+<body>
+<div class="container">
+<header><h1>审计日志管理</h1><p style="color:#888;font-size:.9em">系统操作记录与安全审计</p></header>
+<div class="stats-bar" id="stats-bar"></div>
+<div class="filters">
+  <div><label>用户名</label><input id="f-user" placeholder="全部"></div>
+  <div><label>操作类型</label><select id="f-action"><option value="">全部</option>
+    <option value="login_success">登录成功</option><option value="login_failure">登录失败</option>
+    <option value="user_register">用户注册</option><option value="session_start">会话开始</option>
+    <option value="file_upload">文件上传</option><option value="pipeline_complete">分析完成</option>
+    <option value="report_export">报告导出</option><option value="share_create">创建分享</option>
+    <option value="file_delete">文件删除</option><option value="table_share">共享数据表</option>
+    <option value="rbac_denied">权限拒绝</option></select></div>
+  <div><label>状态</label><select id="f-status"><option value="">全部</option>
+    <option value="success">成功</option><option value="failure">失败</option>
+    <option value="denied">拒绝</option></select></div>
+  <div><label>天数</label><select id="f-days">
+    <option value="7">7天</option><option value="30" selected>30天</option>
+    <option value="90">90天</option></select></div>
+  <div><button id="btn-search" onclick="doSearch(0)">查询</button></div>
+</div>
+<table><thead><tr><th>时间</th><th>用户</th><th>操作</th><th>状态</th><th>详情</th></tr></thead>
+<tbody id="log-body"></tbody></table>
+<div class="load-more" id="load-more" style="display:none">
+  <button onclick="loadMore()">加载更多</button></div>
+<div class="empty" id="empty-msg" style="display:none">暂无符合条件的审计日志</div>
+<footer>Data Agent Admin Panel</footer>
+</div>
+<script>
+var TOKEN=document.querySelector('meta[name=admin-token]').content;
+var offset=0,limit=50;
+var actionLabels={login_success:"登录成功",login_failure:"登录失败",user_register:"用户注册",
+  session_start:"会话开始",file_upload:"文件上传",pipeline_complete:"分析完成",
+  report_export:"报告导出",share_create:"创建分享",file_delete:"文件删除",
+  table_share:"共享数据表",rbac_denied:"权限拒绝"};
+
+function api(url){
+  return fetch(url,{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.json()});
+}
+function loadStats(){
+  api('/api/admin/audit/stats?days='+document.getElementById('f-days').value).then(function(d){
+    var bar=document.getElementById('stats-bar');
+    var errRate=d.total_events>0?
+      ((d.events_by_status.failure||0)+(d.events_by_status.denied||0))*100/d.total_events:0;
+    bar.innerHTML='<div class="stat-card"><div class="num">'+d.total_events+'</div><div class="label">总事件数</div></div>'+
+      '<div class="stat-card"><div class="num">'+d.active_users+'</div><div class="label">活跃用户</div></div>'+
+      '<div class="stat-card"><div class="num">'+errRate.toFixed(1)+'%</div><div class="label">异常率</div></div>';
+  });
+}
+function doSearch(off){
+  offset=off;
+  var p='?days='+document.getElementById('f-days').value+'&offset='+offset+'&limit='+limit;
+  var u=document.getElementById('f-user').value;
+  var a=document.getElementById('f-action').value;
+  var s=document.getElementById('f-status').value;
+  if(u) p+='&username='+encodeURIComponent(u);
+  if(a) p+='&action='+encodeURIComponent(a);
+  if(s) p+='&status='+encodeURIComponent(s);
+  api('/api/admin/audit'+p).then(function(d){
+    var tb=document.getElementById('log-body');
+    if(offset===0) tb.innerHTML='';
+    if(!d.rows||d.rows.length===0){
+      if(offset===0){document.getElementById('empty-msg').style.display='';
+        document.getElementById('load-more').style.display='none';}
+      return;
+    }
+    document.getElementById('empty-msg').style.display='none';
+    d.rows.forEach(function(r){
+      var tr=document.createElement('tr');
+      var ts=r.created_at?new Date(r.created_at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'?';
+      var sc=r.status==='success'?'s-success':(r.status==='failure'?'s-failure':'s-denied');
+      var det=r.details?Object.entries(r.details).map(function(e){return e[0]+'='+e[1]}).join(', '):'';
+      tr.innerHTML='<td>'+ts+'</td><td>'+r.username+'</td><td>'+(actionLabels[r.action]||r.action)+
+        '</td><td class="'+sc+'">'+r.status+'</td><td class="detail-cell" title="'+det+'">'+det+'</td>';
+      tb.appendChild(tr);
+    });
+    document.getElementById('load-more').style.display=d.rows.length>=limit?'':'none';
+  });
+}
+function loadMore(){doSearch(offset+limit);}
+loadStats();doSearch(0);
+</script>
+</body>
+</html>"""
+
+
+async def _serve_audit_page(request: Request):
+    """Serve admin audit viewer — requires admin session."""
+    # Check admin cookie via Chainlit session
+    # Since this is outside Chainlit's auth flow, we verify via HMAC approach:
+    # We generate a token for the admin user that's embedded in the HTML.
+    # The page-level auth is minimal (anyone can see the page shell),
+    # but the API endpoints verify the HMAC token.
+    admin_token = _make_admin_token("admin")
+    html = _AUDIT_VIEWER_HTML.replace("{admin_token}", admin_token)
+    return HTMLResponse(content=html)
+
+
+@chainlit_app.get("/api/admin/audit")
+async def api_admin_audit(request: Request):
+    """Return audit log entries as JSON (admin-only, HMAC-protected)."""
+    auth = request.headers.get("authorization", "")
+    token = auth.replace("Bearer ", "") if auth.startswith("Bearer ") else ""
+    if not _verify_admin_token(token):
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+    params = request.query_params
+    days = min(int(params.get("days", "30")), 90)
+    offset_val = int(params.get("offset", "0"))
+    limit_val = min(int(params.get("limit", "50")), 200)
+    username_filter = params.get("username", "")
+    action_filter = params.get("action", "")
+    status_filter = params.get("status", "")
+
+    from data_agent.database_tools import get_db_connection_url, T_AUDIT_LOG
+    import json as _json
+
+    db_url = get_db_connection_url()
+    if not db_url:
+        return JSONResponse(content={"rows": []})
+
+    try:
+        from sqlalchemy import create_engine, text
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            where_clauses = ["created_at >= NOW() - make_interval(days => :d)"]
+            bind = {"d": days, "off": offset_val, "lim": limit_val}
+
+            if username_filter:
+                where_clauses.append("username = :uf")
+                bind["uf"] = username_filter
+            if action_filter:
+                where_clauses.append("action = :af")
+                bind["af"] = action_filter
+            if status_filter:
+                where_clauses.append("status = :sf")
+                bind["sf"] = status_filter
+
+            where_sql = " AND ".join(where_clauses)
+            rows = conn.execute(text(f"""
+                SELECT username, action, status, ip_address, details, created_at
+                FROM {T_AUDIT_LOG}
+                WHERE {where_sql}
+                ORDER BY created_at DESC
+                OFFSET :off LIMIT :lim
+            """), bind).fetchall()
+
+            result = []
+            for r in rows:
+                details = r[4] if isinstance(r[4], dict) else _json.loads(r[4] or "{}")
+                result.append({
+                    "username": r[0], "action": r[1], "status": r[2],
+                    "ip_address": r[3], "details": details,
+                    "created_at": r[5].isoformat() if r[5] else None,
+                })
+            return JSONResponse(content={"rows": result})
+    except Exception as e:
+        return JSONResponse(content={"rows": [], "error": str(e)})
+
+
+@chainlit_app.get("/api/admin/audit/stats")
+async def api_admin_audit_stats(request: Request):
+    """Return aggregate audit stats (admin-only, HMAC-protected)."""
+    auth = request.headers.get("authorization", "")
+    token = auth.replace("Bearer ", "") if auth.startswith("Bearer ") else ""
+    if not _verify_admin_token(token):
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+    days = min(int(request.query_params.get("days", "30")), 90)
+    stats = get_audit_stats(days)
+    return JSONResponse(content=stats)
+
+
+_audit_page_route = Route("/admin/audit", endpoint=_serve_audit_page, methods=["GET"])
+for _i, _r in enumerate(chainlit_app.router.routes):
+    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+        chainlit_app.router.routes.insert(_i, _audit_page_route)
+        break
+else:
+    chainlit_app.router.routes.append(_audit_page_route)
+
+print("[Audit] Admin audit viewer enabled at /admin/audit")
+
+# Base upload directory (per-user dirs created inside)
+BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(BASE_UPLOAD_DIR, exist_ok=True)
+
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+
+# --- Progress Feedback Labels ---
+TOOL_LABELS = {
+    "describe_geodataframe": "数据质量检查",
+    "check_topology": "拓扑检查",
+    "check_field_standards": "字段标准检查",
+    "check_consistency": "一致性核查",
+    "query_database": "数据库查询",
+    "list_tables": "列出数据表",
+    "describe_table": "分析表结构",
+    "reproject_spatial_data": "坐标投影转换",
+    "engineer_spatial_features": "空间特征工程",
+    "generate_tessellation": "格网镶嵌分析",
+    "raster_to_polygon": "栅格转矢量",
+    "pairwise_clip": "裁剪分析",
+    "tabulate_intersection": "叠加统计",
+    "surface_parameters": "地形参数计算",
+    "zonal_statistics_as_table": "分区统计",
+    "batch_geocode": "批量地理编码",
+    "reverse_geocode": "逆地理编码",
+    "ffi": "破碎化指数计算",
+    "drl_model": "深度强化学习优化",
+    "perform_clustering": "空间聚类分析",
+    "create_buffer": "缓冲区分析",
+    "summarize_within": "区域汇总统计",
+    "overlay_difference": "空间擦除分析",
+    "find_within_distance": "距离查询",
+    "calculate_driving_distance": "驾车距离计算",
+    "search_nearby_poi": "周边POI搜索",
+    "search_poi_by_keyword": "关键词POI搜索",
+    "get_admin_boundary": "行政区划边界获取",
+    "visualize_geodataframe": "静态地图渲染",
+    "visualize_interactive_map": "交互地图生成",
+    "visualize_optimization_comparison": "优化对比图",
+    "generate_heatmap": "热力图生成",
+    "generate_choropleth": "等值区域图",
+    "generate_bubble_map": "气泡图生成",
+    "export_map_png": "导出地图PNG",
+    "compose_map": "多图层地图合成",
+    "list_user_files": "列出用户文件",
+    "delete_user_file": "删除用户文件",
+    "save_memory": "保存空间记忆",
+    "recall_memories": "检索空间记忆",
+    "list_memories": "列出空间记忆",
+    "delete_memory": "删除空间记忆",
+    "get_usage_summary": "查询Token用量",
+    "arcpy_buffer": "ArcPy缓冲区分析",
+    "arcpy_clip": "ArcPy裁剪分析",
+    "arcpy_dissolve": "ArcPy融合分析",
+    "arcpy_project": "ArcPy坐标投影",
+    "arcpy_check_geometry": "ArcPy几何检查",
+    "arcpy_repair_geometry": "ArcPy几何修复",
+    "arcpy_slope": "ArcPy坡度计算",
+    "arcpy_zonal_statistics": "ArcPy分区统计",
+    "polygon_neighbors": "面邻域分析",
+    "add_field": "添加字段",
+    "add_join": "属性连接",
+    "calculate_field": "字段计算",
+    "summary_statistics": "汇总统计",
+    "share_table": "共享数据表",
+    "query_audit_log": "查询审计日志",
+}
+
+AGENT_LABELS = {
+    "vertex_search_agent": "检索领域知识",
+    "DataExploration": "数据质量审计",
+    "DataProcessing": "特征工程与预处理",
+    "DataAnalysis": "空间分析与优化",
+    "DataVisualization": "生成可视化",
+    "DataSummary": "生成分析报告",
+    "GovExploration": "数据质量审计",
+    "GovProcessing": "数据修复",
+    "GovernanceReporter": "生成治理报告",
+    "GeneralProcessing": "数据处理与分析",
+    "GeneralViz": "生成可视化",
+    "GeneralSummary": "生成分析总结",
+    "Planner": "任务规划",
+    "PlannerExplorer": "数据探查",
+    "PlannerProcessor": "数据处理",
+    "PlannerAnalyzer": "分析优化",
+    "PlannerVisualizer": "生成可视化",
+    "PlannerReporter": "撰写报告",
+}
+
+# --- Tool Descriptions: method names + parameter labels for explainability ---
+TOOL_DESCRIPTIONS = {
+    "describe_geodataframe": {
+        "method": "数据质量预检（7项检查）",
+        "params": {"file_path": "数据文件"},
+    },
+    "check_topology": {
+        "method": "拓扑检查（自相交、重叠、多部件）",
+        "params": {"file_path": "数据文件"},
+    },
+    "check_field_standards": {
+        "method": "字段标准化验证",
+        "params": {"file_path": "数据文件", "standard_schema": "标准模式"},
+    },
+    "check_consistency": {
+        "method": "PDF-矢量一致性核查",
+        "params": {"pdf_path": "PDF文档", "shp_path": "矢量数据",
+                   "area_field": "面积字段", "unit_conversion": "单位换算系数"},
+    },
+    "query_database": {
+        "method": "SQL 数据库查询",
+        "params": {"sql_query": "SQL语句"},
+    },
+    "list_tables": {
+        "method": "数据库表清单查询",
+        "params": {},
+    },
+    "describe_table": {
+        "method": "数据表结构分析",
+        "params": {"table_name": "表名"},
+    },
+    "reproject_spatial_data": {
+        "method": "坐标系重投影",
+        "params": {"file_path": "数据文件", "target_crs": "目标坐标系"},
+    },
+    "engineer_spatial_features": {
+        "method": "空间特征工程（面积/周长/质心）",
+        "params": {"file_path": "数据文件"},
+    },
+    "generate_tessellation": {
+        "method": "格网镶嵌分析",
+        "params": {"extent_file": "范围数据", "shape_type": "格网形状", "size": "格网尺寸"},
+    },
+    "raster_to_polygon": {
+        "method": "栅格转矢量",
+        "params": {"raster_file": "栅格文件", "value_field": "值字段"},
+    },
+    "pairwise_clip": {
+        "method": "空间裁剪",
+        "params": {"input_features": "输入数据", "clip_features": "裁剪范围"},
+    },
+    "tabulate_intersection": {
+        "method": "叠加交叉统计",
+        "params": {"zone_features": "区域数据", "class_features": "分类数据", "class_field": "分类字段"},
+    },
+    "surface_parameters": {
+        "method": "地形参数计算",
+        "params": {"dem_raster": "DEM栅格", "parameter_type": "参数类型"},
+    },
+    "zonal_statistics_as_table": {
+        "method": "分区统计",
+        "params": {"zone_vector": "区域矢量", "value_raster": "值栅格", "stats": "统计指标"},
+    },
+    "batch_geocode": {
+        "method": "批量地理编码（地址→坐标, 高德API）",
+        "params": {"file_path": "数据文件", "address_col": "地址列", "city": "城市"},
+    },
+    "reverse_geocode": {
+        "method": "逆地理编码（坐标→地址, 高德API）",
+        "params": {"file_path": "数据文件", "lng_col": "经度列", "lat_col": "纬度列"},
+    },
+    "calculate_driving_distance": {
+        "method": "驾车距离计算（高德路径规划）",
+        "params": {"origin_lng": "起点经度", "origin_lat": "起点纬度",
+                   "dest_lng": "终点经度", "dest_lat": "终点纬度"},
+    },
+    "search_nearby_poi": {
+        "method": "周边POI搜索（高德API）",
+        "params": {"lng": "经度", "lat": "纬度", "keywords": "关键词",
+                   "radius": "搜索半径(米)", "max_results": "最大结果数"},
+    },
+    "search_poi_by_keyword": {
+        "method": "关键词POI搜索（高德API）",
+        "params": {"keywords": "关键词", "region": "搜索区域", "max_results": "最大结果数"},
+    },
+    "get_admin_boundary": {
+        "method": "行政区划边界获取（高德API）",
+        "params": {"district_name": "行政区名称", "with_sub_districts": "含子区划"},
+    },
+    "ffi": {
+        "method": "耕地破碎化指数（FFI, 6项景观指标）",
+        "params": {"data_path": "数据文件"},
+    },
+    "drl_model": {
+        "method": "深度强化学习布局优化（MaskablePPO）",
+        "params": {"data_path": "数据文件"},
+    },
+    "perform_clustering": {
+        "method": "DBSCAN 空间密度聚类",
+        "params": {"file_path": "数据文件", "eps": "邻域半径(米)", "min_samples": "最小点数"},
+    },
+    "create_buffer": {
+        "method": "缓冲区分析",
+        "params": {"file_path": "数据文件", "distance": "缓冲距离(米)", "dissolve": "融合重叠"},
+    },
+    "summarize_within": {
+        "method": "区域内汇总统计",
+        "params": {"zone_file": "区域数据", "data_file": "要素数据", "stats_field": "统计字段"},
+    },
+    "overlay_difference": {
+        "method": "空间擦除（差集）",
+        "params": {"input_file": "输入数据", "erase_file": "擦除范围"},
+    },
+    "find_within_distance": {
+        "method": "距离筛选查询",
+        "params": {"target_file": "目标数据", "reference_file": "参考数据",
+                   "distance": "距离阈值(米)", "mode": "模式(within/beyond)"},
+    },
+    "generate_heatmap": {
+        "method": "核密度估计热力图（KDE）",
+        "params": {"file_path": "数据文件", "bandwidth": "带宽",
+                   "resolution": "分辨率", "weight_field": "权重字段"},
+    },
+    "visualize_geodataframe": {
+        "method": "静态地图渲染",
+        "params": {"file_path": "数据文件"},
+    },
+    "visualize_interactive_map": {
+        "method": "多图层交互地图",
+        "params": {"original_data_path": "原始数据", "optimized_data_path": "优化数据",
+                   "center_lat": "中心纬度", "center_lng": "中心经度", "zoom": "缩放级别"},
+    },
+    "visualize_optimization_comparison": {
+        "method": "优化前后对比图",
+        "params": {"original_data_path": "原始数据", "optimized_data_path": "优化数据"},
+    },
+    "generate_choropleth": {
+        "method": "等值区域图（分级设色）",
+        "params": {"file_path": "数据文件", "value_column": "值字段",
+                   "color_scheme": "配色方案", "classification_method": "分级方法",
+                   "num_classes": "分级数"},
+    },
+    "generate_bubble_map": {
+        "method": "气泡图（尺寸映射）",
+        "params": {"file_path": "数据文件", "size_column": "尺寸字段",
+                   "color_column": "颜色字段", "max_radius": "最大半径"},
+    },
+    "export_map_png": {
+        "method": "带底图高清PNG导出",
+        "params": {"file_path": "数据文件", "value_column": "着色字段", "title": "地图标题"},
+    },
+    "compose_map": {
+        "method": "多图层交互地图合成",
+        "params": {"layers_json": "图层配置JSON", "center_lat": "中心纬度",
+                   "center_lng": "中心经度", "zoom": "缩放级别"},
+    },
+    "list_user_files": {
+        "method": "列出用户文件清单",
+        "params": {},
+    },
+    "delete_user_file": {
+        "method": "删除用户文件",
+        "params": {"file_name": "文件名"},
+    },
+    "save_memory": {
+        "method": "保存空间记忆",
+        "params": {"memory_type": "记忆类型", "key": "关键词", "value": "内容"},
+    },
+    "recall_memories": {
+        "method": "检索空间记忆",
+        "params": {"memory_type": "记忆类型", "keyword": "搜索关键词"},
+    },
+    "list_memories": {
+        "method": "列出空间记忆",
+        "params": {"memory_type": "记忆类型"},
+    },
+    "delete_memory": {
+        "method": "删除空间记忆",
+        "params": {"memory_type": "记忆类型", "key": "关键词"},
+    },
+    "get_usage_summary": {
+        "method": "Token用量统计查询",
+        "params": {},
+    },
+    "arcpy_buffer": {
+        "method": "ArcPy缓冲区分析",
+        "params": {"input_features": "输入数据", "buffer_distance": "缓冲距离"},
+    },
+    "arcpy_clip": {
+        "method": "ArcPy裁剪分析",
+        "params": {"input_features": "输入数据", "clip_features": "裁剪范围"},
+    },
+    "arcpy_dissolve": {
+        "method": "ArcPy融合分析（按字段+统计聚合）",
+        "params": {"input_features": "输入数据", "dissolve_field": "融合字段",
+                   "statistics_fields": "统计字段"},
+    },
+    "arcpy_project": {
+        "method": "ArcPy坐标投影转换",
+        "params": {"input_features": "输入数据", "out_crs": "目标坐标系"},
+    },
+    "arcpy_check_geometry": {
+        "method": "ArcPy几何有效性检查",
+        "params": {"input_features": "输入数据"},
+    },
+    "arcpy_repair_geometry": {
+        "method": "ArcPy几何自动修复",
+        "params": {"input_features": "输入数据"},
+    },
+    "arcpy_slope": {
+        "method": "ArcPy坡度计算",
+        "params": {"dem_raster": "DEM栅格", "output_measurement": "度量单位"},
+    },
+    "arcpy_zonal_statistics": {
+        "method": "ArcPy分区统计",
+        "params": {"zone_features": "区域数据", "value_raster": "值栅格", "statistics_type": "统计类型"},
+    },
+    "polygon_neighbors": {
+        "method": "面邻域分析（共享边界检测）",
+        "params": {"file_path": "面数据文件"},
+    },
+    "add_field": {
+        "method": "添加属性字段",
+        "params": {"file_path": "数据文件", "field_name": "字段名",
+                   "field_type": "类型(TEXT/FLOAT/INTEGER)", "default_value": "默认值"},
+    },
+    "add_join": {
+        "method": "属性表连接",
+        "params": {"target_file": "目标数据", "join_file": "连接数据",
+                   "target_field": "目标连接字段", "join_field": "连接表字段"},
+    },
+    "calculate_field": {
+        "method": "字段表达式计算",
+        "params": {"file_path": "数据文件", "field_name": "目标字段",
+                   "expression": "计算表达式"},
+    },
+    "summary_statistics": {
+        "method": "分组汇总统计",
+        "params": {"file_path": "数据文件", "stats_fields": "统计规则",
+                   "case_field": "分组字段"},
+    },
+    "share_table": {
+        "method": "共享数据表（管理员专用）",
+        "params": {"table_name": "数据表名"},
+    },
+    "query_audit_log": {
+        "method": "审计日志查询（管理员专用）",
+        "params": {"days": "查询天数", "action_filter": "操作类型",
+                   "username_filter": "用户名"},
+    },
+}
+
+
+def _format_tool_explanation(tool_name: str, args: dict) -> str:
+    """Format tool args into human-readable Chinese explanation."""
+    desc = TOOL_DESCRIPTIONS.get(tool_name)
+    if not desc:
+        args_str = str(args)
+        return args_str[:500] + "..." if len(args_str) > 500 else args_str
+
+    lines = [f"**{desc['method']}**"]
+    param_labels = desc.get("params", {})
+    for key, value in (args or {}).items():
+        label = param_labels.get(key, key)
+        display_val = value
+        if isinstance(value, str) and (os.sep in value or '/' in value):
+            display_val = os.path.basename(value)
+        display_str = str(display_val)
+        if len(display_str) > 120:
+            display_str = display_str[:120] + "..."
+        lines.append(f"- {label}: `{display_str}`")
+    return "\n".join(lines)
+
+
+def _sync_tool_output_to_obs(resp_data) -> None:
+    """Detect file paths in tool response and sync to OBS."""
+    if not is_obs_configured():
+        return
+    paths = []
+    if isinstance(resp_data, str) and os.path.exists(resp_data):
+        paths.append(resp_data)
+    elif isinstance(resp_data, dict):
+        for v in resp_data.values():
+            if isinstance(v, str) and os.path.exists(v):
+                paths.append(v)
+    uid = current_user_id.get()
+    for p in paths:
+        try:
+            upload_file_smart(p, uid)
+        except Exception:
+            pass
+
+
+PIPELINE_STAGES = {
+    "optimization": [
+        "vertex_search_agent", "DataExploration", "DataProcessing",
+        "DataAnalysis", "DataVisualization", "DataSummary",
+    ],
+    "governance": ["GovExploration", "GovProcessing", "GovernanceReporter"],
+    "general": ["GeneralProcessing", "GeneralViz", "GeneralSummary"],
+}
+
+
+def _set_user_context(user_id: str, session_id: str, role: str = "analyst"):
+    """Set context variables for the current async task."""
+    current_user_id.set(user_id)
+    current_session_id.set(session_id)
+    current_user_role.set(role)
+
 
 def extract_file_paths(text: str) -> List[Dict[str, str]]:
     """Extract file paths from text."""
     artifacts = []
-    pattern = r'(?:[a-zA-Z]:\\|/)[^<>:"|?*]+\.(png|html|shp|zip|csv)'
+    pattern = r'(?:[a-zA-Z]:\\|/)[^<>:"|?*]+\.(png|html|shp|zip|csv|xlsx|xls|kml|kmz|geojson|gpkg)'
     matches = re.finditer(pattern, text, re.IGNORECASE)
     for match in matches:
         path = match.group(0)
@@ -49,211 +986,934 @@ def extract_file_paths(text: str) -> List[Dict[str, str]]:
             artifacts.append({"path": path, "type": ext})
     return artifacts
 
-def handle_uploaded_file(element) -> Optional[str]:
+
+def handle_uploaded_file(element, upload_dir: str) -> Optional[str]:
     """
-    Process uploaded file.
+    Process uploaded file into user's upload directory.
+    Returns None with element._oversized=True if file exceeds MAX_UPLOAD_SIZE.
     - If Zip: Extract and find .shp
     - If other: Return path
     """
     if not element.path:
         return None
-        
-    # Copy to our upload dir to ensure persistence/access
-    # Chainlit stores in temp, let's keep it clean
-    dest_path = os.path.join(UPLOAD_DIR, element.name)
+
+    file_size = os.path.getsize(element.path)
+    if file_size > MAX_UPLOAD_SIZE:
+        element._oversized = True
+        return None
+
+    dest_path = os.path.join(upload_dir, element.name)
     shutil.copy(element.path, dest_path)
-    
+
     ext = os.path.splitext(dest_path)[1].lower()
-    
+
     if ext == '.zip':
-        # Unzip
-        extract_dir = os.path.join(UPLOAD_DIR, os.path.splitext(element.name)[0])
+        extract_dir = os.path.join(upload_dir, os.path.splitext(element.name)[0])
         os.makedirs(extract_dir, exist_ok=True)
         try:
             with zipfile.ZipFile(dest_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
-            
-            # Find shapefile
+
             for root, dirs, files in os.walk(extract_dir):
                 for file in files:
                     if file.lower().endswith('.shp'):
-                        return os.path.abspath(os.path.join(root, file))
-            
-            return None # No shapefile found
+                        result_path = os.path.abspath(os.path.join(root, file))
+                        sync_to_obs(result_path)
+                        return result_path
+
+            # Fallback: search for other spatial formats
+            for target_ext in ('.kml', '.geojson', '.json', '.gpkg'):
+                for root, dirs, files in os.walk(extract_dir):
+                    for file in files:
+                        if file.lower().endswith(target_ext):
+                            result_path = os.path.abspath(os.path.join(root, file))
+                            sync_to_obs(result_path)
+                            return result_path
+
+            return None
         except Exception as e:
             print(f"Zip extraction failed: {e}")
             return None
-            
-    return os.path.abspath(dest_path)
+
+    abs_dest = os.path.abspath(dest_path)
+    sync_to_obs(abs_dest)
+    return abs_dest
+
+
+def _generate_upload_preview(file_path: str) -> str:
+    """Generate a markdown preview of uploaded spatial/tabular data."""
+    try:
+        import geopandas as _gpd
+        gdf = _load_spatial_data(file_path)
+
+        lines = ["### 数据预览 (Data Preview)\n"]
+
+        # Basic info
+        lines.append(f"- **要素数量**: {len(gdf)}")
+        lines.append(f"- **坐标系**: {gdf.crs or '未定义'}")
+
+        geom_types = gdf.geometry.dropna().geom_type.unique().tolist() if not gdf.geometry.isna().all() else []
+        if geom_types:
+            lines.append(f"- **几何类型**: {', '.join(geom_types)}")
+
+        bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
+        lines.append(f"- **空间范围**: [{bounds[0]:.4f}, {bounds[1]:.4f}] ~ [{bounds[2]:.4f}, {bounds[3]:.4f}]")
+
+        # Column list
+        non_geom_cols = [c for c in gdf.columns if c != 'geometry']
+        lines.append(f"- **字段数**: {len(non_geom_cols)}")
+
+        # First 5 rows as markdown table
+        if non_geom_cols:
+            display_cols = non_geom_cols[:8]  # max 8 columns for readability
+            preview_df = gdf[display_cols].head(5)
+            lines.append(f"\n**前 {min(5, len(gdf))} 行预览**:\n")
+            # Header
+            lines.append("| " + " | ".join(str(c) for c in display_cols) + " |")
+            lines.append("| " + " | ".join("---" for _ in display_cols) + " |")
+            # Rows
+            for _, row in preview_df.iterrows():
+                vals = [str(row[c])[:30] for c in display_cols]
+                lines.append("| " + " | ".join(vals) + " |")
+
+        return "\n".join(lines)
+    except Exception as e:
+        return f"数据预览失败: {str(e)}"
+
+
+def classify_intent(text: str, previous_pipeline: str = None) -> tuple:
+    """
+    Uses Gemini Flash to semantically classify user intent into one of the 3 pipelines.
+    Returns: (intent, reason, router_tokens) where intent is 'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS'.
+    """
+    try:
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        prev_hint = ""
+        if previous_pipeline:
+            prev_hint = f"\n        - The previous turn used the {previous_pipeline.upper()} pipeline. If the user references prior results (上面, 刚才, 继续, 之前, 在此基础上), prefer routing to the SAME pipeline: {previous_pipeline.upper()}."
+        prompt = f"""
+        You are the Intent Router for a GIS Data Agent. Classify the User Input into ONE of these categories:
+
+        1. **GOVERNANCE**: Data auditing, quality check, topology fix, standardization, consistency check. (Keywords: 治理, 审计, 质检, 核查, 拓扑, 标准)
+        2. **OPTIMIZATION**: Land use optimization, DRL, FFI calculation, spatial layout planning. (Keywords: 优化, 布局, 破碎化, 规划)
+        3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史)
+        4. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
+
+        User Input: "{text}"
+
+        Rules:
+        - If input mentions "optimize" or "FFI", prioritize OPTIMIZATION.
+        - If input is asking "what data is there" or "show map", choose GENERAL.{prev_hint}
+        - If the input is a greeting (你好, hello, hi), casual chat, or contains no identifiable GIS task, output AMBIGUOUS.
+        - If the input could reasonably belong to two pipelines equally, output AMBIGUOUS.
+        - Output format: CATEGORY|REASON (e.g. "GENERAL|用户请求查看地图" or "AMBIGUOUS|输入不包含明确的GIS任务")
+        """
+        response = model.generate_content(prompt)
+        # Track router token consumption
+        router_input_tokens = 0
+        router_output_tokens = 0
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            router_input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
+            router_output_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
+        router_tokens = router_input_tokens + router_output_tokens
+
+        raw = response.text.strip()
+        if "|" in raw:
+            parts = raw.split("|", 1)
+            intent = parts[0].strip().upper()
+            reason = parts[1].strip()
+        else:
+            intent = raw.upper()
+            reason = ""
+        if "OPTIMIZATION" in intent: return ("OPTIMIZATION", reason, router_tokens)
+        if "GOVERNANCE" in intent: return ("GOVERNANCE", reason, router_tokens)
+        if "AMBIGUOUS" in intent: return ("AMBIGUOUS", reason, router_tokens)
+        if "GENERAL" in intent: return ("GENERAL", reason, router_tokens)
+        return ("GENERAL", reason, router_tokens)
+    except Exception as e:
+        print(f"Router Error: {e}")
+        return ("GENERAL", "", 0)
+
+
+def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) -> str:
+    """Generate a lightweight analysis plan for user confirmation before expensive pipelines."""
+    try:
+        from data_agent.prompts import get_prompt
+
+        files_info = "\n".join(f"- {f}" for f in uploaded_files) if uploaded_files else "无上传文件"
+        prompt_template = get_prompt("planner", "plan_generation_prompt")
+        prompt = prompt_template.format(intent=intent, user_text=user_text, files_info=files_info)
+
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"Plan generation error: {e}")
+        return ""
+
 
 @cl.on_chat_start
 async def start():
-    """Initialize session."""
-    user_id = "user"
+    """Initialize session with authenticated user."""
+    # Get authenticated user from Chainlit (set by auth callbacks in auth.py)
+    cl_user = cl.user_session.get("user")
+
+    if cl_user:
+        user_id = cl_user.identifier
+        role = cl_user.metadata.get("role", "analyst") if cl_user.metadata else "analyst"
+        display_name = cl_user.display_name or user_id
+    else:
+        # Fallback for development (no auth configured)
+        user_id = "dev_user"
+        role = "admin"
+        display_name = "Developer"
+
     session_id = cl.user_session.get("id")
-    await session_service.create_session(app_name="data_agent_ui", user_id=user_id, session_id=session_id)
+
+    # Set context variables for this session
+    _set_user_context(user_id, session_id, role)
+
+    # Create or resume ADK session (handles page refresh with DB persistence)
+    adk_session = None
+    try:
+        adk_session = await session_service.create_session(
+            app_name="data_agent_ui", user_id=user_id, session_id=session_id)
+    except Exception:
+        # Session already exists — load it for potential state restore
+        try:
+            adk_session = await session_service.get_session(
+                app_name="data_agent_ui", user_id=user_id, session_id=session_id)
+            if adk_session:
+                print(f"[Session] Restored existing session for {user_id} "
+                      f"({len(adk_session.events)} prior events)")
+        except Exception as e2:
+            print(f"[Session] Could not restore session: {e2}")
+
+    # Store in Chainlit session
     cl.user_session.set("user_id", user_id)
     cl.user_session.set("session_id", session_id)
+    cl.user_session.set("user_role", role)
+
+    # Ensure user upload directory exists
+    get_user_upload_dir()
+
+    await cl.Message(content=f"Welcome, **{display_name}**! ({role})").send()
+
+    try:
+        record_audit(user_id, ACTION_SESSION_START, details={
+            "role": role, "display_name": display_name,
+        })
+    except Exception:
+        pass
+
 
 @cl.on_message
 async def main(message: cl.Message):
-    """Handle user message with File Upload Support."""
+    """Handle user message with File Upload Support and RBAC."""
     user_id = cl.user_session.get("user_id")
     session_id = cl.user_session.get("session_id")
-    
+    role = cl.user_session.get("user_role", "analyst")
+
+    # Re-set context variables (ContextVar is per-async-task)
+    _set_user_context(user_id, session_id, role)
+
     if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
-        await cl.Message(content="❌ Error: `GOOGLE_CLOUD_PROJECT` not found.").send()
+        await cl.Message(content="Error: `GOOGLE_CLOUD_PROJECT` not found.").send()
         return
 
-    # --- 🟢 Handle File Uploads ---
+    # --- Handle File Uploads (user-scoped) ---
+    user_upload_dir = get_user_upload_dir()
     uploaded_files = []
+    oversized_files = []
     if message.elements:
         for element in message.elements:
-            # Chainlit file uploads come as cl.File (which inherits Element)
-            # Or checks mime type
-            processed_path = handle_uploaded_file(element)
+            element._oversized = False
+            processed_path = handle_uploaded_file(element, user_upload_dir)
             if processed_path:
                 uploaded_files.append(processed_path)
-    
+            elif getattr(element, '_oversized', False):
+                size_mb = os.path.getsize(element.path) / (1024 * 1024)
+                oversized_files.append(f"{element.name} ({size_mb:.1f} MB)")
+
+    if oversized_files:
+        await cl.Message(
+            content=f"以下文件超过 100 MB 上传限制，已跳过：\n" + "\n".join(f"- {f}" for f in oversized_files)
+        ).send()
+
+    # Audit: record file uploads
+    for _uf in uploaded_files:
+        try:
+            record_audit(user_id, ACTION_FILE_UPLOAD, details={
+                "file_name": os.path.basename(_uf),
+                "file_size": os.path.getsize(_uf) if os.path.exists(_uf) else 0,
+            })
+        except Exception:
+            pass
+
     # Construct User Prompt
     user_text = message.content
-    
+    cl.user_session.set("last_user_message", user_text)
     if uploaded_files:
-        # Append file info to the prompt transparently
+        # Show data preview for the first uploaded file
+        preview_text = _generate_upload_preview(uploaded_files[0])
+        await cl.Message(content=preview_text).send()
+
         files_msg = "\n\n[System Context] 用户上传了以下文件，请优先分析这些数据："
         for f in uploaded_files:
             files_msg += f"\n- {f}"
-        
-        # If user didn't say anything, give a default instruction
         if not user_text.strip():
             user_text = "请对上传的数据进行完整的空间布局优化分析。"
-        
         full_prompt = user_text + files_msg
-        
-        # Notify user in UI that file was received
-        await cl.Message(content=f"✅ 已接收文件，正在解析：\n`{uploaded_files[0]}`").send()
     else:
         full_prompt = user_text
 
-    runner = Runner(agent=root_agent, app_name="data_agent_ui", session_service=session_service)
+    # --- Inject previous turn context for multi-turn dialogue ---
+    last_ctx = cl.user_session.get("last_context")
+    if last_ctx:
+        ctx_block = "\n\n[上轮分析上下文]"
+        ctx_block += f"\n上一轮使用了 {last_ctx['pipeline']} 管线。"
+        if last_ctx.get("files"):
+            ctx_block += "\n上一轮生成的文件："
+            for f in last_ctx["files"]:
+                ctx_block += f"\n- {f}"
+        if last_ctx.get("summary"):
+            ctx_block += f"\n分析摘要：{last_ctx['summary']}"
+        ctx_block += "\n\n如果用户提到「上面的结果」「刚才的数据」「之前的分析」「继续」等指代词，请使用以上文件路径和上下文。"
+        full_prompt += ctx_block
+
+    # --- Inject spatial memories for context ---
+    try:
+        from data_agent.memory import get_user_preferences, get_recent_analysis_results
+        _set_user_context(user_id, session_id, role)
+        viz_prefs = get_user_preferences()
+        recent_results = get_recent_analysis_results(limit=3)
+
+        if viz_prefs or recent_results:
+            mem_block = "\n\n[用户空间记忆]"
+            if viz_prefs:
+                mem_block += "\n可视化偏好："
+                for k, v in viz_prefs.items():
+                    mem_block += f"\n- {k}: {v}"
+            if recent_results:
+                mem_block += "\n近期分析记录："
+                for r in recent_results:
+                    mem_block += f"\n- {r['key']}: {r.get('description', '')}"
+                    files = r.get('value', {}).get('files', [])
+                    if files:
+                        mem_block += f" (文件: {', '.join(files[:3])})"
+            mem_block += "\n\n请在用户未明确指定时使用以上偏好作为默认值。"
+            full_prompt += mem_block
+    except Exception:
+        pass  # non-fatal
+
+    # ArcPy engine context
+    if ARCPY_AVAILABLE:
+        full_prompt += "\n\n[系统环境] ArcPy 引擎可用。当用户需要修复几何、按字段融合统计、或对比ArcPy与开源工具结果时，可使用 arcpy_ 前缀的工具。"
+
+    # --- SEMANTIC ROUTING ---
+    previous_pipeline = last_ctx.get("pipeline") if last_ctx else None
+    intent, intent_reason, router_tokens = classify_intent(user_text, previous_pipeline=previous_pipeline)
+
+    # --- Ambiguous Intent: Ask user to clarify ---
+    if intent == "AMBIGUOUS":
+        res = await cl.AskActionMessage(
+            content=f"我不太确定您想做什么。{('（' + intent_reason + '）') if intent_reason else ''}\n\n请选择您需要的分析类型：",
+            actions=[
+                cl.Action(name="general", payload={"value": "GENERAL"}, label="通用查询与分析"),
+                cl.Action(name="governance", payload={"value": "GOVERNANCE"}, label="数据质量治理"),
+                cl.Action(name="optimization", payload={"value": "OPTIMIZATION"}, label="空间布局优化"),
+            ],
+            timeout=120,
+        ).send()
+        if res:
+            intent = res.get("value", "GENERAL")
+        else:
+            await cl.Message(content="操作超时，已自动选择通用分析管线。").send()
+            intent = "GENERAL"
+
+    # --- Usage Limit Check ---
+    try:
+        from data_agent.token_tracker import check_usage_limit
+        limit_check = check_usage_limit(user_id, role)
+        if not limit_check["allowed"]:
+            await cl.Message(content=f"⚠️ {limit_check['reason']}").send()
+            return
+    except Exception:
+        pass  # non-fatal
+
+    # --- RBAC Check ---
+    if role == "viewer" and intent in ("GOVERNANCE", "OPTIMIZATION"):
+        try:
+            record_audit(user_id, ACTION_RBAC_DENIED, status="denied", details={
+                "role": role, "intent": intent,
+            })
+        except Exception:
+            pass
+        await cl.Message(
+            content=f"权限不足：您的角色为 **{role}**，无法访问 {intent} 管线。请联系管理员升级权限。"
+        ).send()
+        return
+
+    # --- Plan Mode Confirmation (for expensive pipelines) ---
+    PLAN_CONFIRMATION_INTENTS = {"OPTIMIZATION", "GOVERNANCE"}
+    if intent in PLAN_CONFIRMATION_INTENTS:
+        try:
+            plan_text = generate_analysis_plan(user_text, intent, uploaded_files)
+            if plan_text:
+                res = await cl.AskActionMessage(
+                    content=f"**分析方案预览**\n\n{plan_text}\n\n请确认是否执行：",
+                    actions=[
+                        cl.Action(name="confirm", payload={"value": "CONFIRM"}, label="确认执行"),
+                        cl.Action(name="modify", payload={"value": "MODIFY"}, label="修改方案"),
+                        cl.Action(name="cancel", payload={"value": "CANCEL"}, label="取消"),
+                    ],
+                    timeout=180,
+                ).send()
+
+                if res:
+                    choice = res.get("value", "CONFIRM")
+                    if choice == "CANCEL":
+                        await cl.Message(content="已取消本次分析。").send()
+                        return
+                    elif choice == "MODIFY":
+                        modify_res = await cl.AskUserMessage(
+                            content="请描述您想修改的内容：", timeout=180
+                        ).send()
+                        if modify_res:
+                            plan_text = generate_analysis_plan(
+                                user_text + "\n用户修改要求: " + modify_res['output'],
+                                intent, uploaded_files
+                            )
+                            await cl.Message(content=f"**修改后方案**\n\n{plan_text}").send()
+                    # Inject approved plan into prompt
+                    full_prompt += f"\n\n[分析方案]\n{plan_text}\n请严格按照此方案执行。"
+                else:
+                    await cl.Message(content="确认超时，已自动执行。").send()
+        except Exception as e:
+            print(f"Plan confirmation error: {e}")
+
+    if DYNAMIC_PLANNER:
+        selected_agent = planner_agent
+        pipeline_type = "planner"
+        pipeline_name = f"Dynamic Planner (意图: {intent})"
+        full_prompt += f"\n\n[意图分类提示] 路由器判断: {intent}（{intent_reason}）"
+    elif intent == "GOVERNANCE":
+        selected_agent = governance_pipeline
+        pipeline_type = "governance"
+        pipeline_name = "Governance Pipeline (数据治理)"
+    elif intent == "OPTIMIZATION":
+        selected_agent = data_pipeline
+        pipeline_type = "optimization"
+        pipeline_name = "Optimization Pipeline (空间优化)"
+    else:
+        selected_agent = general_pipeline
+        pipeline_type = "general"
+        pipeline_name = "General Pipeline (通用分析与查询)"
+
+    await cl.Message(content=f"意图识别：**{intent}**\n已路由至：**{pipeline_name}**").send()
+
+    cl.user_session.set("pipeline_type", pipeline_type)
+
+    runner = Runner(agent=selected_agent, app_name="data_agent_ui", session_service=session_service)
     content = types.Content(role='user', parts=[types.Part(text=full_prompt)])
-    
-    # Timer & Steps
-    thinking_start_time = time.time()
-    thinking_step = cl.Step(name="Thinking Process", type="process")
-    await thinking_step.send()
-    
+
+    # --- Progress Feedback Setup ---
+    if DYNAMIC_PLANNER and pipeline_type == "planner":
+        stages = []
+        total_stages = 0
+        agent_visit_count = 0
+    else:
+        stages = PIPELINE_STAGES.get(pipeline_type, [])
+        total_stages = len(stages)
+    pipeline_start_time = time.time()
+
+    pipeline_step = cl.Step(name=pipeline_name, type="process")
+    await pipeline_step.send()
+
     final_msg = cl.Message(content="")
     shown_artifacts = set()
+    current_agent_name = None
+    current_agent_step = None
     current_tool_step = None
+    current_tool_name = None
     tool_start_time = 0
-    is_thinking = True
+    msg_sent = False
     full_response_text = ""
-    
+    tool_execution_log = []
+    _tool_step_counter = 0
+    _pending_tool_call = None
+
     try:
-        events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content)
-        
+        run_config = RunConfig(max_llm_calls=50) if (DYNAMIC_PLANNER and pipeline_type == "planner") else None
+        events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content, run_config=run_config)
+
+        # Token accumulation counters
+        total_input_tokens = router_tokens  # include router tokens
+        total_output_tokens = 0
+
         async for event in events:
-            if event.content and event.content.parts:
-                for part in event.content.parts:
-                    
-                    # Tool Call
-                    if part.function_call:
-                        if current_tool_step: await current_tool_step.update()
-                        tool_name = part.function_call.name
-                        tool_start_time = time.time()
-                        current_tool_step = cl.Step(name=tool_name, type="tool", parent_id=thinking_step.id)
-                        args_str = str(part.function_call.args)
-                        current_tool_step.input = args_str[:500] + "..." if len(args_str) > 500 else args_str
-                        await current_tool_step.send()
+            # --- Accumulate token usage from ADK events ---
+            if hasattr(event, 'usage_metadata') and event.usage_metadata:
+                total_input_tokens += getattr(event.usage_metadata, 'prompt_token_count', 0) or 0
+                total_output_tokens += getattr(event.usage_metadata, 'candidates_token_count', 0) or 0
 
-                    # Tool Response
-                    if part.function_response:
-                        if current_tool_step:
-                            duration = time.time() - tool_start_time
-                            current_tool_step.name += f" ({duration:.2f}s)"
-                            current_tool_step.output = "✅ Tool execution successful"
-                            await current_tool_step.update()
-                            current_tool_step = None
+            # --- Detect agent transitions via event.author ---
+            author = getattr(event, 'author', None)
+            if author and author != 'user' and author != current_agent_name:
+                # Finalize previous agent step
+                if current_agent_step:
+                    agent_label = AGENT_LABELS.get(current_agent_name, current_agent_name)
+                    if DYNAMIC_PLANNER and pipeline_type == "planner":
+                        current_agent_step.name = f"{agent_label} ✓"
+                    else:
+                        stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
+                        current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
+                    await current_agent_step.update()
 
-                    # Text Output
-                    if part.text:
-                        if is_thinking:
-                            total_duration = time.time() - thinking_start_time
-                            thinking_step.name = f"Thinking Process ({total_duration:.1f}s)"
-                            await thinking_step.update() 
-                            is_thinking = False
-                            await final_msg.send() 
-                        else:
-                            # Update timer periodically during streaming (e.g. every token or every N tokens)
-                            # This gives a 'live' feel to the total time
-                            total_duration = time.time() - thinking_start_time
-                            thinking_step.name = f"Thinking Process ({total_duration:.1f}s)"
-                            await thinking_step.update()
+                current_agent_name = author
+                if author in AGENT_LABELS:
+                    agent_label = AGENT_LABELS[author]
+                    if DYNAMIC_PLANNER and pipeline_type == "planner":
+                        agent_visit_count += 1
+                        step_label = f"步骤 {agent_visit_count}: 正在{agent_label}..."
+                    else:
+                        stage_idx = stages.index(author) + 1 if author in stages else 0
+                        step_label = f"阶段 {stage_idx}/{total_stages}: 正在{agent_label}..."
+                    current_agent_step = cl.Step(
+                        name=step_label,
+                        type="process",
+                        parent_id=pipeline_step.id,
+                    )
+                    await current_agent_step.send()
 
-                        await final_msg.stream_token(part.text)
-                        full_response_text += part.text
-                        
-                        found = extract_file_paths(part.text)
-                        elements = []
-                        for artifact in found:
-                            path = artifact['path']
-                            if path in shown_artifacts: continue
-                            
-                            name = os.path.basename(path)
-                            if artifact['type'] == 'png':
-                                elements.append(cl.Image(path=path, name=name, display="inline"))
-                                shown_artifacts.add(path)
-                            elif artifact['type'] == 'html':
-                                elements.append(cl.File(path=path, name=name))
-                                shown_artifacts.add(path)
-                        
-                        if elements:
-                            await cl.Message(content="", elements=elements).send()
+            if not (event.content and event.content.parts):
+                continue
 
-        # Cleanup
-        if is_thinking: 
-            total_duration = time.time() - thinking_start_time
-            thinking_step.name += f" ({total_duration:.2f}s)"
-            await thinking_step.update()
-            
-        if current_tool_step: 
+            for part in event.content.parts:
+
+                if part.function_call:
+                    # Finalize previous tool step if still open
+                    if current_tool_step:
+                        duration = time.time() - tool_start_time
+                        label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+                        current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
+                        current_tool_step.output = "执行成功"
+                        await current_tool_step.update()
+
+                    current_tool_name = part.function_call.name
+                    tool_start_time = time.time()
+                    label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+                    parent_id = current_agent_step.id if current_agent_step else pipeline_step.id
+                    current_tool_step = cl.Step(
+                        name=f"正在{label}...",
+                        type="tool",
+                        parent_id=parent_id,
+                    )
+                    current_tool_step.input = _format_tool_explanation(
+                        current_tool_name, part.function_call.args
+                    )
+                    await current_tool_step.send()
+                    _pending_tool_call = {
+                        "tool_name": part.function_call.name,
+                        "args": dict(part.function_call.args) if part.function_call.args else {},
+                        "start_time": time.time(),
+                        "agent_name": current_agent_name or "",
+                    }
+
+                if part.function_response:
+                    if current_tool_step:
+                        duration = time.time() - tool_start_time
+                        label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+                        current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
+                        try:
+                            resp_data = part.function_response.response
+                            if isinstance(resp_data, dict) and "output_path" in resp_data:
+                                current_tool_step.output = f"输出: `{os.path.basename(resp_data['output_path'])}`"
+                            elif isinstance(resp_data, dict) and "message" in resp_data:
+                                msg = str(resp_data["message"])[:200]
+                                current_tool_step.output = msg
+                            elif isinstance(resp_data, str) and (os.sep in resp_data or '/' in resp_data):
+                                current_tool_step.output = f"输出: `{os.path.basename(resp_data)}`"
+                            else:
+                                out_str = str(resp_data)[:200]
+                                current_tool_step.output = out_str if len(out_str) > 5 else "执行成功"
+                        except Exception:
+                            current_tool_step.output = "执行成功"
+                        await current_tool_step.update()
+                        # Sync tool output files to OBS
+                        try:
+                            _sync_tool_output_to_obs(part.function_response.response)
+                        except Exception:
+                            pass
+                        # Capture tool execution for code export
+                        if _pending_tool_call:
+                            _tool_step_counter += 1
+                            _resp = part.function_response.response
+                            _out_path = None
+                            _result_msg = ""
+                            _is_err = False
+                            if isinstance(_resp, dict):
+                                _out_path = _resp.get("output_path")
+                                _result_msg = str(_resp.get("message", ""))[:200]
+                                _is_err = _resp.get("status") == "error"
+                            elif isinstance(_resp, str):
+                                _result_msg = _resp[:200]
+                            tool_execution_log.append({
+                                "step": _tool_step_counter,
+                                "agent_name": _pending_tool_call["agent_name"],
+                                "tool_name": _pending_tool_call["tool_name"],
+                                "args": _pending_tool_call["args"],
+                                "output_path": _out_path,
+                                "result_summary": _result_msg,
+                                "duration": time.time() - _pending_tool_call["start_time"],
+                                "is_error": _is_err,
+                            })
+                            _pending_tool_call = None
+                        current_tool_step = None
+                        current_tool_name = None
+
+                if part.text:
+                    # Update pipeline step with elapsed time
+                    elapsed = time.time() - pipeline_start_time
+                    pipeline_step.name = f"{pipeline_name} ({elapsed:.1f}s)"
+                    await pipeline_step.update()
+
+                    if not msg_sent:
+                        msg_sent = True
+                        await final_msg.send()
+
+                    await final_msg.stream_token(part.text)
+                    full_response_text += part.text
+
+                    found = extract_file_paths(part.text)
+                    elements = []
+                    for artifact in found:
+                        path = artifact['path']
+                        if path in shown_artifacts:
+                            continue
+                        name = os.path.basename(path)
+                        if artifact['type'] == 'png':
+                            elements.append(cl.Image(path=path, name=name, display="inline"))
+                            shown_artifacts.add(path)
+                        elif artifact['type'] == 'html':
+                            elements.append(cl.File(path=path, name=name))
+                            shown_artifacts.add(path)
+
+                    if elements:
+                        await cl.Message(content="", elements=elements).send()
+
+        # --- Cleanup: finalize all open steps ---
+        if current_tool_step:
             duration = time.time() - tool_start_time
-            current_tool_step.name += f" ({duration:.2f}s)"
+            label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+            current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
             await current_tool_step.update()
-            
+
+        if current_agent_step:
+            agent_label = AGENT_LABELS.get(current_agent_name, current_agent_name)
+            if DYNAMIC_PLANNER and pipeline_type == "planner":
+                current_agent_step.name = f"{agent_label} ✓"
+            else:
+                stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
+                current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
+            await current_agent_step.update()
+
+        total_duration = time.time() - pipeline_start_time
+        pipeline_step.name = f"{pipeline_name} ✓ ({total_duration:.1f}s)"
+        await pipeline_step.update()
+
         await final_msg.update()
-        cl.user_session.set("last_response_text", full_response_text)
-        
+
+        # --- Report Extraction ---
+        session = await session_service.get_session(
+            app_name="data_agent_ui",
+            user_id=user_id,
+            session_id=session_id
+        )
+        report_text = full_response_text
+
+        if session and session.state:
+            if pipeline_type == "planner":
+                report_text = session.state.get("final_report",
+                               session.state.get("planner_summary", full_response_text))
+            elif pipeline_type == "optimization":
+                report_text = session.state.get("final_summary", full_response_text)
+            elif pipeline_type == "governance":
+                report_text = session.state.get("governance_report", full_response_text)
+
+        cl.user_session.set("last_response_text", report_text)
+
+        # Save context for multi-turn dialogue
+        generated_files = [a['path'] for a in extract_file_paths(full_response_text)]
+        cl.user_session.set("last_context", {
+            "pipeline": pipeline_type,
+            "files": generated_files,
+            "summary": report_text[:800] if report_text else "",
+        })
+        cl.user_session.set("tool_execution_log", tool_execution_log)
+        cl.user_session.set("last_intent", intent)
+        cl.user_session.set("last_user_message", user_text)
+
+        # --- Auto-save analysis result as spatial memory ---
+        try:
+            from data_agent.memory import save_memory
+            import json as _json
+            _set_user_context(user_id, session_id, role)
+            if generated_files and report_text:
+                mem_value = _json.dumps({
+                    "pipeline": pipeline_type,
+                    "files": generated_files[:10],
+                    "summary": report_text[:500],
+                }, ensure_ascii=False)
+                mem_key = user_text[:80].strip() or f"分析_{time.strftime('%m%d_%H%M')}"
+                save_memory("analysis_result", mem_key, mem_value,
+                            f"{pipeline_name} - {time.strftime('%Y-%m-%d %H:%M')}")
+        except Exception:
+            pass  # non-fatal
+
+        # --- Record token usage ---
+        try:
+            from data_agent.token_tracker import record_usage
+            tracking_pipeline = pipeline_type
+            if DYNAMIC_PLANNER and pipeline_type == "planner":
+                tracking_pipeline = intent.lower() if intent != "AMBIGUOUS" else "general"
+            record_usage(user_id, tracking_pipeline, total_input_tokens, total_output_tokens)
+        except Exception:
+            pass  # non-fatal
+
+        # --- Audit: pipeline complete ---
+        try:
+            record_audit(user_id, ACTION_PIPELINE_COMPLETE, details={
+                "pipeline_type": pipeline_type,
+                "intent": intent,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "files_generated": len(generated_files),
+            })
+        except Exception:
+            pass
+
+        current_pipeline = cl.user_session.get("pipeline_type")
         actions = [
             cl.Action(
-                name="export_report", 
-                value="docx", 
-                label="📄 导出 Word 报告", 
-                description="将本次分析结果导出为文档",
+                name="export_report",
+                value="docx",
+                label="导出 Word 报告",
+                description="将本次分析结果导出为 Word 文档",
                 payload={"format": "docx"}
-            )
+            ),
+            cl.Action(
+                name="export_report",
+                value="pdf",
+                label="导出 PDF 报告",
+                description="将本次分析结果导出为 PDF 文档",
+                payload={"format": "pdf"}
+            ),
+            cl.Action(
+                name="share_result",
+                value="share",
+                label="分享分析结果",
+                description="生成公开链接，无需登录即可查看",
+                payload={"action": "share"}
+            ),
+            cl.Action(
+                name="export_code",
+                value="python",
+                label="导出 Python 脚本",
+                description="将本次分析流程导出为可复现的 Python 脚本",
+                payload={"format": "python"}
+            ),
         ]
-        await cl.Message(content="分析完成。您可以下载相关文件或导出完整报告。", actions=actions).send()
-        
+        await cl.Message(content="分析完成。您可以下载相关文件、导出报告或分享结果。", actions=actions).send()
+
     except Exception as e:
-        err_msg = f"❌ Error: {str(e)}"
+        err_msg = f"Error: {str(e)}"
         print(err_msg)
         await cl.Message(content=err_msg).send()
 
+
 @cl.action_callback("export_report")
 async def on_export_report(action: cl.Action):
+    """Export analysis results as Word or PDF document."""
+    # Re-set context for report generation
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
     text = cl.user_session.get("last_response_text")
     if not text:
-        await cl.Message(content="❌ 无法获取报告内容").send()
+        await cl.Message(content="无法获取报告内容").send()
         return
-    msg = cl.Message(content="正在生成报告...")
+
+    # Format and metadata
+    fmt = action.payload.get("format", "docx") if action.payload else "docx"
+    pipeline_type = cl.user_session.get("pipeline_type", "general")
+    cl_user = cl.user_session.get("user")
+    author = cl_user.display_name if cl_user else user_id
+
+    msg = cl.Message(content=f"正在生成 {fmt.upper()} 报告...")
     await msg.send()
     try:
-        output_path = os.path.join(os.path.dirname(__file__), "Analysis_Report.docx")
-        generate_word_report(text, output_path)
-        await cl.Message(content="✅ 报告已生成：", elements=[
-            cl.File(path=output_path, name="Analysis_Report.docx", display="inline")
+        user_dir = get_user_upload_dir()
+        if fmt == "pdf":
+            from data_agent.report_generator import generate_pdf_report
+            output_path = os.path.join(user_dir, "Analysis_Report.pdf")
+            result_path = generate_pdf_report(
+                text, output_path, author=author, pipeline_type=pipeline_type
+            )
+        else:
+            output_path = os.path.join(user_dir, "Analysis_Report.docx")
+            generate_word_report(
+                text, output_path, author=author, pipeline_type=pipeline_type
+            )
+            result_path = output_path
+
+        sync_to_obs(result_path)
+        filename = os.path.basename(result_path)
+        try:
+            record_audit(user_id, ACTION_REPORT_EXPORT, details={
+                "format": fmt, "pipeline_type": pipeline_type, "file_name": filename,
+            })
+        except Exception:
+            pass
+        await cl.Message(content="报告已生成：", elements=[
+            cl.File(path=result_path, name=filename, display="inline")
         ]).send()
     except Exception as e:
-        await cl.Message(content=f"❌ 生成失败: {str(e)}").send()
+        await cl.Message(content=f"生成失败: {str(e)}").send()
+
+
+@cl.action_callback("share_result")
+async def on_share_result(action: cl.Action):
+    """Generate a shareable public link for the current analysis results."""
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
+    report_text = cl.user_session.get("last_response_text", "")
+    last_ctx = cl.user_session.get("last_context", {})
+    pipeline_type = cl.user_session.get("pipeline_type", "general")
+    generated_files = last_ctx.get("files", [])
+
+    if not report_text and not generated_files:
+        await cl.Message(content="当前没有可分享的分析结果。").send()
+        return
+
+    # Ask share type
+    res = await cl.AskActionMessage(
+        content="请选择分享方式：",
+        actions=[
+            cl.Action(name="share_public", payload={"value": "public"}, label="公开链接（无密码）"),
+            cl.Action(name="share_password", payload={"value": "password"}, label="密码保护链接"),
+        ],
+        timeout=60,
+    ).send()
+
+    password = None
+    if res and res.get("value") == "password":
+        pw_res = await cl.AskUserMessage(
+            content="请设置分享密码（至少4位）：", timeout=60
+        ).send()
+        if pw_res and pw_res.get("output"):
+            password = pw_res["output"].strip()
+            if len(password) < 4:
+                await cl.Message(content="密码太短，已取消分享。").send()
+                return
+        else:
+            await cl.Message(content="未输入密码，已取消分享。").send()
+            return
+    elif not res:
+        return  # User didn't respond
+
+    # Build file list
+    files_list = []
+    for fp in generated_files:
+        if os.path.exists(fp):
+            basename = os.path.basename(fp)
+            ext = basename.rsplit('.', 1)[-1].lower() if '.' in basename else ''
+            files_list.append({"filename": basename, "type": ext})
+
+    # Auto-expand shapefile sidecars
+    from data_agent.sharing import create_share_link, expand_shapefile_sidecars
+    if files_list:
+        files_list = expand_shapefile_sidecars(files_list)
+
+    if not files_list and not report_text:
+        await cl.Message(content="未找到可分享的文件。").send()
+        return
+
+    title = cl.user_session.get("last_user_message", "")[:80] or "分析结果"
+    result = create_share_link(
+        title=title,
+        summary=report_text,
+        files=files_list,
+        pipeline_type=pipeline_type,
+        password=password,
+        expires_hours=72,
+    )
+
+    if result["status"] == "success":
+        share_url = result["url"]
+        try:
+            record_audit(user_id, ACTION_SHARE_CREATE, details={
+                "token": result["token"],
+                "password_protected": password is not None,
+                "files_count": len(files_list),
+            })
+        except Exception:
+            pass
+        msg = f"分享链接已生成（72小时有效）：\n\n`{share_url}`"
+        if password:
+            msg += f"\n\n访问密码：`{password}`"
+        msg += "\n\n将此链接发送给他人即可查看分析结果（无需登录）。"
+        await cl.Message(content=msg).send()
+    else:
+        await cl.Message(content=f"生成分享链接失败：{result.get('message', '未知错误')}").send()
+
+
+@cl.action_callback("export_code")
+async def on_export_code(action: cl.Action):
+    """Export analysis pipeline as a reproducible Python script."""
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
+    tool_log = cl.user_session.get("tool_execution_log")
+    if not tool_log:
+        await cl.Message(content="当前没有可导出的分析流程。").send()
+        return
+
+    try:
+        from data_agent.code_exporter import generate_python_script, save_script_to_file
+
+        script = generate_python_script(
+            tool_log=tool_log,
+            pipeline_type=cl.user_session.get("pipeline_type", "general"),
+            user_message=cl.user_session.get("last_user_message", ""),
+            uploaded_files=[os.path.basename(f) for f in
+                           cl.user_session.get("last_context", {}).get("files", [])],
+            intent=cl.user_session.get("last_intent", "GENERAL"),
+            tool_descriptions=TOOL_DESCRIPTIONS,
+        )
+
+        output_path = save_script_to_file(script, get_user_upload_dir())
+        sync_to_obs(output_path)
+
+        try:
+            from data_agent.audit_logger import ACTION_CODE_EXPORT
+            record_audit(user_id, ACTION_CODE_EXPORT, details={
+                "pipeline_type": cl.user_session.get("pipeline_type"),
+                "tool_count": len(tool_log),
+            })
+        except Exception:
+            pass
+
+        await cl.Message(
+            content=f"Python 脚本已生成（{len(tool_log)} 个分析步骤）：",
+            elements=[cl.File(path=output_path, name=os.path.basename(output_path), display="inline")]
+        ).send()
+    except Exception as e:
+        await cl.Message(content=f"脚本生成失败: {str(e)}").send()
