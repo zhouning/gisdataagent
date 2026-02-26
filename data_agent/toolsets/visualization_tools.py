@@ -1,0 +1,839 @@
+"""Visualization toolset: interactive maps, choropleth, bubble maps, static exports."""
+import os
+
+import numpy as np
+import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import folium
+from folium import plugins
+import branca.colormap as cm
+import mapclassify
+import contextily as cx
+
+from google.adk.tools import FunctionTool
+from google.adk.tools.base_toolset import BaseToolset
+
+from .. import drl_engine
+from ..gis_processors import generate_heatmap, _generate_output_path
+from ..utils import _load_spatial_data, _configure_fonts, _add_basemap_layers
+
+
+# ---------------------------------------------------------------------------
+# Tool functions
+# ---------------------------------------------------------------------------
+
+def visualize_optimization_comparison(original_data_path: str, optimized_data_path: str) -> str:
+    """生成优化前后对比图。"""
+    try:
+        _configure_fonts()
+        gdf_orig = _load_spatial_data(original_data_path)
+        gdf_opt = _load_spatial_data(optimized_data_path)
+
+        OTHER, FARMLAND, FOREST = drl_engine.OTHER, drl_engine.FARMLAND, drl_engine.FOREST
+
+        orig_cols = {c.lower(): c for c in gdf_orig.columns}
+        dlmc_col = orig_cols.get('dlmc', 'DLMC')
+        if dlmc_col not in gdf_orig.columns:
+             return f"Error: Column 'DLMC' not found in original data. Available: {list(gdf_orig.columns)}"
+
+        opt_cols = {c.lower(): c for c in gdf_opt.columns}
+        opt_type_col = opt_cols.get('opt_type', 'Opt_Type')
+
+        def map_dlmc(val):
+            if val in {'旱地', '水田'}: return FARMLAND
+            if val in {'果园', '有林地'}: return FOREST
+            return OTHER
+
+        initial = gdf_orig[dlmc_col].apply(map_dlmc).values
+        final = gdf_opt[opt_type_col].values
+
+        cmap = {OTHER: '#D3D3D3', FARMLAND: '#FFD700', FOREST: '#228B22'}
+        fig, axes = plt.subplots(1, 3, figsize=(26, 8))
+
+        gdf_orig['c'] = [cmap[t] for t in initial]
+        gdf_orig.plot(ax=axes[0], color=gdf_orig['c'], edgecolor='none')
+        axes[0].set_title('优化前现状 (Before)', fontsize=16, fontweight='bold')
+        axes[0].set_axis_off()
+
+        gdf_opt['c'] = [cmap[t] for t in final]
+        gdf_opt.plot(ax=axes[1], color=gdf_opt['c'], edgecolor='none')
+        axes[1].set_title('优化后布局 (After)', fontsize=16, fontweight='bold')
+        axes[1].set_axis_off()
+
+        patches_type = [
+            mpatches.Patch(color='#FFD700', label='耕地'),
+            mpatches.Patch(color='#228B22', label='林地'),
+            mpatches.Patch(color='#D3D3D3', label='其他'),
+        ]
+        axes[0].legend(handles=patches_type, loc='lower left', fontsize=11, title="用地类型")
+
+        change = np.zeros(len(gdf_orig), dtype=np.int8)
+        change[(initial == FARMLAND) & (final == FOREST)] = 1
+        change[(initial == FOREST) & (final == FARMLAND)] = 2
+        diff_colors = {0: '#F0F0F0', 1: '#FF4444', 2: '#4488FF'}
+        gdf_orig['diff_c'] = [diff_colors[c] for c in change]
+        gdf_orig.plot(ax=axes[2], color=gdf_orig['diff_c'], edgecolor='none')
+        axes[2].set_title('空间置换差异图 (Swap Map)', fontsize=16, fontweight='bold')
+        axes[2].set_axis_off()
+
+        n_f2l = int((change == 1).sum())
+        n_l2f = int((change == 2).sum())
+        patches_diff = [
+            mpatches.Patch(color='#F0F0F0', label='未变化'),
+            mpatches.Patch(color='#FF4444', label=f'耕地 -> 林地 ({n_f2l}块)\n(退耕还林/坡度优化)'),
+            mpatches.Patch(color='#4488FF', label=f'林地 -> 耕地 ({n_l2f}块)\n(宜耕资源开发)'),
+        ]
+        axes[2].legend(handles=patches_diff, loc='center left', bbox_to_anchor=(1, 0.5), fontsize=11, title="置换类型说明")
+
+        out_path = _generate_output_path("comparison", "png")
+        plt.tight_layout()
+        plt.savefig(out_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        return f"Comparison visualization saved to {out_path}"
+    except Exception as e: return f"Error: {str(e)}"
+
+
+def visualize_interactive_map(original_data_path: str, optimized_data_path: str = None, center_lat: float = None, center_lng: float = None, zoom: int = None) -> str:
+    """
+    Generate multi-layer interactive map.
+    Supports:
+    1. Comparison Mode (if optimized_data_path provided): Original vs Optimized Polygons.
+    2. Analysis Mode (if point data): Heatmap + Clustered Markers.
+
+    Args:
+        original_data_path: 空间数据路径或 PostGIS 表名。
+        optimized_data_path: 可选，优化后的数据路径（对比模式）。
+        center_lat: 可选，地图中心纬度。不指定则自动根据数据范围居中。
+        center_lng: 可选，地图中心经度。不指定则自动根据数据范围居中。
+        zoom: 可选，缩放级别(1-18)。不指定则自动计算。
+    """
+    try:
+        gdf_orig = _load_spatial_data(original_data_path).to_crs(epsg=4326)
+
+        if center_lat is not None and center_lng is not None:
+            center = [center_lat, center_lng]
+        else:
+            center = [gdf_orig.geometry.centroid.y.mean(), gdf_orig.geometry.centroid.x.mean()]
+        zoom_start = zoom if zoom is not None else 14
+        m = folium.Map(location=center, zoom_start=zoom_start, tiles='CartoDB positron', control_scale=True)
+
+        _add_basemap_layers(m)
+
+        is_point = any(t in ['Point', 'MultiPoint'] for t in gdf_orig.geom_type.unique())
+
+        if is_point:
+            points = gdf_orig[~gdf_orig.geometry.is_empty & gdf_orig.geometry.notna()]
+            heat_data = [[p.y, p.x] for p in points.geometry]
+            plugins.HeatMap(heat_data, name="热力图 (Heatmap)", show=True).add_to(m)
+
+            cols_lower = {c.lower(): c for c in gdf_orig.columns}
+            cluster_col = cols_lower.get('cluster_id')
+
+            if cluster_col:
+                import matplotlib.colors as mcolors
+                base_colors = list(mcolors.TABLEAU_COLORS.values())
+
+                def get_color(cid):
+                    if cid == -1: return 'gray'
+                    return base_colors[cid % len(base_colors)]
+
+                for idx, row in gdf_orig.iterrows():
+                    cid = row[cluster_col]
+                    folium.CircleMarker(
+                        location=[row.geometry.y, row.geometry.x],
+                        radius=5,
+                        color=get_color(cid),
+                        fill=True,
+                        fill_opacity=0.7,
+                        popup=f"Cluster: {cid}",
+                        tooltip=f"Cluster: {cid}"
+                    ).add_to(m)
+            else:
+                marker_cluster = plugins.MarkerCluster(name="点位聚合 (Markers)").add_to(m)
+                for idx, row in points.iterrows():
+                    folium.Marker([row.geometry.y, row.geometry.x]).add_to(marker_cluster)
+
+        elif optimized_data_path:
+            gdf_opt = _load_spatial_data(optimized_data_path).to_crs(epsg=4326)
+
+            orig_cols = {c.lower(): c for c in gdf_orig.columns}
+            dlmc_col = orig_cols.get('dlmc', 'DLMC')
+            slope_col = orig_cols.get('slope', 'Slope')
+            shape_area_col = orig_cols.get('shape_area', 'Shape_Area')
+
+            opt_cols = {c.lower(): c for c in gdf_opt.columns}
+            opt_type_col = opt_cols.get('opt_type', 'Opt_Type')
+
+            OTHER, FARMLAND, FOREST = drl_engine.OTHER, drl_engine.FARMLAND, drl_engine.FOREST
+
+            def map_dlmc(val):
+                if val in {'旱地', '水田', '耕地'}: return FARMLAND
+                if val in {'果园', '有林地', '林地'}: return FOREST
+                return OTHER
+
+            if dlmc_col in gdf_orig.columns:
+                gdf_orig['Type_Int'] = gdf_orig[dlmc_col].apply(map_dlmc)
+            else:
+                 gdf_orig['Type_Int'] = OTHER
+
+            if opt_type_col in gdf_opt.columns:
+                gdf_opt['Type_Int'] = gdf_opt[opt_type_col]
+            else:
+                gdf_opt['Type_Int'] = OTHER
+
+            change_mask = np.zeros(len(gdf_orig), dtype=np.int8)
+            initial = gdf_orig['Type_Int'].values
+            final = gdf_opt['Type_Int'].values
+            change_mask[(initial == FARMLAND) & (final == FOREST)] = 1
+            change_mask[(initial == FOREST) & (final == FARMLAND)] = 2
+
+            gdf_diff = gdf_orig.copy()
+            gdf_diff['Change_Type'] = change_mask
+            gdf_diff = gdf_diff[gdf_diff['Change_Type'] > 0]
+
+            def style_type(feature):
+                t = feature['properties']['Type_Int']
+                color = '#808080'
+                if t == FARMLAND: color = '#FFD700'
+                elif t == FOREST: color = '#228B22'
+                return {'fillColor': color, 'color': 'black', 'weight': 0.5, 'fillOpacity': 0.6}
+
+            def style_diff(feature):
+                c = feature['properties']['Change_Type']
+                color = 'gray'
+                if c == 1: color = '#FF4444'
+                elif c == 2: color = '#4488FF'
+                return {'fillColor': color, 'color': color, 'weight': 1, 'fillOpacity': 0.8}
+
+            tooltip_fields = [c for c in [dlmc_col, slope_col, shape_area_col] if c in gdf_orig.columns]
+
+            folium.GeoJson(
+                gdf_orig,
+                name='优化前现状 (Before)',
+                style_function=style_type,
+                tooltip=folium.GeoJsonTooltip(fields=tooltip_fields, aliases=['地类:', '坡度:', '面积:']) if tooltip_fields else None,
+                show=False
+            ).add_to(m)
+
+            folium.GeoJson(
+                gdf_opt,
+                name='优化后布局 (After)',
+                style_function=style_type,
+                tooltip=folium.GeoJsonTooltip(fields=[opt_type_col, slope_col], aliases=['优化类型(1耕2林):', '坡度:']) if opt_type_col in gdf_opt.columns else None,
+                show=True
+            ).add_to(m)
+
+            if not gdf_diff.empty:
+                folium.GeoJson(
+                    gdf_diff,
+                    name='空间置换差异 (Changes)',
+                    style_function=style_diff,
+                    tooltip=folium.GeoJsonTooltip(fields=[dlmc_col, slope_col, 'Change_Type'],
+                                                 aliases=['原类型:', '坡度:', '变化(1退耕2开垦):']) if dlmc_col in gdf_diff.columns else None,
+                    show=True
+                ).add_to(m)
+        else:
+            folium.GeoJson(gdf_orig, name="Data Layer").add_to(m)
+
+        folium.LayerControl(collapsed=False).add_to(m)
+
+        output_path = _generate_output_path("interactive_map", "html")
+        m.save(output_path)
+
+        return f"Interactive comparison map saved to {output_path}"
+
+    except Exception as e:
+        return f"Error generating interactive map: {str(e)}"
+
+
+def generate_choropleth(
+    file_path: str,
+    value_column: str,
+    color_scheme: str = "YlOrRd",
+    classification_method: str = "quantile",
+    num_classes: int = 5,
+    legend_title: str = None,
+    center_lat: float = None,
+    center_lng: float = None,
+    zoom: int = None
+) -> str:
+    """
+    生成等值区域图 (Choropleth Map)。
+    根据指定数值字段对多边形进行分级设色可视化。
+
+    Args:
+        file_path: 多边形矢量数据路径 (SHP/GeoJSON/GPKG) 或 PostGIS 表名。
+        value_column: 用于设色的数值字段名。
+        color_scheme: 颜色方案，支持: YlOrRd, YlGnBu, RdYlGn, Blues, Greens, Reds, Spectral。
+        classification_method: 分级方法 - quantile(分位数), equal_interval(等间距), natural_breaks(自然断点)。
+        num_classes: 分级数量，3-9之间。
+        legend_title: 图例标题，默认使用 value_column 名。
+        center_lat: 可选，地图中心纬度。不指定则自动根据数据范围居中。
+        center_lng: 可选，地图中心经度。不指定则自动根据数据范围居中。
+        zoom: 可选，缩放级别(1-18)。不指定则自动计算。
+
+    Returns:
+        生成的 HTML 交互地图路径。
+    """
+    try:
+        gdf = _load_spatial_data(file_path).to_crs(epsg=4326)
+
+        if value_column not in gdf.columns:
+            available = [c for c in gdf.columns if c != 'geometry']
+            return f"Error: 字段 '{value_column}' 不存在。可用字段: {available}"
+
+        gdf[value_column] = pd.to_numeric(gdf[value_column], errors='coerce')
+        valid = gdf[gdf[value_column].notna()]
+        if len(valid) == 0:
+            return f"Error: 字段 '{value_column}' 无有效数值数据"
+
+        values = valid[value_column].values
+        num_classes = max(3, min(num_classes, 9))
+
+        if classification_method == "equal_interval":
+            classifier = mapclassify.EqualInterval(values, k=num_classes)
+        elif classification_method == "natural_breaks":
+            classifier = mapclassify.NaturalBreaks(values, k=num_classes)
+        else:
+            classifier = mapclassify.Quantiles(values, k=num_classes)
+
+        scheme_map = {
+            "YlOrRd": cm.linear.YlOrRd_09,
+            "YlGnBu": cm.linear.YlGnBu_09,
+            "RdYlGn": cm.linear.RdYlGn_09,
+            "Blues": cm.linear.Blues_09,
+            "Greens": cm.linear.Greens_09,
+            "Reds": cm.linear.Reds_09,
+            "Spectral": cm.linear.Spectral_09,
+        }
+        base_cmap = scheme_map.get(color_scheme, cm.linear.YlOrRd_09)
+        vmin, vmax = float(values.min()), float(values.max())
+        colormap = base_cmap.scale(vmin, vmax)
+        colormap.caption = legend_title or value_column
+
+        if center_lat is not None and center_lng is not None:
+            center = [center_lat, center_lng]
+        else:
+            center = [valid.geometry.centroid.y.mean(), valid.geometry.centroid.x.mean()]
+        zoom_start = zoom if zoom is not None else 13
+        m = folium.Map(location=center, zoom_start=zoom_start, tiles='CartoDB positron', control_scale=True)
+
+        _add_basemap_layers(m)
+
+        def style_function(feature):
+            val = feature['properties'].get(value_column)
+            if val is None or (isinstance(val, float) and np.isnan(val)):
+                return {'fillColor': '#808080', 'color': 'black', 'weight': 0.5, 'fillOpacity': 0.4}
+            return {'fillColor': colormap(val), 'color': 'black', 'weight': 0.5, 'fillOpacity': 0.7}
+
+        tooltip_fields = [value_column]
+        other_fields = [c for c in valid.columns if c not in ('geometry', value_column)][:3]
+        tooltip_fields.extend(other_fields)
+
+        folium.GeoJson(
+            valid,
+            name=f'Choropleth ({value_column})',
+            style_function=style_function,
+            tooltip=folium.GeoJsonTooltip(fields=tooltip_fields, aliases=[f"{c}:" for c in tooltip_fields]),
+        ).add_to(m)
+
+        colormap.add_to(m)
+        folium.LayerControl(collapsed=False).add_to(m)
+
+        output_path = _generate_output_path("choropleth", "html")
+        m.save(output_path)
+
+        return (
+            f"等值区域图已生成: {output_path}\n"
+            f"分级方法: {classification_method}, 分级数: {num_classes}, 配色: {color_scheme}"
+        )
+
+    except Exception as e:
+        return f"Error generating choropleth: {str(e)}"
+
+
+def generate_bubble_map(
+    file_path: str,
+    size_column: str,
+    color_column: str = None,
+    color_scheme: str = "YlOrRd",
+    max_radius: int = 30,
+    legend_title: str = None
+) -> str:
+    """
+    生成气泡地图 (Bubble Map)。
+    根据数值字段控制圆圈大小，可选按另一字段着色。适用于点数据。
+
+    Args:
+        file_path: 点数据路径 (SHP/GeoJSON/CSV/Excel)。
+        size_column: 控制气泡大小的数值字段名。
+        color_column: 可选，控制气泡颜色的数值字段名。
+        color_scheme: 颜色方案 (YlOrRd, YlGnBu, RdYlGn, Blues, Greens, Reds, Spectral)。
+        max_radius: 最大气泡半径 (像素)，默认30。
+        legend_title: 图例标题。
+
+    Returns:
+        生成的 HTML 交互地图路径。
+    """
+    try:
+        gdf = _load_spatial_data(file_path).to_crs(epsg=4326)
+
+        if size_column not in gdf.columns:
+            available = [c for c in gdf.columns if c != 'geometry']
+            return f"Error: 字段 '{size_column}' 不存在。可用字段: {available}"
+
+        gdf[size_column] = pd.to_numeric(gdf[size_column], errors='coerce')
+        valid = gdf[gdf[size_column].notna()].copy()
+        if len(valid) == 0:
+            return f"Error: 字段 '{size_column}' 无有效数值数据"
+
+        min_val = valid[size_column].min()
+        max_val = valid[size_column].max()
+        val_range = max_val - min_val
+        if val_range > 0:
+            valid['_radius'] = 3 + (valid[size_column] - min_val) / val_range * (max_radius - 3)
+        else:
+            valid['_radius'] = (3 + max_radius) / 2
+
+        colormap_obj = None
+        if color_column and color_column in valid.columns:
+            valid[color_column] = pd.to_numeric(valid[color_column], errors='coerce')
+            color_vals = valid[color_column].dropna()
+            if len(color_vals) > 0:
+                scheme_map = {
+                    "YlOrRd": cm.linear.YlOrRd_09,
+                    "YlGnBu": cm.linear.YlGnBu_09,
+                    "RdYlGn": cm.linear.RdYlGn_09,
+                    "Blues": cm.linear.Blues_09,
+                    "Greens": cm.linear.Greens_09,
+                    "Reds": cm.linear.Reds_09,
+                    "Spectral": cm.linear.Spectral_09,
+                }
+                base_cmap = scheme_map.get(color_scheme, cm.linear.YlOrRd_09)
+                colormap_obj = base_cmap.scale(float(color_vals.min()), float(color_vals.max()))
+                colormap_obj.caption = legend_title or color_column
+
+        center = [valid.geometry.centroid.y.mean(), valid.geometry.centroid.x.mean()]
+        m = folium.Map(location=center, zoom_start=13, tiles='CartoDB positron', control_scale=True)
+
+        _add_basemap_layers(m)
+
+        tooltip_cols = [size_column]
+        if color_column and color_column in valid.columns:
+            tooltip_cols.append(color_column)
+        other_cols = [c for c in valid.columns if c not in ('geometry', '_radius', size_column, color_column)][:2]
+        tooltip_cols.extend(other_cols)
+
+        for _, row in valid.iterrows():
+            radius = row['_radius']
+            if colormap_obj and color_column and pd.notna(row.get(color_column)):
+                fill_color = colormap_obj(row[color_column])
+            else:
+                fill_color = '#3388ff'
+
+            tooltip_text = "<br>".join(f"<b>{c}</b>: {row.get(c, '')}" for c in tooltip_cols if c in row.index)
+
+            folium.CircleMarker(
+                location=[row.geometry.y, row.geometry.x],
+                radius=radius,
+                color='#333333',
+                weight=0.5,
+                fill=True,
+                fill_color=fill_color,
+                fill_opacity=0.7,
+                tooltip=tooltip_text,
+            ).add_to(m)
+
+        if colormap_obj:
+            colormap_obj.add_to(m)
+
+        folium.LayerControl(collapsed=False).add_to(m)
+
+        output_path = _generate_output_path("bubble_map", "html")
+        m.save(output_path)
+
+        msg = f"气泡地图已生成: {output_path}\n大小字段: {size_column}"
+        if color_column:
+            msg += f", 颜色字段: {color_column}, 配色: {color_scheme}"
+        return msg
+
+    except Exception as e:
+        return f"Error generating bubble map: {str(e)}"
+
+
+def visualize_geodataframe(file_path: str) -> str:
+    """可视化单份地理数据（静态）。"""
+    try:
+        _configure_fonts()
+        gdf = _load_spatial_data(file_path)
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+        cols_lower = {c.lower(): c for c in gdf.columns}
+        dlmc_col = cols_lower.get('dlmc', 'DLMC')
+
+        if dlmc_col not in gdf.columns:
+            gdf[dlmc_col] = 'Unknown'
+
+        colors = gdf[dlmc_col].apply(lambda x: {'建制镇': '#87CEEB', '村庄': '#87CEEB', '旱地': '#F9FAE8', '水田': '#F9FAE8', '果园': '#FFC0CB', '有林地': '#228B22'}.get(x, '#FFFFFF'))
+        gdf.plot(ax=ax, color=colors.tolist(), edgecolor='black', alpha=0.7)
+        ax.set_title("土地利用现状图 (Land Use Map)", fontsize=15)
+        ax.set_axis_off()
+        out = _generate_output_path("visualization", "png")
+        plt.savefig(out, dpi=300)
+        plt.close()
+        return f"Visualization saved to {out}"
+    except Exception as e: return f"Error: {str(e)}"
+
+
+def export_map_png(file_path: str, value_column: str = None, title: str = None) -> str:
+    """
+    将空间数据导出为带底图的高清 PNG 地图图片，可用于报告和分享。
+    支持文件路径或 PostGIS 表名。
+
+    Args:
+        file_path: 空间数据文件路径（.shp/.geojson等）或 PostGIS 表名。
+        value_column: 可选，用于着色的数值字段名。不指定则统一着色。
+        title: 可选，地图标题。
+    Returns:
+        生成的 PNG 文件路径。
+    """
+    try:
+        _configure_fonts()
+        gdf = _load_spatial_data(file_path)
+
+        if gdf.crs and not gdf.crs.is_geographic:
+            gdf_plot = gdf.copy()
+        else:
+            gdf_plot = gdf.to_crs(epsg=3857)
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 10))
+
+        if value_column and value_column in gdf_plot.columns:
+            gdf_plot.plot(
+                ax=ax, column=value_column, cmap='YlOrRd',
+                legend=True, legend_kwds={'label': value_column, 'shrink': 0.6},
+                edgecolor='black', linewidth=0.3, alpha=0.8,
+            )
+        else:
+            gdf_plot.plot(ax=ax, color='#4A90D9', edgecolor='black', linewidth=0.3, alpha=0.7)
+
+        try:
+            cx.add_basemap(ax, source=cx.providers.CartoDB.Positron)
+        except Exception:
+            pass
+
+        ax.set_axis_off()
+        if title:
+            ax.set_title(title, fontsize=16, pad=12)
+
+        out = _generate_output_path("map_export", "png")
+        plt.savefig(out, dpi=200, bbox_inches='tight', pad_inches=0.1)
+        plt.close()
+        return f"地图已导出为 PNG: {out}"
+    except Exception as e:
+        return f"Error exporting map PNG: {str(e)}"
+
+
+def compose_map(
+    layers_json: str,
+    center_lat: float = None,
+    center_lng: float = None,
+    zoom: int = None,
+) -> str:
+    """将多个数据源叠加到同一张交互地图上，每个图层可独立切换显隐。
+
+    Args:
+        layers_json: JSON 数组字符串，每个元素定义一个图层。
+            必填字段:
+              - data_path (str): 数据文件路径或 PostGIS 表名
+              - name (str): 图层名称，显示在图层控件中
+              - type (str): point(点标记) | polygon(面填充) | choropleth(分级设色) | heatmap(热力图) | bubble(气泡图)
+            可选字段:
+              - color (str): 填充色，默认 "#3388ff"
+              - opacity (float): 透明度 0-1，默认 0.7
+              - value_column (str): choropleth/bubble 必填，数值字段名
+              - color_scheme (str): 配色方案，默认 "YlOrRd"。可选: YlGnBu, RdYlGn, Blues, Greens, Reds, Spectral
+              - classification_method (str): choropleth 分级方法，默认 "quantile"。可选: equal_interval, natural_breaks
+              - num_classes (int): choropleth 分级数，默认 5
+              - radius (int): point 圆圈半径(px)，默认 6
+              - max_radius (int): bubble 最大半径(px)，默认 25
+              - weight_field (str): heatmap 权重字段
+        center_lat: 地图中心纬度，不指定则自动计算。
+        center_lng: 地图中心经度，不指定则自动计算。
+        zoom: 缩放级别(1-18)，不指定则自动适配。
+
+    Returns:
+        生成的 HTML 交互地图路径，或错误信息。
+
+    示例 layers_json:
+        [{"data_path":"stores.csv","name":"门店分布","type":"point","color":"#e74c3c"},
+         {"data_path":"buffer.shp","name":"服务范围","type":"polygon","color":"#3498db","opacity":0.3}]
+    """
+    import json
+
+    try:
+        layers = json.loads(layers_json)
+    except (json.JSONDecodeError, TypeError) as e:
+        return f"Error: layers_json 解析失败 — {e}"
+
+    if not isinstance(layers, list) or len(layers) == 0:
+        return "Error: layers_json 必须是非空 JSON 数组"
+    if len(layers) > 10:
+        return "Error: 最多支持 10 个图层"
+
+    try:
+        # --- Phase 1: Load all data and collect bounds ---
+        loaded = []
+        all_bounds = []
+
+        for i, spec in enumerate(layers):
+            data_path = spec.get("data_path")
+            if not data_path:
+                return f"Error: 第 {i+1} 个图层缺少 data_path"
+
+            gdf = _load_spatial_data(data_path).to_crs(epsg=4326)
+            if gdf.empty:
+                continue
+
+            loaded.append((spec, gdf))
+            all_bounds.append(gdf.total_bounds)  # [minx, miny, maxx, maxy]
+
+        if not loaded:
+            return "Error: 所有图层均为空数据"
+
+        # --- Phase 2: Create map with auto-center ---
+        if center_lat is not None and center_lng is not None:
+            center = [center_lat, center_lng]
+        else:
+            bounds_arr = np.array(all_bounds)
+            center = [
+                (bounds_arr[:, 1].min() + bounds_arr[:, 3].max()) / 2,
+                (bounds_arr[:, 0].min() + bounds_arr[:, 2].max()) / 2,
+            ]
+        zoom_start = zoom if zoom is not None else 13
+
+        m = folium.Map(location=center, zoom_start=zoom_start,
+                       tiles="CartoDB positron", control_scale=True)
+        _add_basemap_layers(m)
+
+        # --- Phase 3: Render each layer ---
+        for spec, gdf in loaded:
+            layer_name = spec.get("name", "Layer")
+            layer_type = spec.get("type", "polygon").lower()
+            color = spec.get("color", "#3388ff")
+            opacity = float(spec.get("opacity", 0.7))
+
+            fg = folium.FeatureGroup(name=layer_name)
+
+            if layer_type == "point":
+                radius = int(spec.get("radius", 6))
+                _render_point_layer(gdf, fg, color, opacity, radius, layer_name)
+
+            elif layer_type == "polygon":
+                _render_polygon_layer(gdf, fg, color, opacity)
+
+            elif layer_type == "choropleth":
+                value_column = spec.get("value_column")
+                if not value_column or value_column not in gdf.columns:
+                    avail = [c for c in gdf.columns if c != "geometry"]
+                    return (f"Error: 图层 '{layer_name}' (choropleth) 的 value_column "
+                            f"'{value_column}' 不存在。可用字段: {avail}")
+                _render_choropleth_layer(gdf, fg, m, spec, layer_name)
+
+            elif layer_type == "heatmap":
+                _render_heatmap_layer(gdf, fg, spec, layer_name)
+
+            elif layer_type == "bubble":
+                value_column = spec.get("value_column")
+                if not value_column or value_column not in gdf.columns:
+                    avail = [c for c in gdf.columns if c != "geometry"]
+                    return (f"Error: 图层 '{layer_name}' (bubble) 的 value_column "
+                            f"'{value_column}' 不存在。可用字段: {avail}")
+                _render_bubble_layer(gdf, fg, spec, color, opacity, layer_name)
+
+            else:
+                return f"Error: 不支持的图层类型 '{layer_type}'。支持: point, polygon, choropleth, heatmap, bubble"
+
+            fg.add_to(m)
+
+        # --- Phase 4: Finalize ---
+        folium.LayerControl(collapsed=False).add_to(m)
+
+        output_path = _generate_output_path("composed_map", "html")
+        m.save(output_path)
+
+        layer_summary = ", ".join(
+            f"{s.get('name', 'Layer')}({s.get('type', 'polygon')})"
+            for s, _ in loaded
+        )
+        return f"多图层地图已生成: {output_path}\n包含 {len(loaded)} 个图层: {layer_summary}"
+
+    except Exception as e:
+        return f"Error in compose_map: {str(e)}"
+
+
+# --- compose_map helper renderers ---
+
+def _render_point_layer(gdf, fg, color, opacity, radius, layer_name):
+    """Render point markers into a FeatureGroup."""
+    for _, row in gdf.iterrows():
+        if row.geometry is None or row.geometry.is_empty:
+            continue
+        pt = row.geometry.centroid
+        tooltip_parts = [
+            f"<b>{c}</b>: {row[c]}"
+            for c in gdf.columns if c != "geometry" and pd.notna(row.get(c))
+        ][:5]
+        folium.CircleMarker(
+            location=[pt.y, pt.x], radius=radius,
+            color=color, fill=True, fill_color=color, fill_opacity=opacity,
+            tooltip="<br>".join(tooltip_parts) if tooltip_parts else layer_name,
+        ).add_to(fg)
+
+
+def _render_polygon_layer(gdf, fg, color, opacity):
+    """Render polygon fill into a FeatureGroup."""
+    tooltip_fields = [c for c in gdf.columns if c != "geometry"][:4]
+    folium.GeoJson(
+        gdf,
+        style_function=lambda feature, c=color, o=opacity: {
+            "fillColor": c, "color": c, "weight": 1, "fillOpacity": o,
+        },
+        tooltip=(folium.GeoJsonTooltip(
+            fields=tooltip_fields,
+            aliases=[f"{c}:" for c in tooltip_fields],
+        ) if tooltip_fields else None),
+    ).add_to(fg)
+
+
+def _render_choropleth_layer(gdf, fg, m, spec, layer_name):
+    """Render classified choropleth into a FeatureGroup + map legend."""
+    value_column = spec["value_column"]
+    gdf[value_column] = pd.to_numeric(gdf[value_column], errors="coerce")
+    valid = gdf[gdf[value_column].notna()]
+    if valid.empty:
+        return
+
+    values = valid[value_column].values
+    color_scheme = spec.get("color_scheme", "YlOrRd")
+    classification_method = spec.get("classification_method", "quantile")
+    num_classes = max(3, min(int(spec.get("num_classes", 5)), 9))
+
+    if classification_method == "equal_interval":
+        classifier = mapclassify.EqualInterval(values, k=num_classes)
+    elif classification_method == "natural_breaks":
+        classifier = mapclassify.NaturalBreaks(values, k=num_classes)
+    else:
+        classifier = mapclassify.Quantiles(values, k=num_classes)
+
+    scheme_map = {
+        "YlOrRd": cm.linear.YlOrRd_09, "YlGnBu": cm.linear.YlGnBu_09,
+        "RdYlGn": cm.linear.RdYlGn_09, "Blues": cm.linear.Blues_09,
+        "Greens": cm.linear.Greens_09, "Reds": cm.linear.Reds_09,
+        "Spectral": cm.linear.Spectral_09,
+    }
+    base_cmap = scheme_map.get(color_scheme, cm.linear.YlOrRd_09)
+    vmin, vmax = float(values.min()), float(values.max())
+    colormap_obj = base_cmap.scale(vmin, vmax)
+    colormap_obj.caption = f"{layer_name} ({value_column})"
+
+    def choro_style(feature, vc=value_column, cmap=colormap_obj):
+        val = feature["properties"].get(vc)
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            return {"fillColor": "#808080", "color": "black", "weight": 0.5, "fillOpacity": 0.4}
+        return {"fillColor": cmap(val), "color": "black", "weight": 0.5, "fillOpacity": 0.7}
+
+    tooltip_fields = [value_column] + [
+        c for c in valid.columns if c not in ("geometry", value_column)
+    ][:3]
+    folium.GeoJson(
+        valid, style_function=choro_style,
+        tooltip=folium.GeoJsonTooltip(
+            fields=tooltip_fields,
+            aliases=[f"{c}:" for c in tooltip_fields],
+        ),
+    ).add_to(fg)
+    colormap_obj.add_to(m)
+
+
+def _render_heatmap_layer(gdf, fg, spec, layer_name):
+    """Render interactive heatmap into a FeatureGroup."""
+    points = gdf[~gdf.geometry.is_empty & gdf.geometry.notna()]
+    weight_field = spec.get("weight_field")
+
+    if weight_field and weight_field in points.columns:
+        weights = pd.to_numeric(points[weight_field], errors="coerce").fillna(0).values
+        w_max = weights.max()
+        if w_max > 0:
+            weights = weights / w_max
+        heat_data = [
+            [row.geometry.centroid.y, row.geometry.centroid.x, float(w)]
+            for (_, row), w in zip(points.iterrows(), weights)
+        ]
+    else:
+        heat_data = [
+            [row.geometry.centroid.y, row.geometry.centroid.x]
+            for _, row in points.iterrows()
+        ]
+
+    plugins.HeatMap(
+        heat_data, name=layer_name,
+        radius=15, blur=10, max_zoom=18,
+    ).add_to(fg)
+
+
+def _render_bubble_layer(gdf, fg, spec, color, opacity, layer_name):
+    """Render variable-size bubble markers into a FeatureGroup."""
+    size_column = spec["value_column"]
+    gdf[size_column] = pd.to_numeric(gdf[size_column], errors="coerce")
+    valid = gdf[gdf[size_column].notna()].copy()
+    if valid.empty:
+        return
+
+    max_radius = int(spec.get("max_radius", 25))
+    min_val, max_val = valid[size_column].min(), valid[size_column].max()
+    val_range = max_val - min_val
+
+    for _, row in valid.iterrows():
+        if row.geometry is None or row.geometry.is_empty:
+            continue
+        pt = row.geometry.centroid
+        r = 3 + (row[size_column] - min_val) / val_range * (max_radius - 3) if val_range > 0 else (3 + max_radius) / 2
+
+        tooltip_parts = [
+            f"<b>{c}</b>: {row[c]}"
+            for c in valid.columns if c != "geometry" and pd.notna(row.get(c))
+        ][:5]
+        folium.CircleMarker(
+            location=[pt.y, pt.x], radius=r,
+            color=color, fill=True, fill_color=color, fill_opacity=opacity,
+            tooltip="<br>".join(tooltip_parts) if tooltip_parts else layer_name,
+        ).add_to(fg)
+
+
+# ---------------------------------------------------------------------------
+# Toolset class
+# ---------------------------------------------------------------------------
+
+_ALL_FUNCS = [
+    visualize_optimization_comparison,
+    visualize_interactive_map,
+    generate_choropleth,
+    generate_bubble_map,
+    visualize_geodataframe,
+    export_map_png,
+    generate_heatmap,
+    compose_map,
+]
+
+
+class VisualizationToolset(BaseToolset):
+    """Geospatial visualization tools: maps, charts, exports."""
+
+    async def get_tools(self, readonly_context=None):
+        all_tools = [FunctionTool(f) for f in _ALL_FUNCS]
+        if self.tool_filter is None:
+            return all_tools
+        return [t for t in all_tools if self._is_tool_selected(t, readonly_context)]
