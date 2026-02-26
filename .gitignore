@@ -45,6 +45,9 @@ data_agent/uploads/
 # Claude Code settings (local)
 .claude/
 
+# DRL model training artifacts
+v7/
+
 # Temporary/generated data files
 simple_test.docx
 test_governance_report.docx
