@@ -53,6 +53,7 @@ try:
         ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
         ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
         ACTION_USER_REGISTER,
+        ACTION_TEMPLATE_CREATE, ACTION_TEMPLATE_APPLY, ACTION_TEMPLATE_DELETE,
     )
 except ImportError:
     import agent
@@ -88,6 +89,8 @@ ensure_token_table()
 ensure_table_ownership_table()
 ensure_share_links_table()
 ensure_audit_table()
+from data_agent.template_manager import ensure_templates_table
+ensure_templates_table()
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs
 ensure_obs_connection()
@@ -641,6 +644,18 @@ TOOL_LABELS = {
     "summary_statistics": "汇总统计",
     "share_table": "共享数据表",
     "query_audit_log": "查询审计日志",
+    "save_as_template": "保存模板",
+    "list_templates": "浏览模板",
+    "delete_template": "删除模板",
+    "share_template": "共享模板",
+    "describe_raster": "栅格数据画像",
+    "calculate_ndvi": "NDVI植被指数计算",
+    "raster_band_math": "波段运算",
+    "classify_raster": "非监督分类",
+    "visualize_raster": "栅格可视化",
+    "spatial_autocorrelation": "全局空间自相关(Moran's I)",
+    "local_moran": "局部空间自相关(LISA)",
+    "hotspot_analysis": "热点分析(Gi*)",
 }
 
 AGENT_LABELS = {
@@ -913,6 +928,62 @@ TOOL_DESCRIPTIONS = {
         "method": "审计日志查询（管理员专用）",
         "params": {"days": "查询天数", "action_filter": "操作类型",
                    "username_filter": "用户名"},
+    },
+    "save_as_template": {
+        "method": "保存分析模板",
+        "params": {"template_name": "模板名称", "description": "描述"},
+    },
+    "list_templates": {
+        "method": "浏览分析模板",
+        "params": {"keyword": "搜索关键词"},
+    },
+    "delete_template": {
+        "method": "删除分析模板",
+        "params": {"template_id": "模板ID"},
+    },
+    "share_template": {
+        "method": "共享分析模板",
+        "params": {"template_id": "模板ID"},
+    },
+    "describe_raster": {
+        "method": "栅格数据画像（波段/CRS/统计）",
+        "params": {"raster_path": "栅格文件"},
+    },
+    "calculate_ndvi": {
+        "method": "NDVI植被指数计算",
+        "params": {"raster_path": "栅格文件", "red_band": "红波段序号",
+                   "nir_band": "近红外波段序号"},
+    },
+    "raster_band_math": {
+        "method": "波段代数运算",
+        "params": {"raster_path": "栅格文件", "expression": "表达式",
+                   "output_name": "输出名称"},
+    },
+    "classify_raster": {
+        "method": "非监督分类（KMeans）",
+        "params": {"raster_path": "栅格文件", "n_classes": "类别数",
+                   "method": "算法"},
+    },
+    "visualize_raster": {
+        "method": "栅格可视化渲染",
+        "params": {"raster_path": "栅格文件", "band": "波段",
+                   "colormap": "色带"},
+    },
+    "spatial_autocorrelation": {
+        "method": "全局空间自相关检验（Moran's I）",
+        "params": {"file_path": "数据文件", "column": "分析字段",
+                   "weights_type": "权重类型(queen/knn/distance)",
+                   "permutations": "置换次数"},
+    },
+    "local_moran": {
+        "method": "局部空间自相关 LISA 聚类分析",
+        "params": {"file_path": "数据文件", "column": "分析字段",
+                   "weights_type": "权重类型", "significance": "显著性阈值"},
+    },
+    "hotspot_analysis": {
+        "method": "Getis-Ord Gi* 热点/冷点分析",
+        "params": {"file_path": "数据文件", "column": "分析字段",
+                   "weights_type": "权重类型", "significance": "显著性阈值"},
     },
 }
 
@@ -1310,87 +1381,96 @@ async def main(message: cl.Message):
     if ARCPY_AVAILABLE:
         full_prompt += "\n\n[系统环境] ArcPy 引擎可用。当用户需要修复几何、按字段融合统计、或对比ArcPy与开源工具结果时，可使用 arcpy_ 前缀的工具。"
 
-    # --- SEMANTIC ROUTING ---
-    previous_pipeline = last_ctx.get("pipeline") if last_ctx else None
-    intent, intent_reason, router_tokens = classify_intent(user_text, previous_pipeline=previous_pipeline)
+    # --- Template Apply: skip intent classification if pending template ---
+    pending_template = cl.user_session.get("pending_template")
+    if pending_template:
+        cl.user_session.set("pending_template", None)  # consume it
+        intent = pending_template["intent"]
+        intent_reason = f"模板应用: {pending_template['template_name']}"
+        router_tokens = 0
+        full_prompt += f"\n\n[分析方案]\n{pending_template['plan_text']}\n请严格按照此方案执行。"
+    else:
+        # --- SEMANTIC ROUTING ---
+        previous_pipeline = last_ctx.get("pipeline") if last_ctx else None
+        intent, intent_reason, router_tokens = classify_intent(user_text, previous_pipeline=previous_pipeline)
 
-    # --- Ambiguous Intent: Ask user to clarify ---
-    if intent == "AMBIGUOUS":
-        res = await cl.AskActionMessage(
-            content=f"我不太确定您想做什么。{('（' + intent_reason + '）') if intent_reason else ''}\n\n请选择您需要的分析类型：",
-            actions=[
-                cl.Action(name="general", payload={"value": "GENERAL"}, label="通用查询与分析"),
-                cl.Action(name="governance", payload={"value": "GOVERNANCE"}, label="数据质量治理"),
-                cl.Action(name="optimization", payload={"value": "OPTIMIZATION"}, label="空间布局优化"),
-            ],
-            timeout=120,
-        ).send()
-        if res:
-            intent = res.get("value", "GENERAL")
-        else:
-            await cl.Message(content="操作超时，已自动选择通用分析管线。").send()
-            intent = "GENERAL"
+        # --- Ambiguous Intent: Ask user to clarify ---
+        if intent == "AMBIGUOUS":
+            res = await cl.AskActionMessage(
+                content=f"我不太确定您想做什么。{('（' + intent_reason + '）') if intent_reason else ''}\n\n请选择您需要的分析类型：",
+                actions=[
+                    cl.Action(name="general", payload={"value": "GENERAL"}, label="通用查询与分析"),
+                    cl.Action(name="governance", payload={"value": "GOVERNANCE"}, label="数据质量治理"),
+                    cl.Action(name="optimization", payload={"value": "OPTIMIZATION"}, label="空间布局优化"),
+                ],
+                timeout=120,
+            ).send()
+            if res:
+                intent = res.get("value", "GENERAL")
+            else:
+                await cl.Message(content="操作超时，已自动选择通用分析管线。").send()
+                intent = "GENERAL"
 
-    # --- Usage Limit Check ---
-    try:
-        from data_agent.token_tracker import check_usage_limit
-        limit_check = check_usage_limit(user_id, role)
-        if not limit_check["allowed"]:
-            await cl.Message(content=f"⚠️ {limit_check['reason']}").send()
-            return
-    except Exception:
-        pass  # non-fatal
-
-    # --- RBAC Check ---
-    if role == "viewer" and intent in ("GOVERNANCE", "OPTIMIZATION"):
+        # --- Usage Limit Check ---
         try:
-            record_audit(user_id, ACTION_RBAC_DENIED, status="denied", details={
-                "role": role, "intent": intent,
-            })
+            from data_agent.token_tracker import check_usage_limit
+            limit_check = check_usage_limit(user_id, role)
+            if not limit_check["allowed"]:
+                await cl.Message(content=f"⚠️ {limit_check['reason']}").send()
+                return
         except Exception:
-            pass
-        await cl.Message(
-            content=f"权限不足：您的角色为 **{role}**，无法访问 {intent} 管线。请联系管理员升级权限。"
-        ).send()
-        return
+            pass  # non-fatal
 
-    # --- Plan Mode Confirmation (for expensive pipelines) ---
-    PLAN_CONFIRMATION_INTENTS = {"OPTIMIZATION", "GOVERNANCE"}
-    if intent in PLAN_CONFIRMATION_INTENTS:
-        try:
-            plan_text = generate_analysis_plan(user_text, intent, uploaded_files)
-            if plan_text:
-                res = await cl.AskActionMessage(
-                    content=f"**分析方案预览**\n\n{plan_text}\n\n请确认是否执行：",
-                    actions=[
-                        cl.Action(name="confirm", payload={"value": "CONFIRM"}, label="确认执行"),
-                        cl.Action(name="modify", payload={"value": "MODIFY"}, label="修改方案"),
-                        cl.Action(name="cancel", payload={"value": "CANCEL"}, label="取消"),
-                    ],
-                    timeout=180,
-                ).send()
+        # --- RBAC Check ---
+        if role == "viewer" and intent in ("GOVERNANCE", "OPTIMIZATION"):
+            try:
+                record_audit(user_id, ACTION_RBAC_DENIED, status="denied", details={
+                    "role": role, "intent": intent,
+                })
+            except Exception:
+                pass
+            await cl.Message(
+                content=f"权限不足：您的角色为 **{role}**，无法访问 {intent} 管线。请联系管理员升级权限。"
+            ).send()
+            return
 
-                if res:
-                    choice = res.get("value", "CONFIRM")
-                    if choice == "CANCEL":
-                        await cl.Message(content="已取消本次分析。").send()
-                        return
-                    elif choice == "MODIFY":
-                        modify_res = await cl.AskUserMessage(
-                            content="请描述您想修改的内容：", timeout=180
-                        ).send()
-                        if modify_res:
-                            plan_text = generate_analysis_plan(
-                                user_text + "\n用户修改要求: " + modify_res['output'],
-                                intent, uploaded_files
-                            )
-                            await cl.Message(content=f"**修改后方案**\n\n{plan_text}").send()
-                    # Inject approved plan into prompt
-                    full_prompt += f"\n\n[分析方案]\n{plan_text}\n请严格按照此方案执行。"
-                else:
-                    await cl.Message(content="确认超时，已自动执行。").send()
-        except Exception as e:
-            print(f"Plan confirmation error: {e}")
+        # --- Plan Mode Confirmation (for expensive pipelines) ---
+        PLAN_CONFIRMATION_INTENTS = {"OPTIMIZATION", "GOVERNANCE"}
+        if intent in PLAN_CONFIRMATION_INTENTS:
+            try:
+                plan_text = generate_analysis_plan(user_text, intent, uploaded_files)
+                if plan_text:
+                    res = await cl.AskActionMessage(
+                        content=f"**分析方案预览**\n\n{plan_text}\n\n请确认是否执行：",
+                        actions=[
+                            cl.Action(name="confirm", payload={"value": "CONFIRM"}, label="确认执行"),
+                            cl.Action(name="modify", payload={"value": "MODIFY"}, label="修改方案"),
+                            cl.Action(name="cancel", payload={"value": "CANCEL"}, label="取消"),
+                        ],
+                        timeout=180,
+                    ).send()
+
+                    if res:
+                        choice = res.get("value", "CONFIRM")
+                        if choice == "CANCEL":
+                            await cl.Message(content="已取消本次分析。").send()
+                            return
+                        elif choice == "MODIFY":
+                            modify_res = await cl.AskUserMessage(
+                                content="请描述您想修改的内容：", timeout=180
+                            ).send()
+                            if modify_res:
+                                plan_text = generate_analysis_plan(
+                                    user_text + "\n用户修改要求: " + modify_res['output'],
+                                    intent, uploaded_files
+                                )
+                                await cl.Message(content=f"**修改后方案**\n\n{plan_text}").send()
+                        # Inject approved plan into prompt
+                        full_prompt += f"\n\n[分析方案]\n{plan_text}\n请严格按照此方案执行。"
+                    else:
+                        await cl.Message(content="确认超时，已自动执行。").send()
+            except Exception as e:
+                print(f"Plan confirmation error: {e}")
 
     if DYNAMIC_PLANNER:
         selected_agent = planner_agent
@@ -1723,6 +1803,20 @@ async def main(message: cl.Message):
                 description="将本次分析流程导出为可复现的 Python 脚本",
                 payload={"format": "python"}
             ),
+            cl.Action(
+                name="save_as_template",
+                value="template",
+                label="保存为模板",
+                description="将本次分析流程保存为可复用模板",
+                payload={"action": "save_template"}
+            ),
+            cl.Action(
+                name="browse_templates",
+                value="browse",
+                label="浏览模板",
+                description="查看和应用已保存的分析模板",
+                payload={"action": "browse"}
+            ),
         ]
         await cl.Message(content="分析完成。您可以下载相关文件、导出报告或分享结果。", actions=actions).send()
 
@@ -1917,3 +2011,128 @@ async def on_export_code(action: cl.Action):
         ).send()
     except Exception as e:
         await cl.Message(content=f"脚本生成失败: {str(e)}").send()
+
+
+@cl.action_callback("save_as_template")
+async def on_save_as_template(action: cl.Action):
+    """Save the current analysis pipeline as a reusable template."""
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
+    tool_log = cl.user_session.get("tool_execution_log")
+    if not tool_log:
+        await cl.Message(content="当前没有可保存的分析流程。").send()
+        return
+
+    name_res = await cl.AskUserMessage(content="请输入模板名称：", timeout=120).send()
+    if not name_res or not name_res.get("output", "").strip():
+        await cl.Message(content="已取消保存模板。").send()
+        return
+    template_name = name_res["output"].strip()
+
+    desc_res = await cl.AskUserMessage(
+        content="请输入模板描述（可选，直接回车跳过）：", timeout=120
+    ).send()
+    template_desc = desc_res.get("output", "").strip() if desc_res else ""
+
+    from data_agent.template_manager import save_as_template
+    result = save_as_template(
+        template_name=template_name,
+        description=template_desc,
+        tool_sequence=tool_log,
+        pipeline_type=cl.user_session.get("pipeline_type", "general"),
+        intent=cl.user_session.get("last_intent", "GENERAL"),
+        source_query=cl.user_session.get("last_user_message", ""),
+    )
+
+    if result["status"] == "success":
+        try:
+            record_audit(user_id, ACTION_TEMPLATE_CREATE, details={
+                "template_name": template_name,
+                "tool_count": len(tool_log),
+            })
+        except Exception:
+            pass
+    await cl.Message(content=result["message"]).send()
+
+
+@cl.action_callback("browse_templates")
+async def on_browse_templates(action: cl.Action):
+    """Browse available templates and select one to apply."""
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
+    from data_agent.template_manager import list_templates
+    result = list_templates()
+    if result["status"] != "success" or not result.get("templates"):
+        await cl.Message(content=result.get("message", "暂无可用模板。")).send()
+        return
+
+    templates = result["templates"]
+    PIPE_CN = {
+        "optimization": "空间优化", "governance": "数据治理",
+        "general": "通用分析", "planner": "动态规划",
+    }
+
+    actions = []
+    lines = ["**可用模板列表** — 点击模板名称应用\n"]
+    for t in templates[:10]:
+        tag = "[我的]" if t["is_own"] else "[共享]"
+        pipe = PIPE_CN.get(t["pipeline_type"], t["pipeline_type"])
+        desc_short = f" — {t['description'][:60]}" if t.get("description") else ""
+        lines.append(f"- **{t['name']}** {tag} | {pipe} | 使用 {t['use_count']} 次{desc_short}")
+        actions.append(cl.Action(
+            name="apply_template", value=str(t["id"]),
+            label=t["name"][:60],
+            payload={"template_id": t["id"], "template_name": t["name"]}
+        ))
+
+    await cl.Message(content="\n".join(lines), actions=actions).send()
+
+
+@cl.action_callback("apply_template")
+async def on_apply_template(action: cl.Action):
+    """Load a template and set it as pending for the next message."""
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
+    template_id = action.payload.get("template_id") if action.payload else action.value
+    template_name = action.payload.get("template_name", "") if action.payload else ""
+
+    from data_agent.template_manager import get_template, generate_plan_from_template, _increment_use_count
+    template = get_template(int(template_id))
+    if not template:
+        await cl.Message(content="模板不存在或无权访问。").send()
+        return
+
+    plan_text = generate_plan_from_template(template)
+    _increment_use_count(int(template_id))
+
+    # Store in session — next on_message will pick it up
+    cl.user_session.set("pending_template", {
+        "template_id": template_id,
+        "template_name": template["name"],
+        "pipeline_type": template["pipeline_type"],
+        "intent": template["intent"],
+        "plan_text": plan_text,
+    })
+
+    try:
+        record_audit(user_id, ACTION_TEMPLATE_APPLY, details={
+            "template_id": template_id,
+            "template_name": template["name"],
+        })
+    except Exception:
+        pass
+
+    await cl.Message(
+        content=f"已加载模板「{template['name']}」\n\n"
+                f"**分析方案**:\n{plan_text}\n\n"
+                f"请发送您的数据文件或描述分析需求，系统将按模板方案执行。"
+    ).send()

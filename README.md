@@ -1,51 +1,92 @@
-# Data Agent: AI-Powered Spatial Optimization Platform
+# GIS Data Agent (ADK Edition)
 
-![Status](https://img.shields.io/badge/Status-Active-success)
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![Framework](https://img.shields.io/badge/Framework-Chainlit%20%7C%20Google%20ADK-purple)
+**Current Version**: v3.2.0 ("Semantic Analyst")
 
-**Data Agent** 是一个专为地理空间分析设计的 AI 智能体系统。它结合了 LLM 的语义理解能力与 GIS 的空间计算能力，能够自动完成从数据诊断、破碎化评估到空间布局优化的全流程任务。
+A specialized AI Agent for Geospatial Data Analysis, Governance, and Optimization. Built with Google Agent Developer Kit (ADK), LangChain, and PostGIS.
 
-## ✨ 核心特性
-*   **🧠 智能体协同**: 5 个专业智能体 (Knowledge, Exploration, Processing, Analysis, Summary) 流水线协作。
-*   **🌍 深度 GIS 分析**: 内置 FFI (破碎化指数) 计算引擎和 Maskable PPO 深度强化学习模型。
-*   **📊 图文并茂**: 自动生成三联对比图 (Before/After/Diff) 和交互式 HTML 地图。
-*   **📄 自动化报告**: 一键导出包含所有分析结论和图表的 Word 报告。
-*   **⚡ 现代化交互**: 基于 Chainlit 的 Chat UI，支持思维链展示与实时反馈。
+## 🌟 Key Capabilities
 
-## 🚀 快速开始
+### 1. 🛡️ To G: Data Governance (数据治理)
+*   **Automated Audit**: Scans for topological errors (overlaps, self-intersections).
+*   **Compliance Check**: Verifies schema against national standards (e.g., GB/T 21010).
+*   **Multi-modal Verification**: Cross-checks PDF reports against SHP/DB metrics.
 
-### 1. 安装依赖
-```bash
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-```
+### 2. 🚀 To B: Land Use Optimization (空间优化)
+*   **DRL Engine (v7)**: Uses PPO (Proximal Policy Optimization) to optimize land use layout.
+*   **Objective**: Reduce fragmentation (FFI) and optimize slope suitability.
+*   **Paired Swaps**: Ensures strict "balance of total area" during optimization.
 
-### 2. 配置环境
-复制 `.env.example` 为 `.env` 并填入 Google Cloud Project ID。
+### 3. 🌍 General: Business Spatial Intelligence (商业智能)
+*   **Semantic Query**: "Find parcels > 5 mu with slope < 15" -> Auto-maps to DB schema.
+*   **Site Selection**: Complex chain reasoning (Query -> Buffer -> Difference -> Filter).
+*   **Clustering & Heatmaps**: DBSCAN clustering and KDE heatmaps for point data.
+*   **Catchment Analysis**: Buffer and Summarize-Within analysis.
 
-### 3. 启动应用
-```bash
-chainlit run data_agent/app.py -w
-```
-访问 `http://localhost:8000` 即可使用。
+## 🏗️ Architecture
 
-## 📚 文档中心
-*   [用户手册 (User Manual)](docs/user_manual/index.md)
-*   [运维手册 (Ops Manual)](docs/ops_manual/index.md)
-*   [开发者指南 (Dev Guide)](docs/dev_guide/index.md)
-
-## 🏗️ 架构设计
 ```mermaid
-graph LR
-    User --> Chainlit_UI
-    Chainlit_UI --> ADK_Runner
-    ADK_Runner --> DataPipeline
-    DataPipeline --> Knowledge_Agent
-    DataPipeline --> GIS_Tools[FFI/DRL/Folium]
-    GIS_Tools --> Artifacts[PNG/HTML/DOCX]
+graph TD
+    User[User Input] --> Router{Semantic Router\n(Gemini Flash)}
+    
+    Router -- "Audit/Check" --> Gov[🛡️ Governance Pipeline]
+    Router -- "Optimize/Plan" --> Opt[🚀 Optimization Pipeline]
+    Router -- "Analyze/Query" --> Gen[🌍 General Pipeline]
+    
+    subgraph "Governance Pipeline"
+        GovExploration --> GovProcessing --> GovReporter
+    end
+    
+    subgraph "Optimization Pipeline"
+        DataExploration --> DataProcessing --> DataAnalysis(DRL) --> DataViz --> DataSummary
+    end
+    
+    subgraph "General Pipeline"
+        GenProcessing(Tools: Buffer, Cluster, SQL...) --> GenViz(Heatmap/Map) --> GenSummary
+    end
 ```
 
-## 📜 许可证
-MIT License
+## 🛠️ Tech Stack
+
+*   **Core**: Python 3.12, Google ADK
+*   **LLM**: Gemini 2.0 Flash / Pro
+*   **Database**: PostgreSQL 16 + PostGIS 3.4
+*   **GIS**: GeoPandas, Shapely, Rasterio, PySAL
+*   **Viz**: Folium, Matplotlib, Seaborn
+*   **AI**: Stable Baselines 3 (PPO), PyTorch
+
+## 🚀 Getting Started
+
+1.  **Environment Setup**:
+    ```bash
+    # Install dependencies
+    pip install -r requirements.txt
+    ```
+
+2.  **Database Config**:
+    Edit `data_agent/.env` with your PostGIS credentials.
+
+3.  **Run the Agent**:
+    ```bash
+    chainlit run data_agent/app.py -w
+    ```
+
+## 🗺️ Roadmap
+
+| Version | Feature Set | Status |
+| :--- | :--- | :--- |
+| v1.0 | Local Files, Basic DRL | ✅ Done |
+| v2.0 | Excel Geocoding, Report Gen | ✅ Done |
+| v3.0 | PostGIS, Hard Routing | ✅ Done |
+| v3.1 | Multi-Pipeline Architecture | ✅ Done |
+| v3.2 | **Semantic Layer & Business Suite** | ✅ Current |
+| v4.0 | Dynamic Planner & Tool Registry | 🚧 Planned |
+| v5.0 | Multi-Modal & 3D (Cesium) | 📅 Future |
+
+## 📂 Project Structure
+
+*   `data_agent/`: Core agent logic.
+    *   `app.py`: Intent Router & UI Entry.
+    *   `agent.py`: Agent definitions & Tool registration.
+    *   `gis_processors.py`: GIS algorithms (Clustering, Buffer, etc.).
+    *   `drl_engine.py`: Deep Reinforcement Learning environment.
+*   `tests/`: Unit and integration tests.

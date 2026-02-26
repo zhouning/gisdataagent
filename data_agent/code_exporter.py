@@ -59,6 +59,25 @@ TOOL_IMPORT_MAP = {
     "query_database": "from data_agent.database_tools import query_database",
     "list_tables": "from data_agent.database_tools import list_tables",
     "describe_table": "from data_agent.database_tools import describe_table",
+    # ArcPy tools (require ArcGIS Pro)
+    "arcpy_buffer": "from data_agent.arcpy_tools import arcpy_buffer",
+    "arcpy_clip": "from data_agent.arcpy_tools import arcpy_clip",
+    "arcpy_dissolve": "from data_agent.arcpy_tools import arcpy_dissolve",
+    "arcpy_project": "from data_agent.arcpy_tools import arcpy_project",
+    "arcpy_check_geometry": "from data_agent.arcpy_tools import arcpy_check_geometry",
+    "arcpy_repair_geometry": "from data_agent.arcpy_tools import arcpy_repair_geometry",
+    "arcpy_slope": "from data_agent.arcpy_tools import arcpy_slope",
+    "arcpy_zonal_statistics": "from data_agent.arcpy_tools import arcpy_zonal_statistics",
+    # Remote sensing tools
+    "describe_raster": "from data_agent.remote_sensing import describe_raster",
+    "calculate_ndvi": "from data_agent.remote_sensing import calculate_ndvi",
+    "raster_band_math": "from data_agent.remote_sensing import raster_band_math",
+    "classify_raster": "from data_agent.remote_sensing import classify_raster",
+    "visualize_raster": "from data_agent.remote_sensing import visualize_raster",
+    # Spatial statistics tools
+    "spatial_autocorrelation": "from data_agent.spatial_statistics import spatial_autocorrelation",
+    "local_moran": "from data_agent.spatial_statistics import local_moran",
+    "hotspot_analysis": "from data_agent.spatial_statistics import hotspot_analysis",
 }
 
 # Tools that depend on platform context and should not be exported
@@ -66,6 +85,7 @@ NON_EXPORTABLE_TOOLS = {
     "save_memory", "recall_memories", "list_memories", "delete_memory",
     "get_usage_summary", "list_user_files", "delete_user_file",
     "query_audit_log", "share_table",
+    "save_as_template", "list_templates", "delete_template", "share_template",
 }
 
 PIPELINE_LABELS = {
@@ -80,6 +100,22 @@ _PATH_ARG_NAMES = {
     "file_path", "input_path", "output_path", "raster_path",
     "target_path", "join_path", "zone_path", "value_path",
     "pdf_path", "shp_path", "data_path", "clip_path",
+}
+
+# Tools requiring special environment setup
+COMPLEX_TOOLS = {
+    "drl_model": "DRL 模型需要 PyTorch + scorer_weights_v7.pt 权重文件",
+    "check_consistency": "多模态一致性检查，需要特定格式的 PDF 文档和 SHP 数据",
+}
+
+# Tools requiring API keys
+API_KEY_TOOLS = {
+    "batch_geocode": "GAODE_API_KEY",
+    "reverse_geocode": "GAODE_API_KEY",
+    "calculate_driving_distance": "GAODE_API_KEY",
+    "search_nearby_poi": "GAODE_API_KEY",
+    "search_poi_by_keyword": "GAODE_API_KEY",
+    "get_admin_boundary": "GAODE_API_KEY",
 }
 
 
@@ -108,7 +144,7 @@ def generate_python_script(
     """
     parts = []
     parts.append(_build_header(pipeline_type, user_message, intent, uploaded_files))
-    parts.append(_build_setup_block())
+    parts.append(_build_setup_block(tool_log))
     parts.append(_build_imports(tool_log))
     parts.append("")
 
@@ -117,6 +153,9 @@ def generate_python_script(
                   if r["tool_name"] not in NON_EXPORTABLE_TOOLS and not r.get("is_error")]
     total_exportable = len(exportable)
     export_step = 0
+
+    # Data flow tracing: map output_path → variable name
+    path_map = {}  # {output_path_string: "result_N"}
 
     for record in tool_log:
         tool_name = record["tool_name"]
@@ -138,7 +177,18 @@ def generate_python_script(
             continue
 
         export_step += 1
-        parts.append(_build_step(record, export_step, total_exportable, tool_descriptions))
+        parts.append(_build_step(record, export_step, total_exportable,
+                                 tool_descriptions, path_map))
+
+        # Register output_path for data flow chaining
+        output_path = record.get("output_path")
+        if output_path:
+            var_name = f"result_{export_step}"
+            path_map[output_path] = var_name
+            # Also register basename for fuzzy matching
+            basename = os.path.basename(output_path)
+            if basename:
+                path_map[basename] = var_name
 
     parts.append(f'print(f"\\n\\u2713 分析完成，共 {total_exportable} 个步骤。")')
     parts.append("")
@@ -176,18 +226,35 @@ GIS Data Agent — 分析流程导出
 '''
 
 
-def _build_setup_block() -> str:
+def _build_setup_block(tool_log: Optional[List[Dict]] = None) -> str:
     """Build the sys.path and user_context initialization block."""
-    return '''import os, sys
+    lines = [
+        'import os, sys',
+        '',
+        '# 将项目根目录加入 Python 路径',
+        '_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))',
+        'if _project_root not in sys.path:',
+        '    sys.path.insert(0, _project_root)',
+        '',
+        'from data_agent.user_context import current_user_id',
+        'current_user_id.set("script_export")',
+    ]
 
-# 将项目根目录加入 Python 路径
-_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _project_root not in sys.path:
-    sys.path.insert(0, _project_root)
+    # Check if any API-key-dependent tools are used
+    if tool_log:
+        needed_keys = set()
+        for record in tool_log:
+            key = API_KEY_TOOLS.get(record.get("tool_name"))
+            if key and not record.get("is_error"):
+                needed_keys.add(key)
+        if needed_keys:
+            lines.append('')
+            lines.append('# --- 检查必要的 API 密钥 ---')
+            for key in sorted(needed_keys):
+                lines.append(f'if not os.environ.get("{key}"):')
+                lines.append(f'    print("WARNING: {key} 未设置，相关工具将无法运行。")')
 
-from data_agent.user_context import current_user_id
-current_user_id.set("script_export")
-'''
+    return '\n'.join(lines) + '\n'
 
 
 def _build_imports(tool_log: List[Dict]) -> str:
@@ -217,6 +284,7 @@ def _build_step(
     step_num: int,
     total: int,
     tool_descriptions: Optional[Dict],
+    path_map: Optional[Dict[str, str]] = None,
 ) -> str:
     """Build a single tool call code block."""
     tool_name = record["tool_name"]
@@ -237,6 +305,15 @@ def _build_step(
     if agent_name:
         lines.append(f"# Agent: {agent_name}")
 
+    # Warnings for complex tools
+    if tool_name in COMPLEX_TOOLS:
+        lines.append(f"# WARNING: {COMPLEX_TOOLS[tool_name]}")
+        lines.append("# TODO: 运行前请确认环境依赖已安装")
+
+    # Warnings for API-key-dependent tools
+    if tool_name in API_KEY_TOOLS:
+        lines.append(f"# IMPORTANT: 此工具需要 {API_KEY_TOOLS[tool_name]} 环境变量")
+
     lines.append(f'print("步骤 {step_num}/{total}: {desc}...")')
 
     # Build function call
@@ -247,6 +324,12 @@ def _build_step(
         pre_vars = []
         call_args = []
         for key, value in args.items():
+            # Data flow tracing: check if value matches a previous output_path
+            chained_var = _check_path_chain(key, value, path_map)
+            if chained_var:
+                call_args.append(f"    {key}={chained_var},  # 来自前序步骤的输出")
+                continue
+
             formatted = _format_arg_value(key, value)
             if len(formatted) > 120 or "\n" in str(value):
                 var_name = f"_{key}_{step_num}"
@@ -266,6 +349,30 @@ def _build_step(
     lines.append("")
 
     return "\n".join(lines)
+
+
+def _check_path_chain(
+    key: str, value, path_map: Optional[Dict[str, str]]
+) -> Optional[str]:
+    """Check if an argument value matches a previous step's output_path.
+
+    Returns the variable name (e.g. 'result_1') if matched, else None.
+    """
+    if not path_map or not isinstance(value, str):
+        return None
+    # Exact match
+    if value in path_map:
+        return path_map[value]
+    # Basename match
+    basename = os.path.basename(value)
+    if basename and basename in path_map:
+        return path_map[basename]
+    # Normalized path match (handle mixed slashes)
+    norm = os.path.normpath(value)
+    for stored_path, var_name in path_map.items():
+        if os.path.normpath(stored_path) == norm:
+            return var_name
+    return None
 
 
 def _format_arg_value(key: str, value) -> str:
