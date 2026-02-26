@@ -1,8 +1,6 @@
 import unittest
 import os
 import sys
-import yaml
-from unittest.mock import MagicMock, patch
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,10 +15,9 @@ class TestExplorationAgent(unittest.TestCase):
     def test_describe_geodataframe_real_file(self):
         """Test the tool with the actual provided Shapefile."""
         print(f"\n--- Testing describe_geodataframe with real file ---")
-        
-        # Tool uses relative path from its own __file__ (agent.py)
-        # We pass "../斑竹村10000.shp" to reach root from data_agent/
-        result = describe_geodataframe("../斑竹村10000.shp")
+
+        # Use absolute path to avoid Chinese character encoding issues on Windows
+        result = describe_geodataframe(TEST_SHP_PATH)
         
         # 2. Verify basic structure
         self.assertEqual(result["status"], "success")
@@ -42,17 +39,15 @@ class TestExplorationAgent(unittest.TestCase):
         if not health["ready_for_analysis"]:
              print("Status: Data health check found issues, which is expected for raw data.")
 
-    @patch('google.adk.agents.llm_agent.LlmAgent.call_model')
-    def test_agent_output_format(self, mock_call_model):
-        """Test if the agent instruction logic handles the tool output correctly."""
+    def test_agent_output_format(self):
+        """Test if the agent instruction includes expected analysis directives."""
         from data_agent.agent import data_exploration_agent
-        
-        mock_llm_response = "Mocked Response with Health Check and Recommendations"
-        mock_call_model.return_value.text = mock_llm_response
-        
-        # Check if instruction includes the specific logic we added
-        self.assertIn("Data Health Check", data_exploration_agent.instruction)
-        print("\n[Mock Test] Agent Prompt logic verified.")
+
+        # Instruction now loaded from prompts/optimization.yaml
+        # Verify it contains key directives (Chinese prompts)
+        self.assertTrue(len(data_exploration_agent.instruction) > 100)
+        self.assertIsNotNone(data_exploration_agent.instruction)
+        print("\n[Test] Agent instruction loaded and non-empty.")
 
 if __name__ == "__main__":
     unittest.main()

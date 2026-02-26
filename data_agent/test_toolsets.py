@@ -1,0 +1,299 @@
+"""Tests for the toolset architecture and BaseToolset integration."""
+import unittest
+import asyncio
+
+
+class TestToolsetCounts(unittest.TestCase):
+    """Verify each toolset returns the expected number of tools."""
+
+    def _run(self, coro):
+        return asyncio.get_event_loop().run_until_complete(coro)
+
+    def test_exploration_toolset(self):
+        from data_agent.toolsets.exploration_tools import ExplorationToolset
+        ts = ExplorationToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("describe_geodataframe", names)
+        self.assertIn("check_topology", names)
+        self.assertIn("reproject_spatial_data", names)
+        self.assertEqual(len(tools), 6)
+
+    def test_processing_toolset(self):
+        from data_agent.toolsets.processing_tools import ProcessingToolset
+        ts = ProcessingToolset(include_arcpy=False)
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("batch_geocode", names)
+        self.assertIn("create_buffer", names)
+        self.assertGreaterEqual(len(tools), 23)
+
+    def test_analysis_toolset(self):
+        from data_agent.toolsets.analysis_tools import AnalysisToolset
+        ts = AnalysisToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("ffi", names)
+        self.assertIn("drl_model", names)
+        self.assertEqual(len(tools), 2)
+
+    def test_visualization_toolset(self):
+        from data_agent.toolsets.visualization_tools import VisualizationToolset
+        ts = VisualizationToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("visualize_interactive_map", names)
+        self.assertIn("generate_choropleth", names)
+        self.assertIn("generate_heatmap", names)
+        self.assertIn("compose_map", names)
+        self.assertEqual(len(tools), 8)
+
+    def test_database_toolset(self):
+        from data_agent.toolsets.database_tools_set import DatabaseToolset
+        ts = DatabaseToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("query_database", names)
+        self.assertIn("list_tables", names)
+        self.assertEqual(len(tools), 4)
+
+    def test_platform_toolset(self):
+        from data_agent.toolsets.platform_tools import PlatformToolset
+        ts = PlatformToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("list_user_files", names)
+        self.assertIn("save_memory", names)
+        self.assertIn("get_usage_summary", names)
+        self.assertIn("list_templates", names)
+        self.assertIn("delete_template", names)
+        self.assertIn("share_template", names)
+        self.assertEqual(len(tools), 11)
+
+    def test_spatial_statistics_toolset(self):
+        from data_agent.toolsets.spatial_statistics_tools import SpatialStatisticsToolset
+        ts = SpatialStatisticsToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("spatial_autocorrelation", names)
+        self.assertIn("local_moran", names)
+        self.assertIn("hotspot_analysis", names)
+        self.assertEqual(len(tools), 3)
+
+
+class TestToolFilter(unittest.TestCase):
+    """Verify tool_filter correctly restricts tool sets."""
+
+    def _run(self, coro):
+        return asyncio.get_event_loop().run_until_complete(coro)
+
+    def test_filter_by_name(self):
+        from data_agent.toolsets.exploration_tools import ExplorationToolset
+        ts = ExplorationToolset(tool_filter=["describe_geodataframe", "check_topology"])
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertEqual(set(names), {"describe_geodataframe", "check_topology"})
+
+    def test_filter_empty(self):
+        from data_agent.toolsets.database_tools_set import DatabaseToolset
+        ts = DatabaseToolset(tool_filter=["nonexistent_tool"])
+        tools = self._run(ts.get_tools())
+        self.assertEqual(len(tools), 0)
+
+    def test_platform_filter_memory_only(self):
+        from data_agent.toolsets.platform_tools import PlatformToolset
+        ts = PlatformToolset(tool_filter=[
+            "save_memory", "recall_memories", "list_memories", "delete_memory",
+        ])
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(names, {"save_memory", "recall_memories", "list_memories", "delete_memory"})
+
+    def test_processing_filter_geocoding_only(self):
+        from data_agent.toolsets.processing_tools import ProcessingToolset
+        ts = ProcessingToolset(include_arcpy=False, tool_filter=[
+            "batch_geocode", "reverse_geocode", "calculate_driving_distance",
+        ])
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(names, {"batch_geocode", "reverse_geocode", "calculate_driving_distance"})
+
+    def test_visualization_filter_excludes_optimization(self):
+        from data_agent.toolsets.visualization_tools import VisualizationToolset
+        ts = VisualizationToolset(tool_filter=[
+            "visualize_geodataframe", "visualize_interactive_map",
+            "generate_choropleth", "generate_bubble_map",
+            "export_map_png", "compose_map", "generate_heatmap",
+        ])
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertNotIn("visualize_optimization_comparison", names)
+        self.assertEqual(len(tools), 7)
+
+
+class TestFilterPresets(unittest.TestCase):
+    """Verify the named filter presets in agent.py resolve correctly."""
+
+    def _run(self, coro):
+        return asyncio.get_event_loop().run_until_complete(coro)
+
+    def test_audit_tools_preset(self):
+        from data_agent.agent import _AUDIT_TOOLS
+        from data_agent.toolsets.exploration_tools import ExplorationToolset
+        ts = ExplorationToolset(tool_filter=_AUDIT_TOOLS)
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(len(tools), 4)
+        self.assertIn("describe_geodataframe", names)
+        self.assertIn("check_topology", names)
+        self.assertNotIn("reproject_spatial_data", names)
+
+    def test_transform_tools_preset(self):
+        from data_agent.agent import _TRANSFORM_TOOLS
+        from data_agent.toolsets.exploration_tools import ExplorationToolset
+        ts = ExplorationToolset(tool_filter=_TRANSFORM_TOOLS)
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(len(tools), 2)
+        self.assertIn("reproject_spatial_data", names)
+        self.assertIn("engineer_spatial_features", names)
+
+    def test_db_read_preset(self):
+        from data_agent.agent import _DB_READ
+        from data_agent.toolsets.database_tools_set import DatabaseToolset
+        ts = DatabaseToolset(tool_filter=_DB_READ)
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(names, {"query_database", "list_tables"})
+
+    def test_memory_admin_combined(self):
+        from data_agent.agent import _MEMORY_TOOLS, _ADMIN_TOOLS
+        from data_agent.toolsets.platform_tools import PlatformToolset
+        ts = PlatformToolset(tool_filter=_MEMORY_TOOLS + _ADMIN_TOOLS)
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(len(tools), 9)
+        self.assertIn("save_memory", names)
+        self.assertIn("list_templates", names)
+        self.assertNotIn("list_user_files", names)
+
+
+class TestNoDuplicateToolNames(unittest.TestCase):
+    """Verify no name collisions across all toolsets."""
+
+    def _run(self, coro):
+        return asyncio.get_event_loop().run_until_complete(coro)
+
+    def test_all_toolset_names_unique(self):
+        from data_agent.toolsets.exploration_tools import ExplorationToolset
+        from data_agent.toolsets.processing_tools import ProcessingToolset
+        from data_agent.toolsets.analysis_tools import AnalysisToolset
+        from data_agent.toolsets.visualization_tools import VisualizationToolset
+        from data_agent.toolsets.database_tools_set import DatabaseToolset
+        from data_agent.toolsets.platform_tools import PlatformToolset
+        from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
+        from data_agent.toolsets.spatial_statistics_tools import SpatialStatisticsToolset
+
+        all_names = []
+        for ts_cls, kwargs in [
+            (ExplorationToolset, {}),
+            (ProcessingToolset, {"include_arcpy": False}),
+            (AnalysisToolset, {}),
+            (VisualizationToolset, {}),
+            (DatabaseToolset, {}),
+            (PlatformToolset, {}),
+            (RemoteSensingToolset, {}),
+            (SpatialStatisticsToolset, {}),
+        ]:
+            ts = ts_cls(**kwargs)
+            tools = self._run(ts.get_tools())
+            all_names.extend(t.name for t in tools)
+
+        duplicates = [n for n in all_names if all_names.count(n) > 1]
+        # generate_heatmap is in both Processing and Visualization — known overlap
+        allowed_overlaps = {"generate_heatmap"}
+        unexpected = set(duplicates) - allowed_overlaps
+        self.assertEqual(unexpected, set(), f"Unexpected duplicate tool names: {unexpected}")
+
+
+class TestPromptLoading(unittest.TestCase):
+    """Verify prompt loading from YAML files."""
+
+    def test_optimization_prompts(self):
+        from data_agent.prompts import get_prompt
+        prompt = get_prompt("optimization", "knowledge_agent_instruction")
+        self.assertIn("FFI", prompt)
+        self.assertIn("Vertex AI Search", prompt)
+
+    def test_planner_prompts(self):
+        from data_agent.prompts import get_prompt
+        prompt = get_prompt("planner", "planner_instruction")
+        self.assertIn("PlannerExplorer", prompt)
+
+    def test_general_prompts(self):
+        from data_agent.prompts import get_prompt
+        prompt = get_prompt("general", "governance_reporter_instruction")
+        self.assertIn("审计", prompt)
+
+    def test_all_prompt_keys(self):
+        from data_agent.prompts import load_prompts
+        opt = load_prompts("optimization")
+        self.assertEqual(len(opt), 6)
+        planner = load_prompts("planner")
+        self.assertEqual(len(planner), 7)
+        general = load_prompts("general")
+        self.assertEqual(len(general), 4)
+
+
+class TestBackwardCompat(unittest.TestCase):
+    """Verify backward-compatible imports from data_agent.agent still work."""
+
+    def test_pipeline_imports(self):
+        from data_agent.agent import root_agent, data_pipeline, governance_pipeline, general_pipeline, planner_agent
+        self.assertIsNotNone(root_agent)
+        self.assertIsNotNone(data_pipeline)
+        self.assertIsNotNone(governance_pipeline)
+        self.assertIsNotNone(general_pipeline)
+        self.assertIsNotNone(planner_agent)
+
+    def test_utility_imports(self):
+        from data_agent.agent import _load_spatial_data, _add_basemap_layers, TIANDITU_TOKEN, ARCPY_AVAILABLE
+        self.assertIsNotNone(_load_spatial_data)
+        self.assertIsNotNone(_add_basemap_layers)
+
+    def test_tool_function_imports(self):
+        from data_agent.agent import (
+            ffi, drl_model, describe_geodataframe, engineer_spatial_features,
+            reproject_spatial_data, visualize_optimization_comparison,
+            visualize_interactive_map, list_user_files, delete_user_file,
+            MODEL_STANDARD,
+        )
+        self.assertTrue(callable(ffi))
+        self.assertTrue(callable(drl_model))
+        self.assertTrue(callable(describe_geodataframe))
+
+    def test_callback_imports(self):
+        from data_agent.agent import _self_correction_after_tool, _tool_retry_counts, _quality_gate_check
+        self.assertTrue(callable(_self_correction_after_tool))
+        self.assertIsInstance(_tool_retry_counts, dict)
+
+    def test_filter_preset_imports(self):
+        from data_agent.agent import _AUDIT_TOOLS, _TRANSFORM_TOOLS, _DB_READ, _MEMORY_TOOLS, _ADMIN_TOOLS
+        self.assertIsInstance(_AUDIT_TOOLS, list)
+        self.assertIn("describe_geodataframe", _AUDIT_TOOLS)
+        self.assertIn("reproject_spatial_data", _TRANSFORM_TOOLS)
+
+    def test_gis_processor_re_exports(self):
+        from data_agent.agent import _generate_output_path, _resolve_path
+        self.assertTrue(callable(_generate_output_path))
+        self.assertTrue(callable(_resolve_path))
+
+    def test_spatial_statistics_imports(self):
+        from data_agent.agent import spatial_autocorrelation, local_moran, hotspot_analysis
+        self.assertTrue(callable(spatial_autocorrelation))
+        self.assertTrue(callable(local_moran))
+        self.assertTrue(callable(hotspot_analysis))
+
+
+if __name__ == "__main__":
+    unittest.main()
