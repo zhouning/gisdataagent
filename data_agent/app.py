@@ -614,6 +614,8 @@ TOOL_LABELS = {
     "search_nearby_poi": "周边POI搜索",
     "search_poi_by_keyword": "关键词POI搜索",
     "get_admin_boundary": "行政区划边界获取",
+    "get_population_data": "人口密度统计",
+    "aggregate_population": "人口聚合统计",
     "visualize_geodataframe": "静态地图渲染",
     "visualize_interactive_map": "交互地图生成",
     "visualize_optimization_comparison": "优化对比图",
@@ -743,7 +745,7 @@ TOOL_DESCRIPTIONS = {
         "params": {"zone_vector": "区域矢量", "value_raster": "值栅格", "stats": "统计指标"},
     },
     "batch_geocode": {
-        "method": "批量地理编码（地址→坐标, 高德API）",
+        "method": "批量地理编码（地址→坐标, 含置信度评级）",
         "params": {"file_path": "数据文件", "address_col": "地址列", "city": "城市"},
     },
     "reverse_geocode": {
@@ -767,6 +769,14 @@ TOOL_DESCRIPTIONS = {
     "get_admin_boundary": {
         "method": "行政区划边界获取（高德API）",
         "params": {"district_name": "行政区名称", "with_sub_districts": "含子区划"},
+    },
+    "get_population_data": {
+        "method": "人口密度统计（WorldPop 100m栅格）",
+        "params": {"district_name": "行政区名称", "year": "年份", "country_code": "国家代码"},
+    },
+    "aggregate_population": {
+        "method": "自定义人口聚合统计（分区栅格统计）",
+        "params": {"polygon_path": "面矢量路径", "raster_path": "人口栅格路径", "stats": "统计指标"},
     },
     "ffi": {
         "method": "耕地破碎化指数（FFI, 6项景观指标）",
@@ -1007,6 +1017,24 @@ def _format_tool_explanation(tool_name: str, args: dict) -> str:
             display_str = display_str[:120] + "..."
         lines.append(f"- {label}: `{display_str}`")
     return "\n".join(lines)
+
+
+def _build_step_summary(step: dict, step_idx: int) -> str:
+    """Build a one-line summary of a tool execution step for the step browser."""
+    tool_name = step.get("tool_name", "")
+    desc = TOOL_DESCRIPTIONS.get(tool_name, {})
+    method = desc.get("method", TOOL_LABELS.get(tool_name, tool_name))
+    status = "失败" if step.get("is_error") else "成功"
+    duration = step.get("duration", 0)
+    out = step.get("output_path")
+    out_str = f" -> `{os.path.basename(out)}`" if out else ""
+    return f"**步骤 {step_idx}**. {method} [{status}, {duration:.1f}s]{out_str}"
+
+
+NON_RERUNNABLE_TOOLS = {
+    "save_memory", "recall_memories", "list_memories", "delete_memory",
+    "get_usage_summary", "query_audit_log", "share_table",
+}
 
 
 def _sync_tool_output_to_obs(resp_data) -> None:
@@ -1817,6 +1845,13 @@ async def main(message: cl.Message):
                 description="查看和应用已保存的分析模板",
                 payload={"action": "browse"}
             ),
+            cl.Action(
+                name="browse_steps",
+                value="browse",
+                label="查看分析步骤",
+                description="查看并重新执行本次分析的各个步骤",
+                payload={"action": "browse_steps"}
+            ),
         ]
         await cl.Message(content="分析完成。您可以下载相关文件、导出报告或分享结果。", actions=actions).send()
 
@@ -2136,3 +2171,196 @@ async def on_apply_template(action: cl.Action):
                 f"**分析方案**:\n{plan_text}\n\n"
                 f"请发送您的数据文件或描述分析需求，系统将按模板方案执行。"
     ).send()
+
+
+# ---------------------------------------------------------------------------
+# Step Browser & Re-execution (PRD 5.2.3)
+# ---------------------------------------------------------------------------
+
+@cl.action_callback("browse_steps")
+async def on_browse_steps(action: cl.Action):
+    """Display the tool execution log with per-step re-run buttons."""
+    tool_log = cl.user_session.get("tool_execution_log")
+    if not tool_log:
+        await cl.Message(content="当前没有可查看的分析步骤。").send()
+        return
+
+    lines = ["## 分析步骤总览\n"]
+    actions = []
+    for i, step in enumerate(tool_log):
+        step_idx = i + 1
+        lines.append(_build_step_summary(step, step_idx))
+        if step.get("tool_name") not in NON_RERUNNABLE_TOOLS:
+            actions.append(cl.Action(
+                name="rerun_step",
+                value=str(i),
+                label=f"重跑步骤 {step_idx}",
+                description=TOOL_DESCRIPTIONS.get(
+                    step["tool_name"], {}
+                ).get("method", step["tool_name"]),
+                payload={"step_index": i},
+            ))
+
+    await cl.Message(
+        content="\n".join(lines),
+        actions=actions,
+    ).send()
+
+
+@cl.action_callback("rerun_step")
+async def on_rerun_step(action: cl.Action):
+    """Re-run a single tool step, optionally with modified parameters."""
+    import importlib
+    import inspect
+    import time as _time
+
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
+    tool_log = cl.user_session.get("tool_execution_log")
+    step_index = int(action.value)
+    if not tool_log or step_index >= len(tool_log):
+        await cl.Message(content="步骤数据不存在。").send()
+        return
+
+    step = tool_log[step_index]
+    tool_name = step["tool_name"]
+    original_args = dict(step.get("args", {}))
+
+    # Show current parameters and offer choices
+    explanation = _format_tool_explanation(tool_name, original_args)
+    choice_msg = await cl.AskActionMessage(
+        content=f"**重新执行**: {explanation}\n\n请选择执行方式：",
+        actions=[
+            cl.Action(name="rerun_mode", value="direct", label="直接执行（原参数）"),
+            cl.Action(name="rerun_mode", value="modify", label="修改参数后执行"),
+            cl.Action(name="rerun_mode", value="cancel", label="取消"),
+        ],
+    ).send()
+
+    if not choice_msg or choice_msg.get("value") == "cancel":
+        return
+
+    args = dict(original_args)
+
+    if choice_msg.get("value") == "modify":
+        desc = TOOL_DESCRIPTIONS.get(tool_name, {})
+        param_labels = desc.get("params", {})
+
+        for key, value in original_args.items():
+            label = param_labels.get(key, key)
+            current_val = str(value) if value is not None else ""
+            user_input = await cl.AskUserMessage(
+                content=f"**{label}** (`{key}`)\n当前值: `{current_val}`\n"
+                        f"输入新值（直接回车保持原值）：",
+                timeout=120,
+            ).send()
+
+            if user_input and user_input.get("output", "").strip():
+                new_val = user_input["output"].strip()
+                if isinstance(value, bool):
+                    args[key] = new_val.lower() in ("true", "1", "yes", "是")
+                elif isinstance(value, int):
+                    try:
+                        args[key] = int(new_val)
+                    except ValueError:
+                        args[key] = new_val
+                elif isinstance(value, float):
+                    try:
+                        args[key] = float(new_val)
+                    except ValueError:
+                        args[key] = new_val
+                else:
+                    args[key] = new_val
+
+    # Resolve file paths in args
+    _PATH_KEYS = {
+        "file_path", "input_path", "raster_path", "zone_vector",
+        "value_raster", "target_file", "join_file", "input_features",
+        "clip_features", "zone_features", "dem_raster", "extent_file",
+        "raster_file", "data_file", "reference_file", "erase_file",
+        "original_data_path", "optimized_data_path", "data_path",
+        "polygon_path", "shp_path",
+    }
+    from data_agent.gis_processors import _resolve_path
+    for key, value in args.items():
+        if isinstance(value, str) and key in _PATH_KEYS:
+            try:
+                args[key] = _resolve_path(value)
+            except Exception:
+                pass
+
+    # Dynamic import of the tool function
+    from data_agent.code_exporter import TOOL_IMPORT_MAP
+    import_stmt = TOOL_IMPORT_MAP.get(tool_name)
+    if not import_stmt:
+        await cl.Message(content=f"工具 `{tool_name}` 无法动态导入，不支持重新执行。").send()
+        return
+
+    # Parse "from data_agent.xxx import func_name"
+    parts = import_stmt.split()
+    module_path = parts[1]
+    func_name = parts[3]
+
+    progress_msg = await cl.Message(
+        content=f"正在重新执行 **{TOOL_LABELS.get(tool_name, tool_name)}**..."
+    ).send()
+
+    try:
+        mod = importlib.import_module(module_path)
+        func = getattr(mod, func_name)
+
+        start_time = _time.time()
+        if inspect.iscoroutinefunction(func):
+            result = await func(**args)
+        else:
+            result = func(**args)
+        duration = _time.time() - start_time
+
+        # Parse result
+        is_error = False
+        output_path = None
+        result_summary = ""
+        if isinstance(result, dict):
+            is_error = result.get("status") == "error"
+            output_path = result.get("output_path")
+            result_summary = str(result.get("message", result.get("error_message", "")))[:200]
+        elif isinstance(result, str):
+            result_summary = result[:200]
+
+        # Update tool_execution_log
+        tool_log[step_index] = {
+            "step": step["step"],
+            "agent_name": step.get("agent_name", "") + " (重跑)",
+            "tool_name": tool_name,
+            "args": args,
+            "output_path": output_path,
+            "result_summary": result_summary,
+            "duration": duration,
+            "is_error": is_error,
+        }
+        cl.user_session.set("tool_execution_log", tool_log)
+
+        # Display result
+        result_str = str(result)
+        if len(result_str) > 1000:
+            result_str = result_str[:1000] + "..."
+
+        elements = []
+        if output_path and os.path.exists(str(output_path)):
+            ext = os.path.splitext(str(output_path))[1].lower()
+            basename = os.path.basename(str(output_path))
+            if ext == '.png':
+                elements.append(cl.Image(path=str(output_path), name=basename, display="inline"))
+            else:
+                elements.append(cl.File(path=str(output_path), name=basename))
+
+        await cl.Message(
+            content=f"**重新执行完成** ({duration:.1f}s)\n\n```\n{result_str}\n```",
+            elements=elements,
+        ).send()
+
+    except Exception as e:
+        await cl.Message(content=f"重新执行失败: {str(e)}").send()
