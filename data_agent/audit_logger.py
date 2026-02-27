@@ -28,6 +28,7 @@ ACTION_CODE_EXPORT = "code_export"
 ACTION_TEMPLATE_CREATE = "template_create"
 ACTION_TEMPLATE_APPLY = "template_apply"
 ACTION_TEMPLATE_DELETE = "template_delete"
+ACTION_WECOM_MESSAGE = "wecom_message"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -46,6 +47,7 @@ ACTION_LABELS = {
     ACTION_TEMPLATE_CREATE: "创建模板",
     ACTION_TEMPLATE_APPLY: "应用模板",
     ACTION_TEMPLATE_DELETE: "删除模板",
+    ACTION_WECOM_MESSAGE: "企业微信消息",
 }
 
 

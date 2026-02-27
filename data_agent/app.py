@@ -97,6 +97,10 @@ ensure_obs_connection()
 if ARCPY_AVAILABLE:
     print("[ArcPy] ArcPy engine available and connected.")
 
+# --- Enterprise WeChat Bot (conditional) ---
+from data_agent.wecom_bot import ensure_wecom_connection, is_wecom_configured
+ensure_wecom_connection()
+
 DYNAMIC_PLANNER = os.environ.get("DYNAMIC_PLANNER", "true").lower() in ("true", "1", "yes")
 if DYNAMIC_PLANNER:
     print("[Planner] Dynamic Planner mode enabled.")
@@ -577,6 +581,12 @@ else:
     chainlit_app.router.routes.append(_audit_page_route)
 
 print("[Audit] Admin audit viewer enabled at /admin/audit")
+
+# --- Mount Enterprise WeChat bot routes (conditional) ---
+if is_wecom_configured():
+    from data_agent.wecom_bot import mount_wecom_routes
+    if mount_wecom_routes(chainlit_app):
+        print("[WeCom] Callback routes mounted at /wecom/callback")
 
 # Base upload directory (per-user dirs created inside)
 BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")

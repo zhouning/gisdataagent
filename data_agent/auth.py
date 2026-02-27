@@ -148,6 +148,49 @@ def register_user(username: str, password: str, display_name: str = "") -> dict:
         return {"status": "error", "message": f"注册失败: {str(e)}"}
 
 
+def ensure_wecom_user(wecom_userid: str) -> dict:
+    """
+    Ensure a WeChat Enterprise user exists in app_users.
+    Auto-creates as analyst if not found. Username: wx_{wecom_userid}.
+
+    Returns: {"username": "wx_{...}", "display_name": "...", "role": "analyst"}
+    """
+    username = f"wx_{wecom_userid}"
+    db_url = get_db_connection_url()
+
+    if not db_url:
+        return {"username": username, "display_name": username, "role": "analyst"}
+
+    try:
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                f"SELECT username, display_name, role FROM {T_APP_USERS} WHERE username = :u"
+            ), {"u": username})
+            row = result.fetchone()
+
+            if row:
+                return {
+                    "username": row[0],
+                    "display_name": row[1] or row[0],
+                    "role": row[2] or "analyst",
+                }
+
+            # Auto-create: random password (never used for WeCom login)
+            pw_hash = _make_password_hash(secrets.token_hex(16))
+            conn.execute(text(
+                f"INSERT INTO {T_APP_USERS} "
+                "(username, password_hash, display_name, role, auth_provider) "
+                "VALUES (:u, :p, :d, 'analyst', 'wecom')"
+            ), {"u": username, "p": pw_hash, "d": f"WeCom:{wecom_userid}"})
+            conn.commit()
+            print(f"[Auth] Created WeCom user: {username}")
+            return {"username": username, "display_name": f"WeCom:{wecom_userid}", "role": "analyst"}
+    except Exception as e:
+        print(f"[Auth] Error ensuring WeCom user: {e}")
+        return {"username": username, "display_name": username, "role": "analyst"}
+
+
 def upsert_oauth_user(email: str, display_name: str, provider: str) -> dict:
     """Create or update an OAuth user on first login. Returns user dict."""
     db_url = get_db_connection_url()
