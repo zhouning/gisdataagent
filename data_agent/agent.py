@@ -67,6 +67,15 @@ from .spatial_statistics import spatial_autocorrelation, local_moran, hotspot_an
 from .gis_processors import _generate_output_path, _resolve_path
 from .database_tools import T_TABLE_OWNERSHIP
 
+# --- Semantic Layer tool functions (registered as bare callables) ---
+from .semantic_layer import (
+    resolve_semantic_context,
+    describe_table_semantic,
+    register_semantic_annotation,
+    register_source_metadata,
+    list_semantic_sources,
+)
+
 # ---------------------------------------------------------------------------
 # Tool filter presets — reusable across agents
 # ---------------------------------------------------------------------------
@@ -254,6 +263,11 @@ general_processing_agent = LlmAgent(
         PlatformToolset(),
         RemoteSensingToolset(),
         SpatialStatisticsToolset(),
+        resolve_semantic_context,
+        describe_table_semantic,
+        register_semantic_annotation,
+        register_source_metadata,
+        list_semantic_sources,
     ] + _arcpy_tools,
 )
 
@@ -299,6 +313,9 @@ planner_explorer = LlmAgent(
         ExplorationToolset(tool_filter=_AUDIT_TOOLS),
         DatabaseToolset(tool_filter=_DB_READ_DESCRIBE),
         PlatformToolset(tool_filter=["list_user_files", "delete_user_file"]),
+        resolve_semantic_context,
+        describe_table_semantic,
+        list_semantic_sources,
     ] + _arcpy_gov_explore_tools,
 )
 

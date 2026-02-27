@@ -1,0 +1,174 @@
+# =============================================================================
+# Spatial Semantic Layer — Static Knowledge Catalog
+# Defines general GIS domain knowledge: column semantics, region groups,
+# spatial operations, and metric templates.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Semantic Domains — what kinds of columns exist in GIS data
+# Each domain has Chinese+English aliases for fuzzy matching.
+# ---------------------------------------------------------------------------
+domains:
+  AREA:
+    description: "面积"
+    common_aliases: ["area", "zmj", "shape_area", "mj", "面积", "tbmj", "area_m2", "area_mu"]
+    typical_unit: "m² 或 亩"
+    data_type: numeric
+
+  SLOPE:
+    description: "坡度"
+    common_aliases: ["slope", "gradient", "坡度", "pd", "slope_deg", "slope_pct"]
+    typical_unit: "度"
+    data_type: numeric
+
+  ELEVATION:
+    description: "高程"
+    common_aliases: ["dem", "elevation", "height", "高程", "gc", "elev", "alt", "altitude"]
+    typical_unit: "m"
+    data_type: numeric
+
+  LAND_USE:
+    description: "土地利用类型"
+    common_aliases: ["dlmc", "dlbm", "land_use", "landuse", "地类", "用途", "type", "lc", "地类名称", "地类编码"]
+    data_type: categorical
+
+  NAME:
+    description: "名称标识"
+    common_aliases: ["name", "mc", "名称", "label", "title", "qsdwmc", "dkmc"]
+    data_type: text
+
+  ADMIN_CODE:
+    description: "行政区划代码"
+    common_aliases: ["adcode", "code", "区划代码", "xzqdm", "admin_code", "district_code"]
+    data_type: text
+
+  POPULATION:
+    description: "人口"
+    common_aliases: ["pop", "population", "人口", "pop_total", "pop_density", "rk", "rkmd"]
+    typical_unit: "人 或 人/km²"
+    data_type: numeric
+
+  OWNERSHIP:
+    description: "权属/所有者"
+    common_aliases: ["owner", "权属", "qsdwmc", "所有者", "权利人", "qlr"]
+    data_type: text
+
+  PERIMETER:
+    description: "周长"
+    common_aliases: ["perimeter", "周长", "zc", "shape_length", "shape_len", "length"]
+    typical_unit: "m"
+    data_type: numeric
+
+  LONGITUDE:
+    description: "经度"
+    common_aliases: ["lng", "lon", "longitude", "经度", "x", "jd"]
+    typical_unit: "度"
+    data_type: numeric
+
+  LATITUDE:
+    description: "纬度"
+    common_aliases: ["lat", "latitude", "纬度", "y", "wd"]
+    typical_unit: "度"
+    data_type: numeric
+
+  ADDRESS:
+    description: "地址"
+    common_aliases: ["address", "地址", "addr", "dz", "location", "位置"]
+    data_type: text
+
+  CATEGORY:
+    description: "分类/类别"
+    common_aliases: ["category", "类别", "class", "分类", "type_name", "lb"]
+    data_type: categorical
+
+  ID:
+    description: "唯一标识"
+    common_aliases: ["id", "fid", "gid", "objectid", "ogc_fid", "编号", "bh"]
+    data_type: text
+
+  ASPECT:
+    description: "坡向"
+    common_aliases: ["aspect", "坡向", "px", "direction"]
+    typical_unit: "度"
+    data_type: numeric
+
+# ---------------------------------------------------------------------------
+# Named Region Groups — business-defined geographic partitions
+# ---------------------------------------------------------------------------
+region_groups:
+  华东:
+    provinces: ["上海市", "江苏省", "浙江省", "安徽省", "福建省", "江西省", "山东省"]
+    aliases: ["华东", "华东区域", "华东地区", "East China"]
+  华南:
+    provinces: ["广东省", "广西壮族自治区", "海南省"]
+    aliases: ["华南", "华南区域", "华南地区", "South China"]
+  华北:
+    provinces: ["北京市", "天津市", "河北省", "山西省", "内蒙古自治区"]
+    aliases: ["华北", "华北区域", "华北地区", "North China"]
+  华中:
+    provinces: ["湖北省", "湖南省", "河南省"]
+    aliases: ["华中", "华中区域", "华中地区", "Central China"]
+  西南:
+    provinces: ["四川省", "云南省", "贵州省", "西藏自治区", "重庆市"]
+    aliases: ["西南", "西南区域", "西南地区", "Southwest China"]
+  西北:
+    provinces: ["陕西省", "甘肃省", "青海省", "宁夏回族自治区", "新疆维吾尔自治区"]
+    aliases: ["西北", "西北区域", "西北地区", "Northwest China"]
+  东北:
+    provinces: ["黑龙江省", "吉林省", "辽宁省"]
+    aliases: ["东北", "东北区域", "东北地区", "Northeast China"]
+
+# ---------------------------------------------------------------------------
+# Spatial Operation Synonyms — helps agents choose the right tool
+# ---------------------------------------------------------------------------
+spatial_operations:
+  buffer:
+    tool_name: "create_buffer"
+    aliases: ["缓冲", "缓冲区", "范围", "周边", "辐射", "半径"]
+  clip:
+    tool_name: "pairwise_clip"
+    aliases: ["裁剪", "切割", "提取", "截取"]
+  overlay:
+    tool_name: "overlay_analysis"
+    aliases: ["叠加", "相交", "交集", "合并", "擦除"]
+  distance:
+    tool_name: "find_within_distance"
+    aliases: ["距离", "远离", "公里内", "米内", "附近", "范围内"]
+  clustering:
+    tool_name: "perform_clustering"
+    aliases: ["聚类", "分群", "聚集", "扎堆", "DBSCAN"]
+  heatmap:
+    tool_name: "generate_heatmap"
+    aliases: ["热力图", "密度图", "核密度", "热点"]
+  choropleth:
+    tool_name: "generate_choropleth"
+    aliases: ["分级设色", "专题图", "着色", "渲染", "分级"]
+  tessellation:
+    tool_name: "generate_tessellation"
+    aliases: ["网格", "格网", "镶嵌", "渔网"]
+
+# ---------------------------------------------------------------------------
+# Composite Metric Templates — common spatial calculations
+# ---------------------------------------------------------------------------
+metric_templates:
+  density:
+    description: "密度 = 数量 / 面积"
+    pattern: "COUNT(*) / (ST_Area(geom::geography) / 1e6)"
+    unit: "个/km²"
+    synonyms: ["密度", "分布密度", "密集度"]
+
+  fragmentation:
+    description: "破碎度 = 地块数 / 总面积"
+    pattern: "COUNT(*) / NULLIF(SUM({area_column}), 0)"
+    synonyms: ["破碎度", "碎片化", "破碎化"]
+
+  coverage:
+    description: "覆盖率 = 目标面积 / 总面积 × 100%"
+    pattern: "SUM(CASE WHEN {filter} THEN {area_column} ELSE 0 END) / NULLIF(SUM({area_column}), 0) * 100"
+    unit: "%"
+    synonyms: ["覆盖率", "占比", "比例"]
+
+  concentration:
+    description: "集中度 = 某类数量 / 总数量"
+    pattern: "SUM(CASE WHEN {filter} THEN 1 ELSE 0 END)::float / NULLIF(COUNT(*), 0)"
+    synonyms: ["集中度", "集中程度", "占比"]

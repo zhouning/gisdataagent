@@ -101,6 +101,10 @@ if ARCPY_AVAILABLE:
 from data_agent.wecom_bot import ensure_wecom_connection, is_wecom_configured
 ensure_wecom_connection()
 
+# --- Spatial Semantic Layer ---
+from data_agent.semantic_layer import ensure_semantic_tables, resolve_semantic_context, build_context_prompt
+ensure_semantic_tables()
+
 DYNAMIC_PLANNER = os.environ.get("DYNAMIC_PLANNER", "true").lower() in ("true", "1", "yes")
 if DYNAMIC_PLANNER:
     print("[Planner] Dynamic Planner mode enabled.")
@@ -1412,6 +1416,15 @@ async def main(message: cl.Message):
                         mem_block += f" (文件: {', '.join(files[:3])})"
             mem_block += "\n\n请在用户未明确指定时使用以上偏好作为默认值。"
             full_prompt += mem_block
+    except Exception:
+        pass  # non-fatal
+
+    # --- Inject semantic context for column/table resolution ---
+    try:
+        semantic = resolve_semantic_context(user_text)
+        semantic_block = build_context_prompt(semantic)
+        if semantic_block:
+            full_prompt += "\n\n" + semantic_block
     except Exception:
         pass  # non-fatal
 

@@ -17,6 +17,8 @@ T_TABLE_OWNERSHIP = f"{TABLE_PREFIX}table_ownership"
 T_SHARE_LINKS = f"{TABLE_PREFIX}share_links"
 T_AUDIT_LOG = f"{TABLE_PREFIX}audit_log"
 T_ANALYSIS_TEMPLATES = f"{TABLE_PREFIX}analysis_templates"
+T_SEMANTIC_REGISTRY = f"{TABLE_PREFIX}semantic_registry"
+T_SEMANTIC_SOURCES = f"{TABLE_PREFIX}semantic_sources"
 
 def get_db_connection_url():
     """Constructs database URL from environment variables."""
@@ -222,6 +224,14 @@ def describe_table(table_name: str) -> dict:
                 return {"status": "error", "message": f"Table '{table_name}' not found."}
 
             cols_info = [{"column_name": r[0], "data_type": r[1]} for r in result]
+
+            # Auto-register semantic annotations on first encounter
+            try:
+                from .semantic_layer import auto_register_table
+                auto_register_table(table_name, current_user_id.get() or "anonymous")
+            except Exception:
+                pass  # non-fatal
+
             return {
                 "status": "success",
                 "columns": cols_info,
