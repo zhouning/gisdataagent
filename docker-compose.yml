@@ -1,0 +1,89 @@
+# =============================================================================
+# GIS Data Agent — Docker Compose
+# Usage: docker compose up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostGIS Database
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gis_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"        # Expose on 5433 to avoid conflicts with host PostgreSQL
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker-db-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # GIS Data Agent Application
+  # ---------------------------------------------------------------------------
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      # PostgreSQL connection
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      # Admin credentials for migrations
+      POSTGRES_ADMIN_USER: postgres
+      POSTGRES_ADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+      # Google AI — set in .env or pass at runtime
+      GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      # Gaode Maps API
+      GAODE_API_KEY: ${GAODE_API_KEY:-}
+      # Chainlit
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-replace_with_a_real_secret}
+      # Dynamic Planner
+      DYNAMIC_PLANNER: ${DYNAMIC_PLANNER:-true}
+      # Optional services
+      HUAWEI_OBS_AK: ${HUAWEI_OBS_AK:-}
+      HUAWEI_OBS_SK: ${HUAWEI_OBS_SK:-}
+      HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-}
+      HUAWEI_OBS_BUCKET: ${HUAWEI_OBS_BUCKET:-}
+      TIANDITU_TOKEN: ${TIANDITU_TOKEN:-}
+      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
+      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
+      DAILY_ANALYSIS_LIMIT: ${DAILY_ANALYSIS_LIMIT:-}
+      MONTHLY_TOKEN_LIMIT: ${MONTHLY_TOKEN_LIMIT:-}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:-}
+    volumes:
+      - uploads:/app/data_agent/uploads
+      - worldpop_cache:/app/data_agent/uploads/.worldpop_cache
+      # Optional: mount Google service account credentials
+      # - ./secrets/service-account.json:/app/secrets/service-account.json:ro
+    networks:
+      - agent-net
+
+volumes:
+  pgdata:
+  uploads:
+  worldpop_cache:
+
+networks:
+  agent-net:
+    driver: bridge

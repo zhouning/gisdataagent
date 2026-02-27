@@ -30,7 +30,7 @@ def _configure_fonts():
     elif system == 'Darwin':
         font_names = ['Arial Unicode MS', 'PingFang SC']
     else:
-        font_names = ['WenQuanYi Micro Hei']
+        font_names = ['WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Noto Sans CJK']
 
     available_fonts = set(f.name for f in fm.fontManager.ttflist)
     selected_font = next((f for f in font_names if f in available_fonts), None)

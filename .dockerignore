@@ -1,0 +1,53 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.claude/
+data_agent/.env
+data_agent/.adk/
+data_agent/uploads/
+v7/
+
+# Generated output files
+enhanced_*.shp
+enhanced_*.dbf
+enhanced_*.shx
+enhanced_*.prj
+enhanced_*.cpg
+optimized_*.shp
+optimized_*.dbf
+optimized_*.shx
+optimized_*.prj
+optimized_*.cpg
+optimized_map_*.png
+comparison_*.png
+interactive_*.html
+reprojected_*.shp
+reprojected_*.dbf
+reprojected_*.shx
+reprojected_*.prj
+reprojected_*.cpg
+visualization_*.png
+
+# Generated docs
+Analysis_Report*.docx
+simple_test.docx
+test_governance_report.docx
+
+# Raw/curated requirements (final is requirements.txt)
+requirements-raw.txt
+requirements-curated.txt
+
+# Chinese-named data files
+*.sbn
+*.sbx
+*.shp.xml
+
+# Misc
+docs/
+*.md
+!CLAUDE.md
+*.zip
+generate_realistic_dirty_data.py
+import_shp_to_pg.py
