@@ -3,9 +3,10 @@ Spatial Memory System for per-user persistent preferences, regions, and analysis
 Stores memories in PostgreSQL (user_memories table) with JSONB values.
 """
 import json
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from .database_tools import get_db_connection_url, _inject_user_context, T_USER_MEMORIES
+from .db_engine import get_engine
+from .database_tools import _inject_user_context, T_USER_MEMORIES
 from .user_context import current_user_id
 
 VALID_MEMORY_TYPES = ("region", "viz_preference", "analysis_result", "custom")
@@ -13,13 +14,12 @@ VALID_MEMORY_TYPES = ("region", "viz_preference", "analysis_result", "custom")
 
 def ensure_memory_table():
     """Create user_memories table if not exists. Called at startup alongside ensure_users_table()."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         print("[Memory] WARNING: Database not configured. Memory system disabled.")
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {T_USER_MEMORIES} (
@@ -66,13 +66,12 @@ def save_memory(memory_type: str, key: str, value: str, description: str = "") -
     except (json.JSONDecodeError, TypeError):
         return {"status": "error", "message": "value 必须是合法的 JSON 字符串"}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置，无法保存记忆"}
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             conn.execute(text(f"""
@@ -98,13 +97,12 @@ def recall_memories(memory_type: str = "", keyword: str = "") -> dict:
     Returns:
         匹配的记忆列表
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置"}
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             conditions = ["username = :u"]
@@ -160,8 +158,8 @@ def delete_memory(memory_id: str) -> dict:
     Returns:
         删除结果
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置"}
 
     username = current_user_id.get()
@@ -171,7 +169,6 @@ def delete_memory(memory_id: str) -> dict:
         return {"status": "error", "message": "memory_id 必须是数字"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             result = conn.execute(text(
@@ -194,13 +191,12 @@ def get_user_preferences() -> dict:
     Returns a merged dict like {"basemap": "CartoDB dark_matter", "color_scheme": "YlGnBu"}
     or empty dict if no preferences saved.
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {}
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             rows = conn.execute(text(
@@ -223,13 +219,12 @@ def get_recent_analysis_results(limit: int = 5) -> list:
     Fetch user's recent analysis_result memories for context injection.
     Returns list of dicts with key, description, value.
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return []
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             rows = conn.execute(text(

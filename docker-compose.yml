@@ -72,11 +72,24 @@ services:
       WECOM_ENCODING_AES_KEY: ${WECOM_ENCODING_AES_KEY:-}
       WECOM_AGENT_ID: ${WECOM_AGENT_ID:-}
       WECOM_SHARE_BASE_URL: ${WECOM_SHARE_BASE_URL:-}
+      # DingTalk Bot (optional)
+      DINGTALK_APP_KEY: ${DINGTALK_APP_KEY:-}
+      DINGTALK_APP_SECRET: ${DINGTALK_APP_SECRET:-}
+      DINGTALK_ROBOT_CODE: ${DINGTALK_ROBOT_CODE:-}
+      DINGTALK_SHARE_BASE_URL: ${DINGTALK_SHARE_BASE_URL:-}
+      # Feishu Bot (optional)
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_VERIFICATION_TOKEN: ${FEISHU_VERIFICATION_TOKEN:-}
+      FEISHU_ENCRYPT_KEY: ${FEISHU_ENCRYPT_KEY:-}
+      FEISHU_SHARE_BASE_URL: ${FEISHU_SHARE_BASE_URL:-}
       OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
       OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
       DAILY_ANALYSIS_LIMIT: ${DAILY_ANALYSIS_LIMIT:-}
       MONTHLY_TOKEN_LIMIT: ${MONTHLY_TOKEN_LIMIT:-}
       AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:-}
+      # Redis (for real-time streams)
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     volumes:
       - uploads:/app/data_agent/uploads
       - worldpop_cache:/app/data_agent/uploads/.worldpop_cache
@@ -85,10 +98,29 @@ services:
     networks:
       - agent-net
 
+  # ---------------------------------------------------------------------------
+  # Redis (optional, for real-time data streams)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - agent-net
+
 volumes:
   pgdata:
   uploads:
   worldpop_cache:
+  redis-data:
 
 networks:
   agent-net:

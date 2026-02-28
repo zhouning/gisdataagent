@@ -2,6 +2,38 @@
 
 All notable changes to the GIS Data Agent project.
 
+## [v4.0.0-alpha.2] - 2026-02-27 (Architecture Polish & Semantic Enhancement)
+
+### Performance — Connection Pool Singleton
+- **`db_engine.py`** (new): Singleton SQLAlchemy engine with connection pooling (`pool_size=5, max_overflow=10, pool_recycle=1800s, pool_pre_ping=True`). Replaces 50 per-function `create_engine()` calls across 10 modules.
+- **Refactored modules**: `database_tools.py`, `memory.py`, `semantic_layer.py`, `audit_logger.py`, `token_tracker.py`, `sharing.py`, `template_manager.py`, `auth.py`, `app.py`, `utils.py` — all now use `from .db_engine import get_engine`.
+- **`reset_engine()`**: For testing and graceful shutdown.
+
+### Performance — Semantic Layer Query Cache
+- **TTL cache** (5 min) for `agent_semantic_sources` and `agent_semantic_registry` DB queries in `semantic_layer.py`. Eliminates redundant DB lookups on every user message.
+- **`invalidate_semantic_cache()`**: Called automatically on write operations (register, annotate, auto-register).
+
+### Feature — Domain Hierarchy (LAND_USE)
+- **Hierarchy tree** in `semantic_catalog.yaml`: 3 parent categories (农用地, 建设用地, 未利用地) with 9 child land-use types, each with code prefixes and Chinese/English aliases.
+- **`_match_hierarchy()`**: Matches "耕地" → child (code_prefix 01, parent 农用地); "农用地" → parent (expands to 耕地+园地+林地+草地).
+- **Prompt injection**: `build_context_prompt()` outputs hierarchy info like "地类筛选: 农用地 (包含 耕地[01*], 园地[02*], 林地[03*], 草地[04*])".
+
+### Feature — Column Equivalence Mappings
+- **Equivalences** in `semantic_catalog.yaml`: dlbm↔dlmc (地类编码↔名称), xzqdm↔xzqmc (行政区代码↔名称), qsdwdm↔qsdwmc (权属代码↔名称).
+- **`_match_equivalences()`**: When a column like `dlbm` is matched, automatically associates its equivalent `dlmc`.
+- **Prompt injection**: Outputs "等价列: dlbm ↔ dlmc (地类编码 ↔ 地类名称)".
+
+### Documentation
+- **README.md** rewritten for v4.0-alpha: updated architecture diagram (Mermaid), full feature matrix, Docker quick start, project structure, test guide.
+- **3 demo scenarios** (`demos/`): Retail site selection, land governance audit, population analysis — each with sample data generation and headless pipeline execution.
+- **Docker quickstart** (`demos/docker-quickstart.sh`): One-command setup script.
+
+### Tests
+- **`test_db_engine.py`** (new, 5 tests): Singleton behavior, no-DB fallback, pool config verification.
+- **Semantic layer tests** expanded (31 new → 63 total): Hierarchy matching (child/parent), equivalence matching, cache invalidation, prompt output verification.
+- **All test mock targets** updated: 6 test files (`test_rls.py`, `test_integration.py`, `test_semantic_layer.py`, `test_template_manager.py`, `test_token_tracker.py`, `test_audit.py`, `test_memory.py`, `test_wecom.py`) now mock `get_engine` instead of `create_engine`/`get_db_connection_url`.
+- **Total**: 538 tests passing.
+
 ## [v4.0.0-alpha] - 2026-02-24 (Secure & Enhanced Platform)
 
 ### Added — OBS Cloud Storage (S3-Compatible)

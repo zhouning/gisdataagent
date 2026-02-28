@@ -59,9 +59,9 @@ RUN groupadd -r agent && useradd -r -g agent -d /app -s /bin/bash agent && \
 USER agent
 
 # ---- Runtime configuration --------------------------------------------------
-EXPOSE 8000
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+    CMD curl -f http://localhost:${PORT:-8080}/ || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

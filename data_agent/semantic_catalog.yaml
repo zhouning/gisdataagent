@@ -31,6 +31,26 @@ domains:
     description: "土地利用类型"
     common_aliases: ["dlmc", "dlbm", "land_use", "landuse", "地类", "用途", "type", "lc", "地类名称", "地类编码"]
     data_type: categorical
+    hierarchy:
+      农用地:
+        aliases: ["农用地", "agricultural", "农业用地"]
+        children:
+          耕地: { code_prefix: "01", aliases: ["耕地", "cropland", "gd", "水田", "旱地"] }
+          园地: { code_prefix: "02", aliases: ["园地", "orchard", "yd", "果园", "茶园"] }
+          林地: { code_prefix: "03", aliases: ["林地", "forestland", "ld", "有林地", "灌木林"] }
+          草地: { code_prefix: "04", aliases: ["草地", "grassland", "cd", "天然牧草地"] }
+      建设用地:
+        aliases: ["建设用地", "construction", "建设", "城镇"]
+        children:
+          城镇住宅用地: { code_prefix: "05", aliases: ["城镇", "urban", "城镇用地", "住宅"] }
+          工矿仓储用地: { code_prefix: "06", aliases: ["工矿", "industrial", "仓储", "工业"] }
+          农村宅基地: { code_prefix: "07", aliases: ["宅基地", "homestead", "农村宅基地", "村庄"] }
+          交通运输用地: { code_prefix: "10", aliases: ["交通", "transport", "公路", "铁路"] }
+      未利用地:
+        aliases: ["未利用地", "unused", "未利用"]
+        children:
+          其他土地: { code_prefix: "12", aliases: ["其他", "other", "荒地", "裸地", "沙地"] }
+          水域: { code_prefix: "11", aliases: ["水域", "water", "河流", "湖泊", "水库"] }
 
   NAME:
     description: "名称标识"
@@ -172,3 +192,20 @@ metric_templates:
     description: "集中度 = 某类数量 / 总数量"
     pattern: "SUM(CASE WHEN {filter} THEN 1 ELSE 0 END)::float / NULLIF(COUNT(*), 0)"
     synonyms: ["集中度", "集中程度", "占比"]
+
+# ---------------------------------------------------------------------------
+# Column Equivalence Mappings — code ↔ name relationships
+# ---------------------------------------------------------------------------
+equivalences:
+  - columns: ["dlbm", "dlmc"]
+    relationship: "code_name"
+    description: "地类编码 ↔ 地类名称"
+    domain: LAND_USE
+  - columns: ["xzqdm", "xzqmc"]
+    relationship: "code_name"
+    description: "行政区代码 ↔ 行政区名称"
+    domain: ADMIN_CODE
+  - columns: ["qsdwdm", "qsdwmc"]
+    relationship: "code_name"
+    description: "权属代码 ↔ 权属名称"
+    domain: OWNERSHIP

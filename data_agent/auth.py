@@ -7,10 +7,11 @@ import re
 import hashlib
 import secrets
 from typing import Optional
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 import chainlit as cl
 
-from .database_tools import get_db_connection_url, T_APP_USERS
+from .db_engine import get_engine
+from .database_tools import T_APP_USERS
 
 
 def _hash_password(password: str, salt: str = None) -> tuple:
@@ -39,13 +40,12 @@ def _make_password_hash(password: str) -> str:
 
 def ensure_users_table():
     """Create the app_users table if it doesn't exist, and seed admin user."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         print("[Auth] WARNING: Database not configured. Auth will use fallback mode.")
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {T_APP_USERS} (
@@ -79,15 +79,14 @@ def ensure_users_table():
 
 def authenticate_user(username: str, password: str) -> Optional[dict]:
     """Verify credentials against database. Returns user dict or None."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         # Fallback: accept admin/admin123 without DB
         if username == "admin" and password == "admin123":
             return {"username": "admin", "display_name": "Admin (Offline)", "role": "admin"}
         return None
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text(
                 f"SELECT username, password_hash, display_name, role FROM {T_APP_USERS} WHERE username = :u"
@@ -121,12 +120,11 @@ def register_user(username: str, password: str, display_name: str = "") -> dict:
     if not re.search(r'[a-zA-Z]', password) or not re.search(r'\d', password):
         return {"status": "error", "message": "密码须包含字母和数字"}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置，无法注册"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             # Check duplicate
             exists = conn.execute(text(
@@ -156,13 +154,12 @@ def ensure_wecom_user(wecom_userid: str) -> dict:
     Returns: {"username": "wx_{...}", "display_name": "...", "role": "analyst"}
     """
     username = f"wx_{wecom_userid}"
-    db_url = get_db_connection_url()
+    engine = get_engine()
 
-    if not db_url:
+    if not engine:
         return {"username": username, "display_name": username, "role": "analyst"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text(
                 f"SELECT username, display_name, role FROM {T_APP_USERS} WHERE username = :u"
@@ -193,14 +190,62 @@ def ensure_wecom_user(wecom_userid: str) -> dict:
 
 def upsert_oauth_user(email: str, display_name: str, provider: str) -> dict:
     """Create or update an OAuth user on first login. Returns user dict."""
-    db_url = get_db_connection_url()
+    engine = get_engine()
     user = {"username": email, "display_name": display_name or email, "role": "analyst"}
 
-    if not db_url:
+    if not engine:
         return user
 
+
+def ensure_bot_user(bot_user_id: str, platform: str) -> dict:
+    """
+    Ensure a bot platform user exists in app_users.
+    Auto-creates as analyst if not found. Username: {prefix}_{bot_user_id}.
+
+    Args:
+        bot_user_id: Platform-specific user identifier.
+        platform: Platform name (e.g., 'dingtalk', 'feishu', 'wecom').
+
+    Returns: {"username": "{prefix}_{...}", "display_name": "...", "role": "analyst"}
+    """
+    prefix_map = {"wecom": "wx", "dingtalk": "dt", "feishu": "fs"}
+    prefix = prefix_map.get(platform, platform[:2])
+    username = f"{prefix}_{bot_user_id}"
+    engine = get_engine()
+
+    if not engine:
+        return {"username": username, "display_name": username, "role": "analyst"}
+
     try:
-        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                f"SELECT username, display_name, role FROM {T_APP_USERS} WHERE username = :u"
+            ), {"u": username})
+            row = result.fetchone()
+
+            if row:
+                return {
+                    "username": row[0],
+                    "display_name": row[1] or row[0],
+                    "role": row[2] or "analyst",
+                }
+
+            # Auto-create: random password (never used for bot login)
+            pw_hash = _make_password_hash(secrets.token_hex(16))
+            display = f"{platform.title()}:{bot_user_id}"
+            conn.execute(text(
+                f"INSERT INTO {T_APP_USERS} "
+                "(username, password_hash, display_name, role, auth_provider) "
+                "VALUES (:u, :p, :d, 'analyst', :provider)"
+            ), {"u": username, "p": pw_hash, "d": display, "provider": platform})
+            conn.commit()
+            print(f"[Auth] Created {platform} user: {username}")
+            return {"username": username, "display_name": display, "role": "analyst"}
+    except Exception as e:
+        print(f"[Auth] Error ensuring {platform} user: {e}")
+        return {"username": username, "display_name": username, "role": "analyst"}
+
+    try:
         with engine.connect() as conn:
             # Check if user exists
             result = conn.execute(text(

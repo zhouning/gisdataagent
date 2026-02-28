@@ -66,6 +66,7 @@ async def run_pipeline_headless(
     intent: str = "GENERAL",
     router_tokens: int = 0,
     use_dynamic_planner: bool = False,
+    role: str = "analyst",
 ) -> PipelineResult:
     """
     Run an ADK pipeline without Chainlit UI coupling.
@@ -80,10 +81,17 @@ async def run_pipeline_headless(
         intent:              Router classification result.
         router_tokens:       Tokens consumed by the intent router.
         use_dynamic_planner: Whether dynamic planner mode is active.
+        role:                User role for RBAC context (default: 'analyst').
 
     Returns:
         PipelineResult with report text, files, token counts, etc.
     """
+    # Set ContextVars so tool functions have proper user identity
+    from .user_context import current_user_id, current_session_id, current_user_role
+    current_user_id.set(user_id)
+    current_session_id.set(session_id)
+    current_user_role.set(role)
+
     result = PipelineResult(pipeline_type=pipeline_type, intent=intent)
     start_time = time.time()
 

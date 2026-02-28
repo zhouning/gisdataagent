@@ -2,7 +2,8 @@ import os
 import re
 import pandas as pd
 import geopandas as gpd
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+from .db_engine import get_engine
 from .gis_processors import _generate_output_path
 from .user_context import current_user_id, current_user_role
 
@@ -71,13 +72,11 @@ def query_database(sql_query: str) -> dict:
     Returns:
         Dict with status, message, and path to results (CSV/SHP).
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "Database credentials not configured in .env"}
 
     try:
-        engine = create_engine(db_url)
-
         with engine.connect() as conn:
             # Inject user context for RLS (Row-Level Security)
             _inject_user_context(conn)
@@ -117,12 +116,11 @@ def query_database(sql_query: str) -> dict:
 def list_tables() -> dict:
     """[Database Tool] Lists tables the current user can access (owned + shared).
     Uses the table_ownership registry with RLS to auto-filter by user access."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "Database credentials not configured in .env"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
 
@@ -184,8 +182,8 @@ def describe_table(table_name: str) -> dict:
     if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
         return {"status": "error", "message": "Invalid table name format."}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "Database credentials not configured in .env"}
 
     # System tables that don't require ownership check
@@ -195,7 +193,7 @@ def describe_table(table_name: str) -> dict:
     }
 
     try:
-        engine = create_engine(db_url)
+        engine = get_engine()
         with engine.connect() as conn:
             _inject_user_context(conn)
 
@@ -245,12 +243,11 @@ def describe_table(table_name: str) -> dict:
 def register_table_ownership(table_name: str, owner_username: str,
                              is_shared: bool = False, description: str = "") -> dict:
     """Register a newly imported table in the ownership registry."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "Database not configured"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             conn.execute(text(f"""
@@ -270,12 +267,11 @@ def share_table(table_name: str) -> dict:
     if current_user_role.get() != 'admin':
         return {"status": "error", "message": "Only admin can share tables."}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "Database not configured"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             result = conn.execute(text(
@@ -297,12 +293,11 @@ def share_table(table_name: str) -> dict:
 
 def ensure_table_ownership_table():
     """Create table_ownership table if not exists. Called at startup."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {T_TABLE_OWNERSHIP} (

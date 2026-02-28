@@ -7,9 +7,10 @@ import json
 import os
 from typing import Optional
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from .database_tools import get_db_connection_url, T_AUDIT_LOG
+from .db_engine import get_engine
+from .database_tools import T_AUDIT_LOG
 from .user_context import current_user_id, current_user_role
 
 # --- Action constants ---
@@ -53,13 +54,12 @@ ACTION_LABELS = {
 
 def ensure_audit_table():
     """Create audit_log table if not exists. Called at startup."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         print("[Audit] WARNING: Database not configured. Audit logging disabled.")
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {T_AUDIT_LOG} (
@@ -112,12 +112,11 @@ def record_audit(
         ip_address: Client IP if available.
         details: Action-specific metadata dict (stored as JSONB).
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 INSERT INTO {T_AUDIT_LOG}
@@ -142,12 +141,11 @@ def get_user_audit_log(username: str, days: int = 30, limit: int = 200) -> list:
     Returns:
         List of dicts with action, status, details, created_at.
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return []
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             rows = conn.execute(text(f"""
                 SELECT username, action, status, ip_address, details, created_at
@@ -177,8 +175,8 @@ def get_audit_stats(days: int = 30) -> dict:
     Returns:
         Dict with total_events, active_users, events_by_action, events_by_status, daily_counts.
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {
             "total_events": 0, "active_users": 0,
             "events_by_action": {}, "events_by_status": {},
@@ -186,7 +184,6 @@ def get_audit_stats(days: int = 30) -> dict:
         }
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             # Total events and active users
             row = conn.execute(text(f"""
@@ -262,14 +259,13 @@ def query_audit_log(
     if role != "admin":
         return {"status": "error", "message": "权限不足：仅管理员可查询审计日志。"}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置。"}
 
     days = min(max(days, 1), 90)
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             where_clauses = ["created_at >= NOW() - make_interval(days => :d)"]
             params = {"d": days, "lim": 100}
@@ -319,12 +315,11 @@ def cleanup_old_audit_logs() -> int:
         Number of deleted rows.
     """
     retention_days = int(os.environ.get("AUDIT_LOG_RETENTION_DAYS", 90))
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return 0
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text(f"""
                 DELETE FROM {T_AUDIT_LOG}

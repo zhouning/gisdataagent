@@ -197,8 +197,8 @@ class TestSaveTemplate(unittest.TestCase):
         result = save_as_template("test", "desc", log, "general", "GENERAL")
         self.assertEqual(result["status"], "error")
 
-    @patch("data_agent.template_manager.get_db_connection_url", return_value=None)
-    def test_no_db_error(self, mock_url):
+    @patch("data_agent.template_manager.get_engine", return_value=None)
+    def test_no_db_error(self, mock_engine):
         result = save_as_template("test", "desc", SAMPLE_LOG, "general", "GENERAL")
         self.assertEqual(result["status"], "error")
         self.assertIn("数据库未配置", result["message"])
@@ -207,8 +207,8 @@ class TestSaveTemplate(unittest.TestCase):
 class TestListTemplates(unittest.TestCase):
     """Test list_templates without DB."""
 
-    @patch("data_agent.template_manager.get_db_connection_url", return_value=None)
-    def test_no_db_error(self, mock_url):
+    @patch("data_agent.template_manager.get_engine", return_value=None)
+    def test_no_db_error(self, mock_engine):
         result = list_templates()
         self.assertEqual(result["status"], "error")
 
@@ -225,8 +225,8 @@ class TestDeleteTemplate(unittest.TestCase):
         result = delete_template(-1)
         self.assertEqual(result["status"], "error")
 
-    @patch("data_agent.template_manager.get_db_connection_url", return_value=None)
-    def test_no_db_error(self, mock_url):
+    @patch("data_agent.template_manager.get_engine", return_value=None)
+    def test_no_db_error(self, mock_engine):
         result = delete_template(1)
         self.assertEqual(result["status"], "error")
 
@@ -238,8 +238,8 @@ class TestShareTemplate(unittest.TestCase):
         result = share_template(0)
         self.assertEqual(result["status"], "error")
 
-    @patch("data_agent.template_manager.get_db_connection_url", return_value=None)
-    def test_no_db_error(self, mock_url):
+    @patch("data_agent.template_manager.get_engine", return_value=None)
+    def test_no_db_error(self, mock_engine):
         result = share_template(1)
         self.assertEqual(result["status"], "error")
 
@@ -247,8 +247,8 @@ class TestShareTemplate(unittest.TestCase):
 class TestEnsureTable(unittest.TestCase):
     """Test ensure_templates_table doesn't crash without DB."""
 
-    @patch("data_agent.template_manager.get_db_connection_url", return_value=None)
-    def test_no_db_graceful(self, mock_url):
+    @patch("data_agent.template_manager.get_engine", return_value=None)
+    def test_no_db_graceful(self, mock_engine):
         # Should not raise
         ensure_templates_table()
 
@@ -256,8 +256,8 @@ class TestEnsureTable(unittest.TestCase):
 class TestGetTemplate(unittest.TestCase):
     """Test get_template without DB."""
 
-    @patch("data_agent.template_manager.get_db_connection_url", return_value=None)
-    def test_no_db_returns_none(self, mock_url):
+    @patch("data_agent.template_manager.get_engine", return_value=None)
+    def test_no_db_returns_none(self, mock_engine):
         result = get_template(1)
         self.assertIsNone(result)
 
@@ -265,8 +265,8 @@ class TestGetTemplate(unittest.TestCase):
 class TestIncrementUseCount(unittest.TestCase):
     """Test _increment_use_count doesn't crash without DB."""
 
-    @patch("data_agent.template_manager.get_db_connection_url", return_value=None)
-    def test_no_db_graceful(self, mock_url):
+    @patch("data_agent.template_manager.get_engine", return_value=None)
+    def test_no_db_graceful(self, mock_engine):
         # Should not raise
         _increment_use_count(1)
 

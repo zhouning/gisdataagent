@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gis-agent-app
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-app
+    app.kubernetes.io/component: application
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: gis-agent-app

@@ -399,8 +399,8 @@ class TestPipelineResult(unittest.TestCase):
 class TestWeComAuth(unittest.TestCase):
     """Test ensure_wecom_user in auth.py."""
 
-    @patch("data_agent.auth.get_db_connection_url", return_value=None)
-    def test_ensure_wecom_user_no_db(self, mock_url):
+    @patch("data_agent.auth.get_engine", return_value=None)
+    def test_ensure_wecom_user_no_db(self, mock_engine):
         """Without DB, should return offline user dict."""
         from data_agent.auth import ensure_wecom_user
         result = ensure_wecom_user("zhangsan")
@@ -410,7 +410,7 @@ class TestWeComAuth(unittest.TestCase):
     def test_username_prefix(self):
         """WeChat users should get wx_ prefix."""
         from data_agent.auth import ensure_wecom_user
-        with patch("data_agent.auth.get_db_connection_url", return_value=None):
+        with patch("data_agent.auth.get_engine", return_value=None):
             result = ensure_wecom_user("lisi")
             self.assertTrue(result["username"].startswith("wx_"))
 

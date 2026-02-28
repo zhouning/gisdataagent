@@ -1,5 +1,6 @@
 """Visualization toolset: interactive maps, choropleth, bubble maps, static exports."""
 import os
+import json
 
 import numpy as np
 import pandas as pd
@@ -18,6 +19,43 @@ from google.adk.tools.base_toolset import BaseToolset
 from .. import drl_engine
 from ..gis_processors import generate_heatmap, _generate_output_path
 from ..utils import _load_spatial_data, _configure_fonts, _add_basemap_layers
+
+
+def _save_map_config(html_path: str, gdf, layers: list, center: list = None, zoom: int = None):
+    """Save GeoJSON + mapconfig.json alongside HTML for frontend Leaflet rendering.
+
+    Args:
+        html_path: Path to the saved HTML file.
+        gdf: GeoDataFrame to export as GeoJSON (primary dataset).
+        layers: List of layer config dicts for the frontend MapPanel.
+        center: [lat, lng] map center. Auto-calculated if None.
+        zoom: Zoom level. Defaults to 12 if None.
+    """
+    try:
+        gdf_4326 = gdf.to_crs(epsg=4326) if gdf.crs and gdf.crs.to_epsg() != 4326 else gdf
+        geojson_path = html_path.replace('.html', '.geojson')
+        gdf_4326.to_file(geojson_path, driver='GeoJSON')
+
+        if center is None:
+            center = [
+                float(gdf_4326.geometry.centroid.y.mean()),
+                float(gdf_4326.geometry.centroid.x.mean()),
+            ]
+        if zoom is None:
+            zoom = 12
+
+        geojson_filename = os.path.basename(geojson_path)
+        for layer in layers:
+            if 'geojson' not in layer:
+                layer['geojson'] = geojson_filename
+
+        config = {"layers": layers, "center": center, "zoom": zoom}
+        config_path = html_path.replace('.html', '.mapconfig.json')
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False)
+    except Exception as e:
+        # Non-fatal: HTML still works, just no frontend map rendering
+        print(f"[MapConfig] Warning: could not save map config: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +280,28 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
         output_path = _generate_output_path("interactive_map", "html")
         m.save(output_path)
 
+        # Save map config for frontend Leaflet rendering
+        if is_point:
+            layers_cfg = [{"name": "Points", "type": "point"}]
+        elif optimized_data_path:
+            layers_cfg = [
+                {"name": "优化前", "type": "polygon", "style": {"fillColor": "#FFD700", "fillOpacity": 0.6}},
+                {"name": "优化后", "type": "polygon", "style": {"fillColor": "#228B22", "fillOpacity": 0.6}},
+            ]
+            # Save optimized data as separate GeoJSON
+            try:
+                gdf_opt_4326 = gdf_opt.to_crs(epsg=4326) if gdf_opt.crs and gdf_opt.crs.to_epsg() != 4326 else gdf_opt
+                opt_geojson = output_path.replace('.html', '_opt.geojson')
+                gdf_opt_4326.to_file(opt_geojson, driver='GeoJSON')
+                layers_cfg[1]["geojson"] = os.path.basename(opt_geojson)
+            except Exception:
+                pass
+        else:
+            layers_cfg = [{"name": "Data Layer", "type": "polygon"}]
+
+        _save_map_config(output_path, gdf_orig, layers_cfg,
+                         center=center, zoom=zoom_start)
+
         return f"Interactive comparison map saved to {output_path}"
 
     except Exception as e:
@@ -344,6 +404,16 @@ def generate_choropleth(
 
         output_path = _generate_output_path("choropleth", "html")
         m.save(output_path)
+
+        # Save map config for frontend Leaflet rendering
+        breaks = [float(b) for b in classifier.bins]
+        _save_map_config(output_path, valid, [{
+            "name": f"Choropleth ({value_column})",
+            "type": "choropleth",
+            "value_column": value_column,
+            "breaks": breaks,
+            "color_scheme": color_scheme,
+        }], center=center, zoom=zoom_start)
 
         return (
             f"等值区域图已生成: {output_path}\n"
@@ -453,6 +523,15 @@ def generate_bubble_map(
 
         output_path = _generate_output_path("bubble_map", "html")
         m.save(output_path)
+
+        # Save map config for frontend Leaflet rendering
+        _save_map_config(output_path, valid, [{
+            "name": f"Bubble ({size_column})",
+            "type": "bubble",
+            "value_column": size_column,
+            "style": {"max_radius": max_radius, "min_radius": 3},
+            "color_scheme": color_scheme,
+        }], center=center, zoom=13)
 
         msg = f"气泡地图已生成: {output_path}\n大小字段: {size_column}"
         if color_column:
@@ -663,6 +742,36 @@ def compose_map(
 
         output_path = _generate_output_path("composed_map", "html")
         m.save(output_path)
+
+        # Save map config for frontend Leaflet rendering
+        frontend_layers = []
+        for idx, (spec, gdf) in enumerate(loaded):
+            layer_geojson = output_path.replace('.html', f'_layer{idx}.geojson')
+            try:
+                gdf.to_file(layer_geojson, driver='GeoJSON')
+            except Exception:
+                continue
+            layer_cfg = {
+                "name": spec.get("name", f"Layer {idx}"),
+                "type": spec.get("type", "polygon"),
+                "geojson": os.path.basename(layer_geojson),
+                "style": {"color": spec.get("color", "#3388ff"),
+                           "fillOpacity": float(spec.get("opacity", 0.7))},
+            }
+            if spec.get("value_column"):
+                layer_cfg["value_column"] = spec["value_column"]
+            if spec.get("color_scheme"):
+                layer_cfg["color_scheme"] = spec["color_scheme"]
+            frontend_layers.append(layer_cfg)
+
+        if frontend_layers:
+            config_data = {"layers": frontend_layers, "center": center, "zoom": zoom_start}
+            config_path = output_path.replace('.html', '.mapconfig.json')
+            try:
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_data, f, ensure_ascii=False)
+            except Exception:
+                pass
 
         layer_summary = ", ".join(
             f"{s.get('name', 'Layer')}({s.get('type', 'polygon')})"

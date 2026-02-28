@@ -4,21 +4,21 @@ Stores usage records in PostgreSQL (token_usage table).
 Supports daily analysis limits and monthly usage summaries.
 """
 import os
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from .database_tools import get_db_connection_url, _inject_user_context, T_TOKEN_USAGE
+from .db_engine import get_engine
+from .database_tools import _inject_user_context, T_TOKEN_USAGE
 from .user_context import current_user_id
 
 
 def ensure_token_table():
     """Create token_usage table if not exists. Called at startup."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         print("[TokenTracker] WARNING: Database not configured. Token tracking disabled.")
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {T_TOKEN_USAGE} (
@@ -56,12 +56,11 @@ def record_usage(username: str, pipeline_type: str, input_tokens: int,
         output_tokens: Total completion tokens consumed.
         model_name: LLM model name.
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             conn.execute(text(f"""
@@ -82,12 +81,11 @@ def get_daily_usage(username: str) -> dict:
     Returns:
         {"count": int, "tokens": int}
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"count": 0, "tokens": 0}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             row = conn.execute(text(f"""
@@ -107,12 +105,11 @@ def get_monthly_usage(username: str) -> dict:
     Returns:
         {"count": int, "total_tokens": int, "input_tokens": int, "output_tokens": int}
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"count": 0, "total_tokens": 0, "input_tokens": 0, "output_tokens": 0}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             row = conn.execute(text(f"""

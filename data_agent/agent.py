@@ -74,6 +74,18 @@ from .semantic_layer import (
     register_semantic_annotation,
     register_source_metadata,
     list_semantic_sources,
+    register_semantic_domain,
+    discover_column_equivalences,
+    export_semantic_model,
+)
+
+# --- Stream tool functions ---
+from .stream_tools import (
+    create_iot_stream,
+    list_active_streams,
+    stop_data_stream,
+    get_stream_statistics,
+    set_geofence_alert,
 )
 
 # ---------------------------------------------------------------------------
@@ -268,6 +280,14 @@ general_processing_agent = LlmAgent(
         register_semantic_annotation,
         register_source_metadata,
         list_semantic_sources,
+        register_semantic_domain,
+        discover_column_equivalences,
+        export_semantic_model,
+        create_iot_stream,
+        list_active_streams,
+        stop_data_stream,
+        get_stream_statistics,
+        set_geofence_alert,
     ] + _arcpy_tools,
 )
 
@@ -316,6 +336,8 @@ planner_explorer = LlmAgent(
         resolve_semantic_context,
         describe_table_semantic,
         list_semantic_sources,
+        discover_column_equivalences,
+        export_semantic_model,
     ] + _arcpy_gov_explore_tools,
 )
 
@@ -331,6 +353,11 @@ planner_processor = LlmAgent(
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
         ProcessingToolset(),
         RemoteSensingToolset(tool_filter=["describe_raster"]),
+        create_iot_stream,
+        list_active_streams,
+        stop_data_stream,
+        get_stream_statistics,
+        set_geofence_alert,
     ] + _arcpy_tools,
 )
 

@@ -103,23 +103,25 @@ def invalidate_token():
 # ---------------------------------------------------------------------------
 
 _rate_window: list = []  # timestamps
+_rate_lock = asyncio.Lock()
 _RATE_LIMIT = 18
 _RATE_PERIOD = 60  # seconds
 
 
 async def _wait_for_rate_limit():
     """Block until we're under the rate limit."""
-    while True:
-        now = time.time()
-        # Prune old entries
-        while _rate_window and _rate_window[0] < now - _RATE_PERIOD:
-            _rate_window.pop(0)
-        if len(_rate_window) < _RATE_LIMIT:
-            _rate_window.append(now)
-            return
-        # Wait for oldest entry to expire
-        sleep_time = _rate_window[0] + _RATE_PERIOD - now + 0.1
-        await asyncio.sleep(sleep_time)
+    async with _rate_lock:
+        while True:
+            now = time.time()
+            # Prune old entries
+            while _rate_window and _rate_window[0] < now - _RATE_PERIOD:
+                _rate_window.pop(0)
+            if len(_rate_window) < _RATE_LIMIT:
+                _rate_window.append(now)
+                return
+            # Wait for oldest entry to expire
+            sleep_time = _rate_window[0] + _RATE_PERIOD - now + 0.1
+            await asyncio.sleep(sleep_time)
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +129,7 @@ async def _wait_for_rate_limit():
 # ---------------------------------------------------------------------------
 
 _processing_messages: OrderedDict = OrderedDict()
+_dedup_lock = threading.Lock()
 _DEDUP_WINDOW = 15  # seconds
 
 
@@ -135,16 +138,17 @@ def _is_duplicate(msg_id: str) -> bool:
     if not msg_id:
         return False
 
-    now = time.time()
-    # Prune expired entries
-    expired = [k for k, v in _processing_messages.items() if now - v > _DEDUP_WINDOW]
-    for k in expired:
-        _processing_messages.pop(k, None)
+    with _dedup_lock:
+        now = time.time()
+        # Prune expired entries
+        expired = [k for k, v in _processing_messages.items() if now - v > _DEDUP_WINDOW]
+        for k in expired:
+            _processing_messages.pop(k, None)
 
-    if msg_id in _processing_messages:
-        return True
-    _processing_messages[msg_id] = now
-    return False
+        if msg_id in _processing_messages:
+            return True
+        _processing_messages[msg_id] = now
+        return False
 
 
 # ---------------------------------------------------------------------------

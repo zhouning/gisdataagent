@@ -86,10 +86,10 @@ def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
     if not ext_check and _re.match(r'^[a-zA-Z0-9_]+$', stripped):
         try:
             from data_agent.database_tools import get_db_connection_url, _inject_user_context, T_TABLE_OWNERSHIP
-            from sqlalchemy import create_engine, text
-            db_url = get_db_connection_url()
-            if db_url:
-                engine = create_engine(db_url)
+            from data_agent.db_engine import get_engine
+            from sqlalchemy import text
+            engine = get_engine()
+            if engine:
                 with engine.connect() as conn:
                     _inject_user_context(conn)
                     # Ownership check via table_ownership (RLS auto-filters)

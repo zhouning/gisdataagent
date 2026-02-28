@@ -82,28 +82,56 @@ except ImportError:
     generate_word_report = report_generator.generate_word_report
     ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
-# Initialize auth (create users table if needed)
-ensure_users_table()
-ensure_memory_table()
-ensure_token_table()
-ensure_table_ownership_table()
-ensure_share_links_table()
-ensure_audit_table()
-from data_agent.template_manager import ensure_templates_table
-ensure_templates_table()
+# Initialize DB tables (resilient — if PostgreSQL is down, non-DB features still work)
+try:
+    ensure_users_table()
+    ensure_memory_table()
+    ensure_token_table()
+    ensure_table_ownership_table()
+    ensure_share_links_table()
+    ensure_audit_table()
+    from data_agent.template_manager import ensure_templates_table
+    ensure_templates_table()
+    from data_agent.semantic_layer import ensure_semantic_tables, resolve_semantic_context, build_context_prompt
+    ensure_semantic_tables()
+except Exception as _startup_err:
+    print(f"[Startup] WARNING: DB initialization partially failed: {_startup_err}")
+    # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
+    try:
+        from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
+    except Exception:
+        resolve_semantic_context = None
+        build_context_prompt = None
+
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs
-ensure_obs_connection()
+try:
+    ensure_obs_connection()
+except Exception as _obs_err:
+    print(f"[Startup] WARNING: OBS initialization failed: {_obs_err}")
 if ARCPY_AVAILABLE:
     print("[ArcPy] ArcPy engine available and connected.")
 
 # --- Enterprise WeChat Bot (conditional) ---
 from data_agent.wecom_bot import ensure_wecom_connection, is_wecom_configured
-ensure_wecom_connection()
+try:
+    ensure_wecom_connection()
+except Exception as _wecom_err:
+    print(f"[Startup] WARNING: WeCom initialization failed: {_wecom_err}")
 
-# --- Spatial Semantic Layer ---
-from data_agent.semantic_layer import ensure_semantic_tables, resolve_semantic_context, build_context_prompt
-ensure_semantic_tables()
+# --- DingTalk Bot (conditional) ---
+try:
+    from data_agent.dingtalk_bot import ensure_dingtalk_connection
+    ensure_dingtalk_connection()
+except Exception as _dt_err:
+    print(f"[Startup] WARNING: DingTalk initialization failed: {_dt_err}")
+
+# --- Feishu Bot (conditional) ---
+try:
+    from data_agent.feishu_bot import ensure_feishu_connection
+    ensure_feishu_connection()
+except Exception as _fs_err:
+    print(f"[Startup] WARNING: Feishu initialization failed: {_fs_err}")
 
 DYNAMIC_PLANNER = os.environ.get("DYNAMIC_PLANNER", "true").lower() in ("true", "1", "yes")
 if DYNAMIC_PLANNER:
@@ -284,9 +312,9 @@ async def api_share_validate_post(token: str, request: Request):
     return JSONResponse(content=result, status_code=code)
 
 
-@chainlit_app.get("/api/share/{token}/validate")
-async def api_share_validate_get(token: str):
+async def _api_share_validate_get(request: Request):
     """Validate a share token (GET, passwordless links)."""
+    token = request.path_params.get("token", "")
     result = validate_share_token(token, None)
     status_map = {"not_found": 404, "expired": 410,
                   "password_required": 401, "wrong_password": 403}
@@ -321,13 +349,100 @@ _share_file_route = Route(
     "/api/share/{token}/file/{filename:path}",
     endpoint=_serve_share_file, methods=["GET"]
 )
+_share_validate_get_route = Route(
+    "/api/share/{token}/validate",
+    endpoint=_api_share_validate_get, methods=["GET"]
+)
 for _i, _r in enumerate(chainlit_app.router.routes):
     if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
         chainlit_app.router.routes.insert(_i, _share_page_route)
         chainlit_app.router.routes.insert(_i, _share_file_route)
+        chainlit_app.router.routes.insert(_i, _share_validate_get_route)
         break
 
 print("[Sharing] Public share routes enabled at /s/{token}")
+
+# --- User File API Routes (for custom frontend) ---
+from chainlit.auth.cookie import get_token_from_cookies
+from chainlit.auth.jwt import decode_jwt
+
+_UPLOADS_BASE = os.path.join(os.path.dirname(__file__), "uploads")
+
+
+def _get_user_from_request(request: Request):
+    """Extract authenticated user from request cookies."""
+    token = get_token_from_cookies(dict(request.cookies))
+    if not token:
+        return None
+    try:
+        return decode_jwt(token)
+    except Exception:
+        return None
+
+
+async def _api_list_user_files(request: Request):
+    """List files in the authenticated user's upload directory."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+    user_dir = os.path.join(_UPLOADS_BASE, user.identifier)
+    if not os.path.isdir(user_dir):
+        return JSONResponse(content=[])
+
+    files = []
+    for name in os.listdir(user_dir):
+        fpath = os.path.join(user_dir, name)
+        if not os.path.isfile(fpath):
+            continue
+        ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+        stat = os.stat(fpath)
+        files.append({
+            "name": name,
+            "size": stat.st_size,
+            "modified": stat.st_mtime,
+            "type": ext,
+        })
+    files.sort(key=lambda f: f["modified"], reverse=True)
+    return JSONResponse(content=files)
+
+
+async def _api_serve_user_file(request: Request):
+    """Serve a file from the authenticated user's upload directory."""
+    filename = request.path_params.get("filename", "")
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+    user_dir = os.path.join(_UPLOADS_BASE, user.identifier)
+    file_path = os.path.join(user_dir, filename)
+
+    # Security: ensure resolved path is within the user directory
+    real_path = os.path.realpath(file_path)
+    real_dir = os.path.realpath(user_dir)
+    if not real_path.startswith(real_dir + os.sep) and real_path != real_dir:
+        return JSONResponse(content={"error": "Forbidden"}, status_code=403)
+
+    if not os.path.isfile(real_path):
+        return JSONResponse(content={"error": "Not found"}, status_code=404)
+
+    content_type, _ = mimetypes.guess_type(filename)
+    return FileResponse(real_path, media_type=content_type or "application/octet-stream")
+
+
+# Insert file API routes BEFORE Chainlit's catch-all /{full_path:path}
+_file_list_route = Route("/api/user/files", endpoint=_api_list_user_files, methods=["GET"])
+_file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
+for _i, _r in enumerate(chainlit_app.router.routes):
+    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+        chainlit_app.router.routes.insert(_i, _file_list_route)
+        chainlit_app.router.routes.insert(_i + 1, _file_serve_route)
+        break
+else:
+    chainlit_app.router.routes.append(_file_list_route)
+    chainlit_app.router.routes.append(_file_serve_route)
+
+print("[Frontend] User file API routes enabled at /api/user/files")
 
 # --- Admin Audit Viewer Routes ---
 import hmac
@@ -501,8 +616,7 @@ async def _serve_audit_page(request: Request):
     return HTMLResponse(content=html)
 
 
-@chainlit_app.get("/api/admin/audit")
-async def api_admin_audit(request: Request):
+async def _api_admin_audit(request: Request):
     """Return audit log entries as JSON (admin-only, HMAC-protected)."""
     auth = request.headers.get("authorization", "")
     token = auth.replace("Bearer ", "") if auth.startswith("Bearer ") else ""
@@ -517,16 +631,16 @@ async def api_admin_audit(request: Request):
     action_filter = params.get("action", "")
     status_filter = params.get("status", "")
 
-    from data_agent.database_tools import get_db_connection_url, T_AUDIT_LOG
+    from data_agent.database_tools import T_AUDIT_LOG
+    from data_agent.db_engine import get_engine
     import json as _json
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return JSONResponse(content={"rows": []})
 
     try:
-        from sqlalchemy import create_engine, text
-        engine = create_engine(db_url)
+        from sqlalchemy import text
         with engine.connect() as conn:
             where_clauses = ["created_at >= NOW() - make_interval(days => :d)"]
             bind = {"d": days, "off": offset_val, "lim": limit_val}
@@ -563,8 +677,7 @@ async def api_admin_audit(request: Request):
         return JSONResponse(content={"rows": [], "error": str(e)})
 
 
-@chainlit_app.get("/api/admin/audit/stats")
-async def api_admin_audit_stats(request: Request):
+async def _api_admin_audit_stats(request: Request):
     """Return aggregate audit stats (admin-only, HMAC-protected)."""
     auth = request.headers.get("authorization", "")
     token = auth.replace("Bearer ", "") if auth.startswith("Bearer ") else ""
@@ -577,12 +690,18 @@ async def api_admin_audit_stats(request: Request):
 
 
 _audit_page_route = Route("/admin/audit", endpoint=_serve_audit_page, methods=["GET"])
+_audit_api_route = Route("/api/admin/audit", endpoint=_api_admin_audit, methods=["GET"])
+_audit_stats_route = Route("/api/admin/audit/stats", endpoint=_api_admin_audit_stats, methods=["GET"])
 for _i, _r in enumerate(chainlit_app.router.routes):
     if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
         chainlit_app.router.routes.insert(_i, _audit_page_route)
+        chainlit_app.router.routes.insert(_i, _audit_api_route)
+        chainlit_app.router.routes.insert(_i, _audit_stats_route)
         break
 else:
     chainlit_app.router.routes.append(_audit_page_route)
+    chainlit_app.router.routes.append(_audit_api_route)
+    chainlit_app.router.routes.append(_audit_stats_route)
 
 print("[Audit] Admin audit viewer enabled at /admin/audit")
 
@@ -591,6 +710,29 @@ if is_wecom_configured():
     from data_agent.wecom_bot import mount_wecom_routes
     if mount_wecom_routes(chainlit_app):
         print("[WeCom] Callback routes mounted at /wecom/callback")
+
+# --- Mount DingTalk bot routes (conditional) ---
+try:
+    from data_agent.dingtalk_bot import is_dingtalk_configured, ensure_dingtalk_connection
+    if is_dingtalk_configured():
+        ensure_dingtalk_connection(chainlit_app)
+except Exception as _dt_mount_err:
+    print(f"[DingTalk] Route mount failed: {_dt_mount_err}")
+
+# --- Mount Feishu bot routes (conditional) ---
+try:
+    from data_agent.feishu_bot import is_feishu_configured, ensure_feishu_connection
+    if is_feishu_configured():
+        ensure_feishu_connection(chainlit_app)
+except Exception as _fs_mount_err:
+    print(f"[Feishu] Route mount failed: {_fs_mount_err}")
+
+# --- Mount Stream API routes ---
+try:
+    from data_agent.stream_api import mount_stream_routes
+    mount_stream_routes(chainlit_app)
+except Exception as _stream_mount_err:
+    print(f"[Stream] Route mount failed: {_stream_mount_err}")
 
 # Base upload directory (per-user dirs created inside)
 BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
@@ -1718,6 +1860,7 @@ async def main(message: cl.Message):
 
                     found = extract_file_paths(part.text)
                     elements = []
+                    msg_metadata = {}
                     for artifact in found:
                         path = artifact['path']
                         if path in shown_artifacts:
@@ -1729,9 +1872,21 @@ async def main(message: cl.Message):
                         elif artifact['type'] == 'html':
                             elements.append(cl.File(path=path, name=name))
                             shown_artifacts.add(path)
+                            # Check for mapconfig.json alongside HTML
+                            config_path = path.replace('.html', '.mapconfig.json')
+                            if os.path.exists(config_path):
+                                try:
+                                    with open(config_path, 'r', encoding='utf-8') as _cf:
+                                        msg_metadata["map_update"] = json.load(_cf)
+                                except Exception:
+                                    pass
+                        elif artifact['type'] == 'csv':
+                            elements.append(cl.File(path=path, name=name))
+                            shown_artifacts.add(path)
+                            msg_metadata["data_update"] = {"file": name}
 
                     if elements:
-                        await cl.Message(content="", elements=elements).send()
+                        await cl.Message(content="", elements=elements, metadata=msg_metadata).send()
 
         # --- Cleanup: finalize all open steps ---
         if current_tool_step:

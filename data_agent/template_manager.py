@@ -7,22 +7,22 @@ browse/share them, and apply to new data via plan injection.
 import json
 from typing import Optional, List, Dict
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from .database_tools import get_db_connection_url, _inject_user_context, T_ANALYSIS_TEMPLATES
+from .db_engine import get_engine
+from .database_tools import _inject_user_context, T_ANALYSIS_TEMPLATES
 from .code_exporter import NON_EXPORTABLE_TOOLS, _PATH_ARG_NAMES
 from .user_context import current_user_id
 
 
 def ensure_templates_table():
     """Create analysis_templates table if not exists. Called at startup."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         print("[Templates] WARNING: Database not configured. Template system disabled.")
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {T_ANALYSIS_TEMPLATES} (
@@ -95,13 +95,12 @@ def save_as_template(
     if not filtered:
         return {"status": "error", "message": "当前分析流程中没有可保存的有效工具调用。"}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置，无法保存模板。"}
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             conn.execute(text(f"""
@@ -146,13 +145,12 @@ def list_templates(keyword: str = "") -> dict:
     Returns:
         模板列表 dict。
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置。"}
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
 
@@ -214,13 +212,12 @@ def get_template(template_id: int) -> Optional[dict]:
     Returns:
         Template dict with tool_sequence, or None if not found / no access.
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return None
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             row = conn.execute(text(f"""
@@ -259,13 +256,12 @@ def delete_template(template_id: int) -> dict:
     if not isinstance(template_id, int) or template_id <= 0:
         return {"status": "error", "message": "无效的模板 ID。"}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置。"}
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             result = conn.execute(text(f"""
@@ -295,13 +291,12 @@ def share_template(template_id: int) -> dict:
     if not isinstance(template_id, int) or template_id <= 0:
         return {"status": "error", "message": "无效的模板 ID。"}
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "数据库未配置。"}
 
     username = current_user_id.get()
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             _inject_user_context(conn)
             result = conn.execute(text(f"""
@@ -379,12 +374,11 @@ def generate_plan_from_template(template: dict) -> str:
 
 def _increment_use_count(template_id: int) -> None:
     """Bump use_count by 1 for a template. Non-fatal."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 UPDATE {T_ANALYSIS_TEMPLATES}

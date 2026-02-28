@@ -1,0 +1,81 @@
+# =============================================================================
+# GIS Data Agent — Production Docker Compose Override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =============================================================================
+
+services:
+  db:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  app:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  # ---------------------------------------------------------------------------
+  # Database Backup (daily cron)
+  # ---------------------------------------------------------------------------
+  db-backup:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+      PGDATABASE: gis_agent
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - db-backups:/backups
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "[Backup] Starting daily backup cron..."
+        while true; do
+          TIMESTAMP=$$(date +%Y%m%d_%H%M%S)
+          FILENAME="/backups/gis_agent_$${TIMESTAMP}.sql.gz"
+          echo "[Backup] Creating $$FILENAME ..."
+          pg_dump -Fc | gzip > "$$FILENAME"
+          if [ $$? -eq 0 ]; then
+            echo "[Backup] Done: $$FILENAME ($$(du -h $$FILENAME | cut -f1))"
+          else
+            echo "[Backup] FAILED"
+          fi
+          # Cleanup old backups
+          find /backups -name "gis_agent_*.sql.gz" -mtime +$${BACKUP_RETENTION_DAYS} -delete 2>/dev/null
+          echo "[Backup] Next run in 24h"
+          sleep 86400
+        done
+    networks:
+      - agent-net
+
+volumes:
+  db-backups:

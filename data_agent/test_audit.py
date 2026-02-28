@@ -73,32 +73,32 @@ class TestAuditConstants(unittest.TestCase):
 class TestAuditNoDB(unittest.TestCase):
     """Test audit functions when database is not configured (graceful degradation)."""
 
-    @patch("data_agent.audit_logger.get_db_connection_url", return_value=None)
-    def test_record_audit_noop(self, mock_url):
+    @patch("data_agent.audit_logger.get_engine", return_value=None)
+    def test_record_audit_noop(self, mock_engine):
         # Should not raise
         record_audit("testuser", ACTION_LOGIN_SUCCESS)
 
-    @patch("data_agent.audit_logger.get_db_connection_url", return_value=None)
-    def test_ensure_audit_table_prints_warning(self, mock_url):
+    @patch("data_agent.audit_logger.get_engine", return_value=None)
+    def test_ensure_audit_table_prints_warning(self, mock_engine):
         with patch("builtins.print") as mock_print:
             ensure_audit_table()
             printed = " ".join(str(c) for c in mock_print.call_args_list)
             self.assertIn("WARNING", printed)
 
-    @patch("data_agent.audit_logger.get_db_connection_url", return_value=None)
-    def test_get_user_audit_log_empty(self, mock_url):
+    @patch("data_agent.audit_logger.get_engine", return_value=None)
+    def test_get_user_audit_log_empty(self, mock_engine):
         result = get_user_audit_log("testuser")
         self.assertEqual(result, [])
 
-    @patch("data_agent.audit_logger.get_db_connection_url", return_value=None)
-    def test_get_audit_stats_zeroed(self, mock_url):
+    @patch("data_agent.audit_logger.get_engine", return_value=None)
+    def test_get_audit_stats_zeroed(self, mock_engine):
         result = get_audit_stats()
         self.assertEqual(result["total_events"], 0)
         self.assertEqual(result["active_users"], 0)
         self.assertEqual(result["events_by_action"], {})
 
-    @patch("data_agent.audit_logger.get_db_connection_url", return_value=None)
-    def test_cleanup_returns_zero(self, mock_url):
+    @patch("data_agent.audit_logger.get_engine", return_value=None)
+    def test_cleanup_returns_zero(self, mock_engine):
         result = cleanup_old_audit_logs()
         self.assertEqual(result, 0)
 

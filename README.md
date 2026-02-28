@@ -1,92 +1,163 @@
-# GIS Data Agent (ADK Edition)
+# GIS Data Agent (ADK Edition) v4.0-alpha
 
-**Current Version**: v3.2.0 ("Semantic Analyst")
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with three specialized pipelines for data governance, land-use optimization, and general spatial analysis.
 
-A specialized AI Agent for Geospatial Data Analysis, Governance, and Optimization. Built with Google Agent Developer Kit (ADK), LangChain, and PostGIS.
+## Core Capabilities
 
-## 🌟 Key Capabilities
+### Data Governance (数据治理)
+- Topological audit (overlaps, self-intersections, gaps)
+- Schema compliance checking against national standards (GB/T 21010)
+- Multi-modal verification: PDF reports vs SHP/DB metrics
+- Automated governance reports (Word/PDF)
 
-### 1. 🛡️ To G: Data Governance (数据治理)
-*   **Automated Audit**: Scans for topological errors (overlaps, self-intersections).
-*   **Compliance Check**: Verifies schema against national standards (e.g., GB/T 21010).
-*   **Multi-modal Verification**: Cross-checks PDF reports against SHP/DB metrics.
+### Land Use Optimization (空间优化)
+- Deep Reinforcement Learning engine (MaskablePPO) for layout optimization
+- Fragmentation Index (FFI) with 6 landscape metrics
+- Paired farmland/forest swaps with strict area balance
 
-### 2. 🚀 To B: Land Use Optimization (空间优化)
-*   **DRL Engine (v7)**: Uses PPO (Proximal Policy Optimization) to optimize land use layout.
-*   **Objective**: Reduce fragmentation (FFI) and optimize slope suitability.
-*   **Paired Swaps**: Ensures strict "balance of total area" during optimization.
+### Business Spatial Intelligence (商业智能)
+- Semantic query: natural language → auto-mapped SQL with spatial operators
+- Site selection with chain reasoning (Query → Buffer → Overlay → Filter)
+- DBSCAN clustering, KDE heatmaps, choropleth maps
+- POI search, driving distance, geocoding (batch + reverse)
+- Interactive multi-layer map composition
 
-### 3. 🌍 General: Business Spatial Intelligence (商业智能)
-*   **Semantic Query**: "Find parcels > 5 mu with slope < 15" -> Auto-maps to DB schema.
-*   **Site Selection**: Complex chain reasoning (Query -> Buffer -> Difference -> Filter).
-*   **Clustering & Heatmaps**: DBSCAN clustering and KDE heatmaps for point data.
-*   **Catchment Analysis**: Buffer and Summarize-Within analysis.
-
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TD
-    User[User Input] --> Router{Semantic Router\n(Gemini Flash)}
-    
-    Router -- "Audit/Check" --> Gov[🛡️ Governance Pipeline]
-    Router -- "Optimize/Plan" --> Opt[🚀 Optimization Pipeline]
-    Router -- "Analyze/Query" --> Gen[🌍 General Pipeline]
-    
-    subgraph "Governance Pipeline"
-        GovExploration --> GovProcessing --> GovReporter
+    User[User Message] --> Router{Semantic Router<br/>Gemini 2.0 Flash}
+    Router --> SL[Semantic Layer<br/>YAML Catalog + DB Registry]
+    SL --> Router
+
+    Router -- "Dynamic" --> Planner[Dynamic Planner<br/>5 Sub-Agents]
+    Router -- "Audit" --> Gov[Governance Pipeline]
+    Router -- "Optimize" --> Opt[Optimization Pipeline]
+    Router -- "Query" --> Gen[General Pipeline]
+
+    subgraph "Planner (transfer_to_agent)"
+        PE[Explorer] --> PP[Processor] --> PA[Analyzer] --> PV[Visualizer] --> PR[Reporter]
     end
-    
-    subgraph "Optimization Pipeline"
-        DataExploration --> DataProcessing --> DataAnalysis(DRL) --> DataViz --> DataSummary
+
+    subgraph "Shared Infrastructure"
+        DB[(PostgreSQL + PostGIS)]
+        Auth[Auth + RBAC + RLS]
+        Audit[Audit Logger]
+        Pool[Connection Pool Singleton]
+        OBS[OBS Cloud Storage]
     end
-    
-    subgraph "General Pipeline"
-        GenProcessing(Tools: Buffer, Cluster, SQL...) --> GenViz(Heatmap/Map) --> GenSummary
-    end
+
+    Planner --> DB
+    Gov --> DB
+    Opt --> DB
+    Gen --> DB
 ```
 
-## 🛠️ Tech Stack
+**Pipeline routing**: `DYNAMIC_PLANNER=true` (default) uses the Planner with `transfer_to_agent`; `false` falls back to 3 fixed `SequentialAgent` pipelines.
 
-*   **Core**: Python 3.12, Google ADK
-*   **LLM**: Gemini 2.0 Flash / Pro
-*   **Database**: PostgreSQL 16 + PostGIS 3.4
-*   **GIS**: GeoPandas, Shapely, Rasterio, PySAL
-*   **Viz**: Folium, Matplotlib, Seaborn
-*   **AI**: Stable Baselines 3 (PPO), PyTorch
+**Model tiering**: Explorer/Visualizer → Gemini 2.0 Flash, Processor/Analyzer/Planner → Gemini 2.5 Flash, Reporter → Gemini 2.5 Pro.
 
-## 🚀 Getting Started
+## Quick Start
 
-1.  **Environment Setup**:
-    ```bash
-    # Install dependencies
-    pip install -r requirements.txt
-    ```
+### Docker (recommended)
+```bash
+docker-compose up -d
+# Visit http://localhost:8000
+# Login: admin / admin123
+```
 
-2.  **Database Config**:
-    Edit `data_agent/.env` with your PostGIS credentials.
+### Local Development
+```bash
+# 1. Configure environment
+cp data_agent/.env.example data_agent/.env
+# Edit .env with your PostgreSQL/PostGIS credentials and Vertex AI config
 
-3.  **Run the Agent**:
-    ```bash
-    chainlit run data_agent/app.py -w
-    ```
+# 2. Install dependencies
+pip install google-adk chainlit geopandas shapely rasterio folium sqlalchemy psycopg2-binary
 
-## 🗺️ Roadmap
+# 3. Run
+chainlit run data_agent/app.py -w
+```
+
+Default login: `admin` / `admin123` (seeded on first run). Self-registration available at `/register`.
+
+## Feature Matrix
+
+| Feature | Description |
+|---|---|
+| Semantic Layer | YAML catalog (15 domains, 7 regions, 8 spatial ops) + DB-backed annotations |
+| Row-Level Security | PostgreSQL RLS with per-user data isolation |
+| Connection Pool | Singleton SQLAlchemy engine with 5-min TTL semantic cache |
+| Auth | Password + OAuth2 (Google), RBAC (admin/analyst/viewer) |
+| File Sandbox | Per-user upload directory with OBS cloud sync |
+| Spatial Memory | Persistent per-user memory (regions, preferences, analysis results) |
+| Token Tracking | Per-user LLM usage with daily/monthly limits |
+| Audit Log | Enterprise audit trail with admin dashboard |
+| Report Export | Word/PDF with page headers, footers, pipeline-specific titles |
+| Code Export | Reproducible Python scripts from analysis pipelines |
+| Result Sharing | Public link generation with optional password + expiry |
+| Template System | Save/reuse analysis workflows as templates |
+| WeChat Integration | Enterprise WeChat bot with AES crypto + rate limiting |
+| MCP Server | Model Context Protocol for external tool integration |
+| Multi-Layer Maps | compose_map() with 5 layer types + LayerControl |
+
+## Tech Stack
+
+- **Framework**: Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`)
+- **LLM**: Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router)
+- **UI**: Chainlit (password + OAuth2 auth)
+- **Database**: PostgreSQL 16 + PostGIS 3.4
+- **GIS**: GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify, branca
+- **ML**: PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium
+- **Cloud**: Huawei OBS (S3-compatible) for file storage
+- **Python**: 3.13+
+
+## Project Structure
+
+```
+data_agent/
+├── app.py                 # Chainlit UI, semantic router, auth, RBAC
+├── agent.py               # Agent definitions, pipeline assembly (~290 lines)
+├── toolsets/              # 7 BaseToolset modules (exploration, processing, analysis, ...)
+├── prompts/               # 3 YAML prompt files (optimization, planner, general)
+├── db_engine.py           # Connection pool singleton
+├── semantic_layer.py      # Semantic catalog + DB annotations + TTL cache
+├── semantic_catalog.yaml  # 15 domains, 7 regions, 8 spatial ops, 4 metric templates
+├── database_tools.py      # PostgreSQL/PostGIS integration, RLS
+├── gis_processors.py      # GIS operations (tessellation, buffer, clip, overlay, ...)
+├── drl_engine.py          # Gymnasium environment for land-use optimization
+├── auth.py                # Password/OAuth auth, user management
+├── audit_logger.py        # Enterprise audit trail
+├── memory.py              # Persistent spatial memory
+├── token_tracker.py       # LLM usage tracking + limits
+├── sharing.py             # Public link sharing
+├── report_generator.py    # Markdown → Word/PDF
+├── code_exporter.py       # Analysis → Python script export
+├── pipeline_runner.py     # Headless pipeline execution
+├── user_context.py        # ContextVar propagation
+├── utils.py               # Shared helpers
+└── migrations/            # SQL migration scripts (001-009)
+```
+
+## Running Tests
+
+```bash
+# All tests (unittest-based, ~520 tests)
+python -m pytest data_agent/test_*.py --ignore=data_agent/test_knowledge_agent.py
+
+# Single module
+python -m pytest data_agent/test_database.py -v
+```
+
+## Roadmap
 
 | Version | Feature Set | Status |
-| :--- | :--- | :--- |
-| v1.0 | Local Files, Basic DRL | ✅ Done |
-| v2.0 | Excel Geocoding, Report Gen | ✅ Done |
-| v3.0 | PostGIS, Hard Routing | ✅ Done |
-| v3.1 | Multi-Pipeline Architecture | ✅ Done |
-| v3.2 | **Semantic Layer & Business Suite** | ✅ Current |
-| v4.0 | Dynamic Planner & Tool Registry | 🚧 Planned |
-| v5.0 | Multi-Modal & 3D (Cesium) | 📅 Future |
-
-## 📂 Project Structure
-
-*   `data_agent/`: Core agent logic.
-    *   `app.py`: Intent Router & UI Entry.
-    *   `agent.py`: Agent definitions & Tool registration.
-    *   `gis_processors.py`: GIS algorithms (Clustering, Buffer, etc.).
-    *   `drl_engine.py`: Deep Reinforcement Learning environment.
-*   `tests/`: Unit and integration tests.
+|---|---|---|
+| v1.0 | Local Files, Basic DRL | Done |
+| v2.0 | Excel Geocoding, Report Generation | Done |
+| v3.0 | PostGIS, Hard Routing | Done |
+| v3.1 | Multi-Pipeline Architecture | Done |
+| v3.2 | Semantic Layer, Business Suite | Done |
+| v4.0-alpha | Dynamic Planner, RLS, Audit, Semantic Cache | **Current** |
+| v4.0 | Domain Hierarchy, Demo Scenarios | In Progress |
+| v5.0 | Multi-Modal, 3D Visualization | Planned |

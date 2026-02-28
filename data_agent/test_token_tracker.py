@@ -18,19 +18,19 @@ from data_agent.user_context import current_user_id
 class TestTokenTrackerNoDB(unittest.TestCase):
     """Tests for graceful degradation when database is not configured."""
 
-    @patch('data_agent.token_tracker.get_db_connection_url', return_value=None)
-    def test_record_usage_no_db(self, mock_url):
+    @patch('data_agent.token_tracker.get_engine', return_value=None)
+    def test_record_usage_no_db(self, mock_engine):
         # Should not raise
         record_usage("user1", "general", 100, 50)
 
-    @patch('data_agent.token_tracker.get_db_connection_url', return_value=None)
-    def test_get_daily_usage_no_db(self, mock_url):
+    @patch('data_agent.token_tracker.get_engine', return_value=None)
+    def test_get_daily_usage_no_db(self, mock_engine):
         result = get_daily_usage("user1")
         self.assertEqual(result["count"], 0)
         self.assertEqual(result["tokens"], 0)
 
-    @patch('data_agent.token_tracker.get_db_connection_url', return_value=None)
-    def test_get_monthly_usage_no_db(self, mock_url):
+    @patch('data_agent.token_tracker.get_engine', return_value=None)
+    def test_get_monthly_usage_no_db(self, mock_engine):
         result = get_monthly_usage("user1")
         self.assertEqual(result["count"], 0)
         self.assertEqual(result["total_tokens"], 0)

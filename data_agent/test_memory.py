@@ -21,29 +21,29 @@ from data_agent.user_context import current_user_id
 class TestMemoryNoDB(unittest.TestCase):
     """Tests for graceful degradation when database is not configured."""
 
-    @patch('data_agent.memory.get_db_connection_url', return_value=None)
-    def test_save_memory_no_db(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_save_memory_no_db(self, mock_engine):
         result = save_memory("region", "华东", '{"districts": ["上海"]}')
         self.assertEqual(result["status"], "error")
         self.assertIn("数据库未配置", result["message"])
 
-    @patch('data_agent.memory.get_db_connection_url', return_value=None)
-    def test_recall_memories_no_db(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_recall_memories_no_db(self, mock_engine):
         result = recall_memories()
         self.assertEqual(result["status"], "error")
 
-    @patch('data_agent.memory.get_db_connection_url', return_value=None)
-    def test_delete_memory_no_db(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_delete_memory_no_db(self, mock_engine):
         result = delete_memory("1")
         self.assertEqual(result["status"], "error")
 
-    @patch('data_agent.memory.get_db_connection_url', return_value=None)
-    def test_get_user_preferences_no_db(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_get_user_preferences_no_db(self, mock_engine):
         result = get_user_preferences()
         self.assertEqual(result, {})
 
-    @patch('data_agent.memory.get_db_connection_url', return_value=None)
-    def test_get_recent_analysis_no_db(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_get_recent_analysis_no_db(self, mock_engine):
         result = get_recent_analysis_results()
         self.assertEqual(result, [])
 
@@ -51,20 +51,20 @@ class TestMemoryNoDB(unittest.TestCase):
 class TestMemoryValidation(unittest.TestCase):
     """Tests for input validation (no DB needed)."""
 
-    @patch('data_agent.memory.get_db_connection_url', return_value="postgresql://x:x@localhost/test")
-    def test_invalid_memory_type(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=MagicMock())
+    def test_invalid_memory_type(self, mock_engine):
         result = save_memory("invalid_type", "key", '{}')
         self.assertEqual(result["status"], "error")
         self.assertIn("无效的记忆类型", result["message"])
 
-    @patch('data_agent.memory.get_db_connection_url', return_value="postgresql://x:x@localhost/test")
-    def test_invalid_json_value(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=MagicMock())
+    def test_invalid_json_value(self, mock_engine):
         result = save_memory("region", "key", "not json")
         self.assertEqual(result["status"], "error")
         self.assertIn("JSON", result["message"])
 
-    @patch('data_agent.memory.get_db_connection_url', return_value="postgresql://x:x@localhost/test")
-    def test_invalid_memory_id(self, mock_url):
+    @patch('data_agent.memory.get_engine', return_value=MagicMock())
+    def test_invalid_memory_id(self, mock_engine):
         result = delete_memory("not_a_number")
         self.assertEqual(result["status"], "error")
         self.assertIn("数字", result["message"])

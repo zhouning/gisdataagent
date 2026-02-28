@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gis-agent-config
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent
+data:
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DATABASE: "gis_agent"
+  POSTGRES_USER: "agent_user"
+  POSTGRES_ADMIN_USER: "postgres"
+  GOOGLE_CLOUD_LOCATION: "global"
+  DYNAMIC_PLANNER: "true"
+  DAILY_ANALYSIS_LIMIT: "20"
+  AUDIT_LOG_RETENTION_DAYS: "90"

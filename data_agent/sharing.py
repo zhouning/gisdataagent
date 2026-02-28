@@ -6,9 +6,10 @@ import os
 import secrets
 from typing import Optional
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from .database_tools import get_db_connection_url, T_SHARE_LINKS
+from .db_engine import get_engine
+from .database_tools import T_SHARE_LINKS
 from .auth import _make_password_hash, _verify_password
 from .user_context import current_user_id
 
@@ -19,13 +20,12 @@ SHAPEFILE_SIDECARS = (".dbf", ".shx", ".prj", ".cpg", ".sbn", ".sbx", ".shp.xml"
 
 def ensure_share_links_table():
     """Create share_links table if not exists. Called at startup."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         print("[Sharing] WARNING: Database not configured. Sharing disabled.")
         return
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {T_SHARE_LINKS} (
@@ -75,8 +75,8 @@ def create_share_link(
     Returns:
         {"status": "success", "token": "...", "url": "/s/..."} or error dict.
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "Database not configured"}
 
     owner = current_user_id.get()
@@ -94,7 +94,6 @@ def create_share_link(
     files_json = json.dumps(files, ensure_ascii=False)
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             conn.execute(text(f"""
                 INSERT INTO {T_SHARE_LINKS}
@@ -126,12 +125,11 @@ def validate_share_token(token: str, password: Optional[str] = None) -> dict:
         On success: {"status": "success", "data": {...}}
         On error: {"status": "error", "reason": "not_found|expired|password_required|wrong_password"}
     """
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "reason": "not_found"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             row = conn.execute(text(f"""
                 SELECT owner_username, title, summary, files, pipeline_type,
@@ -193,12 +191,11 @@ def get_share_file_path(token: str, filename: str) -> Optional[str]:
     if '..' in filename or '/' in filename or '\\' in filename or '\0' in filename:
         return None
 
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return None
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             row = conn.execute(text(f"""
                 SELECT owner_username, files,
@@ -242,8 +239,8 @@ def get_share_file_path(token: str, filename: str) -> Optional[str]:
 
 def delete_share_link(token: str) -> dict:
     """Delete a share link. Only the owner can delete."""
-    db_url = get_db_connection_url()
-    if not db_url:
+    engine = get_engine()
+    if not engine:
         return {"status": "error", "message": "Database not configured"}
 
     owner = current_user_id.get()
@@ -251,7 +248,6 @@ def delete_share_link(token: str) -> dict:
         return {"status": "error", "message": "User not authenticated"}
 
     try:
-        engine = create_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text(
                 f"DELETE FROM {T_SHARE_LINKS} WHERE token = :t AND owner_username = :o"
