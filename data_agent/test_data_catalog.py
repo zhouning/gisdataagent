@@ -405,5 +405,287 @@ class TestRegisterDataAsset(unittest.TestCase):
         self.assertEqual(result["asset_id"], 55)
 
 
+class TestExtractSourcePaths(unittest.TestCase):
+    """Test source path extraction from tool arguments."""
+
+    def test_extract_file_path(self):
+        from data_agent.app import _extract_source_paths
+        args = {"file_path": "/data/input.shp", "buffer_distance": 1000}
+        result = _extract_source_paths(args)
+        self.assertEqual(result, ["/data/input.shp"])
+
+    def test_extract_multiple_paths(self):
+        from data_agent.app import _extract_source_paths
+        args = {"raster_path": "/data/dem.tif", "polygon_path": "/data/boundary.shp"}
+        result = _extract_source_paths(args)
+        self.assertEqual(len(result), 2)
+        self.assertIn("/data/dem.tif", result)
+        self.assertIn("/data/boundary.shp", result)
+
+    def test_extract_custom_path_key(self):
+        from data_agent.app import _extract_source_paths
+        args = {"input_file": "/data/custom.csv", "output_dir": "/tmp"}
+        result = _extract_source_paths(args)
+        self.assertIn("/data/custom.csv", result)
+
+    def test_no_paths(self):
+        from data_agent.app import _extract_source_paths
+        args = {"distance": 1000, "method": "euclidean"}
+        result = _extract_source_paths(args)
+        self.assertEqual(result, [])
+
+    def test_empty_args(self):
+        from data_agent.app import _extract_source_paths
+        self.assertEqual(_extract_source_paths({}), [])
+
+
+class TestResolveSourceAssets(unittest.TestCase):
+    """Test source asset resolution from file paths."""
+
+    @patch("data_agent.data_catalog.get_engine", return_value=None)
+    def test_no_db_fallback(self, _mock):
+        from data_agent.data_catalog import _resolve_source_assets
+        result = _resolve_source_assets(["/data/input.shp"])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "input.shp")
+        self.assertNotIn("id", result[0])
+
+    @patch("data_agent.data_catalog.get_engine")
+    def test_resolve_known_asset(self, mock_engine):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.return_value = (42, "input.shp")
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        from data_agent.data_catalog import _resolve_source_assets
+        result = _resolve_source_assets(["/data/input.shp"])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], 42)
+        self.assertEqual(result[0]["name"], "input.shp")
+
+    @patch("data_agent.data_catalog.get_engine")
+    def test_resolve_unknown_asset(self, mock_engine):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.return_value = None
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        from data_agent.data_catalog import _resolve_source_assets
+        result = _resolve_source_assets(["/data/unknown.shp"])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "unknown.shp")
+        self.assertNotIn("id", result[0])
+
+
+class TestRegisterToolOutputWithSources(unittest.TestCase):
+    """Test that register_tool_output passes source_assets through."""
+
+    @patch("data_agent.data_catalog.auto_register_from_path")
+    @patch("data_agent.data_catalog._resolve_source_assets")
+    def test_sources_passed_through(self, mock_resolve, mock_register):
+        mock_resolve.return_value = [{"id": 1, "name": "input.shp"}]
+        mock_register.return_value = 99
+
+        from data_agent.data_catalog import register_tool_output
+        result = register_tool_output(
+            "/data/output.shp", "create_buffer",
+            source_paths=["/data/input.shp"]
+        )
+        self.assertEqual(result, 99)
+        mock_resolve.assert_called_once_with(["/data/input.shp"])
+        call_kwargs = mock_register.call_args
+        self.assertEqual(call_kwargs.kwargs.get("source_assets") or call_kwargs[1].get("source_assets"),
+                         [{"id": 1, "name": "input.shp"}])
+
+    @patch("data_agent.data_catalog.auto_register_from_path")
+    @patch("data_agent.data_catalog._resolve_source_assets")
+    def test_no_sources(self, mock_resolve, mock_register):
+        mock_resolve.return_value = []
+        mock_register.return_value = 100
+
+        from data_agent.data_catalog import register_tool_output
+        result = register_tool_output("/data/output.csv", "query_database")
+        self.assertEqual(result, 100)
+        mock_resolve.assert_called_once_with([])
+
+
+class TestGetDataLineage(unittest.TestCase):
+    """Test data lineage tracing."""
+
+    @patch("data_agent.data_catalog.get_engine", return_value=None)
+    def test_lineage_no_db(self, _mock):
+        from data_agent.data_catalog import get_data_lineage
+        result = get_data_lineage("test.shp")
+        self.assertEqual(result["status"], "error")
+
+    @patch("data_agent.data_catalog.get_engine")
+    def test_lineage_not_found(self, mock_engine):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.return_value = None
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        from data_agent.data_catalog import get_data_lineage
+        result = get_data_lineage("nonexistent.shp")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("not found", result["message"])
+
+    @patch("data_agent.data_catalog.get_engine")
+    def test_lineage_ancestors(self, mock_engine):
+        """Asset with source_assets should return ancestors."""
+        mock_conn = MagicMock()
+        # First call: find target asset
+        target_row = (10, "buffer_result.shp", "vector", "create_buffer",
+                      [{"id": 5, "name": "parcels.shp"}])
+        # Second call: look up ancestor
+        ancestor_row = (5, "parcels.shp", "vector", "upload", [])
+
+        call_count = [0]
+        def mock_execute(query, params=None):
+            result = MagicMock()
+            call_count[0] += 1
+            if call_count[0] <= 2:  # _inject_user_context calls
+                return result
+            if call_count[0] == 3:  # find target
+                result.fetchone.return_value = target_row
+            elif call_count[0] == 4:  # walk ancestor
+                result.fetchone.return_value = ancestor_row
+            else:  # descendants query
+                result.fetchall.return_value = []
+            return result
+
+        mock_conn.execute = mock_execute
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        from data_agent.data_catalog import get_data_lineage
+        result = get_data_lineage("buffer_result.shp", direction="ancestors")
+        self.assertEqual(result["status"], "success")
+        self.assertIn("ancestors", result)
+        self.assertEqual(len(result["ancestors"]), 1)
+        self.assertEqual(result["ancestors"][0]["name"], "parcels.shp")
+
+    @patch("data_agent.data_catalog.get_engine")
+    def test_lineage_descendants(self, mock_engine):
+        """Asset should find derived assets."""
+        mock_conn = MagicMock()
+        # Target asset (no sources)
+        target_row = (5, "parcels.shp", "vector", "upload", [])
+        # Descendants
+        desc_rows = [
+            (10, "buffer_result.shp", "vector", "create_buffer"),
+            (11, "clipped.shp", "vector", "pairwise_clip"),
+        ]
+
+        call_count = [0]
+        def mock_execute(query, params=None):
+            result = MagicMock()
+            call_count[0] += 1
+            if call_count[0] <= 2:
+                return result
+            if call_count[0] == 3:  # find target
+                result.fetchone.return_value = target_row
+            else:  # descendants query
+                result.fetchall.return_value = desc_rows
+            return result
+
+        mock_conn.execute = mock_execute
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        from data_agent.data_catalog import get_data_lineage
+        result = get_data_lineage("5", direction="descendants")
+        self.assertEqual(result["status"], "success")
+        self.assertIn("descendants", result)
+        self.assertEqual(len(result["descendants"]), 2)
+        names = [d["name"] for d in result["descendants"]]
+        self.assertIn("buffer_result.shp", names)
+
+    @patch("data_agent.data_catalog.get_engine")
+    def test_lineage_both(self, mock_engine):
+        """Direction=both should include both ancestors and descendants."""
+        mock_conn = MagicMock()
+        target_row = (10, "output.shp", "vector", "create_buffer",
+                      [{"id": 5, "name": "input.shp"}])
+        ancestor_row = (5, "input.shp", "vector", "upload", [])
+
+        call_count = [0]
+        def mock_execute(query, params=None):
+            result = MagicMock()
+            call_count[0] += 1
+            if call_count[0] <= 2:
+                return result
+            if call_count[0] == 3:
+                result.fetchone.return_value = target_row
+            elif call_count[0] == 4:
+                result.fetchone.return_value = ancestor_row
+            else:
+                result.fetchall.return_value = []
+            return result
+
+        mock_conn.execute = mock_execute
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        from data_agent.data_catalog import get_data_lineage
+        result = get_data_lineage("output.shp", direction="both")
+        self.assertEqual(result["status"], "success")
+        self.assertIn("ancestors", result)
+        self.assertIn("descendants", result)
+        self.assertIn("message", result)
+
+
+class TestWalkAncestors(unittest.TestCase):
+    """Test ancestor chain walking."""
+
+    def test_empty_sources(self):
+        from data_agent.data_catalog import _walk_ancestors
+        self.assertEqual(_walk_ancestors(None, None), [])
+        self.assertEqual(_walk_ancestors(None, []), [])
+        self.assertEqual(_walk_ancestors(None, "[]"), [])
+
+    def test_name_only_sources(self):
+        """Sources without IDs should still appear in ancestors."""
+        from data_agent.data_catalog import _walk_ancestors
+        sources = [{"name": "unknown.shp"}]
+        result = _walk_ancestors(None, sources)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "unknown.shp")
+        self.assertEqual(result[0]["depth"], 0)
+
+
+class TestFindDescendants(unittest.TestCase):
+    """Test descendant finding."""
+
+    def test_no_descendants(self):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = []
+        from data_agent.data_catalog import _find_descendants
+        result = _find_descendants(mock_conn, 1, "test.shp")
+        self.assertEqual(result, [])
+
+    def test_with_descendants(self):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = [
+            (20, "derived.shp", "vector", "create_buffer"),
+        ]
+        from data_agent.data_catalog import _find_descendants
+        result = _find_descendants(mock_conn, 1, "test.shp")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "derived.shp")
+
+
 if __name__ == "__main__":
     unittest.main()

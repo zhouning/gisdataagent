@@ -170,7 +170,8 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                             creation_params: dict = None,
                             storage_backend: str = "local",
                             cloud_key: str = "",
-                            owner: str = "") -> Optional[int]:
+                            owner: str = "",
+                            source_assets: list = None) -> Optional[int]:
     """Register a data asset from a file path. Returns asset ID or None.
 
     Extracts spatial metadata automatically. Upserts on (asset_name, owner, backend).
@@ -193,11 +194,13 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                 INSERT INTO {T_DATA_CATALOG}
                     (asset_name, asset_type, format, storage_backend, cloud_key,
                      local_path, spatial_extent, crs, srid, feature_count,
-                     file_size_bytes, creation_tool, creation_params, owner_username)
+                     file_size_bytes, creation_tool, creation_params,
+                     source_assets, owner_username)
                 VALUES
                     (:name, :type, :fmt, :backend, :cloud_key,
                      :local_path, CAST(:extent AS jsonb), :crs, :srid, :count,
-                     :size, :tool, CAST(:params AS jsonb), :owner)
+                     :size, :tool, CAST(:params AS jsonb),
+                     CAST(:sources AS jsonb), :owner)
                 ON CONFLICT (asset_name, owner_username, storage_backend)
                 DO UPDATE SET
                     asset_type = EXCLUDED.asset_type,
@@ -211,6 +214,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                     file_size_bytes = EXCLUDED.file_size_bytes,
                     creation_tool = EXCLUDED.creation_tool,
                     creation_params = EXCLUDED.creation_params,
+                    source_assets = EXCLUDED.source_assets,
                     updated_at = NOW()
                 RETURNING id
             """), {
@@ -227,6 +231,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                 "size": meta["file_size_bytes"],
                 "tool": creation_tool,
                 "params": json.dumps(creation_params or {}),
+                "sources": json.dumps(source_assets or []),
                 "owner": owner,
             })
             row = result.fetchone()
@@ -240,15 +245,52 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
         return None
 
 
+def _resolve_source_assets(paths: list) -> list:
+    """Look up catalog entries for source file paths.
+
+    Returns list of {"id": N, "name": "..."} for known assets,
+    or {"name": "..."} for unknown paths. Non-fatal.
+    """
+    if not paths:
+        return []
+
+    engine = get_engine()
+    if not engine:
+        return [{"name": os.path.basename(p)} for p in paths]
+
+    resolved = []
+    try:
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            for p in paths:
+                name = os.path.basename(p) if os.sep in p or '/' in p else p
+                row = conn.execute(text(f"""
+                    SELECT id, asset_name FROM {T_DATA_CATALOG}
+                    WHERE asset_name = :name
+                    ORDER BY updated_at DESC LIMIT 1
+                """), {"name": name}).fetchone()
+                if row:
+                    resolved.append({"id": row[0], "name": row[1]})
+                else:
+                    resolved.append({"name": name})
+    except Exception:
+        resolved = [{"name": os.path.basename(p)} for p in paths]
+
+    return resolved
+
+
 def register_tool_output(local_path: str, tool_name: str,
-                         tool_params: dict = None, cloud_key: str = "") -> Optional[int]:
+                         tool_params: dict = None, cloud_key: str = "",
+                         source_paths: list = None) -> Optional[int]:
     """Non-fatal wrapper for auto_register_from_path. Used by app.py after tool execution."""
     try:
         backend = "cloud" if cloud_key else "local"
+        source_assets = _resolve_source_assets(source_paths or [])
         return auto_register_from_path(
             local_path, creation_tool=tool_name,
             creation_params=tool_params,
             storage_backend=backend, cloud_key=cloud_key,
+            source_assets=source_assets,
         )
     except Exception as e:
         logger.debug("[DataCatalog] register_tool_output non-fatal error: %s", e)
@@ -719,3 +761,146 @@ def share_data_asset(asset_id: str) -> dict:
             return {"status": "success", "message": f"Asset {asset_id} is now shared"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+def get_data_lineage(asset_name_or_id: str, direction: str = "both") -> dict:
+    """
+    [Data Lake Tool] Trace data provenance chain for a data asset.
+
+    Shows where data came from (ancestors) and what was derived from it (descendants).
+
+    Args:
+        asset_name_or_id: The asset name (filename) or numeric ID.
+        direction: "ancestors" (sources), "descendants" (derived), or "both".
+
+    Returns:
+        Dict with lineage tree including ancestors and/or descendants.
+    """
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not configured"}
+
+    try:
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+
+            # Find the target asset
+            if asset_name_or_id.isdigit():
+                target = conn.execute(text(f"""
+                    SELECT id, asset_name, asset_type, creation_tool, source_assets
+                    FROM {T_DATA_CATALOG} WHERE id = :id
+                """), {"id": int(asset_name_or_id)}).fetchone()
+            else:
+                target = conn.execute(text(f"""
+                    SELECT id, asset_name, asset_type, creation_tool, source_assets
+                    FROM {T_DATA_CATALOG}
+                    WHERE asset_name ILIKE :name
+                    ORDER BY updated_at DESC LIMIT 1
+                """), {"name": f"%{asset_name_or_id}%"}).fetchone()
+
+            if not target:
+                return {"status": "error",
+                        "message": f"Asset '{asset_name_or_id}' not found or access denied"}
+
+            target_id = target[0]
+            target_info = {
+                "id": target[0], "name": target[1],
+                "type": target[2], "creation_tool": target[3],
+            }
+
+            result = {"status": "success", "asset": target_info}
+
+            # Walk ancestors (what was this derived from)
+            if direction in ("ancestors", "both"):
+                ancestors = _walk_ancestors(conn, target[4], max_depth=10)
+                result["ancestors"] = ancestors
+
+            # Find descendants (what was derived from this)
+            if direction in ("descendants", "both"):
+                descendants = _find_descendants(conn, target_id, target[1])
+                result["descendants"] = descendants
+
+            # Build summary message
+            parts = []
+            if "ancestors" in result:
+                n = len(result["ancestors"])
+                parts.append(f"{n} source(s)" if n else "no known sources")
+            if "descendants" in result:
+                n = len(result["descendants"])
+                parts.append(f"{n} derived asset(s)" if n else "no derived assets")
+            result["message"] = f"Lineage for '{target[1]}': {', '.join(parts)}"
+
+            return result
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def _walk_ancestors(conn, source_assets_raw, max_depth: int = 10) -> list:
+    """Recursively walk the source_assets chain upward."""
+    if not source_assets_raw:
+        return []
+
+    sources = source_assets_raw if isinstance(source_assets_raw, list) else json.loads(
+        source_assets_raw or "[]")
+    if not sources:
+        return []
+
+    ancestors = []
+    visited = set()
+
+    def _recurse(items, depth):
+        if depth >= max_depth:
+            return
+        for item in items:
+            asset_id = item.get("id")
+            asset_name = item.get("name", "")
+
+            key = asset_id or asset_name
+            if key in visited:
+                continue
+            visited.add(key)
+
+            entry = {"name": asset_name, "depth": depth}
+            if asset_id:
+                entry["id"] = asset_id
+                row = conn.execute(text(f"""
+                    SELECT id, asset_name, asset_type, creation_tool, source_assets
+                    FROM {T_DATA_CATALOG} WHERE id = :id
+                """), {"id": asset_id}).fetchone()
+                if row:
+                    entry["type"] = row[2]
+                    entry["creation_tool"] = row[3]
+                    parent_sources = row[4] if isinstance(row[4], list) else json.loads(
+                        row[4] or "[]")
+                    if parent_sources:
+                        _recurse(parent_sources, depth + 1)
+            ancestors.append(entry)
+
+    _recurse(sources, 0)
+    return ancestors
+
+
+def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
+    """Find assets whose source_assets reference this asset."""
+    descendants = []
+    try:
+        rows = conn.execute(text(f"""
+            SELECT id, asset_name, asset_type, creation_tool
+            FROM {T_DATA_CATALOG}
+            WHERE source_assets::text LIKE :pattern_id
+               OR source_assets::text LIKE :pattern_name
+            ORDER BY created_at
+            LIMIT 50
+        """), {
+            "pattern_id": f'%"id": {asset_id}%',
+            "pattern_name": f'%"name": "{asset_name}"%',
+        }).fetchall()
+
+        for r in rows:
+            descendants.append({
+                "id": r[0], "name": r[1],
+                "type": r[2], "creation_tool": r[3],
+            })
+    except Exception:
+        pass
+    return descendants

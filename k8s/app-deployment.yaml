@@ -50,14 +50,14 @@ spec:
               memory: 2Gi
           readinessProbe:
             httpGet:
-              path: /
+              path: /ready
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
             initialDelaySeconds: 60
             periodSeconds: 30

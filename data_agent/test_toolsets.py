@@ -165,7 +165,8 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("tag_data_asset", names)
         self.assertIn("delete_data_asset", names)
         self.assertIn("share_data_asset", names)
-        self.assertEqual(len(tools), 7)
+        self.assertIn("get_data_lineage", names)
+        self.assertEqual(len(tools), 8)
 
 
 class TestToolFilter(unittest.TestCase):

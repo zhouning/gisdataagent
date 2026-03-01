@@ -98,6 +98,8 @@ general_processing_instruction: |
   - 当用户要给数据打标签时，调用 `tag_data_asset`。
   - 当用户要删除数据资产记录时，调用 `delete_data_asset`。
   - 当用户要共享数据资产时（仅管理员），调用 `share_data_asset`。
+  - 当用户问「这个数据从哪来的」「数据来源」「血缘追踪」「谁生成了这个文件」时，调用 `get_data_lineage`。
+    - direction 参数：ancestors（溯源）、descendants（衍生）、both（双向，默认）。
   - 数据发现优先级：`search_data_assets` → `list_tables` → `list_user_files`。
 
 general_viz_instruction: |

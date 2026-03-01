@@ -23,6 +23,7 @@ planner_instruction: |
 
   ## 决策规则
   - "有什么数据/数据目录/搜索数据" → 直接用你自己的 list_data_assets / search_data_assets / describe_data_asset 工具
+  - "数据来源/血缘追踪/从哪来的" → 直接用你自己的 get_data_lineage 工具
   - "查表/查数据" → PlannerExplorer
   - "分析数据质量" → PlannerExplorer
   - "缓冲区/裁剪/叠加" → 先 PlannerExplorer 确认数据 → PlannerProcessor

@@ -709,6 +709,47 @@ else:
 
 print("[Audit] Admin audit viewer enabled at /admin/audit")
 
+# --- Health Check & System Diagnostics Routes ---
+from data_agent.health import (
+    liveness_check, readiness_check, get_system_status, format_startup_summary,
+)
+
+
+async def _health_endpoint(request: Request):
+    """Liveness probe — always 200 if process is alive."""
+    return JSONResponse(content=liveness_check())
+
+
+async def _ready_endpoint(request: Request):
+    """Readiness probe — 503 if critical subsystems are down."""
+    result = readiness_check()
+    status_code = 200 if result["status"] == "ok" else 503
+    return JSONResponse(content=result, status_code=status_code)
+
+
+async def _system_info_endpoint(request: Request):
+    """Comprehensive system status (admin HMAC auth required)."""
+    auth = request.headers.get("authorization", "")
+    token = auth.replace("Bearer ", "") if auth.startswith("Bearer ") else ""
+    if not _verify_admin_token(token):
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+    return JSONResponse(content=get_system_status(session_svc=session_service))
+
+
+_health_route = Route("/health", endpoint=_health_endpoint, methods=["GET"])
+_ready_route = Route("/ready", endpoint=_ready_endpoint, methods=["GET"])
+_sysinfo_route = Route("/api/admin/system-info", endpoint=_system_info_endpoint, methods=["GET"])
+for _i, _r in enumerate(chainlit_app.router.routes):
+    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+        chainlit_app.router.routes.insert(_i, _health_route)
+        chainlit_app.router.routes.insert(_i, _ready_route)
+        chainlit_app.router.routes.insert(_i, _sysinfo_route)
+        break
+else:
+    chainlit_app.router.routes.append(_health_route)
+    chainlit_app.router.routes.append(_ready_route)
+    chainlit_app.router.routes.append(_sysinfo_route)
+
 # --- Mount Enterprise WeChat bot routes (conditional) ---
 if is_wecom_configured():
     from data_agent.wecom_bot import mount_wecom_routes
@@ -737,6 +778,9 @@ try:
     mount_stream_routes(chainlit_app)
 except Exception as _stream_mount_err:
     print(f"[Stream] Route mount failed: {_stream_mount_err}")
+
+# --- Startup Diagnostics Banner ---
+print(format_startup_summary(session_svc=session_service))
 
 # Base upload directory (per-user dirs created inside)
 BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
@@ -1235,6 +1279,10 @@ TOOL_DESCRIPTIONS = {
         "method": "共享数据资产",
         "params": {"asset_id": "资产ID"},
     },
+    "get_data_lineage": {
+        "method": "数据血缘追踪",
+        "params": {"asset_name_or_id": "资产名称/ID", "direction": "追踪方向"},
+    },
 }
 
 
@@ -1276,8 +1324,28 @@ NON_RERUNNABLE_TOOLS = {
     "get_usage_summary", "query_audit_log", "share_table",
 }
 
+# Keys in tool args that may contain source file paths for lineage tracking
+_SOURCE_PATH_KEYS = {
+    "file_path", "input_path", "shp_path", "raster_path", "polygon_path",
+    "csv_path", "table_name", "data_path", "input_file", "boundary_path",
+    "vector_path", "raster_file", "input_raster",
+}
 
-def _sync_tool_output_to_obs(resp_data, tool_name: str = "") -> None:
+
+def _extract_source_paths(args: dict) -> list:
+    """Extract source file/table references from tool arguments for data lineage."""
+    sources = []
+    for key, val in args.items():
+        if not isinstance(val, str) or not val:
+            continue
+        if key in _SOURCE_PATH_KEYS:
+            sources.append(val)
+        elif key.endswith("_path") or key.endswith("_file"):
+            sources.append(val)
+    return sources
+
+
+def _sync_tool_output_to_obs(resp_data, tool_name: str = "", tool_args: dict = None) -> None:
     """Detect file paths in tool response, sync to OBS, and register in data catalog."""
     paths = []
     if isinstance(resp_data, str) and os.path.exists(resp_data):
@@ -1289,11 +1357,14 @@ def _sync_tool_output_to_obs(resp_data, tool_name: str = "") -> None:
 
     uid = current_user_id.get()
 
+    # Extract source file paths from tool arguments for lineage tracking
+    source_paths = _extract_source_paths(tool_args or {})
+
     # Register in data catalog (always, even without cloud)
     try:
         from data_agent.data_catalog import register_tool_output
         for p in paths:
-            register_tool_output(p, tool_name or "unknown")
+            register_tool_output(p, tool_name or "unknown", source_paths=source_paths)
     except Exception:
         pass
 
@@ -1919,7 +1990,8 @@ async def main(message: cl.Message):
                         await current_tool_step.update()
                         # Sync tool output files to OBS and register in data catalog
                         try:
-                            _sync_tool_output_to_obs(part.function_response.response, current_tool_name)
+                            _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
+                            _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
                         except Exception:
                             pass
                         # Capture tool execution for code export
