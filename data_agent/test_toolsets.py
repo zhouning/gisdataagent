@@ -138,7 +138,9 @@ class TestToolsetCounts(unittest.TestCase):
         names = [t.name for t in tools]
         self.assertIn("describe_raster", names)
         self.assertIn("calculate_ndvi", names)
-        self.assertEqual(len(tools), 5)
+        self.assertIn("download_lulc", names)
+        self.assertIn("download_dem", names)
+        self.assertEqual(len(tools), 7)
 
     def test_team_toolset(self):
         from data_agent.toolsets.team_tools import TeamToolset

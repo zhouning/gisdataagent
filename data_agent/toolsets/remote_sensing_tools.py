@@ -1,4 +1,4 @@
-"""Remote sensing toolset: raster profiling, NDVI, band math, classification, visualization."""
+"""Remote sensing toolset: raster profiling, NDVI, band math, classification, visualization, data download."""
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 
@@ -8,10 +8,12 @@ from ..remote_sensing import (
     raster_band_math,
     classify_raster,
     visualize_raster,
+    download_lulc,
+    download_dem,
 )
 
 _ALL_FUNCS = [describe_raster, calculate_ndvi, raster_band_math,
-              classify_raster, visualize_raster]
+              classify_raster, visualize_raster, download_lulc, download_dem]
 
 
 class RemoteSensingToolset(BaseToolset):

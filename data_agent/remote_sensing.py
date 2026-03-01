@@ -1,18 +1,61 @@
 """
-Remote Sensing Basics — Raster profiling, NDVI, band math, classification, visualization.
+Remote Sensing Basics — Raster profiling, NDVI, band math, classification,
+visualization, and cloud data download (LULC / DEM).
 
 PRD F10: Foundational remote sensing tools for satellite/aerial imagery analysis.
 """
 import json
+import math
 import os
 
+import geopandas as gpd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+import requests as _requests
+from shapely.geometry import mapping as _shapely_mapping
 
 from .gis_processors import _generate_output_path, _resolve_path
+
+
+# ---------------------------------------------------------------------------
+# ArcGIS LULC constants
+# ---------------------------------------------------------------------------
+_LULC_SERVICE_URL = (
+    "https://ic.imagery1.arcgis.com/arcgis/rest/services/"
+    "Sentinel2_10m_LandCover/ImageServer/exportImage"
+)
+_LULC_YEARS = range(2017, 2025)  # 2017-2024
+_LULC_LABELS = {
+    2: "Trees", 4: "Flooded Vegetation", 5: "Crops",
+    7: "Built Area", 8: "Bare Ground", 9: "Snow/Ice",
+    10: "Clouds", 11: "Rangeland",
+}
+_LULC_MAX_PIXELS = 10000
+_LULC_PIXEL_DEG = 0.0000898  # ~10m at equator in degrees
+
+
+def _shapely_to_esri_json(geom):
+    """Convert a Shapely Polygon/MultiPolygon to Esri JSON format."""
+    geojson = _shapely_mapping(geom)
+    geom_type = geojson["type"]
+    if geom_type == "Polygon":
+        return {
+            "rings": [list(ring) for ring in geojson["coordinates"]],
+            "spatialReference": {"wkid": 4326},
+        }
+    elif geom_type == "MultiPolygon":
+        rings = []
+        for polygon_coords in geojson["coordinates"]:
+            for ring in polygon_coords:
+                rings.append(list(ring))
+        return {
+            "rings": rings,
+            "spatialReference": {"wkid": 4326},
+        }
+    raise ValueError(f"Unsupported geometry type for Esri JSON: {geom_type}")
 
 
 def describe_raster(raster_path: str) -> str:
@@ -389,3 +432,382 @@ def visualize_raster(
 
     except Exception as e:
         return f"Error in visualize_raster: {str(e)}"
+
+
+# ---------------------------------------------------------------------------
+# download_lulc — Sentinel-2 10m Land Use / Land Cover
+# ---------------------------------------------------------------------------
+
+def download_lulc(admin_boundary_path: str, year: int = 2023) -> str:
+    """
+    下载 Sentinel-2 10m 土地利用/土地覆盖数据 (LULC)，按行政区边界裁剪。
+
+    数据源: Esri Sentinel-2 10m Land Use/Land Cover Time Series (ArcGIS Online, 全球覆盖)。
+    分类体系: 2=Trees, 4=Flooded Vegetation, 5=Crops, 7=Built Area,
+    8=Bare Ground, 9=Snow/Ice, 10=Clouds, 11=Rangeland。
+    输出: 裁剪后的 GeoTIFF (uint8, ~10m分辨率, EPSG:4326)。
+
+    Args:
+        admin_boundary_path: 行政区边界文件路径 (.shp / .geojson / .gpkg)。
+        year: 数据年份 (2017-2024)，默认 2023。
+
+    Returns:
+        下载后的 GeoTIFF 路径与土地覆盖统计信息，或错误信息。
+    """
+    try:
+        if year not in _LULC_YEARS:
+            return f"Error in download_lulc: year must be 2017-2024, got {year}"
+
+        path = _resolve_path(admin_boundary_path)
+        gdf = gpd.read_file(path)
+        gdf_4326 = gdf.to_crs("EPSG:4326")
+        union_geom = gdf_4326.geometry.union_all()
+        bounds = gdf_4326.total_bounds  # [minx, miny, maxx, maxy]
+
+        esri_geom = _shapely_to_esri_json(union_geom)
+
+        rendering_rule = json.dumps({
+            "rasterFunction": "Clip",
+            "rasterFunctionArguments": {
+                "ClippingGeometry": esri_geom,
+                "ClippingType": 1,
+            },
+        })
+        mosaic_rule = json.dumps({
+            "mosaicMethod": "esriMosaicAttribute",
+            "where": (
+                f"StdTime >= '{year}-01-01T00:00:00' "
+                f"AND StdTime <= '{year}-12-31T23:59:59'"
+            ),
+            "sortField": "StdTime",
+            "ascending": False,
+        })
+
+        # Determine pixel dimensions
+        width_deg = bounds[2] - bounds[0]
+        height_deg = bounds[3] - bounds[1]
+        width_px = max(1, int(width_deg / _LULC_PIXEL_DEG))
+        height_px = max(1, int(height_deg / _LULC_PIXEL_DEG))
+
+        needs_tiling = width_px > _LULC_MAX_PIXELS or height_px > _LULC_MAX_PIXELS
+
+        if not needs_tiling:
+            # Single-tile download
+            raw_path = _download_lulc_tile(
+                bounds, min(width_px, _LULC_MAX_PIXELS),
+                min(height_px, _LULC_MAX_PIXELS),
+                rendering_rule, mosaic_rule,
+            )
+        else:
+            # Multi-tile download and merge
+            raw_path = _download_lulc_tiled(
+                bounds, width_px, height_px, rendering_rule, mosaic_rule,
+            )
+
+        # Precise clip with rasterio.mask
+        from rasterio.mask import mask as rio_mask
+
+        out_path = _generate_output_path("lulc", "tif")
+        with rasterio.open(raw_path) as src:
+            out_image, out_transform = rio_mask(
+                src, [union_geom], crop=True, nodata=0,
+            )
+            out_profile = src.profile.copy()
+            out_profile.update(
+                height=out_image.shape[1],
+                width=out_image.shape[2],
+                transform=out_transform,
+                nodata=0,
+            )
+
+        with rasterio.open(out_path, "w", **out_profile) as dst:
+            dst.write(out_image)
+
+        # Clean up raw file
+        if os.path.exists(raw_path) and raw_path != out_path:
+            os.remove(raw_path)
+
+        # Generate class statistics
+        data = out_image[0]
+        valid = data[data > 0]
+        total_valid = len(valid)
+        class_lines = []
+        for code, label in sorted(_LULC_LABELS.items()):
+            count = int(np.sum(valid == code))
+            if count > 0:
+                pct = round(count / total_valid * 100, 1)
+                class_lines.append(f"  {label}({code}): {pct}%")
+
+        stats_msg = "\n".join(class_lines) if class_lines else "  无有效分类像素"
+        return (
+            f"{out_path}\n"
+            f"数据源: Esri Sentinel-2 10m LULC {year}\n"
+            f"分辨率: ~10m, 投影: EPSG:4326\n"
+            f"有效像素: {total_valid}\n"
+            f"土地覆盖分类统计:\n{stats_msg}"
+        )
+
+    except Exception as e:
+        return f"Error in download_lulc: {str(e)}"
+
+
+def _download_lulc_tile(bbox, width_px, height_px, rendering_rule, mosaic_rule):
+    """Download a single LULC tile and save to a temp GeoTIFF."""
+    params = {
+        "bbox": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}",
+        "bboxSR": 4326,
+        "imageSR": 4326,
+        "size": f"{width_px},{height_px}",
+        "format": "tiff",
+        "pixelType": "U8",
+        "interpolation": "RSP_NearestNeighbor",
+        "renderingRule": rendering_rule,
+        "mosaicRule": mosaic_rule,
+        "f": "image",
+    }
+    resp = _requests.get(_LULC_SERVICE_URL, params=params, timeout=120)
+    content_type = resp.headers.get("Content-Type", "")
+    if "json" in content_type or resp.status_code != 200:
+        try:
+            err = resp.json()
+            msg = err.get("error", {}).get("message", resp.text[:200])
+        except Exception:
+            msg = resp.text[:200]
+        raise RuntimeError(f"ArcGIS ImageServer error: {msg}")
+
+    raw_path = _generate_output_path("lulc_raw", "tif")
+    with open(raw_path, "wb") as f:
+        f.write(resp.content)
+    return raw_path
+
+
+def _download_lulc_tiled(bbox, total_w, total_h, rendering_rule, mosaic_rule):
+    """Download LULC in tiles and merge with rasterio."""
+    from rasterio.merge import merge as rio_merge
+
+    n_cols = math.ceil(total_w / _LULC_MAX_PIXELS)
+    n_rows = math.ceil(total_h / _LULC_MAX_PIXELS)
+    tile_w_deg = (bbox[2] - bbox[0]) / n_cols
+    tile_h_deg = (bbox[3] - bbox[1]) / n_rows
+
+    temp_tiles = []
+    try:
+        for row in range(n_rows):
+            for col in range(n_cols):
+                tile_bbox = [
+                    bbox[0] + col * tile_w_deg,
+                    bbox[1] + row * tile_h_deg,
+                    bbox[0] + (col + 1) * tile_w_deg,
+                    bbox[1] + (row + 1) * tile_h_deg,
+                ]
+                tw = min(_LULC_MAX_PIXELS, int((tile_bbox[2] - tile_bbox[0]) / _LULC_PIXEL_DEG))
+                th = min(_LULC_MAX_PIXELS, int((tile_bbox[3] - tile_bbox[1]) / _LULC_PIXEL_DEG))
+                tw = max(1, tw)
+                th = max(1, th)
+                tile_path = _download_lulc_tile(
+                    tile_bbox, tw, th, rendering_rule, mosaic_rule,
+                )
+                temp_tiles.append(tile_path)
+
+        # Merge tiles
+        datasets = [rasterio.open(t) for t in temp_tiles]
+        mosaic_arr, out_transform = rio_merge(datasets)
+        for ds in datasets:
+            ds.close()
+
+        merged_path = _generate_output_path("lulc_merged", "tif")
+        out_profile = {
+            "driver": "GTiff",
+            "dtype": "uint8",
+            "width": mosaic_arr.shape[2],
+            "height": mosaic_arr.shape[1],
+            "count": 1,
+            "crs": "EPSG:4326",
+            "transform": out_transform,
+            "nodata": 0,
+        }
+        with rasterio.open(merged_path, "w", **out_profile) as dst:
+            dst.write(mosaic_arr)
+        return merged_path
+
+    finally:
+        for tp in temp_tiles:
+            if os.path.exists(tp):
+                try:
+                    os.remove(tp)
+                except OSError:
+                    pass
+
+
+# ---------------------------------------------------------------------------
+# download_dem — Copernicus DEM GLO-30 (Google Earth Engine)
+# ---------------------------------------------------------------------------
+
+def _initialize_ee():
+    """Initialize Google Earth Engine with multi-strategy auth."""
+    import ee
+
+    if ee.data._credentials is not None:
+        return  # already initialized
+
+    # Strategy 1: Service account key file
+    sa_key = os.environ.get("GEE_SERVICE_ACCOUNT_KEY")
+    if sa_key and os.path.exists(sa_key):
+        credentials = ee.ServiceAccountCredentials(None, key_file=sa_key)
+        project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+        ee.Initialize(credentials=credentials, project=project)
+        return
+
+    # Strategy 2: Application Default Credentials via GCP project
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if project:
+        try:
+            ee.Initialize(project=project)
+            return
+        except Exception:
+            pass
+
+    raise RuntimeError(
+        "Earth Engine 认证失败。请设置 GOOGLE_CLOUD_PROJECT 环境变量，"
+        "或配置 GEE_SERVICE_ACCOUNT_KEY 指向服务账号密钥文件。"
+    )
+
+
+def download_dem(admin_boundary_path: str) -> str:
+    """
+    下载 Copernicus DEM GLO-30 高程数据（30m分辨率），按行政区边界裁剪。
+
+    数据源: Google Earth Engine — COPERNICUS/DEM/GLO30 (全球30m数字高程模型)。
+    需要安装 earthengine-api 包并配置 GOOGLE_CLOUD_PROJECT 环境变量。
+    对于乡镇级区域 (≤200km²) 使用直接下载；更大区域提交异步导出任务到 Google Drive。
+
+    Args:
+        admin_boundary_path: 行政区边界文件路径 (.shp / .geojson / .gpkg)。
+
+    Returns:
+        下载后的 GeoTIFF 路径与高程统计信息，或错误/状态信息。
+    """
+    try:
+        import ee
+    except ImportError:
+        return (
+            "Error in download_dem: earthengine-api 未安装。"
+            "请执行 `pip install earthengine-api` 后重试。"
+        )
+
+    try:
+        _initialize_ee()
+
+        path = _resolve_path(admin_boundary_path)
+        gdf = gpd.read_file(path)
+        gdf_4326 = gdf.to_crs("EPSG:4326")
+        union_geom = gdf_4326.geometry.union_all()
+
+        # Calculate area in km²
+        gdf_proj = gdf_4326.to_crs(gdf_4326.estimate_utm_crs())
+        area_km2 = gdf_proj.geometry.union_all().area / 1e6
+
+        # Convert Shapely geometry to ee.Geometry
+        geojson = _shapely_mapping(union_geom)
+        ee_geom = ee.Geometry(geojson)
+
+        # Build DEM image
+        dem = (
+            ee.ImageCollection("COPERNICUS/DEM/GLO30")
+            .select("DEM")
+            .mosaic()
+            .clip(ee_geom)
+        )
+
+        AREA_THRESHOLD = 200  # km²
+
+        if area_km2 > AREA_THRESHOLD:
+            # Large area — async export to Google Drive
+            import uuid as _uuid
+            task_desc = f"dem_export_{_uuid.uuid4().hex[:8]}"
+            task = ee.batch.Export.image.toDrive(
+                image=dem,
+                description=task_desc,
+                scale=30,
+                region=ee_geom,
+                crs="EPSG:4326",
+                maxPixels=int(1e9),
+                fileFormat="GeoTIFF",
+            )
+            task.start()
+            return (
+                f"DEM数据区域面积 {area_km2:.1f} km² 超过直接下载阈值({AREA_THRESHOLD}km²)。\n"
+                f"已提交 Google Earth Engine 异步导出任务。\n"
+                f"任务ID: {task.id}\n"
+                f"状态: {task.status()['state']}\n"
+                f"导出完成后数据将保存到 Google Drive 根目录。"
+            )
+
+        # Small area — direct download
+        url = dem.getDownloadURL({
+            "scale": 30,
+            "crs": "EPSG:4326",
+            "region": ee_geom,
+            "format": "GEO_TIFF",
+            "filePerBand": False,
+        })
+
+        resp = _requests.get(url, timeout=300)
+        resp.raise_for_status()
+
+        raw_path = _generate_output_path("dem_raw", "tif")
+        with open(raw_path, "wb") as f:
+            f.write(resp.content)
+
+        # Precise clip with rasterio.mask
+        from rasterio.mask import mask as rio_mask
+
+        out_path = _generate_output_path("dem", "tif")
+        with rasterio.open(raw_path) as src:
+            out_image, out_transform = rio_mask(
+                src, [union_geom], crop=True, nodata=-9999,
+            )
+            out_profile = src.profile.copy()
+            out_profile.update(
+                height=out_image.shape[1],
+                width=out_image.shape[2],
+                transform=out_transform,
+                nodata=-9999,
+                dtype="float32",
+            )
+
+        with rasterio.open(out_path, "w", **out_profile) as dst:
+            dst.write(out_image.astype(np.float32))
+
+        # Clean up raw file
+        if os.path.exists(raw_path):
+            os.remove(raw_path)
+
+        # Elevation statistics
+        data = out_image[0]
+        valid = data[data != -9999]
+        if len(valid) > 0:
+            stats_msg = (
+                f"高程统计: min={float(np.min(valid)):.1f}m, "
+                f"max={float(np.max(valid)):.1f}m, "
+                f"mean={float(np.mean(valid)):.1f}m, "
+                f"std={float(np.std(valid)):.1f}m"
+            )
+        else:
+            stats_msg = "高程统计: 无有效像素"
+
+        return (
+            f"{out_path}\n"
+            f"数据源: Copernicus DEM GLO-30\n"
+            f"分辨率: 30m, 投影: EPSG:4326\n"
+            f"区域面积: {area_km2:.1f} km²\n"
+            f"{stats_msg}"
+        )
+
+    except ImportError:
+        return (
+            "Error in download_dem: earthengine-api 未安装。"
+            "请执行 `pip install earthengine-api` 后重试。"
+        )
+    except Exception as e:
+        return f"Error in download_dem: {str(e)}"

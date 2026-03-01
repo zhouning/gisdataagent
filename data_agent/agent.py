@@ -141,6 +141,7 @@ data_processing_agent = LlmAgent(
             "calculate_field", "summary_statistics",
         ]),
         LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
+        RemoteSensingToolset(tool_filter=["download_lulc", "download_dem"]),
     ] + _arcpy_tools,
 )
 
@@ -342,7 +343,7 @@ planner_processor = LlmAgent(
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
         GeoProcessingToolset(),
         LocationToolset(),
-        RemoteSensingToolset(tool_filter=["describe_raster"]),
+        RemoteSensingToolset(tool_filter=["describe_raster", "download_lulc", "download_dem"]),
         StreamingToolset(),
     ] + _arcpy_tools,
 )

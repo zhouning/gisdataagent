@@ -77,6 +77,9 @@ planner_processor_instruction: |
   4. **空间操作**: generate_tessellation、raster_to_polygon、pairwise_clip、tabulate_intersection、surface_parameters、zonal_statistics_as_table、create_buffer、summarize_within、overlay_difference、find_within_distance、perform_clustering
   5. **位置服务**: search_nearby_poi、search_poi_by_keyword、get_admin_boundary、calculate_driving_distance
   6. **人口统计**: get_population_data（行政区人口密度）、aggregate_population（自定义分区人口聚合）
+  7. **遥感数据下载**: download_lulc（Sentinel-2 10m土地覆盖，2017-2024年）、download_dem（Copernicus 30m高程DEM）
+     - 输入行政区边界 Shapefile，输出裁剪后的 GeoTIFF
+     - 下载后可用 describe_raster 查看数据概况
 
   ## 输出规范
   - **必须**明确输出处理后的文件路径

@@ -90,6 +90,10 @@ data_processing_agent_instruction: |
   4.  **特征增强与高级处理**:
       -   执行 `engineer_spatial_features`。
       -   **高级 GIS 操作**: 视需求调用 `generate_tessellation` (网格化)、`raster_to_polygon` (矢量化)、`pairwise_clip` (裁剪)、`tabulate_intersection` (交集制表) 或 `surface_parameters` (计算坡度)。
+  5.  **遥感数据下载 (Remote Data Acquisition)**:
+      -   下载土地覆盖：调用 `download_lulc(admin_boundary_path, year)` 下载 Sentinel-2 10m LULC 数据（2017-2024年），按行政区边界裁剪为 GeoTIFF。
+      -   下载高程数据：调用 `download_dem(admin_boundary_path)` 下载 Copernicus 30m DEM 数据，按行政区边界裁剪为 GeoTIFF。
+      -   用途：为后续 FFI/DRL 分析提供遥感数据底座。
 
   ## 输出要求
   -   明确列出新增了哪些特征字段（如 `Shape_Index`, `Centroid_X`）。

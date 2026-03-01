@@ -813,6 +813,8 @@ TOOL_LABELS = {
     "raster_band_math": "波段运算",
     "classify_raster": "非监督分类",
     "visualize_raster": "栅格可视化",
+    "download_lulc": "下载土地覆盖数据(LULC)",
+    "download_dem": "下载高程数据(DEM)",
     "spatial_autocorrelation": "全局空间自相关(Moran's I)",
     "local_moran": "局部空间自相关(LISA)",
     "hotspot_analysis": "热点分析(Gi*)",
@@ -1145,6 +1147,15 @@ TOOL_DESCRIPTIONS = {
         "method": "栅格可视化渲染",
         "params": {"raster_path": "栅格文件", "band": "波段",
                    "colormap": "色带"},
+    },
+    "download_lulc": {
+        "method": "Sentinel-2 10m 土地覆盖数据下载",
+        "params": {"admin_boundary_path": "行政区边界文件",
+                   "year": "数据年份(2017-2024)"},
+    },
+    "download_dem": {
+        "method": "Copernicus 30m 高程数据(DEM)下载",
+        "params": {"admin_boundary_path": "行政区边界文件"},
     },
     "spatial_autocorrelation": {
         "method": "全局空间自相关检验（Moran's I）",

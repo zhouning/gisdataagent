@@ -48,6 +48,10 @@ general_processing_instruction: |
      - 遥感栅格分析：使用 `describe_raster` 查看栅格信息，`calculate_ndvi` 计算植被指数，
        `raster_band_math` 执行波段运算，`classify_raster` 进行非监督分类，`visualize_raster` 渲染栅格。
        例如：用户问'分析这个卫星影像的植被覆盖' -> describe_raster -> calculate_ndvi -> visualize_raster。
+     - 遥感数据下载：使用 `download_lulc` 下载 Sentinel-2 10m 土地覆盖数据（需提供行政区边界 Shapefile，可选年份 2017-2024），
+       使用 `download_dem` 下载 Copernicus 30m DEM 高程数据。
+       例如：用户问'下载朝阳区的土地覆盖数据' -> get_admin_boundary('朝阳区') -> download_lulc(边界文件, 2023) -> describe_raster。
+       例如：用户问'获取这个区域的DEM' -> download_dem(用户上传的边界文件) -> describe_raster -> visualize_raster。
      - 空间统计/自相关/热点分析：使用 `spatial_autocorrelation` 进行全局 Moran's I 检验，
        `local_moran` 进行 LISA 局部自相关聚类，`hotspot_analysis` 进行 Getis-Ord Gi* 热点/冷点识别。
        例如：用户问'分析这些地块的价格是否有空间聚集' -> spatial_autocorrelation -> local_moran -> 可视化。

@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 import numpy as np
 import rasterio
@@ -19,6 +20,9 @@ from data_agent.remote_sensing import (
     raster_band_math,
     classify_raster,
     visualize_raster,
+    _shapely_to_esri_json,
+    download_lulc,
+    download_dem,
 )
 
 
@@ -258,7 +262,7 @@ class TestRemoteSensingToolset(unittest.TestCase):
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
         ts = RemoteSensingToolset()
         tools = self._run(ts.get_tools())
-        self.assertEqual(len(tools), 5)
+        self.assertEqual(len(tools), 7)
 
     def test_tool_names(self):
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
@@ -268,6 +272,7 @@ class TestRemoteSensingToolset(unittest.TestCase):
         self.assertEqual(names, {
             "describe_raster", "calculate_ndvi", "raster_band_math",
             "classify_raster", "visualize_raster",
+            "download_lulc", "download_dem",
         })
 
     def test_filter(self):
@@ -296,6 +301,238 @@ class TestToolImportMapEntries(unittest.TestCase):
                       "classify_raster", "visualize_raster"]:
             imp = TOOL_IMPORT_MAP[tool]
             self.assertIn("from data_agent.remote_sensing import", imp)
+
+
+# ---------------------------------------------------------------------------
+# Tests for _shapely_to_esri_json helper
+# ---------------------------------------------------------------------------
+
+
+class TestShapelyToEsriJson(unittest.TestCase):
+    """Test the _shapely_to_esri_json helper function."""
+
+    def test_polygon(self):
+        from shapely.geometry import Polygon
+        poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+        esri = _shapely_to_esri_json(poly)
+        self.assertIn("rings", esri)
+        self.assertEqual(esri["spatialReference"]["wkid"], 4326)
+        self.assertEqual(len(esri["rings"]), 1)
+
+    def test_multipolygon(self):
+        from shapely.geometry import MultiPolygon, Polygon
+        mp = MultiPolygon([
+            Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+            Polygon([(2, 2), (3, 2), (3, 3), (2, 3)]),
+        ])
+        esri = _shapely_to_esri_json(mp)
+        self.assertIn("rings", esri)
+        self.assertEqual(len(esri["rings"]), 2)
+        self.assertEqual(esri["spatialReference"]["wkid"], 4326)
+
+    def test_unsupported_type_raises(self):
+        from shapely.geometry import Point
+        with self.assertRaises(ValueError):
+            _shapely_to_esri_json(Point(0, 0))
+
+
+# ---------------------------------------------------------------------------
+# Tests for download_lulc
+# ---------------------------------------------------------------------------
+
+
+class TestDownloadLulc(unittest.TestCase):
+    """Test download_lulc function."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        # Create a small admin boundary GeoJSON
+        import geopandas as _gpd
+        from shapely.geometry import box
+        gdf = _gpd.GeoDataFrame(
+            {"id": [1]},
+            geometry=[box(116.3, 39.9, 116.5, 40.1)],
+            crs="EPSG:4326",
+        )
+        cls.boundary_path = os.path.join(cls.tmpdir, "test_boundary.geojson")
+        gdf.to_file(cls.boundary_path, driver="GeoJSON")
+
+    def test_invalid_year(self):
+        result = download_lulc(self.boundary_path, year=2010)
+        self.assertIn("Error", result)
+        self.assertIn("2017-2024", result)
+
+    def test_invalid_boundary_path(self):
+        result = download_lulc("nonexistent_file.shp")
+        self.assertIn("Error", result)
+
+    @unittest.mock.patch("data_agent.remote_sensing._requests.get")
+    @unittest.mock.patch("data_agent.remote_sensing._generate_output_path")
+    def test_successful_download(self, mock_gen_path, mock_get):
+        """Mock HTTP response with a valid GeoTIFF."""
+        # Create a synthetic GeoTIFF in memory
+        tif_path = os.path.join(self.tmpdir, "mock_lulc_raw.tif")
+        lulc_data = np.random.choice([0, 2, 5, 7, 11], size=(20, 20)).astype(np.uint8)
+        _create_synthetic_raster(tif_path, width=20, height=20, count=1,
+                                 dtype="uint8", nodata=0, data=lulc_data)
+        with open(tif_path, "rb") as f:
+            tif_bytes = f.read()
+
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = tif_bytes
+        mock_response.headers = {"Content-Type": "image/tiff"}
+        mock_get.return_value = mock_response
+
+        # Route _generate_output_path to temp dir
+        call_count = [0]
+        def gen_path(prefix, ext):
+            call_count[0] += 1
+            return os.path.join(self.tmpdir, f"{prefix}_{call_count[0]}.{ext}")
+        mock_gen_path.side_effect = gen_path
+
+        result = download_lulc(self.boundary_path, year=2023)
+        self.assertNotIn("Error", result)
+        self.assertIn("Sentinel-2", result)
+        self.assertIn("LULC", result)
+        mock_get.assert_called_once()
+
+    @unittest.mock.patch("data_agent.remote_sensing._requests.get")
+    def test_server_error_handling(self, mock_get):
+        """Server returns JSON error instead of TIFF."""
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 400
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {
+            "error": {"message": "Invalid parameters"}
+        }
+        mock_response.text = '{"error":{"message":"Invalid parameters"}}'
+        mock_get.return_value = mock_response
+
+        result = download_lulc(self.boundary_path, year=2023)
+        self.assertIn("Error", result)
+
+    def test_year_boundaries(self):
+        """Test edge years are accepted."""
+        # These will fail at network level, but year validation should pass
+        for year in [2017, 2024]:
+            result = download_lulc(self.boundary_path, year=year)
+            # Should not fail on year validation
+            self.assertNotIn("year must be 2017-2024", result)
+
+
+# ---------------------------------------------------------------------------
+# Tests for download_dem
+# ---------------------------------------------------------------------------
+
+
+class TestDownloadDem(unittest.TestCase):
+    """Test download_dem function."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        import geopandas as _gpd
+        from shapely.geometry import box
+        gdf = _gpd.GeoDataFrame(
+            {"id": [1]},
+            geometry=[box(116.4, 39.4, 116.45, 39.45)],  # ~25km², within raster bounds & under 200km² threshold
+            crs="EPSG:4326",
+        )
+        cls.boundary_path = os.path.join(cls.tmpdir, "test_dem_boundary.geojson")
+        gdf.to_file(cls.boundary_path, driver="GeoJSON")
+
+    def test_invalid_boundary_path(self):
+        result = download_dem("nonexistent_file.shp")
+        self.assertIn("Error", result)
+
+    def test_ee_not_configured(self):
+        """When GEE is not configured, should return auth error."""
+        import unittest.mock
+        # Mock ee to be importable but _initialize_ee to fail
+        with unittest.mock.patch("data_agent.remote_sensing._initialize_ee",
+                                  side_effect=RuntimeError("Earth Engine 认证失败")):
+            result = download_dem(self.boundary_path)
+            self.assertIn("Error", result)
+            self.assertIn("认证失败", result)
+
+    @unittest.mock.patch("data_agent.remote_sensing._requests.get")
+    @unittest.mock.patch("data_agent.remote_sensing._initialize_ee")
+    @unittest.mock.patch("data_agent.remote_sensing._generate_output_path")
+    def test_small_area_direct_download(self, mock_gen_path, mock_init_ee, mock_get):
+        """Mock GEE for a small area direct download."""
+        import unittest.mock
+
+        # Create a synthetic DEM GeoTIFF
+        tif_path = os.path.join(self.tmpdir, "mock_dem_raw.tif")
+        dem_data = np.random.rand(20, 20).astype(np.float32) * 1000 + 100
+        _create_synthetic_raster(tif_path, width=20, height=20, count=1,
+                                 dtype="float32", nodata=-9999, data=dem_data)
+        with open(tif_path, "rb") as f:
+            tif_bytes = f.read()
+
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = tif_bytes
+        mock_response.headers = {}
+        mock_response.raise_for_status = unittest.mock.MagicMock()
+        mock_get.return_value = mock_response
+
+        # Route _generate_output_path to temp dir
+        call_count = [0]
+        def gen_path(prefix, ext):
+            call_count[0] += 1
+            return os.path.join(self.tmpdir, f"{prefix}_{call_count[0]}.{ext}")
+        mock_gen_path.side_effect = gen_path
+
+        # Mock the ee module
+        mock_ee = unittest.mock.MagicMock()
+        mock_image = unittest.mock.MagicMock()
+        mock_image.getDownloadURL.return_value = "https://earthengine.googleapis.com/fake_download"
+        mock_collection = unittest.mock.MagicMock()
+        mock_collection.select.return_value = mock_collection
+        mock_collection.mosaic.return_value = mock_image
+        mock_image.clip.return_value = mock_image
+        mock_ee.ImageCollection.return_value = mock_collection
+        mock_ee.Geometry.return_value = unittest.mock.MagicMock()
+        mock_ee.data._credentials = "fake"
+
+        with unittest.mock.patch.dict("sys.modules", {"ee": mock_ee}):
+            result = download_dem(self.boundary_path)
+
+        self.assertNotIn("Error", result)
+        self.assertIn("Copernicus DEM", result)
+        self.assertIn("高程统计", result)
+
+
+# ---------------------------------------------------------------------------
+# Tests for toolset filter with new tools
+# ---------------------------------------------------------------------------
+
+
+class TestDownloadToolsetFilter(unittest.TestCase):
+    """Test RemoteSensingToolset filter includes new download tools."""
+
+    def _run(self, coro):
+        import asyncio
+        return asyncio.get_event_loop().run_until_complete(coro)
+
+    def test_filter_download_tools_only(self):
+        from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
+        ts = RemoteSensingToolset(tool_filter=["download_lulc", "download_dem"])
+        tools = self._run(ts.get_tools())
+        self.assertEqual(len(tools), 2)
+        names = {t.name for t in tools}
+        self.assertEqual(names, {"download_lulc", "download_dem"})
+
+    def test_filter_mixed(self):
+        from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
+        ts = RemoteSensingToolset(
+            tool_filter=["describe_raster", "download_lulc", "download_dem"]
+        )
+        tools = self._run(ts.get_tools())
+        self.assertEqual(len(tools), 3)
 
 
 if __name__ == "__main__":
