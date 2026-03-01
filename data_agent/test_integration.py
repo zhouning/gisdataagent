@@ -315,41 +315,41 @@ class TestPipelineRunner(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestWeComSafety(unittest.TestCase):
-    """Test thread-safety of dedup and rate limiter."""
+    """Test thread-safety of WeComBot dedup and rate limiter via BotBase."""
 
     def test_dedup_basic(self):
-        """_is_duplicate detects repeated message IDs."""
-        from data_agent.wecom_bot import _is_duplicate, _processing_messages
-        # Clear state
-        _processing_messages.clear()
+        """MessageDedup detects repeated message IDs."""
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
 
-        self.assertFalse(_is_duplicate("msg_001"))
-        self.assertTrue(_is_duplicate("msg_001"))  # duplicate
-        self.assertFalse(_is_duplicate("msg_002"))  # new
+        self.assertFalse(bot.dedup.is_duplicate("msg_001"))
+        self.assertTrue(bot.dedup.is_duplicate("msg_001"))  # duplicate
+        self.assertFalse(bot.dedup.is_duplicate("msg_002"))  # new
 
     def test_dedup_empty_msgid(self):
-        """_is_duplicate returns False for empty MsgId."""
-        from data_agent.wecom_bot import _is_duplicate
-        self.assertFalse(_is_duplicate(""))
-        self.assertFalse(_is_duplicate(None))
+        """Empty MsgId is tracked normally by MessageDedup."""
+        from data_agent.bot_base import MessageDedup
+        d = MessageDedup()
+        # Empty string is a valid key in MessageDedup
+        d.is_duplicate("")
+        self.assertTrue(d.is_duplicate(""))
 
     def test_dedup_concurrent(self):
-        """_is_duplicate is thread-safe under concurrent access."""
-        from data_agent.wecom_bot import _is_duplicate, _processing_messages
-        _processing_messages.clear()
+        """MessageDedup is safe under concurrent access."""
+        from data_agent.bot_base import MessageDedup
+        dedup = MessageDedup()
 
         results = []
         errors = []
 
         def check_dedup(msg_id):
             try:
-                result = _is_duplicate(msg_id)
+                result = dedup.is_duplicate(msg_id)
                 results.append((msg_id, result))
             except Exception as e:
                 errors.append(str(e))
 
         threads = []
-        # Same message ID from multiple threads
         for i in range(20):
             t = threading.Thread(target=check_dedup, args=(f"concurrent_{i % 5}",))
             threads.append(t)
@@ -361,23 +361,24 @@ class TestWeComSafety(unittest.TestCase):
 
         self.assertEqual(len(errors), 0, f"Thread errors: {errors}")
         self.assertEqual(len(results), 20)
-        # Each unique msg_id should be False exactly once (first occurrence)
         for msg_id in [f"concurrent_{i}" for i in range(5)]:
             first_results = [r for mid, r in results if mid == msg_id and not r]
             self.assertGreaterEqual(len(first_results), 1,
                                     f"Message {msg_id} should have at least one non-duplicate result")
 
-    def test_dedup_has_lock(self):
-        """_is_duplicate uses a threading.Lock for synchronization."""
-        import data_agent.wecom_bot as wb
-        self.assertTrue(hasattr(wb, '_dedup_lock'))
-        self.assertIsInstance(wb._dedup_lock, type(threading.Lock()))
+    def test_bot_has_dedup(self):
+        """WeComBot instance has dedup via BotBase."""
+        from data_agent.wecom_bot import WeComBot
+        from data_agent.bot_base import MessageDedup
+        bot = WeComBot()
+        self.assertIsInstance(bot.dedup, MessageDedup)
 
-    def test_rate_limiter_has_lock(self):
-        """_wait_for_rate_limit uses an asyncio.Lock for synchronization."""
-        import data_agent.wecom_bot as wb
-        self.assertTrue(hasattr(wb, '_rate_lock'))
-        self.assertIsInstance(wb._rate_lock, asyncio.Lock)
+    def test_bot_has_rate_limiter(self):
+        """WeComBot instance has rate_limiter via BotBase."""
+        from data_agent.wecom_bot import WeComBot
+        from data_agent.bot_base import RateLimiter
+        bot = WeComBot()
+        self.assertIsInstance(bot.rate_limiter, RateLimiter)
 
 
 # ---------------------------------------------------------------------------

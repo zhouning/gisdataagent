@@ -7,3 +7,5 @@ from .database_tools_set import DatabaseToolset
 from .platform_tools import PlatformToolset
 from .remote_sensing_tools import RemoteSensingToolset
 from .spatial_statistics_tools import SpatialStatisticsToolset
+from .semantic_layer_tools import SemanticLayerToolset
+from .streaming_tools import StreamingToolset

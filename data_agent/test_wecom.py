@@ -277,41 +277,87 @@ class TestMarkdownConversion(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 5. Dedup Tests
+# 5. WeComBot Class Tests (dedup via BotBase, class instantiation)
 # ---------------------------------------------------------------------------
 
-class TestDedup(unittest.TestCase):
-    """Test message deduplication."""
+class TestWeComBot(unittest.TestCase):
+    """Test WeComBot class and its BotBase-inherited dedup."""
 
-    def setUp(self):
-        from data_agent.wecom_bot import _processing_messages
-        _processing_messages.clear()
+    def test_platform_name(self):
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
+        self.assertEqual(bot.platform_name, "WeCom")
 
-    def test_first_message_not_duplicate(self):
-        from data_agent.wecom_bot import _is_duplicate
-        self.assertFalse(_is_duplicate("msg_001"))
+    def test_rate_limiter_default(self):
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
+        self.assertEqual(bot.rate_limiter._max, 18)
 
-    def test_same_id_is_duplicate(self):
-        from data_agent.wecom_bot import _is_duplicate
-        _is_duplicate("msg_002")  # first
-        self.assertTrue(_is_duplicate("msg_002"))  # duplicate
+    def test_dedup_first_message(self):
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
+        self.assertFalse(bot.dedup.is_duplicate("msg_001"))
 
-    def test_different_id_not_duplicate(self):
-        from data_agent.wecom_bot import _is_duplicate
-        _is_duplicate("msg_003")
-        self.assertFalse(_is_duplicate("msg_004"))
+    def test_dedup_same_id(self):
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
+        bot.dedup.is_duplicate("msg_002")
+        self.assertTrue(bot.dedup.is_duplicate("msg_002"))
 
-    def test_expired_entries_cleaned(self):
-        from data_agent.wecom_bot import _is_duplicate, _processing_messages, _DEDUP_WINDOW
-        _is_duplicate("msg_old")
+    def test_dedup_different_id(self):
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
+        bot.dedup.is_duplicate("msg_003")
+        self.assertFalse(bot.dedup.is_duplicate("msg_004"))
+
+    def test_dedup_expired_entries_cleaned(self):
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
+        bot.dedup.is_duplicate("msg_old")
         # Manually expire it
-        _processing_messages["msg_old"] = time.time() - _DEDUP_WINDOW - 1
-        self.assertFalse(_is_duplicate("msg_old"))  # Should not be duplicate after expiry
+        bot.dedup._seen["msg_old"] = time.time() - bot.dedup._ttl - 1
+        self.assertFalse(bot.dedup.is_duplicate("msg_old"))
 
-    def test_empty_msg_id_not_duplicate(self):
-        from data_agent.wecom_bot import _is_duplicate
-        self.assertFalse(_is_duplicate(""))
-        self.assertFalse(_is_duplicate(""))
+    def test_mount_routes_not_configured(self):
+        from data_agent.wecom_bot import WeComBot
+        bot = WeComBot()
+        app = MagicMock()
+        with patch.dict(os.environ, {"WECOM_CORP_ID": ""}):
+            result = bot.mount_routes(app)
+        self.assertFalse(result)
+
+    def test_mount_routes_configured(self):
+        from data_agent.wecom_bot import WeComBot
+        env = {
+            "WECOM_CORP_ID": "wxcorp123",
+            "WECOM_APP_SECRET": "secret",
+            "WECOM_TOKEN": "test_token_123",
+            "WECOM_ENCODING_AES_KEY": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG",
+            "WECOM_AGENT_ID": "1000002",
+        }
+        bot = WeComBot()
+        app = MagicMock()
+        app.router.routes = []
+        with patch.dict(os.environ, env):
+            result = bot.mount_routes(app)
+        self.assertTrue(result)
+        self.assertEqual(len(app.router.routes), 2)  # GET + POST
+
+    def test_mount_wecom_routes_compat(self):
+        """Backward-compat mount_wecom_routes() function still works."""
+        from data_agent.wecom_bot import mount_wecom_routes
+        app = MagicMock()
+        app.router.routes = []
+        env = {
+            "WECOM_CORP_ID": "wxcorp123",
+            "WECOM_APP_SECRET": "secret",
+            "WECOM_TOKEN": "test_token_123",
+            "WECOM_ENCODING_AES_KEY": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG",
+            "WECOM_AGENT_ID": "1000002",
+        }
+        with patch.dict(os.environ, env):
+            result = mount_wecom_routes(app)
+        self.assertTrue(result)
 
 
 # ---------------------------------------------------------------------------

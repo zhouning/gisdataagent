@@ -80,6 +80,33 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("hotspot_analysis", names)
         self.assertEqual(len(tools), 3)
 
+    def test_semantic_layer_toolset(self):
+        from data_agent.toolsets.semantic_layer_tools import SemanticLayerToolset
+        ts = SemanticLayerToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("resolve_semantic_context", names)
+        self.assertIn("describe_table_semantic", names)
+        self.assertIn("register_semantic_annotation", names)
+        self.assertIn("register_source_metadata", names)
+        self.assertIn("list_semantic_sources", names)
+        self.assertIn("register_semantic_domain", names)
+        self.assertIn("discover_column_equivalences", names)
+        self.assertIn("export_semantic_model", names)
+        self.assertEqual(len(tools), 8)
+
+    def test_streaming_toolset(self):
+        from data_agent.toolsets.streaming_tools import StreamingToolset
+        ts = StreamingToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("create_iot_stream", names)
+        self.assertIn("list_active_streams", names)
+        self.assertIn("stop_data_stream", names)
+        self.assertIn("get_stream_statistics", names)
+        self.assertIn("set_geofence_alert", names)
+        self.assertEqual(len(tools), 5)
+
 
 class TestToolFilter(unittest.TestCase):
     """Verify tool_filter correctly restricts tool sets."""
@@ -129,6 +156,27 @@ class TestToolFilter(unittest.TestCase):
         names = {t.name for t in tools}
         self.assertNotIn("visualize_optimization_comparison", names)
         self.assertEqual(len(tools), 7)
+
+    def test_semantic_layer_filter_readonly(self):
+        from data_agent.toolsets.semantic_layer_tools import SemanticLayerToolset
+        ts = SemanticLayerToolset(tool_filter=[
+            "resolve_semantic_context", "describe_table_semantic",
+            "list_semantic_sources", "discover_column_equivalences",
+            "export_semantic_model",
+        ])
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(len(tools), 5)
+        self.assertNotIn("register_semantic_annotation", names)
+        self.assertNotIn("register_source_metadata", names)
+        self.assertNotIn("register_semantic_domain", names)
+
+    def test_streaming_filter_single(self):
+        from data_agent.toolsets.streaming_tools import StreamingToolset
+        ts = StreamingToolset(tool_filter=["create_iot_stream"])
+        tools = self._run(ts.get_tools())
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0].name, "create_iot_stream")
 
 
 class TestFilterPresets(unittest.TestCase):
@@ -193,6 +241,8 @@ class TestNoDuplicateToolNames(unittest.TestCase):
         from data_agent.toolsets.platform_tools import PlatformToolset
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
         from data_agent.toolsets.spatial_statistics_tools import SpatialStatisticsToolset
+        from data_agent.toolsets.semantic_layer_tools import SemanticLayerToolset
+        from data_agent.toolsets.streaming_tools import StreamingToolset
 
         all_names = []
         for ts_cls, kwargs in [
@@ -204,6 +254,8 @@ class TestNoDuplicateToolNames(unittest.TestCase):
             (PlatformToolset, {}),
             (RemoteSensingToolset, {}),
             (SpatialStatisticsToolset, {}),
+            (SemanticLayerToolset, {}),
+            (StreamingToolset, {}),
         ]:
             ts = ts_cls(**kwargs)
             tools = self._run(ts.get_tools())

@@ -36,6 +36,8 @@ from .toolsets import (
     PlatformToolset,
     RemoteSensingToolset,
     SpatialStatisticsToolset,
+    SemanticLayerToolset,
+    StreamingToolset,
 )
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -66,27 +68,6 @@ from .toolsets.platform_tools import list_user_files, delete_user_file
 from .spatial_statistics import spatial_autocorrelation, local_moran, hotspot_analysis
 from .gis_processors import _generate_output_path, _resolve_path
 from .database_tools import T_TABLE_OWNERSHIP
-
-# --- Semantic Layer tool functions (registered as bare callables) ---
-from .semantic_layer import (
-    resolve_semantic_context,
-    describe_table_semantic,
-    register_semantic_annotation,
-    register_source_metadata,
-    list_semantic_sources,
-    register_semantic_domain,
-    discover_column_equivalences,
-    export_semantic_model,
-)
-
-# --- Stream tool functions ---
-from .stream_tools import (
-    create_iot_stream,
-    list_active_streams,
-    stop_data_stream,
-    get_stream_statistics,
-    set_geofence_alert,
-)
 
 # ---------------------------------------------------------------------------
 # Tool filter presets — reusable across agents
@@ -275,19 +256,8 @@ general_processing_agent = LlmAgent(
         PlatformToolset(),
         RemoteSensingToolset(),
         SpatialStatisticsToolset(),
-        resolve_semantic_context,
-        describe_table_semantic,
-        register_semantic_annotation,
-        register_source_metadata,
-        list_semantic_sources,
-        register_semantic_domain,
-        discover_column_equivalences,
-        export_semantic_model,
-        create_iot_stream,
-        list_active_streams,
-        stop_data_stream,
-        get_stream_statistics,
-        set_geofence_alert,
+        SemanticLayerToolset(),
+        StreamingToolset(),
     ] + _arcpy_tools,
 )
 
@@ -333,11 +303,11 @@ planner_explorer = LlmAgent(
         ExplorationToolset(tool_filter=_AUDIT_TOOLS),
         DatabaseToolset(tool_filter=_DB_READ_DESCRIBE),
         PlatformToolset(tool_filter=["list_user_files", "delete_user_file"]),
-        resolve_semantic_context,
-        describe_table_semantic,
-        list_semantic_sources,
-        discover_column_equivalences,
-        export_semantic_model,
+        SemanticLayerToolset(tool_filter=[
+            "resolve_semantic_context", "describe_table_semantic",
+            "list_semantic_sources", "discover_column_equivalences",
+            "export_semantic_model",
+        ]),
     ] + _arcpy_gov_explore_tools,
 )
 
@@ -353,11 +323,7 @@ planner_processor = LlmAgent(
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
         ProcessingToolset(),
         RemoteSensingToolset(tool_filter=["describe_raster"]),
-        create_iot_stream,
-        list_active_streams,
-        stop_data_stream,
-        get_stream_statistics,
-        set_geofence_alert,
+        StreamingToolset(),
     ] + _arcpy_tools,
 )
 
