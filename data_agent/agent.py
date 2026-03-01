@@ -29,11 +29,14 @@ from .utils import (
 # --- Toolset classes (BaseToolset instances for agent tools=[]) ---
 from .toolsets import (
     ExplorationToolset,
-    ProcessingToolset,
+    GeoProcessingToolset,
+    LocationToolset,
     AnalysisToolset,
     VisualizationToolset,
     DatabaseToolset,
-    PlatformToolset,
+    FileToolset,
+    MemoryToolset,
+    AdminToolset,
     RemoteSensingToolset,
     SpatialStatisticsToolset,
     SemanticLayerToolset,
@@ -41,7 +44,7 @@ from .toolsets import (
 )
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
-from .toolsets.processing_tools import (
+from .toolsets.geo_processing_tools import (
     ARCPY_AVAILABLE,
     _arcpy_funcs as _arcpy_tools,
     _arcpy_gov_explore_funcs as _arcpy_gov_explore_tools,
@@ -64,7 +67,7 @@ from .toolsets.visualization_tools import (
     export_map_png,
     compose_map,
 )
-from .toolsets.platform_tools import list_user_files, delete_user_file
+from .toolsets.file_tools import list_user_files, delete_user_file
 from .spatial_statistics import spatial_autocorrelation, local_moran, hotspot_analysis
 from .gis_processors import _generate_output_path, _resolve_path
 from .database_tools import T_TABLE_OWNERSHIP
@@ -80,13 +83,6 @@ _AUDIT_TOOLS = [
 _TRANSFORM_TOOLS = ["reproject_spatial_data", "engineer_spatial_features"]
 _DB_READ = ["query_database", "list_tables"]
 _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
-_MEMORY_TOOLS = [
-    "save_memory", "recall_memories", "list_memories", "delete_memory",
-]
-_ADMIN_TOOLS = [
-    "get_usage_summary", "query_audit_log",
-    "list_templates", "delete_template", "share_template",
-]
 
 # --- Model Tiering ---
 MODEL_FAST = "gemini-2.0-flash"
@@ -134,13 +130,13 @@ data_processing_agent = LlmAgent(
     after_tool_callback=_self_correction_after_tool,
     tools=[
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
-        ProcessingToolset(tool_filter=[
+        GeoProcessingToolset(tool_filter=[
             "generate_tessellation", "raster_to_polygon", "pairwise_clip",
             "tabulate_intersection", "surface_parameters", "zonal_statistics_as_table",
-            "batch_geocode", "reverse_geocode",
             "polygon_neighbors", "add_field", "add_join",
             "calculate_field", "summary_statistics",
         ]),
+        LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
     ] + _arcpy_tools,
 )
 
@@ -219,10 +215,10 @@ governance_processing_agent = LlmAgent(
     after_tool_callback=_self_correction_after_tool,
     tools=[
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
-        ProcessingToolset(tool_filter=[
-            "batch_geocode", "reverse_geocode",
+        GeoProcessingToolset(tool_filter=[
             "polygon_neighbors", "add_field", "calculate_field",
         ]),
+        LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
     ] + _arcpy_gov_process_tools,
 )
 
@@ -251,9 +247,12 @@ general_processing_agent = LlmAgent(
     after_tool_callback=_self_correction_after_tool,
     tools=[
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
-        ProcessingToolset(),
+        GeoProcessingToolset(),
+        LocationToolset(),
         DatabaseToolset(tool_filter=_DB_READ_DESCRIBE + ["share_table"]),
-        PlatformToolset(),
+        FileToolset(),
+        MemoryToolset(),
+        AdminToolset(),
         RemoteSensingToolset(),
         SpatialStatisticsToolset(),
         SemanticLayerToolset(),
@@ -302,7 +301,7 @@ planner_explorer = LlmAgent(
     tools=[
         ExplorationToolset(tool_filter=_AUDIT_TOOLS),
         DatabaseToolset(tool_filter=_DB_READ_DESCRIBE),
-        PlatformToolset(tool_filter=["list_user_files", "delete_user_file"]),
+        FileToolset(),
         SemanticLayerToolset(tool_filter=[
             "resolve_semantic_context", "describe_table_semantic",
             "list_semantic_sources", "discover_column_equivalences",
@@ -321,7 +320,8 @@ planner_processor = LlmAgent(
     after_tool_callback=_self_correction_after_tool,
     tools=[
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
-        ProcessingToolset(),
+        GeoProcessingToolset(),
+        LocationToolset(),
         RemoteSensingToolset(tool_filter=["describe_raster"]),
         StreamingToolset(),
     ] + _arcpy_tools,
@@ -365,7 +365,8 @@ planner_agent = LlmAgent(
     model=MODEL_STANDARD,
     output_key="planner_summary",
     tools=[
-        PlatformToolset(tool_filter=_MEMORY_TOOLS + _ADMIN_TOOLS),
+        MemoryToolset(),
+        AdminToolset(),
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,

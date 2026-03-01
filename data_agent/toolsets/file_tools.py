@@ -1,13 +1,8 @@
-"""Platform toolset: memory, token tracking, file management."""
+"""File management toolset: list and delete user files (local + cloud)."""
 import os
 
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
-
-from ..memory import save_memory, recall_memories, list_memories, delete_memory
-from ..token_tracker import get_usage_summary
-from ..audit_logger import query_audit_log
-from ..template_manager import list_templates, delete_template, share_template
 
 
 # ---------------------------------------------------------------------------
@@ -135,23 +130,11 @@ def delete_user_file(file_name: str) -> str:
 # Toolset class
 # ---------------------------------------------------------------------------
 
-_ALL_FUNCS = [
-    list_user_files,
-    delete_user_file,
-    save_memory,
-    recall_memories,
-    list_memories,
-    delete_memory,
-    get_usage_summary,
-    query_audit_log,
-    list_templates,
-    delete_template,
-    share_template,
-]
+_ALL_FUNCS = [list_user_files, delete_user_file]
 
 
-class PlatformToolset(BaseToolset):
-    """Memory, token tracking, and file management tools."""
+class FileToolset(BaseToolset):
+    """User file listing and deletion tools."""
 
     async def get_tools(self, readonly_context=None):
         all_tools = [FunctionTool(f) for f in _ALL_FUNCS]

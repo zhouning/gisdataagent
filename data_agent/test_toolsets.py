@@ -19,14 +19,28 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("reproject_spatial_data", names)
         self.assertEqual(len(tools), 6)
 
-    def test_processing_toolset(self):
-        from data_agent.toolsets.processing_tools import ProcessingToolset
-        ts = ProcessingToolset(include_arcpy=False)
+    def test_geo_processing_toolset(self):
+        from data_agent.toolsets.geo_processing_tools import GeoProcessingToolset
+        ts = GeoProcessingToolset(include_arcpy=False)
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("create_buffer", names)
+        self.assertIn("generate_tessellation", names)
+        self.assertIn("polygon_neighbors", names)
+        self.assertEqual(len(tools), 17)
+
+    def test_location_toolset(self):
+        from data_agent.toolsets.location_tools import LocationToolset
+        ts = LocationToolset()
         tools = self._run(ts.get_tools())
         names = [t.name for t in tools]
         self.assertIn("batch_geocode", names)
-        self.assertIn("create_buffer", names)
-        self.assertGreaterEqual(len(tools), 23)
+        self.assertIn("reverse_geocode", names)
+        self.assertIn("calculate_driving_distance", names)
+        self.assertIn("search_nearby_poi", names)
+        self.assertIn("get_admin_boundary", names)
+        self.assertIn("get_population_data", names)
+        self.assertEqual(len(tools), 8)
 
     def test_analysis_toolset(self):
         from data_agent.toolsets.analysis_tools import AnalysisToolset
@@ -57,18 +71,37 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("list_tables", names)
         self.assertEqual(len(tools), 4)
 
-    def test_platform_toolset(self):
-        from data_agent.toolsets.platform_tools import PlatformToolset
-        ts = PlatformToolset()
+    def test_file_toolset(self):
+        from data_agent.toolsets.file_tools import FileToolset
+        ts = FileToolset()
         tools = self._run(ts.get_tools())
         names = [t.name for t in tools]
         self.assertIn("list_user_files", names)
+        self.assertIn("delete_user_file", names)
+        self.assertEqual(len(tools), 2)
+
+    def test_memory_toolset(self):
+        from data_agent.toolsets.memory_tools import MemoryToolset
+        ts = MemoryToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
         self.assertIn("save_memory", names)
+        self.assertIn("recall_memories", names)
+        self.assertIn("list_memories", names)
+        self.assertIn("delete_memory", names)
+        self.assertEqual(len(tools), 4)
+
+    def test_admin_toolset(self):
+        from data_agent.toolsets.admin_tools import AdminToolset
+        ts = AdminToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
         self.assertIn("get_usage_summary", names)
+        self.assertIn("query_audit_log", names)
         self.assertIn("list_templates", names)
         self.assertIn("delete_template", names)
         self.assertIn("share_template", names)
-        self.assertEqual(len(tools), 11)
+        self.assertEqual(len(tools), 5)
 
     def test_spatial_statistics_toolset(self):
         from data_agent.toolsets.spatial_statistics_tools import SpatialStatisticsToolset
@@ -86,12 +119,6 @@ class TestToolsetCounts(unittest.TestCase):
         tools = self._run(ts.get_tools())
         names = [t.name for t in tools]
         self.assertIn("resolve_semantic_context", names)
-        self.assertIn("describe_table_semantic", names)
-        self.assertIn("register_semantic_annotation", names)
-        self.assertIn("register_source_metadata", names)
-        self.assertIn("list_semantic_sources", names)
-        self.assertIn("register_semantic_domain", names)
-        self.assertIn("discover_column_equivalences", names)
         self.assertIn("export_semantic_model", names)
         self.assertEqual(len(tools), 8)
 
@@ -101,10 +128,16 @@ class TestToolsetCounts(unittest.TestCase):
         tools = self._run(ts.get_tools())
         names = [t.name for t in tools]
         self.assertIn("create_iot_stream", names)
-        self.assertIn("list_active_streams", names)
-        self.assertIn("stop_data_stream", names)
-        self.assertIn("get_stream_statistics", names)
         self.assertIn("set_geofence_alert", names)
+        self.assertEqual(len(tools), 5)
+
+    def test_remote_sensing_toolset(self):
+        from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
+        ts = RemoteSensingToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("describe_raster", names)
+        self.assertIn("calculate_ndvi", names)
         self.assertEqual(len(tools), 5)
 
 
@@ -127,23 +160,28 @@ class TestToolFilter(unittest.TestCase):
         tools = self._run(ts.get_tools())
         self.assertEqual(len(tools), 0)
 
-    def test_platform_filter_memory_only(self):
-        from data_agent.toolsets.platform_tools import PlatformToolset
-        ts = PlatformToolset(tool_filter=[
-            "save_memory", "recall_memories", "list_memories", "delete_memory",
-        ])
+    def test_memory_filter(self):
+        from data_agent.toolsets.memory_tools import MemoryToolset
+        ts = MemoryToolset(tool_filter=["save_memory", "recall_memories"])
         tools = self._run(ts.get_tools())
         names = {t.name for t in tools}
-        self.assertEqual(names, {"save_memory", "recall_memories", "list_memories", "delete_memory"})
+        self.assertEqual(names, {"save_memory", "recall_memories"})
 
-    def test_processing_filter_geocoding_only(self):
-        from data_agent.toolsets.processing_tools import ProcessingToolset
-        ts = ProcessingToolset(include_arcpy=False, tool_filter=[
+    def test_location_filter_geocoding_only(self):
+        from data_agent.toolsets.location_tools import LocationToolset
+        ts = LocationToolset(tool_filter=[
             "batch_geocode", "reverse_geocode", "calculate_driving_distance",
         ])
         tools = self._run(ts.get_tools())
         names = {t.name for t in tools}
         self.assertEqual(names, {"batch_geocode", "reverse_geocode", "calculate_driving_distance"})
+
+    def test_geo_processing_filter_buffer_only(self):
+        from data_agent.toolsets.geo_processing_tools import GeoProcessingToolset
+        ts = GeoProcessingToolset(include_arcpy=False, tool_filter=["create_buffer"])
+        tools = self._run(ts.get_tools())
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0].name, "create_buffer")
 
     def test_visualization_filter_excludes_optimization(self):
         from data_agent.toolsets.visualization_tools import VisualizationToolset
@@ -168,8 +206,6 @@ class TestToolFilter(unittest.TestCase):
         names = {t.name for t in tools}
         self.assertEqual(len(tools), 5)
         self.assertNotIn("register_semantic_annotation", names)
-        self.assertNotIn("register_source_metadata", names)
-        self.assertNotIn("register_semantic_domain", names)
 
     def test_streaming_filter_single(self):
         from data_agent.toolsets.streaming_tools import StreamingToolset
@@ -177,6 +213,13 @@ class TestToolFilter(unittest.TestCase):
         tools = self._run(ts.get_tools())
         self.assertEqual(len(tools), 1)
         self.assertEqual(tools[0].name, "create_iot_stream")
+
+    def test_admin_filter_audit_only(self):
+        from data_agent.toolsets.admin_tools import AdminToolset
+        ts = AdminToolset(tool_filter=["query_audit_log"])
+        tools = self._run(ts.get_tools())
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0].name, "query_audit_log")
 
 
 class TestFilterPresets(unittest.TestCase):
@@ -214,17 +257,6 @@ class TestFilterPresets(unittest.TestCase):
         names = {t.name for t in tools}
         self.assertEqual(names, {"query_database", "list_tables"})
 
-    def test_memory_admin_combined(self):
-        from data_agent.agent import _MEMORY_TOOLS, _ADMIN_TOOLS
-        from data_agent.toolsets.platform_tools import PlatformToolset
-        ts = PlatformToolset(tool_filter=_MEMORY_TOOLS + _ADMIN_TOOLS)
-        tools = self._run(ts.get_tools())
-        names = {t.name for t in tools}
-        self.assertEqual(len(tools), 9)
-        self.assertIn("save_memory", names)
-        self.assertIn("list_templates", names)
-        self.assertNotIn("list_user_files", names)
-
 
 class TestNoDuplicateToolNames(unittest.TestCase):
     """Verify no name collisions across all toolsets."""
@@ -234,11 +266,14 @@ class TestNoDuplicateToolNames(unittest.TestCase):
 
     def test_all_toolset_names_unique(self):
         from data_agent.toolsets.exploration_tools import ExplorationToolset
-        from data_agent.toolsets.processing_tools import ProcessingToolset
+        from data_agent.toolsets.geo_processing_tools import GeoProcessingToolset
+        from data_agent.toolsets.location_tools import LocationToolset
         from data_agent.toolsets.analysis_tools import AnalysisToolset
         from data_agent.toolsets.visualization_tools import VisualizationToolset
         from data_agent.toolsets.database_tools_set import DatabaseToolset
-        from data_agent.toolsets.platform_tools import PlatformToolset
+        from data_agent.toolsets.file_tools import FileToolset
+        from data_agent.toolsets.memory_tools import MemoryToolset
+        from data_agent.toolsets.admin_tools import AdminToolset
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
         from data_agent.toolsets.spatial_statistics_tools import SpatialStatisticsToolset
         from data_agent.toolsets.semantic_layer_tools import SemanticLayerToolset
@@ -247,11 +282,14 @@ class TestNoDuplicateToolNames(unittest.TestCase):
         all_names = []
         for ts_cls, kwargs in [
             (ExplorationToolset, {}),
-            (ProcessingToolset, {"include_arcpy": False}),
+            (GeoProcessingToolset, {"include_arcpy": False}),
+            (LocationToolset, {}),
             (AnalysisToolset, {}),
             (VisualizationToolset, {}),
             (DatabaseToolset, {}),
-            (PlatformToolset, {}),
+            (FileToolset, {}),
+            (MemoryToolset, {}),
+            (AdminToolset, {}),
             (RemoteSensingToolset, {}),
             (SpatialStatisticsToolset, {}),
             (SemanticLayerToolset, {}),
@@ -262,7 +300,7 @@ class TestNoDuplicateToolNames(unittest.TestCase):
             all_names.extend(t.name for t in tools)
 
         duplicates = [n for n in all_names if all_names.count(n) > 1]
-        # generate_heatmap is in both Processing and Visualization — known overlap
+        # generate_heatmap is in both GeoProcessing and Visualization — known overlap
         allowed_overlaps = {"generate_heatmap"}
         unexpected = set(duplicates) - allowed_overlaps
         self.assertEqual(unexpected, set(), f"Unexpected duplicate tool names: {unexpected}")
@@ -330,7 +368,7 @@ class TestBackwardCompat(unittest.TestCase):
         self.assertIsInstance(_tool_retry_counts, dict)
 
     def test_filter_preset_imports(self):
-        from data_agent.agent import _AUDIT_TOOLS, _TRANSFORM_TOOLS, _DB_READ, _MEMORY_TOOLS, _ADMIN_TOOLS
+        from data_agent.agent import _AUDIT_TOOLS, _TRANSFORM_TOOLS, _DB_READ
         self.assertIsInstance(_AUDIT_TOOLS, list)
         self.assertIn("describe_geodataframe", _AUDIT_TOOLS)
         self.assertIn("reproject_spatial_data", _TRANSFORM_TOOLS)

@@ -1,4 +1,4 @@
-"""Processing toolset: GIS operations, geocoding, ArcPy conditional tools."""
+"""Geo-processing toolset: spatial GIS operations and optional ArcPy tools."""
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 
@@ -21,15 +21,6 @@ from ..gis_processors import (
     calculate_field,
     summary_statistics,
 )
-from ..geocoding import (
-    batch_geocode,
-    reverse_geocode,
-    calculate_driving_distance,
-    search_nearby_poi,
-    search_poi_by_keyword,
-    get_admin_boundary,
-)
-from ..population_data import get_population_data, aggregate_population
 
 # ArcPy tools (optional)
 ARCPY_AVAILABLE = False
@@ -75,19 +66,11 @@ _CORE_FUNCS = [
     add_join,
     calculate_field,
     summary_statistics,
-    batch_geocode,
-    reverse_geocode,
-    calculate_driving_distance,
-    search_nearby_poi,
-    search_poi_by_keyword,
-    get_admin_boundary,
-    get_population_data,
-    aggregate_population,
 ]
 
 
-class ProcessingToolset(BaseToolset):
-    """GIS processing, geocoding, and optional ArcPy tools."""
+class GeoProcessingToolset(BaseToolset):
+    """Spatial GIS processing and optional ArcPy tools."""
 
     def __init__(self, *, include_arcpy: bool = True, **kwargs):
         super().__init__(**kwargs)
