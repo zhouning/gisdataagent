@@ -16,31 +16,15 @@ __pycache__/
 **/.adk/session.db
 **/.adk/
 
-# Generated output files
-*.png
-*.html
-*.tif
-*.docx
-comparison_*.png
-optimized_map_*.png
-visualization_*.png
-interactive_map_*.html
-interactive_comparison_*.html
-enhanced_*.shp
-enhanced_*.dbf
-enhanced_*.prj
-enhanced_*.shx
-enhanced_*.cpg
-optimized_data_*.shp
-optimized_data_*.dbf
-optimized_data_*.prj
-optimized_data_*.shx
-optimized_data_*.cpg
-reprojected_*.shp
-reprojected_*.dbf
-reprojected_*.prj
-reprojected_*.shx
-reprojected_*.cpg
+# Generated output files (root-level only, not in frontend/ or docs/)
+/*.png
+/*.html
+/*.tif
+/*.docx
+/data_agent/*.png
+/data_agent/*.html
+/data_agent/*.tif
+/data_agent/*.docx
 
 # User uploads
 data_agent/uploads/
@@ -83,10 +67,11 @@ Analysis_Report*.docx
 斑竹村_治理演示样本*
 
 # Generated comparison/analysis output in root
-comparison_*.png
-interactive_comparison_*.html
-interactive_map_*.html
-optimized_map_*.png
-optimized_data_*
-enhanced_*
-reprojected_*
+/comparison_*
+/interactive_comparison_*
+/interactive_map_*
+/optimized_map_*
+/optimized_data_*
+/enhanced_*
+/reprojected_*
+/features_enhanced_*
