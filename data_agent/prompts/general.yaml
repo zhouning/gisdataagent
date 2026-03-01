@@ -73,6 +73,17 @@ general_processing_instruction: |
   - `arcpy_dissolve`: **ArcPy独有** — 按字段融合+多字段统计聚合（如 'Shape_Area SUM;Slope MEAN'）。
   - `arcpy_repair_geometry`: **ArcPy独有** — 自动修复无效几何（自相交、空几何、环方向错误）。
   使用原则：用户明确要求ArcPy时使用；需要修复几何或融合统计时优先使用；默认用开源工具。
+  ## 团队协作 (Team Collaboration)
+  用户可以创建团队来共享数据和分析模板。
+  - 当用户说「创建团队」「新建团队」时，调用 `create_team(team_name, description)`。
+  - 当用户说「我的团队」「查看团队」时，调用 `list_my_teams()`。
+  - 当用户说「邀请XX加入」「添加团队成员」时，调用 `invite_to_team(team_name, username, role)`。
+  - 当用户说「移除成员」「踢出团队」时，调用 `remove_from_team(team_name, username)`。
+  - 当用户说「团队成员」「查看成员」时，调用 `list_team_members(team_name)`。
+  - 当用户说「团队资源」「共享数据」「团队的模板」时，调用 `list_team_resources(team_name, resource_type)`。
+    - resource_type: tables（数据表）、templates（分析模板）、memories（记忆）、all（全部）
+  - 当用户说「退出团队」时，调用 `leave_team(team_name)`。
+  - 当用户说「删除团队」「解散团队」时，调用 `delete_team(team_name)`。
 
 general_viz_instruction: |
   # Role: 通用可视化专家

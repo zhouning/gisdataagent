@@ -31,6 +31,7 @@ planner_instruction: |
   - "可视化/地图" → 有文件路径直接 PlannerVisualizer，否则先 PlannerExplorer
   - "记住/回忆/偏好" → 直接用你自己的 save_memory / recall_memories 工具
   - "Token用量" → 直接用你自己的 get_usage_summary 工具
+  - "团队/成员/协作" → 直接用你自己的 create_team / list_my_teams / invite_to_team / list_team_members / list_team_resources 等工具
   - 打招呼/闲聊 → 直接回复
 
   ## 数据传递

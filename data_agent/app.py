@@ -94,6 +94,8 @@ try:
     ensure_templates_table()
     from data_agent.semantic_layer import ensure_semantic_tables, resolve_semantic_context, build_context_prompt
     ensure_semantic_tables()
+    from data_agent.team_manager import ensure_teams_table
+    ensure_teams_table()
 except Exception as _startup_err:
     print(f"[Startup] WARNING: DB initialization partially failed: {_startup_err}")
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -814,10 +816,19 @@ TOOL_LABELS = {
     "spatial_autocorrelation": "全局空间自相关(Moran's I)",
     "local_moran": "局部空间自相关(LISA)",
     "hotspot_analysis": "热点分析(Gi*)",
+    "create_team": "创建团队",
+    "list_my_teams": "我的团队列表",
+    "invite_to_team": "邀请团队成员",
+    "remove_from_team": "移除团队成员",
+    "list_team_members": "团队成员列表",
+    "list_team_resources": "团队共享资源",
+    "leave_team": "退出团队",
+    "delete_team": "删除团队",
 }
 
 AGENT_LABELS = {
     "vertex_search_agent": "检索领域知识",
+    "DataIngestion": "数据采集与工程(并行)",
     "DataExploration": "数据质量审计",
     "DataProcessing": "特征工程与预处理",
     "DataAnalysis": "空间分析与优化",
@@ -1151,6 +1162,38 @@ TOOL_DESCRIPTIONS = {
         "params": {"file_path": "数据文件", "column": "分析字段",
                    "weights_type": "权重类型", "significance": "显著性阈值"},
     },
+    "create_team": {
+        "method": "创建协作团队",
+        "params": {"team_name": "团队名称", "description": "描述"},
+    },
+    "list_my_teams": {
+        "method": "列出我所在的团队",
+        "params": {},
+    },
+    "invite_to_team": {
+        "method": "邀请成员加入团队",
+        "params": {"team_name": "团队名称", "username": "用户名", "role": "角色"},
+    },
+    "remove_from_team": {
+        "method": "移除团队成员",
+        "params": {"team_name": "团队名称", "username": "用户名"},
+    },
+    "list_team_members": {
+        "method": "查看团队成员",
+        "params": {"team_name": "团队名称"},
+    },
+    "list_team_resources": {
+        "method": "查看团队共享资源",
+        "params": {"team_name": "团队名称", "resource_type": "资源类型"},
+    },
+    "leave_team": {
+        "method": "退出团队",
+        "params": {"team_name": "团队名称"},
+    },
+    "delete_team": {
+        "method": "删除团队",
+        "params": {"team_name": "团队名称"},
+    },
 }
 
 
@@ -1214,8 +1257,7 @@ def _sync_tool_output_to_obs(resp_data) -> None:
 
 PIPELINE_STAGES = {
     "optimization": [
-        "vertex_search_agent", "DataExploration", "DataProcessing",
-        "DataAnalysis", "DataVisualization", "DataSummary",
+        "DataIngestion", "DataAnalysis", "DataVisualization", "DataSummary",
     ],
     "governance": ["GovExploration", "GovProcessing", "GovernanceReporter"],
     "general": ["GeneralProcessing", "GeneralViz", "GeneralSummary"],

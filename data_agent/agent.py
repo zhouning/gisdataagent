@@ -7,7 +7,7 @@ Agents use BaseToolset instances for tool registration (see data_agent/toolsets/
 from datetime import date
 
 from google.adk.agents.llm_agent import Agent
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
 from google.adk.tools import VertexAiSearchTool
 
 import os
@@ -41,6 +41,7 @@ from .toolsets import (
     SpatialStatisticsToolset,
     SemanticLayerToolset,
     StreamingToolset,
+    TeamToolset,
 )
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -88,6 +89,9 @@ _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
 MODEL_FAST = "gemini-2.0-flash"
 MODEL_STANDARD = "gemini-2.5-flash"
 MODEL_PREMIUM = "gemini-2.5-pro"
+
+# --- Feature Flags ---
+PARALLEL_INGESTION = os.environ.get("PARALLEL_INGESTION", "true").lower() in ("true", "1", "yes")
 
 # --- Vertex AI Search Datastore ---
 DATASTORE_ID = os.environ.get(
@@ -178,16 +182,31 @@ data_summary_agent = LlmAgent(
     output_key="final_summary",
 )
 
-data_pipeline = SequentialAgent(
-    name="DataPipeline",
-    sub_agents=[
-        knowledge_agent,
-        data_engineering_agent,
-        data_analysis_agent,
-        data_visualization_agent,
-        data_summary_agent,
-    ],
-)
+if PARALLEL_INGESTION:
+    data_ingestion_stage = ParallelAgent(
+        name="DataIngestion",
+        sub_agents=[knowledge_agent, data_engineering_agent],
+    )
+    data_pipeline = SequentialAgent(
+        name="DataPipeline",
+        sub_agents=[
+            data_ingestion_stage,
+            data_analysis_agent,
+            data_visualization_agent,
+            data_summary_agent,
+        ],
+    )
+else:
+    data_pipeline = SequentialAgent(
+        name="DataPipeline",
+        sub_agents=[
+            knowledge_agent,
+            data_engineering_agent,
+            data_analysis_agent,
+            data_visualization_agent,
+            data_summary_agent,
+        ],
+    )
 
 # ============================================================================
 # Governance Pipeline
@@ -257,6 +276,7 @@ general_processing_agent = LlmAgent(
         SpatialStatisticsToolset(),
         SemanticLayerToolset(),
         StreamingToolset(),
+        TeamToolset(),
     ] + _arcpy_tools,
 )
 
@@ -367,6 +387,7 @@ planner_agent = LlmAgent(
     tools=[
         MemoryToolset(),
         AdminToolset(),
+        TeamToolset(),
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,

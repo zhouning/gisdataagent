@@ -140,6 +140,17 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("calculate_ndvi", names)
         self.assertEqual(len(tools), 5)
 
+    def test_team_toolset(self):
+        from data_agent.toolsets.team_tools import TeamToolset
+        ts = TeamToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("create_team", names)
+        self.assertIn("list_my_teams", names)
+        self.assertIn("invite_to_team", names)
+        self.assertIn("delete_team", names)
+        self.assertEqual(len(tools), 8)
+
 
 class TestToolFilter(unittest.TestCase):
     """Verify tool_filter correctly restricts tool sets."""
@@ -221,6 +232,14 @@ class TestToolFilter(unittest.TestCase):
         self.assertEqual(len(tools), 1)
         self.assertEqual(tools[0].name, "query_audit_log")
 
+    def test_team_filter_read_only(self):
+        from data_agent.toolsets.team_tools import TeamToolset
+        ts = TeamToolset(tool_filter=["list_my_teams", "list_team_members"])
+        tools = self._run(ts.get_tools())
+        self.assertEqual(len(tools), 2)
+        names = {t.name for t in tools}
+        self.assertEqual(names, {"list_my_teams", "list_team_members"})
+
 
 class TestFilterPresets(unittest.TestCase):
     """Verify the named filter presets in agent.py resolve correctly."""
@@ -278,6 +297,7 @@ class TestNoDuplicateToolNames(unittest.TestCase):
         from data_agent.toolsets.spatial_statistics_tools import SpatialStatisticsToolset
         from data_agent.toolsets.semantic_layer_tools import SemanticLayerToolset
         from data_agent.toolsets.streaming_tools import StreamingToolset
+        from data_agent.toolsets.team_tools import TeamToolset
 
         all_names = []
         for ts_cls, kwargs in [
@@ -294,6 +314,7 @@ class TestNoDuplicateToolNames(unittest.TestCase):
             (SpatialStatisticsToolset, {}),
             (SemanticLayerToolset, {}),
             (StreamingToolset, {}),
+            (TeamToolset, {}),
         ]:
             ts = ts_cls(**kwargs)
             tools = self._run(ts.get_tools())

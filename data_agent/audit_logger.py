@@ -30,6 +30,10 @@ ACTION_TEMPLATE_CREATE = "template_create"
 ACTION_TEMPLATE_APPLY = "template_apply"
 ACTION_TEMPLATE_DELETE = "template_delete"
 ACTION_WECOM_MESSAGE = "wecom_message"
+ACTION_TEAM_CREATE = "team_create"
+ACTION_TEAM_INVITE = "team_invite"
+ACTION_TEAM_REMOVE = "team_remove"
+ACTION_TEAM_DELETE = "team_delete"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -49,6 +53,10 @@ ACTION_LABELS = {
     ACTION_TEMPLATE_APPLY: "应用模板",
     ACTION_TEMPLATE_DELETE: "删除模板",
     ACTION_WECOM_MESSAGE: "企业微信消息",
+    ACTION_TEAM_CREATE: "创建团队",
+    ACTION_TEAM_INVITE: "邀请成员",
+    ACTION_TEAM_REMOVE: "移除成员",
+    ACTION_TEAM_DELETE: "删除团队",
 }
 
 
