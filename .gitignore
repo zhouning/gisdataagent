@@ -7,11 +7,14 @@ __pycache__/
 # Virtual environment
 .venv/
 
-# Environment variables (sensitive)
-data_agent/.env
+# Environment variables (sensitive) — NEVER commit .env files
+**/.env
+.env
+*.env
 
 # ADK session database
-data_agent/.adk/
+**/.adk/session.db
+**/.adk/
 
 # Generated output files
 *.png
@@ -47,6 +50,26 @@ data_agent/uploads/
 
 # DRL model training artifacts
 v7/
+v2/
+*.pth
+**/land_use_model_*.zip
+
+# Non-project directories (ADK tutorials / experiments)
+coding_agent/
+mcp_agent/
+multi_tool_agent/
+vertex_search_agent/
+__adk_agent_builder_assistant/
+helloworld/
+test/
+
+# IDE / editor settings
+.vscode/
+
+# Local scripts
+enable-venv.ps1
+math_test.py
+test.py
 
 # Temporary/generated data files
 simple_test.docx
