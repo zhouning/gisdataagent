@@ -23,6 +23,7 @@ from data_agent.remote_sensing import (
     _shapely_to_esri_json,
     download_lulc,
     download_dem,
+    _dem_tile_urls,
 )
 
 
@@ -427,8 +428,37 @@ class TestDownloadLulc(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
+class TestDemTileUrls(unittest.TestCase):
+    """Test the _dem_tile_urls helper function."""
+
+    def test_single_tile(self):
+        """Small area within one 1° tile."""
+        tiles = _dem_tile_urls([106.1, 29.5, 106.2, 29.6])
+        self.assertEqual(len(tiles), 1)
+        name, url = tiles[0]
+        self.assertIn("N29", name)
+        self.assertIn("E106", name)
+        self.assertTrue(url.startswith("https://copernicus-dem-30m"))
+
+    def test_multi_tile(self):
+        """Area crossing a degree boundary."""
+        tiles = _dem_tile_urls([106.9, 29.9, 107.1, 30.1])
+        self.assertEqual(len(tiles), 4)  # 2 lon × 2 lat
+        names = {t[0] for t in tiles}
+        self.assertTrue(any("N29" in n and "E106" in n for n in names))
+        self.assertTrue(any("N30" in n and "E107" in n for n in names))
+
+    def test_southern_hemisphere(self):
+        """Tile naming for south/west coordinates."""
+        tiles = _dem_tile_urls([-10.5, -5.5, -10.2, -5.2])
+        self.assertEqual(len(tiles), 1)
+        name, _ = tiles[0]
+        self.assertIn("S06", name)
+        self.assertIn("W011", name)
+
+
 class TestDownloadDem(unittest.TestCase):
-    """Test download_dem function."""
+    """Test download_dem function (AWS S3 primary, GEE fallback)."""
 
     @classmethod
     def setUpClass(cls):
@@ -437,7 +467,7 @@ class TestDownloadDem(unittest.TestCase):
         from shapely.geometry import box
         gdf = _gpd.GeoDataFrame(
             {"id": [1]},
-            geometry=[box(116.4, 39.4, 116.45, 39.45)],  # ~25km², within raster bounds & under 200km² threshold
+            geometry=[box(116.4, 39.4, 116.45, 39.45)],
             crs="EPSG:4326",
         )
         cls.boundary_path = os.path.join(cls.tmpdir, "test_dem_boundary.geojson")
@@ -447,63 +477,63 @@ class TestDownloadDem(unittest.TestCase):
         result = download_dem("nonexistent_file.shp")
         self.assertIn("Error", result)
 
-    def test_ee_not_configured(self):
-        """When GEE is not configured, should return auth error."""
-        import unittest.mock
-        # Mock ee to be importable but _initialize_ee to fail
-        with unittest.mock.patch("data_agent.remote_sensing._initialize_ee",
-                                  side_effect=RuntimeError("Earth Engine 认证失败")):
-            result = download_dem(self.boundary_path)
-            self.assertIn("Error", result)
-            self.assertIn("认证失败", result)
-
     @unittest.mock.patch("data_agent.remote_sensing._requests.get")
-    @unittest.mock.patch("data_agent.remote_sensing._initialize_ee")
     @unittest.mock.patch("data_agent.remote_sensing._generate_output_path")
-    def test_small_area_direct_download(self, mock_gen_path, mock_init_ee, mock_get):
-        """Mock GEE for a small area direct download."""
-        import unittest.mock
-
+    def test_aws_success(self, mock_gen_path, mock_get):
+        """AWS S3 primary path succeeds with mock tile."""
         # Create a synthetic DEM GeoTIFF
-        tif_path = os.path.join(self.tmpdir, "mock_dem_raw.tif")
+        tif_path = os.path.join(self.tmpdir, "mock_dem_tile.tif")
         dem_data = np.random.rand(20, 20).astype(np.float32) * 1000 + 100
         _create_synthetic_raster(tif_path, width=20, height=20, count=1,
                                  dtype="float32", nodata=-9999, data=dem_data)
         with open(tif_path, "rb") as f:
             tif_bytes = f.read()
 
+        # Mock requests.get to return tile data (stream mode)
         mock_response = unittest.mock.MagicMock()
         mock_response.status_code = 200
-        mock_response.content = tif_bytes
-        mock_response.headers = {}
-        mock_response.raise_for_status = unittest.mock.MagicMock()
+        mock_response.iter_content.return_value = [tif_bytes]
         mock_get.return_value = mock_response
 
-        # Route _generate_output_path to temp dir
         call_count = [0]
         def gen_path(prefix, ext):
             call_count[0] += 1
             return os.path.join(self.tmpdir, f"{prefix}_{call_count[0]}.{ext}")
         mock_gen_path.side_effect = gen_path
 
-        # Mock the ee module
-        mock_ee = unittest.mock.MagicMock()
-        mock_image = unittest.mock.MagicMock()
-        mock_image.getDownloadURL.return_value = "https://earthengine.googleapis.com/fake_download"
-        mock_collection = unittest.mock.MagicMock()
-        mock_collection.select.return_value = mock_collection
-        mock_collection.mosaic.return_value = mock_image
-        mock_image.clip.return_value = mock_image
-        mock_ee.ImageCollection.return_value = mock_collection
-        mock_ee.Geometry.return_value = unittest.mock.MagicMock()
-        mock_ee.data._credentials = "fake"
-
-        with unittest.mock.patch.dict("sys.modules", {"ee": mock_ee}):
-            result = download_dem(self.boundary_path)
-
+        result = download_dem(self.boundary_path)
         self.assertNotIn("Error", result)
         self.assertIn("Copernicus DEM", result)
+        self.assertIn("AWS S3", result)
         self.assertIn("高程统计", result)
+
+    @unittest.mock.patch("data_agent.remote_sensing._download_dem_gee")
+    @unittest.mock.patch("data_agent.remote_sensing._download_dem_aws")
+    def test_aws_fallback_to_gee(self, mock_aws, mock_gee):
+        """When AWS fails, GEE fallback is tried."""
+        mock_aws.side_effect = RuntimeError("AWS S3 tile HTTP 403")
+        mock_gee.return_value = (
+            "/tmp/dem.tif\n数据源: Copernicus DEM GLO-30 (GEE)\n"
+            "分辨率: 30m, 投影: EPSG:4326\n高程统计: min=100m"
+        )
+
+        result = download_dem(self.boundary_path)
+        self.assertNotIn("Error", result)
+        self.assertIn("GEE", result)
+        mock_aws.assert_called_once()
+        mock_gee.assert_called_once()
+
+    @unittest.mock.patch("data_agent.remote_sensing._download_dem_gee")
+    @unittest.mock.patch("data_agent.remote_sensing._download_dem_aws")
+    def test_both_strategies_fail(self, mock_aws, mock_gee):
+        """Both strategies fail — error includes both reasons."""
+        mock_aws.side_effect = RuntimeError("AWS timeout")
+        mock_gee.side_effect = RuntimeError("GEE auth failed")
+
+        result = download_dem(self.boundary_path)
+        self.assertIn("Error", result)
+        self.assertIn("AWS", result)
+        self.assertIn("GEE", result)
 
 
 # ---------------------------------------------------------------------------

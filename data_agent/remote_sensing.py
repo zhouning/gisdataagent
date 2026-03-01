@@ -37,6 +37,12 @@ _LULC_MAX_PIXELS = 10000
 _LULC_PIXEL_DEG = 0.0000898  # ~10m at equator in degrees
 
 
+# ---------------------------------------------------------------------------
+# AWS S3 DEM constants (Copernicus DEM GLO-30, public, no auth)
+# ---------------------------------------------------------------------------
+_DEM_S3_BASE = "https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com"
+
+
 def _shapely_to_esri_json(geom):
     """Convert a Shapely Polygon/MultiPolygon to Esri JSON format."""
     geojson = _shapely_mapping(geom)
@@ -464,24 +470,14 @@ def download_lulc(admin_boundary_path: str, year: int = 2023) -> str:
         union_geom = gdf_4326.geometry.union_all()
         bounds = gdf_4326.total_bounds  # [minx, miny, maxx, maxy]
 
-        esri_geom = _shapely_to_esri_json(union_geom)
-
-        rendering_rule = json.dumps({
-            "rasterFunction": "Clip",
-            "rasterFunctionArguments": {
-                "ClippingGeometry": esri_geom,
-                "ClippingType": 1,
-            },
-        })
+        # Mosaic rule to select the correct year
         mosaic_rule = json.dumps({
             "mosaicMethod": "esriMosaicAttribute",
-            "where": (
-                f"StdTime >= '{year}-01-01T00:00:00' "
-                f"AND StdTime <= '{year}-12-31T23:59:59'"
-            ),
-            "sortField": "StdTime",
+            "where": f"Year = {year}",
+            "sortField": "Year",
             "ascending": False,
         })
+        # No server-side renderingRule — bbox download + rasterio.mask clip
 
         # Determine pixel dimensions
         width_deg = bounds[2] - bounds[0]
@@ -496,12 +492,12 @@ def download_lulc(admin_boundary_path: str, year: int = 2023) -> str:
             raw_path = _download_lulc_tile(
                 bounds, min(width_px, _LULC_MAX_PIXELS),
                 min(height_px, _LULC_MAX_PIXELS),
-                rendering_rule, mosaic_rule,
+                mosaic_rule,
             )
         else:
             # Multi-tile download and merge
             raw_path = _download_lulc_tiled(
-                bounds, width_px, height_px, rendering_rule, mosaic_rule,
+                bounds, width_px, height_px, mosaic_rule,
             )
 
         # Precise clip with rasterio.mask
@@ -551,7 +547,7 @@ def download_lulc(admin_boundary_path: str, year: int = 2023) -> str:
         return f"Error in download_lulc: {str(e)}"
 
 
-def _download_lulc_tile(bbox, width_px, height_px, rendering_rule, mosaic_rule):
+def _download_lulc_tile(bbox, width_px, height_px, mosaic_rule):
     """Download a single LULC tile and save to a temp GeoTIFF."""
     params = {
         "bbox": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}",
@@ -561,7 +557,6 @@ def _download_lulc_tile(bbox, width_px, height_px, rendering_rule, mosaic_rule):
         "format": "tiff",
         "pixelType": "U8",
         "interpolation": "RSP_NearestNeighbor",
-        "renderingRule": rendering_rule,
         "mosaicRule": mosaic_rule,
         "f": "image",
     }
@@ -581,7 +576,7 @@ def _download_lulc_tile(bbox, width_px, height_px, rendering_rule, mosaic_rule):
     return raw_path
 
 
-def _download_lulc_tiled(bbox, total_w, total_h, rendering_rule, mosaic_rule):
+def _download_lulc_tiled(bbox, total_w, total_h, mosaic_rule):
     """Download LULC in tiles and merge with rasterio."""
     from rasterio.merge import merge as rio_merge
 
@@ -605,7 +600,7 @@ def _download_lulc_tiled(bbox, total_w, total_h, rendering_rule, mosaic_rule):
                 tw = max(1, tw)
                 th = max(1, th)
                 tile_path = _download_lulc_tile(
-                    tile_bbox, tw, th, rendering_rule, mosaic_rule,
+                    tile_bbox, tw, th, mosaic_rule,
                 )
                 temp_tiles.append(tile_path)
 
@@ -640,15 +635,137 @@ def _download_lulc_tiled(bbox, total_w, total_h, rendering_rule, mosaic_rule):
 
 
 # ---------------------------------------------------------------------------
-# download_dem — Copernicus DEM GLO-30 (Google Earth Engine)
+# download_dem — Copernicus DEM GLO-30 (AWS S3 primary, GEE fallback)
 # ---------------------------------------------------------------------------
+
+
+def _dem_tile_urls(bounds):
+    """Return list of (tile_name, url) for 1°×1° DEM tiles covering *bounds*.
+
+    Args:
+        bounds: [minx, miny, maxx, maxy] in EPSG:4326.
+    """
+    min_lon = int(math.floor(bounds[0]))
+    max_lon = int(math.floor(bounds[2]))
+    min_lat = int(math.floor(bounds[1]))
+    max_lat = int(math.floor(bounds[3]))
+
+    tiles = []
+    for lat in range(min_lat, max_lat + 1):
+        for lon in range(min_lon, max_lon + 1):
+            ns = "N" if lat >= 0 else "S"
+            ew = "E" if lon >= 0 else "W"
+            name = (
+                f"Copernicus_DSM_COG_10_{ns}{abs(lat):02d}_00"
+                f"_{ew}{abs(lon):03d}_00_DEM"
+            )
+            url = f"{_DEM_S3_BASE}/{name}/{name}.tif"
+            tiles.append((name, url))
+    return tiles
+
+
+def _download_dem_aws(admin_boundary_path: str) -> str:
+    """Download Copernicus DEM GLO-30 from AWS S3 (public, no auth)."""
+    from rasterio.mask import mask as rio_mask
+    from rasterio.merge import merge as rio_merge
+
+    path = _resolve_path(admin_boundary_path)
+    gdf = gpd.read_file(path)
+    gdf_4326 = gdf.to_crs("EPSG:4326")
+    union_geom = gdf_4326.geometry.union_all()
+    bounds = gdf_4326.total_bounds
+
+    tiles = _dem_tile_urls(bounds)
+    tile_paths = []
+    try:
+        for name, url in tiles:
+            resp = _requests.get(url, timeout=120, stream=True)
+            if resp.status_code != 200:
+                raise RuntimeError(
+                    f"AWS S3 tile {name} HTTP {resp.status_code}"
+                )
+            tp = _generate_output_path(f"dem_tile_{name[-10:]}", "tif")
+            with open(tp, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                    f.write(chunk)
+            tile_paths.append(tp)
+
+        # Merge tiles if needed
+        if len(tile_paths) > 1:
+            datasets = [rasterio.open(t) for t in tile_paths]
+            mosaic_arr, out_transform = rio_merge(datasets)
+            for ds in datasets:
+                ds.close()
+            merged_path = _generate_output_path("dem_merged", "tif")
+            profile = rasterio.open(tile_paths[0]).profile.copy()
+            profile.update(
+                width=mosaic_arr.shape[2],
+                height=mosaic_arr.shape[1],
+                transform=out_transform,
+            )
+            with rasterio.open(merged_path, "w", **profile) as dst:
+                dst.write(mosaic_arr)
+            src_path = merged_path
+        else:
+            src_path = tile_paths[0]
+
+        # Precise clip
+        out_path = _generate_output_path("dem", "tif")
+        with rasterio.open(src_path) as src:
+            out_image, out_transform = rio_mask(
+                src, [union_geom], crop=True, nodata=-9999,
+            )
+            out_profile = src.profile.copy()
+            out_profile.update(
+                height=out_image.shape[1],
+                width=out_image.shape[2],
+                transform=out_transform,
+                nodata=-9999,
+                dtype="float32",
+            )
+
+        with rasterio.open(out_path, "w", **out_profile) as dst:
+            dst.write(out_image.astype(np.float32))
+
+    finally:
+        # Clean up temp tiles
+        for tp in tile_paths:
+            if os.path.exists(tp):
+                try:
+                    os.remove(tp)
+                except OSError:
+                    pass
+
+    # Elevation statistics
+    data = out_image[0]
+    valid = data[data != -9999]
+    if len(valid) > 0:
+        stats_msg = (
+            f"高程统计: min={float(np.min(valid)):.1f}m, "
+            f"max={float(np.max(valid)):.1f}m, "
+            f"mean={float(np.mean(valid)):.1f}m, "
+            f"std={float(np.std(valid)):.1f}m"
+        )
+    else:
+        stats_msg = "高程统计: 无有效像素"
+
+    return (
+        f"{out_path}\n"
+        f"数据源: Copernicus DEM GLO-30 (AWS S3)\n"
+        f"分辨率: 30m, 投影: EPSG:4326\n"
+        f"{stats_msg}"
+    )
 
 def _initialize_ee():
     """Initialize Google Earth Engine with multi-strategy auth."""
     import ee
 
-    if ee.data._credentials is not None:
+    # Check if already initialized by attempting a lightweight operation
+    try:
+        ee.Number(0)
         return  # already initialized
+    except Exception:
+        pass
 
     # Strategy 1: Service account key file
     sa_key = os.environ.get("GEE_SERVICE_ACCOUNT_KEY")
@@ -673,141 +790,151 @@ def _initialize_ee():
     )
 
 
+def _download_dem_gee(admin_boundary_path: str) -> str:
+    """Download Copernicus DEM via Google Earth Engine (fallback)."""
+    import ee
+
+    _initialize_ee()
+
+    path = _resolve_path(admin_boundary_path)
+    gdf = gpd.read_file(path)
+    gdf_4326 = gdf.to_crs("EPSG:4326")
+    union_geom = gdf_4326.geometry.union_all()
+
+    # Calculate area in km²
+    gdf_proj = gdf_4326.to_crs(gdf_4326.estimate_utm_crs())
+    area_km2 = gdf_proj.geometry.union_all().area / 1e6
+
+    # Convert Shapely geometry to ee.Geometry
+    geojson = _shapely_mapping(union_geom)
+    ee_geom = ee.Geometry(geojson)
+
+    # Build DEM image
+    dem = (
+        ee.ImageCollection("COPERNICUS/DEM/GLO30")
+        .select("DEM")
+        .mosaic()
+        .clip(ee_geom)
+    )
+
+    AREA_THRESHOLD = 200  # km²
+
+    if area_km2 > AREA_THRESHOLD:
+        import uuid as _uuid
+        task_desc = f"dem_export_{_uuid.uuid4().hex[:8]}"
+        task = ee.batch.Export.image.toDrive(
+            image=dem,
+            description=task_desc,
+            scale=30,
+            region=ee_geom,
+            crs="EPSG:4326",
+            maxPixels=int(1e9),
+            fileFormat="GeoTIFF",
+        )
+        task.start()
+        return (
+            f"DEM数据区域面积 {area_km2:.1f} km² 超过直接下载阈值({AREA_THRESHOLD}km²)。\n"
+            f"已提交 Google Earth Engine 异步导出任务。\n"
+            f"任务ID: {task.id}\n"
+            f"状态: {task.status()['state']}\n"
+            f"导出完成后数据将保存到 Google Drive 根目录。"
+        )
+
+    # Small area — direct download
+    url = dem.getDownloadURL({
+        "scale": 30,
+        "crs": "EPSG:4326",
+        "region": ee_geom,
+        "format": "GEO_TIFF",
+        "filePerBand": False,
+    })
+
+    resp = _requests.get(url, timeout=300)
+    resp.raise_for_status()
+
+    raw_path = _generate_output_path("dem_raw", "tif")
+    with open(raw_path, "wb") as f:
+        f.write(resp.content)
+
+    from rasterio.mask import mask as rio_mask
+
+    out_path = _generate_output_path("dem", "tif")
+    with rasterio.open(raw_path) as src:
+        out_image, out_transform = rio_mask(
+            src, [union_geom], crop=True, nodata=-9999,
+        )
+        out_profile = src.profile.copy()
+        out_profile.update(
+            height=out_image.shape[1],
+            width=out_image.shape[2],
+            transform=out_transform,
+            nodata=-9999,
+            dtype="float32",
+        )
+
+    with rasterio.open(out_path, "w", **out_profile) as dst:
+        dst.write(out_image.astype(np.float32))
+
+    if os.path.exists(raw_path):
+        os.remove(raw_path)
+
+    data = out_image[0]
+    valid = data[data != -9999]
+    if len(valid) > 0:
+        stats_msg = (
+            f"高程统计: min={float(np.min(valid)):.1f}m, "
+            f"max={float(np.max(valid)):.1f}m, "
+            f"mean={float(np.mean(valid)):.1f}m, "
+            f"std={float(np.std(valid)):.1f}m"
+        )
+    else:
+        stats_msg = "高程统计: 无有效像素"
+
+    return (
+        f"{out_path}\n"
+        f"数据源: Copernicus DEM GLO-30 (GEE)\n"
+        f"分辨率: 30m, 投影: EPSG:4326\n"
+        f"区域面积: {area_km2:.1f} km²\n"
+        f"{stats_msg}"
+    )
+
+
 def download_dem(admin_boundary_path: str) -> str:
     """
     下载 Copernicus DEM GLO-30 高程数据（30m分辨率），按行政区边界裁剪。
 
-    数据源: Google Earth Engine — COPERNICUS/DEM/GLO30 (全球30m数字高程模型)。
-    需要安装 earthengine-api 包并配置 GOOGLE_CLOUD_PROJECT 环境变量。
-    对于乡镇级区域 (≤200km²) 使用直接下载；更大区域提交异步导出任务到 Google Drive。
+    数据源: Copernicus DEM GLO-30 (全球30m数字高程模型)。
+    优先通过 AWS S3 公开数据直接下载（无需认证），
+    若失败则尝试 Google Earth Engine 作为备选（需配置 earthengine-api）。
 
     Args:
         admin_boundary_path: 行政区边界文件路径 (.shp / .geojson / .gpkg)。
 
     Returns:
-        下载后的 GeoTIFF 路径与高程统计信息，或错误/状态信息。
+        下载后的 GeoTIFF 路径与高程统计信息，或错误信息。
     """
+    # Validate path first (shared check for both strategies)
     try:
-        import ee
-    except ImportError:
-        return (
-            "Error in download_dem: earthengine-api 未安装。"
-            "请执行 `pip install earthengine-api` 后重试。"
-        )
-
-    try:
-        _initialize_ee()
-
-        path = _resolve_path(admin_boundary_path)
-        gdf = gpd.read_file(path)
-        gdf_4326 = gdf.to_crs("EPSG:4326")
-        union_geom = gdf_4326.geometry.union_all()
-
-        # Calculate area in km²
-        gdf_proj = gdf_4326.to_crs(gdf_4326.estimate_utm_crs())
-        area_km2 = gdf_proj.geometry.union_all().area / 1e6
-
-        # Convert Shapely geometry to ee.Geometry
-        geojson = _shapely_mapping(union_geom)
-        ee_geom = ee.Geometry(geojson)
-
-        # Build DEM image
-        dem = (
-            ee.ImageCollection("COPERNICUS/DEM/GLO30")
-            .select("DEM")
-            .mosaic()
-            .clip(ee_geom)
-        )
-
-        AREA_THRESHOLD = 200  # km²
-
-        if area_km2 > AREA_THRESHOLD:
-            # Large area — async export to Google Drive
-            import uuid as _uuid
-            task_desc = f"dem_export_{_uuid.uuid4().hex[:8]}"
-            task = ee.batch.Export.image.toDrive(
-                image=dem,
-                description=task_desc,
-                scale=30,
-                region=ee_geom,
-                crs="EPSG:4326",
-                maxPixels=int(1e9),
-                fileFormat="GeoTIFF",
-            )
-            task.start()
-            return (
-                f"DEM数据区域面积 {area_km2:.1f} km² 超过直接下载阈值({AREA_THRESHOLD}km²)。\n"
-                f"已提交 Google Earth Engine 异步导出任务。\n"
-                f"任务ID: {task.id}\n"
-                f"状态: {task.status()['state']}\n"
-                f"导出完成后数据将保存到 Google Drive 根目录。"
-            )
-
-        # Small area — direct download
-        url = dem.getDownloadURL({
-            "scale": 30,
-            "crs": "EPSG:4326",
-            "region": ee_geom,
-            "format": "GEO_TIFF",
-            "filePerBand": False,
-        })
-
-        resp = _requests.get(url, timeout=300)
-        resp.raise_for_status()
-
-        raw_path = _generate_output_path("dem_raw", "tif")
-        with open(raw_path, "wb") as f:
-            f.write(resp.content)
-
-        # Precise clip with rasterio.mask
-        from rasterio.mask import mask as rio_mask
-
-        out_path = _generate_output_path("dem", "tif")
-        with rasterio.open(raw_path) as src:
-            out_image, out_transform = rio_mask(
-                src, [union_geom], crop=True, nodata=-9999,
-            )
-            out_profile = src.profile.copy()
-            out_profile.update(
-                height=out_image.shape[1],
-                width=out_image.shape[2],
-                transform=out_transform,
-                nodata=-9999,
-                dtype="float32",
-            )
-
-        with rasterio.open(out_path, "w", **out_profile) as dst:
-            dst.write(out_image.astype(np.float32))
-
-        # Clean up raw file
-        if os.path.exists(raw_path):
-            os.remove(raw_path)
-
-        # Elevation statistics
-        data = out_image[0]
-        valid = data[data != -9999]
-        if len(valid) > 0:
-            stats_msg = (
-                f"高程统计: min={float(np.min(valid)):.1f}m, "
-                f"max={float(np.max(valid)):.1f}m, "
-                f"mean={float(np.mean(valid)):.1f}m, "
-                f"std={float(np.std(valid)):.1f}m"
-            )
-        else:
-            stats_msg = "高程统计: 无有效像素"
-
-        return (
-            f"{out_path}\n"
-            f"数据源: Copernicus DEM GLO-30\n"
-            f"分辨率: 30m, 投影: EPSG:4326\n"
-            f"区域面积: {area_km2:.1f} km²\n"
-            f"{stats_msg}"
-        )
-
-    except ImportError:
-        return (
-            "Error in download_dem: earthengine-api 未安装。"
-            "请执行 `pip install earthengine-api` 后重试。"
-        )
+        _resolve_path(admin_boundary_path)
     except Exception as e:
-        return f"Error in download_dem: {str(e)}"
+        return f"Error in download_dem: {e}"
+
+    # Strategy 1: AWS S3 (public, no auth needed)
+    aws_err = None
+    try:
+        return _download_dem_aws(admin_boundary_path)
+    except Exception as e:
+        aws_err = e
+
+    # Strategy 2: GEE (requires earthengine-api + auth)
+    gee_err = None
+    try:
+        return _download_dem_gee(admin_boundary_path)
+    except Exception as e:
+        gee_err = e
+
+    return (
+        f"Error in download_dem: 两种下载策略均失败。\n"
+        f"  AWS S3: {aws_err}\n"
+        f"  GEE: {gee_err}"
+    )
