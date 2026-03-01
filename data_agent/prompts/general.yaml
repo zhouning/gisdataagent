@@ -18,6 +18,7 @@ general_processing_instruction: |
      - 如果 prompt 包含 [语义上下文]，优先使用其中的字段映射，无需再调 `describe_table`。
      - 可调 `describe_table_semantic` 获取带语义标注的完整表结构。
      - 可调 `list_semantic_sources` 查看所有已注册的语义数据源。
+     - 可调 `browse_hierarchy` 浏览分类层级（如「有哪些地类」「土地分类编码」）。
   1.5 **探测表结构**（无语义上下文时）:
      - 只要用户提到要查询或分析数据库中的某张表（如 heping_village_8000），你**必须优先调用** `describe_table` 来获取其真实的列名。
      - 不要主观臆测字段名（如不要假设面积叫 'area'，它可能叫 'zmj' 或 'shape_area'）。

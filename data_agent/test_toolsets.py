@@ -120,7 +120,8 @@ class TestToolsetCounts(unittest.TestCase):
         names = [t.name for t in tools]
         self.assertIn("resolve_semantic_context", names)
         self.assertIn("export_semantic_model", names)
-        self.assertEqual(len(tools), 8)
+        self.assertIn("browse_hierarchy", names)
+        self.assertEqual(len(tools), 9)
 
     def test_streaming_toolset(self):
         from data_agent.toolsets.streaming_tools import StreamingToolset

@@ -208,6 +208,7 @@ def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
 def _match_hierarchy(user_text: str, domain_info: dict) -> Optional[dict]:
     """Match user text against domain hierarchy tree.
 
+    Supports 3-level hierarchy: parent → child → sub_child.
     Returns dict with matched category info, or None if no match.
     """
     hierarchy = domain_info.get("hierarchy")
@@ -221,7 +222,21 @@ def _match_hierarchy(user_text: str, domain_info: dict) -> Optional[dict]:
         parent_aliases = parent_info.get("aliases", [])
         children = parent_info.get("children", {})
 
-        # Check child categories first (more specific match)
+        # Check sub-children first (most specific match)
+        for child_name, child_info in children.items():
+            for sub_name, sub_info in child_info.get("sub_children", {}).items():
+                sub_aliases = sub_info.get("aliases", [])
+                if _match_aliases(user_text, sub_aliases + [sub_name]) > 0:
+                    return {
+                        "level": "sub_child",
+                        "parent": parent_name,
+                        "child": child_name,
+                        "name": sub_name,
+                        "code_prefix": sub_info.get("code_prefix", ""),
+                        "aliases": sub_aliases,
+                    }
+
+        # Check child categories (mid-level match)
         for child_name, child_info in children.items():
             child_aliases = child_info.get("aliases", [])
             if _match_aliases(user_text, child_aliases + [child_name]) > 0:
@@ -551,7 +566,12 @@ def build_context_prompt(resolved: dict) -> str:
     # Hierarchy matches
     for h in resolved.get("hierarchy_matches", []):
         source_tag = " [自定义域]" if h.get("source") == "custom" else ""
-        if h["level"] == "child":
+        if h["level"] == "sub_child":
+            parts.append(
+                f"分类筛选: {h['name']} (编码前缀 {h.get('code_prefix', '')}*, "
+                f"属于 {h.get('child', '')} → {h['parent']}){source_tag}"
+            )
+        elif h["level"] == "child":
             parts.append(
                 f"分类筛选: {h['name']} (编码前缀 {h.get('code_prefix', '')}*, "
                 f"属于 {h['parent']}){source_tag}"
@@ -1047,15 +1067,35 @@ def expand_hierarchy(domain: str, term: str) -> list:
         children = parent_info.get("children", {})
         parent_aliases = parent_info.get("aliases", [])
 
+        # Check if term matches a specific sub-child (most specific)
+        for child_name, child_info in children.items():
+            for sub_name, sub_info in child_info.get("sub_children", {}).items():
+                sub_aliases = sub_info.get("aliases", [])
+                if _match_aliases(term, sub_aliases + [sub_name], fuzzy=False) > 0:
+                    results.append({
+                        "name": sub_name,
+                        "code_prefix": sub_info.get("code_prefix", ""),
+                    })
+                    return results  # sub-child match is terminal
+
         # Check if term matches a specific child
         for child_name, child_info in children.items():
             child_aliases = child_info.get("aliases", [])
             if _match_aliases(term, child_aliases + [child_name], fuzzy=False) > 0:
-                results.append({
-                    "name": child_name,
-                    "code_prefix": child_info.get("code_prefix", ""),
-                })
-                return results  # specific child match is terminal
+                # If child has sub_children, return those for finer granularity
+                sub_children = child_info.get("sub_children", {})
+                if sub_children:
+                    for sub_name, sub_info in sub_children.items():
+                        results.append({
+                            "name": sub_name,
+                            "code_prefix": sub_info.get("code_prefix", ""),
+                        })
+                else:
+                    results.append({
+                        "name": child_name,
+                        "code_prefix": child_info.get("code_prefix", ""),
+                    })
+                return results
 
         # Check if term matches parent → expand all children
         if _match_aliases(term, parent_aliases + [parent_name], fuzzy=False) > 0:
@@ -1123,7 +1163,15 @@ def generate_semantic_filters(semantic_context: dict) -> dict:
 
     # 1. Hierarchy matches → code prefix filters
     for h in semantic_context.get("hierarchy_matches", []):
-        if h["level"] == "child":
+        if h["level"] == "sub_child":
+            prefix = h.get("code_prefix", "")
+            if prefix:
+                filters.append({
+                    "description": f"筛选{h['name']} (编码 {prefix}*, 属于 {h.get('child', '')} → {h['parent']})",
+                    "sql": f"dlbm LIKE '{prefix}%'",
+                    "column_hint": "dlbm",
+                })
+        elif h["level"] == "child":
             prefix = h.get("code_prefix", "")
             if prefix:
                 filters.append({
@@ -1154,6 +1202,83 @@ def generate_semantic_filters(semantic_context: dict) -> dict:
     return {
         "sql_filters": filters,
         "region_sql": region_sql,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Hierarchy Browsing (ADK Tool)
+# ---------------------------------------------------------------------------
+
+def browse_hierarchy(domain: str = "LAND_USE") -> dict:
+    """
+    [Semantic Tool] Browse the full hierarchy tree of a semantic domain.
+
+    Returns the complete classification tree for a domain, including all levels
+    (parent → child → sub_child). Useful for understanding what categories are
+    available before constructing queries.
+
+    Args:
+        domain: Domain name (e.g. "LAND_USE"). Defaults to LAND_USE.
+
+    Returns:
+        Dict with hierarchy tree and formatted text display.
+    """
+    catalog = _load_catalog()
+    domains = catalog.get("domains", {})
+    domain_info = domains.get(domain)
+
+    if not domain_info:
+        return {
+            "status": "not_found",
+            "message": f"Domain '{domain}' not found. Available: {', '.join(domains.keys())}",
+            "tree": {},
+        }
+
+    hierarchy = domain_info.get("hierarchy")
+    if not hierarchy:
+        return {
+            "status": "no_hierarchy",
+            "message": f"Domain '{domain}' ({domain_info.get('description', '')}) has no hierarchy.",
+            "tree": {},
+        }
+
+    tree = {}
+    lines = [f"# {domain} — {domain_info.get('description', '')}"]
+
+    for parent_name, parent_info in hierarchy.items():
+        children = parent_info.get("children", {})
+        parent_entry = {"aliases": parent_info.get("aliases", []), "children": {}}
+        lines.append(f"\n## {parent_name}")
+
+        for child_name, child_info in children.items():
+            code = child_info.get("code_prefix", "")
+            child_entry = {
+                "code_prefix": code,
+                "aliases": child_info.get("aliases", []),
+            }
+            lines.append(f"  - {child_name} [{code}*]")
+
+            sub_children = child_info.get("sub_children", {})
+            if sub_children:
+                child_entry["sub_children"] = {}
+                for sub_name, sub_info in sub_children.items():
+                    sub_code = sub_info.get("code_prefix", "")
+                    child_entry["sub_children"][sub_name] = {
+                        "code_prefix": sub_code,
+                        "aliases": sub_info.get("aliases", []),
+                    }
+                    lines.append(f"      - {sub_name} [{sub_code}*]")
+
+            parent_entry["children"][child_name] = child_entry
+
+        tree[parent_name] = parent_entry
+
+    return {
+        "status": "ok",
+        "domain": domain,
+        "description": domain_info.get("description", ""),
+        "tree": tree,
+        "display": "\n".join(lines),
     }
 
 

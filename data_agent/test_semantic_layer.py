@@ -619,9 +619,12 @@ class TestExpandHierarchy(unittest.TestCase):
 
     def test_expand_child_cropland(self):
         results = expand_hierarchy("LAND_USE", "耕地")
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["code_prefix"], "01")
-        self.assertEqual(results[0]["name"], "耕地")
+        # With sub_children, expanding 耕地 returns its 3 sub-categories
+        self.assertEqual(len(results), 3)
+        names = {r["name"] for r in results}
+        self.assertIn("水田", names)
+        self.assertIn("旱地", names)
+        self.assertIn("水浇地", names)
 
     def test_expand_construction(self):
         results = expand_hierarchy("LAND_USE", "建设用地")
@@ -882,6 +885,197 @@ class TestDomainTableConstant(unittest.TestCase):
 
     def test_domains_table_name(self):
         self.assertEqual(T_SEMANTIC_DOMAINS, "agent_semantic_domains")
+
+
+class TestSubChildMatching(unittest.TestCase):
+    """Verify 3-level hierarchy matching (parent → child → sub_child)."""
+
+    def test_match_sub_child_paddy(self):
+        """水田 should match as sub_child with code_prefix 0103."""
+        from data_agent.semantic_layer import _match_hierarchy, _load_catalog
+        catalog = _load_catalog()
+        domain_info = catalog["domains"]["LAND_USE"]
+        result = _match_hierarchy("找所有水田", domain_info)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["level"], "sub_child")
+        self.assertEqual(result["name"], "水田")
+        self.assertEqual(result["code_prefix"], "0103")
+        self.assertEqual(result["child"], "耕地")
+        self.assertEqual(result["parent"], "农用地")
+
+    def test_match_sub_child_shrubland(self):
+        """灌木林 should match as sub_child with code_prefix 0302."""
+        from data_agent.semantic_layer import _match_hierarchy, _load_catalog
+        catalog = _load_catalog()
+        domain_info = catalog["domains"]["LAND_USE"]
+        result = _match_hierarchy("灌木林区域", domain_info)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["level"], "sub_child")
+        self.assertEqual(result["code_prefix"], "0302")
+        self.assertEqual(result["child"], "林地")
+
+    def test_match_child_still_works(self):
+        """耕地 should still match as child (not confused by sub_children)."""
+        from data_agent.semantic_layer import _match_hierarchy, _load_catalog
+        catalog = _load_catalog()
+        domain_info = catalog["domains"]["LAND_USE"]
+        result = _match_hierarchy("分析耕地分布", domain_info)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["level"], "child")
+        self.assertEqual(result["name"], "耕地")
+        self.assertEqual(result["code_prefix"], "01")
+
+    def test_match_parent_still_works(self):
+        """农用地 should still match as parent."""
+        from data_agent.semantic_layer import _match_hierarchy, _load_catalog
+        catalog = _load_catalog()
+        domain_info = catalog["domains"]["LAND_USE"]
+        result = _match_hierarchy("查看农用地", domain_info)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["level"], "parent")
+        self.assertEqual(result["name"], "农用地")
+        self.assertIn("children", result)
+
+
+class TestSubChildExpand(unittest.TestCase):
+    """Verify expand_hierarchy handles sub_children."""
+
+    @patch("data_agent.semantic_layer.get_engine", return_value=None)
+    def test_expand_child_returns_sub_children(self, _):
+        """Expanding 耕地 should return its sub_children (旱地, 水浇地, 水田)."""
+        from data_agent.semantic_layer import expand_hierarchy
+        results = expand_hierarchy("LAND_USE", "耕地")
+        self.assertEqual(len(results), 3)
+        names = {r["name"] for r in results}
+        self.assertIn("水田", names)
+        self.assertIn("旱地", names)
+        self.assertIn("水浇地", names)
+
+    @patch("data_agent.semantic_layer.get_engine", return_value=None)
+    def test_expand_sub_child_terminal(self, _):
+        """Expanding 水田 should return just that one entry."""
+        from data_agent.semantic_layer import expand_hierarchy
+        results = expand_hierarchy("LAND_USE", "水田")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["name"], "水田")
+        self.assertEqual(results[0]["code_prefix"], "0103")
+
+    @patch("data_agent.semantic_layer.get_engine", return_value=None)
+    def test_expand_parent_still_returns_children(self, _):
+        """Expanding 农用地 should return children (not sub_children)."""
+        from data_agent.semantic_layer import expand_hierarchy
+        results = expand_hierarchy("LAND_USE", "农用地")
+        self.assertEqual(len(results), 4)
+        names = {r["name"] for r in results}
+        self.assertIn("耕地", names)
+        self.assertIn("林地", names)
+
+    @patch("data_agent.semantic_layer.get_engine", return_value=None)
+    def test_expand_child_without_sub_children(self, _):
+        """Expanding 城镇住宅用地 (no sub_children) should return just itself."""
+        from data_agent.semantic_layer import expand_hierarchy
+        results = expand_hierarchy("LAND_USE", "城镇")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["name"], "城镇住宅用地")
+        self.assertEqual(results[0]["code_prefix"], "05")
+
+
+class TestSubChildFilter(unittest.TestCase):
+    """Verify generate_semantic_filters handles sub_child level."""
+
+    def test_sub_child_filter(self):
+        """Sub-child match should generate 4-digit LIKE filter."""
+        from data_agent.semantic_layer import generate_semantic_filters
+        ctx = {
+            "hierarchy_matches": [{
+                "domain": "LAND_USE",
+                "level": "sub_child",
+                "parent": "农用地",
+                "child": "耕地",
+                "name": "水田",
+                "code_prefix": "0103",
+            }],
+        }
+        result = generate_semantic_filters(ctx)
+        self.assertEqual(len(result["sql_filters"]), 1)
+        self.assertIn("0103%", result["sql_filters"][0]["sql"])
+        self.assertIn("水田", result["sql_filters"][0]["description"])
+
+
+class TestSubChildPrompt(unittest.TestCase):
+    """Verify build_context_prompt handles sub_child display."""
+
+    def test_sub_child_in_prompt(self):
+        """Sub-child hierarchy should show parent chain in prompt."""
+        from data_agent.semantic_layer import build_context_prompt
+        resolved = {
+            "sources": [],
+            "matched_columns": {},
+            "spatial_ops": [],
+            "region_filter": None,
+            "metric_hints": [],
+            "hierarchy_matches": [{
+                "domain": "LAND_USE",
+                "level": "sub_child",
+                "parent": "农用地",
+                "child": "耕地",
+                "name": "水田",
+                "code_prefix": "0103",
+            }],
+            "equivalences": [],
+            "sql_filters": [],
+            "region_sql": "",
+        }
+        prompt = build_context_prompt(resolved)
+        self.assertIn("水田", prompt)
+        self.assertIn("耕地", prompt)
+        self.assertIn("农用地", prompt)
+        self.assertIn("0103", prompt)
+
+
+class TestBrowseHierarchy(unittest.TestCase):
+    """Verify browse_hierarchy tool function."""
+
+    def test_browse_land_use(self):
+        """Browse LAND_USE should return full tree."""
+        from data_agent.semantic_layer import browse_hierarchy
+        result = browse_hierarchy("LAND_USE")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["domain"], "LAND_USE")
+        tree = result["tree"]
+        self.assertIn("农用地", tree)
+        self.assertIn("建设用地", tree)
+        self.assertIn("未利用地", tree)
+        # Check depth: parent → child → sub_child
+        self.assertIn("耕地", tree["农用地"]["children"])
+        cropland = tree["农用地"]["children"]["耕地"]
+        self.assertIn("sub_children", cropland)
+        self.assertIn("水田", cropland["sub_children"])
+        self.assertEqual(cropland["sub_children"]["水田"]["code_prefix"], "0103")
+
+    def test_browse_display_format(self):
+        """Display should contain hierarchical tree text."""
+        from data_agent.semantic_layer import browse_hierarchy
+        result = browse_hierarchy("LAND_USE")
+        display = result["display"]
+        self.assertIn("# LAND_USE", display)
+        self.assertIn("## 农用地", display)
+        self.assertIn("耕地", display)
+        self.assertIn("水田", display)
+
+    def test_browse_unknown_domain(self):
+        """Unknown domain should return not_found status."""
+        from data_agent.semantic_layer import browse_hierarchy
+        result = browse_hierarchy("NONEXISTENT")
+        self.assertEqual(result["status"], "not_found")
+        self.assertEqual(result["tree"], {})
+
+    def test_browse_domain_without_hierarchy(self):
+        """Domain without hierarchy should return no_hierarchy status."""
+        from data_agent.semantic_layer import browse_hierarchy
+        result = browse_hierarchy("AREA")
+        self.assertEqual(result["status"], "no_hierarchy")
+        self.assertEqual(result["tree"], {})
 
 
 if __name__ == "__main__":

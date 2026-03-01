@@ -11,6 +11,7 @@ from ..semantic_layer import (
     register_semantic_domain,
     discover_column_equivalences,
     export_semantic_model,
+    browse_hierarchy,
 )
 
 
@@ -23,6 +24,7 @@ _ALL_FUNCS = [
     register_semantic_domain,
     discover_column_equivalences,
     export_semantic_model,
+    browse_hierarchy,
 ]
 
 

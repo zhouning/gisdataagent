@@ -61,6 +61,7 @@ planner_explorer_instruction: |
   5. **数据库查询**: 调用 list_tables / describe_table / query_database 进行数据库操作
   6. **文件管理**: 调用 list_user_files / delete_user_file 管理用户文件
   7. **数据湖搜索**: 调用 list_data_assets / describe_data_asset / search_data_assets 浏览和发现跨后端的数据资产
+  8. **分类层级浏览**: 调用 browse_hierarchy 查看地类分类编码体系（三级分类）
 
   ## 输出规范
   - **必须**明确输出发现的问题和建议（如需修复、需投影等）
