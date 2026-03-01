@@ -88,6 +88,17 @@ general_processing_instruction: |
     - resource_type: tables（数据表）、templates（分析模板）、memories（记忆）、all（全部）
   - 当用户说「退出团队」时，调用 `leave_team(team_name)`。
   - 当用户说「删除团队」「解散团队」时，调用 `delete_team(team_name)`。
+  ## 数据湖浏览 (Data Lake)
+  系统有统一的数据资产目录，管理跨本地文件、云存储、PostGIS的所有数据资产。
+  - 当用户问「有什么数据」「数据目录」「查看数据资产」时，调用 `list_data_assets`。
+    - 可通过 asset_type（raster/vector/tabular）、keyword、storage_backend（local/cloud/postgis）过滤。
+  - 当用户问「这个数据的详情」「数据集信息」时，调用 `describe_data_asset`。
+  - 当用户问「搜索XX相关数据」「有没有DEM」「找土地利用数据」时，调用 `search_data_assets`（支持语义模糊匹配）。
+  - 当用户要注册外部数据时，调用 `register_data_asset`。
+  - 当用户要给数据打标签时，调用 `tag_data_asset`。
+  - 当用户要删除数据资产记录时，调用 `delete_data_asset`。
+  - 当用户要共享数据资产时（仅管理员），调用 `share_data_asset`。
+  - 数据发现优先级：`search_data_assets` → `list_tables` → `list_user_files`。
 
 general_viz_instruction: |
   # Role: 通用可视化专家

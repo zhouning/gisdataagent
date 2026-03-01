@@ -153,6 +153,20 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("delete_team", names)
         self.assertEqual(len(tools), 8)
 
+    def test_datalake_toolset(self):
+        from data_agent.toolsets.datalake_tools import DataLakeToolset
+        ts = DataLakeToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("list_data_assets", names)
+        self.assertIn("describe_data_asset", names)
+        self.assertIn("search_data_assets", names)
+        self.assertIn("register_data_asset", names)
+        self.assertIn("tag_data_asset", names)
+        self.assertIn("delete_data_asset", names)
+        self.assertIn("share_data_asset", names)
+        self.assertEqual(len(tools), 7)
+
 
 class TestToolFilter(unittest.TestCase):
     """Verify tool_filter correctly restricts tool sets."""
@@ -242,6 +256,15 @@ class TestToolFilter(unittest.TestCase):
         names = {t.name for t in tools}
         self.assertEqual(names, {"list_my_teams", "list_team_members"})
 
+    def test_datalake_filter_read_only(self):
+        from data_agent.toolsets.datalake_tools import DataLakeToolset
+        from data_agent.agent import _DATALAKE_READ
+        ts = DataLakeToolset(tool_filter=_DATALAKE_READ)
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(len(tools), 3)
+        self.assertEqual(names, {"list_data_assets", "describe_data_asset", "search_data_assets"})
+
 
 class TestFilterPresets(unittest.TestCase):
     """Verify the named filter presets in agent.py resolve correctly."""
@@ -278,6 +301,14 @@ class TestFilterPresets(unittest.TestCase):
         names = {t.name for t in tools}
         self.assertEqual(names, {"query_database", "list_tables"})
 
+    def test_datalake_read_preset(self):
+        from data_agent.agent import _DATALAKE_READ
+        from data_agent.toolsets.datalake_tools import DataLakeToolset
+        ts = DataLakeToolset(tool_filter=_DATALAKE_READ)
+        tools = self._run(ts.get_tools())
+        names = {t.name for t in tools}
+        self.assertEqual(names, {"list_data_assets", "describe_data_asset", "search_data_assets"})
+
 
 class TestNoDuplicateToolNames(unittest.TestCase):
     """Verify no name collisions across all toolsets."""
@@ -300,6 +331,7 @@ class TestNoDuplicateToolNames(unittest.TestCase):
         from data_agent.toolsets.semantic_layer_tools import SemanticLayerToolset
         from data_agent.toolsets.streaming_tools import StreamingToolset
         from data_agent.toolsets.team_tools import TeamToolset
+        from data_agent.toolsets.datalake_tools import DataLakeToolset
 
         all_names = []
         for ts_cls, kwargs in [
@@ -317,6 +349,7 @@ class TestNoDuplicateToolNames(unittest.TestCase):
             (SemanticLayerToolset, {}),
             (StreamingToolset, {}),
             (TeamToolset, {}),
+            (DataLakeToolset, {}),
         ]:
             ts = ts_cls(**kwargs)
             tools = self._run(ts.get_tools())

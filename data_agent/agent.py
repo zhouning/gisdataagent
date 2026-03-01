@@ -42,6 +42,7 @@ from .toolsets import (
     SemanticLayerToolset,
     StreamingToolset,
     TeamToolset,
+    DataLakeToolset,
 )
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -84,6 +85,7 @@ _AUDIT_TOOLS = [
 _TRANSFORM_TOOLS = ["reproject_spatial_data", "engineer_spatial_features"]
 _DB_READ = ["query_database", "list_tables"]
 _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
+_DATALAKE_READ = ["list_data_assets", "describe_data_asset", "search_data_assets"]
 
 # --- Model Tiering ---
 MODEL_FAST = "gemini-2.0-flash"
@@ -122,6 +124,7 @@ data_exploration_agent = LlmAgent(
     tools=[
         ExplorationToolset(tool_filter=_AUDIT_TOOLS),
         DatabaseToolset(tool_filter=_DB_READ),
+        DataLakeToolset(tool_filter=_DATALAKE_READ),
     ],
 )
 
@@ -278,6 +281,7 @@ general_processing_agent = LlmAgent(
         SemanticLayerToolset(),
         StreamingToolset(),
         TeamToolset(),
+        DataLakeToolset(),
     ] + _arcpy_tools,
 )
 
@@ -328,6 +332,7 @@ planner_explorer = LlmAgent(
             "list_semantic_sources", "discover_column_equivalences",
             "export_semantic_model",
         ]),
+        DataLakeToolset(tool_filter=_DATALAKE_READ),
     ] + _arcpy_gov_explore_tools,
 )
 
@@ -345,6 +350,7 @@ planner_processor = LlmAgent(
         LocationToolset(),
         RemoteSensingToolset(tool_filter=["describe_raster", "download_lulc", "download_dem"]),
         StreamingToolset(),
+        DataLakeToolset(tool_filter=_DATALAKE_READ),
     ] + _arcpy_tools,
 )
 
@@ -389,6 +395,7 @@ planner_agent = LlmAgent(
         MemoryToolset(),
         AdminToolset(),
         TeamToolset(),
+        DataLakeToolset(tool_filter=_DATALAKE_READ),
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,

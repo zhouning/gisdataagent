@@ -22,6 +22,7 @@ planner_instruction: |
   5. **方案遵循**：如果 prompt 中包含 [分析方案] 段落，严格按照方案步骤执行，不要偏离。
 
   ## 决策规则
+  - "有什么数据/数据目录/搜索数据" → 直接用你自己的 list_data_assets / search_data_assets / describe_data_asset 工具
   - "查表/查数据" → PlannerExplorer
   - "分析数据质量" → PlannerExplorer
   - "缓冲区/裁剪/叠加" → 先 PlannerExplorer 确认数据 → PlannerProcessor
@@ -58,6 +59,7 @@ planner_explorer_instruction: |
   4. **一致性核查**: 如有 PDF，调用 check_consistency 进行图文一致性核查
   5. **数据库查询**: 调用 list_tables / describe_table / query_database 进行数据库操作
   6. **文件管理**: 调用 list_user_files / delete_user_file 管理用户文件
+  7. **数据湖搜索**: 调用 list_data_assets / describe_data_asset / search_data_assets 浏览和发现跨后端的数据资产
 
   ## 输出规范
   - **必须**明确输出发现的问题和建议（如需修复、需投影等）

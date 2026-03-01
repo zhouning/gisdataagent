@@ -34,6 +34,14 @@ _NO_OBS_ENV = {
 
 class TestOBSConfiguration(unittest.TestCase):
 
+    def setUp(self):
+        from data_agent.cloud_storage import reset_cloud_adapter
+        reset_cloud_adapter()
+
+    def tearDown(self):
+        from data_agent.cloud_storage import reset_cloud_adapter
+        reset_cloud_adapter()
+
     @patch.dict(os.environ, _OBS_ENV)
     def test_is_configured_when_set(self):
         from data_agent.obs_storage import is_obs_configured
@@ -46,19 +54,21 @@ class TestOBSConfiguration(unittest.TestCase):
 
     @patch.dict(os.environ, _NO_OBS_ENV)
     def test_get_s3_client_returns_none_when_not_configured(self):
-        import data_agent.obs_storage as obs
-        obs._s3_client = None  # reset singleton
-        client = obs.get_s3_client()
+        from data_agent.obs_storage import get_s3_client
+        client = get_s3_client()
         self.assertIsNone(client)
 
 
 class TestGracefulDegradation(unittest.TestCase):
     """All operations must return None/[]/False/0 when OBS is not configured."""
 
-    @patch.dict(os.environ, _NO_OBS_ENV)
     def setUp(self):
-        import data_agent.obs_storage as obs
-        obs._s3_client = None  # reset singleton
+        from data_agent.cloud_storage import reset_cloud_adapter
+        reset_cloud_adapter()
+
+    def tearDown(self):
+        from data_agent.cloud_storage import reset_cloud_adapter
+        reset_cloud_adapter()
 
     @patch.dict(os.environ, _NO_OBS_ENV)
     def test_upload_returns_none(self):
@@ -93,43 +103,61 @@ class TestGracefulDegradation(unittest.TestCase):
 
 class TestShapefileBundling(unittest.TestCase):
 
-    @patch('data_agent.obs_storage.upload_to_obs')
+    def setUp(self):
+        from data_agent.cloud_storage import reset_cloud_adapter
+        reset_cloud_adapter()
+
+    def tearDown(self):
+        from data_agent.cloud_storage import reset_cloud_adapter
+        reset_cloud_adapter()
+
+    @patch('data_agent.cloud_storage.get_cloud_adapter')
     @patch('os.path.exists')
-    def test_upload_bundle_includes_sidecars(self, mock_exists, mock_upload):
+    def test_upload_bundle_includes_sidecars(self, mock_exists, mock_get):
         mock_exists.return_value = True
-        mock_upload.side_effect = lambda lp, uid, **kw: f"user1/{os.path.basename(lp)}"
+        adapter = MagicMock()
+        adapter.upload_shapefile_bundle.return_value = [
+            f"user1/test{ext}" for ext in
+            ['.shp', '.cpg', '.dbf', '.prj', '.shx', '.sbn', '.sbx', '.shp.xml']
+        ]
+        mock_get.return_value = adapter
         from data_agent.obs_storage import upload_shapefile_bundle
         keys = upload_shapefile_bundle('/tmp/test.shp', 'user1')
-        # .shp + 7 sidecars = 8 files
         self.assertEqual(len(keys), 8)
         self.assertIn('user1/test.shp', keys)
         self.assertIn('user1/test.dbf', keys)
         self.assertIn('user1/test.prj', keys)
 
-    @patch('data_agent.obs_storage.upload_to_obs')
+    @patch('data_agent.cloud_storage.get_cloud_adapter')
     @patch('os.path.exists')
-    def test_upload_bundle_skips_missing_sidecars(self, mock_exists, mock_upload):
-        # Only .shp and .dbf exist
-        def exists_side_effect(path):
-            return path.endswith('.shp') or path.endswith('.dbf')
-        mock_exists.side_effect = exists_side_effect
-        mock_upload.side_effect = lambda lp, uid, **kw: f"user1/{os.path.basename(lp)}"
+    def test_upload_bundle_skips_missing_sidecars(self, mock_exists, mock_get):
+        adapter = MagicMock()
+        adapter.upload_shapefile_bundle.return_value = [
+            'user1/test.shp', 'user1/test.dbf'
+        ]
+        mock_get.return_value = adapter
         from data_agent.obs_storage import upload_shapefile_bundle
         keys = upload_shapefile_bundle('/tmp/test.shp', 'user1')
         self.assertEqual(len(keys), 2)
 
-    @patch('data_agent.obs_storage.upload_to_obs')
+    @patch('data_agent.cloud_storage.get_cloud_adapter')
     @patch('os.path.exists')
-    def test_smart_upload_detects_shp(self, mock_exists, mock_upload):
+    def test_smart_upload_detects_shp(self, mock_exists, mock_get):
         mock_exists.return_value = True
-        mock_upload.side_effect = lambda lp, uid, **kw: f"user1/{os.path.basename(lp)}"
+        adapter = MagicMock()
+        adapter.upload_file_smart.return_value = [
+            'user1/data.shp', 'user1/data.dbf', 'user1/data.shx'
+        ]
+        mock_get.return_value = adapter
         from data_agent.obs_storage import upload_file_smart
         keys = upload_file_smart('/tmp/data.shp', 'user1')
         self.assertGreater(len(keys), 1)  # Bundle
 
-    @patch('data_agent.obs_storage.upload_to_obs')
-    def test_smart_upload_single_csv(self, mock_upload):
-        mock_upload.return_value = 'user1/data.csv'
+    @patch('data_agent.cloud_storage.get_cloud_adapter')
+    def test_smart_upload_single_csv(self, mock_get):
+        adapter = MagicMock()
+        adapter.upload_file_smart.return_value = ['user1/data.csv']
+        mock_get.return_value = adapter
         from data_agent.obs_storage import upload_file_smart
         keys = upload_file_smart('/tmp/data.csv', 'user1')
         self.assertEqual(len(keys), 1)

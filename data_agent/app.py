@@ -96,6 +96,8 @@ try:
     ensure_semantic_tables()
     from data_agent.team_manager import ensure_teams_table
     ensure_teams_table()
+    from data_agent.data_catalog import ensure_data_catalog_table
+    ensure_data_catalog_table()
 except Exception as _startup_err:
     print(f"[Startup] WARNING: DB initialization partially failed: {_startup_err}")
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -1205,6 +1207,34 @@ TOOL_DESCRIPTIONS = {
         "method": "删除团队",
         "params": {"team_name": "团队名称"},
     },
+    "list_data_assets": {
+        "method": "浏览数据资产目录",
+        "params": {"asset_type": "资产类型", "keyword": "关键词", "storage_backend": "存储后端"},
+    },
+    "describe_data_asset": {
+        "method": "数据资产详情查询",
+        "params": {"asset_name_or_id": "资产名称或ID"},
+    },
+    "search_data_assets": {
+        "method": "数据资产语义搜索",
+        "params": {"query": "搜索关键词"},
+    },
+    "register_data_asset": {
+        "method": "注册数据资产",
+        "params": {"asset_name": "资产名称", "asset_type": "类型", "storage_backend": "存储后端"},
+    },
+    "tag_data_asset": {
+        "method": "数据资产标签管理",
+        "params": {"asset_id": "资产ID", "tags_json": "标签列表(JSON)"},
+    },
+    "delete_data_asset": {
+        "method": "删除数据资产记录",
+        "params": {"asset_id": "资产ID"},
+    },
+    "share_data_asset": {
+        "method": "共享数据资产",
+        "params": {"asset_id": "资产ID"},
+    },
 }
 
 
@@ -1247,10 +1277,8 @@ NON_RERUNNABLE_TOOLS = {
 }
 
 
-def _sync_tool_output_to_obs(resp_data) -> None:
-    """Detect file paths in tool response and sync to OBS."""
-    if not is_obs_configured():
-        return
+def _sync_tool_output_to_obs(resp_data, tool_name: str = "") -> None:
+    """Detect file paths in tool response, sync to OBS, and register in data catalog."""
     paths = []
     if isinstance(resp_data, str) and os.path.exists(resp_data):
         paths.append(resp_data)
@@ -1258,10 +1286,33 @@ def _sync_tool_output_to_obs(resp_data) -> None:
         for v in resp_data.values():
             if isinstance(v, str) and os.path.exists(v):
                 paths.append(v)
+
     uid = current_user_id.get()
+
+    # Register in data catalog (always, even without cloud)
+    try:
+        from data_agent.data_catalog import register_tool_output
+        for p in paths:
+            register_tool_output(p, tool_name or "unknown")
+    except Exception:
+        pass
+
+    # Sync to cloud storage
+    if not is_obs_configured():
+        return
     for p in paths:
         try:
-            upload_file_smart(p, uid)
+            keys = upload_file_smart(p, uid)
+            # Update catalog with cloud key
+            if keys:
+                try:
+                    from data_agent.data_catalog import auto_register_from_path
+                    auto_register_from_path(
+                        p, creation_tool=tool_name or "unknown",
+                        storage_backend="cloud", cloud_key=keys[0],
+                    )
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -1866,9 +1917,9 @@ async def main(message: cl.Message):
                         except Exception:
                             current_tool_step.output = "执行成功"
                         await current_tool_step.update()
-                        # Sync tool output files to OBS
+                        # Sync tool output files to OBS and register in data catalog
                         try:
-                            _sync_tool_output_to_obs(part.function_response.response)
+                            _sync_tool_output_to_obs(part.function_response.response, current_tool_name)
                         except Exception:
                             pass
                         # Capture tool execution for code export

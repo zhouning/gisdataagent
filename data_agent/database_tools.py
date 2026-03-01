@@ -262,6 +262,13 @@ def register_table_ownership(table_name: str, owner_username: str,
         return {"status": "success", "message": f"Registered table '{table_name}' owned by '{owner_username}'"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        # Cross-register in data catalog (non-fatal)
+        try:
+            from .data_catalog import register_postgis_asset
+            register_postgis_asset(table_name, owner=owner_username, description=description)
+        except Exception:
+            pass
 
 
 def share_table(table_name: str) -> dict:

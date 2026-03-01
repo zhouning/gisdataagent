@@ -24,13 +24,22 @@ def _generate_output_path(prefix: str, extension: str = "shp") -> str:
 
 
 def sync_to_obs(local_path: str) -> None:
-    """Synchronous upload to OBS. Silent on failure."""
+    """Synchronous upload to OBS and register in data catalog. Silent on failure."""
     try:
         from .obs_storage import is_obs_configured, upload_file_smart
         from .user_context import current_user_id
-        if not is_obs_configured():
-            return
-        upload_file_smart(local_path, current_user_id.get())
+        uid = current_user_id.get()
+        if is_obs_configured():
+            keys = upload_file_smart(local_path, uid)
+            # Register cloud asset
+            if keys:
+                try:
+                    from .data_catalog import auto_register_from_path
+                    auto_register_from_path(
+                        local_path, storage_backend="cloud", cloud_key=keys[0],
+                    )
+                except Exception:
+                    pass
     except Exception:
         pass
 
