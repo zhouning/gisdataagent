@@ -26,6 +26,23 @@ __pycache__/
 /data_agent/*.tif
 /data_agent/*.docx
 
+# Geospatial data files — NEVER commit data to the repository
+*.shp
+*.dbf
+*.shx
+*.prj
+*.cpg
+*.sbn
+*.sbx
+*.shp.xml
+*.tif
+*.tiff
+*.geojson
+*.gpkg
+*.kml
+*.kmz
+!demos/**/*.geojson
+
 # User uploads
 data_agent/uploads/
 
@@ -59,6 +76,9 @@ test.py
 simple_test.docx
 test_governance_report.docx
 Analysis_Report*.docx
+
+# Eval results (generated charts)
+data_agent/eval_results/
 
 # Chinese-named data files (local test data)
 和平村8000.*

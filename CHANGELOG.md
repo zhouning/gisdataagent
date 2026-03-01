@@ -2,6 +2,55 @@
 
 All notable changes to the GIS Data Agent project.
 
+## [v4.0.0-beta] - 2026-03-01 (Data Lake, Lineage & Hierarchy Enhancement)
+
+### Feature — Unified Data Lake Integration
+- **Data Catalog** (`data_catalog.py`): Unified `agent_data_catalog` table managing assets across local files, OBS cloud, and PostGIS backends. 8 ADK tools via `DataLakeToolset`: `list_data_assets`, `describe_data_asset`, `search_data_assets` (fuzzy + substring matching), `register_data_asset`, `tag_data_asset`, `delete_data_asset`, `share_data_asset` (admin-only), `get_data_lineage`.
+- **Auto-registration**: Tool outputs automatically registered in catalog via `register_tool_output()` in `app.py`. File uploads registered on ingest.
+
+### Feature — Data Lineage Tracking
+- **Source tracking**: `source_assets` JSONB field in data catalog now populated automatically from tool arguments. `_extract_source_paths()` scans tool args for file path keys.
+- **`get_data_lineage()`** ADK tool: Trace data provenance chain — ancestors (what was it derived from), descendants (what was derived from it), or both directions. Recursive chain walking up to 10 levels.
+
+### Feature — Health Check API
+- **`health.py`** (new): K8s-ready health endpoints — `/health` (liveness), `/ready` (readiness, 503 if DB down), `/api/admin/system-info` (admin HMAC auth).
+- **Subsystem checks**: Database latency, OBS cloud storage, Redis, session service.
+- **Startup diagnostics**: `format_startup_summary()` prints ASCII banner with all subsystem statuses and feature flags.
+- **K8s probes**: `app-deployment.yaml` updated to use `/health` and `/ready`.
+
+### Feature — 3-Level Semantic Hierarchy
+- **Sub-children**: LAND_USE hierarchy extended from 2 levels (parent→child) to 3 levels (parent→child→sub_child). Added sub-categories following China's Third National Land Survey codes:
+  - 耕地 → 旱地[0101], 水浇地[0102], 水田[0103]
+  - 园地 → 果园[0201], 茶园[0202], 其他园地[0204]
+  - 林地 → 有林地[0301], 灌木林地[0302], 其他林地[0307]
+  - 草地 → 天然牧草地[0401], 人工牧草地[0402], 其他草地[0403]
+- **`browse_hierarchy()`** ADK tool: Agents can explore the full taxonomy tree. Returns structured tree + formatted text display.
+- **`_match_hierarchy()`**: Sub-child matching with most-specific-first priority. Returns `level: "sub_child"` with 4-digit code prefix.
+- **`expand_hierarchy()`**: Expanding a child with sub_children returns sub_children for finer granularity.
+- **SQL filters**: Sub-child matches generate 4-digit LIKE patterns (e.g., `dlbm LIKE '0103%'`).
+
+### Feature — Bot Integration (DingTalk + Feishu)
+- **DingTalk bot** (`dingtalk_bot.py`): Enterprise callback with HMAC signature verification.
+- **Feishu bot** (`feishu_bot.py`): Lark/Feishu with event challenge + AES decryption.
+- **Shared infrastructure** (`bot_base.py`): TokenCache, RateLimiter, MessageDedup.
+
+### Feature — Real-time Streams
+- **Stream engine** (`stream_engine.py`): Redis Streams with in-memory fallback.
+- **5 ADK tools**: create_iot_stream, set_geofence_alert, query_trajectory, aggregate_stream_window, list_active_streams.
+- **Geofence**: Point-in-polygon check for real-time location alerts.
+
+### Feature — Team Collaboration
+- **Team management** (`team_manager.py`): 8 tools for team CRUD, member management, resource sharing.
+- **RLS extended**: Team members can access tables/templates owned by fellow team members.
+
+### Feature — Remote Sensing
+- **5 raster tools**: describe_raster, calculate_ndvi, raster_band_math, classify_raster, visualize_raster.
+- **Data download**: download_lulc (Sentinel-2 10m, 2017-2024), download_dem (Copernicus 30m).
+
+### Tests
+- **Total**: 836 tests passing (up from 538).
+- New test files: test_health.py (24), test_data_catalog.py expanded (+19 lineage), test_semantic_layer.py expanded (+16 hierarchy), test_stream_engine.py (36), test_team.py (30), test_dingtalk_bot.py, test_feishu_bot.py (55 combined).
+
 ## [v4.0.0-alpha.2] - 2026-02-27 (Architecture Polish & Semantic Enhancement)
 
 ### Performance — Connection Pool Singleton

@@ -1,4 +1,4 @@
-# GIS Data Agent (ADK Edition) v4.0-alpha
+# GIS Data Agent (ADK Edition) v4.0-beta
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with three specialized pipelines for data governance, land-use optimization, and general spatial analysis.
 
@@ -85,7 +85,9 @@ Default login: `admin` / `admin123` (seeded on first run). Self-registration ava
 
 | Feature | Description |
 |---|---|
-| Semantic Layer | YAML catalog (15 domains, 7 regions, 8 spatial ops) + DB-backed annotations |
+| Semantic Layer | YAML catalog (15 domains, 7 regions, 8 spatial ops) + 3-level hierarchy + DB annotations |
+| Data Lake | Unified data catalog across local/cloud/PostGIS backends with lineage tracking |
+| Health Check API | K8s liveness/readiness probes + admin system diagnostics |
 | Row-Level Security | PostgreSQL RLS with per-user data isolation |
 | Connection Pool | Singleton SQLAlchemy engine with 5-min TTL semantic cache |
 | Auth | Password + OAuth2 (Google), RBAC (admin/analyst/viewer) |
@@ -97,9 +99,12 @@ Default login: `admin` / `admin123` (seeded on first run). Self-registration ava
 | Code Export | Reproducible Python scripts from analysis pipelines |
 | Result Sharing | Public link generation with optional password + expiry |
 | Template System | Save/reuse analysis workflows as templates |
-| WeChat Integration | Enterprise WeChat bot with AES crypto + rate limiting |
+| Bot Integration | WeChat, DingTalk, Feishu enterprise bot adapters |
 | MCP Server | Model Context Protocol for external tool integration |
 | Multi-Layer Maps | compose_map() with 5 layer types + LayerControl |
+| Remote Sensing | Raster analysis, NDVI, LULC/DEM download |
+| Real-time Streams | Redis Streams with geofence alerts + IoT data |
+| Team Collaboration | Team creation, member management, resource sharing |
 
 ## Tech Stack
 
@@ -118,10 +123,12 @@ Default login: `admin` / `admin123` (seeded on first run). Self-registration ava
 data_agent/
 ├── app.py                 # Chainlit UI, semantic router, auth, RBAC
 ├── agent.py               # Agent definitions, pipeline assembly (~290 lines)
-├── toolsets/              # 7 BaseToolset modules (exploration, processing, analysis, ...)
+├── toolsets/              # 15 BaseToolset modules (exploration, processing, analysis, ...)
 ├── prompts/               # 3 YAML prompt files (optimization, planner, general)
 ├── db_engine.py           # Connection pool singleton
-├── semantic_layer.py      # Semantic catalog + DB annotations + TTL cache
+├── health.py              # K8s health check API + startup diagnostics
+├── data_catalog.py        # Unified data lake catalog + lineage tracking
+├── semantic_layer.py      # Semantic catalog + 3-level hierarchy + TTL cache
 ├── semantic_catalog.yaml  # 15 domains, 7 regions, 8 spatial ops, 4 metric templates
 ├── database_tools.py      # PostgreSQL/PostGIS integration, RLS
 ├── gis_processors.py      # GIS operations (tessellation, buffer, clip, overlay, ...)
@@ -142,7 +149,7 @@ data_agent/
 ## Running Tests
 
 ```bash
-# All tests (unittest-based, ~520 tests)
+# All tests (~836 tests)
 python -m pytest data_agent/test_*.py --ignore=data_agent/test_knowledge_agent.py
 
 # Single module
@@ -158,6 +165,6 @@ python -m pytest data_agent/test_database.py -v
 | v3.0 | PostGIS, Hard Routing | Done |
 | v3.1 | Multi-Pipeline Architecture | Done |
 | v3.2 | Semantic Layer, Business Suite | Done |
-| v4.0-alpha | Dynamic Planner, RLS, Audit, Semantic Cache | **Current** |
-| v4.0 | Domain Hierarchy, Demo Scenarios | In Progress |
+| v4.0-beta | Data Lake, Lineage, 3-Level Hierarchy, Health API | **Current** |
+| v4.0 | Observability, Frontend Integration | In Progress |
 | v5.0 | Multi-Modal, 3D Visualization | Planned |
