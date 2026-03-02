@@ -10,12 +10,13 @@ Selection is automatic based on environment variables, or explicit
 via CLOUD_STORAGE_PROVIDER. Singleton pattern, thread-safe.
 """
 import os
-import logging
 import threading
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
-logger = logging.getLogger(__name__)
+from .observability import get_logger
+
+logger = get_logger("cloud_storage")
 
 SHAPEFILE_SIDECAR_EXTS = ['.cpg', '.dbf', '.prj', '.shx', '.sbn', '.sbx', '.shp.xml']
 

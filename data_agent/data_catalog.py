@@ -9,7 +9,6 @@ Provides:
 """
 import os
 import json
-import logging
 from difflib import SequenceMatcher
 from typing import Optional, List
 
@@ -18,8 +17,9 @@ from sqlalchemy import text
 from .db_engine import get_engine
 from .database_tools import _inject_user_context
 from .user_context import current_user_id, current_user_role
+from .observability import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("data_catalog")
 
 T_DATA_CATALOG = "agent_data_catalog"
 

@@ -283,6 +283,11 @@ async def password_auth_callback(username: str, password: str) -> Optional[cl.Us
                          details={"provider": "password"})
         except Exception:
             pass
+        try:
+            from .observability import auth_events
+            auth_events.labels(event_type="login_success").inc()
+        except Exception:
+            pass
         return cl.User(
             identifier=user["username"],
             display_name=user["display_name"],
@@ -292,6 +297,11 @@ async def password_auth_callback(username: str, password: str) -> Optional[cl.Us
         from .audit_logger import record_audit, ACTION_LOGIN_FAILURE
         record_audit(username, ACTION_LOGIN_FAILURE, status="failure",
                      details={"provider": "password"})
+    except Exception:
+        pass
+    try:
+        from .observability import auth_events
+        auth_events.labels(event_type="login_failure").inc()
     except Exception:
         pass
     return None

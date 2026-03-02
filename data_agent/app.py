@@ -18,6 +18,15 @@ env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
     load_dotenv(env_path)
 
+# --- Observability: init structured logging early ---
+from data_agent.observability import (
+    setup_logging, get_logger,
+    pipeline_runs, pipeline_duration, tool_calls, auth_events,
+    generate_latest, CONTENT_TYPE_LATEST,
+)
+setup_logging()
+logger = get_logger("app")
+
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.agents.run_config import RunConfig
@@ -99,7 +108,7 @@ try:
     from data_agent.data_catalog import ensure_data_catalog_table
     ensure_data_catalog_table()
 except Exception as _startup_err:
-    print(f"[Startup] WARNING: DB initialization partially failed: {_startup_err}")
+    logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
     try:
         from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
@@ -112,34 +121,34 @@ from data_agent.gis_processors import sync_to_obs
 try:
     ensure_obs_connection()
 except Exception as _obs_err:
-    print(f"[Startup] WARNING: OBS initialization failed: {_obs_err}")
+    logger.warning("OBS initialization failed: %s", _obs_err)
 if ARCPY_AVAILABLE:
-    print("[ArcPy] ArcPy engine available and connected.")
+    logger.info("ArcPy engine available and connected")
 
 # --- Enterprise WeChat Bot (conditional) ---
 from data_agent.wecom_bot import ensure_wecom_connection, is_wecom_configured
 try:
     ensure_wecom_connection()
 except Exception as _wecom_err:
-    print(f"[Startup] WARNING: WeCom initialization failed: {_wecom_err}")
+    logger.warning("WeCom initialization failed: %s", _wecom_err)
 
 # --- DingTalk Bot (conditional) ---
 try:
     from data_agent.dingtalk_bot import ensure_dingtalk_connection
     ensure_dingtalk_connection()
 except Exception as _dt_err:
-    print(f"[Startup] WARNING: DingTalk initialization failed: {_dt_err}")
+    logger.warning("DingTalk initialization failed: %s", _dt_err)
 
 # --- Feishu Bot (conditional) ---
 try:
     from data_agent.feishu_bot import ensure_feishu_connection
     ensure_feishu_connection()
 except Exception as _fs_err:
-    print(f"[Startup] WARNING: Feishu initialization failed: {_fs_err}")
+    logger.warning("Feishu initialization failed: %s", _fs_err)
 
 DYNAMIC_PLANNER = os.environ.get("DYNAMIC_PLANNER", "true").lower() in ("true", "1", "yes")
 if DYNAMIC_PLANNER:
-    print("[Planner] Dynamic Planner mode enabled.")
+    logger.info("Dynamic Planner mode enabled")
 
 # --- Session Service: persistent DB or in-memory fallback ---
 def _create_session_service():
@@ -150,14 +159,14 @@ def _create_session_service():
         if async_url:
             from google.adk.sessions import DatabaseSessionService
             svc = DatabaseSessionService(db_url=async_url)
-            print("[Session] Using DatabaseSessionService (PostgreSQL).")
+            logger.info("Using DatabaseSessionService (PostgreSQL)")
             return svc
     except ImportError as e:
-        print(f"[Session] DatabaseSessionService unavailable ({e}). "
-              "Install asyncpg: pip install asyncpg")
+        logger.warning("DatabaseSessionService unavailable (%s). "
+              "Install asyncpg: pip install asyncpg", e)
     except Exception as e:
-        print(f"[Session] DatabaseSessionService init failed: {e}")
-    print("[Session] Falling back to InMemorySessionService.")
+        logger.warning("DatabaseSessionService init failed: %s", e)
+    logger.info("Falling back to InMemorySessionService")
     return InMemorySessionService()
 
 session_service = _create_session_service()
@@ -291,7 +300,7 @@ for _i, _r in enumerate(chainlit_app.router.routes):
 else:
     chainlit_app.router.routes.append(_register_route)
 
-print("[Auth] Self-registration enabled at /register")
+logger.info("Self-registration enabled at /register")
 
 # --- Result Sharing Routes (public, no auth) ---
 from data_agent.sharing import (
@@ -364,7 +373,7 @@ for _i, _r in enumerate(chainlit_app.router.routes):
         chainlit_app.router.routes.insert(_i, _share_validate_get_route)
         break
 
-print("[Sharing] Public share routes enabled at /s/{token}")
+logger.info("Public share routes enabled at /s/{token}")
 
 # --- User File API Routes (for custom frontend) ---
 from chainlit.auth.cookie import get_token_from_cookies
@@ -446,7 +455,7 @@ else:
     chainlit_app.router.routes.append(_file_list_route)
     chainlit_app.router.routes.append(_file_serve_route)
 
-print("[Frontend] User file API routes enabled at /api/user/files")
+logger.info("User file API routes enabled at /api/user/files")
 
 # --- Admin Audit Viewer Routes ---
 import hmac
@@ -707,7 +716,7 @@ else:
     chainlit_app.router.routes.append(_audit_api_route)
     chainlit_app.router.routes.append(_audit_stats_route)
 
-print("[Audit] Admin audit viewer enabled at /admin/audit")
+logger.info("Admin audit viewer enabled at /admin/audit")
 
 # --- Health Check & System Diagnostics Routes ---
 from data_agent.health import (
@@ -736,25 +745,34 @@ async def _system_info_endpoint(request: Request):
     return JSONResponse(content=get_system_status(session_svc=session_service))
 
 
+async def _metrics_endpoint(request: Request):
+    """Prometheus metrics endpoint for scraping."""
+    from starlette.responses import Response as StarletteResponse
+    return StarletteResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 _health_route = Route("/health", endpoint=_health_endpoint, methods=["GET"])
 _ready_route = Route("/ready", endpoint=_ready_endpoint, methods=["GET"])
 _sysinfo_route = Route("/api/admin/system-info", endpoint=_system_info_endpoint, methods=["GET"])
+_metrics_route = Route("/metrics", endpoint=_metrics_endpoint, methods=["GET"])
 for _i, _r in enumerate(chainlit_app.router.routes):
     if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
         chainlit_app.router.routes.insert(_i, _health_route)
         chainlit_app.router.routes.insert(_i, _ready_route)
         chainlit_app.router.routes.insert(_i, _sysinfo_route)
+        chainlit_app.router.routes.insert(_i, _metrics_route)
         break
 else:
     chainlit_app.router.routes.append(_health_route)
     chainlit_app.router.routes.append(_ready_route)
     chainlit_app.router.routes.append(_sysinfo_route)
+    chainlit_app.router.routes.append(_metrics_route)
 
 # --- Mount Enterprise WeChat bot routes (conditional) ---
 if is_wecom_configured():
     from data_agent.wecom_bot import mount_wecom_routes
     if mount_wecom_routes(chainlit_app):
-        print("[WeCom] Callback routes mounted at /wecom/callback")
+        logger.info("WeCom callback routes mounted at /wecom/callback")
 
 # --- Mount DingTalk bot routes (conditional) ---
 try:
@@ -762,7 +780,7 @@ try:
     if is_dingtalk_configured():
         ensure_dingtalk_connection(chainlit_app)
 except Exception as _dt_mount_err:
-    print(f"[DingTalk] Route mount failed: {_dt_mount_err}")
+    logger.warning("DingTalk route mount failed: %s", _dt_mount_err)
 
 # --- Mount Feishu bot routes (conditional) ---
 try:
@@ -770,17 +788,17 @@ try:
     if is_feishu_configured():
         ensure_feishu_connection(chainlit_app)
 except Exception as _fs_mount_err:
-    print(f"[Feishu] Route mount failed: {_fs_mount_err}")
+    logger.warning("Feishu route mount failed: %s", _fs_mount_err)
 
 # --- Mount Stream API routes ---
 try:
     from data_agent.stream_api import mount_stream_routes
     mount_stream_routes(chainlit_app)
 except Exception as _stream_mount_err:
-    print(f"[Stream] Route mount failed: {_stream_mount_err}")
+    logger.warning("Stream route mount failed: %s", _stream_mount_err)
 
 # --- Startup Diagnostics Banner ---
-print(format_startup_summary(session_svc=session_service))
+logger.info("\n%s", format_startup_summary(session_svc=session_service))
 
 # Base upload directory (per-user dirs created inside)
 BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
@@ -1462,7 +1480,7 @@ def handle_uploaded_file(element, upload_dir: str) -> Optional[str]:
 
             return None
         except Exception as e:
-            print(f"Zip extraction failed: {e}")
+            logger.warning("Zip extraction failed: %s", e)
             return None
 
     abs_dest = os.path.abspath(dest_path)
@@ -1561,7 +1579,7 @@ def classify_intent(text: str, previous_pipeline: str = None) -> tuple:
         if "GENERAL" in intent: return ("GENERAL", reason, router_tokens)
         return ("GENERAL", reason, router_tokens)
     except Exception as e:
-        print(f"Router Error: {e}")
+        logger.error("Router error: %s", e)
         return ("GENERAL", "", 0)
 
 
@@ -1578,7 +1596,7 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
-        print(f"Plan generation error: {e}")
+        logger.error("Plan generation error: %s", e)
         return ""
 
 
@@ -1614,10 +1632,10 @@ async def start():
             adk_session = await session_service.get_session(
                 app_name="data_agent_ui", user_id=user_id, session_id=session_id)
             if adk_session:
-                print(f"[Session] Restored existing session for {user_id} "
-                      f"({len(adk_session.events)} prior events)")
+                logger.info("Restored existing session for %s (%d prior events)",
+                           user_id, len(adk_session.events))
         except Exception as e2:
-            print(f"[Session] Could not restore session: {e2}")
+            logger.warning("Could not restore session: %s", e2)
 
     # Store in Chainlit session
     cl.user_session.set("user_id", user_id)
@@ -1838,7 +1856,7 @@ async def main(message: cl.Message):
                     else:
                         await cl.Message(content="确认超时，已自动执行。").send()
             except Exception as e:
-                print(f"Plan confirmation error: {e}")
+                logger.error("Plan confirmation error: %s", e)
 
     if DYNAMIC_PLANNER:
         selected_agent = planner_agent
@@ -2017,6 +2035,11 @@ async def main(message: cl.Message):
                                 "duration": time.time() - _pending_tool_call["start_time"],
                                 "is_error": _is_err,
                             })
+                            # Prometheus: track tool call
+                            tool_calls.labels(
+                                tool_name=_pending_tool_call["tool_name"],
+                                status="error" if _is_err else "success",
+                            ).inc()
                             _pending_tool_call = None
                         current_tool_step = None
                         current_tool_name = None
@@ -2083,6 +2106,10 @@ async def main(message: cl.Message):
         total_duration = time.time() - pipeline_start_time
         pipeline_step.name = f"{pipeline_name} ✓ ({total_duration:.1f}s)"
         await pipeline_step.update()
+
+        # --- Prometheus metrics: pipeline success ---
+        pipeline_duration.labels(pipeline=pipeline_type).observe(total_duration)
+        pipeline_runs.labels(pipeline=pipeline_type, status="success").inc()
 
         await final_msg.update()
 
@@ -2211,7 +2238,8 @@ async def main(message: cl.Message):
 
     except Exception as e:
         err_msg = f"Error: {str(e)}"
-        print(err_msg)
+        logger.error("Pipeline execution error: %s", e)
+        pipeline_runs.labels(pipeline=pipeline_type, status="error").inc()
         await cl.Message(content=err_msg).send()
 
 
