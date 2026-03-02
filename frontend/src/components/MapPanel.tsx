@@ -3,7 +3,7 @@ import L from 'leaflet';
 
 interface MapLayer {
   name: string;
-  type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble';
+  type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
@@ -41,6 +41,8 @@ export default function MapPanel({ layers, center, zoom }: MapPanelProps) {
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const [activeBasemap, setActiveBasemap] = useState('CartoDB Positron');
   const [loadedLayers, setLoadedLayers] = useState<MapLayer[]>([]);
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+  const [showLayerControl, setShowLayerControl] = useState(false);
 
   // Initialize Leaflet map
   useEffect(() => {
@@ -78,6 +80,21 @@ export default function MapPanel({ layers, center, zoom }: MapPanelProps) {
     setActiveBasemap(name);
   }, []);
 
+  // Toggle layer visibility
+  const toggleLayer = useCallback((name: string) => {
+    if (!mapRef.current) return;
+    const layer = layerGroupsRef.current.get(name);
+    if (!layer) return;
+
+    const isVisible = layerVisibility[name] !== false;
+    if (isVisible) {
+      mapRef.current.removeLayer(layer);
+    } else {
+      layer.addTo(mapRef.current);
+    }
+    setLayerVisibility((prev) => ({ ...prev, [name]: !isVisible }));
+  }, [layerVisibility]);
+
   // Load and render layers
   useEffect(() => {
     if (!mapRef.current) return;
@@ -90,6 +107,7 @@ export default function MapPanel({ layers, center, zoom }: MapPanelProps) {
       layerGroupsRef.current.clear();
 
       const loaded: MapLayer[] = [];
+      const visibility: Record<string, boolean> = {};
 
       for (const layerConfig of layers) {
         try {
@@ -109,6 +127,7 @@ export default function MapPanel({ layers, center, zoom }: MapPanelProps) {
             leafletLayer.addTo(mapRef.current!);
             layerGroupsRef.current.set(layerConfig.name, leafletLayer);
             loaded.push({ ...layerConfig, geojsonData });
+            visibility[layerConfig.name] = true;
           }
         } catch (err) {
           console.warn(`Failed to load layer ${layerConfig.name}:`, err);
@@ -116,6 +135,7 @@ export default function MapPanel({ layers, center, zoom }: MapPanelProps) {
       }
 
       setLoadedLayers(loaded);
+      setLayerVisibility(visibility);
 
       // Auto-fit bounds
       if (loaded.length > 0 && mapRef.current) {
@@ -132,6 +152,11 @@ export default function MapPanel({ layers, center, zoom }: MapPanelProps) {
   }, [layers]);
 
   const hasLayers = loadedLayers.length > 0;
+
+  // Find active choropleth layer for legend
+  const choroplethLayer = loadedLayers.find(
+    (l) => (l.type === 'choropleth' || l.type === 'bubble') && l.breaks && l.color_scheme
+  );
 
   return (
     <div className="map-panel">
@@ -160,6 +185,55 @@ export default function MapPanel({ layers, center, zoom }: MapPanelProps) {
           </button>
         ))}
       </div>
+
+      {/* Layer control */}
+      {hasLayers && (
+        <div className="layer-control">
+          <button
+            className="layer-control-toggle"
+            onClick={() => setShowLayerControl(!showLayerControl)}
+            title="图层控制"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+              <polyline points="2 17 12 22 22 17"/>
+              <polyline points="2 12 12 17 22 12"/>
+            </svg>
+          </button>
+          {showLayerControl && (
+            <div className="layer-control-panel">
+              <div className="layer-control-title">图层</div>
+              {loadedLayers.map((l) => (
+                <label key={l.name} className="layer-control-item">
+                  <input
+                    type="checkbox"
+                    checked={layerVisibility[l.name] !== false}
+                    onChange={() => toggleLayer(l.name)}
+                  />
+                  <span className={`layer-type-dot ${l.type}`} />
+                  <span className="layer-control-name">{l.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Legend for choropleth/bubble */}
+      {choroplethLayer && choroplethLayer.breaks && (
+        <div className="map-legend">
+          <div className="map-legend-title">{choroplethLayer.value_column || '值'}</div>
+          {choroplethLayer.breaks.map((b, i) => {
+            const colors = COLOR_RAMPS[choroplethLayer.color_scheme || 'YlOrRd'];
+            return (
+              <div key={i} className="map-legend-item">
+                <span className="map-legend-color" style={{ background: colors[i] || colors[colors.length - 1] }} />
+                <span className="map-legend-label">{i === 0 ? `≤ ${b}` : `${choroplethLayer.breaks![i - 1]} - ${b}`}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -181,6 +255,17 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
             opacity: style.opacity || 0.8,
             fillOpacity: style.fillOpacity || 0.6,
           }),
+        onEachFeature: bindPopup,
+      });
+
+    case 'line':
+      return L.geoJSON(geojsonData, {
+        style: {
+          color: style.color || '#e63946',
+          weight: style.weight || 3,
+          opacity: style.opacity || 0.8,
+          dashArray: style.dashArray || undefined,
+        },
         onEachFeature: bindPopup,
       });
 

@@ -119,11 +119,30 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate }: ChatPanelProps)
       <div className="chat-messages">
         {flatMessages.map((msg) => {
           const isUser = msg.type?.includes('user');
+          const meta = msg.metadata as any;
+          const routingInfo = meta?.routing_info;
           return (
             <div key={msg.id} className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
               {!isUser && <div className="assistant-avatar">AI</div>}
               <div className="message-content">
-                {isUser ? (
+                {routingInfo ? (
+                  <div className="routing-card">
+                    <div className="routing-card-row">
+                      <span className="routing-label">意图</span>
+                      <span className={`pipeline-badge ${routingInfo.pipeline}`}>{routingInfo.intent}</span>
+                    </div>
+                    <div className="routing-card-row">
+                      <span className="routing-label">管线</span>
+                      <span className="routing-value">{routingInfo.pipeline_name}</span>
+                    </div>
+                    {routingInfo.reason && (
+                      <div className="routing-card-row">
+                        <span className="routing-label">依据</span>
+                        <span className="routing-reason">{routingInfo.reason}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : isUser ? (
                   <span>{msg.output}</span>
                 ) : (
                   <ReactMarkdown>{msg.output || ''}</ReactMarkdown>

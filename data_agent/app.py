@@ -797,6 +797,13 @@ try:
 except Exception as _stream_mount_err:
     logger.warning("Stream route mount failed: %s", _stream_mount_err)
 
+# --- Mount Frontend API routes ---
+try:
+    from data_agent.frontend_api import mount_frontend_api
+    mount_frontend_api(chainlit_app)
+except Exception as _fe_err:
+    logger.warning("Frontend API mount failed: %s", _fe_err)
+
 # --- Startup Diagnostics Banner ---
 logger.info("\n%s", format_startup_summary(session_svc=session_service))
 
@@ -1876,7 +1883,15 @@ async def main(message: cl.Message):
         pipeline_type = "general"
         pipeline_name = "General Pipeline (通用分析与查询)"
 
-    await cl.Message(content=f"意图识别：**{intent}**\n已路由至：**{pipeline_name}**").send()
+    await cl.Message(
+        content=f"意图识别：**{intent}**\n已路由至：**{pipeline_name}**",
+        metadata={"routing_info": {
+            "intent": intent,
+            "pipeline": pipeline_type,
+            "pipeline_name": pipeline_name,
+            "reason": intent_reason,
+        }},
+    ).send()
 
     cl.user_session.set("pipeline_type", pipeline_type)
 
