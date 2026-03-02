@@ -1,11 +1,11 @@
-"""Database toolset: wraps query_database, list_tables, describe_table, share_table."""
+"""Database toolset: wraps query_database, list_tables, describe_table, share_table, import_to_postgis."""
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 
-from ..database_tools import query_database, list_tables, describe_table, share_table
+from ..database_tools import query_database, list_tables, describe_table, share_table, import_to_postgis
 
 
-_ALL_FUNCS = [query_database, list_tables, describe_table, share_table]
+_ALL_FUNCS = [query_database, list_tables, describe_table, share_table, import_to_postgis]
 
 
 class DatabaseToolset(BaseToolset):

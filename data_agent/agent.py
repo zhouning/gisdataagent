@@ -272,7 +272,7 @@ general_processing_agent = LlmAgent(
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
         GeoProcessingToolset(),
         LocationToolset(),
-        DatabaseToolset(tool_filter=_DB_READ_DESCRIBE + ["share_table"]),
+        DatabaseToolset(tool_filter=_DB_READ_DESCRIBE + ["share_table", "import_to_postgis"]),
         FileToolset(),
         MemoryToolset(),
         AdminToolset(),
@@ -351,6 +351,7 @@ planner_processor = LlmAgent(
         RemoteSensingToolset(tool_filter=["describe_raster", "download_lulc", "download_dem"]),
         StreamingToolset(),
         DataLakeToolset(tool_filter=_DATALAKE_READ),
+        DatabaseToolset(tool_filter=["import_to_postgis"]),
     ] + _arcpy_tools,
 )
 

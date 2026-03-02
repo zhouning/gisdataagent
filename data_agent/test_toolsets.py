@@ -70,7 +70,8 @@ class TestToolsetCounts(unittest.TestCase):
         names = [t.name for t in tools]
         self.assertIn("query_database", names)
         self.assertIn("list_tables", names)
-        self.assertEqual(len(tools), 4)
+        self.assertIn("import_to_postgis", names)
+        self.assertEqual(len(tools), 5)
 
     def test_file_toolset(self):
         from data_agent.toolsets.file_tools import FileToolset

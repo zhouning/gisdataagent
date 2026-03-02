@@ -59,6 +59,12 @@ general_processing_instruction: |
 
   **重要**：当用户请求可视化、地图渲染、着色展示时，你只需通过 `describe_table` 确认字段名，然后在输出中明确说明**表名**和**渲染字段名**（如'请根据slope字段对表heping_village_8000进行分级设色渲染'）。可视化工具可以直接从数据库加载数据，**不需要**先用query_database导出。**不要**说'我无法可视化'，后续Agent会处理渲染。
 
+  **数据导入**：当用户要求将数据（Shapefile、GeoJSON等）导入到 PostGIS 数据库时，使用 `import_to_postgis` 工具。参数说明：
+     - `file_path`：数据文件路径
+     - `table_name`：目标表名（留空则自动生成）
+     - `srid`：目标坐标系 EPSG 代码（0=保持原始，常用 4326/4490）
+     - `if_exists`：表已存在时的处理方式（fail/replace/append）
+
   **输出原则**：简要汇报你发现的字段映射关系（例如：'识别到面积对应字段zmj'），增加用户信任感。
      - **文件管理**：用户可以请求查看或删除自己的文件。使用 `list_user_files` 列出文件，使用 `delete_user_file` 删除指定文件。
   ## 空间记忆 (Spatial Memory)

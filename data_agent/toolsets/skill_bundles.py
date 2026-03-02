@@ -107,10 +107,10 @@ VISUALIZATION = SkillBundle(
 
 DATABASE = SkillBundle(
     name="database",
-    description="Database queries, table management, and data sharing",
-    intent_triggers=["database", "sql", "query"],
+    description="Database queries, table management, data import, and sharing",
+    intent_triggers=["database", "sql", "query", "import", "postgis"],
     _factory=lambda: [
-        DatabaseToolset(tool_filter=DB_READ_DESCRIBE + ["share_table"]),
+        DatabaseToolset(tool_filter=DB_READ_DESCRIBE + ["share_table", "import_to_postgis"]),
         DataLakeToolset(tool_filter=DATALAKE_READ),
     ],
 )

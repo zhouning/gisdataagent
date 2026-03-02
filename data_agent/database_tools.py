@@ -1,10 +1,11 @@
 import os
 import re
+import uuid
 import pandas as pd
 import geopandas as gpd
 from sqlalchemy import text
 from .db_engine import get_engine
-from .gis_processors import _generate_output_path
+from .gis_processors import _generate_output_path, _resolve_path
 from .user_context import current_user_id, current_user_role
 
 import urllib.parse
@@ -298,6 +299,112 @@ def share_table(table_name: str) -> dict:
             return {"status": "error", "message": f"Table '{table_name}' not found in registry."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+def import_to_postgis(file_path: str, table_name: str = "",
+                      srid: int = 0, if_exists: str = "fail") -> dict:
+    """
+    [Database Tool] Import a spatial data file into PostGIS as a new table.
+
+    Supports Shapefile (.shp), GeoJSON, GeoPackage (.gpkg), KML, CSV/Excel
+    (with coordinate columns). The imported table is registered in the ownership
+    registry so only the importing user can access it.
+
+    Args:
+        file_path: Path to the spatial file to import.
+        table_name: Target table name (auto-generated from filename if empty).
+            Must contain only letters, digits, and underscores.
+        srid: Target coordinate reference system EPSG code.
+            0 = keep original CRS. Common values: 4326 (WGS84), 4490 (CGCS2000).
+        if_exists: What to do if the table already exists.
+            "fail" (default) = raise error, "replace" = drop and recreate,
+            "append" = add rows to existing table.
+
+    Returns:
+        Dict with status, table_name, rows, srid, columns, and message.
+    """
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "数据库未配置，无法导入。"}
+
+    # Validate if_exists
+    if if_exists not in ("fail", "replace", "append"):
+        return {"status": "error",
+                "message": f"if_exists 参数无效: '{if_exists}'。可选值: fail, replace, append"}
+
+    # Sanitize or auto-generate table name
+    if table_name:
+        table_name = table_name.strip().lower()
+        if not re.match(r'^[a-z][a-z0-9_]{0,62}$', table_name):
+            return {"status": "error",
+                    "message": f"表名 '{table_name}' 格式无效。"
+                               "必须以字母开头，仅包含小写字母、数字和下划线，最长63字符。"}
+    else:
+        # Auto-generate from filename
+        basename = os.path.splitext(os.path.basename(file_path))[0]
+        safe_name = re.sub(r'[^a-z0-9]', '_', basename.lower()).strip('_')
+        if not safe_name or not safe_name[0].isalpha():
+            safe_name = "t_" + safe_name
+        table_name = f"{safe_name}_{uuid.uuid4().hex[:6]}"[:63]
+
+    # Load spatial data
+    try:
+        from .utils import _load_spatial_data
+        resolved = _resolve_path(file_path)
+        gdf = _load_spatial_data(resolved)
+    except Exception as e:
+        return {"status": "error", "message": f"读取文件失败: {e}"}
+
+    if gdf.empty:
+        return {"status": "error", "message": "文件不包含任何要素数据。"}
+
+    # Handle SRID / CRS
+    original_srid = 0
+    if gdf.crs:
+        try:
+            original_srid = gdf.crs.to_epsg() or 0
+        except Exception:
+            pass
+
+    if srid > 0 and srid != original_srid:
+        try:
+            gdf = gdf.to_crs(epsg=srid)
+        except Exception as e:
+            return {"status": "error", "message": f"坐标转换失败 (EPSG:{srid}): {e}"}
+    else:
+        srid = original_srid
+
+    # Write to PostGIS
+    try:
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            gdf.to_postgis(table_name, conn, if_exists=if_exists, index=False)
+            conn.commit()
+    except Exception as e:
+        msg = str(e)
+        if "already exists" in msg.lower():
+            return {"status": "error",
+                    "message": f"表 '{table_name}' 已存在。使用 if_exists='replace' 覆盖或 'append' 追加。"}
+        return {"status": "error", "message": f"写入 PostGIS 失败: {e}"}
+
+    # Register ownership (cross-registers in data catalog)
+    username = current_user_id.get() or "anonymous"
+    register_table_ownership(
+        table_name, username,
+        description=f"Imported from {os.path.basename(file_path)}"
+    )
+
+    columns = [c for c in gdf.columns if c != "geometry"]
+    return {
+        "status": "success",
+        "table_name": table_name,
+        "rows": len(gdf),
+        "srid": srid,
+        "columns": columns,
+        "message": f"成功导入 {len(gdf)} 条要素到表 '{table_name}' (EPSG:{srid})。"
+                   f"包含 {len(columns)} 个属性列: {', '.join(columns[:10])}"
+                   + (f"... 等共{len(columns)}列" if len(columns) > 10 else ""),
+    }
 
 
 def ensure_table_ownership_table():
