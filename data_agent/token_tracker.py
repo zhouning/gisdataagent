@@ -199,3 +199,35 @@ def get_usage_summary() -> dict:
             f"  输入：{monthly['input_tokens']:,} | 输出：{monthly['output_tokens']:,}"
         ),
     }
+
+
+def get_pipeline_breakdown(username: str) -> list:
+    """
+    Get current month's usage broken down by pipeline_type.
+
+    Returns:
+        [{"pipeline_type": "optimization", "count": 5, "tokens": 12340}, ...]
+    """
+    engine = get_engine()
+    if not engine:
+        return []
+
+    try:
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            rows = conn.execute(text(f"""
+                SELECT pipeline_type,
+                       COUNT(*) AS cnt,
+                       COALESCE(SUM(total_tokens), 0) AS tokens
+                FROM {T_TOKEN_USAGE}
+                WHERE username = :u
+                  AND created_at >= date_trunc('month', CURRENT_DATE)
+                GROUP BY pipeline_type
+                ORDER BY tokens DESC
+            """), {"u": username}).fetchall()
+            return [
+                {"pipeline_type": row[0] or "unknown", "count": row[1], "tokens": row[2]}
+                for row in rows
+            ]
+    except Exception:
+        return []

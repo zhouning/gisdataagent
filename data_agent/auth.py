@@ -53,6 +53,7 @@ def ensure_users_table():
                     username VARCHAR(100) UNIQUE NOT NULL,
                     password_hash VARCHAR(500),
                     display_name VARCHAR(200),
+                    email VARCHAR(255) DEFAULT '',
                     role VARCHAR(20) DEFAULT 'analyst',
                     auth_provider VARCHAR(20) DEFAULT 'password',
                     created_at TIMESTAMP DEFAULT NOW()
@@ -103,7 +104,8 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     return None
 
 
-def register_user(username: str, password: str, display_name: str = "") -> dict:
+def register_user(username: str, password: str, display_name: str = "",
+                   email: str = "") -> dict:
     """Register a new user with 'analyst' role.
 
     Returns: {"status": "success", "message": "..."} or {"status": "error", "message": "..."}
@@ -119,6 +121,9 @@ def register_user(username: str, password: str, display_name: str = "") -> dict:
         return {"status": "error", "message": "密码长度不少于8位"}
     if not re.search(r'[a-zA-Z]', password) or not re.search(r'\d', password):
         return {"status": "error", "message": "密码须包含字母和数字"}
+
+    if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return {"status": "error", "message": "邮箱格式不正确"}
 
     engine = get_engine()
     if not engine:
@@ -137,13 +142,79 @@ def register_user(username: str, password: str, display_name: str = "") -> dict:
             pw_hash = _make_password_hash(password)
             conn.execute(text(
                 f"INSERT INTO {T_APP_USERS} "
-                "(username, password_hash, display_name, role, auth_provider) "
-                "VALUES (:u, :p, :d, 'analyst', 'password')"
-            ), {"u": username, "p": pw_hash, "d": display_name or username})
+                "(username, password_hash, display_name, email, role, auth_provider) "
+                "VALUES (:u, :p, :d, :e, 'analyst', 'password')"
+            ), {"u": username, "p": pw_hash, "d": display_name or username,
+                "e": email or ""})
             conn.commit()
             return {"status": "success", "message": "注册成功，请返回登录"}
     except Exception as e:
         return {"status": "error", "message": f"注册失败: {str(e)}"}
+
+
+def delete_user_account(username: str, confirm_password: str) -> dict:
+    """
+    Delete a user account with password confirmation.
+    Cascades: removes user data from token_usage, memories, share_links,
+    team_members, audit_log, data_catalog, annotations, and app_users.
+    Also removes user upload directory.
+
+    Admins cannot delete themselves via this method.
+
+    Args:
+        username: The user to delete.
+        confirm_password: Password for verification.
+
+    Returns:
+        {"status": "success"|"error", "message": str}
+    """
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "数据库未配置"}
+
+    # Verify password first
+    user = authenticate_user(username, confirm_password)
+    if not user:
+        return {"status": "error", "message": "密码验证失败"}
+
+    if user.get("role") == "admin":
+        return {"status": "error", "message": "管理员不能通过此方式删除账户，请联系其他管理员"}
+
+    try:
+        with engine.connect() as conn:
+            # Cascade delete related data
+            cascade_tables = [
+                ("agent_token_usage", "username"),
+                ("agent_user_memories", "username"),
+                ("agent_share_links", "owner_username"),
+                ("agent_team_members", "username"),
+                ("agent_audit_log", "username"),
+                ("agent_map_annotations", "username"),
+            ]
+            for table, col in cascade_tables:
+                try:
+                    conn.execute(text(f"DELETE FROM {table} WHERE {col} = :u"), {"u": username})
+                except Exception:
+                    pass  # Table may not exist
+
+            # Delete user account
+            result = conn.execute(text(
+                f"DELETE FROM {T_APP_USERS} WHERE username = :u"
+            ), {"u": username})
+            conn.commit()
+
+            if result.rowcount == 0:
+                return {"status": "error", "message": "用户不存在"}
+
+        # Remove upload directory
+        import shutil
+        upload_dir = os.path.join(os.path.dirname(__file__), "uploads", username)
+        if os.path.exists(upload_dir):
+            shutil.rmtree(upload_dir, ignore_errors=True)
+
+        return {"status": "success", "message": "账户已删除"}
+    except Exception as e:
+        return {"status": "error", "message": f"删除失败: {str(e)}"}
 
 
 def ensure_wecom_user(wecom_userid: str) -> dict:

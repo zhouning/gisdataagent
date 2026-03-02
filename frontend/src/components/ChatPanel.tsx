@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 interface ChatPanelProps {
   onMapUpdate: (config: any) => void;
   onDataUpdate: (file: string) => void;
+  onLayerControl?: (control: any) => void;
 }
 
 interface PendingFile {
@@ -15,7 +16,7 @@ interface PendingFile {
   error?: boolean;
 }
 
-export default function ChatPanel({ onMapUpdate, onDataUpdate }: ChatPanelProps) {
+export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }: ChatPanelProps) {
   const { messages } = useChatMessages();
   const { sendMessage, uploadFile } = useChatInteract();
   const { askUser, actions, loading } = useChatData();
@@ -40,12 +41,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate }: ChatPanelProps)
         onMapUpdate(meta.map_update);
         processedMetaRef.current.add(msg.id);
       }
+      if (meta.layer_control && onLayerControl) {
+        onLayerControl(meta.layer_control);
+        processedMetaRef.current.add(msg.id);
+      }
       if (meta.data_update) {
         onDataUpdate(meta.data_update.csv || meta.data_update.file);
         processedMetaRef.current.add(msg.id);
       }
     }
-  }, [messages, onMapUpdate, onDataUpdate]);
+  }, [messages, onMapUpdate, onDataUpdate, onLayerControl]);
 
   const handleFileSelect = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

@@ -78,8 +78,22 @@ async def run_evaluation():
     print(f"\n📊 Final Scores for Visualization:")
     print(f"   - Tool Trajectory: {trajectory_score:.2f}")
     print(f"   - Response Match:  {response_score:.2f}")
-    
+
     generate_charts(trajectory_score, response_score)
+
+    # Write machine-readable JSON summary for CI parsing
+    summary = {
+        "timestamp": datetime.now().isoformat(),
+        "scores": {
+            "tool_trajectory": round(trajectory_score, 4),
+            "response_match": round(response_score, 4),
+        },
+        "pass": trajectory_score >= 0.5 and response_score >= 0.3,
+    }
+    summary_path = os.path.join(RESULTS_DIR, "eval_summary.json")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2, ensure_ascii=False)
+    print(f"📄 Summary written to: {summary_path}")
 
 def generate_charts(traj_score, resp_score):
     """Generate professional evaluation charts."""

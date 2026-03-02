@@ -107,6 +107,8 @@ try:
     ensure_teams_table()
     from data_agent.data_catalog import ensure_data_catalog_table
     ensure_data_catalog_table()
+    from data_agent.map_annotations import ensure_annotations_table
+    ensure_annotations_table()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -275,6 +277,7 @@ async def api_register(request: Request):
         username=body.get("username", ""),
         password=body.get("password", ""),
         display_name=body.get("display_name", ""),
+        email=body.get("email", ""),
     )
     try:
         record_audit(
@@ -2021,6 +2024,16 @@ async def main(message: cl.Message):
                         except Exception:
                             current_tool_step.output = "执行成功"
                         await current_tool_step.update()
+                        # Detect layer_control in tool response → send as metadata
+                        try:
+                            _lc_resp = part.function_response.response
+                            if isinstance(_lc_resp, dict) and "layer_control" in _lc_resp:
+                                await cl.Message(
+                                    content="",
+                                    metadata={"layer_control": _lc_resp["layer_control"]},
+                                ).send()
+                        except Exception:
+                            pass
                         # Sync tool output files to OBS and register in data catalog
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}

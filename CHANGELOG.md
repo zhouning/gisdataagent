@@ -2,6 +2,73 @@
 
 All notable changes to the GIS Data Agent project.
 
+## [v4.0.0] - 2026-03-02 (Frontend Integration, CI & Post-Launch Enhancement)
+
+### Feature — React-Integrated Self-Registration (F1)
+- **In-app registration**: Login page now includes register mode toggle (username, email, password, confirm password, display name fields). Calls `POST /auth/register` directly.
+- **Email support**: `register_user()` accepts optional email parameter with regex validation. `email` column added to `agent_app_users` table.
+- **Migration**: `015_add_email_column.sql` adds email column.
+
+### Feature — Token Usage Dashboard (F2)
+- **UsageView component** in DataPanel: 5th tab ("用量") showing daily count progress bar, monthly token summary, and pipeline breakdown visualization.
+- **Pipeline breakdown API**: `get_pipeline_breakdown()` in `token_tracker.py` returns `[{pipeline_type, count, tokens}]` grouped by pipeline for current month.
+- **Auto-refresh**: Dashboard refreshes every 30 seconds.
+
+### Feature — Natural Language Layer Control (F3)
+- **`control_map_layer()` tool**: 5 actions — show, hide, style, remove, list. Supports color/opacity customization.
+- **Pipeline**: Tool result → `app.py` detects `layer_control` key → injects metadata → ChatPanel `onLayerControl` → App state → MapPanel `useEffect` handler.
+- **MapPanel integration**: Reacts to control commands by toggling layer visibility, updating styles, or removing layers from the Leaflet map.
+
+### Feature — Collaborative Map Annotations (F4)
+- **`map_annotations.py`** (new): CRUD functions for annotations with PostgreSQL storage (`agent_map_annotations` table).
+- **4 REST endpoints**: GET/POST `/api/annotations`, PUT/DELETE `/api/annotations/{id}`.
+- **MapPanel UI**: Annotation toggle button (pencil icon), click-to-add with popup form (title + comment), marker rendering with resolve/delete actions.
+- **Team scope**: Users see own annotations + team annotations. Delete requires ownership verification.
+- **Migration**: `016_create_map_annotations.sql`.
+
+### Feature — Tianditu Compliant Basemap (F5)
+- **`GET /api/config/basemaps`**: Returns `{gaode_enabled, tianditu_enabled, tianditu_token}` based on environment configuration.
+- **Dynamic basemap loading**: MapPanel fetches basemap config on mount. Tianditu Vec + Img layers loaded conditionally when token is available.
+- **Static basemaps**: Gaode (高德) added as permanent option alongside CartoDB and OpenStreetMap.
+
+### Feature — Toolset Optimization — Skill Bundles (F6)
+- **`skill_bundles.py`** (new): `SkillBundle` dataclass with 5 named bundles:
+  - `SPATIAL_ANALYSIS`: Exploration + GeoProcessing + Location + RemoteSensing + SpatialStatistics + Analysis
+  - `DATA_QUALITY`: Exploration + Database + File + SemanticLayer + DataLake
+  - `VISUALIZATION`: Visualization tools (9 tools including layer control)
+  - `DATABASE`: Database + DataLake
+  - `COLLABORATION`: Memory + Admin + Team + DataLake
+- **Intent matching**: `get_bundles_for_intent()` and `build_toolsets_for_intent()` for dynamic toolset assembly.
+- **Filter presets**: AUDIT_TOOLS, TRANSFORM_TOOLS, DB_READ, GENERAL_VIZ, SEMANTIC_READONLY.
+
+### Feature — User Account Self-Deletion (F7)
+- **`delete_user_account()`** in `auth.py`: Password verification → cascade delete (token_usage, memories, share_links, team_members, audit_log, annotations) → remove upload directory → delete user account.
+- **Admin protection**: Admins cannot delete themselves via this method.
+- **`DELETE /api/user/account`**: REST endpoint with password confirmation in request body.
+- **`UserSettings.tsx`** (new): Modal component with user info display and danger zone for account deletion.
+- **User menu**: Header avatar click reveals dropdown menu with "账户设置" (settings) and "退出登录" (logout) options.
+
+### Feature — CI Pipeline + Evaluation (F8)
+- **`.github/workflows/ci.yml`** (new): 3 jobs:
+  - `test`: Ubuntu + PostGIS service container, pytest with JUnit XML output
+  - `frontend`: Node.js 20, `npm ci && npm run build`
+  - `evaluate`: ADK agent evaluation on main push (requires GOOGLE_API_KEY secret)
+- **JSON eval summary**: `run_evaluation.py` now writes `eval_results/eval_summary.json` with scores and pass/fail status.
+- **Additional eval cases**: Governance check + general spatial query test cases added to `eval_set.json`.
+
+### Changed
+- **Frontend API**: 17 REST endpoints (up from 11), organized into catalog, semantic, pipeline, user, admin, annotation, and config groups.
+- **Toolset count**: 16 BaseToolset modules (up from 15, added skill_bundles.py).
+- **Visualization tools**: 9 tools (up from 8, added control_map_layer).
+- **DataPanel tabs**: 5 tabs (files, CSV, catalog, history, usage — added usage tab).
+- **App.tsx**: User dropdown menu, UserSettings modal integration, layer control wiring.
+
+### Tests
+- **Total**: 923 tests passing (up from 882).
+- New tests: frontend API (47 tests including delete account, basemap config, annotations), map annotations (11), skill bundles (5), layer control (7).
+
+---
+
 ## [v4.0.0-beta] - 2026-03-01 (Data Lake, Lineage & Hierarchy Enhancement)
 
 ### Feature — Unified Data Lake Integration

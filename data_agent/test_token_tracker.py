@@ -11,6 +11,7 @@ from data_agent.token_tracker import (
     get_monthly_usage,
     check_usage_limit,
     get_usage_summary,
+    get_pipeline_breakdown,
 )
 from data_agent.user_context import current_user_id
 
@@ -36,6 +37,11 @@ class TestTokenTrackerNoDB(unittest.TestCase):
         self.assertEqual(result["total_tokens"], 0)
         self.assertEqual(result["input_tokens"], 0)
         self.assertEqual(result["output_tokens"], 0)
+
+    @patch('data_agent.token_tracker.get_engine', return_value=None)
+    def test_get_pipeline_breakdown_no_db(self, mock_engine):
+        result = get_pipeline_breakdown("user1")
+        self.assertEqual(result, [])
 
 
 class TestUsageLimits(unittest.TestCase):
@@ -172,6 +178,18 @@ class TestTokenCRUD(unittest.TestCase):
         """Verify limit check passes for admin."""
         result = check_usage_limit("test_token_user", "admin")
         self.assertTrue(result["allowed"])
+
+    def test_05_pipeline_breakdown(self):
+        """Verify pipeline breakdown groups by pipeline_type."""
+        result = get_pipeline_breakdown("test_token_user")
+        self.assertIsInstance(result, list)
+        if len(result) > 0:
+            item = result[0]
+            self.assertIn("pipeline_type", item)
+            self.assertIn("count", item)
+            self.assertIn("tokens", item)
+            self.assertGreater(item["tokens"], 0)
+        print(f"\nBreakdown: {result}")
 
 
 if __name__ == "__main__":

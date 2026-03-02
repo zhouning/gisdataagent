@@ -60,7 +60,8 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("generate_choropleth", names)
         self.assertIn("generate_heatmap", names)
         self.assertIn("compose_map", names)
-        self.assertEqual(len(tools), 8)
+        self.assertIn("control_map_layer", names)
+        self.assertEqual(len(tools), 9)
 
     def test_database_toolset(self):
         from data_agent.toolsets.database_tools_set import DatabaseToolset
@@ -268,6 +269,56 @@ class TestToolFilter(unittest.TestCase):
         self.assertEqual(names, {"list_data_assets", "describe_data_asset", "search_data_assets"})
 
 
+class TestControlMapLayer(unittest.TestCase):
+    """Tests for the control_map_layer NL layer control tool."""
+
+    def test_hide_action(self):
+        from data_agent.toolsets.visualization_tools import control_map_layer
+        result = control_map_layer(action="hide", layer_name="土地利用")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["layer_control"]["action"], "hide")
+        self.assertEqual(result["layer_control"]["layer_name"], "土地利用")
+        self.assertIn("隐藏", result["message"])
+
+    def test_show_action(self):
+        from data_agent.toolsets.visualization_tools import control_map_layer
+        result = control_map_layer(action="show", layer_name="缓冲区")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["layer_control"]["action"], "show")
+
+    def test_style_action(self):
+        from data_agent.toolsets.visualization_tools import control_map_layer
+        result = control_map_layer(action="style", layer_name="用地", color="#e63946", opacity=0.5)
+        self.assertEqual(result["status"], "success")
+        ctrl = result["layer_control"]
+        self.assertEqual(ctrl["action"], "style")
+        self.assertEqual(ctrl["style"]["fillColor"], "#e63946")
+        self.assertEqual(ctrl["style"]["fillOpacity"], 0.5)
+
+    def test_remove_action(self):
+        from data_agent.toolsets.visualization_tools import control_map_layer
+        result = control_map_layer(action="remove", layer_name="旧图层")
+        self.assertEqual(result["status"], "success")
+        self.assertIn("移除", result["message"])
+
+    def test_list_action(self):
+        from data_agent.toolsets.visualization_tools import control_map_layer
+        result = control_map_layer(action="list")
+        self.assertEqual(result["status"], "success")
+
+    def test_invalid_action(self):
+        from data_agent.toolsets.visualization_tools import control_map_layer
+        result = control_map_layer(action="delete", layer_name="test")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("无效操作", result["message"])
+
+    def test_missing_layer_name(self):
+        from data_agent.toolsets.visualization_tools import control_map_layer
+        result = control_map_layer(action="hide")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("图层名称", result["message"])
+
+
 class TestFilterPresets(unittest.TestCase):
     """Verify the named filter presets in agent.py resolve correctly."""
 
@@ -441,6 +492,44 @@ class TestBackwardCompat(unittest.TestCase):
         self.assertTrue(callable(spatial_autocorrelation))
         self.assertTrue(callable(local_moran))
         self.assertTrue(callable(hotspot_analysis))
+
+
+class TestSkillBundles(unittest.TestCase):
+    """Tests for skill bundle registration and intent mapping."""
+
+    def test_all_bundles_registered(self):
+        from data_agent.toolsets.skill_bundles import ALL_BUNDLES, get_bundle
+        self.assertEqual(len(ALL_BUNDLES), 5)
+        for bundle in ALL_BUNDLES:
+            self.assertIs(get_bundle(bundle.name), bundle)
+
+    def test_bundle_builds_toolsets(self):
+        from data_agent.toolsets.skill_bundles import SPATIAL_ANALYSIS
+        toolsets = SPATIAL_ANALYSIS.build_toolsets()
+        self.assertGreater(len(toolsets), 0)
+        names = [type(ts).__name__ for ts in toolsets]
+        self.assertIn("ExplorationToolset", names)
+        self.assertIn("GeoProcessingToolset", names)
+
+    def test_intent_mapping(self):
+        from data_agent.toolsets.skill_bundles import get_bundles_for_intent
+        gov_bundles = get_bundles_for_intent("governance")
+        names = [b.name for b in gov_bundles]
+        self.assertIn("spatial_analysis", names)
+        self.assertIn("data_quality", names)
+
+    def test_no_duplicate_toolsets(self):
+        from data_agent.toolsets.skill_bundles import build_toolsets_for_intent
+        toolsets = build_toolsets_for_intent("governance")
+        class_names = [type(ts).__name__ for ts in toolsets]
+        # No duplicates
+        self.assertEqual(len(class_names), len(set(class_names)))
+
+    def test_visualization_bundle(self):
+        from data_agent.toolsets.skill_bundles import VISUALIZATION
+        toolsets = VISUALIZATION.build_toolsets()
+        self.assertEqual(len(toolsets), 1)
+        self.assertEqual(type(toolsets[0]).__name__, "VisualizationToolset")
 
 
 if __name__ == "__main__":

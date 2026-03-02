@@ -7,6 +7,7 @@ import ChatPanel from './components/ChatPanel';
 import MapPanel from './components/MapPanel';
 import DataPanel from './components/DataPanel';
 import AdminDashboard from './components/AdminDashboard';
+import UserSettings from './components/UserSettings';
 
 export default function App() {
   const { data: authConfig, user, isReady, isAuthenticated, setUserFromAPI } = useAuth();
@@ -18,12 +19,17 @@ export default function App() {
   const [mapLayers, setMapLayers] = useState<any[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([30.5, 114.3]);
   const [mapZoom, setMapZoom] = useState(5);
+  const [layerControl, setLayerControl] = useState<any>(null);
 
   // Data panel state
   const [dataFile, setDataFile] = useState<string | null>(null);
 
   // Admin dashboard state
   const [showAdmin, setShowAdmin] = useState(false);
+
+  // User settings modal state
+  const [showSettings, setShowSettings] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Connect to Socket.IO after authentication
   useEffect(() => {
@@ -40,6 +46,10 @@ export default function App() {
     if (cfg.layers) setMapLayers(cfg.layers);
     if (cfg.center) setMapCenter(cfg.center);
     if (cfg.zoom) setMapZoom(cfg.zoom);
+  }, []);
+
+  const handleLayerControl = useCallback((control: any) => {
+    setLayerControl({ ...control, _ts: Date.now() });
   }, []);
 
   const handleDataUpdate = useCallback((file: string) => {
@@ -90,19 +100,38 @@ export default function App() {
             <span>{showAdmin ? '返回工作台' : '管理后台'}</span>
           </button>
         )}
-        <div className="header-user">
+        <div className="header-user" onClick={() => setShowUserMenu(!showUserMenu)}>
           <div className="header-avatar">{avatarLetter}</div>
           <span>{displayName}</span>
+          {showUserMenu && (
+            <div className="user-menu" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => { setShowSettings(true); setShowUserMenu(false); }}>
+                账户设置
+              </button>
+              <button onClick={() => { window.location.href = '/'; }}>
+                退出登录
+              </button>
+            </div>
+          )}
         </div>
       </header>
       {showAdmin ? (
         <AdminDashboard onBack={() => setShowAdmin(false)} />
       ) : (
         <div className="workspace">
-          <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} />
-          <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} />
+          <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} onLayerControl={handleLayerControl} />
+          <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} layerControl={layerControl} />
           <DataPanel dataFile={dataFile} />
         </div>
+      )}
+      {showSettings && (
+        <UserSettings
+          username={user?.identifier || ''}
+          displayName={displayName}
+          role={userRole}
+          onClose={() => setShowSettings(false)}
+          onDeleted={() => { window.location.href = '/'; }}
+        />
       )}
     </div>
   );

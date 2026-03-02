@@ -187,6 +187,8 @@ class TestTokenUsageAPI(unittest.TestCase):
         self.assertIn("daily", body)
         self.assertIn("monthly", body)
         self.assertIn("limits", body)
+        self.assertIn("pipeline_breakdown", body)
+        self.assertIsInstance(body["pipeline_breakdown"], list)
 
 
 class TestAdminUsersAPI(unittest.TestCase):
@@ -298,13 +300,51 @@ class TestAdminMetricsAPI(unittest.TestCase):
         self.assertIn("user_count", body)
 
 
+class TestBasemapConfigAPI(unittest.TestCase):
+    """Tests for /api/config/basemaps."""
+
+    @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
+    def test_basemaps_unauthorized(self, _mock):
+        import asyncio
+        from data_agent.frontend_api import _api_config_basemaps
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_config_basemaps(_make_request()))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch.dict("os.environ", {"TIANDITU_TOKEN": "test_tk_123"})
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_basemaps_with_tianditu(self, mock_user):
+        mock_user.return_value = _make_user()
+        import asyncio
+        from data_agent.frontend_api import _api_config_basemaps
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_config_basemaps(_make_request()))
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.body)
+        self.assertTrue(body["tianditu_enabled"])
+        self.assertEqual(body["tianditu_token"], "test_tk_123")
+        self.assertTrue(body["gaode_enabled"])
+
+    @patch.dict("os.environ", {"TIANDITU_TOKEN": ""}, clear=False)
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_basemaps_without_tianditu(self, mock_user):
+        mock_user.return_value = _make_user()
+        import asyncio
+        from data_agent.frontend_api import _api_config_basemaps
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_config_basemaps(_make_request()))
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.body)
+        self.assertFalse(body["tianditu_enabled"])
+
+
 class TestRouteMount(unittest.TestCase):
     """Tests for get_frontend_api_routes and mount_frontend_api."""
 
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 11)
+        self.assertEqual(len(routes), 17)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
@@ -327,8 +367,8 @@ class TestRouteMount(unittest.TestCase):
 
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
-        # 11 routes inserted before the catch-all, catch-all is now at index 11
-        self.assertEqual(len(mock_app.router.routes), 12)
+        # 17 routes inserted before the catch-all, catch-all is now at index 17
+        self.assertEqual(len(mock_app.router.routes), 18)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
 
 
@@ -373,6 +413,128 @@ class TestAuthHelpers(unittest.TestCase):
         self.assertIsNone(err)
         self.assertEqual(username, "root")
         self.assertEqual(role, "admin")
+
+
+class TestUserDeleteAccountAPI(unittest.TestCase):
+    """Tests for DELETE /api/user/account (self-deletion)."""
+
+    @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
+    def test_delete_account_unauthorized(self, _mock):
+        import asyncio
+        from data_agent.frontend_api import _api_user_delete_account
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_user_delete_account(_make_request()))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_delete_account_missing_password(self, mock_user):
+        mock_user.return_value = _make_user()
+        import asyncio
+        from data_agent.frontend_api import _api_user_delete_account
+        req = _make_request(body={"password": ""})
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_user_delete_account(req))
+        self.assertEqual(resp.status_code, 400)
+        body = json.loads(resp.body)
+        self.assertIn("Password required", body.get("error", ""))
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_delete_account_wrong_password(self, mock_user):
+        mock_user.return_value = _make_user()
+        import asyncio
+        from data_agent.frontend_api import _api_user_delete_account
+        req = _make_request(body={"password": "wrongpass"})
+        with patch("data_agent.auth.get_engine", return_value=None):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_user_delete_account(req))
+        self.assertEqual(resp.status_code, 400)
+        body = json.loads(resp.body)
+        self.assertIn("error", body.get("status", ""))
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_delete_account_admin_blocked(self, mock_user):
+        mock_user.return_value = _make_user(identifier="admin", role="admin")
+        import asyncio
+        from data_agent.frontend_api import _api_user_delete_account
+        req = _make_request(body={"password": "admin123"})
+        # Mock authenticate_user to return admin user, and get_engine to return non-None
+        with patch("data_agent.auth.authenticate_user", return_value={
+            "username": "admin", "display_name": "Admin", "role": "admin"
+        }), patch("data_agent.auth.get_engine", return_value=MagicMock()):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_user_delete_account(req))
+        self.assertEqual(resp.status_code, 400)
+        body = json.loads(resp.body)
+        self.assertIn("管理员", body.get("message", ""))
+
+
+class TestDeleteUserAccount(unittest.TestCase):
+    """Tests for auth.delete_user_account()."""
+
+    def test_no_db(self):
+        from data_agent.auth import delete_user_account
+        with patch("data_agent.auth.get_engine", return_value=None):
+            result = delete_user_account("testuser", "pass123")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("数据库", result["message"])
+
+    def test_wrong_password(self):
+        from data_agent.auth import delete_user_account
+        with patch("data_agent.auth.get_engine") as mock_eng, \
+             patch("data_agent.auth.authenticate_user", return_value=None):
+            mock_eng.return_value = MagicMock()
+            result = delete_user_account("testuser", "wrongpass")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("密码", result["message"])
+
+    def test_admin_blocked(self):
+        from data_agent.auth import delete_user_account
+        with patch("data_agent.auth.get_engine") as mock_eng, \
+             patch("data_agent.auth.authenticate_user", return_value={
+                 "username": "admin", "display_name": "Admin", "role": "admin"
+             }):
+            mock_eng.return_value = MagicMock()
+            result = delete_user_account("admin", "admin123")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("管理员", result["message"])
+
+
+class TestRegisterUser(unittest.TestCase):
+    """Tests for register_user() with email parameter."""
+
+    def test_register_email_validation(self):
+        from data_agent.auth import register_user
+        result = register_user("testuser", "Pass1234", email="bad-email")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("邮箱", result["message"])
+
+    def test_register_valid_email_format(self):
+        from data_agent.auth import register_user
+        # Valid email should pass validation but fail on DB (no engine)
+        with patch("data_agent.auth.get_engine", return_value=None):
+            result = register_user("testuser", "Pass1234", email="user@example.com")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("数据库", result["message"])
+
+    def test_register_empty_email_ok(self):
+        from data_agent.auth import register_user
+        # Empty email should be accepted (optional field)
+        with patch("data_agent.auth.get_engine", return_value=None):
+            result = register_user("testuser", "Pass1234", email="")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("数据库", result["message"])
+
+    def test_register_password_validation(self):
+        from data_agent.auth import register_user
+        result = register_user("testuser", "short1")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("8位", result["message"])
+
+    def test_register_username_validation(self):
+        from data_agent.auth import register_user
+        result = register_user("ab", "Pass1234")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("3-30", result["message"])
 
 
 if __name__ == "__main__":

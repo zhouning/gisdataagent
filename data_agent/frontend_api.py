@@ -212,14 +212,16 @@ async def _api_user_token_usage(request: Request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     username, role = _set_user_context(user)
 
-    from .token_tracker import get_daily_usage, get_monthly_usage, check_usage_limit
+    from .token_tracker import get_daily_usage, get_monthly_usage, check_usage_limit, get_pipeline_breakdown
     daily = get_daily_usage(username)
     monthly = get_monthly_usage(username)
     limits = check_usage_limit(username, role)
+    breakdown = get_pipeline_breakdown(username)
     return JSONResponse({
         "daily": daily,
         "monthly": monthly,
         "limits": limits,
+        "pipeline_breakdown": breakdown,
     })
 
 
@@ -357,6 +359,137 @@ async def _api_admin_metrics_summary(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Map Annotations API
+# ---------------------------------------------------------------------------
+
+async def _api_annotations_list(request: Request):
+    """GET /api/annotations — list user's annotations."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    team_id = request.query_params.get("team_id")
+    from .map_annotations import list_annotations
+    result = list_annotations(username, int(team_id) if team_id else None)
+    return JSONResponse(result)
+
+
+async def _api_annotations_create(request: Request):
+    """POST /api/annotations — create a new annotation."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    lng = body.get("lng")
+    lat = body.get("lat")
+    if lng is None or lat is None:
+        return JSONResponse({"error": "lng and lat are required"}, status_code=400)
+
+    from .map_annotations import create_annotation
+    result = create_annotation(
+        username=username,
+        lng=float(lng),
+        lat=float(lat),
+        title=body.get("title", ""),
+        comment=body.get("comment", ""),
+        color=body.get("color", "#e63946"),
+        team_id=int(body["team_id"]) if body.get("team_id") else None,
+    )
+    status_code = 201 if result.get("status") == "success" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+async def _api_annotations_update(request: Request):
+    """PUT /api/annotations/{id} — update an annotation."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    annotation_id = int(request.path_params.get("id", "0"))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .map_annotations import update_annotation
+    result = update_annotation(
+        annotation_id=annotation_id,
+        username=username,
+        is_resolved=body.get("is_resolved"),
+        title=body.get("title"),
+        comment=body.get("comment"),
+        color=body.get("color"),
+    )
+    return JSONResponse(result)
+
+
+async def _api_annotations_delete(request: Request):
+    """DELETE /api/annotations/{id} — delete an annotation."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    annotation_id = int(request.path_params.get("id", "0"))
+    from .map_annotations import delete_annotation
+    result = delete_annotation(annotation_id, username)
+    return JSONResponse(result)
+
+
+# ---------------------------------------------------------------------------
+# Basemap Configuration API
+# ---------------------------------------------------------------------------
+
+async def _api_config_basemaps(request: Request):
+    """GET /api/config/basemaps — available basemap layers for frontend."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    import os
+    tianditu_token = os.environ.get("TIANDITU_TOKEN", "")
+    return JSONResponse({
+        "gaode_enabled": True,
+        "tianditu_enabled": bool(tianditu_token),
+        "tianditu_token": tianditu_token,
+    })
+
+
+# ---------------------------------------------------------------------------
+# User Account Self-Deletion API
+# ---------------------------------------------------------------------------
+
+async def _api_user_delete_account(request: Request):
+    """DELETE /api/user/account — self-delete user account with password confirmation."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    password = body.get("password", "")
+    if not password:
+        return JSONResponse({"error": "Password required"}, status_code=400)
+
+    from .auth import delete_user_account
+    result = delete_user_account(username, password)
+    status_code = 200 if result.get("status") == "success" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -374,6 +507,12 @@ def get_frontend_api_routes():
         Route("/api/admin/users/{username}/role", endpoint=_api_admin_update_role, methods=["PUT"]),
         Route("/api/admin/users/{username}", endpoint=_api_admin_delete_user, methods=["DELETE"]),
         Route("/api/admin/metrics/summary", endpoint=_api_admin_metrics_summary, methods=["GET"]),
+        Route("/api/annotations", endpoint=_api_annotations_list, methods=["GET"]),
+        Route("/api/annotations", endpoint=_api_annotations_create, methods=["POST"]),
+        Route("/api/annotations/{id:int}", endpoint=_api_annotations_update, methods=["PUT"]),
+        Route("/api/annotations/{id:int}", endpoint=_api_annotations_delete, methods=["DELETE"]),
+        Route("/api/config/basemaps", endpoint=_api_config_basemaps, methods=["GET"]),
+        Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
     ]
 
 

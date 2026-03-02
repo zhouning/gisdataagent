@@ -1,69 +1,162 @@
 # Data Agent 开发者指南
 
 ## 1. 架构概览
-本项目采用 **Chainlit + Google ADK** 双层架构：
-*   **前端/交互层**: Chainlit (`data_agent/app.py`)。负责 UI 渲染、事件拦截、多媒体展示。
-*   **核心逻辑层**: Google ADK (`data_agent/agent.py`)。负责智能体编排 (`SequentialAgent`)、工具调用、LLM 推理。
-*   **工具层**: Python Scripts (`FFI.py`, `drl_engine.py`)。负责具体的 GIS 计算和 DRL 模型推理。
+
+本项目采用 **Chainlit + Google ADK + React** 三层架构：
+*   **前端层**: React 18 三面板 SPA (`frontend/src/`)，通过 `@chainlit/react-client` 连接后端。
+*   **交互层**: Chainlit (`data_agent/app.py`)。负责 WebSocket 通信、事件拦截、认证。
+*   **核心逻辑层**: Google ADK (`data_agent/agent.py`)。负责智能体编排、工具调用、LLM 推理。
+*   **REST API 层**: Starlette (`data_agent/frontend_api.py`)。17 个端点服务前端数据请求。
+*   **工具层**: 16 个 BaseToolset 模块 (`data_agent/toolsets/`)，包括 SkillBundle 分组。
 
 ## 2. 目录结构
 ```text
 data_agent/
-├── agent.py            # ADK Agent 定义与工具封装 (Core)
-├── app.py              # Chainlit 入口 (UI)
-├── prompts.yaml        # 智能体 Prompt 集合
-├── gis_processors.py   # [New] GIS 核心算法 (网格, 矢量化, 拓扑)
-├── doc_auditor.py      # [New] PDF 文档指标提取与核对
-├── geocoding.py        # [New] Excel 地址转坐标 (OpenStreetMap)
-├── report_generator.py # [Upgrade] 报告生成器 (支持表格渲染)
-├── FFI.py              # 破碎化指数计算引擎
-├── drl_engine.py       # 深度强化学习环境
-├── test_*.py           # 单元测试与集成测试
-└── eval_set.json       # 智能体评估数据集
+├── app.py                    # Chainlit 入口, 语义路由, 认证, RBAC
+├── agent.py                  # ADK Agent 定义与管道编排
+├── frontend_api.py           # 17 个 REST API 端点
+├── auth.py                   # 密码认证, 注册, 账户删除, OAuth
+├── toolsets/                 # 16 个 BaseToolset 模块
+│   ├── skill_bundles.py      #   5 个命名工具包 (SkillBundle)
+│   ├── visualization_tools.py #  9 工具 (含 NL 图层控制)
+│   ├── semantic_layer_tools.py # 9 工具 (语义层浏览)
+│   ├── datalake_tools.py     #   8 工具 (数据湖目录)
+│   ├── streaming_tools.py    #   5 工具 (实时流)
+│   ├── team_tools.py         #   8 工具 (团队协作)
+│   └── ...                   #   exploration, geo_processing, analysis, etc.
+├── prompts/                  # 3 个 YAML Prompt 文件
+│   ├── optimization.yaml     #   优化管道
+│   ├── planner.yaml          #   动态规划器
+│   └── general.yaml          #   通用管道
+├── migrations/               # 16 个 SQL 迁移脚本 (001-016)
+├── map_annotations.py        # 协作地图标注 CRUD
+├── health.py                 # K8s 健康检查 API
+├── observability.py          # 结构化日志 + Prometheus 指标
+├── semantic_layer.py         # 语义目录 + 3 级层次 + TTL 缓存
+├── data_catalog.py           # 数据湖目录 + 血缘追踪
+├── token_tracker.py          # Token 用量追踪 + 管道分布
+├── gis_processors.py         # GIS 操作 (网格, 缓冲, 叠加, 裁剪...)
+├── drl_engine.py             # DRL 优化环境 (Gymnasium)
+├── test_*.py                 # 48 个测试文件 (923+ 测试)
+├── run_evaluation.py         # 智能体评估 (含 JSON 摘要输出)
+└── eval_set.json             # 评估数据集 (3 个测试用例)
+
+frontend/
+├── src/
+│   ├── App.tsx               # 主应用: 认证, 三面板, 用户菜单
+│   ├── components/
+│   │   ├── ChatPanel.tsx     # 聊天面板 + NL 图层控制中继
+│   │   ├── MapPanel.tsx      # Leaflet 地图 + 标注 + 底图切换
+│   │   ├── DataPanel.tsx     # 5 标签: 文件/CSV/目录/历史/用量
+│   │   ├── LoginPage.tsx     # 登录 + 注册切换
+│   │   ├── AdminDashboard.tsx # 管理后台
+│   │   └── UserSettings.tsx  # 账户设置 + 自助删除
+│   └── styles/layout.css     # 全部样式 (~1900 行)
+└── package.json
+
+.github/workflows/ci.yml     # CI: 测试 + 前端构建 + 评估
+k8s/                          # 11 个 K8s 清单文件
 ```
 
 ## 3. 开发指引
 
-### 3.1 核心模块架构
+### 3.1 核心架构模式
 
-#### GIS 处理层 (`gis_processors.py`)
-为了摆脱对 ArcPy 的依赖，我们使用开源栈重写了核心 GIS 工具：
-*   **Geopandas**: 负责矢量操作（Clip, Intersection）。
-*   **Rasterio**: 负责栅格操作（Slope Calculation, Vectorization）。
-*   **Shapely**: 负责拓扑检查（Overlaps, Validity）。
+#### 数据库连接 (`db_engine.py`)
+- **单例模式**: `get_engine()` 返回全局唯一的 SQLAlchemy engine
+- **所有模块**通过 `from .db_engine import get_engine` 获取连接
+- **测试时**: `@patch("data_agent.module.get_engine", return_value=None)` 禁用数据库
 
-#### 地址解析层 (`geocoding.py`)
-*   **输入**: Excel/CSV。
-*   **引擎**: 默认使用 `Nominatim` (OSM)，每秒限流 1 次。
-*   **输出**: 带有 Geometry 的 Shapefile。
+#### 语义路由 (`app.py`)
+用户消息 → `classify_intent()` (Gemini 2.0 Flash) → 管道分发:
+- `optimization` → 优化管道
+- `governance` → 治理管道
+- `general` → 通用管道
 
-#### 报告生成层 (`report_generator.py`)
-*   **Markdown 解析**: 手写了一个简单的 Markdown 解析器，专门识别 `|---|` 表格语法。
-*   **Docx 渲染**: 使用 `python-docx` 绘制原生表格，支持设置边框、底色和加粗字体，确保报告符合政务公文规范。
+#### NL 图层控制流
+1. `control_map_layer()` 工具返回 `{layer_control: {...}}`
+2. `app.py` 检测 `layer_control` → 注入 `cl.Message` metadata
+3. `ChatPanel` → `onLayerControl` → `App.tsx` state → `MapPanel` useEffect
 
-### 3.2 DRL 模型集成 (v7)
-系统目前集成的是 **v7 Maskable PPO** 模型，具有以下关键特性：
-*   **Permutation Invariant (置换不变性)**: 使用 `ParcelScoringPolicy` 架构。该网络对每个地块独立打分 (Scorer Net) 并结合全局特征 (Value Net)，从而支持**变长输入**（任意数量的地块）。
-*   **权重加载机制**: 为了解决跨环境推理时的优化器状态不匹配问题，推理时不直接加载 `.zip` 模型，而是手动初始化 `MaskablePPO` 实例并加载 `scorer_weights_v7.pt` 权重文件。
-*   **环境逻辑**: `drl_engine.py` 实现了 v7 环境，包含**成对置换奖励 (Pair Bonus)** 和 **低数量惩罚**，引导模型在保持总量的同时优化坡度。
+#### 地图数据流
+1. 可视化工具输出 GeoJSON + `.mapconfig.json`
+2. `app.py` 检测 `.mapconfig.json` → 添加 `metadata.map_update`
+3. `ChatPanel` → `onMapUpdate` → `App.tsx` state → `MapPanel` 渲染图层
 
-### 3.2 添加新工具
-1.  在 `agent.py` 中编写 Python 函数（如 `def new_tool(file_path: str): ...`）。
-2.  在对应的 Agent 定义中注册该工具（如 `tools=[new_tool]`）。
-3.  在 `prompts.yaml` 中更新 Agent 指令，告诉它何时使用该工具。
-4.  编写单元测试 `test_new_tool.py` 进行验证。
+#### 前端 API 路由模式
+```python
+# 必须在 Chainlit catch-all 之前插入路由
+Route("/api/path", endpoint=handler, methods=["GET"])
+# mount_frontend_api() 自动处理插入顺序
+```
 
-### 3.3 UI 定制
-*   修改 `.chainlit/config.toml` 可调整主题、名称、快捷按钮。
-*   修改 `app.py` 中的 `extract_file_paths` 可增加新的文件类型预览支持。
+### 3.2 工具包系统 (Skill Bundles)
+`toolsets/skill_bundles.py` 定义 5 个命名分组:
+- `SPATIAL_ANALYSIS` — 空间分析 (6 toolsets)
+- `DATA_QUALITY` — 数据质量 (5 toolsets)
+- `VISUALIZATION` — 可视化 (1 toolset, 9 tools)
+- `DATABASE` — 数据库 (2 toolsets)
+- `COLLABORATION` — 协作 (4 toolsets)
 
-### 3.3 运行测试
-*   **单元测试**: `python data_agent/test_visualization_agent.py`
-*   **端到端测试**: `python -m data_agent.test_end_to_end`
-*   **智能体评估**: `python -m data_agent.run_evaluation`
+使用 `build_toolsets_for_intent(intent)` 按意图动态组装工具集。
 
-## 4. 依赖管理
-项目依赖记录在 `requirements.txt` (根目录)。新增库后请务必更新：
+### 3.3 添加新工具
+1. 在 `toolsets/` 对应模块中编写工具函数
+2. 添加到对应 Toolset 的 `_ALL_FUNCS` 列表
+3. 在 `prompts/` YAML 中更新 Agent 指令
+4. 如需要，在 `skill_bundles.py` 中更新 filter presets
+5. 编写单元测试并验证 `test_toolsets.py` 中的工具计数
+
+### 3.4 添加新 API 端点
+1. 在 `frontend_api.py` 中编写 async handler 函数
+2. 使用 `_get_user_from_request()` 进行认证
+3. 使用 `_set_user_context()` 设置 ContextVar
+4. 在 `get_frontend_api_routes()` 中添加 `Route()`
+5. 更新 `test_frontend_api.py` 中的路由计数测试
+
+### 3.5 添加新前端组件
+1. 在 `frontend/src/components/` 中创建 `.tsx` 文件
+2. 在 `App.tsx` 中导入并添加状态/回调
+3. 在 `layout.css` 中添加样式 (遵循 `--primary`, `--radius-*`, `--shadow-*` 设计令牌)
+4. 运行 `cd frontend && npm run build` 验证
+
+### 3.6 DRL 模型集成 (v7)
+- **Permutation Invariant**: `ParcelScoringPolicy` 架构，对每个地块独立打分
+- **权重加载**: 推理时加载 `scorer_weights_v7.pt`
+- **环境逻辑**: `drl_engine.py` 实现成对置换奖励 + 低数量惩罚
+
+## 4. 测试
+
+### 运行测试
+```bash
+# 全部测试 (923+)
+.venv/Scripts/python.exe -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
+
+# 单个模块
+.venv/Scripts/python.exe -m pytest data_agent/test_frontend_api.py -v
+
+# 前端构建检查
+cd frontend && npm run build
+```
+
+### Mock 模式
+- 数据库: `@patch("data_agent.module.get_engine", return_value=None)` — 始终在**导入位置**mock
+- 认证: `@patch("data_agent.frontend_api._get_user_from_request")`
+- 环境变量: `@patch.dict("os.environ", {"KEY": "value"})`
+
+### CI 管道
+`.github/workflows/ci.yml`:
+- **test**: Ubuntu + PostGIS 服务容器, pytest + JUnit XML
+- **frontend**: Node.js 20, `npm ci && npm run build`
+- **evaluate**: ADK 评估 (仅 main 分支, 需要 `GOOGLE_API_KEY` secret)
+
+## 5. 依赖管理
+项目依赖记录在 `requirements.txt` (根目录, 329 包)。新增库后请更新:
 ```bash
 pip freeze > requirements.txt
+```
+
+前端依赖:
+```bash
+cd frontend && npm install <package>
 ```

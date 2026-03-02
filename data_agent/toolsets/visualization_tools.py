@@ -923,6 +923,58 @@ def _render_bubble_layer(gdf, fg, spec, color, opacity, layer_name):
 
 
 # ---------------------------------------------------------------------------
+# Natural Language Layer Control
+# ---------------------------------------------------------------------------
+
+def control_map_layer(action: str, layer_name: str = "", color: str = "",
+                      opacity: float = -1, visible: bool = True) -> dict:
+    """通过自然语言控制前端地图图层的显示、隐藏、样式修改和移除。
+
+    Args:
+        action: 操作类型 — show（显示）、hide（隐藏）、style（修改样式）、remove（移除）、list（列出所有图层）。
+        layer_name: 目标图层名称。list 操作时可为空。
+        color: 新的颜色（仅 style 操作），如 '#e63946'。
+        opacity: 新的不透明度 0~1（仅 style 操作），-1 表示不修改。
+        visible: 图层是否可见（show/hide 的快捷参数）。
+
+    Returns:
+        包含 layer_control 指令和 message 的字典，前端将自动执行对应操作。
+    """
+    valid_actions = ("show", "hide", "style", "remove", "list")
+    if action not in valid_actions:
+        return {"status": "error", "message": f"无效操作: {action}，支持: {', '.join(valid_actions)}"}
+
+    if action != "list" and not layer_name:
+        return {"status": "error", "message": "请指定图层名称（layer_name）"}
+
+    control = {"action": action, "layer_name": layer_name}
+
+    if action == "style":
+        style_updates: dict = {}
+        if color:
+            style_updates["fillColor"] = color
+            style_updates["color"] = color
+        if 0 <= opacity <= 1:
+            style_updates["fillOpacity"] = opacity
+            style_updates["opacity"] = opacity
+        control["style"] = style_updates
+
+    action_labels = {
+        "show": f"已显示图层「{layer_name}」",
+        "hide": f"已隐藏图层「{layer_name}」",
+        "style": f"已更新图层「{layer_name}」的样式",
+        "remove": f"已移除图层「{layer_name}」",
+        "list": "请查看地图面板中的图层控制按钮了解当前图层列表",
+    }
+
+    return {
+        "status": "success",
+        "layer_control": control,
+        "message": action_labels[action],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
 
@@ -935,6 +987,7 @@ _ALL_FUNCS = [
     export_map_png,
     generate_heatmap,
     compose_map,
+    control_map_layer,
 ]
 
 

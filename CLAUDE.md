@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GIS Data Agent (ADK Edition) v4.0-beta — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The UI is served via **Chainlit** with password/OAuth2 authentication.
+GIS Data Agent (ADK Edition) v4.0 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication.
 
 ## Commands
 
@@ -12,26 +12,34 @@ GIS Data Agent (ADK Edition) v4.0-beta — an AI-powered geospatial analysis pla
 ```bash
 chainlit run data_agent/app.py -w
 ```
-Default login: `admin` / `admin123` (seeded on first run).
+Default login: `admin` / `admin123` (seeded on first run). In-app self-registration on login page.
 
-### Run tests (unittest-based)
+### Run tests
 ```bash
-# Single test file
-python -m pytest data_agent/test_database.py
+# All tests (923+ tests)
+.venv/Scripts/python.exe -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
-# All tests
-python -m pytest data_agent/test_*.py
+# Single test file
+.venv/Scripts/python.exe -m pytest data_agent/test_frontend_api.py -v
+```
+
+### Build frontend
+```bash
+cd frontend && npm run build
 ```
 
 ### Environment
 - Python virtual environment: `D:\adk\.venv\Scripts\python.exe` (Python 3.13.7)
 - Environment variables in `data_agent/.env` (PostgreSQL/PostGIS credentials, Vertex AI config, `CHAINLIT_AUTH_SECRET`)
-- No requirements.txt — dependencies managed directly in venv via pip
+- Dependencies: `requirements.txt` (329 packages)
+- Node.js for frontend: `cd frontend && npm install`
 
 ## Architecture
 
 ### Authentication & Multi-tenancy
 - **Auth flow**: Chainlit login → `@cl.password_auth_callback` / `@cl.oauth_callback` → `cl.User` with role metadata
+- **Self-registration**: In-app on LoginPage.tsx (mode toggle login/register) → `POST /auth/register` → `register_user()` in auth.py
+- **Account deletion**: `DELETE /api/user/account` → `delete_user_account()` with cascade cleanup (token_usage, memories, share_links, team_members, audit_log, annotations)
 - **User identity propagation**: `contextvars.ContextVar` in `user_context.py` — set once per message in `app.py`, read implicitly by all tool functions via `get_user_upload_dir()`
 - **File sandbox**: `uploads/{user_id}/` per user. `_generate_output_path()` and `_resolve_path()` in `gis_processors.py` are user-scoped
 - **RBAC**: admin (full access), analyst (analysis pipelines), viewer (General pipeline query-only)
@@ -45,6 +53,7 @@ Entry point. On each user message:
 3. Calls `classify_intent()` which uses **Gemini 2.0 Flash** to classify user text into one of three intents
 4. RBAC check (viewers blocked from Governance/Optimization)
 5. Dispatches to the appropriate pipeline
+6. Detects `layer_control` in tool responses → injects metadata for NL map control
 
 ### Three Pipelines (all defined in `agent.py`)
 
@@ -57,28 +66,61 @@ Entry point. On each user message:
 **General Pipeline** (`general_pipeline`) — `SequentialAgent`:
 `GeneralProcessing → GeneralViz → GeneralSummary`
 
-Each agent is an ADK `LlmAgent` with specific tools. Agent prompts live in `data_agent/prompts.yaml`. Agents share state via `output_key` (e.g., `data_profile`, `processed_data`, `analysis_report`).
+Each agent is an ADK `LlmAgent` with specific tools. Agent prompts live in `data_agent/prompts/` (3 YAML files). Agents share state via `output_key` (e.g., `data_profile`, `processed_data`, `analysis_report`).
 
 Note: ADK requires separate agent instances per pipeline (cannot share an agent across two parent agents due to "already has a parent" constraint).
+
+### Frontend Architecture
+Custom React SPA replacing Chainlit's default UI. Three-panel layout: Chat (320px) | Map (flex-1) | Data (360px).
+
+- **ChatPanel**: Messages, streaming, action cards, NL layer control relay
+- **MapPanel**: Leaflet.js map with GeoJSON layers, layer control, annotations, basemap switcher (Gaode/Tianditu/CartoDB/OSM), legend
+- **DataPanel**: 5 tabs — files, CSV preview, data catalog, pipeline history, token usage dashboard
+- **LoginPage**: Login + in-app registration mode toggle
+- **AdminDashboard**: Metrics, user management, audit log (admin only)
+- **UserSettings**: Account info + self-deletion modal (danger zone)
+- **App.tsx**: Auth state, map/data state, layer control, user menu dropdown
+
+### Frontend API (17 REST endpoints in `frontend_api.py`)
+All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via `mount_frontend_api()`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/catalog`, `/api/catalog/{id}`, `/api/catalog/{id}/lineage` | Data lake catalog + lineage |
+| GET | `/api/semantic/domains`, `/api/semantic/hierarchy/{domain}` | Semantic layer browsing |
+| GET | `/api/pipeline/history` | Pipeline run history |
+| GET | `/api/user/token-usage` | Token usage + pipeline breakdown |
+| DELETE | `/api/user/account` | Self-delete account |
+| GET/POST | `/api/annotations`, PUT/DELETE `/api/annotations/{id}` | Map annotations CRUD |
+| GET | `/api/config/basemaps` | Basemap configuration |
+| GET/PUT/DELETE | `/api/admin/users`, `/api/admin/users/{username}/role`, `/api/admin/metrics/summary` | Admin endpoints |
 
 ### Key Modules
 
 | Module | Purpose |
 |---|---|
-| `agent.py` | All agent definitions, tool functions (visualization, FFI, DRL, choropleth), pipeline assembly |
-| `app.py` | Chainlit UI, auth integration, semantic router, file upload handling, RBAC, report export |
+| `agent.py` | Agent definitions, pipeline assembly, tool functions |
+| `app.py` | Chainlit UI, auth, semantic router, RBAC, file uploads, layer control |
+| `frontend_api.py` | 17 REST API endpoints for React frontend |
+| `auth.py` | Password hashing, registration, account deletion, Chainlit auth callbacks |
 | `user_context.py` | `ContextVar` for user_id/session_id/role propagation; `get_user_upload_dir()` |
-| `auth.py` | Password hashing, `app_users` table management, Chainlit auth callbacks |
-| `gis_processors.py` | GIS operations: tessellation, raster-to-polygon, clip, overlay, clustering, buffer, zonal stats, heatmap, distance query |
-| `database_tools.py` | PostgreSQL/PostGIS integration via SQLAlchemy; spatial queries return SHP, non-spatial return CSV; injects user context |
-| `drl_engine.py` | Gymnasium environment (`LandUseOptEnv`) for land-use layout optimization |
-| `FFI.py` | Farmland Fragmentation Index — 6 landscape metrics (NP, LPI, PD, LSI, AWMSI, AI) |
-| `doc_auditor.py` | PDF-to-shapefile consistency checking for governance |
-| `geocoding.py` | Batch address-to-coordinates (Amap primary, Nominatim fallback) |
+| `db_engine.py` | Singleton SQLAlchemy engine with connection pooling |
+| `health.py` | K8s health check API + startup diagnostics |
+| `observability.py` | Structured logging (JSON) + Prometheus metrics |
+| `semantic_layer.py` | Semantic catalog + 3-level hierarchy + 5-min TTL cache |
+| `data_catalog.py` | Unified data lake catalog + lineage tracking |
+| `map_annotations.py` | Collaborative map annotation CRUD |
+| `token_tracker.py` | Per-user LLM usage tracking + pipeline breakdown |
+| `audit_logger.py` | Enterprise audit trail |
+| `gis_processors.py` | GIS operations: tessellation, buffer, clip, overlay, clustering, zonal stats |
+| `database_tools.py` | PostgreSQL/PostGIS integration via SQLAlchemy; RLS; user context |
+| `drl_engine.py` | Gymnasium environment (`LandUseOptEnv`) for land-use optimization |
+| `memory.py` | Persistent per-user spatial memory |
 | `report_generator.py` | Markdown → Word (.docx) report generation |
-| `parcel_scoring_policy.py` | Custom MaskablePPO policy network for the DRL model |
-| `prompts.yaml` | All LLM instruction prompts (Chinese, with LaTeX/table formatting rules) |
-| `migrations/` | SQL migration scripts (001_create_users.sql) |
+| `toolsets/skill_bundles.py` | 5 named toolset groupings for agent configuration |
+
+### Toolsets (16 modules in `toolsets/`)
+Exploration, GeoProcessing, Visualization (9 tools incl. `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles.
 
 ### Data Loading (`_load_spatial_data` in `agent.py`)
 Supported formats: CSV, Excel (.xlsx/.xls), Shapefile, GeoJSON, GPKG, KML, KMZ. CSV/Excel auto-detect coordinate columns (lng/lat, lon/lat, longitude/latitude, x/y).
@@ -92,11 +134,18 @@ The DRL model uses `MaskablePPO` (from `sb3_contrib`) with a custom `ParcelScori
 - Path resolution: `_resolve_path()` checks user sandbox → shared uploads → raw path
 - Path generation: `_generate_output_path(prefix, ext)` outputs to user sandbox
 
+### CI Pipeline (`.github/workflows/ci.yml`)
+- **test**: Ubuntu + PostGIS service, pytest with JUnit XML
+- **frontend**: Node.js 20, npm build
+- **evaluate**: ADK agent evaluation (main push only, requires GOOGLE_API_KEY secret)
+
 ## Tech Stack
-- **Framework**: Google ADK (`google.adk.agents`, `google.adk.runners`)
-- **LLM**: Gemini 2.5 Flash (agents), Gemini 2.0 Flash (router)
-- **UI**: Chainlit (with password + OAuth2 auth)
+- **Framework**: Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`)
+- **LLM**: Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router)
+- **Frontend**: React 18 + TypeScript + Vite + Leaflet.js + @chainlit/react-client v0.3.1
+- **Backend**: Chainlit + Starlette (17 REST API endpoints)
 - **Database**: PostgreSQL 16 + PostGIS 3.4
 - **GIS**: GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify, branca
 - **ML**: PyTorch, Stable Baselines 3, Gymnasium
+- **CI**: GitHub Actions (pytest + frontend build + evaluation)
 - **Language**: Prompts and UI text are primarily in Chinese; code comments mix Chinese and English
