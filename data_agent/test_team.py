@@ -5,44 +5,31 @@ import asyncio
 
 
 # ---------------------------------------------------------------------------
-# F3: ParallelAgent structural tests
+# F3: Pipeline structural tests (post ADK Optimization 2.1 — no ParallelAgent)
 # ---------------------------------------------------------------------------
 
-class TestParallelIngestion(unittest.TestCase):
-    """Verify ParallelAgent integration in the optimization pipeline."""
-
-    def test_parallel_ingestion_flag_default(self):
-        from data_agent.agent import PARALLEL_INGESTION
-        self.assertTrue(PARALLEL_INGESTION)
+class TestPipelineStructure(unittest.TestCase):
+    """Verify optimization pipeline structure after ADK architecture optimization."""
 
     def test_data_pipeline_is_sequential(self):
         from google.adk.agents import SequentialAgent
         from data_agent.agent import data_pipeline
         self.assertIsInstance(data_pipeline, SequentialAgent)
 
-    def test_parallel_ingestion_stage_exists(self):
-        from data_agent.agent import PARALLEL_INGESTION
-        if not PARALLEL_INGESTION:
-            self.skipTest("PARALLEL_INGESTION is disabled")
-        from data_agent.agent import data_ingestion_stage
-        from google.adk.agents import ParallelAgent
-        self.assertIsInstance(data_ingestion_stage, ParallelAgent)
-
-    def test_parallel_ingestion_has_two_sub_agents(self):
-        from data_agent.agent import PARALLEL_INGESTION
-        if not PARALLEL_INGESTION:
-            self.skipTest("PARALLEL_INGESTION is disabled")
-        from data_agent.agent import data_ingestion_stage
-        self.assertEqual(len(data_ingestion_stage.sub_agents), 2)
-        names = [a.name for a in data_ingestion_stage.sub_agents]
-        self.assertIn("vertex_search_agent", names)
-        self.assertIn("DataEngineering", names)
-
     def test_pipeline_has_four_stages(self):
-        from data_agent.agent import PARALLEL_INGESTION, data_pipeline
-        if not PARALLEL_INGESTION:
-            self.skipTest("PARALLEL_INGESTION is disabled")
+        from data_agent.agent import data_pipeline
         self.assertEqual(len(data_pipeline.sub_agents), 4)
+
+    def test_knowledge_tool_replaces_parallel(self):
+        """knowledge_agent is now an AgentTool, not a parallel peer."""
+        from google.adk.tools import AgentTool
+        from data_agent.agent import knowledge_tool
+        self.assertIsInstance(knowledge_tool, AgentTool)
+
+    def test_no_parallel_agent_in_pipeline(self):
+        from data_agent.agent import data_pipeline
+        for sub in data_pipeline.sub_agents:
+            self.assertNotEqual(type(sub).__name__, "ParallelAgent")
 
 
 # ---------------------------------------------------------------------------

@@ -7,8 +7,8 @@ Agents use BaseToolset instances for tool registration (see data_agent/toolsets/
 from datetime import date
 
 from google.adk.agents.llm_agent import Agent
-from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
-from google.adk.tools import VertexAiSearchTool
+from google.adk.agents import LlmAgent, SequentialAgent, LoopAgent
+from google.adk.tools import VertexAiSearchTool, AgentTool
 
 import os
 
@@ -24,6 +24,7 @@ from .utils import (
     _quality_gate_check,
     _self_correction_after_tool,
     _tool_retry_counts,
+    approve_quality,
 )
 
 # --- Toolset classes (BaseToolset instances for agent tools=[]) ---
@@ -92,9 +93,6 @@ MODEL_FAST = "gemini-2.0-flash"
 MODEL_STANDARD = "gemini-2.5-flash"
 MODEL_PREMIUM = "gemini-2.5-pro"
 
-# --- Feature Flags ---
-PARALLEL_INGESTION = os.environ.get("PARALLEL_INGESTION", "true").lower() in ("true", "1", "yes")
-
 # --- Vertex AI Search Datastore ---
 DATASTORE_ID = os.environ.get(
     "DATASTORE_ID",
@@ -113,6 +111,11 @@ knowledge_agent = Agent(
     output_key="domain_knowledge",
     tools=[VertexAiSearchTool(data_store_id=DATASTORE_ID)],
 )
+
+# Wrap knowledge_agent as an on-demand tool (ADK Optimization 2.1).
+# Processing agent can call it when domain knowledge is needed,
+# instead of running it blindly in parallel.
+knowledge_tool = AgentTool(agent=knowledge_agent, skip_summarization=False)
 
 data_exploration_agent = LlmAgent(
     name="DataExploration",
@@ -145,6 +148,7 @@ data_processing_agent = LlmAgent(
         ]),
         LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
         RemoteSensingToolset(tool_filter=["download_lulc", "download_dem"]),
+        knowledge_tool,  # on-demand domain knowledge (2.1)
     ] + _arcpy_tools,
 )
 
@@ -160,6 +164,24 @@ data_analysis_agent = LlmAgent(
     model=MODEL_STANDARD,
     output_key="analysis_report",
     tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset()],
+)
+
+# --- Quality Checker + LoopAgent (ADK Optimization 2.2) ---
+# Generator-Critic pattern: analysis runs, quality checker evaluates,
+# loop repeats if checker finds business-level issues (max 3 iterations).
+quality_checker_agent = LlmAgent(
+    name="QualityChecker",
+    instruction=get_prompt("optimization", "quality_checker_instruction"),
+    description="分析结果质量审查员。验证FFI/DRL/遥感指标合理性。",
+    model=MODEL_FAST,
+    output_key="quality_verdict",
+    tools=[approve_quality],
+)
+
+analysis_quality_loop = LoopAgent(
+    name="AnalysisQualityLoop",
+    sub_agents=[data_analysis_agent, quality_checker_agent],
+    max_iterations=3,
 )
 
 data_visualization_agent = LlmAgent(
@@ -186,31 +208,17 @@ data_summary_agent = LlmAgent(
     output_key="final_summary",
 )
 
-if PARALLEL_INGESTION:
-    data_ingestion_stage = ParallelAgent(
-        name="DataIngestion",
-        sub_agents=[knowledge_agent, data_engineering_agent],
-    )
-    data_pipeline = SequentialAgent(
-        name="DataPipeline",
-        sub_agents=[
-            data_ingestion_stage,
-            data_analysis_agent,
-            data_visualization_agent,
-            data_summary_agent,
-        ],
-    )
-else:
-    data_pipeline = SequentialAgent(
-        name="DataPipeline",
-        sub_agents=[
-            knowledge_agent,
-            data_engineering_agent,
-            data_analysis_agent,
-            data_visualization_agent,
-            data_summary_agent,
-        ],
-    )
+# Simplified pipeline: no ParallelAgent, knowledge is on-demand via tool,
+# analysis wrapped in quality loop.
+data_pipeline = SequentialAgent(
+    name="DataPipeline",
+    sub_agents=[
+        data_engineering_agent,
+        analysis_quality_loop,
+        data_visualization_agent,
+        data_summary_agent,
+    ],
+)
 
 # ============================================================================
 # Governance Pipeline
@@ -315,66 +323,100 @@ general_pipeline = SequentialAgent(
 # Dynamic Planner
 # ============================================================================
 
-planner_explorer = LlmAgent(
-    name="PlannerExplorer",
-    instruction=get_prompt("planner", "planner_explorer_instruction"),
-    description="数据探查与质量审计专家。数据画像、拓扑检查、字段标准、数据库查询、表结构分析。",
-    model=MODEL_FAST,
-    output_key="data_profile",
-    disallow_transfer_to_peers=True,
-    after_tool_callback=_self_correction_after_tool,
-    tools=[
-        ExplorationToolset(tool_filter=_AUDIT_TOOLS),
-        DatabaseToolset(tool_filter=_DB_READ_DESCRIBE),
-        FileToolset(),
-        SemanticLayerToolset(tool_filter=[
-            "resolve_semantic_context", "describe_table_semantic",
-            "list_semantic_sources", "discover_column_equivalences",
-            "export_semantic_model",
-        ]),
-        DataLakeToolset(tool_filter=_DATALAKE_READ),
-    ] + _arcpy_gov_explore_tools,
-)
+# --- Planner agent factory functions (ADK Optimization 2.3) ---
+# ADK enforces a one-parent constraint: an agent instance cannot be shared
+# across multiple parent agents.  Factory functions let us create independent
+# copies with identical configuration for use in sub-workflows.
 
-planner_processor = LlmAgent(
-    name="PlannerProcessor",
-    instruction=get_prompt("planner", "planner_processor_instruction"),
-    description="数据修复与空间处理专家。坐标转换、地理编码、裁剪、缓冲区、聚类、POI、行政区划。",
-    model=MODEL_STANDARD,
-    output_key="processed_data",
-    disallow_transfer_to_peers=True,
-    after_tool_callback=_self_correction_after_tool,
-    tools=[
-        ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
-        GeoProcessingToolset(),
-        LocationToolset(),
-        RemoteSensingToolset(tool_filter=["describe_raster", "download_lulc", "download_dem"]),
-        StreamingToolset(),
-        DataLakeToolset(tool_filter=_DATALAKE_READ),
-        DatabaseToolset(tool_filter=["import_to_postgis"]),
-    ] + _arcpy_tools,
-)
+_SEMANTIC_READONLY = [
+    "resolve_semantic_context", "describe_table_semantic",
+    "list_semantic_sources", "discover_column_equivalences",
+    "export_semantic_model",
+]
 
-planner_analyzer = LlmAgent(
-    name="PlannerAnalyzer",
-    instruction=get_prompt("planner", "planner_analyzer_instruction"),
-    description="FFI破碎化指数、DRL深度强化学习布局优化、遥感分析、空间统计专家。",
-    model=MODEL_STANDARD,
-    output_key="analysis_report",
-    disallow_transfer_to_peers=True,
-    after_tool_callback=_self_correction_after_tool,
-    tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset()],
-)
 
-planner_visualizer = LlmAgent(
-    name="PlannerVisualizer",
-    instruction=get_prompt("planner", "planner_visualizer_instruction"),
-    description="地理空间可视化专家。交互地图、Choropleth、热力图、气泡图、PNG导出。",
-    model=MODEL_FAST,
-    output_key="visualizations",
-    disallow_transfer_to_peers=True,
-    tools=[VisualizationToolset()],
-)
+def _make_planner_explorer(name: str, **overrides) -> LlmAgent:
+    """Factory for PlannerExplorer-like agents."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("planner", "planner_explorer_instruction"),
+        description="数据探查与质量审计专家。数据画像、拓扑检查、字段标准、数据库查询、表结构分析。",
+        model=MODEL_FAST,
+        output_key="data_profile",
+        disallow_transfer_to_peers=True,
+        after_tool_callback=_self_correction_after_tool,
+        tools=[
+            ExplorationToolset(tool_filter=_AUDIT_TOOLS),
+            DatabaseToolset(tool_filter=_DB_READ_DESCRIBE),
+            FileToolset(),
+            SemanticLayerToolset(tool_filter=_SEMANTIC_READONLY),
+            DataLakeToolset(tool_filter=_DATALAKE_READ),
+        ] + _arcpy_gov_explore_tools,
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+def _make_planner_processor(name: str, **overrides) -> LlmAgent:
+    """Factory for PlannerProcessor-like agents."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("planner", "planner_processor_instruction"),
+        description="数据修复与空间处理专家。坐标转换、地理编码、裁剪、缓冲区、聚类、POI、行政区划。",
+        model=MODEL_STANDARD,
+        output_key="processed_data",
+        disallow_transfer_to_peers=True,
+        after_tool_callback=_self_correction_after_tool,
+        tools=[
+            ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
+            GeoProcessingToolset(),
+            LocationToolset(),
+            RemoteSensingToolset(tool_filter=["describe_raster", "download_lulc", "download_dem"]),
+            StreamingToolset(),
+            DataLakeToolset(tool_filter=_DATALAKE_READ),
+            DatabaseToolset(tool_filter=["import_to_postgis"]),
+        ] + _arcpy_tools,
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+def _make_planner_analyzer(name: str, **overrides) -> LlmAgent:
+    """Factory for PlannerAnalyzer-like agents."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("planner", "planner_analyzer_instruction"),
+        description="FFI破碎化指数、DRL深度强化学习布局优化、遥感分析、空间统计专家。",
+        model=MODEL_STANDARD,
+        output_key="analysis_report",
+        disallow_transfer_to_peers=True,
+        after_tool_callback=_self_correction_after_tool,
+        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset()],
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+def _make_planner_visualizer(name: str, **overrides) -> LlmAgent:
+    """Factory for PlannerVisualizer-like agents."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("planner", "planner_visualizer_instruction"),
+        description="地理空间可视化专家。交互地图、Choropleth、热力图、气泡图、PNG导出。",
+        model=MODEL_FAST,
+        output_key="visualizations",
+        disallow_transfer_to_peers=True,
+        tools=[VisualizationToolset()],
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+# --- Standalone planner sub-agents (via factories) ---
+planner_explorer = _make_planner_explorer("PlannerExplorer")
+planner_processor = _make_planner_processor("PlannerProcessor")
+planner_analyzer = _make_planner_analyzer("PlannerAnalyzer")
+planner_visualizer = _make_planner_visualizer("PlannerVisualizer")
 
 planner_reporter = LlmAgent(
     name="PlannerReporter",
@@ -383,6 +425,28 @@ planner_reporter = LlmAgent(
     model=MODEL_PREMIUM,
     output_key="final_report",
     disallow_transfer_to_peers=True,
+)
+
+# --- Sub-workflows (ADK Optimization 2.3) ---
+# Common sequential patterns packaged as SequentialAgent to eliminate
+# unnecessary Planner routing hops (8 hops → 3 for optimization flow).
+
+explore_process_workflow = SequentialAgent(
+    name="ExploreAndProcess",
+    description="数据探查→数据处理 一体化工作流。先审计数据质量再自动执行空间处理，无需中间路由。",
+    sub_agents=[
+        _make_planner_explorer("WFExplorer"),
+        _make_planner_processor("WFProcessor"),
+    ],
+)
+
+analyze_viz_workflow = SequentialAgent(
+    name="AnalyzeAndVisualize",
+    description="分析→可视化 一体化工作流。执行FFI/DRL/统计分析后自动生成可视化。",
+    sub_agents=[
+        _make_planner_analyzer("WFAnalyzer"),
+        _make_planner_visualizer("WFVisualizer"),
+    ],
 )
 
 planner_agent = LlmAgent(
@@ -401,6 +465,8 @@ planner_agent = LlmAgent(
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,
         planner_visualizer, planner_reporter,
+        explore_process_workflow,
+        analyze_viz_workflow,
     ],
 )
 

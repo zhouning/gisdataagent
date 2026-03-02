@@ -313,3 +313,23 @@ def _self_correction_after_tool(tool, args, tool_context, tool_response):
 
     tool_response["_correction_hint"] = " ".join(hints)
     return tool_response
+
+
+# ---------------------------------------------------------------------------
+# LoopAgent exit tool: quality approval
+# ---------------------------------------------------------------------------
+
+def approve_quality(verdict: str, tool_context) -> dict:
+    """Quality checker calls this when analysis passes validation.
+
+    Sets ``tool_context.actions.escalate = True`` so the enclosing
+    ``LoopAgent`` exits the review loop and proceeds to the next pipeline
+    stage.
+
+    Args:
+        verdict: A short summary of the quality assessment (e.g.
+            "所有指标通过验证").
+        tool_context: Injected automatically by ADK at runtime.
+    """
+    tool_context.actions.escalate = True
+    return {"status": "approved", "verdict": verdict}

@@ -16,32 +16,36 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 
 class TestPlannerHierarchy(unittest.TestCase):
-    """Tests for the Planner agent and its 5 sub-agents."""
+    """Tests for the Planner agent and its sub-agents (5 standalone + 2 workflows)."""
 
     @classmethod
     def setUpClass(cls):
         from data_agent.agent import planner_agent
         cls.planner = planner_agent
 
-    def test_planner_has_5_sub_agents(self):
-        self.assertEqual(len(self.planner.sub_agents), 5)
+    def test_planner_has_7_sub_agents(self):
+        self.assertEqual(len(self.planner.sub_agents), 7)
 
     def test_sub_agent_names(self):
         names = {a.name for a in self.planner.sub_agents}
         self.assertEqual(names, {
             "PlannerExplorer", "PlannerProcessor",
             "PlannerAnalyzer", "PlannerVisualizer", "PlannerReporter",
+            "ExploreAndProcess", "AnalyzeAndVisualize",
         })
 
     def test_peers_transfer_disabled(self):
+        from google.adk.agents import LlmAgent
         for agent in self.planner.sub_agents:
-            self.assertTrue(agent.disallow_transfer_to_peers,
-                            f"{agent.name} should have disallow_transfer_to_peers=True")
+            if isinstance(agent, LlmAgent):
+                self.assertTrue(agent.disallow_transfer_to_peers,
+                                f"{agent.name} should have disallow_transfer_to_peers=True")
 
     def test_output_keys(self):
+        from google.adk.agents import LlmAgent
         expected = {"data_profile", "processed_data", "analysis_report",
                     "visualizations", "final_report"}
-        actual = {a.output_key for a in self.planner.sub_agents}
+        actual = {a.output_key for a in self.planner.sub_agents if isinstance(a, LlmAgent)}
         self.assertEqual(actual, expected)
 
     def test_self_correction_on_key_agents(self):

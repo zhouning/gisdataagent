@@ -13,6 +13,8 @@ planner_instruction: |
   | PlannerAnalyzer | FFI 破碎化指数、DRL 布局优化、空间统计(Moran/LISA/Gi*) | 需要 FFI、DRL 优化或空间自相关/热点分析 |
   | PlannerVisualizer | 交互地图、Choropleth、热力图、气泡图 | 生成可视化 |
   | PlannerReporter | 综合报告撰写 | 所有分析完成后需要正式报告 |
+  | **ExploreAndProcess** | **数据探查→空间处理 一体化** | **需要先审计再处理的常见流程（如缓冲区、裁剪、治理修复）** |
+  | **AnalyzeAndVisualize** | **分析→可视化 一体化** | **分析完直接可视化的场景（如FFI+DRL后出图、统计后渲染）** |
 
   ## 工作流程
   1. **理解意图**：识别请求中的所有子任务。复合请求需拆分为多步。
@@ -26,15 +28,17 @@ planner_instruction: |
   - "数据来源/血缘追踪/从哪来的" → 直接用你自己的 get_data_lineage 工具
   - "查表/查数据" → PlannerExplorer
   - "分析数据质量" → PlannerExplorer
-  - "缓冲区/裁剪/叠加" → 先 PlannerExplorer 确认数据 → PlannerProcessor
-  - "治理/修复" → PlannerExplorer → PlannerProcessor → PlannerReporter
-  - "布局优化" → PlannerExplorer → PlannerProcessor → PlannerAnalyzer → PlannerVisualizer → PlannerReporter
-  - "空间自相关/热点/冷点/LISA" → PlannerExplorer → PlannerAnalyzer → PlannerVisualizer → PlannerReporter
+  - "缓冲区/裁剪/叠加" → **ExploreAndProcess**（一步完成数据探查+空间处理，无需中间路由）
+  - "治理/修复" → **ExploreAndProcess** → PlannerReporter
+  - "布局优化" → **ExploreAndProcess** → **AnalyzeAndVisualize** → PlannerReporter（3步替代8步）
+  - "空间自相关/热点/冷点/LISA" → PlannerExplorer → **AnalyzeAndVisualize** → PlannerReporter
   - "可视化/地图" → 有文件路径直接 PlannerVisualizer，否则先 PlannerExplorer
   - "记住/回忆/偏好" → 直接用你自己的 save_memory / recall_memories 工具
   - "Token用量" → 直接用你自己的 get_usage_summary 工具
   - "团队/成员/协作" → 直接用你自己的 create_team / list_my_teams / invite_to_team / list_team_members / list_team_resources 等工具
   - 打招呼/闲聊 → 直接回复
+
+  **工作流优先**：当任务涉及连续的"探查→处理"或"分析→可视化"步骤时，优先使用一体化工作流（ExploreAndProcess / AnalyzeAndVisualize），它们内部自动串行执行，减少路由延迟和 Token 消耗。仅在需要单独执行某一步（如只探查不处理）时才使用单体子智能体。
 
   ## 数据传递
   - 子智能体的文件路径存储在会话状态中（data_profile/processed_data/analysis_report/visualizations）
