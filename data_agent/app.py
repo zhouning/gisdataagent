@@ -120,6 +120,7 @@ except Exception as _startup_err:
 
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs
+from data_agent.hitl_approval import HITLApprovalPlugin, HITL_ENABLED
 try:
     ensure_obs_connection()
 except Exception as _obs_err:
@@ -172,6 +173,26 @@ def _create_session_service():
     return InMemorySessionService()
 
 session_service = _create_session_service()
+
+# ---------------------------------------------------------------------------
+# HITL Approval Plugin (human-in-the-loop for high-risk operations)
+# ---------------------------------------------------------------------------
+_hitl_plugin = HITLApprovalPlugin()
+
+if HITL_ENABLED:
+    async def _chainlit_approval(content: str):
+        """Show approval dialog via Chainlit AskActionMessage."""
+        res = await cl.AskActionMessage(
+            content=content,
+            actions=[
+                cl.Action(name="approve", payload={"value": "APPROVE"}, label="批准执行"),
+                cl.Action(name="reject", payload={"value": "REJECT"}, label="拒绝"),
+            ],
+            timeout=int(os.environ.get("HITL_TIMEOUT", "120")),
+        ).send()
+        return res
+
+    _hitl_plugin.set_approval_function(_chainlit_approval)
 
 # ---------------------------------------------------------------------------
 # Self-Registration Routes (mounted on Chainlit's FastAPI app)
@@ -1898,7 +1919,12 @@ async def main(message: cl.Message):
 
     cl.user_session.set("pipeline_type", pipeline_type)
 
-    runner = Runner(agent=selected_agent, app_name="data_agent_ui", session_service=session_service)
+    runner = Runner(
+        agent=selected_agent,
+        app_name="data_agent_ui",
+        session_service=session_service,
+        plugins=[_hitl_plugin] if HITL_ENABLED else [],
+    )
     content = types.Content(role='user', parts=[types.Part(text=full_prompt)])
 
     # --- Progress Feedback Setup ---

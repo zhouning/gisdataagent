@@ -34,6 +34,7 @@ ACTION_TEAM_CREATE = "team_create"
 ACTION_TEAM_INVITE = "team_invite"
 ACTION_TEAM_REMOVE = "team_remove"
 ACTION_TEAM_DELETE = "team_delete"
+ACTION_HITL_APPROVAL = "hitl_approval"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -57,6 +58,7 @@ ACTION_LABELS = {
     ACTION_TEAM_INVITE: "邀请成员",
     ACTION_TEAM_REMOVE: "移除成员",
     ACTION_TEAM_DELETE: "删除团队",
+    ACTION_HITL_APPROVAL: "人工审批",
 }
 
 
