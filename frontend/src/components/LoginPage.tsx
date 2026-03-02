@@ -81,7 +81,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <div className="login-logo-icon">G</div>
+          <img src="/public/logo_light.png" alt="Data Agent" className="login-logo-img" />
         </div>
         <h1>GIS Data Agent</h1>
         <p className="login-subtitle">

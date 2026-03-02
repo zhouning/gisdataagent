@@ -62,7 +62,7 @@ export default function App() {
       <div className="login-page">
         <div className="login-card">
           <div className="login-logo">
-            <div className="login-logo-icon">G</div>
+            <img src="/public/logo_light.png" alt="Data Agent" className="login-logo-img" />
           </div>
           <h1>GIS Data Agent</h1>
           <p className="login-subtitle">Loading...</p>
@@ -85,8 +85,7 @@ export default function App() {
     <div className="app-container">
       <header className="app-header">
         <div className="app-logo">
-          <div className="app-logo-icon">G</div>
-          <span>GIS Data Agent</span>
+          <img src="/public/logo_light.png" alt="Data Agent" className="app-logo-img" />
         </div>
         <div className="header-spacer" />
         {isAdmin && (
