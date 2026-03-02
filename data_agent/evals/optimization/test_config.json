@@ -1,0 +1,82 @@
+{
+  "criteria": {
+    "tool_trajectory_avg_score": {
+      "threshold": 0.8,
+      "matchType": 1
+    },
+    "rubric_based_tool_use_quality_v1": {
+      "threshold": 0.7,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      },
+      "rubrics": [
+        {
+          "rubricId": "opt_tool_correctness",
+          "rubricContent": {
+            "textProperty": "The agent performs data exploration (describe_data) before running analysis or optimization."
+          },
+          "description": "Ensures the agent follows proper workflow: exploration → processing → analysis.",
+          "type": "TOOL_USE_QUALITY"
+        },
+        {
+          "rubricId": "opt_tool_sequence",
+          "rubricContent": {
+            "textProperty": "The agent uses feature engineering tools (calculate_ffi) before running DRL optimization (optimize_land_use_drl)."
+          },
+          "description": "Validates correct tool call sequence for optimization pipeline.",
+          "type": "TOOL_USE_QUALITY"
+        },
+        {
+          "rubricId": "opt_tool_params",
+          "rubricContent": {
+            "textProperty": "The agent provides valid parameters to tools (e.g., file paths, column names, thresholds)."
+          },
+          "description": "Checks if tool parameters are reasonable and match the data schema.",
+          "type": "TOOL_USE_QUALITY"
+        }
+      ]
+    },
+    "rubric_based_final_response_quality_v1": {
+      "threshold": 0.6,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      },
+      "rubrics": [
+        {
+          "rubricId": "opt_response_completeness",
+          "rubricContent": {
+            "textProperty": "The response includes key metrics from the analysis (e.g., FFI values, DRL optimization results)."
+          },
+          "description": "Ensures the final response contains substantive findings.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubricId": "opt_response_accuracy",
+          "rubricContent": {
+            "textProperty": "The response accurately reflects the tool outputs (e.g., FFI range 0-1, DRL swap counts)."
+          },
+          "description": "Validates factual correctness of reported results.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubricId": "opt_response_actionable",
+          "rubricContent": {
+            "textProperty": "The response provides actionable insights or recommendations based on the analysis."
+          },
+          "description": "Checks if the response goes beyond raw data to offer interpretation.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubricId": "opt_response_clarity",
+          "rubricContent": {
+            "textProperty": "The response is clear, well-structured, and easy to understand."
+          },
+          "description": "Evaluates communication quality.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "eval_set_id": "planner_pipeline_eval",
+  "name": "Planner Agent Evaluation",
+  "description": "Evaluate the dynamic planner: routing accuracy, workflow selection, report generation.",
+  "eval_cases": [
+    {
+      "eval_id": "plan_optimization_routing",
+      "conversation": [
+        {
+          "invocation_id": "plan_001",
+          "user_content": {
+            "parts": [{"text": "请对 data_agent/evals/fixtures/sample_parcels.geojson 进行布局优化分析，包括FFI计算和DRL优化，最后生成可视化对比图。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "布局优化分析完成。执行流程：数据探查→空间处理→FFI破碎化指数计算→DRL深度强化学习优化→可视化对比图生成。已使用 ExploreAndProcess 和 AnalyzeAndVisualize 一体化工作流完成任务。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "transfer_to_agent", "args": {"agent_name": "ExploreAndProcess"}},
+              {"name": "transfer_to_agent", "args": {"agent_name": "AnalyzeAndVisualize"}},
+              {"name": "transfer_to_agent", "args": {"agent_name": "PlannerReporter"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "plan_exploration_routing",
+      "conversation": [
+        {
+          "invocation_id": "plan_002",
+          "user_content": {
+            "parts": [{"text": "查看 data_agent/evals/fixtures/sample_parcels.geojson 的数据质量和字段情况。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "数据质量报告：数据集包含 10 个多边形要素，坐标系 EPSG:4326。字段完整，包括地类编码、坡度、面积等核心属性。数据质量良好，无缺失值。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "transfer_to_agent", "args": {"agent_name": "PlannerExplorer"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "plan_visualization_routing",
+      "conversation": [
+        {
+          "invocation_id": "plan_003",
+          "user_content": {
+            "parts": [{"text": "将 data_agent/evals/fixtures/sample_parcels.geojson 渲染为交互式地图，按地类编码着色。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "已生成按地类编码（DLBM）着色的交互式地图。水田（0103）显示为蓝色，旱地（0101）为黄色，乔木林地（0301）为深绿，灌木林地（0302）为浅绿。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "transfer_to_agent", "args": {"agent_name": "PlannerVisualizer"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    }
+  ]
+}

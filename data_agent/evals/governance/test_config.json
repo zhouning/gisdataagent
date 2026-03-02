@@ -1,0 +1,49 @@
+{
+  "criteria": {
+    "tool_trajectory_avg_score": {
+      "threshold": 0.8,
+      "matchType": 1
+    },
+    "rubric_based_final_response_quality_v1": {
+      "threshold": 0.7,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      },
+      "rubrics": [
+        {
+          "rubricId": "gov_response_methodology",
+          "rubricContent": {
+            "textProperty": "The governance report includes a clear methodology section explaining the audit approach."
+          },
+          "description": "Ensures the report documents how the audit was conducted.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubricId": "gov_response_findings",
+          "rubricContent": {
+            "textProperty": "The report lists specific data quality issues found (e.g., field violations, topology errors)."
+          },
+          "description": "Validates that concrete findings are reported, not generic statements.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubricId": "gov_response_recommendations",
+          "rubricContent": {
+            "textProperty": "The report provides actionable recommendations for fixing identified issues."
+          },
+          "description": "Checks if the report goes beyond problem identification to suggest solutions.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        }
+      ]
+    },
+    "hallucinations_v1": {
+      "threshold": 0.8,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      },
+      "evaluateIntermediateNlResponses": false
+    }
+  }
+}

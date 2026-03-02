@@ -1,0 +1,54 @@
+{
+  "criteria": {
+    "rubric_based_tool_use_quality_v1": {
+      "threshold": 0.7,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      },
+      "rubrics": [
+        {
+          "rubricId": "plan_routing_correctness",
+          "rubricContent": {
+            "textProperty": "The planner routes the request to the correct sub-workflow agent (e.g., ExploreAndProcess for optimization tasks)."
+          },
+          "description": "Validates correct agent routing decisions.",
+          "type": "TOOL_USE_QUALITY"
+        },
+        {
+          "rubricId": "plan_routing_justification",
+          "rubricContent": {
+            "textProperty": "The planner explains why the chosen sub-workflow is appropriate for the request."
+          },
+          "description": "Checks if routing decisions are justified.",
+          "type": "TOOL_USE_QUALITY"
+        },
+        {
+          "rubricId": "plan_no_unnecessary_routing",
+          "rubricContent": {
+            "textProperty": "The planner does not route to unnecessary sub-workflows (e.g., does not invoke visualization for a data exploration request)."
+          },
+          "description": "Validates precision of routing.",
+          "type": "TOOL_USE_QUALITY"
+        }
+      ]
+    },
+    "rubric_based_final_response_quality_v1": {
+      "threshold": 0.6,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      },
+      "rubrics": [
+        {
+          "rubricId": "plan_response_summary",
+          "rubricContent": {
+            "textProperty": "The planner provides a summary of what was accomplished by the sub-workflow."
+          },
+          "description": "Ensures the planner communicates results back to the user.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        }
+      ]
+    }
+  }
+}

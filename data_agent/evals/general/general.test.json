@@ -1,0 +1,75 @@
+{
+  "eval_set_id": "general_pipeline_eval",
+  "name": "General Pipeline Evaluation",
+  "description": "Evaluate the general-purpose spatial pipeline: database queries, visualization, multi-step workflows.",
+  "eval_cases": [
+    {
+      "eval_id": "gen_db_query",
+      "conversation": [
+        {
+          "invocation_id": "gen_001",
+          "user_content": {
+            "parts": [{"text": "查询数据库中 agent_data_catalog 表的所有记录。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "已查询 agent_data_catalog 表，返回所有数据资产记录。表中包含数据集名称、格式、创建时间等元数据信息。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "query_database", "args": {"sql_query": "SELECT * FROM agent_data_catalog"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "gen_visualization",
+      "conversation": [
+        {
+          "invocation_id": "gen_002",
+          "user_content": {
+            "parts": [{"text": "请将 data_agent/evals/fixtures/sample_parcels.geojson 的坡度字段生成分级色彩图。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "已生成坡度分级色彩图（Choropleth）。地图按自然断点法将坡度分为 5 级，颜色从浅绿（低坡度）到深红（高坡度）渐变。交互式地图已保存。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "generate_choropleth_map", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson", "column": "SLOPE"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "gen_multi_step",
+      "conversation": [
+        {
+          "invocation_id": "gen_003",
+          "user_content": {
+            "parts": [{"text": "先查看 data_agent/evals/fixtures/sample_parcels.geojson 有哪些字段，然后生成一张交互式地图展示地块分布。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "数据包含 OBJECTID、DLBM、DLMC、TBMJ、SLOPE、AREA、QSDWMC 等字段，共 10 个多边形要素。已生成交互式地图展示地块空间分布。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "visualize_interactive_map", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    }
+  ]
+}

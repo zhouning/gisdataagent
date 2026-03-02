@@ -1,0 +1,78 @@
+{
+  "eval_set_id": "governance_pipeline_eval",
+  "name": "Governance Pipeline Evaluation",
+  "description": "Evaluate the data governance pipeline: quality audit, field standards, topology check, report generation.",
+  "eval_cases": [
+    {
+      "eval_id": "gov_full_audit",
+      "conversation": [
+        {
+          "invocation_id": "gov_001",
+          "user_content": {
+            "parts": [{"text": "请对 data_agent/evals/fixtures/sample_parcels.geojson 进行完整的数据治理检查，包括字段规范性和拓扑一致性。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "数据治理报告：已完成数据质量审计。数据集包含 10 个空间要素，坐标系 EPSG:4326。字段规范性检查发现 DLBM、DLMC 等字段符合第三次全国国土调查标准。拓扑检查未发现自相交或重叠问题。建议进一步核实坡度与地类的匹配关系。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "check_field_standards", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "check_topology", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "gov_field_check",
+      "conversation": [
+        {
+          "invocation_id": "gov_002",
+          "user_content": {
+            "parts": [{"text": "检查 data_agent/evals/fixtures/sample_parcels.geojson 的字段是否符合国土调查标准。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "字段规范性检查完成。DLBM（地类编码）、DLMC（地类名称）、TBMJ（图斑面积）等核心字段存在且格式正确。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "check_field_standards", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "gov_with_repair",
+      "conversation": [
+        {
+          "invocation_id": "gov_003",
+          "user_content": {
+            "parts": [{"text": "审计 data_agent/evals/fixtures/sample_parcels.geojson 的数据质量，如发现问题请给出修复方案。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "数据质量审计完成。发现以下问题需关注：部分旱地地块坡度超过 15 度，建议纳入退耕还林规划。数据拓扑结构完整，无需几何修复。建议后续对高坡度耕地进行专项标注。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "check_field_standards", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "check_topology", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    }
+  ]
+}

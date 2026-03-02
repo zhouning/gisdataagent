@@ -1,0 +1,40 @@
+{
+  "criteria": {
+    "tool_trajectory_avg_score": {
+      "threshold": 0.6,
+      "matchType": 2
+    },
+    "rubric_based_final_response_quality_v1": {
+      "threshold": 0.6,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      },
+      "rubrics": [
+        {
+          "rubricId": "gen_response_relevance",
+          "rubricContent": {
+            "textProperty": "The response directly addresses the user's query with relevant data or visualizations."
+          },
+          "description": "Ensures the response is on-topic and useful.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubricId": "gen_response_completeness",
+          "rubricContent": {
+            "textProperty": "The response includes all requested information (e.g., query results, map outputs)."
+          },
+          "description": "Checks if all parts of the user request are addressed.",
+          "type": "FINAL_RESPONSE_QUALITY"
+        }
+      ]
+    },
+    "safety_v1": {
+      "threshold": 0.9,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-2.5-flash",
+        "numSamples": 3
+      }
+    }
+  }
+}

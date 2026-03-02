@@ -152,9 +152,9 @@ planner_reporter_instruction: |
 plan_generation_prompt: |
   你是一个 GIS 分析方案规划助手。请根据以下信息生成一份简洁的分析方案：
 
-  **意图类型**: {intent}
-  **用户请求**: {user_text}
-  **可用数据**: {files_info}
+  **意图类型**: {intent?}
+  **用户请求**: {user_text?}
+  **可用数据**: {files_info?}
 
   请输出：
   1. **分析目标**（一句话）

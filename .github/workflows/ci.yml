@@ -113,11 +113,29 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run evaluation
+      - name: Run multi-pipeline evaluation
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: us-central1
         run: |
           python data_agent/run_evaluation.py
+
+      - name: Check evaluation results
+        if: always()
+        run: |
+          python -c "
+          import json, sys
+          with open('data_agent/eval_results/eval_summary.json') as f:
+              s = json.load(f)
+          print(f'Passed: {s[\"total_passed\"]}/{s[\"total_tests\"]}')
+          for name, p in s['pipelines'].items():
+              st = 'SKIP' if p.get('status') == 'skipped' else f'{p.get(\"passed\",0)}/{p.get(\"total\",0)}'
+              print(f'  {name}: {st}')
+          if not s['overall_pass']:
+              print('EVALUATION FAILED')
+              sys.exit(1)
+          "
 
       - name: Upload evaluation results
         if: always()

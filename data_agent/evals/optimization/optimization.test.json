@@ -1,0 +1,79 @@
+{
+  "eval_set_id": "optimization_pipeline_eval",
+  "name": "Optimization Pipeline Evaluation",
+  "description": "Evaluate the land-use optimization pipeline: data exploration, feature engineering, FFI, DRL, visualization.",
+  "eval_cases": [
+    {
+      "eval_id": "opt_full_workflow",
+      "conversation": [
+        {
+          "invocation_id": "opt_001",
+          "user_content": {
+            "parts": [{"text": "请对数据 data_agent/evals/fixtures/sample_parcels.geojson 进行空间布局优化分析。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "执行摘要：本报告基于对样本地块耕地破碎化现状的深度诊断。通过 FFI 指数分析发现当前耕地破碎化程度较高。运用深度强化学习 (DRL) 模型执行空间置换，成功优化了耕地与林地的布局，降低了耕地平均坡度，提升了连片度。可视化对比图已生成。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "engineer_spatial_features", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "ffi", "args": {}},
+              {"name": "drl_model", "args": {}},
+              {"name": "visualize_optimization_comparison", "args": {}},
+              {"name": "visualize_interactive_map", "args": {}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "opt_exploration_only",
+      "conversation": [
+        {
+          "invocation_id": "opt_002",
+          "user_content": {
+            "parts": [{"text": "请描述 data_agent/evals/fixtures/sample_parcels.geojson 的数据概况和质量。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "数据画像：该数据集为 GeoJSON 格式，包含 10 个多边形要素，坐标系 EPSG:4326。字段包括 DLBM（地类编码）、SLOPE（坡度）、AREA（面积）、TBMJ（图斑面积）。地类涵盖水田、旱地、乔木林地和灌木林地。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    },
+    {
+      "eval_id": "opt_feature_engineering",
+      "conversation": [
+        {
+          "invocation_id": "opt_003",
+          "user_content": {
+            "parts": [{"text": "对 data_agent/evals/fixtures/sample_parcels.geojson 进行特征工程，计算面积、周长和形状指数。"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "特征工程完成。已计算投影面积、周长和形状指数（Shape_Index）等空间特征字段，增强数据已保存。"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
+              {"name": "engineer_spatial_features", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}}
+            ]
+          }
+        }
+      ],
+      "session_input": {"app_name": "eval_test", "user_id": "eval_user", "state": {}}
+    }
+  ]
+}

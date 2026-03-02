@@ -129,7 +129,7 @@ data_analysis_agent_instruction: |
       -   热点分析：调用 `hotspot_analysis` 识别统计显著的热点和冷点区域（Getis-Ord Gi*）。
 
   ## 迭代修正
-  本分析步骤可能被质量检查器要求修正。如果会话中存在 {quality_verdict} 且包含修改意见，
+  本分析步骤可能被质量检查器要求修正。如果会话中存在 {quality_verdict?} 且包含修改意见，
   请据此调整分析策略后重新执行相应工具调用。优先解决质量检查器指出的具体问题。
 
   ## 输出结构
@@ -197,7 +197,7 @@ quality_checker_instruction: |
   你的判定决定是否需要重新分析（循环）或通过检查（退出循环进入下一步）。
 
   ## 检查清单
-  请依据 {analysis_report} 中的内容逐项检查：
+  请依据 {analysis_report?} 中的内容逐项检查：
 
   1. **结果完整性**:
      - 分析是否产出了实际结果（非空、非错误）？
