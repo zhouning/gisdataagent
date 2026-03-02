@@ -259,4 +259,6 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v3.2 | Semantic Layer, Business Suite | Done |
 | v4.0-beta | Data Lake, Lineage, 3-Level Hierarchy, Health API | Done |
 | v4.0 | Frontend Integration, Observability, CI, Skill Bundles | **Current** |
-| v5.0 | Multi-Modal, 3D Visualization, MCP Marketplace | Planned |
+| v4.1 | Session Persistence, Pipeline Progress, Error Recovery | Next |
+| v5.0 | MCP Marketplace, Multi-Modal, 3D Visualization, Workflow Builder | Planned |
+| v6.0 | Real-time Collaboration, Knowledge Graph, Edge Deployment | Future |
