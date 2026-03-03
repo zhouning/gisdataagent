@@ -25,6 +25,7 @@ from .utils import (
     _self_correction_after_tool,
     _tool_retry_counts,
     approve_quality,
+    _generate_upload_preview,
 )
 
 # --- Toolset classes (BaseToolset instances for agent tools=[]) ---

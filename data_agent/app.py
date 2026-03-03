@@ -45,6 +45,7 @@ try:
         data_pipeline,
         planner_agent,
         _load_spatial_data,
+        _generate_upload_preview,
         ARCPY_AVAILABLE,
     )
     from data_agent.report_generator import generate_word_report
@@ -88,6 +89,7 @@ except ImportError:
     data_pipeline = agent.data_pipeline
     planner_agent = agent.planner_agent
     _load_spatial_data = agent._load_spatial_data
+    _generate_upload_preview = agent._generate_upload_preview
     generate_word_report = report_generator.generate_word_report
     ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
@@ -2131,47 +2133,6 @@ def handle_uploaded_file(element, upload_dir: str) -> Optional[str]:
     abs_dest = os.path.abspath(dest_path)
     sync_to_obs(abs_dest)
     return abs_dest
-
-
-def _generate_upload_preview(file_path: str) -> str:
-    """Generate a markdown preview of uploaded spatial/tabular data."""
-    try:
-        import geopandas as _gpd
-        gdf = _load_spatial_data(file_path)
-
-        lines = ["### 数据预览 (Data Preview)\n"]
-
-        # Basic info
-        lines.append(f"- **要素数量**: {len(gdf)}")
-        lines.append(f"- **坐标系**: {gdf.crs or '未定义'}")
-
-        geom_types = gdf.geometry.dropna().geom_type.unique().tolist() if not gdf.geometry.isna().all() else []
-        if geom_types:
-            lines.append(f"- **几何类型**: {', '.join(geom_types)}")
-
-        bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
-        lines.append(f"- **空间范围**: [{bounds[0]:.4f}, {bounds[1]:.4f}] ~ [{bounds[2]:.4f}, {bounds[3]:.4f}]")
-
-        # Column list
-        non_geom_cols = [c for c in gdf.columns if c != 'geometry']
-        lines.append(f"- **字段数**: {len(non_geom_cols)}")
-
-        # First 5 rows as markdown table
-        if non_geom_cols:
-            display_cols = non_geom_cols[:8]  # max 8 columns for readability
-            preview_df = gdf[display_cols].head(5)
-            lines.append(f"\n**前 {min(5, len(gdf))} 行预览**:\n")
-            # Header
-            lines.append("| " + " | ".join(str(c) for c in display_cols) + " |")
-            lines.append("| " + " | ".join("---" for _ in display_cols) + " |")
-            # Rows
-            for _, row in preview_df.iterrows():
-                vals = [str(row[c])[:30] for c in display_cols]
-                lines.append("| " + " | ".join(vals) + " |")
-
-        return "\n".join(lines)
-    except Exception as e:
-        return f"数据预览失败: {str(e)}"
 
 
 def classify_intent(text: str, previous_pipeline: str = None) -> tuple:

@@ -333,3 +333,232 @@ def approve_quality(verdict: str, tool_context) -> dict:
     """
     tool_context.actions.escalate = True
     return {"status": "approved", "verdict": verdict}
+
+
+# ---------------------------------------------------------------------------
+# Upload preview helpers (v4.1.3)
+# ---------------------------------------------------------------------------
+
+def _format_file_size(size_bytes: int) -> str:
+    """Convert bytes to human-readable string."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KB"
+    elif size_bytes < 1024 * 1024 * 1024:
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
+    else:
+        return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+
+
+def _dtype_label(dtype) -> str:
+    """Map pandas dtype to a Chinese-labeled category."""
+    s = str(dtype)
+    if "int" in s or "float" in s:
+        return "数值"
+    elif "datetime" in s:
+        return "日期"
+    elif "geometry" in s:
+        return "几何"
+    elif "bool" in s:
+        return "布尔"
+    return "文本"
+
+
+def _preview_file_info(file_path: str, gdf) -> list:
+    """Section: file format, size, feature count."""
+    ext = os.path.splitext(file_path)[1].lower()
+    _FMT = {
+        ".shp": "Shapefile", ".geojson": "GeoJSON", ".json": "GeoJSON",
+        ".gpkg": "GeoPackage", ".kml": "KML", ".kmz": "KMZ",
+        ".csv": "CSV", ".xlsx": "Excel", ".xls": "Excel",
+    }
+    fmt = _FMT.get(ext, ext.upper().lstrip(".") or "未知")
+    try:
+        size_str = _format_file_size(os.path.getsize(file_path))
+    except OSError:
+        size_str = "未知"
+    return [
+        f"- **文件格式**: {fmt} | **文件大小**: {size_str}",
+        f"- **要素数量**: {len(gdf)} 条记录",
+    ]
+
+
+def _preview_spatial_info(gdf) -> list:
+    """Section: CRS, geometry types, bounds, area/length summary."""
+    lines = []
+    lines.append(f"- **坐标系**: {gdf.crs or '未定义'}")
+
+    has_geom = "geometry" in gdf.columns and not gdf.geometry.isna().all()
+    if not has_geom:
+        lines.append("- **几何**: 无空间数据")
+        return lines
+
+    valid_geom = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
+    geom_types = valid_geom.geometry.geom_type.unique().tolist() if len(valid_geom) > 0 else []
+
+    if geom_types:
+        lines.append(f"- **几何类型**: {', '.join(geom_types)}")
+
+    if len(valid_geom) > 0:
+        bounds = valid_geom.total_bounds
+        lines.append(
+            f"- **空间范围**: [{bounds[0]:.4f}, {bounds[1]:.4f}] ~ "
+            f"[{bounds[2]:.4f}, {bounds[3]:.4f}]"
+        )
+
+    # Area/length summary
+    if len(valid_geom) > 0 and geom_types:
+        type_set = set(geom_types)
+        poly_types = {"Polygon", "MultiPolygon"}
+        line_types = {"LineString", "MultiLineString"}
+        point_types = {"Point", "MultiPoint"}
+
+        if type_set & poly_types:
+            try:
+                calc = valid_geom.to_crs(epsg=3857) if (
+                    valid_geom.crs and valid_geom.crs.is_geographic
+                ) else valid_geom
+                areas = calc.geometry.area
+                lines.append(
+                    f"- **面积统计**: 最小 {areas.min():.1f} m² | "
+                    f"最大 {areas.max():.1f} m² | 平均 {areas.mean():.1f} m²"
+                )
+            except Exception:
+                pass
+        elif type_set & line_types:
+            try:
+                calc = valid_geom.to_crs(epsg=3857) if (
+                    valid_geom.crs and valid_geom.crs.is_geographic
+                ) else valid_geom
+                lengths = calc.geometry.length
+                lines.append(
+                    f"- **长度统计**: 最小 {lengths.min():.1f} m | "
+                    f"最大 {lengths.max():.1f} m | 平均 {lengths.mean():.1f} m"
+                )
+            except Exception:
+                pass
+        elif type_set <= point_types:
+            lines.append(f"- **点要素数**: {len(valid_geom)} 个点")
+
+    return lines
+
+
+def _preview_column_info(gdf) -> list:
+    """Section: column names, dtypes, null counts as table."""
+    non_geom = [c for c in gdf.columns if c != "geometry"]
+    if not non_geom:
+        return []
+
+    lines = [f"\n#### 字段概览 ({len(non_geom)} 个字段)\n"]
+    display = non_geom[:12]
+    lines.append("| 字段名 | 类型 | 空值 | 空值率 |")
+    lines.append("| --- | --- | --- | --- |")
+    total = len(gdf)
+    for col in display:
+        dtype = _dtype_label(gdf[col].dtype)
+        n_null = int(gdf[col].isna().sum())
+        pct = f"{n_null / total * 100:.1f}%" if total > 0 else "0%"
+        lines.append(f"| {col} | {dtype} | {n_null} | {pct} |")
+    if len(non_geom) > 12:
+        lines.append(f"\n> 还有 {len(non_geom) - 12} 个字段未显示")
+    return lines
+
+
+def _preview_quality_indicators(gdf) -> list:
+    """Section: quick data health check."""
+    lines = ["\n#### 数据质量\n"]
+    issues = []
+    has_geom = "geometry" in gdf.columns and not gdf.geometry.isna().all()
+
+    non_geom = [c for c in gdf.columns if c != "geometry"]
+    total_cells = len(gdf) * len(non_geom)
+    total_nulls = sum(int(gdf[c].isna().sum()) for c in non_geom)
+    if total_nulls > 0:
+        pct = total_nulls / total_cells * 100 if total_cells > 0 else 0
+        issues.append(f"缺失值: {total_nulls} 个 ({pct:.1f}%)")
+
+    if has_geom:
+        n_null_geom = int(gdf.geometry.isna().sum())
+        n_empty = int(gdf.geometry.is_empty.sum()) if n_null_geom < len(gdf) else 0
+        if n_null_geom + n_empty > 0:
+            issues.append(f"空几何: {n_null_geom + n_empty} 个")
+
+        if len(gdf) <= 100_000:
+            valid_mask = gdf.geometry.notna() & ~gdf.geometry.is_empty
+            if valid_mask.any():
+                n_invalid = int((~gdf[valid_mask].geometry.is_valid).sum())
+                if n_invalid > 0:
+                    issues.append(f"无效几何: {n_invalid} 个")
+
+    if not issues:
+        lines.append("数据质量良好，无明显问题。")
+    else:
+        for issue in issues:
+            lines.append(f"- {issue}")
+    return lines
+
+
+def _preview_numeric_stats(gdf) -> list:
+    """Section: min/max/mean for numeric columns."""
+    numeric_cols = gdf.select_dtypes(include=[np.number]).columns.tolist()
+    if not numeric_cols:
+        return []
+
+    display = numeric_cols[:10]
+    lines = ["\n#### 数值统计\n"]
+    lines.append("| 字段 | 最小值 | 最大值 | 平均值 |")
+    lines.append("| --- | --- | --- | --- |")
+    for col in display:
+        if gdf[col].isna().all():
+            lines.append(f"| {col} | - | - | - |")
+            continue
+        lines.append(f"| {col} | {gdf[col].min():.4g} | {gdf[col].max():.4g} | {gdf[col].mean():.4g} |")
+    if len(numeric_cols) > 10:
+        lines.append(f"\n> 还有 {len(numeric_cols) - 10} 个数值字段未显示")
+    return lines
+
+
+def _preview_sample_rows(gdf, max_rows: int = 5, max_cols: int = 8) -> list:
+    """Section: first N rows as markdown table."""
+    non_geom = [c for c in gdf.columns if c != "geometry"]
+    if not non_geom or len(gdf) == 0:
+        return []
+
+    display = non_geom[:max_cols]
+    n_rows = min(max_rows, len(gdf))
+    preview_df = gdf[display].head(n_rows)
+
+    lines = [f"\n**前 {n_rows} 行预览**:\n"]
+    lines.append("| " + " | ".join(str(c) for c in display) + " |")
+    lines.append("| " + " | ".join("---" for _ in display) + " |")
+    for _, row in preview_df.iterrows():
+        vals = [str(row[c])[:30] for c in display]
+        lines.append("| " + " | ".join(vals) + " |")
+    return lines
+
+
+def _generate_upload_preview(file_path: str) -> str:
+    """Generate a rich markdown preview of uploaded spatial/tabular data.
+
+    Pure function: returns a markdown string. No side effects.
+    """
+    try:
+        gdf = _load_spatial_data(file_path)
+
+        lines = ["### 数据预览 (Data Preview)\n"]
+
+        if len(gdf) == 0:
+            lines.append("空数据集 (0 条记录)")
+            return "\n".join(lines)
+
+        lines.extend(_preview_file_info(file_path, gdf))
+        lines.extend(_preview_spatial_info(gdf))
+        lines.extend(_preview_column_info(gdf))
+        lines.extend(_preview_quality_indicators(gdf))
+        lines.extend(_preview_numeric_stats(gdf))
+        lines.extend(_preview_sample_rows(gdf))
+
+        return "\n".join(lines)
+    except Exception as e:
+        return f"数据预览失败: {str(e)}"
