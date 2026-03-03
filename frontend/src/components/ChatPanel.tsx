@@ -22,10 +22,17 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const { askUser, actions, loading } = useChatData();
   const [input, setInput] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<'zh-CN' | 'en-US'>('zh-CN');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedMetaRef = useRef<Set<string>>(new Set());
+  const recognitionRef = useRef<any>(null);
+
+  // Check browser support for Web Speech API
+  const speechSupported = typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -109,6 +116,44 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const removePendingFile = (file: File) => {
     setPendingFiles((prev) => prev.filter((f) => f.file !== file));
   };
+
+  const toggleVoiceRecording = useCallback(() => {
+    if (!speechSupported) return;
+
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = voiceLang;
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => prev + (prev ? ' ' : '') + transcript);
+      setIsRecording(false);
+    };
+
+    recognition.onerror = () => {
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  }, [speechSupported, isRecording, voiceLang]);
+
+  const toggleVoiceLang = useCallback(() => {
+    setVoiceLang((prev) => prev === 'zh-CN' ? 'en-US' : 'zh-CN');
+  }, []);
 
   const flatMessages = flattenMessages(messages || []);
 
@@ -238,6 +283,21 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
             </svg>
           </button>
+          {speechSupported && (
+            <button
+              className={`btn-voice ${isRecording ? 'recording' : ''}`}
+              onClick={toggleVoiceRecording}
+              onContextMenu={(e) => { e.preventDefault(); toggleVoiceLang(); }}
+              title={isRecording ? '停止录音' : `语音输入 (${voiceLang === 'zh-CN' ? '中文' : 'EN'})`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+              <span className="voice-lang-badge">{voiceLang === 'zh-CN' ? '中' : 'EN'}</span>
+            </button>
+          )}
           <textarea
             ref={textareaRef}
             value={input}

@@ -8,6 +8,7 @@ Provides:
 - /api/user/token-usage — per-user token consumption
 - /api/admin/users — user management (admin only)
 - /api/admin/metrics/summary — aggregated dashboard metrics
+- /api/workflows — workflow CRUD, execution, and run history (v5.4)
 
 All user-facing endpoints use JWT cookie auth.
 Admin endpoints require JWT + admin role.
@@ -625,6 +626,144 @@ async def _api_mcp_reconnect(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Workflows API (v5.4)
+# ---------------------------------------------------------------------------
+
+async def _api_workflows_list(request: Request):
+    """GET /api/workflows — list workflows visible to current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    keyword = request.query_params.get("keyword", "")
+    from .workflow_engine import list_workflows
+    workflows = list_workflows(keyword=keyword)
+    return JSONResponse({"workflows": workflows})
+
+
+async def _api_workflows_create(request: Request):
+    """POST /api/workflows — create a new workflow."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    name = body.get("workflow_name", "").strip()
+    if not name:
+        return JSONResponse({"error": "workflow_name is required"}, status_code=400)
+
+    from .workflow_engine import create_workflow
+    wf_id = create_workflow(
+        name=name,
+        description=body.get("description", ""),
+        steps=body.get("steps", []),
+        parameters=body.get("parameters", {}),
+        graph_data=body.get("graph_data", {}),
+        cron_schedule=body.get("cron_schedule"),
+        webhook_url=body.get("webhook_url"),
+        pipeline_type=body.get("pipeline_type", "general"),
+    )
+    if wf_id is None:
+        return JSONResponse({"error": "Failed to create workflow"}, status_code=500)
+    return JSONResponse({"id": wf_id, "workflow_name": name}, status_code=201)
+
+
+async def _api_workflow_detail(request: Request):
+    """GET /api/workflows/{id} — get workflow detail."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    wf_id = int(request.path_params["id"])
+    from .workflow_engine import get_workflow
+    wf = get_workflow(wf_id)
+    if not wf:
+        return JSONResponse({"error": "Workflow not found"}, status_code=404)
+    return JSONResponse(wf)
+
+
+async def _api_workflow_update(request: Request):
+    """PUT /api/workflows/{id} — update workflow (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    wf_id = int(request.path_params["id"])
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .workflow_engine import update_workflow
+    ok = update_workflow(wf_id, **body)
+    if not ok:
+        return JSONResponse({"error": "Update failed or not authorized"}, status_code=403)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_workflow_delete(request: Request):
+    """DELETE /api/workflows/{id} — delete workflow (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    wf_id = int(request.path_params["id"])
+    from .workflow_engine import delete_workflow
+    ok = delete_workflow(wf_id)
+    if not ok:
+        return JSONResponse({"error": "Delete failed or not authorized"}, status_code=403)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_workflow_execute(request: Request):
+    """POST /api/workflows/{id}/execute — execute workflow."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    wf_id = int(request.path_params["id"])
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    param_overrides = body.get("parameters", {})
+
+    from .workflow_engine import execute_workflow
+    result = await execute_workflow(
+        workflow_id=wf_id,
+        param_overrides=param_overrides,
+        run_by=username,
+    )
+    status_code = 200 if result.get("status") == "completed" else 500
+    return JSONResponse(result, status_code=status_code)
+
+
+async def _api_workflow_runs(request: Request):
+    """GET /api/workflows/{id}/runs — get execution history."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    wf_id = int(request.path_params["id"])
+    limit = int(request.query_params.get("limit", "20"))
+    from .workflow_engine import get_workflow_runs
+    runs = get_workflow_runs(wf_id, limit=limit)
+    return JSONResponse({"runs": runs})
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -654,6 +793,14 @@ def get_frontend_api_routes():
         Route("/api/mcp/tools", endpoint=_api_mcp_tools, methods=["GET"]),
         Route("/api/mcp/servers/{name}/toggle", endpoint=_api_mcp_toggle, methods=["POST"]),
         Route("/api/mcp/servers/{name}/reconnect", endpoint=_api_mcp_reconnect, methods=["POST"]),
+        # Workflows (v5.4)
+        Route("/api/workflows", endpoint=_api_workflows_list, methods=["GET"]),
+        Route("/api/workflows", endpoint=_api_workflows_create, methods=["POST"]),
+        Route("/api/workflows/{id:int}", endpoint=_api_workflow_detail, methods=["GET"]),
+        Route("/api/workflows/{id:int}", endpoint=_api_workflow_update, methods=["PUT"]),
+        Route("/api/workflows/{id:int}", endpoint=_api_workflow_delete, methods=["DELETE"]),
+        Route("/api/workflows/{id:int}/execute", endpoint=_api_workflow_execute, methods=["POST"]),
+        Route("/api/workflows/{id:int}/runs", endpoint=_api_workflow_runs, methods=["GET"]),
     ]
 
 

@@ -61,7 +61,8 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("generate_heatmap", names)
         self.assertIn("compose_map", names)
         self.assertIn("control_map_layer", names)
-        self.assertEqual(len(tools), 9)
+        self.assertIn("generate_3d_map", names)
+        self.assertEqual(len(tools), 10)
 
     def test_database_toolset(self):
         from data_agent.toolsets.database_tools_set import DatabaseToolset

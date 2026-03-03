@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 
 from data_agent.i18n import t, set_language, get_language
+from data_agent.multimodal import (
+    UploadType, classify_upload, prepare_image_part,
+    extract_pdf_text, prepare_pdf_part,
+)
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -115,6 +119,8 @@ try:
     ensure_annotations_table()
     from data_agent.session_storage import ensure_chainlit_tables
     ensure_chainlit_tables()
+    from data_agent.workflow_engine import ensure_workflow_tables
+    ensure_workflow_tables()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -859,6 +865,15 @@ try:
     mount_frontend_api(chainlit_app)
 except Exception as _fe_err:
     logger.warning("Frontend API mount failed: %s", _fe_err)
+
+# --- Workflow Scheduler (v5.4) ---
+_workflow_scheduler = None
+try:
+    from data_agent.workflow_engine import WorkflowScheduler
+    _workflow_scheduler = WorkflowScheduler()
+    _workflow_scheduler.start()
+except Exception as _wf_sched_err:
+    logger.warning("Workflow scheduler init failed: %s", _wf_sched_err)
 
 # --- Startup Diagnostics Banner ---
 logger.info("\n%s", format_startup_summary(session_svc=session_service))
@@ -1622,6 +1637,7 @@ async def _execute_pipeline(
     selected_agent,
     router_tokens: int = 0,
     retry_attempt: int = 0,
+    extra_parts: list = None,
 ):
     """Execute a pipeline and handle success/error with optional retry.
 
@@ -1636,7 +1652,7 @@ async def _execute_pipeline(
         session_service=session_service,
         plugins=[_hitl_plugin] if HITL_ENABLED else [],
     )
-    content = types.Content(role='user', parts=[types.Part(text=full_prompt)])
+    content = types.Content(role='user', parts=[types.Part(text=full_prompt)] + (extra_parts or []))
 
     # --- Progress Feedback Setup ---
     if DYNAMIC_PLANNER and pipeline_type == "planner":
@@ -2096,20 +2112,19 @@ def extract_file_paths(text: str) -> List[Dict[str, str]]:
     return artifacts
 
 
-def handle_uploaded_file(element, upload_dir: str) -> Optional[str]:
+def handle_uploaded_file(element, upload_dir: str) -> tuple:
     """
     Process uploaded file into user's upload directory.
-    Returns None with element._oversized=True if file exceeds MAX_UPLOAD_SIZE.
-    - If Zip: Extract and find .shp
-    - If other: Return path
+    Returns (path, UploadType) tuple, or (None, None) if failed/oversized.
+    Sets element._oversized=True if file exceeds MAX_UPLOAD_SIZE.
     """
     if not element.path:
-        return None
+        return (None, None)
 
     file_size = os.path.getsize(element.path)
     if file_size > MAX_UPLOAD_SIZE:
         element._oversized = True
-        return None
+        return (None, None)
 
     dest_path = os.path.join(upload_dir, element.name)
     shutil.copy(element.path, dest_path)
@@ -2128,7 +2143,7 @@ def handle_uploaded_file(element, upload_dir: str) -> Optional[str]:
                     if file.lower().endswith('.shp'):
                         result_path = os.path.abspath(os.path.join(root, file))
                         sync_to_obs(result_path)
-                        return result_path
+                        return (result_path, UploadType.SPATIAL)
 
             # Fallback: search for other spatial formats
             for target_ext in ('.kml', '.geojson', '.json', '.gpkg'):
@@ -2137,21 +2152,24 @@ def handle_uploaded_file(element, upload_dir: str) -> Optional[str]:
                         if file.lower().endswith(target_ext):
                             result_path = os.path.abspath(os.path.join(root, file))
                             sync_to_obs(result_path)
-                            return result_path
+                            return (result_path, UploadType.SPATIAL)
 
-            return None
+            return (None, None)
         except Exception as e:
             logger.warning("Zip extraction failed: %s", e)
-            return None
+            return (None, None)
 
     abs_dest = os.path.abspath(dest_path)
     sync_to_obs(abs_dest)
-    return abs_dest
+    file_type = classify_upload(abs_dest)
+    return (abs_dest, file_type)
 
 
-def classify_intent(text: str, previous_pipeline: str = None) -> tuple:
+def classify_intent(text: str, previous_pipeline: str = None,
+                    image_paths: list = None, pdf_context: str = None) -> tuple:
     """
     Uses Gemini Flash to semantically classify user intent into one of the 3 pipelines.
+    Supports multimodal input: images are embedded directly, PDF text is appended to prompt.
     Returns: (intent, reason, router_tokens) where intent is 'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS'.
     """
     try:
@@ -2159,6 +2177,13 @@ def classify_intent(text: str, previous_pipeline: str = None) -> tuple:
         prev_hint = ""
         if previous_pipeline:
             prev_hint = f"\n        - The previous turn used the {previous_pipeline.upper()} pipeline. If the user references prior results (上面, 刚才, 继续, 之前, 在此基础上), prefer routing to the SAME pipeline: {previous_pipeline.upper()}."
+
+        # Append PDF context summary if available
+        pdf_hint = ""
+        if pdf_context:
+            truncated = pdf_context[:2000]
+            pdf_hint = f"\n\n        [Attached PDF content summary]:\n        {truncated}"
+
         prompt = f"""
         You are the Intent Router for a GIS Data Agent. Classify the User Input into ONE of these categories:
 
@@ -2167,16 +2192,36 @@ def classify_intent(text: str, previous_pipeline: str = None) -> tuple:
         3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史)
         4. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
 
-        User Input: "{text}"
+        User Input: "{text}"{pdf_hint}
 
         Rules:
         - If input mentions "optimize" or "FFI", prioritize OPTIMIZATION.
         - If input is asking "what data is there" or "show map", choose GENERAL.{prev_hint}
         - If the input is a greeting (你好, hello, hi), casual chat, or contains no identifiable GIS task, output AMBIGUOUS.
         - If the input could reasonably belong to two pipelines equally, output AMBIGUOUS.
+        - If images are attached, consider their visual content as additional context for classification.
         - Output format: CATEGORY|REASON (e.g. "GENERAL|用户请求查看地图" or "AMBIGUOUS|输入不包含明确的GIS任务")
         """
-        response = model.generate_content(prompt)
+
+        # Build multimodal content for Gemini: text + optional images
+        content_parts = [prompt]
+        if image_paths:
+            try:
+                from PIL import Image as PILImage
+                for img_path in image_paths[:3]:  # limit to 3 images for router
+                    img = PILImage.open(img_path)
+                    if img.mode in ("RGBA", "P", "LA"):
+                        img = img.convert("RGB")
+                    # Resize for router (smaller than pipeline images)
+                    w, h = img.size
+                    if max(w, h) > 512:
+                        ratio = 512 / max(w, h)
+                        img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)
+                    content_parts.append(img)
+            except Exception as img_err:
+                logger.debug("Could not load images for router: %s", img_err)
+
+        response = model.generate_content(content_parts)
         # Track router token consumption
         router_input_tokens = 0
         router_output_tokens = 0
@@ -2331,14 +2376,21 @@ async def main(message: cl.Message):
 
     # --- Handle File Uploads (user-scoped) ---
     user_upload_dir = get_user_upload_dir()
-    uploaded_files = []
+    uploaded_files = []      # spatial/document files for GIS processing
+    image_files = []         # image files for multimodal understanding
+    pdf_files = []           # PDF files for multimodal understanding
     oversized_files = []
     if message.elements:
         for element in message.elements:
             element._oversized = False
-            processed_path = handle_uploaded_file(element, user_upload_dir)
+            processed_path, file_type = handle_uploaded_file(element, user_upload_dir)
             if processed_path:
-                uploaded_files.append(processed_path)
+                if file_type == UploadType.IMAGE:
+                    image_files.append(processed_path)
+                elif file_type == UploadType.PDF:
+                    pdf_files.append(processed_path)
+                else:
+                    uploaded_files.append(processed_path)
             elif getattr(element, '_oversized', False):
                 size_mb = os.path.getsize(element.path) / (1024 * 1024)
                 oversized_files.append(f"{element.name} ({size_mb:.1f} MB)")
@@ -2349,7 +2401,8 @@ async def main(message: cl.Message):
         ).send()
 
     # Audit: record file uploads
-    for _uf in uploaded_files:
+    all_uploaded = uploaded_files + image_files + pdf_files
+    for _uf in all_uploaded:
         try:
             record_audit(user_id, ACTION_FILE_UPLOAD, details={
                 "file_name": os.path.basename(_uf),
@@ -2357,6 +2410,36 @@ async def main(message: cl.Message):
             })
         except Exception:
             pass
+
+    # --- Build multimodal extra_parts for images and PDFs ---
+    extra_parts = []
+    pdf_context = ""
+    if image_files:
+        await cl.Message(
+            content=t("multimodal.image_detected", count=len(image_files))
+        ).send()
+        for img_path in image_files:
+            part = prepare_image_part(img_path)
+            if part:
+                extra_parts.append(part)
+
+    if pdf_files:
+        await cl.Message(content=t("multimodal.pdf_detected")).send()
+        for pdf_path in pdf_files:
+            # Extract text for prompt context
+            text_content = extract_pdf_text(pdf_path)
+            if text_content:
+                pdf_context += text_content + "\n"
+            # Prepare native PDF part for Gemini
+            pdf_part = prepare_pdf_part(pdf_path)
+            if pdf_part:
+                extra_parts.append(pdf_part)
+        if pdf_context:
+            from pypdf import PdfReader
+            total_pages = sum(len(PdfReader(p).pages) for p in pdf_files if os.path.exists(p))
+            await cl.Message(
+                content=t("multimodal.pdf_extracted", pages=total_pages, chars=len(pdf_context))
+            ).send()
 
     # Construct User Prompt
     user_text = message.content
@@ -2374,6 +2457,12 @@ async def main(message: cl.Message):
         full_prompt = user_text + files_msg
     else:
         full_prompt = user_text
+
+    # Inject multimodal context into prompt
+    if image_files:
+        full_prompt += f"\n\n[多模态上下文] 用户附带了 {len(image_files)} 张图片，图片内容已嵌入消息中，请结合图片进行分析。"
+    if pdf_context:
+        full_prompt += f"\n\n[PDF文档内容摘要]\n{pdf_context[:5000]}"
 
     # --- Inject previous turn context for multi-turn dialogue ---
     last_ctx = cl.user_session.get("last_context")
@@ -2438,7 +2527,11 @@ async def main(message: cl.Message):
     else:
         # --- SEMANTIC ROUTING ---
         previous_pipeline = last_ctx.get("pipeline") if last_ctx else None
-        intent, intent_reason, router_tokens = classify_intent(user_text, previous_pipeline=previous_pipeline)
+        intent, intent_reason, router_tokens = classify_intent(
+            user_text, previous_pipeline=previous_pipeline,
+            image_paths=image_files or None,
+            pdf_context=pdf_context or None,
+        )
 
         # --- Ambiguous Intent: Ask user to clarify ---
         if intent == "AMBIGUOUS":
@@ -2555,11 +2648,13 @@ async def main(message: cl.Message):
     cl.user_session.set("retry_pipeline_name", pipeline_name)
     cl.user_session.set("retry_intent", intent)
     cl.user_session.set("retry_count", 0)
+    cl.user_session.set("retry_extra_parts", extra_parts)
 
     await _execute_pipeline(
         user_id, session_id, role, full_prompt, uploaded_files,
         pipeline_type, pipeline_name, intent, selected_agent,
         router_tokens=router_tokens,
+        extra_parts=extra_parts,
     )
 
 
@@ -2577,6 +2672,7 @@ async def on_retry_pipeline(action: cl.Action):
     pipeline_type = cl.user_session.get("retry_pipeline_type")
     pipeline_name = cl.user_session.get("retry_pipeline_name")
     intent = cl.user_session.get("retry_intent")
+    retry_extra_parts = cl.user_session.get("retry_extra_parts", [])
 
     if not full_prompt or not pipeline_type:
         await cl.Message(content=t("error.retry_missing_context")).send()
@@ -2604,6 +2700,7 @@ async def on_retry_pipeline(action: cl.Action):
         user_id, session_id, role, full_prompt, valid_files,
         pipeline_type, pipeline_name, intent, selected_agent,
         retry_attempt=retry_attempt,
+        extra_parts=retry_extra_parts,
     )
 
 

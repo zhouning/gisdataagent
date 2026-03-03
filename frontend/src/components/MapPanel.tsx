@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
+import Map3DView from './Map3DView';
 
 interface MapLayer {
   name: string;
-  type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line';
+  type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
+      | 'extrusion' | 'arc' | 'column';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
   value_column?: string;
   breaks?: number[];
   color_scheme?: string;
+  // 3D properties
+  elevation_column?: string;
+  elevation_scale?: number;
+  extruded?: boolean;
+  pitch?: number;
+  bearing?: number;
 }
 
 interface Annotation {
@@ -57,6 +65,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [loadedLayers, setLoadedLayers] = useState<MapLayer[]>([]);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
   const [showLayerControl, setShowLayerControl] = useState(false);
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   // Annotation state
   const [annotationMode, setAnnotationMode] = useState(false);
@@ -357,6 +366,15 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
   const hasLayers = loadedLayers.length > 0;
 
+  // Auto-detect 3D layers and switch to 3D mode
+  useEffect(() => {
+    const has3D = layers.some(l =>
+      l.type === 'extrusion' || l.type === 'column' || l.type === 'arc' ||
+      l.extruded || l.elevation_column
+    );
+    if (has3D) setViewMode('3d');
+  }, [layers]);
+
   // Find active choropleth layer for legend
   const choroplethLayer = loadedLayers.find(
     (l) => (l.type === 'choropleth' || l.type === 'bubble') && l.breaks && l.color_scheme
@@ -364,7 +382,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
   return (
     <div className="map-panel">
-      <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
+      {viewMode === '3d' ? (
+        <Map3DView layers={layers} center={center} zoom={zoom} />
+      ) : (
+        <>
+          <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
 
       {!hasLayers && !mapRef.current && (
         <div className="map-placeholder">
@@ -475,6 +497,17 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
         </div>
       )}
+        </>
+      )}
+
+      {/* 2D/3D view mode toggle */}
+      <button
+        className={`view-mode-toggle ${viewMode === '3d' ? 'active' : ''}`}
+        onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
+        title={viewMode === '3d' ? '切换到 2D' : '切换到 3D'}
+      >
+        {viewMode === '3d' ? '2D' : '3D'}
+      </button>
     </div>
   );
 }

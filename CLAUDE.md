@@ -74,14 +74,15 @@ Note: ADK requires separate agent instances per pipeline (cannot share an agent 
 Custom React SPA replacing Chainlit's default UI. Three-panel layout: Chat (320px) | Map (flex-1) | Data (360px).
 
 - **ChatPanel**: Messages, streaming, action cards, NL layer control relay
-- **MapPanel**: Leaflet.js map with GeoJSON layers, layer control, annotations, basemap switcher (Gaode/Tianditu/CartoDB/OSM), legend
-- **DataPanel**: 6 tabs — files, CSV preview, data catalog, pipeline history, token usage dashboard, MCP tools
+- **MapPanel**: Leaflet.js 2D map + deck.gl/MapLibre 3D view with toggle, GeoJSON layers, layer control, annotations, basemap switcher (Gaode/Tianditu/CartoDB/OSM), legend
+- **Map3DView**: deck.gl + MapLibre GL 3D renderer — extrusion, column, arc, scatterplot layers with hover tooltips
+- **DataPanel**: 7 tabs — files, CSV preview, data catalog, pipeline history, token usage dashboard, MCP tools, workflows
 - **LoginPage**: Login + in-app registration mode toggle
 - **AdminDashboard**: Metrics, user management, audit log (admin only)
 - **UserSettings**: Account info + self-deletion modal (danger zone)
 - **App.tsx**: Auth state, map/data state, layer control, user menu dropdown
 
-### Frontend API (21 REST endpoints in `frontend_api.py`)
+### Frontend API (30 REST endpoints in `frontend_api.py`)
 All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via `mount_frontend_api()`.
 
 | Method | Path | Purpose |
@@ -96,6 +97,10 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | GET/PUT/DELETE | `/api/admin/users`, `/api/admin/users/{username}/role`, `/api/admin/metrics/summary` | Admin endpoints |
 | GET | `/api/mcp/servers`, `/api/mcp/tools` | MCP server status + tool listing |
 | POST | `/api/mcp/servers/{name}/toggle`, `/api/mcp/servers/{name}/reconnect` | MCP server management (admin) |
+| GET/POST | `/api/workflows` | Workflow list + create |
+| GET/PUT/DELETE | `/api/workflows/{id}` | Workflow detail, update, delete |
+| POST | `/api/workflows/{id}/execute` | Execute workflow |
+| GET | `/api/workflows/{id}/runs` | Workflow execution history |
 
 ### Key Modules
 
@@ -103,7 +108,7 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 |---|---|
 | `agent.py` | Agent definitions, pipeline assembly, tool functions |
 | `app.py` | Chainlit UI, auth, semantic router, RBAC, file uploads, layer control |
-| `frontend_api.py` | 21 REST API endpoints for React frontend |
+| `frontend_api.py` | 30 REST API endpoints for React frontend |
 | `auth.py` | Password hashing, registration, account deletion, Chainlit auth callbacks |
 | `user_context.py` | `ContextVar` for user_id/session_id/role propagation; `get_user_upload_dir()` |
 | `db_engine.py` | Singleton SQLAlchemy engine with connection pooling |
@@ -122,12 +127,17 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | `toolsets/skill_bundles.py` | 5 named toolset groupings for agent configuration |
 | `mcp_hub.py` | MCP Hub Manager — config-driven MCP server connection + tool aggregation |
 | `toolsets/mcp_hub_toolset.py` | BaseToolset wrapper bridging MCP Hub to ADK agents |
+| `multimodal.py` | Multimodal input processing — image/PDF classification, Gemini Part builders |
+| `workflow_engine.py` | Multi-step workflow engine — CRUD, execution, webhook push, cron scheduling |
 
 ### Toolsets (17 modules in `toolsets/`)
-Exploration, GeoProcessing, Visualization (9 tools incl. `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub.
+Exploration, GeoProcessing, Visualization (10 tools incl. `generate_3d_map`, `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub.
 
 ### Data Loading (`_load_spatial_data` in `agent.py`)
 Supported formats: CSV, Excel (.xlsx/.xls), Shapefile, GeoJSON, GPKG, KML, KMZ. CSV/Excel auto-detect coordinate columns (lng/lat, lon/lat, longitude/latitude, x/y).
+
+### Multimodal Input (`multimodal.py`)
+File uploads are classified by `classify_upload()` into spatial/image/pdf/document types. Images are resized and embedded as `types.Part(inline_data=Blob)` for Gemini vision. PDFs are processed with dual strategy: text extraction via pypdf (appended to prompt) + native PDF Blob for Gemini. Voice input uses browser Web Speech API (frontend-only, `zh-CN`/`en-US`).
 
 ### DRL Optimization Flow
 The DRL model uses `MaskablePPO` (from `sb3_contrib`) with a custom `ParcelScoringPolicy`. Model weights are loaded from `scorer_weights_v7.pt`. The environment performs paired farmland↔forest swaps to minimize fragmentation while maintaining area balance.
@@ -147,7 +157,7 @@ The DRL model uses `MaskablePPO` (from `sb3_contrib`) with a custom `ParcelScori
 - **Framework**: Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`)
 - **LLM**: Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router)
 - **Frontend**: React 18 + TypeScript + Vite + Leaflet.js + @chainlit/react-client v0.3.1
-- **Backend**: Chainlit + Starlette (17 REST API endpoints)
+- **Backend**: Chainlit + Starlette (30 REST API endpoints)
 - **Database**: PostgreSQL 16 + PostGIS 3.4
 - **GIS**: GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify, branca
 - **ML**: PyTorch, Stable Baselines 3, Gymnasium

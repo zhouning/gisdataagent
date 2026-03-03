@@ -21,8 +21,9 @@ from ..gis_processors import generate_heatmap, _generate_output_path
 from ..utils import _load_spatial_data, _configure_fonts, _add_basemap_layers
 
 
-def _save_map_config(html_path: str, gdf, layers: list, center: list = None, zoom: int = None):
-    """Save GeoJSON + mapconfig.json alongside HTML for frontend Leaflet rendering.
+def _save_map_config(html_path: str, gdf, layers: list, center: list = None,
+                     zoom: int = None, pitch: int = None, bearing: int = None):
+    """Save GeoJSON + mapconfig.json alongside HTML for frontend rendering.
 
     Args:
         html_path: Path to the saved HTML file.
@@ -30,6 +31,8 @@ def _save_map_config(html_path: str, gdf, layers: list, center: list = None, zoo
         layers: List of layer config dicts for the frontend MapPanel.
         center: [lat, lng] map center. Auto-calculated if None.
         zoom: Zoom level. Defaults to 12 if None.
+        pitch: 3D camera pitch angle (0-60). None omits from config.
+        bearing: 3D camera bearing angle. None omits from config.
     """
     try:
         gdf_4326 = gdf.to_crs(epsg=4326) if gdf.crs and gdf.crs.to_epsg() != 4326 else gdf
@@ -50,6 +53,10 @@ def _save_map_config(html_path: str, gdf, layers: list, center: list = None, zoo
                 layer['geojson'] = geojson_filename
 
         config = {"layers": layers, "center": center, "zoom": zoom}
+        if pitch is not None:
+            config["pitch"] = pitch
+        if bearing is not None:
+            config["bearing"] = bearing
         config_path = html_path.replace('.html', '.mapconfig.json')
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, ensure_ascii=False)
@@ -922,6 +929,101 @@ def _render_bubble_layer(gdf, fg, spec, color, opacity, layer_name):
         ).add_to(fg)
 
 
+def generate_3d_map(
+    data_path: str,
+    elevation_column: str = "",
+    value_column: str = "",
+    elevation_scale: float = 1.0,
+    layer_name: str = "3D Layer",
+    layer_type: str = "extrusion",
+    pitch: int = 45,
+    bearing: int = 0,
+) -> str:
+    """生成 3D 拉伸/柱状地图，支持多边形高度拉伸和 3D 散点。
+
+    在前端地图面板中自动切换到 3D 视图（deck.gl + MapLibre）。
+
+    Args:
+        data_path: 空间数据文件路径（.shp/.geojson/.gpkg等）或 PostGIS 表名。
+        elevation_column: 用于控制 3D 高度的数值字段名。不指定则使用固定高度。
+        value_column: 用于着色的数值字段名（分级设色）。不指定则统一着色。
+        elevation_scale: 高度缩放系数，默认 1.0。增大此值使高度差更明显。
+        layer_name: 图层名称，显示在地图面板中。
+        layer_type: 3D 图层类型 — extrusion（多边形拉伸）、column（柱状图）、arc（弧线连接）。
+        pitch: 3D 视角俯仰角（0-60），默认 45。
+        bearing: 3D 视角方位角（-180~180），默认 0。
+
+    Returns:
+        生成的文件路径及说明。
+    """
+    try:
+        gdf = _load_spatial_data(data_path)
+        if gdf.empty:
+            return "Error: 数据为空，无法生成 3D 地图"
+
+        gdf_4326 = gdf.to_crs(epsg=4326) if gdf.crs and gdf.crs.to_epsg() != 4326 else gdf
+
+        # Validate elevation_column
+        if elevation_column and elevation_column not in gdf_4326.columns:
+            available = [c for c in gdf_4326.columns if c != 'geometry']
+            return f"Error: 高度字段 '{elevation_column}' 不存在。可用字段: {available}"
+
+        # Validate value_column
+        if value_column and value_column not in gdf_4326.columns:
+            available = [c for c in gdf_4326.columns if c != 'geometry']
+            return f"Error: 着色字段 '{value_column}' 不存在。可用字段: {available}"
+
+        # Compute choropleth breaks if value_column specified
+        breaks = None
+        color_scheme = "YlOrRd"
+        if value_column:
+            gdf_4326[value_column] = pd.to_numeric(gdf_4326[value_column], errors='coerce')
+            valid_vals = gdf_4326[value_column].dropna()
+            if len(valid_vals) >= 5:
+                classifier = mapclassify.Quantiles(valid_vals.values, k=5)
+                breaks = [float(b) for b in classifier.bins]
+
+        # Build layer config for frontend 3D rendering
+        valid_types = ("extrusion", "column", "arc")
+        if layer_type not in valid_types:
+            layer_type = "extrusion"
+
+        layer_cfg = {
+            "name": layer_name,
+            "type": layer_type,
+            "extruded": True,
+            "elevation_scale": elevation_scale,
+            "pitch": max(0, min(60, pitch)),
+            "bearing": max(-180, min(180, bearing)),
+        }
+        if elevation_column:
+            layer_cfg["elevation_column"] = elevation_column
+        if value_column:
+            layer_cfg["value_column"] = value_column
+        if breaks:
+            layer_cfg["breaks"] = breaks
+            layer_cfg["color_scheme"] = color_scheme
+
+        # Save GeoJSON + mapconfig
+        output_path = _generate_output_path("3d_map", "html")
+        # Write a minimal HTML placeholder (actual rendering is in frontend)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(f"<html><body><h3>{layer_name}</h3>"
+                    f"<p>3D visualization rendered in the map panel.</p></body></html>")
+
+        _save_map_config(output_path, gdf_4326, [layer_cfg], pitch=pitch, bearing=bearing)
+
+        msg = f"3D 地图已生成: {output_path}\n图层: {layer_name}, 类型: {layer_type}"
+        if elevation_column:
+            msg += f", 高度字段: {elevation_column} (×{elevation_scale})"
+        if value_column:
+            msg += f", 着色字段: {value_column}"
+        return msg
+
+    except Exception as e:
+        return f"Error generating 3D map: {str(e)}"
+
+
 # ---------------------------------------------------------------------------
 # Natural Language Layer Control
 # ---------------------------------------------------------------------------
@@ -987,6 +1089,7 @@ _ALL_FUNCS = [
     export_map_png,
     generate_heatmap,
     compose_map,
+    generate_3d_map,
     control_map_layer,
 ]
 

@@ -67,6 +67,7 @@ async def run_pipeline_headless(
     router_tokens: int = 0,
     use_dynamic_planner: bool = False,
     role: str = "analyst",
+    extra_parts: list = None,
 ) -> PipelineResult:
     """
     Run an ADK pipeline without Chainlit UI coupling.
@@ -100,7 +101,7 @@ async def run_pipeline_headless(
         app_name="data_agent_headless",
         session_service=session_service,
     )
-    content = types.Content(role="user", parts=[types.Part(text=prompt)])
+    content = types.Content(role="user", parts=[types.Part(text=prompt)] + (extra_parts or []))
 
     total_input_tokens = router_tokens
     total_output_tokens = 0
