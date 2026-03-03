@@ -75,13 +75,13 @@ Custom React SPA replacing Chainlit's default UI. Three-panel layout: Chat (320p
 
 - **ChatPanel**: Messages, streaming, action cards, NL layer control relay
 - **MapPanel**: Leaflet.js map with GeoJSON layers, layer control, annotations, basemap switcher (Gaode/Tianditu/CartoDB/OSM), legend
-- **DataPanel**: 5 tabs — files, CSV preview, data catalog, pipeline history, token usage dashboard
+- **DataPanel**: 6 tabs — files, CSV preview, data catalog, pipeline history, token usage dashboard, MCP tools
 - **LoginPage**: Login + in-app registration mode toggle
 - **AdminDashboard**: Metrics, user management, audit log (admin only)
 - **UserSettings**: Account info + self-deletion modal (danger zone)
 - **App.tsx**: Auth state, map/data state, layer control, user menu dropdown
 
-### Frontend API (17 REST endpoints in `frontend_api.py`)
+### Frontend API (21 REST endpoints in `frontend_api.py`)
 All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via `mount_frontend_api()`.
 
 | Method | Path | Purpose |
@@ -94,6 +94,8 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | GET/POST | `/api/annotations`, PUT/DELETE `/api/annotations/{id}` | Map annotations CRUD |
 | GET | `/api/config/basemaps` | Basemap configuration |
 | GET/PUT/DELETE | `/api/admin/users`, `/api/admin/users/{username}/role`, `/api/admin/metrics/summary` | Admin endpoints |
+| GET | `/api/mcp/servers`, `/api/mcp/tools` | MCP server status + tool listing |
+| POST | `/api/mcp/servers/{name}/toggle`, `/api/mcp/servers/{name}/reconnect` | MCP server management (admin) |
 
 ### Key Modules
 
@@ -101,7 +103,7 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 |---|---|
 | `agent.py` | Agent definitions, pipeline assembly, tool functions |
 | `app.py` | Chainlit UI, auth, semantic router, RBAC, file uploads, layer control |
-| `frontend_api.py` | 17 REST API endpoints for React frontend |
+| `frontend_api.py` | 21 REST API endpoints for React frontend |
 | `auth.py` | Password hashing, registration, account deletion, Chainlit auth callbacks |
 | `user_context.py` | `ContextVar` for user_id/session_id/role propagation; `get_user_upload_dir()` |
 | `db_engine.py` | Singleton SQLAlchemy engine with connection pooling |
@@ -118,9 +120,11 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | `memory.py` | Persistent per-user spatial memory |
 | `report_generator.py` | Markdown → Word (.docx) report generation |
 | `toolsets/skill_bundles.py` | 5 named toolset groupings for agent configuration |
+| `mcp_hub.py` | MCP Hub Manager — config-driven MCP server connection + tool aggregation |
+| `toolsets/mcp_hub_toolset.py` | BaseToolset wrapper bridging MCP Hub to ADK agents |
 
-### Toolsets (16 modules in `toolsets/`)
-Exploration, GeoProcessing, Visualization (9 tools incl. `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles.
+### Toolsets (17 modules in `toolsets/`)
+Exploration, GeoProcessing, Visualization (9 tools incl. `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub.
 
 ### Data Loading (`_load_spatial_data` in `agent.py`)
 Supported formats: CSV, Excel (.xlsx/.xls), Shapefile, GeoJSON, GPKG, KML, KMZ. CSV/Excel auto-detect coordinate columns (lng/lat, lon/lat, longitude/latitude, x/y).

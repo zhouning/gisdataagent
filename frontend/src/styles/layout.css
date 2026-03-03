@@ -1931,3 +1931,32 @@ body {
 }
 .danger-confirm-btn:hover { background: #b91c1c !important; }
 .danger-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ============================================================
+   Tools View (MCP Tool Market)
+   ============================================================ */
+.tools-view { padding: 0; }
+.tools-summary { display: flex; align-items: center; gap: 4px; padding: 8px 12px; font-size: 11px; color: var(--text-tertiary); }
+.tools-summary-sep { color: var(--border); }
+.tools-connected { color: #16a34a; font-weight: 500; }
+.tools-server-list { display: flex; flex-direction: column; gap: 4px; padding: 0 8px 8px; }
+.tools-server-card { padding: 8px 10px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); cursor: pointer; transition: border-color 0.15s; }
+.tools-server-card:hover { border-color: var(--primary-200); }
+.tools-server-card.selected { border-color: var(--primary); background: var(--primary-light); }
+.tools-server-header { display: flex; align-items: center; gap: 6px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.status-dot.connected { background: #22c55e; }
+.status-dot.disconnected { background: #9ca3af; }
+.status-dot.error { background: #ef4444; }
+.tools-server-name { font-size: 12px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tools-server-count { font-size: 10px; color: var(--text-tertiary); background: var(--surface); padding: 1px 6px; border-radius: var(--radius-full); }
+.tools-server-desc { font-size: 11px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
+.tools-server-error { font-size: 10px; color: #ef4444; margin-top: 3px; }
+.tools-list { border-top: 1px solid var(--border-light); }
+.tools-list-header { padding: 6px 12px; font-size: 11px; font-weight: 500; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
+.tools-count { background: var(--primary-light); color: var(--primary); padding: 1px 7px; border-radius: var(--radius-full); font-size: 10px; }
+.tool-item { padding: 5px 12px; border-bottom: 1px solid var(--border-light); }
+.tool-item:last-child { border-bottom: none; }
+.tool-item:hover { background: var(--surface); }
+.tool-name { font-size: 11.5px; font-weight: 500; font-family: 'SF Mono', 'Consolas', monospace; }
+.tool-desc { font-size: 10.5px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }

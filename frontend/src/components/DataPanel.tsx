@@ -5,7 +5,7 @@ interface DataPanelProps {
   dataFile: string | null;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools';
 
 interface FileInfo {
   name: string;
@@ -104,6 +104,8 @@ export default function DataPanel({ dataFile }: DataPanelProps) {
           onClick={() => setActiveTab('history')}>历史</button>
         <button className={`data-panel-tab ${activeTab === 'usage' ? 'active' : ''}`}
           onClick={() => setActiveTab('usage')}>用量</button>
+        <button className={`data-panel-tab ${activeTab === 'tools' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tools')}>工具</button>
       </div>
 
       <div className="data-panel-content">
@@ -112,6 +114,7 @@ export default function DataPanel({ dataFile }: DataPanelProps) {
         {activeTab === 'catalog' && <CatalogView />}
         {activeTab === 'history' && <HistoryView />}
         {activeTab === 'usage' && <UsageView />}
+        {activeTab === 'tools' && <ToolsView />}
       </div>
     </div>
   );
@@ -419,6 +422,135 @@ function UsageView() {
 
       {!usage.limits.allowed && (
         <div className="usage-limit-warning">{usage.limits.reason}</div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   Tools View (MCP Tool Market)
+   ============================================================ */
+
+interface McpServer {
+  name: string;
+  description: string;
+  transport: string;
+  status: string;
+  tool_count: number;
+  category: string;
+  enabled: boolean;
+  error_message: string;
+  connected_at: number | null;
+}
+
+interface McpTool {
+  name: string;
+  description: string;
+  server: string;
+}
+
+function ToolsView() {
+  const [servers, setServers] = useState<McpServer[]>([]);
+  const [tools, setTools] = useState<McpTool[]>([]);
+  const [selectedServer, setSelectedServer] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchServers = async () => {
+    try {
+      const resp = await fetch('/api/mcp/servers', { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setServers(data.servers || []);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const fetchTools = async (serverName?: string) => {
+    setLoading(true);
+    const params = serverName ? `?server=${serverName}` : '';
+    try {
+      const resp = await fetch(`/api/mcp/tools${params}`, { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setTools(data.tools || []);
+      }
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    fetchServers();
+    const interval = setInterval(fetchServers, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (servers.some((s) => s.status === 'connected')) {
+      fetchTools(selectedServer || undefined);
+    } else {
+      setTools([]);
+    }
+  }, [selectedServer, servers.length]);
+
+  const connectedCount = servers.filter((s) => s.status === 'connected').length;
+
+  return (
+    <div className="tools-view">
+      <div className="tools-summary">
+        <span>{servers.length} 服务器</span>
+        <span className="tools-summary-sep">/</span>
+        <span className={connectedCount > 0 ? 'tools-connected' : ''}>{connectedCount} 已连接</span>
+      </div>
+
+      <div className="tools-server-list">
+        {servers.map((s) => (
+          <div
+            key={s.name}
+            className={`tools-server-card ${selectedServer === s.name ? 'selected' : ''}`}
+            onClick={() => setSelectedServer(selectedServer === s.name ? null : s.name)}
+          >
+            <div className="tools-server-header">
+              <span className={`status-dot ${s.status}`} />
+              <span className="tools-server-name">{s.name}</span>
+              {s.tool_count > 0 && (
+                <span className="tools-server-count">{s.tool_count}</span>
+              )}
+            </div>
+            {s.description && (
+              <div className="tools-server-desc">{s.description}</div>
+            )}
+            {s.error_message && (
+              <div className="tools-server-error">{s.error_message}</div>
+            )}
+          </div>
+        ))}
+        {servers.length === 0 && (
+          <div className="empty-state">
+            暂无 MCP 服务器<br />
+            编辑 mcp_servers.yaml 添加
+          </div>
+        )}
+      </div>
+
+      {tools.length > 0 && (
+        <div className="tools-list">
+          <div className="tools-list-header">
+            <span>{selectedServer ? `${selectedServer}` : '全部工具'}</span>
+            <span className="tools-count">{tools.length}</span>
+          </div>
+          {tools.map((tool) => (
+            <div key={`${tool.server}-${tool.name}`} className="tool-item">
+              <div className="tool-name">{tool.name}</div>
+              {tool.description && (
+                <div className="tool-desc">{tool.description}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading && tools.length === 0 && connectedCount > 0 && (
+        <div className="empty-state">加载工具中...</div>
       )}
     </div>
   );

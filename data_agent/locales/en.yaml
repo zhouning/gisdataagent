@@ -179,3 +179,10 @@ auth.delete_admin_blocked: "Administrators cannot delete their own account this 
 auth.delete_user_not_found: "User not found"
 auth.delete_success: "Account deleted"
 auth.delete_failed: "Deletion failed: {error}"
+
+# --- MCP Hub ---
+mcp.server_connected: "MCP server '{name}' connected: {count} tools discovered"
+mcp.server_failed: "MCP server '{name}' connection failed: {error}"
+mcp.server_disconnected: "MCP server '{name}' disconnected"
+mcp.hub_startup: "MCP Tool Market started: {connected}/{total} servers connected"
+mcp.no_config: "No MCP server configuration file found"

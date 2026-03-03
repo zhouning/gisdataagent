@@ -159,6 +159,17 @@ DYNAMIC_PLANNER = os.environ.get("DYNAMIC_PLANNER", "true").lower() in ("true", 
 if DYNAMIC_PLANNER:
     logger.info("Dynamic Planner mode enabled")
 
+# --- MCP Hub: load config (async connections deferred to on_chat_start) ---
+try:
+    from data_agent.mcp_hub import get_mcp_hub
+    _mcp_hub = get_mcp_hub()
+    _mcp_hub.load_config()
+    _mcp_hub_loaded = True
+except Exception as _mcp_err:
+    logger.warning("MCP Hub config loading failed: %s", _mcp_err)
+    _mcp_hub_loaded = False
+_mcp_started = False
+
 # --- Chainlit Data Layer: thread/message persistence in PostgreSQL ---
 try:
     from data_agent.session_storage import get_chainlit_db_url as _get_cl_db_url
@@ -2243,6 +2254,16 @@ async def start():
     """Initialize session with authenticated user."""
     # Set i18n language from env (default: zh)
     set_language(os.environ.get("UI_LANGUAGE", "zh"))
+
+    # Start MCP Hub connections (once, on first chat start)
+    global _mcp_started
+    if not _mcp_started and _mcp_hub_loaded:
+        try:
+            await get_mcp_hub().startup()
+        except Exception as e:
+            logger.warning("MCP Hub startup failed: %s", e)
+        _mcp_started = True
+
     # Get authenticated user from Chainlit (set by auth callbacks in auth.py)
     cl_user = cl.user_session.get("user")
 

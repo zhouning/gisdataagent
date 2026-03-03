@@ -553,6 +553,78 @@ async def _api_session_delete(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# MCP Tool Market API
+# ---------------------------------------------------------------------------
+
+async def _api_mcp_servers(request: Request):
+    """GET /api/mcp/servers — list configured MCP servers with status."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+    servers = hub.get_server_statuses()
+    return JSONResponse({"servers": servers, "count": len(servers)})
+
+
+async def _api_mcp_tools(request: Request):
+    """GET /api/mcp/tools — list all tools from connected MCP servers."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    server_name = request.query_params.get("server")
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+
+    if server_name:
+        tools = await hub.get_tools_for_server(server_name)
+    else:
+        tools = []
+        for status in hub.get_server_statuses():
+            if status["status"] == "connected":
+                server_tools = await hub.get_tools_for_server(status["name"])
+                tools.extend(server_tools)
+
+    return JSONResponse({"tools": tools, "count": len(tools)})
+
+
+async def _api_mcp_toggle(request: Request):
+    """POST /api/mcp/servers/{name}/toggle — enable/disable a server (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+
+    server_name = request.path_params.get("name", "")
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    enabled = body.get("enabled", False)
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+    result = await hub.toggle_server(server_name, enabled)
+    status_code = 200 if result.get("status") == "ok" else 404
+    return JSONResponse(result, status_code=status_code)
+
+
+async def _api_mcp_reconnect(request: Request):
+    """POST /api/mcp/servers/{name}/reconnect — force reconnect (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+
+    server_name = request.path_params.get("name", "")
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+    result = await hub.reconnect_server(server_name)
+    status_code = 200 if result.get("status") == "ok" else 404
+    return JSONResponse(result, status_code=status_code)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -578,6 +650,10 @@ def get_frontend_api_routes():
         Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
+        Route("/api/mcp/servers", endpoint=_api_mcp_servers, methods=["GET"]),
+        Route("/api/mcp/tools", endpoint=_api_mcp_tools, methods=["GET"]),
+        Route("/api/mcp/servers/{name}/toggle", endpoint=_api_mcp_toggle, methods=["POST"]),
+        Route("/api/mcp/servers/{name}/reconnect", endpoint=_api_mcp_reconnect, methods=["POST"]),
     ]
 
 

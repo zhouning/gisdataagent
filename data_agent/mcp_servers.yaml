@@ -1,0 +1,62 @@
+# ============================================================
+# MCP Tool Market — Server Configuration
+# ============================================================
+#
+# Servers listed here will be connected at startup (if enabled).
+# Transport types: stdio, sse, streamable_http
+#
+# Schema per entry:
+#   name        (str, required)  Unique identifier
+#   description (str)            Human-readable description
+#   transport   (str)            stdio | sse | streamable_http
+#   enabled     (bool)           Connect at startup (default: false)
+#   category    (str)            UI grouping label (e.g. gis, data, weather)
+#   pipelines   (list[str])      Which agent pipelines get these tools
+#                                (default: [general, planner])
+#
+# stdio-specific:
+#   command     (str)            Executable path
+#   args        (list[str])      Command-line arguments
+#   env         (dict)           Environment variables
+#   cwd         (str)            Working directory
+#
+# sse / streamable_http-specific:
+#   url         (str)            Server URL
+#   headers     (dict)           HTTP headers (e.g. auth tokens)
+#   timeout     (float)          Connection timeout in seconds (default: 5.0)
+# ============================================================
+
+servers:
+  # --- Example: local GIS tools via stdio ---
+  - name: local-gis-agent
+    description: "GIS Data Agent local toolset (self-connect demo)"
+    transport: stdio
+    command: "D:\\adk\\.venv\\Scripts\\python.exe"
+    args: ["-m", "data_agent.mcp_server"]
+    env:
+      MCP_USER: "mcp_bridge"
+      MCP_ROLE: "analyst"
+    enabled: false
+    category: gis
+    pipelines: ["general", "planner"]
+
+  # --- Example: remote SSE server (uncomment to use) ---
+  # - name: weather-service
+  #   description: "Weather data and forecasting tools"
+  #   transport: sse
+  #   url: "http://localhost:9090/sse"
+  #   enabled: false
+  #   category: data
+  #   pipelines: ["general"]
+
+  # --- Example: Streamable HTTP server (uncomment to use) ---
+  # - name: remote-analytics
+  #   description: "Remote analytics MCP server"
+  #   transport: streamable_http
+  #   url: "http://analytics.example.com/mcp"
+  #   headers:
+  #     Authorization: "Bearer <token>"
+  #   timeout: 10.0
+  #   enabled: false
+  #   category: analytics
+  #   pipelines: ["general", "planner"]

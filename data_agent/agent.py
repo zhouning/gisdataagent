@@ -45,6 +45,7 @@ from .toolsets import (
     StreamingToolset,
     TeamToolset,
     DataLakeToolset,
+    McpHubToolset,
 )
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -291,6 +292,7 @@ general_processing_agent = LlmAgent(
         StreamingToolset(),
         TeamToolset(),
         DataLakeToolset(),
+        McpHubToolset(pipeline="general"),
     ] + _arcpy_tools,
 )
 
@@ -376,6 +378,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             StreamingToolset(),
             DataLakeToolset(tool_filter=_DATALAKE_READ),
             DatabaseToolset(tool_filter=["import_to_postgis"]),
+            McpHubToolset(pipeline="planner"),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)

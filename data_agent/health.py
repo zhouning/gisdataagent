@@ -131,6 +131,25 @@ def _get_feature_flags() -> dict:
     return flags
 
 
+def check_mcp_hub() -> dict:
+    """Check MCP Hub connection status."""
+    try:
+        from .mcp_hub import get_mcp_hub
+        hub = get_mcp_hub()
+        statuses = hub.get_server_statuses()
+        connected = sum(1 for s in statuses if s["status"] == "connected")
+        total = len(statuses)
+        if total == 0:
+            return {"status": "unconfigured", "connected": 0, "total": 0}
+        return {
+            "status": "ok" if connected > 0 else "disconnected",
+            "connected": connected,
+            "total": total,
+        }
+    except Exception:
+        return {"status": "unconfigured", "connected": 0, "total": 0}
+
+
 # ---------------------------------------------------------------------------
 # Aggregated endpoints
 # ---------------------------------------------------------------------------
@@ -169,6 +188,7 @@ def get_system_status(session_svc=None) -> dict:
             "cloud_storage": check_cloud_storage(),
             "redis": check_redis(),
             "session_service": check_session_service(session_svc),
+            "mcp_hub": check_mcp_hub(),
         },
     }
 
@@ -228,6 +248,16 @@ def format_startup_summary(session_svc=None) -> str:
     # Session service
     session_detail = f"{session['backend']}" + (" (fallback)" if session["status"] == "degraded" else "")
     lines.append(f"  [{_icon(session['status'])}] Session:        {session_detail}")
+
+    # MCP Hub
+    mcp = check_mcp_hub()
+    if mcp["status"] == "unconfigured":
+        mcp_detail = "Not configured"
+    elif mcp["status"] == "ok":
+        mcp_detail = f"{mcp['connected']}/{mcp['total']} servers connected"
+    else:
+        mcp_detail = f"0/{mcp['total']} servers connected"
+    lines.append(f"  [{_icon(mcp['status'])}] MCP Hub:        {mcp_detail}")
 
     lines.append("-" * 50)
 
