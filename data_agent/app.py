@@ -1463,6 +1463,85 @@ PIPELINE_STAGES = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Pipeline Progress — inline chat progress message helpers
+# ---------------------------------------------------------------------------
+
+def _render_bar(completed: int, total: int) -> str:
+    """Render a text progress bar, e.g. '▓▓░░ 2/4'."""
+    if total == 0:
+        return ""
+    return "▓" * completed + "░" * (total - completed) + f" {completed}/{total}"
+
+
+def _build_progress_content(
+    pipeline_label: str,
+    pipeline_type: str,
+    stages: list,
+    stage_timings: list,
+    is_complete: bool = False,
+    total_duration: float = 0.0,
+    is_error: bool = False,
+) -> str:
+    """Build Markdown content for the inline progress message.
+
+    Pure function — no side effects, easily testable.
+    """
+    timing_map = {st["name"]: st for st in stage_timings}
+
+    if pipeline_type == "planner":
+        # Dynamic planner: no predefined stages, show only known steps
+        if is_complete:
+            header = f"**{pipeline_label}** {len(stage_timings)} 步骤完成"
+        elif stage_timings:
+            header = f"**{pipeline_label}** 步骤 {len(stage_timings)}"
+        else:
+            header = f"**{pipeline_label}** 准备中..."
+        lines = [header, ""]
+        for st in stage_timings:
+            if is_error and st["end"] is None:
+                elapsed = (st.get("_error_time") or time.time()) - st["start"]
+                lines.append(f"✗ {st['label']}  {elapsed:.1f}s (异常)")
+            elif st["end"] is not None:
+                dur = st["end"] - st["start"]
+                lines.append(f"✓ {st['label']}  {dur:.1f}s")
+            else:
+                elapsed = time.time() - st["start"]
+                lines.append(f"▶ {st['label']}  {elapsed:.1f}s...")
+    else:
+        # Fixed pipeline: show all stages including pending
+        completed_count = sum(1 for st in stage_timings if st["end"] is not None)
+        total = len(stages)
+        if is_complete:
+            header = f"**{pipeline_label}** {_render_bar(total, total)} 完成"
+        else:
+            header = f"**{pipeline_label}** {_render_bar(completed_count, total)}"
+        lines = [header, ""]
+        for stage_name in stages:
+            label = AGENT_LABELS.get(stage_name, stage_name)
+            st = timing_map.get(stage_name)
+            if st is None:
+                lines.append(f"○ {label}")
+            elif is_error and st["end"] is None:
+                elapsed = (st.get("_error_time") or time.time()) - st["start"]
+                lines.append(f"✗ {label}  {elapsed:.1f}s (异常)")
+            elif st["end"] is not None:
+                dur = st["end"] - st["start"]
+                lines.append(f"✓ {label}  {dur:.1f}s")
+            else:
+                elapsed = time.time() - st["start"]
+                lines.append(f"▶ {label}  {elapsed:.1f}s...")
+
+    if is_complete:
+        lines.append("")
+        if is_error:
+            lines.append(f"⏱ 总耗时 {total_duration:.1f}s | 状态: 异常终止")
+        else:
+            lines.append(f"⏱ 总耗时 {total_duration:.1f}s")
+
+    return "\n".join(lines)
+
+
 def _set_user_context(user_id: str, session_id: str, role: str = "analyst"):
     """Set context variables for the current async task."""
     current_user_id.set(user_id)
@@ -1997,6 +2076,10 @@ async def main(message: cl.Message):
     tool_execution_log = []
     _tool_step_counter = 0
     _pending_tool_call = None
+    stage_timings = []
+    progress_msg = cl.Message(content=_build_progress_content(
+        pipeline_name, pipeline_type, stages, stage_timings))
+    await progress_msg.send()
 
     try:
         run_config = RunConfig(max_llm_calls=50) if (DYNAMIC_PLANNER and pipeline_type == "planner") else None
@@ -2040,6 +2123,17 @@ async def main(message: cl.Message):
                         parent_id=pipeline_step.id,
                     )
                     await current_agent_step.send()
+
+                    # --- Update inline progress message ---
+                    if stage_timings and stage_timings[-1]["end"] is None:
+                        stage_timings[-1]["end"] = time.time()
+                    stage_timings.append({
+                        "name": author, "label": agent_label,
+                        "start": time.time(), "end": None,
+                    })
+                    progress_msg.content = _build_progress_content(
+                        pipeline_name, pipeline_type, stages, stage_timings)
+                    await progress_msg.update()
 
             if not (event.content and event.content.parts):
                 continue
@@ -2095,6 +2189,10 @@ async def main(message: cl.Message):
                         except Exception:
                             current_tool_step.output = "执行成功"
                         await current_tool_step.update()
+                        # Refresh inline progress (elapsed time tick)
+                        progress_msg.content = _build_progress_content(
+                            pipeline_name, pipeline_type, stages, stage_timings)
+                        await progress_msg.update()
                         # Detect layer_control in tool response → send as metadata
                         try:
                             _lc_resp = part.function_response.response
@@ -2205,6 +2303,14 @@ async def main(message: cl.Message):
         total_duration = time.time() - pipeline_start_time
         pipeline_step.name = f"{pipeline_name} ✓ ({total_duration:.1f}s)"
         await pipeline_step.update()
+
+        # --- Finalize inline progress → completion timeline ---
+        if stage_timings and stage_timings[-1]["end"] is None:
+            stage_timings[-1]["end"] = time.time()
+        progress_msg.content = _build_progress_content(
+            pipeline_name, pipeline_type, stages, stage_timings,
+            is_complete=True, total_duration=total_duration)
+        await progress_msg.update()
 
         # --- Prometheus metrics: pipeline success ---
         pipeline_duration.labels(pipeline=pipeline_type).observe(total_duration)
@@ -2339,6 +2445,17 @@ async def main(message: cl.Message):
         err_msg = f"Error: {str(e)}"
         logger.error("Pipeline execution error: %s", e)
         pipeline_runs.labels(pipeline=pipeline_type, status="error").inc()
+        # Finalize progress with error state
+        try:
+            if stage_timings and stage_timings[-1]["end"] is None:
+                stage_timings[-1]["_error_time"] = time.time()
+            err_duration = time.time() - pipeline_start_time
+            progress_msg.content = _build_progress_content(
+                pipeline_name, pipeline_type, stages, stage_timings,
+                is_complete=True, total_duration=err_duration, is_error=True)
+            await progress_msg.update()
+        except Exception:
+            pass
         await cl.Message(content=err_msg).send()
 
 
