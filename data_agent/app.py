@@ -109,6 +109,8 @@ try:
     ensure_data_catalog_table()
     from data_agent.map_annotations import ensure_annotations_table
     ensure_annotations_table()
+    from data_agent.session_storage import ensure_chainlit_tables
+    ensure_chainlit_tables()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -152,6 +154,21 @@ except Exception as _fs_err:
 DYNAMIC_PLANNER = os.environ.get("DYNAMIC_PLANNER", "true").lower() in ("true", "1", "yes")
 if DYNAMIC_PLANNER:
     logger.info("Dynamic Planner mode enabled")
+
+# --- Chainlit Data Layer: thread/message persistence in PostgreSQL ---
+try:
+    from data_agent.session_storage import get_chainlit_db_url as _get_cl_db_url
+    _chainlit_db_url = _get_cl_db_url()
+    if _chainlit_db_url:
+        from chainlit.data.chainlit_data_layer import ChainlitDataLayer
+        import chainlit.data as cl_data
+        cl_data._data_layer = ChainlitDataLayer(database_url=_chainlit_db_url)
+        cl_data._data_layer_initialized = True
+        logger.info("Chainlit data layer initialized (PostgreSQL thread persistence)")
+    else:
+        logger.info("Chainlit data layer skipped (database not configured)")
+except Exception as _cl_data_err:
+    logger.warning("Chainlit data layer init failed: %s", _cl_data_err)
 
 # --- Session Service: persistent DB or in-memory fallback ---
 def _create_session_service():
@@ -1631,6 +1648,35 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
         return ""
 
 
+@cl.on_chat_resume
+async def on_resume(thread: dict):
+    """Restore context when user resumes a thread from sidebar history."""
+    cl_user = cl.user_session.get("user")
+    if cl_user:
+        user_id = cl_user.identifier
+        role = cl_user.metadata.get("role", "analyst") if cl_user.metadata else "analyst"
+    else:
+        user_id = "dev_user"
+        role = "admin"
+
+    session_id = thread.get("id", cl.user_session.get("id"))
+
+    _set_user_context(user_id, session_id, role)
+    cl.user_session.set("user_id", user_id)
+    cl.user_session.set("session_id", session_id)
+    cl.user_session.set("user_role", role)
+    get_user_upload_dir()
+
+    try:
+        adk_session = await session_service.get_session(
+            app_name="data_agent_ui", user_id=user_id, session_id=session_id)
+        if adk_session:
+            logger.info("Resumed ADK session %s (%d events)",
+                        session_id, len(adk_session.events))
+    except Exception as e:
+        logger.warning("ADK session resume failed: %s", e)
+
+
 @cl.on_chat_start
 async def start():
     """Initialize session with authenticated user."""
@@ -1652,21 +1698,20 @@ async def start():
     # Set context variables for this session
     _set_user_context(user_id, session_id, role)
 
-    # Create or resume ADK session (handles page refresh with DB persistence)
+    # Create or resume ADK session (get-first for page refresh recovery)
     adk_session = None
     try:
-        adk_session = await session_service.create_session(
+        adk_session = await session_service.get_session(
             app_name="data_agent_ui", user_id=user_id, session_id=session_id)
-    except Exception:
-        # Session already exists — load it for potential state restore
-        try:
-            adk_session = await session_service.get_session(
+        if adk_session:
+            logger.info("Restored existing session for %s (%d prior events)",
+                       user_id, len(adk_session.events))
+        else:
+            adk_session = await session_service.create_session(
                 app_name="data_agent_ui", user_id=user_id, session_id=session_id)
-            if adk_session:
-                logger.info("Restored existing session for %s (%d prior events)",
-                           user_id, len(adk_session.events))
-        except Exception as e2:
-            logger.warning("Could not restore session: %s", e2)
+            logger.info("Created new ADK session for %s", user_id)
+    except Exception as e:
+        logger.warning("ADK session init failed: %s", e)
 
     # Store in Chainlit session
     cl.user_session.set("user_id", user_id)

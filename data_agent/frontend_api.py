@@ -490,6 +490,69 @@ async def _api_user_delete_account(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Sessions — thread history
+# ---------------------------------------------------------------------------
+
+async def _api_sessions_list(request: Request):
+    """GET /api/sessions — list current user's chat threads."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    username = user.get("identifier") or user.get("id")
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"sessions": []})
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                'SELECT id, name, "createdAt", "updatedAt" '
+                'FROM "Thread" '
+                'WHERE "userIdentifier" = :uid '
+                'ORDER BY "updatedAt" DESC LIMIT 50'
+            ), {"uid": username}).fetchall()
+        sessions = [
+            {"id": r[0], "name": r[1],
+             "created_at": r[2].isoformat() if r[2] else None,
+             "updated_at": r[3].isoformat() if r[3] else None}
+            for r in rows
+        ]
+        return JSONResponse({"sessions": sessions})
+    except Exception as e:
+        logger.warning("Failed to list sessions: %s", e)
+        return JSONResponse({"sessions": []})
+
+
+async def _api_session_delete(request: Request):
+    """DELETE /api/sessions/{session_id} — delete a chat thread."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    username = user.get("identifier") or user.get("id")
+    session_id = request.path_params["session_id"]
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not configured"}, status_code=500)
+
+    try:
+        with engine.connect() as conn:
+            # Only delete if thread belongs to user
+            result = conn.execute(text(
+                'DELETE FROM "Thread" '
+                'WHERE id = :sid AND "userIdentifier" = :uid'
+            ), {"sid": session_id, "uid": username})
+            conn.commit()
+        if result.rowcount == 0:
+            return JSONResponse({"error": "Not found"}, status_code=404)
+        return JSONResponse({"status": "deleted", "session_id": session_id})
+    except Exception as e:
+        logger.warning("Failed to delete session: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -513,6 +576,8 @@ def get_frontend_api_routes():
         Route("/api/annotations/{id:int}", endpoint=_api_annotations_delete, methods=["DELETE"]),
         Route("/api/config/basemaps", endpoint=_api_config_basemaps, methods=["GET"]),
         Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
+        Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
+        Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
     ]
 
 
