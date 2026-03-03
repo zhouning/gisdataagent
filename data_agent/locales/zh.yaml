@@ -1,0 +1,181 @@
+# ============================================================
+# GIS Data Agent — 中文翻译 (默认语言)
+# ============================================================
+
+# --- 路由与意图识别 ---
+routing.intent_recognized: "意图识别：**{intent}**\n已路由至：**{pipeline_name}**"
+routing.ambiguous_prompt: "我不太确定您想做什么。{reason}\n\n请选择您需要的分析类型："
+routing.timeout_auto: "操作超时，已自动选择通用分析管线。"
+routing.cancelled: "已取消本次分析。"
+routing.confirm_timeout: "确认超时，已自动执行。"
+
+# --- RBAC ---
+rbac.denied: "权限不足：您的角色为 **{role}**，无法访问 {intent} 管线。请联系管理员升级权限。"
+
+# --- 操作按钮 (label / description) ---
+action.approve: "批准执行"
+action.reject: "拒绝"
+action.general: "通用查询与分析"
+action.governance: "数据质量治理"
+action.optimization: "空间布局优化"
+action.confirm: "确认执行"
+action.modify: "修改方案"
+action.cancel: "取消"
+action.export_word: "导出 Word 报告"
+action.export_word_desc: "将本次分析结果导出为 Word 文档"
+action.export_pdf: "导出 PDF 报告"
+action.export_pdf_desc: "将本次分析结果导出为 PDF 文档"
+action.share: "分享分析结果"
+action.share_desc: "生成公开链接，无需登录即可查看"
+action.export_code: "导出 Python 脚本"
+action.export_code_desc: "将本次分析流程导出为可复现的 Python 脚本"
+action.save_template: "保存为模板"
+action.save_template_desc: "将本次分析流程保存为可复用模板"
+action.browse_templates: "浏览模板"
+action.browse_templates_desc: "查看和应用已保存的分析模板"
+action.browse_steps: "查看分析步骤"
+action.browse_steps_desc: "查看并重新执行本次分析的各个步骤"
+action.share_public: "公开链接（无密码）"
+action.share_password: "密码保护链接"
+action.rerun_step: "重跑步骤 {idx}"
+action.rerun_direct: "直接执行（原参数）"
+action.rerun_modify: "修改参数后执行"
+action.retry: "重试 ({current}/{max})"
+action.retry_desc: "使用相同参数重新执行管道"
+
+# --- 错误与重试 ---
+error.retryable: "{err_msg}\n\n**错误类型**: {category} (可重试)\n剩余重试次数: {remaining}"
+error.non_retryable: "{err_msg}\n\n**错误类型**: {category} (不可重试)\n请检查输入数据或参数后重新提交。"
+error.max_retries: "{err_msg}\n\n已达到最大重试次数 ({max})，请重新提交。"
+error.retry_missing_context: "无法重试：缺少必要的上下文信息，请重新提交。"
+error.retry_files_missing: "注意：{count} 个上传文件已不存在，将使用剩余文件继续。"
+error.retrying: "正在重试... (第 {attempt} 次)"
+
+# --- 完成消息 ---
+pipeline.complete: "分析完成。您可以下载相关文件、导出报告或分享结果。"
+
+# --- 报告导出 ---
+report.generating: "正在生成 {fmt} 报告..."
+report.done: "报告已生成："
+report.failed: "生成失败: {error}"
+report.no_content: "无法获取报告内容"
+
+# --- 分享 ---
+share.no_results: "当前没有可分享的分析结果。"
+share.choose_method: "请选择分享方式："
+share.enter_password: "请设置分享密码（至少4位）："
+share.password_too_short: "密码太短，已取消分享。"
+share.no_password: "未输入密码，已取消分享。"
+share.no_files: "未找到可分享的文件。"
+share.link_generated: "分享链接已生成（72小时有效）：\n\n`{url}`"
+share.link_password: "\n\n访问密码：`{password}`"
+share.link_footer: "\n\n将此链接发送给他人即可查看分析结果（无需登录）。"
+share.failed: "生成分享链接失败：{error}"
+
+# --- 代码导出 ---
+code.no_log: "当前没有可导出的分析流程。"
+code.done: "Python 脚本已生成（{count} 个分析步骤）："
+code.failed: "脚本生成失败: {error}"
+
+# --- 模板 ---
+template.no_log: "当前没有可保存的分析流程。"
+template.enter_name: "请输入模板名称："
+template.enter_desc: "请输入模板描述（可选，直接回车跳过）："
+template.cancelled: "已取消保存模板。"
+template.no_templates: "暂无可用模板。"
+template.not_found: "模板不存在或无权访问。"
+template.loaded: "已加载模板「{name}」\n\n**分析方案**:\n{plan}\n\n请发送您的数据文件或描述分析需求，系统将按模板方案执行。"
+template.list_header: "**可用模板列表** — 点击模板名称应用\n"
+template.tag_own: "[我的]"
+template.tag_shared: "[共享]"
+
+# --- 步骤浏览 ---
+steps.no_log: "当前没有可查看的分析步骤。"
+steps.header: "## 分析步骤总览\n"
+steps.not_found: "步骤数据不存在。"
+steps.status_success: "成功"
+steps.status_failed: "失败"
+steps.summary: "**步骤 {idx}**. {method} [{status}, {duration}s]{output}"
+steps.rerun_prompt: "**重新执行**: {explanation}\n\n请选择执行方式："
+steps.rerun_progress: "正在重新执行 **{tool_label}**..."
+steps.rerun_done: "**重新执行完成** ({duration}s)\n\n```\n{result}\n```"
+steps.rerun_failed: "重新执行失败: {error}"
+steps.tool_no_import: "工具 `{tool_name}` 无法动态导入，不支持重新执行。"
+steps.param_prompt: "**{label}** (`{key}`)\n当前值: `{current}`\n输入新值（直接回车保持原值）："
+
+# --- 进度 (inline progress message) ---
+progress.steps_complete: "{label} {count} 步骤完成"
+progress.step_n: "{label} 步骤 {n}"
+progress.preparing: "{label} 准备中..."
+progress.error_suffix: "(异常)"
+progress.bar_complete: "{label} {bar} 完成"
+progress.total_time: "⏱ 总耗时 {duration}s"
+progress.total_time_error: "⏱ 总耗时 {duration}s | 状态: 异常终止"
+
+# --- 管道步骤标签 ---
+progress.stage_label: "阶段 {idx}/{total}: {label}"
+progress.stage_done: "阶段 {idx}/{total}: {label} ✓"
+progress.step_running: "步骤 {n}: 正在{label}..."
+progress.stage_running: "阶段 {idx}/{total}: 正在{label}..."
+progress.tool_running: "正在{label}..."
+progress.tool_output: "输出: `{filename}`"
+progress.tool_success: "执行成功"
+
+# --- 方案预览 ---
+plan.preview: "**分析方案预览**\n\n{plan}\n\n请确认是否执行："
+plan.modified: "**修改后方案**\n\n{plan}"
+plan.modify_prompt: "请描述您想修改的内容："
+
+# --- 上传相关 ---
+upload.oversized: "以下文件超过 100 MB 上传限制，已跳过：\n{files}"
+
+# --- 数据预览 (preview) ---
+preview.title: "### 数据预览 (Data Preview)\n"
+preview.empty_dataset: "空数据集 (0 条记录)"
+preview.failed: "数据预览失败: {error}"
+preview.file_format: "- **文件格式**: {fmt} | **文件大小**: {size}"
+preview.record_count: "- **要素数量**: {count} 条记录"
+preview.size_unknown: "未知"
+preview.format_unknown: "未知"
+preview.crs: "- **坐标系**: {crs}"
+preview.crs_undefined: "未定义"
+preview.no_geometry: "- **几何**: 无空间数据"
+preview.geom_type: "- **几何类型**: {types}"
+preview.spatial_extent: "- **空间范围**: [{xmin}, {ymin}] ~ [{xmax}, {ymax}]"
+preview.area_stats: "- **面积统计**: 最小 {min} m² | 最大 {max} m² | 平均 {mean} m²"
+preview.length_stats: "- **长度统计**: 最小 {min} m | 最大 {max} m | 平均 {mean} m"
+preview.point_count: "- **点要素数**: {count} 个点"
+preview.columns_header: "\n#### 字段概览 ({count} 个字段)\n"
+preview.columns_table_header: "| 字段名 | 类型 | 空值 | 空值率 |"
+preview.columns_more: "\n> 还有 {count} 个字段未显示"
+preview.quality_header: "\n#### 数据质量\n"
+preview.quality_good: "数据质量良好，无明显问题。"
+preview.quality_nulls: "缺失值: {count} 个 ({pct}%)"
+preview.quality_empty_geom: "空几何: {count} 个"
+preview.quality_invalid_geom: "无效几何: {count} 个"
+preview.numeric_header: "\n#### 数值统计\n"
+preview.numeric_table_header: "| 字段 | 最小值 | 最大值 | 平均值 |"
+preview.numeric_more: "\n> 还有 {count} 个数值字段未显示"
+preview.sample_header: "\n**前 {count} 行预览**:\n"
+preview.dtype_numeric: "数值"
+preview.dtype_datetime: "日期"
+preview.dtype_geometry: "几何"
+preview.dtype_boolean: "布尔"
+preview.dtype_text: "文本"
+
+# --- 认证 ---
+auth.username_empty: "用户名和密码不能为空"
+auth.username_format: "用户名须为3-30位字母、数字或下划线"
+auth.password_length: "密码长度不少于8位"
+auth.password_complexity: "密码须包含字母和数字"
+auth.email_format: "邮箱格式不正确"
+auth.db_unavailable: "数据库未配置，无法注册"
+auth.username_exists: "用户名已存在"
+auth.register_success: "注册成功，请返回登录"
+auth.register_failed: "注册失败: {error}"
+auth.delete_db_unavailable: "数据库未配置"
+auth.delete_password_failed: "密码验证失败"
+auth.delete_admin_blocked: "管理员不能通过此方式删除账户，请联系其他管理员"
+auth.delete_user_not_found: "用户不存在"
+auth.delete_success: "账户已删除"
+auth.delete_failed: "删除失败: {error}"

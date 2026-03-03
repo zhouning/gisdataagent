@@ -10,6 +10,8 @@ from typing import List, Dict, Optional
 from dotenv import load_dotenv
 import google.generativeai as genai
 
+from data_agent.i18n import t, set_language, get_language
+
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -204,8 +206,8 @@ if HITL_ENABLED:
         res = await cl.AskActionMessage(
             content=content,
             actions=[
-                cl.Action(name="approve", payload={"value": "APPROVE"}, label="批准执行"),
-                cl.Action(name="reject", payload={"value": "REJECT"}, label="拒绝"),
+                cl.Action(name="approve", payload={"value": "APPROVE"}, label=t("action.approve")),
+                cl.Action(name="reject", payload={"value": "REJECT"}, label=t("action.reject")),
             ],
             timeout=int(os.environ.get("HITL_TIMEOUT", "120")),
         ).send()
@@ -1380,11 +1382,12 @@ def _build_step_summary(step: dict, step_idx: int) -> str:
     tool_name = step.get("tool_name", "")
     desc = TOOL_DESCRIPTIONS.get(tool_name, {})
     method = desc.get("method", TOOL_LABELS.get(tool_name, tool_name))
-    status = "失败" if step.get("is_error") else "成功"
+    status = t("steps.status_failed") if step.get("is_error") else t("steps.status_success")
     duration = step.get("duration", 0)
     out = step.get("output_path")
     out_str = f" -> `{os.path.basename(out)}`" if out else ""
-    return f"**步骤 {step_idx}**. {method} [{status}, {duration:.1f}s]{out_str}"
+    return t("steps.summary", idx=step_idx, method=method, status=status,
+             duration=f"{duration:.1f}", output=out_str)
 
 
 NON_RERUNNABLE_TOOLS = {
@@ -1494,16 +1497,16 @@ def _build_progress_content(
     if pipeline_type == "planner":
         # Dynamic planner: no predefined stages, show only known steps
         if is_complete:
-            header = f"**{pipeline_label}** {len(stage_timings)} 步骤完成"
+            header = t("progress.steps_complete", label=f"**{pipeline_label}**", count=len(stage_timings))
         elif stage_timings:
-            header = f"**{pipeline_label}** 步骤 {len(stage_timings)}"
+            header = t("progress.step_n", label=f"**{pipeline_label}**", n=len(stage_timings))
         else:
-            header = f"**{pipeline_label}** 准备中..."
+            header = t("progress.preparing", label=f"**{pipeline_label}**")
         lines = [header, ""]
         for st in stage_timings:
             if is_error and st["end"] is None:
                 elapsed = (st.get("_error_time") or time.time()) - st["start"]
-                lines.append(f"✗ {st['label']}  {elapsed:.1f}s (异常)")
+                lines.append(f"✗ {st['label']}  {elapsed:.1f}s {t('progress.error_suffix')}")
             elif st["end"] is not None:
                 dur = st["end"] - st["start"]
                 lines.append(f"✓ {st['label']}  {dur:.1f}s")
@@ -1515,7 +1518,7 @@ def _build_progress_content(
         completed_count = sum(1 for st in stage_timings if st["end"] is not None)
         total = len(stages)
         if is_complete:
-            header = f"**{pipeline_label}** {_render_bar(total, total)} 完成"
+            header = t("progress.bar_complete", label=f"**{pipeline_label}**", bar=_render_bar(total, total))
         else:
             header = f"**{pipeline_label}** {_render_bar(completed_count, total)}"
         lines = [header, ""]
@@ -1526,7 +1529,7 @@ def _build_progress_content(
                 lines.append(f"○ {label}")
             elif is_error and st["end"] is None:
                 elapsed = (st.get("_error_time") or time.time()) - st["start"]
-                lines.append(f"✗ {label}  {elapsed:.1f}s (异常)")
+                lines.append(f"✗ {label}  {elapsed:.1f}s {t('progress.error_suffix')}")
             elif st["end"] is not None:
                 dur = st["end"] - st["start"]
                 lines.append(f"✓ {label}  {dur:.1f}s")
@@ -1537,9 +1540,9 @@ def _build_progress_content(
     if is_complete:
         lines.append("")
         if is_error:
-            lines.append(f"⏱ 总耗时 {total_duration:.1f}s | 状态: 异常终止")
+            lines.append(t("progress.total_time_error", duration=f"{total_duration:.1f}"))
         else:
-            lines.append(f"⏱ 总耗时 {total_duration:.1f}s")
+            lines.append(t("progress.total_time", duration=f"{total_duration:.1f}"))
 
     return "\n".join(lines)
 
@@ -1678,7 +1681,7 @@ async def _execute_pipeline(
                         current_agent_step.name = f"{agent_label} ✓"
                     else:
                         stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
-                        current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
+                        current_agent_step.name = t("progress.stage_done", idx=stage_idx, total=total_stages, label=agent_label)
                     await current_agent_step.update()
 
                 current_agent_name = author
@@ -1686,10 +1689,10 @@ async def _execute_pipeline(
                     agent_label = AGENT_LABELS[author]
                     if DYNAMIC_PLANNER and pipeline_type == "planner":
                         agent_visit_count += 1
-                        step_label = f"步骤 {agent_visit_count}: 正在{agent_label}..."
+                        step_label = t("progress.step_running", n=agent_visit_count, label=agent_label)
                     else:
                         stage_idx = stages.index(author) + 1 if author in stages else 0
-                        step_label = f"阶段 {stage_idx}/{total_stages}: 正在{agent_label}..."
+                        step_label = t("progress.stage_running", idx=stage_idx, total=total_stages, label=agent_label)
                     current_agent_step = cl.Step(
                         name=step_label,
                         type="process",
@@ -1719,7 +1722,7 @@ async def _execute_pipeline(
                         duration = time.time() - tool_start_time
                         label = TOOL_LABELS.get(current_tool_name, current_tool_name)
                         current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
-                        current_tool_step.output = "执行成功"
+                        current_tool_step.output = t("progress.tool_success")
                         await current_tool_step.update()
 
                     current_tool_name = part.function_call.name
@@ -1727,7 +1730,7 @@ async def _execute_pipeline(
                     label = TOOL_LABELS.get(current_tool_name, current_tool_name)
                     parent_id = current_agent_step.id if current_agent_step else pipeline_step.id
                     current_tool_step = cl.Step(
-                        name=f"正在{label}...",
+                        name=t("progress.tool_running", label=label),
                         type="tool",
                         parent_id=parent_id,
                     )
@@ -1750,17 +1753,17 @@ async def _execute_pipeline(
                         try:
                             resp_data = part.function_response.response
                             if isinstance(resp_data, dict) and "output_path" in resp_data:
-                                current_tool_step.output = f"输出: `{os.path.basename(resp_data['output_path'])}`"
+                                current_tool_step.output = t("progress.tool_output", filename=os.path.basename(resp_data['output_path']))
                             elif isinstance(resp_data, dict) and "message" in resp_data:
                                 msg = str(resp_data["message"])[:200]
                                 current_tool_step.output = msg
                             elif isinstance(resp_data, str) and (os.sep in resp_data or '/' in resp_data):
-                                current_tool_step.output = f"输出: `{os.path.basename(resp_data)}`"
+                                current_tool_step.output = t("progress.tool_output", filename=os.path.basename(resp_data))
                             else:
                                 out_str = str(resp_data)[:200]
-                                current_tool_step.output = out_str if len(out_str) > 5 else "执行成功"
+                                current_tool_step.output = out_str if len(out_str) > 5 else t("progress.tool_success")
                         except Exception:
-                            current_tool_step.output = "执行成功"
+                            current_tool_step.output = t("progress.tool_success")
                         await current_tool_step.update()
                         # Refresh inline progress (elapsed time tick)
                         progress_msg.content = _build_progress_content(
@@ -1870,7 +1873,7 @@ async def _execute_pipeline(
                 current_agent_step.name = f"{agent_label} ✓"
             else:
                 stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
-                current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
+                current_agent_step.name = t("progress.stage_done", idx=stage_idx, total=total_stages, label=agent_label)
             await current_agent_step.update()
 
         total_duration = time.time() - pipeline_start_time
@@ -1965,54 +1968,54 @@ async def _execute_pipeline(
             cl.Action(
                 name="export_report",
                 value="docx",
-                label="导出 Word 报告",
-                description="将本次分析结果导出为 Word 文档",
+                label=t("action.export_word"),
+                description=t("action.export_word_desc"),
                 payload={"format": "docx"}
             ),
             cl.Action(
                 name="export_report",
                 value="pdf",
-                label="导出 PDF 报告",
-                description="将本次分析结果导出为 PDF 文档",
+                label=t("action.export_pdf"),
+                description=t("action.export_pdf_desc"),
                 payload={"format": "pdf"}
             ),
             cl.Action(
                 name="share_result",
                 value="share",
-                label="分享分析结果",
-                description="生成公开链接，无需登录即可查看",
+                label=t("action.share"),
+                description=t("action.share_desc"),
                 payload={"action": "share"}
             ),
             cl.Action(
                 name="export_code",
                 value="python",
-                label="导出 Python 脚本",
-                description="将本次分析流程导出为可复现的 Python 脚本",
+                label=t("action.export_code"),
+                description=t("action.export_code_desc"),
                 payload={"format": "python"}
             ),
             cl.Action(
                 name="save_as_template",
                 value="template",
-                label="保存为模板",
-                description="将本次分析流程保存为可复用模板",
+                label=t("action.save_template"),
+                description=t("action.save_template_desc"),
                 payload={"action": "save_template"}
             ),
             cl.Action(
                 name="browse_templates",
                 value="browse",
-                label="浏览模板",
-                description="查看和应用已保存的分析模板",
+                label=t("action.browse_templates"),
+                description=t("action.browse_templates_desc"),
                 payload={"action": "browse"}
             ),
             cl.Action(
                 name="browse_steps",
                 value="browse",
-                label="查看分析步骤",
-                description="查看并重新执行本次分析的各个步骤",
+                label=t("action.browse_steps"),
+                description=t("action.browse_steps_desc"),
                 payload={"action": "browse_steps"}
             ),
         ]
-        await cl.Message(content="分析完成。您可以下载相关文件、导出报告或分享结果。", actions=actions).send()
+        await cl.Message(content=t("pipeline.complete"), actions=actions).send()
 
         # Reset retry count on success
         cl.user_session.set("retry_count", 0)
@@ -2043,22 +2046,22 @@ async def _execute_pipeline(
                 cl.Action(
                     name="retry_pipeline",
                     value="retry",
-                    label=f"重试 ({retry_attempt + 1}/{MAX_PIPELINE_RETRIES})",
-                    description="使用相同参数重新执行管道",
+                    label=t("action.retry", current=retry_attempt + 1, max=MAX_PIPELINE_RETRIES),
+                    description=t("action.retry_desc"),
                     payload={"attempt": retry_attempt + 1},
                 ),
             ]
             await cl.Message(
-                content=f"{err_msg}\n\n**错误类型**: {err_category} (可重试)\n剩余重试次数: {remaining}",
+                content=t("error.retryable", err_msg=err_msg, category=err_category, remaining=remaining),
                 actions=retry_actions,
             ).send()
         elif not is_retryable:
             await cl.Message(
-                content=f"{err_msg}\n\n**错误类型**: {err_category} (不可重试)\n请检查输入数据或参数后重新提交。",
+                content=t("error.non_retryable", err_msg=err_msg, category=err_category),
             ).send()
         else:
             await cl.Message(
-                content=f"{err_msg}\n\n已达到最大重试次数 ({MAX_PIPELINE_RETRIES})，请重新提交。",
+                content=t("error.max_retries", err_msg=err_msg, max=MAX_PIPELINE_RETRIES),
             ).send()
 
 
@@ -2238,6 +2241,8 @@ async def on_resume(thread: dict):
 @cl.on_chat_start
 async def start():
     """Initialize session with authenticated user."""
+    # Set i18n language from env (default: zh)
+    set_language(os.environ.get("UI_LANGUAGE", "zh"))
     # Get authenticated user from Chainlit (set by auth callbacks in auth.py)
     cl_user = cl.user_session.get("user")
 
@@ -2319,7 +2324,7 @@ async def main(message: cl.Message):
 
     if oversized_files:
         await cl.Message(
-            content=f"以下文件超过 100 MB 上传限制，已跳过：\n" + "\n".join(f"- {f}" for f in oversized_files)
+            content=t("upload.oversized", files="\n".join(f"- {f}" for f in oversized_files))
         ).send()
 
     # Audit: record file uploads
@@ -2417,18 +2422,18 @@ async def main(message: cl.Message):
         # --- Ambiguous Intent: Ask user to clarify ---
         if intent == "AMBIGUOUS":
             res = await cl.AskActionMessage(
-                content=f"我不太确定您想做什么。{('（' + intent_reason + '）') if intent_reason else ''}\n\n请选择您需要的分析类型：",
+                content=t("routing.ambiguous_prompt", reason=f"（{intent_reason}）" if intent_reason else ""),
                 actions=[
-                    cl.Action(name="general", payload={"value": "GENERAL"}, label="通用查询与分析"),
-                    cl.Action(name="governance", payload={"value": "GOVERNANCE"}, label="数据质量治理"),
-                    cl.Action(name="optimization", payload={"value": "OPTIMIZATION"}, label="空间布局优化"),
+                    cl.Action(name="general", payload={"value": "GENERAL"}, label=t("action.general")),
+                    cl.Action(name="governance", payload={"value": "GOVERNANCE"}, label=t("action.governance")),
+                    cl.Action(name="optimization", payload={"value": "OPTIMIZATION"}, label=t("action.optimization")),
                 ],
                 timeout=120,
             ).send()
             if res:
                 intent = res.get("value", "GENERAL")
             else:
-                await cl.Message(content="操作超时，已自动选择通用分析管线。").send()
+                await cl.Message(content=t("routing.timeout_auto")).send()
                 intent = "GENERAL"
 
         # --- Usage Limit Check ---
@@ -2450,7 +2455,7 @@ async def main(message: cl.Message):
             except Exception:
                 pass
             await cl.Message(
-                content=f"权限不足：您的角色为 **{role}**，无法访问 {intent} 管线。请联系管理员升级权限。"
+                content=t("rbac.denied", role=role, intent=intent)
             ).send()
             return
 
@@ -2461,11 +2466,11 @@ async def main(message: cl.Message):
                 plan_text = generate_analysis_plan(user_text, intent, uploaded_files)
                 if plan_text:
                     res = await cl.AskActionMessage(
-                        content=f"**分析方案预览**\n\n{plan_text}\n\n请确认是否执行：",
+                        content=t("plan.preview", plan=plan_text),
                         actions=[
-                            cl.Action(name="confirm", payload={"value": "CONFIRM"}, label="确认执行"),
-                            cl.Action(name="modify", payload={"value": "MODIFY"}, label="修改方案"),
-                            cl.Action(name="cancel", payload={"value": "CANCEL"}, label="取消"),
+                            cl.Action(name="confirm", payload={"value": "CONFIRM"}, label=t("action.confirm")),
+                            cl.Action(name="modify", payload={"value": "MODIFY"}, label=t("action.modify")),
+                            cl.Action(name="cancel", payload={"value": "CANCEL"}, label=t("action.cancel")),
                         ],
                         timeout=180,
                     ).send()
@@ -2473,22 +2478,22 @@ async def main(message: cl.Message):
                     if res:
                         choice = res.get("value", "CONFIRM")
                         if choice == "CANCEL":
-                            await cl.Message(content="已取消本次分析。").send()
+                            await cl.Message(content=t("routing.cancelled")).send()
                             return
                         elif choice == "MODIFY":
                             modify_res = await cl.AskUserMessage(
-                                content="请描述您想修改的内容：", timeout=180
+                                content=t("plan.modify_prompt"), timeout=180
                             ).send()
                             if modify_res:
                                 plan_text = generate_analysis_plan(
                                     user_text + "\n用户修改要求: " + modify_res['output'],
                                     intent, uploaded_files
                                 )
-                                await cl.Message(content=f"**修改后方案**\n\n{plan_text}").send()
+                                await cl.Message(content=t("plan.modified", plan=plan_text)).send()
                         # Inject approved plan into prompt
                         full_prompt += f"\n\n[分析方案]\n{plan_text}\n请严格按照此方案执行。"
                     else:
-                        await cl.Message(content="确认超时，已自动执行。").send()
+                        await cl.Message(content=t("routing.confirm_timeout")).send()
             except Exception as e:
                 logger.error("Plan confirmation error: %s", e)
 
@@ -2511,7 +2516,7 @@ async def main(message: cl.Message):
         pipeline_name = "General Pipeline (通用分析与查询)"
 
     await cl.Message(
-        content=f"意图识别：**{intent}**\n已路由至：**{pipeline_name}**",
+        content=t("routing.intent_recognized", intent=intent, pipeline_name=pipeline_name),
         metadata={"routing_info": {
             "intent": intent,
             "pipeline": pipeline_type,
@@ -2553,14 +2558,14 @@ async def on_retry_pipeline(action: cl.Action):
     intent = cl.user_session.get("retry_intent")
 
     if not full_prompt or not pipeline_type:
-        await cl.Message(content="无法重试：缺少必要的上下文信息，请重新提交。").send()
+        await cl.Message(content=t("error.retry_missing_context")).send()
         return
 
     # Verify uploaded files still exist
     valid_files = [f for f in uploaded_files if os.path.exists(f)]
     if len(valid_files) < len(uploaded_files):
         missing = len(uploaded_files) - len(valid_files)
-        await cl.Message(content=f"注意：{missing} 个上传文件已不存在，将使用剩余文件继续。").send()
+        await cl.Message(content=t("error.retry_files_missing", count=missing)).send()
 
     # Select agent (same logic as main handler)
     if DYNAMIC_PLANNER:
@@ -2572,7 +2577,7 @@ async def on_retry_pipeline(action: cl.Action):
     else:
         selected_agent = general_pipeline
 
-    await cl.Message(content=f"正在重试... (第 {retry_attempt} 次)").send()
+    await cl.Message(content=t("error.retrying", attempt=retry_attempt)).send()
 
     await _execute_pipeline(
         user_id, session_id, role, full_prompt, valid_files,
@@ -2592,7 +2597,7 @@ async def on_export_report(action: cl.Action):
 
     text = cl.user_session.get("last_response_text")
     if not text:
-        await cl.Message(content="无法获取报告内容").send()
+        await cl.Message(content=t("report.no_content")).send()
         return
 
     # Format and metadata
@@ -2601,7 +2606,7 @@ async def on_export_report(action: cl.Action):
     cl_user = cl.user_session.get("user")
     author = cl_user.display_name if cl_user else user_id
 
-    msg = cl.Message(content=f"正在生成 {fmt.upper()} 报告...")
+    msg = cl.Message(content=t("report.generating", fmt=fmt.upper()))
     await msg.send()
     try:
         user_dir = get_user_upload_dir()
@@ -2626,11 +2631,11 @@ async def on_export_report(action: cl.Action):
             })
         except Exception:
             pass
-        await cl.Message(content="报告已生成：", elements=[
+        await cl.Message(content=t("report.done"), elements=[
             cl.File(path=result_path, name=filename, display="inline")
         ]).send()
     except Exception as e:
-        await cl.Message(content=f"生成失败: {str(e)}").send()
+        await cl.Message(content=t("report.failed", error=str(e))).send()
 
 
 @cl.action_callback("share_result")
@@ -2647,15 +2652,15 @@ async def on_share_result(action: cl.Action):
     generated_files = last_ctx.get("files", [])
 
     if not report_text and not generated_files:
-        await cl.Message(content="当前没有可分享的分析结果。").send()
+        await cl.Message(content=t("share.no_results")).send()
         return
 
     # Ask share type
     res = await cl.AskActionMessage(
-        content="请选择分享方式：",
+        content=t("share.choose_method"),
         actions=[
-            cl.Action(name="share_public", payload={"value": "public"}, label="公开链接（无密码）"),
-            cl.Action(name="share_password", payload={"value": "password"}, label="密码保护链接"),
+            cl.Action(name="share_public", payload={"value": "public"}, label=t("action.share_public")),
+            cl.Action(name="share_password", payload={"value": "password"}, label=t("action.share_password")),
         ],
         timeout=60,
     ).send()
@@ -2663,15 +2668,15 @@ async def on_share_result(action: cl.Action):
     password = None
     if res and res.get("value") == "password":
         pw_res = await cl.AskUserMessage(
-            content="请设置分享密码（至少4位）：", timeout=60
+            content=t("share.enter_password"), timeout=60
         ).send()
         if pw_res and pw_res.get("output"):
             password = pw_res["output"].strip()
             if len(password) < 4:
-                await cl.Message(content="密码太短，已取消分享。").send()
+                await cl.Message(content=t("share.password_too_short")).send()
                 return
         else:
-            await cl.Message(content="未输入密码，已取消分享。").send()
+            await cl.Message(content=t("share.no_password")).send()
             return
     elif not res:
         return  # User didn't respond
@@ -2690,7 +2695,7 @@ async def on_share_result(action: cl.Action):
         files_list = expand_shapefile_sidecars(files_list)
 
     if not files_list and not report_text:
-        await cl.Message(content="未找到可分享的文件。").send()
+        await cl.Message(content=t("share.no_files")).send()
         return
 
     title = cl.user_session.get("last_user_message", "")[:80] or "分析结果"
@@ -2713,13 +2718,13 @@ async def on_share_result(action: cl.Action):
             })
         except Exception:
             pass
-        msg = f"分享链接已生成（72小时有效）：\n\n`{share_url}`"
+        msg = t("share.link_generated", url=share_url)
         if password:
-            msg += f"\n\n访问密码：`{password}`"
-        msg += "\n\n将此链接发送给他人即可查看分析结果（无需登录）。"
+            msg += t("share.link_password", password=password)
+        msg += t("share.link_footer")
         await cl.Message(content=msg).send()
     else:
-        await cl.Message(content=f"生成分享链接失败：{result.get('message', '未知错误')}").send()
+        await cl.Message(content=t("share.failed", error=result.get('message', 'Unknown error'))).send()
 
 
 @cl.action_callback("export_code")
@@ -2732,7 +2737,7 @@ async def on_export_code(action: cl.Action):
 
     tool_log = cl.user_session.get("tool_execution_log")
     if not tool_log:
-        await cl.Message(content="当前没有可导出的分析流程。").send()
+        await cl.Message(content=t("code.no_log")).send()
         return
 
     try:
@@ -2761,11 +2766,11 @@ async def on_export_code(action: cl.Action):
             pass
 
         await cl.Message(
-            content=f"Python 脚本已生成（{len(tool_log)} 个分析步骤）：",
+            content=t("code.done", count=len(tool_log)),
             elements=[cl.File(path=output_path, name=os.path.basename(output_path), display="inline")]
         ).send()
     except Exception as e:
-        await cl.Message(content=f"脚本生成失败: {str(e)}").send()
+        await cl.Message(content=t("code.failed", error=str(e))).send()
 
 
 @cl.action_callback("save_as_template")
@@ -2778,17 +2783,17 @@ async def on_save_as_template(action: cl.Action):
 
     tool_log = cl.user_session.get("tool_execution_log")
     if not tool_log:
-        await cl.Message(content="当前没有可保存的分析流程。").send()
+        await cl.Message(content=t("template.no_log")).send()
         return
 
-    name_res = await cl.AskUserMessage(content="请输入模板名称：", timeout=120).send()
+    name_res = await cl.AskUserMessage(content=t("template.enter_name"), timeout=120).send()
     if not name_res or not name_res.get("output", "").strip():
-        await cl.Message(content="已取消保存模板。").send()
+        await cl.Message(content=t("template.cancelled")).send()
         return
     template_name = name_res["output"].strip()
 
     desc_res = await cl.AskUserMessage(
-        content="请输入模板描述（可选，直接回车跳过）：", timeout=120
+        content=t("template.enter_desc"), timeout=120
     ).send()
     template_desc = desc_res.get("output", "").strip() if desc_res else ""
 
@@ -2824,7 +2829,7 @@ async def on_browse_templates(action: cl.Action):
     from data_agent.template_manager import list_templates
     result = list_templates()
     if result["status"] != "success" or not result.get("templates"):
-        await cl.Message(content=result.get("message", "暂无可用模板。")).send()
+        await cl.Message(content=result.get("message", t("template.no_templates"))).send()
         return
 
     templates = result["templates"]
@@ -2834,16 +2839,16 @@ async def on_browse_templates(action: cl.Action):
     }
 
     actions = []
-    lines = ["**可用模板列表** — 点击模板名称应用\n"]
-    for t in templates[:10]:
-        tag = "[我的]" if t["is_own"] else "[共享]"
-        pipe = PIPE_CN.get(t["pipeline_type"], t["pipeline_type"])
-        desc_short = f" — {t['description'][:60]}" if t.get("description") else ""
-        lines.append(f"- **{t['name']}** {tag} | {pipe} | 使用 {t['use_count']} 次{desc_short}")
+    lines = [t("template.list_header")]
+    for tmpl in templates[:10]:
+        tag = t("template.tag_own") if tmpl["is_own"] else t("template.tag_shared")
+        pipe = PIPE_CN.get(tmpl["pipeline_type"], tmpl["pipeline_type"])
+        desc_short = f" — {tmpl['description'][:60]}" if tmpl.get("description") else ""
+        lines.append(f"- **{tmpl['name']}** {tag} | {pipe} | {tmpl['use_count']}x{desc_short}")
         actions.append(cl.Action(
-            name="apply_template", value=str(t["id"]),
-            label=t["name"][:60],
-            payload={"template_id": t["id"], "template_name": t["name"]}
+            name="apply_template", value=str(tmpl["id"]),
+            label=tmpl["name"][:60],
+            payload={"template_id": tmpl["id"], "template_name": tmpl["name"]}
         ))
 
     await cl.Message(content="\n".join(lines), actions=actions).send()
@@ -2863,7 +2868,7 @@ async def on_apply_template(action: cl.Action):
     from data_agent.template_manager import get_template, generate_plan_from_template, _increment_use_count
     template = get_template(int(template_id))
     if not template:
-        await cl.Message(content="模板不存在或无权访问。").send()
+        await cl.Message(content=t("template.not_found")).send()
         return
 
     plan_text = generate_plan_from_template(template)
@@ -2887,9 +2892,7 @@ async def on_apply_template(action: cl.Action):
         pass
 
     await cl.Message(
-        content=f"已加载模板「{template['name']}」\n\n"
-                f"**分析方案**:\n{plan_text}\n\n"
-                f"请发送您的数据文件或描述分析需求，系统将按模板方案执行。"
+        content=t("template.loaded", name=template['name'], plan=plan_text)
     ).send()
 
 
@@ -2902,10 +2905,10 @@ async def on_browse_steps(action: cl.Action):
     """Display the tool execution log with per-step re-run buttons."""
     tool_log = cl.user_session.get("tool_execution_log")
     if not tool_log:
-        await cl.Message(content="当前没有可查看的分析步骤。").send()
+        await cl.Message(content=t("steps.no_log")).send()
         return
 
-    lines = ["## 分析步骤总览\n"]
+    lines = [t("steps.header")]
     actions = []
     for i, step in enumerate(tool_log):
         step_idx = i + 1
@@ -2914,7 +2917,7 @@ async def on_browse_steps(action: cl.Action):
             actions.append(cl.Action(
                 name="rerun_step",
                 value=str(i),
-                label=f"重跑步骤 {step_idx}",
+                label=t("action.rerun_step", idx=step_idx),
                 description=TOOL_DESCRIPTIONS.get(
                     step["tool_name"], {}
                 ).get("method", step["tool_name"]),
@@ -2942,7 +2945,7 @@ async def on_rerun_step(action: cl.Action):
     tool_log = cl.user_session.get("tool_execution_log")
     step_index = int(action.value)
     if not tool_log or step_index >= len(tool_log):
-        await cl.Message(content="步骤数据不存在。").send()
+        await cl.Message(content=t("steps.not_found")).send()
         return
 
     step = tool_log[step_index]
@@ -2952,11 +2955,11 @@ async def on_rerun_step(action: cl.Action):
     # Show current parameters and offer choices
     explanation = _format_tool_explanation(tool_name, original_args)
     choice_msg = await cl.AskActionMessage(
-        content=f"**重新执行**: {explanation}\n\n请选择执行方式：",
+        content=t("steps.rerun_prompt", explanation=explanation),
         actions=[
-            cl.Action(name="rerun_mode", value="direct", label="直接执行（原参数）"),
-            cl.Action(name="rerun_mode", value="modify", label="修改参数后执行"),
-            cl.Action(name="rerun_mode", value="cancel", label="取消"),
+            cl.Action(name="rerun_mode", value="direct", label=t("action.rerun_direct")),
+            cl.Action(name="rerun_mode", value="modify", label=t("action.rerun_modify")),
+            cl.Action(name="rerun_mode", value="cancel", label=t("action.cancel")),
         ],
     ).send()
 
@@ -2973,8 +2976,7 @@ async def on_rerun_step(action: cl.Action):
             label = param_labels.get(key, key)
             current_val = str(value) if value is not None else ""
             user_input = await cl.AskUserMessage(
-                content=f"**{label}** (`{key}`)\n当前值: `{current_val}`\n"
-                        f"输入新值（直接回车保持原值）：",
+                content=t("steps.param_prompt", label=label, key=key, current=current_val),
                 timeout=120,
             ).send()
 
@@ -3016,7 +3018,7 @@ async def on_rerun_step(action: cl.Action):
     from data_agent.code_exporter import TOOL_IMPORT_MAP
     import_stmt = TOOL_IMPORT_MAP.get(tool_name)
     if not import_stmt:
-        await cl.Message(content=f"工具 `{tool_name}` 无法动态导入，不支持重新执行。").send()
+        await cl.Message(content=t("steps.tool_no_import", tool_name=tool_name)).send()
         return
 
     # Parse "from data_agent.xxx import func_name"
@@ -3025,7 +3027,7 @@ async def on_rerun_step(action: cl.Action):
     func_name = parts[3]
 
     progress_msg = await cl.Message(
-        content=f"正在重新执行 **{TOOL_LABELS.get(tool_name, tool_name)}**..."
+        content=t("steps.rerun_progress", tool_label=TOOL_LABELS.get(tool_name, tool_name))
     ).send()
 
     try:
@@ -3078,9 +3080,9 @@ async def on_rerun_step(action: cl.Action):
                 elements.append(cl.File(path=str(output_path), name=basename))
 
         await cl.Message(
-            content=f"**重新执行完成** ({duration:.1f}s)\n\n```\n{result_str}\n```",
+            content=t("steps.rerun_done", duration=f"{duration:.1f}", result=result_str),
             elements=elements,
         ).send()
 
     except Exception as e:
-        await cl.Message(content=f"重新执行失败: {str(e)}").send()
+        await cl.Message(content=t("steps.rerun_failed", error=str(e))).send()

@@ -1,0 +1,181 @@
+# ============================================================
+# GIS Data Agent — English translations
+# ============================================================
+
+# --- Routing & Intent ---
+routing.intent_recognized: "Intent: **{intent}**\nRouted to: **{pipeline_name}**"
+routing.ambiguous_prompt: "I'm not sure what you'd like to do. {reason}\n\nPlease select the analysis type:"
+routing.timeout_auto: "Timed out — defaulting to General Analysis pipeline."
+routing.cancelled: "Analysis cancelled."
+routing.confirm_timeout: "Confirmation timed out — executing automatically."
+
+# --- RBAC ---
+rbac.denied: "Permission denied: your role is **{role}**, which cannot access the {intent} pipeline. Please contact an administrator."
+
+# --- Action labels ---
+action.approve: "Approve"
+action.reject: "Reject"
+action.general: "General Query & Analysis"
+action.governance: "Data Quality Governance"
+action.optimization: "Spatial Layout Optimization"
+action.confirm: "Confirm"
+action.modify: "Modify Plan"
+action.cancel: "Cancel"
+action.export_word: "Export Word Report"
+action.export_word_desc: "Export analysis results as a Word document"
+action.export_pdf: "Export PDF Report"
+action.export_pdf_desc: "Export analysis results as a PDF document"
+action.share: "Share Results"
+action.share_desc: "Generate a public link — no login required"
+action.export_code: "Export Python Script"
+action.export_code_desc: "Export the analysis pipeline as a reproducible Python script"
+action.save_template: "Save as Template"
+action.save_template_desc: "Save this analysis pipeline as a reusable template"
+action.browse_templates: "Browse Templates"
+action.browse_templates_desc: "View and apply saved analysis templates"
+action.browse_steps: "View Analysis Steps"
+action.browse_steps_desc: "View and re-run individual steps of this analysis"
+action.share_public: "Public Link (no password)"
+action.share_password: "Password-Protected Link"
+action.rerun_step: "Re-run Step {idx}"
+action.rerun_direct: "Run Directly (original params)"
+action.rerun_modify: "Modify Parameters & Run"
+action.retry: "Retry ({current}/{max})"
+action.retry_desc: "Re-execute the pipeline with the same parameters"
+
+# --- Errors & Retry ---
+error.retryable: "{err_msg}\n\n**Error type**: {category} (retryable)\nRemaining retries: {remaining}"
+error.non_retryable: "{err_msg}\n\n**Error type**: {category} (non-retryable)\nPlease check your input data or parameters and resubmit."
+error.max_retries: "{err_msg}\n\nMaximum retry count ({max}) reached. Please resubmit."
+error.retry_missing_context: "Cannot retry: required context is missing. Please resubmit."
+error.retry_files_missing: "Note: {count} uploaded file(s) no longer exist. Continuing with remaining files."
+error.retrying: "Retrying... (attempt {attempt})"
+
+# --- Completion ---
+pipeline.complete: "Analysis complete. You can download files, export a report, or share results."
+
+# --- Report Export ---
+report.generating: "Generating {fmt} report..."
+report.done: "Report generated:"
+report.failed: "Generation failed: {error}"
+report.no_content: "Unable to retrieve report content"
+
+# --- Sharing ---
+share.no_results: "No analysis results available to share."
+share.choose_method: "Choose sharing method:"
+share.enter_password: "Set a share password (at least 4 characters):"
+share.password_too_short: "Password too short — sharing cancelled."
+share.no_password: "No password entered — sharing cancelled."
+share.no_files: "No shareable files found."
+share.link_generated: "Share link generated (valid for 72 hours):\n\n`{url}`"
+share.link_password: "\n\nAccess password: `{password}`"
+share.link_footer: "\n\nSend this link to others to view the analysis results (no login required)."
+share.failed: "Failed to generate share link: {error}"
+
+# --- Code Export ---
+code.no_log: "No analysis pipeline to export."
+code.done: "Python script generated ({count} analysis steps):"
+code.failed: "Script generation failed: {error}"
+
+# --- Templates ---
+template.no_log: "No analysis pipeline to save."
+template.enter_name: "Enter template name:"
+template.enter_desc: "Enter template description (optional, press Enter to skip):"
+template.cancelled: "Template saving cancelled."
+template.no_templates: "No templates available."
+template.not_found: "Template not found or access denied."
+template.loaded: "Template \"{name}\" loaded\n\n**Analysis Plan**:\n{plan}\n\nSend your data file or describe your analysis needs — the system will follow this template."
+template.list_header: "**Available Templates** — click a name to apply\n"
+template.tag_own: "[Mine]"
+template.tag_shared: "[Shared]"
+
+# --- Step Browser ---
+steps.no_log: "No analysis steps to display."
+steps.header: "## Analysis Steps Overview\n"
+steps.not_found: "Step data not found."
+steps.status_success: "OK"
+steps.status_failed: "FAIL"
+steps.summary: "**Step {idx}**. {method} [{status}, {duration}s]{output}"
+steps.rerun_prompt: "**Re-run**: {explanation}\n\nChoose execution mode:"
+steps.rerun_progress: "Re-running **{tool_label}**..."
+steps.rerun_done: "**Re-run complete** ({duration}s)\n\n```\n{result}\n```"
+steps.rerun_failed: "Re-run failed: {error}"
+steps.tool_no_import: "Tool `{tool_name}` cannot be dynamically imported — re-run not supported."
+steps.param_prompt: "**{label}** (`{key}`)\nCurrent value: `{current}`\nEnter new value (press Enter to keep current):"
+
+# --- Progress (inline progress message) ---
+progress.steps_complete: "{label} {count} steps complete"
+progress.step_n: "{label} Step {n}"
+progress.preparing: "{label} Preparing..."
+progress.error_suffix: "(error)"
+progress.bar_complete: "{label} {bar} Complete"
+progress.total_time: "⏱ Total: {duration}s"
+progress.total_time_error: "⏱ Total: {duration}s | Status: Error"
+
+# --- Pipeline step labels ---
+progress.stage_label: "Stage {idx}/{total}: {label}"
+progress.stage_done: "Stage {idx}/{total}: {label} ✓"
+progress.step_running: "Step {n}: Running {label}..."
+progress.stage_running: "Stage {idx}/{total}: Running {label}..."
+progress.tool_running: "Running {label}..."
+progress.tool_output: "Output: `{filename}`"
+progress.tool_success: "Success"
+
+# --- Plan Preview ---
+plan.preview: "**Analysis Plan Preview**\n\n{plan}\n\nProceed with execution?"
+plan.modified: "**Modified Plan**\n\n{plan}"
+plan.modify_prompt: "Describe the changes you'd like:"
+
+# --- Upload ---
+upload.oversized: "The following files exceed the 100 MB upload limit and were skipped:\n{files}"
+
+# --- Data Preview ---
+preview.title: "### Data Preview\n"
+preview.empty_dataset: "Empty dataset (0 records)"
+preview.failed: "Data preview failed: {error}"
+preview.file_format: "- **File format**: {fmt} | **File size**: {size}"
+preview.record_count: "- **Features**: {count} records"
+preview.size_unknown: "Unknown"
+preview.format_unknown: "Unknown"
+preview.crs: "- **CRS**: {crs}"
+preview.crs_undefined: "Undefined"
+preview.no_geometry: "- **Geometry**: No spatial data"
+preview.geom_type: "- **Geometry type**: {types}"
+preview.spatial_extent: "- **Spatial extent**: [{xmin}, {ymin}] ~ [{xmax}, {ymax}]"
+preview.area_stats: "- **Area stats**: Min {min} m² | Max {max} m² | Mean {mean} m²"
+preview.length_stats: "- **Length stats**: Min {min} m | Max {max} m | Mean {mean} m"
+preview.point_count: "- **Point features**: {count} points"
+preview.columns_header: "\n#### Column Overview ({count} columns)\n"
+preview.columns_table_header: "| Column | Type | Nulls | Null% |"
+preview.columns_more: "\n> {count} more columns not shown"
+preview.quality_header: "\n#### Data Quality\n"
+preview.quality_good: "Data quality is good — no obvious issues."
+preview.quality_nulls: "Missing values: {count} ({pct}%)"
+preview.quality_empty_geom: "Empty geometries: {count}"
+preview.quality_invalid_geom: "Invalid geometries: {count}"
+preview.numeric_header: "\n#### Numeric Statistics\n"
+preview.numeric_table_header: "| Column | Min | Max | Mean |"
+preview.numeric_more: "\n> {count} more numeric columns not shown"
+preview.sample_header: "\n**First {count} rows preview**:\n"
+preview.dtype_numeric: "Numeric"
+preview.dtype_datetime: "DateTime"
+preview.dtype_geometry: "Geometry"
+preview.dtype_boolean: "Boolean"
+preview.dtype_text: "Text"
+
+# --- Auth ---
+auth.username_empty: "Username and password cannot be empty"
+auth.username_format: "Username must be 3-30 characters: letters, digits, or underscores"
+auth.password_length: "Password must be at least 8 characters"
+auth.password_complexity: "Password must contain both letters and digits"
+auth.email_format: "Invalid email format"
+auth.db_unavailable: "Database not configured — registration unavailable"
+auth.username_exists: "Username already exists"
+auth.register_success: "Registration successful — please log in"
+auth.register_failed: "Registration failed: {error}"
+auth.delete_db_unavailable: "Database not configured"
+auth.delete_password_failed: "Password verification failed"
+auth.delete_admin_blocked: "Administrators cannot delete their own account this way. Please contact another admin."
+auth.delete_user_not_found: "User not found"
+auth.delete_success: "Account deleted"
+auth.delete_failed: "Deletion failed: {error}"

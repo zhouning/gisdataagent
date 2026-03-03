@@ -12,6 +12,7 @@ import chainlit as cl
 
 from .db_engine import get_engine
 from .database_tools import T_APP_USERS
+from .i18n import t
 
 
 def _hash_password(password: str, salt: str = None) -> tuple:
@@ -112,22 +113,22 @@ def register_user(username: str, password: str, display_name: str = "",
     """
     # --- Input Validation ---
     if not username or not password:
-        return {"status": "error", "message": "用户名和密码不能为空"}
+        return {"status": "error", "message": t("auth.username_empty")}
 
     if not re.match(r'^[a-zA-Z0-9_]{3,30}$', username):
-        return {"status": "error", "message": "用户名须为3-30位字母、数字或下划线"}
+        return {"status": "error", "message": t("auth.username_format")}
 
     if len(password) < 8:
-        return {"status": "error", "message": "密码长度不少于8位"}
+        return {"status": "error", "message": t("auth.password_length")}
     if not re.search(r'[a-zA-Z]', password) or not re.search(r'\d', password):
-        return {"status": "error", "message": "密码须包含字母和数字"}
+        return {"status": "error", "message": t("auth.password_complexity")}
 
     if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
-        return {"status": "error", "message": "邮箱格式不正确"}
+        return {"status": "error", "message": t("auth.email_format")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置，无法注册"}
+        return {"status": "error", "message": t("auth.db_unavailable")}
 
     try:
         with engine.connect() as conn:
@@ -136,7 +137,7 @@ def register_user(username: str, password: str, display_name: str = "",
                 f"SELECT 1 FROM {T_APP_USERS} WHERE username = :u"
             ), {"u": username}).fetchone()
             if exists:
-                return {"status": "error", "message": "用户名已存在"}
+                return {"status": "error", "message": t("auth.username_exists")}
 
             # Insert new user
             pw_hash = _make_password_hash(password)
@@ -147,9 +148,9 @@ def register_user(username: str, password: str, display_name: str = "",
             ), {"u": username, "p": pw_hash, "d": display_name or username,
                 "e": email or ""})
             conn.commit()
-            return {"status": "success", "message": "注册成功，请返回登录"}
+            return {"status": "success", "message": t("auth.register_success")}
     except Exception as e:
-        return {"status": "error", "message": f"注册失败: {str(e)}"}
+        return {"status": "error", "message": t("auth.register_failed", error=str(e))}
 
 
 def delete_user_account(username: str, confirm_password: str) -> dict:
@@ -170,15 +171,15 @@ def delete_user_account(username: str, confirm_password: str) -> dict:
     """
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("auth.delete_db_unavailable")}
 
     # Verify password first
     user = authenticate_user(username, confirm_password)
     if not user:
-        return {"status": "error", "message": "密码验证失败"}
+        return {"status": "error", "message": t("auth.delete_password_failed")}
 
     if user.get("role") == "admin":
-        return {"status": "error", "message": "管理员不能通过此方式删除账户，请联系其他管理员"}
+        return {"status": "error", "message": t("auth.delete_admin_blocked")}
 
     try:
         with engine.connect() as conn:
@@ -204,7 +205,7 @@ def delete_user_account(username: str, confirm_password: str) -> dict:
             conn.commit()
 
             if result.rowcount == 0:
-                return {"status": "error", "message": "用户不存在"}
+                return {"status": "error", "message": t("auth.delete_user_not_found")}
 
         # Remove upload directory
         import shutil
@@ -212,9 +213,9 @@ def delete_user_account(username: str, confirm_password: str) -> dict:
         if os.path.exists(upload_dir):
             shutil.rmtree(upload_dir, ignore_errors=True)
 
-        return {"status": "success", "message": "账户已删除"}
+        return {"status": "success", "message": t("auth.delete_success")}
     except Exception as e:
-        return {"status": "error", "message": f"删除失败: {str(e)}"}
+        return {"status": "error", "message": t("auth.delete_failed", error=str(e))}
 
 
 def ensure_wecom_user(wecom_userid: str) -> dict:

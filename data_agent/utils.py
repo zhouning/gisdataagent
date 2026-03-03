@@ -14,6 +14,7 @@ import matplotlib.font_manager as fm
 import folium
 
 from .gis_processors import _generate_output_path, _resolve_path
+from .i18n import t
 
 
 # ---------------------------------------------------------------------------
@@ -352,17 +353,17 @@ def _format_file_size(size_bytes: int) -> str:
 
 
 def _dtype_label(dtype) -> str:
-    """Map pandas dtype to a Chinese-labeled category."""
+    """Map pandas dtype to a localized category label."""
     s = str(dtype)
     if "int" in s or "float" in s:
-        return "数值"
+        return t("preview.dtype_numeric")
     elif "datetime" in s:
-        return "日期"
+        return t("preview.dtype_datetime")
     elif "geometry" in s:
-        return "几何"
+        return t("preview.dtype_geometry")
     elif "bool" in s:
-        return "布尔"
-    return "文本"
+        return t("preview.dtype_boolean")
+    return t("preview.dtype_text")
 
 
 def _preview_file_info(file_path: str, gdf) -> list:
@@ -373,38 +374,39 @@ def _preview_file_info(file_path: str, gdf) -> list:
         ".gpkg": "GeoPackage", ".kml": "KML", ".kmz": "KMZ",
         ".csv": "CSV", ".xlsx": "Excel", ".xls": "Excel",
     }
-    fmt = _FMT.get(ext, ext.upper().lstrip(".") or "未知")
+    fmt = _FMT.get(ext, ext.upper().lstrip(".") or t("preview.format_unknown"))
     try:
         size_str = _format_file_size(os.path.getsize(file_path))
     except OSError:
-        size_str = "未知"
+        size_str = t("preview.size_unknown")
     return [
-        f"- **文件格式**: {fmt} | **文件大小**: {size_str}",
-        f"- **要素数量**: {len(gdf)} 条记录",
+        t("preview.file_format", fmt=fmt, size=size_str),
+        t("preview.record_count", count=len(gdf)),
     ]
 
 
 def _preview_spatial_info(gdf) -> list:
     """Section: CRS, geometry types, bounds, area/length summary."""
     lines = []
-    lines.append(f"- **坐标系**: {gdf.crs or '未定义'}")
+    lines.append(t("preview.crs", crs=gdf.crs or t("preview.crs_undefined")))
 
     has_geom = "geometry" in gdf.columns and not gdf.geometry.isna().all()
     if not has_geom:
-        lines.append("- **几何**: 无空间数据")
+        lines.append(t("preview.no_geometry"))
         return lines
 
     valid_geom = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
     geom_types = valid_geom.geometry.geom_type.unique().tolist() if len(valid_geom) > 0 else []
 
     if geom_types:
-        lines.append(f"- **几何类型**: {', '.join(geom_types)}")
+        lines.append(t("preview.geom_type", types=", ".join(geom_types)))
 
     if len(valid_geom) > 0:
         bounds = valid_geom.total_bounds
         lines.append(
-            f"- **空间范围**: [{bounds[0]:.4f}, {bounds[1]:.4f}] ~ "
-            f"[{bounds[2]:.4f}, {bounds[3]:.4f}]"
+            t("preview.spatial_extent",
+              xmin=f"{bounds[0]:.4f}", ymin=f"{bounds[1]:.4f}",
+              xmax=f"{bounds[2]:.4f}", ymax=f"{bounds[3]:.4f}")
         )
 
     # Area/length summary
@@ -421,8 +423,9 @@ def _preview_spatial_info(gdf) -> list:
                 ) else valid_geom
                 areas = calc.geometry.area
                 lines.append(
-                    f"- **面积统计**: 最小 {areas.min():.1f} m² | "
-                    f"最大 {areas.max():.1f} m² | 平均 {areas.mean():.1f} m²"
+                    t("preview.area_stats",
+                      min=f"{areas.min():.1f}", max=f"{areas.max():.1f}",
+                      mean=f"{areas.mean():.1f}")
                 )
             except Exception:
                 pass
@@ -433,13 +436,14 @@ def _preview_spatial_info(gdf) -> list:
                 ) else valid_geom
                 lengths = calc.geometry.length
                 lines.append(
-                    f"- **长度统计**: 最小 {lengths.min():.1f} m | "
-                    f"最大 {lengths.max():.1f} m | 平均 {lengths.mean():.1f} m"
+                    t("preview.length_stats",
+                      min=f"{lengths.min():.1f}", max=f"{lengths.max():.1f}",
+                      mean=f"{lengths.mean():.1f}")
                 )
             except Exception:
                 pass
         elif type_set <= point_types:
-            lines.append(f"- **点要素数**: {len(valid_geom)} 个点")
+            lines.append(t("preview.point_count", count=len(valid_geom)))
 
     return lines
 
@@ -450,9 +454,9 @@ def _preview_column_info(gdf) -> list:
     if not non_geom:
         return []
 
-    lines = [f"\n#### 字段概览 ({len(non_geom)} 个字段)\n"]
+    lines = [t("preview.columns_header", count=len(non_geom))]
     display = non_geom[:12]
-    lines.append("| 字段名 | 类型 | 空值 | 空值率 |")
+    lines.append(t("preview.columns_table_header"))
     lines.append("| --- | --- | --- | --- |")
     total = len(gdf)
     for col in display:
@@ -461,13 +465,13 @@ def _preview_column_info(gdf) -> list:
         pct = f"{n_null / total * 100:.1f}%" if total > 0 else "0%"
         lines.append(f"| {col} | {dtype} | {n_null} | {pct} |")
     if len(non_geom) > 12:
-        lines.append(f"\n> 还有 {len(non_geom) - 12} 个字段未显示")
+        lines.append(t("preview.columns_more", count=len(non_geom) - 12))
     return lines
 
 
 def _preview_quality_indicators(gdf) -> list:
     """Section: quick data health check."""
-    lines = ["\n#### 数据质量\n"]
+    lines = [t("preview.quality_header")]
     issues = []
     has_geom = "geometry" in gdf.columns and not gdf.geometry.isna().all()
 
@@ -476,23 +480,23 @@ def _preview_quality_indicators(gdf) -> list:
     total_nulls = sum(int(gdf[c].isna().sum()) for c in non_geom)
     if total_nulls > 0:
         pct = total_nulls / total_cells * 100 if total_cells > 0 else 0
-        issues.append(f"缺失值: {total_nulls} 个 ({pct:.1f}%)")
+        issues.append(t("preview.quality_nulls", count=total_nulls, pct=f"{pct:.1f}"))
 
     if has_geom:
         n_null_geom = int(gdf.geometry.isna().sum())
         n_empty = int(gdf.geometry.is_empty.sum()) if n_null_geom < len(gdf) else 0
         if n_null_geom + n_empty > 0:
-            issues.append(f"空几何: {n_null_geom + n_empty} 个")
+            issues.append(t("preview.quality_empty_geom", count=n_null_geom + n_empty))
 
         if len(gdf) <= 100_000:
             valid_mask = gdf.geometry.notna() & ~gdf.geometry.is_empty
             if valid_mask.any():
                 n_invalid = int((~gdf[valid_mask].geometry.is_valid).sum())
                 if n_invalid > 0:
-                    issues.append(f"无效几何: {n_invalid} 个")
+                    issues.append(t("preview.quality_invalid_geom", count=n_invalid))
 
     if not issues:
-        lines.append("数据质量良好，无明显问题。")
+        lines.append(t("preview.quality_good"))
     else:
         for issue in issues:
             lines.append(f"- {issue}")
@@ -506,8 +510,8 @@ def _preview_numeric_stats(gdf) -> list:
         return []
 
     display = numeric_cols[:10]
-    lines = ["\n#### 数值统计\n"]
-    lines.append("| 字段 | 最小值 | 最大值 | 平均值 |")
+    lines = [t("preview.numeric_header")]
+    lines.append(t("preview.numeric_table_header"))
     lines.append("| --- | --- | --- | --- |")
     for col in display:
         if gdf[col].isna().all():
@@ -515,7 +519,7 @@ def _preview_numeric_stats(gdf) -> list:
             continue
         lines.append(f"| {col} | {gdf[col].min():.4g} | {gdf[col].max():.4g} | {gdf[col].mean():.4g} |")
     if len(numeric_cols) > 10:
-        lines.append(f"\n> 还有 {len(numeric_cols) - 10} 个数值字段未显示")
+        lines.append(t("preview.numeric_more", count=len(numeric_cols) - 10))
     return lines
 
 
@@ -529,7 +533,7 @@ def _preview_sample_rows(gdf, max_rows: int = 5, max_cols: int = 8) -> list:
     n_rows = min(max_rows, len(gdf))
     preview_df = gdf[display].head(n_rows)
 
-    lines = [f"\n**前 {n_rows} 行预览**:\n"]
+    lines = [t("preview.sample_header", count=n_rows)]
     lines.append("| " + " | ".join(str(c) for c in display) + " |")
     lines.append("| " + " | ".join("---" for _ in display) + " |")
     for _, row in preview_df.iterrows():
@@ -546,10 +550,10 @@ def _generate_upload_preview(file_path: str) -> str:
     try:
         gdf = _load_spatial_data(file_path)
 
-        lines = ["### 数据预览 (Data Preview)\n"]
+        lines = [t("preview.title")]
 
         if len(gdf) == 0:
-            lines.append("空数据集 (0 条记录)")
+            lines.append(t("preview.empty_dataset"))
             return "\n".join(lines)
 
         lines.extend(_preview_file_info(file_path, gdf))
@@ -561,4 +565,4 @@ def _generate_upload_preview(file_path: str) -> str:
 
         return "\n".join(lines)
     except Exception as e:
-        return f"数据预览失败: {str(e)}"
+        return t("preview.failed", error=str(e))
