@@ -1542,6 +1542,524 @@ def _build_progress_content(
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------------------
+# Error classification for retry logic
+# ---------------------------------------------------------------------------
+
+MAX_PIPELINE_RETRIES = 2
+
+_RETRYABLE_PATTERNS = [
+    "timeout", "timed out", "rate limit", "rate_limit",
+    "503", "429", "temporarily unavailable", "service unavailable",
+    "resource exhausted", "deadline exceeded", "connection reset",
+    "connection refused", "network unreachable",
+]
+
+_NON_RETRYABLE_PATTERNS = [
+    "permission denied", "access denied", "unauthorized",
+    "invalid format", "invalid argument", "not found",
+    "no such file", "must contain", "must include",
+]
+
+
+def _classify_error(exc: Exception) -> tuple:
+    """Classify whether a pipeline error is retryable.
+
+    Returns (is_retryable, category) where category is one of:
+    "transient", "permission", "data_format", "config", "unknown".
+    """
+    if isinstance(exc, (TimeoutError, ConnectionError, ConnectionResetError,
+                        ConnectionAbortedError, BrokenPipeError, OSError)):
+        if isinstance(exc, (PermissionError, FileNotFoundError)):
+            return (False, "permission" if isinstance(exc, PermissionError) else "data_format")
+        if isinstance(exc, OSError) and not isinstance(exc, (ConnectionError, TimeoutError)):
+            # Generic OSError — check message
+            pass
+        else:
+            return (True, "transient")
+
+    if isinstance(exc, (ValueError, KeyError)):
+        return (False, "data_format")
+
+    msg = str(exc).lower()
+
+    for pattern in _NON_RETRYABLE_PATTERNS:
+        if pattern in msg:
+            return (False, "config")
+
+    for pattern in _RETRYABLE_PATTERNS:
+        if pattern in msg:
+            return (True, "transient")
+
+    return (True, "unknown")
+
+
+async def _execute_pipeline(
+    user_id: str,
+    session_id: str,
+    role: str,
+    full_prompt: str,
+    uploaded_files: list,
+    pipeline_type: str,
+    pipeline_name: str,
+    intent: str,
+    selected_agent,
+    router_tokens: int = 0,
+    retry_attempt: int = 0,
+):
+    """Execute a pipeline and handle success/error with optional retry.
+
+    Extracted from @cl.on_message to allow reuse by the retry callback.
+    """
+    from data_agent.user_context import get_user_upload_dir
+    _set_user_context(user_id, session_id, role)
+
+    runner = Runner(
+        agent=selected_agent,
+        app_name="data_agent_ui",
+        session_service=session_service,
+        plugins=[_hitl_plugin] if HITL_ENABLED else [],
+    )
+    content = types.Content(role='user', parts=[types.Part(text=full_prompt)])
+
+    # --- Progress Feedback Setup ---
+    if DYNAMIC_PLANNER and pipeline_type == "planner":
+        stages = []
+        total_stages = 0
+        agent_visit_count = 0
+    else:
+        stages = PIPELINE_STAGES.get(pipeline_type, [])
+        total_stages = len(stages)
+    pipeline_start_time = time.time()
+
+    pipeline_step = cl.Step(name=pipeline_name, type="process")
+    await pipeline_step.send()
+
+    final_msg = cl.Message(content="")
+    shown_artifacts = set()
+    current_agent_name = None
+    current_agent_step = None
+    current_tool_step = None
+    current_tool_name = None
+    tool_start_time = 0
+    msg_sent = False
+    full_response_text = ""
+    tool_execution_log = []
+    _tool_step_counter = 0
+    _pending_tool_call = None
+    stage_timings = []
+    progress_msg = cl.Message(content=_build_progress_content(
+        pipeline_name, pipeline_type, stages, stage_timings))
+    await progress_msg.send()
+
+    try:
+        run_config = RunConfig(max_llm_calls=50) if (DYNAMIC_PLANNER and pipeline_type == "planner") else None
+        events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content, run_config=run_config)
+
+        # Token accumulation counters
+        total_input_tokens = router_tokens  # include router tokens
+        total_output_tokens = 0
+
+        async for event in events:
+            # --- Accumulate token usage from ADK events ---
+            if hasattr(event, 'usage_metadata') and event.usage_metadata:
+                total_input_tokens += getattr(event.usage_metadata, 'prompt_token_count', 0) or 0
+                total_output_tokens += getattr(event.usage_metadata, 'candidates_token_count', 0) or 0
+
+            # --- Detect agent transitions via event.author ---
+            author = getattr(event, 'author', None)
+            if author and author != 'user' and author != current_agent_name:
+                # Finalize previous agent step
+                if current_agent_step:
+                    agent_label = AGENT_LABELS.get(current_agent_name, current_agent_name)
+                    if DYNAMIC_PLANNER and pipeline_type == "planner":
+                        current_agent_step.name = f"{agent_label} ✓"
+                    else:
+                        stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
+                        current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
+                    await current_agent_step.update()
+
+                current_agent_name = author
+                if author in AGENT_LABELS:
+                    agent_label = AGENT_LABELS[author]
+                    if DYNAMIC_PLANNER and pipeline_type == "planner":
+                        agent_visit_count += 1
+                        step_label = f"步骤 {agent_visit_count}: 正在{agent_label}..."
+                    else:
+                        stage_idx = stages.index(author) + 1 if author in stages else 0
+                        step_label = f"阶段 {stage_idx}/{total_stages}: 正在{agent_label}..."
+                    current_agent_step = cl.Step(
+                        name=step_label,
+                        type="process",
+                        parent_id=pipeline_step.id,
+                    )
+                    await current_agent_step.send()
+
+                    # --- Update inline progress message ---
+                    if stage_timings and stage_timings[-1]["end"] is None:
+                        stage_timings[-1]["end"] = time.time()
+                    stage_timings.append({
+                        "name": author, "label": agent_label,
+                        "start": time.time(), "end": None,
+                    })
+                    progress_msg.content = _build_progress_content(
+                        pipeline_name, pipeline_type, stages, stage_timings)
+                    await progress_msg.update()
+
+            if not (event.content and event.content.parts):
+                continue
+
+            for part in event.content.parts:
+
+                if part.function_call:
+                    # Finalize previous tool step if still open
+                    if current_tool_step:
+                        duration = time.time() - tool_start_time
+                        label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+                        current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
+                        current_tool_step.output = "执行成功"
+                        await current_tool_step.update()
+
+                    current_tool_name = part.function_call.name
+                    tool_start_time = time.time()
+                    label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+                    parent_id = current_agent_step.id if current_agent_step else pipeline_step.id
+                    current_tool_step = cl.Step(
+                        name=f"正在{label}...",
+                        type="tool",
+                        parent_id=parent_id,
+                    )
+                    current_tool_step.input = _format_tool_explanation(
+                        current_tool_name, part.function_call.args
+                    )
+                    await current_tool_step.send()
+                    _pending_tool_call = {
+                        "tool_name": part.function_call.name,
+                        "args": dict(part.function_call.args) if part.function_call.args else {},
+                        "start_time": time.time(),
+                        "agent_name": current_agent_name or "",
+                    }
+
+                if part.function_response:
+                    if current_tool_step:
+                        duration = time.time() - tool_start_time
+                        label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+                        current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
+                        try:
+                            resp_data = part.function_response.response
+                            if isinstance(resp_data, dict) and "output_path" in resp_data:
+                                current_tool_step.output = f"输出: `{os.path.basename(resp_data['output_path'])}`"
+                            elif isinstance(resp_data, dict) and "message" in resp_data:
+                                msg = str(resp_data["message"])[:200]
+                                current_tool_step.output = msg
+                            elif isinstance(resp_data, str) and (os.sep in resp_data or '/' in resp_data):
+                                current_tool_step.output = f"输出: `{os.path.basename(resp_data)}`"
+                            else:
+                                out_str = str(resp_data)[:200]
+                                current_tool_step.output = out_str if len(out_str) > 5 else "执行成功"
+                        except Exception:
+                            current_tool_step.output = "执行成功"
+                        await current_tool_step.update()
+                        # Refresh inline progress (elapsed time tick)
+                        progress_msg.content = _build_progress_content(
+                            pipeline_name, pipeline_type, stages, stage_timings)
+                        await progress_msg.update()
+                        # Detect layer_control in tool response → send as metadata
+                        try:
+                            _lc_resp = part.function_response.response
+                            if isinstance(_lc_resp, dict) and "layer_control" in _lc_resp:
+                                await cl.Message(
+                                    content="",
+                                    metadata={"layer_control": _lc_resp["layer_control"]},
+                                ).send()
+                        except Exception:
+                            pass
+                        # Sync tool output files to OBS and register in data catalog
+                        try:
+                            _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
+                            _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
+                        except Exception:
+                            pass
+                        # Capture tool execution for code export
+                        if _pending_tool_call:
+                            _tool_step_counter += 1
+                            _resp = part.function_response.response
+                            _out_path = None
+                            _result_msg = ""
+                            _is_err = False
+                            if isinstance(_resp, dict):
+                                _out_path = _resp.get("output_path")
+                                _result_msg = str(_resp.get("message", ""))[:200]
+                                _is_err = _resp.get("status") == "error"
+                            elif isinstance(_resp, str):
+                                _result_msg = _resp[:200]
+                            tool_execution_log.append({
+                                "step": _tool_step_counter,
+                                "agent_name": _pending_tool_call["agent_name"],
+                                "tool_name": _pending_tool_call["tool_name"],
+                                "args": _pending_tool_call["args"],
+                                "output_path": _out_path,
+                                "result_summary": _result_msg,
+                                "duration": time.time() - _pending_tool_call["start_time"],
+                                "is_error": _is_err,
+                            })
+                            # Prometheus: track tool call
+                            tool_calls.labels(
+                                tool_name=_pending_tool_call["tool_name"],
+                                status="error" if _is_err else "success",
+                            ).inc()
+                            _pending_tool_call = None
+                        current_tool_step = None
+                        current_tool_name = None
+
+                if part.text:
+                    # Update pipeline step with elapsed time
+                    elapsed = time.time() - pipeline_start_time
+                    pipeline_step.name = f"{pipeline_name} ({elapsed:.1f}s)"
+                    await pipeline_step.update()
+
+                    if not msg_sent:
+                        msg_sent = True
+                        await final_msg.send()
+
+                    await final_msg.stream_token(part.text)
+                    full_response_text += part.text
+
+                    found = extract_file_paths(part.text)
+                    elements = []
+                    msg_metadata = {}
+                    for artifact in found:
+                        path = artifact['path']
+                        if path in shown_artifacts:
+                            continue
+                        name = os.path.basename(path)
+                        if artifact['type'] == 'png':
+                            elements.append(cl.Image(path=path, name=name, display="inline"))
+                            shown_artifacts.add(path)
+                        elif artifact['type'] == 'html':
+                            elements.append(cl.File(path=path, name=name))
+                            shown_artifacts.add(path)
+                            # Check for mapconfig.json alongside HTML
+                            config_path = path.replace('.html', '.mapconfig.json')
+                            if os.path.exists(config_path):
+                                try:
+                                    with open(config_path, 'r', encoding='utf-8') as _cf:
+                                        msg_metadata["map_update"] = json.load(_cf)
+                                except Exception:
+                                    pass
+                        elif artifact['type'] == 'csv':
+                            elements.append(cl.File(path=path, name=name))
+                            shown_artifacts.add(path)
+                            msg_metadata["data_update"] = {"file": name}
+
+                    if elements:
+                        await cl.Message(content="", elements=elements, metadata=msg_metadata).send()
+
+        # --- Cleanup: finalize all open steps ---
+        if current_tool_step:
+            duration = time.time() - tool_start_time
+            label = TOOL_LABELS.get(current_tool_name, current_tool_name)
+            current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
+            await current_tool_step.update()
+
+        if current_agent_step:
+            agent_label = AGENT_LABELS.get(current_agent_name, current_agent_name)
+            if DYNAMIC_PLANNER and pipeline_type == "planner":
+                current_agent_step.name = f"{agent_label} ✓"
+            else:
+                stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
+                current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
+            await current_agent_step.update()
+
+        total_duration = time.time() - pipeline_start_time
+        pipeline_step.name = f"{pipeline_name} ✓ ({total_duration:.1f}s)"
+        await pipeline_step.update()
+
+        # --- Finalize inline progress → completion timeline ---
+        if stage_timings and stage_timings[-1]["end"] is None:
+            stage_timings[-1]["end"] = time.time()
+        progress_msg.content = _build_progress_content(
+            pipeline_name, pipeline_type, stages, stage_timings,
+            is_complete=True, total_duration=total_duration)
+        await progress_msg.update()
+
+        # --- Prometheus metrics: pipeline success ---
+        pipeline_duration.labels(pipeline=pipeline_type).observe(total_duration)
+        pipeline_runs.labels(pipeline=pipeline_type, status="success").inc()
+
+        await final_msg.update()
+
+        # --- Report Extraction ---
+        session = await session_service.get_session(
+            app_name="data_agent_ui",
+            user_id=user_id,
+            session_id=session_id
+        )
+        report_text = full_response_text
+
+        if session and session.state:
+            if pipeline_type == "planner":
+                report_text = session.state.get("final_report",
+                               session.state.get("planner_summary", full_response_text))
+            elif pipeline_type == "optimization":
+                report_text = session.state.get("final_summary", full_response_text)
+            elif pipeline_type == "governance":
+                report_text = session.state.get("governance_report", full_response_text)
+
+        cl.user_session.set("last_response_text", report_text)
+
+        # Save context for multi-turn dialogue
+        user_text = cl.user_session.get("last_user_message", "")
+        generated_files = [a['path'] for a in extract_file_paths(full_response_text)]
+        cl.user_session.set("last_context", {
+            "pipeline": pipeline_type,
+            "files": generated_files,
+            "summary": report_text[:800] if report_text else "",
+        })
+        cl.user_session.set("tool_execution_log", tool_execution_log)
+        cl.user_session.set("last_intent", intent)
+
+        # --- Auto-save analysis result as spatial memory ---
+        try:
+            from data_agent.memory import save_memory
+            import json as _json
+            _set_user_context(user_id, session_id, role)
+            if generated_files and report_text:
+                mem_value = _json.dumps({
+                    "pipeline": pipeline_type,
+                    "files": generated_files[:10],
+                    "summary": report_text[:500],
+                }, ensure_ascii=False)
+                mem_key = user_text[:80].strip() or f"分析_{time.strftime('%m%d_%H%M')}"
+                save_memory("analysis_result", mem_key, mem_value,
+                            f"{pipeline_name} - {time.strftime('%Y-%m-%d %H:%M')}")
+        except Exception:
+            pass  # non-fatal
+
+        # --- Record token usage ---
+        try:
+            from data_agent.token_tracker import record_usage
+            tracking_pipeline = pipeline_type
+            if DYNAMIC_PLANNER and pipeline_type == "planner":
+                tracking_pipeline = intent.lower() if intent != "AMBIGUOUS" else "general"
+            record_usage(user_id, tracking_pipeline, total_input_tokens, total_output_tokens)
+        except Exception:
+            pass  # non-fatal
+
+        # --- Audit: pipeline complete ---
+        try:
+            record_audit(user_id, ACTION_PIPELINE_COMPLETE, details={
+                "pipeline_type": pipeline_type,
+                "intent": intent,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "files_generated": len(generated_files),
+            })
+        except Exception:
+            pass
+
+        current_pipeline = cl.user_session.get("pipeline_type")
+        actions = [
+            cl.Action(
+                name="export_report",
+                value="docx",
+                label="导出 Word 报告",
+                description="将本次分析结果导出为 Word 文档",
+                payload={"format": "docx"}
+            ),
+            cl.Action(
+                name="export_report",
+                value="pdf",
+                label="导出 PDF 报告",
+                description="将本次分析结果导出为 PDF 文档",
+                payload={"format": "pdf"}
+            ),
+            cl.Action(
+                name="share_result",
+                value="share",
+                label="分享分析结果",
+                description="生成公开链接，无需登录即可查看",
+                payload={"action": "share"}
+            ),
+            cl.Action(
+                name="export_code",
+                value="python",
+                label="导出 Python 脚本",
+                description="将本次分析流程导出为可复现的 Python 脚本",
+                payload={"format": "python"}
+            ),
+            cl.Action(
+                name="save_as_template",
+                value="template",
+                label="保存为模板",
+                description="将本次分析流程保存为可复用模板",
+                payload={"action": "save_template"}
+            ),
+            cl.Action(
+                name="browse_templates",
+                value="browse",
+                label="浏览模板",
+                description="查看和应用已保存的分析模板",
+                payload={"action": "browse"}
+            ),
+            cl.Action(
+                name="browse_steps",
+                value="browse",
+                label="查看分析步骤",
+                description="查看并重新执行本次分析的各个步骤",
+                payload={"action": "browse_steps"}
+            ),
+        ]
+        await cl.Message(content="分析完成。您可以下载相关文件、导出报告或分享结果。", actions=actions).send()
+
+        # Reset retry count on success
+        cl.user_session.set("retry_count", 0)
+
+    except Exception as e:
+        err_msg = f"Error: {str(e)}"
+        logger.error("Pipeline execution error: %s", e)
+        pipeline_runs.labels(pipeline=pipeline_type, status="error").inc()
+        # Finalize progress with error state
+        try:
+            if stage_timings and stage_timings[-1]["end"] is None:
+                stage_timings[-1]["_error_time"] = time.time()
+            err_duration = time.time() - pipeline_start_time
+            progress_msg.content = _build_progress_content(
+                pipeline_name, pipeline_type, stages, stage_timings,
+                is_complete=True, total_duration=err_duration, is_error=True)
+            await progress_msg.update()
+        except Exception:
+            pass
+
+        # --- Retry button logic ---
+        is_retryable, err_category = _classify_error(e)
+        retry_count = cl.user_session.get("retry_count", 0)
+
+        if is_retryable and retry_attempt < MAX_PIPELINE_RETRIES:
+            remaining = MAX_PIPELINE_RETRIES - retry_attempt
+            retry_actions = [
+                cl.Action(
+                    name="retry_pipeline",
+                    value="retry",
+                    label=f"重试 ({retry_attempt + 1}/{MAX_PIPELINE_RETRIES})",
+                    description="使用相同参数重新执行管道",
+                    payload={"attempt": retry_attempt + 1},
+                ),
+            ]
+            await cl.Message(
+                content=f"{err_msg}\n\n**错误类型**: {err_category} (可重试)\n剩余重试次数: {remaining}",
+                actions=retry_actions,
+            ).send()
+        elif not is_retryable:
+            await cl.Message(
+                content=f"{err_msg}\n\n**错误类型**: {err_category} (不可重试)\n请检查输入数据或参数后重新提交。",
+            ).send()
+        else:
+            await cl.Message(
+                content=f"{err_msg}\n\n已达到最大重试次数 ({MAX_PIPELINE_RETRIES})，请重新提交。",
+            ).send()
+
+
 def _set_user_context(user_id: str, session_id: str, role: str = "analyst"):
     """Set context variables for the current async task."""
     current_user_id.set(user_id)
@@ -2043,420 +2561,63 @@ async def main(message: cl.Message):
 
     cl.user_session.set("pipeline_type", pipeline_type)
 
-    runner = Runner(
-        agent=selected_agent,
-        app_name="data_agent_ui",
-        session_service=session_service,
-        plugins=[_hitl_plugin] if HITL_ENABLED else [],
+    # --- Save retry context and execute pipeline ---
+    cl.user_session.set("retry_full_prompt", full_prompt)
+    cl.user_session.set("retry_uploaded_files", uploaded_files)
+    cl.user_session.set("retry_pipeline_type", pipeline_type)
+    cl.user_session.set("retry_pipeline_name", pipeline_name)
+    cl.user_session.set("retry_intent", intent)
+    cl.user_session.set("retry_count", 0)
+
+    await _execute_pipeline(
+        user_id, session_id, role, full_prompt, uploaded_files,
+        pipeline_type, pipeline_name, intent, selected_agent,
+        router_tokens=router_tokens,
     )
-    content = types.Content(role='user', parts=[types.Part(text=full_prompt)])
 
-    # --- Progress Feedback Setup ---
-    if DYNAMIC_PLANNER and pipeline_type == "planner":
-        stages = []
-        total_stages = 0
-        agent_visit_count = 0
+
+@cl.action_callback("retry_pipeline")
+async def on_retry_pipeline(action: cl.Action):
+    """Retry a failed pipeline with the same parameters."""
+    user_id = cl.user_session.get("user_id")
+    session_id = cl.user_session.get("session_id")
+    role = cl.user_session.get("user_role", "analyst")
+    _set_user_context(user_id, session_id, role)
+
+    retry_attempt = (action.payload or {}).get("attempt", 1)
+    full_prompt = cl.user_session.get("retry_full_prompt")
+    uploaded_files = cl.user_session.get("retry_uploaded_files", [])
+    pipeline_type = cl.user_session.get("retry_pipeline_type")
+    pipeline_name = cl.user_session.get("retry_pipeline_name")
+    intent = cl.user_session.get("retry_intent")
+
+    if not full_prompt or not pipeline_type:
+        await cl.Message(content="无法重试：缺少必要的上下文信息，请重新提交。").send()
+        return
+
+    # Verify uploaded files still exist
+    valid_files = [f for f in uploaded_files if os.path.exists(f)]
+    if len(valid_files) < len(uploaded_files):
+        missing = len(uploaded_files) - len(valid_files)
+        await cl.Message(content=f"注意：{missing} 个上传文件已不存在，将使用剩余文件继续。").send()
+
+    # Select agent (same logic as main handler)
+    if DYNAMIC_PLANNER:
+        selected_agent = planner_agent
+    elif intent == "GOVERNANCE":
+        selected_agent = governance_pipeline
+    elif intent == "OPTIMIZATION":
+        selected_agent = data_pipeline
     else:
-        stages = PIPELINE_STAGES.get(pipeline_type, [])
-        total_stages = len(stages)
-    pipeline_start_time = time.time()
+        selected_agent = general_pipeline
 
-    pipeline_step = cl.Step(name=pipeline_name, type="process")
-    await pipeline_step.send()
+    await cl.Message(content=f"正在重试... (第 {retry_attempt} 次)").send()
 
-    final_msg = cl.Message(content="")
-    shown_artifacts = set()
-    current_agent_name = None
-    current_agent_step = None
-    current_tool_step = None
-    current_tool_name = None
-    tool_start_time = 0
-    msg_sent = False
-    full_response_text = ""
-    tool_execution_log = []
-    _tool_step_counter = 0
-    _pending_tool_call = None
-    stage_timings = []
-    progress_msg = cl.Message(content=_build_progress_content(
-        pipeline_name, pipeline_type, stages, stage_timings))
-    await progress_msg.send()
-
-    try:
-        run_config = RunConfig(max_llm_calls=50) if (DYNAMIC_PLANNER and pipeline_type == "planner") else None
-        events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content, run_config=run_config)
-
-        # Token accumulation counters
-        total_input_tokens = router_tokens  # include router tokens
-        total_output_tokens = 0
-
-        async for event in events:
-            # --- Accumulate token usage from ADK events ---
-            if hasattr(event, 'usage_metadata') and event.usage_metadata:
-                total_input_tokens += getattr(event.usage_metadata, 'prompt_token_count', 0) or 0
-                total_output_tokens += getattr(event.usage_metadata, 'candidates_token_count', 0) or 0
-
-            # --- Detect agent transitions via event.author ---
-            author = getattr(event, 'author', None)
-            if author and author != 'user' and author != current_agent_name:
-                # Finalize previous agent step
-                if current_agent_step:
-                    agent_label = AGENT_LABELS.get(current_agent_name, current_agent_name)
-                    if DYNAMIC_PLANNER and pipeline_type == "planner":
-                        current_agent_step.name = f"{agent_label} ✓"
-                    else:
-                        stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
-                        current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
-                    await current_agent_step.update()
-
-                current_agent_name = author
-                if author in AGENT_LABELS:
-                    agent_label = AGENT_LABELS[author]
-                    if DYNAMIC_PLANNER and pipeline_type == "planner":
-                        agent_visit_count += 1
-                        step_label = f"步骤 {agent_visit_count}: 正在{agent_label}..."
-                    else:
-                        stage_idx = stages.index(author) + 1 if author in stages else 0
-                        step_label = f"阶段 {stage_idx}/{total_stages}: 正在{agent_label}..."
-                    current_agent_step = cl.Step(
-                        name=step_label,
-                        type="process",
-                        parent_id=pipeline_step.id,
-                    )
-                    await current_agent_step.send()
-
-                    # --- Update inline progress message ---
-                    if stage_timings and stage_timings[-1]["end"] is None:
-                        stage_timings[-1]["end"] = time.time()
-                    stage_timings.append({
-                        "name": author, "label": agent_label,
-                        "start": time.time(), "end": None,
-                    })
-                    progress_msg.content = _build_progress_content(
-                        pipeline_name, pipeline_type, stages, stage_timings)
-                    await progress_msg.update()
-
-            if not (event.content and event.content.parts):
-                continue
-
-            for part in event.content.parts:
-
-                if part.function_call:
-                    # Finalize previous tool step if still open
-                    if current_tool_step:
-                        duration = time.time() - tool_start_time
-                        label = TOOL_LABELS.get(current_tool_name, current_tool_name)
-                        current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
-                        current_tool_step.output = "执行成功"
-                        await current_tool_step.update()
-
-                    current_tool_name = part.function_call.name
-                    tool_start_time = time.time()
-                    label = TOOL_LABELS.get(current_tool_name, current_tool_name)
-                    parent_id = current_agent_step.id if current_agent_step else pipeline_step.id
-                    current_tool_step = cl.Step(
-                        name=f"正在{label}...",
-                        type="tool",
-                        parent_id=parent_id,
-                    )
-                    current_tool_step.input = _format_tool_explanation(
-                        current_tool_name, part.function_call.args
-                    )
-                    await current_tool_step.send()
-                    _pending_tool_call = {
-                        "tool_name": part.function_call.name,
-                        "args": dict(part.function_call.args) if part.function_call.args else {},
-                        "start_time": time.time(),
-                        "agent_name": current_agent_name or "",
-                    }
-
-                if part.function_response:
-                    if current_tool_step:
-                        duration = time.time() - tool_start_time
-                        label = TOOL_LABELS.get(current_tool_name, current_tool_name)
-                        current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
-                        try:
-                            resp_data = part.function_response.response
-                            if isinstance(resp_data, dict) and "output_path" in resp_data:
-                                current_tool_step.output = f"输出: `{os.path.basename(resp_data['output_path'])}`"
-                            elif isinstance(resp_data, dict) and "message" in resp_data:
-                                msg = str(resp_data["message"])[:200]
-                                current_tool_step.output = msg
-                            elif isinstance(resp_data, str) and (os.sep in resp_data or '/' in resp_data):
-                                current_tool_step.output = f"输出: `{os.path.basename(resp_data)}`"
-                            else:
-                                out_str = str(resp_data)[:200]
-                                current_tool_step.output = out_str if len(out_str) > 5 else "执行成功"
-                        except Exception:
-                            current_tool_step.output = "执行成功"
-                        await current_tool_step.update()
-                        # Refresh inline progress (elapsed time tick)
-                        progress_msg.content = _build_progress_content(
-                            pipeline_name, pipeline_type, stages, stage_timings)
-                        await progress_msg.update()
-                        # Detect layer_control in tool response → send as metadata
-                        try:
-                            _lc_resp = part.function_response.response
-                            if isinstance(_lc_resp, dict) and "layer_control" in _lc_resp:
-                                await cl.Message(
-                                    content="",
-                                    metadata={"layer_control": _lc_resp["layer_control"]},
-                                ).send()
-                        except Exception:
-                            pass
-                        # Sync tool output files to OBS and register in data catalog
-                        try:
-                            _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
-                            _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
-                        except Exception:
-                            pass
-                        # Capture tool execution for code export
-                        if _pending_tool_call:
-                            _tool_step_counter += 1
-                            _resp = part.function_response.response
-                            _out_path = None
-                            _result_msg = ""
-                            _is_err = False
-                            if isinstance(_resp, dict):
-                                _out_path = _resp.get("output_path")
-                                _result_msg = str(_resp.get("message", ""))[:200]
-                                _is_err = _resp.get("status") == "error"
-                            elif isinstance(_resp, str):
-                                _result_msg = _resp[:200]
-                            tool_execution_log.append({
-                                "step": _tool_step_counter,
-                                "agent_name": _pending_tool_call["agent_name"],
-                                "tool_name": _pending_tool_call["tool_name"],
-                                "args": _pending_tool_call["args"],
-                                "output_path": _out_path,
-                                "result_summary": _result_msg,
-                                "duration": time.time() - _pending_tool_call["start_time"],
-                                "is_error": _is_err,
-                            })
-                            # Prometheus: track tool call
-                            tool_calls.labels(
-                                tool_name=_pending_tool_call["tool_name"],
-                                status="error" if _is_err else "success",
-                            ).inc()
-                            _pending_tool_call = None
-                        current_tool_step = None
-                        current_tool_name = None
-
-                if part.text:
-                    # Update pipeline step with elapsed time
-                    elapsed = time.time() - pipeline_start_time
-                    pipeline_step.name = f"{pipeline_name} ({elapsed:.1f}s)"
-                    await pipeline_step.update()
-
-                    if not msg_sent:
-                        msg_sent = True
-                        await final_msg.send()
-
-                    await final_msg.stream_token(part.text)
-                    full_response_text += part.text
-
-                    found = extract_file_paths(part.text)
-                    elements = []
-                    msg_metadata = {}
-                    for artifact in found:
-                        path = artifact['path']
-                        if path in shown_artifacts:
-                            continue
-                        name = os.path.basename(path)
-                        if artifact['type'] == 'png':
-                            elements.append(cl.Image(path=path, name=name, display="inline"))
-                            shown_artifacts.add(path)
-                        elif artifact['type'] == 'html':
-                            elements.append(cl.File(path=path, name=name))
-                            shown_artifacts.add(path)
-                            # Check for mapconfig.json alongside HTML
-                            config_path = path.replace('.html', '.mapconfig.json')
-                            if os.path.exists(config_path):
-                                try:
-                                    with open(config_path, 'r', encoding='utf-8') as _cf:
-                                        msg_metadata["map_update"] = json.load(_cf)
-                                except Exception:
-                                    pass
-                        elif artifact['type'] == 'csv':
-                            elements.append(cl.File(path=path, name=name))
-                            shown_artifacts.add(path)
-                            msg_metadata["data_update"] = {"file": name}
-
-                    if elements:
-                        await cl.Message(content="", elements=elements, metadata=msg_metadata).send()
-
-        # --- Cleanup: finalize all open steps ---
-        if current_tool_step:
-            duration = time.time() - tool_start_time
-            label = TOOL_LABELS.get(current_tool_name, current_tool_name)
-            current_tool_step.name = f"{label} ✓ ({duration:.1f}s)"
-            await current_tool_step.update()
-
-        if current_agent_step:
-            agent_label = AGENT_LABELS.get(current_agent_name, current_agent_name)
-            if DYNAMIC_PLANNER and pipeline_type == "planner":
-                current_agent_step.name = f"{agent_label} ✓"
-            else:
-                stage_idx = stages.index(current_agent_name) + 1 if current_agent_name in stages else 0
-                current_agent_step.name = f"阶段 {stage_idx}/{total_stages}: {agent_label} ✓"
-            await current_agent_step.update()
-
-        total_duration = time.time() - pipeline_start_time
-        pipeline_step.name = f"{pipeline_name} ✓ ({total_duration:.1f}s)"
-        await pipeline_step.update()
-
-        # --- Finalize inline progress → completion timeline ---
-        if stage_timings and stage_timings[-1]["end"] is None:
-            stage_timings[-1]["end"] = time.time()
-        progress_msg.content = _build_progress_content(
-            pipeline_name, pipeline_type, stages, stage_timings,
-            is_complete=True, total_duration=total_duration)
-        await progress_msg.update()
-
-        # --- Prometheus metrics: pipeline success ---
-        pipeline_duration.labels(pipeline=pipeline_type).observe(total_duration)
-        pipeline_runs.labels(pipeline=pipeline_type, status="success").inc()
-
-        await final_msg.update()
-
-        # --- Report Extraction ---
-        session = await session_service.get_session(
-            app_name="data_agent_ui",
-            user_id=user_id,
-            session_id=session_id
-        )
-        report_text = full_response_text
-
-        if session and session.state:
-            if pipeline_type == "planner":
-                report_text = session.state.get("final_report",
-                               session.state.get("planner_summary", full_response_text))
-            elif pipeline_type == "optimization":
-                report_text = session.state.get("final_summary", full_response_text)
-            elif pipeline_type == "governance":
-                report_text = session.state.get("governance_report", full_response_text)
-
-        cl.user_session.set("last_response_text", report_text)
-
-        # Save context for multi-turn dialogue
-        generated_files = [a['path'] for a in extract_file_paths(full_response_text)]
-        cl.user_session.set("last_context", {
-            "pipeline": pipeline_type,
-            "files": generated_files,
-            "summary": report_text[:800] if report_text else "",
-        })
-        cl.user_session.set("tool_execution_log", tool_execution_log)
-        cl.user_session.set("last_intent", intent)
-        cl.user_session.set("last_user_message", user_text)
-
-        # --- Auto-save analysis result as spatial memory ---
-        try:
-            from data_agent.memory import save_memory
-            import json as _json
-            _set_user_context(user_id, session_id, role)
-            if generated_files and report_text:
-                mem_value = _json.dumps({
-                    "pipeline": pipeline_type,
-                    "files": generated_files[:10],
-                    "summary": report_text[:500],
-                }, ensure_ascii=False)
-                mem_key = user_text[:80].strip() or f"分析_{time.strftime('%m%d_%H%M')}"
-                save_memory("analysis_result", mem_key, mem_value,
-                            f"{pipeline_name} - {time.strftime('%Y-%m-%d %H:%M')}")
-        except Exception:
-            pass  # non-fatal
-
-        # --- Record token usage ---
-        try:
-            from data_agent.token_tracker import record_usage
-            tracking_pipeline = pipeline_type
-            if DYNAMIC_PLANNER and pipeline_type == "planner":
-                tracking_pipeline = intent.lower() if intent != "AMBIGUOUS" else "general"
-            record_usage(user_id, tracking_pipeline, total_input_tokens, total_output_tokens)
-        except Exception:
-            pass  # non-fatal
-
-        # --- Audit: pipeline complete ---
-        try:
-            record_audit(user_id, ACTION_PIPELINE_COMPLETE, details={
-                "pipeline_type": pipeline_type,
-                "intent": intent,
-                "input_tokens": total_input_tokens,
-                "output_tokens": total_output_tokens,
-                "files_generated": len(generated_files),
-            })
-        except Exception:
-            pass
-
-        current_pipeline = cl.user_session.get("pipeline_type")
-        actions = [
-            cl.Action(
-                name="export_report",
-                value="docx",
-                label="导出 Word 报告",
-                description="将本次分析结果导出为 Word 文档",
-                payload={"format": "docx"}
-            ),
-            cl.Action(
-                name="export_report",
-                value="pdf",
-                label="导出 PDF 报告",
-                description="将本次分析结果导出为 PDF 文档",
-                payload={"format": "pdf"}
-            ),
-            cl.Action(
-                name="share_result",
-                value="share",
-                label="分享分析结果",
-                description="生成公开链接，无需登录即可查看",
-                payload={"action": "share"}
-            ),
-            cl.Action(
-                name="export_code",
-                value="python",
-                label="导出 Python 脚本",
-                description="将本次分析流程导出为可复现的 Python 脚本",
-                payload={"format": "python"}
-            ),
-            cl.Action(
-                name="save_as_template",
-                value="template",
-                label="保存为模板",
-                description="将本次分析流程保存为可复用模板",
-                payload={"action": "save_template"}
-            ),
-            cl.Action(
-                name="browse_templates",
-                value="browse",
-                label="浏览模板",
-                description="查看和应用已保存的分析模板",
-                payload={"action": "browse"}
-            ),
-            cl.Action(
-                name="browse_steps",
-                value="browse",
-                label="查看分析步骤",
-                description="查看并重新执行本次分析的各个步骤",
-                payload={"action": "browse_steps"}
-            ),
-        ]
-        await cl.Message(content="分析完成。您可以下载相关文件、导出报告或分享结果。", actions=actions).send()
-
-    except Exception as e:
-        err_msg = f"Error: {str(e)}"
-        logger.error("Pipeline execution error: %s", e)
-        pipeline_runs.labels(pipeline=pipeline_type, status="error").inc()
-        # Finalize progress with error state
-        try:
-            if stage_timings and stage_timings[-1]["end"] is None:
-                stage_timings[-1]["_error_time"] = time.time()
-            err_duration = time.time() - pipeline_start_time
-            progress_msg.content = _build_progress_content(
-                pipeline_name, pipeline_type, stages, stage_timings,
-                is_complete=True, total_duration=err_duration, is_error=True)
-            await progress_msg.update()
-        except Exception:
-            pass
-        await cl.Message(content=err_msg).send()
+    await _execute_pipeline(
+        user_id, session_id, role, full_prompt, valid_files,
+        pipeline_type, pipeline_name, intent, selected_agent,
+        retry_attempt=retry_attempt,
+    )
 
 
 @cl.action_callback("export_report")
