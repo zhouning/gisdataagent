@@ -14,7 +14,7 @@
         {
           "rubricId": "opt_tool_correctness",
           "rubricContent": {
-            "textProperty": "The agent performs data exploration (describe_data) before running analysis or optimization."
+            "textProperty": "The agent performs data exploration (describe_geodataframe) before running analysis or optimization."
           },
           "description": "Ensures the agent follows proper workflow: exploration → processing → analysis.",
           "type": "TOOL_USE_QUALITY"
@@ -22,7 +22,7 @@
         {
           "rubricId": "opt_tool_sequence",
           "rubricContent": {
-            "textProperty": "The agent uses feature engineering tools (calculate_ffi) before running DRL optimization (optimize_land_use_drl)."
+            "textProperty": "The agent uses FFI calculation tools (ffi) before running DRL optimization (drl_model)."
           },
           "description": "Validates correct tool call sequence for optimization pipeline.",
           "type": "TOOL_USE_QUALITY"

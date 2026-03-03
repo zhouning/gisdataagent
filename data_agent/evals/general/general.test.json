@@ -4,21 +4,21 @@
   "description": "Evaluate the general-purpose spatial pipeline: database queries, visualization, multi-step workflows.",
   "eval_cases": [
     {
-      "eval_id": "gen_db_query",
+      "eval_id": "gen_file_explore",
       "conversation": [
         {
           "invocation_id": "gen_001",
           "user_content": {
-            "parts": [{"text": "查询数据库中 agent_data_catalog 表的所有记录。"}],
+            "parts": [{"text": "查看 data_agent/evals/fixtures/sample_parcels.geojson 有哪些字段和记录，并列出文件基本信息。"}],
             "role": "user"
           },
           "final_response": {
-            "parts": [{"text": "已查询 agent_data_catalog 表，返回所有数据资产记录。表中包含数据集名称、格式、创建时间等元数据信息。"}],
+            "parts": [{"text": "数据集为 GeoJSON 格式，包含 10 个多边形要素，坐标系 EPSG:4326。字段包括 OBJECTID、DLBM（地类编码）、DLMC（地类名称）、TBMJ（图斑面积）、SLOPE（坡度）、AREA（面积）、QSDWMC（权属单位名称）。地类涵盖水田、旱地、乔木林地和灌木林地四种类型。"}],
             "role": "model"
           },
           "intermediate_data": {
             "tool_uses": [
-              {"name": "query_database", "args": {"sql_query": "SELECT * FROM agent_data_catalog"}}
+              {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}}
             ]
           }
         }
@@ -41,7 +41,7 @@
           "intermediate_data": {
             "tool_uses": [
               {"name": "describe_geodataframe", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson"}},
-              {"name": "generate_choropleth_map", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson", "column": "SLOPE"}}
+              {"name": "generate_choropleth", "args": {"file_path": "data_agent/evals/fixtures/sample_parcels.geojson", "column": "SLOPE"}}
             ]
           }
         }

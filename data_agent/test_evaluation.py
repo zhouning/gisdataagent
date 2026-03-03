@@ -2,6 +2,7 @@
 
 Verifies that all eval sets, configs, and the umbrella eval_agent
 are correctly structured — without calling the Gemini API.
+Also validates tool name consistency between test cases and actual toolsets.
 """
 
 import json
@@ -210,6 +211,153 @@ class TestFixtureData(unittest.TestCase):
         has_forest = any(d.startswith("03") for d in dlbm_set)
         self.assertTrue(has_farmland, "No farmland types found")
         self.assertTrue(has_forest, "No forest types found")
+
+
+# ---------------------------------------------------------------------------
+# Tool Name Consistency Validation
+# ---------------------------------------------------------------------------
+
+# Canonical set of all registered tool function names across all toolsets.
+# Excludes ArcPy (conditional) and MCP Hub (dynamic).
+REGISTERED_TOOL_NAMES = {
+    # ExplorationToolset
+    "describe_geodataframe", "reproject_spatial_data", "engineer_spatial_features",
+    "check_topology", "check_field_standards", "check_consistency",
+    # GeoProcessingToolset
+    "generate_tessellation", "raster_to_polygon", "pairwise_clip",
+    "tabulate_intersection", "surface_parameters", "zonal_statistics_as_table",
+    "perform_clustering", "create_buffer", "summarize_within",
+    "overlay_difference", "generate_heatmap", "find_within_distance",
+    "polygon_neighbors", "add_field", "add_join", "calculate_field",
+    "summary_statistics",
+    # AnalysisToolset
+    "ffi", "drl_model",
+    # VisualizationToolset
+    "visualize_optimization_comparison", "visualize_interactive_map",
+    "generate_choropleth", "generate_bubble_map", "visualize_geodataframe",
+    "export_map_png", "compose_map", "generate_3d_map", "control_map_layer",
+    # LocationToolset
+    "batch_geocode", "reverse_geocode", "calculate_driving_distance",
+    "search_nearby_poi", "search_poi_by_keyword", "get_admin_boundary",
+    "get_population_data", "aggregate_population",
+    # DatabaseToolset
+    "query_database", "list_tables", "describe_table", "share_table",
+    "import_to_postgis",
+    # FileToolset
+    "list_user_files", "delete_user_file",
+    # MemoryToolset
+    "save_memory", "recall_memories", "list_memories", "delete_memory",
+    # AdminToolset
+    "get_usage_summary", "query_audit_log", "list_templates",
+    "delete_template", "share_template",
+    # RemoteSensingToolset
+    "describe_raster", "calculate_ndvi", "raster_band_math",
+    "classify_raster", "visualize_raster", "download_lulc", "download_dem",
+    # SpatialStatisticsToolset
+    "spatial_autocorrelation", "local_moran", "hotspot_analysis",
+    # SemanticLayerToolset
+    "resolve_semantic_context", "describe_table_semantic",
+    "register_semantic_annotation", "register_source_metadata",
+    "list_semantic_sources", "register_semantic_domain",
+    "discover_column_equivalences", "export_semantic_model", "browse_hierarchy",
+    # StreamingToolset
+    "create_iot_stream", "list_active_streams", "stop_data_stream",
+    "get_stream_statistics", "set_geofence_alert",
+    # TeamToolset
+    "create_team", "list_my_teams", "invite_to_team", "remove_from_team",
+    "list_team_members", "list_team_resources", "leave_team", "delete_team",
+    # DataLakeToolset
+    "list_data_assets", "describe_data_asset", "search_data_assets",
+    "register_data_asset", "tag_data_asset", "delete_data_asset",
+    "share_data_asset", "get_data_lineage",
+    # Standalone
+    "approve_quality",
+}
+
+# ADK built-in tool names (not in toolsets but valid in test cases)
+ADK_BUILTIN_TOOLS = {"transfer_to_agent", "google_search"}
+
+# Known sub-agent names used in transfer_to_agent calls
+KNOWN_AGENT_NAMES = {
+    "PlannerExplorer", "PlannerProcessor", "PlannerAnalyzer",
+    "PlannerVisualizer", "PlannerReporter",
+    "ExploreAndProcess", "AnalyzeAndVisualize",
+}
+
+
+class TestToolNameConsistency(unittest.TestCase):
+    """Validate that tool names in eval test cases match actual registrations.
+
+    This prevents tool_trajectory_avg_score = 0.0 caused by name drift.
+    """
+
+    def _collect_all_tool_uses(self):
+        """Collect all tool_uses from all eval test cases."""
+        tool_uses = []
+        for pipeline in EXPECTED_PIPELINES:
+            for tf in sorted((EVALS_DIR / pipeline).glob("*.test.json")):
+                with open(tf, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                for case in data["eval_cases"]:
+                    for inv in case["conversation"]:
+                        for tu in inv.get("intermediate_data", {}).get("tool_uses", []):
+                            tool_uses.append({
+                                "file": tf.name,
+                                "case": case["eval_id"],
+                                "name": tu["name"],
+                                "args": tu.get("args", {}),
+                            })
+        return tool_uses
+
+    def test_all_tool_names_are_registered(self):
+        """Every tool name in test cases must exist in REGISTERED_TOOL_NAMES or ADK builtins."""
+        all_valid = REGISTERED_TOOL_NAMES | ADK_BUILTIN_TOOLS
+        for tu in self._collect_all_tool_uses():
+            self.assertIn(
+                tu["name"], all_valid,
+                f"Unknown tool '{tu['name']}' in {tu['file']}:{tu['case']}. "
+                f"Did you mean one of: {', '.join(sorted(n for n in all_valid if tu['name'][:4] in n)[:5])}?"
+            )
+
+    def test_transfer_to_agent_targets_valid(self):
+        """All transfer_to_agent calls must reference known agent names."""
+        for tu in self._collect_all_tool_uses():
+            if tu["name"] == "transfer_to_agent":
+                agent_name = tu["args"].get("agent_name", "")
+                self.assertIn(
+                    agent_name, KNOWN_AGENT_NAMES,
+                    f"Unknown agent '{agent_name}' in transfer_to_agent call "
+                    f"({tu['file']}:{tu['case']})"
+                )
+
+    def test_no_deprecated_tool_names(self):
+        """Check for commonly confused tool name variants."""
+        deprecated_names = {
+            "generate_choropleth_map": "generate_choropleth",
+            "calculate_ffi": "ffi",
+            "optimize_land_use_drl": "drl_model",
+            "describe_data": "describe_geodataframe",
+            "run_drl": "drl_model",
+            "gen_heatmap": "generate_heatmap",
+        }
+        for tu in self._collect_all_tool_uses():
+            if tu["name"] in deprecated_names:
+                self.fail(
+                    f"Deprecated tool name '{tu['name']}' in {tu['file']}:{tu['case']}. "
+                    f"Use '{deprecated_names[tu['name']]}' instead."
+                )
+
+    def test_fixture_paths_exist(self):
+        """All file_path args referencing fixtures should point to existing files."""
+        project_root = Path(__file__).parent.parent
+        for tu in self._collect_all_tool_uses():
+            file_path = tu["args"].get("file_path", "")
+            if "evals/fixtures/" in file_path:
+                full_path = project_root / file_path
+                self.assertTrue(
+                    full_path.is_file(),
+                    f"Fixture '{file_path}' referenced in {tu['file']}:{tu['case']} does not exist"
+                )
 
 
 if __name__ == "__main__":

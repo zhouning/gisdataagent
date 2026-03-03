@@ -16,7 +16,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 
 ### Run tests
 ```bash
-# All tests (923+ tests)
+# All tests (1180+ tests)
 .venv/Scripts/python.exe -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single test file
@@ -129,6 +129,8 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | `toolsets/mcp_hub_toolset.py` | BaseToolset wrapper bridging MCP Hub to ADK agents |
 | `multimodal.py` | Multimodal input processing — image/PDF classification, Gemini Part builders |
 | `workflow_engine.py` | Multi-step workflow engine — CRUD, execution, webhook push, cron scheduling |
+| `evals/agent.py` | Evaluation umbrella agent — wraps 4 pipelines as sub_agents for ADK AgentEvaluator |
+| `run_evaluation.py` | Multi-pipeline ADK evaluation runner with per-metric scoring and charts |
 
 ### Toolsets (17 modules in `toolsets/`)
 Exploration, GeoProcessing, Visualization (10 tools incl. `generate_3d_map`, `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub.
