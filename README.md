@@ -1,264 +1,295 @@
-# GIS Data Agent (ADK Edition) v4.0
+[English](./README_en.md) | **中文**
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, three specialized pipelines, a React three-panel frontend, and enterprise-grade security.
+# GIS Data Agent (ADK Edition) v5.4
 
-## Core Capabilities
+基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度三大专业管道完成空间数据治理、用地优化和商业智能分析。前端为 React 三面板 SPA，后端集成 30 个 REST API，支持多模态输入、3D 可视化和工作流编排。
 
-### Data Governance (数据治理)
-- Topological audit (overlaps, self-intersections, gaps)
-- Schema compliance checking against national standards (GB/T 21010)
-- Multi-modal verification: PDF reports vs SHP/DB metrics
-- Automated governance reports (Word/PDF)
+## 核心能力
 
-### Land Use Optimization (空间优化)
-- Deep Reinforcement Learning engine (MaskablePPO) for layout optimization
-- Fragmentation Index (FFI) with 6 landscape metrics
-- Paired farmland/forest swaps with strict area balance
+### 数据治理
+- 拓扑审计（重叠、自相交、间隙检测）
+- 字段合规性检查（GB/T 21010 国标）
+- 多模态校验：PDF 报告 vs SHP/数据库指标
+- 自动生成治理报告（Word/PDF）
 
-### Business Spatial Intelligence (商业智能)
-- Semantic query: natural language → auto-mapped SQL with spatial operators
-- Site selection with chain reasoning (Query → Buffer → Overlay → Filter)
-- DBSCAN clustering, KDE heatmaps, choropleth maps
-- POI search, driving distance, geocoding (batch + reverse)
-- Interactive multi-layer map composition with NL layer control
+### 空间优化
+- 深度强化学习引擎（MaskablePPO）用地布局优化
+- 破碎度指数（FFI）含 6 项景观指标
+- 耕地/林地配对交换，严格面积平衡
 
-## Architecture
+### 商业智能
+- 语义查询：自然语言 → 自动映射 SQL + 空间算子
+- 选址推理链（查询 → 缓冲 → 叠加 → 过滤）
+- DBSCAN 聚类、KDE 热力图、分级设色
+- POI 搜索、驾车距离、批量/反向地理编码
+- 交互式多图层合成 + 自然语言图层控制
+
+### 多模态输入 (v5.2)
+- 图片理解：自动分类上传图片，Gemini 视觉分析
+- PDF 解析：文本提取 + 原生 PDF Blob 双策略
+- 语音输入：Web Speech API，中/英文切换
+
+### 3D 空间可视化 (v5.3)
+- deck.gl + maplibre 3D 渲染器
+- 支持拉伸体、柱状图、弧线图、散点图层
+- 2D/3D 视图一键切换
+
+### 工作流编排 (v5.4)
+- 多步管道链式执行，参数化 Prompt 模板
+- React Flow 可视化拖拽编辑器（数据输入/管道/输出三种节点）
+- APScheduler Cron 定时执行
+- Webhook 结果推送
+
+## 架构
 
 ```mermaid
 graph TD
-    User[Browser / Bot Client] --> FE[React Three-Panel Frontend]
-    FE --> Router{Semantic Router<br/>Gemini 2.0 Flash}
-    Router --> SL[Semantic Layer<br/>YAML Catalog + DB Registry]
+    User[浏览器 / Bot 客户端] --> FE[React 三面板前端]
+    FE --> Router{语义路由器<br/>Gemini 2.0 Flash}
+    Router --> SL[语义层<br/>YAML + DB]
     SL --> Router
 
-    Router -- "Dynamic" --> Planner[Dynamic Planner<br/>5 Sub-Agents]
-    Router -- "Audit" --> Gov[Governance Pipeline]
-    Router -- "Optimize" --> Opt[Optimization Pipeline]
-    Router -- "Query" --> Gen[General Pipeline]
+    Router -- "动态" --> Planner[动态规划器<br/>7 个子 Agent]
+    Router -- "治理" --> Gov[治理管道]
+    Router -- "优化" --> Opt[优化管道]
+    Router -- "查询" --> Gen[通用管道]
 
-    subgraph "Planner (transfer_to_agent)"
-        PE[Explorer] --> PP[Processor] --> PA[Analyzer] --> PV[Visualizer] --> PR[Reporter]
+    subgraph "规划器 (transfer_to_agent)"
+        PE[探查] --> PP[处理] --> PA[分析] --> PV[可视化] --> PR[汇报]
     end
 
-    subgraph "Shared Infrastructure"
+    subgraph "共享基础设施"
         DB[(PostgreSQL + PostGIS)]
-        Auth[Auth + RBAC + RLS]
-        Audit[Audit Logger + Token Tracker]
-        Pool[Connection Pool + Semantic Cache]
-        OBS[OBS Cloud Storage]
-        Bots[WeChat / DingTalk / Feishu]
+        Auth[认证 + RBAC + RLS]
+        Audit[审计日志 + Token 追踪]
+        WF[工作流引擎 + 调度器]
+        MCP[MCP 工具市场]
+        Bots[企微 / 钉钉 / 飞书]
     end
 
-    FE -- REST API --> FAPI[Frontend API<br/>17 Endpoints]
+    FE -- REST API --> FAPI[Frontend API<br/>30 个端点]
     FAPI --> DB
-    Planner --> DB
-    Gov --> DB
-    Opt --> DB
-    Gen --> DB
 ```
 
-**Pipeline routing**: `DYNAMIC_PLANNER=true` (default) uses the Planner with `transfer_to_agent`; `false` falls back to 3 fixed `SequentialAgent` pipelines.
+**管道路由**：`DYNAMIC_PLANNER=true`（默认）使用规划器 + `transfer_to_agent`；`false` 回退到 3 条固定 `SequentialAgent` 管道。
 
-**Model tiering**: Explorer/Visualizer → Gemini 2.0 Flash, Processor/Analyzer/Planner → Gemini 2.5 Flash, Reporter → Gemini 2.5 Pro.
+**模型分层**：Explorer/Visualizer → Gemini 2.0 Flash，Processor/Analyzer/Planner → Gemini 2.5 Flash，Reporter → Gemini 2.5 Pro。
 
-## Quick Start
+## 快速开始
 
-### Docker (recommended)
+### Docker（推荐）
 ```bash
 docker-compose up -d
-# Visit http://localhost:8000
-# Login: admin / admin123
+# 访问 http://localhost:8000
+# 登录: admin / admin123
 ```
 
-### Local Development
+### 本地开发
 ```bash
-# 1. Configure environment
+# 1. 配置环境
 cp data_agent/.env.example data_agent/.env
-# Edit .env with your PostgreSQL/PostGIS credentials and Vertex AI config
+# 编辑 .env，填入 PostgreSQL/PostGIS 凭据和 Vertex AI 配置
 
-# 2. Install dependencies
+# 2. 安装依赖
 pip install -r requirements.txt
 
-# 3. Run backend
+# 3. 启动后端
 chainlit run data_agent/app.py -w
 
-# 4. Run frontend (dev mode, optional)
+# 4. 启动前端（开发模式，可选）
 cd frontend && npm install && npm run dev
 ```
 
-Default login: `admin` / `admin123` (seeded on first run). In-app self-registration available on the login page.
+默认账号：`admin` / `admin123`（首次运行自动创建）。登录页内置自助注册。
 
-## Feature Matrix
+## 功能矩阵
 
-| Category | Feature | Description |
+| 类别 | 功能 | 描述 |
 |---|---|---|
-| **AI Core** | Semantic Layer | YAML catalog (15 domains, 7 regions, 8 spatial ops) + 3-level hierarchy + DB annotations |
-| | Skill Bundles | 5 named toolset groupings (spatial_analysis, data_quality, visualization, database, collaboration) |
-| | NL Layer Control | Natural language show/hide/style/remove map layers via `control_map_layer` tool |
-| **Data** | Data Lake | Unified data catalog across local/cloud/PostGIS backends with lineage tracking |
-| | Real-time Streams | Redis Streams with geofence alerts + IoT data |
-| | Remote Sensing | Raster analysis, NDVI, LULC/DEM download |
-| **Frontend** | Three-Panel UI | Chat + Map + Data panels; React 18 + Leaflet.js + Recoil |
-| | Token Dashboard | Per-user daily/monthly usage with pipeline breakdown visualization |
-| | Map Annotations | Collaborative click-to-add annotations with team sharing |
-| | Basemap Switcher | Gaode, Tianditu (conditional), CartoDB, OpenStreetMap |
-| **Security** | Auth | Password + OAuth2 (Google) + in-app self-registration |
-| | RBAC + RLS | admin/analyst/viewer roles + PostgreSQL Row-Level Security |
-| | Account Management | User self-deletion with cascade cleanup + admin protection |
-| | Audit Log | Enterprise audit trail with admin dashboard |
-| **Enterprise** | Bot Integration | WeChat, DingTalk, Feishu enterprise bot adapters |
-| | Team Collaboration | Team creation, member management, resource sharing |
-| | Token Tracking | Per-user LLM usage with daily/monthly limits + pipeline breakdown |
-| | Report Export | Word/PDF with page headers, footers, pipeline-specific titles |
-| **Ops** | Health Check API | K8s liveness/readiness probes + admin system diagnostics |
-| | CI Pipeline | GitHub Actions: tests, frontend build, agent evaluation |
-| | Docker + K8s | Containerization, Helm/Kustomize, HPA, network policies |
-| | Observability | Structured logging (JSON) + Prometheus metrics |
+| **AI 核心** | 语义层 | YAML 目录（15 领域、7 区域、8 空间算子）+ 3 级层次 + DB 注解 |
+| | 技能包 | 5 个命名工具集分组（空间分析、数据质量、可视化、数据库、协作） |
+| | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
+| | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 |
+| **多模态** | 图片理解 | 自动分类上传图片 → Gemini 视觉分析 |
+| | PDF 解析 | pypdf 文本提取 + 原生 PDF Blob 双策略 |
+| | 语音输入 | Web Speech API，中/英切换，脉冲动画 |
+| **3D 可视化** | deck.gl 渲染 | 拉伸体、柱状图、弧线、散点图层 |
+| | 2D/3D 切换 | MapPanel 一键切换，自动检测 3D 图层 |
+| **工作流** | 引擎 | 多步管道链式执行 + 参数化模板 |
+| | 可视化编辑器 | React Flow 拖拽编辑，3 种自定义节点 |
+| | 定时执行 | APScheduler Cron 调度 |
+| | Webhook 推送 | 执行完成后 HTTP POST 结果 |
+| **数据** | 数据湖 | 统一数据目录 + 血缘追踪（本地/云/PostGIS） |
+| | 实时流 | Redis Streams 地理围栏告警 + IoT 数据 |
+| | 遥感分析 | 栅格分析、NDVI、LULC/DEM 下载 |
+| **前端** | 三面板 UI | 对话 + 地图 + 数据；React 18 + Leaflet + deck.gl |
+| | Token 仪表盘 | 每用户日/月用量 + 管线分布可视化 |
+| | 地图标注 | 协作式点击标注 + 团队共享 |
+| | 底图切换 | 高德、天地图、CartoDB、OSM |
+| **安全** | 认证 | 密码 + OAuth2 (Google) + 应用内自注册 |
+| | RBAC + RLS | admin/analyst/viewer 角色 + PostgreSQL 行级安全 |
+| | 账户管理 | 用户自助删除 + 级联清理 + 管理员保护 |
+| | 审计日志 | 企业级审计追踪 + 管理仪表盘 |
+| **企业** | Bot 集成 | 企业微信、钉钉、飞书 Bot 适配器 |
+| | 团队协作 | 团队创建、成员管理、资源共享 |
+| | 报告导出 | Word/PDF 含页眉页脚、管线定制标题 |
+| **运维** | 健康检查 | K8s 存活/就绪探针 + 系统诊断 |
+| | CI 管道 | GitHub Actions：测试 + 前端构建 + Agent 评估 |
+| | 容器化 | Docker + K8s (Kustomize)、HPA、网络策略 |
+| | 可观测性 | 结构化日志 (JSON) + Prometheus 指标 |
+| | 国际化 | 中/英双语，YAML 字典 + ContextVar |
 
-## Tech Stack
+## 技术栈
 
-| Layer | Technology |
+| 层级 | 技术 |
 |---|---|
-| **Framework** | Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`) |
-| **LLM** | Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router) |
-| **Frontend** | React 18 + TypeScript + Vite + Leaflet.js + @chainlit/react-client |
-| **Backend** | Chainlit + Starlette (17 REST API endpoints) |
-| **Database** | PostgreSQL 16 + PostGIS 3.4 |
-| **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify, branca |
+| **框架** | Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`) |
+| **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
+| **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
+| **后端** | Chainlit + Starlette（30 个 REST API 端点） |
+| **数据库** | PostgreSQL 16 + PostGIS 3.4 |
+| **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
-| **Cloud** | Huawei OBS (S3-compatible) for file storage |
-| **Streaming** | Redis Streams (with in-memory fallback) |
-| **Container** | Docker + Docker Compose + Kubernetes (Kustomize) |
-| **CI** | GitHub Actions (pytest + npm build + evaluation) |
+| **云存储** | 华为 OBS（S3 兼容） |
+| **流式** | Redis Streams（含内存回退） |
+| **容器** | Docker + Docker Compose + Kubernetes (Kustomize) |
+| **CI** | GitHub Actions（pytest + npm build + evaluation） |
 | **Python** | 3.13+ |
 
-## Project Structure
+## 项目结构
 
 ```
 data_agent/
-├── app.py                    # Chainlit UI, semantic router, auth, RBAC
-├── agent.py                  # Agent definitions, pipeline assembly
-├── frontend_api.py           # 17 REST API endpoints for React frontend
-├── toolsets/                 # 16 BaseToolset modules
-│   ├── exploration_tools.py  #   Data profiling & quality audit
-│   ├── geo_processing_tools.py  # Buffer, clip, overlay, tessellation
-│   ├── visualization_tools.py   # Choropleth, heatmap, layer control
-│   ├── analysis_tools.py     #   Statistical analysis
-│   ├── database_tools_set.py #   SQL query & table management
-│   ├── semantic_layer_tools.py  # Semantic catalog browsing (9 tools)
-│   ├── skill_bundles.py      #   5 named toolset groupings
-│   ├── datalake_tools.py     #   Data catalog & lineage (8 tools)
-│   ├── streaming_tools.py    #   Real-time stream data (5 tools)
-│   ├── team_tools.py         #   Team collaboration (8 tools)
-│   └── ...                   #   + location, memory, admin, file, remote sensing, spatial stats
-├── prompts/                  # 3 YAML prompt files (optimization, planner, general)
-├── migrations/               # 16 SQL migration scripts (001-016)
-├── db_engine.py              # Connection pool singleton
-├── health.py                 # K8s health check API + startup diagnostics
-├── observability.py          # Structured logging + Prometheus metrics
-├── data_catalog.py           # Unified data lake catalog + lineage tracking
-├── semantic_layer.py         # Semantic catalog + 3-level hierarchy + TTL cache
-├── map_annotations.py        # Collaborative map annotations CRUD
-├── auth.py                   # Password/OAuth auth, registration, account deletion
-├── audit_logger.py           # Enterprise audit trail
-├── token_tracker.py          # LLM usage tracking + pipeline breakdown
-├── memory.py                 # Persistent spatial memory
-├── gis_processors.py         # GIS operations (tessellation, buffer, clip, overlay, ...)
-├── drl_engine.py             # Gymnasium environment for land-use optimization
-├── wecom_bot.py              # Enterprise WeChat bot adapter
-├── dingtalk_bot.py           # DingTalk bot adapter
-├── feishu_bot.py             # Feishu bot adapter
-├── test_*.py                 # 48 test files (923+ tests)
-└── run_evaluation.py         # Agent evaluation runner with JSON summary
+├── app.py                       # Chainlit UI、语义路由、认证、RBAC
+├── agent.py                     # Agent 定义、管道组装
+├── frontend_api.py              # 30 个 REST API 端点
+├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
+├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
+├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
+├── pipeline_runner.py           # 无头管道执行器 (run_pipeline_headless)
+├── toolsets/                    # 17 个 BaseToolset 模块
+│   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
+│   ├── mcp_hub_toolset.py       #   MCP 工具桥接
+│   ├── skill_bundles.py         #   5 个命名工具集分组
+│   └── ...                      #   探查、地理处理、分析、数据库、语义层等
+├── prompts/                     # 3 个 YAML 提示词文件
+├── migrations/                  # 17 个 SQL 迁移脚本 (001-017)
+├── locales/                     # 国际化：zh.yaml + en.yaml
+├── db_engine.py                 # 连接池单例
+├── health.py                    # K8s 健康检查 API
+├── observability.py             # 结构化日志 + Prometheus
+├── i18n.py                      # 国际化：YAML + t() 函数
+├── test_*.py                    # 60 个测试文件 (1150+ 测试)
+└── run_evaluation.py            # Agent 评估运行器
 
 frontend/
 ├── src/
-│   ├── App.tsx               # Main app: auth, three-panel layout, user menu
+│   ├── App.tsx                  # 主应用：认证、三面板布局
 │   ├── components/
-│   │   ├── ChatPanel.tsx     # Chat interface + NL layer control
-│   │   ├── MapPanel.tsx      # Leaflet map + annotations + basemap switcher
-│   │   ├── DataPanel.tsx     # Files, CSV, catalog, history, usage (5 tabs)
-│   │   ├── LoginPage.tsx     # Login + in-app registration
-│   │   ├── AdminDashboard.tsx # Metrics, user management, audit log
-│   │   └── UserSettings.tsx  # Account settings + self-deletion
-│   └── styles/layout.css     # All styles (~1900 lines)
+│   │   ├── ChatPanel.tsx        # 对话 + 语音输入 + NL 图层控制
+│   │   ├── MapPanel.tsx         # Leaflet 地图 + 2D/3D 切换 + 标注
+│   │   ├── Map3DView.tsx        # deck.gl 3D 渲染器
+│   │   ├── DataPanel.tsx        # 7 标签页：文件/表格/资产/历史/用量/工具/工作流
+│   │   ├── WorkflowEditor.tsx   # React Flow 工作流可视化编辑器
+│   │   ├── LoginPage.tsx        # 登录 + 应用内注册
+│   │   ├── AdminDashboard.tsx   # 管理仪表盘
+│   │   └── UserSettings.tsx     # 账户设置 + 自助删除
+│   └── styles/layout.css        # 全部样式 (~2100 行)
 └── package.json
 
-.github/workflows/ci.yml     # GitHub Actions CI pipeline
-k8s/                          # 11 Kubernetes manifests
-docs/                         # 8 documentation files
+.github/workflows/ci.yml        # GitHub Actions CI 管道
+k8s/                             # 11 个 Kubernetes 清单
+docs/                            # 文档
 ```
 
-## Frontend Architecture
+## 前端架构
 
-The frontend is a custom React SPA replacing Chainlit's default UI:
+自定义 React SPA 替代 Chainlit 默认 UI：
 
 ```
-┌──────────────────┬──────────────────────────┬────────────────────┐
-│  Chat Panel       │    Map Panel              │   Data Panel       │
-│  (320px)          │   (flex-1)                │  (360px)           │
-│                   │                           │                    │
-│  Messages         │  Leaflet.js Map           │  5 tabs:           │
-│  Streaming        │  GeoJSON Layers           │  - Files           │
-│  Action Cards     │  Layer Control            │  - CSV Preview     │
-│  NL Layer Ctrl    │  Annotations              │  - Data Catalog    │
-│                   │  Basemap Switcher         │  - Pipeline History│
-│                   │  Legend                    │  - Token Usage     │
-└──────────────────┴──────────────────────────┴────────────────────┘
+┌───────────────────┬──────────────────────────┬──────────────────────┐
+│  对话面板 (320px)   │    地图面板 (flex-1)       │   数据面板 (360px)    │
+│                    │                           │                      │
+│  消息流             │  Leaflet / deck.gl 地图    │  7 个标签页:           │
+│  流式输出           │  GeoJSON 图层              │  - 文件               │
+│  操作卡片           │  2D/3D 切换               │  - 表格预览            │
+│  语音输入           │  图层控制                  │  - 数据资产            │
+│  NL 图层控制        │  协作标注                  │  - 管线历史            │
+│                    │  底图切换                   │  - Token 用量         │
+│                    │  图例                      │  - MCP 工具           │
+│                    │                           │  - 工作流              │
+└───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API Endpoints (17 routes)
+## REST API 端点（30 条路由）
 
-| Method | Path | Description |
+| 方法 | 路径 | 描述 |
 |---|---|---|
-| GET | `/api/catalog` | List data assets (keyword, type filters) |
-| GET | `/api/catalog/{id}` | Asset detail |
-| GET | `/api/catalog/{id}/lineage` | Data lineage (ancestors + descendants) |
-| GET | `/api/semantic/domains` | Semantic domain list |
-| GET | `/api/semantic/hierarchy/{domain}` | Browse domain hierarchy tree |
-| GET | `/api/pipeline/history` | Pipeline execution history |
-| GET | `/api/user/token-usage` | Token consumption + pipeline breakdown |
-| DELETE | `/api/user/account` | Self-delete account (password confirmation) |
-| GET | `/api/admin/users` | User list (admin only) |
-| PUT | `/api/admin/users/{username}/role` | Update user role (admin only) |
-| DELETE | `/api/admin/users/{username}` | Delete user (admin only) |
-| GET | `/api/admin/metrics/summary` | System metrics (admin only) |
-| GET/POST | `/api/annotations` | List / create map annotations |
-| PUT/DELETE | `/api/annotations/{id}` | Update / delete annotation |
-| GET | `/api/config/basemaps` | Available basemap layers |
+| GET | `/api/catalog` | 数据资产列表（关键词/类型筛选） |
+| GET | `/api/catalog/{id}` | 资产详情 |
+| GET | `/api/catalog/{id}/lineage` | 数据血缘（上下游） |
+| GET | `/api/semantic/domains` | 语义领域列表 |
+| GET | `/api/semantic/hierarchy/{domain}` | 领域层次浏览 |
+| GET | `/api/pipeline/history` | 管线执行历史 |
+| GET | `/api/user/token-usage` | Token 消耗 + 管线分布 |
+| DELETE | `/api/user/account` | 自助删除账户 |
+| GET | `/api/sessions` | 会话列表 |
+| DELETE | `/api/sessions/{id}` | 删除会话 |
+| GET/POST | `/api/annotations` | 标注列表/创建 |
+| PUT/DELETE | `/api/annotations/{id}` | 更新/删除标注 |
+| GET | `/api/config/basemaps` | 底图配置 |
+| GET | `/api/admin/users` | 用户列表（管理员） |
+| PUT | `/api/admin/users/{username}/role` | 修改角色（管理员） |
+| DELETE | `/api/admin/users/{username}` | 删除用户（管理员） |
+| GET | `/api/admin/metrics/summary` | 系统指标（管理员） |
+| GET | `/api/mcp/servers` | MCP 服务器状态 |
+| GET | `/api/mcp/tools` | MCP 工具列表 |
+| POST | `/api/mcp/servers/{name}/toggle` | MCP 启停（管理员） |
+| POST | `/api/mcp/servers/{name}/reconnect` | MCP 重连（管理员） |
+| GET/POST | `/api/workflows` | 工作流列表/创建 |
+| GET/PUT/DELETE | `/api/workflows/{id}` | 工作流详情/更新/删除 |
+| POST | `/api/workflows/{id}/execute` | 执行工作流 |
+| GET | `/api/workflows/{id}/runs` | 执行历史 |
 
-## Running Tests
+## 运行测试
 
 ```bash
-# All tests (923+ tests)
+# 全量测试 (1150+ 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
-# Single module
-python -m pytest data_agent/test_frontend_api.py -v
+# 单个模块
+python -m pytest data_agent/test_workflow_engine.py -v
 
-# Frontend build check
+# 前端构建检查
 cd frontend && npm run build
 ```
 
-## CI Pipeline
+## CI 管道
 
-GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`develop` and PRs:
+GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`develop` 及 PR 时触发：
 
-1. **Unit Tests** — Python tests with PostGIS service container + JUnit XML output
-2. **Frontend Build** — TypeScript compilation + Vite production build
-3. **Agent Evaluation** — ADK agent evaluation on `main` push only (requires `GOOGLE_API_KEY` secret)
+1. **单元测试** — Python 测试 + PostGIS 服务容器 + JUnit XML
+2. **前端构建** — TypeScript 编译 + Vite 生产构建
+3. **Agent 评估** — 仅 `main` push 触发（需 `GOOGLE_API_KEY` secret）
 
-## Roadmap
+## 版本路线
 
-| Version | Feature Set | Status |
+| 版本 | 功能集 | 状态 |
 |---|---|---|
-| v1.0 | Local Files, Basic DRL | Done |
-| v2.0 | Excel Geocoding, Report Generation | Done |
-| v3.0 | PostGIS, Hard Routing | Done |
-| v3.1 | Multi-Pipeline Architecture | Done |
-| v3.2 | Semantic Layer, Business Suite | Done |
-| v4.0-beta | Data Lake, Lineage, 3-Level Hierarchy, Health API | Done |
-| v4.0 | Frontend Integration, Observability, CI, Skill Bundles | **Current** |
-| v4.1 | Session Persistence, Pipeline Progress, Error Recovery | Next |
-| v5.0 | MCP Marketplace, Multi-Modal, 3D Visualization, Workflow Builder | Planned |
-| v6.0 | Real-time Collaboration, Knowledge Graph, Edge Deployment | Future |
+| v1.0 | 本地文件、基础 DRL | 完成 |
+| v2.0 | Excel 地理编码、报告生成 | 完成 |
+| v3.0 | PostGIS、硬路由 | 完成 |
+| v3.1 | 多管道架构 | 完成 |
+| v3.2 | 语义层、商业套件 | 完成 |
+| v4.0 | 前端集成、可观测性、CI、技能包 | 完成 |
+| v4.1 | 会话持久化、管道进度、错误恢复、数据预览、i18n | 完成 |
+| v5.1 | MCP 工具市场 | 完成 |
+| v5.2 | 多模态输入/输出 | 完成 |
+| v5.3 | 3D 空间可视化 | 完成 |
+| v5.4 | 工作流编排（引擎 + 编辑器 + Cron + Webhook） | **当前** |
+| v5.5 | 高级分析引擎 | 计划中 |
+| v6.0 | 实时协作、知识图谱、边缘部署 | 规划中 |
+
+## 许可证
+
+MIT
