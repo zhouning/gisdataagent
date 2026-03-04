@@ -1,16 +1,25 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v5.4
+# GIS Data Agent (ADK Edition) v6.0
 
-基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度三大专业管道完成空间数据治理、用地优化和商业智能分析。前端为 React 三面板 SPA，后端集成 30 个 REST API，支持多模态输入、3D 可视化和工作流编排。
+基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 30 个 REST API，支持多模态输入、3D 可视化和工作流编排。
 
 ## 核心能力
+
+### 多源数据智能融合 (v5.5–v6.0)
+- **五阶段流水线**：画像 → 评估 → 对齐 → 融合 → 验证
+- **10 种融合策略**：空间连接、属性连接、分区统计、点采样、波段叠加、矢量叠加、时态融合、点云高度赋值、栅格矢量化、最近邻连接
+- **5 种数据模态**：矢量、栅格、表格、点云 (LAS/LAZ)、实时流
+- **智能语义匹配**：目录驱动等价组 + 分词相似度（camelCase↔snake_case）+ 类型兼容检查 + 单位自动转换
+- **栅格自动处理**：CRS 重投影、分辨率重采样、大栅格窗口采样
+- **增强质量验证**：10 项检查（空值率、几何有效性、拓扑验证、KS 分布偏移检测等）
 
 ### 数据治理
 - 拓扑审计（重叠、自相交、间隙检测）
 - 字段合规性检查（GB/T 21010 国标）
 - 多模态校验：PDF 报告 vs SHP/数据库指标
 - 自动生成治理报告（Word/PDF）
+- 多源数据融合（v6.0 集成）
 
 ### 空间优化
 - 深度强化学习引擎（MaskablePPO）用地布局优化
@@ -110,6 +119,11 @@ cd frontend && npm install && npm run dev
 | | 技能包 | 5 个命名工具集分组（空间分析、数据质量、可视化、数据库、协作） |
 | | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
 | | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 |
+| **数据融合** | 融合引擎 (MMFE) | 五阶段流水线（画像→评估→对齐→融合→验证），10 种策略，5 种模态 |
+| | 语义匹配 | 目录驱动等价组 + 分词相似度 + 类型兼容检查 + 单位自动转换 |
+| | 栅格处理 | 自动 CRS 重投影、分辨率重采样、大栅格窗口采样 |
+| | 点云 & 流数据 | LAS/LAZ 高度赋值、CSV/JSON 流数据时态融合（时间窗口+空间聚合） |
+| | 质量验证 | 10 项检查：空值/几何/拓扑/CRS/微面/异常值/KS分布偏移 |
 | **多模态** | 图片理解 | 自动分类上传图片 → Gemini 视觉分析 |
 | | PDF 解析 | pypdf 文本提取 + 原生 PDF Blob 双策略 |
 | | 语音输入 | Web Speech API，中/英切换，脉冲动画 |
@@ -166,20 +180,22 @@ data_agent/
 ├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
 ├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
+├── fusion_engine.py                # 多模态数据融合引擎（MMFE，~1750 行）
 ├── pipeline_runner.py           # 无头管道执行器 (run_pipeline_headless)
-├── toolsets/                    # 17 个 BaseToolset 模块
+├── toolsets/                    # 18 个 BaseToolset 模块
 │   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
+│   ├── fusion_tools.py          #   数据融合工具集（4 个工具）
 │   ├── mcp_hub_toolset.py       #   MCP 工具桥接
 │   ├── skill_bundles.py         #   5 个命名工具集分组
 │   └── ...                      #   探查、地理处理、分析、数据库、语义层等
 ├── prompts/                     # 3 个 YAML 提示词文件
-├── migrations/                  # 17 个 SQL 迁移脚本 (001-017)
+├── migrations/                  # 18 个 SQL 迁移脚本 (001-018)
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 60 个测试文件 (1150+ 测试)
+├── test_*.py                    # 61 个测试文件 (1290+ 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -254,11 +270,11 @@ docs/                            # 文档
 ## 运行测试
 
 ```bash
-# 全量测试 (1150+ 测试)
+# 全量测试 (1290+ 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
-python -m pytest data_agent/test_workflow_engine.py -v
+python -m pytest data_agent/test_fusion_engine.py -v
 
 # 前端构建检查
 cd frontend && npm run build
@@ -286,9 +302,12 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v5.1 | MCP 工具市场 | 完成 |
 | v5.2 | 多模态输入/输出 | 完成 |
 | v5.3 | 3D 空间可视化 | 完成 |
-| v5.4 | 工作流编排（引擎 + 编辑器 + Cron + Webhook） | **当前** |
-| v5.5 | 高级分析引擎 | 计划中 |
-| v6.0 | 实时协作、知识图谱、边缘部署 | 规划中 |
+| v5.4 | 工作流编排（引擎 + 编辑器 + Cron + Webhook） | 完成 |
+| v5.5 | 多模态数据融合引擎 MMFE（5 模态、10 策略、语义匹配） | 完成 |
+| v5.6 | MGIM 启发增强（模糊匹配、单位转换、数据感知策略、多源编排） | 完成 |
+| v6.0 | 融合引擎不足修复（栅格重投影、点云高度、流数据时态、语义增强、质量验证） | **当前** |
+| v6.1 | 高级分析引擎（时空预测、场景模拟、网络分析） | 计划中 |
+| v7.0 | 实时协作、知识图谱、边缘部署 | 规划中 |
 
 ## 许可证
 
