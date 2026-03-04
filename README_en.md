@@ -1,16 +1,25 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v5.4
+# GIS Data Agent (ADK Edition) v6.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, three specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multimodal input, 3D visualization, and workflow orchestration.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 3D visualization, and workflow orchestration.
 
 ## Core Capabilities
+
+### Multi-Source Data Fusion (v5.5–v6.0)
+- **Five-stage pipeline**: Profile → Assess → Align → Fuse → Validate
+- **10 fusion strategies**: spatial join, attribute join, zonal statistics, point sampling, band stack, overlay, temporal fusion, point cloud height assignment, raster vectorize, nearest join
+- **5 data modalities**: vector, raster, tabular, point cloud (LAS/LAZ), real-time stream
+- **Intelligent semantic matching**: catalog-driven equivalence groups + tokenized similarity (camelCase↔snake_case) + type compatibility + automatic unit conversion
+- **Raster auto-processing**: CRS reprojection, resolution resampling, windowed sampling for large rasters
+- **Enhanced quality validation**: 10 checks (null rate, geometry validity, topology, KS distribution shift, etc.)
 
 ### Data Governance
 - Topological audit (overlaps, self-intersections, gaps)
 - Schema compliance checking against national standards (GB/T 21010)
 - Multi-modal verification: PDF reports vs SHP/DB metrics
 - Automated governance reports (Word/PDF)
+- Multi-source data fusion (v6.0 integration)
 
 ### Land Use Optimization
 - Deep Reinforcement Learning engine (MaskablePPO) for layout optimization
@@ -110,6 +119,11 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Skill Bundles | 5 named toolset groupings (spatial_analysis, data_quality, visualization, database, collaboration) |
 | | NL Layer Control | Natural language show/hide/style/remove map layers via `control_map_layer` tool |
 | | MCP Tool Market | Config-driven MCP server connection + tool aggregation |
+| **Data Fusion** | Fusion Engine (MMFE) | Five-stage pipeline (Profile→Assess→Align→Fuse→Validate), 10 strategies, 5 modalities |
+| | Semantic Matching | Catalog-driven equivalence groups + tokenized similarity + type compatibility + auto unit conversion |
+| | Raster Processing | Auto CRS reprojection, resolution resampling, windowed sampling for large rasters |
+| | Point Cloud & Stream | LAS/LAZ height assignment, CSV/JSON stream temporal fusion (time window + spatial aggregation) |
+| | Quality Validation | 10 checks: null rate, geometry, topology, CRS, micro-polygons, outliers, KS distribution shift |
 | **Multimodal** | Image Understanding | Auto-classify uploaded images → Gemini vision analysis |
 | | PDF Parsing | pypdf text extraction + native PDF Blob dual strategy |
 | | Voice Input | Web Speech API with zh-CN / en-US toggle, pulse animation |
@@ -166,20 +180,22 @@ data_agent/
 ├── workflow_engine.py           # Workflow engine: CRUD, execution, webhook, cron
 ├── multimodal.py                # Multimodal input: image/PDF classification, Gemini Parts
 ├── mcp_hub.py                   # MCP Hub Manager: config-driven MCP server management
+├── fusion_engine.py                # Multi-modal Data Fusion Engine (MMFE, ~1750 lines)
 ├── pipeline_runner.py           # Headless pipeline executor (run_pipeline_headless)
-├── toolsets/                    # 17 BaseToolset modules
+├── toolsets/                    # 18 BaseToolset modules
 │   ├── visualization_tools.py   #   10 tools: choropleth, heatmap, 3D, layer control
+│   ├── fusion_tools.py          #   Data fusion toolset (4 tools)
 │   ├── mcp_hub_toolset.py       #   MCP tool bridge
 │   ├── skill_bundles.py         #   5 named toolset groupings
 │   └── ...                      #   exploration, geo processing, analysis, database, etc.
 ├── prompts/                     # 3 YAML prompt files
-├── migrations/                  # 17 SQL migration scripts (001-017)
+├── migrations/                  # 18 SQL migration scripts (001-018)
 ├── locales/                     # i18n: zh.yaml + en.yaml
 ├── db_engine.py                 # Connection pool singleton
 ├── health.py                    # K8s health check API
 ├── observability.py             # Structured logging + Prometheus
 ├── i18n.py                      # i18n: YAML dict + t() function
-├── test_*.py                    # 60 test files (1150+ tests)
+├── test_*.py                    # 61 test files (1290+ tests)
 └── run_evaluation.py            # Agent evaluation runner
 
 frontend/
@@ -255,11 +271,11 @@ Custom React SPA replacing Chainlit's default UI:
 ## Running Tests
 
 ```bash
-# All tests (1150+ tests)
+# All tests (1290+ tests)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single module
-python -m pytest data_agent/test_workflow_engine.py -v
+python -m pytest data_agent/test_fusion_engine.py -v
 
 # Frontend build check
 cd frontend && npm run build
@@ -287,9 +303,12 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v5.1 | MCP Tool Market | Done |
 | v5.2 | Multimodal Input/Output | Done |
 | v5.3 | 3D Spatial Visualization | Done |
-| v5.4 | Workflow Builder (Engine + Editor + Cron + Webhook) | **Current** |
-| v5.5 | Advanced Analytics Engine | Planned |
-| v6.0 | Real-time Collaboration, Knowledge Graph, Edge Deployment | Future |
+| v5.4 | Workflow Builder (Engine + Editor + Cron + Webhook) | Done |
+| v5.5 | Multi-Modal Data Fusion Engine MMFE (5 modalities, 10 strategies, semantic matching) | Done |
+| v5.6 | MGIM-Inspired Enhancements (fuzzy matching, unit conversion, data-aware scoring, multi-source) | Done |
+| v6.0 | Fusion Engine Improvements (raster reprojection, point cloud, stream temporal, semantic+quality) | **Current** |
+| v6.1 | Advanced Analytics Engine (spatiotemporal prediction, scenario simulation, network analysis) | Planned |
+| v7.0 | Real-time Collaboration, Knowledge Graph, Edge Deployment | Future |
 
 ## License
 
