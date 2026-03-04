@@ -46,6 +46,7 @@ from .toolsets import (
     TeamToolset,
     DataLakeToolset,
     McpHubToolset,
+    FusionToolset,
 )
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -150,6 +151,7 @@ data_processing_agent = LlmAgent(
         ]),
         LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
         RemoteSensingToolset(tool_filter=["download_lulc", "download_dem"]),
+        FusionToolset(),
         knowledge_tool,  # on-demand domain knowledge (2.1)
     ] + _arcpy_tools,
 )
@@ -252,6 +254,7 @@ governance_processing_agent = LlmAgent(
             "polygon_neighbors", "add_field", "calculate_field",
         ]),
         LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
+        FusionToolset(),
     ] + _arcpy_gov_process_tools,
 )
 
@@ -293,6 +296,7 @@ general_processing_agent = LlmAgent(
         TeamToolset(),
         DataLakeToolset(),
         McpHubToolset(pipeline="general"),
+        FusionToolset(),
     ] + _arcpy_tools,
 )
 
@@ -379,6 +383,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             DataLakeToolset(tool_filter=_DATALAKE_READ),
             DatabaseToolset(tool_filter=["import_to_postgis"]),
             McpHubToolset(pipeline="planner"),
+            FusionToolset(),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)

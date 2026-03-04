@@ -129,11 +129,12 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | `toolsets/mcp_hub_toolset.py` | BaseToolset wrapper bridging MCP Hub to ADK agents |
 | `multimodal.py` | Multimodal input processing — image/PDF classification, Gemini Part builders |
 | `workflow_engine.py` | Multi-step workflow engine — CRUD, execution, webhook push, cron scheduling |
+| `fusion_engine.py` | Multi-modal data fusion — profiling, compatibility, alignment, 10 fusion strategies |
 | `evals/agent.py` | Evaluation umbrella agent — wraps 4 pipelines as sub_agents for ADK AgentEvaluator |
 | `run_evaluation.py` | Multi-pipeline ADK evaluation runner with per-metric scoring and charts |
 
-### Toolsets (17 modules in `toolsets/`)
-Exploration, GeoProcessing, Visualization (10 tools incl. `generate_3d_map`, `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub.
+### Toolsets (18 modules in `toolsets/`)
+Exploration, GeoProcessing, Visualization (10 tools incl. `generate_3d_map`, `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub, Fusion (4 tools).
 
 ### Data Loading (`_load_spatial_data` in `agent.py`)
 Supported formats: CSV, Excel (.xlsx/.xls), Shapefile, GeoJSON, GPKG, KML, KMZ. CSV/Excel auto-detect coordinate columns (lng/lat, lon/lat, longitude/latitude, x/y).
