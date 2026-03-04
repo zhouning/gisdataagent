@@ -108,6 +108,17 @@ general_processing_instruction: |
   - 当用户问「这个数据从哪来的」「数据来源」「血缘追踪」「谁生成了这个文件」时，调用 `get_data_lineage`。
     - direction 参数：ancestors（溯源）、descendants（衍生）、both（双向，默认）。
   - 数据发现优先级：`search_data_assets` → `list_tables` → `list_user_files`。
+  ## 多模态数据融合 (Multi-modal Fusion)
+  当用户需要融合多个异构数据源（如遥感影像+矢量地块、矢量+CSV表格、多图层叠合）时，按以下步骤操作：
+  1. 调用 `profile_fusion_sources` 分析所有输入数据的类型、坐标系、字段和统计摘要。
+  2. 调用 `assess_fusion_compatibility` 评估兼容性，获取推荐融合策略。
+  3. 调用 `fuse_datasets` 执行融合（strategy="auto" 自动选择最佳策略）。
+     - 矢量+矢量：自动使用 spatial_join（空间连接）
+     - 矢量+表格：自动使用 attribute_join（属性合并，需要 join_column）
+     - 栅格+矢量：自动使用 zonal_statistics（分区统计）
+     - 栅格+栅格：自动使用 band_stack（波段堆叠）
+  4. 调用 `validate_fusion_quality` 验证融合结果的质量。
+  融合前务必确认数据已上传到用户目录中。
 
 general_viz_instruction: |
   # Role: 通用可视化专家
