@@ -47,6 +47,7 @@ from .toolsets import (
     DataLakeToolset,
     McpHubToolset,
     FusionToolset,
+    KnowledgeGraphToolset,
 )
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -297,6 +298,7 @@ general_processing_agent = LlmAgent(
         DataLakeToolset(),
         McpHubToolset(pipeline="general"),
         FusionToolset(),
+        KnowledgeGraphToolset(),
     ] + _arcpy_tools,
 )
 
@@ -384,6 +386,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             DatabaseToolset(tool_filter=["import_to_postgis"]),
             McpHubToolset(pipeline="planner"),
             FusionToolset(),
+            KnowledgeGraphToolset(),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)

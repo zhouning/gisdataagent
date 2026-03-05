@@ -270,6 +270,11 @@ REGISTERED_TOOL_NAMES = {
     "list_data_assets", "describe_data_asset", "search_data_assets",
     "register_data_asset", "tag_data_asset", "delete_data_asset",
     "share_data_asset", "get_data_lineage",
+    # FusionToolset
+    "profile_fusion_sources", "assess_fusion_compatibility",
+    "fuse_datasets", "validate_fusion_quality",
+    # KnowledgeGraphToolset
+    "build_knowledge_graph", "query_knowledge_graph", "export_knowledge_graph",
     # Standalone
     "approve_quality",
 }

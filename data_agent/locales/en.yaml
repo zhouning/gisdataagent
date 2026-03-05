@@ -208,3 +208,13 @@ workflow.failed: "Workflow failed: {error}"
 workflow.cron_active: "Scheduled execution enabled: {schedule}"
 workflow.webhook_sent: "Results pushed to webhook"
 workflow.webhook_failed: "Webhook push failed: {error}"
+
+# --- Fusion Engine Enhancement (v7.0) ---
+fusion.embedding_enabled: "Semantic embedding matching enabled"
+fusion.llm_strategy: "LLM recommended strategy: {strategy} — {reasoning}"
+fusion.large_dataset: "Large dataset detected ({rows} rows), chunked processing enabled"
+
+# --- Knowledge Graph ---
+kg.built: "Knowledge graph built: {nodes} entities, {edges} relationships"
+kg.query_result: "Query result: {count} matches"
+kg.exported: "Knowledge graph exported"

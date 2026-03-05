@@ -1,16 +1,22 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v6.0
+# GIS Data Agent (ADK Edition) v7.0
 
-基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 30 个 REST API，支持多模态输入、3D 可视化和工作流编排。
+基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 30 个 REST API，支持多模态输入、3D 可视化、工作流编排和知识图谱推理。
 
 ## 核心能力
 
-### 多源数据智能融合 (v5.5–v6.0)
+### 多源数据智能融合 (v5.5–v7.0)
 - **五阶段流水线**：画像 → 评估 → 对齐 → 融合 → 验证
 - **10 种融合策略**：空间连接、属性连接、分区统计、点采样、波段叠加、矢量叠加、时态融合、点云高度赋值、栅格矢量化、最近邻连接
 - **5 种数据模态**：矢量、栅格、表格、点云 (LAS/LAZ)、实时流
-- **智能语义匹配**：目录驱动等价组 + 分词相似度（camelCase↔snake_case）+ 类型兼容检查 + 单位自动转换
+- **智能语义匹配**：
+  - 四层渐进式匹配：精确 → 等价组 → 单位感知 → 模糊匹配
+  - **v7.0 向量嵌入匹配**：Gemini text-embedding-004 语义相似度（可选启用）
+  - 目录驱动等价组 + 分词相似度 + 类型兼容检查 + 单位自动转换
+- **LLM 增强策略路由 (v7.0)**：Gemini 2.0 Flash 根据用户意图智能推荐融合策略
+- **分布式/核外计算 (v7.0)**：大数据集（>50万行/500MB）自动分块处理，避免 OOM
+- **地理知识图谱 (v7.0)**：networkx 实体关系建模，空间邻接/包含关系检测，N跳邻居查询
 - **栅格自动处理**：CRS 重投影、分辨率重采样、大栅格窗口采样
 - **增强质量验证**：10 项检查（空值率、几何有效性、拓扑验证、KS 分布偏移检测等）
 
@@ -120,7 +126,11 @@ cd frontend && npm install && npm run dev
 | | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
 | | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 |
 | **数据融合** | 融合引擎 (MMFE) | 五阶段流水线（画像→评估→对齐→融合→验证），10 种策略，5 种模态 |
-| | 语义匹配 | 目录驱动等价组 + 分词相似度 + 类型兼容检查 + 单位自动转换 |
+| | 语义匹配 | 五层渐进匹配：精确 → 等价组 → 嵌入相似度 → 单位感知 → 模糊 |
+| | 嵌入匹配 (v7.0) | Gemini text-embedding-004 向量语义匹配（可选启用） |
+| | LLM 策略路由 (v7.0) | Gemini 2.0 Flash 意图感知策略推荐 (`strategy="llm_auto"`) |
+| | 知识图谱 (v7.0) | networkx 空间实体关系建模，N跳邻居查询，最短路径 |
+| | 分布式计算 (v7.0) | 大数据集 (>500K行) 自动分块读取和处理 |
 | | 栅格处理 | 自动 CRS 重投影、分辨率重采样、大栅格窗口采样 |
 | | 点云 & 流数据 | LAS/LAZ 高度赋值、CSV/JSON 流数据时态融合（时间窗口+空间聚合） |
 | | 质量验证 | 10 项检查：空值/几何/拓扑/CRS/微面/异常值/KS分布偏移 |
@@ -180,22 +190,24 @@ data_agent/
 ├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
 ├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
-├── fusion_engine.py                # 多模态数据融合引擎（MMFE，~1750 行）
+├── fusion_engine.py                # 多模态数据融合引擎（MMFE，~2100 行）
+├── knowledge_graph.py              # 地理知识图谱引擎（networkx，~625 行）
 ├── pipeline_runner.py           # 无头管道执行器 (run_pipeline_headless)
-├── toolsets/                    # 18 个 BaseToolset 模块
+├── toolsets/                    # 19 个 BaseToolset 模块
 │   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
 │   ├── fusion_tools.py          #   数据融合工具集（4 个工具）
+│   ├── knowledge_graph_tools.py #   知识图谱工具集（3 个工具）
 │   ├── mcp_hub_toolset.py       #   MCP 工具桥接
 │   ├── skill_bundles.py         #   5 个命名工具集分组
 │   └── ...                      #   探查、地理处理、分析、数据库、语义层等
 ├── prompts/                     # 3 个 YAML 提示词文件
-├── migrations/                  # 18 个 SQL 迁移脚本 (001-018)
+├── migrations/                  # 19 个 SQL 迁移脚本 (001-019)
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 61 个测试文件 (1290+ 测试)
+├── test_*.py                    # 62 个测试文件 (1330+ 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -270,7 +282,7 @@ docs/                            # 文档
 ## 运行测试
 
 ```bash
-# 全量测试 (1290+ 测试)
+# 全量测试 (1330+ 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -305,9 +317,10 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v5.4 | 工作流编排（引擎 + 编辑器 + Cron + Webhook） | 完成 |
 | v5.5 | 多模态数据融合引擎 MMFE（5 模态、10 策略、语义匹配） | 完成 |
 | v5.6 | MGIM 启发增强（模糊匹配、单位转换、数据感知策略、多源编排） | 完成 |
-| v6.0 | 融合引擎不足修复（栅格重投影、点云高度、流数据时态、语义增强、质量验证） | **当前** |
+| v6.0 | 融合引擎不足修复（栅格重投影、点云高度、流数据时态、语义增强、质量验证） | 完成 |
 | v6.1 | 高级分析引擎（时空预测、场景模拟、网络分析） | 计划中 |
-| v7.0 | 实时协作、知识图谱、边缘部署 | 规划中 |
+| v7.0 | 向量嵌入匹配、LLM 策略路由、地理知识图谱、分布式计算 | **当前** |
+| v8.0 | 实时协作、边缘部署、数据连接器生态 | 规划中 |
 
 ## 许可证
 

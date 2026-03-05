@@ -119,6 +119,15 @@ general_processing_instruction: |
      - 栅格+栅格：自动使用 band_stack（波段堆叠）
   4. 调用 `validate_fusion_quality` 验证融合结果的质量。
   融合前务必确认数据已上传到用户目录中。
+  ### 融合增强功能 (v7.0)
+  - 兼容性评估支持语义嵌入匹配: `assess_fusion_compatibility` 加 `use_embedding="true"` 参数，对长尾字段名更精准。
+  - 融合策略支持 LLM 智能推荐: `fuse_datasets` 设 `strategy="llm_auto"`，可通过 `user_hint` 传达用户意图。
+  - 大数据集自动分块处理，无需手动配置。
+  ## 地理知识图谱 (Knowledge Graph)
+  当用户需要理解空间实体之间的拓扑关系（邻接、包含、最近邻等）时：
+  1. 调用 `build_knowledge_graph` 从空间数据构建知识图谱（自动识别实体类型和空间关系）。
+  2. 调用 `query_knowledge_graph` 查询实体关系（query_type: neighbors/path/type/stats）。
+  3. 调用 `export_knowledge_graph` 导出图谱为JSON格式。
 
 general_viz_instruction: |
   # Role: 通用可视化专家

@@ -29,7 +29,13 @@ SKIP_HEADINGS = [
 CLEAN_PATTERNS = [
     (r"\s*\(v5\.\d[^)]*\)", ""),                          # (v5.6), (v5.6 新增) — half-width
     (r"\s*\uff08v5\.\d[^\uff09]*\uff09", ""),             # （v5.6 新增）— full-width
+    (r"\s*\(v6\.\d[^)]*\)", ""),                          # (v6.0) — half-width
+    (r"\s*\uff08v6\.\d[^\uff09]*\uff09", ""),             # （v6.0）— full-width
+    (r"\s*\(v7\.\d[^)]*\)", ""),                          # (v7.0), (v7.0新增) — half-width
+    (r"\s*\uff08v7\.\d[^\uff09]*\uff09", ""),             # （v7.0 新增）— full-width
     (r"v5\.\d+\s*\u7248\u672c", ""),                      # v5.6 版本
+    (r"v6\.\d+\s*\u7248\u672c", ""),                      # v6.0 版本
+    (r"v7\.\d+\s*\u7248\u672c", ""),                      # v7.0 版本
     (r"\u501f\u9274[^,\u3002]*\u601d\u60f3\uff0c?", ""),  # 借鉴...思想，
     (r"MGIM\uff08[^\uff09]*\uff09\u7684", ""),            # MGIM（...）的
     (r"MGIM\uff08[^\uff09]*\uff09", ""),                  # MGIM（...）
@@ -37,7 +43,11 @@ CLEAN_PATTERNS = [
     (r"\u5e76\u5df2\u96c6\u6210\u5230[^.。]*[.。]", ""),   # 并已集成到...。
     (r"~~([^~]+)~~", r"\1"),                               # ~~strikethrough~~ → text
     (r"\s*v5\.\d+\s*", " "),                               # standalone v5.5 / v5.6
+    (r"\s*v6\.\d+\s*", " "),                               # standalone v6.0
+    (r"\s*v7\.\d+\s*", " "),                               # standalone v7.0
     (r",?\s*\u542bv5\.\d[^)）]*", ""),                     # 含v5.6增强
+    (r",?\s*\u542bv6\.\d[^)）]*", ""),                     # 含v6.0增强
+    (r",?\s*\u542bv7\.\d[^)）]*", ""),                     # 含v7.0增强
     (r"\u4ecev5\.\d\u7684\d+\u7ec4\u6269\u5c55", ""),     # 从v5.5的6组扩展
     (r",?\s*\u65b0\u589e\uff09", "\uff09"),               # ， 新增） → ）
     (r",?\s*\u65b0\u589e\)", ")"),                         # ， 新增) → )
@@ -63,11 +73,14 @@ SKIP_LINE_KW = [
     "google.adk",
     "fusion_tools.py",
     "fusion_tools",
+    "knowledge_graph_tools.py",
     "prompts/general.yaml",
     "agent.py",
     "comparison_MMFE",
+    "RELEASE_NOTES",
     "AnalysisToolset",
     "FusionToolset",
+    "KnowledgeGraphToolset",
     "drl_engine.py",
     "\u5de5\u5177\u96c6\u5c01\u88c5",                     # 工具集封装
     "\u667a\u80fd\u4f53\u96c6\u6210",                     # 智能体集成
@@ -82,7 +95,7 @@ SKIP_LINE_KW = [
 ]
 
 # Section number remapping after removing section 4
-SEC_REMAP = {"5": "4", "6": "5", "7": "6", "8": "7"}
+SEC_REMAP = {"5": "4", "6": "5", "7": "6", "8": "7", "9": "8"}
 
 
 def clean_text(text):
