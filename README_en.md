@@ -1,16 +1,22 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v6.0
+# GIS Data Agent (ADK Edition) v7.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 3D visualization, and workflow orchestration.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 3D visualization, workflow orchestration, and geographic knowledge graph.
 
 ## Core Capabilities
 
-### Multi-Source Data Fusion (v5.5–v6.0)
+### Multi-Source Data Fusion (v5.5–v7.0)
 - **Five-stage pipeline**: Profile → Assess → Align → Fuse → Validate
 - **10 fusion strategies**: spatial join, attribute join, zonal statistics, point sampling, band stack, overlay, temporal fusion, point cloud height assignment, raster vectorize, nearest join
 - **5 data modalities**: vector, raster, tabular, point cloud (LAS/LAZ), real-time stream
-- **Intelligent semantic matching**: catalog-driven equivalence groups + tokenized similarity (camelCase↔snake_case) + type compatibility + automatic unit conversion
+- **Intelligent semantic matching**:
+  - Five-tier progressive matching: exact → equivalence groups → embedding similarity → unit-aware → fuzzy
+  - **v7.0 Vector embedding matching**: Gemini text-embedding-004 cosine similarity (opt-in)
+  - Catalog-driven equivalence groups + tokenized similarity + type compatibility + auto unit conversion
+- **LLM-enhanced strategy routing (v7.0)**: Gemini 2.0 Flash intent-aware strategy recommendation
+- **Distributed/out-of-core computing (v7.0)**: Auto-chunked processing for large datasets (>500K rows / >500MB)
+- **Geographic knowledge graph (v7.0)**: networkx entity-relationship modeling, spatial adjacency/containment detection, N-hop neighbor queries
 - **Raster auto-processing**: CRS reprojection, resolution resampling, windowed sampling for large rasters
 - **Enhanced quality validation**: 10 checks (null rate, geometry validity, topology, KS distribution shift, etc.)
 
@@ -120,7 +126,11 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | NL Layer Control | Natural language show/hide/style/remove map layers via `control_map_layer` tool |
 | | MCP Tool Market | Config-driven MCP server connection + tool aggregation |
 | **Data Fusion** | Fusion Engine (MMFE) | Five-stage pipeline (Profile→Assess→Align→Fuse→Validate), 10 strategies, 5 modalities |
-| | Semantic Matching | Catalog-driven equivalence groups + tokenized similarity + type compatibility + auto unit conversion |
+| | Semantic Matching | Five-tier progressive: exact → equivalence groups → embedding similarity → unit-aware → fuzzy |
+| | Embedding Matching (v7.0) | Gemini text-embedding-004 vector semantic matching (opt-in) |
+| | LLM Strategy Routing (v7.0) | Gemini 2.0 Flash intent-aware strategy recommendation (`strategy="llm_auto"`) |
+| | Knowledge Graph (v7.0) | networkx spatial entity-relationship modeling, N-hop queries, shortest path |
+| | Distributed Computing (v7.0) | Auto-chunked processing for large datasets (>500K rows) |
 | | Raster Processing | Auto CRS reprojection, resolution resampling, windowed sampling for large rasters |
 | | Point Cloud & Stream | LAS/LAZ height assignment, CSV/JSON stream temporal fusion (time window + spatial aggregation) |
 | | Quality Validation | 10 checks: null rate, geometry, topology, CRS, micro-polygons, outliers, KS distribution shift |
@@ -180,22 +190,24 @@ data_agent/
 ├── workflow_engine.py           # Workflow engine: CRUD, execution, webhook, cron
 ├── multimodal.py                # Multimodal input: image/PDF classification, Gemini Parts
 ├── mcp_hub.py                   # MCP Hub Manager: config-driven MCP server management
-├── fusion_engine.py                # Multi-modal Data Fusion Engine (MMFE, ~1750 lines)
+├── fusion_engine.py                # Multi-modal Data Fusion Engine (MMFE, ~2100 lines)
+├── knowledge_graph.py              # Geographic Knowledge Graph Engine (networkx, ~625 lines)
 ├── pipeline_runner.py           # Headless pipeline executor (run_pipeline_headless)
-├── toolsets/                    # 18 BaseToolset modules
+├── toolsets/                    # 19 BaseToolset modules
 │   ├── visualization_tools.py   #   10 tools: choropleth, heatmap, 3D, layer control
 │   ├── fusion_tools.py          #   Data fusion toolset (4 tools)
+│   ├── knowledge_graph_tools.py #   Knowledge graph toolset (3 tools)
 │   ├── mcp_hub_toolset.py       #   MCP tool bridge
 │   ├── skill_bundles.py         #   5 named toolset groupings
 │   └── ...                      #   exploration, geo processing, analysis, database, etc.
 ├── prompts/                     # 3 YAML prompt files
-├── migrations/                  # 18 SQL migration scripts (001-018)
+├── migrations/                  # 19 SQL migration scripts (001-019)
 ├── locales/                     # i18n: zh.yaml + en.yaml
 ├── db_engine.py                 # Connection pool singleton
 ├── health.py                    # K8s health check API
 ├── observability.py             # Structured logging + Prometheus
 ├── i18n.py                      # i18n: YAML dict + t() function
-├── test_*.py                    # 61 test files (1290+ tests)
+├── test_*.py                    # 62 test files (1330+ tests)
 └── run_evaluation.py            # Agent evaluation runner
 
 frontend/
@@ -271,7 +283,7 @@ Custom React SPA replacing Chainlit's default UI:
 ## Running Tests
 
 ```bash
-# All tests (1290+ tests)
+# All tests (1330+ tests)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single module
@@ -306,9 +318,10 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v5.4 | Workflow Builder (Engine + Editor + Cron + Webhook) | Done |
 | v5.5 | Multi-Modal Data Fusion Engine MMFE (5 modalities, 10 strategies, semantic matching) | Done |
 | v5.6 | MGIM-Inspired Enhancements (fuzzy matching, unit conversion, data-aware scoring, multi-source) | Done |
-| v6.0 | Fusion Engine Improvements (raster reprojection, point cloud, stream temporal, semantic+quality) | **Current** |
+| v6.0 | Fusion Engine Improvements (raster reprojection, point cloud, stream temporal, semantic+quality) | Done |
 | v6.1 | Advanced Analytics Engine (spatiotemporal prediction, scenario simulation, network analysis) | Planned |
-| v7.0 | Real-time Collaboration, Knowledge Graph, Edge Deployment | Future |
+| v7.0 | Vector Embedding Matching, LLM Strategy Routing, Knowledge Graph, Distributed Computing | **Current** |
+| v8.0 | Real-time Collaboration, Edge Deployment, Data Connector Ecosystem | Future |
 
 ## License
 

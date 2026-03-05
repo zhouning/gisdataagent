@@ -1,0 +1,663 @@
+{
+  "timestamp": "2026-03-05T11:46:47.563507",
+  "metrics": {
+    "semantic_matching": {
+      "precision": 1.0,
+      "recall": 0.9524,
+      "f1": 0.9756,
+      "tp": 40,
+      "fp": 0,
+      "fn": 2,
+      "tn": 8,
+      "total_pairs": 50,
+      "tier_breakdown": {
+        "tier1_exact": {
+          "tp": 8,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "tier2_equiv": {
+          "tp": 12,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "tier3_unit": {
+          "tp": 8,
+          "fp": 0,
+          "fn": 2,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 0.8,
+          "f1": 0.8889
+        },
+        "tier4_fuzzy": {
+          "tp": 12,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "negatives": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "tn": 8,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      },
+      "passed": true,
+      "thresholds": {
+        "precision": 0.9,
+        "recall": 0.85,
+        "f1": 0.87
+      }
+    },
+    "strategy_selection": {
+      "accuracy": 1.0,
+      "correct": 30,
+      "total": 30,
+      "details": [
+        {
+          "scenario": 0,
+          "expected": "spatial_join",
+          "actual": "spatial_join",
+          "correct": true
+        },
+        {
+          "scenario": 1,
+          "expected": "spatial_join",
+          "actual": "spatial_join",
+          "correct": true
+        },
+        {
+          "scenario": 2,
+          "expected": "spatial_join",
+          "actual": "spatial_join",
+          "correct": true
+        },
+        {
+          "scenario": 3,
+          "expected": "spatial_join",
+          "actual": "spatial_join",
+          "correct": true
+        },
+        {
+          "scenario": 4,
+          "expected": "nearest_join",
+          "actual": "nearest_join",
+          "correct": true
+        },
+        {
+          "scenario": 5,
+          "expected": "nearest_join",
+          "actual": "nearest_join",
+          "correct": true
+        },
+        {
+          "scenario": 6,
+          "expected": "nearest_join",
+          "actual": "nearest_join",
+          "correct": true
+        },
+        {
+          "scenario": 7,
+          "expected": [
+            "spatial_join",
+            "overlay"
+          ],
+          "actual": "spatial_join",
+          "correct": true
+        },
+        {
+          "scenario": 8,
+          "expected": [
+            "spatial_join",
+            "overlay"
+          ],
+          "actual": "spatial_join",
+          "correct": true
+        },
+        {
+          "scenario": 9,
+          "expected": [
+            "spatial_join",
+            "overlay"
+          ],
+          "actual": "spatial_join",
+          "correct": true
+        },
+        {
+          "scenario": 10,
+          "expected": "zonal_statistics",
+          "actual": "zonal_statistics",
+          "correct": true
+        },
+        {
+          "scenario": 11,
+          "expected": "zonal_statistics",
+          "actual": "zonal_statistics",
+          "correct": true
+        },
+        {
+          "scenario": 12,
+          "expected": "zonal_statistics",
+          "actual": "zonal_statistics",
+          "correct": true
+        },
+        {
+          "scenario": 13,
+          "expected": "zonal_statistics",
+          "actual": "zonal_statistics",
+          "correct": true
+        },
+        {
+          "scenario": 14,
+          "expected": "point_sampling",
+          "actual": "point_sampling",
+          "correct": true
+        },
+        {
+          "scenario": 15,
+          "expected": "point_sampling",
+          "actual": "point_sampling",
+          "correct": true
+        },
+        {
+          "scenario": 16,
+          "expected": "point_sampling",
+          "actual": "point_sampling",
+          "correct": true
+        },
+        {
+          "scenario": 17,
+          "expected": "point_sampling",
+          "actual": "point_sampling",
+          "correct": true
+        },
+        {
+          "scenario": 18,
+          "expected": "attribute_join",
+          "actual": "attribute_join",
+          "correct": true
+        },
+        {
+          "scenario": 19,
+          "expected": "attribute_join",
+          "actual": "attribute_join",
+          "correct": true
+        },
+        {
+          "scenario": 20,
+          "expected": "attribute_join",
+          "actual": "attribute_join",
+          "correct": true
+        },
+        {
+          "scenario": 21,
+          "expected": "attribute_join",
+          "actual": "attribute_join",
+          "correct": true
+        },
+        {
+          "scenario": 22,
+          "expected": "attribute_join",
+          "actual": "attribute_join",
+          "correct": true
+        },
+        {
+          "scenario": 23,
+          "expected": "attribute_join",
+          "actual": "attribute_join",
+          "correct": true
+        },
+        {
+          "scenario": 24,
+          "expected": "band_stack",
+          "actual": "band_stack",
+          "correct": true
+        },
+        {
+          "scenario": 25,
+          "expected": "band_stack",
+          "actual": "band_stack",
+          "correct": true
+        },
+        {
+          "scenario": 26,
+          "expected": "raster_vectorize",
+          "actual": "raster_vectorize",
+          "correct": true
+        },
+        {
+          "scenario": 27,
+          "expected": "raster_vectorize",
+          "actual": "raster_vectorize",
+          "correct": true
+        },
+        {
+          "scenario": 28,
+          "expected": "time_snapshot",
+          "actual": "time_snapshot",
+          "correct": true
+        },
+        {
+          "scenario": 29,
+          "expected": "height_assign",
+          "actual": "height_assign",
+          "correct": true
+        }
+      ],
+      "passed": true,
+      "threshold": 0.85
+    },
+    "unit_conversion": {
+      "max_relative_error": 0.0,
+      "conversion_count": 8,
+      "details": [
+        {
+          "conversion": "m2→mu",
+          "input": 666670.0,
+          "expected": 1000.0,
+          "actual": 1000.0,
+          "relative_error": 0.0
+        },
+        {
+          "conversion": "mu→m2",
+          "input": 1.0,
+          "expected": 666.67,
+          "actual": 666.67,
+          "relative_error": 0.0
+        },
+        {
+          "conversion": "m2→ha",
+          "input": 10000.0,
+          "expected": 1.0,
+          "actual": 1.0,
+          "relative_error": 0.0
+        },
+        {
+          "conversion": "ha→m2",
+          "input": 1.0,
+          "expected": 10000.0,
+          "actual": 10000.0,
+          "relative_error": 0.0
+        },
+        {
+          "conversion": "mu→ha",
+          "input": 15.0,
+          "expected": 1.0,
+          "actual": 1.0,
+          "relative_error": 0.0
+        },
+        {
+          "conversion": "ha→mu",
+          "input": 1.0,
+          "expected": 15.0,
+          "actual": 15.0,
+          "relative_error": 0.0
+        },
+        {
+          "conversion": "m→km",
+          "input": 1000.0,
+          "expected": 1.0,
+          "actual": 1.0,
+          "relative_error": 0.0
+        },
+        {
+          "conversion": "km→m",
+          "input": 1.0,
+          "expected": 1000.0,
+          "actual": 1000.0,
+          "relative_error": 0.0
+        }
+      ],
+      "passed": true,
+      "threshold": 1e-10
+    },
+    "compatibility_scoring": {
+      "accuracy": 0.3333,
+      "hits": 5,
+      "total": 15,
+      "details": [
+        {
+          "expected_range": [
+            0.7,
+            1.0
+          ],
+          "actual_score": 1.0,
+          "in_band": true
+        },
+        {
+          "expected_range": [
+            0.7,
+            1.0
+          ],
+          "actual_score": 1.0,
+          "in_band": true
+        },
+        {
+          "expected_range": [
+            0.7,
+            1.0
+          ],
+          "actual_score": 1.0,
+          "in_band": true
+        },
+        {
+          "expected_range": [
+            0.7,
+            1.0
+          ],
+          "actual_score": 1.0,
+          "in_band": true
+        },
+        {
+          "expected_range": [
+            0.7,
+            1.0
+          ],
+          "actual_score": 1.0,
+          "in_band": true
+        },
+        {
+          "expected_range": [
+            0.3,
+            0.8
+          ],
+          "actual_score": 0.85,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.3,
+            0.8
+          ],
+          "actual_score": 0.85,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.3,
+            0.8
+          ],
+          "actual_score": 0.85,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.3,
+            0.8
+          ],
+          "actual_score": 0.85,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.3,
+            0.8
+          ],
+          "actual_score": 0.85,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.0,
+            0.5
+          ],
+          "actual_score": 0.7,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.0,
+            0.5
+          ],
+          "actual_score": 0.7,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.0,
+            0.5
+          ],
+          "actual_score": 0.7,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.0,
+            0.5
+          ],
+          "actual_score": 0.7,
+          "in_band": false
+        },
+        {
+          "expected_range": [
+            0.0,
+            0.5
+          ],
+          "actual_score": 0.7,
+          "in_band": false
+        }
+      ],
+      "passed": false,
+      "threshold": 0.8
+    },
+    "fusion_quality": {
+      "mean_quality": 0.9625,
+      "std_quality": 0.0992,
+      "strategies_tested": 8,
+      "details": {
+        "spatial_join": {
+          "quality_score": 1.0,
+          "rows": 30,
+          "warnings": []
+        },
+        "overlay": {
+          "quality_score": 1.0,
+          "rows": 30,
+          "warnings": []
+        },
+        "nearest_join": {
+          "quality_score": 1.0,
+          "rows": 30,
+          "warnings": []
+        },
+        "attribute_join": {
+          "quality_score": 1.0,
+          "rows": 30,
+          "warnings": []
+        },
+        "zonal_statistics": {
+          "quality_score": 0.7,
+          "rows": 30,
+          "warnings": [
+            "Column 'raster_mean' has 97% null values",
+            "Column 'raster_min' has 97% null values",
+            "Column 'raster_max' has 97% null values"
+          ]
+        },
+        "point_sampling": {
+          "quality_score": 1.0,
+          "rows": 30,
+          "warnings": []
+        },
+        "band_stack": {
+          "quality_score": 1.0,
+          "rows": 1,
+          "warnings": []
+        },
+        "raster_vectorize": {
+          "quality_score": 1.0,
+          "rows": 2483,
+          "warnings": []
+        }
+      },
+      "passed": "True",
+      "threshold": 0.85
+    },
+    "defect_detection": {
+      "detection_rate": 1.0,
+      "detected": 7,
+      "total": 7,
+      "details": [
+        {
+          "defect": "high_null_rate",
+          "detected": true
+        },
+        {
+          "defect": "invalid_geometry",
+          "detected": true
+        },
+        {
+          "defect": "extreme_outliers",
+          "detected": true
+        },
+        {
+          "defect": "micro_polygons",
+          "detected": true
+        },
+        {
+          "defect": "topology_issues",
+          "detected": true
+        },
+        {
+          "defect": "row_loss",
+          "detected": true
+        },
+        {
+          "defect": "empty_result",
+          "detected": true
+        }
+      ],
+      "passed": true,
+      "threshold": 0.85
+    },
+    "data_preservation": {
+      "avg_row_preservation": 1.0,
+      "avg_geometry_validity": 1.0,
+      "strategies": {
+        "spatial_join": {
+          "row_preservation": 1.0,
+          "column_preservation": 1.0,
+          "geometry_validity": 1.0,
+          "output_rows": 30,
+          "output_cols": 6
+        },
+        "overlay": {
+          "row_preservation": 1.0,
+          "column_preservation": 1.0,
+          "geometry_validity": 1.0,
+          "output_rows": 30,
+          "output_cols": 6
+        },
+        "nearest_join": {
+          "row_preservation": 1.0,
+          "column_preservation": 1.0,
+          "geometry_validity": 1.0,
+          "output_rows": 30,
+          "output_cols": 6
+        },
+        "attribute_join": {
+          "row_preservation": 1.0,
+          "column_preservation": 1.0,
+          "geometry_validity": 1.0,
+          "output_rows": 30,
+          "output_cols": 4
+        },
+        "zonal_statistics": {
+          "row_preservation": 1.0,
+          "column_preservation": 2.3333,
+          "geometry_validity": 1.0,
+          "output_rows": 30,
+          "output_cols": 7
+        },
+        "point_sampling": {
+          "row_preservation": 1.0,
+          "column_preservation": 1.5,
+          "geometry_validity": 1.0,
+          "output_rows": 30,
+          "output_cols": 3
+        }
+      },
+      "passed": "True",
+      "thresholds": {
+        "row_preservation": 0.8,
+        "geometry_validity": 0.99
+      }
+    },
+    "coverage": {
+      "modality_coverage": "5/5",
+      "strategy_coverage": "10/10",
+      "strategy_list": [
+        "attribute_join",
+        "band_stack",
+        "height_assign",
+        "nearest_join",
+        "overlay",
+        "point_sampling",
+        "raster_vectorize",
+        "spatial_join",
+        "time_snapshot",
+        "zonal_statistics"
+      ],
+      "type_pair_coverage": "11/11",
+      "quality_check_coverage": "10/10",
+      "unit_conversion_pairs": 8,
+      "equivalence_groups": 10,
+      "passed": true
+    },
+    "performance": {
+      "scales": {
+        "100_rows": {
+          "total_s": 0.03,
+          "assess_s": 0.001,
+          "strategy_s": 0.001,
+          "fuse_s": 0.009,
+          "validate_s": 0.019,
+          "output_rows": 100,
+          "throughput_rows_per_s": 3309.8
+        },
+        "1000_rows": {
+          "total_s": 0.069,
+          "assess_s": 0.001,
+          "strategy_s": 0.0,
+          "fuse_s": 0.014,
+          "validate_s": 0.053,
+          "output_rows": 1106,
+          "throughput_rows_per_s": 16097.2
+        },
+        "10000_rows": {
+          "total_s": 0.5,
+          "assess_s": 0.001,
+          "strategy_s": 0.0,
+          "fuse_s": 0.058,
+          "validate_s": 0.441,
+          "output_rows": 19920,
+          "throughput_rows_per_s": 39828.3
+        }
+      },
+      "passed": true,
+      "thresholds": {
+        "1000_rows": "< 5s",
+        "10000_rows": "< 30s"
+      }
+    }
+  },
+  "summary": {
+    "total": 9,
+    "passed": 8
+  }
+}

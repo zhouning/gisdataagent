@@ -121,6 +121,10 @@ try:
     ensure_chainlit_tables()
     from data_agent.workflow_engine import ensure_workflow_tables
     ensure_workflow_tables()
+    from data_agent.fusion_engine import ensure_fusion_tables
+    ensure_fusion_tables()
+    from data_agent.knowledge_graph import ensure_knowledge_graph_tables
+    ensure_knowledge_graph_tables()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure

@@ -16,3 +16,4 @@ from .team_tools import TeamToolset
 from .datalake_tools import DataLakeToolset
 from .mcp_hub_toolset import McpHubToolset
 from .fusion_tools import FusionToolset
+from .knowledge_graph_tools import KnowledgeGraphToolset

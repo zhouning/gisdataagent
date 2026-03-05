@@ -56,11 +56,12 @@ def profile_fusion_sources(file_paths: str) -> str:
         return f"Error: {e}"
 
 
-def assess_fusion_compatibility(file_paths: str) -> str:
+def assess_fusion_compatibility(file_paths: str, use_embedding: str = "false") -> str:
     """评估多个数据源的融合兼容性，包括坐标系一致性、空间重叠度、字段匹配和推荐策略。
 
     Args:
         file_paths: 逗号分隔的文件路径列表
+        use_embedding: 是否启用Gemini语义嵌入匹配 (true/false, 默认false)
 
     Returns:
         兼容性评估报告：CRS一致性、空间重叠IoU、语义字段匹配、推荐融合策略。
@@ -75,7 +76,8 @@ def assess_fusion_compatibility(file_paths: str) -> str:
             resolved = _resolve_path(p)
             sources.append(fusion_engine.profile_source(resolved))
 
-        report = fusion_engine.assess_compatibility(sources)
+        embed = use_embedding.lower() == "true"
+        report = fusion_engine.assess_compatibility(sources, use_embedding=embed)
 
         result = {
             "crs_compatible": report.crs_compatible,
@@ -96,16 +98,19 @@ def fuse_datasets(
     strategy: str = "auto",
     join_column: str = "",
     spatial_predicate: str = "intersects",
+    user_hint: str = "",
 ) -> str:
     """融合多个数据源。支持空间连接、属性合并、分区统计等10种策略。
 
     Args:
         file_paths: 逗号分隔的文件路径列表
-        strategy: 融合策略 (auto/spatial_join/attribute_join/zonal_statistics/
+        strategy: 融合策略 (auto/llm_auto/spatial_join/attribute_join/zonal_statistics/
                   point_sampling/band_stack/overlay/nearest_join/
-                  time_snapshot/height_assign/raster_vectorize)
+                  time_snapshot/height_assign/raster_vectorize)。
+                  llm_auto: 使用LLM智能推荐最佳策略。
         join_column: 属性连接的键字段 (attribute_join时需要)
         spatial_predicate: 空间谓词 (intersects/contains/within, 用于spatial_join)
+        user_hint: 用户意图描述（LLM策略路由时使用，如"按人口密度筛选"）
 
     Returns:
         融合结果摘要，包含输出路径、行列数、质量评分和对齐日志。
@@ -133,7 +138,10 @@ def fuse_datasets(
             params["join_column"] = join_column
 
         # Execute
-        result = fusion_engine.execute_fusion(aligned, strategy, sources, params)
+        result = fusion_engine.execute_fusion(
+            aligned, strategy, sources, params,
+            report=report, user_hint=user_hint,
+        )
 
         # Record operation
         fusion_engine.record_operation(

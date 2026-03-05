@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GIS Data Agent (ADK Edition) v4.0 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication.
+GIS Data Agent (ADK Edition) v7.0 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication.
 
 ## Commands
 
@@ -16,7 +16,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 
 ### Run tests
 ```bash
-# All tests (1180+ tests)
+# All tests (1330+ tests)
 .venv/Scripts/python.exe -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single test file
@@ -130,11 +130,12 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | `multimodal.py` | Multimodal input processing — image/PDF classification, Gemini Part builders |
 | `workflow_engine.py` | Multi-step workflow engine — CRUD, execution, webhook push, cron scheduling |
 | `fusion_engine.py` | Multi-modal data fusion — profiling, compatibility, alignment, 10 fusion strategies |
+| `knowledge_graph.py` | Geographic knowledge graph — networkx-based entity-relationship modeling |
 | `evals/agent.py` | Evaluation umbrella agent — wraps 4 pipelines as sub_agents for ADK AgentEvaluator |
 | `run_evaluation.py` | Multi-pipeline ADK evaluation runner with per-metric scoring and charts |
 
-### Toolsets (18 modules in `toolsets/`)
-Exploration, GeoProcessing, Visualization (10 tools incl. `generate_3d_map`, `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub, Fusion (4 tools).
+### Toolsets (19 modules in `toolsets/`)
+Exploration, GeoProcessing, Visualization (10 tools incl. `generate_3d_map`, `control_map_layer`), Analysis, Database, SemanticLayer (9 tools), DataLake (8 tools), Streaming (5 tools), Team (8 tools), Location, Memory, Admin, File, RemoteSensing, SpatialStatistics, SkillBundles, McpHub, Fusion (4 tools), KnowledgeGraph (3 tools).
 
 ### Data Loading (`_load_spatial_data` in `agent.py`)
 Supported formats: CSV, Excel (.xlsx/.xls), Shapefile, GeoJSON, GPKG, KML, KMZ. CSV/Excel auto-detect coordinate columns (lng/lat, lon/lat, longitude/latitude, x/y).

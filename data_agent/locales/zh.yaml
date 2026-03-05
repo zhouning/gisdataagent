@@ -208,3 +208,13 @@ workflow.failed: "工作流执行失败: {error}"
 workflow.cron_active: "定时执行已启用: {schedule}"
 workflow.webhook_sent: "结果已推送至 Webhook"
 workflow.webhook_failed: "Webhook 推送失败: {error}"
+
+# --- 融合引擎增强 (v7.0) ---
+fusion.embedding_enabled: "已启用语义嵌入匹配"
+fusion.llm_strategy: "LLM推荐策略: {strategy} — {reasoning}"
+fusion.large_dataset: "检测到大数据集 ({rows} 行)，已启用分块处理"
+
+# --- 知识图谱 ---
+kg.built: "知识图谱已构建: {nodes} 实体, {edges} 关系"
+kg.query_result: "查询结果: {count} 条匹配"
+kg.exported: "知识图谱已导出"

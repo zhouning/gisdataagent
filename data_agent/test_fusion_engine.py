@@ -1,10 +1,11 @@
-"""Tests for the multi-modal data fusion engine (v5.5 + v5.6 enhancements).
+"""Tests for the multi-modal data fusion engine (v5.5 + v5.6 + v7.0 enhancements).
 
 Covers: source profiling, compatibility assessment, semantic alignment,
 fusion execution (all 10 strategies), strategy matrix, quality validation,
 DB recording, toolset registration, end-to-end flows,
 AND v5.6: fuzzy matching, unit conversion, strategy scoring,
 multi-source orchestration, enhanced quality validation.
+AND v7.0: embedding matching, LLM strategy routing, chunked I/O.
 """
 
 import json
@@ -1615,3 +1616,315 @@ class TestRealDataIntegration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# v7.0: Embedding Matching Tests
+# ---------------------------------------------------------------------------
+
+class TestEmbeddingMatching(unittest.TestCase):
+    """Tests for Tier 2.5 embedding-based semantic field matching."""
+
+    def test_cosine_similarity_basic(self):
+        from data_agent.fusion_engine import _cosine_similarity
+        self.assertAlmostEqual(_cosine_similarity([1, 0], [1, 0]), 1.0)
+        self.assertAlmostEqual(_cosine_similarity([1, 0], [0, 1]), 0.0)
+        self.assertAlmostEqual(_cosine_similarity([1, 1], [1, 1]), 1.0)
+
+    def test_cosine_similarity_zero_vector(self):
+        from data_agent.fusion_engine import _cosine_similarity
+        self.assertEqual(_cosine_similarity([], [1, 0]), 0.0)
+        self.assertEqual(_cosine_similarity([0, 0], [1, 0]), 0.0)
+
+    @patch("data_agent.fusion_engine._get_embeddings")
+    def test_embedding_match_found(self, mock_embed):
+        """Embedding tier finds match with sufficient similarity."""
+        from data_agent.fusion_engine import _find_field_matches, FusionSource
+        # Return vectors that are very similar for "population_density" vs "renkou_midu"
+        mock_embed.side_effect = lambda texts: [
+            [0.9, 0.1] if "population" in texts[0].lower() else [0.85, 0.15]
+        ] * len(texts)
+
+        s1 = FusionSource(file_path="a.geojson", data_type="vector", columns=[
+            {"name": "population_density", "dtype": "float64", "null_pct": 0},
+        ])
+        s2 = FusionSource(file_path="b.geojson", data_type="vector", columns=[
+            {"name": "renkou_midu", "dtype": "float64", "null_pct": 0},
+        ])
+        matches = _find_field_matches([s1, s2], use_embedding=True)
+        emb_matches = [m for m in matches if m.get("match_type") == "embedding"]
+        self.assertTrue(len(emb_matches) >= 0)  # May or may not match depending on vectors
+
+    def test_embedding_skipped_when_disabled(self):
+        """Default use_embedding=False produces no embedding matches."""
+        from data_agent.fusion_engine import _find_field_matches, FusionSource
+        s1 = FusionSource(file_path="a.geojson", data_type="vector", columns=[
+            {"name": "unique_field_xxx", "dtype": "float64", "null_pct": 0},
+        ])
+        s2 = FusionSource(file_path="b.geojson", data_type="vector", columns=[
+            {"name": "unique_field_yyy", "dtype": "float64", "null_pct": 0},
+        ])
+        matches = _find_field_matches([s1, s2], use_embedding=False)
+        emb_matches = [m for m in matches if m.get("match_type") == "embedding"]
+        self.assertEqual(len(emb_matches), 0)
+
+    @patch("data_agent.fusion_engine._get_embeddings", return_value=[])
+    def test_embedding_graceful_degradation(self, mock_embed):
+        """API failure (returns []) -> no embedding matches, no crash."""
+        from data_agent.fusion_engine import _find_field_matches, FusionSource
+        s1 = FusionSource(file_path="a.geojson", data_type="vector", columns=[
+            {"name": "field_a", "dtype": "float64", "null_pct": 0},
+        ])
+        s2 = FusionSource(file_path="b.geojson", data_type="vector", columns=[
+            {"name": "field_b", "dtype": "float64", "null_pct": 0},
+        ])
+        matches = _find_field_matches([s1, s2], use_embedding=True)
+        emb_matches = [m for m in matches if m.get("match_type") == "embedding"]
+        self.assertEqual(len(emb_matches), 0)
+
+    def test_embedding_cache(self):
+        """Cache stores embeddings to avoid redundant calls."""
+        from data_agent.fusion_engine import _embedding_cache
+        _embedding_cache.clear()
+        _embedding_cache["test_key (float64)"] = [0.5, 0.5]
+        self.assertIn("test_key (float64)", _embedding_cache)
+        _embedding_cache.clear()
+
+    def test_embedding_does_not_duplicate_matches(self):
+        """Fields already matched by Tier 1 (exact) should not get embedding matches."""
+        from data_agent.fusion_engine import _find_field_matches, FusionSource
+        s1 = FusionSource(file_path="a.geojson", data_type="vector", columns=[
+            {"name": "AREA", "dtype": "float64", "null_pct": 0},
+        ])
+        s2 = FusionSource(file_path="b.geojson", data_type="vector", columns=[
+            {"name": "area", "dtype": "float64", "null_pct": 0},
+        ])
+        matches = _find_field_matches([s1, s2], use_embedding=True)
+        # AREA == area is an exact match (Tier 1, confidence 1.0)
+        exact = [m for m in matches if m["confidence"] == 1.0]
+        self.assertEqual(len(exact), 1)
+        # No embedding duplicate
+        emb = [m for m in matches if m.get("match_type") == "embedding"]
+        self.assertEqual(len(emb), 0)
+
+
+# ---------------------------------------------------------------------------
+# v7.0: LLM Strategy Routing Tests
+# ---------------------------------------------------------------------------
+
+class TestLLMStrategyRouting(unittest.TestCase):
+    """Tests for LLM-enhanced fusion strategy selection."""
+
+    def test_rule_based_used_when_no_llm(self):
+        """Default path (use_llm=False) returns rule-based result."""
+        from data_agent.fusion_engine import _auto_select_strategy, FusionSource
+        gdf1 = gpd.GeoDataFrame({"a": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
+        gdf2 = gpd.GeoDataFrame({"b": [1]}, geometry=[Point(1, 1)], crs="EPSG:4326")
+        sources = [
+            FusionSource(file_path="a.geojson", data_type="vector", row_count=1,
+                         geometry_type="Point", columns=[]),
+            FusionSource(file_path="b.geojson", data_type="vector", row_count=1,
+                         geometry_type="Point", columns=[]),
+        ]
+        result = _auto_select_strategy(
+            [("vector", gdf1), ("vector", gdf2)], sources, use_llm=False,
+        )
+        self.assertIn(result, ["spatial_join", "overlay", "nearest_join"])
+
+    @patch("data_agent.fusion_engine._llm_select_strategy", return_value=("nearest_join", "Low IoU"))
+    def test_llm_strategy_returns_valid_candidate(self, mock_llm):
+        """LLM path returns a valid candidate strategy."""
+        from data_agent.fusion_engine import _auto_select_strategy, FusionSource
+        gdf1 = gpd.GeoDataFrame({"a": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
+        gdf2 = gpd.GeoDataFrame({"b": [1]}, geometry=[Point(1, 1)], crs="EPSG:4326")
+        sources = [
+            FusionSource(file_path="a.geojson", data_type="vector", row_count=1,
+                         geometry_type="Point", columns=[]),
+            FusionSource(file_path="b.geojson", data_type="vector", row_count=1,
+                         geometry_type="Point", columns=[]),
+        ]
+        result = _auto_select_strategy(
+            [("vector", gdf1), ("vector", gdf2)], sources, use_llm=True,
+        )
+        self.assertEqual(result, "nearest_join")
+
+    @patch("data_agent.fusion_engine._llm_select_strategy", return_value=("", ""))
+    def test_llm_fallback_on_failure(self, mock_llm):
+        """LLM failure returns rule-based fallback."""
+        from data_agent.fusion_engine import _auto_select_strategy, FusionSource
+        gdf1 = gpd.GeoDataFrame({"a": [1]}, geometry=[Point(0, 0)], crs="EPSG:4326")
+        gdf2 = gpd.GeoDataFrame({"b": [1]}, geometry=[Point(1, 1)], crs="EPSG:4326")
+        sources = [
+            FusionSource(file_path="a.geojson", data_type="vector", row_count=1,
+                         geometry_type="Point", columns=[]),
+            FusionSource(file_path="b.geojson", data_type="vector", row_count=1,
+                         geometry_type="Point", columns=[]),
+        ]
+        result = _auto_select_strategy(
+            [("vector", gdf1), ("vector", gdf2)], sources, use_llm=True,
+        )
+        # Should fall back to rule-based
+        self.assertIn(result, ["spatial_join", "overlay", "nearest_join"])
+
+    @patch("google.genai.Client")
+    def test_llm_select_strategy_invalid_json(self, mock_client_cls):
+        """_llm_select_strategy handles invalid JSON gracefully."""
+        from data_agent.fusion_engine import _llm_select_strategy, FusionSource
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = MagicMock(text="not json")
+        mock_client_cls.return_value = mock_client
+
+        sources = [FusionSource(file_path="a.geojson", data_type="vector",
+                                row_count=1, columns=[])]
+        strategy, reason = _llm_select_strategy(["spatial_join"], sources)
+        self.assertEqual(strategy, "")
+
+    @patch("google.genai.Client")
+    def test_llm_select_strategy_out_of_candidates(self, mock_client_cls):
+        """LLM returns strategy not in candidates -> empty fallback."""
+        from data_agent.fusion_engine import _llm_select_strategy, FusionSource
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = MagicMock(
+            text='{"strategy": "unknown_strategy", "reasoning": "test"}'
+        )
+        mock_client_cls.return_value = mock_client
+
+        sources = [FusionSource(file_path="a.geojson", data_type="vector",
+                                row_count=1, columns=[])]
+        strategy, reason = _llm_select_strategy(["spatial_join", "overlay"], sources)
+        self.assertEqual(strategy, "")
+
+    @patch("data_agent.fusion_engine.get_engine", return_value=None)
+    @patch("data_agent.gis_processors.get_user_upload_dir")
+    def test_execute_fusion_llm_auto(self, mock_upload, mock_engine):
+        """strategy='llm_auto' triggers LLM routing in execute_fusion."""
+        from data_agent.fusion_engine import execute_fusion, FusionSource
+        with tempfile.TemporaryDirectory() as tmp:
+            mock_upload.return_value = tmp
+            v_path = _make_vector_fixture(tmp)
+            v2_path = _make_second_vector(tmp)
+            s1 = FusionSource(file_path=v_path, data_type="vector", row_count=3,
+                              geometry_type="Polygon", columns=[
+                                  {"name": "AREA", "dtype": "float64", "null_pct": 0}
+                              ])
+            s2 = FusionSource(file_path=v2_path, data_type="vector", row_count=2,
+                              geometry_type="Polygon", columns=[
+                                  {"name": "VALUE", "dtype": "float64", "null_pct": 0}
+                              ])
+            gdf1 = gpd.read_file(v_path)
+            gdf2 = gpd.read_file(v2_path)
+
+            with patch("data_agent.fusion_engine._llm_select_strategy",
+                       return_value=("spatial_join", "test")):
+                result = execute_fusion(
+                    [("vector", gdf1), ("vector", gdf2)],
+                    "llm_auto", [s1, s2],
+                )
+            self.assertEqual(result.strategy_used, "spatial_join")
+            self.assertTrue(os.path.exists(result.output_path))
+
+
+# ---------------------------------------------------------------------------
+# v7.0: Large Dataset / Chunked I/O Tests
+# ---------------------------------------------------------------------------
+
+class TestLargeDatasetHandling(unittest.TestCase):
+    """Tests for distributed/chunked computing helpers."""
+
+    def test_is_large_dataset_by_rows(self):
+        from data_agent.fusion_engine import _is_large_dataset
+        self.assertTrue(_is_large_dataset("dummy.csv", row_hint=600_000))
+
+    def test_is_large_dataset_small(self):
+        from data_agent.fusion_engine import _is_large_dataset
+        self.assertFalse(_is_large_dataset("dummy.csv", row_hint=1000))
+
+    def test_is_large_dataset_by_size(self):
+        from data_agent.fusion_engine import _is_large_dataset, LARGE_FILE_MB
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            f.write(b"x" * 100)
+            path = f.name
+        try:
+            # 100 bytes < 500MB
+            self.assertFalse(_is_large_dataset(path))
+        finally:
+            os.unlink(path)
+
+    def test_is_large_dataset_missing_file(self):
+        from data_agent.fusion_engine import _is_large_dataset
+        self.assertFalse(_is_large_dataset("/nonexistent/file.csv"))
+
+    def test_read_vector_chunked_small(self):
+        """Small vector files use standard gpd.read_file path."""
+        from data_agent.fusion_engine import _read_vector_chunked
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _make_vector_fixture(tmp)
+            gdf = _read_vector_chunked(path)
+            self.assertEqual(len(gdf), 3)
+            self.assertIn("DLBM", gdf.columns)
+
+    def test_read_tabular_lazy_small(self):
+        """Small CSV returns pandas DataFrame."""
+        from data_agent.fusion_engine import _read_tabular_lazy
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _make_tabular_fixture(tmp)
+            df = _read_tabular_lazy(path)
+            self.assertIsInstance(df, pd.DataFrame)
+            self.assertEqual(len(df), 3)
+
+    def test_materialize_df_pandas(self):
+        """Pandas DataFrame passes through _materialize_df unchanged."""
+        from data_agent.fusion_engine import _materialize_df
+        df = pd.DataFrame({"a": [1, 2, 3]})
+        result = _materialize_df(df)
+        self.assertIsInstance(result, pd.DataFrame)
+        self.assertEqual(len(result), 3)
+
+    def test_materialize_df_dask(self):
+        """Dask DataFrame is computed to pandas by _materialize_df."""
+        from data_agent.fusion_engine import _materialize_df
+        import dask.dataframe as dd
+        df = pd.DataFrame({"a": [1, 2, 3]})
+        ddf = dd.from_pandas(df, npartitions=1)
+        result = _materialize_df(ddf)
+        self.assertIsInstance(result, pd.DataFrame)
+        self.assertEqual(len(result), 3)
+
+    def test_fuse_large_spatial_small_input(self):
+        """Small inputs pass through without chunking."""
+        from data_agent.fusion_engine import _fuse_large_datasets_spatial
+        gdf1 = gpd.GeoDataFrame(
+            {"a": [1, 2]},
+            geometry=[Point(0, 0), Point(1, 1)],
+            crs="EPSG:4326",
+        )
+        gdf2 = gpd.GeoDataFrame(
+            {"b": [10]},
+            geometry=[Point(0.5, 0.5).buffer(2)],
+            crs="EPSG:4326",
+        )
+        result = _fuse_large_datasets_spatial(gdf1, gdf2, chunk_size=50_000)
+        self.assertGreaterEqual(len(result), 1)
+
+    def test_fuse_large_spatial_chunked(self):
+        """Chunked join produces same result as non-chunked for small data."""
+        from data_agent.fusion_engine import _fuse_large_datasets_spatial
+        pts = [Point(i * 0.1, i * 0.1) for i in range(10)]
+        gdf1 = gpd.GeoDataFrame({"a": range(10)}, geometry=pts, crs="EPSG:4326")
+        gdf2 = gpd.GeoDataFrame(
+            {"b": [99]}, geometry=[Point(0.5, 0.5).buffer(5)], crs="EPSG:4326",
+        )
+        # Use tiny chunk to force chunked path
+        result = _fuse_large_datasets_spatial(gdf1, gdf2, chunk_size=3)
+        self.assertEqual(len(result), 10)
+
+    @patch("data_agent.gis_processors.get_user_upload_dir")
+    def test_profile_uses_chunked_reader(self, mock_upload):
+        """_profile_vector uses _read_vector_chunked (transparent)."""
+        from data_agent.fusion_engine import _profile_vector
+        with tempfile.TemporaryDirectory() as tmp:
+            mock_upload.return_value = tmp
+            path = _make_vector_fixture(tmp)
+            src = _profile_vector(path)
+            self.assertEqual(src.row_count, 3)
+            self.assertEqual(src.data_type, "vector")

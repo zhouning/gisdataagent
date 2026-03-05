@@ -1,6 +1,11 @@
 """
 Multi-modal Data Fusion Engine — intelligent fusion of heterogeneous data sources.
 
+v7.0: Enhanced with four major improvements:
+  - Vector embedding semantic matching (Gemini text-embedding-004) for long-tail fields
+  - LLM-enhanced strategy routing (Gemini 2.0 Flash) for intent-aware fusion
+  - Distributed/chunked computing for large datasets (>500K rows / >500MB)
+
 v5.6: Enhanced with MGIM-inspired improvements:
   - Fuzzy semantic field matching (SequenceMatcher) replacing hardcoded-only groups
   - Active unit detection & conversion (m²↔亩, m↔km, etc.)
@@ -32,6 +37,7 @@ Fusion strategies:
 """
 
 import json
+import logging
 import os
 import re
 import time
@@ -50,6 +56,50 @@ from .gis_processors import _generate_output_path, _resolve_path
 from .user_context import current_user_id
 
 from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Embedding-based Semantic Matching (v7.0)
+# ---------------------------------------------------------------------------
+
+_embedding_cache: dict[str, list[float]] = {}
+_EMBEDDING_MODEL = "text-embedding-004"
+
+
+def _get_embeddings(texts: list[str]) -> list[list[float]]:
+    """Get embedding vectors for field names using Gemini embedding API.
+
+    Uses module-level cache to avoid redundant API calls.
+    Returns empty list on failure (graceful degradation).
+    """
+    uncached = [t for t in texts if t not in _embedding_cache]
+    if uncached:
+        try:
+            from google import genai
+            client = genai.Client()
+            response = client.models.embed_content(
+                model=_EMBEDDING_MODEL,
+                contents=uncached,
+            )
+            for txt, emb in zip(uncached, response.embeddings):
+                _embedding_cache[txt] = emb.values
+        except Exception as e:
+            logger.warning("Embedding API failed: %s — skipping embedding tier", e)
+            return []
+    return [_embedding_cache.get(t, []) for t in texts]
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors."""
+    if not a or not b:
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x ** 2 for x in a) ** 0.5
+    norm_b = sum(x ** 2 for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +219,106 @@ def _resample_raster_to_match(
                 )
 
     return out_path
+
+
+# ---------------------------------------------------------------------------
+# Large Dataset Detection & Chunked I/O (v7.0)
+# ---------------------------------------------------------------------------
+
+LARGE_ROW_THRESHOLD = 500_000
+LARGE_FILE_MB = 500
+
+
+def _is_large_dataset(file_path: str, row_hint: int = 0) -> bool:
+    """Check if a dataset exceeds the large-data threshold.
+
+    Returns True if row_hint > 500K or file size > 500MB.
+    """
+    if row_hint > LARGE_ROW_THRESHOLD:
+        return True
+    try:
+        size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        return size_mb > LARGE_FILE_MB
+    except OSError:
+        return False
+
+
+def _read_vector_chunked(path: str, chunk_size: int = 100_000) -> gpd.GeoDataFrame:
+    """Read a vector file, using chunked reading for large files.
+
+    For files below the threshold, uses standard gpd.read_file().
+    For large files, reads in chunks via fiona row slicing.
+    """
+    if not _is_large_dataset(path):
+        return gpd.read_file(path)
+
+    logger.info("Large vector file detected (%s), using chunked reading", path)
+    import fiona
+
+    chunks = []
+    with fiona.open(path) as src:
+        total = len(src)
+        if total <= chunk_size:
+            return gpd.read_file(path)
+        for start in range(0, total, chunk_size):
+            chunk = gpd.read_file(path, rows=slice(start, start + chunk_size))
+            chunks.append(chunk)
+
+    return pd.concat(chunks, ignore_index=True)
+
+
+def _read_tabular_lazy(path: str):
+    """Read a tabular file, using dask for large CSV files.
+
+    Returns a dask DataFrame for large CSVs, pandas DataFrame otherwise.
+    Callers that need pandas can call .compute() on dask results.
+    """
+    ext = os.path.splitext(path)[1].lower()
+    if not _is_large_dataset(path):
+        if ext in (".xlsx", ".xls"):
+            return pd.read_excel(path)
+        return pd.read_csv(path, encoding="utf-8")
+
+    logger.info("Large tabular file detected (%s), using lazy reading", path)
+    if ext == ".csv":
+        import dask.dataframe as dd
+        return dd.read_csv(path, encoding="utf-8")
+    # Excel not supported by dask — fallback to pandas
+    if ext in (".xlsx", ".xls"):
+        return pd.read_excel(path)
+    return pd.read_csv(path, encoding="utf-8")
+
+
+def _materialize_df(df) -> pd.DataFrame:
+    """Convert dask DataFrame to pandas if needed."""
+    if hasattr(df, "compute"):
+        return df.compute()
+    return df
+
+
+def _fuse_large_datasets_spatial(
+    gdf_left: gpd.GeoDataFrame,
+    gdf_right: gpd.GeoDataFrame,
+    predicate: str = "intersects",
+    chunk_size: int = 50_000,
+) -> gpd.GeoDataFrame:
+    """Chunked spatial join for large datasets.
+
+    Splits the left GeoDataFrame into chunks, joins each chunk
+    with the right GeoDataFrame (using its spatial index), then concatenates.
+    """
+    if len(gdf_left) <= chunk_size:
+        return gpd.sjoin(gdf_left, gdf_right, how="left", predicate=predicate)
+
+    logger.info("Using chunked spatial join: %d left rows in %d-row chunks",
+                len(gdf_left), chunk_size)
+    results = []
+    for start in range(0, len(gdf_left), chunk_size):
+        chunk = gdf_left.iloc[start:start + chunk_size]
+        joined = gpd.sjoin(chunk, gdf_right, how="left", predicate=predicate)
+        results.append(joined)
+
+    return pd.concat(results, ignore_index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -315,7 +465,7 @@ def profile_source(file_path: str) -> FusionSource:
 
 def _profile_vector(path: str) -> FusionSource:
     """Profile a vector data source."""
-    gdf = gpd.read_file(path)
+    gdf = _read_vector_chunked(path)
     crs_str = str(gdf.crs) if gdf.crs else None
     bounds = tuple(gdf.total_bounds) if len(gdf) > 0 else None
 
@@ -408,11 +558,7 @@ def _profile_raster(path: str) -> FusionSource:
 
 def _profile_tabular(path: str) -> FusionSource:
     """Profile a tabular (CSV/Excel) data source."""
-    ext = os.path.splitext(path)[1].lower()
-    if ext in (".xlsx", ".xls"):
-        df = pd.read_excel(path)
-    else:
-        df = pd.read_csv(path, encoding="utf-8")
+    df = _materialize_df(_read_tabular_lazy(path))
 
     columns = []
     stats = {}
@@ -472,13 +618,17 @@ def _profile_point_cloud(path: str) -> FusionSource:
 # Compatibility Assessment
 # ---------------------------------------------------------------------------
 
-def assess_compatibility(sources: list[FusionSource]) -> CompatibilityReport:
+def assess_compatibility(
+    sources: list[FusionSource],
+    use_embedding: bool = False,
+) -> CompatibilityReport:
     """Assess fusion compatibility between data sources.
 
     Checks CRS consistency, spatial overlap, and field semantic matches.
 
     Args:
         sources: List of profiled FusionSource objects.
+        use_embedding: If True, enable Gemini embedding-based field matching.
 
     Returns:
         CompatibilityReport with overall score and recommendations.
@@ -506,7 +656,7 @@ def assess_compatibility(sources: list[FusionSource]) -> CompatibilityReport:
             warnings.append("Very low spatial overlap between sources.")
 
     # --- Field semantic matching ---
-    field_matches = _find_field_matches(sources)
+    field_matches = _find_field_matches(sources, use_embedding=use_embedding)
 
     # --- Recommended strategies ---
     type_pair = (sources[0].data_type, sources[1].data_type)
@@ -691,12 +841,16 @@ def _types_compatible(dtype_a: str, dtype_b: str) -> bool:
     return True
 
 
-def _find_field_matches(sources: list[FusionSource]) -> list[dict]:
+def _find_field_matches(
+    sources: list[FusionSource],
+    use_embedding: bool = False,
+) -> list[dict]:
     """Find semantically matching fields across sources.
 
-    Uses four matching tiers (progressive semantic resolution):
+    Uses progressive semantic matching tiers:
       1. Exact match (case-insensitive) — confidence 1.0
       2. Equivalence group match (hardcoded + catalog-driven) — confidence 0.8
+      2.5. Embedding match (Gemini text-embedding-004, opt-in) — confidence 0.78
       3. Unit-aware matching — confidence 0.75
       4. Tokenized fuzzy match with type compatibility — confidence 0.5-0.7
     """
@@ -731,6 +885,51 @@ def _find_field_matches(sources: list[FusionSource]) -> list[dict]:
                     matches.append({"left": lv, "right": rv, "confidence": 0.8})
                     matched_right.add(rk)
                     break
+
+    # Tier 2.5: Embedding-based semantic matching (opt-in, Gemini API)
+    if use_embedding:
+        unmatched_left_emb = {lk: lv for lk, lv in left_cols.items()
+                              if not any(m["left"].lower() == lk for m in matches)}
+        unmatched_right_emb = {rk: rv for rk, rv in right_cols.items()
+                               if rk not in matched_right}
+        if unmatched_left_emb and unmatched_right_emb:
+            left_texts = [f"{lv} ({left_dtypes.get(lk, '')})"
+                          for lk, lv in unmatched_left_emb.items()]
+            right_texts = [f"{rv} ({right_dtypes.get(rk, '')})"
+                           for rk, rv in unmatched_right_emb.items()]
+            left_embeddings = _get_embeddings(left_texts)
+            right_embeddings = _get_embeddings(right_texts)
+
+            if left_embeddings and right_embeddings:
+                left_keys = list(unmatched_left_emb.keys())
+                right_keys = list(unmatched_right_emb.keys())
+                for i, lk in enumerate(left_keys):
+                    if not left_embeddings[i]:
+                        continue
+                    best_sim = 0.0
+                    best_rk = None
+                    for j, rk in enumerate(right_keys):
+                        if rk in matched_right or not right_embeddings[j]:
+                            continue
+                        if not _types_compatible(
+                            left_dtypes.get(lk, ""), right_dtypes.get(rk, "")
+                        ):
+                            continue
+                        sim = _cosine_similarity(
+                            left_embeddings[i], right_embeddings[j]
+                        )
+                        if sim > best_sim and sim >= 0.75:
+                            best_sim = sim
+                            best_rk = rk
+                    if best_rk is not None:
+                        matches.append({
+                            "left": unmatched_left_emb[lk],
+                            "right": unmatched_right_emb[best_rk],
+                            "confidence": 0.78,
+                            "match_type": "embedding",
+                            "similarity": round(best_sim, 3),
+                        })
+                        matched_right.add(best_rk)
 
     # Tier 3: Unit-aware matching
     for lk, lv in left_cols.items():
@@ -869,7 +1068,7 @@ def align_sources(
 
     for src in sources:
         if src.data_type == "vector":
-            gdf = gpd.read_file(src.file_path)
+            gdf = _read_vector_chunked(src.file_path)
             if gdf.crs and str(gdf.crs) != target_crs:
                 gdf = gdf.to_crs(target_crs)
                 log.append(f"Reprojected {os.path.basename(src.file_path)} "
@@ -889,11 +1088,7 @@ def align_sources(
             loaded.append(("raster", raster_path))
 
         elif src.data_type == "tabular":
-            ext = os.path.splitext(src.file_path)[1].lower()
-            if ext in (".xlsx", ".xls"):
-                df = pd.read_excel(src.file_path)
-            else:
-                df = pd.read_csv(src.file_path, encoding="utf-8")
+            df = _materialize_df(_read_tabular_lazy(src.file_path))
             loaded.append(("tabular", df))
 
         elif src.data_type == "point_cloud":
@@ -976,14 +1171,18 @@ def execute_fusion(
     strategy: str,
     sources: list[FusionSource],
     params: Optional[dict] = None,
+    report: CompatibilityReport | None = None,
+    user_hint: str = "",
 ) -> FusionResult:
     """Execute a fusion strategy on aligned data.
 
     Args:
         aligned_data: List of (data_type, data_object) tuples from align_sources.
-        strategy: Fusion strategy name.
+        strategy: Fusion strategy name ('auto', 'llm_auto', or specific strategy).
         sources: Original source profiles (for provenance).
         params: Strategy-specific parameters (join_column, spatial_predicate, etc.).
+        report: Compatibility report (used by LLM routing).
+        user_hint: User intent description (used by LLM routing).
 
     Returns:
         FusionResult with output path and quality metrics.
@@ -991,8 +1190,12 @@ def execute_fusion(
     params = params or {}
     start = time.time()
 
-    if strategy == "auto":
-        strategy = _auto_select_strategy(aligned_data, sources)
+    use_llm = strategy == "llm_auto"
+    if strategy in ("auto", "llm_auto"):
+        strategy = _auto_select_strategy(
+            aligned_data, sources,
+            report=report, user_hint=user_hint, use_llm=use_llm,
+        )
 
     strategy_fn = _STRATEGY_REGISTRY.get(strategy)
     if not strategy_fn:
@@ -1034,9 +1237,13 @@ def execute_fusion(
 def _auto_select_strategy(
     aligned_data: list[tuple[str, object]],
     sources: list[FusionSource],
+    report: CompatibilityReport | None = None,
+    user_hint: str = "",
+    use_llm: bool = False,
 ) -> str:
     """Automatically select the best fusion strategy based on data characteristics.
 
+    v7.0: Optional LLM-enhanced routing via use_llm=True.
     v5.6: Data-aware scoring replaces always-pick-first approach (MGIM-inspired
     context-aware reasoning). Considers:
       - Spatial overlap IoU (prefer nearest_join when low)
@@ -1059,8 +1266,21 @@ def _auto_select_strategy(
     if len(strategies) == 1:
         return strategies[0]
 
-    # Score each candidate strategy
-    return _score_strategies(strategies, aligned_data, sources)
+    # Rule-based scoring
+    best_rule = _score_strategies(strategies, aligned_data, sources)
+
+    if not use_llm:
+        return best_rule
+
+    # LLM-enhanced routing: consult Gemini for strategy recommendation
+    llm_strategy, reasoning = _llm_select_strategy(
+        strategies, sources, report, user_hint
+    )
+    if llm_strategy:
+        logger.info("LLM recommended strategy: %s — %s", llm_strategy, reasoning)
+        return llm_strategy
+
+    return best_rule
 
 
 def _score_strategies(
@@ -1112,6 +1332,67 @@ def _score_strategies(
         scores[strategy] = round(score, 2)
 
     return max(scores, key=scores.get)
+
+
+def _llm_select_strategy(
+    candidates: list[str],
+    sources: list[FusionSource],
+    report: CompatibilityReport | None = None,
+    user_hint: str = "",
+) -> tuple[str, str]:
+    """Use Gemini to reason about the best fusion strategy.
+
+    Returns (selected_strategy, reasoning) or ("", "") on failure.
+    """
+    source_info = json.dumps([{
+        "file": os.path.basename(s.file_path),
+        "type": s.data_type,
+        "rows": s.row_count,
+        "geometry": s.geometry_type,
+        "columns": len(s.columns),
+    } for s in sources], ensure_ascii=False, indent=2)
+
+    report_info = ""
+    if report:
+        report_info = (
+            f"CRS兼容: {report.crs_compatible}\n"
+            f"空间重叠IoU: {report.spatial_overlap_iou}\n"
+            f"字段匹配数: {len(report.field_matches)}\n"
+            f"总体评分: {report.overall_score}"
+        )
+
+    prompt = (
+        "你是多模态数据融合专家。根据数据源特征和兼容性报告，"
+        "从候选策略中选择最佳融合策略并给出简短理由。\n\n"
+        f"数据源:\n{source_info}\n\n"
+        f"兼容性报告:\n{report_info}\n\n"
+        f"候选策略: {candidates}\n"
+        + (f"用户意图: {user_hint}\n" if user_hint else "")
+        + '\n请返回JSON: {"strategy": "策略名", "reasoning": "理由"}\n'
+        "只返回JSON。"
+    )
+
+    try:
+        from google import genai
+        client = genai.Client()
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
+        text = response.text.strip()
+        # Strip markdown code fence if present
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        result = json.loads(text)
+        strategy = result.get("strategy", "")
+        reasoning = result.get("reasoning", "")
+        if strategy in candidates:
+            return strategy, reasoning
+        logger.warning("LLM suggested '%s' not in candidates %s", strategy, candidates)
+    except Exception as e:
+        logger.warning("LLM strategy routing failed: %s", e)
+
+    return "", ""
 
 
 # ---------------------------------------------------------------------------
@@ -1219,7 +1500,7 @@ def _strategy_spatial_join(aligned: list, params: dict) -> tuple[gpd.GeoDataFram
     gdf_left = _extract_geodataframe(aligned, 0)
     gdf_right = _extract_geodataframe(aligned, 1)
 
-    result = gpd.sjoin(gdf_left, gdf_right, how="left", predicate=predicate)
+    result = _fuse_large_datasets_spatial(gdf_left, gdf_right, predicate=predicate)
 
     # Clean up index_right column
     if "index_right" in result.columns:
