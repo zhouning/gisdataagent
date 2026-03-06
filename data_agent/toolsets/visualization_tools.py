@@ -155,7 +155,12 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
         zoom: 可选，缩放级别(1-18)。不指定则自动计算。
     """
     try:
-        gdf_orig = _load_spatial_data(original_data_path).to_crs(epsg=4326)
+        gdf_orig = _load_spatial_data(original_data_path)
+        # Ensure CRS is set before transforming. Assume WGS84 or project default if not set.
+        if gdf_orig.crs is None:
+            gdf_orig.set_crs(epsg=4326, inplace=True)
+            print("[Warning] No CRS found in original data. Assuming EPSG:4326 for map rendering.")
+        gdf_orig = gdf_orig.to_crs(epsg=4326)
 
         if center_lat is not None and center_lng is not None:
             center = [center_lat, center_lng]
