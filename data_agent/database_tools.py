@@ -111,6 +111,19 @@ def query_database(sql_query: str) -> dict:
                         return g
                     df[geom_col] = df[geom_col].apply(parse_geom)
                     gdf = gpd.GeoDataFrame(df, geometry=geom_col)
+                    
+                    # Try to detect SRID from PostGIS metadata
+                    try:
+                        srid_res = conn.execute(text(
+                            "SELECT srid FROM geometry_columns WHERE f_table_name = :t"
+                        ), {"t": table_name if 'table_name' in locals() else ""}).fetchone()
+                        if srid_res and srid_res[0]:
+                            gdf.set_crs(epsg=srid_res[0], inplace=True)
+                        elif "banzhu" in sql_query.lower(): # Heuristic for this specific project
+                            gdf.set_crs(epsg=4523, inplace=True)
+                    except Exception:
+                        pass
+
                     out_path = _generate_output_path("query_result", "shp")
                     gdf.to_file(out_path, encoding='utf-8')
                 else:
