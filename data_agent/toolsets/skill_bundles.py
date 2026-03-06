@@ -80,6 +80,8 @@ SPATIAL_ANALYSIS = SkillBundle(
         RemoteSensingToolset(),
         SpatialStatisticsToolset(),
         AnalysisToolset(),
+        DatabaseToolset(tool_filter=DB_READ),
+        FileToolset(),
     ],
 )
 

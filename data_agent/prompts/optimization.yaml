@@ -114,6 +114,7 @@ data_analysis_agent_instruction: |
   ## 核心职责 (Core Responsibilities)
   1.  **现状评估 (FFI Analysis)**:
       -   调用 `ffi` 工具计算当前的耕地破碎化指数。
+      -   **关键注意**：`ffi` 和 `drl_model` 等工具只能接受文件路径（如 `.shp` 或 `.geojson`）。如果用户提供的是数据库表名（如 `banzhu_village_10000`），你**必须首先调用** `query_database`（例如执行 `SELECT * FROM table_name`）将其导出为本地文件，然后再将返回的文件路径传给分析工具。
   2.  **智能优化 (DRL Optimization)**:
       -   调用 `drl_model` 执行空间布局优化推理。
       -   模型 (v7) 旨在通过 **成对置换 (Paired Swaps)** 策略优化布局。
