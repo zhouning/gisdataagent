@@ -143,10 +143,10 @@ cd frontend && npm install && npm run dev
 | | 可视化编辑器 | React Flow 拖拽编辑，3 种自定义节点 |
 | | 定时执行 | APScheduler Cron 调度 |
 | | Webhook 推送 | 执行完成后 HTTP POST 结果 |
-| **数据** | 数据湖 | 统一数据目录 + 血缘追踪（本地/云/PostGIS） |
+| **数据** | 数据湖 | 统一数据目录 + 血缘追踪 + 资产一键下载（本地/云/PostGIS） |
 | | 实时流 | Redis Streams 地理围栏告警 + IoT 数据 |
 | | 遥感分析 | 栅格分析、NDVI、LULC/DEM 下载 |
-| **前端** | 三面板 UI | 对话 + 地图 + 数据；React 18 + Leaflet + deck.gl |
+| **前端** | 三面板 UI | 对话 + 地图 + 数据；支持 HTML/CSV 伪影渲染；React 18 + Leaflet + deck.gl |
 | | Token 仪表盘 | 每用户日/月用量 + 管线分布可视化 |
 | | 地图标注 | 协作式点击标注 + 团队共享 |
 | | 底图切换 | 高德、天地图、CartoDB、OSM |
