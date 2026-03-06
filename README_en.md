@@ -143,10 +143,10 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Visual Editor | React Flow drag-and-drop with 3 custom node types |
 | | Scheduled Execution | APScheduler cron triggers |
 | | Webhook Push | HTTP POST results on completion |
-| **Data** | Data Lake | Unified data catalog across local/cloud/PostGIS backends with lineage tracking |
+| **Data** | Data Lake | Unified data catalog + lineage tracking + one-click asset download (local/cloud/PostGIS) |
 | | Real-time Streams | Redis Streams with geofence alerts + IoT data |
 | | Remote Sensing | Raster analysis, NDVI, LULC/DEM download |
-| **Frontend** | Three-Panel UI | Chat + Map + Data panels; React 18 + Leaflet + deck.gl |
+| **Frontend** | Three-Panel UI | Chat + Map + Data panels; HTML/CSV artifact rendering support; React 18 + Leaflet + deck.gl |
 | | Token Dashboard | Per-user daily/monthly usage with pipeline breakdown visualization |
 | | Map Annotations | Collaborative click-to-add annotations with team sharing |
 | | Basemap Switcher | Gaode, Tianditu (conditional), CartoDB, OpenStreetMap |
