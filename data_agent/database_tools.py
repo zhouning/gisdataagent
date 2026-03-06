@@ -79,30 +79,53 @@ def query_database(sql_query: str) -> dict:
     if not engine:
         return {"status": "error", "message": "Database credentials not configured in .env"}
 
+    # Security: Block non-query statements to prevent data modification
+    sql_lower = sql_query.strip().lower()
+    if not (sql_lower.startswith("select") or sql_lower.startswith("with")):
+        return {"status": "error", "message": "Only SELECT or WITH queries are allowed for security reasons."}
+
     try:
         with engine.connect() as conn:
+            # Enforce read-only transaction at the database level
+            conn.execute(text("SET TRANSACTION READ ONLY"))
+            
             # Inject user context for RLS (Row-Level Security)
             _inject_user_context(conn)
 
-            # Execute query to get cursor/result proxy
+            # Execute query to get cursor/result proxy (executes only ONCE)
             result_proxy = conn.execute(text(sql_query))
             keys = list(result_proxy.keys())
+            rows = result_proxy.fetchall()
 
             # Check if any column looks like geometry
             geom_col = next((k for k in keys if k.lower() in ['geometry', 'geom', 'shape']), None)
 
             if geom_col:
-                gdf = gpd.read_postgis(sql_query, conn, geom_col=geom_col)
-                out_path = _generate_output_path("query_result", "shp")
-                gdf.to_file(out_path, encoding='utf-8')
+                df = pd.DataFrame(rows, columns=keys)
+                if not df.empty:
+                    from shapely import wkb
+                    def parse_geom(g):
+                        if g is None: return None
+                        if isinstance(g, str): return wkb.loads(g, hex=True)
+                        if isinstance(g, (bytes, memoryview)): return wkb.loads(bytes(g))
+                        return g
+                    df[geom_col] = df[geom_col].apply(parse_geom)
+                    gdf = gpd.GeoDataFrame(df, geometry=geom_col)
+                    out_path = _generate_output_path("query_result", "shp")
+                    gdf.to_file(out_path, encoding='utf-8')
+                else:
+                    # Save as CSV if empty to avoid Shapefile writer error
+                    out_path = _generate_output_path("query_result", "csv")
+                    df.to_csv(out_path, index=False)
+                    
                 return {
                     "status": "success",
                     "output_path": out_path,
-                    "rows": len(gdf),
-                    "message": f"Spatial query returned {len(gdf)} rows. Saved to {out_path}"
+                    "rows": len(df),
+                    "message": f"Spatial query returned {len(df)} rows. Saved to {out_path}"
                 }
             else:
-                df = pd.DataFrame(result_proxy.fetchall(), columns=keys)
+                df = pd.DataFrame(rows, columns=keys)
                 out_path = _generate_output_path("query_result", "csv")
                 df.to_csv(out_path, index=False)
                 return {

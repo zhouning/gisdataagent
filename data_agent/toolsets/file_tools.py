@@ -74,8 +74,11 @@ def delete_user_file(file_name: str) -> str:
         from ..user_context import get_user_upload_dir, current_user_id
         user_dir = get_user_upload_dir()
         target = os.path.join(user_dir, file_name)
-        target = os.path.normpath(target)
-        if not target.startswith(os.path.normpath(user_dir)):
+        
+        # Security: prevent path traversal (e.g. "../other_user/file")
+        real_user_dir = os.path.realpath(user_dir)
+        real_target = os.path.realpath(target)
+        if not real_target.startswith(real_user_dir + os.sep) and real_target != real_user_dir:
             return "安全限制：不允许访问用户目录以外的文件。"
 
         deleted_local = False
