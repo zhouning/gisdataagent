@@ -662,6 +662,38 @@ def find_within_distance(target_file: str, reference_file: str, distance: float 
     except Exception as e:
         return f"Error in find_within_distance: {str(e)}"
 
+def filter_vector_data(file_path: str, expression: str) -> str:
+    """
+    [GIS Tool] Filters vector data using a query expression and saves the result to a new file.
+    
+    Args:
+        file_path: Path to the input spatial file or PostGIS table name.
+        expression: A pandas-style query expression, e.g., "dlbm == '0101'" or "area > 1000".
+                   If input is a table, simple SQL-like field names are supported.
+    Returns:
+        Path to the filtered output Shapefile.
+    """
+    try:
+        from .utils import _load_spatial_data
+        gdf = _load_spatial_data(file_path)
+        if gdf.empty:
+            return f"Error: Input data is empty."
+        
+        # Clean expression (replace !field! or "field" if LLM uses them)
+        import re
+        clean_expr = re.sub(r'!(\w+)!', r'`\1`', expression)
+        
+        filtered_gdf = gdf.query(clean_expr)
+        if filtered_gdf.empty:
+            return f"Warning: Filter expression '{expression}' returned no records."
+            
+        out_path = _generate_output_path("filtered", "shp")
+        filtered_gdf.to_file(out_path, encoding='utf-8')
+        return out_path
+    except Exception as e:
+        return f"Error filtering data: {str(e)}"
+
+
 def check_topology(file_path: str) -> dict[str, any]:
     """
     [Governance Tool] Scans GIS data for topological errors: self-intersections, overlaps, and multi-part geometries.

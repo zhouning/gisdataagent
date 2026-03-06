@@ -20,6 +20,7 @@ from ..gis_processors import (
     add_join,
     calculate_field,
     summary_statistics,
+    filter_vector_data,
 )
 
 # ArcPy tools (optional)
@@ -66,6 +67,7 @@ _CORE_FUNCS = [
     add_join,
     calculate_field,
     summary_statistics,
+    filter_vector_data,
 ]
 
 
