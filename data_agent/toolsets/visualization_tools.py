@@ -206,7 +206,10 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
                     folium.Marker([row.geometry.y, row.geometry.x]).add_to(marker_cluster)
 
         elif optimized_data_path:
-            gdf_opt = _load_spatial_data(optimized_data_path).to_crs(epsg=4326)
+            gdf_opt = _load_spatial_data(optimized_data_path)
+            if gdf_opt.crs is None:
+                gdf_opt.set_crs(epsg=4326, inplace=True)
+            gdf_opt = gdf_opt.to_crs(epsg=4326)
 
             orig_cols = {c.lower(): c for c in gdf_orig.columns}
             dlmc_col = orig_cols.get('dlmc', 'DLMC')
