@@ -90,7 +90,7 @@ _AUDIT_TOOLS = [
 _TRANSFORM_TOOLS = ["reproject_spatial_data", "engineer_spatial_features"]
 _DB_READ = ["query_database", "list_tables"]
 _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
-_DATALAKE_READ = ["list_data_assets", "describe_data_asset", "search_data_assets"]
+_DATALAKE_READ = ["list_data_assets", "describe_data_asset", "search_data_assets", "download_cloud_asset"]
 
 # --- Model Tiering ---
 MODEL_FAST = "gemini-2.0-flash"

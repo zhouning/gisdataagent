@@ -538,6 +538,33 @@ def search_data_assets(query: str) -> dict:
             """)).fetchall()
 
             query_lower = query.lower()
+            # Split query into tokens for partial matching
+            # (e.g. "和平村边界" → ["和平村", "边界"] if Chinese,
+            # Split query into tokens for partial matching.
+            # For Chinese: use n-gram sliding window (2-4 chars) to handle
+            # unsegmented queries like "和平村边界" → ["和平", "平村", "村边", "边界", "和平村", ...]
+            # For English/numbers: split by non-alphanumeric chars.
+            import re as _re
+            raw_tokens = _re.findall(r'[\u4e00-\u9fff]+|[a-zA-Z0-9_]+', query_lower)
+            query_tokens = []
+            for tok in raw_tokens:
+                if _re.match(r'^[\u4e00-\u9fff]+$', tok) and len(tok) > 2:
+                    # Chinese: generate 2-char and 3-char n-grams
+                    for n in (2, 3):
+                        for i in range(len(tok) - n + 1):
+                            query_tokens.append(tok[i:i+n])
+                    query_tokens.append(tok)  # also keep the full token
+                else:
+                    query_tokens.append(tok)
+            # Deduplicate while preserving order
+            seen_tokens = set()
+            unique_tokens = []
+            for t in query_tokens:
+                if t not in seen_tokens:
+                    seen_tokens.add(t)
+                    unique_tokens.append(t)
+            query_tokens = unique_tokens
+
             scored = []
             for r in rows:
                 name = r[1] or ""
@@ -554,8 +581,18 @@ def search_data_assets(query: str) -> dict:
                 if query_lower in searchable:
                     score = 0.9
                 else:
-                    # Fuzzy match
-                    score = SequenceMatcher(None, query_lower, searchable).ratio()
+                    # Token-based matching: count how many query tokens appear
+                    if query_tokens:
+                        hits = sum(1 for t in query_tokens if t in searchable)
+                        token_score = hits / len(query_tokens)
+                    else:
+                        token_score = 0.0
+
+                    # Fuzzy match on name only (more effective than on full text)
+                    name_fuzzy = SequenceMatcher(None, query_lower, name.lower()).ratio()
+
+                    # Take the best score
+                    score = max(token_score * 0.85, name_fuzzy)
 
                 if score >= 0.3:
                     scored.append((score, {
@@ -904,3 +941,99 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
     except Exception:
         pass
     return descendants
+
+
+def download_cloud_asset(asset_name_or_id: str) -> dict:
+    """
+    [Data Lake Tool] Download a cloud-stored data asset to local disk.
+
+    Looks up the asset in the catalog, downloads from cloud storage
+    (OBS/S3/GCS) to the user's local upload directory, and returns
+    the local file path for subsequent analysis.
+
+    For PostGIS assets, returns the table name directly (no download needed).
+    For local assets, returns the existing local path.
+
+    Args:
+        asset_name_or_id: The asset name or numeric ID from the catalog.
+
+    Returns:
+        Dict with status, local_path (for file-based) or postgis_table,
+        and asset metadata.
+    """
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not configured"}
+
+    try:
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+
+            if asset_name_or_id.isdigit():
+                row = conn.execute(text(f"""
+                    SELECT id, asset_name, asset_type, format, storage_backend,
+                           cloud_key, local_path, postgis_table, crs, srid
+                    FROM {T_DATA_CATALOG} WHERE id = :id
+                """), {"id": int(asset_name_or_id)}).fetchone()
+            else:
+                row = conn.execute(text(f"""
+                    SELECT id, asset_name, asset_type, format, storage_backend,
+                           cloud_key, local_path, postgis_table, crs, srid
+                    FROM {T_DATA_CATALOG}
+                    WHERE asset_name ILIKE :name
+                    ORDER BY updated_at DESC LIMIT 1
+                """), {"name": f"%{asset_name_or_id}%"}).fetchone()
+
+            if not row:
+                return {"status": "error",
+                        "message": f"Asset '{asset_name_or_id}' not found"}
+
+            asset_id, name, atype, fmt, backend = row[0], row[1], row[2], row[3], row[4]
+            cloud_key, local_path, pg_table = row[5], row[6], row[7]
+            crs, srid = row[8], row[9]
+
+            meta = {"asset_id": asset_id, "asset_name": name,
+                    "asset_type": atype, "format": fmt, "crs": crs, "srid": srid}
+
+            # PostGIS: no download needed
+            if backend == "postgis" and pg_table:
+                return {"status": "success", "postgis_table": pg_table,
+                        "storage": "postgis", **meta}
+
+            # Local: return existing path
+            if backend == "local" and local_path and os.path.exists(local_path):
+                return {"status": "success", "local_path": local_path,
+                        "storage": "local", **meta}
+
+            # Cloud: download to user's upload dir
+            if backend == "cloud" and cloud_key:
+                from .obs_storage import is_obs_configured, download_file_smart
+                from .user_context import get_user_upload_dir
+
+                if not is_obs_configured():
+                    return {"status": "error",
+                            "message": "Cloud storage not configured"}
+
+                user_dir = get_user_upload_dir()
+                os.makedirs(user_dir, exist_ok=True)
+
+                dl_path = download_file_smart(cloud_key, user_dir)
+                if dl_path and os.path.exists(dl_path):
+                    # Update catalog with local_path for future access
+                    conn.execute(text(f"""
+                        UPDATE {T_DATA_CATALOG}
+                        SET local_path = :lp, updated_at = NOW()
+                        WHERE id = :id
+                    """), {"lp": dl_path, "id": asset_id})
+                    conn.commit()
+                    return {"status": "success", "local_path": dl_path,
+                            "storage": "cloud_downloaded", **meta}
+                else:
+                    return {"status": "error",
+                            "message": f"Failed to download '{cloud_key}' from cloud"}
+
+            return {"status": "error",
+                    "message": f"Cannot resolve asset (backend={backend})"}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

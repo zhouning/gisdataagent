@@ -311,6 +311,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   // Load and render layers
   useEffect(() => {
     if (!mapRef.current) return;
+    console.log('[MapPanel] layers prop changed:', layers.length, 'layers:', JSON.stringify(layers.map(l => ({name: l.name, type: l.type, geojson: l.geojson}))));
 
     const loadLayers = async () => {
       // Clear existing layers
@@ -328,8 +329,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
           // Fetch GeoJSON if we only have a filename
           if (!geojsonData && layerConfig.geojson) {
-            const resp = await fetch(`/api/user/files/${layerConfig.geojson}`);
-            if (!resp.ok) continue;
+            const resp = await fetch(`/api/user/files/${layerConfig.geojson}`, { credentials: 'include' });
+            if (!resp.ok) {
+              console.warn(`[MapPanel] Failed to fetch ${layerConfig.geojson}: ${resp.status}`);
+              continue;
+            }
             geojsonData = await resp.json();
           }
 

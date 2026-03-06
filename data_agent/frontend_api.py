@@ -31,6 +31,15 @@ logger = get_logger("frontend_api")
 
 
 # ---------------------------------------------------------------------------
+# Pending Map/Data Updates (shared with app.py)
+# ---------------------------------------------------------------------------
+# Chainlit's React client does not deliver step-level metadata to the frontend.
+# This in-memory store + polling endpoint provides an alternative delivery path.
+pending_map_updates: dict[str, dict] = {}   # user_id -> map config
+pending_data_updates: dict[str, dict] = {}  # user_id -> data config
+
+
+# ---------------------------------------------------------------------------
 # Auth Helpers
 # ---------------------------------------------------------------------------
 
@@ -764,6 +773,27 @@ async def _api_workflow_runs(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Map/Data Pending Updates Endpoint
+# ---------------------------------------------------------------------------
+
+async def _api_map_pending(request: Request):
+    """GET /api/map/pending — pop and return pending map/data updates for current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    uid = current_user_id.get("")
+    result = {}
+    map_cfg = pending_map_updates.pop(uid, None)
+    if map_cfg:
+        result["map_update"] = map_cfg
+    data_cfg = pending_data_updates.pop(uid, None)
+    if data_cfg:
+        result["data_update"] = data_cfg
+    return JSONResponse(result)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -801,6 +831,8 @@ def get_frontend_api_routes():
         Route("/api/workflows/{id:int}", endpoint=_api_workflow_delete, methods=["DELETE"]),
         Route("/api/workflows/{id:int}/execute", endpoint=_api_workflow_execute, methods=["POST"]),
         Route("/api/workflows/{id:int}/runs", endpoint=_api_workflow_runs, methods=["GET"]),
+        # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
+        Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
     ]
 
 

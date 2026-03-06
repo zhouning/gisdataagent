@@ -4,6 +4,7 @@ import os
 import re
 import asyncio
 import time
+import json
 import zipfile
 import shutil
 from typing import List, Dict, Optional
@@ -1673,6 +1674,11 @@ async def _execute_pipeline(
 
     final_msg = cl.Message(content="")
     shown_artifacts = set()
+    _pending_elements = []      # artifacts detected from tool responses
+    _pending_map_update = None  # map config from tool responses
+    _pending_data_update = None # data update from tool responses
+    _final_map_update = None    # accumulated map config (not cleared during flush, injected into final_msg)
+    _final_data_update = None   # accumulated data update
     current_agent_name = None
     current_agent_step = None
     current_tool_step = None
@@ -1810,6 +1816,44 @@ async def _execute_pipeline(
                                 ).send()
                         except Exception:
                             pass
+                        # Extract artifacts from tool response (map HTML, files)
+                        # so MapPanel rendering works even if LLM doesn't output paths
+                        try:
+                            _resp_str = ""
+                            _resp_val = part.function_response.response
+                            if isinstance(_resp_val, str):
+                                _resp_str = _resp_val
+                            elif isinstance(_resp_val, dict):
+                                _resp_str = str(_resp_val.get("output_path", "")) + " " + str(_resp_val.get("message", ""))
+                            _tool_artifacts = extract_file_paths(_resp_str)
+                            logger.info(f"[ArtifactDetect] tool_resp_type={type(_resp_val).__name__}, resp_str_len={len(_resp_str)}, artifacts={len(_tool_artifacts)}")
+                            for _ta in _tool_artifacts:
+                                _ta_path = _ta['path']
+                                logger.info(f"[ArtifactDetect] Found: {_ta_path} (type={_ta['type']}, already_shown={_ta_path in shown_artifacts})")
+                                if _ta_path not in shown_artifacts:
+                                    _ta_name = os.path.basename(_ta_path)
+                                    if _ta['type'] == 'html':
+                                        _pending_elements.append(cl.File(path=_ta_path, name=_ta_name))
+                                        shown_artifacts.add(_ta_path)
+                                        _cfg_path = _ta_path.replace('.html', '.mapconfig.json')
+                                        if os.path.exists(_cfg_path):
+                                            try:
+                                                with open(_cfg_path, 'r', encoding='utf-8') as _mcf:
+                                                    _mc_data = json.load(_mcf)
+                                                    _pending_map_update = _mc_data
+                                                    _final_map_update = _mc_data
+                                            except Exception:
+                                                pass
+                                    elif _ta['type'] == 'png':
+                                        _pending_elements.append(cl.Image(path=_ta_path, name=_ta_name, display="inline"))
+                                        shown_artifacts.add(_ta_path)
+                                    elif _ta['type'] == 'csv':
+                                        _pending_elements.append(cl.File(path=_ta_path, name=_ta_name))
+                                        shown_artifacts.add(_ta_path)
+                                        _pending_data_update = {"file": _ta_name}
+                                        _final_data_update = {"file": _ta_name}
+                        except Exception:
+                            pass
                         # Sync tool output files to OBS and register in data catalog
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
@@ -1862,6 +1906,8 @@ async def _execute_pipeline(
                     full_response_text += part.text
 
                     found = extract_file_paths(part.text)
+                    if found:
+                        logger.info(f"[ArtifactText] Found {len(found)} artifacts in LLM text: {[a['path'] for a in found]}")
                     elements = []
                     msg_metadata = {}
                     for artifact in found:
@@ -1877,19 +1923,50 @@ async def _execute_pipeline(
                             shown_artifacts.add(path)
                             # Check for mapconfig.json alongside HTML
                             config_path = path.replace('.html', '.mapconfig.json')
-                            if os.path.exists(config_path):
+                            _cfg_exists = os.path.exists(config_path)
+                            logger.info(f"[ArtifactHTML] path={path}, config_exists={_cfg_exists}, config_path={config_path}")
+                            if _cfg_exists:
                                 try:
                                     with open(config_path, 'r', encoding='utf-8') as _cf:
-                                        msg_metadata["map_update"] = json.load(_cf)
-                                except Exception:
+                                        _mc_data = json.load(_cf)
+                                        msg_metadata["map_update"] = _mc_data
+                                        _final_map_update = _mc_data
+                                        logger.info(f"[ArtifactHTML] Loaded mapconfig: layers={len(_mc_data.get('layers', []))}, _final_map_update SET")
+                                except Exception as _mcerr:
+                                    logger.error(f"[ArtifactHTML] Failed to load mapconfig: {_mcerr}")
                                     pass
                         elif artifact['type'] == 'csv':
                             elements.append(cl.File(path=path, name=name))
                             shown_artifacts.add(path)
                             msg_metadata["data_update"] = {"file": name}
+                            _final_data_update = {"file": name}
 
                     if elements:
+                        logger.info(f"[ArtifactSend] elements={len(elements)}, metadata_keys={list(msg_metadata.keys())}, final_map_set={_final_map_update is not None}")
                         await cl.Message(content="", elements=elements, metadata=msg_metadata).send()
+
+                    # Flush any pending artifacts collected from tool responses
+                    if _pending_elements or _pending_map_update or _pending_data_update:
+                        _flush_meta = {}
+                        if _pending_map_update:
+                            _flush_meta["map_update"] = _pending_map_update
+                            logger.info(f"[MapFlush] Sending map_update from tool response: {list(_pending_map_update.keys())}")
+                            _pending_map_update = None
+                        if _pending_data_update:
+                            _flush_meta["data_update"] = _pending_data_update
+                            _pending_data_update = None
+                        if _pending_elements or _flush_meta:
+                            await cl.Message(content="", elements=_pending_elements, metadata=_flush_meta).send()
+                            _pending_elements = []
+
+        # --- Flush remaining pending artifacts after pipeline ends ---
+        if _pending_elements or _pending_map_update or _pending_data_update:
+            _flush_meta = {}
+            if _pending_map_update:
+                _flush_meta["map_update"] = _pending_map_update
+            if _pending_data_update:
+                _flush_meta["data_update"] = _pending_data_update
+            await cl.Message(content="", elements=_pending_elements, metadata=_flush_meta).send()
 
         # --- Cleanup: finalize all open steps ---
         if current_tool_step:
@@ -1923,6 +2000,28 @@ async def _execute_pipeline(
         pipeline_duration.labels(pipeline=pipeline_type).observe(total_duration)
         pipeline_runs.labels(pipeline=pipeline_type, status="success").inc()
 
+        # --- Inject map/data updates into final_msg metadata ---
+        # This ensures the main response message carries map_update, which is
+        # more reliable than sending a separate empty-content metadata message.
+        logger.info(f"[MapPreInject] _final_map_update={_final_map_update is not None}, _final_data_update={_final_data_update is not None}, msg_sent={msg_sent}")
+        if _final_map_update or _final_data_update:
+            if not final_msg.metadata:
+                final_msg.metadata = {}
+            if _final_map_update:
+                final_msg.metadata["map_update"] = _final_map_update
+                logger.info(f"[MapInject] Injected map_update into final_msg: layers={len(_final_map_update.get('layers', []))}")
+                # Also store in REST API pending dict (Chainlit WS doesn't deliver step metadata)
+                from data_agent.frontend_api import pending_map_updates
+                pending_map_updates[user_id] = _final_map_update
+            if _final_data_update:
+                final_msg.metadata["data_update"] = _final_data_update
+                from data_agent.frontend_api import pending_data_updates
+                pending_data_updates[user_id] = _final_data_update
+
+        if not msg_sent:
+            # Pipeline produced no text — send final_msg so metadata is delivered
+            await final_msg.send()
+            msg_sent = True
         await final_msg.update()
 
         # --- Report Extraction ---
@@ -2177,7 +2276,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
     Returns: (intent, reason, router_tokens) where intent is 'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS'.
     """
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         prev_hint = ""
         if previous_pipeline:
             prev_hint = f"\n        - The previous turn used the {previous_pipeline.upper()} pipeline. If the user references prior results (上面, 刚才, 继续, 之前, 在此基础上), prefer routing to the SAME pipeline: {previous_pipeline.upper()}."
@@ -2261,7 +2360,7 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
         prompt_template = get_prompt("planner", "plan_generation_prompt")
         prompt = prompt_template.format(intent=intent, user_text=user_text, files_info=files_info)
 
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
