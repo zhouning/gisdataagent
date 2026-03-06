@@ -106,4 +106,5 @@ fi
 # 4. Start Chainlit
 # -----------------------------------------------------------------------
 echo "[START] Launching Chainlit on 0.0.0.0:${PORT:-8080}..."
+export PYTHONPATH="/app:${PYTHONPATH}"
 exec /app/.venv/bin/chainlit run /app/data_agent/app.py --host 0.0.0.0 --port ${PORT:-8080}
