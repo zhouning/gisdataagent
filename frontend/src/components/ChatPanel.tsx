@@ -29,6 +29,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedMetaRef = useRef<Set<string>>(new Set());
   const recognitionRef = useRef<any>(null);
+  const prevLoadingRef = useRef(false);
 
   // Check browser support for Web Speech API
   const speechSupported = typeof window !== 'undefined' &&
@@ -43,8 +44,13 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     for (const msg of messages) {
       if (processedMetaRef.current.has(msg.id)) continue;
       const meta = msg.metadata as any;
+      // Debug: log all messages with metadata
+      if (meta && Object.keys(meta).length > 0) {
+        console.log('[ChatPanel] msg with metadata:', msg.id, 'keys:', Object.keys(meta), 'output_len:', (msg.output || '').length);
+      }
       if (!meta) continue;
       if (meta.map_update) {
+        console.log('[ChatPanel] map_update detected:', JSON.stringify(meta.map_update).substring(0, 200));
         onMapUpdate(meta.map_update);
         processedMetaRef.current.add(msg.id);
       }
@@ -58,6 +64,26 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       }
     }
   }, [messages, onMapUpdate, onDataUpdate, onLayerControl]);
+
+  // Poll /api/map/pending when assistant response completes (loading: true → false)
+  // This bypasses Chainlit's limitation of not delivering step-level metadata via WebSocket.
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
+      fetch('/api/map/pending', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.map_update) {
+            console.log('[ChatPanel] map_update from /api/map/pending:', JSON.stringify(data.map_update).substring(0, 200));
+            onMapUpdate(data.map_update);
+          }
+          if (data.data_update) {
+            onDataUpdate(data.data_update.csv || data.data_update.file);
+          }
+        })
+        .catch(() => {});
+    }
+    prevLoadingRef.current = loading;
+  }, [loading, onMapUpdate, onDataUpdate]);
 
   const handleFileSelect = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -244,15 +270,25 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           </div>
         )}
 
-        {actions.length > 0 && !askUser && (
-          <div className="action-buttons" style={{ padding: '0 4px' }}>
-            {actions.map((action) => (
-              <button key={action.id} className="action-btn" onClick={() => action.onClick()}>
-                {action.label || action.name}
-              </button>
-            ))}
-          </div>
-        )}
+        {actions.length > 0 && !askUser && (() => {
+          // Deduplicate: keep only the latest action per name+value
+          const seen = new Set<string>();
+          const unique = [...actions].reverse().filter((a) => {
+            const key = `${a.name}_${(a as any).value ?? ''}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          }).reverse();
+          return (
+            <div className="action-buttons" style={{ padding: '0 4px' }}>
+              {unique.map((action) => (
+                <button key={action.id} className="action-btn" onClick={() => action.onClick()}>
+                  {action.label || action.name}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         <div ref={messagesEndRef} />
       </div>

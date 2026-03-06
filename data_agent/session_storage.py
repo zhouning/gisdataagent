@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS "Thread" (
     metadata JSONB DEFAULT '{}',
     tags TEXT[] DEFAULT '{}',
     "createdAt" TIMESTAMP DEFAULT NOW(),
-    "updatedAt" TIMESTAMP DEFAULT NOW()
+    "updatedAt" TIMESTAMP DEFAULT NOW(),
+    "deletedAt" TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS "Step" (
@@ -101,6 +102,10 @@ def ensure_chainlit_tables():
     try:
         with engine.connect() as conn:
             conn.execute(text(CHAINLIT_SCHEMA_SQL))
+            # Migrate: add deletedAt column if missing (Chainlit 2.9+)
+            conn.execute(text("""
+                ALTER TABLE "Thread" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP
+            """))
             conn.commit()
         print("[Session] Chainlit data layer tables ready.")
     except Exception as e:

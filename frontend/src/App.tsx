@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useChatSession, useAuth, useConfig } from '@chainlit/react-client';
 import { useRecoilValue } from 'recoil';
 import { sessionState } from '@chainlit/react-client';
@@ -10,7 +10,7 @@ import AdminDashboard from './components/AdminDashboard';
 import UserSettings from './components/UserSettings';
 
 export default function App() {
-  const { data: authConfig, user, isReady, isAuthenticated, setUserFromAPI } = useAuth();
+  const { data: authConfig, user, isReady, isAuthenticated, setUserFromAPI, logout } = useAuth();
   const { config } = useConfig();
   const { connect, session } = useChatSession();
   const sessionRecoil = useRecoilValue(sessionState);
@@ -31,12 +31,17 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  // Connect to Socket.IO after authentication
+  // Connect to Socket.IO once after authentication
+  const hasConnected = useRef(false);
   useEffect(() => {
-    if (isAuthenticated && !sessionRecoil?.socket?.connected) {
+    if (isAuthenticated && !hasConnected.current) {
+      hasConnected.current = true;
       connect({ userEnv: {} });
     }
-  }, [isAuthenticated, connect, sessionRecoil]);
+    if (!isAuthenticated) {
+      hasConnected.current = false;
+    }
+  }, [isAuthenticated, connect]);
 
   const handleLoginSuccess = useCallback(async () => {
     await setUserFromAPI();
@@ -107,7 +112,7 @@ export default function App() {
               <button onClick={() => { setShowSettings(true); setShowUserMenu(false); }}>
                 账户设置
               </button>
-              <button onClick={() => { window.location.href = '/'; }}>
+              <button onClick={() => { logout(); window.location.href = '/'; }}>
                 退出登录
               </button>
             </div>

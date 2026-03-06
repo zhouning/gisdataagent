@@ -11,11 +11,12 @@ from ..data_catalog import (
     delete_data_asset,
     share_data_asset,
     get_data_lineage,
+    download_cloud_asset,
 )
 
 _ALL_FUNCS = [list_data_assets, describe_data_asset, search_data_assets,
               register_data_asset, tag_data_asset, delete_data_asset,
-              share_data_asset, get_data_lineage]
+              share_data_asset, get_data_lineage, download_cloud_asset]
 
 
 class DataLakeToolset(BaseToolset):
