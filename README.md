@@ -2,7 +2,7 @@
 
 # GIS Data Agent (ADK Edition) v7.0
 
-基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 30 个 REST API，支持多模态输入、3D 可视化、工作流编排和知识图谱推理。
+基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 31 个 REST API，支持多模态输入、3D 可视化、工作流编排和知识图谱推理。
 
 ## 核心能力
 
@@ -226,7 +226,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（30 个 REST API 端点） |
+| **后端** | Chainlit + Starlette（31 个 REST API 端点） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -242,7 +242,7 @@ cd frontend && npm install && npm run dev
 data_agent/
 ├── app.py                       # Chainlit UI、语义路由、认证、RBAC
 ├── agent.py                     # Agent 定义、管道组装
-├── frontend_api.py              # 30 个 REST API 端点
+├── frontend_api.py              # 31 个 REST API 端点
 ├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
 ├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
@@ -305,7 +305,7 @@ docs/                            # 文档
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API 端点（30 条路由）
+## REST API 端点（31 条路由）
 
 | 方法 | 路径 | 描述 |
 |---|---|---|
@@ -334,6 +334,7 @@ docs/                            # 文档
 | GET/PUT/DELETE | `/api/workflows/{id}` | 工作流详情/更新/删除 |
 | POST | `/api/workflows/{id}/execute` | 执行工作流 |
 | GET | `/api/workflows/{id}/runs` | 执行历史 |
+| GET | `/api/map/pending` | 待处理地图更新（前端轮询） |
 
 ## 运行测试
 
@@ -360,23 +361,21 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 
 | 版本 | 功能集 | 状态 |
 |---|---|---|
-| v1.0 | 本地文件、基础 DRL | 完成 |
-| v2.0 | Excel 地理编码、报告生成 | 完成 |
-| v3.0 | PostGIS、硬路由 | 完成 |
-| v3.1 | 多管道架构 | 完成 |
-| v3.2 | 语义层、商业套件 | 完成 |
-| v4.0 | 前端集成、可观测性、CI、技能包 | 完成 |
-| v4.1 | 会话持久化、管道进度、错误恢复、数据预览、i18n | 完成 |
-| v5.1 | MCP 工具市场 | 完成 |
-| v5.2 | 多模态输入/输出 | 完成 |
-| v5.3 | 3D 空间可视化 | 完成 |
-| v5.4 | 工作流编排（引擎 + 编辑器 + Cron + Webhook） | 完成 |
-| v5.5 | 多模态数据融合引擎 MMFE（5 模态、10 策略、语义匹配） | 完成 |
-| v5.6 | MGIM 启发增强（模糊匹配、单位转换、数据感知策略、多源编排） | 完成 |
-| v6.0 | 融合引擎不足修复（栅格重投影、点云高度、流数据时态、语义增强、质量验证） | 完成 |
-| v6.1 | 高级分析引擎（时空预测、场景模拟、网络分析） | 计划中 |
+| v1.0–v3.2 | 基础 GIS、PostGIS、语义层、多管道架构 | ✅ 完成 |
+| v4.0 | 前端三面板 SPA、可观测性、CI/CD、技能包、协作标注 | ✅ 完成 |
+| v4.1 | 会话持久化、管道进度可视化、错误恢复、数据预览、i18n | ✅ 完成 |
+| v5.1 | MCP 工具市场（引擎 + 前端展示 + 管线过滤） | ✅ 完成 |
+| v5.2 | 多模态输入（图片理解 + PDF 解析 + 语音输入） | ✅ 完成 |
+| v5.3 | 3D 空间可视化（deck.gl + MapLibre + 2D/3D 切换） | ✅ 完成 |
+| v5.4 | 工作流编排（引擎 + Cron + Webhook） | ✅ 完成 |
+| v5.5 | 多模态数据融合引擎 MMFE（5 模态、10 策略、语义匹配） | ✅ 完成 |
+| v5.6 | MGIM 启发增强（模糊匹配、单位转换、数据感知策略、多源编排） | ✅ 完成 |
+| v6.0 | 融合增强（栅格重投影、点云、流数据、语义增强、质量验证） | ✅ 完成 |
 | v7.0 | 向量嵌入匹配、LLM 策略路由、地理知识图谱、分布式计算 | **当前** |
-| v8.0 | 实时协作、边缘部署、数据连接器生态 | 规划中 |
+| v7.1 | MCP 管理 UI、WorkflowEditor 修复、用户分析视角注入 | 计划中 |
+| v7.5 | MCP 安全加固 + per-User 隔离、自定义技能包组合 | 计划中 |
+| v8.0 | DB 驱动自定义 Skills、RAG 知识库、DAG 工作流、高级分析引擎 | 规划中 |
+| v9.0 | 实时协同编辑、边缘部署、数据连接器生态、多 Agent 并行 | 远期 |
 
 ## 许可证
 

@@ -82,7 +82,7 @@ Custom React SPA replacing Chainlit's default UI. Three-panel layout: Chat (320p
 - **UserSettings**: Account info + self-deletion modal (danger zone)
 - **App.tsx**: Auth state, map/data state, layer control, user menu dropdown
 
-### Frontend API (30 REST endpoints in `frontend_api.py`)
+### Frontend API (31 REST endpoints in `frontend_api.py`)
 All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via `mount_frontend_api()`.
 
 | Method | Path | Purpose |
@@ -108,7 +108,7 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 |---|---|
 | `agent.py` | Agent definitions, pipeline assembly, tool functions |
 | `app.py` | Chainlit UI, auth, semantic router, RBAC, file uploads, layer control |
-| `frontend_api.py` | 30 REST API endpoints for React frontend |
+| `frontend_api.py` | 31 REST API endpoints for React frontend |
 | `auth.py` | Password hashing, registration, account deletion, Chainlit auth callbacks |
 | `user_context.py` | `ContextVar` for user_id/session_id/role propagation; `get_user_upload_dir()` |
 | `db_engine.py` | Singleton SQLAlchemy engine with connection pooling |
@@ -161,7 +161,7 @@ The DRL model uses `MaskablePPO` (from `sb3_contrib`) with a custom `ParcelScori
 - **Framework**: Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`)
 - **LLM**: Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router)
 - **Frontend**: React 18 + TypeScript + Vite + Leaflet.js + @chainlit/react-client v0.3.1
-- **Backend**: Chainlit + Starlette (30 REST API endpoints)
+- **Backend**: Chainlit + Starlette (31 REST API endpoints)
 - **Database**: PostgreSQL 16 + PostGIS 3.4
 - **GIS**: GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify, branca
 - **ML**: PyTorch, Stable Baselines 3, Gymnasium
