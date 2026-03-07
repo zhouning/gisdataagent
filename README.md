@@ -55,38 +55,94 @@
 - APScheduler Cron 定时执行
 - Webhook 结果推送
 
-## 架构
+## 核心架构：多智能体协作网络
+
+GIS Data Agent 采用了先进的**层级式多智能体架构（Hierarchical Multi-Agent Architecture）**。系统内置了三种主要的工作流（Pipeline），并由一个顶层的 `Dynamic Planner` 进行意图识别和动态分发，完美践行了 ADK 的 `Generator-Critic` 和 `AgentTool` 最佳实践。
 
 ```mermaid
 graph TD
-    User[浏览器 / Bot 客户端] --> FE[React 三面板前端]
-    FE --> Router{语义路由器<br/>Gemini 2.0 Flash}
-    Router --> SL[语义层<br/>YAML + DB]
-    SL --> Router
+    User([👨‍💻 用户输入自然语言]) --> Root
 
-    Router -- "动态" --> Planner[动态规划器<br/>7 个子 Agent]
-    Router -- "治理" --> Gov[治理管道]
-    Router -- "优化" --> Opt[优化管道]
-    Router -- "查询" --> Gen[通用管道]
-
-    subgraph "规划器 (transfer_to_agent)"
-        PE[探查] --> PP[处理] --> PA[分析] --> PV[可视化] --> PR[汇报]
+    subgraph "大脑中枢 (Central Brain)"
+        Root[/"🚀 顶层 Agent (路由入口)"\]
+        Planner{"🧠 Dynamic Planner<br>(动态调度器)"}
+        Root --> Planner
     end
 
-    subgraph "共享基础设施"
-        DB[(PostgreSQL + PostGIS)]
-        Auth[认证 + RBAC + RLS]
-        Audit[审计日志 + Token 追踪]
-        WF[工作流引擎 + 调度器]
-        MCP[MCP 工具市场]
-        Bots[企微 / 钉钉 / 飞书]
+    subgraph "工作流 1: 空间优化管线 (Optimization Pipeline)"
+        Opt_Pipeline["⚙️ Data Pipeline (Sequential)"]
+
+        subgraph "数据工程阶段"
+            Eng_Seq["Data Engineering (Sequential)"]
+            Exp1["🕵️‍♂️ Exploration Agent<br>(数据探查/审计)"]
+            Proc1["🛠️ Processing Agent<br>(清洗/转换)"]
+            Knowledge[("📚 Vertex Search Agent<br>(专业文献检索)")]
+            Eng_Seq --> Exp1
+            Exp1 --> Proc1
+            Proc1 -.按需调用.-> Knowledge
+        end
+
+        subgraph "核心分析阶段 (带质量控制)"
+            Ana_Loop{"🔄 Analysis Quality Loop"}
+            Ana1["📈 Analysis Agent<br>(FFI计算/DRL优化)"]
+            QC["⚖️ Quality Checker<br>(指标合理性审查)"]
+            Ana_Loop --> Ana1
+            Ana1 --> QC
+            QC --不达标打回--> Ana1
+        end
+
+        Viz1["🗺️ Visualization Agent<br>(地图/图表生成)"]
+        Sum1["📝 Summary Agent<br>(报告撰写)"]
+
+        Opt_Pipeline --> Eng_Seq
+        Eng_Seq --> Ana_Loop
+        Ana_Loop --> Viz1
+        Viz1 --> Sum1
     end
 
-    FE -- REST API --> FAPI[Frontend API<br/>30 个端点]
-    FAPI --> DB
+    subgraph "工作流 2: 数据合规治理管线 (Governance Pipeline)"
+        Gov_Pipeline["🛡️ Governance Pipeline (Sequential)"]
+        Exp2["🕵️‍♂️ Gov Exploration<br>(标准与拓扑审计)"]
+        Proc2["🛠️ Gov Processing<br>(数据修复/标准化)"]
+        Rep2["📄 Gov Reporter<br>(治理报告生成)"]
+
+        Gov_Pipeline --> Exp2
+        Exp2 --> Proc2
+        Proc2 --> Rep2
+    end
+
+    subgraph "工作流 3: 通用处理管线 (General Pipeline)"
+        Gen_Pipeline["🌍 General Pipeline (Sequential)"]
+        Proc3["🛠️ General Processing<br>(通用操作)"]
+        Viz3["🗺️ General Viz<br>(基础出图)"]
+        Sum3["📝 General Summary"]
+
+        Gen_Pipeline --> Proc3
+        Proc3 --> Viz3
+        Viz3 --> Sum3
+    end
+
+    Planner --"意图: 优化/预测"--> Opt_Pipeline
+    Planner --"意图: 治理/清洗"--> Gov_Pipeline
+    Planner --"意图: 其他/探索"--> Gen_Pipeline
+
+    Opt_Pipeline --> Output([📤 最终结果返回])
+    Gov_Pipeline --> Output
+    Gen_Pipeline --> Output
+
+    %% 样式定义
+    classDef pipeline fill:#e8f4f8,stroke:#2b6cb0,stroke-width:2px,color:#2c3e50
+    classDef agent fill:#ffffff,stroke:#4a5568,stroke-width:1px
+    classDef brain fill:#fefcbf,stroke:#d69e2e,stroke-width:2px
+    classDef loop fill:#fbd38d,stroke:#dd6b20,stroke-width:2px,stroke-dasharray: 5 5
+
+    class Opt_Pipeline,Gov_Pipeline,Gen_Pipeline pipeline
+    class Exp1,Proc1,Ana1,QC,Viz1,Sum1,Exp2,Proc2,Rep2,Proc3,Viz3,Sum3 agent
+    class Root,Planner brain
+    class Ana_Loop loop
 ```
 
-**管道路由**：`DYNAMIC_PLANNER=true`（默认）使用规划器 + `transfer_to_agent`；`false` 回退到 3 条固定 `SequentialAgent` 管道。
+**管道路由**：`DYNAMIC_PLANNER=true`（默认）使用规划器进行动态意图分配，极大地降低了单体大模型的上下文负担。
 
 **模型分层**：Explorer/Visualizer → Gemini 2.0 Flash，Processor/Analyzer/Planner → Gemini 2.5 Flash，Reporter → Gemini 2.5 Pro。
 
