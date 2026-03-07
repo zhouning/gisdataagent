@@ -170,7 +170,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | **Framework** | Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router) |
 | **Frontend** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **Backend** | Chainlit + Starlette (30 REST API endpoints) |
+| **Backend** | Chainlit + Starlette (31 REST API endpoints) |
 | **Database** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -186,7 +186,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 data_agent/
 ├── app.py                       # Chainlit UI, semantic router, auth, RBAC
 ├── agent.py                     # Agent definitions, pipeline assembly
-├── frontend_api.py              # 30 REST API endpoints
+├── frontend_api.py              # 31 REST API endpoints
 ├── workflow_engine.py           # Workflow engine: CRUD, execution, webhook, cron
 ├── multimodal.py                # Multimodal input: image/PDF classification, Gemini Parts
 ├── mcp_hub.py                   # MCP Hub Manager: config-driven MCP server management
@@ -279,6 +279,7 @@ Custom React SPA replacing Chainlit's default UI:
 | GET/PUT/DELETE | `/api/workflows/{id}` | Workflow detail / update / delete |
 | POST | `/api/workflows/{id}/execute` | Execute workflow |
 | GET | `/api/workflows/{id}/runs` | Workflow execution history |
+| GET | `/api/map/pending` | Pending map updates (frontend polling) |
 
 ## Running Tests
 
@@ -305,23 +306,21 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 
 | Version | Feature Set | Status |
 |---|---|---|
-| v1.0 | Local Files, Basic DRL | Done |
-| v2.0 | Excel Geocoding, Report Generation | Done |
-| v3.0 | PostGIS, Hard Routing | Done |
-| v3.1 | Multi-Pipeline Architecture | Done |
-| v3.2 | Semantic Layer, Business Suite | Done |
-| v4.0 | Frontend Integration, Observability, CI, Skill Bundles | Done |
-| v4.1 | Session Persistence, Pipeline Progress, Error Recovery, i18n | Done |
-| v5.1 | MCP Tool Market | Done |
-| v5.2 | Multimodal Input/Output | Done |
-| v5.3 | 3D Spatial Visualization | Done |
-| v5.4 | Workflow Builder (Engine + Editor + Cron + Webhook) | Done |
-| v5.5 | Multi-Modal Data Fusion Engine MMFE (5 modalities, 10 strategies, semantic matching) | Done |
-| v5.6 | MGIM-Inspired Enhancements (fuzzy matching, unit conversion, data-aware scoring, multi-source) | Done |
-| v6.0 | Fusion Engine Improvements (raster reprojection, point cloud, stream temporal, semantic+quality) | Done |
-| v6.1 | Advanced Analytics Engine (spatiotemporal prediction, scenario simulation, network analysis) | Planned |
-| v7.0 | Vector Embedding Matching, LLM Strategy Routing, Knowledge Graph, Distributed Computing | **Current** |
-| v8.0 | Real-time Collaboration, Edge Deployment, Data Connector Ecosystem | Future |
+| v1.0–v3.2 | Core GIS, PostGIS, Semantic Layer, Multi-Pipeline Architecture | ✅ Done |
+| v4.0 | Frontend Three-Panel SPA, Observability, CI/CD, Skill Bundles | ✅ Done |
+| v4.1 | Session Persistence, Pipeline Progress, Error Recovery, i18n | ✅ Done |
+| v5.1 | MCP Tool Market (Engine + Frontend + Pipeline Filtering) | ✅ Done |
+| v5.2 | Multimodal Input (Image + PDF + Voice) | ✅ Done |
+| v5.3 | 3D Spatial Visualization (deck.gl + MapLibre) | ✅ Done |
+| v5.4 | Workflow Builder (Engine + Cron + Webhook) | ✅ Done |
+| v5.5 | Multi-Modal Data Fusion Engine MMFE (5 modalities, 10 strategies) | ✅ Done |
+| v5.6 | MGIM-Inspired Enhancements (fuzzy matching, unit conversion, multi-source) | ✅ Done |
+| v6.0 | Fusion Improvements (raster reprojection, point cloud, stream, quality) | ✅ Done |
+| v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | **Current** |
+| v7.1 | MCP Management UI, WorkflowEditor Fix, User Analysis Perspective | Planned |
+| v7.5 | MCP Security + per-User Isolation, Custom Skill Bundle Composition | Planned |
+| v8.0 | DB-Driven Custom Skills, RAG Knowledge Base, DAG Workflow, Advanced Analytics | Future |
+| v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel | Long-term |
 
 ## License
 
