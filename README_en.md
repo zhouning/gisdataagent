@@ -316,11 +316,11 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v5.5 | Multi-Modal Data Fusion Engine MMFE (5 modalities, 10 strategies) | ✅ Done |
 | v5.6 | MGIM-Inspired Enhancements (fuzzy matching, unit conversion, multi-source) | ✅ Done |
 | v6.0 | Fusion Improvements (raster reprojection, point cloud, stream, quality) | ✅ Done |
-| v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | **Current** |
-| v7.1 | MCP Management UI, WorkflowEditor Fix, User Analysis Perspective | Planned |
-| v7.5 | MCP Security + per-User Isolation, Custom Skill Bundle Composition | Planned |
-| v8.0 | DB-Driven Custom Skills, RAG Knowledge Base, DAG Workflow, Advanced Analytics | Future |
-| v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel | Long-term |
+| v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | ✅ Done |
+| v7.1 | MCP Management UI, WorkflowEditor Fix, Prompt Versioning, Tool Error Recovery, Reflection Loop Expansion, End-to-End Trace ID | Planned |
+| v7.5 | Memory ETL Auto-Extraction, Gemini Context Caching, Dynamic Tool Loading, MCP Security + per-User Isolation | Planned |
+| v8.0 | DB-Driven Custom Skills, RAG Knowledge Base, DAG Workflow, Failure Learning & Adaptation, Dynamic Model Selection, Evaluation-Gated CI | Future |
+| v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel, A2A Agent Interop, Proactive Exploration & Discovery | Long-term |
 
 ## License
 
