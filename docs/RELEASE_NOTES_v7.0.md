@@ -1,8 +1,9 @@
-# GIS Data Agent v7.0 Release Notes
+# GIS Data Agent v7.0 / v7.1 Release Notes
 
-**发布日期**: 2026-03-05
-**版本**: v7.0 (MMFE 智能增强版)
-**测试覆盖**: 1330+ 测试通过
+**v7.0 发布日期**: 2026-03-05
+**v7.1 发布日期**: 2026-03-09
+**版本**: v7.1 (MMFE 工程重构版)
+**测试覆盖**: 1360+ 测试通过
 **工具集**: 19 个 BaseToolset
 
 ---
@@ -392,9 +393,9 @@ result = ddf.compute()   # 仅在需要时物化
 ## 后续计划
 
 ### v7.1 (短期)
-- 嵌入匹配支持中文字段名 (中文分词 + 拼音转换)
-- 知识图谱增量更新 (merge 而非 rebuild)
-- 更多融合策略支持分块 (overlay, nearest_join)
+- ~~嵌入匹配支持中文字段名 (中文分词 + 拼音转换)~~ → 已通过 LLM Schema 对齐替代
+- ~~知识图谱增量更新 (merge 而非 rebuild)~~ → 待后续版本
+- ~~更多融合策略支持分块 (overlay, nearest_join)~~ → 已通过 PostGIS 下推替代
 
 ### v8.0 (中期)
 - 实时协同编辑 (CRDT)
@@ -413,14 +414,154 @@ result = ddf.compute()   # 仅在需要时物化
 
 ## 参考文档
 
-- `docs/multi-modal-fusion-analysis.md` — v7.0 需求分析
-- `docs/technical_paper_fusion_engine.md` — MMFE 技术论文
+- `docs/multi-modal-fusion-analysis.md` — v7.0 需求分析 (v3.0 含 v7.1 重构状态)
+- `docs/technical_paper_fusion_engine.md` — MMFE 技术论文 (含 v7.1 架构章节)
+- `docs/technical-review-mmfe.md` — MMFE 技术评审 (4 项缺陷全部 ✅ 已解决)
 - `docs/comparison_MMFE_vs_MGIM.md` — MMFE vs MGIM 对比
 - `CLAUDE.md` — 项目架构文档
 - `README.md` — 用户手册
 
 ---
 
-**发布**: 2026-03-05
-**版本**: v7.0
+# v7.1 Addendum: MMFE 工程重构
+
+**发布日期**: 2026-03-09
+**Commit**: `b3e35c7`
+**驱动文档**: `docs/technical-review-mmfe.md`（4 项 P0~P2 缺陷）
+
+---
+
+## 概述
+
+v7.1 基于深度技术评审报告，对 MMFE 进行了 4 阶段系统性工程重构，解决了单体架构、事件循环阻塞、内存计算瓶颈和 LLM 职责混乱等核心缺陷。
+
+---
+
+## Phase 1: 工程解耦 — 单体拆包
+
+**解决缺陷**: 架构臃肿，违反 SRP
+
+**变更**:
+- `fusion_engine.py` (~2100行) → `data_agent/fusion/` 包 (22 模块，26 文件，~121KB)
+- 策略模式：10 种策略拆分为 `fusion/strategies/*.py`，通过 `_STRATEGY_REGISTRY` 注册
+- 薄代理层：`fusion_engine.py` (72行) `from data_agent.fusion import *` 确保向后兼容
+
+**新增模块**:
+| 模块 | 行数 | 职责 |
+|------|------|------|
+| `fusion/__init__.py` | ~100 | 公共 API 导出 |
+| `fusion/models.py` | ~60 | FusionSource/CompatibilityReport/FusionResult 数据类 |
+| `fusion/constants.py` | ~50 | 策略矩阵、单位转换、阈值 |
+| `fusion/profiling.py` | ~300 | 5 种模态画像 + PostGIS 画像 |
+| `fusion/matching.py` | ~500 | 4 层语义匹配 + 嵌入向量 |
+| `fusion/compatibility.py` | ~100 | 兼容性评分模型 |
+| `fusion/alignment.py` | ~180 | CRS/单位/列名对齐 |
+| `fusion/execution.py` | ~450 | 策略选择、编排、多源融合 |
+| `fusion/validation.py` | ~270 | 10 维质量评分 |
+| `fusion/io.py` | ~80 | 大数据集分块 I/O |
+| `fusion/raster_utils.py` | ~110 | 栅格重投影与重采样 |
+| `fusion/schema_alignment.py` | ~120 | LLM Schema 对齐 (Phase 2 新增) |
+| `fusion/db.py` | ~90 | 操作记录 |
+| `fusion/llm_routing.py` | ~15 | LLM 策略路由 (已弃用) |
+| `fusion/strategies/*.py` | ~300 | 10 策略实现 + PostGIS 下推 |
+
+---
+
+## Phase 2: AI 精简 — LLM 职责纠偏
+
+**解决缺陷**: P2 LLM 策略路由滥用 + P2 语义匹配伪智能
+
+**LLM 路由弃用**:
+- `_llm_select_strategy()` 保留但标记弃用
+- `strategy="llm_auto"` 回退为 `"auto"`（纯规则评分）
+- 日志记录 warning
+
+**LLM Schema 对齐新增**:
+- 新模块 `fusion/schema_alignment.py`
+- 输入：两表 Schema（字段名、类型、采样数据）
+- 处理：构造 Prompt → Gemini 2.5 Flash → JSON 映射配置
+- 启用：`assess_fusion_compatibility(use_llm_schema="true")`
+- 降级：API 失败时回退到 4 层规则匹配
+
+---
+
+## Phase 3: 异步化 — 事件循环解阻
+
+**解决缺陷**: P0 同步 I/O 阻塞 ASGI 事件循环
+
+**变更**:
+```python
+# Before (v7.0)
+def profile_fusion_sources(file_paths: str) -> str: ...
+
+# After (v7.1)
+async def profile_fusion_sources(file_paths: str) -> str:
+    return await asyncio.to_thread(_sync_profile, file_paths)
+```
+
+影响的 4 个工具函数:
+- `profile_fusion_sources`
+- `assess_fusion_compatibility`
+- `fuse_datasets`
+- `validate_fusion_quality`
+
+---
+
+## Phase 4: PostGIS 计算下推
+
+**解决缺陷**: P1 大表内存计算 OOM
+
+**新模块**: `fusion/strategies/postgis_pushdown.py`
+
+| Python 策略 | PostGIS SQL | 触发条件 |
+|------------|------------|---------|
+| `spatial_join` | `ST_Intersects(a.geom, b.geom)` | 两源 PostGIS-backed + >10万行 |
+| `overlay` | `ST_Intersection(a.geom, b.geom)` | 同上 |
+| `nearest_join` | `LATERAL ... ORDER BY a.geom <-> b.geom` | 同上 |
+
+**FusionSource 扩展**:
+```python
+@dataclass
+class FusionSource:
+    ...
+    postgis_table: Optional[str] = None   # schema.table
+    postgis_srid: Optional[int] = None    # SRID
+```
+
+**新增函数**: `profile_postgis_source(table_name)` — 直接查询数据库元数据构建 FusionSource。
+
+---
+
+## 质量验证扩展（10 维）
+
+在 v5.6 的 7 项检查基础上新增 3 项：
+
+| 新增检查项 | 实现 | 评分影响 |
+|-----------|------|---------|
+| CRS 一致性 | 检查融合结果 CRS 是否统一 | -0.10 |
+| 拓扑验证 | `explain_validity` 检测自相交 | -0.10 |
+| 分布偏移 | KS 检验检测数值分布异常漂移 | -0.05/列 |
+
+---
+
+## Mock 目标变更
+
+v7.1 重构后，测试 Mock 目标从单体文件路径变为子模块路径：
+
+```python
+# Before (v7.0)
+@patch("data_agent.fusion_engine.get_engine")
+@patch("data_agent.fusion_engine._llm_select_strategy")
+@patch("data_agent.fusion_engine._get_embeddings")
+
+# After (v7.1)
+@patch("data_agent.fusion.db.get_engine")
+@patch("data_agent.fusion.execution._llm_select_strategy")
+@patch("data_agent.fusion.matching._get_embeddings")
+```
+
+---
+
+**发布**: 2026-03-09
+**版本**: v7.1
 **状态**: ✅ 生产就绪
