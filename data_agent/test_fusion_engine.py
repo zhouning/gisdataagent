@@ -487,7 +487,7 @@ class TestQualityValidator(unittest.TestCase):
 class TestRecordOperation(unittest.TestCase):
     """Test DB recording of fusion operations."""
 
-    @patch("data_agent.fusion_engine.get_engine", return_value=None)
+    @patch("data_agent.fusion.db.get_engine", return_value=None)
     def test_no_db_graceful(self, mock_engine):
         from data_agent.fusion_engine import record_operation, FusionSource
         # Should not raise
@@ -500,8 +500,8 @@ class TestRecordOperation(unittest.TestCase):
             duration_s=1.5,
         )
 
-    @patch("data_agent.fusion_engine.get_engine")
-    @patch("data_agent.fusion_engine.current_user_id")
+    @patch("data_agent.fusion.db.get_engine")
+    @patch("data_agent.fusion.db.current_user_id")
     def test_record_with_db(self, mock_uid, mock_engine):
         mock_uid.get.return_value = "test_user"
         mock_conn = MagicMock()
@@ -527,12 +527,12 @@ class TestRecordOperation(unittest.TestCase):
 class TestEnsureFusionTables(unittest.TestCase):
     """Test table creation."""
 
-    @patch("data_agent.fusion_engine.get_engine", return_value=None)
+    @patch("data_agent.fusion.db.get_engine", return_value=None)
     def test_no_db_graceful(self, mock_engine):
         from data_agent.fusion_engine import ensure_fusion_tables
         ensure_fusion_tables()  # should not raise
 
-    @patch("data_agent.fusion_engine.get_engine")
+    @patch("data_agent.fusion.db.get_engine")
     def test_creates_table(self, mock_engine):
         mock_conn = MagicMock()
         mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
@@ -588,7 +588,7 @@ class TestEndToEnd(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
 
     @patch("data_agent.gis_processors.get_user_upload_dir")
-    @patch("data_agent.fusion_engine.get_engine", return_value=None)
+    @patch("data_agent.fusion.db.get_engine", return_value=None)
     def test_vector_tabular_fusion(self, mock_engine, mock_dir):
         mock_dir.return_value = self.tmp
         from data_agent.fusion_engine import (
@@ -622,7 +622,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertGreater(quality["score"], 0.5)
 
     @patch("data_agent.gis_processors.get_user_upload_dir")
-    @patch("data_agent.fusion_engine.get_engine", return_value=None)
+    @patch("data_agent.fusion.db.get_engine", return_value=None)
     def test_vector_vector_spatial_join(self, mock_engine, mock_dir):
         mock_dir.return_value = self.tmp
         from data_agent.fusion_engine import (
@@ -897,7 +897,7 @@ class TestMultiSourceOrchestration(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     @patch("data_agent.gis_processors.get_user_upload_dir")
-    @patch("data_agent.fusion_engine.get_engine", return_value=None)
+    @patch("data_agent.fusion.db.get_engine", return_value=None)
     def test_three_source_fusion(self, mock_engine, mock_dir):
         mock_dir.return_value = self.tmp
         from data_agent.fusion_engine import (
@@ -1636,7 +1636,7 @@ class TestEmbeddingMatching(unittest.TestCase):
         self.assertEqual(_cosine_similarity([], [1, 0]), 0.0)
         self.assertEqual(_cosine_similarity([0, 0], [1, 0]), 0.0)
 
-    @patch("data_agent.fusion_engine._get_embeddings")
+    @patch("data_agent.fusion.matching._get_embeddings")
     def test_embedding_match_found(self, mock_embed):
         """Embedding tier finds match with sufficient similarity."""
         from data_agent.fusion_engine import _find_field_matches, FusionSource
@@ -1668,7 +1668,7 @@ class TestEmbeddingMatching(unittest.TestCase):
         emb_matches = [m for m in matches if m.get("match_type") == "embedding"]
         self.assertEqual(len(emb_matches), 0)
 
-    @patch("data_agent.fusion_engine._get_embeddings", return_value=[])
+    @patch("data_agent.fusion.matching._get_embeddings", return_value=[])
     def test_embedding_graceful_degradation(self, mock_embed):
         """API failure (returns []) -> no embedding matches, no crash."""
         from data_agent.fusion_engine import _find_field_matches, FusionSource
@@ -1731,7 +1731,7 @@ class TestLLMStrategyRouting(unittest.TestCase):
         )
         self.assertIn(result, ["spatial_join", "overlay", "nearest_join"])
 
-    @patch("data_agent.fusion_engine._llm_select_strategy", return_value=("nearest_join", "Low IoU"))
+    @patch("data_agent.fusion.execution._llm_select_strategy", return_value=("nearest_join", "Low IoU"))
     def test_llm_strategy_returns_valid_candidate(self, mock_llm):
         """LLM path returns a valid candidate strategy."""
         from data_agent.fusion_engine import _auto_select_strategy, FusionSource
@@ -1748,7 +1748,7 @@ class TestLLMStrategyRouting(unittest.TestCase):
         )
         self.assertEqual(result, "nearest_join")
 
-    @patch("data_agent.fusion_engine._llm_select_strategy", return_value=("", ""))
+    @patch("data_agent.fusion.execution._llm_select_strategy", return_value=("", ""))
     def test_llm_fallback_on_failure(self, mock_llm):
         """LLM failure returns rule-based fallback."""
         from data_agent.fusion_engine import _auto_select_strategy, FusionSource
@@ -1794,10 +1794,10 @@ class TestLLMStrategyRouting(unittest.TestCase):
         strategy, reason = _llm_select_strategy(["spatial_join", "overlay"], sources)
         self.assertEqual(strategy, "")
 
-    @patch("data_agent.fusion_engine.get_engine", return_value=None)
+    @patch("data_agent.fusion.db.get_engine", return_value=None)
     @patch("data_agent.gis_processors.get_user_upload_dir")
     def test_execute_fusion_llm_auto(self, mock_upload, mock_engine):
-        """strategy='llm_auto' triggers LLM routing in execute_fusion."""
+        """strategy='llm_auto' is deprecated — falls back to rule-based 'auto'."""
         from data_agent.fusion_engine import execute_fusion, FusionSource
         with tempfile.TemporaryDirectory() as tmp:
             mock_upload.return_value = tmp
@@ -1814,13 +1814,14 @@ class TestLLMStrategyRouting(unittest.TestCase):
             gdf1 = gpd.read_file(v_path)
             gdf2 = gpd.read_file(v2_path)
 
-            with patch("data_agent.fusion_engine._llm_select_strategy",
-                       return_value=("spatial_join", "test")):
-                result = execute_fusion(
-                    [("vector", gdf1), ("vector", gdf2)],
-                    "llm_auto", [s1, s2],
-                )
-            self.assertEqual(result.strategy_used, "spatial_join")
+            # llm_auto degrades to auto — LLM mock is no longer called
+            result = execute_fusion(
+                [("vector", gdf1), ("vector", gdf2)],
+                "llm_auto", [s1, s2],
+            )
+            # Rule-based auto selects a valid vector×vector strategy
+            self.assertIn(result.strategy_used,
+                          ["spatial_join", "overlay", "nearest_join"])
             self.assertTrue(os.path.exists(result.output_path))
 
 

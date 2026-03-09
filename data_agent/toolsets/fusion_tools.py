@@ -1,4 +1,9 @@
-"""Fusion toolset: multi-modal data fusion tools for ADK agents."""
+"""Fusion toolset: multi-modal data fusion tools for ADK agents.
+
+v7.1: All tool functions are async — CPU-intensive work offloaded to thread pool
+via asyncio.to_thread() to avoid blocking the ASGI event loop.
+"""
+import asyncio
 import os
 import json
 import traceback
@@ -11,10 +16,10 @@ from ..gis_processors import _resolve_path
 
 
 # ---------------------------------------------------------------------------
-# Tool functions
+# Tool functions (async — heavy compute runs in thread pool)
 # ---------------------------------------------------------------------------
 
-def profile_fusion_sources(file_paths: str) -> str:
+async def profile_fusion_sources(file_paths: str) -> str:
     """分析多个数据源的特征画像，包括数据类型、坐标系、字段信息和统计摘要。
 
     Args:
@@ -23,11 +28,11 @@ def profile_fusion_sources(file_paths: str) -> str:
     Returns:
         每个数据源的详细画像信息。
     """
-    try:
-        paths = [p.strip() for p in file_paths.split(",") if p.strip()]
-        if not paths:
-            return "Error: 请提供至少一个文件路径。"
+    paths = [p.strip() for p in file_paths.split(",") if p.strip()]
+    if not paths:
+        return "Error: 请提供至少一个文件路径。"
 
+    def _run():
         profiles = []
         for p in paths:
             resolved = _resolve_path(p)
@@ -45,41 +50,52 @@ def profile_fusion_sources(file_paths: str) -> str:
                 info["bands"] = src.band_count
                 info["resolution"] = src.resolution
             if src.columns:
-                info["column_details"] = src.columns[:15]  # cap display
+                info["column_details"] = src.columns[:15]
             if src.stats:
                 info["stats"] = {k: v for k, v in list(src.stats.items())[:10]}
             profiles.append(info)
+        return profiles
 
+    try:
+        profiles = await asyncio.to_thread(_run)
         return json.dumps(profiles, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
         return f"Error: {e}"
 
 
-def assess_fusion_compatibility(file_paths: str, use_embedding: str = "false") -> str:
+async def assess_fusion_compatibility(
+    file_paths: str,
+    use_embedding: str = "false",
+    use_llm_schema: str = "false",
+) -> str:
     """评估多个数据源的融合兼容性，包括坐标系一致性、空间重叠度、字段匹配和推荐策略。
 
     Args:
         file_paths: 逗号分隔的文件路径列表
         use_embedding: 是否启用Gemini语义嵌入匹配 (true/false, 默认false)
+        use_llm_schema: 是否启用LLM全Schema对齐 (true/false, 默认false)。
+                       启用后用LLM替代启发式规则做字段映射，准确度更高但增加API调用。
 
     Returns:
         兼容性评估报告：CRS一致性、空间重叠IoU、语义字段匹配、推荐融合策略。
     """
-    try:
-        paths = [p.strip() for p in file_paths.split(",") if p.strip()]
-        if len(paths) < 2:
-            return "Error: 至少需要2个数据源进行兼容性评估。"
+    paths = [p.strip() for p in file_paths.split(",") if p.strip()]
+    if len(paths) < 2:
+        return "Error: 至少需要2个数据源进行兼容性评估。"
 
+    embed = use_embedding.lower() == "true"
+    llm_schema = use_llm_schema.lower() == "true"
+
+    def _run():
         sources = []
         for p in paths:
             resolved = _resolve_path(p)
             sources.append(fusion_engine.profile_source(resolved))
-
-        embed = use_embedding.lower() == "true"
-        report = fusion_engine.assess_compatibility(sources, use_embedding=embed)
-
-        result = {
+        report = fusion_engine.assess_compatibility(
+            sources, use_embedding=embed, use_llm_schema=llm_schema
+        )
+        return {
             "crs_compatible": report.crs_compatible,
             "spatial_overlap_iou": report.spatial_overlap_iou,
             "field_matches": report.field_matches,
@@ -87,13 +103,16 @@ def assess_fusion_compatibility(file_paths: str, use_embedding: str = "false") -
             "recommended_strategies": report.recommended_strategies,
             "warnings": report.warnings,
         }
+
+    try:
+        result = await asyncio.to_thread(_run)
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
         return f"Error: {e}"
 
 
-def fuse_datasets(
+async def fuse_datasets(
     file_paths: str,
     strategy: str = "auto",
     join_column: str = "",
@@ -104,46 +123,36 @@ def fuse_datasets(
 
     Args:
         file_paths: 逗号分隔的文件路径列表
-        strategy: 融合策略 (auto/llm_auto/spatial_join/attribute_join/zonal_statistics/
+        strategy: 融合策略 (auto/spatial_join/attribute_join/zonal_statistics/
                   point_sampling/band_stack/overlay/nearest_join/
                   time_snapshot/height_assign/raster_vectorize)。
-                  llm_auto: 使用LLM智能推荐最佳策略。
+                  auto: 根据数据特征和用户意图自动选择最佳策略。
         join_column: 属性连接的键字段 (attribute_join时需要)
         spatial_predicate: 空间谓词 (intersects/contains/within, 用于spatial_join)
-        user_hint: 用户意图描述（LLM策略路由时使用，如"按人口密度筛选"）
+        user_hint: 用户意图描述（如"按人口密度筛选"）
 
     Returns:
         融合结果摘要，包含输出路径、行列数、质量评分和对齐日志。
     """
-    try:
-        paths = [p.strip() for p in file_paths.split(",") if p.strip()]
-        if len(paths) < 2:
-            return "Error: 至少需要2个数据源进行融合。"
+    paths = [p.strip() for p in file_paths.split(",") if p.strip()]
+    if len(paths) < 2:
+        return "Error: 至少需要2个数据源进行融合。"
 
-        # Profile sources
+    params = {"spatial_predicate": spatial_predicate}
+    if join_column:
+        params["join_column"] = join_column
+
+    def _run():
         sources = []
         for p in paths:
             resolved = _resolve_path(p)
             sources.append(fusion_engine.profile_source(resolved))
-
-        # Assess compatibility
         report = fusion_engine.assess_compatibility(sources)
-
-        # Align
         aligned, align_log = fusion_engine.align_sources(sources, report)
-
-        # Build params
-        params = {"spatial_predicate": spatial_predicate}
-        if join_column:
-            params["join_column"] = join_column
-
-        # Execute
         result = fusion_engine.execute_fusion(
             aligned, strategy, sources, params,
             report=report, user_hint=user_hint,
         )
-
-        # Record operation
         fusion_engine.record_operation(
             sources=sources,
             strategy=result.strategy_used,
@@ -153,7 +162,10 @@ def fuse_datasets(
             duration_s=result.duration_s,
             params=params,
         )
+        return result, align_log
 
+    try:
+        result, align_log = await asyncio.to_thread(_run)
         summary = {
             "output_path": result.output_path,
             "strategy_used": result.strategy_used,
@@ -180,7 +192,7 @@ def fuse_datasets(
         return f"Error: {e}{recovery}"
 
 
-def validate_fusion_quality(file_path: str) -> str:
+async def validate_fusion_quality(file_path: str) -> str:
     """验证融合结果的数据质量，检查完整性、空值率和几何有效性。
 
     Args:
@@ -189,10 +201,9 @@ def validate_fusion_quality(file_path: str) -> str:
     Returns:
         质量评分(0-1)、问题列表和修复建议。
     """
-    try:
+    def _run():
         resolved = _resolve_path(file_path)
         quality = fusion_engine.validate_quality(resolved)
-
         result = {
             "file": os.path.basename(resolved),
             "quality_score": quality["score"],
@@ -200,7 +211,6 @@ def validate_fusion_quality(file_path: str) -> str:
             "status": "GOOD" if quality["score"] >= 0.8 else
                       "FAIR" if quality["score"] >= 0.5 else "POOR",
         }
-
         if quality["score"] < 0.8 and quality["warnings"]:
             suggestions = []
             for w in quality["warnings"]:
@@ -211,7 +221,10 @@ def validate_fusion_quality(file_path: str) -> str:
                 if "empty" in w.lower():
                     suggestions.append("检查输入数据的空间范围是否重叠")
             result["suggestions"] = suggestions
+        return result
 
+    try:
+        result = await asyncio.to_thread(_run)
         return json.dumps(result, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
