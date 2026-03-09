@@ -61,23 +61,23 @@ GIS Data Agent 采用了先进的**层级式多智能体架构（Hierarchical Mu
 
 ```mermaid
 graph TD
-    User(["用户输入"]) --> Root["顶层 Agent"]
-    Root --> Planner{"Dynamic Planner"}
+    User["用户输入"] --> Root["顶层 Agent"]
+    Root --> Planner["Dynamic Planner"]
 
-    Planner --"优化"--> OptP["Data Pipeline"]
-    Planner --"治理"--> GovP["Governance Pipeline"]
-    Planner --"通用"--> GenP["General Pipeline"]
+    Planner -- 优化 --> OptP["Data Pipeline"]
+    Planner -- 治理 --> GovP["Governance Pipeline"]
+    Planner -- 通用 --> GenP["General Pipeline"]
 
     OptP --> Exp1["Exploration"] --> Proc1["Processing"]
     Proc1 --> Ana1["Analysis"] --> QC["Quality Check"]
-    QC --"不达标"--> Ana1
+    QC -- 不达标 --> Ana1
     QC --> Viz1["Visualization"] --> Sum1["Summary"]
 
     GovP --> Exp2["Gov Exploration"] --> Proc2["Gov Processing"] --> Rep2["Gov Reporter"]
 
     GenP --> Proc3["General Processing"] --> Viz3["General Viz"] --> Sum3["General Summary"]
 
-    Sum1 --> Output(["结果返回"])
+    Sum1 --> Output["结果返回"]
     Rep2 --> Output
     Sum3 --> Output
 ```
