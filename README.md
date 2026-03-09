@@ -61,67 +61,25 @@ GIS Data Agent 采用了先进的**层级式多智能体架构（Hierarchical Mu
 
 ```mermaid
 graph TD
-    User(["用户输入自然语言"]) --> Root
+    User(["用户输入"]) --> Root["顶层 Agent"]
+    Root --> Planner{"Dynamic Planner"}
 
-    subgraph Brain ["大脑中枢"]
-        Root["顶层 Agent - 路由入口"]
-        Planner{"Dynamic Planner<br/>动态调度器"}
-        Root --> Planner
-    end
+    Planner --"优化"--> OptP["Data Pipeline"]
+    Planner --"治理"--> GovP["Governance Pipeline"]
+    Planner --"通用"--> GenP["General Pipeline"]
 
-    subgraph Opt ["空间优化管线"]
-        Opt_Pipeline["Data Pipeline - Sequential"]
-        Exp1["Exploration Agent<br/>数据探查与审计"]
-        Proc1["Processing Agent<br/>清洗与转换"]
-        Knowledge["Vertex Search Agent<br/>专业文献检索"]
-        Ana_Loop{"Analysis Quality Loop"}
-        Ana1["Analysis Agent<br/>FFI计算与DRL优化"]
-        QC["Quality Checker<br/>指标合理性审查"]
-        Viz1["Visualization Agent<br/>地图与图表生成"]
-        Sum1["Summary Agent<br/>报告撰写"]
+    OptP --> Exp1["Exploration"] --> Proc1["Processing"]
+    Proc1 --> Ana1["Analysis"] --> QC["Quality Check"]
+    QC --"不达标"--> Ana1
+    QC --> Viz1["Visualization"] --> Sum1["Summary"]
 
-        Opt_Pipeline --> Exp1 --> Proc1
-        Proc1 -."按需调用".-> Knowledge
-        Proc1 --> Ana_Loop --> Ana1 --> QC
-        QC --"不达标打回"--> Ana1
-        QC --> Viz1 --> Sum1
-    end
+    GovP --> Exp2["Gov Exploration"] --> Proc2["Gov Processing"] --> Rep2["Gov Reporter"]
 
-    subgraph Gov ["数据合规治理管线"]
-        Gov_Pipeline["Governance Pipeline - Sequential"]
-        Exp2["Gov Exploration<br/>标准与拓扑审计"]
-        Proc2["Gov Processing<br/>数据修复与标准化"]
-        Rep2["Gov Reporter<br/>治理报告生成"]
+    GenP --> Proc3["General Processing"] --> Viz3["General Viz"] --> Sum3["General Summary"]
 
-        Gov_Pipeline --> Exp2 --> Proc2 --> Rep2
-    end
-
-    subgraph Gen ["通用处理管线"]
-        Gen_Pipeline["General Pipeline - Sequential"]
-        Proc3["General Processing<br/>通用操作"]
-        Viz3["General Viz<br/>基础出图"]
-        Sum3["General Summary"]
-
-        Gen_Pipeline --> Proc3 --> Viz3 --> Sum3
-    end
-
-    Planner --"优化与预测"--> Opt_Pipeline
-    Planner --"治理与清洗"--> Gov_Pipeline
-    Planner --"其他与探索"--> Gen_Pipeline
-
-    Sum1 --> Output(["最终结果返回"])
+    Sum1 --> Output(["结果返回"])
     Rep2 --> Output
     Sum3 --> Output
-
-    classDef pipeline fill:#e8f4f8,stroke:#2b6cb0,stroke-width:2px,color:#2c3e50
-    classDef agent fill:#ffffff,stroke:#4a5568,stroke-width:1px
-    classDef brain fill:#fefcbf,stroke:#d69e2e,stroke-width:2px
-    classDef loop fill:#fbd38d,stroke:#dd6b20,stroke-width:2px
-
-    class Opt_Pipeline,Gov_Pipeline,Gen_Pipeline pipeline
-    class Exp1,Proc1,Ana1,QC,Viz1,Sum1,Exp2,Proc2,Rep2,Proc3,Viz3,Sum3 agent
-    class Root,Planner brain
-    class Ana_Loop loop
 ```
 
 **管道路由**：`DYNAMIC_PLANNER=true`（默认）使用规划器进行动态意图分配，极大地降低了单体大模型的上下文负担。
