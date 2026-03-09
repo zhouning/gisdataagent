@@ -27,7 +27,7 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("create_buffer", names)
         self.assertIn("generate_tessellation", names)
         self.assertIn("polygon_neighbors", names)
-        self.assertEqual(len(tools), 17)
+        self.assertEqual(len(tools), 18)
 
     def test_location_toolset(self):
         from data_agent.toolsets.location_tools import LocationToolset
@@ -170,7 +170,8 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("delete_data_asset", names)
         self.assertIn("share_data_asset", names)
         self.assertIn("get_data_lineage", names)
-        self.assertEqual(len(tools), 8)
+        self.assertIn("download_cloud_asset", names)
+        self.assertEqual(len(tools), 9)
 
 
 class TestToolFilter(unittest.TestCase):
@@ -267,8 +268,8 @@ class TestToolFilter(unittest.TestCase):
         ts = DataLakeToolset(tool_filter=_DATALAKE_READ)
         tools = self._run(ts.get_tools())
         names = {t.name for t in tools}
-        self.assertEqual(len(tools), 3)
-        self.assertEqual(names, {"list_data_assets", "describe_data_asset", "search_data_assets"})
+        self.assertEqual(len(tools), 4)
+        self.assertEqual(names, {"list_data_assets", "describe_data_asset", "search_data_assets", "download_cloud_asset"})
 
 
 class TestControlMapLayer(unittest.TestCase):
@@ -362,7 +363,7 @@ class TestFilterPresets(unittest.TestCase):
         ts = DataLakeToolset(tool_filter=_DATALAKE_READ)
         tools = self._run(ts.get_tools())
         names = {t.name for t in tools}
-        self.assertEqual(names, {"list_data_assets", "describe_data_asset", "search_data_assets"})
+        self.assertEqual(names, {"list_data_assets", "describe_data_asset", "search_data_assets", "download_cloud_asset"})
 
 
 class TestNoDuplicateToolNames(unittest.TestCase):

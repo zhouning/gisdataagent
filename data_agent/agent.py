@@ -49,6 +49,7 @@ from .toolsets import (
     FusionToolset,
     KnowledgeGraphToolset,
 )
+from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
 from .toolsets.geo_processing_tools import (
@@ -469,6 +470,7 @@ planner_agent = LlmAgent(
     model=MODEL_STANDARD,
     output_key="planner_summary",
     tools=[
+        build_all_skills_toolset(),  # 5 domain skills, incremental loading
         MemoryToolset(),
         AdminToolset(),
         TeamToolset(),
