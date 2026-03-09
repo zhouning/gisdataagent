@@ -61,76 +61,58 @@ GIS Data Agent 采用了先进的**层级式多智能体架构（Hierarchical Mu
 
 ```mermaid
 graph TD
-    User([👨‍💻 用户输入自然语言]) --> Root
+    User(["用户输入自然语言"]) --> Root
 
-    subgraph "大脑中枢 (Central Brain)"
-        Root[/"🚀 顶层 Agent (路由入口)"\]
-        Planner{"🧠 Dynamic Planner<br>(动态调度器)"}
+    subgraph Brain ["大脑中枢"]
+        Root["顶层 Agent - 路由入口"]
+        Planner{"Dynamic Planner\n动态调度器"}
         Root --> Planner
     end
 
-    subgraph "工作流 1: 空间优化管线 (Optimization Pipeline)"
-        Opt_Pipeline["⚙️ Data Pipeline (Sequential)"]
+    subgraph Opt ["空间优化管线 Optimization Pipeline"]
+        Opt_Pipeline["Data Pipeline - Sequential"]
+        Exp1["Exploration Agent\n数据探查与审计"]
+        Proc1["Processing Agent\n清洗与转换"]
+        Knowledge[("Vertex Search Agent\n专业文献检索")]
+        Ana_Loop{"Analysis Quality Loop"}
+        Ana1["Analysis Agent\nFFI计算与DRL优化"]
+        QC["Quality Checker\n指标合理性审查"]
+        Viz1["Visualization Agent\n地图与图表生成"]
+        Sum1["Summary Agent\n报告撰写"]
 
-        subgraph "数据工程阶段"
-            Eng_Seq["Data Engineering (Sequential)"]
-            Exp1["🕵️‍♂️ Exploration Agent<br>(数据探查/审计)"]
-            Proc1["🛠️ Processing Agent<br>(清洗/转换)"]
-            Knowledge[("📚 Vertex Search Agent<br>(专业文献检索)")]
-            Eng_Seq --> Exp1
-            Exp1 --> Proc1
-            Proc1 -.按需调用.-> Knowledge
-        end
-
-        subgraph "核心分析阶段 (带质量控制)"
-            Ana_Loop{"🔄 Analysis Quality Loop"}
-            Ana1["📈 Analysis Agent<br>(FFI计算/DRL优化)"]
-            QC["⚖️ Quality Checker<br>(指标合理性审查)"]
-            Ana_Loop --> Ana1
-            Ana1 --> QC
-            QC --不达标打回--> Ana1
-        end
-
-        Viz1["🗺️ Visualization Agent<br>(地图/图表生成)"]
-        Sum1["📝 Summary Agent<br>(报告撰写)"]
-
-        Opt_Pipeline --> Eng_Seq
-        Eng_Seq --> Ana_Loop
-        Ana_Loop --> Viz1
-        Viz1 --> Sum1
+        Opt_Pipeline --> Exp1 --> Proc1
+        Proc1 -.按需调用.-> Knowledge
+        Proc1 --> Ana_Loop --> Ana1 --> QC
+        QC --不达标打回--> Ana1
+        QC --> Viz1 --> Sum1
     end
 
-    subgraph "工作流 2: 数据合规治理管线 (Governance Pipeline)"
-        Gov_Pipeline["🛡️ Governance Pipeline (Sequential)"]
-        Exp2["🕵️‍♂️ Gov Exploration<br>(标准与拓扑审计)"]
-        Proc2["🛠️ Gov Processing<br>(数据修复/标准化)"]
-        Rep2["📄 Gov Reporter<br>(治理报告生成)"]
+    subgraph Gov ["数据合规治理管线 Governance Pipeline"]
+        Gov_Pipeline["Governance Pipeline - Sequential"]
+        Exp2["Gov Exploration\n标准与拓扑审计"]
+        Proc2["Gov Processing\n数据修复与标准化"]
+        Rep2["Gov Reporter\n治理报告生成"]
 
-        Gov_Pipeline --> Exp2
-        Exp2 --> Proc2
-        Proc2 --> Rep2
+        Gov_Pipeline --> Exp2 --> Proc2 --> Rep2
     end
 
-    subgraph "工作流 3: 通用处理管线 (General Pipeline)"
-        Gen_Pipeline["🌍 General Pipeline (Sequential)"]
-        Proc3["🛠️ General Processing<br>(通用操作)"]
-        Viz3["🗺️ General Viz<br>(基础出图)"]
-        Sum3["📝 General Summary"]
+    subgraph Gen ["通用处理管线 General Pipeline"]
+        Gen_Pipeline["General Pipeline - Sequential"]
+        Proc3["General Processing\n通用操作"]
+        Viz3["General Viz\n基础出图"]
+        Sum3["General Summary"]
 
-        Gen_Pipeline --> Proc3
-        Proc3 --> Viz3
-        Viz3 --> Sum3
+        Gen_Pipeline --> Proc3 --> Viz3 --> Sum3
     end
 
-    Planner --"意图: 优化/预测"--> Opt_Pipeline
-    Planner --"意图: 治理/清洗"--> Gov_Pipeline
-    Planner --"意图: 其他/探索"--> Gen_Pipeline
+    Planner -- 优化与预测 --> Opt_Pipeline
+    Planner -- 治理与清洗 --> Gov_Pipeline
+    Planner -- 其他与探索 --> Gen_Pipeline
 
-    Opt_Pipeline --> Output([📤 最终结果返回])
-    Gov_Pipeline --> Output
-    Gen_Pipeline --> Output
+    Sum1 --> Output(["最终结果返回"])
+    Rep2 --> Output
+    Sum3 --> Output
 
-    %% 样式定义
     classDef pipeline fill:#e8f4f8,stroke:#2b6cb0,stroke-width:2px,color:#2c3e50
     classDef agent fill:#ffffff,stroke:#4a5568,stroke-width:1px
     classDef brain fill:#fefcbf,stroke:#d69e2e,stroke-width:2px

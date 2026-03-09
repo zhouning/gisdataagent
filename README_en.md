@@ -59,30 +59,30 @@ An AI-powered geospatial analysis platform that turns natural language into spat
 
 ```mermaid
 graph TD
-    User[Browser / Bot Client] --> FE[React Three-Panel Frontend]
-    FE --> Router{Semantic Router<br/>Gemini 2.0 Flash}
-    Router --> SL[Semantic Layer<br/>YAML + DB]
+    User["Browser / Bot Client"] --> FE["React Three-Panel Frontend"]
+    FE --> Router{"Semantic Router\nGemini 2.0 Flash"}
+    Router --> SL["Semantic Layer\nYAML + DB"]
     SL --> Router
 
-    Router -- "Dynamic" --> Planner[Dynamic Planner<br/>7 Sub-Agents]
-    Router -- "Audit" --> Gov[Governance Pipeline]
-    Router -- "Optimize" --> Opt[Optimization Pipeline]
-    Router -- "Query" --> Gen[General Pipeline]
+    Router -- Dynamic --> Planner["Dynamic Planner\n7 Sub-Agents"]
+    Router -- Audit --> Gov["Governance Pipeline"]
+    Router -- Optimize --> Opt["Optimization Pipeline"]
+    Router -- Query --> Gen["General Pipeline"]
 
-    subgraph "Planner (transfer_to_agent)"
-        PE[Explorer] --> PP[Processor] --> PA[Analyzer] --> PV[Visualizer] --> PR[Reporter]
+    subgraph PlannerSub ["Planner - transfer_to_agent"]
+        PE["Explorer"] --> PP["Processor"] --> PA["Analyzer"] --> PV["Visualizer"] --> PR["Reporter"]
     end
 
-    subgraph "Shared Infrastructure"
-        DB[(PostgreSQL + PostGIS)]
-        Auth[Auth + RBAC + RLS]
-        Audit[Audit Logger + Token Tracker]
-        WF[Workflow Engine + Scheduler]
-        MCP[MCP Tool Market]
-        Bots[WeChat / DingTalk / Feishu]
+    subgraph Infra ["Shared Infrastructure"]
+        DB[("PostgreSQL + PostGIS")]
+        Auth["Auth + RBAC + RLS"]
+        Audit["Audit Logger + Token Tracker"]
+        WF["Workflow Engine + Scheduler"]
+        MCP["MCP Tool Market"]
+        Bots["WeChat / DingTalk / Feishu"]
     end
 
-    FE -- REST API --> FAPI[Frontend API<br/>30 Endpoints]
+    FE -- REST API --> FAPI["Frontend API\n31 Endpoints"]
     FAPI --> DB
 ```
 
