@@ -31,12 +31,14 @@ MMFE 采用标准化的五阶段处理流水线设计，确保了数据处理的
     - **指标**：检测空值率、拓扑有效性、异常值（IQR）、小碎多边形比例。
 
 ## 3. 语义融合的实现机制
-语义融合的“智能”主要体现在**四层渐进式匹配策略**：
+语义融合的”智能”主要体现在**四层渐进式匹配策略**（v7.1 新增 LLM Schema 对齐作为可选高层方案）：
 
 *   **绝对匹配**：字段名称的字面完全匹配。
-*   **知识库等价组**：依托 `semantic_catalog.yaml` 中的行业本体库，实现 `["area", "面积", "zmj"]` 等跨语言/简写的语义关联。
+*   **知识库等价组**：依托 `semantic_catalog.yaml` 中的行业本体库，实现 `[“area”, “面积”, “zmj”]` 等跨语言/简写的语义关联。
+*   **向量嵌入匹配**（v7.0）：Gemini `text-embedding-004` 语义向量空间，cosine ≥ 0.75，默认关闭。
 *   **单位感知匹配**：智能识别 `_m2`、`_ha` 等后缀，并自动应用转换系数。
 *   **模糊序列匹配**：利用 Jaccard Token 相似度与 Python 序列匹配算法进行保底对齐。
+*   **LLM Schema 对齐**（v7.1 新增）：Gemini 2.5 Flash 将两表 Schema + 采样数据 → 结构化 JSON 映射配置，通过 `use_llm_schema=True` 启用。
 
 ## 4. 现状评估与改进建议
 
@@ -52,11 +54,13 @@ MMFE 采用标准化的五阶段处理流水线设计，确保了数据处理的
     *   **不足**：目前过度依赖硬编码别名字典，对长尾字段和复杂语境理解不足。
     *   **建议**：集成 `sentence-transformers` 等模型，将字段名转为向量进行语义相似度计算，提升匹配的通用性。
     *   **v7.0 实现**：使用 Gemini `text-embedding-004` API（避免 ~400MB sentence-transformers 依赖），插入 Tier 2.5 嵌入层，cosine 阈值 ≥0.75，模块级缓存，API 失败静默降级。通过 `use_embedding=”true”` 显式启用。
+    *   **v7.1 补充**：嵌入匹配实现已从单体文件拆分至 `fusion/matching.py` 模块，缓存机制不变。
 
-2.  **LLM 增强的策略路由决策** ✅ v7.0 已实现
+2.  **LLM 增强的策略路由决策** ✅ v7.0 已实现 → ⚠️ v7.1 已弃用（改为 LLM Schema 对齐）
     *   **不足**：融合算子的选择目前仍主要通过硬编码的规则打分决策。
     *   **建议**：将兼容性评估报告直接暴露给 LLM，允许模型基于用户的自然语言意图（如”按人口密度筛选异常地块”）来动态组合、规划融合步骤。
     *   **v7.0 实现**：新增 `strategy=”llm_auto”` 选项，调用 Gemini 2.0 Flash 进行策略推理，接收候选策略 + 数据元信息 + `user_hint` 参数，返回 JSON `{strategy, reasoning}`，失败回退规则评分。
+    *   **v7.1 调整**：技术评审（`technical-review-mmfe.md`）指出策略路由是纯规则决策不应交由 LLM，已弃用 `_llm_select_strategy()`，`strategy=”llm_auto”` 回退为规则评分。LLM 职责转向更适合的 **Schema 对齐**（`fusion/schema_alignment.py`），通过 `use_llm_schema=True` 启用。
 
 3.  **从”物理合并”转向”地理实体融合”** ✅ v7.0 已实现
     *   **不足**：目前的产出多为”宽表”，缺乏对地理对象的结构化理解。
@@ -67,7 +71,26 @@ MMFE 采用标准化的五阶段处理流水线设计，确保了数据处理的
     *   **不足**：依赖单机内存（GeoPandas/Rasterio），在处理大规模（百万级图斑）或超高分辨率影像时存在 OOM 风险。
     *   **建议**：底层适配 `Dask-GeoPandas` 或 `Apache Sedona`，支持分布式大数据环境下的并行融合处理。
     *   **v7.0 实现**：利用已有 dask + fiona 实现透明分块处理。阈值 500K行/500MB，fiona 分块读取矢量文件，dask.dataframe 延迟计算大 CSV，分块 spatial_join。对调用方透明，小文件行为不变。
+    *   **v7.1 补充**：新增 PostGIS 计算下推（`fusion/strategies/postgis_pushdown.py`），>10万行 PostGIS 数据源自动生成 SQL（ST_Intersects/ST_Intersection/LATERAL），彻底避免大表拉回内存。
+
+## 5. v7.1 架构重构（2026-03-09）
+
+v7.1 基于 `docs/technical-review-mmfe.md` 技术评审报告，完成了 4 阶段系统性重构：
+
+| 阶段 | 重构内容 | 解决的缺陷 |
+|------|---------|-----------|
+| Phase 1 | 工程解耦：单体 → `fusion/` 包 (22 模块)，策略模式 | P0~P2 架构臃肿 |
+| Phase 2 | AI 精简：LLM 路由弃用 + LLM Schema 对齐新增 | P2 LLM 滥用 + P2 语义匹配伪智能 |
+| Phase 3 | 异步化：4 工具 `async` + `asyncio.to_thread()` | P0 事件循环阻塞 |
+| Phase 4 | PostGIS 下推：3 种 SQL 策略，>10万行自动下推 | P1 内存计算瓶颈 |
+
+**架构变更**：
+- `fusion_engine.py` (~2100行) → `fusion/` 包 (22模块，26文件，~121KB) + 薄代理层 (72行)
+- 10 种策略实现独立为 `fusion/strategies/*.py`，通过 `_STRATEGY_REGISTRY` 注册
+- 新增 `fusion/schema_alignment.py`（LLM Schema 对齐）、`fusion/strategies/postgis_pushdown.py`（计算下推）
+- FusionSource 扩展：`postgis_table`、`postgis_srid` 字段
+- 质量验证扩展至 10 维（+CRS一致性、拓扑验证、KS分布偏移）
 
 ---
-**文档版本**：v1.0 → v2.0 (2026-03-05 更新，标注 v7.0 实现状态)
-**生成日期**：2026-03-05
+**文档版本**：v1.0 → v2.0 (2026-03-05 更新，标注 v7.0 实现状态) → v3.0 (2026-03-09 更新，标注 v7.1 重构状态)
+**生成日期**：2026-03-09

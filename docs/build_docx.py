@@ -21,6 +21,7 @@ SKIP_HEADINGS = [
     "\u7cfb\u7edf\u96c6\u6210",                            # 系统集成
     "\u53c2\u8003\u5b9e\u73b0",                            # 参考实现
     "\u6a21\u5757\u4f9d\u8d56\u5173\u7cfb",                # 模块依赖关系
+    "\u6a21\u5757\u67b6\u6784",                            # 模块架构 (v7.1 renamed)
     "\u5df2\u4fee\u590d\u7684\u5c40\u9650\u6027",          # 已修复的局限性
     "\u5df2\u4fee\u590d",                                  # 已修复 (catches sub-headings)
 ]
@@ -31,11 +32,11 @@ CLEAN_PATTERNS = [
     (r"\s*\uff08v5\.\d[^\uff09]*\uff09", ""),             # （v5.6 新增）— full-width
     (r"\s*\(v6\.\d[^)]*\)", ""),                          # (v6.0) — half-width
     (r"\s*\uff08v6\.\d[^\uff09]*\uff09", ""),             # （v6.0）— full-width
-    (r"\s*\(v7\.\d[^)]*\)", ""),                          # (v7.0), (v7.0新增) — half-width
+    (r"\s*\(v7\.\d[^)]*\)", ""),                          # (v7.0), (v7.1 新增) — half-width
     (r"\s*\uff08v7\.\d[^\uff09]*\uff09", ""),             # （v7.0 新增）— full-width
     (r"v5\.\d+\s*\u7248\u672c", ""),                      # v5.6 版本
     (r"v6\.\d+\s*\u7248\u672c", ""),                      # v6.0 版本
-    (r"v7\.\d+\s*\u7248\u672c", ""),                      # v7.0 版本
+    (r"v7\.\d+\s*\u7248\u672c", ""),                      # v7.0/v7.1 版本
     (r"\u501f\u9274[^,\u3002]*\u601d\u60f3\uff0c?", ""),  # 借鉴...思想，
     (r"MGIM\uff08[^\uff09]*\uff09\u7684", ""),            # MGIM（...）的
     (r"MGIM\uff08[^\uff09]*\uff09", ""),                  # MGIM（...）
@@ -44,10 +45,10 @@ CLEAN_PATTERNS = [
     (r"~~([^~]+)~~", r"\1"),                               # ~~strikethrough~~ → text
     (r"\s*v5\.\d+\s*", " "),                               # standalone v5.5 / v5.6
     (r"\s*v6\.\d+\s*", " "),                               # standalone v6.0
-    (r"\s*v7\.\d+\s*", " "),                               # standalone v7.0
+    (r"\s*v7\.\d+\s*", " "),                               # standalone v7.0 / v7.1
     (r",?\s*\u542bv5\.\d[^)）]*", ""),                     # 含v5.6增强
     (r",?\s*\u542bv6\.\d[^)）]*", ""),                     # 含v6.0增强
-    (r",?\s*\u542bv7\.\d[^)）]*", ""),                     # 含v7.0增强
+    (r",?\s*\u542bv7\.\d[^)）]*", ""),                     # 含v7.0/v7.1增强
     (r"\u4ecev5\.\d\u7684\d+\u7ec4\u6269\u5c55", ""),     # 从v5.5的6组扩展
     (r",?\s*\u65b0\u589e\uff09", "\uff09"),               # ， 新增） → ）
     (r",?\s*\u65b0\u589e\)", ")"),                         # ， 新增) → )
@@ -63,6 +64,10 @@ CLEAN_PATTERNS = [
     (r"\u667a\u80fd\u4f53", "\u81ea\u52a8\u5316\u5f15\u64ce"),              # 智能体 → 自动化引擎
     (r"\uff0c\s*\uff09", "\uff09"),                       # ，） → ）  (trailing comma before full-width paren)
     (r",\s*\)", ")"),                                      # , ) → )  (trailing comma before half-width paren)
+    (r"\u54cd\u5e94\u4e86\u6280\u672f\u8bc4\u5ba1[^)）]*[)）]", ""),  # 响应了技术评审报告（...）
+    (r"commit\s*`[^`]*`", ""),                             # commit `b3e35c7`
+    (r"`docs/[^`]*`", ""),                                 # `docs/technical-review-mmfe.md`
+    (r"\u63d0\u51fa\u7684\u5168\u90e8\s*\d+\s*\u9879\u6838\u5fc3\u7f3a\u9677\uff1a", ""),  # 提出的全部 N 项核心缺陷：
 ]
 
 # Lines containing these → skip entirely
@@ -92,6 +97,15 @@ SKIP_LINE_KW = [
     "\u7d2f\u8ba1\u6d4b\u8bd5",                           # 累计测试
     "\u5168\u91cf\u56de\u5f52",                            # 全量回归
     "pre-existing failures",
+    "fusion_engine.py",                                    # v7.1: internal file ref
+    "fusion/",                                             # v7.1: internal package ref
+    "postgis_pushdown.py",                                 # v7.1: internal module ref
+    "schema_alignment.py",                                 # v7.1: internal module ref
+    "Mock \u76ee\u6807",                                   # Mock 目标
+    "@patch",                                              # test mock patterns
+    "asyncio.to_thread",                                   # internal async detail
+    "technical-review-mmfe",                               # internal doc ref
+    "technical_paper_fusion",                               # internal doc ref
 ]
 
 # Section number remapping after removing section 4
