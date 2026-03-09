@@ -149,7 +149,18 @@ def query_database(sql_query: str) -> dict:
                 }
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        err = str(e)
+        recovery = ""
+        if "relation" in err and "does not exist" in err:
+            recovery = "请先调用 list_tables 查看可用表名"
+        elif "column" in err and "does not exist" in err:
+            recovery = "请先调用 describe_table 查看表的字段结构"
+        elif "permission denied" in err.lower() or "access" in err.lower():
+            recovery = "当前用户无权访问该表，请联系管理员"
+        elif "syntax error" in err.lower():
+            recovery = "SQL语法错误，请检查查询语句"
+        return {"status": "error", "message": err,
+                **({"recovery": recovery} if recovery else {})}
 
 
 def list_tables() -> dict:

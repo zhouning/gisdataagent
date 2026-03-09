@@ -284,5 +284,70 @@ class TestPlanConfirmation(unittest.TestCase):
         self.assertIn('分析方案', instruction)
 
 
+class TestReflectionLoops(unittest.TestCase):
+    """Tests for v7.1.6 reflection loop expansion to Governance and General pipelines."""
+
+    def test_governance_has_report_loop(self):
+        from data_agent.agent import governance_pipeline
+        from google.adk.agents import LoopAgent
+        loop_agents = [a for a in governance_pipeline.sub_agents if isinstance(a, LoopAgent)]
+        self.assertEqual(len(loop_agents), 1)
+        self.assertEqual(loop_agents[0].name, "GovernanceReportLoop")
+
+    def test_governance_loop_contains_checker(self):
+        from data_agent.agent import governance_pipeline
+        from google.adk.agents import LoopAgent
+        loop = [a for a in governance_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        names = [a.name for a in loop.sub_agents]
+        self.assertIn("GovernanceReporter", names)
+        self.assertIn("GovernanceChecker", names)
+
+    def test_governance_loop_max_iterations(self):
+        from data_agent.agent import governance_pipeline
+        from google.adk.agents import LoopAgent
+        loop = [a for a in governance_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        self.assertEqual(loop.max_iterations, 3)
+
+    def test_general_has_summary_loop(self):
+        from data_agent.agent import general_pipeline
+        from google.adk.agents import LoopAgent
+        loop_agents = [a for a in general_pipeline.sub_agents if isinstance(a, LoopAgent)]
+        self.assertEqual(len(loop_agents), 1)
+        self.assertEqual(loop_agents[0].name, "GeneralSummaryLoop")
+
+    def test_general_loop_contains_checker(self):
+        from data_agent.agent import general_pipeline
+        from google.adk.agents import LoopAgent
+        loop = [a for a in general_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        names = [a.name for a in loop.sub_agents]
+        self.assertIn("GeneralSummary", names)
+        self.assertIn("GeneralResultChecker", names)
+
+    def test_general_loop_max_iterations(self):
+        from data_agent.agent import general_pipeline
+        from google.adk.agents import LoopAgent
+        loop = [a for a in general_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        self.assertEqual(loop.max_iterations, 3)
+
+    def test_checker_prompts_exist(self):
+        from data_agent.prompts import get_prompt
+        gov = get_prompt("general", "governance_checker_instruction")
+        self.assertIn("审计方法", gov)
+        gen = get_prompt("general", "general_result_checker_instruction")
+        self.assertIn("approve_quality", gen)
+
+    def test_all_three_pipelines_have_loops(self):
+        """All 3 pipelines (optimization, governance, general) should have LoopAgent."""
+        from data_agent.agent import data_pipeline, governance_pipeline, general_pipeline
+        from google.adk.agents import LoopAgent
+
+        def has_loop(pipeline):
+            return any(isinstance(a, LoopAgent) for a in pipeline.sub_agents)
+
+        self.assertTrue(has_loop(data_pipeline), "Optimization pipeline missing LoopAgent")
+        self.assertTrue(has_loop(governance_pipeline), "Governance pipeline missing LoopAgent")
+        self.assertTrue(has_loop(general_pipeline), "General pipeline missing LoopAgent")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -435,8 +435,18 @@ def generate_choropleth(
             f"分级方法: {classification_method}, 分级数: {num_classes}, 配色: {color_scheme}"
         )
 
+    except FileNotFoundError:
+        return f"Error: 文件未找到 {file_path}。Recovery: 请先调用 search_data_assets 或 list_user_files 检查可用文件"
     except Exception as e:
-        return f"Error generating choropleth: {str(e)}"
+        err = str(e)
+        recovery = ""
+        if "column" in err.lower() or "not in" in err.lower() or "KeyError" in err:
+            recovery = " Recovery: 请先调用 describe_geodataframe 查看可用字段列表"
+        elif "CRS" in err or "crs" in err:
+            recovery = " Recovery: 请先调用 reproject_spatial_data 统一坐标系"
+        elif "empty" in err.lower() or "0 records" in err:
+            recovery = " Recovery: 数据为空，请检查输入文件或筛选条件是否过于严格"
+        return f"Error generating choropleth: {err}{recovery}"
 
 
 def generate_bubble_map(

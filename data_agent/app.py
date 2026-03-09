@@ -58,7 +58,7 @@ try:
     from data_agent.report_generator import generate_word_report
     from data_agent.user_context import (
         current_user_id, current_session_id, current_user_role,
-        get_user_upload_dir
+        current_trace_id, get_user_upload_dir
     )
     from data_agent.auth import ensure_users_table
     from data_agent.memory import ensure_memory_table
@@ -144,6 +144,10 @@ except Exception as _obs_err:
     logger.warning("OBS initialization failed: %s", _obs_err)
 if ARCPY_AVAILABLE:
     logger.info("ArcPy engine available and connected")
+
+# --- Prompt version logging ---
+from data_agent.prompts import log_prompt_versions
+log_prompt_versions()
 
 # --- Enterprise WeChat Bot (conditional) ---
 from data_agent.wecom_bot import ensure_wecom_connection, is_wecom_configured
@@ -1649,7 +1653,8 @@ async def _execute_pipeline(
     Extracted from @cl.on_message to allow reuse by the retry callback.
     """
     from data_agent.user_context import get_user_upload_dir
-    _set_user_context(user_id, session_id, role)
+    trace_id = _set_user_context(user_id, session_id, role)
+    logger.info("[Trace:%s] Pipeline=%s Intent=%s Started", trace_id, pipeline_name, intent)
 
     runner = Runner(
         agent=selected_agent,
@@ -1999,6 +2004,7 @@ async def _execute_pipeline(
         # --- Prometheus metrics: pipeline success ---
         pipeline_duration.labels(pipeline=pipeline_type).observe(total_duration)
         pipeline_runs.labels(pipeline=pipeline_type, status="success").inc()
+        logger.info("[Trace:%s] Pipeline=%s Finished duration=%.1fs", trace_id, pipeline_name, total_duration)
 
         # --- Inject map/data updates into final_msg metadata ---
         # This ensures the main response message carries map_update, which is
@@ -2152,7 +2158,7 @@ async def _execute_pipeline(
 
     except Exception as e:
         err_msg = f"Error: {str(e)}"
-        logger.error("Pipeline execution error: %s", e)
+        logger.error("[Trace:%s] Pipeline=%s Error: %s", trace_id, pipeline_name, e)
         pipeline_runs.labels(pipeline=pipeline_type, status="error").inc()
         # Finalize progress with error state
         try:
@@ -2200,6 +2206,11 @@ def _set_user_context(user_id: str, session_id: str, role: str = "analyst"):
     current_user_id.set(user_id)
     current_session_id.set(session_id)
     current_user_role.set(role)
+    # Generate trace_id for end-to-end request tracing
+    import uuid
+    trace_id = uuid.uuid4().hex[:12]
+    current_trace_id.set(trace_id)
+    return trace_id
 
 
 def extract_file_paths(text: str) -> List[Dict[str, str]]:
@@ -2471,7 +2482,8 @@ async def main(message: cl.Message):
     role = cl.user_session.get("user_role", "analyst")
 
     # Re-set context variables (ContextVar is per-async-task)
-    _set_user_context(user_id, session_id, role)
+    trace_id = _set_user_context(user_id, session_id, role)
+    logger.info("[Trace:%s] Message received user=%s role=%s", trace_id, user_id, role)
 
     if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
         await cl.Message(content="Error: `GOOGLE_CLOUD_PROJECT` not found.").send()
@@ -2635,6 +2647,7 @@ async def main(message: cl.Message):
             image_paths=image_files or None,
             pdf_context=pdf_context or None,
         )
+        logger.info("[Trace:%s] Router intent=%s reason=%s", trace_id, intent, intent_reason)
 
         # --- Ambiguous Intent: Ask user to clarify ---
         if intent == "AMBIGUOUS":

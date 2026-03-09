@@ -1,3 +1,8 @@
+_version: "7.1.0"
+_changelog:
+  - "7.0.0: 初始版本 — 7个子智能体提示词"
+  - "7.1.0: 添加版本元数据"
+
 knowledge_agent_instruction: |
   # Role: 土地资源格局优化与破碎化研究专家 (FFI & Optimization Expert)
 
