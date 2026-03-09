@@ -1,12 +1,20 @@
 """
-Skill Bundles — Named groupings of toolsets for semantic agent configuration.
+Skill Bundles — ADK SkillToolset-based skill groupings.
 
-Bundles provide a declarative way to assign tool capabilities to agents
-based on the type of work they perform. Each bundle maps to a set of
-toolset instances with pre-configured filters.
+Migrated from custom SkillBundle dataclass to ADK v1.26 SkillToolset.
+Each bundle maps to an ADK Skill loaded from data_agent/skills/ directories.
+The existing BaseToolset instances are used alongside SkillToolset
+in agent tools=[] lists.
+
+ADK Skills provide three-level incremental loading:
+  L1 (metadata) — always loaded, minimal context cost
+  L2 (instructions) — loaded when skill is activated
+  L3 (references/assets) — loaded on demand
 """
 from dataclasses import dataclass, field
 from typing import Callable
+
+from google.adk.tools.skill_toolset import SkillToolset
 
 from .exploration_tools import ExplorationToolset
 from .geo_processing_tools import GeoProcessingToolset
@@ -53,7 +61,32 @@ SEMANTIC_READONLY = [
 
 
 # ---------------------------------------------------------------------------
-# Bundle definitions
+# ADK SkillToolset builders
+# ---------------------------------------------------------------------------
+
+def build_skill_toolset(name: str) -> SkillToolset:
+    """Build a SkillToolset containing a single named skill.
+
+    Args:
+        name: Skill directory name (e.g. 'spatial_analysis', 'data_quality').
+    """
+    from ..skills import load_skill
+    return SkillToolset(skills=[load_skill(name)])
+
+
+def build_all_skills_toolset() -> SkillToolset:
+    """Build a single SkillToolset with all 5 domain skills.
+
+    This is the recommended usage for agents that may need any domain —
+    the LLM selects which skill to load on demand, keeping context window
+    usage minimal via incremental loading.
+    """
+    from ..skills import load_all_skills
+    return SkillToolset(skills=load_all_skills())
+
+
+# ---------------------------------------------------------------------------
+# Legacy SkillBundle — backward compatible interface
 # ---------------------------------------------------------------------------
 
 @dataclass
