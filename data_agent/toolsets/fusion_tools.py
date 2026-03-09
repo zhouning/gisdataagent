@@ -167,7 +167,17 @@ def fuse_datasets(
         return json.dumps(summary, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        err = str(e)
+        recovery = ""
+        if "No such file" in err or "not found" in err.lower() or "does not exist" in err:
+            recovery = " Recovery: 请先调用 search_data_assets 或 list_user_files 检查可用文件"
+        elif "CRS" in err or "crs" in err or "坐标" in err:
+            recovery = " Recovery: 两个数据源坐标系不一致，请先调用 reproject_spatial_data 统一坐标系"
+        elif "column" in err.lower() or "KeyError" in err or "字段" in err:
+            recovery = " Recovery: 连接字段不存在，请先调用 describe_geodataframe 查看可用字段"
+        elif "empty" in err.lower() or "0 records" in err:
+            recovery = " Recovery: 数据为空，请检查输入文件或筛选条件是否过于严格"
+        return f"Error: {e}{recovery}"
 
 
 def validate_fusion_quality(file_path: str) -> str:

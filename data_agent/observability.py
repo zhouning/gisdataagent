@@ -31,12 +31,19 @@ class JsonFormatter(logging.Formatter):
     """JSON-lines formatter for production log aggregation (ELK, CloudLogging)."""
 
     def format(self, record: logging.LogRecord) -> str:
+        from data_agent.user_context import current_trace_id, current_user_id
         log_entry = {
             "ts": self.formatTime(record, self.datefmt),
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),
         }
+        trace_id = current_trace_id.get('')
+        if trace_id:
+            log_entry["trace_id"] = trace_id
+        user_id = current_user_id.get('anonymous')
+        if user_id != 'anonymous':
+            log_entry["user_id"] = user_id
         if record.exc_info and record.exc_info[0] is not None:
             log_entry["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_entry, ensure_ascii=False)

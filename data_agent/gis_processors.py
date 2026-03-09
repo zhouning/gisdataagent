@@ -877,8 +877,16 @@ def add_join(target_file: str, join_file: str,
         out_path = _generate_output_path("joined", "shp")
         result.to_file(out_path, encoding='utf-8')
         return out_path
+    except FileNotFoundError as e:
+        return f"属性连接失败: {e}。Recovery: 请先调用 search_data_assets 或 list_user_files 检查可用文件"
     except Exception as e:
-        return f"属性连接失败: {str(e)}"
+        err = str(e)
+        recovery = ""
+        if "column" in err.lower() or "not in" in err.lower() or "KeyError" in err:
+            recovery = " Recovery: 连接字段不存在，请先调用 describe_geodataframe 查看可用字段列表"
+        elif "CRS" in err or "crs" in err:
+            recovery = " Recovery: 两个数据集坐标系不一致，请先调用 reproject_spatial_data 统一坐标系"
+        return f"属性连接失败: {err}{recovery}"
 
 
 def calculate_field(file_path: str, field_name: str, expression: str) -> str:

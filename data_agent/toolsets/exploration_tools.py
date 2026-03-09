@@ -131,8 +131,20 @@ def describe_geodataframe(file_path: str) -> dict:
             "file_path": _resolve_path(file_path),
         }
         return {"status": "success", "summary": summary}
+    except FileNotFoundError:
+        return {"status": "error", "error_message": f"文件未找到: {file_path}",
+                "recovery": "请先调用 search_data_assets 或 list_user_files 检查可用文件"}
     except Exception as e:
-        return {"status": "error", "error_message": str(e)}
+        err = str(e)
+        recovery = ""
+        if "No such file" in err or "does not exist" in err:
+            recovery = "请先调用 search_data_assets 或 list_user_files 检查可用文件"
+        elif "CRS" in err or "crs" in err:
+            recovery = "请先调用 reproject_spatial_data 统一坐标系后再试"
+        elif "geometry" in err.lower():
+            recovery = "数据可能缺少有效几何列，请检查文件格式是否为空间数据"
+        return {"status": "error", "error_message": err,
+                **({"recovery": recovery} if recovery else {})}
 
 
 def reproject_spatial_data(file_path: str, target_crs: str = "EPSG:3857") -> str:

@@ -267,9 +267,25 @@ governance_report_agent = LlmAgent(
     output_key="governance_report",
 )
 
+# --- Governance Quality Checker + LoopAgent (v7.1.6) ---
+governance_checker_agent = LlmAgent(
+    name="GovernanceChecker",
+    instruction=get_prompt("general", "governance_checker_instruction"),
+    description="治理报告合规性审查员。验证报告完整性和审计方法覆盖。",
+    model=MODEL_FAST,
+    output_key="gov_quality_verdict",
+    tools=[approve_quality],
+)
+
+governance_report_loop = LoopAgent(
+    name="GovernanceReportLoop",
+    sub_agents=[governance_report_agent, governance_checker_agent],
+    max_iterations=3,
+)
+
 governance_pipeline = SequentialAgent(
     name="GovernancePipeline",
-    sub_agents=[governance_exploration_agent, governance_processing_agent, governance_report_agent],
+    sub_agents=[governance_exploration_agent, governance_processing_agent, governance_report_loop],
 )
 
 # ============================================================================
@@ -324,9 +340,25 @@ general_summary_agent = LlmAgent(
     output_key="final_summary",
 )
 
+# --- General Result Checker + LoopAgent (v7.1.6) ---
+general_result_checker = LlmAgent(
+    name="GeneralResultChecker",
+    instruction=get_prompt("general", "general_result_checker_instruction"),
+    description="分析结果完整性审查员。验证输出文件、方法说明和汇报质量。",
+    model=MODEL_FAST,
+    output_key="general_quality_verdict",
+    tools=[approve_quality],
+)
+
+general_summary_loop = LoopAgent(
+    name="GeneralSummaryLoop",
+    sub_agents=[general_summary_agent, general_result_checker],
+    max_iterations=3,
+)
+
 general_pipeline = SequentialAgent(
     name="GeneralPipeline",
-    sub_agents=[general_processing_agent, general_viz_agent, general_summary_agent],
+    sub_agents=[general_processing_agent, general_viz_agent, general_summary_loop],
 )
 
 # ============================================================================
