@@ -166,12 +166,16 @@ class TestMcpHubManager(unittest.TestCase):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
         hub._config_path = "/nonexistent/mcp_servers.yaml"
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
         configs = hub.load_config()
         self.assertEqual(configs, [])
 
     def test_load_config_valid(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp, {
@@ -196,6 +200,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_load_config_skips_invalid_entries(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp, {
@@ -214,6 +220,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_load_config_empty_yaml(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "mcp_servers.yaml")
@@ -227,6 +235,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_load_config_malformed_yaml(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "mcp_servers.yaml")
@@ -246,6 +256,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_get_server_statuses_after_load(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp, {
@@ -282,6 +294,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_startup_connects_enabled_only(self, mock_connect):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp, {
@@ -308,6 +322,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_startup_idempotent(self, mock_connect):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp, {"servers": [{"name": "s1", "enabled": True}]})
@@ -337,6 +353,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_get_all_tools_no_connected(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp, {"servers": [{"name": "s1", "enabled": False}]})
@@ -379,6 +397,8 @@ class TestMcpHubManager(unittest.TestCase):
     def test_get_tools_for_server_disconnected(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._ensure_table = MagicMock(return_value=False)
+        hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp, {"servers": [{"name": "s1"}]})
@@ -725,6 +745,128 @@ class TestMcpRouteRegistration(unittest.TestCase):
         self.assertIn("/api/mcp/tools", paths)
         self.assertIn("/api/mcp/servers/{name}/toggle", paths)
         self.assertIn("/api/mcp/servers/{name}/reconnect", paths)
+        self.assertIn("/api/mcp/servers/{name}", paths)  # PUT + DELETE
+
+
+# ---------------------------------------------------------------------------
+# TestMcpHubCrud
+# ---------------------------------------------------------------------------
+
+class TestMcpHubCrud(unittest.TestCase):
+    """Tests for MCP Hub add/update/remove server CRUD."""
+
+    def setUp(self):
+        from data_agent.mcp_hub import reset_mcp_hub
+        reset_mcp_hub()
+
+    def tearDown(self):
+        from data_agent.mcp_hub import reset_mcp_hub
+        reset_mcp_hub()
+
+    def test_add_server_duplicate(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        hub = McpHubManager()
+        cfg = McpServerConfig(name="existing")
+        hub._servers["existing"] = McpServerStatus(config=cfg)
+        result = _run(hub.add_server(McpServerConfig(name="existing")))
+        self.assertEqual(result["status"], "error")
+        self.assertIn("already exists", result["message"])
+
+    def test_add_server_invalid_name(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+        hub = McpHubManager()
+        result = _run(hub.add_server(McpServerConfig(name="")))
+        self.assertEqual(result["status"], "error")
+
+    @patch("data_agent.mcp_hub.McpHubManager._save_to_db", return_value=True)
+    def test_add_server_success(self, _mock_save):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+        hub = McpHubManager()
+        result = _run(hub.add_server(McpServerConfig(name="new-srv", transport="sse", url="http://x")))
+        self.assertEqual(result["status"], "ok")
+        self.assertIn("new-srv", hub._servers)
+
+    @patch("data_agent.mcp_hub.McpHubManager._save_to_db", return_value=False)
+    def test_add_server_db_failure(self, _mock_save):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+        hub = McpHubManager()
+        result = _run(hub.add_server(McpServerConfig(name="new-srv")))
+        self.assertEqual(result["status"], "error")
+        self.assertNotIn("new-srv", hub._servers)
+
+    def test_update_server_not_found(self):
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+        result = _run(hub.update_server("ghost", {"description": "x"}))
+        self.assertEqual(result["status"], "error")
+
+    @patch("data_agent.mcp_hub.McpHubManager._save_to_db", return_value=True)
+    def test_update_server_success(self, _mock_save):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        hub = McpHubManager()
+        cfg = McpServerConfig(name="s1", description="old")
+        hub._servers["s1"] = McpServerStatus(config=cfg)
+        result = _run(hub.update_server("s1", {"description": "new"}))
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(hub._servers["s1"].config.description, "new")
+
+    def test_remove_server_not_found(self):
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+        result = _run(hub.remove_server("ghost"))
+        self.assertEqual(result["status"], "error")
+
+    @patch("data_agent.mcp_hub.McpHubManager._delete_from_db", return_value=True)
+    def test_remove_server_success(self, _mock_del):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        hub = McpHubManager()
+        cfg = McpServerConfig(name="s1")
+        hub._servers["s1"] = McpServerStatus(config=cfg)
+        result = _run(hub.remove_server("s1"))
+        self.assertEqual(result["status"], "ok")
+        self.assertNotIn("s1", hub._servers)
+
+    @patch("data_agent.mcp_hub.McpHubManager._delete_from_db", return_value=True)
+    @patch("data_agent.mcp_hub.McpHubManager.disconnect_server", new_callable=AsyncMock)
+    def test_remove_server_disconnects_first(self, mock_disconnect, _mock_del):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        hub = McpHubManager()
+        cfg = McpServerConfig(name="s1")
+        hub._servers["s1"] = McpServerStatus(config=cfg, status="connected")
+        _run(hub.remove_server("s1"))
+        mock_disconnect.assert_called_once_with("s1")
+
+
+class TestMcpHubDbMethods(unittest.TestCase):
+    """Tests for MCP Hub DB helper methods (no actual DB)."""
+
+    def test_ensure_table_no_engine(self):
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+        with patch("data_agent.db_engine.get_engine", return_value=None):
+            result = hub._ensure_table()
+        self.assertFalse(result)
+
+    def test_load_from_db_no_engine(self):
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+        with patch("data_agent.db_engine.get_engine", return_value=None):
+            result = hub._load_from_db()
+        self.assertEqual(result, [])
+
+    def test_save_to_db_no_engine(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+        hub = McpHubManager()
+        with patch("data_agent.db_engine.get_engine", return_value=None):
+            result = hub._save_to_db(McpServerConfig(name="test"))
+        self.assertFalse(result)
+
+    def test_delete_from_db_no_engine(self):
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+        with patch("data_agent.db_engine.get_engine", return_value=None):
+            result = hub._delete_from_db("test")
+        self.assertFalse(result)
 
 
 # ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ from data_agent.memory import (
     delete_memory,
     get_user_preferences,
     get_recent_analysis_results,
+    get_analysis_perspective,
     VALID_MEMORY_TYPES,
 )
 from data_agent.user_context import current_user_id
@@ -74,6 +75,40 @@ class TestMemoryValidation(unittest.TestCase):
         self.assertIn("viz_preference", VALID_MEMORY_TYPES)
         self.assertIn("analysis_result", VALID_MEMORY_TYPES)
         self.assertIn("custom", VALID_MEMORY_TYPES)
+        self.assertIn("analysis_perspective", VALID_MEMORY_TYPES)
+
+
+class TestAnalysisPerspective(unittest.TestCase):
+    """Tests for get_analysis_perspective helper."""
+
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_no_db_returns_empty(self, _mock_engine):
+        result = get_analysis_perspective()
+        self.assertEqual(result, "")
+
+    @patch('data_agent.memory.get_engine')
+    def test_returns_perspective_text(self, mock_engine):
+        mock_conn = MagicMock()
+        mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_conn.execute.return_value.fetchone.return_value = (
+            json.dumps({"perspective": "关注生态红线"}),
+        )
+        from data_agent.user_context import current_user_id
+        current_user_id.set("test_user")
+        result = get_analysis_perspective()
+        self.assertEqual(result, "关注生态红线")
+
+    @patch('data_agent.memory.get_engine')
+    def test_no_perspective_returns_empty(self, mock_engine):
+        mock_conn = MagicMock()
+        mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_conn.execute.return_value.fetchone.return_value = None
+        from data_agent.user_context import current_user_id
+        current_user_id.set("test_user")
+        result = get_analysis_perspective()
+        self.assertEqual(result, "")
 
 
 class TestMemoryCRUD(unittest.TestCase):

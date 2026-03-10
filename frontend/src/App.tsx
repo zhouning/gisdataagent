@@ -125,7 +125,7 @@ export default function App() {
         <div className="workspace">
           <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} onLayerControl={handleLayerControl} />
           <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} layerControl={layerControl} />
-          <DataPanel dataFile={dataFile} />
+          <DataPanel dataFile={dataFile} userRole={userRole} />
         </div>
       )}
       {showSettings && (

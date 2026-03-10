@@ -1,12 +1,14 @@
 """
 MCP Hub Manager — config-driven MCP server connection management.
 
-Loads mcp_servers.yaml at startup, creates ADK McpToolset instances per
-enabled server, and provides aggregated tool access for agent integration.
+Loads servers from database (primary) + mcp_servers.yaml (fallback/seed),
+creates ADK McpToolset instances per enabled server, and provides
+aggregated tool access for agent integration.
 
 Singleton pattern follows db_engine.py (module-level global + get function).
 """
 import asyncio
+import json
 import os
 import sys
 import time
@@ -14,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import yaml
+from sqlalchemy import text
 
 from .i18n import t
 
@@ -23,6 +26,9 @@ try:
 except Exception:
     import logging
     logger = logging.getLogger("mcp_hub")
+
+
+T_MCP_SERVERS = "agent_mcp_servers"
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +53,8 @@ class McpServerConfig:
     url: str = ""
     headers: dict[str, str] = field(default_factory=dict)
     timeout: float = 5.0
+    # DB tracking
+    source: str = "yaml"  # yaml | db
 
 
 @dataclass
@@ -78,14 +86,191 @@ class McpHubManager:
         )
         self._started = False
 
+    # ----- DB table -----
+
+    def _ensure_table(self):
+        """Create agent_mcp_servers table if it doesn't exist."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return False
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"""
+                    CREATE TABLE IF NOT EXISTS {T_MCP_SERVERS} (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(100) UNIQUE NOT NULL,
+                        description TEXT DEFAULT '',
+                        transport VARCHAR(30) DEFAULT 'stdio',
+                        enabled BOOLEAN DEFAULT false,
+                        category VARCHAR(50) DEFAULT '',
+                        pipelines JSONB DEFAULT '["general","planner"]',
+                        command VARCHAR(500) DEFAULT '',
+                        args JSONB DEFAULT '[]',
+                        env JSONB DEFAULT '{{}}',
+                        cwd VARCHAR(500),
+                        url VARCHAR(500) DEFAULT '',
+                        headers JSONB DEFAULT '{{}}',
+                        timeout REAL DEFAULT 5.0,
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        updated_at TIMESTAMP DEFAULT NOW()
+                    )
+                """))
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.warning("Failed to create MCP servers table: %s", e)
+            return False
+
+    # ----- DB CRUD -----
+
+    def _load_from_db(self) -> list[McpServerConfig]:
+        """Load server configs from database. Returns configs list."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return []
+        try:
+            with engine.connect() as conn:
+                rows = conn.execute(text(
+                    f"SELECT name, description, transport, enabled, category, "
+                    f"pipelines, command, args, env, cwd, url, headers, timeout "
+                    f"FROM {T_MCP_SERVERS} ORDER BY name"
+                )).fetchall()
+
+            configs = []
+            for r in rows:
+                pipelines = r[5] if isinstance(r[5], list) else json.loads(r[5]) if r[5] else ["general", "planner"]
+                args = r[7] if isinstance(r[7], list) else json.loads(r[7]) if r[7] else []
+                env = r[8] if isinstance(r[8], dict) else json.loads(r[8]) if r[8] else {}
+                headers = r[11] if isinstance(r[11], dict) else json.loads(r[11]) if r[11] else {}
+                config = McpServerConfig(
+                    name=r[0], description=r[1] or "", transport=r[2] or "stdio",
+                    enabled=bool(r[3]), category=r[4] or "", pipelines=pipelines,
+                    command=r[6] or "", args=args, env=env, cwd=r[9],
+                    url=r[10] or "", headers=headers, timeout=float(r[12] or 5.0),
+                    source="db",
+                )
+                configs.append(config)
+            return configs
+        except Exception as e:
+            logger.warning("Failed to load MCP servers from DB: %s", e)
+            return []
+
+    def _save_to_db(self, config: McpServerConfig) -> bool:
+        """Upsert a server config to database."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return False
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"""
+                    INSERT INTO {T_MCP_SERVERS}
+                        (name, description, transport, enabled, category, pipelines,
+                         command, args, env, cwd, url, headers, timeout, updated_at)
+                    VALUES (:name, :desc, :transport, :enabled, :category, :pipelines::jsonb,
+                            :command, :args::jsonb, :env::jsonb, :cwd, :url, :headers::jsonb,
+                            :timeout, NOW())
+                    ON CONFLICT (name) DO UPDATE SET
+                        description = EXCLUDED.description,
+                        transport = EXCLUDED.transport,
+                        enabled = EXCLUDED.enabled,
+                        category = EXCLUDED.category,
+                        pipelines = EXCLUDED.pipelines,
+                        command = EXCLUDED.command,
+                        args = EXCLUDED.args,
+                        env = EXCLUDED.env,
+                        cwd = EXCLUDED.cwd,
+                        url = EXCLUDED.url,
+                        headers = EXCLUDED.headers,
+                        timeout = EXCLUDED.timeout,
+                        updated_at = NOW()
+                """), {
+                    "name": config.name,
+                    "desc": config.description,
+                    "transport": config.transport,
+                    "enabled": config.enabled,
+                    "category": config.category,
+                    "pipelines": json.dumps(config.pipelines),
+                    "command": config.command,
+                    "args": json.dumps(config.args),
+                    "env": json.dumps(config.env),
+                    "cwd": config.cwd,
+                    "url": config.url,
+                    "headers": json.dumps(config.headers),
+                    "timeout": config.timeout,
+                })
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.warning("Failed to save MCP server '%s' to DB: %s", config.name, e)
+            return False
+
+    def _delete_from_db(self, name: str) -> bool:
+        """Delete a server config from database."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return False
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text(
+                    f"DELETE FROM {T_MCP_SERVERS} WHERE name = :name"
+                ), {"name": name})
+                conn.commit()
+            return result.rowcount > 0
+        except Exception as e:
+            logger.warning("Failed to delete MCP server '%s' from DB: %s", name, e)
+            return False
+
+    def _update_enabled_in_db(self, name: str, enabled: bool):
+        """Update just the enabled flag in DB (for toggle)."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(
+                    f"UPDATE {T_MCP_SERVERS} SET enabled = :enabled, updated_at = NOW() "
+                    f"WHERE name = :name"
+                ), {"name": name, "enabled": enabled})
+                conn.commit()
+        except Exception:
+            pass  # best-effort persistence
+
     # ----- Config loading -----
 
     def load_config(self) -> list[McpServerConfig]:
-        """Load server configs from YAML. Returns list of configs."""
-        if not os.path.isfile(self._config_path):
-            logger.info(t("mcp.no_config"))
-            return []
+        """Load server configs from DB (primary) + YAML (seed/fallback)."""
+        # 1. Ensure DB table exists and load DB configs
+        db_ok = self._ensure_table()
+        db_configs = self._load_from_db() if db_ok else []
+        db_names = {c.name for c in db_configs}
 
+        # 2. Load YAML and seed any new servers into DB
+        yaml_configs = self._load_yaml()
+        for yc in yaml_configs:
+            if yc.name not in db_names:
+                if db_ok:
+                    self._save_to_db(yc)
+                    yc.source = "db"
+                db_configs.append(yc)
+                db_names.add(yc.name)
+
+        # 3. Build runtime state
+        for config in db_configs:
+            self._servers[config.name] = McpServerStatus(config=config)
+
+        logger.info("Loaded %d MCP server config(s) (%d from DB, %d from YAML seed)",
+                     len(db_configs), sum(1 for c in db_configs if c.source == "db"), len(yaml_configs))
+        return db_configs
+
+    def _load_yaml(self) -> list[McpServerConfig]:
+        """Load server configs from YAML file."""
+        if not os.path.isfile(self._config_path):
+            return []
         try:
             with open(self._config_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
@@ -112,11 +297,9 @@ class McpHubManager:
                 url=raw.get("url", ""),
                 headers=raw.get("headers", {}),
                 timeout=raw.get("timeout", 5.0),
+                source="yaml",
             )
             configs.append(config)
-            self._servers[config.name] = McpServerStatus(config=config)
-
-        logger.info("Loaded %d MCP server config(s)", len(configs))
         return configs
 
     # ----- Connection lifecycle -----
@@ -249,12 +432,14 @@ class McpHubManager:
     # ----- Dynamic control -----
 
     async def toggle_server(self, name: str, enabled: bool) -> dict:
-        """Enable/disable a server. Connects or disconnects accordingly."""
+        """Enable/disable a server. Connects or disconnects accordingly. Persists to DB."""
         status = self._servers.get(name)
         if not status:
             return {"status": "error", "message": f"Server '{name}' not found"}
 
         status.config.enabled = enabled
+        self._update_enabled_in_db(name, enabled)
+
         if enabled and status.status != "connected":
             ok = await self.connect_server(name)
             return {
@@ -283,6 +468,77 @@ class McpHubManager:
             "tool_count": status.tool_count,
         }
 
+    # ----- CRUD (hot-reload capable) -----
+
+    async def add_server(self, config: McpServerConfig) -> dict:
+        """Add a new server config. Saves to DB + registers in memory.
+        Optionally connects if enabled.
+        """
+        if config.name in self._servers:
+            return {"status": "error", "message": f"Server '{config.name}' already exists"}
+        if not config.name or len(config.name) > 100:
+            return {"status": "error", "message": "Invalid server name"}
+
+        config.source = "db"
+        if not self._save_to_db(config):
+            return {"status": "error", "message": "Failed to save to database"}
+
+        self._servers[config.name] = McpServerStatus(config=config)
+        connected = False
+        if config.enabled:
+            connected = await self.connect_server(config.name)
+
+        logger.info("Added MCP server '%s' (transport=%s, enabled=%s)",
+                     config.name, config.transport, config.enabled)
+        return {"status": "ok", "server": config.name, "connected": connected}
+
+    async def update_server(self, name: str, updates: dict) -> dict:
+        """Update an existing server's config fields. Persists to DB."""
+        status = self._servers.get(name)
+        if not status:
+            return {"status": "error", "message": f"Server '{name}' not found"}
+
+        config = status.config
+        was_connected = status.status == "connected"
+
+        # Apply updatable fields
+        for key in ("description", "transport", "category", "command", "url",
+                     "cwd", "timeout"):
+            if key in updates:
+                setattr(config, key, updates[key])
+        for key in ("pipelines", "args", "env", "headers"):
+            if key in updates:
+                setattr(config, key, updates[key])
+        if "enabled" in updates:
+            config.enabled = updates["enabled"]
+
+        if not self._save_to_db(config):
+            return {"status": "error", "message": "Failed to save to database"}
+
+        # Reconnect if connection-relevant fields changed
+        needs_reconnect = any(k in updates for k in ("transport", "command", "args",
+                                                       "env", "cwd", "url", "headers", "timeout"))
+        if was_connected and needs_reconnect:
+            await self.disconnect_server(name)
+            await self.connect_server(name)
+
+        return {"status": "ok", "server": name}
+
+    async def remove_server(self, name: str) -> dict:
+        """Remove a server completely. Disconnects, deletes from DB, removes from memory."""
+        status = self._servers.get(name)
+        if not status:
+            return {"status": "error", "message": f"Server '{name}' not found"}
+
+        if status.status == "connected":
+            await self.disconnect_server(name)
+
+        self._delete_from_db(name)
+        del self._servers[name]
+
+        logger.info("Removed MCP server '%s'", name)
+        return {"status": "ok", "server": name}
+
     # ----- Tool access -----
 
     def get_server_statuses(self) -> list[dict]:
@@ -301,6 +557,7 @@ class McpHubManager:
                 "tool_names": s.tool_names,
                 "error_message": s.error_message,
                 "connected_at": s.connected_at,
+                "source": s.config.source,
             })
         return result
 

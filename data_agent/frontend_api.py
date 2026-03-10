@@ -634,6 +634,81 @@ async def _api_mcp_reconnect(request: Request):
     return JSONResponse(result, status_code=status_code)
 
 
+async def _api_mcp_server_create(request: Request):
+    """POST /api/mcp/servers — add a new MCP server (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    name = (body.get("name") or "").strip()
+    if not name or len(name) > 100:
+        return JSONResponse({"error": "Name required (max 100 chars)"}, status_code=400)
+
+    transport = body.get("transport", "stdio")
+    if transport not in ("stdio", "sse", "streamable_http"):
+        return JSONResponse({"error": "Invalid transport type"}, status_code=400)
+
+    from .mcp_hub import get_mcp_hub, McpServerConfig
+    config = McpServerConfig(
+        name=name,
+        description=body.get("description", ""),
+        transport=transport,
+        enabled=body.get("enabled", False),
+        category=body.get("category", ""),
+        pipelines=body.get("pipelines", ["general", "planner"]),
+        command=body.get("command", ""),
+        args=body.get("args", []),
+        env=body.get("env", {}),
+        cwd=body.get("cwd"),
+        url=body.get("url", ""),
+        headers=body.get("headers", {}),
+        timeout=float(body.get("timeout", 5.0)),
+    )
+
+    hub = get_mcp_hub()
+    result = await hub.add_server(config)
+    status_code = 201 if result.get("status") == "ok" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+async def _api_mcp_server_update(request: Request):
+    """PUT /api/mcp/servers/{name} — update an MCP server config (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+
+    server_name = request.path_params.get("name", "")
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+    result = await hub.update_server(server_name, body)
+    status_code = 200 if result.get("status") == "ok" else 404
+    return JSONResponse(result, status_code=status_code)
+
+
+async def _api_mcp_server_delete(request: Request):
+    """DELETE /api/mcp/servers/{name} — remove an MCP server (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+
+    server_name = request.path_params.get("name", "")
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+    result = await hub.remove_server(server_name)
+    status_code = 200 if result.get("status") == "ok" else 404
+    return JSONResponse(result, status_code=status_code)
+
+
 # ---------------------------------------------------------------------------
 # Workflows API (v5.4)
 # ---------------------------------------------------------------------------
@@ -794,6 +869,58 @@ async def _api_map_pending(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# User Analysis Perspective API (v7.1)
+# ---------------------------------------------------------------------------
+
+async def _api_user_perspective_get(request: Request):
+    """GET /api/user/analysis-perspective — get current user's analysis perspective."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    from .memory import get_analysis_perspective
+    perspective = get_analysis_perspective()
+    return JSONResponse({"perspective": perspective})
+
+
+async def _api_user_perspective_put(request: Request):
+    """PUT /api/user/analysis-perspective — update analysis perspective."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    perspective = body.get("perspective", "").strip()
+    if len(perspective) > 2000:
+        return JSONResponse({"error": "Perspective too long (max 2000 chars)"}, status_code=400)
+
+    from .memory import save_memory, recall_memories, delete_memory
+
+    if perspective:
+        result = save_memory(
+            "analysis_perspective",
+            "user_perspective",
+            json.dumps({"perspective": perspective}, ensure_ascii=False),
+            "用户分析视角",
+        )
+    else:
+        existing = recall_memories(memory_type="analysis_perspective")
+        memories = existing.get("memories", [])
+        if memories:
+            delete_memory(str(memories[0]["id"]))
+        result = {"status": "success", "message": "已清除分析视角"}
+
+    status_code = 200 if result.get("status") == "success" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -817,12 +944,17 @@ def get_frontend_api_routes():
         Route("/api/annotations/{id:int}", endpoint=_api_annotations_delete, methods=["DELETE"]),
         Route("/api/config/basemaps", endpoint=_api_config_basemaps, methods=["GET"]),
         Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
+        Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_get, methods=["GET"]),
+        Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_put, methods=["PUT"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
         Route("/api/mcp/servers", endpoint=_api_mcp_servers, methods=["GET"]),
+        Route("/api/mcp/servers", endpoint=_api_mcp_server_create, methods=["POST"]),
         Route("/api/mcp/tools", endpoint=_api_mcp_tools, methods=["GET"]),
         Route("/api/mcp/servers/{name}/toggle", endpoint=_api_mcp_toggle, methods=["POST"]),
         Route("/api/mcp/servers/{name}/reconnect", endpoint=_api_mcp_reconnect, methods=["POST"]),
+        Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_update, methods=["PUT"]),
+        Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_delete, methods=["DELETE"]),
         # Workflows (v5.4)
         Route("/api/workflows", endpoint=_api_workflows_list, methods=["GET"]),
         Route("/api/workflows", endpoint=_api_workflows_create, methods=["POST"]),
