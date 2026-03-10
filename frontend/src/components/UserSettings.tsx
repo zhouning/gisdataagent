@@ -20,11 +20,23 @@ export default function UserSettings({ username, displayName, role, onClose, onD
   const [perspectiveSaved, setPerspectiveSaved] = useState(false);
   const [perspectiveError, setPerspectiveError] = useState('');
 
+  // Auto-extract memories state
+  const [memories, setMemories] = useState<any[]>([]);
+  const [memoriesLoading, setMemoriesLoading] = useState(true);
+  const [deletingMemoryId, setDeletingMemoryId] = useState<number | null>(null);
+
   useEffect(() => {
     fetch('/api/user/analysis-perspective', { credentials: 'include' })
       .then(r => r.json())
       .then(data => setPerspective(data.perspective || ''))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/user/memories', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { setMemories(data.memories || []); setMemoriesLoading(false); })
+      .catch(() => setMemoriesLoading(false));
   }, []);
 
   const handleDelete = async () => {
@@ -79,6 +91,27 @@ export default function UserSettings({ username, displayName, role, onClose, onD
     }
   };
 
+  const handleDeleteMemory = async (id: number) => {
+    setDeletingMemoryId(id);
+    try {
+      const resp = await fetch(`/api/user/memories/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await resp.json();
+      if (data.status === 'success') {
+        setMemories(prev => prev.filter(m => m.id !== id));
+      }
+    } catch { /* silent */ }
+    finally { setDeletingMemoryId(null); }
+  };
+
+  const categoryLabels: Record<string, string> = {
+    data_characteristic: '数据特征',
+    analysis_conclusion: '分析结论',
+    user_preference: '用户偏好',
+  };
+
   return (
     <div className="user-settings-overlay" onClick={onClose}>
       <div className="user-settings-modal" onClick={(e) => e.stopPropagation()}>
@@ -127,6 +160,44 @@ export default function UserSettings({ username, displayName, role, onClose, onD
               {perspectiveLoading ? '保存中...' : '保存'}
             </button>
           </div>
+        </div>
+
+        <div className="memory-section">
+          <div className="memory-title">智能记忆</div>
+          <p className="memory-desc">
+            系统自动从分析结果中提取的关键发现，用于增强后续分析。
+          </p>
+          {memoriesLoading ? (
+            <div className="memory-empty">加载中...</div>
+          ) : memories.length === 0 ? (
+            <div className="memory-empty">暂无自动提取的记忆，完成分析后系统将自动记录关键发现。</div>
+          ) : (
+            <div className="memory-list">
+              {memories.map(m => (
+                <div key={m.id} className="memory-item">
+                  <div className="memory-item-header">
+                    <span className="memory-item-key">{m.key}</span>
+                    <span className={`memory-category-badge ${m.value?.category || 'default'}`}>
+                      {categoryLabels[m.value?.category as string] || '自动'}
+                    </span>
+                  </div>
+                  <div className="memory-item-value">
+                    {m.value?.finding || m.description || JSON.stringify(m.value)}
+                  </div>
+                  <div className="memory-item-footer">
+                    <span className="memory-item-time">{new Date(m.updated_at).toLocaleString()}</span>
+                    <button
+                      className="memory-delete-btn"
+                      onClick={() => handleDeleteMemory(m.id)}
+                      disabled={deletingMemoryId === m.id}
+                    >
+                      {deletingMemoryId === m.id ? '...' : '删除'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="danger-zone">

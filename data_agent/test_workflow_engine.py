@@ -308,7 +308,7 @@ class TestWorkflowAPI(unittest.TestCase):
         """Should have 36 routes (29 existing + 7 workflow)."""
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 36)
+        self.assertEqual(len(routes), 38)
 
     def test_workflow_methods(self):
         """Verify HTTP methods for workflow routes."""

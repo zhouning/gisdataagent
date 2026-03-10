@@ -2077,6 +2077,27 @@ async def _execute_pipeline(
         except Exception:
             pass  # non-fatal
 
+        # --- Auto-extract key facts from conversation (Memory ETL v7.5) ---
+        try:
+            extract_count = cl.user_session.get("auto_extract_count", 0)
+            if extract_count < 5 and report_text and len(report_text) > 100:
+                from data_agent.memory import extract_facts_from_conversation, save_auto_extract_memories
+
+                async def _do_extract(_rt=report_text, _ut=user_text, _uid=user_id, _sid=session_id, _role=role):
+                    try:
+                        _set_user_context(_uid, _sid, _role)
+                        facts = extract_facts_from_conversation(_rt, _ut)
+                        if facts:
+                            save_auto_extract_memories(facts)
+                            logger.info("[MemoryETL] Extracted %d facts for user=%s", len(facts), _uid)
+                    except Exception as ex:
+                        logger.debug("[MemoryETL] Extraction failed: %s", ex)
+
+                asyncio.create_task(_do_extract())
+                cl.user_session.set("auto_extract_count", extract_count + 1)
+        except Exception:
+            pass  # non-fatal
+
         # --- Record token usage ---
         try:
             from data_agent.token_tracker import record_usage
@@ -2465,6 +2486,7 @@ async def start():
     get_user_upload_dir()
 
     await cl.Message(content=f"Welcome, **{display_name}**! ({role})").send()
+    cl.user_session.set("auto_extract_count", 0)
 
     try:
         record_audit(user_id, ACTION_SESSION_START, details={
