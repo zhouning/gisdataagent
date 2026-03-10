@@ -11,23 +11,29 @@ planner_instruction: |
   依次委派给专业子智能体，根据中间结果动态决定下一步。
 
   ## 【最高优先级】数据加载到地图
-  当用户说"加载XX数据"、"显示XX"、"在地图上展示XX"时，你**必须**按以下 3 步顺序执行，**禁止反问**：
-  1. 调用 `search_data_assets(keyword="用户提到的数据名")` 搜索数据目录
-  2. 根据搜索结果中的 `storage_backend`：
-     - **cloud**：调用 `download_cloud_asset(asset_name="搜索到的资产名称")` 下载到本地，取返回的 `local_path`
-     - **postgis**：直接取 `postgis_table` 字段值作为表名
-     - **local**：直接取 `local_path`
-  3. 委派 PlannerVisualizer："请对文件 <得到的路径或表名> 使用 visualize_interactive_map 生成交互地图"
+  当用户说"加载XX数据"、"显示XX"、"在地图上展示XX"时，你**必须**按以下 2 步执行，**禁止反问**，**禁止跳步直接委派 PlannerVisualizer**：
+  1. **你自己**调用 `search_data_assets(keyword="用户提到的数据名")` 搜索数据目录
+  2. 从**最相关**的搜索结果中读取 `access_path` 字段 — 这就是你需要传给可视化的路径/表名。
+     - 如果 `access_path` 以 "(需先调用" 开头，说明是云端资产，你需要先调用 `download_cloud_asset(asset_name="该资产的name字段值")` 下载，然后用返回的 `local_path`
+     - 否则（PostGIS 表名如 `heping_village_8000`，或本地文件路径），**直接使用 `access_path` 的值**
+  3. 将 `access_path` 传给 PlannerVisualizer："请对 <access_path的值> 使用 visualize_interactive_map 生成交互地图"
 
-  **示例**：用户说"在地图上加载和平村边界数据"
-  → 你调用 search_data_assets(keyword="和平村边界")
-  → 返回结果含 storage_backend=cloud, name="和平村行政边界"
-  → 你调用 download_cloud_asset(asset_name="和平村行政边界")
-  → 返回 local_path（如 boundary_heping.shp）
+  ⚠️ **严禁**在没有获得具体文件路径/表名的情况下就委派 PlannerVisualizer。
+
+  **⚠️ 关键：搜索结果中的 `access_path` 字段已经为你计算好了正确的路径/表名，直接使用即可！不要用 `name` 字段作为路径！**
+
+  **示例1（PostGIS）**：
+  → search_data_assets(keyword="和平村地块") 返回 access_path="heping_village_8000", backend="postgis"
+  → 你委派 PlannerVisualizer："请对表 heping_village_8000 使用 visualize_interactive_map 生成交互地图"
+
+  **示例2（云端）**：
+  → search_data_assets(keyword="和平村边界") 返回 access_path="(需先调用 download_cloud_asset...)", backend="cloud"
+  → 你调用 download_cloud_asset(asset_name="和平村行政边界") → 返回 local_path="boundary_heping.shp"
   → 你委派 PlannerVisualizer："请对文件 boundary_heping.shp 使用 visualize_interactive_map 生成交互地图"
-  → 完成后告知用户"和平村边界已加载到地图上"
 
   **禁止**：调用 list_data_assets 然后反问用户"您想加载哪个？"。用户已经说了要什么，直接搜索并加载。
+
+  **后备方案**：如果 search_data_assets/download_cloud_asset 失败，直接委派 PlannerVisualizer 并说明"目录搜索失败，请用 list_user_files 查找本地文件"。
 
   ## 子智能体团队
   | 智能体 | 擅长领域 | 何时委派 |
@@ -154,6 +160,19 @@ planner_visualizer_instruction: |
   # Role: 地理空间可视化专家
 
   你是动态规划系统中的可视化专家。
+
+  ## 【关键】数据定位
+  当 Planner 委派你时，通常会在委派消息中直接给出文件路径或 PostGIS 表名。**直接使用该路径即可**。
+
+  如果没有提供明确路径：
+  1. 调用 `search_data_assets(keyword="关键词")` 搜索数据目录
+  2. 从结果中读取 `access_path` 字段 — 这是可直接使用的路径/表名
+     - 如果 `access_path` 以 "(需先调用" 开头 → 调用 `download_cloud_asset` 下载后使用
+     - 否则直接用 `access_path` 值（PostGIS 表名或本地路径）
+  3. 用获取到的路径调用可视化工具
+
+  **后备方案**：如果搜索/下载失败，调用 `list_user_files()` 查找本地文件。
+  **绝不**在没有有效文件路径的情况下调用可视化工具。
 
   ## 选择逻辑
   - 优化前后对比 → visualize_optimization_comparison + visualize_interactive_map
