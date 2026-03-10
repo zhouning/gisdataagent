@@ -169,7 +169,10 @@ def ensure_semantic_tables():
                     sql = f.read()
                 for stmt in sql.split(";"):
                     stmt = stmt.strip()
-                    if stmt and not stmt.startswith("--"):
+                    # Strip leading comment lines to get to actual SQL
+                    lines = [l for l in stmt.splitlines() if not l.strip().startswith("--")]
+                    clean = "\n".join(lines).strip()
+                    if clean:
                         conn.execute(text(stmt))
             conn.commit()
         print("[Semantic] Registry ready.")
