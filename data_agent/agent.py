@@ -451,7 +451,12 @@ def _make_planner_visualizer(name: str, **overrides) -> LlmAgent:
         model=MODEL_FAST,
         output_key="visualizations",
         disallow_transfer_to_peers=True,
-        tools=[VisualizationToolset()],
+        tools=[
+            VisualizationToolset(),
+            DataLakeToolset(tool_filter=_DATALAKE_READ),
+            ExplorationToolset(tool_filter=["describe_geodataframe"]),
+            FileToolset(),
+        ],
     )
     defaults.update(overrides)
     return LlmAgent(**defaults)

@@ -532,7 +532,7 @@ def search_data_assets(query: str) -> dict:
             rows = conn.execute(text(f"""
                 SELECT id, asset_name, asset_type, format, storage_backend,
                        crs, feature_count, file_size_bytes, tags, description,
-                       owner_username, is_shared
+                       owner_username, is_shared, postgis_table, local_path
                 FROM {T_DATA_CATALOG}
                 ORDER BY updated_at DESC
             """)).fetchall()
@@ -595,13 +595,31 @@ def search_data_assets(query: str) -> dict:
                     score = max(token_score * 0.85, name_fuzzy)
 
                 if score >= 0.3:
-                    scored.append((score, {
+                    backend = r[4]
+                    postgis_tbl = r[12] or ""
+                    local_p = r[13] or ""
+                    # Derive a single access_path the agent should use
+                    if backend == "postgis" and postgis_tbl:
+                        access_path = postgis_tbl
+                    elif backend == "local" and local_p:
+                        access_path = local_p
+                    elif backend == "cloud":
+                        access_path = f"(需先调用 download_cloud_asset(asset_name=\"{name}\") 下载)"
+                    else:
+                        access_path = local_p or postgis_tbl or ""
+                    asset_info = {
                         "id": r[0], "name": name, "type": r[2], "format": r[3],
-                        "backend": r[4], "crs": r[5], "features": r[6],
+                        "backend": backend, "crs": r[5], "features": r[6],
                         "size_bytes": r[7], "tags": tags_val, "description": desc,
                         "owner": r[10], "shared": r[11],
                         "relevance": round(score, 2),
-                    }))
+                        "access_path": access_path,
+                    }
+                    if postgis_tbl:
+                        asset_info["postgis_table"] = postgis_tbl
+                    if local_p:
+                        asset_info["local_path"] = local_p
+                    scored.append((score, asset_info))
 
             scored.sort(key=lambda x: x[0], reverse=True)
             results = [s[1] for s in scored[:20]]
