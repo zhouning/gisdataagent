@@ -2023,6 +2023,17 @@ body {
 .danger-confirm-btn:hover { background: #b91c1c !important; }
 .danger-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* Analysis Perspective (v7.1) */
+.perspective-section { margin-bottom: 20px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.perspective-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.perspective-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 10px; }
+.perspective-textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); resize: vertical; line-height: 1.5; color: var(--text); background: var(--bg); box-sizing: border-box; }
+.perspective-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+.perspective-footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+.perspective-count { font-size: 11px; color: var(--text-tertiary); margin-right: auto; }
+.perspective-error { font-size: 12px; color: #dc2626; font-weight: 500; }
+.perspective-success { font-size: 12px; color: #22c55e; font-weight: 500; }
+
 /* ============================================================
    Tools View (MCP Tool Market)
    ============================================================ */
@@ -2043,6 +2054,30 @@ body {
 .tools-server-count { font-size: 10px; color: var(--text-tertiary); background: var(--surface); padding: 1px 6px; border-radius: var(--radius-full); }
 .tools-server-desc { font-size: 11px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
 .tools-server-error { font-size: 10px; color: #ef4444; margin-top: 3px; }
+/* MCP Admin Controls */
+.tools-server-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-light); }
+.toggle-switch { position: relative; display: inline-block; width: 32px; height: 18px; cursor: pointer; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: var(--radius-full); transition: background 0.2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+.toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(14px); }
+.toggle-switch input:disabled + .toggle-slider { opacity: 0.5; cursor: not-allowed; }
+.btn-reconnect { padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 14px; cursor: pointer; color: var(--text-secondary); transition: all 0.15s; line-height: 1; }
+.btn-reconnect:hover { border-color: var(--primary); color: var(--primary); }
+.btn-reconnect:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-delete-server { padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 14px; cursor: pointer; color: #ef4444; transition: all 0.15s; line-height: 1; margin-left: auto; }
+.btn-delete-server:hover { border-color: #ef4444; background: #fef2f2; }
+.btn-delete-server:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-add-server { margin-left: auto; width: 24px; height: 24px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 16px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+.btn-add-server:hover { border-color: var(--primary); background: var(--primary-light); }
+.mcp-add-form { padding: 10px 12px; border-bottom: 1px solid var(--border-light); background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.mcp-add-form-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.mcp-add-form input, .mcp-add-form select { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text); background: var(--bg); }
+.mcp-add-form input:focus, .mcp-add-form select:focus { outline: none; border-color: var(--primary); }
+.mcp-add-checkbox { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.mcp-add-error { font-size: 11px; color: #ef4444; }
+.mcp-add-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .tools-list { border-top: 1px solid var(--border-light); }
 .tools-list-header { padding: 6px 12px; font-size: 11px; font-weight: 500; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
 .tools-count { background: var(--primary-light); color: var(--primary); padding: 1px 7px; border-radius: var(--radius-full); font-size: 10px; }

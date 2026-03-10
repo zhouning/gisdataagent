@@ -444,7 +444,7 @@ class TestPromptLoading(unittest.TestCase):
         planner = load_prompts("planner")
         self.assertEqual(len(planner), 7)
         general = load_prompts("general")
-        self.assertEqual(len(general), 4)
+        self.assertEqual(len(general), 6)
 
 
 class TestBackwardCompat(unittest.TestCase):

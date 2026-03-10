@@ -3,6 +3,8 @@ import json
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 
+from starlette.responses import JSONResponse
+
 
 def _make_request(path="/", query_params=None, cookies=None, path_params=None, method="GET", body=None):
     """Create a mock Starlette Request."""
@@ -344,7 +346,7 @@ class TestRouteMount(unittest.TestCase):
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 31)
+        self.assertEqual(len(routes), 36)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
@@ -367,8 +369,8 @@ class TestRouteMount(unittest.TestCase):
 
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
-        # 31 routes inserted before the catch-all, catch-all is now at index 31
-        self.assertEqual(len(mock_app.router.routes), 32)
+        # 36 routes inserted before the catch-all, catch-all is now at index 36
+        self.assertEqual(len(mock_app.router.routes), 37)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
 
 
@@ -535,6 +537,127 @@ class TestRegisterUser(unittest.TestCase):
         result = register_user("ab", "Pass1234")
         self.assertEqual(result["status"], "error")
         self.assertIn("3-30", result["message"])
+
+
+class TestAnalysisPerspectiveAPI(unittest.TestCase):
+    """Tests for /api/user/analysis-perspective endpoints."""
+
+    def test_get_unauthorized(self):
+        from data_agent.frontend_api import _api_user_perspective_get
+        import asyncio
+        with patch("data_agent.frontend_api._get_user_from_request", return_value=None):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_user_perspective_get(_make_request()))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    @patch("data_agent.memory.get_analysis_perspective", return_value="关注生态红线")
+    def test_get_success(self, _mock_perspective, mock_user):
+        mock_user.return_value = _make_user()
+        from data_agent.frontend_api import _api_user_perspective_get
+        import asyncio
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_user_perspective_get(_make_request()))
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.body)
+        self.assertEqual(body["perspective"], "关注生态红线")
+
+    def test_put_unauthorized(self):
+        from data_agent.frontend_api import _api_user_perspective_put
+        import asyncio
+        with patch("data_agent.frontend_api._get_user_from_request", return_value=None):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_user_perspective_put(_make_request(body={"perspective": "test"})))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    @patch("data_agent.memory.save_memory", return_value={"status": "success", "message": "ok"})
+    def test_put_success(self, _mock_save, mock_user):
+        mock_user.return_value = _make_user()
+        from data_agent.frontend_api import _api_user_perspective_put
+        import asyncio
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_user_perspective_put(_make_request(body={"perspective": "生态分析"})))
+        self.assertEqual(resp.status_code, 200)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_put_too_long(self, mock_user):
+        mock_user.return_value = _make_user()
+        from data_agent.frontend_api import _api_user_perspective_put
+        import asyncio
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_user_perspective_put(_make_request(body={"perspective": "x" * 2001})))
+        self.assertEqual(resp.status_code, 400)
+
+
+class TestMcpServerCrudAPI(unittest.TestCase):
+    """Tests for MCP server CRUD endpoints."""
+
+    def test_create_unauthorized(self):
+        from data_agent.frontend_api import _api_mcp_server_create
+        import asyncio
+        with patch("data_agent.frontend_api._require_admin",
+                   return_value=(None, None, None, JSONResponse({"error": "Unauthorized"}, status_code=401))):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_mcp_server_create(_make_request(body={"name": "test"})))
+        self.assertEqual(resp.status_code, 401)
+
+    def test_create_missing_name(self):
+        from data_agent.frontend_api import _api_mcp_server_create
+        import asyncio
+        with patch("data_agent.frontend_api._require_admin",
+                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_mcp_server_create(_make_request(body={"name": ""})))
+        self.assertEqual(resp.status_code, 400)
+
+    def test_create_invalid_transport(self):
+        from data_agent.frontend_api import _api_mcp_server_create
+        import asyncio
+        with patch("data_agent.frontend_api._require_admin",
+                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_mcp_server_create(_make_request(body={"name": "s1", "transport": "invalid"})))
+        self.assertEqual(resp.status_code, 400)
+
+    @patch("data_agent.mcp_hub.McpHubManager.add_server")
+    def test_create_success(self, mock_add):
+        mock_add.return_value = {"status": "ok", "server": "test-srv", "connected": False}
+        from data_agent.frontend_api import _api_mcp_server_create
+        import asyncio
+        with patch("data_agent.frontend_api._require_admin",
+                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_mcp_server_create(_make_request(body={
+                    "name": "test-srv", "transport": "sse", "url": "http://localhost:8080"
+                })))
+        self.assertEqual(resp.status_code, 201)
+
+    @patch("data_agent.mcp_hub.McpHubManager.remove_server")
+    def test_delete_success(self, mock_remove):
+        mock_remove.return_value = {"status": "ok", "server": "test-srv"}
+        from data_agent.frontend_api import _api_mcp_server_delete
+        import asyncio
+        req = _make_request()
+        req.path_params = {"name": "test-srv"}
+        with patch("data_agent.frontend_api._require_admin",
+                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_mcp_server_delete(req))
+        self.assertEqual(resp.status_code, 200)
+
+    @patch("data_agent.mcp_hub.McpHubManager.update_server")
+    def test_update_success(self, mock_update):
+        mock_update.return_value = {"status": "ok", "server": "test-srv"}
+        from data_agent.frontend_api import _api_mcp_server_update
+        import asyncio
+        req = _make_request(body={"description": "updated"})
+        req.path_params = {"name": "test-srv"}
+        with patch("data_agent.frontend_api._require_admin",
+                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_mcp_server_update(req))
+        self.assertEqual(resp.status_code, 200)
 
 
 if __name__ == "__main__":

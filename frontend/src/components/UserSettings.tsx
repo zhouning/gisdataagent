@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface UserSettingsProps {
   username: string;
@@ -13,6 +13,19 @@ export default function UserSettings({ username, displayName, role, onClose, onD
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+
+  // Analysis perspective state
+  const [perspective, setPerspective] = useState('');
+  const [perspectiveLoading, setPerspectiveLoading] = useState(false);
+  const [perspectiveSaved, setPerspectiveSaved] = useState(false);
+  const [perspectiveError, setPerspectiveError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/user/analysis-perspective', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => setPerspective(data.perspective || ''))
+      .catch(() => {});
+  }, []);
 
   const handleDelete = async () => {
     if (!password) {
@@ -41,6 +54,31 @@ export default function UserSettings({ username, displayName, role, onClose, onD
     }
   };
 
+  const handleSavePerspective = async () => {
+    setPerspectiveLoading(true);
+    setPerspectiveError('');
+    setPerspectiveSaved(false);
+    try {
+      const resp = await fetch('/api/user/analysis-perspective', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ perspective }),
+      });
+      const data = await resp.json();
+      if (data.status === 'success') {
+        setPerspectiveSaved(true);
+        setTimeout(() => setPerspectiveSaved(false), 2000);
+      } else {
+        setPerspectiveError(data.message || '保存失败');
+      }
+    } catch {
+      setPerspectiveError('网络错误');
+    } finally {
+      setPerspectiveLoading(false);
+    }
+  };
+
   return (
     <div className="user-settings-overlay" onClick={onClose}>
       <div className="user-settings-modal" onClick={(e) => e.stopPropagation()}>
@@ -61,6 +99,33 @@ export default function UserSettings({ username, displayName, role, onClose, onD
           <div className="user-settings-row">
             <span className="user-settings-label">角色</span>
             <span className={`type-badge ${role}`}>{role}</span>
+          </div>
+        </div>
+
+        <div className="perspective-section">
+          <div className="perspective-title">分析视角</div>
+          <p className="perspective-desc">
+            设置您的分析关注点和偏好视角，系统将在每次分析中参考这些信息。
+          </p>
+          <textarea
+            className="perspective-textarea"
+            placeholder="例如：关注生态保护区域、优先分析耕地变化趋势、重点关注城市扩张..."
+            value={perspective}
+            onChange={(e) => setPerspective(e.target.value)}
+            maxLength={2000}
+            rows={4}
+          />
+          <div className="perspective-footer">
+            <span className="perspective-count">{perspective.length}/2000</span>
+            {perspectiveError && <span className="perspective-error">{perspectiveError}</span>}
+            {perspectiveSaved && <span className="perspective-success">已保存</span>}
+            <button
+              className="btn-primary btn-sm"
+              onClick={handleSavePerspective}
+              disabled={perspectiveLoading}
+            >
+              {perspectiveLoading ? '保存中...' : '保存'}
+            </button>
           </div>
         </div>
 

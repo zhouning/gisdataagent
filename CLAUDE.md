@@ -82,7 +82,7 @@ Custom React SPA replacing Chainlit's default UI. Three-panel layout: Chat (320p
 - **UserSettings**: Account info + self-deletion modal (danger zone)
 - **App.tsx**: Auth state, map/data state, layer control, user menu dropdown
 
-### Frontend API (31 REST endpoints in `frontend_api.py`)
+### Frontend API (36 REST endpoints in `frontend_api.py`)
 All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via `mount_frontend_api()`.
 
 | Method | Path | Purpose |
@@ -92,10 +92,13 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 | GET | `/api/pipeline/history` | Pipeline run history |
 | GET | `/api/user/token-usage` | Token usage + pipeline breakdown |
 | DELETE | `/api/user/account` | Self-delete account |
+| GET/PUT | `/api/user/analysis-perspective` | User analysis perspective (v7.1) |
 | GET/POST | `/api/annotations`, PUT/DELETE `/api/annotations/{id}` | Map annotations CRUD |
 | GET | `/api/config/basemaps` | Basemap configuration |
 | GET/PUT/DELETE | `/api/admin/users`, `/api/admin/users/{username}/role`, `/api/admin/metrics/summary` | Admin endpoints |
 | GET | `/api/mcp/servers`, `/api/mcp/tools` | MCP server status + tool listing |
+| POST | `/api/mcp/servers` | Add new MCP server (admin) |
+| PUT/DELETE | `/api/mcp/servers/{name}` | Update/remove MCP server (admin) |
 | POST | `/api/mcp/servers/{name}/toggle`, `/api/mcp/servers/{name}/reconnect` | MCP server management (admin) |
 | GET/POST | `/api/workflows` | Workflow list + create |
 | GET/PUT/DELETE | `/api/workflows/{id}` | Workflow detail, update, delete |
@@ -108,7 +111,7 @@ All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via 
 |---|---|
 | `agent.py` | Agent definitions, pipeline assembly, tool functions |
 | `app.py` | Chainlit UI, auth, semantic router, RBAC, file uploads, layer control |
-| `frontend_api.py` | 31 REST API endpoints for React frontend |
+| `frontend_api.py` | 36 REST API endpoints (incl. /api/map/pending, MCP CRUD) |
 | `auth.py` | Password hashing, registration, account deletion, Chainlit auth callbacks |
 | `user_context.py` | `ContextVar` for user_id/session_id/role propagation; `get_user_upload_dir()` |
 | `db_engine.py` | Singleton SQLAlchemy engine with connection pooling |
@@ -161,7 +164,7 @@ The DRL model uses `MaskablePPO` (from `sb3_contrib`) with a custom `ParcelScori
 - **Framework**: Google ADK v1.21 (`google.adk.agents`, `google.adk.runners`)
 - **LLM**: Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router)
 - **Frontend**: React 18 + TypeScript + Vite + Leaflet.js + @chainlit/react-client v0.3.1
-- **Backend**: Chainlit + Starlette (31 REST API endpoints)
+- **Backend**: Chainlit + Starlette (36 REST API endpoints)
 - **Database**: PostgreSQL 16 + PostGIS 3.4
 - **GIS**: GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify, branca
 - **ML**: PyTorch, Stable Baselines 3, Gymnasium

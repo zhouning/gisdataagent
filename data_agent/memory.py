@@ -9,7 +9,7 @@ from .db_engine import get_engine
 from .database_tools import _inject_user_context, T_USER_MEMORIES
 from .user_context import current_user_id
 
-VALID_MEMORY_TYPES = ("region", "viz_preference", "analysis_result", "custom")
+VALID_MEMORY_TYPES = ("region", "viz_preference", "analysis_result", "custom", "analysis_perspective")
 
 
 def ensure_memory_table():
@@ -240,3 +240,30 @@ def get_recent_analysis_results(limit: int = 5) -> list:
             return results
     except Exception:
         return []
+
+
+def get_analysis_perspective() -> str:
+    """Fetch the current user's analysis perspective text for prompt injection.
+
+    Returns the perspective string, or empty string if none set.
+    """
+    engine = get_engine()
+    if not engine:
+        return ""
+
+    username = current_user_id.get()
+    try:
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            row = conn.execute(text(
+                f"SELECT memory_value FROM {T_USER_MEMORIES} "
+                "WHERE username = :u AND memory_type = 'analysis_perspective' "
+                "ORDER BY updated_at DESC LIMIT 1"
+            ), {"u": username}).fetchone()
+
+            if row:
+                val = row[0] if isinstance(row[0], dict) else json.loads(row[0]) if row[0] else {}
+                return val.get("perspective", "")
+            return ""
+    except Exception:
+        return ""

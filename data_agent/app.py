@@ -2595,12 +2595,13 @@ async def main(message: cl.Message):
 
     # --- Inject spatial memories for context ---
     try:
-        from data_agent.memory import get_user_preferences, get_recent_analysis_results
+        from data_agent.memory import get_user_preferences, get_recent_analysis_results, get_analysis_perspective
         _set_user_context(user_id, session_id, role)
         viz_prefs = get_user_preferences()
         recent_results = get_recent_analysis_results(limit=3)
+        perspective = get_analysis_perspective()
 
-        if viz_prefs or recent_results:
+        if viz_prefs or recent_results or perspective:
             mem_block = "\n\n[用户空间记忆]"
             if viz_prefs:
                 mem_block += "\n可视化偏好："
@@ -2613,6 +2614,9 @@ async def main(message: cl.Message):
                     files = r.get('value', {}).get('files', [])
                     if files:
                         mem_block += f" (文件: {', '.join(files[:3])})"
+            if perspective:
+                mem_block += f"\n\n用户分析视角：{perspective}"
+                mem_block += "\n请在分析过程中考虑用户的分析视角和关注点。"
             mem_block += "\n\n请在用户未明确指定时使用以上偏好作为默认值。"
             full_prompt += mem_block
     except Exception:
