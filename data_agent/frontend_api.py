@@ -921,6 +921,36 @@ async def _api_user_perspective_put(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# User Auto-Extract Memories API (v7.5)
+# ---------------------------------------------------------------------------
+
+async def _api_user_memories_list(request: Request):
+    """GET /api/user/memories — list user's auto-extracted memories."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    from .memory import list_auto_extract_memories
+    result = list_auto_extract_memories()
+    return JSONResponse(result)
+
+
+async def _api_user_memories_delete(request: Request):
+    """DELETE /api/user/memories/{id} — delete a specific memory."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    memory_id = request.path_params.get("id", "0")
+    from .memory import delete_memory
+    result = delete_memory(str(memory_id))
+    status_code = 200 if result.get("status") == "success" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -946,6 +976,8 @@ def get_frontend_api_routes():
         Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_get, methods=["GET"]),
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_put, methods=["PUT"]),
+        Route("/api/user/memories", endpoint=_api_user_memories_list, methods=["GET"]),
+        Route("/api/user/memories/{id:int}", endpoint=_api_user_memories_delete, methods=["DELETE"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
         Route("/api/mcp/servers", endpoint=_api_mcp_servers, methods=["GET"]),

@@ -346,7 +346,7 @@ class TestRouteMount(unittest.TestCase):
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 36)
+        self.assertEqual(len(routes), 38)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
@@ -370,7 +370,7 @@ class TestRouteMount(unittest.TestCase):
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
         # 36 routes inserted before the catch-all, catch-all is now at index 36
-        self.assertEqual(len(mock_app.router.routes), 37)
+        self.assertEqual(len(mock_app.router.routes), 39)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
 
 
@@ -657,6 +657,43 @@ class TestMcpServerCrudAPI(unittest.TestCase):
                    return_value=(_make_user(role="admin"), "admin", "admin", None)):
             resp = asyncio.get_event_loop().run_until_complete(
                 _api_mcp_server_update(req))
+        self.assertEqual(resp.status_code, 200)
+
+
+class TestMemoryAPI(unittest.TestCase):
+    """Tests for auto-extract memory REST endpoints (v7.5)."""
+
+    @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
+    def test_memories_list_unauthorized(self, _):
+        import asyncio
+        from data_agent.frontend_api import _api_user_memories_list
+        req = MagicMock()
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_user_memories_list(req))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
+    def test_memories_delete_unauthorized(self, _):
+        import asyncio
+        from data_agent.frontend_api import _api_user_memories_delete
+        req = MagicMock()
+        req.path_params = {"id": 1}
+        resp = asyncio.get_event_loop().run_until_complete(
+            _api_user_memories_delete(req))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch("data_agent.frontend_api._set_user_context")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_memories_list_success(self, mock_user, mock_ctx):
+        import asyncio
+        from data_agent.frontend_api import _api_user_memories_list
+        mock_user.return_value = MagicMock()
+        mock_ctx.return_value = ("testuser", "session1")
+        req = MagicMock()
+        with patch("data_agent.memory.list_auto_extract_memories",
+                   return_value={"status": "success", "memories": []}):
+            resp = asyncio.get_event_loop().run_until_complete(
+                _api_user_memories_list(req))
         self.assertEqual(resp.status_code, 200)
 
 

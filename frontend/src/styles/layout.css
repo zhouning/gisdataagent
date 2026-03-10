@@ -2034,6 +2034,27 @@ body {
 .perspective-error { font-size: 12px; color: #dc2626; font-weight: 500; }
 .perspective-success { font-size: 12px; color: #22c55e; font-weight: 500; }
 
+/* Auto-Extract Memories (v7.5) */
+.memory-section { margin-bottom: 20px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.memory-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.memory-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 10px; }
+.memory-empty { font-size: 12.5px; color: var(--text-tertiary); text-align: center; padding: 20px 0; }
+.memory-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.memory-item { padding: 10px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg); }
+.memory-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.memory-item-key { font-size: 13px; font-weight: 500; color: var(--text); }
+.memory-category-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+.memory-category-badge.data_characteristic { background: #dbeafe; color: #1d4ed8; }
+.memory-category-badge.analysis_conclusion { background: #dcfce7; color: #16a34a; }
+.memory-category-badge.user_preference { background: #f3e8ff; color: #7c3aed; }
+.memory-category-badge.default { background: #f1f5f9; color: #64748b; }
+.memory-item-value { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; word-break: break-word; }
+.memory-item-footer { display: flex; align-items: center; justify-content: space-between; }
+.memory-item-time { font-size: 11px; color: var(--text-tertiary); }
+.memory-delete-btn { font-size: 11px; padding: 3px 10px; border: 1px solid #fca5a5; border-radius: var(--radius-sm); background: #fff; color: #dc2626; cursor: pointer; transition: all 0.15s; }
+.memory-delete-btn:hover { background: #dc2626; color: #fff; }
+.memory-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ============================================================
    Tools View (MCP Tool Market)
    ============================================================ */

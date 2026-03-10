@@ -14,6 +14,9 @@ from data_agent.memory import (
     get_user_preferences,
     get_recent_analysis_results,
     get_analysis_perspective,
+    extract_facts_from_conversation,
+    save_auto_extract_memories,
+    list_auto_extract_memories,
     VALID_MEMORY_TYPES,
 )
 from data_agent.user_context import current_user_id
@@ -76,6 +79,7 @@ class TestMemoryValidation(unittest.TestCase):
         self.assertIn("analysis_result", VALID_MEMORY_TYPES)
         self.assertIn("custom", VALID_MEMORY_TYPES)
         self.assertIn("analysis_perspective", VALID_MEMORY_TYPES)
+        self.assertIn("auto_extract", VALID_MEMORY_TYPES)
 
 
 class TestAnalysisPerspective(unittest.TestCase):
@@ -252,6 +256,68 @@ class TestMemoryCRUD(unittest.TestCase):
             self.assertEqual(result["status"], "error")  # should fail
             # Restore
             current_user_id.set("test_memory_user")
+
+
+class TestAutoExtract(unittest.TestCase):
+    """Tests for auto-extract memory functions (v7.5)."""
+
+    def test_extract_empty_input(self):
+        """Empty or short report text returns empty list without calling LLM."""
+        result = extract_facts_from_conversation("", "query")
+        self.assertEqual(result, [])
+        result2 = extract_facts_from_conversation("short", "query")
+        self.assertEqual(result2, [])
+
+    @patch('google.generativeai.GenerativeModel')
+    def test_extract_facts_success(self, mock_model_cls):
+        """LLM returns valid JSON array."""
+        mock_model = MagicMock()
+        mock_model_cls.return_value = mock_model
+        mock_model.generate_content.return_value = MagicMock(
+            text='[{"key": "耕地面积", "value": "总面积1200亩", "category": "data_characteristic"}]'
+        )
+        result = extract_facts_from_conversation("A" * 100, "分析耕地")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["key"], "耕地面积")
+
+    @patch('google.generativeai.GenerativeModel')
+    def test_extract_facts_with_code_fences(self, mock_model_cls):
+        """LLM wraps JSON in markdown code fences."""
+        mock_model = MagicMock()
+        mock_model_cls.return_value = mock_model
+        mock_model.generate_content.return_value = MagicMock(
+            text='```json\n[{"key": "k", "value": "v"}]\n```'
+        )
+        result = extract_facts_from_conversation("A" * 100, "query")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["category"], "data_characteristic")  # default
+
+    @patch('google.generativeai.GenerativeModel')
+    def test_extract_facts_parse_error(self, mock_model_cls):
+        """LLM returns non-JSON -> returns empty list."""
+        mock_model = MagicMock()
+        mock_model_cls.return_value = mock_model
+        mock_model.generate_content.return_value = MagicMock(text="not json at all")
+        result = extract_facts_from_conversation("A" * 100, "query")
+        self.assertEqual(result, [])
+
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_save_auto_extract_no_db(self, _):
+        """save_auto_extract_memories returns error when no DB."""
+        result = save_auto_extract_memories([{"key": "test", "value": "v", "category": "data_characteristic"}])
+        self.assertEqual(result["status"], "error")
+
+    def test_save_auto_extract_empty(self):
+        """Empty facts list returns success with saved=0."""
+        result = save_auto_extract_memories([])
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["saved"], 0)
+
+    @patch('data_agent.memory.get_engine', return_value=None)
+    def test_list_auto_extract_no_db(self, _):
+        """list_auto_extract_memories returns error when no DB."""
+        result = list_auto_extract_memories()
+        self.assertEqual(result["status"], "error")
 
 
 if __name__ == "__main__":
