@@ -169,8 +169,8 @@ class McpHubManager:
                     INSERT INTO {T_MCP_SERVERS}
                         (name, description, transport, enabled, category, pipelines,
                          command, args, env, cwd, url, headers, timeout, updated_at)
-                    VALUES (:name, :desc, :transport, :enabled, :category, :pipelines::jsonb,
-                            :command, :args::jsonb, :env::jsonb, :cwd, :url, :headers::jsonb,
+                    VALUES (:name, :desc, :transport, :enabled, :category, CAST(:pipelines AS jsonb),
+                            :command, CAST(:args AS jsonb), CAST(:env AS jsonb), :cwd, :url, CAST(:headers AS jsonb),
                             :timeout, NOW())
                     ON CONFLICT (name) DO UPDATE SET
                         description = EXCLUDED.description,
