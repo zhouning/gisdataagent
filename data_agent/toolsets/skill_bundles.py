@@ -75,7 +75,7 @@ def build_skill_toolset(name: str) -> SkillToolset:
 
 
 def build_all_skills_toolset() -> SkillToolset:
-    """Build a single SkillToolset with all 5 domain skills.
+    """Build a single SkillToolset with all 16 domain skills.
 
     This is the recommended usage for agents that may need any domain —
     the LLM selects which skill to load on demand, keeping context window
@@ -105,7 +105,12 @@ class SkillBundle:
 SPATIAL_ANALYSIS = SkillBundle(
     name="spatial_analysis",
     description="Spatial data exploration, processing, and analysis",
-    intent_triggers=["optimization", "governance", "spatial"],
+    intent_triggers=[
+        "optimization", "governance", "spatial",
+        "buffer", "overlay", "clip", "site selection", "suitability",
+        "fragmentation", "FFI", "DRL", "geocode", "address",
+        "CRS", "coordinate", "ecology", "NDVI", "DEM",
+    ],
     _factory=lambda: [
         ExplorationToolset(tool_filter=AUDIT_TOOLS),
         GeoProcessingToolset(),
@@ -121,7 +126,10 @@ SPATIAL_ANALYSIS = SkillBundle(
 DATA_QUALITY = SkillBundle(
     name="data_quality",
     description="Data governance, auditing, and quality checks",
-    intent_triggers=["governance", "audit", "quality"],
+    intent_triggers=[
+        "governance", "audit", "quality", "compliance",
+        "topology", "profile", "describe",
+    ],
     _factory=lambda: [
         ExplorationToolset(tool_filter=AUDIT_TOOLS),
         DatabaseToolset(tool_filter=DB_READ_DESCRIBE),
@@ -134,7 +142,10 @@ DATA_QUALITY = SkillBundle(
 VISUALIZATION = SkillBundle(
     name="visualization",
     description="Map rendering, chart generation, and visual exports",
-    intent_triggers=["visualization", "map", "chart"],
+    intent_triggers=[
+        "visualization", "map", "chart",
+        "choropleth", "heatmap", "3D", "extrusion", "deck.gl",
+    ],
     _factory=lambda: [
         VisualizationToolset(tool_filter=GENERAL_VIZ),
     ],
@@ -143,7 +154,10 @@ VISUALIZATION = SkillBundle(
 DATABASE = SkillBundle(
     name="database",
     description="Database queries, table management, data import, and sharing",
-    intent_triggers=["database", "sql", "query", "import", "postgis"],
+    intent_triggers=[
+        "database", "sql", "query", "import", "postgis",
+        "PostGIS", "export", "ST_",
+    ],
     _factory=lambda: [
         DatabaseToolset(tool_filter=DB_READ_DESCRIBE + ["share_table", "import_to_postgis"]),
         DataLakeToolset(tool_filter=DATALAKE_READ),
@@ -153,7 +167,10 @@ DATABASE = SkillBundle(
 COLLABORATION = SkillBundle(
     name="collaboration",
     description="Team management, memory, admin, and collaboration tools",
-    intent_triggers=["team", "share", "collaborate"],
+    intent_triggers=[
+        "team", "share", "collaborate",
+        "memory", "fusion", "merge", "join",
+    ],
     _factory=lambda: [
         MemoryToolset(),
         AdminToolset(),
