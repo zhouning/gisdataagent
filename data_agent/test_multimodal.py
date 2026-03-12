@@ -338,57 +338,51 @@ class TestHandleUploadedFile(unittest.TestCase):
 class TestClassifyIntentMultimodal(unittest.TestCase):
     """Tests for classify_intent() with multimodal parameters."""
 
-    @patch("data_agent.app.genai")
-    def test_with_pdf_context(self, mock_genai):
-        mock_model = MagicMock()
+    @patch("data_agent.app._genai_router_client")
+    def test_with_pdf_context(self, mock_client):
         mock_response = MagicMock()
         mock_response.text = "GENERAL|PDF contains spatial data analysis"
         mock_response.usage_metadata = None
-        mock_model.generate_content.return_value = mock_response
-        mock_genai.GenerativeModel.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent(
+        intent, reason, tokens, _ = classify_intent(
             "分析这个PDF文件",
             pdf_context="耕地面积 1500.5 平方米",
         )
         self.assertEqual(intent, "GENERAL")
         # Verify PDF context was included in the prompt
-        call_args = mock_model.generate_content.call_args
-        prompt_content = call_args[0][0]
+        call_args = mock_client.models.generate_content.call_args
+        prompt_content = call_args.kwargs.get("contents", call_args[1].get("contents", ""))
         if isinstance(prompt_content, list):
             # Multimodal content (text + images)
             self.assertTrue(any("PDF" in str(p) for p in prompt_content))
         else:
             self.assertIn("PDF", prompt_content)
 
-    @patch("data_agent.app.genai")
-    def test_without_multimodal_params(self, mock_genai):
+    @patch("data_agent.app._genai_router_client")
+    def test_without_multimodal_params(self, mock_client):
         """Existing behavior preserved when no multimodal params."""
-        mock_model = MagicMock()
         mock_response = MagicMock()
         mock_response.text = "OPTIMIZATION|用户请求优化"
         mock_response.usage_metadata = None
-        mock_model.generate_content.return_value = mock_response
-        mock_genai.GenerativeModel.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("优化土地布局")
+        intent, reason, tokens, _ = classify_intent("优化土地布局")
         self.assertEqual(intent, "OPTIMIZATION")
 
-    @patch("data_agent.app.genai")
-    def test_with_image_paths_no_pil(self, mock_genai):
+    @patch("data_agent.app._genai_router_client")
+    def test_with_image_paths_no_pil(self, mock_client):
         """Images gracefully skipped if PIL fails."""
-        mock_model = MagicMock()
         mock_response = MagicMock()
         mock_response.text = "GENERAL|Image analysis"
         mock_response.usage_metadata = None
-        mock_model.generate_content.return_value = mock_response
-        mock_genai.GenerativeModel.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
         # Non-existent images should be gracefully handled
-        intent, reason, tokens = classify_intent(
+        intent, reason, tokens, _ = classify_intent(
             "这张图片是什么",
             image_paths=["/nonexistent/img.png"],
         )

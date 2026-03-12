@@ -84,6 +84,10 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
 
   const handleFileClick = (file: FileInfo) => {
     if (file.type === 'csv') { loadCsvData(file.name); setActiveTab('table'); }
+    else {
+      // Open/download non-CSV files via the file serve API
+      window.open(`/api/user/files/${encodeURIComponent(file.name)}`, '_blank');
+    }
   };
 
   return (

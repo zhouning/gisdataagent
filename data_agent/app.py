@@ -9,7 +9,7 @@ import zipfile
 import shutil
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai as genai_client
 
 from data_agent.i18n import t, set_language, get_language
 from data_agent.multimodal import (
@@ -39,9 +39,9 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.agents.run_config import RunConfig
 from google.genai import types
 
-# Configure raw Gemini client for Routing (outside ADK agents)
-if "GOOGLE_API_KEY" in os.environ:
-    genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+# Configure Google GenAI client for Routing (outside ADK agents)
+# Uses google.genai (new unified SDK) — auto-reads GOOGLE_API_KEY / Vertex AI env vars
+_genai_router_client = genai_client.Client()
 
 # Import agent and report generator
 try:
@@ -1935,8 +1935,13 @@ async def _execute_pipeline(
                                     with open(config_path, 'r', encoding='utf-8') as _cf:
                                         _mc_data = json.load(_cf)
                                         msg_metadata["map_update"] = _mc_data
-                                        _final_map_update = _mc_data
-                                        logger.info(f"[ArtifactHTML] Loaded mapconfig: layers={len(_mc_data.get('layers', []))}, _final_map_update SET")
+                                        # Only upgrade _final_map_update if new config has more layers
+                                        # (prevents summary text referencing old maps from overwriting richer configs)
+                                        _new_layers = len(_mc_data.get('layers', []))
+                                        _cur_layers = len(_final_map_update.get('layers', [])) if _final_map_update else 0
+                                        if _new_layers >= _cur_layers:
+                                            _final_map_update = _mc_data
+                                        logger.info(f"[ArtifactHTML] Loaded mapconfig: layers={_new_layers}, _final_map_update={'UPDATED' if _new_layers >= _cur_layers else 'KEPT(had ' + str(_cur_layers) + ')'}")
                                 except Exception as _mcerr:
                                     logger.error(f"[ArtifactHTML] Failed to load mapconfig: {_mcerr}")
                                     pass
@@ -2303,12 +2308,12 @@ def handle_uploaded_file(element, upload_dir: str) -> tuple:
 def classify_intent(text: str, previous_pipeline: str = None,
                     image_paths: list = None, pdf_context: str = None) -> tuple:
     """
-    Uses Gemini Flash to semantically classify user intent into one of the 3 pipelines.
+    Uses Gemini Flash to semantically classify user intent into one of the 3 pipelines,
+    plus tool subcategories for dynamic tool filtering (v7.5.6).
     Supports multimodal input: images are embedded directly, PDF text is appended to prompt.
-    Returns: (intent, reason, router_tokens) where intent is 'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS'.
+    Returns: (intent, reason, router_tokens, tool_categories) where intent is 'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS'.
     """
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
         prev_hint = ""
         if previous_pipeline:
             prev_hint = f"\n        - The previous turn used the {previous_pipeline.upper()} pipeline. If the user references prior results (上面, 刚才, 继续, 之前, 在此基础上), prefer routing to the SAME pipeline: {previous_pipeline.upper()}."
@@ -2327,6 +2332,16 @@ def classify_intent(text: str, previous_pipeline: str = None,
         3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史)
         4. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
 
+        Additionally, identify which tool subcategories are needed (comma-separated, minimum list):
+        - spatial_processing: buffer, clip, overlay, tessellation, clustering, zonal stats, geocoding, spatial join
+        - poi_location: POI search, population, driving distance, admin boundaries
+        - remote_sensing: raster/NDVI/DEM/LULC
+        - database_management: PostGIS import/export/describe table schema
+        - quality_audit: topology check, field standards, semantic layer, consistency
+        - streaming_iot: real-time/IoT data streams, geofence
+        - collaboration: team management, templates, asset management
+        - advanced_analysis: spatial statistics (Moran/hotspot), data fusion, knowledge graph
+
         User Input: "{text}"{pdf_hint}
 
         Rules:
@@ -2335,7 +2350,9 @@ def classify_intent(text: str, previous_pipeline: str = None,
         - If the input is a greeting (你好, hello, hi), casual chat, or contains no identifiable GIS task, output AMBIGUOUS.
         - If the input could reasonably belong to two pipelines equally, output AMBIGUOUS.
         - If images are attached, consider their visual content as additional context for classification.
-        - Output format: CATEGORY|REASON (e.g. "GENERAL|用户请求查看地图" or "AMBIGUOUS|输入不包含明确的GIS任务")
+        - Output format: CATEGORY|REASON|TOOLS:cat1,cat2
+        - Examples: "GENERAL|用户请求缓冲区分析|TOOLS:spatial_processing" or "GOVERNANCE|数据质检|TOOLS:quality_audit"
+        - If unsure which tools are needed or for AMBIGUOUS inputs: "CATEGORY|REASON|TOOLS:all"
         """
 
         # Build multimodal content for Gemini: text + optional images
@@ -2356,7 +2373,13 @@ def classify_intent(text: str, previous_pipeline: str = None,
             except Exception as img_err:
                 logger.debug("Could not load images for router: %s", img_err)
 
-        response = model.generate_content(content_parts)
+        response = _genai_router_client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=content_parts,
+            config=types.GenerateContentConfig(
+                http_options=types.HttpOptions(timeout=30_000),  # 30s
+            ),
+        )
         # Track router token consumption
         router_input_tokens = 0
         router_output_tokens = 0
@@ -2366,6 +2389,23 @@ def classify_intent(text: str, previous_pipeline: str = None,
         router_tokens = router_input_tokens + router_output_tokens
 
         raw = response.text.strip()
+
+        # --- Parse tool categories (v7.5.6) ---
+        tool_cats = set()
+        if "TOOLS:" in raw:
+            tools_part = raw.split("TOOLS:", 1)[1].strip()
+            if tools_part and tools_part.lower() != "all":
+                tool_cats = {c.strip() for c in tools_part.split(",") if c.strip()}
+            # Strip unknown categories — only keep those defined in TOOL_CATEGORIES
+            from data_agent.tool_filter import VALID_CATEGORIES
+            unknown = tool_cats - VALID_CATEGORIES
+            if unknown:
+                logger.debug("Router returned unknown tool categories: %s (stripped)", unknown)
+                tool_cats = tool_cats & VALID_CATEGORIES
+            # Remove TOOLS: suffix from the raw text for intent/reason parsing
+            raw = raw.split("|TOOLS:", 1)[0] if "|TOOLS:" in raw else raw.split("TOOLS:", 1)[0]
+            raw = raw.strip()
+
         if "|" in raw:
             parts = raw.split("|", 1)
             intent = parts[0].strip().upper()
@@ -2373,14 +2413,14 @@ def classify_intent(text: str, previous_pipeline: str = None,
         else:
             intent = raw.upper()
             reason = ""
-        if "OPTIMIZATION" in intent: return ("OPTIMIZATION", reason, router_tokens)
-        if "GOVERNANCE" in intent: return ("GOVERNANCE", reason, router_tokens)
-        if "AMBIGUOUS" in intent: return ("AMBIGUOUS", reason, router_tokens)
-        if "GENERAL" in intent: return ("GENERAL", reason, router_tokens)
-        return ("GENERAL", reason, router_tokens)
+        if "OPTIMIZATION" in intent: return ("OPTIMIZATION", reason, router_tokens, tool_cats)
+        if "GOVERNANCE" in intent: return ("GOVERNANCE", reason, router_tokens, tool_cats)
+        if "AMBIGUOUS" in intent: return ("AMBIGUOUS", reason, router_tokens, tool_cats)
+        if "GENERAL" in intent: return ("GENERAL", reason, router_tokens, tool_cats)
+        return ("GENERAL", reason, router_tokens, tool_cats)
     except Exception as e:
         logger.error("Router error: %s", e)
-        return ("GENERAL", "", 0)
+        return ("GENERAL", "", 0, set())
 
 
 def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) -> str:
@@ -2392,8 +2432,10 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
         prompt_template = get_prompt("planner", "plan_generation_prompt")
         prompt = prompt_template.format(intent=intent, user_text=user_text, files_info=files_info)
 
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        response = model.generate_content(prompt)
+        response = _genai_router_client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+        )
         return response.text.strip()
     except Exception as e:
         logger.error("Plan generation error: %s", e)
@@ -2668,7 +2710,7 @@ async def main(message: cl.Message):
     else:
         # --- SEMANTIC ROUTING ---
         previous_pipeline = last_ctx.get("pipeline") if last_ctx else None
-        intent, intent_reason, router_tokens = classify_intent(
+        intent, intent_reason, router_tokens, tool_cats = classify_intent(
             user_text, previous_pipeline=previous_pipeline,
             image_paths=image_files or None,
             pdf_context=pdf_context or None,
@@ -2753,12 +2795,7 @@ async def main(message: cl.Message):
             except Exception as e:
                 logger.error("Plan confirmation error: %s", e)
 
-    if DYNAMIC_PLANNER:
-        selected_agent = planner_agent
-        pipeline_type = "planner"
-        pipeline_name = f"Dynamic Planner (意图: {intent})"
-        full_prompt += f"\n\n[意图分类提示] 路由器判断: {intent}（{intent_reason}）"
-    elif intent == "GOVERNANCE":
+    if intent == "GOVERNANCE":
         selected_agent = governance_pipeline
         pipeline_type = "governance"
         pipeline_name = "Governance Pipeline (数据治理)"
@@ -2766,6 +2803,11 @@ async def main(message: cl.Message):
         selected_agent = data_pipeline
         pipeline_type = "optimization"
         pipeline_name = "Optimization Pipeline (空间优化)"
+    elif DYNAMIC_PLANNER:
+        selected_agent = planner_agent
+        pipeline_type = "planner"
+        pipeline_name = f"Dynamic Planner (意图: {intent})"
+        full_prompt += f"\n\n[意图分类提示] 路由器判断: {intent}（{intent_reason}）"
     else:
         selected_agent = general_pipeline
         pipeline_type = "general"
@@ -2783,6 +2825,12 @@ async def main(message: cl.Message):
 
     cl.user_session.set("pipeline_type", pipeline_type)
 
+    # --- Set tool categories for dynamic tool filtering (v7.5.6) ---
+    from data_agent.user_context import current_tool_categories
+    current_tool_categories.set(tool_cats)
+    if tool_cats:
+        logger.info("[Trace:%s] ToolCategories=%s (filtering %d categories)", trace_id, tool_cats, len(tool_cats))
+
     # --- Save retry context and execute pipeline ---
     cl.user_session.set("retry_full_prompt", full_prompt)
     cl.user_session.set("retry_uploaded_files", uploaded_files)
@@ -2791,6 +2839,7 @@ async def main(message: cl.Message):
     cl.user_session.set("retry_intent", intent)
     cl.user_session.set("retry_count", 0)
     cl.user_session.set("retry_extra_parts", extra_parts)
+    cl.user_session.set("retry_tool_cats", tool_cats)
 
     await _execute_pipeline(
         user_id, session_id, role, full_prompt, uploaded_files,
@@ -2815,6 +2864,11 @@ async def on_retry_pipeline(action: cl.Action):
     pipeline_name = cl.user_session.get("retry_pipeline_name")
     intent = cl.user_session.get("retry_intent")
     retry_extra_parts = cl.user_session.get("retry_extra_parts", [])
+
+    # Restore tool categories for dynamic tool filtering (v7.5.6)
+    from data_agent.user_context import current_tool_categories
+    retry_tool_cats = cl.user_session.get("retry_tool_cats", set())
+    current_tool_categories.set(retry_tool_cats)
 
     if not full_prompt or not pipeline_type:
         await cl.Message(content=t("error.retry_missing_context")).send()

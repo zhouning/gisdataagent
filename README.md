@@ -123,6 +123,7 @@ cd frontend && npm install && npm run dev
 | | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 + DB 持久化 + 管理 UI (v7.1) |
 | | 分析视角注入 | 用户自定义分析关注点，自动注入 Agent 提示词 (v7.1) |
 | | Memory ETL | 管道执行后自动提取关键发现，智能去重，配额管理 (v7.5) |
+| | 动态工具加载 | 按意图动态裁剪工具列表 (8 类别 + 10 核心工具)，ContextVar + ToolPredicate (v7.5) |
 | | 反思循环 | 全部 3 条管道含 LoopAgent 质量反思 (v7.1) |
 | **数据融合** | 融合引擎 (MMFE) | 五阶段流水线（画像→评估→对齐→融合→验证），10 种策略，5 种模态 |
 | | 语义匹配 | 五层渐进匹配：精确 → 等价组 → 嵌入相似度 → 单位感知 → 模糊 |
@@ -322,7 +323,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v6.0 | 融合增强（栅格重投影、点云、流数据、语义增强、质量验证） | ✅ 完成 |
 | v7.0 | 向量嵌入匹配、LLM 策略路由、地理知识图谱、分布式计算 | ✅ 完成 |
 | v7.1 | MCP 管理 UI + DB 持久化、WorkflowEditor、分析视角注入、Prompt 版本管理、工具错误恢复、反思循环推广、端到端 Trace ID | ✅ 完成 |
-| v7.5 | Memory ETL 自动提取 ✅、Gemini Context Caching、动态工具加载、MCP 安全加固 + per-User 隔离 | 进行中 |
+| v7.5 | Memory ETL 自动提取 ✅、动态工具加载 ✅、Gemini Context Caching、MCP 安全加固 + per-User 隔离 | 进行中 |
 | v8.0 | DB 驱动自定义 Skills、RAG 知识库、DAG 工作流、失败学习与自适应、动态模型选择、评估门控 CI | 规划中 |
 | v9.0 | 实时协同编辑、边缘部署、数据连接器生态、多 Agent 并行、A2A 智能体互操作、主动探索与发现 | 远期 |
 

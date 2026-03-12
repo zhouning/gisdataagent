@@ -268,36 +268,36 @@ class TestAutoExtract(unittest.TestCase):
         result2 = extract_facts_from_conversation("short", "query")
         self.assertEqual(result2, [])
 
-    @patch('google.generativeai.GenerativeModel')
-    def test_extract_facts_success(self, mock_model_cls):
+    @patch('google.genai.Client')
+    def test_extract_facts_success(self, mock_client_cls):
         """LLM returns valid JSON array."""
-        mock_model = MagicMock()
-        mock_model_cls.return_value = mock_model
-        mock_model.generate_content.return_value = MagicMock(
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.models.generate_content.return_value = MagicMock(
             text='[{"key": "耕地面积", "value": "总面积1200亩", "category": "data_characteristic"}]'
         )
         result = extract_facts_from_conversation("A" * 100, "分析耕地")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["key"], "耕地面积")
 
-    @patch('google.generativeai.GenerativeModel')
-    def test_extract_facts_with_code_fences(self, mock_model_cls):
+    @patch('google.genai.Client')
+    def test_extract_facts_with_code_fences(self, mock_client_cls):
         """LLM wraps JSON in markdown code fences."""
-        mock_model = MagicMock()
-        mock_model_cls.return_value = mock_model
-        mock_model.generate_content.return_value = MagicMock(
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.models.generate_content.return_value = MagicMock(
             text='```json\n[{"key": "k", "value": "v"}]\n```'
         )
         result = extract_facts_from_conversation("A" * 100, "query")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["category"], "data_characteristic")  # default
 
-    @patch('google.generativeai.GenerativeModel')
-    def test_extract_facts_parse_error(self, mock_model_cls):
+    @patch('google.genai.Client')
+    def test_extract_facts_parse_error(self, mock_client_cls):
         """LLM returns non-JSON -> returns empty list."""
-        mock_model = MagicMock()
-        mock_model_cls.return_value = mock_model
-        mock_model.generate_content.return_value = MagicMock(text="not json at all")
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.models.generate_content.return_value = MagicMock(text="not json at all")
         result = extract_facts_from_conversation("A" * 100, "query")
         self.assertEqual(result, [])
 

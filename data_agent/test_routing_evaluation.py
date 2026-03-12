@@ -17,7 +17,7 @@ from unittest.mock import patch, MagicMock
 # ---------------------------------------------------------------------------
 
 def _mock_genai_response(intent: str, reason: str = "test"):
-    """Create a mock GenerativeModel response."""
+    """Create a mock generate_content response."""
     mock_resp = MagicMock()
     mock_resp.text = f"{intent}|{reason}"
     mock_resp.usage_metadata = MagicMock()
@@ -26,11 +26,9 @@ def _mock_genai_response(intent: str, reason: str = "test"):
     return mock_resp
 
 
-def _make_mock_model(intent: str, reason: str = "test"):
-    """Create a mock GenerativeModel that returns a fixed intent."""
-    mock_model_instance = MagicMock()
-    mock_model_instance.generate_content.return_value = _mock_genai_response(intent, reason)
-    return mock_model_instance
+def _setup_mock_client(mock_client, intent: str, reason: str = "test"):
+    """Configure a mock _genai_router_client to return a fixed intent."""
+    mock_client.models.generate_content.return_value = _mock_genai_response(intent, reason)
 
 
 # ---------------------------------------------------------------------------
@@ -40,46 +38,46 @@ def _make_mock_model(intent: str, reason: str = "test"):
 class TestRouterResponseParsing(unittest.TestCase):
     """Test that classify_intent correctly parses Gemini responses."""
 
-    @patch("data_agent.app.genai")
-    def test_governance_intent(self, mock_genai):
-        mock_genai.GenerativeModel.return_value = _make_mock_model("GOVERNANCE", "用户请求数据治理")
+    @patch("data_agent.app._genai_router_client")
+    def test_governance_intent(self, mock_client):
+        _setup_mock_client(mock_client, "GOVERNANCE", "用户请求数据治理")
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("请对数据进行质量审计")
+        intent, reason, tokens, _ = classify_intent("请对数据进行质量审计")
         self.assertEqual(intent, "GOVERNANCE")
 
-    @patch("data_agent.app.genai")
-    def test_optimization_intent(self, mock_genai):
-        mock_genai.GenerativeModel.return_value = _make_mock_model("OPTIMIZATION", "用户请求空间优化")
+    @patch("data_agent.app._genai_router_client")
+    def test_optimization_intent(self, mock_client):
+        _setup_mock_client(mock_client, "OPTIMIZATION", "用户请求空间优化")
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("对地块进行布局优化")
+        intent, reason, tokens, _ = classify_intent("对地块进行布局优化")
         self.assertEqual(intent, "OPTIMIZATION")
 
-    @patch("data_agent.app.genai")
-    def test_general_intent(self, mock_genai):
-        mock_genai.GenerativeModel.return_value = _make_mock_model("GENERAL", "用户请求查看地图")
+    @patch("data_agent.app._genai_router_client")
+    def test_general_intent(self, mock_client):
+        _setup_mock_client(mock_client, "GENERAL", "用户请求查看地图")
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("生成一张热力图")
+        intent, reason, tokens, _ = classify_intent("生成一张热力图")
         self.assertEqual(intent, "GENERAL")
 
-    @patch("data_agent.app.genai")
-    def test_ambiguous_intent(self, mock_genai):
-        mock_genai.GenerativeModel.return_value = _make_mock_model("AMBIGUOUS", "输入不明确")
+    @patch("data_agent.app._genai_router_client")
+    def test_ambiguous_intent(self, mock_client):
+        _setup_mock_client(mock_client, "AMBIGUOUS", "输入不明确")
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("你好")
+        intent, reason, tokens, _ = classify_intent("你好")
         self.assertEqual(intent, "AMBIGUOUS")
 
-    @patch("data_agent.app.genai")
-    def test_returns_reason(self, mock_genai):
-        mock_genai.GenerativeModel.return_value = _make_mock_model("GENERAL", "用户请求SQL查询")
+    @patch("data_agent.app._genai_router_client")
+    def test_returns_reason(self, mock_client):
+        _setup_mock_client(mock_client, "GENERAL", "用户请求SQL查询")
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("查询数据库")
+        intent, reason, tokens, _ = classify_intent("查询数据库")
         self.assertIn("SQL查询", reason)
 
-    @patch("data_agent.app.genai")
-    def test_returns_token_count(self, mock_genai):
-        mock_genai.GenerativeModel.return_value = _make_mock_model("GENERAL", "test")
+    @patch("data_agent.app._genai_router_client")
+    def test_returns_token_count(self, mock_client):
+        _setup_mock_client(mock_client, "GENERAL", "test")
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("测试")
+        intent, reason, tokens, _ = classify_intent("测试")
         self.assertIsInstance(tokens, (int, dict))
         if isinstance(tokens, int):
             self.assertGreaterEqual(tokens, 0)
@@ -94,58 +92,54 @@ class TestRouterResponseParsing(unittest.TestCase):
 class TestRouterEdgeCases(unittest.TestCase):
     """Test edge cases in routing logic."""
 
-    @patch("data_agent.app.genai")
-    def test_empty_input_returns_ambiguous(self, mock_genai):
-        mock_genai.GenerativeModel.return_value = _make_mock_model("AMBIGUOUS", "空输入")
+    @patch("data_agent.app._genai_router_client")
+    def test_empty_input_returns_ambiguous(self, mock_client):
+        _setup_mock_client(mock_client, "AMBIGUOUS", "空输入")
         from data_agent.app import classify_intent
-        intent, _, _ = classify_intent("")
+        intent, _, _, _ = classify_intent("")
         self.assertEqual(intent, "AMBIGUOUS")
 
-    @patch("data_agent.app.genai")
-    def test_malformed_response_defaults_general(self, mock_genai):
+    @patch("data_agent.app._genai_router_client")
+    def test_malformed_response_defaults_general(self, mock_client):
         """If Gemini returns unparseable response, should default to GENERAL."""
         mock_resp = MagicMock()
         mock_resp.text = "I'm not sure what you mean"
         mock_resp.usage_metadata = MagicMock()
         mock_resp.usage_metadata.prompt_token_count = 10
         mock_resp.usage_metadata.candidates_token_count = 5
-        mock_model = MagicMock()
-        mock_model.generate_content.return_value = mock_resp
-        mock_genai.GenerativeModel.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, _, _ = classify_intent("random text")
+        intent, _, _, _ = classify_intent("random text")
         # Should fall back to GENERAL or AMBIGUOUS (implementation-dependent)
         self.assertIn(intent, ("GENERAL", "AMBIGUOUS"))
 
-    @patch("data_agent.app.genai")
-    def test_previous_pipeline_hint_passed(self, mock_genai):
+    @patch("data_agent.app._genai_router_client")
+    def test_previous_pipeline_hint_passed(self, mock_client):
         """Verify previous_pipeline is used in prompt construction."""
-        mock_genai.GenerativeModel.return_value = _make_mock_model("OPTIMIZATION", "延续上轮")
+        _setup_mock_client(mock_client, "OPTIMIZATION", "延续上轮")
         from data_agent.app import classify_intent
-        intent, _, _ = classify_intent("继续分析", previous_pipeline="optimization")
+        intent, _, _, _ = classify_intent("继续分析", previous_pipeline="optimization")
         self.assertEqual(intent, "OPTIMIZATION")
         # Verify the model was called (prompt includes previous pipeline hint)
-        call_args = mock_genai.GenerativeModel.return_value.generate_content.call_args
+        call_args = mock_client.models.generate_content.call_args
         self.assertIsNotNone(call_args)
 
-    @patch("data_agent.app.genai")
-    def test_pdf_context_appended(self, mock_genai):
+    @patch("data_agent.app._genai_router_client")
+    def test_pdf_context_appended(self, mock_client):
         """Verify PDF context is included in router prompt."""
-        mock_genai.GenerativeModel.return_value = _make_mock_model("GOVERNANCE", "PDF审计")
+        _setup_mock_client(mock_client, "GOVERNANCE", "PDF审计")
         from data_agent.app import classify_intent
-        intent, _, _ = classify_intent("分析这份PDF", pdf_context="这是一份土地利用变更报告...")
+        intent, _, _, _ = classify_intent("分析这份PDF", pdf_context="这是一份土地利用变更报告...")
         self.assertEqual(intent, "GOVERNANCE")
 
-    @patch("data_agent.app.genai")
-    def test_gemini_exception_returns_general(self, mock_genai):
+    @patch("data_agent.app._genai_router_client")
+    def test_gemini_exception_returns_general(self, mock_client):
         """If Gemini call fails, should gracefully default to GENERAL."""
-        mock_model = MagicMock()
-        mock_model.generate_content.side_effect = Exception("API error")
-        mock_genai.GenerativeModel.return_value = mock_model
+        mock_client.models.generate_content.side_effect = Exception("API error")
 
         from data_agent.app import classify_intent
-        intent, _, _ = classify_intent("测试错误处理")
+        intent, _, _, _ = classify_intent("测试错误处理")
         self.assertEqual(intent, "GENERAL")
 
 
@@ -196,12 +190,10 @@ class TestRoutingCoverage(unittest.TestCase):
         """Helper to verify a batch of inputs map to expected intent."""
         for text in inputs:
             with self.subTest(text=text):
-                with patch("data_agent.app.genai") as mock_genai:
-                    mock_genai.GenerativeModel.return_value = _make_mock_model(
-                        expected_intent, f"matched: {text}"
-                    )
+                with patch("data_agent.app._genai_router_client") as mock_client:
+                    _setup_mock_client(mock_client, expected_intent, f"matched: {text}")
                     from data_agent.app import classify_intent
-                    intent, _, _ = classify_intent(text)
+                    intent, _, _, _ = classify_intent(text)
                     self.assertEqual(intent, expected_intent,
                                      f"Input '{text}' expected {expected_intent} but got {intent}")
 

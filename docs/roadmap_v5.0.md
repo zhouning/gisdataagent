@@ -105,7 +105,7 @@
 - 用户私有服务器仅本人可见
 - 工具发现按用户范围过滤
 
-### 7.5.4 Memory ETL 自动提取
+### 7.5.4 Memory ETL 自动提取 ✅
 
 > 来源: Kaggle Day 3 "Context Engineering" — Memory ETL Pipeline: Extract → Consolidate → Store
 
@@ -132,18 +132,20 @@
 
 **影响范围**: `agent.py`, ~30 行
 
-### 7.5.6 动态工具加载
+### 7.5.6 动态工具加载 ✅
 
 > 来源: Kaggle Day 2 — "Context Window Bloat: 只加载 top 3-5 相关工具"
 
 **现状**: 每个管道在创建时绑定固定工具集，全部工具描述占用 context window。
 **方案**:
-- 在 `classify_intent()` 时同时识别用户意图的工具子类别
-- Agent 创建时通过已有 `tool_filter` 机制裁剪工具列表
-- 核心工具始终保留 (explore, describe)，专业工具按意图追加
-- 预估节省 context window ~40%
+- 在 `classify_intent()` 时同时识别用户意图的工具子类别（8 类）
+- 通过 ADK `ToolPredicate` Protocol + `ContextVar` 动态裁剪工具列表
+- `IntentToolPredicate` 读取 `current_tool_categories` ContextVar，按请求过滤
+- 核心工具 (10 个) 始终保留，专业工具按意图追加
+- 应用于 `general_processing_agent` (11 toolsets) 和 `_make_planner_processor` (5 toolsets)
+- 空集合 = 不过滤（兼容旧行为、错误回退、AMBIGUOUS 意图）
 
-**影响范围**: `app.py`, `agent.py`, ~80 行
+**影响范围**: `app.py`, `agent.py`, `tool_filter.py`(新), `user_context.py`, ~200 行
 
 ---
 
@@ -335,7 +337,7 @@ v9.0 补齐 (→ 21/21):
 │  第四层：Agent 工程化基线 (v7.1 ✅ → v8.0)              │
 │  ┌─────────────────────────────────────────────┐       │
 │  │  v7.1 ✅ Trace ID + 反思推广 + 错误恢复指导  │       │
-│  │  v7.5: Memory ETL + Context Cache + 动态工具  │       │
+│  │  v7.5: Memory ETL ✅ + Context Cache + 动态工具 ✅ │       │
 │  │  v8.0: 失败学习 + 动态模型 + 评估门控 CI      │       │
 │  └─────────────────────────────────────────────┘       │
 │                                                         │
@@ -373,8 +375,8 @@ v9.0 补齐 (→ 21/21):
 ```
 业务价值 ↑
 │
-│  ★ 7.5.4 Memory ETL            ★ 8.0.1 自定义 Skills
-│  ★ 7.5.6 动态工具加载          ★ 8.0.3 DAG 工作流
+│  ★ 7.5.4 Memory ETL ✅          ★ 8.0.1 自定义 Skills
+│  ★ 7.5.6 动态工具加载 ✅       ★ 8.0.3 DAG 工作流
 │  ★ 7.5.1 MCP 安全加固          ★ 8.0.5 失败学习
 │
 │  ○ 7.5.2 技能包组合            ○ 8.0.2 RAG 知识库
@@ -391,8 +393,8 @@ v9.0 补齐 (→ 21/21):
 
 ```
 Phase 1 (v7.5, 3-4 周) — 上下文工程 + MCP 安全 ⬅️ 下一步
-  ├── 7.5.4 Memory ETL 自动提取     ★ 高价值，Agent 智能度飞跃
-  ├── 7.5.6 动态工具加载             ★ 降低 token 开销 ~40%
+  ├── 7.5.4 Memory ETL 自动提取     ★ 高价值，Agent 智能度飞跃  ✅
+  ├── 7.5.6 动态工具加载             ★ 降低 token 开销 ~40%     ✅
   ├── 7.5.1 MCP 安全加固             ★ 生产就绪必备
   ├── 7.5.5 Gemini Context Caching   ○ 降低 API 费用 ~30%
   ├── 7.5.2 技能包组合               ○ 用户自助化

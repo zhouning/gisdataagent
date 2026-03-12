@@ -440,7 +440,7 @@ class TestPromptLoading(unittest.TestCase):
     def test_all_prompt_keys(self):
         from data_agent.prompts import load_prompts
         opt = load_prompts("optimization")
-        self.assertEqual(len(opt), 7)
+        self.assertEqual(len(opt), 9)
         planner = load_prompts("planner")
         self.assertEqual(len(planner), 7)
         general = load_prompts("general")

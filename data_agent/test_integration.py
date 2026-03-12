@@ -80,61 +80,61 @@ class TestStartupResilience(unittest.TestCase):
 class TestIntentClassification(unittest.TestCase):
     """Test classify_intent with mock Gemini."""
 
-    @patch("google.generativeai.GenerativeModel")
-    def test_classify_general(self, MockModel):
+    @patch("data_agent.app._genai_router_client")
+    def test_classify_general(self, mock_client):
         """Normal classification returns 3-tuple with GENERAL intent."""
         mock_response = MagicMock()
         mock_response.text = "GENERAL|用户请求查看数据库表"
         mock_response.usage_metadata = MagicMock(
             prompt_token_count=50, candidates_token_count=10
         )
-        MockModel.return_value.generate_content.return_value = mock_response
+        mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("列出所有表")
+        intent, reason, tokens, _ = classify_intent("列出所有表")
         self.assertEqual(intent, "GENERAL")
         self.assertIn("数据库", reason)
         self.assertGreaterEqual(tokens, 0)
 
-    @patch("google.generativeai.GenerativeModel")
-    def test_classify_governance(self, MockModel):
+    @patch("data_agent.app._genai_router_client")
+    def test_classify_governance(self, mock_client):
         """Classification correctly returns GOVERNANCE."""
         mock_response = MagicMock()
         mock_response.text = "GOVERNANCE|数据质量检查"
         mock_response.usage_metadata = MagicMock(
             prompt_token_count=50, candidates_token_count=10
         )
-        MockModel.return_value.generate_content.return_value = mock_response
+        mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("对这个数据做拓扑检查")
+        intent, reason, tokens, _ = classify_intent("对这个数据做拓扑检查")
         self.assertEqual(intent, "GOVERNANCE")
 
-    @patch("google.generativeai.GenerativeModel")
-    def test_classify_api_error_fallback(self, MockModel):
+    @patch("data_agent.app._genai_router_client")
+    def test_classify_api_error_fallback(self, mock_client):
         """classify_intent falls back to GENERAL on API error."""
-        MockModel.return_value.generate_content.side_effect = Exception("API timeout")
+        mock_client.models.generate_content.side_effect = Exception("API timeout")
 
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("随便说点什么")
+        intent, reason, tokens, _ = classify_intent("随便说点什么")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(tokens, 0)
 
-    @patch("google.generativeai.GenerativeModel")
-    def test_classify_malformed_response(self, MockModel):
+    @patch("data_agent.app._genai_router_client")
+    def test_classify_malformed_response(self, mock_client):
         """classify_intent handles malformed model output."""
         mock_response = MagicMock()
         mock_response.text = "this is not a valid format"
         mock_response.usage_metadata = MagicMock(
             prompt_token_count=50, candidates_token_count=10
         )
-        MockModel.return_value.generate_content.return_value = mock_response
+        mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens = classify_intent("你好")
-        # Should still return a valid 3-tuple
+        intent, reason, tokens, _ = classify_intent("你好")
+        # Should still return a valid 4-tuple
         self.assertIn(intent, ("GENERAL", "GOVERNANCE", "OPTIMIZATION", "AMBIGUOUS"))
-        self.assertEqual(len(classify_intent("test")), 3)
+        self.assertEqual(len(classify_intent("test")), 4)
 
 
 # ---------------------------------------------------------------------------
