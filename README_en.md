@@ -2,7 +2,7 @@
 
 # GIS Data Agent (ADK Edition) v7.5
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, categorized map rendering, 3D visualization, workflow orchestration, geographic knowledge graph, and Memory ETL auto-extraction.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 16 ADK scenario skills, Gemini Context Caching, categorized map rendering, 3D visualization, workflow orchestration, geographic knowledge graph, and Memory ETL auto-extraction.
 
 ## Core Capabilities
 
@@ -82,7 +82,7 @@ graph TD
         Bots["WeChat / DingTalk / Feishu"]
     end
 
-    FE --"REST API"--> FAPI["Frontend API<br/>38 Endpoints"]
+    FE --"REST API"--> FAPI["Frontend API<br/>39 Endpoints"]
     FAPI --> DB
 ```
 
@@ -122,12 +122,13 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | Category | Feature | Description |
 |---|---|---|
 | **AI Core** | Semantic Layer | YAML catalog (15 domains, 7 regions, 8 spatial ops) + 3-level hierarchy + DB annotations |
-| | Skill Bundles | 5 named toolset groupings (spatial_analysis, data_quality, visualization, database, collaboration) |
+| | Skill Bundles | 16 fine-grained scenario skills (farmland compliance, coordinate transform, spatial clustering, PostGIS analysis, etc.), three-level incremental loading (v7.5) |
 | | NL Layer Control | Natural language show/hide/style/remove map layers via `control_map_layer` tool |
 | | MCP Tool Market | Config-driven MCP server connection + tool aggregation + DB persistence + management UI (v7.1) |
 | | Analysis Perspective | User-defined analysis focus, auto-injected into agent prompts (v7.1) |
 | | Memory ETL | Auto-extract key findings after pipeline execution, smart dedup, quota management (v7.5) |
 | | Dynamic Tool Loading | Intent-based dynamic tool filtering (8 categories + 10 core tools), ContextVar + ToolPredicate (v7.5) |
+| | Context Caching | Gemini context caching: reuse long system prompts, reduce token cost, env-controlled TTL (v7.5) |
 | | Reflection Loops | All 3 pipelines with LoopAgent quality reflection (v7.1) |
 | **Data Fusion** | Fusion Engine (MMFE) | Five-stage pipeline (Profile→Assess→Align→Fuse→Validate), 10 strategies, 5 modalities |
 | | Semantic Matching | Five-tier progressive: exact → equivalence groups → embedding similarity → unit-aware → fuzzy |
@@ -158,6 +159,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Map Annotations | Collaborative click-to-add annotations with team sharing |
 | | Basemap Switcher | Gaode, Tianditu (conditional), CartoDB, OpenStreetMap |
 | **Security** | Auth | Password + OAuth2 (Google) + in-app self-registration |
+| | MCP Security Hardening | Per-user tool isolation + security sandbox + audit logging (v7.5) |
 | | RBAC + RLS | admin/analyst/viewer roles + PostgreSQL Row-Level Security |
 | | Account Management | User self-deletion with cascade cleanup + admin protection |
 | | Audit Log | Enterprise audit trail with admin dashboard |
@@ -177,7 +179,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | **Framework** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router) |
 | **Frontend** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **Backend** | Chainlit + Starlette (38 REST API endpoints) |
+| **Backend** | Chainlit + Starlette (39 REST API endpoints) |
 | **Database** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -193,7 +195,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 data_agent/
 ├── app.py                       # Chainlit UI, semantic router, auth, RBAC
 ├── agent.py                     # Agent definitions, pipeline assembly
-├── frontend_api.py              # 38 REST API endpoints
+├── frontend_api.py              # 39 REST API endpoints
 ├── workflow_engine.py           # Workflow engine: CRUD, execution, webhook, cron
 ├── multimodal.py                # Multimodal input: image/PDF classification, Gemini Parts
 ├── mcp_hub.py                   # MCP Hub Manager: config-driven MCP server management
@@ -205,7 +207,7 @@ data_agent/
 │   ├── fusion_tools.py          #   Data fusion toolset (4 tools)
 │   ├── knowledge_graph_tools.py #   Knowledge graph toolset (3 tools)
 │   ├── mcp_hub_toolset.py       #   MCP tool bridge
-│   ├── skill_bundles.py         #   5 named toolset groupings
+│   ├── skill_bundles.py         #   16 scenario skill groupings
 │   └── ...                      #   exploration, geo processing, analysis, database, etc.
 ├── prompts/                     # 3 YAML prompt files
 ├── migrations/                  # 19 SQL migration scripts (001-019)
@@ -215,7 +217,7 @@ data_agent/
 ├── health.py                    # K8s health check API
 ├── observability.py             # Structured logging + Prometheus
 ├── i18n.py                      # i18n: YAML dict + t() function
-├── test_*.py                    # 62 test files (1440+ tests)
+├── test_*.py                    # 62 test files (1490+ tests)
 └── run_evaluation.py            # Agent evaluation runner
 
 frontend/
@@ -258,7 +260,7 @@ Custom React SPA replacing Chainlit's default UI:
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API Endpoints (38 routes)
+## REST API Endpoints (39 routes)
 
 | Method | Path | Description |
 |---|---|---|
@@ -298,7 +300,7 @@ Custom React SPA replacing Chainlit's default UI:
 ## Running Tests
 
 ```bash
-# All tests (1440+ tests)
+# All tests (1490+ tests)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single module
@@ -332,7 +334,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v6.0 | Fusion Improvements (raster reprojection, point cloud, stream, quality) | ✅ Done |
 | v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | ✅ Done |
 | v7.1 | MCP Management UI + DB Persistence, WorkflowEditor, Analysis Perspective, Prompt Versioning, Tool Error Recovery, Reflection Loop Expansion, End-to-End Trace ID | ✅ Done |
-| v7.5 | Memory ETL Auto-Extraction ✅, Dynamic Tool Loading ✅, Categorized Map Rendering ✅, Action Button Fix ✅, File Download ✅, Planner transfer_to_agent Fix ✅, PostGIS SRID Detection Fix ✅, genai SDK Migration ✅, Gemini Context Caching, MCP Security + per-User Isolation | In Progress |
+| v7.5 | Memory ETL Auto-Extraction, Dynamic Tool Loading, Categorized Map Rendering, Action Button Fix, File Download, Planner transfer_to_agent Fix, PostGIS SRID Detection Fix, genai SDK Migration, Gemini Context Caching, MCP Security + per-User Isolation, 16 Scenario Skills Enrichment | ✅ Done |
 | v8.0 | DB-Driven Custom Skills, RAG Knowledge Base, DAG Workflow, Failure Learning & Adaptation, Dynamic Model Selection, Evaluation-Gated CI | Future |
 | v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel, A2A Agent Interop, Proactive Exploration & Discovery | Long-term |
 
