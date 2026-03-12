@@ -11,11 +11,31 @@ import yaml
 SKILLS_DIR = pathlib.Path(__file__).parent / "skills"
 
 EXPECTED_SKILLS = [
-    "collaboration",
-    "data-quality",
-    "database",
-    "spatial-analysis",
-    "visualization",
+    "3d-visualization",
+    "buffer-overlay",
+    "coordinate-transform",
+    "data-import-export",
+    "data-profiling",
+    "ecological-assessment",
+    "farmland-compliance",
+    "geocoding",
+    "land-fragmentation",
+    "multi-source-fusion",
+    "postgis-analysis",
+    "site-selection",
+    "spatial-clustering",
+    "team-collaboration",
+    "thematic-mapping",
+    "topology-validation",
+]
+
+SKILLS_WITH_REFERENCES = [
+    "coordinate-transform",
+    "ecological-assessment",
+    "farmland-compliance",
+    "land-fragmentation",
+    "postgis-analysis",
+    "spatial-clustering",
 ]
 
 
@@ -39,8 +59,8 @@ class TestSkillDirectoryStructure(unittest.TestCase):
             self.assertTrue(skill_md.exists(), f"Missing SKILL.md: {name}")
 
     def test_references_dirs(self):
-        """spatial-analysis and data-quality should have references/."""
-        for name in ["spatial-analysis", "data-quality"]:
+        """Skills with references/ should have the directory."""
+        for name in SKILLS_WITH_REFERENCES:
             ref_dir = SKILLS_DIR / name / "references"
             self.assertTrue(ref_dir.is_dir(), f"Missing references/: {name}")
 
@@ -119,14 +139,14 @@ class TestSkillLoading(unittest.TestCase):
 
     def test_load_single_skill(self):
         from data_agent.skills import load_skill
-        skill = load_skill("spatial-analysis")
-        self.assertEqual(skill.name, "spatial-analysis")
+        skill = load_skill("farmland-compliance")
+        self.assertEqual(skill.name, "farmland-compliance")
         self.assertTrue(len(skill.description) > 0)
 
     def test_load_all_skills_count(self):
         from data_agent.skills import load_all_skills
         skills = load_all_skills()
-        self.assertEqual(len(skills), 5)
+        self.assertEqual(len(skills), 16)
 
     def test_load_all_skills_names(self):
         from data_agent.skills import load_all_skills
@@ -142,13 +162,13 @@ class TestSkillLoading(unittest.TestCase):
     def test_skill_has_instructions(self):
         """L2 content: skills should have instruction body (Markdown after frontmatter)."""
         from data_agent.skills import load_skill
-        skill = load_skill("visualization")
+        skill = load_skill("thematic-mapping")
         # The skill object should have instructions loaded
         self.assertTrue(hasattr(skill, "instructions") or hasattr(skill, "instruction"))
 
     def test_skill_has_metadata(self):
         from data_agent.skills import load_skill
-        skill = load_skill("database")
+        skill = load_skill("postgis-analysis")
         self.assertIsNotNone(skill.frontmatter.metadata)
 
 
@@ -170,7 +190,7 @@ class TestSkillToolsetIntegration(unittest.TestCase):
 
     def test_build_single_skill_toolset(self):
         from data_agent.toolsets.skill_bundles import build_skill_toolset
-        ts = build_skill_toolset("collaboration")
+        ts = build_skill_toolset("team-collaboration")
         from google.adk.tools.skill_toolset import SkillToolset
         self.assertIsInstance(ts, SkillToolset)
 
@@ -185,15 +205,15 @@ class TestSkillToolsetIntegration(unittest.TestCase):
         self.assertGreaterEqual(len(tools), 2)
 
     def test_skill_toolset_list_skills_returns_all(self):
-        """list_skills tool should return metadata for all 5 skills."""
+        """list_skills tool should return metadata for all 16 skills."""
         from data_agent.toolsets.skill_bundles import build_all_skills_toolset
         ts = build_all_skills_toolset()
         # Access the skills list directly
-        self.assertEqual(len(ts._skills), 5)
+        self.assertEqual(len(ts._skills), 16)
 
     def test_single_skill_toolset_count(self):
         from data_agent.toolsets.skill_bundles import build_skill_toolset
-        ts = build_skill_toolset("data-quality")
+        ts = build_skill_toolset("data-profiling")
         self.assertEqual(len(ts._skills), 1)
 
 
@@ -208,12 +228,12 @@ class TestPlannerSkillIntegration(unittest.TestCase):
         )
         self.assertTrue(has_skill_toolset, "Planner should include SkillToolset")
 
-    def test_planner_skill_toolset_has_5_skills(self):
+    def test_planner_skill_toolset_has_16_skills(self):
         from data_agent.agent import planner_agent
         from google.adk.tools.skill_toolset import SkillToolset
         for t in planner_agent.tools:
             if isinstance(t, SkillToolset):
-                self.assertEqual(len(t._skills), 5)
+                self.assertEqual(len(t._skills), 16)
                 return
         self.fail("No SkillToolset found in Planner tools")
 
