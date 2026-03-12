@@ -697,5 +697,33 @@ class TestMemoryAPI(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
 
 
+class TestContextCacheConfig(unittest.TestCase):
+    """v7.5.5: Gemini context caching configuration."""
+
+    def test_context_cache_config_creation(self):
+        from google.adk.agents.context_cache_config import ContextCacheConfig
+        config = ContextCacheConfig(cache_intervals=10, ttl_seconds=1800, min_tokens=4096)
+        self.assertEqual(config.cache_intervals, 10)
+        self.assertEqual(config.ttl_seconds, 1800)
+        self.assertEqual(config.min_tokens, 4096)
+        self.assertEqual(config.ttl_string, "1800s")
+
+    def test_context_cache_config_defaults(self):
+        from google.adk.agents.context_cache_config import ContextCacheConfig
+        config = ContextCacheConfig()
+        self.assertEqual(config.cache_intervals, 10)
+        self.assertEqual(config.ttl_seconds, 1800)
+        self.assertEqual(config.min_tokens, 0)
+
+    def test_app_accepts_cache_config(self):
+        from google.adk.apps import App
+        from google.adk.agents.context_cache_config import ContextCacheConfig
+        from google.adk.agents import LlmAgent
+        agent = LlmAgent(name="test", model="gemini-2.0-flash")
+        config = ContextCacheConfig(ttl_seconds=600)
+        app = App(name="test_app", root_agent=agent, context_cache_config=config)
+        self.assertIs(app.context_cache_config, config)
+
+
 if __name__ == "__main__":
     unittest.main()

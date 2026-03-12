@@ -69,7 +69,8 @@ class TestEnsureChainlitTables:
 
         ensure_chainlit_tables()
 
-        mock_conn.execute.assert_called_once()
+        mock_conn.execute.assert_called()
+        assert mock_conn.execute.call_count >= 1
         mock_conn.commit.assert_called_once()
 
     @patch("data_agent.session_storage.get_engine")

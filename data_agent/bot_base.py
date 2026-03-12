@@ -293,7 +293,7 @@ class BotBase(ABC):
             dynamic_planner = getattr(app_mod, "DYNAMIC_PLANNER", False)
 
             # Classify intent
-            intent, reason, router_tokens = classify_intent(user_text)
+            intent, reason, router_tokens, *_extra = classify_intent(user_text)
 
             # RBAC check
             if role == "viewer" and intent in ("OPTIMIZATION", "GOVERNANCE"):

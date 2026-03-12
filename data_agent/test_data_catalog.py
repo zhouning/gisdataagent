@@ -237,10 +237,10 @@ class TestSearchDataAssets(unittest.TestCase):
         mock_conn.execute.return_value.fetchall.return_value = [
             (1, "dem_banzhu.tif", "raster", "tif", "cloud", "EPSG:4326",
              1, 34000, '["DEM"]', "Digital elevation model for Banzhu",
-             "admin", True),
+             "admin", True, None, None),
             (2, "lulc_banzhu_2023.tif", "raster", "tif", "cloud", "EPSG:4326",
              1, 240000, '["LULC"]', "Land use cover 2023",
-             "admin", True),
+             "admin", True, None, None),
         ]
 
         mock_eng = MagicMock()
@@ -260,7 +260,7 @@ class TestSearchDataAssets(unittest.TestCase):
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = [
             (1, "dem_banzhu.tif", "raster", "tif", "local", "",
-             1, 1000, "[]", "", "admin", False),
+             1, 1000, "[]", "", "admin", False, None, "uploads/dem_banzhu.tif"),
         ]
 
         mock_eng = MagicMock()

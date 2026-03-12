@@ -62,13 +62,20 @@ class TestPlannerHierarchy(unittest.TestCase):
         reporter = next(a for a in self.planner.sub_agents if a.name == "PlannerReporter")
         self.assertEqual(len(reporter.tools), 0)
 
-    def test_planner_has_memory_tools(self):
+    def _run_async(self, coro):
         import asyncio
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+    def test_planner_has_memory_tools(self):
         from google.adk.tools.base_toolset import BaseToolset
         tool_names = set()
         for t in self.planner.tools:
             if isinstance(t, BaseToolset):
-                tools = asyncio.get_event_loop().run_until_complete(t.get_tools())
+                tools = self._run_async(t.get_tools())
                 tool_names.update(ft.name for ft in tools)
             else:
                 tool_names.add(t.__name__)
@@ -84,39 +91,36 @@ class TestPlannerHierarchy(unittest.TestCase):
         self.assertEqual(self.planner.output_key, "planner_summary")
 
     def test_explorer_tool_count(self):
-        import asyncio
         from google.adk.tools.base_toolset import BaseToolset
         explorer = next(a for a in self.planner.sub_agents if a.name == "PlannerExplorer")
         total = 0
         for t in explorer.tools:
             if isinstance(t, BaseToolset):
-                tools = asyncio.get_event_loop().run_until_complete(t.get_tools())
+                tools = self._run_async(t.get_tools())
                 total += len(tools)
             else:
                 total += 1
         self.assertGreaterEqual(total, 9)
 
     def test_processor_tool_count(self):
-        import asyncio
         from google.adk.tools.base_toolset import BaseToolset
         processor = next(a for a in self.planner.sub_agents if a.name == "PlannerProcessor")
         total = 0
         for t in processor.tools:
             if isinstance(t, BaseToolset):
-                tools = asyncio.get_event_loop().run_until_complete(t.get_tools())
+                tools = self._run_async(t.get_tools())
                 total += len(tools)
             else:
                 total += 1
         self.assertGreaterEqual(total, 19)
 
     def test_analyzer_has_ffi_and_drl(self):
-        import asyncio
         from google.adk.tools.base_toolset import BaseToolset
         analyzer = next(a for a in self.planner.sub_agents if a.name == "PlannerAnalyzer")
         tool_names = set()
         for t in analyzer.tools:
             if isinstance(t, BaseToolset):
-                tools = asyncio.get_event_loop().run_until_complete(t.get_tools())
+                tools = self._run_async(t.get_tools())
                 tool_names.update(ft.name for ft in tools)
             else:
                 tool_names.add(t.__name__)

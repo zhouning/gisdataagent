@@ -90,7 +90,7 @@ class TestFeishuTokenRefresh(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         token = loop.run_until_complete(bot.refresh_token())
         self.assertEqual(token, "t-12345")
         self.assertTrue(bot.token_cache.valid)
@@ -114,7 +114,7 @@ class TestFeishuTokenRefresh(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         with self.assertRaises(RuntimeError) as ctx:
             loop.run_until_complete(bot.refresh_token())
         self.assertIn("app_id not found", str(ctx.exception))
@@ -249,7 +249,7 @@ class TestFeishuSendText(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.send_text("ou_test_user", "测试消息"))
 
         mock_client.post.assert_called_once()
@@ -272,7 +272,7 @@ class TestFeishuSendMarkdown(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.send_markdown("ou_test_user", "# 标题\n内容"))
 
         call_kwargs = mock_client.post.call_args[1]
@@ -295,7 +295,7 @@ class TestFeishuSendCard(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.send_card(
             "ou_test", "结果", "分析完成", "https://example.com/s/abc"
         ))
@@ -319,8 +319,9 @@ class TestFeishuMessageDedup(unittest.TestCase):
         """handle_message ignores duplicate msg_id."""
         bot = FeishuBot()
         bot.send_text = AsyncMock()
+        bot._run_pipeline = AsyncMock()  # prevent actual pipeline execution
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.handle_message("ou_user1", "msg_f1", "hello"))
         loop.run_until_complete(bot.handle_message("ou_user1", "msg_f1", "hello"))
 
@@ -339,7 +340,7 @@ class TestFeishuEmptyMessage(unittest.TestCase):
         bot = FeishuBot()
         bot.send_text = AsyncMock()
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.handle_message("ou_user1", "msg_f2", "  "))
 
         bot.send_text.assert_not_awaited()
@@ -390,7 +391,7 @@ class TestGetTokenDelegation(unittest.TestCase):
         bot = FeishuBot()
         bot.refresh_token = AsyncMock(return_value="refreshed_token")
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         token = loop.run_until_complete(bot.get_token())
         self.assertEqual(token, "refreshed_token")
         bot.refresh_token.assert_awaited_once()
@@ -401,7 +402,7 @@ class TestGetTokenDelegation(unittest.TestCase):
         bot.token_cache.set("cached_token", 7200)
         bot.refresh_token = AsyncMock()
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         token = loop.run_until_complete(bot.get_token())
         self.assertEqual(token, "cached_token")
         bot.refresh_token.assert_not_awaited()

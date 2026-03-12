@@ -339,7 +339,11 @@ class TestKnowledgeGraphToolset(unittest.TestCase):
         from data_agent.toolsets.knowledge_graph_tools import KnowledgeGraphToolset
 
         toolset = KnowledgeGraphToolset()
-        tools = asyncio.get_event_loop().run_until_complete(toolset.get_tools())
+        loop = asyncio.new_event_loop()
+        try:
+            tools = loop.run_until_complete(toolset.get_tools())
+        finally:
+            loop.close()
         self.assertEqual(len(tools), 3)
         names = sorted([t.name for t in tools])
         self.assertIn("build_knowledge_graph", names)

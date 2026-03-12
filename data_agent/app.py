@@ -39,6 +39,14 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.agents.run_config import RunConfig
 from google.genai import types
 
+# --- Context Cache support (v7.5.5) ---
+try:
+    from google.adk.apps import App
+    from google.adk.agents.context_cache_config import ContextCacheConfig
+    _CACHE_SUPPORT = True
+except ImportError:
+    _CACHE_SUPPORT = False
+
 # Configure Google GenAI client for Routing (outside ADK agents)
 # Uses google.genai (new unified SDK) — auto-reads GOOGLE_API_KEY / Vertex AI env vars
 _genai_router_client = genai_client.Client()
@@ -220,6 +228,22 @@ def _create_session_service():
     return InMemorySessionService()
 
 session_service = _create_session_service()
+
+# --- Context Cache (v7.5.5): cache long system prompts for cost savings ---
+_CONTEXT_CACHE_ENABLED = os.environ.get("CONTEXT_CACHE_ENABLED", "true").lower() == "true"
+_CONTEXT_CACHE_TTL = int(os.environ.get("CONTEXT_CACHE_TTL", "1800"))
+
+_context_cache_config = None
+if _CACHE_SUPPORT and _CONTEXT_CACHE_ENABLED:
+    _context_cache_config = ContextCacheConfig(
+        cache_intervals=10,
+        ttl_seconds=_CONTEXT_CACHE_TTL,
+        min_tokens=4096,
+    )
+    logger.info("Context caching enabled (TTL=%ds, min_tokens=4096)", _CONTEXT_CACHE_TTL)
+else:
+    logger.info("Context caching disabled (support=%s, enabled=%s)",
+                _CACHE_SUPPORT, _CONTEXT_CACHE_ENABLED)
 
 # ---------------------------------------------------------------------------
 # HITL Approval Plugin (human-in-the-loop for high-risk operations)
@@ -1656,12 +1680,23 @@ async def _execute_pipeline(
     trace_id = _set_user_context(user_id, session_id, role)
     logger.info("[Trace:%s] Pipeline=%s Intent=%s Started", trace_id, pipeline_name, intent)
 
-    runner = Runner(
-        agent=selected_agent,
-        app_name="data_agent_ui",
-        session_service=session_service,
-        plugins=[_hitl_plugin] if HITL_ENABLED else [],
-    )
+    _plugins = [_hitl_plugin] if HITL_ENABLED else []
+
+    if _context_cache_config:
+        _app = App(
+            name="data_agent_ui",
+            root_agent=selected_agent,
+            context_cache_config=_context_cache_config,
+            plugins=_plugins,
+        )
+        runner = Runner(app=_app, session_service=session_service)
+    else:
+        runner = Runner(
+            agent=selected_agent,
+            app_name="data_agent_ui",
+            session_service=session_service,
+            plugins=_plugins,
+        )
     content = types.Content(role='user', parts=[types.Part(text=full_prompt)] + (extra_parts or []))
 
     # --- Progress Feedback Setup ---

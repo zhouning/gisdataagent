@@ -140,14 +140,14 @@ class TestDetectClusters(unittest.TestCase):
 class TestInMemoryBuffer(unittest.TestCase):
     def test_push_and_read(self):
         buf = InMemoryBuffer()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(buf.push("s1", {"timestamp": time.time(), "data": "x"}))
         result = loop.run_until_complete(buf.read_window("s1", 60))
         self.assertEqual(len(result), 1)
 
     def test_window_filter(self):
         buf = InMemoryBuffer()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         # Old event (should be filtered out)
         loop.run_until_complete(buf.push("s1", {"timestamp": time.time() - 120, "data": "old"}))
         # Recent event
@@ -158,7 +158,7 @@ class TestInMemoryBuffer(unittest.TestCase):
 
     def test_clear(self):
         buf = InMemoryBuffer()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(buf.push("s1", {"timestamp": time.time()}))
         loop.run_until_complete(buf.clear("s1"))
         result = loop.run_until_complete(buf.read_window("s1", 60))
@@ -166,7 +166,7 @@ class TestInMemoryBuffer(unittest.TestCase):
 
     def test_max_events_cap(self):
         buf = InMemoryBuffer(max_events_per_stream=5)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         for i in range(10):
             loop.run_until_complete(buf.push("s1", {"timestamp": time.time(), "i": i}))
         self.assertTrue(len(buf._streams["s1"]) <= 5)
@@ -195,7 +195,7 @@ class TestStreamEngine(unittest.TestCase):
 
     def test_start_and_stop_stream(self):
         config = self.engine.create_stream(StreamConfig(id="", name="X", window_seconds=1))
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(self.engine.start_stream(config.id))
         self.assertIn(config.id, self.engine._running_tasks)
         loop.run_until_complete(self.engine.stop_stream(config.id))
@@ -204,20 +204,20 @@ class TestStreamEngine(unittest.TestCase):
     def test_ingest_event(self):
         config = self.engine.create_stream(StreamConfig(id="", name="Y"))
         event = LocationEvent("d1", config.id, 39.9, 116.4, time.time())
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         result = loop.run_until_complete(self.engine.ingest(event))
         self.assertTrue(result)
 
     def test_process_window_empty(self):
         config = self.engine.create_stream(StreamConfig(id="", name="Z", window_seconds=60))
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         result = loop.run_until_complete(self.engine.process_window(config.id))
         self.assertIsNotNone(result)
         self.assertEqual(result.event_count, 0)
 
     def test_process_window_with_events(self):
         config = self.engine.create_stream(StreamConfig(id="", name="W", window_seconds=60))
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         for i in range(5):
             event = LocationEvent(f"d{i}", config.id, 39.9 + i * 0.01, 116.4, time.time())
             loop.run_until_complete(self.engine.ingest(event))
@@ -232,7 +232,7 @@ class TestStreamEngine(unittest.TestCase):
         config = self.engine.create_stream(StreamConfig(
             id="", name="Geo", window_seconds=60, geofence_wkt=geofence,
         ))
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         # Inside geofence
         loop.run_until_complete(self.engine.ingest(
             LocationEvent("d1", config.id, 39.5, 116.5, time.time())
@@ -265,7 +265,7 @@ class TestSubscription(unittest.TestCase):
             stream_id="s1", window_start=0, window_end=1,
             event_count=1, features=[{"type": "Feature", "geometry": {}}],
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(engine._broadcast("s1", result))
         self.assertFalse(q.empty())
         msg = q.get_nowait()

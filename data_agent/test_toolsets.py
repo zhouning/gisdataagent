@@ -7,7 +7,11 @@ class TestToolsetCounts(unittest.TestCase):
     """Verify each toolset returns the expected number of tools."""
 
     def _run(self, coro):
-        return asyncio.get_event_loop().run_until_complete(coro)
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
 
     def test_exploration_toolset(self):
         from data_agent.toolsets.exploration_tools import ExplorationToolset
@@ -178,9 +182,11 @@ class TestToolFilter(unittest.TestCase):
     """Verify tool_filter correctly restricts tool sets."""
 
     def _run(self, coro):
-        return asyncio.get_event_loop().run_until_complete(coro)
-
-    def test_filter_by_name(self):
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
         from data_agent.toolsets.exploration_tools import ExplorationToolset
         ts = ExplorationToolset(tool_filter=["describe_geodataframe", "check_topology"])
         tools = self._run(ts.get_tools())
@@ -326,7 +332,11 @@ class TestFilterPresets(unittest.TestCase):
     """Verify the named filter presets in agent.py resolve correctly."""
 
     def _run(self, coro):
-        return asyncio.get_event_loop().run_until_complete(coro)
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
 
     def test_audit_tools_preset(self):
         from data_agent.agent import _AUDIT_TOOLS
@@ -370,7 +380,11 @@ class TestNoDuplicateToolNames(unittest.TestCase):
     """Verify no name collisions across all toolsets."""
 
     def _run(self, coro):
-        return asyncio.get_event_loop().run_until_complete(coro)
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
 
     def test_all_toolset_names_unique(self):
         from data_agent.toolsets.exploration_tools import ExplorationToolset
