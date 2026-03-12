@@ -2098,6 +2098,9 @@ body {
 .mcp-add-form input:focus, .mcp-add-form select:focus { outline: none; border-color: var(--primary); }
 .mcp-add-checkbox { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer; }
 .mcp-add-error { font-size: 11px; color: #ef4444; }
+.mcp-test-result { font-size: 11px; padding: 4px 8px; border-radius: var(--radius-sm); }
+.mcp-test-result.success { color: #16a34a; background: #f0fdf4; }
+.mcp-test-result.error { color: #ef4444; background: #fef2f2; }
 .mcp-add-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .tools-list { border-top: 1px solid var(--border-light); }
 .tools-list-header { padding: 6px 12px; font-size: 11px; font-weight: 500; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }

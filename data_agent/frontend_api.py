@@ -16,6 +16,8 @@ Admin endpoints require JWT + admin role.
 Routes are mounted before the Chainlit catch-all via mount_frontend_api().
 """
 import json
+import os
+import re
 from typing import Optional
 
 from starlette.requests import Request
@@ -26,6 +28,12 @@ from sqlalchemy import text
 from .observability import get_logger
 from .user_context import current_user_id, current_user_role
 from .db_engine import get_engine
+from .audit_logger import (
+    record_audit,
+    ACTION_MCP_SERVER_CREATE, ACTION_MCP_SERVER_UPDATE,
+    ACTION_MCP_SERVER_DELETE, ACTION_MCP_SERVER_TOGGLE,
+    ACTION_MCP_SERVER_RECONNECT,
+)
 
 logger = get_logger("frontend_api")
 
@@ -616,6 +624,8 @@ async def _api_mcp_toggle(request: Request):
     from .mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
     result = await hub.toggle_server(server_name, enabled)
+    if result.get("status") == "ok":
+        record_audit(username, ACTION_MCP_SERVER_TOGGLE, details={"server": server_name, "enabled": enabled})
     status_code = 200 if result.get("status") == "ok" else 404
     return JSONResponse(result, status_code=status_code)
 
@@ -630,8 +640,74 @@ async def _api_mcp_reconnect(request: Request):
     from .mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
     result = await hub.reconnect_server(server_name)
+    if result.get("status") == "ok":
+        record_audit(username, ACTION_MCP_SERVER_RECONNECT, details={"server": server_name})
     status_code = 200 if result.get("status") == "ok" else 404
     return JSONResponse(result, status_code=status_code)
+
+
+async def _api_mcp_test_connection(request: Request):
+    """POST /api/mcp/servers/test — test MCP server connectivity (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    transport = body.get("transport", "stdio")
+    val_err = _validate_mcp_config(body, transport)
+    if val_err:
+        return JSONResponse({"error": val_err}, status_code=400)
+
+    from .mcp_hub import get_mcp_hub, McpServerConfig
+    config = McpServerConfig(
+        name="__test__", transport=transport,
+        command=body.get("command", ""), args=body.get("args", []),
+        env=body.get("env", {}), cwd=body.get("cwd"),
+        url=body.get("url", ""), headers=body.get("headers", {}),
+        timeout=float(body.get("timeout", 5.0)))
+    hub = get_mcp_hub()
+    result = await hub.test_connection(config)
+    status_code = 200 if result.get("status") == "ok" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+_MCP_ALLOWED_COMMANDS = {"python", "python3", "node", "npx", "uvx", "docker", "deno"}
+
+
+def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -> Optional[str]:
+    """Validate MCP server config fields. Returns error message or None.
+    If partial=True, only validate fields present in body (for updates).
+    """
+    if transport == "stdio":
+        cmd = body.get("command")
+        if cmd is not None or not partial:
+            cmd = (cmd or "").strip()
+            if not cmd:
+                return "command required for stdio transport"
+            base = os.path.basename(cmd.split()[0]).lower().rstrip(".exe")
+            if base not in _MCP_ALLOWED_COMMANDS:
+                return f"command not in allowed list: {sorted(_MCP_ALLOWED_COMMANDS)}"
+            if any(c in cmd for c in ";|&`$\n"):
+                return "command contains disallowed shell metacharacters"
+    else:
+        url = body.get("url")
+        if url is not None or not partial:
+            url = (url or "").strip()
+            if not url:
+                return f"url required for {transport} transport"
+            if not url.startswith(("http://", "https://")):
+                return "url must start with http:// or https://"
+    args = body.get("args")
+    if args is not None and (not isinstance(args, list) or not all(isinstance(a, str) for a in args)):
+        return "args must be a list of strings"
+    headers = body.get("headers")
+    if headers is not None and (not isinstance(headers, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in headers.items())):
+        return "headers must be a dict of string:string"
+    return None
 
 
 async def _api_mcp_server_create(request: Request):
@@ -653,6 +729,10 @@ async def _api_mcp_server_create(request: Request):
     if transport not in ("stdio", "sse", "streamable_http"):
         return JSONResponse({"error": "Invalid transport type"}, status_code=400)
 
+    val_err = _validate_mcp_config(body, transport)
+    if val_err:
+        return JSONResponse({"error": val_err}, status_code=400)
+
     from .mcp_hub import get_mcp_hub, McpServerConfig
     config = McpServerConfig(
         name=name,
@@ -672,6 +752,8 @@ async def _api_mcp_server_create(request: Request):
 
     hub = get_mcp_hub()
     result = await hub.add_server(config)
+    if result.get("status") == "ok":
+        record_audit(username, ACTION_MCP_SERVER_CREATE, details={"server": name, "transport": transport})
     status_code = 201 if result.get("status") == "ok" else 400
     return JSONResponse(result, status_code=status_code)
 
@@ -690,7 +772,18 @@ async def _api_mcp_server_update(request: Request):
 
     from .mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+    # Determine transport for validation (from body or current config)
+    transport = body.get("transport")
+    if not transport:
+        status_obj = hub._servers.get(server_name)
+        transport = status_obj.config.transport if status_obj else "stdio"
+    val_err = _validate_mcp_config(body, transport, partial=True)
+    if val_err:
+        return JSONResponse({"error": val_err}, status_code=400)
+
     result = await hub.update_server(server_name, body)
+    if result.get("status") == "ok":
+        record_audit(username, ACTION_MCP_SERVER_UPDATE, details={"server": server_name, "fields": list(body.keys())})
     status_code = 200 if result.get("status") == "ok" else 404
     return JSONResponse(result, status_code=status_code)
 
@@ -705,6 +798,8 @@ async def _api_mcp_server_delete(request: Request):
     from .mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
     result = await hub.remove_server(server_name)
+    if result.get("status") == "ok":
+        record_audit(username, ACTION_MCP_SERVER_DELETE, details={"server": server_name})
     status_code = 200 if result.get("status") == "ok" else 404
     return JSONResponse(result, status_code=status_code)
 
@@ -983,6 +1078,7 @@ def get_frontend_api_routes():
         Route("/api/mcp/servers", endpoint=_api_mcp_servers, methods=["GET"]),
         Route("/api/mcp/servers", endpoint=_api_mcp_server_create, methods=["POST"]),
         Route("/api/mcp/tools", endpoint=_api_mcp_tools, methods=["GET"]),
+        Route("/api/mcp/servers/test", endpoint=_api_mcp_test_connection, methods=["POST"]),
         Route("/api/mcp/servers/{name}/toggle", endpoint=_api_mcp_toggle, methods=["POST"]),
         Route("/api/mcp/servers/{name}/reconnect", endpoint=_api_mcp_reconnect, methods=["POST"]),
         Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_update, methods=["PUT"]),
