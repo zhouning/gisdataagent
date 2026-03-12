@@ -467,6 +467,8 @@ function ToolsView({ userRole }: { userRole?: string }) {
   const [reconnecting, setReconnecting] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({
     name: '', description: '', transport: 'sse' as string,
     url: '', command: '', enabled: false, category: '', pipelines: 'general,planner',
@@ -560,6 +562,22 @@ function ToolsView({ userRole }: { userRole?: string }) {
     finally { setDeleting(null); }
   };
 
+  const handleTestConnection = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const pipelinesArr = addForm.pipelines.split(',').map(s => s.trim()).filter(Boolean);
+      const resp = await fetch('/api/mcp/servers/test', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...addForm, pipelines: pipelinesArr }),
+      });
+      const data = await resp.json();
+      setTestResult(data.message || (resp.ok ? 'OK' : data.error || '连接失败'));
+    } catch { setTestResult('网络错误'); }
+    finally { setTesting(false); }
+  };
+
   const isAdmin = userRole === 'admin';
 
   useEffect(() => {
@@ -619,8 +637,10 @@ function ToolsView({ userRole }: { userRole?: string }) {
             立即连接
           </label>
           {addError && <div className="mcp-add-error">{addError}</div>}
+          {testResult && <div className={`mcp-test-result ${testResult.includes('成功') ? 'success' : 'error'}`}>{testResult}</div>}
           <div className="mcp-add-actions">
             <button className="btn-secondary btn-sm" onClick={() => setShowAddForm(false)}>取消</button>
+            <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>{testing ? '测试中...' : '测试连接'}</button>
             <button className="btn-primary btn-sm" onClick={handleAddServer}>添加</button>
           </div>
         </div>

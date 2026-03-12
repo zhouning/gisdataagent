@@ -29,6 +29,58 @@ except Exception:
 
 
 T_MCP_SERVERS = "agent_mcp_servers"
+MAX_MCP_SERVERS = int(os.environ.get("MCP_MAX_SERVERS", "20"))
+
+
+# ---------------------------------------------------------------------------
+# Encryption helpers — Fernet key derived from CHAINLIT_AUTH_SECRET
+# ---------------------------------------------------------------------------
+
+_FERNET_KEY: Optional[bytes] = None
+
+
+def _get_fernet():
+    """Return a Fernet instance keyed from CHAINLIT_AUTH_SECRET, or None."""
+    global _FERNET_KEY
+    if _FERNET_KEY is not None:
+        from cryptography.fernet import Fernet
+        return Fernet(_FERNET_KEY)
+    secret = os.environ.get("CHAINLIT_AUTH_SECRET", "")
+    if not secret:
+        return None
+    import base64
+    import hashlib
+    _FERNET_KEY = base64.urlsafe_b64encode(
+        hashlib.pbkdf2_hmac("sha256", secret.encode(), b"mcp-hub-salt", 100_000, dklen=32))
+    from cryptography.fernet import Fernet
+    return Fernet(_FERNET_KEY)
+
+
+def _encrypt_dict(d: dict) -> str:
+    """Encrypt a dict to JSON string. Wraps as {"_enc": token} if Fernet available."""
+    if not d:
+        return json.dumps(d)
+    f = _get_fernet()
+    if not f:
+        return json.dumps(d)
+    return json.dumps({"_enc": f.encrypt(json.dumps(d).encode()).decode()})
+
+
+def _decrypt_dict(val) -> dict:
+    """Decrypt from DB value (dict or str). Handles {"_enc": ...} and plain dicts."""
+    if isinstance(val, str):
+        val = json.loads(val) if val else {}
+    if not isinstance(val, dict):
+        return {}
+    if "_enc" in val:
+        f = _get_fernet()
+        if f:
+            try:
+                return json.loads(f.decrypt(val["_enc"].encode()).decode())
+            except Exception:
+                pass
+        return {}
+    return val  # plain dict — backward compat with pre-encryption data
 
 
 # ---------------------------------------------------------------------------
@@ -142,8 +194,8 @@ class McpHubManager:
             for r in rows:
                 pipelines = r[5] if isinstance(r[5], list) else json.loads(r[5]) if r[5] else ["general", "planner"]
                 args = r[7] if isinstance(r[7], list) else json.loads(r[7]) if r[7] else []
-                env = r[8] if isinstance(r[8], dict) else json.loads(r[8]) if r[8] else {}
-                headers = r[11] if isinstance(r[11], dict) else json.loads(r[11]) if r[11] else {}
+                env = _decrypt_dict(r[8])
+                headers = _decrypt_dict(r[11])
                 config = McpServerConfig(
                     name=r[0], description=r[1] or "", transport=r[2] or "stdio",
                     enabled=bool(r[3]), category=r[4] or "", pipelines=pipelines,
@@ -195,10 +247,10 @@ class McpHubManager:
                     "pipelines": json.dumps(config.pipelines),
                     "command": config.command,
                     "args": json.dumps(config.args),
-                    "env": json.dumps(config.env),
+                    "env": _encrypt_dict(config.env),
                     "cwd": config.cwd,
                     "url": config.url,
-                    "headers": json.dumps(config.headers),
+                    "headers": _encrypt_dict(config.headers),
                     "timeout": config.timeout,
                 })
                 conn.commit()
@@ -468,6 +520,40 @@ class McpHubManager:
             "tool_count": status.tool_count,
         }
 
+    async def test_connection(self, config: McpServerConfig) -> dict:
+        """Test connectivity to an MCP server without persisting. Returns result dict."""
+        try:
+            from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+            from google.adk.tools.mcp_tool.mcp_session_manager import (
+                StdioConnectionParams, SseConnectionParams, StreamableHTTPConnectionParams,
+            )
+            from mcp import StdioServerParameters
+
+            timeout = min(config.timeout, 10.0)
+            if config.transport == "stdio":
+                conn_params = StdioConnectionParams(
+                    server_params=StdioServerParameters(
+                        command=config.command, args=config.args,
+                        env=config.env or None, cwd=config.cwd),
+                    timeout=timeout)
+            elif config.transport == "sse":
+                conn_params = SseConnectionParams(
+                    url=config.url, headers=config.headers or None, timeout=timeout)
+            elif config.transport == "streamable_http":
+                conn_params = StreamableHTTPConnectionParams(
+                    url=config.url, headers=config.headers or None, timeout=timeout)
+            else:
+                return {"status": "error", "message": f"Unknown transport: {config.transport}"}
+
+            toolset = McpToolset(connection_params=conn_params, errlog=sys.stderr)
+            tools = await toolset.get_tools()
+            tool_count = len(tools)
+            await toolset.close()
+            return {"status": "ok", "tool_count": tool_count,
+                    "message": f"连接成功，发现 {tool_count} 个工具"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)[:200]}
+
     # ----- CRUD (hot-reload capable) -----
 
     async def add_server(self, config: McpServerConfig) -> dict:
@@ -478,6 +564,8 @@ class McpHubManager:
             return {"status": "error", "message": f"Server '{config.name}' already exists"}
         if not config.name or len(config.name) > 100:
             return {"status": "error", "message": "Invalid server name"}
+        if len(self._servers) >= MAX_MCP_SERVERS:
+            return {"status": "error", "message": f"Maximum {MAX_MCP_SERVERS} servers reached"}
 
         config.source = "db"
         if not self._save_to_db(config):

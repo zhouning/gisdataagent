@@ -346,7 +346,7 @@ class TestRouteMount(unittest.TestCase):
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 38)
+        self.assertEqual(len(routes), 39)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
@@ -370,7 +370,7 @@ class TestRouteMount(unittest.TestCase):
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
         # 36 routes inserted before the catch-all, catch-all is now at index 36
-        self.assertEqual(len(mock_app.router.routes), 39)
+        self.assertEqual(len(mock_app.router.routes), 40)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
 
 

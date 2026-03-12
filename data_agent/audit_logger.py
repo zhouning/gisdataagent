@@ -35,6 +35,11 @@ ACTION_TEAM_INVITE = "team_invite"
 ACTION_TEAM_REMOVE = "team_remove"
 ACTION_TEAM_DELETE = "team_delete"
 ACTION_HITL_APPROVAL = "hitl_approval"
+ACTION_MCP_SERVER_CREATE = "mcp_server_create"
+ACTION_MCP_SERVER_UPDATE = "mcp_server_update"
+ACTION_MCP_SERVER_DELETE = "mcp_server_delete"
+ACTION_MCP_SERVER_TOGGLE = "mcp_server_toggle"
+ACTION_MCP_SERVER_RECONNECT = "mcp_server_reconnect"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -59,6 +64,11 @@ ACTION_LABELS = {
     ACTION_TEAM_REMOVE: "移除成员",
     ACTION_TEAM_DELETE: "删除团队",
     ACTION_HITL_APPROVAL: "人工审批",
+    ACTION_MCP_SERVER_CREATE: "添加MCP服务器",
+    ACTION_MCP_SERVER_UPDATE: "更新MCP服务器",
+    ACTION_MCP_SERVER_DELETE: "删除MCP服务器",
+    ACTION_MCP_SERVER_TOGGLE: "切换MCP服务器",
+    ACTION_MCP_SERVER_RECONNECT: "重连MCP服务器",
 }
 
 
