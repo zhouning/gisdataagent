@@ -2,7 +2,7 @@
 
 # GIS Data Agent (ADK Edition) v7.5
 
-基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 38 个 REST API，支持多模态输入、3D 可视化、工作流编排、知识图谱推理和 Memory ETL 自动记忆提取。
+基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 38 个 REST API，支持多模态输入、分类着色地图渲染、3D 可视化、工作流编排、知识图谱推理和 Memory ETL 自动记忆提取。
 
 ## 核心能力
 
@@ -29,8 +29,8 @@
 
 ### 空间优化
 - 深度强化学习引擎（MaskablePPO）用地布局优化
-- 破碎度指数（FFI）含 6 项景观指标
 - 耕地/林地配对交换，严格面积平衡
+- 分类着色地图渲染（Categorized Layer）：按地类/变化类型自动着色，中文图例
 
 ### 商业智能
 - 语义查询：自然语言 → 自动映射 SQL + 空间算子
@@ -147,6 +147,9 @@ cd frontend && npm install && npm run dev
 | | 实时流 | Redis Streams 地理围栏告警 + IoT 数据 |
 | | 遥感分析 | 栅格分析、NDVI、LULC/DEM 下载 |
 | **前端** | 三面板 UI | 对话 + 地图 + 数据；支持 HTML/CSV 伪影渲染；React 18 + Leaflet + deck.gl |
+| | 分类着色图层 | `categorized` 图层类型：按属性字段自动着色多边形 + 中文图例（v7.5） |
+| | 文件管理 | 数据面板点击文件即可打开/下载（PDF/DOCX/HTML 等）(v7.5) |
+| | Action 按钮 | 导出 PDF 报告、分享结果等按钮通过 ChainlitAPI 调用后端回调 (v7.5) |
 | | Token 仪表盘 | 每用户日/月用量 + 管线分布可视化 |
 | | 地图标注 | 协作式点击标注 + 团队共享 |
 | | 底图切换 | 高德、天地图、CartoDB、OSM |
@@ -204,6 +207,7 @@ data_agent/
 ├── migrations/                  # 19 个 SQL 迁移脚本 (001-019)
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
+├── tool_filter.py               # 意图驱动动态工具过滤（ToolPredicate + ContextVar）
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
@@ -323,7 +327,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v6.0 | 融合增强（栅格重投影、点云、流数据、语义增强、质量验证） | ✅ 完成 |
 | v7.0 | 向量嵌入匹配、LLM 策略路由、地理知识图谱、分布式计算 | ✅ 完成 |
 | v7.1 | MCP 管理 UI + DB 持久化、WorkflowEditor、分析视角注入、Prompt 版本管理、工具错误恢复、反思循环推广、端到端 Trace ID | ✅ 完成 |
-| v7.5 | Memory ETL 自动提取 ✅、动态工具加载 ✅、Gemini Context Caching、MCP 安全加固 + per-User 隔离 | 进行中 |
+| v7.5 | Memory ETL 自动提取 ✅、动态工具加载 ✅、分类着色地图渲染 ✅、Action 按钮修复 ✅、文件下载 ✅、Planner transfer_to_agent 修复 ✅、PostGIS SRID 检测修复 ✅、genai SDK 迁移 ✅、Gemini Context Caching、MCP 安全加固 + per-User 隔离 | 进行中 |
 | v8.0 | DB 驱动自定义 Skills、RAG 知识库、DAG 工作流、失败学习与自适应、动态模型选择、评估门控 CI | 规划中 |
 | v9.0 | 实时协同编辑、边缘部署、数据连接器生态、多 Agent 并行、A2A 智能体互操作、主动探索与发现 | 远期 |
 
