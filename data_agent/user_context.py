@@ -12,6 +12,7 @@ current_session_id: ContextVar[str] = ContextVar('current_session_id', default='
 current_user_role: ContextVar[str] = ContextVar('current_user_role', default='analyst')
 current_trace_id: ContextVar[str] = ContextVar('current_trace_id', default='')
 current_tool_categories: ContextVar[set] = ContextVar('current_tool_categories', default=set())
+current_model_tier: ContextVar[str] = ContextVar('current_model_tier', default='standard')
 
 # Base uploads directory
 _BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")

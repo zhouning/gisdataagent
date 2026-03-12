@@ -251,10 +251,58 @@ def _quality_gate_check(tool_response: dict) -> tuple:
 
 
 # ---------------------------------------------------------------------------
+# Dynamic Model Selection: complexity assessment
+# ---------------------------------------------------------------------------
+
+_COMPLEX_KEYWORDS = {
+    "多源融合", "深度分析", "对比分析", "综合分析", "多维度",
+    "时空分析", "趋势预测", "回归分析", "知识图谱", "点云",
+    "multi-source", "deep analysis", "comprehensive", "regression",
+}
+_SPATIAL_KEYWORDS = {
+    "缓冲", "叠加", "裁剪", "聚类", "热力图", "选址",
+    "buffer", "overlay", "cluster", "heatmap", "site selection",
+}
+
+
+def assess_complexity(user_text: str, intent: str, file_count: int = 0) -> str:
+    """Assess query complexity and return a model tier.
+
+    Returns:
+        'fast' — simple lookup/query, use Flash
+        'standard' — typical analysis, use Standard (default)
+        'premium' — complex multi-step analysis, use Pro
+    """
+    text_lower = user_text.lower()
+    text_len = len(user_text)
+
+    # Premium: complex intents with long text, many files, or complex keywords
+    if intent in ("OPTIMIZATION", "GOVERNANCE"):
+        has_complex_kw = any(kw in user_text for kw in _COMPLEX_KEYWORDS)
+        if text_len > 500 or file_count >= 3 or has_complex_kw:
+            return "premium"
+
+    # Fast: short general queries without spatial operations
+    if intent == "GENERAL":
+        has_spatial_kw = any(kw in user_text for kw in _SPATIAL_KEYWORDS)
+        if text_len < 100 and file_count == 0 and not has_spatial_kw:
+            return "fast"
+
+    return "standard"
+
+
+# ---------------------------------------------------------------------------
 # Self-correction: after_tool_callback
 # ---------------------------------------------------------------------------
 
 _tool_retry_counts = {}  # track per-invocation retries
+
+# Failure learning imports (non-fatal — degrade gracefully if DB unavailable)
+try:
+    from .failure_learning import record_failure, get_failure_hints, mark_resolved
+    _HAS_FAILURE_LEARNING = True
+except Exception:
+    _HAS_FAILURE_LEARNING = False
 
 def _self_correction_after_tool(tool, args, tool_context, tool_response):
     """
@@ -274,6 +322,12 @@ def _self_correction_after_tool(tool, args, tool_context, tool_response):
         or "failed" in resp_str.lower()[:30]
     )
     if not is_error:
+        # On success: mark prior failures for this tool as resolved
+        if _HAS_FAILURE_LEARNING:
+            try:
+                mark_resolved(tool.name)
+            except Exception:
+                pass
         # --- Quality Gate: validate output files ---
         qg_status, qg_message = _quality_gate_check(tool_response)
         if qg_status == "critical":
@@ -292,6 +346,14 @@ def _self_correction_after_tool(tool, args, tool_context, tool_response):
     if _tool_retry_counts[key] > 3:
         tool_response["_hint"] = "已重试3次仍然失败。请停止重试此工具，向用户报告错误并建议替代方案。"
         return tool_response
+
+    # Fetch historical failure hints
+    historical_hints = []
+    if _HAS_FAILURE_LEARNING:
+        try:
+            historical_hints = get_failure_hints(tool.name)
+        except Exception:
+            pass
 
     # Enrich with contextual hints based on error type
     hints = []
@@ -312,7 +374,20 @@ def _self_correction_after_tool(tool, args, tool_context, tool_response):
     if not hints:
         hints.append("请检查参数是否正确，可尝试修改参数后重试。")
 
-    tool_response["_correction_hint"] = " ".join(hints)
+    # Prepend historical hints from past failures
+    if historical_hints:
+        hints = historical_hints + hints
+
+    hint_text = " ".join(hints)
+    tool_response["_correction_hint"] = hint_text
+
+    # Record this failure for future learning
+    if _HAS_FAILURE_LEARNING:
+        try:
+            record_failure(tool.name, resp_str[:500], hint_text)
+        except Exception:
+            pass
+
     return tool_response
 
 
