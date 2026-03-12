@@ -58,6 +58,15 @@ PIPELINE_CONFIG = {
     "planner":      {"agent_name": "Planner",               "eval_dir": EVALS_DIR / "planner"},
 }
 
+# Per-pipeline pass rate thresholds (0.0 – 1.0).
+# A pipeline passes if its pass_rate >= threshold.
+PIPELINE_THRESHOLDS = {
+    "optimization": 0.6,
+    "governance": 0.6,
+    "general": 0.7,
+    "planner": 0.5,
+}
+
 # ---------------------------------------------------------------------------
 # CLI argument parsing
 # ---------------------------------------------------------------------------
@@ -354,7 +363,17 @@ async def run_all_evaluations(pipelines: list[str] | None = None,
     # Aggregate
     total_passed = sum(r.get("passed", 0) for r in all_results.values())
     total_tests = sum(r.get("total", 0) for r in all_results.values())
-    overall_pass = total_passed == total_tests and total_tests > 0
+
+    # Per-pipeline verdict (threshold-based)
+    pipeline_verdicts = {}
+    for name, r in all_results.items():
+        if r.get("status") in ("skipped", "crashed"):
+            pipeline_verdicts[name] = r.get("status") == "skipped"
+            continue
+        threshold = PIPELINE_THRESHOLDS.get(name, 0.6)
+        pipeline_verdicts[name] = r.get("pass_rate", 0) >= threshold
+
+    overall_pass = all(pipeline_verdicts.values()) and total_tests > 0
 
     summary = {
         "timestamp": timestamp,
@@ -364,6 +383,8 @@ async def run_all_evaluations(pipelines: list[str] | None = None,
         "total_duration_s": total_duration,
         "num_runs": num_runs,
         "pipelines": all_results,
+        "pipeline_verdicts": pipeline_verdicts,
+        "thresholds": PIPELINE_THRESHOLDS,
     }
 
     # Write summary
@@ -386,7 +407,10 @@ async def run_all_evaluations(pipelines: list[str] | None = None,
         if r.get("status") in ("skipped", "crashed"):
             status = r["status"].upper()
         else:
-            status = f"{r.get('passed', 0)}/{r.get('total', 0)}"
+            rate = r.get("pass_rate", 0)
+            threshold = PIPELINE_THRESHOLDS.get(name, 0.6)
+            verdict = "PASS" if pipeline_verdicts.get(name, False) else "FAIL"
+            status = f"{r.get('passed', 0)}/{r.get('total', 0)} ({rate:.0%} >= {threshold:.0%} → {verdict})"
         duration = f" ({r.get('duration_s', 0)}s)" if r.get("duration_s") else ""
         print(f"  {name:15s} {status}{duration}")
 

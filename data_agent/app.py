@@ -134,6 +134,8 @@ try:
     ensure_fusion_tables()
     from data_agent.knowledge_graph import ensure_knowledge_graph_tables
     ensure_knowledge_graph_tables()
+    from data_agent.failure_learning import ensure_failure_table
+    ensure_failure_table()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -2791,6 +2793,18 @@ async def main(message: cl.Message):
                 content=t("rbac.denied", role=role, intent=intent)
             ).send()
             return
+
+        # --- Dynamic Model Selection ---
+        try:
+            from data_agent.utils import assess_complexity
+            from data_agent.user_context import current_model_tier
+            _file_count = len(uploaded_files) if uploaded_files else 0
+            _tier = assess_complexity(user_text, intent, _file_count)
+            current_model_tier.set(_tier)
+            if _tier != "standard":
+                logger.info("[Trace:%s] Model tier=%s", trace_id, _tier)
+        except Exception:
+            pass  # non-fatal, default tier is 'standard'
 
         # --- Plan Mode Confirmation (for expensive pipelines) ---
         PLAN_CONFIRMATION_INTENTS = {"OPTIMIZATION", "GOVERNANCE"}

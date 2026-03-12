@@ -87,7 +87,7 @@ jobs:
           npm run build
 
   evaluate:
-    name: Agent Evaluation
+    name: Agent Evaluation (Full)
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -129,8 +129,16 @@ jobs:
           with open('data_agent/eval_results/eval_summary.json') as f:
               s = json.load(f)
           print(f'Passed: {s[\"total_passed\"]}/{s[\"total_tests\"]}')
+          verdicts = s.get('pipeline_verdicts', {})
+          thresholds = s.get('thresholds', {})
           for name, p in s['pipelines'].items():
-              st = 'SKIP' if p.get('status') == 'skipped' else f'{p.get(\"passed\",0)}/{p.get(\"total\",0)}'
+              if p.get('status') in ('skipped', 'crashed'):
+                  st = p['status'].upper()
+              else:
+                  rate = p.get('pass_rate', 0)
+                  thr = thresholds.get(name, 0.6)
+                  v = 'PASS' if verdicts.get(name, False) else 'FAIL'
+                  st = f'{p.get(\"passed\",0)}/{p.get(\"total\",0)} ({rate:.0%} >= {thr:.0%} -> {v})'
               print(f'  {name}: {st}')
           if not s['overall_pass']:
               print('EVALUATION FAILED')
@@ -142,4 +150,62 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eval-results
+          path: data_agent/eval_results/
+
+  route-eval:
+    name: Route Evaluation (PR)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libspatialindex-dev \
+            gdal-bin \
+            libgdal-dev
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run route evaluation (general pipeline only)
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: us-central1
+        run: |
+          python data_agent/run_evaluation.py general
+
+      - name: Check route evaluation result
+        if: always()
+        run: |
+          python -c "
+          import json, sys
+          with open('data_agent/eval_results/eval_summary.json') as f:
+              s = json.load(f)
+          verdict = s.get('pipeline_verdicts', {}).get('general', False)
+          rate = s['pipelines'].get('general', {}).get('pass_rate', 0)
+          thr = s.get('thresholds', {}).get('general', 0.7)
+          print(f'General pipeline: {rate:.0%} (threshold {thr:.0%}) -> {\"PASS\" if verdict else \"FAIL\"}')
+          if not verdict:
+              print('ROUTE EVALUATION FAILED')
+              sys.exit(1)
+          "
+
+      - name: Upload route eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-eval-results
           path: data_agent/eval_results/

@@ -12,13 +12,13 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 1490+ tests, 62 test files |
+| 测试覆盖 | 1530+ tests, 65 test files |
 | 工具集 | 19 BaseToolset, 5 SkillBundle, 113+ 工具 |
 | ADK Skills | 16 场景化领域技能 + 6 深度参考文档 (v7.5.7) |
-| REST API | 36 endpoints |
+| REST API | 39 endpoints |
 | 前端组件 | 10 React components (含 WorkflowEditor) |
 | 管道 | 3 固定 + 1 动态规划器 (7 子智能体), 全部含反思循环 |
-| 数据库表 | 20 (含 agent_mcp_servers) |
+| 数据库表 | 21 (含 agent_tool_failures) |
 | 融合引擎 | fusion/ 包, 22 模块, 10 策略, PostGIS 下推 |
 | 知识图谱 | ~625 行，7 实体类型 |
 | 上下文工程 | Memory ETL 自动提取 + 动态工具加载 + MCP 安全加固 |
@@ -41,10 +41,10 @@
 | 评估与监控 | Ch19 | ✅ 完整 | 4 管道评估 + CI + Trace ID (v7.1.7) |
 | 记忆管理 (Memory) | Ch8 | ✅ 完整 | Memory ETL 自动提取 (v7.5.4) + 分析视角注入 + save_memory() |
 | RAG 知识检索 | Ch14 | ⚠️ 部分 | Optimization 管道 knowledge_agent + 16 Skills 领域知识 (v7.5.7) |
-| 资源感知 (Resource) | Ch16 | ⚠️ 部分 | 静态模型分层 + 动态工具加载 (v7.5.6)，非动态模型选择 |
+| 资源感知 (Resource) | Ch16 | ✅ 完整 | 静态模型分层 + 动态工具加载 (v7.5.6) + 动态模型选择 (v8.0.6)，`utils.py assess_complexity()` |
 | 规划 (Planning) | Ch6 | ⚠️ 部分 | Planner 选管道但不生成动态步骤 |
 | 并行化 | Ch3 | ❌ 未实现 | 无 ParallelAgent，管道互斥 |
-| 学习与适应 | Ch9 | ❌ 未实现 | 无失败模式学习 |
+| 学习与适应 | Ch9 | ✅ 完整 | 工具失败模式学习 + 历史提示注入 (v8.0.5)，`failure_learning.py` |
 | 目标监控 | Ch11 | ❌ 未实现 | 无主动目标追踪 |
 | A2A 通信 | Ch15 | ❌ 未实现 | 单进程架构 |
 | 推理技术 | Ch17 | ❌ 未实现 | 无 Self-Consistency / ToT |
@@ -69,7 +69,8 @@
 | v6.0 | 融合增强（栅格重投影、点云、流数据、语义增强、质量验证） | ✅ 完成 |
 | v7.0 | 向量嵌入匹配、LLM 策略路由、地理知识图谱、分布式计算 | ✅ 完成 |
 | v7.1 | MCP 管理 UI、WorkflowEditor、分析视角、Prompt 版本、反思推广、Trace ID、错误恢复 | ✅ 完成 |
-| v7.5 | MCP 安全加固、Memory ETL、动态工具加载、Skills 内容丰富化 (5→16 场景化领域技能) | ✅ 部分完成 |
+| v7.5 | MCP 安全加固、Memory ETL、动态工具加载、Skills 内容丰富化 (5→16 场景化领域技能)、Context Caching | ✅ 完成 |
+| v8.0 | 失败学习与自适应、资源感知动态模型选择、评估门控 CI | 🔧 部分完成 (3/7) |
 
 ---
 
@@ -244,42 +245,45 @@ CREATE TABLE agent_custom_skills (
 - 场景模拟（Monte Carlo，空间溢出效应）
 - 网络分析（等时圈、最优路径、设施覆盖）
 
-### 8.0.5 失败学习与自适应
+### 8.0.5 失败学习与自适应 ✅
 
 > 来源: 《Agentic Design Patterns》Ch9 学习与适应
 
-**现状**: 工具失败后无模式记录，同类错误反复发生。
-**方案**:
-- 新建 `agent_failure_patterns` 表 (tool_name, error_pattern, resolution, frequency, last_seen)
-- `after_tool_callback` 检测工具返回 "Error:" → 记录错误模式
-- 下次相同工具调用前，检查历史失败模式 → 注入 `turn_instruction` 预警
-- 高频错误模式自动推荐修复策略
+**现状**: ~~工具失败后无模式记录，同类错误反复发生。~~ 已完成。
+**已实现**:
+- 新建 `agent_tool_failures` 表 (migration 020)，记录 tool_name, error_snippet, hint_applied, resolved
+- `failure_learning.py`: `record_failure()` / `get_failure_hints()` / `mark_resolved()`，全部非致命
+- `utils.py _self_correction_after_tool()` 增强: 错误时记录失败 + 查询历史经验，成功时标记已解决
+- 14 项测试覆盖
 
-**影响范围**: `agent.py`, `app.py`, 新迁移脚本, ~150 行
+**影响范围**: `failure_learning.py`(新), `utils.py`, `app.py`, `database_tools.py`, `migrations/020_*`, `test_failure_learning.py`(新)
 
-### 8.0.6 资源感知动态模型选择
+### 8.0.6 资源感知动态模型选择 ✅
 
 > 来源: 《Agentic Design Patterns》Ch16 资源感知 + Kaggle Day 5 — 成本/延迟平衡
 
-**现状**: 模型分层为静态配置，不随任务复杂度调整。
-**方案**:
-- 路由层增加查询复杂度评估:
-  - 简单查询 → Gemini 2.0 Flash (最快)
-  - 中等任务 → Gemini 2.5 Flash (默认)
-  - 复杂分析 → Gemini 2.5 Pro
-- 复杂度信号: 消息长度、专业关键词密度、历史失败率、管道类型
+**现状**: ~~模型分层为静态配置，不随任务复杂度调整。~~ 已完成动态选择。
+**已实现**:
+- `assess_complexity(user_text, intent, file_count)` → 返回 fast/standard/premium
+- `current_model_tier` ContextVar，per-request 设置
+- `MODEL_TIER_MAP` + `get_model_for_tier()` 工厂函数
+- 4 个 `_make_planner_*()` 工厂使用动态模型选择
+- 14 项测试覆盖
 
-**影响范围**: `app.py`, `agent.py`, ~100 行
+**影响范围**: `utils.py`, `agent.py`, `app.py`, `user_context.py`, `test_model_selection.py`(新)
 
-### 8.0.7 评估门控 CI
+### 8.0.7 评估门控 CI ✅
 
 > 来源: Kaggle Day 5 "Evaluation-Gated Deployment" — 三阶段渐进式评估
 
-- **PR 阶段**: 运行轻量路由评估
-- **main 合并后**: 完整 4 管道 Agent 评估
-- **评估门控**: 核心指标低于阈值 → CI 报红
+**已实现**:
+- `PIPELINE_THRESHOLDS` per-pipeline 通过率阈值 (optimization 60%, governance 60%, general 70%, planner 50%)
+- `overall_pass` 从 all-or-nothing 改为 per-pipeline threshold-based 判定
+- `eval_summary.json` 增加 `pipeline_verdicts` + `thresholds` 字段
+- CI 新增 `route-eval` PR 轻量评估 job (仅运行 general pipeline)
+- 11 项测试覆盖
 
-**影响范围**: `.github/workflows/ci.yml`, ~50 行
+**影响范围**: `run_evaluation.py`, `.github/workflows/ci.yml`, `test_evaluation.py`
 
 ---
 

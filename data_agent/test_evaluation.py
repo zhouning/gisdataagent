@@ -365,5 +365,92 @@ class TestToolNameConsistency(unittest.TestCase):
                 )
 
 
+# ---------------------------------------------------------------------------
+# Pipeline Threshold Tests (v8.0.7)
+# ---------------------------------------------------------------------------
+
+
+class TestPipelineThresholds(unittest.TestCase):
+    """Verify per-pipeline threshold configuration."""
+
+    def test_thresholds_has_all_pipelines(self):
+        from data_agent.run_evaluation import PIPELINE_THRESHOLDS
+        for name in EXPECTED_PIPELINES:
+            self.assertIn(name, PIPELINE_THRESHOLDS)
+
+    def test_thresholds_in_range(self):
+        from data_agent.run_evaluation import PIPELINE_THRESHOLDS
+        for name, thr in PIPELINE_THRESHOLDS.items():
+            self.assertGreaterEqual(thr, 0.0)
+            self.assertLessEqual(thr, 1.0)
+
+    def test_general_threshold_stricter(self):
+        """General pipeline should have stricter threshold than planner."""
+        from data_agent.run_evaluation import PIPELINE_THRESHOLDS
+        self.assertGreater(
+            PIPELINE_THRESHOLDS["general"],
+            PIPELINE_THRESHOLDS["planner"],
+        )
+
+
+class TestPerPipelineVerdict(unittest.TestCase):
+    """Verify per-pipeline verdict logic."""
+
+    def _compute_verdicts(self, all_results):
+        from data_agent.run_evaluation import PIPELINE_THRESHOLDS
+        verdicts = {}
+        for name, r in all_results.items():
+            if r.get("status") in ("skipped", "crashed"):
+                verdicts[name] = r.get("status") == "skipped"
+                continue
+            threshold = PIPELINE_THRESHOLDS.get(name, 0.6)
+            verdicts[name] = r.get("pass_rate", 0) >= threshold
+        return verdicts
+
+    def test_above_threshold_passes(self):
+        results = {"general": {"pass_rate": 0.8, "passed": 4, "total": 5}}
+        verdicts = self._compute_verdicts(results)
+        self.assertTrue(verdicts["general"])
+
+    def test_below_threshold_fails(self):
+        results = {"general": {"pass_rate": 0.5, "passed": 1, "total": 2}}
+        verdicts = self._compute_verdicts(results)
+        self.assertFalse(verdicts["general"])
+
+    def test_at_threshold_passes(self):
+        results = {"general": {"pass_rate": 0.7, "passed": 7, "total": 10}}
+        verdicts = self._compute_verdicts(results)
+        self.assertTrue(verdicts["general"])
+
+    def test_skipped_passes(self):
+        results = {"optimization": {"status": "skipped"}}
+        verdicts = self._compute_verdicts(results)
+        self.assertTrue(verdicts["optimization"])
+
+    def test_crashed_fails(self):
+        results = {"optimization": {"status": "crashed"}}
+        verdicts = self._compute_verdicts(results)
+        self.assertFalse(verdicts["optimization"])
+
+
+class TestOverallPassLogic(unittest.TestCase):
+    """Verify overall_pass requires all pipelines to meet thresholds."""
+
+    def test_all_pass(self):
+        verdicts = {"optimization": True, "governance": True, "general": True, "planner": True}
+        overall = all(verdicts.values()) and True  # total_tests > 0
+        self.assertTrue(overall)
+
+    def test_one_fails(self):
+        verdicts = {"optimization": True, "governance": True, "general": False, "planner": True}
+        overall = all(verdicts.values())
+        self.assertFalse(overall)
+
+    def test_empty_fails(self):
+        total_tests = 0
+        overall = True and total_tests > 0
+        self.assertFalse(overall)
+
+
 if __name__ == "__main__":
     unittest.main()

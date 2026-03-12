@@ -23,6 +23,7 @@ T_SEMANTIC_REGISTRY = f"{TABLE_PREFIX}semantic_registry"
 T_SEMANTIC_SOURCES = f"{TABLE_PREFIX}semantic_sources"
 T_TEAMS = f"{TABLE_PREFIX}teams"
 T_TEAM_MEMBERS = f"{TABLE_PREFIX}team_members"
+T_TOOL_FAILURES = f"{TABLE_PREFIX}tool_failures"
 
 def get_db_connection_url():
     """Constructs database URL from environment variables."""

@@ -99,6 +99,32 @@ MODEL_FAST = "gemini-2.0-flash"
 MODEL_STANDARD = "gemini-2.5-flash"
 MODEL_PREMIUM = "gemini-2.5-pro"
 
+# --- Dynamic Model Selection ---
+MODEL_TIER_MAP = {
+    "fast": MODEL_FAST,
+    "standard": MODEL_STANDARD,
+    "premium": MODEL_PREMIUM,
+}
+
+
+def get_model_for_tier(base_tier: str = "standard") -> str:
+    """Get model name based on ContextVar override or base tier.
+
+    The current_model_tier ContextVar is set per-request by app.py
+    based on assess_complexity(). Factory functions call this to
+    select the appropriate model.
+
+    When the ContextVar is at its default ('standard'), ``base_tier``
+    takes precedence so that module-level agent creation honours the
+    intended tier (e.g. 'fast' for PlannerExplorer).
+    """
+    from .user_context import current_model_tier
+    tier = current_model_tier.get()
+    # Use base_tier when ContextVar hasn't been explicitly overridden
+    if tier == "standard":
+        tier = base_tier
+    return MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+
 # --- Vertex AI Search Datastore ---
 DATASTORE_ID = os.environ.get(
     "DATASTORE_ID",
@@ -384,7 +410,7 @@ def _make_planner_explorer(name: str, **overrides) -> LlmAgent:
         name=name,
         instruction=get_prompt("planner", "planner_explorer_instruction"),
         description="数据探查与质量审计专家。数据画像、拓扑检查、字段标准、数据库查询、表结构分析。",
-        model=MODEL_FAST,
+        model=get_model_for_tier("fast"),
         output_key="data_profile",
         disallow_transfer_to_peers=True,
         after_tool_callback=_self_correction_after_tool,
@@ -406,7 +432,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
         name=name,
         instruction=get_prompt("planner", "planner_processor_instruction"),
         description="数据修复与空间处理专家。坐标转换、地理编码、裁剪、缓冲区、聚类、POI、行政区划。",
-        model=MODEL_STANDARD,
+        model=get_model_for_tier("standard"),
         output_key="processed_data",
         disallow_transfer_to_peers=True,
         after_tool_callback=_self_correction_after_tool,
@@ -433,7 +459,7 @@ def _make_planner_analyzer(name: str, **overrides) -> LlmAgent:
         name=name,
         instruction=get_prompt("planner", "planner_analyzer_instruction"),
         description="DRL深度强化学习布局优化、遥感分析、空间统计专家。",
-        model=MODEL_STANDARD,
+        model=get_model_for_tier("standard"),
         output_key="analysis_report",
         disallow_transfer_to_peers=True,
         after_tool_callback=_self_correction_after_tool,
@@ -449,7 +475,7 @@ def _make_planner_visualizer(name: str, **overrides) -> LlmAgent:
         name=name,
         instruction=get_prompt("planner", "planner_visualizer_instruction"),
         description="地理空间可视化专家。交互地图、Choropleth、热力图、气泡图、PNG导出。",
-        model=MODEL_STANDARD,
+        model=get_model_for_tier("standard"),
         output_key="visualizations",
         disallow_transfer_to_peers=True,
         tools=[
