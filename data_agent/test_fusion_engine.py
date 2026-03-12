@@ -551,28 +551,33 @@ class TestEnsureFusionTables(unittest.TestCase):
 class TestFusionToolset(unittest.TestCase):
     """Test FusionToolset registration and tool listing."""
 
-    def test_toolset_has_4_tools(self):
+    def _run_async(self, coro):
         import asyncio
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+    def test_toolset_has_4_tools(self):
         from data_agent.toolsets.fusion_tools import FusionToolset
         toolset = FusionToolset()
-        tools = asyncio.get_event_loop().run_until_complete(toolset.get_tools())
+        tools = self._run_async(toolset.get_tools())
         self.assertEqual(len(tools), 4)
 
     def test_tool_names(self):
-        import asyncio
         from data_agent.toolsets.fusion_tools import FusionToolset
         toolset = FusionToolset()
-        tools = asyncio.get_event_loop().run_until_complete(toolset.get_tools())
+        tools = self._run_async(toolset.get_tools())
         names = {t.name for t in tools}
         expected = {"profile_fusion_sources", "assess_fusion_compatibility",
                     "fuse_datasets", "validate_fusion_quality"}
         self.assertEqual(names, expected)
 
     def test_tool_filter_works(self):
-        import asyncio
         from data_agent.toolsets.fusion_tools import FusionToolset
         toolset = FusionToolset(tool_filter=["fuse_datasets"])
-        tools = asyncio.get_event_loop().run_until_complete(toolset.get_tools())
+        tools = self._run_async(toolset.get_tools())
         self.assertEqual(len(tools), 1)
         self.assertEqual(tools[0].name, "fuse_datasets")
 

@@ -44,44 +44,47 @@ class TestAnnotationsNoDB(unittest.TestCase):
 class TestAnnotationAPI(unittest.TestCase):
     """Tests for annotation API endpoints in frontend_api."""
 
+    def _run(self, coro):
+        import asyncio
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
     @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
     def test_list_unauthorized(self, _):
-        import asyncio
         from data_agent.frontend_api import _api_annotations_list
         req = MagicMock()
         req.query_params = {}
-        resp = asyncio.get_event_loop().run_until_complete(_api_annotations_list(req))
+        resp = self._run(_api_annotations_list(req))
         self.assertEqual(resp.status_code, 401)
 
     @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
     def test_create_unauthorized(self, _):
-        import asyncio
         from data_agent.frontend_api import _api_annotations_create
         req = MagicMock()
-        resp = asyncio.get_event_loop().run_until_complete(_api_annotations_create(req))
+        resp = self._run(_api_annotations_create(req))
         self.assertEqual(resp.status_code, 401)
 
     @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
     def test_update_unauthorized(self, _):
-        import asyncio
         from data_agent.frontend_api import _api_annotations_update
         req = MagicMock()
         req.path_params = {"id": "1"}
-        resp = asyncio.get_event_loop().run_until_complete(_api_annotations_update(req))
+        resp = self._run(_api_annotations_update(req))
         self.assertEqual(resp.status_code, 401)
 
     @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
     def test_delete_unauthorized(self, _):
-        import asyncio
         from data_agent.frontend_api import _api_annotations_delete
         req = MagicMock()
         req.path_params = {"id": "1"}
-        resp = asyncio.get_event_loop().run_until_complete(_api_annotations_delete(req))
+        resp = self._run(_api_annotations_delete(req))
         self.assertEqual(resp.status_code, 401)
 
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_create_missing_coords(self, mock_user):
-        import asyncio
         import json
         from unittest.mock import AsyncMock
         from data_agent.frontend_api import _api_annotations_create
@@ -92,7 +95,7 @@ class TestAnnotationAPI(unittest.TestCase):
         req = MagicMock()
         req.cookies = {}
         req.json = AsyncMock(return_value={"title": "test"})
-        resp = asyncio.get_event_loop().run_until_complete(_api_annotations_create(req))
+        resp = self._run(_api_annotations_create(req))
         self.assertEqual(resp.status_code, 400)
         body = json.loads(resp.body)
         self.assertIn("lng", body["error"])
@@ -100,7 +103,6 @@ class TestAnnotationAPI(unittest.TestCase):
     @patch("data_agent.map_annotations.get_engine", return_value=None)
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_list_success(self, mock_user, _):
-        import asyncio
         import json
         from data_agent.frontend_api import _api_annotations_list
         user = MagicMock()
@@ -110,7 +112,7 @@ class TestAnnotationAPI(unittest.TestCase):
         req = MagicMock()
         req.cookies = {}
         req.query_params = {}
-        resp = asyncio.get_event_loop().run_until_complete(_api_annotations_list(req))
+        resp = self._run(_api_annotations_list(req))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
         self.assertIn("annotations", body)

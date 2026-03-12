@@ -59,12 +59,13 @@ class TestTokenCache(unittest.TestCase):
 class TestRateLimiter(unittest.TestCase):
     def test_within_limit(self):
         rl = RateLimiter(max_per_minute=5)
-        results = [asyncio.get_event_loop().run_until_complete(rl.acquire()) for _ in range(5)]
+        _loop = asyncio.new_event_loop()
+        results = [_loop.run_until_complete(rl.acquire()) for _ in range(5)]
         self.assertTrue(all(results))
 
     def test_exceeds_limit(self):
         rl = RateLimiter(max_per_minute=2)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(rl.acquire())
         loop.run_until_complete(rl.acquire())
         self.assertFalse(loop.run_until_complete(rl.acquire()))
@@ -211,7 +212,7 @@ class TestDingTalkTokenRefresh(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         token = loop.run_until_complete(bot.refresh_token())
         self.assertEqual(token, "at_123456")
         self.assertTrue(bot.token_cache.valid)
@@ -235,7 +236,7 @@ class TestDingTalkTokenRefresh(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         with self.assertRaises(RuntimeError):
             loop.run_until_complete(bot.refresh_token())
 
@@ -315,10 +316,11 @@ class TestBotMessageDedup(unittest.TestCase):
         """handle_message ignores duplicate msg_id."""
         bot = DingTalkBot()
         bot.send_text = AsyncMock()
+        bot._run_pipeline = AsyncMock()  # prevent actual pipeline execution
         # Use a unique msg_id to avoid cross-test interference
         unique_id = f"dedup_test_{time.time()}"
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.handle_message("user1", unique_id, "hello"))
         loop.run_until_complete(bot.handle_message("user1", unique_id, "hello"))
 
@@ -337,7 +339,7 @@ class TestBotEmptyMessage(unittest.TestCase):
         bot = DingTalkBot()
         bot.send_text = AsyncMock()
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.handle_message("user1", "msg_200", "   "))
 
         bot.send_text.assert_not_awaited()
@@ -368,7 +370,7 @@ class TestDingTalkSendText(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.send_text("user_001", "测试消息"))
 
         mock_client.post.assert_called_once()
@@ -396,7 +398,7 @@ class TestDingTalkSendMarkdown(unittest.TestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_client
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(bot.send_markdown("user_001", "# 标题\n内容"))
 
         call_kwargs = mock_client.post.call_args[1]

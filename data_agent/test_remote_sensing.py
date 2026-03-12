@@ -257,7 +257,11 @@ class TestRemoteSensingToolset(unittest.TestCase):
 
     def _run(self, coro):
         import asyncio
-        return asyncio.get_event_loop().run_until_complete(coro)
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
 
     def test_tool_count(self):
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
@@ -546,7 +550,11 @@ class TestDownloadToolsetFilter(unittest.TestCase):
 
     def _run(self, coro):
         import asyncio
-        return asyncio.get_event_loop().run_until_complete(coro)
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
 
     def test_filter_download_tools_only(self):
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
