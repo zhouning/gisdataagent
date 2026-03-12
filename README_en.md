@@ -2,7 +2,7 @@
 
 # GIS Data Agent (ADK Edition) v7.5
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 3D visualization, workflow orchestration, geographic knowledge graph, and Memory ETL auto-extraction.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, categorized map rendering, 3D visualization, workflow orchestration, geographic knowledge graph, and Memory ETL auto-extraction.
 
 ## Core Capabilities
 
@@ -29,8 +29,8 @@ An AI-powered geospatial analysis platform that turns natural language into spat
 
 ### Land Use Optimization
 - Deep Reinforcement Learning engine (MaskablePPO) for layout optimization
-- Fragmentation Index (FFI) with 6 landscape metrics
 - Paired farmland/forest swaps with strict area balance
+- Categorized map rendering: per-feature coloring by land type / change type with Chinese legend
 
 ### Business Spatial Intelligence
 - Semantic query: natural language → auto-mapped SQL with spatial operators
@@ -151,6 +151,9 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Real-time Streams | Redis Streams with geofence alerts + IoT data |
 | | Remote Sensing | Raster analysis, NDVI, LULC/DEM download |
 | **Frontend** | Three-Panel UI | Chat + Map + Data panels; HTML/CSV artifact rendering support; React 18 + Leaflet + deck.gl |
+| | Categorized Layers | `categorized` layer type: per-feature polygon coloring + Chinese legend (v7.5) |
+| | File Management | Click any file in DataPanel to open/download (PDF/DOCX/HTML etc.) (v7.5) |
+| | Action Buttons | Export PDF report, share results etc. via ChainlitAPI callAction (v7.5) |
 | | Token Dashboard | Per-user daily/monthly usage with pipeline breakdown visualization |
 | | Map Annotations | Collaborative click-to-add annotations with team sharing |
 | | Basemap Switcher | Gaode, Tianditu (conditional), CartoDB, OpenStreetMap |
@@ -208,6 +211,7 @@ data_agent/
 ├── migrations/                  # 19 SQL migration scripts (001-019)
 ├── locales/                     # i18n: zh.yaml + en.yaml
 ├── db_engine.py                 # Connection pool singleton
+├── tool_filter.py               # Intent-driven dynamic tool filtering (ToolPredicate + ContextVar)
 ├── health.py                    # K8s health check API
 ├── observability.py             # Structured logging + Prometheus
 ├── i18n.py                      # i18n: YAML dict + t() function
@@ -328,7 +332,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v6.0 | Fusion Improvements (raster reprojection, point cloud, stream, quality) | ✅ Done |
 | v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | ✅ Done |
 | v7.1 | MCP Management UI + DB Persistence, WorkflowEditor, Analysis Perspective, Prompt Versioning, Tool Error Recovery, Reflection Loop Expansion, End-to-End Trace ID | ✅ Done |
-| v7.5 | Memory ETL Auto-Extraction ✅, Dynamic Tool Loading ✅, Gemini Context Caching, MCP Security + per-User Isolation | In Progress |
+| v7.5 | Memory ETL Auto-Extraction ✅, Dynamic Tool Loading ✅, Categorized Map Rendering ✅, Action Button Fix ✅, File Download ✅, Planner transfer_to_agent Fix ✅, PostGIS SRID Detection Fix ✅, genai SDK Migration ✅, Gemini Context Caching, MCP Security + per-User Isolation | In Progress |
 | v8.0 | DB-Driven Custom Skills, RAG Knowledge Base, DAG Workflow, Failure Learning & Adaptation, Dynamic Model Selection, Evaluation-Gated CI | Future |
 | v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel, A2A Agent Interop, Proactive Exploration & Discovery | Long-term |
 
