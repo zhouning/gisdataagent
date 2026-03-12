@@ -111,16 +111,25 @@ def query_database(sql_query: str) -> dict:
                         return g
                     df[geom_col] = df[geom_col].apply(parse_geom)
                     gdf = gpd.GeoDataFrame(df, geometry=geom_col)
-                    
+
                     # Try to detect SRID from PostGIS metadata
                     try:
+                        # Extract table name from SQL (handles "FROM table" and "FROM schema.table")
+                        import re
+                        tbl_match = re.search(r'\bFROM\s+(?:"?(\w+)"?\.)?"?(\w+)"?', sql_query, re.IGNORECASE)
+                        detected_table = tbl_match.group(2) if tbl_match else ""
                         srid_res = conn.execute(text(
                             "SELECT srid FROM geometry_columns WHERE f_table_name = :t"
-                        ), {"t": table_name if 'table_name' in locals() else ""}).fetchone()
+                        ), {"t": detected_table}).fetchone()
                         if srid_res and srid_res[0]:
                             gdf.set_crs(epsg=srid_res[0], inplace=True)
-                        elif "banzhu" in sql_query.lower(): # Heuristic for this specific project
-                            gdf.set_crs(epsg=4523, inplace=True)
+                        else:
+                            # Fallback: query SRID from first geometry in the result
+                            srid_row = conn.execute(text(
+                                f"SELECT ST_SRID({geom_col}) FROM ({sql_query}) _q WHERE {geom_col} IS NOT NULL LIMIT 1"
+                            )).fetchone()
+                            if srid_row and srid_row[0] and srid_row[0] != 0:
+                                gdf.set_crs(epsg=srid_row[0], inplace=True)
                     except Exception:
                         pass
 

@@ -5,13 +5,16 @@ import Map3DView from './Map3DView';
 interface MapLayer {
   name: string;
   type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
-      | 'extrusion' | 'arc' | 'column';
+      | 'extrusion' | 'arc' | 'column' | 'categorized';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
   value_column?: string;
   breaks?: number[];
   color_scheme?: string;
+  category_column?: string;                  // field for categorized coloring
+  category_colors?: Record<string, string>;  // value -> color mapping
+  category_labels?: Record<string, string>;  // value -> display label
   // 3D properties
   elevation_column?: string;
   elevation_scale?: number;
@@ -383,6 +386,10 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const choroplethLayer = loadedLayers.find(
     (l) => (l.type === 'choropleth' || l.type === 'bubble') && l.breaks && l.color_scheme
   );
+  // Find categorized layers for legend
+  const categorizedLayers = loadedLayers.filter(
+    (l) => l.type === 'categorized' && l.category_colors
+  );
 
   return (
     <div className="map-panel">
@@ -460,6 +467,26 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
                 <span className="map-legend-color" style={{ background: colors[i] || colors[colors.length - 1] }} />
                 <span className="map-legend-label">{i === 0 ? `≤ ${b}` : `${choroplethLayer.breaks![i - 1]} - ${b}`}</span>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Legend for categorized layers */}
+      {categorizedLayers.length > 0 && (
+        <div className="map-legend">
+          {categorizedLayers.map((layer) => {
+            const labels = layer.category_labels || {};
+            return (
+            <div key={layer.name} style={{ marginBottom: categorizedLayers.length > 1 ? 8 : 0 }}>
+              <div className="map-legend-title">{layer.name}</div>
+              {Object.entries(layer.category_colors!).map(([val, color]) => (
+                <div key={val} className="map-legend-item">
+                  <span className="map-legend-color" style={{ background: color }} />
+                  <span className="map-legend-label">{labels[val] || val}</span>
+                </div>
+              ))}
+            </div>
             );
           })}
         </div>
@@ -615,6 +642,27 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
           }),
         onEachFeature: bindPopup,
       });
+
+    case 'categorized': {
+      const catCol = config.category_column;
+      const catColors = config.category_colors || {};
+      return L.geoJSON(geojsonData, {
+        style: (feature) => {
+          const raw = String(feature?.properties?.[catCol || ''] ?? '');
+          // Try exact match, then integer form (e.g. "1.0" → "1")
+          const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+          const fillColor = catColors[raw] || catColors[intForm] || style.fillColor || '#999';
+          return {
+            fillColor,
+            color: style.color || '#666',
+            weight: style.weight ?? 0.5,
+            opacity: style.opacity ?? 0.8,
+            fillOpacity: style.fillOpacity ?? 0.7,
+          };
+        },
+        onEachFeature: bindPopup,
+      });
+    }
 
     default:
       return L.geoJSON(geojsonData, { onEachFeature: bindPopup });

@@ -299,16 +299,48 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
         if is_point:
             layers_cfg = [{"name": "Points", "type": "point"}]
         elif optimized_data_path:
+            # Categorized layers for per-feature coloring on the map panel
             layers_cfg = [
-                {"name": "优化前", "type": "polygon", "style": {"fillColor": "#FFD700", "fillOpacity": 0.6}},
-                {"name": "优化后", "type": "polygon", "style": {"fillColor": "#228B22", "fillOpacity": 0.6}},
+                {
+                    "name": "优化后布局",
+                    "type": "categorized",
+                    "category_column": "Opt_Type",
+                    "category_colors": {
+                        "0": "#D3D3D3", "1": "#FFD700", "2": "#228B22",
+                    },
+                    "category_labels": {
+                        "0": "其他", "1": "耕地", "2": "林地",
+                    },
+                    "style": {"fillOpacity": 0.6, "weight": 0.5},
+                },
             ]
             # Save optimized data as separate GeoJSON
             try:
                 gdf_opt_4326 = gdf_opt.to_crs(epsg=4326) if gdf_opt.crs and gdf_opt.crs.to_epsg() != 4326 else gdf_opt
                 opt_geojson = output_path.replace('.html', '_opt.geojson')
                 gdf_opt_4326.to_file(opt_geojson, driver='GeoJSON')
-                layers_cfg[1]["geojson"] = os.path.basename(opt_geojson)
+                layers_cfg[0]["geojson"] = os.path.basename(opt_geojson)
+            except Exception:
+                pass
+            # Save changes diff layer
+            try:
+                if not gdf_diff.empty:
+                    gdf_diff_4326 = gdf_diff.to_crs(epsg=4326) if gdf_diff.crs and gdf_diff.crs.to_epsg() != 4326 else gdf_diff
+                    diff_geojson = output_path.replace('.html', '_diff.geojson')
+                    gdf_diff_4326.to_file(diff_geojson, driver='GeoJSON')
+                    layers_cfg.append({
+                        "name": "空间置换差异",
+                        "type": "categorized",
+                        "geojson": os.path.basename(diff_geojson),
+                        "category_column": "Change_Type",
+                        "category_colors": {
+                            "1": "#FF4444", "2": "#4488FF",
+                        },
+                        "category_labels": {
+                            "1": "耕地→林地", "2": "林地→耕地",
+                        },
+                        "style": {"fillOpacity": 0.8, "weight": 1},
+                    })
             except Exception:
                 pass
         else:

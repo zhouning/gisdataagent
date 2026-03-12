@@ -198,8 +198,8 @@ class TestModelTiering(unittest.TestCase):
     def test_analyzer_uses_standard_model(self):
         self.assertEqual(self._get_agent("PlannerAnalyzer").model, self.MODEL_STANDARD)
 
-    def test_visualizer_uses_fast_model(self):
-        self.assertEqual(self._get_agent("PlannerVisualizer").model, self.MODEL_FAST)
+    def test_visualizer_uses_standard_model(self):
+        self.assertEqual(self._get_agent("PlannerVisualizer").model, self.MODEL_STANDARD)
 
     def test_reporter_uses_premium_model(self):
         self.assertEqual(self._get_agent("PlannerReporter").model, self.MODEL_PREMIUM)

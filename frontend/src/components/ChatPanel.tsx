@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback, KeyboardEvent, ChangeEvent } from 'react';
-import { useChatMessages, useChatInteract, useChatData } from '@chainlit/react-client';
-import type { IFileRef } from '@chainlit/react-client';
+import { useState, useRef, useEffect, useCallback, useContext, KeyboardEvent, ChangeEvent } from 'react';
+import { useChatMessages, useChatInteract, useChatData, useChatSession, ChainlitContext } from '@chainlit/react-client';
+import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatPanelProps {
@@ -20,6 +20,8 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const { messages } = useChatMessages();
   const { sendMessage, uploadFile } = useChatInteract();
   const { askUser, actions, loading } = useChatData();
+  const { sessionId } = useChatSession();
+  const apiClient = useContext(ChainlitContext);
   const [input, setInput] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isRecording, setIsRecording] = useState(false);
@@ -142,6 +144,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const removePendingFile = (file: File) => {
     setPendingFiles((prev) => prev.filter((f) => f.file !== file));
   };
+
+  const handleAction = useCallback((action: IAction) => {
+    if (apiClient && sessionId) {
+      apiClient.callAction(action, sessionId).catch((err: any) =>
+        console.error('[ActionBtn] callAction failed:', err)
+      );
+    } else {
+      console.warn('[ActionBtn] apiClient or sessionId unavailable');
+    }
+  }, [apiClient, sessionId]);
 
   const toggleVoiceRecording = useCallback(() => {
     if (!speechSupported) return;
@@ -282,7 +294,9 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           return (
             <div className="action-buttons" style={{ padding: '0 4px' }}>
               {unique.map((action) => (
-                <button key={action.id} className="action-btn" onClick={() => action.onClick()}>
+                <button key={action.id} className="action-btn" onClick={() => {
+                  handleAction(action);
+                }}>
                   {action.label || action.name}
                 </button>
               ))}

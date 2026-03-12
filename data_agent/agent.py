@@ -79,6 +79,7 @@ from .toolsets.file_tools import list_user_files, delete_user_file
 from .spatial_statistics import spatial_autocorrelation, local_moran, hotspot_analysis
 from .gis_processors import _generate_output_path, _resolve_path
 from .database_tools import T_TABLE_OWNERSHIP
+from .tool_filter import intent_tool_predicate
 
 # ---------------------------------------------------------------------------
 # Tool filter presets — reusable across agents
@@ -124,8 +125,8 @@ knowledge_tool = AgentTool(agent=knowledge_agent, skip_summarization=False)
 
 data_exploration_agent = LlmAgent(
     name="DataExploration",
-    instruction=get_prompt("optimization", "data_exploration_agent_instruction"),
-    description="数据质量审计与治理专家",
+    instruction=get_prompt("optimization", "data_exploration_opt_instruction"),
+    description="优化管道数据准备专家",
     model=MODEL_STANDARD,
     output_key="data_profile",
     after_tool_callback=_self_correction_after_tool,
@@ -138,8 +139,8 @@ data_exploration_agent = LlmAgent(
 
 data_processing_agent = LlmAgent(
     name="DataProcessing",
-    instruction=get_prompt("optimization", "data_processing_agent_instruction"),
-    description="特征工程与预处理专家",
+    instruction=get_prompt("optimization", "data_processing_opt_instruction"),
+    description="优化管道数据预处理专家",
     model=MODEL_STANDARD,
     output_key="processed_data",
     after_tool_callback=_self_correction_after_tool,
@@ -178,7 +179,7 @@ data_analysis_agent = LlmAgent(
 quality_checker_agent = LlmAgent(
     name="QualityChecker",
     instruction=get_prompt("optimization", "quality_checker_instruction"),
-    description="分析结果质量审查员。验证FFI/DRL/遥感指标合理性。",
+    description="分析结果质量审查员。验证DRL优化/遥感指标合理性。",
     model=MODEL_FAST,
     output_key="quality_verdict",
     tools=[approve_quality],
@@ -301,21 +302,21 @@ general_processing_agent = LlmAgent(
     after_tool_callback=_self_correction_after_tool,
     tools=[
         ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
-        GeoProcessingToolset(),
-        LocationToolset(),
+        GeoProcessingToolset(tool_filter=intent_tool_predicate),
+        LocationToolset(tool_filter=intent_tool_predicate),
         DatabaseToolset(tool_filter=_DB_READ_DESCRIBE + ["share_table", "import_to_postgis"]),
         FileToolset(),
         MemoryToolset(),
-        AdminToolset(),
-        RemoteSensingToolset(),
-        SpatialStatisticsToolset(),
-        SemanticLayerToolset(),
-        StreamingToolset(),
-        TeamToolset(),
-        DataLakeToolset(),
+        AdminToolset(tool_filter=intent_tool_predicate),
+        RemoteSensingToolset(tool_filter=intent_tool_predicate),
+        SpatialStatisticsToolset(tool_filter=intent_tool_predicate),
+        SemanticLayerToolset(tool_filter=intent_tool_predicate),
+        StreamingToolset(tool_filter=intent_tool_predicate),
+        TeamToolset(tool_filter=intent_tool_predicate),
+        DataLakeToolset(tool_filter=intent_tool_predicate),
         McpHubToolset(pipeline="general"),
-        FusionToolset(),
-        KnowledgeGraphToolset(),
+        FusionToolset(tool_filter=intent_tool_predicate),
+        KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
     ] + _arcpy_tools,
 )
 
@@ -411,15 +412,15 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
         after_tool_callback=_self_correction_after_tool,
         tools=[
             ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
-            GeoProcessingToolset(),
-            LocationToolset(),
+            GeoProcessingToolset(tool_filter=intent_tool_predicate),
+            LocationToolset(tool_filter=intent_tool_predicate),
             RemoteSensingToolset(tool_filter=["describe_raster", "download_lulc", "download_dem"]),
-            StreamingToolset(),
+            StreamingToolset(tool_filter=intent_tool_predicate),
             DataLakeToolset(tool_filter=_DATALAKE_READ),
             DatabaseToolset(tool_filter=["import_to_postgis"]),
             McpHubToolset(pipeline="planner"),
-            FusionToolset(),
-            KnowledgeGraphToolset(),
+            FusionToolset(tool_filter=intent_tool_predicate),
+            KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)
@@ -431,7 +432,7 @@ def _make_planner_analyzer(name: str, **overrides) -> LlmAgent:
     defaults = dict(
         name=name,
         instruction=get_prompt("planner", "planner_analyzer_instruction"),
-        description="FFI破碎化指数、DRL深度强化学习布局优化、遥感分析、空间统计专家。",
+        description="DRL深度强化学习布局优化、遥感分析、空间统计专家。",
         model=MODEL_STANDARD,
         output_key="analysis_report",
         disallow_transfer_to_peers=True,
@@ -448,7 +449,7 @@ def _make_planner_visualizer(name: str, **overrides) -> LlmAgent:
         name=name,
         instruction=get_prompt("planner", "planner_visualizer_instruction"),
         description="地理空间可视化专家。交互地图、Choropleth、热力图、气泡图、PNG导出。",
-        model=MODEL_FAST,
+        model=MODEL_STANDARD,
         output_key="visualizations",
         disallow_transfer_to_peers=True,
         tools=[
@@ -492,7 +493,7 @@ explore_process_workflow = SequentialAgent(
 
 analyze_viz_workflow = SequentialAgent(
     name="AnalyzeAndVisualize",
-    description="分析→可视化 一体化工作流。执行FFI/DRL/统计分析后自动生成可视化。",
+    description="分析→可视化 一体化工作流。执行DRL/统计分析后自动生成可视化。",
     sub_agents=[
         _make_planner_analyzer("WFAnalyzer"),
         _make_planner_visualizer("WFVisualizer"),

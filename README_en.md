@@ -127,6 +127,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | MCP Tool Market | Config-driven MCP server connection + tool aggregation + DB persistence + management UI (v7.1) |
 | | Analysis Perspective | User-defined analysis focus, auto-injected into agent prompts (v7.1) |
 | | Memory ETL | Auto-extract key findings after pipeline execution, smart dedup, quota management (v7.5) |
+| | Dynamic Tool Loading | Intent-based dynamic tool filtering (8 categories + 10 core tools), ContextVar + ToolPredicate (v7.5) |
 | | Reflection Loops | All 3 pipelines with LoopAgent quality reflection (v7.1) |
 | **Data Fusion** | Fusion Engine (MMFE) | Five-stage pipeline (Profile→Assess→Align→Fuse→Validate), 10 strategies, 5 modalities |
 | | Semantic Matching | Five-tier progressive: exact → equivalence groups → embedding similarity → unit-aware → fuzzy |
@@ -327,7 +328,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v6.0 | Fusion Improvements (raster reprojection, point cloud, stream, quality) | ✅ Done |
 | v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | ✅ Done |
 | v7.1 | MCP Management UI + DB Persistence, WorkflowEditor, Analysis Perspective, Prompt Versioning, Tool Error Recovery, Reflection Loop Expansion, End-to-End Trace ID | ✅ Done |
-| v7.5 | Memory ETL Auto-Extraction ✅, Gemini Context Caching, Dynamic Tool Loading, MCP Security + per-User Isolation | In Progress |
+| v7.5 | Memory ETL Auto-Extraction ✅, Dynamic Tool Loading ✅, Gemini Context Caching, MCP Security + per-User Isolation | In Progress |
 | v8.0 | DB-Driven Custom Skills, RAG Knowledge Base, DAG Workflow, Failure Learning & Adaptation, Dynamic Model Selection, Evaluation-Gated CI | Future |
 | v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel, A2A Agent Interop, Proactive Exploration & Discovery | Long-term |
 

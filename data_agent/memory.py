@@ -284,9 +284,9 @@ def extract_facts_from_conversation(report_text: str, user_query: str) -> list[d
         return []
 
     try:
-        import google.generativeai as genai
+        from google import genai as genai_client
 
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        client = genai_client.Client()
         prompt = (
             "从以下对话中提取关键发现（数据特征、分析结论、用户偏好），返回 JSON 数组。\n"
             '每个元素包含: {"key": "短标识符(10字以内)", "value": "结构化发现内容", '
@@ -296,7 +296,10 @@ def extract_facts_from_conversation(report_text: str, user_query: str) -> list[d
             f"用户问题: {user_query[:500]}\n"
             f"分析结果: {report_text[:3000]}"
         )
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
         raw = response.text.strip()
 
         # Strip markdown code fences if present
