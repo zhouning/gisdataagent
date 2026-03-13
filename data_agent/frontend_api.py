@@ -918,12 +918,23 @@ async def _api_workflow_execute(request: Request):
 
     param_overrides = body.get("parameters", {})
 
-    from .workflow_engine import execute_workflow
-    result = await execute_workflow(
-        workflow_id=wf_id,
-        param_overrides=param_overrides,
-        run_by=username,
-    )
+    from .workflow_engine import execute_workflow, execute_workflow_dag, get_workflow, _is_dag_workflow
+
+    # Auto-detect DAG: if any step has depends_on, use DAG executor
+    workflow = get_workflow(wf_id)
+    steps = workflow.get("steps", []) if workflow else []
+    if _is_dag_workflow(steps):
+        result = await execute_workflow_dag(
+            workflow_id=wf_id,
+            param_overrides=param_overrides,
+            run_by=username,
+        )
+    else:
+        result = await execute_workflow(
+            workflow_id=wf_id,
+            param_overrides=param_overrides,
+            run_by=username,
+        )
     status_code = 200 if result.get("status") == "completed" else 500
     return JSONResponse(result, status_code=status_code)
 
@@ -940,6 +951,21 @@ async def _api_workflow_runs(request: Request):
     from .workflow_engine import get_workflow_runs
     runs = get_workflow_runs(wf_id, limit=limit)
     return JSONResponse({"runs": runs})
+
+
+async def _api_workflow_run_status(request: Request):
+    """GET /api/workflows/{id}/runs/{run_id}/status — live per-node DAG execution status."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    run_id = int(request.path_params["run_id"])
+    from .workflow_engine import get_live_run_status
+    status = get_live_run_status(run_id)
+    if status is None:
+        return JSONResponse({"error": "Run not found or already completed"}, status_code=404)
+    return JSONResponse(status)
 
 
 # ---------------------------------------------------------------------------
@@ -1402,6 +1428,7 @@ def get_frontend_api_routes():
         Route("/api/workflows/{id:int}", endpoint=_api_workflow_delete, methods=["DELETE"]),
         Route("/api/workflows/{id:int}/execute", endpoint=_api_workflow_execute, methods=["POST"]),
         Route("/api/workflows/{id:int}/runs", endpoint=_api_workflow_runs, methods=["GET"]),
+        Route("/api/workflows/{id:int}/runs/{run_id:int}/status", endpoint=_api_workflow_run_status, methods=["GET"]),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
         # Custom Skills (v8.0.1)
