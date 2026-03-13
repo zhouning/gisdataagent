@@ -49,6 +49,7 @@ from .toolsets import (
     FusionToolset,
     KnowledgeGraphToolset,
     KnowledgeBaseToolset,
+    AdvancedAnalysisToolset,
 )
 from .toolsets.skill_bundles import build_all_skills_toolset
 
@@ -197,7 +198,7 @@ data_analysis_agent = LlmAgent(
     description="空间分析与优化专家",
     model=MODEL_STANDARD,
     output_key="analysis_report",
-    tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset()],
+    tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset()],
 )
 
 # --- Quality Checker + LoopAgent (ADK Optimization 2.2) ---
@@ -345,6 +346,7 @@ general_processing_agent = LlmAgent(
         FusionToolset(tool_filter=intent_tool_predicate),
         KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
         KnowledgeBaseToolset(tool_filter=intent_tool_predicate),
+        AdvancedAnalysisToolset(tool_filter=intent_tool_predicate),
     ] + _arcpy_tools,
 )
 
@@ -466,7 +468,7 @@ def _make_planner_analyzer(name: str, **overrides) -> LlmAgent:
         output_key="analysis_report",
         disallow_transfer_to_peers=True,
         after_tool_callback=_self_correction_after_tool,
-        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset()],
+        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset()],
     )
     defaults.update(overrides)
     return LlmAgent(**defaults)

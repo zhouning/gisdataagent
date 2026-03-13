@@ -12,6 +12,7 @@ SKILLS_DIR = pathlib.Path(__file__).parent / "skills"
 
 EXPECTED_SKILLS = [
     "3d-visualization",
+    "advanced-analysis",
     "buffer-overlay",
     "coordinate-transform",
     "data-import-export",
@@ -147,7 +148,7 @@ class TestSkillLoading(unittest.TestCase):
     def test_load_all_skills_count(self):
         from data_agent.skills import load_all_skills
         skills = load_all_skills()
-        self.assertEqual(len(skills), 17)
+        self.assertEqual(len(skills), 18)
 
     def test_load_all_skills_names(self):
         from data_agent.skills import load_all_skills
@@ -210,7 +211,7 @@ class TestSkillToolsetIntegration(unittest.TestCase):
         from data_agent.toolsets.skill_bundles import build_all_skills_toolset
         ts = build_all_skills_toolset()
         # Access the skills list directly
-        self.assertEqual(len(ts._skills), 17)
+        self.assertEqual(len(ts._skills), 18)
 
     def test_single_skill_toolset_count(self):
         from data_agent.toolsets.skill_bundles import build_skill_toolset
@@ -229,12 +230,12 @@ class TestPlannerSkillIntegration(unittest.TestCase):
         )
         self.assertTrue(has_skill_toolset, "Planner should include SkillToolset")
 
-    def test_planner_skill_toolset_has_17_skills(self):
+    def test_planner_skill_toolset_has_18_skills(self):
         from data_agent.agent import planner_agent
         from google.adk.tools.skill_toolset import SkillToolset
         for t in planner_agent.tools:
             if isinstance(t, SkillToolset):
-                self.assertEqual(len(t._skills), 17)
+                self.assertEqual(len(t._skills), 18)
                 return
         self.fail("No SkillToolset found in Planner tools")
 

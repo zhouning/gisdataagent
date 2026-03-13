@@ -18,3 +18,4 @@ from .mcp_hub_toolset import McpHubToolset
 from .fusion_tools import FusionToolset
 from .knowledge_graph_tools import KnowledgeGraphToolset
 from .knowledge_base_tools import KnowledgeBaseToolset
+from .advanced_analysis_tools import AdvancedAnalysisToolset
