@@ -7,7 +7,7 @@ import os
 import re
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from google.adk.runners import Runner
 from google.adk.agents.run_config import RunConfig
@@ -68,6 +68,7 @@ async def run_pipeline_headless(
     use_dynamic_planner: bool = False,
     role: str = "analyst",
     extra_parts: list = None,
+    on_event: Callable[[dict], None] | None = None,
 ) -> PipelineResult:
     """
     Run an ADK pipeline without Chainlit UI coupling.
@@ -83,6 +84,11 @@ async def run_pipeline_headless(
         router_tokens:       Tokens consumed by the intent router.
         use_dynamic_planner: Whether dynamic planner mode is active.
         role:                User role for RBAC context (default: 'analyst').
+        on_event:            Optional streaming callback. Called with event dicts:
+                             {"type": "agent", "name": str}
+                             {"type": "tool_call", "name": str, "args": dict}
+                             {"type": "tool_result", "step": int, "name": str, "summary": str}
+                             {"type": "text", "content": str}
 
     Returns:
         PipelineResult with report text, files, token counts, etc.
@@ -138,6 +144,8 @@ async def run_pipeline_headless(
             author = getattr(event, "author", None)
             if author and author != "user":
                 current_agent_name = author
+                if on_event:
+                    on_event({"type": "agent", "name": author})
 
             if not (event.content and event.content.parts):
                 continue
@@ -152,6 +160,9 @@ async def run_pipeline_headless(
                         "start_time": time.time(),
                         "agent_name": current_agent_name or "",
                     }
+                    if on_event:
+                        on_event({"type": "tool_call", "name": part.function_call.name,
+                                  "args": _pending_tool_call["args"]})
 
                 # --- Tool response tracking ---
                 if part.function_response:
@@ -183,10 +194,16 @@ async def run_pipeline_headless(
                             }
                         )
                         _pending_tool_call = None
+                    if on_event and tool_execution_log:
+                        _last = tool_execution_log[-1]
+                        on_event({"type": "tool_result", "step": _last["step"],
+                                  "name": _last["tool_name"], "summary": _last["result_summary"]})
 
                 # --- Text accumulation ---
                 if part.text:
                     full_response_text += part.text
+                    if on_event:
+                        on_event({"type": "text", "content": part.text})
 
         # --- Report extraction from session state ---
         session = await session_service.get_session(
