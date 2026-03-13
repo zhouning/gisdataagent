@@ -678,3 +678,475 @@ class WorkflowScheduler:
                 )
         except Exception as e:
             print(f"[Workflows] Cron execution failed for workflow {workflow_id}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# DAG Execution Engine (v8.0.3)
+# ---------------------------------------------------------------------------
+
+import re as _re
+from collections import deque
+
+# In-memory live status for active DAG runs (cleaned up after completion + TTL)
+_live_run_status: dict[int, dict] = {}
+_LIVE_STATUS_MAX = 100  # Max entries to prevent unbounded growth
+
+
+def _is_dag_workflow(steps: list) -> bool:
+    """Return True if any step has a non-empty depends_on list."""
+    return any(step.get("depends_on") for step in steps)
+
+
+def _topological_sort(steps: list[dict]) -> list[list[dict]]:
+    """Kahn's algorithm: sort DAG steps into parallel execution layers.
+
+    Returns list of layers — each layer is a list of steps that can
+    execute concurrently (all their dependencies are in earlier layers).
+
+    Raises ValueError if the graph contains a cycle.
+    """
+    step_map = {s["step_id"]: s for s in steps}
+    all_ids = set(step_map.keys())
+
+    # Build in-degree and adjacency (reverse: parent → children)
+    in_degree = {sid: 0 for sid in all_ids}
+    children = {sid: [] for sid in all_ids}
+
+    for step in steps:
+        for dep in step.get("depends_on", []):
+            if dep not in all_ids:
+                # Gracefully ignore missing dependency
+                continue
+            in_degree[step["step_id"]] += 1
+            children[dep].append(step["step_id"])
+
+    # Seed with zero-in-degree nodes
+    queue = deque(sid for sid, deg in in_degree.items() if deg == 0)
+    layers = []
+    visited = 0
+
+    while queue:
+        # Current layer: all nodes with in-degree 0
+        layer = []
+        next_queue = deque()
+        while queue:
+            sid = queue.popleft()
+            layer.append(step_map[sid])
+            visited += 1
+            for child in children[sid]:
+                in_degree[child] -= 1
+                if in_degree[child] == 0:
+                    next_queue.append(child)
+        layers.append(layer)
+        queue = next_queue
+
+    if visited < len(all_ids):
+        unvisited = all_ids - {s["step_id"] for layer in layers for s in layer}
+        raise ValueError(
+            f"Cycle detected in workflow DAG involving nodes: {sorted(unvisited)}"
+        )
+
+    return layers
+
+
+def _evaluate_condition(expression: str, node_outputs: dict) -> bool:
+    """Evaluate a condition expression with {step_id.field} substitution.
+
+    Supported fields: output, error, status, files.
+    Supported operators: ==, !=, and, or, None, True, False.
+    Fail-open: returns True on any parse/eval error.
+    """
+    if not expression or not expression.strip():
+        return True
+
+    try:
+        # Substitute {step_id.field} references
+        def _replace(match):
+            step_id = match.group(1)
+            field_name = match.group(2)
+            node = node_outputs.get(step_id, {})
+            val = node.get(field_name)
+            if val is None:
+                return "None"
+            if isinstance(val, bool):
+                return str(val)
+            if isinstance(val, (int, float)):
+                return str(val)
+            # String value — wrap in quotes
+            safe_val = str(val).replace('"', '\\"')[:200]
+            return f'"{safe_val}"'
+
+        expr = _re.sub(r'\{(\w+)\.(output|error|status|files)\}', _replace, expression)
+
+        # Restricted eval — only safe builtins
+        safe_ns = {"__builtins__": {}, "None": None, "True": True, "False": False}
+        result = eval(expr, safe_ns)  # noqa: S307
+        return bool(result)
+    except Exception:
+        # Fail-open: condition parse error → downstream still runs
+        return True
+
+
+def _substitute_params_dag(
+    text_val: str, params: dict, node_outputs: dict
+) -> str:
+    """Enhanced parameter substitution with inter-node data references.
+
+    Standard {param_name} replacement PLUS:
+    - {step_id.output} → upstream report_text (truncated to 2000 chars)
+    - {step_id.files}  → comma-separated list of generated file paths
+    - {step_id.error}  → error string or empty
+    """
+    # Standard param substitution first
+    for key, value in params.items():
+        text_val = text_val.replace(f"{{{key}}}", str(value))
+
+    # Node output substitution
+    def _replace_node_ref(match):
+        step_id = match.group(1)
+        field_name = match.group(2)
+        node = node_outputs.get(step_id, {})
+        if field_name == "output":
+            val = node.get("report_text", "")
+            return str(val)[:2000] if val else ""
+        elif field_name == "files":
+            files = node.get("files", [])
+            return ", ".join(str(f) for f in files) if files else ""
+        elif field_name == "error":
+            return str(node.get("error", "")) or ""
+        elif field_name == "status":
+            return str(node.get("status", "unknown"))
+        return match.group(0)
+
+    text_val = _re.sub(
+        r'\{(\w+)\.(output|files|error|status)\}', _replace_node_ref, text_val
+    )
+
+    return text_val
+
+
+def _update_live_status(
+    run_id: int, step_id: str, status: str, result_data: dict = None
+):
+    """Update in-memory per-node status for live polling."""
+    if run_id not in _live_run_status:
+        _live_run_status[run_id] = {"nodes": {}, "status": "running"}
+
+    node = _live_run_status[run_id]["nodes"].setdefault(step_id, {})
+    node["status"] = status
+
+    now = datetime.utcnow().isoformat()
+    if status == "running":
+        node["started_at"] = now
+    elif status in ("completed", "failed", "skipped"):
+        node["completed_at"] = now
+
+    if result_data:
+        node.update({
+            k: result_data[k]
+            for k in ("duration", "error", "summary", "files")
+            if k in result_data
+        })
+
+    # FIFO eviction if too many entries
+    if len(_live_run_status) > _LIVE_STATUS_MAX:
+        oldest_key = next(iter(_live_run_status))
+        _live_run_status.pop(oldest_key, None)
+
+
+def get_live_run_status(run_id: int) -> dict | None:
+    """Get live per-node execution status for an active DAG run.
+
+    Returns None if run_id not found (already cleaned up or never existed).
+    """
+    return _live_run_status.get(run_id)
+
+
+async def execute_workflow_dag(
+    workflow_id: int,
+    param_overrides: dict = None,
+    run_by: str = None,
+) -> dict:
+    """Execute a DAG workflow: honor depends_on, parallel layers, failure isolation.
+
+    Compatible return format with execute_workflow().
+    """
+    from .pipeline_runner import run_pipeline_headless
+    from google.adk.sessions import InMemorySessionService
+
+    workflow = get_workflow(workflow_id)
+    if not workflow:
+        return {"status": "failed", "error": "Workflow not found"}
+
+    user = run_by or current_user_id.get() or workflow["owner_username"]
+    steps = workflow.get("steps", [])
+    if not steps:
+        return {"status": "failed", "error": "Workflow has no steps"}
+
+    # Merge parameters
+    params = {}
+    for k, v in workflow.get("parameters", {}).items():
+        params[k] = v.get("default", "") if isinstance(v, dict) else v
+    if param_overrides:
+        params.update(param_overrides)
+
+    # Create run record
+    engine = get_engine()
+    run_id = None
+    if engine:
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text(f"""
+                    INSERT INTO {T_WORKFLOW_RUNS}
+                        (workflow_id, run_by, status, parameters_used)
+                    VALUES (:wf_id, :user, 'running', :params::jsonb)
+                    RETURNING id
+                """), {
+                    "wf_id": workflow_id,
+                    "user": user,
+                    "params": json.dumps(params),
+                })
+                row = result.fetchone()
+                run_id = row[0] if row else None
+                conn.commit()
+        except Exception as e:
+            print(f"[DAG] Run record creation failed: {e}")
+
+    # Import agents lazily
+    from . import agent as agent_module
+
+    session_service = InMemorySessionService()
+    session_id = f"dag_{workflow_id}_{uuid.uuid4().hex[:8]}"
+
+    # Set user context
+    current_user_id.set(user)
+    current_session_id.set(session_id)
+    current_user_role.set("analyst")
+
+    start_time = time.time()
+    step_results = []
+    node_outputs = {}  # step_id → {report_text, files, error, status}
+    failed_or_skipped = set()
+    total_input = 0
+    total_output = 0
+    error_msg = None
+    overall_status = "completed"
+
+    # Topological sort
+    try:
+        layers = _topological_sort(steps)
+    except ValueError as e:
+        overall_status = "failed"
+        error_msg = str(e)
+        # Update DB
+        if engine and run_id:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(f"""
+                        UPDATE {T_WORKFLOW_RUNS}
+                        SET status = 'failed', error_message = :err, completed_at = NOW()
+                        WHERE id = :id
+                    """), {"id": run_id, "err": error_msg})
+                    conn.commit()
+            except Exception:
+                pass
+        return {
+            "run_id": run_id, "status": "failed", "step_results": [],
+            "duration": 0, "total_input_tokens": 0, "total_output_tokens": 0,
+            "error": error_msg, "webhook_sent": False,
+        }
+
+    # Initialize live status
+    if run_id:
+        _live_run_status[run_id] = {"workflow_id": workflow_id, "status": "running", "nodes": {}}
+        for step in steps:
+            _update_live_status(run_id, step["step_id"], "pending")
+
+    # Execute layer by layer
+    for layer in layers:
+        async def _run_node(step):
+            """Execute a single DAG node. Returns (step_id, result_dict)."""
+            step_id = step["step_id"]
+            label = step.get("label", step_id)
+
+            # Check upstream dependencies
+            for dep in step.get("depends_on", []):
+                if dep in failed_or_skipped:
+                    reason = f"Upstream '{dep}' failed or was skipped"
+                    if run_id:
+                        _update_live_status(run_id, step_id, "skipped", {"error": reason})
+                    return (step_id, {
+                        "step_id": step_id, "label": label,
+                        "status": "skipped", "error": reason,
+                        "depends_on": step.get("depends_on", []),
+                    })
+
+            # Condition node — evaluate expression, don't run pipeline
+            if step.get("pipeline_type") == "condition":
+                condition_expr = step.get("condition", step.get("prompt", ""))
+                result_bool = _evaluate_condition(condition_expr, node_outputs)
+                status_val = "completed"
+                if run_id:
+                    _update_live_status(run_id, step_id, status_val)
+                return (step_id, {
+                    "step_id": step_id, "label": label,
+                    "status": status_val,
+                    "condition_result": result_bool,
+                    "depends_on": step.get("depends_on", []),
+                })
+
+            # Pipeline node — run via headless runner
+            pipeline_type = step.get("pipeline_type", "general")
+            prompt = _substitute_params_dag(step.get("prompt", ""), params, node_outputs)
+
+            agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type)
+            if not agent_obj:
+                err = f"Unknown pipeline_type: {pipeline_type}"
+                if run_id:
+                    _update_live_status(run_id, step_id, "failed", {"error": err})
+                return (step_id, {
+                    "step_id": step_id, "label": label,
+                    "status": "failed", "error": err,
+                    "depends_on": step.get("depends_on", []),
+                })
+
+            if run_id:
+                _update_live_status(run_id, step_id, "running")
+
+            try:
+                result = await run_pipeline_headless(
+                    agent=agent_obj,
+                    session_service=session_service,
+                    user_id=user,
+                    session_id=f"{session_id}_{step_id}",
+                    prompt=prompt,
+                    pipeline_type=pipeline_type,
+                    intent=pipeline_type.upper(),
+                    role="analyst",
+                )
+                node_status = "failed" if result.error else "completed"
+                result_data = {
+                    "step_id": step_id, "label": label,
+                    "status": node_status,
+                    "duration": result.duration_seconds,
+                    "input_tokens": result.total_input_tokens,
+                    "output_tokens": result.total_output_tokens,
+                    "files": result.generated_files,
+                    "error": result.error,
+                    "summary": (result.report_text or "")[:500],
+                    "report_text": result.report_text,
+                    "depends_on": step.get("depends_on", []),
+                }
+                if run_id:
+                    _update_live_status(run_id, step_id, node_status, result_data)
+                return (step_id, result_data)
+            except Exception as e:
+                err_data = {
+                    "step_id": step_id, "label": label,
+                    "status": "failed", "error": str(e),
+                    "depends_on": step.get("depends_on", []),
+                }
+                if run_id:
+                    _update_live_status(run_id, step_id, "failed", err_data)
+                return (step_id, err_data)
+
+        # Run all nodes in this layer concurrently
+        tasks = [_run_node(step) for step in layer]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results
+        for item in results:
+            if isinstance(item, Exception):
+                overall_status = "failed"
+                error_msg = str(item)
+                continue
+
+            step_id, result_data = item
+
+            # Store in node_outputs for downstream reference
+            node_outputs[step_id] = result_data
+
+            # Strip internal report_text from step_results (too verbose for DB)
+            step_result = {k: v for k, v in result_data.items() if k != "report_text"}
+            step_results.append(step_result)
+
+            if result_data.get("status") == "failed":
+                failed_or_skipped.add(step_id)
+                if not error_msg:
+                    error_msg = f"Node '{step_id}' failed: {result_data.get('error', 'unknown')}"
+                overall_status = "failed"
+            elif result_data.get("status") == "skipped":
+                failed_or_skipped.add(step_id)
+
+            # Condition node with False result → mark as skip-source for dependents
+            if result_data.get("condition_result") is False:
+                failed_or_skipped.add(step_id)
+
+            total_input += result_data.get("input_tokens", 0)
+            total_output += result_data.get("output_tokens", 0)
+
+    duration = time.time() - start_time
+
+    # Update run record
+    webhook_sent = False
+    if engine and run_id:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"""
+                    UPDATE {T_WORKFLOW_RUNS}
+                    SET status = :status, step_results = :results::jsonb,
+                        total_duration = :dur, total_input_tokens = :inp,
+                        total_output_tokens = :out, error_message = :err,
+                        completed_at = NOW()
+                    WHERE id = :id
+                """), {
+                    "id": run_id, "status": overall_status,
+                    "results": json.dumps(step_results),
+                    "dur": duration, "inp": total_input,
+                    "out": total_output, "err": error_msg,
+                })
+                conn.execute(text(f"""
+                    UPDATE {T_WORKFLOWS}
+                    SET use_count = use_count + 1, updated_at = NOW()
+                    WHERE id = :wf_id
+                """), {"wf_id": workflow_id})
+                conn.commit()
+        except Exception as e:
+            print(f"[DAG] Run record update failed: {e}")
+
+    # Send webhook
+    if workflow.get("webhook_url"):
+        payload = {
+            "workflow_id": workflow_id,
+            "workflow_name": workflow["workflow_name"],
+            "run_id": run_id,
+            "status": overall_status,
+            "duration": round(duration, 2),
+            "total_input_tokens": total_input,
+            "total_output_tokens": total_output,
+            "step_results": step_results,
+            "error": error_msg,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        webhook_sent = await send_webhook(workflow["webhook_url"], payload)
+
+    # Update live status to completed, schedule cleanup
+    if run_id and run_id in _live_run_status:
+        _live_run_status[run_id]["status"] = overall_status
+        # Schedule cleanup after 5 minutes
+        try:
+            loop = asyncio.get_running_loop()
+            loop.call_later(300, lambda: _live_run_status.pop(run_id, None))
+        except Exception:
+            _live_run_status.pop(run_id, None)
+
+    return {
+        "run_id": run_id,
+        "status": overall_status,
+        "step_results": step_results,
+        "duration": round(duration, 2),
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "error": error_msg,
+        "webhook_sent": webhook_sent,
+    }
