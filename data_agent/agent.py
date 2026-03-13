@@ -48,6 +48,7 @@ from .toolsets import (
     McpHubToolset,
     FusionToolset,
     KnowledgeGraphToolset,
+    KnowledgeBaseToolset,
 )
 from .toolsets.skill_bundles import build_all_skills_toolset
 
@@ -343,6 +344,7 @@ general_processing_agent = LlmAgent(
         McpHubToolset(pipeline="general"),
         FusionToolset(tool_filter=intent_tool_predicate),
         KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
+        KnowledgeBaseToolset(tool_filter=intent_tool_predicate),
     ] + _arcpy_tools,
 )
 
@@ -447,6 +449,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             McpHubToolset(pipeline="planner"),
             FusionToolset(tool_filter=intent_tool_predicate),
             KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
+            KnowledgeBaseToolset(tool_filter=["search_knowledge_base", "get_kb_context", "list_knowledge_bases"]),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)

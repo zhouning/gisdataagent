@@ -29,7 +29,7 @@ TOOLSET_NAMES: set[str] = {
     "RemoteSensingToolset", "SpatialStatisticsToolset",
     "SemanticLayerToolset", "StreamingToolset", "TeamToolset",
     "DataLakeToolset", "McpHubToolset", "FusionToolset",
-    "KnowledgeGraphToolset",
+    "KnowledgeGraphToolset", "KnowledgeBaseToolset",
 }
 
 _toolset_registry_cache: dict[str, type] | None = None
@@ -47,7 +47,7 @@ def _get_toolset_registry() -> dict[str, type]:
         RemoteSensingToolset, SpatialStatisticsToolset,
         SemanticLayerToolset, StreamingToolset, TeamToolset,
         DataLakeToolset, McpHubToolset, FusionToolset,
-        KnowledgeGraphToolset,
+        KnowledgeGraphToolset, KnowledgeBaseToolset,
     )
     _toolset_registry_cache = {
         "ExplorationToolset": ExplorationToolset,
@@ -68,6 +68,7 @@ def _get_toolset_registry() -> dict[str, type]:
         "McpHubToolset": McpHubToolset,
         "FusionToolset": FusionToolset,
         "KnowledgeGraphToolset": KnowledgeGraphToolset,
+        "KnowledgeBaseToolset": KnowledgeBaseToolset,
     }
     return _toolset_registry_cache
 

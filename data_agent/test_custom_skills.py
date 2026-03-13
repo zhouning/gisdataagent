@@ -29,13 +29,13 @@ class TestToolsetRegistry(unittest.TestCase):
             "RemoteSensingToolset", "SpatialStatisticsToolset",
             "SemanticLayerToolset", "StreamingToolset", "TeamToolset",
             "DataLakeToolset", "McpHubToolset", "FusionToolset",
-            "KnowledgeGraphToolset",
+            "KnowledgeGraphToolset", "KnowledgeBaseToolset",
         }
         self.assertEqual(TOOLSET_NAMES, expected)
 
     def test_registry_count(self):
         from data_agent.custom_skills import TOOLSET_NAMES
-        self.assertEqual(len(TOOLSET_NAMES), 18)
+        self.assertEqual(len(TOOLSET_NAMES), 19)
 
     def test_registry_proxy_contains(self):
         from data_agent.custom_skills import TOOLSET_REGISTRY
