@@ -1,8 +1,8 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v7.5
+# GIS Data Agent (ADK Edition) v8.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 16 ADK scenario skills, Gemini Context Caching, categorized map rendering, 3D visualization, workflow orchestration, geographic knowledge graph, and Memory ETL auto-extraction.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 16 ADK scenario skills, DB-driven custom Skills, Gemini Context Caching, failure learning & adaptation, dynamic model selection, evaluation-gated CI, categorized map rendering, 3D visualization, workflow orchestration, geographic knowledge graph, and Memory ETL auto-extraction.
 
 ## Core Capabilities
 
@@ -82,7 +82,7 @@ graph TD
         Bots["WeChat / DingTalk / Feishu"]
     end
 
-    FE --"REST API"--> FAPI["Frontend API<br/>39 Endpoints"]
+    FE --"REST API"--> FAPI["Frontend API<br/>44 Endpoints"]
     FAPI --> DB
 ```
 
@@ -123,11 +123,14 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 |---|---|---|
 | **AI Core** | Semantic Layer | YAML catalog (15 domains, 7 regions, 8 spatial ops) + 3-level hierarchy + DB annotations |
 | | Skill Bundles | 16 fine-grained scenario skills (farmland compliance, coordinate transform, spatial clustering, PostGIS analysis, etc.), three-level incremental loading (v7.5) |
+| | Custom Skills | DB-driven user-defined expert agents: custom instructions/toolsets/triggers, @mention invocation, LLM injection protection (v8.0) |
 | | NL Layer Control | Natural language show/hide/style/remove map layers via `control_map_layer` tool |
 | | MCP Tool Market | Config-driven MCP server connection + tool aggregation + DB persistence + management UI (v7.1) |
 | | Analysis Perspective | User-defined analysis focus, auto-injected into agent prompts (v7.1) |
 | | Memory ETL | Auto-extract key findings after pipeline execution, smart dedup, quota management (v7.5) |
 | | Dynamic Tool Loading | Intent-based dynamic tool filtering (8 categories + 10 core tools), ContextVar + ToolPredicate (v7.5) |
+| | Failure Learning | Tool failure pattern recording + historical hint injection + auto-mark resolved (v8.0) |
+| | Dynamic Model Selection | Task complexity assessment → fast/standard/premium adaptive model switching (v8.0) |
 | | Context Caching | Gemini context caching: reuse long system prompts, reduce token cost, env-controlled TTL (v7.5) |
 | | Reflection Loops | All 3 pipelines with LoopAgent quality reflection (v7.1) |
 | **Data Fusion** | Fusion Engine (MMFE) | Five-stage pipeline (Profile→Assess→Align→Fuse→Validate), 10 strategies, 5 modalities |
@@ -167,7 +170,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Team Collaboration | Team creation, member management, resource sharing |
 | | Report Export | Word/PDF with page headers, footers, pipeline-specific titles |
 | **Ops** | Health Check API | K8s liveness/readiness probes + admin system diagnostics |
-| | CI Pipeline | GitHub Actions: tests, frontend build, agent evaluation |
+| | CI Pipeline | GitHub Actions: tests, frontend build, agent evaluation, evaluation-gated CI (v8.0) |
 | | Docker + K8s | Containerization, Helm/Kustomize, HPA, network policies |
 | | Observability | Structured logging (JSON) + Prometheus metrics + end-to-end Trace ID (v7.1) |
 | | i18n | Chinese/English dual language, YAML dict + ContextVar |
@@ -179,7 +182,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | **Framework** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router) |
 | **Frontend** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **Backend** | Chainlit + Starlette (39 REST API endpoints) |
+| **Backend** | Chainlit + Starlette (44 REST API endpoints) |
 | **Database** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -195,12 +198,14 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 data_agent/
 ├── app.py                       # Chainlit UI, semantic router, auth, RBAC
 ├── agent.py                     # Agent definitions, pipeline assembly
-├── frontend_api.py              # 39 REST API endpoints
+├── frontend_api.py              # 44 REST API endpoints
 ├── workflow_engine.py           # Workflow engine: CRUD, execution, webhook, cron
 ├── multimodal.py                # Multimodal input: image/PDF classification, Gemini Parts
 ├── mcp_hub.py                   # MCP Hub Manager: config-driven MCP server management
 ├── fusion_engine.py                # Multi-modal Data Fusion Engine (MMFE, ~2100 lines)
 ├── knowledge_graph.py              # Geographic Knowledge Graph Engine (networkx, ~625 lines)
+├── custom_skills.py             # DB-driven custom Skills: CRUD, validation, agent factory
+├── failure_learning.py          # Tool failure pattern learning: record, query, mark resolved
 ├── pipeline_runner.py           # Headless pipeline executor (run_pipeline_headless)
 ├── toolsets/                    # 19 BaseToolset modules
 │   ├── visualization_tools.py   #   10 tools: choropleth, heatmap, 3D, layer control
@@ -210,14 +215,14 @@ data_agent/
 │   ├── skill_bundles.py         #   16 scenario skill groupings
 │   └── ...                      #   exploration, geo processing, analysis, database, etc.
 ├── prompts/                     # 3 YAML prompt files
-├── migrations/                  # 19 SQL migration scripts (001-019)
+├── migrations/                  # 21 SQL migration scripts (001-021)
 ├── locales/                     # i18n: zh.yaml + en.yaml
 ├── db_engine.py                 # Connection pool singleton
 ├── tool_filter.py               # Intent-driven dynamic tool filtering (ToolPredicate + ContextVar)
 ├── health.py                    # K8s health check API
 ├── observability.py             # Structured logging + Prometheus
 ├── i18n.py                      # i18n: YAML dict + t() function
-├── test_*.py                    # 62 test files (1490+ tests)
+├── test_*.py                    # 66 test files (1530+ tests)
 └── run_evaluation.py            # Agent evaluation runner
 
 frontend/
@@ -260,7 +265,7 @@ Custom React SPA replacing Chainlit's default UI:
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API Endpoints (39 routes)
+## REST API Endpoints (44 routes)
 
 | Method | Path | Description |
 |---|---|---|
@@ -296,11 +301,16 @@ Custom React SPA replacing Chainlit's default UI:
 | POST | `/api/workflows/{id}/execute` | Execute workflow |
 | GET | `/api/workflows/{id}/runs` | Workflow execution history |
 | GET | `/api/map/pending` | Pending map updates (frontend polling) |
+| GET | `/api/custom-skills` | List custom Skills (v8.0) |
+| POST | `/api/custom-skills` | Create custom Skill (v8.0) |
+| GET | `/api/custom-skills/{id}` | Skill detail (v8.0) |
+| PUT | `/api/custom-skills/{id}` | Update Skill (v8.0) |
+| DELETE | `/api/custom-skills/{id}` | Delete Skill (v8.0) |
 
 ## Running Tests
 
 ```bash
-# All tests (1490+ tests)
+# All tests (1530+ tests)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single module
@@ -335,7 +345,8 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | ✅ Done |
 | v7.1 | MCP Management UI + DB Persistence, WorkflowEditor, Analysis Perspective, Prompt Versioning, Tool Error Recovery, Reflection Loop Expansion, End-to-End Trace ID | ✅ Done |
 | v7.5 | Memory ETL Auto-Extraction, Dynamic Tool Loading, Categorized Map Rendering, Action Button Fix, File Download, Planner transfer_to_agent Fix, PostGIS SRID Detection Fix, genai SDK Migration, Gemini Context Caching, MCP Security + per-User Isolation, 16 Scenario Skills Enrichment | ✅ Done |
-| v8.0 | DB-Driven Custom Skills, RAG Knowledge Base, DAG Workflow, Failure Learning & Adaptation, Dynamic Model Selection, Evaluation-Gated CI | Future |
+| v8.0 | DB-Driven Custom Skills, Failure Learning & Adaptation, Dynamic Model Selection, Evaluation-Gated CI, RAG Knowledge Base, DAG Workflow | 🔧 In Progress (4/7) |
+| v8.5 | Terminal UI: Textual Full-Screen TUI + Typer CLI Entry + Streaming Event Callback + Hybrid Visualization | Planned |
 | v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel, A2A Agent Interop, Proactive Exploration & Discovery | Long-term |
 
 ## License

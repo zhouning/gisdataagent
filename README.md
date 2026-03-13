@@ -1,8 +1,8 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v7.5
+# GIS Data Agent (ADK Edition) v8.0
 
-基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 39 个 REST API，支持多模态输入、16 个 ADK 场景技能、Gemini Context Caching、分类着色地图渲染、3D 可视化、工作流编排、知识图谱推理和 Memory ETL 自动记忆提取。
+基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。前端为 React 三面板 SPA，后端集成 44 个 REST API，支持多模态输入、16 个 ADK 场景技能、DB 驱动自定义 Skills、Gemini Context Caching、失败学习与自适应、动态模型选择、评估门控 CI、分类着色地图渲染、3D 可视化、工作流编排、知识图谱推理和 Memory ETL 自动记忆提取。
 
 ## 核心能力
 
@@ -119,11 +119,14 @@ cd frontend && npm install && npm run dev
 |---|---|---|
 | **AI 核心** | 语义层 | YAML 目录（15 领域、7 区域、8 空间算子）+ 3 级层次 + DB 注解 |
 | | 技能包 | 16 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析等），三级增量加载 (v7.5) |
+| | 自定义 Skills | DB 驱动用户自建专家 Agent：自定义指令/工具集/触发词，@mention 调用，LLM 注入防护 (v8.0) |
 | | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
 | | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 + DB 持久化 + 管理 UI (v7.1) |
 | | 分析视角注入 | 用户自定义分析关注点，自动注入 Agent 提示词 (v7.1) |
 | | Memory ETL | 管道执行后自动提取关键发现，智能去重，配额管理 (v7.5) |
 | | 动态工具加载 | 按意图动态裁剪工具列表 (8 类别 + 10 核心工具)，ContextVar + ToolPredicate (v7.5) |
+| | 失败学习 | 工具失败模式记录 + 历史经验提示注入 + 自动标记已解决 (v8.0) |
+| | 动态模型选择 | 任务复杂度评估 → fast/standard/premium 模型自适应切换 (v8.0) |
 | | Context Caching | Gemini 上下文缓存：长系统提示复用，降低 Token 成本，环境变量控制 TTL (v7.5) |
 | | 反思循环 | 全部 3 条管道含 LoopAgent 质量反思 (v7.1) |
 | **数据融合** | 融合引擎 (MMFE) | 五阶段流水线（画像→评估→对齐→融合→验证），10 种策略，5 种模态 |
@@ -163,7 +166,7 @@ cd frontend && npm install && npm run dev
 | | 团队协作 | 团队创建、成员管理、资源共享 |
 | | 报告导出 | Word/PDF 含页眉页脚、管线定制标题 |
 | **运维** | 健康检查 | K8s 存活/就绪探针 + 系统诊断 |
-| | CI 管道 | GitHub Actions：测试 + 前端构建 + Agent 评估 |
+| | CI 管道 | GitHub Actions：测试 + 前端构建 + Agent 评估 + 评估门控 (v8.0) |
 | | 容器化 | Docker + K8s (Kustomize)、HPA、网络策略 |
 | | 可观测性 | 结构化日志 (JSON) + Prometheus 指标 + 端到端 Trace ID (v7.1) |
 | | 国际化 | 中/英双语，YAML 字典 + ContextVar |
@@ -175,7 +178,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（39 个 REST API 端点） |
+| **后端** | Chainlit + Starlette（44 个 REST API 端点） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -191,12 +194,14 @@ cd frontend && npm install && npm run dev
 data_agent/
 ├── app.py                       # Chainlit UI、语义路由、认证、RBAC
 ├── agent.py                     # Agent 定义、管道组装
-├── frontend_api.py              # 39 个 REST API 端点
+├── frontend_api.py              # 44 个 REST API 端点
 ├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
 ├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
 ├── fusion_engine.py                # 多模态数据融合引擎（MMFE，~2100 行）
 ├── knowledge_graph.py              # 地理知识图谱引擎（networkx，~625 行）
+├── custom_skills.py             # DB 驱动自定义 Skills：CRUD、验证、Agent 工厂
+├── failure_learning.py          # 工具失败模式学习：记录、查询、标记已解决
 ├── pipeline_runner.py           # 无头管道执行器 (run_pipeline_headless)
 ├── toolsets/                    # 19 个 BaseToolset 模块
 │   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
@@ -206,14 +211,14 @@ data_agent/
 │   ├── skill_bundles.py         #   16 个场景技能分组
 │   └── ...                      #   探查、地理处理、分析、数据库、语义层等
 ├── prompts/                     # 3 个 YAML 提示词文件
-├── migrations/                  # 19 个 SQL 迁移脚本 (001-019)
+├── migrations/                  # 21 个 SQL 迁移脚本 (001-021)
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
 ├── tool_filter.py               # 意图驱动动态工具过滤（ToolPredicate + ContextVar）
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 62 个测试文件 (1490+ 测试)
+├── test_*.py                    # 66 个测试文件 (1530+ 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -255,7 +260,7 @@ docs/                            # 文档
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API 端点（39 条路由）
+## REST API 端点（44 条路由）
 
 | 方法 | 路径 | 描述 |
 |---|---|---|
@@ -291,11 +296,16 @@ docs/                            # 文档
 | POST | `/api/workflows/{id}/execute` | 执行工作流 |
 | GET | `/api/workflows/{id}/runs` | 执行历史 |
 | GET | `/api/map/pending` | 待处理地图更新（前端轮询） |
+| GET | `/api/custom-skills` | 自定义 Skills 列表 (v8.0) |
+| POST | `/api/custom-skills` | 创建自定义 Skill (v8.0) |
+| GET | `/api/custom-skills/{id}` | Skill 详情 (v8.0) |
+| PUT | `/api/custom-skills/{id}` | 更新 Skill (v8.0) |
+| DELETE | `/api/custom-skills/{id}` | 删除 Skill (v8.0) |
 
 ## 运行测试
 
 ```bash
-# 全量测试 (1490+ 测试)
+# 全量测试 (1530+ 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -330,7 +340,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v7.0 | 向量嵌入匹配、LLM 策略路由、地理知识图谱、分布式计算 | ✅ 完成 |
 | v7.1 | MCP 管理 UI + DB 持久化、WorkflowEditor、分析视角注入、Prompt 版本管理、工具错误恢复、反思循环推广、端到端 Trace ID | ✅ 完成 |
 | v7.5 | Memory ETL 自动提取、动态工具加载、分类着色地图渲染、Action 按钮修复、文件下载、Planner transfer_to_agent 修复、PostGIS SRID 检测修复、genai SDK 迁移、Gemini Context Caching、MCP 安全加固 + per-User 隔离、16 个场景技能丰富化 | ✅ 完成 |
-| v8.0 | DB 驱动自定义 Skills、RAG 知识库、DAG 工作流、失败学习与自适应、动态模型选择、评估门控 CI | 规划中 |
+| v8.0 | DB 驱动自定义 Skills、失败学习与自适应、动态模型选择、评估门控 CI、RAG 知识库、DAG 工作流 | 🔧 进行中 (4/7) |
+| v8.5 | Terminal UI：Textual 全屏终端界面 + Typer CLI 入口 + 流式事件回调 + 混合可视化 | 规划中 |
 | v9.0 | 实时协同编辑、边缘部署、数据连接器生态、多 Agent 并行、A2A 智能体互操作、主动探索与发现 | 远期 |
 
 ## 许可证
