@@ -136,6 +136,8 @@ try:
     ensure_knowledge_graph_tables()
     from data_agent.failure_learning import ensure_failure_table
     ensure_failure_table()
+    from data_agent.custom_skills import ensure_custom_skills_table
+    ensure_custom_skills_table()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -2660,6 +2662,25 @@ async def main(message: cl.Message):
     # Construct User Prompt
     user_text = message.content
     cl.user_session.set("last_user_message", user_text)
+
+    # --- Custom Skill @mention detection (v8.0.1) ---
+    _custom_skill_agent = None
+    _custom_skill_name = None
+    try:
+        import re as _re_mod
+        _at_match = _re_mod.match(r'@(\S+)\s*(.*)', user_text, _re_mod.DOTALL)
+        if _at_match:
+            from data_agent.custom_skills import find_skill_by_name, build_custom_agent
+            _skill = find_skill_by_name(_at_match.group(1))
+            if _skill:
+                _custom_skill_agent = build_custom_agent(_skill)
+                _custom_skill_name = _skill["skill_name"]
+                # Strip @mention from prompt, use remaining text
+                _remaining = _at_match.group(2).strip()
+                if _remaining:
+                    user_text = _remaining
+    except Exception:
+        pass  # non-fatal
     if uploaded_files:
         # Show data preview for the first uploaded file
         preview_text = _generate_upload_preview(uploaded_files[0])
@@ -2844,7 +2865,24 @@ async def main(message: cl.Message):
             except Exception as e:
                 logger.error("Plan confirmation error: %s", e)
 
-    if intent == "GOVERNANCE":
+    # --- Custom Skill trigger keyword check (v8.0.1) ---
+    if not _custom_skill_agent:
+        try:
+            from data_agent.custom_skills import find_skill_by_trigger, build_custom_agent
+            _skill = find_skill_by_trigger(user_text)
+            if _skill:
+                _custom_skill_agent = build_custom_agent(_skill)
+                _custom_skill_name = _skill["skill_name"]
+        except Exception:
+            pass  # non-fatal
+
+    if _custom_skill_agent:
+        selected_agent = _custom_skill_agent
+        pipeline_type = "custom"
+        pipeline_name = f"Custom Skill: {_custom_skill_name}"
+        intent = "CUSTOM"
+        intent_reason = f"自定义技能匹配: {_custom_skill_name}"
+    elif intent == "GOVERNANCE":
         selected_agent = governance_pipeline
         pipeline_type = "governance"
         pipeline_name = "Governance Pipeline (数据治理)"
