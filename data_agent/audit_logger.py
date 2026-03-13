@@ -40,6 +40,9 @@ ACTION_MCP_SERVER_UPDATE = "mcp_server_update"
 ACTION_MCP_SERVER_DELETE = "mcp_server_delete"
 ACTION_MCP_SERVER_TOGGLE = "mcp_server_toggle"
 ACTION_MCP_SERVER_RECONNECT = "mcp_server_reconnect"
+ACTION_CUSTOM_SKILL_CREATE = "custom_skill_create"
+ACTION_CUSTOM_SKILL_UPDATE = "custom_skill_update"
+ACTION_CUSTOM_SKILL_DELETE = "custom_skill_delete"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -69,6 +72,9 @@ ACTION_LABELS = {
     ACTION_MCP_SERVER_DELETE: "删除MCP服务器",
     ACTION_MCP_SERVER_TOGGLE: "切换MCP服务器",
     ACTION_MCP_SERVER_RECONNECT: "重连MCP服务器",
+    ACTION_CUSTOM_SKILL_CREATE: "创建自定义技能",
+    ACTION_CUSTOM_SKILL_UPDATE: "更新自定义技能",
+    ACTION_CUSTOM_SKILL_DELETE: "删除自定义技能",
 }
 
 

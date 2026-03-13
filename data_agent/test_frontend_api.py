@@ -725,5 +725,49 @@ class TestContextCacheConfig(unittest.TestCase):
         self.assertIs(app.context_cache_config, config)
 
 
+class TestCustomSkillsAPI(unittest.TestCase):
+    """v8.0.1: Custom Skills REST API endpoints."""
+
+    def test_skills_routes_registered(self):
+        from data_agent.frontend_api import get_frontend_api_routes
+        routes = get_frontend_api_routes()
+        paths = [r.path for r in routes]
+        self.assertIn("/api/skills", paths)
+
+    def test_skills_list_unauthenticated(self):
+        """GET /api/skills without auth returns 401."""
+        from starlette.testclient import TestClient
+        from starlette.applications import Starlette
+        from data_agent.frontend_api import get_frontend_api_routes
+        app = Starlette(routes=get_frontend_api_routes())
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/skills")
+        self.assertEqual(resp.status_code, 401)
+
+    def test_skills_create_unauthenticated(self):
+        """POST /api/skills without auth returns 401."""
+        from starlette.testclient import TestClient
+        from starlette.applications import Starlette
+        from data_agent.frontend_api import get_frontend_api_routes
+        app = Starlette(routes=get_frontend_api_routes())
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.post("/api/skills", json={"skill_name": "test"})
+        self.assertEqual(resp.status_code, 401)
+
+    def test_toolset_registry_importable(self):
+        """TOOLSET_REGISTRY is importable from custom_skills."""
+        from data_agent.custom_skills import TOOLSET_REGISTRY
+        self.assertIn("DatabaseToolset", TOOLSET_REGISTRY)
+
+    def test_validation_functions_importable(self):
+        """Validation functions are importable."""
+        from data_agent.custom_skills import (
+            validate_skill_name, validate_instruction, validate_toolset_names,
+        )
+        self.assertIsNone(validate_skill_name("valid-name"))
+        self.assertIsNone(validate_instruction("Valid instruction text"))
+        self.assertIsNone(validate_toolset_names(["DatabaseToolset"]))
+
+
 if __name__ == "__main__":
     unittest.main()
