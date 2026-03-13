@@ -43,6 +43,10 @@ ACTION_MCP_SERVER_RECONNECT = "mcp_server_reconnect"
 ACTION_CUSTOM_SKILL_CREATE = "custom_skill_create"
 ACTION_CUSTOM_SKILL_UPDATE = "custom_skill_update"
 ACTION_CUSTOM_SKILL_DELETE = "custom_skill_delete"
+ACTION_KB_CREATE = "kb_create"
+ACTION_KB_DELETE = "kb_delete"
+ACTION_KB_DOC_ADD = "kb_document_add"
+ACTION_KB_DOC_DELETE = "kb_document_delete"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -75,6 +79,10 @@ ACTION_LABELS = {
     ACTION_CUSTOM_SKILL_CREATE: "创建自定义技能",
     ACTION_CUSTOM_SKILL_UPDATE: "更新自定义技能",
     ACTION_CUSTOM_SKILL_DELETE: "删除自定义技能",
+    ACTION_KB_CREATE: "创建知识库",
+    ACTION_KB_DELETE: "删除知识库",
+    ACTION_KB_DOC_ADD: "添加知识库文档",
+    ACTION_KB_DOC_DELETE: "删除知识库文档",
 }
 
 

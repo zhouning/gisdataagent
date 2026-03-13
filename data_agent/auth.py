@@ -191,6 +191,7 @@ def delete_user_account(username: str, confirm_password: str) -> dict:
                 ("agent_team_members", "username"),
                 ("agent_audit_log", "username"),
                 ("agent_map_annotations", "username"),
+                ("agent_knowledge_bases", "owner_username"),
             ]
             for table, col in cascade_tables:
                 try:

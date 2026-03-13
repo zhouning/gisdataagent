@@ -138,6 +138,8 @@ try:
     ensure_failure_table()
     from data_agent.custom_skills import ensure_custom_skills_table
     ensure_custom_skills_table()
+    from data_agent.knowledge_base import ensure_kb_tables
+    ensure_kb_tables()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
