@@ -1,19 +1,19 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v9.5
+# GIS Data Agent (ADK Edition) v10.0
 
 基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
 
-系统实现了《Agentic Design Patterns》21 种设计模式中的 **16 种 (76%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、跨会话记忆持久化、DAG 任务分解与波次并行执行、Pipeline 分析仪表盘以及 Agent 生命周期钩子。前端为 React 三面板 SPA，后端集成 58 个 REST API。
+系统实现了《Agentic Design Patterns》21 种设计模式中的 **16 种 (76%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、跨会话记忆持久化、DAG 任务分解与波次并行执行、Pipeline 分析仪表盘以及 Agent 生命周期钩子。前端为 React 三面板 SPA，后端集成 76 个 REST API。
 
 ## 核心指标
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 1895 tests, 80 test files |
-| 工具集 | 21 BaseToolset, 5 SkillBundle, 113+ 工具 |
+| 测试覆盖 | 1993 tests, 85 test files |
+| 工具集 | 22 BaseToolset, 5 SkillBundle, 121+ 工具 |
 | ADK Skills | 16 场景化领域技能 + DB 驱动自定义 Skills |
-| REST API | 58 endpoints |
+| REST API | 76 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
@@ -68,6 +68,13 @@
 - **SSE Streaming**：`run_pipeline_streaming()` 异步流式输出 + `/api/pipeline/stream` REST 端点
 - **LongRunningFunctionTool**：DRL 优化异步执行，防止 Agent 重复调用
 - **集中测试夹具**：conftest.py 共享 fixture，事件循环安全隔离
+
+### 智能平台扩展 (v10.0)
+- **GraphRAG 知识增强**：实体抽取 (Gemini+正则) → 共现图谱构建 → 图增强检索（向量 + 图邻居重排序），9 个 KB 工具
+- **Per-User MCP 隔离**：用户可创建私有 MCP 服务器，owner_username + is_shared 控制可见性
+- **用户自定义技能包**：DB 驱动的工具集 + ADK Skills 自由组合，意图触发匹配
+- **高级空间分析 Tier 2**：IDW 插值、Kriging、地理加权回归 (GWR)、多时相变化检测、DEM 可视域分析
+- **工作流模板市场**：5 个预置模板 + 发布/克隆/评分，一键复用工作流
 
 ### 多模态输入 (v5.2)
 - 图片理解：自动分类上传图片，Gemini 视觉分析
@@ -161,7 +168,7 @@ cd frontend && npm install && npm run dev
 | | 技能包 | 16 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析等），三级增量加载 (v7.5) |
 | | 自定义 Skills | DB 驱动用户自建专家 Agent：自定义指令/工具集/触发词，@mention 调用，LLM 注入防护 (v8.0) |
 | | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
-| | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 + DB 持久化 + 管理 UI (v7.1) |
+| | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 + DB 持久化 + 管理 UI + per-User 隔离 (v7.1/v10.0) |
 | | 分析视角注入 | 用户自定义分析关注点，自动注入 Agent 提示词 (v7.1) |
 | | Memory ETL | 管道执行后自动提取关键发现，智能去重，配额管理 (v7.5) |
 | | 动态工具加载 | 按意图动态裁剪工具列表 (8 类别 + 10 核心工具)，ContextVar + ToolPredicate (v7.5) |
@@ -179,6 +186,11 @@ cd frontend && npm install && npm run dev
 | | SSE Streaming | run_pipeline_streaming() 异步流式 + /api/pipeline/stream 端点 (v9.5) |
 | | LongRunningTool | DRL 优化异步执行，防止重复调用 (v9.5) |
 | | conftest.py | 集中测试夹具，事件循环安全隔离 (v9.5) |
+| **v10.0 扩展** | GraphRAG | 实体抽取 + 知识图谱构建 + 图增强向量检索 (v10.0) |
+| | Per-User MCP | 用户级 MCP 服务器隔离，私有/共享控制 (v10.0) |
+| | 自定义技能包 | 用户自由组合工具集+ADK Skills 的 DB 驱动技能包 (v10.0) |
+| | 空间分析 Tier 2 | IDW/Kriging/GWR/变化检测/可视域分析 5 个高级工具 (v10.0) |
+| | 工作流模板 | 预置+用户发布的工作流模板市场，克隆/评分 (v10.0) |
 | **数据融合** | 融合引擎 (MMFE) | 五阶段流水线（画像→评估→对齐→融合→验证），10 种策略，5 种模态 |
 | | 语义匹配 | 五层渐进匹配：精确 → 等价组 → 嵌入相似度 → 单位感知 → 模糊 |
 | | 嵌入匹配 (v7.0) | Gemini text-embedding-004 向量语义匹配（可选启用） |
@@ -229,7 +241,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（58 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（76 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -245,7 +257,7 @@ cd frontend && npm install && npm run dev
 data_agent/
 ├── app.py                       # Chainlit UI、语义路由、认证、RBAC
 ├── agent.py                     # Agent 定义、管道组装、ParallelAgent
-├── frontend_api.py              # 58 个 REST API 端点
+├── frontend_api.py              # 76 个 REST API 端点
 ├── pipeline_runner.py           # 无头管道执行器 + SSE 流式输出
 ├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
@@ -261,26 +273,31 @@ data_agent/
 ├── pipeline_analytics.py        # Pipeline 分析仪表盘（5 个 REST 端点）
 ├── agent_hooks.py               # Agent 生命周期钩子（Prometheus + ProgressTracker）
 ├── knowledge_base.py            # RAG 知识库：文档向量化 + 语义搜索
+├── graph_rag.py                 # GraphRAG：实体抽取 + 图构建 + 图增强检索 (v10.0)
+├── custom_skill_bundles.py      # 用户自定义技能包：CRUD + 工厂 + 意图匹配 (v10.0)
+├── workflow_templates.py        # 工作流模板市场：CRUD + 克隆 + 评分 (v10.0)
+├── spatial_analysis_tier2.py    # 高级空间分析：IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 ├── conftest.py                  # 集中测试夹具 + 事件循环安全
-├── toolsets/                    # 21 个 BaseToolset 模块
+├── toolsets/                    # 22 个 BaseToolset 模块
 │   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
 │   ├── analysis_tools.py        #   分析工具 + LongRunningFunctionTool (DRL)
 │   ├── fusion_tools.py          #   数据融合工具集（4 个工具）
 │   ├── knowledge_graph_tools.py #   知识图谱工具集（3 个工具）
 │   ├── mcp_hub_toolset.py       #   MCP 工具桥接
 │   ├── skill_bundles.py         #   16 个场景技能分组
+│   ├── spatial_analysis_tier2_tools.py # IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 │   └── ...                      #   探查、地理处理、数据库、语义层等
 ├── skills/                      # 16 个 ADK 场景技能（kebab-case 目录）
 ├── prompts/                     # 3 个 YAML 提示词文件
 ├── evals/                       # Agent 评估框架（trajectory + rubric）
-├── migrations/                  # 24 个 SQL 迁移脚本
+├── migrations/                  # 29 个 SQL 迁移脚本
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
 ├── tool_filter.py               # 意图驱动动态工具过滤（ToolPredicate + ContextVar）
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 80 个测试文件 (1895 测试)
+├── test_*.py                    # 85 个测试文件 (1993 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -322,7 +339,7 @@ docs/                            # 文档
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API 端点（58 条路由）
+## REST API 端点（76 条路由）
 
 | 方法 | 路径 | 描述 |
 |---|---|---|
@@ -373,11 +390,23 @@ docs/                            # 文档
 | GET | `/api/analytics/token-efficiency` | Token 效率分析 (v9.0) |
 | GET | `/api/analytics/throughput` | 管线吞吐量分析 (v9.0) |
 | GET | `/api/analytics/agent-breakdown` | Agent 分布分析 (v9.0) |
+| GET | `/api/mcp/servers/mine` | 我的 MCP 服务器 (v10.0) |
+| POST | `/api/mcp/servers/{name}/share` | MCP 共享切换 (v10.0) |
+| GET/POST | `/api/bundles` | 技能包列表/创建 (v10.0) |
+| GET | `/api/bundles/available-tools` | 可用工具集+技能列表 (v10.0) |
+| GET/PUT/DELETE | `/api/bundles/{id}` | 技能包详情/更新/删除 (v10.0) |
+| GET/POST | `/api/templates` | 工作流模板列表/创建 (v10.0) |
+| GET/PUT/DELETE | `/api/templates/{id}` | 模板详情/更新/删除 (v10.0) |
+| POST | `/api/templates/{id}/clone` | 克隆模板为工作流 (v10.0) |
+| POST | `/api/kb/{id}/build-graph` | 构建知识库实体图谱 (v10.0) |
+| GET | `/api/kb/{id}/graph` | 实体关系图谱数据 (v10.0) |
+| POST | `/api/kb/{id}/graph-search` | 图增强语义搜索 (v10.0) |
+| GET | `/api/kb/{id}/entities` | 知识库实体列表 (v10.0) |
 
 ## 运行测试
 
 ```bash
-# 全量测试 (1895 测试)
+# 全量测试 (1993 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -411,8 +440,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v8.0 | 失败学习、动态模型选择、评估门控 CI、DB 自定义 Skills、RAG 知识库 | 1735 | ✅ 完成 |
 | v9.0 | Agent Plugins (4)、ParallelAgent、跨会话记忆、任务分解、Pipeline Analytics、Agent Hooks | 1859 | ✅ 完成 |
 | v9.5 | conftest.py、Guardrails (4)、SSE Streaming、LongRunningFunctionTool、评估增强 | 1895 | ✅ 完成 |
-| v10.0 | RAG 增强 (GraphRAG)、DAG 工作流引擎、高级空间分析、用户技能包组合、per-User MCP 隔离 | — | ⬅️ 下一阶段 |
-| v11.0 | A2A 智能体互操作、主动探索与发现、多任务智能调度、高级推理技术 | — | 远期 |
+| v10.0 | GraphRAG、per-User MCP 隔离、自定义技能包、高级空间分析 Tier 2、工作流模板 | 1993 | ✅ 完成 |
+| v11.0 | A2A 智能体互操作、主动探索与发现、多任务智能调度、高级推理技术 | — | ⬅️ 下一阶段 |
 
 ## 设计模式覆盖 (16/21 = 76%)
 
