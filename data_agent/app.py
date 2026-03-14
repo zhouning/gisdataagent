@@ -1693,6 +1693,14 @@ async def _execute_pipeline(
     except Exception:
         pass  # Plugin framework unavailable — degrade gracefully
 
+    # v9.0.3: Cross-session conversation memory
+    _memory_svc = None
+    try:
+        from data_agent.conversation_memory import get_memory_service
+        _memory_svc = get_memory_service()
+    except Exception:
+        pass  # Memory service unavailable — degrade gracefully
+
     if _context_cache_config:
         _app = App(
             name="data_agent_ui",
@@ -1700,14 +1708,20 @@ async def _execute_pipeline(
             context_cache_config=_context_cache_config,
             plugins=_plugins,
         )
-        runner = Runner(app=_app, session_service=session_service)
+        _runner_kwargs = dict(app=_app, session_service=session_service)
+        if _memory_svc:
+            _runner_kwargs["memory_service"] = _memory_svc
+        runner = Runner(**_runner_kwargs)
     else:
-        runner = Runner(
+        _runner_kwargs = dict(
             agent=selected_agent,
             app_name="data_agent_ui",
             session_service=session_service,
             plugins=_plugins,
         )
+        if _memory_svc:
+            _runner_kwargs["memory_service"] = _memory_svc
+        runner = Runner(**_runner_kwargs)
     content = types.Content(role='user', parts=[types.Part(text=full_prompt)] + (extra_parts or []))
 
     # --- Progress Feedback Setup ---

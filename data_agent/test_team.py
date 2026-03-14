@@ -5,11 +5,11 @@ import asyncio
 
 
 # ---------------------------------------------------------------------------
-# F3: Pipeline structural tests (post ADK Optimization 2.1 — no ParallelAgent)
+# F3: Pipeline structural tests (v9.0.2 — ParallelDataIngestion in DataEngineering)
 # ---------------------------------------------------------------------------
 
 class TestPipelineStructure(unittest.TestCase):
-    """Verify optimization pipeline structure after ADK architecture optimization."""
+    """Verify optimization pipeline structure after v9.0.2 parallel ingestion."""
 
     def test_data_pipeline_is_sequential(self):
         from google.adk.agents import SequentialAgent
@@ -26,10 +26,15 @@ class TestPipelineStructure(unittest.TestCase):
         from data_agent.agent import knowledge_tool
         self.assertIsInstance(knowledge_tool, AgentTool)
 
-    def test_no_parallel_agent_in_pipeline(self):
+    def test_parallel_data_ingestion_in_pipeline(self):
+        """DataEngineering should contain ParallelDataIngestion."""
+        from google.adk.agents import ParallelAgent
         from data_agent.agent import data_pipeline
-        for sub in data_pipeline.sub_agents:
-            self.assertNotEqual(type(sub).__name__, "ParallelAgent")
+        data_eng = data_pipeline.sub_agents[0]
+        self.assertEqual(data_eng.name, "DataEngineering")
+        parallel = data_eng.sub_agents[0]
+        self.assertIsInstance(parallel, ParallelAgent)
+        self.assertEqual(parallel.name, "ParallelDataIngestion")
 
 
 # ---------------------------------------------------------------------------

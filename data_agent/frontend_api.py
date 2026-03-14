@@ -39,6 +39,90 @@ logger = get_logger("frontend_api")
 
 
 # ---------------------------------------------------------------------------
+# Pipeline Analytics handlers (v9.0.5 — delegated to pipeline_analytics.py)
+# ---------------------------------------------------------------------------
+
+async def _api_analytics_latency(request: Request):
+    from .pipeline_analytics import api_analytics_latency
+    return await api_analytics_latency(request)
+
+async def _api_analytics_tool_success(request: Request):
+    from .pipeline_analytics import api_analytics_tool_success
+    return await api_analytics_tool_success(request)
+
+async def _api_analytics_token_efficiency(request: Request):
+    from .pipeline_analytics import api_analytics_token_efficiency
+    return await api_analytics_token_efficiency(request)
+
+async def _api_analytics_throughput(request: Request):
+    from .pipeline_analytics import api_analytics_throughput
+    return await api_analytics_throughput(request)
+
+async def _api_analytics_agent_breakdown(request: Request):
+    from .pipeline_analytics import api_analytics_agent_breakdown
+    return await api_analytics_agent_breakdown(request)
+
+
+# ---------------------------------------------------------------------------
+# Pipeline SSE Streaming (v9.5.4)
+# ---------------------------------------------------------------------------
+
+async def _api_pipeline_stream(request: Request):
+    """SSE streaming endpoint for pipeline execution."""
+    import json
+    from starlette.responses import StreamingResponse
+
+    user = await _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    prompt = request.query_params.get("prompt", "")
+    if not prompt:
+        return JSONResponse({"error": "Missing prompt parameter"}, status_code=400)
+
+    pipeline_type = request.query_params.get("pipeline", "general")
+
+    async def event_generator():
+        from .pipeline_runner import run_pipeline_streaming
+        from google.adk.sessions import InMemorySessionService
+
+        # Dynamically import agent
+        try:
+            if pipeline_type == "optimization":
+                from .agent import data_pipeline as agent
+            elif pipeline_type == "governance":
+                from .agent import governance_pipeline as agent
+            else:
+                from .agent import general_pipeline as agent
+        except ImportError:
+            yield f"data: {json.dumps({'type': 'error', 'data': 'Pipeline not available'})}\n\n"
+            return
+
+        session_service = InMemorySessionService()
+
+        async for event in run_pipeline_streaming(
+            agent=agent,
+            session_service=session_service,
+            user_id=user["username"],
+            session_id=f"stream-{user['username']}-{int(__import__('time').time())}",
+            prompt=prompt,
+            pipeline_type=pipeline_type,
+            role=user.get("role", "analyst"),
+        ):
+            yield f"data: {json.dumps({'type': event.type, 'data': event.data, 'ts': event.timestamp})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Pending Map/Data Updates (shared with app.py)
 # ---------------------------------------------------------------------------
 # Chainlit's React client does not deliver step-level metadata to the frontend.
@@ -1445,6 +1529,14 @@ def get_frontend_api_routes():
         Route("/api/kb/{id:int}", endpoint=_api_kb_delete, methods=["DELETE"]),
         Route("/api/kb/{id:int}/documents", endpoint=_api_kb_doc_upload, methods=["POST"]),
         Route("/api/kb/{id:int}/documents/{doc_id:int}", endpoint=_api_kb_doc_delete, methods=["DELETE"]),
+        # Pipeline Analytics (v9.0.5)
+        Route("/api/analytics/latency", endpoint=_api_analytics_latency, methods=["GET"]),
+        Route("/api/analytics/tool-success", endpoint=_api_analytics_tool_success, methods=["GET"]),
+        Route("/api/analytics/token-efficiency", endpoint=_api_analytics_token_efficiency, methods=["GET"]),
+        Route("/api/analytics/throughput", endpoint=_api_analytics_throughput, methods=["GET"]),
+        Route("/api/analytics/agent-breakdown", endpoint=_api_analytics_agent_breakdown, methods=["GET"]),
+        # Pipeline SSE Streaming (v9.5.4)
+        Route("/api/pipeline/stream", endpoint=_api_pipeline_stream, methods=["GET"]),
     ]
 
 
