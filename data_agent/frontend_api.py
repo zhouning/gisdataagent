@@ -659,14 +659,18 @@ async def _api_session_delete(request: Request):
 # ---------------------------------------------------------------------------
 
 async def _api_mcp_servers(request: Request):
-    """GET /api/mcp/servers — list configured MCP servers with status."""
+    """GET /api/mcp/servers — list MCP servers visible to current user."""
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
+    username, role = _set_user_context(user)
+
     from .mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
-    servers = hub.get_server_statuses()
+    # Admins see all; non-admins see own + shared
+    filter_user = None if role == "admin" else username
+    servers = hub.get_server_statuses(username=filter_user)
     return JSONResponse({"servers": servers, "count": len(servers)})
 
 
@@ -795,10 +799,16 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
 
 
 async def _api_mcp_server_create(request: Request):
-    """POST /api/mcp/servers — add a new MCP server (admin only)."""
-    user, username, role, err = _require_admin(request)
-    if err:
-        return err
+    """POST /api/mcp/servers — add a new MCP server.
+
+    Admins can create shared or private servers.
+    Non-admins can only create private (is_shared=False) servers.
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    username, role = _set_user_context(user)
 
     try:
         body = await request.json()
@@ -817,6 +827,9 @@ async def _api_mcp_server_create(request: Request):
     if val_err:
         return JSONResponse({"error": val_err}, status_code=400)
 
+    # Non-admins always create private servers
+    is_shared = body.get("is_shared", False) if role == "admin" else False
+
     from .mcp_hub import get_mcp_hub, McpServerConfig
     config = McpServerConfig(
         name=name,
@@ -832,6 +845,8 @@ async def _api_mcp_server_create(request: Request):
         url=body.get("url", ""),
         headers=body.get("headers", {}),
         timeout=float(body.get("timeout", 5.0)),
+        owner_username=username,
+        is_shared=is_shared,
     )
 
     hub = get_mcp_hub()
@@ -843,10 +858,12 @@ async def _api_mcp_server_create(request: Request):
 
 
 async def _api_mcp_server_update(request: Request):
-    """PUT /api/mcp/servers/{name} — update an MCP server config (admin only)."""
-    user, username, role, err = _require_admin(request)
-    if err:
-        return err
+    """PUT /api/mcp/servers/{name} — update an MCP server config (owner or admin)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    username, role = _set_user_context(user)
 
     server_name = request.path_params.get("name", "")
     try:
@@ -856,6 +873,15 @@ async def _api_mcp_server_update(request: Request):
 
     from .mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+
+    # Ownership check
+    if not hub._can_manage_server(server_name, username, role):
+        return JSONResponse({"error": "Permission denied"}, status_code=403)
+
+    # Non-admins cannot change is_shared to True
+    if role != "admin" and body.get("is_shared"):
+        body["is_shared"] = False
+
     # Determine transport for validation (from body or current config)
     transport = body.get("transport")
     if not transport:
@@ -873,19 +899,65 @@ async def _api_mcp_server_update(request: Request):
 
 
 async def _api_mcp_server_delete(request: Request):
-    """DELETE /api/mcp/servers/{name} — remove an MCP server (admin only)."""
-    user, username, role, err = _require_admin(request)
-    if err:
-        return err
+    """DELETE /api/mcp/servers/{name} — remove an MCP server (owner or admin)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    username, role = _set_user_context(user)
 
     server_name = request.path_params.get("name", "")
     from .mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+
+    # Ownership check
+    if not hub._can_manage_server(server_name, username, role):
+        return JSONResponse({"error": "Permission denied"}, status_code=403)
+
     result = await hub.remove_server(server_name)
     if result.get("status") == "ok":
         record_audit(username, ACTION_MCP_SERVER_DELETE, details={"server": server_name})
     status_code = 200 if result.get("status") == "ok" else 404
     return JSONResponse(result, status_code=status_code)
+
+
+async def _api_mcp_servers_mine(request: Request):
+    """GET /api/mcp/servers/mine — list only the current user's personal MCP servers."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    username, _role = _set_user_context(user)
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+    all_servers = hub.get_server_statuses()
+    mine = [s for s in all_servers if s.get("owner_username") == username]
+    return JSONResponse({"servers": mine, "count": len(mine)})
+
+
+async def _api_mcp_server_share(request: Request):
+    """POST /api/mcp/servers/{name}/share — toggle is_shared flag (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+
+    server_name = request.path_params.get("name", "")
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    is_shared = body.get("is_shared", True)
+    from .mcp_hub import get_mcp_hub
+    hub = get_mcp_hub()
+    status_obj = hub._servers.get(server_name)
+    if not status_obj:
+        return JSONResponse({"error": f"Server '{server_name}' not found"}, status_code=404)
+
+    status_obj.config.is_shared = is_shared
+    hub._save_to_db(status_obj.config)
+    record_audit(username, ACTION_MCP_SERVER_UPDATE, details={"server": server_name, "is_shared": is_shared})
+    return JSONResponse({"status": "ok", "server": server_name, "is_shared": is_shared})
 
 
 # ---------------------------------------------------------------------------
@@ -1302,6 +1374,237 @@ async def _api_skills_delete(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Custom Skill Bundles API (v10.0.2)
+# ---------------------------------------------------------------------------
+
+
+async def _api_bundles_list(request: Request):
+    """GET /api/bundles — list user's bundles + shared."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from .custom_skill_bundles import list_skill_bundles
+    bundles = list_skill_bundles()
+    return JSONResponse({"bundles": bundles, "count": len(bundles)})
+
+
+async def _api_bundles_create(request: Request):
+    """POST /api/bundles — create a new skill bundle."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    bundle_name = (body.get("bundle_name") or "").strip()
+    if not bundle_name:
+        return JSONResponse({"error": "bundle_name required"}, status_code=400)
+
+    from .custom_skill_bundles import create_skill_bundle, validate_bundle_name
+    err = validate_bundle_name(bundle_name)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+
+    bundle_id = create_skill_bundle(
+        bundle_name=bundle_name,
+        description=body.get("description", ""),
+        toolset_names=body.get("toolset_names", []),
+        skill_names=body.get("skill_names", []),
+        intent_triggers=body.get("intent_triggers", []),
+        is_shared=body.get("is_shared", False),
+    )
+    if bundle_id is None:
+        return JSONResponse({"error": "Failed to create bundle"}, status_code=400)
+
+    return JSONResponse({"id": bundle_id, "bundle_name": bundle_name}, status_code=201)
+
+
+async def _api_bundles_detail(request: Request):
+    """GET /api/bundles/{id} — get bundle detail."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    bundle_id = int(request.path_params.get("id", 0))
+    from .custom_skill_bundles import get_skill_bundle
+    bundle = get_skill_bundle(bundle_id)
+    if not bundle:
+        return JSONResponse({"error": "Bundle not found"}, status_code=404)
+    return JSONResponse(bundle)
+
+
+async def _api_bundles_update(request: Request):
+    """PUT /api/bundles/{id} — update a bundle (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    bundle_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .custom_skill_bundles import update_skill_bundle
+    ok = update_skill_bundle(bundle_id, **body)
+    if not ok:
+        return JSONResponse({"error": "Failed to update bundle"}, status_code=400)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_bundles_delete(request: Request):
+    """DELETE /api/bundles/{id} — delete a bundle (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    bundle_id = int(request.path_params.get("id", 0))
+    from .custom_skill_bundles import delete_skill_bundle
+    ok = delete_skill_bundle(bundle_id)
+    if not ok:
+        return JSONResponse({"error": "Failed to delete bundle"}, status_code=404)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_bundles_available_tools(request: Request):
+    """GET /api/bundles/available-tools — list toolset names + skill names for composition."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .custom_skill_bundles import get_available_tools
+    return JSONResponse(get_available_tools())
+
+
+# ---------------------------------------------------------------------------
+# Workflow Templates API (v10.0.4)
+# ---------------------------------------------------------------------------
+
+
+async def _api_templates_list(request: Request):
+    """GET /api/templates — list published templates."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    category = request.query_params.get("category")
+    keyword = request.query_params.get("keyword")
+    from .workflow_templates import list_templates
+    templates = list_templates(category=category, keyword=keyword)
+    return JSONResponse({"templates": templates, "count": len(templates)})
+
+
+async def _api_templates_create(request: Request):
+    """POST /api/templates — create a new template."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    name = (body.get("template_name") or "").strip()
+    if not name:
+        return JSONResponse({"error": "template_name required"}, status_code=400)
+
+    from .workflow_templates import create_template
+    tid = create_template(
+        template_name=name,
+        description=body.get("description", ""),
+        category=body.get("category", "general"),
+        pipeline_type=body.get("pipeline_type", "general"),
+        steps=body.get("steps", []),
+        default_parameters=body.get("default_parameters", {}),
+        tags=body.get("tags", []),
+    )
+    if tid is None:
+        return JSONResponse({"error": "Failed to create template"}, status_code=400)
+    return JSONResponse({"id": tid, "template_name": name}, status_code=201)
+
+
+async def _api_templates_detail(request: Request):
+    """GET /api/templates/{id} — get template detail."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    tid = int(request.path_params.get("id", 0))
+    from .workflow_templates import get_template
+    template = get_template(tid)
+    if not template:
+        return JSONResponse({"error": "Template not found"}, status_code=404)
+    return JSONResponse(template)
+
+
+async def _api_templates_update(request: Request):
+    """PUT /api/templates/{id} — update a template (author only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tid = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .workflow_templates import update_template
+    ok = update_template(tid, **body)
+    if not ok:
+        return JSONResponse({"error": "Failed to update template"}, status_code=400)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_templates_delete(request: Request):
+    """DELETE /api/templates/{id} — delete a template (author only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tid = int(request.path_params.get("id", 0))
+    from .workflow_templates import delete_template
+    ok = delete_template(tid)
+    if not ok:
+        return JSONResponse({"error": "Template not found"}, status_code=404)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_templates_clone(request: Request):
+    """POST /api/templates/{id}/clone — clone template as user's workflow."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tid = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    from .workflow_templates import clone_template
+    wf_id = clone_template(tid,
+                           workflow_name=body.get("workflow_name"),
+                           param_overrides=body.get("parameters"))
+    if wf_id is None:
+        return JSONResponse({"error": "Failed to clone template"}, status_code=400)
+    return JSONResponse({"status": "ok", "workflow_id": wf_id}, status_code=201)
+
+
+# ---------------------------------------------------------------------------
 # Knowledge Base API (v8.0.2)
 # ---------------------------------------------------------------------------
 
@@ -1467,6 +1770,75 @@ async def _api_kb_search(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# GraphRAG API (v10.0.5)
+# ---------------------------------------------------------------------------
+
+
+async def _api_kb_build_graph(request: Request):
+    """POST /api/kb/{id}/build-graph — build entity graph for a KB."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    kb_id = int(request.path_params.get("id", 0))
+    from .graph_rag import build_kb_graph
+    result = build_kb_graph(kb_id, use_llm=False)
+    status_code = 200 if result.get("status") == "ok" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+async def _api_kb_graph(request: Request):
+    """GET /api/kb/{id}/graph — get entity graph data."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    kb_id = int(request.path_params.get("id", 0))
+    from .graph_rag import get_entity_graph
+    graph = get_entity_graph(kb_id)
+    return JSONResponse(graph)
+
+
+async def _api_kb_graph_search(request: Request):
+    """POST /api/kb/{id}/graph-search — graph-augmented search."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    kb_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    query = body.get("query", "")
+    if not query:
+        return JSONResponse({"error": "query required"}, status_code=400)
+
+    from .graph_rag import graph_rag_search
+    results = graph_rag_search(query, kb_id=kb_id, top_k=body.get("top_k", 5))
+    return JSONResponse({"results": results, "count": len(results)})
+
+
+async def _api_kb_entities(request: Request):
+    """GET /api/kb/{id}/entities — list entities for a KB."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    kb_id = int(request.path_params.get("id", 0))
+    from .graph_rag import get_entity_graph
+    graph = get_entity_graph(kb_id)
+    return JSONResponse({
+        "entities": graph.get("nodes", []),
+        "count": graph.get("stats", {}).get("node_count", 0),
+        "type_distribution": graph.get("stats", {}).get("entity_types", {}),
+    })
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -1499,9 +1871,11 @@ def get_frontend_api_routes():
         Route("/api/mcp/servers", endpoint=_api_mcp_servers, methods=["GET"]),
         Route("/api/mcp/servers", endpoint=_api_mcp_server_create, methods=["POST"]),
         Route("/api/mcp/tools", endpoint=_api_mcp_tools, methods=["GET"]),
+        Route("/api/mcp/servers/mine", endpoint=_api_mcp_servers_mine, methods=["GET"]),
         Route("/api/mcp/servers/test", endpoint=_api_mcp_test_connection, methods=["POST"]),
         Route("/api/mcp/servers/{name}/toggle", endpoint=_api_mcp_toggle, methods=["POST"]),
         Route("/api/mcp/servers/{name}/reconnect", endpoint=_api_mcp_reconnect, methods=["POST"]),
+        Route("/api/mcp/servers/{name}/share", endpoint=_api_mcp_server_share, methods=["POST"]),
         Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_update, methods=["PUT"]),
         Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_delete, methods=["DELETE"]),
         # Workflows (v5.4)
@@ -1522,6 +1896,24 @@ def get_frontend_api_routes():
         Route("/api/skills/{id:int}", endpoint=_api_skills_update, methods=["PUT"]),
         Route("/api/skills/{id:int}", endpoint=_api_skills_delete, methods=["DELETE"]),
         # Knowledge Base (v8.0.2)
+        # Bundles (v10.0.2)
+        Route("/api/bundles", endpoint=_api_bundles_list, methods=["GET"]),
+        Route("/api/bundles", endpoint=_api_bundles_create, methods=["POST"]),
+        Route("/api/bundles/available-tools", endpoint=_api_bundles_available_tools, methods=["GET"]),
+        Route("/api/bundles/{id:int}", endpoint=_api_bundles_detail, methods=["GET"]),
+        Route("/api/bundles/{id:int}", endpoint=_api_bundles_update, methods=["PUT"]),
+        Route("/api/bundles/{id:int}", endpoint=_api_bundles_delete, methods=["DELETE"]),
+
+        # Knowledge Base (v8.0.2)
+        # Templates (v10.0.4)
+        Route("/api/templates", endpoint=_api_templates_list, methods=["GET"]),
+        Route("/api/templates", endpoint=_api_templates_create, methods=["POST"]),
+        Route("/api/templates/{id:int}/clone", endpoint=_api_templates_clone, methods=["POST"]),
+        Route("/api/templates/{id:int}", endpoint=_api_templates_detail, methods=["GET"]),
+        Route("/api/templates/{id:int}", endpoint=_api_templates_update, methods=["PUT"]),
+        Route("/api/templates/{id:int}", endpoint=_api_templates_delete, methods=["DELETE"]),
+
+        # Knowledge Base (v8.0.2)
         Route("/api/kb", endpoint=_api_kb_list, methods=["GET"]),
         Route("/api/kb", endpoint=_api_kb_create, methods=["POST"]),
         Route("/api/kb/search", endpoint=_api_kb_search, methods=["POST"]),
@@ -1529,6 +1921,11 @@ def get_frontend_api_routes():
         Route("/api/kb/{id:int}", endpoint=_api_kb_delete, methods=["DELETE"]),
         Route("/api/kb/{id:int}/documents", endpoint=_api_kb_doc_upload, methods=["POST"]),
         Route("/api/kb/{id:int}/documents/{doc_id:int}", endpoint=_api_kb_doc_delete, methods=["DELETE"]),
+        # GraphRAG (v10.0.5)
+        Route("/api/kb/{id:int}/build-graph", endpoint=_api_kb_build_graph, methods=["POST"]),
+        Route("/api/kb/{id:int}/graph", endpoint=_api_kb_graph, methods=["GET"]),
+        Route("/api/kb/{id:int}/graph-search", endpoint=_api_kb_graph_search, methods=["POST"]),
+        Route("/api/kb/{id:int}/entities", endpoint=_api_kb_entities, methods=["GET"]),
         # Pipeline Analytics (v9.0.5)
         Route("/api/analytics/latency", endpoint=_api_analytics_latency, methods=["GET"]),
         Route("/api/analytics/tool-success", endpoint=_api_analytics_tool_success, methods=["GET"]),

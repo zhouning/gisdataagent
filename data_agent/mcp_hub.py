@@ -107,6 +107,9 @@ class McpServerConfig:
     timeout: float = 5.0
     # DB tracking
     source: str = "yaml"  # yaml | db
+    # Per-user isolation (v10.0.1)
+    owner_username: Optional[str] = None  # None = legacy global
+    is_shared: bool = True  # True = visible to all users
 
 
 @dataclass
@@ -164,9 +167,20 @@ class McpHubManager:
                         url VARCHAR(500) DEFAULT '',
                         headers JSONB DEFAULT '{{}}',
                         timeout REAL DEFAULT 5.0,
+                        owner_username VARCHAR(100),
+                        is_shared BOOLEAN DEFAULT TRUE,
                         created_at TIMESTAMP DEFAULT NOW(),
                         updated_at TIMESTAMP DEFAULT NOW()
                     )
+                """))
+                # Add columns for existing tables (idempotent migration)
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS owner_username VARCHAR(100)
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS is_shared BOOLEAN DEFAULT TRUE
                 """))
                 conn.commit()
             return True
@@ -176,19 +190,35 @@ class McpHubManager:
 
     # ----- DB CRUD -----
 
-    def _load_from_db(self) -> list[McpServerConfig]:
-        """Load server configs from database. Returns configs list."""
+    def _load_from_db(self, username: str = None) -> list[McpServerConfig]:
+        """Load server configs from database. Returns configs list.
+
+        If *username* is given, only returns servers owned by that user or shared.
+        If None, returns all servers (for startup / admin).
+        """
         from .db_engine import get_engine
         engine = get_engine()
         if not engine:
             return []
         try:
+            cols = (
+                "name, description, transport, enabled, category, "
+                "pipelines, command, args, env, cwd, url, headers, timeout, "
+                "owner_username, is_shared"
+            )
+            if username:
+                query = (
+                    f"SELECT {cols} FROM {T_MCP_SERVERS} "
+                    f"WHERE owner_username = :u OR is_shared = TRUE "
+                    f"OR owner_username IS NULL ORDER BY name"
+                )
+                params = {"u": username}
+            else:
+                query = f"SELECT {cols} FROM {T_MCP_SERVERS} ORDER BY name"
+                params = {}
+
             with engine.connect() as conn:
-                rows = conn.execute(text(
-                    f"SELECT name, description, transport, enabled, category, "
-                    f"pipelines, command, args, env, cwd, url, headers, timeout "
-                    f"FROM {T_MCP_SERVERS} ORDER BY name"
-                )).fetchall()
+                rows = conn.execute(text(query), params).fetchall()
 
             configs = []
             for r in rows:
@@ -202,6 +232,7 @@ class McpHubManager:
                     command=r[6] or "", args=args, env=env, cwd=r[9],
                     url=r[10] or "", headers=headers, timeout=float(r[12] or 5.0),
                     source="db",
+                    owner_username=r[13], is_shared=bool(r[14]) if r[14] is not None else True,
                 )
                 configs.append(config)
             return configs
@@ -220,10 +251,11 @@ class McpHubManager:
                 conn.execute(text(f"""
                     INSERT INTO {T_MCP_SERVERS}
                         (name, description, transport, enabled, category, pipelines,
-                         command, args, env, cwd, url, headers, timeout, updated_at)
+                         command, args, env, cwd, url, headers, timeout,
+                         owner_username, is_shared, updated_at)
                     VALUES (:name, :desc, :transport, :enabled, :category, CAST(:pipelines AS jsonb),
                             :command, CAST(:args AS jsonb), CAST(:env AS jsonb), :cwd, :url, CAST(:headers AS jsonb),
-                            :timeout, NOW())
+                            :timeout, :owner_username, :is_shared, NOW())
                     ON CONFLICT (name) DO UPDATE SET
                         description = EXCLUDED.description,
                         transport = EXCLUDED.transport,
@@ -237,6 +269,8 @@ class McpHubManager:
                         url = EXCLUDED.url,
                         headers = EXCLUDED.headers,
                         timeout = EXCLUDED.timeout,
+                        owner_username = EXCLUDED.owner_username,
+                        is_shared = EXCLUDED.is_shared,
                         updated_at = NOW()
                 """), {
                     "name": config.name,
@@ -252,6 +286,8 @@ class McpHubManager:
                     "url": config.url,
                     "headers": _encrypt_dict(config.headers),
                     "timeout": config.timeout,
+                    "owner_username": config.owner_username,
+                    "is_shared": config.is_shared,
                 })
                 conn.commit()
             return True
@@ -576,9 +612,21 @@ class McpHubManager:
         if config.enabled:
             connected = await self.connect_server(config.name)
 
-        logger.info("Added MCP server '%s' (transport=%s, enabled=%s)",
-                     config.name, config.transport, config.enabled)
+        logger.info("Added MCP server '%s' (transport=%s, enabled=%s, owner=%s)",
+                     config.name, config.transport, config.enabled, config.owner_username)
         return {"status": "ok", "server": config.name, "connected": connected}
+
+    def _can_manage_server(self, name: str, username: str, role: str) -> bool:
+        """Check if user can manage (update/delete) a server.
+
+        Admins can manage any server. Non-admins can only manage their own.
+        """
+        if role == "admin":
+            return True
+        status = self._servers.get(name)
+        if not status:
+            return False
+        return status.config.owner_username == username
 
     async def update_server(self, name: str, updates: dict) -> dict:
         """Update an existing server's config fields. Persists to DB."""
@@ -629,10 +677,19 @@ class McpHubManager:
 
     # ----- Tool access -----
 
-    def get_server_statuses(self) -> list[dict]:
-        """Return status info for all configured servers."""
+    def get_server_statuses(self, username: str = None) -> list[dict]:
+        """Return status info for configured servers.
+
+        If *username* is given, filters to servers owned by that user or shared/global.
+        If None, returns all (for admin / startup).
+        """
         result = []
         for name, s in self._servers.items():
+            if username:
+                owner = s.config.owner_username
+                shared = s.config.is_shared
+                if owner is not None and owner != username and not shared:
+                    continue
             result.append({
                 "name": name,
                 "description": s.config.description,
@@ -646,17 +703,25 @@ class McpHubManager:
                 "error_message": s.error_message,
                 "connected_at": s.connected_at,
                 "source": s.config.source,
+                "owner_username": s.config.owner_username,
+                "is_shared": s.config.is_shared,
             })
         return result
 
-    async def get_all_tools(self, pipeline: str = None) -> list:
-        """Get tools from all connected servers, optionally filtered by pipeline."""
+    async def get_all_tools(self, pipeline: str = None, username: str = None) -> list:
+        """Get tools from all connected servers, optionally filtered by pipeline and user visibility."""
         tools = []
         for name, s in self._servers.items():
             if s.status != "connected" or s.toolset is None:
                 continue
             if pipeline and pipeline not in s.config.pipelines:
                 continue
+            # Per-user visibility filter
+            if username:
+                owner = s.config.owner_username
+                shared = s.config.is_shared
+                if owner is not None and owner != username and not shared:
+                    continue
             try:
                 server_tools = await s.toolset.get_tools()
                 tools.extend(server_tools)

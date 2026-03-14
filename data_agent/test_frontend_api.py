@@ -359,7 +359,7 @@ class TestRouteMount(unittest.TestCase):
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 58)
+        self.assertEqual(len(routes), 76)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
@@ -383,7 +383,7 @@ class TestRouteMount(unittest.TestCase):
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
         # 36 routes inserted before the catch-all, catch-all is now at index 36
-        self.assertEqual(len(mock_app.router.routes), 59)
+        self.assertEqual(len(mock_app.router.routes), 77)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
 
 
@@ -609,8 +609,7 @@ class TestMcpServerCrudAPI(unittest.TestCase):
     def test_create_unauthorized(self):
         from data_agent.frontend_api import _api_mcp_server_create
         import asyncio
-        with patch("data_agent.frontend_api._require_admin",
-                   return_value=(None, None, None, JSONResponse({"error": "Unauthorized"}, status_code=401))):
+        with patch("data_agent.frontend_api._get_user_from_request", return_value=None):
             resp = _run_async(
                 _api_mcp_server_create(_make_request(body={"name": "test"})))
         self.assertEqual(resp.status_code, 401)
@@ -618,8 +617,8 @@ class TestMcpServerCrudAPI(unittest.TestCase):
     def test_create_missing_name(self):
         from data_agent.frontend_api import _api_mcp_server_create
         import asyncio
-        with patch("data_agent.frontend_api._require_admin",
-                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+        with patch("data_agent.frontend_api._get_user_from_request",
+                   return_value=_make_user(identifier="admin", role="admin")):
             resp = _run_async(
                 _api_mcp_server_create(_make_request(body={"name": ""})))
         self.assertEqual(resp.status_code, 400)
@@ -627,8 +626,8 @@ class TestMcpServerCrudAPI(unittest.TestCase):
     def test_create_invalid_transport(self):
         from data_agent.frontend_api import _api_mcp_server_create
         import asyncio
-        with patch("data_agent.frontend_api._require_admin",
-                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+        with patch("data_agent.frontend_api._get_user_from_request",
+                   return_value=_make_user(identifier="admin", role="admin")):
             resp = _run_async(
                 _api_mcp_server_create(_make_request(body={"name": "s1", "transport": "invalid"})))
         self.assertEqual(resp.status_code, 400)
@@ -638,8 +637,8 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         mock_add.return_value = {"status": "ok", "server": "test-srv", "connected": False}
         from data_agent.frontend_api import _api_mcp_server_create
         import asyncio
-        with patch("data_agent.frontend_api._require_admin",
-                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+        with patch("data_agent.frontend_api._get_user_from_request",
+                   return_value=_make_user(identifier="admin", role="admin")):
             resp = _run_async(
                 _api_mcp_server_create(_make_request(body={
                     "name": "test-srv", "transport": "sse", "url": "http://localhost:8080"
@@ -647,27 +646,29 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         self.assertEqual(resp.status_code, 201)
 
     @patch("data_agent.mcp_hub.McpHubManager.remove_server")
-    def test_delete_success(self, mock_remove):
+    @patch("data_agent.mcp_hub.McpHubManager._can_manage_server", return_value=True)
+    def test_delete_success(self, _mock_can, mock_remove):
         mock_remove.return_value = {"status": "ok", "server": "test-srv"}
         from data_agent.frontend_api import _api_mcp_server_delete
         import asyncio
         req = _make_request()
         req.path_params = {"name": "test-srv"}
-        with patch("data_agent.frontend_api._require_admin",
-                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+        with patch("data_agent.frontend_api._get_user_from_request",
+                   return_value=_make_user(identifier="admin", role="admin")):
             resp = _run_async(
                 _api_mcp_server_delete(req))
         self.assertEqual(resp.status_code, 200)
 
     @patch("data_agent.mcp_hub.McpHubManager.update_server")
-    def test_update_success(self, mock_update):
+    @patch("data_agent.mcp_hub.McpHubManager._can_manage_server", return_value=True)
+    def test_update_success(self, _mock_can, mock_update):
         mock_update.return_value = {"status": "ok", "server": "test-srv"}
         from data_agent.frontend_api import _api_mcp_server_update
         import asyncio
         req = _make_request(body={"description": "updated"})
         req.path_params = {"name": "test-srv"}
-        with patch("data_agent.frontend_api._require_admin",
-                   return_value=(_make_user(role="admin"), "admin", "admin", None)):
+        with patch("data_agent.frontend_api._get_user_from_request",
+                   return_value=_make_user(identifier="admin", role="admin")):
             resp = _run_async(
                 _api_mcp_server_update(req))
         self.assertEqual(resp.status_code, 200)

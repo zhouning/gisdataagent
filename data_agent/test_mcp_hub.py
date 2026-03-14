@@ -894,5 +894,204 @@ class TestMcpI18n(unittest.TestCase):
             self.assertIn(key, data, f"Missing en key: {key}")
 
 
+# ---------------------------------------------------------------------------
+# TestMcpUserIsolation (v10.0.1)
+# ---------------------------------------------------------------------------
+
+class TestMcpUserIsolation(unittest.TestCase):
+    """Tests for per-user MCP server isolation."""
+
+    def setUp(self):
+        from data_agent.mcp_hub import reset_mcp_hub
+        reset_mcp_hub()
+
+    def tearDown(self):
+        from data_agent.mcp_hub import reset_mcp_hub
+        reset_mcp_hub()
+
+    def test_config_has_owner_fields(self):
+        """McpServerConfig has owner_username and is_shared fields."""
+        from data_agent.mcp_hub import McpServerConfig
+        cfg = McpServerConfig(name="test")
+        self.assertIsNone(cfg.owner_username)
+        self.assertTrue(cfg.is_shared)
+
+    def test_config_with_owner(self):
+        from data_agent.mcp_hub import McpServerConfig
+        cfg = McpServerConfig(name="my-server", owner_username="alice", is_shared=False)
+        self.assertEqual(cfg.owner_username, "alice")
+        self.assertFalse(cfg.is_shared)
+
+    def test_get_server_statuses_no_filter(self):
+        """Without username filter, all servers returned."""
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
+        hub = get_mcp_hub()
+        hub._servers["global"] = McpServerStatus(
+            config=McpServerConfig(name="global", is_shared=True))
+        hub._servers["alice-private"] = McpServerStatus(
+            config=McpServerConfig(name="alice-private", owner_username="alice", is_shared=False))
+        hub._servers["bob-private"] = McpServerStatus(
+            config=McpServerConfig(name="bob-private", owner_username="bob", is_shared=False))
+
+        statuses = hub.get_server_statuses()
+        self.assertEqual(len(statuses), 3)
+
+    def test_get_server_statuses_user_filter(self):
+        """With username filter, only own + shared/global visible."""
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
+        hub = get_mcp_hub()
+        hub._servers["global"] = McpServerStatus(
+            config=McpServerConfig(name="global", is_shared=True))
+        hub._servers["alice-private"] = McpServerStatus(
+            config=McpServerConfig(name="alice-private", owner_username="alice", is_shared=False))
+        hub._servers["bob-private"] = McpServerStatus(
+            config=McpServerConfig(name="bob-private", owner_username="bob", is_shared=False))
+        hub._servers["legacy"] = McpServerStatus(
+            config=McpServerConfig(name="legacy"))  # owner=None, shared=True
+
+        alice_statuses = hub.get_server_statuses(username="alice")
+        names = {s["name"] for s in alice_statuses}
+        self.assertIn("global", names)
+        self.assertIn("alice-private", names)
+        self.assertIn("legacy", names)  # owner_username is None → visible
+        self.assertNotIn("bob-private", names)
+
+    def test_get_server_statuses_includes_owner_fields(self):
+        """Server status dicts include owner_username and is_shared."""
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
+        hub = get_mcp_hub()
+        hub._servers["test"] = McpServerStatus(
+            config=McpServerConfig(name="test", owner_username="alice", is_shared=False))
+
+        statuses = hub.get_server_statuses()
+        self.assertEqual(statuses[0]["owner_username"], "alice")
+        self.assertFalse(statuses[0]["is_shared"])
+
+    def test_can_manage_server_admin(self):
+        """Admin can manage any server."""
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
+        hub = get_mcp_hub()
+        hub._servers["alice-srv"] = McpServerStatus(
+            config=McpServerConfig(name="alice-srv", owner_username="alice", is_shared=False))
+
+        self.assertTrue(hub._can_manage_server("alice-srv", "admin", "admin"))
+
+    def test_can_manage_server_owner(self):
+        """Owner can manage their own server."""
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
+        hub = get_mcp_hub()
+        hub._servers["alice-srv"] = McpServerStatus(
+            config=McpServerConfig(name="alice-srv", owner_username="alice", is_shared=False))
+
+        self.assertTrue(hub._can_manage_server("alice-srv", "alice", "analyst"))
+
+    def test_cannot_manage_others_server(self):
+        """Non-admin cannot manage another user's server."""
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
+        hub = get_mcp_hub()
+        hub._servers["alice-srv"] = McpServerStatus(
+            config=McpServerConfig(name="alice-srv", owner_username="alice", is_shared=False))
+
+        self.assertFalse(hub._can_manage_server("alice-srv", "bob", "analyst"))
+
+    def test_cannot_manage_nonexistent(self):
+        from data_agent.mcp_hub import get_mcp_hub
+        hub = get_mcp_hub()
+        self.assertFalse(hub._can_manage_server("nonexistent", "bob", "analyst"))
+
+    @patch("data_agent.mcp_hub.get_mcp_hub")
+    def test_get_all_tools_user_filter(self, mock_get_hub):
+        """get_all_tools with username filter skips other users' private servers."""
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        hub = McpHubManager()
+
+        # Create mock server statuses
+        shared_status = McpServerStatus(
+            config=McpServerConfig(name="shared", is_shared=True),
+            status="connected")
+        alice_status = McpServerStatus(
+            config=McpServerConfig(name="alice-srv", owner_username="alice", is_shared=False),
+            status="connected")
+        bob_status = McpServerStatus(
+            config=McpServerConfig(name="bob-srv", owner_username="bob", is_shared=False),
+            status="connected")
+
+        # Mock toolsets
+        class MockTool:
+            def __init__(self, n): self.name = n
+        class MockToolset:
+            def __init__(self, tools): self._tools = tools
+            async def get_tools(self): return self._tools
+
+        shared_status.toolset = MockToolset([MockTool("shared_tool")])
+        alice_status.toolset = MockToolset([MockTool("alice_tool")])
+        bob_status.toolset = MockToolset([MockTool("bob_tool")])
+
+        hub._servers = {"shared": shared_status, "alice-srv": alice_status, "bob-srv": bob_status}
+
+        import asyncio
+        tools = asyncio.get_event_loop().run_until_complete(
+            hub.get_all_tools(username="alice"))
+        tool_names = [t.name for t in tools]
+        self.assertIn("shared_tool", tool_names)
+        self.assertIn("alice_tool", tool_names)
+        self.assertNotIn("bob_tool", tool_names)
+
+    def test_mcp_new_routes_registered(self):
+        """New per-user MCP routes are registered."""
+        from data_agent.frontend_api import get_frontend_api_routes
+        routes = get_frontend_api_routes()
+        paths = [r.path for r in routes]
+
+        self.assertIn("/api/mcp/servers/mine", paths)
+        self.assertIn("/api/mcp/servers/{name}/share", paths)
+
+    def test_add_server_sets_owner(self):
+        """add_server persists owner_username."""
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig
+        hub = get_mcp_hub()
+
+        with patch.object(hub, '_save_to_db', return_value=True):
+            import asyncio
+            result = asyncio.get_event_loop().run_until_complete(
+                hub.add_server(McpServerConfig(
+                    name="user-srv", owner_username="alice", is_shared=False, enabled=False)))
+            self.assertEqual(result["status"], "ok")
+
+        status = hub._servers.get("user-srv")
+        self.assertIsNotNone(status)
+        self.assertEqual(status.config.owner_username, "alice")
+        self.assertFalse(status.config.is_shared)
+
+    def test_load_from_db_user_filter(self):
+        """_load_from_db with username returns user's + shared + legacy servers."""
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+
+        # Build mock result rows: 15 columns each
+        #  0:name 1:desc 2:transport 3:enabled 4:category 5:pipelines
+        #  6:command 7:args 8:env 9:cwd 10:url 11:headers 12:timeout
+        #  13:owner_username 14:is_shared
+        mock_rows = [
+            ("shared-srv", "", "stdio", True, "", '["general"]', "", "[]", "{}", None, "", "{}", 5.0, "admin", True),
+            ("alice-srv", "", "stdio", True, "", '["general"]', "", "[]", "{}", None, "", "{}", 5.0, "alice", False),
+        ]
+
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_conn.execute.return_value.fetchall.return_value = mock_rows
+
+        with patch("data_agent.db_engine.get_engine", return_value=mock_engine):
+            configs = hub._load_from_db(username="alice")
+
+        self.assertEqual(len(configs), 2)
+        # Verify the SQL includes WHERE filter
+        call_args = mock_conn.execute.call_args
+        sql_text = str(call_args[0][0])
+        self.assertIn("owner_username", sql_text)
+
+
 if __name__ == "__main__":
     unittest.main()
