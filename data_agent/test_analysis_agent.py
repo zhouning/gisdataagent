@@ -2,11 +2,13 @@ import unittest
 import os
 import sys
 import time
+import asyncio
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data_agent.agent import ffi, drl_model
+from data_agent.toolsets.analysis_tools import AnalysisToolset, drl_model_long_running
 
 # Use absolute path for test data
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -52,6 +54,77 @@ class TestAnalysisAgent(unittest.TestCase):
         
         print("Optimization Status: Success")
         print(f"Output map saved to: {result['output_path']}")
+
+
+# ---------------------------------------------------------------------------
+# LongRunningFunctionTool integration tests (v9.5.5)
+# ---------------------------------------------------------------------------
+
+class TestDRLLongRunning(unittest.TestCase):
+    """Tests for DRL LongRunningFunctionTool wrapper."""
+
+    @staticmethod
+    def _run(coro):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                raise RuntimeError
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+
+    def test_drl_model_long_running_is_async(self):
+        """drl_model_long_running should be a coroutine function."""
+        self.assertTrue(asyncio.iscoroutinefunction(drl_model_long_running))
+
+    def test_drl_model_long_running_preserves_name(self):
+        """Async wrapper should keep __name__ = 'drl_model' for ADK tool registration."""
+        self.assertEqual(drl_model_long_running.__name__, "drl_model")
+
+    def test_drl_model_sync_still_callable(self):
+        """Original sync drl_model should remain callable for backward compat."""
+        self.assertTrue(callable(drl_model))
+        self.assertFalse(asyncio.iscoroutinefunction(drl_model))
+
+    def test_toolset_has_long_running_tool(self):
+        """AnalysisToolset should register drl_model as LongRunningFunctionTool."""
+        from google.adk.tools import LongRunningFunctionTool
+
+        toolset = AnalysisToolset()
+        tools = self._run(toolset.get_tools())
+        drl_tools = [t for t in tools if t.name == "drl_model"]
+        self.assertEqual(len(drl_tools), 1)
+        self.assertIsInstance(drl_tools[0], LongRunningFunctionTool)
+        self.assertTrue(drl_tools[0].is_long_running)
+
+    def test_toolset_drl_description_has_long_running_note(self):
+        """LongRunningFunctionTool should append 'do not call again' to description."""
+        toolset = AnalysisToolset()
+        tools = self._run(toolset.get_tools())
+        drl_tools = [t for t in tools if t.name == "drl_model"]
+        decl = drl_tools[0]._get_declaration()
+        self.assertIn("long-running", decl.description.lower())
+
+    def test_toolset_ffi_is_regular_function_tool(self):
+        """FFI should remain a regular FunctionTool (not long-running)."""
+        from google.adk.tools import FunctionTool, LongRunningFunctionTool
+
+        toolset = AnalysisToolset()
+        tools = self._run(toolset.get_tools())
+        ffi_tools = [t for t in tools if t.name == "ffi"]
+        self.assertEqual(len(ffi_tools), 1)
+        self.assertIsInstance(ffi_tools[0], FunctionTool)
+        self.assertNotIsInstance(ffi_tools[0], LongRunningFunctionTool)
+
+    def test_toolset_tool_count(self):
+        """AnalysisToolset should have exactly 2 tools: ffi + drl_model."""
+        toolset = AnalysisToolset()
+        tools = self._run(toolset.get_tools())
+        self.assertEqual(len(tools), 2)
+        names = {t.name for t in tools}
+        self.assertEqual(names, {"ffi", "drl_model"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,14 +3,15 @@ Headless pipeline runner for GIS Data Agent.
 Runs ADK pipelines without any Chainlit dependency — reusable by WeChat bot,
 API endpoints, or any non-UI channel.
 """
+import json
 import os
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from typing import AsyncIterator, Callable, List, Optional
 
 from google.adk.runners import Runner
-from google.adk.agents.run_config import RunConfig
+from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai import types
 
 
@@ -53,6 +54,14 @@ class PipelineResult:
     error: Optional[str] = None
 
 
+@dataclass
+class StreamEvent:
+    """A single event emitted during SSE streaming."""
+    type: str  # text_chunk, tool_call, agent_transfer, final, error
+    data: str = ""
+    timestamp: float = field(default_factory=time.time)
+
+
 # ---------------------------------------------------------------------------
 # Headless pipeline runner
 # ---------------------------------------------------------------------------
@@ -71,6 +80,7 @@ async def run_pipeline_headless(
     extra_parts: list = None,
     on_event: Callable[[dict], None] | None = None,
     plugins: list = None,
+    memory_service=None,
 ) -> PipelineResult:
     """
     Run an ADK pipeline without Chainlit UI coupling.
@@ -104,13 +114,16 @@ async def run_pipeline_headless(
     result = PipelineResult(pipeline_type=pipeline_type, intent=intent)
     start_time = time.time()
 
-    runner = Runner(
+    runner_kwargs = dict(
         agent=agent,
         app_name="data_agent_headless",
         session_service=session_service,
         auto_create_session=True,
         plugins=plugins or [],
     )
+    if memory_service is not None:
+        runner_kwargs["memory_service"] = memory_service
+    runner = Runner(**runner_kwargs)
     content = types.Content(role="user", parts=[types.Part(text=prompt)] + (extra_parts or []))
 
     total_input_tokens = router_tokens
@@ -252,3 +265,96 @@ async def run_pipeline_headless(
 
     result.duration_seconds = time.time() - start_time
     return result
+
+
+# ---------------------------------------------------------------------------
+# SSE Streaming pipeline runner
+# ---------------------------------------------------------------------------
+
+async def run_pipeline_streaming(
+    agent,
+    session_service,
+    user_id: str,
+    session_id: str,
+    prompt: str,
+    pipeline_type: str = "general",
+    role: str = "analyst",
+    plugins: list = None,
+    memory_service=None,
+) -> AsyncIterator[StreamEvent]:
+    """
+    Run an ADK pipeline with SSE streaming, yielding StreamEvents.
+
+    Yields:
+        StreamEvent objects with type: text_chunk, tool_call, agent_transfer,
+        final, or error.
+    """
+    from .user_context import current_user_id, current_session_id, current_user_role
+    current_user_id.set(user_id)
+    current_session_id.set(session_id)
+    current_user_role.set(role)
+
+    runner_kwargs = dict(
+        agent=agent,
+        app_name="data_agent_headless",
+        session_service=session_service,
+        auto_create_session=True,
+        plugins=plugins or [],
+    )
+    if memory_service is not None:
+        runner_kwargs["memory_service"] = memory_service
+    runner = Runner(**runner_kwargs)
+
+    content = types.Content(role="user", parts=[types.Part(text=prompt)])
+
+    run_config = RunConfig(streaming_mode=StreamingMode.SSE)
+
+    full_text = ""
+
+    try:
+        events = runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=content,
+            run_config=run_config,
+        )
+
+        async for event in events:
+            author = getattr(event, "author", None)
+            if author and author != "user":
+                yield StreamEvent(
+                    type="agent_transfer",
+                    data=json.dumps({"agent": author}),
+                )
+
+            if not (event.content and event.content.parts):
+                continue
+
+            for part in event.content.parts:
+                if part.function_call:
+                    yield StreamEvent(
+                        type="tool_call",
+                        data=json.dumps({
+                            "tool": part.function_call.name,
+                            "args": dict(part.function_call.args)
+                            if part.function_call.args else {},
+                        }),
+                    )
+
+                if part.text:
+                    full_text += part.text
+                    yield StreamEvent(
+                        type="text_chunk",
+                        data=part.text,
+                    )
+
+        yield StreamEvent(
+            type="final",
+            data=json.dumps({
+                "text": full_text,
+                "files": [a["path"] for a in extract_file_paths(full_text)],
+            }),
+        )
+
+    except Exception as e:
+        yield StreamEvent(type="error", data=str(e))

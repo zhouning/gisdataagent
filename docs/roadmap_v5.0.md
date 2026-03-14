@@ -1,4 +1,4 @@
-# Roadmap v9.0: 工程化智能体开放平台
+# Roadmap v6.0: 工程化智能体开放平台
 
 > **Vision**: 从"AI 驱动的 GIS 分析平台"升级为"工程化、可扩展、可自主进化的空间智能开放平台"。
 >
@@ -8,419 +8,237 @@
 
 ---
 
-## 当前状态 (v7.5 Baseline)
+## 当前状态 (v9.5 Baseline — 2026-03-14)
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 1530+ tests, 66 test files |
-| 工具集 | 19 BaseToolset, 5 SkillBundle, 113+ 工具 |
-| ADK Skills | 16 场景化领域技能 + 6 深度参考文档 (v7.5.7) |
-| REST API | 44 endpoints |
+| 测试覆盖 | 1895 tests, 80 test files |
+| 工具集 | 21 BaseToolset, 5 SkillBundle, 113+ 工具 |
+| ADK Skills | 16 场景化领域技能 + DB 驱动自定义 Skills |
+| REST API | 58 endpoints |
 | 前端组件 | 10 React components (含 WorkflowEditor) |
 | 管道 | 3 固定 + 1 动态规划器 (7 子智能体) + 自定义 Skills, 全部含反思循环 |
-| 数据库表 | 22 (含 agent_custom_skills) |
+| ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
+| 数据库表 | 24 (含 agent_custom_skills, agent_tool_failures, agent_conversation_memories) |
 | 融合引擎 | fusion/ 包, 22 模块, 10 策略, PostGIS 下推 |
-| 知识图谱 | ~625 行，7 实体类型 |
-| 上下文工程 | Memory ETL 自动提取 + 动态工具加载 + MCP 安全加固 |
+| 知识图谱 | ~625 行, 7 实体类型 |
+| Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
+| Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
+| 跨会话记忆 | PostgreSQL 持久化 (BaseMemoryService) |
+| Pipeline 可观测性 | 延迟/成功率/Token 效率/吞吐量/Agent 分布 |
+| Streaming | 批量 + SSE 流式 |
 | 部署方式 | Docker / K8s / 本地 |
-| CI | GitHub Actions (test + frontend build + evaluation) |
+| CI | GitHub Actions (test + frontend build + evaluation + route-eval) |
 
-### Agentic Design Patterns 覆盖度 (v7.5)
+### Agentic Design Patterns 覆盖度 (v9.5)
 
 | 模式 | 章节 | 实现状态 | 代码位置 |
 |------|------|----------|----------|
 | 提示链 (Prompt Chaining) | Ch1 | ✅ 完整 | 3 条 SequentialAgent 管道, `agent.py` |
 | 路由 (Routing) | Ch2 | ✅ 完整 | Gemini 2.0 Flash `classify_intent()`, `app.py` |
+| 并行化 (Parallelization) | Ch3 | ✅ 完整 | ParallelAgent 数据摄取 + 任务分解 (v9.0.2/9.0.4), `agent.py` |
 | 反思 (Reflection) | Ch4 | ✅ 完整 | LoopAgent 全部 3 管道 (v7.1.6) |
-| 工具使用 (Tool Use) | Ch5 | ✅ 完整 | 19 BaseToolset, 113+ FunctionTool, 16 ADK Skills, `toolsets/` + `skills/` |
+| 工具使用 (Tool Use) | Ch5 | ✅ 完整 | 21 BaseToolset, 113+ FunctionTool, 16 ADK Skills, `toolsets/` + `skills/` |
+| 规划 (Planning) | Ch6 | ✅ 完整 | TaskDecomposer DAG 分解 + 波次并行执行 (v9.0.4), `task_decomposer.py` |
 | 多智能体协作 | Ch7 | ✅ 完整 | 层级 Planner + 7 子 Agent + transfer_to_agent |
-| MCP 协议 | Ch10 | ✅ 完整 | 3 传输协议 + DB CRUD + 管理 UI + 安全加固 (v7.5.1), `mcp_hub.py` |
-| 异常恢复 (Recovery) | Ch12 | ✅ 完整 | 5 个高频工具含恢复建议 (v7.1.5) |
+| 记忆管理 (Memory) | Ch8 | ✅ 完整 | Memory ETL + PostgresMemoryService 跨会话持久化 (v9.0.3), `conversation_memory.py` |
+| 学习与适应 | Ch9 | ✅ 完整 | 工具失败模式学习 + 历史提示注入 (v8.0.5), `failure_learning.py` |
+| MCP 协议 | Ch10 | ✅ 完整 | 3 传输协议 + DB CRUD + 管理 UI + 安全加固, `mcp_hub.py` |
+| 目标监控 | Ch11 | ✅ 完整 | ProgressTracker 按管道追踪完成百分比 (v9.0.6), `agent_hooks.py` |
+| 异常恢复 (Recovery) | Ch12 | ✅ 完整 | 5 个高频工具含恢复建议 + GISToolRetryPlugin (v9.0.1) |
 | HITL 人类参与 | Ch13 | ✅ 完整 | BasePlugin, 13 工具风险注册, `hitl_approval.py` |
-| 护栏与安全 | Ch18 | ✅ 完整 | RBAC + RLS + 审计 + before_tool_callback + MCP 安全加固 |
-| 评估与监控 | Ch19 | ✅ 完整 | 4 管道评估 + CI + Trace ID (v7.1.7) |
-| 记忆管理 (Memory) | Ch8 | ✅ 完整 | Memory ETL 自动提取 (v7.5.4) + 分析视角注入 + save_memory() |
-| RAG 知识检索 | Ch14 | ⚠️ 部分 | Optimization 管道 knowledge_agent + 16 Skills 领域知识 (v7.5.7) |
-| 资源感知 (Resource) | Ch16 | ✅ 完整 | 静态模型分层 + 动态工具加载 (v7.5.6) + 动态模型选择 (v8.0.6)，`utils.py assess_complexity()` |
-| 规划 (Planning) | Ch6 | ⚠️ 部分 | Planner 选管道但不生成动态步骤 |
-| 并行化 | Ch3 | ❌ 未实现 | 无 ParallelAgent，管道互斥 |
-| 学习与适应 | Ch9 | ✅ 完整 | 工具失败模式学习 + 历史提示注入 (v8.0.5)，`failure_learning.py` |
-| 目标监控 | Ch11 | ❌ 未实现 | 无主动目标追踪 |
+| RAG 知识检索 | Ch14 | ⚠️ 部分 | 16 Skills 领域知识 + knowledge_agent (待: 私有知识库) |
 | A2A 通信 | Ch15 | ❌ 未实现 | 单进程架构 |
+| 资源感知 (Resource) | Ch16 | ✅ 完整 | 动态工具加载 + 动态模型选择 + CostGuardPlugin + LongRunningFunctionTool (v9.5.5) |
 | 推理技术 | Ch17 | ❌ 未实现 | 无 Self-Consistency / ToT |
+| 护栏与安全 | Ch18 | ✅ 完整 | RBAC + RLS + 审计 + 4 Guardrails (v9.5.3) + before_tool_callback |
+| 评估与监控 | Ch19 | ✅ 完整 | 4 管道评估 + CI + Trace ID + 5 Analytics 端点 (v9.0.5) |
 | 优先级排序 | Ch20 | ❌ 未实现 | 单请求单管道 |
 | 探索与发现 | Ch21 | ❌ 未实现 | Agent 被动响应 |
+
+**覆盖度: 16/21 (76%)**
 
 ---
 
 ## 已完成版本回顾
 
-| 版本 | 功能集 | 状态 |
-|------|--------|------|
-| v1.0–v3.2 | 基础 GIS、PostGIS、语义层、多管道架构 | ✅ 完成 |
-| v4.0 | 前端三面板 SPA、可观测性、CI/CD、技能包、协作标注 | ✅ 完成 |
-| v4.1 | 会话持久化、管道进度可视化、错误恢复、数据预览、i18n | ✅ 完成 |
-| v5.1 | MCP 工具市场（引擎 + 前端展示 + 管线过滤） | ✅ 完成 |
-| v5.2 | 多模态输入（图片理解 + PDF 解析 + 语音输入） | ✅ 完成 |
-| v5.3 | 3D 空间可视化（deck.gl + MapLibre + 2D/3D 切换） | ✅ 完成 |
-| v5.4 | 工作流编排（引擎 + Cron + Webhook） | ✅ 完成 |
-| v5.5 | 多模态数据融合引擎 MMFE（5 模态、10 策略、语义匹配） | ✅ 完成 |
-| v5.6 | MGIM 启发增强（模糊匹配、单位转换、数据感知策略、多源编排） | ✅ 完成 |
-| v6.0 | 融合增强（栅格重投影、点云、流数据、语义增强、质量验证） | ✅ 完成 |
-| v7.0 | 向量嵌入匹配、LLM 策略路由、地理知识图谱、分布式计算 | ✅ 完成 |
-| v7.1 | MCP 管理 UI、WorkflowEditor、分析视角、Prompt 版本、反思推广、Trace ID、错误恢复 | ✅ 完成 |
-| v7.5 | MCP 安全加固、Memory ETL、动态工具加载、Skills 内容丰富化 (5→16 场景化领域技能)、Context Caching | ✅ 完成 |
-| v8.0 | 失败学习与自适应、资源感知动态模型选择、评估门控 CI、DB 驱动自定义 Skills | 🔧 部分完成 (4/7) |
+| 版本 | 功能集 | Tests | 状态 |
+|------|--------|-------|------|
+| v1.0–v3.2 | 基础 GIS、PostGIS、语义层、多管道架构 | — | ✅ |
+| v4.0 | 前端三面板 SPA、可观测性、CI/CD、技能包、协作标注 | — | ✅ |
+| v4.1 | 会话持久化、管道进度可视化、错误恢复、数据预览、i18n | — | ✅ |
+| v5.1–v5.6 | MCP 市场、多模态输入、3D 可视化、工作流编排、融合引擎 | — | ✅ |
+| v6.0 | 融合增强（栅格重投影、点云、流数据、语义增强） | — | ✅ |
+| v7.0 | 向量嵌入匹配、LLM 策略路由、知识图谱、分布式计算 | — | ✅ |
+| v7.1 | MCP 管理 UI、WorkflowEditor、分析视角、反思推广、Trace ID | — | ✅ |
+| v7.5 | MCP 安全加固、Memory ETL、动态工具加载、16 场景化 Skills、Context Caching | 1530 | ✅ |
+| v8.0 | 失败学习、动态模型选择、评估门控 CI、DB 自定义 Skills | 1735 | ✅ |
+| v9.0 | Agent Plugins (4)、ParallelAgent、跨会话记忆、任务分解、Pipeline Analytics、Agent Hooks | 1859 | ✅ |
+| v9.5 | conftest.py、LongRunningFunctionTool、Guardrails (4)、SSE Streaming、评估增强 | 1895 | ✅ |
 
 ---
 
-## v7.5 — 上下文工程 + MCP 安全 ⬅️ 当前阶段 (4/7 已完成)
+## v9.0 — Intelligent Agent Collaboration ✅ 已完成
 
-**目标**: 实现 Agent 上下文工程最佳实践，完善 MCP 自助化安全，提升 Agent 智能度。
-**周期**: 3-4 周
-**补齐模式**: Ch8 记忆管理 ✅、Ch14 RAG 增强 (部分)
+**目标**: 利用 ADK 高级能力 (ParallelAgent, BasePlugin, BaseMemoryService, agent callbacks)，让 Agent 系统更智能、可观测、可协作。
 
-### 7.5.1 MCP 服务器安全加固 ✅
+| Step | 功能 | 关键文件 |
+|------|------|----------|
+| 9.0.1 ✅ | Agent Plugins (CostGuard, GISToolRetry, Provenance) | `plugins.py`, `test_plugins.py` |
+| 9.0.2 ✅ | 并行 Pipeline (ParallelAgent 数据摄取) | `agent.py`, `test_parallel_pipeline.py` |
+| 9.0.3 ✅ | 跨会话对话记忆 (PostgresMemoryService) | `conversation_memory.py`, `test_conversation_memory.py` |
+| 9.0.4 ✅ | 智能任务分解 (TaskGraph DAG) | `task_decomposer.py`, `test_task_decomposer.py` |
+| 9.0.5 ✅ | Pipeline 分析仪表盘 (5 REST 端点) | `pipeline_analytics.py`, `test_pipeline_analytics.py` |
+| 9.0.6 ✅ | Agent 生命周期钩子 (Prometheus + ProgressTracker) | `agent_hooks.py`, `test_agent_hooks.py` |
 
-**现状**: ~~MCP 管理 UI + DB CRUD 已完成 (v7.1)，但缺少安全校验。~~ 已完成安全加固。
-**已实现** (commit `118aef4`):
-- 配置输入校验（防止 stdio command 注入 — 白名单可执行文件路径）
-- Auth token 加密存储（`pgp_sym_encrypt` 或 AES 加密列，非明文 JSON）
-- 操作审计日志（谁添加/删除/toggle 了服务器，写入 `agent_audit_log`）
-- 用户配额（每用户最多 N 个自定义服务器）
-- 连接前自动测试（Test Connection 按钮 → 前端反馈连接结果）
+## v9.5 — Production Hardening ✅ 已完成
 
-**影响范围**: `mcp_hub.py`, `frontend_api.py`, `DataPanel.tsx`, ~120 行
+**目标**: 系统健壮性、可评估性、可流式、可测试性全面提升。
 
-### 7.5.2 用户自定义技能包组合
+| Step | 功能 | 关键文件 |
+|------|------|----------|
+| 9.5.1 ✅ | 集中测试夹具 (conftest.py) | `conftest.py` |
+| 9.5.2 ✅ | 评估框架 (已有 trajectory + rubric 评估) | `evals/`, `run_evaluation.py` |
+| 9.5.3 ✅ | Agent Guardrails (4 个输入/输出护栏) | `guardrails.py`, `test_guardrails.py` |
+| 9.5.4 ✅ | Headless SSE Streaming | `pipeline_runner.py`, `test_pipeline_streaming.py` |
+| 9.5.5 ✅ | LongRunningFunctionTool for DRL | `toolsets/analysis_tools.py`, `test_analysis_agent.py` |
 
-**现状**: `skill_bundles.py` 定义了 5 个命名工具组合 + 16 个 ADK Skills 提供领域知识，但用户无法自选组合。
+---
+
+## v10.0 — 知识增强与工作流智能化 ⬅️ 下一阶段
+
+**目标**: 补齐 RAG 私有知识库 (Ch14 完整)、DAG 工作流、高级分析，形成完整的知识驱动分析平台。
+**周期**: 4-6 周
+**补齐模式**: Ch14 RAG (完整)、Ch3 并行化 (DAG 工作流)
+
+### 10.0.1 RAG 私有知识库
+
+**现状**: Vertex AI Search 仅用于 optimization pipeline 的 knowledge_agent，16 Skills 提供领域知识但无用户自定义知识。
+**方案**:
+- 用户上传行业 PDF/文档 → 系统创建 RAG 知识库 (向量化存储)
+- 知识库绑定到自定义 Skill 或全局可用
+- 运行时动态挂载知识检索工具到 Agent
+- 多租户隔离: 每用户/团队独立知识库
+- 可与 `knowledge_graph.py` 结合实现 GraphRAG
+
+**影响范围**: `rag_service.py`(新), `agent.py`, `frontend_api.py`, ~400 行
+
+### 10.0.2 DAG 工作流引擎
+
+**现状**: `workflow_engine.py` 为线性顺序执行器，`depends_on` 字段存在但未使用。
+**方案**:
+- 重构执行引擎: 顺序 → DAG 拓扑排序 (复用 `task_decomposer.py` 的 TaskGraph)
+- 步骤间数据传递: 前步输出文件自动注入后步 prompt
+- 条件分支节点: 基于工具输出的 if/else 判断
+- 并行执行: 无依赖步骤用 ADK `ParallelAgent` 并发
+- 前端 React Flow 编辑器增强: 条件节点、并行分支
+
+**影响范围**: `workflow_engine.py`, `frontend/WorkflowEditor.tsx`, ~300 行
+
+### 10.0.3 高级空间分析引擎
+
+- 时空预测（GWR/GTWR，空间趋势预测）
+- 场景模拟（Monte Carlo，空间溢出效应）
+- 网络分析（等时圈、最优路径、设施覆盖）
+- 新增 AdvancedAnalysisToolset
+
+**影响范围**: `toolsets/advanced_analysis.py`(新), `agent.py`, ~300 行
+
+### 10.0.4 用户自定义技能包组合
+
+**现状**: `skill_bundles.py` 定义 5 个命名工具组合 + 16 ADK Skills，但用户无法自选组合。
 **方案**:
 - 新建 `agent_custom_bundles` 表（用户 ID + 选择的 bundle/skill 列表）
-- 前端增加 SkillBuilder 面板：从 16 个 ADK Skills 中勾选组合
+- 前端 SkillBuilder 面板: 从 16 个 ADK Skills 中勾选组合
 - Planner Agent 根据用户配置动态调整可用技能集
 
-**影响范围**: `skill_bundles.py`, `agent.py`, `frontend_api.py`, `DataPanel.tsx`, 新迁移脚本
+**影响范围**: `skill_bundles.py`, `agent.py`, `frontend_api.py`, ~200 行
 
-### 7.5.3 per-User MCP 服务器隔离
+### 10.0.5 per-User MCP 服务器隔离
 
 - 数据库中 MCP 配置增加 `created_by` 字段
 - 全局服务器（admin 创建）对所有用户可见
 - 用户私有服务器仅本人可见
 - 工具发现按用户范围过滤
 
-### 7.5.4 Memory ETL 自动提取 ✅
-
-> 来源: Kaggle Day 3 "Context Engineering" — Memory ETL Pipeline: Extract → Consolidate → Store
-
-**现状**: 记忆系统完全依赖 Agent 手动调用 `save_memory()` 工具。对话中产生的关键发现不会自动保存。
-**方案**:
-- 管道执行完成后，自动调用 LLM 提取会话关键事实
-- 提取模板: "从以下对话中提取关键发现（数据特征、分析结论、用户偏好），返回 JSON 数组"
-- 自动写入 `user_memories` 表 (`memory_type="auto_extract"`)
-- 去重: 对比已有记忆的 key 值，新事实合并而非重复
-- 用户可在 UserSettings 查看/删除自动记忆
-- 配额: 每次会话最多提取 5 条，单用户最多 100 条自动记忆
-
-**影响范围**: `app.py`, `memory.py`, `UserSettings.tsx`, ~100 行
-
-### 7.5.5 Gemini Context Caching
-
-> 来源: Kaggle Day 3 — 上下文缓存: "缓存长系统提示词，更快更便宜"
-
-**现状**: 系统提示词每次 API 调用全量传输，重复计费。
-**方案**:
-- 使用 Gemini API 的 context caching 功能缓存 system instruction
-- 缓存 TTL 设为 30 分钟（匹配会话典型时长）
-- 回退: caching API 不可用时自动降级为全量传输
-
-**影响范围**: `agent.py`, ~30 行
-
-### 7.5.6 动态工具加载 ✅
-
-> 来源: Kaggle Day 2 — "Context Window Bloat: 只加载 top 3-5 相关工具"
-
-**现状**: 每个管道在创建时绑定固定工具集，全部工具描述占用 context window。
-**方案**:
-- 在 `classify_intent()` 时同时识别用户意图的工具子类别（8 类）
-- 通过 ADK `ToolPredicate` Protocol + `ContextVar` 动态裁剪工具列表
-- `IntentToolPredicate` 读取 `current_tool_categories` ContextVar，按请求过滤
-- 核心工具 (10 个) 始终保留，专业工具按意图追加
-- 应用于 `general_processing_agent` (11 toolsets) 和 `_make_planner_processor` (5 toolsets)
-- 空集合 = 不过滤（兼容旧行为、错误回退、AMBIGUOUS 意图）
-
-**影响范围**: `app.py`, `agent.py`, `tool_filter.py`(新), `user_context.py`, ~200 行
-
-### 7.5.7 ADK Skills 内容丰富化 ✅
-
-> 来源: Claude Code Skills 最佳实践 + ADK Skills 官方文档 — "Skill = 领域知识，不是工具编排脚本"
-
-**现状**: ~~5 个宽泛领域 skill（spatial-analysis, data-quality, visualization, database, collaboration），每个仅列出工具清单和简要工作流。~~ 已拆分为 16 个场景化领域技能。
-**已实现** (commit `a1f48e6`):
-- 5 个旧 skill 删除 → 16 个细分场景 skill，每个包含深度领域知识（行业标准、阈值、方法论、常见陷阱）
-- 6 个 references/*.md 深度参考文档（审计标准、坐标系、FFI 方法论、空间统计、PostGIS 函数、NDVI 解读）
-- `skill_bundles.py` intent_triggers 更新覆盖新 skill 触发词
-- `test_skills.py` 33 项测试全部通过
-
-**16 个场景 Skill**:
-
-| 原领域 | 新 Skill | 核心知识 |
-|--------|----------|----------|
-| data-quality | farmland-compliance | GB/T 21010-2017 地类编码、必备字段、面积偏差阈值 |
-| data-quality | topology-validation | 拓扑规则体系、严重程度分级、修复策略 |
-| data-quality | data-profiling | 四维质量评分、常见数据问题识别 |
-| spatial-analysis | land-fragmentation | FFI 计算、DRL MaskablePPO 优化 |
-| spatial-analysis | site-selection | 排除法 + 加权叠加、AHP 权重、缓冲距离标准 |
-| spatial-analysis | spatial-clustering | Moran's I、LISA、Getis-Ord Gi*、空间权重矩阵 |
-| spatial-analysis | buffer-overlay | 缓冲区类型、叠加分析、投影坐标系要求 |
-| spatial-analysis | coordinate-transform | CGCS2000/WGS84/GCJ-02/BD-09、高斯带规则 |
-| spatial-analysis | geocoding | 正逆向编码、批量注意事项、驾车距离 |
-| spatial-analysis | ecological-assessment | NDVI 解读、DEM 地形分析、LULC、生态敏感性 |
-| visualization | thematic-mapping | 分级方法、色彩方案、图例设计原则 |
-| visualization | 3d-visualization | deck.gl 图层、高度映射、视角设置 |
-| database | postgis-analysis | ST_* 函数、空间索引、查询优化 |
-| database | data-import-export | 格式支持、入库注意事项、数据目录 |
-| collaboration | team-collaboration | 团队角色、记忆类型、共享最佳实践 |
-| collaboration | multi-source-fusion | 10 种融合策略、匹配方法、质量指标 |
-
-**影响范围**: `skills/` 16 目录 + 6 references, `skill_bundles.py`, `test_skills.py`, 31 files, +2431/-226 行
+**影响范围**: `mcp_hub.py`, `frontend_api.py`, ~100 行
 
 ---
 
-## v8.0 — 自定义 Skills + DAG 工作流 + 智能化
-
-**目标**: 用户可自定义 Agent 身份，工作流支持 DAG，Agent 具备自我学习能力。
-**周期**: 6-8 周
-**补齐模式**: Ch6 规划、Ch9 学习与适应、Ch16 资源感知、Ch3 并行化
-
-### 8.0.1 数据库驱动的自定义 Skills ✅
-
-**现状**: ~~16 个场景化 ADK Skills 提供深度领域知识 (v7.5.7)，但 Agent 在模块加载时创建，提示词烘焙进实例，运行时不可修改。意图路由硬编码 4 种。~~ 已完成 DB 驱动自定义 Skills。
-**已实现** (commit `dd828c0`):
-- `custom_skills.py`: DB CRUD、验证（名称/指令/工具集）、延迟加载 Toolset 注册表
-- `@mention` 检测 + trigger keyword 意图路由 → `CUSTOM` intent
-- `build_custom_agent()` 工厂：动态实例化 LlmAgent + 用户选定工具集
-- 5 个 REST API 端点 (list/create/detail/update/delete)
-- 审计日志（3 个动作常量）
-- 452 行测试覆盖
-- 防 LLM 注入校验（FORBIDDEN_PATTERNS）+ 每用户配额（20 个）
-
-**影响范围**: `custom_skills.py`(新), `app.py`, `frontend_api.py`, `database_tools.py`, `audit_logger.py`, `migrations/021_*`, `test_custom_skills.py`(新)
-
-### 8.0.2 RAG 私有知识库挂载
-
-**现状**: Vertex AI Search 仅用于 optimization pipeline 的 knowledge_agent。
-**方案**:
-- 用户上传行业 PDF → 系统创建 RAG 知识库
-- 知识库绑定到自定义 Skill
-- 运行时动态挂载 `VertexAiSearchTool` 到用户 Agent
-- 多租户隔离: 每用户/团队独立知识库
-- 可与 `knowledge_graph.py` 结合实现 GraphRAG
-
-### 8.0.3 可视化 DAG 工作流引擎
-
-**现状**: `workflow_engine.py` 为线性顺序执行器，`depends_on` 字段存在但未使用，`graph_data` JSONB 预留但未解析。WorkflowEditor.tsx (v7.1) 已支持可视化编辑。
-**方案**:
-- 重构执行引擎: 顺序 → DAG 拓扑排序
-- 步骤间数据传递: 前步输出文件自动注入后步 prompt
-- 条件分支节点: 基于工具输出的 if/else 判断
-- 并行执行: 无依赖步骤用 ADK `ParallelAgent` 并发
-- React Flow 编辑器增强: 条件节点、并行分支、循环节点
-
-### 8.0.4 高级分析引擎
-
-- 时空预测（GWR/GTWR，空间趋势预测）
-- 场景模拟（Monte Carlo，空间溢出效应）
-- 网络分析（等时圈、最优路径、设施覆盖）
-
-### 8.0.5 失败学习与自适应 ✅
-
-> 来源: 《Agentic Design Patterns》Ch9 学习与适应
-
-**现状**: ~~工具失败后无模式记录，同类错误反复发生。~~ 已完成。
-**已实现**:
-- 新建 `agent_tool_failures` 表 (migration 020)，记录 tool_name, error_snippet, hint_applied, resolved
-- `failure_learning.py`: `record_failure()` / `get_failure_hints()` / `mark_resolved()`，全部非致命
-- `utils.py _self_correction_after_tool()` 增强: 错误时记录失败 + 查询历史经验，成功时标记已解决
-- 14 项测试覆盖
-
-**影响范围**: `failure_learning.py`(新), `utils.py`, `app.py`, `database_tools.py`, `migrations/020_*`, `test_failure_learning.py`(新)
-
-### 8.0.6 资源感知动态模型选择 ✅
-
-> 来源: 《Agentic Design Patterns》Ch16 资源感知 + Kaggle Day 5 — 成本/延迟平衡
-
-**现状**: ~~模型分层为静态配置，不随任务复杂度调整。~~ 已完成动态选择。
-**已实现**:
-- `assess_complexity(user_text, intent, file_count)` → 返回 fast/standard/premium
-- `current_model_tier` ContextVar，per-request 设置
-- `MODEL_TIER_MAP` + `get_model_for_tier()` 工厂函数
-- 4 个 `_make_planner_*()` 工厂使用动态模型选择
-- 14 项测试覆盖
-
-**影响范围**: `utils.py`, `agent.py`, `app.py`, `user_context.py`, `test_model_selection.py`(新)
-
-### 8.0.7 评估门控 CI ✅
-
-> 来源: Kaggle Day 5 "Evaluation-Gated Deployment" — 三阶段渐进式评估
-
-**已实现**:
-- `PIPELINE_THRESHOLDS` per-pipeline 通过率阈值 (optimization 60%, governance 60%, general 70%, planner 50%)
-- `overall_pass` 从 all-or-nothing 改为 per-pipeline threshold-based 判定
-- `eval_summary.json` 增加 `pipeline_verdicts` + `thresholds` 字段
-- CI 新增 `route-eval` PR 轻量评估 job (仅运行 general pipeline)
-- 11 项测试覆盖
-
-**影响范围**: `run_evaluation.py`, `.github/workflows/ci.yml`, `test_evaluation.py`
-
----
-
-## v8.5 — Terminal UI (TUI) 沉浸式终端界面
-
-**目标**: 提供类 Claude Code / OpenClaw 的全屏终端交互体验，支持交互式 REPL 和脚本化批处理两种模式。
-**周期**: 1.5-2 周
-**技术栈**: Python Textual + Rich + Typer + asyncio
-**架构基础**: `pipeline_runner.py` 已提供完整的 UI 无关执行层（`run_pipeline_headless()` + `PipelineResult`），CLI/TUI 直接调用无需重构 Web UI。
-
-### 8.5.1 流式事件回调增强
-
-**现状**: `pipeline_runner.py` 返回最终 `PipelineResult`，不提供中间流式事件。
-**方案**:
-- 新增 `run_pipeline_streaming()`: 基于 `run_pipeline_headless()`，增加 `on_event` 回调参数
-- 事件类型: `agent_start`, `tool_call`, `tool_result`, `text_chunk`, `progress`, `artifact`
-- 不影响现有 `run_pipeline_headless()` 的行为
-
-**影响范围**: `pipeline_runner.py`, ~50 行
-
-### 8.5.2 Typer CLI 入口
-
-**方案**:
-- `gis-agent chat` — 启动 TUI 交互式 REPL
-- `gis-agent run "查询..." -f data.shp -o ./output` — 单次执行（可脚本化/pipe）
-- `gis-agent catalog search "关键词"` — 数据目录浏览
-- `gis-agent skills list/create/delete` — 自定义技能管理
-- `gis-agent sql "SELECT ..."` — 直接数据库查询
-- CLI 认证: `--user` / `--role` 参数或 `~/.gis-agent/config.yaml`
-
-**影响范围**: `cli.py`(新), `pyproject.toml` 入口点
-
-### 8.5.3 Textual TUI 全屏界面
-
-**参照**: Claude Code（React + Ink）、OpenClaw TUI（Node.js）
-**布局**:
-```
-┌─ Header: GIS Agent v8 │ Pipeline │ agent │ session ────────┐
-│                                                             │
-│  Chat Log (可滚动)                                           │
-│  ├─ [user] 用户消息                                          │
-│  ├─ [agent] Pipeline/Agent/Tool 卡片 + 流式文本               │
-│  └─ [system] 进度、错误、状态                                  │
-│                                                             │
-├─ Status: idle│gemini-2.5-flash│tokens: 1.2k/3.4k│session 1 ┤
-├─────────────────────────────────────────────────────────────┤
-│ > 输入区 (多行编辑器，Enter 发送)                              │
-└─────────────────────────────────────────────────────────────┘
-```
-**交互功能**:
-- Rich Markdown 渲染（标题、表格、代码高亮）
-- Tool call 折叠卡片（名称 + 参数 + 耗时 + 结果摘要）
-- 实时进度条（Pipeline → Agent → Tool 三级）
-- 快捷键: Ctrl+P 切管道, Ctrl+M 切模型, Ctrl+O 展开工具, Ctrl+B 打开浏览器
-- 底部状态栏: 连接状态、当前模型、token 计数、pipeline 类型
-
-**影响范围**: `tui/`(新目录), ~500-800 行
-
-### 8.5.4 混合可视化策略
-
-**核心矛盾**: GIS 核心价值在地图，但终端无法渲染地图。
-**方案**: 混合模式
-- 文本/表格结果 → 终端内 Rich Table 渲染
-- HTML 地图/图表 → `webbrowser.open()` 自动弹出浏览器
-- PNG 图片 → 终端内提示路径 + 可选浏览器打开
-- CSV 数据 → Rich Table 预览前 N 行
-
-**影响范围**: TUI 渲染层, ~100 行
-
----
+## v11.0 — 多 Agent 协同与互操作
 
 **目标**: 从单用户工具进化为多用户协同决策平台，支持跨框架 Agent 互操作。
 **周期**: 长期
-**补齐模式**: Ch15 A2A、Ch21 探索与发现、Ch11 目标监控、Ch17 推理技术、Ch20 优先级排序
+**补齐模式**: Ch15 A2A、Ch17 推理技术、Ch20 优先级排序、Ch21 探索与发现
 
-### 9.1 实时协同编辑
-- 多用户同时查看同一地图
-- CRDT 冲突解决（类 Figma 模式）
-- WebRTC 语音/视频协同
+### 11.1 A2A 智能体互操作
 
-### 9.2 边缘部署 + 离线模式
-- ONNX Runtime 本地推理（无需 Gemini API）
-- PWA 离线缓存
-- 野外巡查: GPS + 拍照 + 本地分析 + 回连同步
-
-### 9.3 数据连接器生态
-
-| 连接器 | 协议 | 用途 |
-|--------|------|------|
-| WMS/WFS/WMTS | OGC 标准 | 直连地图服务 |
-| ArcGIS Online | REST API | ESRI 生态对接 |
-| Google Earth Engine | Python API | 遥感大数据 |
-| 国土"一张图" | 政务接口 | 规划数据 |
-| MQTT | IoT 协议 | 传感器实时接入 |
-
-### 9.4 多 Agent 并行协作
-- 多 Agent 并行处理不同区域数据
-- ADK `ParallelAgent` 并发派发
-- "分别分析 A/B/C 三个区县，汇总对比"
-
-### 9.5 A2A 智能体互操作
-
-> 来源: Kaggle Day 5 + 《Agentic Design Patterns》Ch15 — Google A2A 开放协议
+> 来源: Google A2A 开放协议 + 《Agentic Design Patterns》Ch15
 
 - 实现 A2A 协议的 Server 端（AgentCard 注册、Task 管理）
 - 允许外部 Agent（气象、交通、人口）通过 A2A 接入
 - Agent 发现: 注册中心 + AgentCard 服务描述
 
-### 9.6 主动探索与发现
-
-> 来源: 《Agentic Design Patterns》Ch21 — Agent 主动探索未知空间、生成假设
+### 11.2 主动探索与发现 (Ch21)
 
 - Agent 主动发现数据中的异常/趋势/空间模式
 - 假设生成: "该区域耕地碎片化指数异常升高，可能与近年城市扩张相关"
 - 用户可配置关注主题，Agent 定期扫描并推送洞察
+
+### 11.3 多任务智能调度 (Ch20)
+
+- 并发请求优先级排序
+- 资源约束下的任务编排（token budget, API rate limit）
+- 长任务拆分 + 中间结果缓存
+
+### 11.4 高级推理技术 (Ch17)
+
+- Self-Consistency: 多次采样取多数票
+- Tree-of-Thought: 分支探索复杂分析路径
+- 可配置推理深度（快速/标准/深度）
+
+### 11.5 实时协同编辑
+
+- 多用户同时查看同一地图
+- CRDT 冲突解决（类 Figma 模式）
+- WebRTC 语音/视频协同
+
+### 11.6 边缘部署 + 离线模式
+
+- ONNX Runtime 本地推理（无需 Gemini API）
+- PWA 离线缓存
+- 野外巡查: GPS + 拍照 + 本地分析 + 回连同步
 
 ---
 
 ## 设计模式覆盖演进图
 
 ```
-模式覆盖度 (v7.5 → v9.0)
+模式覆盖度 (v7.5 → v9.5 → v11.0)
 
-v7.1 已充分实现 (10/21):
+v7.5 已实现 (11/21):
   ✅ Ch1  提示链         ✅ Ch2  路由
   ✅ Ch4  反思           ✅ Ch5  工具使用
   ✅ Ch7  多智能体协作   ✅ Ch10 MCP
   ✅ Ch12 异常恢复       ✅ Ch13 HITL
   ✅ Ch18 护栏与安全     ✅ Ch19 评估与监控
+  ✅ Ch8  记忆管理
 
-v7.5 已补齐 (→ 11/21):
-  ✅ Ch8  记忆管理       → Memory ETL 自动提取 + 去重 (v7.5.4)
+v9.0 新增 (→ 14/21):
+  ✅ Ch3  并行化         → ParallelAgent + TaskDecomposer
+  ✅ Ch6  规划           → DAG 任务分解 + 波次并行执行
+  ✅ Ch11 目标监控       → ProgressTracker + Prometheus Hooks
 
-v7.5 部分补齐:
-  ⬆ Ch14 RAG            → 16 Skills 领域知识 (v7.5.7) + 待: 上下文缓存
-  ⬆ Ch16 资源感知       → 动态工具加载 (v7.5.6) + 待: 动态模型选择
+v9.5 增强 (→ 16/21):
+  ✅ Ch9  学习与适应     → 失败学习 (v8.0) + GISToolRetryPlugin (v9.0)
+  ✅ Ch16 资源感知       → 动态工具 + 动态模型 + CostGuard + LongRunning (完整)
 
-v8.0 补齐 (→ 15/21):
-  ⬆ Ch3  并行化         → DAG 工作流并行执行
-  ⬆ Ch6  规划           → 动态步骤生成
-  ⬆ Ch9  学习与适应     → 失败模式记忆 + 自适应预警
+v10.0 计划补齐:
   ⬆ Ch14 RAG            → 私有知识库 + GraphRAG (完整)
-  ⬆ Ch16 资源感知       → 复杂度驱动动态模型选择 (完整)
 
-v9.0 补齐 (→ 21/21):
-  ⬆ Ch3  并行化 (完整)  → 多 Agent 并行协作
-  ⬆ Ch11 目标监控       → 任务进度自动追踪
+v11.0 计划补齐 (→ 21/21):
   ⬆ Ch15 A2A            → 跨框架智能体互操作
-  ⬆ Ch17 推理技术       → Self-Consistency 多数投票
+  ⬆ Ch17 推理技术       → Self-Consistency + ToT
   ⬆ Ch20 优先级排序     → 多任务智能调度
   ⬆ Ch21 探索与发现     → 主动数据洞察推送
 ```
@@ -431,150 +249,125 @@ v9.0 补齐 (→ 21/21):
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│             工程化智能体开放平台                          │
+│             工程化智能体开放平台 (v9.5)                    │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  第五层：多渠道交互界面 (v8.5)                           │
+│  第六层：生产就绪加固 (v9.5 ✅)                           │
 │  ┌─────────────────────────────────────────────┐       │
-│  │  Web UI:  React 三面板 SPA (Chainlit)        │       │
-│  │  TUI:     Textual 全屏终端 (类 Claude Code)   │       │
-│  │  CLI:     Typer 脚本化执行                    │       │
-│  │  Bot:     企业微信/钉钉/飞书 适配器            │       │
-│  │  共用: pipeline_runner.py (headless 执行层)    │       │
+│  │  Guardrails: 4 输入/输出护栏 (递归挂载)       │       │
+│  │  LongRunning: DRL 异步执行防重复调用           │       │
+│  │  SSE Streaming: 流式 pipeline 输出             │       │
+│  │  conftest.py: 集中测试夹具 + 事件循环安全      │       │
 │  └─────────────────────────────────────────────┘       │
 │                                                         │
-│  第四层：Agent 工程化基线 (v7.1 ✅ → v8.0)              │
+│  第五层：智能协作 (v9.0 ✅)                              │
 │  ┌─────────────────────────────────────────────┐       │
-│  │  v7.1 ✅ Trace ID + 反思推广 + 错误恢复指导  │       │
-│  │  v7.5 ✅ Memory ETL + 动态工具 + MCP 安全     │       │
-│  │  v7.5: Context Cache                         │       │
-│  │  v8.0: 失败学习 + 动态模型 + 评估门控 CI      │       │
+│  │  ParallelAgent: 并行数据摄取                  │       │
+│  │  Plugins: CostGuard + ToolRetry + Provenance  │       │
+│  │  TaskDecomposer: DAG 任务分解 + 波次并行       │       │
+│  │  PostgresMemoryService: 跨会话记忆持久化       │       │
+│  │  Analytics: 5 REST 端点 + Agent Hooks          │       │
 │  └─────────────────────────────────────────────┘       │
 │                                                         │
-│  第三层：可视化工作流编排 (v7.1 ✅ → v8.0)              │
+│  第四层：Agent 工程化基线 (v7.5–v8.0 ✅)                │
 │  ┌─────────────────────────────────────────────┐       │
-│  │  v7.1 ✅ WorkflowEditor (React Flow 画布)    │       │
-│  │  v8.0: DAG 拓扑 → ADK Agent 树 + 条件/并行   │       │
+│  │  Memory ETL + 动态工具加载 + MCP 安全加固      │       │
+│  │  失败学习 + 动态模型选择 + 评估门控 CI         │       │
+│  │  DB 驱动自定义 Skills + @mention 路由          │       │
+│  │  Trace ID + 反思推广 + Context Cache           │       │
 │  └─────────────────────────────────────────────┘       │
 │                                                         │
-│  第二层：自定义领域专家 Skills (v7.1 ✅ → v8.0)         │
+│  第三层：多渠道交互 (v4.0–v8.5)                        │
 │  ┌─────────────────────────────────────────────┐       │
-│  │  v7.1 ✅ 分析视角注入（global_instruction）   │       │
-│  │  v7.5 ✅ 16 场景化领域技能 + 6 参考文档       │       │
-│  │  v7.5: SkillBundle 组合选择                   │       │
-│  │  v8.0: DB 驱动自定义 Agent + RAG 知识库       │       │
+│  │  Web UI: React 三面板 SPA (Chainlit)          │       │
+│  │  REST: 58 API endpoints + SSE streaming       │       │
+│  │  pipeline_runner.py: headless 执行层          │       │
 │  └─────────────────────────────────────────────┘       │
 │                                                         │
-│  第一层：MCP 工具扩展 (v7.1 ✅ → v7.5)                 │
+│  第二层：领域专家 Skills (v7.1–v8.0)                    │
 │  ┌─────────────────────────────────────────────┐       │
-│  │  v7.0 ✅ 引擎就绪（3 传输协议、工具发现）     │       │
-│  │  v7.1 ✅ 管理 UI + CRUD API + DB 持久化       │       │
-│  │  v7.5: 安全加固 ✅ + per-User 隔离            │       │
+│  │  16 场景化领域技能 + 6 参考文档               │       │
+│  │  分析视角注入 + SkillBundle 工具组合           │       │
+│  │  DB 驱动自定义 Agent + 工具集选择              │       │
+│  └─────────────────────────────────────────────┘       │
+│                                                         │
+│  第一层：MCP + 工具生态 (v5.1–v7.5)                    │
+│  ┌─────────────────────────────────────────────┐       │
+│  │  21 工具集 · 113+ 工具 · 3 传输协议           │       │
+│  │  MCP 管理 UI + CRUD + DB 持久化 + 安全加固    │       │
 │  └─────────────────────────────────────────────┘       │
 │                                                         │
 ├─────────────────────────────────────────────────────────┤
-│  基座：v7.5 已完成能力                                    │
-│  19 工具集 · 16 ADK Skills · 113+ 工具 · 10 融合策略     │
-│  4 管道 · 36 API · 11/21 设计模式完整实现                 │
-│  Level 0-3 智能体分类全覆盖                               │
+│  基座：v9.5 能力                                         │
+│  1895 tests · 58 API · 4 Plugins · 4 Guardrails        │
+│  3+1 管道 · ParallelAgent · PostgresMemory             │
+│  16/21 设计模式 · SSE Streaming · LongRunningTool       │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 优先级矩阵
-
-```
-业务价值 ↑
-│
-│  ★ 7.5.4 Memory ETL ✅          ★ 8.0.1 自定义 Skills ✅
-│  ★ 7.5.6 动态工具加载 ✅       ★ 8.0.3 DAG 工作流
-│  ★ 7.5.1 MCP 安全加固 ✅       ★ 8.0.5 失败学习 ✅
-│  ★ 7.5.7 Skills 丰富化 ✅      ★ 8.5 Terminal UI (TUI)
-│
-│  ○ 7.5.2 技能包组合            ○ 8.0.2 RAG 知识库
-│  ○ 7.5.5 Context Cache         ○ 8.0.6 动态模型
-│  ○ 7.5.3 per-User MCP          ○ 8.0.4 高级分析
-│                                  ○ 8.0.7 评估门控
-│
-│                                  △ 9.x 远期功能
-│
-└──────────────────────────────────────── 实现复杂度 →
-```
-
 ## 推荐实施路线
 
 ```
-Phase 1 (v7.5, 3-4 周) — 上下文工程 + MCP 安全 ⬅️ 当前 (4/7 完成)
-  ├── 7.5.4 Memory ETL 自动提取     ★ 高价值，Agent 智能度飞跃  ✅
-  ├── 7.5.6 动态工具加载             ★ 降低 token 开销 ~40%     ✅
-  ├── 7.5.1 MCP 安全加固             ★ 生产就绪必备             ✅
-  ├── 7.5.7 Skills 内容丰富化        ★ 5→16 场景化领域知识      ✅
-  ├── 7.5.5 Gemini Context Caching   ○ 降低 API 费用 ~30%
-  ├── 7.5.2 技能包组合               ○ 用户自助化 (基于 16 Skills)
-  └── 7.5.3 per-User MCP 隔离        ○ 多租户隔离
+Phase 1–4 (v1.0–v9.5) ✅ 已完成
+  1895 tests | 58 REST API | 80 test files
+  16/21 设计模式 | 4 Plugins | 4 Guardrails
+  ParallelAgent | PostgresMemory | SSE Streaming
 
-Phase 2 (v8.0, 6-8 周) — 自定义 + DAG + 智能化
-  ├── 8.0.1 DB 驱动自定义 Skills              ✅
-  ├── 8.0.2 RAG 私有知识库
-  ├── 8.0.3 DAG 工作流引擎
-  ├── 8.0.4 高级分析引擎
-  ├── 8.0.5 失败学习与自适应                   ✅
-  ├── 8.0.6 资源感知动态模型选择               ✅
-  └── 8.0.7 评估门控 CI                        ✅
+Phase 5 (v10.0, 4-6 周) — 知识增强 + 工作流智能化
+  ├── 10.0.1 RAG 私有知识库 (向量化 + GraphRAG)
+  ├── 10.0.2 DAG 工作流引擎 (拓扑排序 + 并行)
+  ├── 10.0.3 高级空间分析 (GWR/Monte Carlo/网络)
+  ├── 10.0.4 用户自定义技能包组合
+  └── 10.0.5 per-User MCP 隔离
 
-Phase 2.5 (v8.5, 1.5-2 周) — Terminal UI 沉浸式终端界面
-  ├── 8.5.1 流式事件回调增强 (pipeline_runner)
-  ├── 8.5.2 Typer CLI 入口 (chat/run/catalog/skills/sql)
-  ├── 8.5.3 Textual TUI 全屏界面 (类 Claude Code / OpenClaw)
-  └── 8.5.4 混合可视化 (终端文本 + 浏览器地图)
-
-Phase 3 (v9.0, 持续迭代) — 协同 + 边缘 + 互操作
-  ├── 9.1 实时协同编辑 (CRDT)
-  ├── 9.2 边缘部署 + PWA 离线
-  ├── 9.3 数据连接器生态
-  ├── 9.4 多 Agent 并行协作
-  ├── 9.5 A2A 智能体互操作
-  └── 9.6 主动探索与发现
+Phase 6 (v11.0, 持续迭代) — 协同 + 互操作 + 高级推理
+  ├── 11.1 A2A 智能体互操作 (Ch15)
+  ├── 11.2 主动探索与发现 (Ch21)
+  ├── 11.3 多任务智能调度 (Ch20)
+  ├── 11.4 高级推理技术 (Ch17)
+  ├── 11.5 实时协同编辑 (CRDT)
+  └── 11.6 边缘部署 + PWA 离线
 ```
 
 ---
 
 ## 竞品差异化分析
 
-| 能力维度 | 本平台 (v8.0) | ArcGIS Pro | Julius AI | Carto |
+| 能力维度 | 本平台 (v9.5) | ArcGIS Pro | Julius AI | Carto |
 |----------|---------------|------------|-----------|-------|
 | NL 交互 | ★★★★★ | ★★☆☆☆ | ★★★★☆ | ★★☆☆☆ |
 | GIS 深度 | ★★★★☆ | ★★★★★ | ★☆☆☆☆ | ★★★☆☆ |
 | 多模态 | ★★★★☆ | ★★★☆☆ | ★★★☆☆ | ★☆☆☆☆ |
-| 用户扩展性 | ★★★★★ (MCP+16 Skills) | ★★★☆☆ | ★☆☆☆☆ | ★★☆☆☆ |
-| Agent 工程化 | ★★★★★ (21 模式) | ★★☆☆☆ | ★★★☆☆ | ★☆☆☆☆ |
-| 开放生态 | ★★★★★ (MCP+A2A) | ★★★☆☆ | ★☆☆☆☆ | ★★☆☆☆ |
+| Agent 工程化 | ★★★★★ (16/21 模式) | ★★☆☆☆ | ★★★☆☆ | ★☆☆☆☆ |
+| 用户扩展性 | ★★★★★ (MCP+Skills+自定义) | ★★★☆☆ | ★☆☆☆☆ | ★★☆☆☆ |
+| 可观测性 | ★★★★★ (Plugins+Hooks+Analytics) | ★★★☆☆ | ★★☆☆☆ | ★★☆☆☆ |
+| 安全护栏 | ★★★★★ (4 Guardrails+RBAC+RLS) | ★★★★☆ | ★★☆☆☆ | ★★★☆☆ |
 | 私有部署 | ★★★★★ | ★★★★☆ | ☆☆☆☆☆ | ★★☆☆☆ |
 | 学习曲线 | 零 (NL) | 高 | 低 | 中 |
 
-**核心壁垒**: "High GIS + High Agent Engineering + Open Ecosystem (MCP) + 21 Design Patterns Coverage" 四位一体。
+**核心壁垒**: "High GIS + High Agent Engineering (16/21) + Open Ecosystem (MCP) + Production Hardening (Guardrails+Plugins+Streaming)" 四位一体。
 
 ---
 
 ## 成功指标 (KPIs)
 
-| 指标 | v7.5 实际 | v8.0 目标 |
-|------|----------|----------|
-| 分析成功率 | > 90% | > 95% |
-| 首次分析时间 | < 2 min | < 1 min |
-| MCP 工具接入数 | 安全加固就绪 | >= 10 |
-| ADK Skills 数 | 16 场景化领域技能 | 16 + 用户自建 >= 5 |
-| 工作流复用率 | WorkflowEditor 就绪 | > 40% |
-| 测试覆盖 | 1490+ tests | 1700+ tests |
-| REST API 端点 | 44 | 48+ |
-| 交互界面 | Web UI only | Web UI + TUI + CLI |
-| 设计模式覆盖 | 11/21 (52%) | 16/21 (76%) |
-| 管道调试时间 | Trace ID 秒级定位 | 全链路 + 告警 |
-| API 成本 | 动态工具降低 ~40% | 降低 ~50% (动态模型) |
+| 指标 | v7.5 | v9.0 | v9.5 实际 | v10.0 目标 |
+|------|------|------|----------|------------|
+| Tests | 1530 | 1859 | 1895 | 2100+ |
+| REST API 端点 | 44 | 57 | 58 | 65+ |
+| Test files | 66 | 74 | 80 | 85+ |
+| Plugins | 1 | 4 | 4 | 5+ |
+| Guardrails | 0 | 0 | 4 | 6+ |
+| 设计模式覆盖 | 11/21 (52%) | 14/21 (67%) | 16/21 (76%) | 17/21 (81%) |
+| ADK Agent 类型 | 2 | 3 | 3 | 3 |
+| 跨会话记忆 | 无 | PostgreSQL | PostgreSQL | + RAG 向量化 |
+| Streaming | 无 | 无 | SSE | SSE + WebSocket |
+| Pipeline 可观测性 | Token 计数 | 5 Analytics 端点 | + Guardrails | + 告警 |
 
 ---
 
-**方案版本**: v5.1
-**更新日期**: 2026-03-13
-**基于**: 《Agentic Design Patterns》21 种模式评估 + Kaggle/Google 5-Day AI Agents 课程实践 + v8.0 代码验证 + Claude Code / OpenClaw TUI 形态分析
+**方案版本**: v6.0
+**更新日期**: 2026-03-14
+**基于**: v9.5 代码验证 (1895 tests, 58 API, 16/21 设计模式)
