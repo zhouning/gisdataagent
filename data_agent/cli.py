@@ -186,7 +186,8 @@ async def _run_single(
 
     app_mod = _get_app_module()
     classify_intent = app_mod.classify_intent
-    session_service = getattr(app_mod, "session_service", None) or _get_session_service()
+    # CLI always uses InMemorySessionService (no DB session needed)
+    session_service = _get_session_service()
 
     # Intent classification
     with console.status("[bold green]Classifying intent..."):
@@ -575,6 +576,24 @@ def status(
                 f"{row.get('tokens', 0):,}",
             )
         console.print(bd_table)
+
+
+# ---------------------------------------------------------------------------
+# TUI command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def tui(
+    user: str = typer.Option(None, "--user", "-u", help="Username (default: OS user)"),
+    role: str = typer.Option("analyst", "--role", "-r", help="Role: admin/analyst/viewer"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show tool execution log"),
+):
+    """Full-screen TUI mode — three-panel terminal interface."""
+    if user is None:
+        user = getpass.getuser()
+    from data_agent.tui import GISAgentApp
+    tui_app = GISAgentApp(user=user, role=role, verbose=verbose)
+    tui_app.run()
 
 
 # ---------------------------------------------------------------------------
