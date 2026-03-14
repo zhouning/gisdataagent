@@ -1,8 +1,24 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v8.0
+# GIS Data Agent (ADK Edition) v10.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security. Features multi-source data fusion, multimodal input, 16 ADK scenario skills, DB-driven custom Skills, Gemini Context Caching, failure learning & adaptation, dynamic model selection, evaluation-gated CI, categorized map rendering, 3D visualization, workflow orchestration, geographic knowledge graph, and Memory ETL auto-extraction.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security.
+
+The system implements **16 of 21 (76%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, cross-session memory persistence, DAG task decomposition with wave-parallel execution, pipeline analytics dashboard, and agent lifecycle hooks. Backend serves 76 REST API endpoints.
+
+## Key Metrics
+
+| Metric | Value |
+|--------|-------|
+| Test Coverage | 1993 tests, 85 test files |
+| Toolsets | 22 BaseToolset, 5 SkillBundle, 121+ tools |
+| ADK Skills | 16 scenario skills + DB-driven custom Skills |
+| REST API | 76 endpoints |
+| Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
+| Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
+| ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |
+| Design Pattern Coverage | 16/21 (76%) |
+| Streaming | Batch + SSE streaming |
 
 ## Core Capabilities
 
@@ -39,6 +55,27 @@ An AI-powered geospatial analysis platform that turns natural language into spat
 - POI search, driving distance, geocoding (batch + reverse)
 - Interactive multi-layer map composition with NL layer control
 
+### Intelligent Agent Collaboration (v9.0)
+- **Agent Plugins**: CostGuard (token budget), GISToolRetry (smart retry), Provenance (data lineage), HITLApproval (human-in-the-loop)
+- **Parallel Pipeline**: ParallelAgent data ingestion, multi-source parallel processing
+- **Cross-Session Memory**: PostgresMemoryService persistent conversation memory across sessions
+- **Smart Task Decomposition**: TaskGraph DAG decomposition + wave-parallel execution
+- **Pipeline Analytics**: 5-dimension analysis — latency, success rate, token efficiency, throughput, agent breakdown
+- **Agent Lifecycle Hooks**: Prometheus metrics + ProgressTracker per-pipeline progress tracking
+
+### Production Hardening (v9.5)
+- **Guardrails (4)**: InputLength (>50k reject) + SQLInjection (pattern detection) + OutputSanitizer (sensitive data redaction) + Hallucination (warning injection), recursively attached to all sub-agents
+- **SSE Streaming**: `run_pipeline_streaming()` async generator + `/api/pipeline/stream` REST endpoint
+- **LongRunningFunctionTool**: DRL optimization async execution, preventing duplicate agent calls
+- **Centralized Test Fixtures**: conftest.py shared fixtures with event loop safety isolation
+
+### Intelligent Platform Extension (v10.0)
+- **GraphRAG Knowledge Enhancement**: Entity extraction (Gemini+regex) → co-occurrence graph construction → graph-augmented retrieval (vector + graph neighbor re-ranking), 9 KB tools
+- **Per-User MCP Isolation**: Users can create private MCP servers, owner_username + is_shared visibility control
+- **Custom Skill Bundles**: DB-driven user-defined toolset + ADK Skills compositions with intent trigger matching
+- **Spatial Analysis Tier 2**: IDW interpolation, Kriging, Geographically Weighted Regression (GWR), multi-temporal change detection, DEM viewshed analysis
+- **Workflow Template Marketplace**: 5 built-in templates + publish/clone/rate, one-click workflow reuse
+
 ### Multimodal Input (v5.2)
 - Image understanding: auto-classify uploaded images for Gemini vision analysis
 - PDF parsing: text extraction + native PDF Blob dual strategy
@@ -73,16 +110,27 @@ graph TD
         PE["Explorer"] --> PP["Processor"] --> PA["Analyzer"] --> PV["Visualizer"] --> PR["Reporter"]
     end
 
+    subgraph Plugins ["Agent Plugins (v9.0)"]
+        CG["CostGuard"] ~~~ GR["GISToolRetry"]
+        PO["Provenance"] ~~~ HL["HITLApproval"]
+    end
+
+    subgraph Guards ["Guardrails (v9.5)"]
+        IL["InputLength"] ~~~ SI["SQLInjection"]
+        OS["OutputSanitizer"] ~~~ HG["Hallucination"]
+    end
+
     subgraph Infra ["Shared Infrastructure"]
         DB[("PostgreSQL + PostGIS")]
         Auth["Auth + RBAC + RLS"]
         Audit["Audit Logger + Token Tracker"]
         WF["Workflow Engine + Scheduler"]
         MCP["MCP Tool Market"]
-        Bots["WeChat / DingTalk / Feishu"]
+        Mem["PostgresMemoryService"]
+        Analytics["Pipeline Analytics"]
     end
 
-    FE --"REST API"--> FAPI["Frontend API<br/>44 Endpoints"]
+    FE --"REST API"--> FAPI["Frontend API<br/>76 Endpoints + SSE"]
     FAPI --> DB
 ```
 
@@ -125,7 +173,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Skill Bundles | 16 fine-grained scenario skills (farmland compliance, coordinate transform, spatial clustering, PostGIS analysis, etc.), three-level incremental loading (v7.5) |
 | | Custom Skills | DB-driven user-defined expert agents: custom instructions/toolsets/triggers, @mention invocation, LLM injection protection (v8.0) |
 | | NL Layer Control | Natural language show/hide/style/remove map layers via `control_map_layer` tool |
-| | MCP Tool Market | Config-driven MCP server connection + tool aggregation + DB persistence + management UI (v7.1) |
+| | MCP Tool Market | Config-driven MCP server connection + tool aggregation + DB persistence + management UI + per-User isolation (v7.1/v10.0) |
 | | Analysis Perspective | User-defined analysis focus, auto-injected into agent prompts (v7.1) |
 | | Memory ETL | Auto-extract key findings after pipeline execution, smart dedup, quota management (v7.5) |
 | | Dynamic Tool Loading | Intent-based dynamic tool filtering (8 categories + 10 core tools), ContextVar + ToolPredicate (v7.5) |
@@ -133,6 +181,21 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Dynamic Model Selection | Task complexity assessment → fast/standard/premium adaptive model switching (v8.0) |
 | | Context Caching | Gemini context caching: reuse long system prompts, reduce token cost, env-controlled TTL (v7.5) |
 | | Reflection Loops | All 3 pipelines with LoopAgent quality reflection (v7.1) |
+| **Agent Collaboration** | Agent Plugins | CostGuard (token budget) + GISToolRetry (smart retry) + Provenance (data lineage) + HITLApproval (human-in-the-loop) (v9.0) |
+| | ParallelAgent | Parallel data ingestion pipeline, multi-source parallel processing (v9.0) |
+| | Cross-Session Memory | PostgresMemoryService persistent conversation memory across sessions (v9.0) |
+| | Task Decomposition | TaskGraph DAG decomposition + wave-parallel execution (v9.0) |
+| | Pipeline Analytics | 5-dimension analysis: latency, success rate, token efficiency, throughput, agent breakdown (v9.0) |
+| | Agent Hooks | Prometheus metrics + ProgressTracker per-pipeline progress tracking (v9.0) |
+| **Production Hardening** | Guardrails | 4 input/output guards: InputLength + SQLInjection + OutputSanitizer + Hallucination (v9.5) |
+| | SSE Streaming | run_pipeline_streaming() async generator + /api/pipeline/stream endpoint (v9.5) |
+| | LongRunningTool | DRL optimization async execution, prevents duplicate calls (v9.5) |
+| | conftest.py | Centralized test fixtures with event loop safety isolation (v9.5) |
+| **v10.0 Extensions** | GraphRAG | Entity extraction + knowledge graph construction + graph-augmented vector retrieval (v10.0) |
+| | Per-User MCP | User-level MCP server isolation, private/shared control (v10.0) |
+| | Custom Skill Bundles | DB-driven user-composed toolset+ADK Skills bundles (v10.0) |
+| | Spatial Analysis Tier 2 | IDW/Kriging/GWR/change detection/viewshed — 5 advanced tools (v10.0) |
+| | Workflow Templates | Built-in + user-published workflow template marketplace with clone/rate (v10.0) |
 | **Data Fusion** | Fusion Engine (MMFE) | Five-stage pipeline (Profile→Assess→Align→Fuse→Validate), 10 strategies, 5 modalities |
 | | Semantic Matching | Five-tier progressive: exact → equivalence groups → embedding similarity → unit-aware → fuzzy |
 | | Embedding Matching (v7.0) | Gemini text-embedding-004 vector semantic matching (opt-in) |
@@ -152,6 +215,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Scheduled Execution | APScheduler cron triggers |
 | | Webhook Push | HTTP POST results on completion |
 | **Data** | Data Lake | Unified data catalog + lineage tracking + one-click asset download (local/cloud/PostGIS) |
+| | RAG Knowledge Base | User document upload → vector storage → semantic search, multi-tenant isolation (v8.0) |
 | | Real-time Streams | Redis Streams with geofence alerts + IoT data |
 | | Remote Sensing | Raster analysis, NDVI, LULC/DEM download |
 | **Frontend** | Three-Panel UI | Chat + Map + Data panels; HTML/CSV artifact rendering support; React 18 + Leaflet + deck.gl |
@@ -170,7 +234,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | | Team Collaboration | Team creation, member management, resource sharing |
 | | Report Export | Word/PDF with page headers, footers, pipeline-specific titles |
 | **Ops** | Health Check API | K8s liveness/readiness probes + admin system diagnostics |
-| | CI Pipeline | GitHub Actions: tests, frontend build, agent evaluation, evaluation-gated CI (v8.0) |
+| | CI Pipeline | GitHub Actions: tests, frontend build, agent evaluation, eval-gated CI (v8.0) |
 | | Docker + K8s | Containerization, Helm/Kustomize, HPA, network policies |
 | | Observability | Structured logging (JSON) + Prometheus metrics + end-to-end Trace ID (v7.1) |
 | | i18n | Chinese/English dual language, YAML dict + ContextVar |
@@ -182,14 +246,14 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | **Framework** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router) |
 | **Frontend** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **Backend** | Chainlit + Starlette (44 REST API endpoints) |
+| **Backend** | Chainlit + Starlette (76 REST API endpoints + SSE Streaming) |
 | **Database** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
 | **Cloud** | Huawei OBS (S3-compatible) for file storage |
 | **Streaming** | Redis Streams (with in-memory fallback) |
 | **Container** | Docker + Docker Compose + Kubernetes (Kustomize) |
-| **CI** | GitHub Actions (pytest + npm build + evaluation) |
+| **CI** | GitHub Actions (pytest + npm build + evaluation + route-eval) |
 | **Python** | 3.13+ |
 
 ## Project Structure
@@ -197,32 +261,48 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 ```
 data_agent/
 ├── app.py                       # Chainlit UI, semantic router, auth, RBAC
-├── agent.py                     # Agent definitions, pipeline assembly
-├── frontend_api.py              # 44 REST API endpoints
+├── agent.py                     # Agent definitions, pipeline assembly, ParallelAgent
+├── frontend_api.py              # 76 REST API endpoints
+├── pipeline_runner.py           # Headless pipeline executor + SSE streaming
 ├── workflow_engine.py           # Workflow engine: CRUD, execution, webhook, cron
 ├── multimodal.py                # Multimodal input: image/PDF classification, Gemini Parts
 ├── mcp_hub.py                   # MCP Hub Manager: config-driven MCP server management
-├── fusion_engine.py                # Multi-modal Data Fusion Engine (MMFE, ~2100 lines)
-├── knowledge_graph.py              # Geographic Knowledge Graph Engine (networkx, ~625 lines)
+├── fusion_engine.py             # Multi-modal Data Fusion Engine (MMFE, ~2100 lines)
+├── knowledge_graph.py           # Geographic Knowledge Graph Engine (networkx, ~625 lines)
 ├── custom_skills.py             # DB-driven custom Skills: CRUD, validation, agent factory
 ├── failure_learning.py          # Tool failure pattern learning: record, query, mark resolved
-├── pipeline_runner.py           # Headless pipeline executor (run_pipeline_headless)
-├── toolsets/                    # 19 BaseToolset modules
+├── plugins.py                   # Agent Plugins: CostGuard, GISToolRetry, Provenance, HITL
+├── guardrails.py                # Agent Guardrails: 4 input/output guards (recursive attach)
+├── conversation_memory.py       # PostgresMemoryService cross-session memory
+├── task_decomposer.py           # TaskGraph DAG task decomposition + wave-parallel
+├── pipeline_analytics.py        # Pipeline analytics dashboard (5 REST endpoints)
+├── agent_hooks.py               # Agent lifecycle hooks (Prometheus + ProgressTracker)
+├── knowledge_base.py            # RAG knowledge base: document vectorization + semantic search
+├── graph_rag.py                 # GraphRAG: entity extraction + graph construction + augmented retrieval (v10.0)
+├── custom_skill_bundles.py      # User custom skill bundles: CRUD + factory + intent matching (v10.0)
+├── workflow_templates.py        # Workflow template marketplace: CRUD + clone + rating (v10.0)
+├── spatial_analysis_tier2.py    # Advanced spatial analysis: IDW/Kriging/GWR/change detection/viewshed (v10.0)
+├── conftest.py                  # Centralized test fixtures + event loop safety
+├── toolsets/                    # 22 BaseToolset modules
 │   ├── visualization_tools.py   #   10 tools: choropleth, heatmap, 3D, layer control
+│   ├── analysis_tools.py        #   Analysis tools + LongRunningFunctionTool (DRL)
 │   ├── fusion_tools.py          #   Data fusion toolset (4 tools)
 │   ├── knowledge_graph_tools.py #   Knowledge graph toolset (3 tools)
 │   ├── mcp_hub_toolset.py       #   MCP tool bridge
 │   ├── skill_bundles.py         #   16 scenario skill groupings
-│   └── ...                      #   exploration, geo processing, analysis, database, etc.
+│   ├── spatial_analysis_tier2_tools.py # IDW/Kriging/GWR/change detection/viewshed (v10.0)
+│   └── ...                      #   exploration, geo processing, database, etc.
+├── skills/                      # 16 ADK scenario skills (kebab-case directories)
 ├── prompts/                     # 3 YAML prompt files
-├── migrations/                  # 21 SQL migration scripts (001-021)
+├── evals/                       # Agent evaluation framework (trajectory + rubric)
+├── migrations/                  # 29 SQL migration scripts
 ├── locales/                     # i18n: zh.yaml + en.yaml
 ├── db_engine.py                 # Connection pool singleton
 ├── tool_filter.py               # Intent-driven dynamic tool filtering (ToolPredicate + ContextVar)
 ├── health.py                    # K8s health check API
 ├── observability.py             # Structured logging + Prometheus
 ├── i18n.py                      # i18n: YAML dict + t() function
-├── test_*.py                    # 66 test files (1530+ tests)
+├── test_*.py                    # 85 test files (1993 tests)
 └── run_evaluation.py            # Agent evaluation runner
 
 frontend/
@@ -265,7 +345,7 @@ Custom React SPA replacing Chainlit's default UI:
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API Endpoints (44 routes)
+## REST API Endpoints (76 routes)
 
 | Method | Path | Description |
 |---|---|---|
@@ -275,6 +355,7 @@ Custom React SPA replacing Chainlit's default UI:
 | GET | `/api/semantic/domains` | Semantic domain list |
 | GET | `/api/semantic/hierarchy/{domain}` | Browse domain hierarchy tree |
 | GET | `/api/pipeline/history` | Pipeline execution history |
+| GET | `/api/pipeline/stream` | SSE streaming pipeline output (v9.5) |
 | GET | `/api/user/token-usage` | Token consumption + pipeline breakdown |
 | DELETE | `/api/user/account` | Self-delete account (password confirmation) |
 | GET/PUT | `/api/user/analysis-perspective` | View/set analysis perspective (v7.1) |
@@ -292,6 +373,7 @@ Custom React SPA replacing Chainlit's default UI:
 | GET | `/api/mcp/servers` | MCP server status |
 | POST | `/api/mcp/servers` | Add MCP server (v7.1) |
 | GET | `/api/mcp/tools` | MCP tool list |
+| POST | `/api/mcp/servers/test` | MCP connection test |
 | POST | `/api/mcp/servers/{name}/toggle` | Toggle MCP server (admin) |
 | POST | `/api/mcp/servers/{name}/reconnect` | Reconnect MCP server (admin) |
 | PUT | `/api/mcp/servers/{name}` | Update MCP server config (v7.1) |
@@ -300,21 +382,41 @@ Custom React SPA replacing Chainlit's default UI:
 | GET/PUT/DELETE | `/api/workflows/{id}` | Workflow detail / update / delete |
 | POST | `/api/workflows/{id}/execute` | Execute workflow |
 | GET | `/api/workflows/{id}/runs` | Workflow execution history |
+| GET | `/api/workflows/{id}/runs/{run_id}/status` | Workflow run status |
 | GET | `/api/map/pending` | Pending map updates (frontend polling) |
-| GET | `/api/custom-skills` | List custom Skills (v8.0) |
-| POST | `/api/custom-skills` | Create custom Skill (v8.0) |
-| GET | `/api/custom-skills/{id}` | Skill detail (v8.0) |
-| PUT | `/api/custom-skills/{id}` | Update Skill (v8.0) |
-| DELETE | `/api/custom-skills/{id}` | Delete Skill (v8.0) |
+| GET/POST | `/api/skills` | List / create custom Skills (v8.0) |
+| GET/PUT/DELETE | `/api/skills/{id}` | Skill detail / update / delete (v8.0) |
+| GET/POST | `/api/kb` | Knowledge base list / create (v8.0) |
+| POST | `/api/kb/search` | Knowledge base semantic search (v8.0) |
+| GET/DELETE | `/api/kb/{id}` | Knowledge base detail / delete (v8.0) |
+| POST | `/api/kb/{id}/documents` | Upload knowledge base document (v8.0) |
+| DELETE | `/api/kb/{id}/documents/{doc_id}` | Delete knowledge base document (v8.0) |
+| GET | `/api/analytics/latency` | Pipeline latency analysis (v9.0) |
+| GET | `/api/analytics/tool-success` | Tool success rate analysis (v9.0) |
+| GET | `/api/analytics/token-efficiency` | Token efficiency analysis (v9.0) |
+| GET | `/api/analytics/throughput` | Pipeline throughput analysis (v9.0) |
+| GET | `/api/analytics/agent-breakdown` | Agent breakdown analysis (v9.0) |
+| GET | `/api/mcp/servers/mine` | Current user's MCP servers (v10.0) |
+| POST | `/api/mcp/servers/{name}/share` | Toggle MCP server sharing (v10.0) |
+| GET/POST | `/api/bundles` | Skill bundle list / create (v10.0) |
+| GET | `/api/bundles/available-tools` | Available toolsets + skills for composition (v10.0) |
+| GET/PUT/DELETE | `/api/bundles/{id}` | Bundle detail / update / delete (v10.0) |
+| GET/POST | `/api/templates` | Workflow template list / create (v10.0) |
+| GET/PUT/DELETE | `/api/templates/{id}` | Template detail / update / delete (v10.0) |
+| POST | `/api/templates/{id}/clone` | Clone template as workflow (v10.0) |
+| POST | `/api/kb/{id}/build-graph` | Build KB entity graph (v10.0) |
+| GET | `/api/kb/{id}/graph` | Entity-relationship graph data (v10.0) |
+| POST | `/api/kb/{id}/graph-search` | Graph-augmented semantic search (v10.0) |
+| GET | `/api/kb/{id}/entities` | KB entity list (v10.0) |
 
 ## Running Tests
 
 ```bash
-# All tests (1530+ tests)
+# All tests (1993 tests)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single module
-python -m pytest data_agent/test_fusion_engine.py -v
+python -m pytest data_agent/test_guardrails.py -v
 
 # Frontend build check
 cd frontend && npm run build
@@ -327,27 +429,46 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 1. **Unit Tests** — Python tests with PostGIS service container + JUnit XML output
 2. **Frontend Build** — TypeScript compilation + Vite production build
 3. **Agent Evaluation** — ADK agent evaluation on `main` push only (requires `GOOGLE_API_KEY` secret)
+4. **Route Evaluation** — API endpoint count validation
 
 ## Roadmap
 
-| Version | Feature Set | Status |
-|---|---|---|
-| v1.0–v3.2 | Core GIS, PostGIS, Semantic Layer, Multi-Pipeline Architecture | ✅ Done |
-| v4.0 | Frontend Three-Panel SPA, Observability, CI/CD, Skill Bundles | ✅ Done |
-| v4.1 | Session Persistence, Pipeline Progress, Error Recovery, i18n | ✅ Done |
-| v5.1 | MCP Tool Market (Engine + Frontend + Pipeline Filtering) | ✅ Done |
-| v5.2 | Multimodal Input (Image + PDF + Voice) | ✅ Done |
-| v5.3 | 3D Spatial Visualization (deck.gl + MapLibre) | ✅ Done |
-| v5.4 | Workflow Builder (Engine + Cron + Webhook) | ✅ Done |
-| v5.5 | Multi-Modal Data Fusion Engine MMFE (5 modalities, 10 strategies) | ✅ Done |
-| v5.6 | MGIM-Inspired Enhancements (fuzzy matching, unit conversion, multi-source) | ✅ Done |
-| v6.0 | Fusion Improvements (raster reprojection, point cloud, stream, quality) | ✅ Done |
-| v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | ✅ Done |
-| v7.1 | MCP Management UI + DB Persistence, WorkflowEditor, Analysis Perspective, Prompt Versioning, Tool Error Recovery, Reflection Loop Expansion, End-to-End Trace ID | ✅ Done |
-| v7.5 | Memory ETL Auto-Extraction, Dynamic Tool Loading, Categorized Map Rendering, Action Button Fix, File Download, Planner transfer_to_agent Fix, PostGIS SRID Detection Fix, genai SDK Migration, Gemini Context Caching, MCP Security + per-User Isolation, 16 Scenario Skills Enrichment | ✅ Done |
-| v8.0 | DB-Driven Custom Skills, Failure Learning & Adaptation, Dynamic Model Selection, Evaluation-Gated CI, RAG Knowledge Base, DAG Workflow | 🔧 In Progress (4/7) |
-| v8.5 | Terminal UI: Textual Full-Screen TUI + Typer CLI Entry + Streaming Event Callback + Hybrid Visualization | Planned |
-| v9.0 | Real-time Collaboration, Edge Deployment, Data Connectors, Multi-Agent Parallel, A2A Agent Interop, Proactive Exploration & Discovery | Long-term |
+| Version | Feature Set | Tests | Status |
+|---|---|---|---|
+| v1.0–v3.2 | Core GIS, PostGIS, Semantic Layer, Multi-Pipeline Architecture | — | ✅ Done |
+| v4.0 | Frontend Three-Panel SPA, Observability, CI/CD, Skill Bundles | — | ✅ Done |
+| v4.1 | Session Persistence, Pipeline Progress, Error Recovery, i18n | — | ✅ Done |
+| v5.1–v5.6 | MCP Market, Multimodal Input, 3D Visualization, Workflow Builder, Fusion Engine | — | ✅ Done |
+| v6.0 | Fusion Improvements (raster reprojection, point cloud, stream, quality) | — | ✅ Done |
+| v7.0 | Vector Embedding, LLM Strategy Routing, Knowledge Graph, Distributed Computing | — | ✅ Done |
+| v7.1 | MCP Management UI, WorkflowEditor, Analysis Perspective, Reflection Loops, Trace ID | — | ✅ Done |
+| v7.5 | MCP Security, Memory ETL, Dynamic Tool Loading, 16 Scenario Skills, Context Caching | 1530 | ✅ Done |
+| v8.0 | Failure Learning, Dynamic Model Selection, Eval-Gated CI, Custom Skills, RAG Knowledge Base | 1735 | ✅ Done |
+| v9.0 | Agent Plugins (4), ParallelAgent, Cross-Session Memory, Task Decomposition, Pipeline Analytics, Agent Hooks | 1859 | ✅ Done |
+| v9.5 | conftest.py, Guardrails (4), SSE Streaming, LongRunningFunctionTool, Evaluation Enhancement | 1895 | ✅ Done |
+| v10.0 | GraphRAG, per-User MCP Isolation, Custom Skill Bundles, Spatial Analysis Tier 2, Workflow Templates | 1993 | ✅ Done |
+| v11.0 | A2A Agent Interop, Proactive Exploration, Multi-Task Scheduling, Advanced Reasoning | — | ⬅️ Next |
+
+## Design Pattern Coverage (16/21 = 76%)
+
+| Pattern | Status | Implementation |
+|---------|--------|----------------|
+| Prompt Chaining (Ch1) | ✅ | 3 SequentialAgent pipelines |
+| Routing (Ch2) | ✅ | Gemini 2.0 Flash intent classification |
+| Parallelization (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
+| Reflection (Ch4) | ✅ | LoopAgent across all 3 pipelines |
+| Tool Use (Ch5) | ✅ | 21 toolsets, 113+ tools, 16 Skills |
+| Planning (Ch6) | ✅ | DAG task decomposition + wave-parallel |
+| Multi-Agent (Ch7) | ✅ | Hierarchical Planner + 7 sub-agents |
+| Memory (Ch8) | ✅ | Memory ETL + PostgresMemoryService |
+| Learning & Adaptation (Ch9) | ✅ | Failure learning + GISToolRetryPlugin |
+| MCP Protocol (Ch10) | ✅ | 3 transports + DB CRUD + management UI |
+| Goal Monitoring (Ch11) | ✅ | ProgressTracker + Prometheus |
+| Recovery (Ch12) | ✅ | Recovery hints + GISToolRetryPlugin |
+| HITL (Ch13) | ✅ | BasePlugin + 13-tool risk registry |
+| Resource Awareness (Ch16) | ✅ | Dynamic tools + dynamic model + CostGuard + LongRunning |
+| Guardrails & Safety (Ch18) | ✅ | RBAC + RLS + 4 Guardrails |
+| Evaluation & Monitoring (Ch19) | ✅ | 4-pipeline eval + CI + 5 Analytics endpoints |
 
 ## License
 
