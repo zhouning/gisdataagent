@@ -1,4 +1,5 @@
 """Analysis toolset: FFI calculation and DRL land-use optimization."""
+import asyncio
 import os
 
 import matplotlib.pyplot as plt
@@ -7,7 +8,7 @@ import torch
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.monitor import Monitor
 
-from google.adk.tools import FunctionTool
+from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 
 from .. import drl_engine
@@ -95,6 +96,15 @@ def drl_model(data_path: str) -> str:
         return f"Error: {str(e)}"
 
 
+async def drl_model_long_running(data_path: str) -> str:
+    """使用深度强化学习模型进行布局优化。"""
+    return await asyncio.to_thread(drl_model, data_path)
+
+# Preserve tool name for ADK FunctionTool registration
+drl_model_long_running.__name__ = "drl_model"
+drl_model_long_running.__qualname__ = "drl_model"
+
+
 def ffi(data_path: str) -> str:
     """计算破碎化指数。"""
     res_path = _resolve_path(data_path)
@@ -105,14 +115,17 @@ def ffi(data_path: str) -> str:
 # Toolset class
 # ---------------------------------------------------------------------------
 
-_ALL_FUNCS = [ffi, drl_model]
+_SYNC_FUNCS = [ffi]
+_LONG_RUNNING_FUNCS = [drl_model_long_running]
 
 
 class AnalysisToolset(BaseToolset):
     """FFI calculation and DRL layout optimization tools."""
 
     async def get_tools(self, readonly_context=None):
-        all_tools = [FunctionTool(f) for f in _ALL_FUNCS]
+        all_tools = [FunctionTool(f) for f in _SYNC_FUNCS] + [
+            LongRunningFunctionTool(f) for f in _LONG_RUNNING_FUNCS
+        ]
         if self.tool_filter is None:
             return all_tools
         return [t for t in all_tools if self._is_tool_selected(t, readonly_context)]
