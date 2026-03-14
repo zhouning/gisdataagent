@@ -44,6 +44,7 @@ class PipelineResult:
     report_text: str = ""
     generated_files: List[str] = field(default_factory=list)
     tool_execution_log: List[dict] = field(default_factory=list)
+    provenance_trail: List[dict] = field(default_factory=list)
     pipeline_type: str = ""
     intent: str = ""
     total_input_tokens: int = 0
@@ -69,6 +70,7 @@ async def run_pipeline_headless(
     role: str = "analyst",
     extra_parts: list = None,
     on_event: Callable[[dict], None] | None = None,
+    plugins: list = None,
 ) -> PipelineResult:
     """
     Run an ADK pipeline without Chainlit UI coupling.
@@ -107,6 +109,7 @@ async def run_pipeline_headless(
         app_name="data_agent_headless",
         session_service=session_service,
         auto_create_session=True,
+        plugins=plugins or [],
     )
     content = types.Content(role="user", parts=[types.Part(text=prompt)] + (extra_parts or []))
 
@@ -237,6 +240,12 @@ async def run_pipeline_headless(
         result.tool_execution_log = tool_execution_log
         result.total_input_tokens = total_input_tokens
         result.total_output_tokens = total_output_tokens
+
+        # Extract provenance trail from session state (if ProvenancePlugin active)
+        if session and session.state:
+            result.provenance_trail = session.state.get(
+                "__provenance_trail__", []
+            )
 
     except Exception as e:
         result.error = str(e)

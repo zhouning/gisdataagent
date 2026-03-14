@@ -1687,6 +1687,11 @@ async def _execute_pipeline(
     logger.info("[Trace:%s] Pipeline=%s Intent=%s Started", trace_id, pipeline_name, intent)
 
     _plugins = [_hitl_plugin] if HITL_ENABLED else []
+    try:
+        from data_agent.plugins import build_plugin_stack
+        _plugins.extend(build_plugin_stack())
+    except Exception:
+        pass  # Plugin framework unavailable — degrade gracefully
 
     if _context_cache_config:
         _app = App(
