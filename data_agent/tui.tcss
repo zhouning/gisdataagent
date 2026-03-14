@@ -1,0 +1,78 @@
+/* GIS Data Agent TUI v8.5.3 — Three-panel layout */
+
+Screen {
+    layout: vertical;
+}
+
+#main-container {
+    height: 1fr;
+}
+
+/* ── Left: Chat panel ── */
+
+#chat-panel {
+    width: 35%;
+    border-right: solid $accent;
+}
+
+#chat-log {
+    height: 1fr;
+    scrollbar-size: 1 1;
+}
+
+#chat-input {
+    dock: bottom;
+    height: 3;
+    border-top: solid $primary;
+}
+
+/* ── Center: Report panel ── */
+
+#report-panel {
+    width: 40%;
+    border-right: solid $accent;
+}
+
+#report-header {
+    height: 1;
+    background: $primary;
+    color: $text;
+    text-align: center;
+    text-style: bold;
+    padding: 0 1;
+}
+
+#report-log {
+    height: 1fr;
+    scrollbar-size: 1 1;
+}
+
+/* ── Right: Status panel ── */
+
+#status-panel {
+    width: 25%;
+}
+
+#status-header {
+    height: 1;
+    background: $secondary;
+    color: $text;
+    text-align: center;
+    text-style: bold;
+    padding: 0 1;
+}
+
+#status-log {
+    height: 1fr;
+    scrollbar-size: 1 1;
+}
+
+/* ── Focus styling ── */
+
+Input:focus {
+    border-top: heavy $warning;
+}
+
+RichLog:focus {
+    border: heavy $primary;
+}

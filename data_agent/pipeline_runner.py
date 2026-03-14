@@ -106,6 +106,7 @@ async def run_pipeline_headless(
         agent=agent,
         app_name="data_agent_headless",
         session_service=session_service,
+        auto_create_session=True,
     )
     content = types.Content(role="user", parts=[types.Part(text=prompt)] + (extra_parts or []))
 
