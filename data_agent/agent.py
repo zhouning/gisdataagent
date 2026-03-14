@@ -7,7 +7,7 @@ Agents use BaseToolset instances for tool registration (see data_agent/toolsets/
 from datetime import date
 
 from google.adk.agents.llm_agent import Agent
-from google.adk.agents import LlmAgent, SequentialAgent, LoopAgent
+from google.adk.agents import LlmAgent, SequentialAgent, LoopAgent, ParallelAgent
 from google.adk.tools import VertexAiSearchTool, AgentTool
 
 import os
@@ -165,6 +165,35 @@ data_exploration_agent = LlmAgent(
     ],
 )
 
+semantic_prefetch_agent = LlmAgent(
+    name="SemanticPreFetch",
+    instruction=(
+        "你是语义层预取助手。在数据探查阶段并行运行，预加载语义目录和数据资产信息。\n"
+        "1. 调用 list_semantic_sources 获取可用语义源列表\n"
+        "2. 调用 search_data_assets 或 list_data_assets 浏览数据目录\n"
+        "3. 对相关源调用 resolve_semantic_context 获取字段映射\n"
+        "4. 将发现的语义上下文和数据目录信息写入 semantic_context\n"
+        "保持只读操作，不修改任何数据。"
+    ),
+    description="语义层预取助手——并行加载语义目录与数据资产信息",
+    model=MODEL_FAST,
+    output_key="semantic_context",
+    tools=[
+        SemanticLayerToolset(tool_filter=[
+            "resolve_semantic_context", "describe_table_semantic",
+            "list_semantic_sources", "browse_hierarchy",
+            "discover_column_equivalences",
+        ]),
+        DataLakeToolset(tool_filter=_DATALAKE_READ),
+    ],
+)
+
+parallel_data_ingestion = ParallelAgent(
+    name="ParallelDataIngestion",
+    description="并行数据摄入——同时执行数据探查和语义预取",
+    sub_agents=[data_exploration_agent, semantic_prefetch_agent],
+)
+
 data_processing_agent = LlmAgent(
     name="DataProcessing",
     instruction=get_prompt("optimization", "data_processing_opt_instruction"),
@@ -189,7 +218,7 @@ data_processing_agent = LlmAgent(
 
 data_engineering_agent = SequentialAgent(
     name="DataEngineering",
-    sub_agents=[data_exploration_agent, data_processing_agent],
+    sub_agents=[parallel_data_ingestion, data_processing_agent],
 )
 
 data_analysis_agent = LlmAgent(
@@ -243,8 +272,7 @@ data_summary_agent = LlmAgent(
     output_key="final_summary",
 )
 
-# Simplified pipeline: no ParallelAgent, knowledge is on-demand via tool,
-# analysis wrapped in quality loop.
+# Pipeline: ParallelDataIngestion(Exploration || SemanticPreFetch) → Processing → QualityLoop → Viz → Summary
 data_pipeline = SequentialAgent(
     name="DataPipeline",
     sub_agents=[
@@ -509,15 +537,51 @@ planner_reporter = LlmAgent(
     disallow_transfer_to_peers=True,
 )
 
-# --- Sub-workflows (ADK Optimization 2.3) ---
+# --- Sub-workflows (ADK Optimization 2.3 + v9.0.2 Parallel) ---
 # Common sequential patterns packaged as SequentialAgent to eliminate
 # unnecessary Planner routing hops (8 hops → 3 for optimization flow).
+# v9.0.2: Exploration + SemanticPreFetch run in parallel.
+
+
+def _make_semantic_prefetch(name: str) -> LlmAgent:
+    """Factory for SemanticPreFetch agent instances (ADK one-parent constraint)."""
+    return LlmAgent(
+        name=name,
+        instruction=(
+            "你是语义层预取助手。在数据探查阶段并行运行，预加载语义目录和数据资产信息。\n"
+            "1. 调用 list_semantic_sources 获取可用语义源列表\n"
+            "2. 调用 search_data_assets 或 list_data_assets 浏览数据目录\n"
+            "3. 对相关源调用 resolve_semantic_context 获取字段映射\n"
+            "4. 将发现的语义上下文和数据目录信息写入 semantic_context\n"
+            "保持只读操作，不修改任何数据。"
+        ),
+        description="语义层预取助手——并行加载语义目录与数据资产信息",
+        model=get_model_for_tier("fast"),
+        output_key="semantic_context",
+        disallow_transfer_to_peers=True,
+        tools=[
+            SemanticLayerToolset(tool_filter=[
+                "resolve_semantic_context", "describe_table_semantic",
+                "list_semantic_sources", "browse_hierarchy",
+                "discover_column_equivalences",
+            ]),
+            DataLakeToolset(tool_filter=_DATALAKE_READ),
+        ],
+    )
+
 
 explore_process_workflow = SequentialAgent(
     name="ExploreAndProcess",
-    description="数据探查→数据处理 一体化工作流。先审计数据质量再自动执行空间处理，无需中间路由。",
+    description="并行数据探查(探查+语义预取)→数据处理 一体化工作流。",
     sub_agents=[
-        _make_planner_explorer("WFExplorer"),
+        ParallelAgent(
+            name="WFParallelIngestion",
+            description="并行探查+语义预取",
+            sub_agents=[
+                _make_planner_explorer("WFExplorer"),
+                _make_semantic_prefetch("WFSemanticPreFetch"),
+            ],
+        ),
         _make_planner_processor("WFProcessor"),
     ],
 )

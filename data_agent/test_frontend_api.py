@@ -1,9 +1,22 @@
 """Tests for frontend_api module — REST endpoints for React frontend."""
+import asyncio
 import json
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 from starlette.responses import JSONResponse
+
+
+def _run_async(coro):
+    """Run an async coroutine safely, creating a new event loop if needed."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
 
 
 def _make_request(path="/", query_params=None, cookies=None, path_params=None, method="GET", body=None):
@@ -35,7 +48,7 @@ class TestCatalogAPI(unittest.TestCase):
     def test_catalog_list_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_catalog_list
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_catalog_list(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -47,7 +60,7 @@ class TestCatalogAPI(unittest.TestCase):
         from data_agent.frontend_api import _api_catalog_list
 
         with patch("data_agent.data_catalog.get_engine", return_value=None):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_catalog_list(_make_request(query_params={"asset_type": "vector"})))
         # Should return response (even if DB is down, it returns error dict)
         self.assertEqual(resp.status_code, 200)
@@ -56,7 +69,7 @@ class TestCatalogAPI(unittest.TestCase):
     def test_catalog_detail_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_catalog_detail
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_catalog_detail(_make_request(path_params={"asset_id": "1"})))
         self.assertEqual(resp.status_code, 401)
 
@@ -64,7 +77,7 @@ class TestCatalogAPI(unittest.TestCase):
     def test_catalog_lineage_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_catalog_lineage
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_catalog_lineage(_make_request(path_params={"asset_id": "1"})))
         self.assertEqual(resp.status_code, 401)
 
@@ -76,7 +89,7 @@ class TestSemanticAPI(unittest.TestCase):
     def test_domains_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_semantic_domains
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_semantic_domains(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -85,7 +98,7 @@ class TestSemanticAPI(unittest.TestCase):
         mock_user.return_value = _make_user()
         import asyncio
         from data_agent.frontend_api import _api_semantic_domains
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_semantic_domains(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -100,7 +113,7 @@ class TestSemanticAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_semantic_hierarchy
         req = _make_request(path_params={"domain": "LAND_USE"})
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_semantic_hierarchy(req))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -112,7 +125,7 @@ class TestSemanticAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_semantic_hierarchy
         req = _make_request(path_params={"domain": "NONEXISTENT"})
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_semantic_hierarchy(req))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -122,7 +135,7 @@ class TestSemanticAPI(unittest.TestCase):
     def test_hierarchy_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_semantic_hierarchy
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_semantic_hierarchy(_make_request(path_params={"domain": "LAND_USE"})))
         self.assertEqual(resp.status_code, 401)
 
@@ -134,7 +147,7 @@ class TestPipelineHistoryAPI(unittest.TestCase):
     def test_history_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_pipeline_history
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_pipeline_history(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -144,7 +157,7 @@ class TestPipelineHistoryAPI(unittest.TestCase):
         mock_user.return_value = _make_user()
         import asyncio
         from data_agent.frontend_api import _api_pipeline_history
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_pipeline_history(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -159,7 +172,7 @@ class TestPipelineHistoryAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_pipeline_history
         req = _make_request(query_params={"days": "999", "limit": "9999"})
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_pipeline_history(req))
         self.assertEqual(resp.status_code, 200)
 
@@ -171,7 +184,7 @@ class TestTokenUsageAPI(unittest.TestCase):
     def test_token_usage_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_user_token_usage
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_token_usage(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -182,7 +195,7 @@ class TestTokenUsageAPI(unittest.TestCase):
         from data_agent.frontend_api import _api_user_token_usage
 
         with patch("data_agent.token_tracker.get_engine", return_value=None):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_user_token_usage(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -200,7 +213,7 @@ class TestAdminUsersAPI(unittest.TestCase):
     def test_users_list_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_admin_users_list
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_users_list(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -209,7 +222,7 @@ class TestAdminUsersAPI(unittest.TestCase):
         mock_user.return_value = _make_user(role="analyst")
         import asyncio
         from data_agent.frontend_api import _api_admin_users_list
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_users_list(_make_request()))
         self.assertEqual(resp.status_code, 403)
 
@@ -219,7 +232,7 @@ class TestAdminUsersAPI(unittest.TestCase):
         mock_user.return_value = _make_user(role="admin")
         import asyncio
         from data_agent.frontend_api import _api_admin_users_list
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_users_list(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -231,7 +244,7 @@ class TestAdminUsersAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_admin_update_role
         req = _make_request(path_params={"username": "bob"}, body={"role": "viewer"})
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_update_role(req))
         self.assertEqual(resp.status_code, 403)
 
@@ -241,7 +254,7 @@ class TestAdminUsersAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_admin_update_role
         req = _make_request(path_params={"username": "bob"}, body={"role": "superuser"})
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_update_role(req))
         self.assertEqual(resp.status_code, 400)
 
@@ -251,7 +264,7 @@ class TestAdminUsersAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_admin_delete_user
         req = _make_request(path_params={"username": "admin"})
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_delete_user(req))
         self.assertEqual(resp.status_code, 400)
         body = json.loads(resp.body)
@@ -261,7 +274,7 @@ class TestAdminUsersAPI(unittest.TestCase):
     def test_delete_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_admin_delete_user
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_delete_user(_make_request(path_params={"username": "bob"})))
         self.assertEqual(resp.status_code, 401)
 
@@ -273,7 +286,7 @@ class TestAdminMetricsAPI(unittest.TestCase):
     def test_metrics_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_admin_metrics_summary
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_metrics_summary(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -282,7 +295,7 @@ class TestAdminMetricsAPI(unittest.TestCase):
         mock_user.return_value = _make_user(role="viewer")
         import asyncio
         from data_agent.frontend_api import _api_admin_metrics_summary
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_admin_metrics_summary(_make_request()))
         self.assertEqual(resp.status_code, 403)
 
@@ -294,7 +307,7 @@ class TestAdminMetricsAPI(unittest.TestCase):
         from data_agent.frontend_api import _api_admin_metrics_summary
 
         with patch("data_agent.audit_logger.get_engine", return_value=None):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_admin_metrics_summary(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -309,7 +322,7 @@ class TestBasemapConfigAPI(unittest.TestCase):
     def test_basemaps_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_config_basemaps
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_config_basemaps(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -319,7 +332,7 @@ class TestBasemapConfigAPI(unittest.TestCase):
         mock_user.return_value = _make_user()
         import asyncio
         from data_agent.frontend_api import _api_config_basemaps
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_config_basemaps(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -333,7 +346,7 @@ class TestBasemapConfigAPI(unittest.TestCase):
         mock_user.return_value = _make_user()
         import asyncio
         from data_agent.frontend_api import _api_config_basemaps
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_config_basemaps(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -346,7 +359,7 @@ class TestRouteMount(unittest.TestCase):
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 52)
+        self.assertEqual(len(routes), 58)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
@@ -370,7 +383,7 @@ class TestRouteMount(unittest.TestCase):
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
         # 36 routes inserted before the catch-all, catch-all is now at index 36
-        self.assertEqual(len(mock_app.router.routes), 53)
+        self.assertEqual(len(mock_app.router.routes), 59)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
 
 
@@ -424,7 +437,7 @@ class TestUserDeleteAccountAPI(unittest.TestCase):
     def test_delete_account_unauthorized(self, _mock):
         import asyncio
         from data_agent.frontend_api import _api_user_delete_account
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_delete_account(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -434,7 +447,7 @@ class TestUserDeleteAccountAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_user_delete_account
         req = _make_request(body={"password": ""})
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_delete_account(req))
         self.assertEqual(resp.status_code, 400)
         body = json.loads(resp.body)
@@ -447,7 +460,7 @@ class TestUserDeleteAccountAPI(unittest.TestCase):
         from data_agent.frontend_api import _api_user_delete_account
         req = _make_request(body={"password": "wrongpass"})
         with patch("data_agent.auth.get_engine", return_value=None):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_user_delete_account(req))
         self.assertEqual(resp.status_code, 400)
         body = json.loads(resp.body)
@@ -463,7 +476,7 @@ class TestUserDeleteAccountAPI(unittest.TestCase):
         with patch("data_agent.auth.authenticate_user", return_value={
             "username": "admin", "display_name": "Admin", "role": "admin"
         }), patch("data_agent.auth.get_engine", return_value=MagicMock()):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_user_delete_account(req))
         self.assertEqual(resp.status_code, 400)
         body = json.loads(resp.body)
@@ -546,7 +559,7 @@ class TestAnalysisPerspectiveAPI(unittest.TestCase):
         from data_agent.frontend_api import _api_user_perspective_get
         import asyncio
         with patch("data_agent.frontend_api._get_user_from_request", return_value=None):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_user_perspective_get(_make_request()))
         self.assertEqual(resp.status_code, 401)
 
@@ -556,7 +569,7 @@ class TestAnalysisPerspectiveAPI(unittest.TestCase):
         mock_user.return_value = _make_user()
         from data_agent.frontend_api import _api_user_perspective_get
         import asyncio
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_perspective_get(_make_request()))
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
@@ -566,7 +579,7 @@ class TestAnalysisPerspectiveAPI(unittest.TestCase):
         from data_agent.frontend_api import _api_user_perspective_put
         import asyncio
         with patch("data_agent.frontend_api._get_user_from_request", return_value=None):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_user_perspective_put(_make_request(body={"perspective": "test"})))
         self.assertEqual(resp.status_code, 401)
 
@@ -576,7 +589,7 @@ class TestAnalysisPerspectiveAPI(unittest.TestCase):
         mock_user.return_value = _make_user()
         from data_agent.frontend_api import _api_user_perspective_put
         import asyncio
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_perspective_put(_make_request(body={"perspective": "生态分析"})))
         self.assertEqual(resp.status_code, 200)
 
@@ -585,7 +598,7 @@ class TestAnalysisPerspectiveAPI(unittest.TestCase):
         mock_user.return_value = _make_user()
         from data_agent.frontend_api import _api_user_perspective_put
         import asyncio
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_perspective_put(_make_request(body={"perspective": "x" * 2001})))
         self.assertEqual(resp.status_code, 400)
 
@@ -598,7 +611,7 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         import asyncio
         with patch("data_agent.frontend_api._require_admin",
                    return_value=(None, None, None, JSONResponse({"error": "Unauthorized"}, status_code=401))):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_mcp_server_create(_make_request(body={"name": "test"})))
         self.assertEqual(resp.status_code, 401)
 
@@ -607,7 +620,7 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         import asyncio
         with patch("data_agent.frontend_api._require_admin",
                    return_value=(_make_user(role="admin"), "admin", "admin", None)):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_mcp_server_create(_make_request(body={"name": ""})))
         self.assertEqual(resp.status_code, 400)
 
@@ -616,7 +629,7 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         import asyncio
         with patch("data_agent.frontend_api._require_admin",
                    return_value=(_make_user(role="admin"), "admin", "admin", None)):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_mcp_server_create(_make_request(body={"name": "s1", "transport": "invalid"})))
         self.assertEqual(resp.status_code, 400)
 
@@ -627,7 +640,7 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         import asyncio
         with patch("data_agent.frontend_api._require_admin",
                    return_value=(_make_user(role="admin"), "admin", "admin", None)):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_mcp_server_create(_make_request(body={
                     "name": "test-srv", "transport": "sse", "url": "http://localhost:8080"
                 })))
@@ -642,7 +655,7 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         req.path_params = {"name": "test-srv"}
         with patch("data_agent.frontend_api._require_admin",
                    return_value=(_make_user(role="admin"), "admin", "admin", None)):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_mcp_server_delete(req))
         self.assertEqual(resp.status_code, 200)
 
@@ -655,7 +668,7 @@ class TestMcpServerCrudAPI(unittest.TestCase):
         req.path_params = {"name": "test-srv"}
         with patch("data_agent.frontend_api._require_admin",
                    return_value=(_make_user(role="admin"), "admin", "admin", None)):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_mcp_server_update(req))
         self.assertEqual(resp.status_code, 200)
 
@@ -668,7 +681,7 @@ class TestMemoryAPI(unittest.TestCase):
         import asyncio
         from data_agent.frontend_api import _api_user_memories_list
         req = MagicMock()
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_memories_list(req))
         self.assertEqual(resp.status_code, 401)
 
@@ -678,7 +691,7 @@ class TestMemoryAPI(unittest.TestCase):
         from data_agent.frontend_api import _api_user_memories_delete
         req = MagicMock()
         req.path_params = {"id": 1}
-        resp = asyncio.get_event_loop().run_until_complete(
+        resp = _run_async(
             _api_user_memories_delete(req))
         self.assertEqual(resp.status_code, 401)
 
@@ -692,7 +705,7 @@ class TestMemoryAPI(unittest.TestCase):
         req = MagicMock()
         with patch("data_agent.memory.list_auto_extract_memories",
                    return_value={"status": "success", "memories": []}):
-            resp = asyncio.get_event_loop().run_until_complete(
+            resp = _run_async(
                 _api_user_memories_list(req))
         self.assertEqual(resp.status_code, 200)
 

@@ -18,14 +18,15 @@ class TestAgentToolKnowledge(unittest.TestCase):
         from data_agent.agent import knowledge_tool
         self.assertIsInstance(knowledge_tool, AgentTool)
 
-    def test_pipeline_has_no_parallel_agent(self):
-        """data_pipeline should not contain any ParallelAgent."""
-        from google.adk.agents import SequentialAgent
+    def test_pipeline_has_parallel_data_ingestion(self):
+        """data_pipeline should contain ParallelDataIngestion inside DataEngineering."""
+        from google.adk.agents import ParallelAgent
         from data_agent.agent import data_pipeline
-        self.assertIsInstance(data_pipeline, SequentialAgent)
-        for sub in data_pipeline.sub_agents:
-            self.assertNotEqual(type(sub).__name__, "ParallelAgent",
-                                f"Found ParallelAgent: {sub.name}")
+        data_eng = data_pipeline.sub_agents[0]
+        self.assertEqual(data_eng.name, "DataEngineering")
+        parallel = data_eng.sub_agents[0]
+        self.assertIsInstance(parallel, ParallelAgent)
+        self.assertEqual(parallel.name, "ParallelDataIngestion")
 
     def test_processing_agent_has_knowledge_tool(self):
         """data_processing_agent should have knowledge_tool in its tools."""
@@ -81,13 +82,15 @@ class TestSubWorkflows(unittest.TestCase):
     """Tests for sub-workflow packaging (2.3)."""
 
     def test_explore_process_workflow_structure(self):
-        """ExploreAndProcess should be a SequentialAgent with 2 sub-agents."""
-        from google.adk.agents import SequentialAgent
+        """ExploreAndProcess should be Sequential with ParallelIngestion + Processor."""
+        from google.adk.agents import SequentialAgent, ParallelAgent
         from data_agent.agent import explore_process_workflow
         self.assertIsInstance(explore_process_workflow, SequentialAgent)
         self.assertEqual(len(explore_process_workflow.sub_agents), 2)
         names = [a.name for a in explore_process_workflow.sub_agents]
-        self.assertEqual(names, ["WFExplorer", "WFProcessor"])
+        self.assertEqual(names, ["WFParallelIngestion", "WFProcessor"])
+        # First sub-agent should be a ParallelAgent
+        self.assertIsInstance(explore_process_workflow.sub_agents[0], ParallelAgent)
 
     def test_analyze_viz_workflow_structure(self):
         """AnalyzeAndVisualize should be a SequentialAgent with 2 sub-agents."""
@@ -115,7 +118,8 @@ class TestSubWorkflows(unittest.TestCase):
         from data_agent.agent import (
             planner_explorer, explore_process_workflow,
         )
-        wf_explorer = explore_process_workflow.sub_agents[0]
+        wf_parallel = explore_process_workflow.sub_agents[0]  # WFParallelIngestion
+        wf_explorer = wf_parallel.sub_agents[0]  # WFExplorer inside parallel
         # Different name
         self.assertNotEqual(planner_explorer.name, wf_explorer.name)
         # Different object
