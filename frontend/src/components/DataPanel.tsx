@@ -7,7 +7,7 @@ interface DataPanelProps {
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics';
 
 interface FileInfo {
   name: string;
@@ -114,6 +114,14 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
           onClick={() => setActiveTab('tools')}>工具</button>
         <button className={`data-panel-tab ${activeTab === 'workflows' ? 'active' : ''}`}
           onClick={() => setActiveTab('workflows')}>工作流</button>
+        <button className={`data-panel-tab ${activeTab === 'suggestions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('suggestions')}>建议</button>
+        <button className={`data-panel-tab ${activeTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tasks')}>任务</button>
+        <button className={`data-panel-tab ${activeTab === 'templates' ? 'active' : ''}`}
+          onClick={() => setActiveTab('templates')}>模板</button>
+        <button className={`data-panel-tab ${activeTab === 'analytics' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analytics')}>分析</button>
       </div>
 
       <div className="data-panel-content">
@@ -124,6 +132,10 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'usage' && <UsageView />}
         {activeTab === 'tools' && <ToolsView userRole={userRole} />}
         {activeTab === 'workflows' && <WorkflowsView />}
+        {activeTab === 'suggestions' && <SuggestionsView />}
+        {activeTab === 'tasks' && <TasksView />}
+        {activeTab === 'templates' && <TemplatesView />}
+        {activeTab === 'analytics' && <AnalyticsView />}
       </div>
     </div>
   );
@@ -1055,4 +1067,289 @@ function formatTime(ts: string): string {
   if (!ts) return '';
   const d = new Date(ts);
   return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
+/* ============================================================
+   Suggestions View (v12.0.3)
+   ============================================================ */
+
+function SuggestionsView() {
+  const [observations, setObservations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSuggestions();
+    const interval = setInterval(fetchSuggestions, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchSuggestions = async () => {
+    try {
+      const resp = await fetch('/api/suggestions', { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setObservations(data.suggestions || []);
+      }
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  const executeSuggestion = async (obsId: string, prompt: string, pipelineType: string) => {
+    try {
+      await fetch(`/api/suggestions/${obsId}/execute`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, pipeline_type: pipelineType }),
+      });
+      alert('任务已提交到队列');
+    } catch { alert('执行失败'); }
+  };
+
+  const dismissSuggestion = async (obsId: string) => {
+    try {
+      await fetch(`/api/suggestions/${obsId}/dismiss`, {
+        method: 'POST', credentials: 'include',
+      });
+      setObservations(prev => prev.filter(o => o.observation_id !== obsId));
+    } catch { /* ignore */ }
+  };
+
+  if (loading) return <div className="data-panel-empty">加载中...</div>;
+  if (observations.length === 0) return <div className="data-panel-empty">暂无分析建议</div>;
+
+  return (
+    <div className="data-panel-list">
+      {observations.map((obs: any) => (
+        <div key={obs.observation_id} className="data-panel-card" style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{obs.file_path?.split(/[/\\]/).pop()}</div>
+          {(obs.suggestions || []).map((s: any, i: number) => (
+            <div key={i} style={{ padding: '6px 0', borderTop: i > 0 ? '1px solid #333' : 'none' }}>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{s.title}</div>
+              <div style={{ fontSize: 12, color: '#aaa', margin: '2px 0' }}>{s.description}</div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                <span className="data-panel-badge" style={{ background: '#2563eb' }}>{s.category}</span>
+                <span style={{ fontSize: 11, color: '#888' }}>相关度: {'★'.repeat(Math.round((s.relevance_score || 0) * 5))}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <button className="data-panel-btn-sm" onClick={() => executeSuggestion(obs.observation_id, s.prompt_template, s.pipeline_type)}>执行</button>
+                <button className="data-panel-btn-sm secondary" onClick={() => dismissSuggestion(obs.observation_id)}>忽略</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   Tasks View (v12.0.3)
+   ============================================================ */
+
+function TasksView() {
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTasks();
+    const hasRunning = jobs.some(j => j.status === 'running');
+    const interval = setInterval(fetchTasks, hasRunning ? 3000 : 10000);
+    return () => clearInterval(interval);
+  }, [jobs.length]);
+
+  const fetchTasks = async () => {
+    try {
+      const resp = await fetch('/api/tasks', { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setJobs(data.jobs || []);
+        setStats(data.stats || {});
+      }
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  const cancelTask = async (jobId: string) => {
+    try {
+      await fetch(`/api/tasks/${jobId}`, { method: 'DELETE', credentials: 'include' });
+      fetchTasks();
+    } catch { /* ignore */ }
+  };
+
+  const statusColor: Record<string, string> = {
+    queued: '#6b7280', running: '#3b82f6', completed: '#22c55e', failed: '#ef4444', cancelled: '#eab308',
+  };
+
+  if (loading) return <div className="data-panel-empty">加载中...</div>;
+
+  return (
+    <div className="data-panel-list">
+      {stats.by_status && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          {Object.entries(stats.by_status).map(([status, count]: any) => (
+            <span key={status} className="data-panel-badge" style={{ background: statusColor[status] || '#666' }}>
+              {status}: {count}
+            </span>
+          ))}
+          <span style={{ fontSize: 11, color: '#888' }}>并发上限: {stats.max_concurrent}</span>
+        </div>
+      )}
+      {jobs.length === 0 && <div className="data-panel-empty">暂无后台任务</div>}
+      {jobs.map((job: any) => (
+        <div key={job.job_id} className="data-panel-card" style={{ marginBottom: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontFamily: 'monospace' }}>{job.job_id}</span>
+            <span className="data-panel-badge" style={{ background: statusColor[job.status] || '#666' }}>
+              {job.status}{job.status === 'running' ? ' ⏳' : ''}
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: '#ccc', margin: '4px 0' }}>{job.prompt}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888' }}>
+            <span>{job.pipeline_type}</span>
+            <span>{job.duration > 0 ? `${job.duration}s` : ''}</span>
+          </div>
+          {(job.status === 'queued' || job.status === 'running') && (
+            <button className="data-panel-btn-sm secondary" style={{ marginTop: 4 }} onClick={() => cancelTask(job.job_id)}>取消</button>
+          )}
+          {job.error_message && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{job.error_message}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   Templates View (v12.0.4)
+   ============================================================ */
+
+function TemplatesView() {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [category, setCategory] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [category]);
+
+  const fetchTemplates = async () => {
+    try {
+      const params = category ? `?category=${category}` : '';
+      const resp = await fetch(`/api/templates${params}`, { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setTemplates(data.templates || []);
+      }
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  const cloneTemplate = async (id: number, name: string) => {
+    try {
+      const resp = await fetch(`/api/templates/${id}/clone`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (resp.ok) alert(`模板 "${name}" 已克隆为工作流`);
+    } catch { alert('克隆失败'); }
+  };
+
+  if (loading) return <div className="data-panel-empty">加载中...</div>;
+
+  return (
+    <div className="data-panel-list">
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+        {['', 'general', 'governance', 'optimization', 'analysis'].map(cat => (
+          <button key={cat} className={`data-panel-btn-sm ${category === cat ? '' : 'secondary'}`}
+            onClick={() => setCategory(cat)}>{cat || '全部'}</button>
+        ))}
+      </div>
+      {templates.length === 0 && <div className="data-panel-empty">暂无模板</div>}
+      {templates.map((t: any) => (
+        <div key={t.id} className="data-panel-card" style={{ marginBottom: 6 }}>
+          <div style={{ fontWeight: 600, fontSize: 13 }}>{t.template_name}</div>
+          <div style={{ fontSize: 12, color: '#aaa', margin: '2px 0' }}>{t.description}</div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
+            <span className="data-panel-badge">{t.category}</span>
+            <span style={{ fontSize: 11, color: '#888' }}>克隆: {t.clone_count}</span>
+            <span style={{ fontSize: 11, color: '#f59e0b' }}>{'★'.repeat(Math.round(t.rating_avg || 0))}</span>
+          </div>
+          <button className="data-panel-btn-sm" style={{ marginTop: 6 }} onClick={() => cloneTemplate(t.id, t.template_name)}>克隆为工作流</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   Analytics View (v12.0.4)
+   ============================================================ */
+
+function AnalyticsView() {
+  const [latency, setLatency] = useState<any>(null);
+  const [toolSuccess, setToolSuccess] = useState<any[]>([]);
+  const [throughput, setThroughput] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/analytics/latency', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+      fetch('/api/analytics/tool-success', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+      fetch('/api/analytics/throughput', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+    ]).then(([lat, tools, tp]) => {
+      setLatency(lat);
+      setToolSuccess(tools?.tools || []);
+      setThroughput(tp?.daily || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="data-panel-empty">加载中...</div>;
+
+  return (
+    <div className="data-panel-list" style={{ fontSize: 12 }}>
+      {/* Latency */}
+      <div className="data-panel-card" style={{ marginBottom: 8 }}>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>管线延迟 (ms)</div>
+        {latency ? (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {['p50', 'p75', 'p90', 'p99'].map(k => (
+              <div key={k} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#3b82f6' }}>{latency[k] || 0}</div>
+                <div style={{ color: '#888' }}>{k.toUpperCase()}</div>
+              </div>
+            ))}
+          </div>
+        ) : <div style={{ color: '#888' }}>无数据</div>}
+      </div>
+
+      {/* Tool Success Rate Top 5 */}
+      <div className="data-panel-card" style={{ marginBottom: 8 }}>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>工具成功率 Top 5</div>
+        {toolSuccess.slice(0, 5).map((t: any, i: number) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ width: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.tool_name}</span>
+            <div style={{ flex: 1, height: 14, background: '#333', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ width: `${(t.success_rate || 0) * 100}%`, height: '100%', background: '#22c55e', borderRadius: 4 }}></div>
+            </div>
+            <span style={{ width: 40, textAlign: 'right' }}>{((t.success_rate || 0) * 100).toFixed(0)}%</span>
+          </div>
+        ))}
+        {toolSuccess.length === 0 && <div style={{ color: '#888' }}>无数据</div>}
+      </div>
+
+      {/* Throughput */}
+      <div className="data-panel-card">
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>每日吞吐量</div>
+        {throughput.slice(-7).map((d: any, i: number) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+            <span>{d.date}</span>
+            <span style={{ color: '#3b82f6' }}>{d.count} 次</span>
+          </div>
+        ))}
+        {throughput.length === 0 && <div style={{ color: '#888' }}>无数据</div>}
+      </div>
+    </div>
+  );
 }

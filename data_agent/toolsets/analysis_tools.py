@@ -1,7 +1,9 @@
-"""Analysis toolset: FFI calculation and DRL land-use optimization."""
+"""Analysis toolset: FFI calculation, DRL optimization, multi-objective Pareto."""
 import asyncio
 import os
+import traceback
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import torch
@@ -111,11 +113,63 @@ def ffi(data_path: str) -> str:
     return calculate_ffi(res_path) if os.path.exists(res_path) else f"Error: {res_path} not found"
 
 
+def drl_multi_objective(data_path: str, objectives: str = "slope,contiguity,area_balance",
+                        iterations: str = "5") -> str:
+    """多目标用地优化 — Pareto 前沿分析，在多个冲突目标间寻找权衡方案集。
+
+    Args:
+        data_path: 用地数据路径（SHP/GeoJSON）
+        objectives: 优化目标（逗号分隔: slope,contiguity,area_balance）
+        iterations: 优化迭代轮数（不同权重组合数，默认5）
+
+    Returns:
+        JSON 包含 Pareto 前沿解集和各目标值。
+    """
+    import json
+    try:
+        res_path = _resolve_path(data_path)
+        gdf = gpd.read_file(res_path)
+        from ..drl_engine import optimize_multi_objective
+        result = optimize_multi_objective(gdf, max_steps=200)
+
+        # Generate Pareto visualization
+        try:
+            out_png = _generate_output_path("pareto_frontier", "png")
+            import matplotlib
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as plt
+
+            frontier = result["pareto_frontier"]
+            if len(frontier) >= 2:
+                fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+                xs = [s["objectives"][0] for s in frontier]
+                ys = [s["objectives"][1] for s in frontier]
+                sizes = [s["objectives"][2] * 100 + 20 for s in frontier]
+                ax.scatter(xs, ys, s=sizes, c='steelblue', alpha=0.7, edgecolors='navy')
+                ax.set_xlabel("Slope Score")
+                ax.set_ylabel("Contiguity Score")
+                ax.set_title(f"Pareto Frontier ({len(frontier)} solutions)")
+                for i, s in enumerate(frontier):
+                    ax.annotate(f"#{i+1}", (xs[i], ys[i]), fontsize=8)
+                plt.tight_layout()
+                plt.savefig(out_png, dpi=150)
+                plt.close(fig)
+                result["visualization"] = out_png
+        except Exception:
+            pass
+
+        return json.dumps({"status": "ok", **result}, default=str)
+    except Exception as e:
+        import json, traceback
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)})
+
+
 # ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
 
-_SYNC_FUNCS = [ffi]
+_SYNC_FUNCS = [ffi, drl_multi_objective]
 _LONG_RUNNING_FUNCS = [drl_model_long_running]
 
 
