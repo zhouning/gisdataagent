@@ -37,6 +37,18 @@ planner_instruction: |
 
   **禁止**：调用 list_data_assets 然后反问用户"您想加载哪个？"。用户已经说了要什么，直接搜索并加载。
 
+  ## 行政区划查询
+  PostGIS 数据库中有 `xiangzhen` 表（全国乡镇级行政区划，43655条），包含列: province, city, county, township, geometry。
+  当用户提到中国行政区名称时（如"XX省XX市XX区XX镇"），**你自己直接调用工具**，不要转交给子智能体：
+  - **直接调用** `visualize_interactive_map(original_data_path="xiangzhen", sql_filter="county='璧山区' AND township='福禄镇'")`
+  - **示例**："加载重庆市璧山区" → 你自己调用 `visualize_interactive_map(original_data_path="xiangzhen", sql_filter="city='重庆市' AND county='璧山区'")`
+  - **示例**："显示璧山区福禄镇" → 你自己调用 `visualize_interactive_map(original_data_path="xiangzhen", sql_filter="county='璧山区' AND township='福禄镇'")`
+  - **不要**搜索数据目录，**不要**转交给 PlannerVisualizer，直接自己调用工具。
+
+  当需要对行政区进行水文分析/小流域提取时，**你自己依次执行**（不要转交子智能体）：
+  1. 调用 `download_dem(admin_boundary_path="xiangzhen", sql_filter="county='XX' AND township='XX'")` 下载该区域的 DEM
+  2. 用返回的 DEM 文件路径调用 `extract_watershed(dem_path="DEM路径", threshold="1000")` 提取小流域
+
   **后备方案**：如果 search_data_assets/download_cloud_asset 失败，直接调用 `transfer_to_agent(agent_name="PlannerVisualizer")` 并说明"目录搜索失败，请用 list_user_files 查找本地文件"。
 
   ## 子智能体团队

@@ -244,38 +244,57 @@ def extract_watershed(
             import matplotlib
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
+            from .utils import _configure_fonts
+            _configure_fonts()
 
             fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
-            # Show DEM as background
+            # Prepare DEM display — mask nodata properly
             dem_display = conditioned_dem.copy().astype(float)
-            dem_display[dem_display == dem.nodata] = np.nan if hasattr(dem, 'nodata') and dem.nodata else np.nan
-            ax.imshow(dem_display, cmap='terrain', alpha=0.6,
-                     extent=[grid.affine[2], grid.affine[2] + grid.affine[0] * dem.shape[1],
-                             grid.affine[5] + grid.affine[4] * dem.shape[0], grid.affine[5]])
+            nodata_val = dem.nodata if hasattr(dem, 'nodata') and dem.nodata is not None else -9999
+            dem_display[dem_display == nodata_val] = np.nan
+            # Also mask extreme negatives (common DEM nodata patterns)
+            dem_display[dem_display < -1000] = np.nan
 
-            # Show watershed boundary
-            catch_display = catch_mask.astype(float)
-            catch_display[~catch_mask] = np.nan
-            ax.imshow(catch_display, cmap='Blues', alpha=0.3,
-                     extent=[grid.affine[2], grid.affine[2] + grid.affine[0] * dem.shape[1],
-                             grid.affine[5] + grid.affine[4] * dem.shape[0], grid.affine[5]])
+            # Compute extent
+            affine = grid.affine
+            extent = [affine[2], affine[2] + affine[0] * dem.shape[1],
+                      affine[5] + affine[4] * dem.shape[0], affine[5]]
 
-            # Show streams (from accumulation)
+            # Only show DEM within watershed for clarity
+            dem_in_ws = dem_display.copy()
+            dem_in_ws[~catch_mask] = np.nan
+
+            # Show full DEM as faint background
+            ax.imshow(dem_display, cmap='Greys', alpha=0.3, extent=extent)
+
+            # Show DEM within watershed with terrain colors
+            im = ax.imshow(dem_in_ws, cmap='terrain', alpha=0.8, extent=extent)
+            plt.colorbar(im, ax=ax, label='高程 (m)', shrink=0.8)
+
+            # Show streams as blue lines
             stream_mask = (acc > thresh) & catch_mask
             stream_display = np.where(stream_mask, 1.0, np.nan)
-            ax.imshow(stream_display, cmap='Blues', alpha=0.8,
-                     extent=[grid.affine[2], grid.affine[2] + grid.affine[0] * dem.shape[1],
-                             grid.affine[5] + grid.affine[4] * dem.shape[0], grid.affine[5]])
+            ax.imshow(stream_display, cmap='winter', alpha=0.9, extent=extent)
 
             # Mark pour point
-            ax.plot(px, py, 'r^', markersize=12, label=f'出口点 ({px:.4f}, {py:.4f})')
-            ax.legend(loc='upper right')
-            ax.set_title(f"小流域提取结果 (阈值={thresh})")
+            ax.plot(px, py, 'r^', markersize=14, label=f'出口点 ({px:.4f}, {py:.4f})',
+                    markeredgecolor='darkred', markeredgewidth=1.5)
+
+            # Draw watershed boundary outline
+            if watershed_geojson_path and os.path.exists(watershed_geojson_path):
+                try:
+                    gdf_ws = gpd.read_file(watershed_geojson_path)
+                    gdf_ws.boundary.plot(ax=ax, color='red', linewidth=2, label='流域边界')
+                except Exception:
+                    pass
+
+            ax.legend(loc='upper right', fontsize=10, framealpha=0.8)
+            ax.set_title(f"小流域提取结果 (阈值={thresh})", fontsize=14, fontweight='bold')
             ax.set_xlabel("经度")
             ax.set_ylabel("纬度")
             plt.tight_layout()
-            plt.savefig(viz_path, dpi=150)
+            plt.savefig(viz_path, dpi=150, bbox_inches='tight', facecolor='white')
             plt.close(fig)
         except Exception as e:
             logger.debug("Visualization failed: %s", e)
@@ -287,8 +306,9 @@ def extract_watershed(
         pixel_area = abs(grid.affine[0] * grid.affine[4])  # approximate pixel area in CRS units squared
 
         # Elevation stats within watershed
-        dem_in_watershed = conditioned_dem[catch_mask]
-        valid_elev = dem_in_watershed[dem_in_watershed != (dem.nodata if hasattr(dem, 'nodata') else -9999)]
+        dem_in_watershed = conditioned_dem[catch_mask].astype(float)
+        _nodata = dem.nodata if hasattr(dem, 'nodata') and dem.nodata is not None else -9999
+        valid_elev = dem_in_watershed[(dem_in_watershed != _nodata) & (dem_in_watershed > -1000)]
 
         stats = {
             "pour_point": {"x": px, "y": py},
@@ -322,8 +342,81 @@ def extract_watershed(
         stats["max_accumulation"] = max_acc
         stats["stream_cells"] = stream_cells
 
+        # ---- Step 13: Generate report text ----
+        report_lines = [
+            "# 小流域水文分析报告",
+            "",
+            "## 一、分析概述",
+            f"- **DEM 数据源**: {os.path.basename(dem_path)}",
+            f"- **分析方法**: D8 流向算法 + pysheds 水文分析引擎",
+            f"- **河网提取阈值**: {thresh} (汇流累积单元数)",
+            "",
+            "## 二、流域基本信息",
+            f"- **出口点坐标**: ({px:.6f}, {py:.6f})",
+        ]
+        if stats.get("area_km2"):
+            report_lines.append(f"- **流域面积**: {stats['area_km2']} km²")
+        if stats.get("perimeter_km"):
+            report_lines.append(f"- **流域周长**: {stats['perimeter_km']} km")
+        report_lines.append(f"- **流域栅格单元数**: {watershed_cells}")
+        report_lines.append(f"- **流域占比**: {stats['watershed_ratio'] * 100:.1f}%")
+
+        if stats.get("elevation"):
+            elev = stats["elevation"]
+            report_lines += [
+                "",
+                "## 三、高程特征",
+                f"- **最低高程**: {elev['min']} m",
+                f"- **最高高程**: {elev['max']} m",
+                f"- **平均高程**: {elev['mean']} m",
+                f"- **高差**: {elev['range']} m",
+            ]
+
+        report_lines += [
+            "",
+            "## 四、河网特征",
+            f"- **河网栅格单元数**: {stream_cells}",
+            f"- **最大汇流累积值**: {max_acc}",
+        ]
+        if stats.get("area_km2") and stream_cells > 0:
+            stream_length_km = stream_cells * abs(grid.affine[0]) * 111  # approximate km per degree
+            density = stream_length_km / stats["area_km2"] if stats["area_km2"] > 0 else 0
+            report_lines.append(f"- **河网密度** (估算): {density:.2f} km/km²")
+
+        report_lines += [
+            "",
+            "## 五、输出文件",
+            f"- 流域边界: {os.path.basename(watershed_geojson_path) if watershed_geojson_path else '未生成'}",
+            f"- 河网数据: {os.path.basename(stream_geojson_path) if stream_geojson_path else '未生成'}",
+            f"- 汇流累积栅格: {os.path.basename(acc_path) if acc_path else '未生成'}",
+            f"- 可视化地图: {os.path.basename(viz_path) if viz_path else '未生成'}",
+        ]
+
+        # Embed visualization image path so report generator auto-inserts it
+        if viz_path and os.path.exists(viz_path):
+            report_lines += [
+                "",
+                "## 六、流域分析可视化",
+                "",
+                viz_path,
+                "",
+            ]
+
+        report_lines += [
+            "## 七、方法说明",
+            "本分析采用经典的 D8 单流向水文分析方法：",
+            "1. **DEM 预处理**: 填充洼地 → 填充凹陷 → 解析平地，消除数据伪影",
+            "2. **流向计算**: D8 算法，每个栅格单元流向最陡下降方向的 8 邻域之一",
+            "3. **汇流累积**: 计算每个单元上游汇入的单元数量",
+            "4. **河网提取**: 汇流累积值超过阈值的单元构成河网",
+            "5. **流域划分**: 从出口点追溯所有上游汇流单元，构成流域边界",
+        ]
+
+        report_text = "\n".join(report_lines)
+
         result = {
             "status": "ok",
+            "report_text": report_text,
             "watershed_boundary": watershed_geojson_path,
             "stream_network": stream_geojson_path,
             "flow_accumulation": acc_path,

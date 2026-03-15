@@ -899,7 +899,7 @@ def _download_dem_gee(admin_boundary_path: str) -> str:
     )
 
 
-def download_dem(admin_boundary_path: str) -> str:
+def download_dem(admin_boundary_path: str, sql_filter: str = None) -> str:
     """
     下载 Copernicus DEM GLO-30 高程数据（30m分辨率），按行政区边界裁剪。
 
@@ -908,11 +908,45 @@ def download_dem(admin_boundary_path: str) -> str:
     若失败则尝试 Google Earth Engine 作为备选（需配置 earthengine-api）。
 
     Args:
-        admin_boundary_path: 行政区边界文件路径 (.shp / .geojson / .gpkg)。
+        admin_boundary_path: 行政区边界文件路径 (.shp / .geojson / .gpkg)，或 PostGIS 表名（如 xiangzhen）。
+        sql_filter: 可选，SQL WHERE 过滤条件（仅对 PostGIS 表名有效）。例如: "county='璧山区' AND township='福禄镇'"
 
     Returns:
         下载后的 GeoTIFF 路径与高程统计信息，或错误信息。
     """
+    # --- PostGIS table name support: export to temp GeoJSON first ---
+    import re as _re
+    stripped = admin_boundary_path.strip().strip('"').strip("'")
+    _, ext_check = os.path.splitext(stripped)
+    if not ext_check and _re.match(r'^[a-zA-Z0-9_]+$', stripped):
+        try:
+            from data_agent.db_engine import get_engine
+            from data_agent.database_tools import _inject_user_context
+            import geopandas as _gpd
+            engine = get_engine()
+            if engine:
+                with engine.connect() as conn:
+                    _inject_user_context(conn)
+                    sql = f'SELECT * FROM "{stripped}"'
+                    if sql_filter:
+                        # Basic safety check
+                        fl = sql_filter.lower()
+                        if not any(x in fl for x in ['drop ', 'delete ', 'insert ', 'update ', '--', ';']):
+                            sql += f" WHERE {sql_filter}"
+                    for geom_col in ['geometry', 'geom', 'the_geom', 'shape']:
+                        try:
+                            gdf = _gpd.read_postgis(sql, conn, geom_col=geom_col)
+                            if not gdf.empty:
+                                tmp_path = _generate_output_path("boundary_export", "geojson")
+                                gdf.to_file(tmp_path, driver="GeoJSON")
+                                admin_boundary_path = tmp_path
+                                print(f"[DEM] Exported {len(gdf)} boundary features from {stripped} to {tmp_path}")
+                                break
+                        except Exception:
+                            continue
+        except Exception:
+            pass  # Fall through to normal path resolution
+
     # Validate path first (shared check for both strategies)
     try:
         _resolve_path(admin_boundary_path)
