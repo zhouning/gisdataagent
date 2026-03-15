@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="pipeline-analytics-api-reference" xml:lang="zh-CN">
+    <title>管线分析 API 参考</title>
+    <shortdesc>列出了用于获取系统智能体管线（Pipeline）运行状态与性能分析指标的 REST API 端点。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <refbody>
+        <section id="latency-api">
+            <title>获取管线延迟分析</title>
+            <p>该接口返回各类管道的平均执行时长和 P99 延迟数据。</p>
+            <properties>
+                <prophead>
+                    <proptype>属性</proptype>
+                    <propvalue>说明</propvalue>
+                </prophead>
+                <property>
+                    <proptype><b>Endpoint</b></proptype>
+                    <propvalue><codeph>GET /api/analytics/latency</codeph></propvalue>
+                </property>
+                <property>
+                    <proptype><b>Auth Required</b></proptype>
+                    <propvalue>Yes (Admin Role)</propvalue>
+                </property>
+                <property>
+                    <proptype><b>Response Format</b></proptype>
+                    <propvalue>JSON</propvalue>
+                </property>
+            </properties>
+            <example>
+                <title>请求响应示例</title>
+                <codeblock>{
+  "data_pipeline": { "avg_ms": 1450, "p99_ms": 3200 },
+  "governance_pipeline": { "avg_ms": 890, "p99_ms": 1500 }
+}</codeblock>
+            </example>
+        </section>
+        <section id="token-efficiency-api">
+            <title>获取 Token 效率分析</title>
+            <p>该接口统计大模型调用的输入与输出 Token 消耗，以及由于缓存（Context Caching）带来的节省量。</p>
+            <properties>
+                <prophead>
+                    <proptype>属性</proptype>
+                    <propvalue>说明</propvalue>
+                </prophead>
+                <property>
+                    <proptype><b>Endpoint</b></proptype>
+                    <propvalue><codeph>GET /api/analytics/token-efficiency</codeph></propvalue>
+                </property>
+                <property>
+                    <proptype><b>Auth Required</b></proptype>
+                    <propvalue>Yes (Admin Role)</propvalue>
+                </property>
+            </properties>
+        </section>
+    </refbody>
+</reference>
