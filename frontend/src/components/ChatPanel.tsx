@@ -69,20 +69,27 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   // Poll /api/map/pending when assistant response completes (loading: true → false)
   // This bypasses Chainlit's limitation of not delivering step-level metadata via WebSocket.
+  // Fetches twice: immediately + after 2s delay (ensures pending queue is written)
   useEffect(() => {
     if (prevLoadingRef.current && !loading) {
-      fetch('/api/map/pending', { credentials: 'include' })
-        .then(r => r.json())
-        .then(data => {
-          if (data.map_update) {
-            console.log('[ChatPanel] map_update from /api/map/pending:', JSON.stringify(data.map_update).substring(0, 200));
-            onMapUpdate(data.map_update);
-          }
-          if (data.data_update) {
-            onDataUpdate(data.data_update.csv || data.data_update.file);
-          }
-        })
-        .catch(() => {});
+      const fetchPending = () => {
+        fetch('/api/map/pending', { credentials: 'include' })
+          .then(r => r.json())
+          .then(data => {
+            if (data.map_update) {
+              console.log('[ChatPanel] map_update from /api/map/pending:', JSON.stringify(data.map_update).substring(0, 200));
+              onMapUpdate(data.map_update);
+            }
+            if (data.data_update) {
+              onDataUpdate(data.data_update.csv || data.data_update.file);
+            }
+          })
+          .catch(() => {});
+      };
+      fetchPending();
+      // Retry after 2s to catch late-written pending updates
+      const timer = setTimeout(fetchPending, 2000);
+      return () => clearTimeout(timer);
     }
     prevLoadingRef.current = loading;
   }, [loading, onMapUpdate, onDataUpdate]);

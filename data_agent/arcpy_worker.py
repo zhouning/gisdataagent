@@ -309,16 +309,31 @@ def handle_extract_watershed(arcpy, params):
             px, py = float(pour_point_x), float(pour_point_y)
             sr = arcpy.Describe(dem_path).spatialReference
             pp_fc = os.path.join(output_dir, "pour_point_arcpy.shp")
+            if arcpy.Exists(pp_fc):
+                arcpy.management.Delete(pp_fc)
             arcpy.management.CreateFeatureclass(output_dir, "pour_point_arcpy.shp", "POINT", spatial_reference=sr)
             with arcpy.da.InsertCursor(pp_fc, ["SHAPE@XY"]) as cursor:
                 cursor.insertRow([(px, py)])
             # Snap to high-accumulation cell
             snap_pp = SnapPourPoint(pp_fc, acc, 500)  # 500m snap distance
         else:
-            # Auto-detect: use maximum accumulation point
-            max_acc_result = arcpy.management.GetRasterProperties(acc_path, "MAXIMUM")
-            max_val = float(max_acc_result.getOutput(0))
-            snap_pp = Con(acc >= max_val * 0.99, 1)
+            # Auto-detect: create pour point at maximum accumulation cell
+            sr = arcpy.Describe(dem_path).spatialReference
+            desc = arcpy.Describe(dem_path)
+            # Read accumulation as numpy array to find max cell
+            import numpy as _np
+            acc_arr = arcpy.RasterToNumPyArray(acc, nodata_to_value=0)
+            max_idx = _np.unravel_index(_np.argmax(acc_arr), acc_arr.shape)
+            # Convert pixel to map coordinates
+            px = desc.extent.XMin + (max_idx[1] + 0.5) * desc.meanCellWidth
+            py = desc.extent.YMax - (max_idx[0] + 0.5) * desc.meanCellHeight
+            pp_fc = os.path.join(output_dir, "pour_point_arcpy.shp")
+            if arcpy.Exists(pp_fc):
+                arcpy.management.Delete(pp_fc)
+            arcpy.management.CreateFeatureclass(output_dir, "pour_point_arcpy.shp", "POINT", spatial_reference=sr)
+            with arcpy.da.InsertCursor(pp_fc, ["SHAPE@XY"]) as cursor:
+                cursor.insertRow([(px, py)])
+            snap_pp = SnapPourPoint(pp_fc, acc, 500)
 
         # 7. Watershed delineation
         ws = Watershed(fdir, snap_pp)
@@ -332,7 +347,7 @@ def handle_extract_watershed(arcpy, params):
         # 9. Convert stream raster to polyline
         stream_line_path = os.path.join(output_dir, "stream_network_arcpy.shp")
         try:
-            arcpy.conversion.RasterToPolyline(streams, stream_line_path, simplify="SIMPLIFY")
+            arcpy.conversion.RasterToPolyline(streams, stream_line_path, "ZERO", 0, "SIMPLIFY")
         except Exception:
             stream_line_path = None
 

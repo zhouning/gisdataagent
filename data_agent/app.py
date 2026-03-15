@@ -158,6 +158,15 @@ except Exception as _obs_err:
     logger.warning("OBS initialization failed: %s", _obs_err)
 if ARCPY_AVAILABLE:
     logger.info("ArcPy engine available and connected")
+else:
+    # Retry ArcPy bridge initialization (Chainlit watchfiles may interfere with first attempt)
+    try:
+        from data_agent.toolsets.geo_processing_tools import retry_arcpy_init
+        if retry_arcpy_init():
+            ARCPY_AVAILABLE = True
+            logger.info("ArcPy engine available (retry succeeded)")
+    except Exception:
+        pass
 
 # --- Prompt version logging ---
 from data_agent.prompts import log_prompt_versions
@@ -1874,7 +1883,7 @@ async def _execute_pipeline(
                         # Extract artifacts from tool response (map HTML, files)
                         # Delegates to artifact_handler module for cleaner separation
                         try:
-                            from .artifact_handler import (
+                            from data_agent.artifact_handler import (
                                 detect_artifacts, build_map_update_from_html,
                                 build_map_update_from_geojson, check_layer_control,
                             )
@@ -1913,9 +1922,8 @@ async def _execute_pipeline(
                                             _ta_path, _pending_map_update)
                                         if _pending_map_update:
                                             _final_map_update = _pending_map_update
-                        except Exception:
-                            pass
-                        # Sync tool output files to OBS and register in data catalog
+                        except Exception as _art_err:
+                            logger.warning("[ArtifactDetect] Error: %s", _art_err)
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
                             _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
@@ -3028,16 +3036,36 @@ async def on_export_report(action: cl.Action):
     await msg.send()
     try:
         user_dir = get_user_upload_dir()
+
+        # Enrich report text with recent PNG visualizations for image embedding
+        enriched_text = text
+        try:
+            import glob
+            import time as _time
+            recent_pngs = sorted(
+                glob.glob(os.path.join(user_dir, "*.png")),
+                key=os.path.getmtime, reverse=True
+            )
+            # Only include PNGs from the last 5 minutes (likely from current analysis)
+            cutoff = _time.time() - 300
+            recent_pngs = [p for p in recent_pngs if os.path.getmtime(p) > cutoff]
+            if recent_pngs and not any(p.replace("\\", "/") in text or p.replace("/", "\\") in text
+                                       for p in recent_pngs):
+                enriched_text += "\n\n## 分析可视化\n\n"
+                for png_path in recent_pngs[:3]:  # max 3 images
+                    enriched_text += f"{png_path}\n\n"
+        except Exception:
+            pass
         if fmt == "pdf":
             from data_agent.report_generator import generate_pdf_report
             output_path = os.path.join(user_dir, "Analysis_Report.pdf")
             result_path = generate_pdf_report(
-                text, output_path, author=author, pipeline_type=pipeline_type
+                enriched_text, output_path, author=author, pipeline_type=pipeline_type
             )
         else:
             output_path = os.path.join(user_dir, "Analysis_Report.docx")
             generate_word_report(
-                text, output_path, author=author, pipeline_type=pipeline_type
+                enriched_text, output_path, author=author, pipeline_type=pipeline_type
             )
             result_path = output_path
 

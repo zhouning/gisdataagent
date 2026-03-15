@@ -11,7 +11,10 @@ import json
 import os
 from typing import Optional
 
-from .pipeline_runner import extract_file_paths
+try:
+    from .pipeline_runner import extract_file_paths
+except ImportError:
+    from data_agent.pipeline_runner import extract_file_paths
 
 try:
     from .observability import get_logger
