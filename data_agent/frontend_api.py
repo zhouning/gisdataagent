@@ -1839,6 +1839,175 @@ async def _api_kb_entities(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Task Queue API (v11.0.1)
+# ---------------------------------------------------------------------------
+
+
+async def _api_tasks_submit(request: Request):
+    """POST /api/tasks/submit — submit a new background task."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    prompt = (body.get("prompt") or "").strip()
+    if not prompt:
+        return JSONResponse({"error": "prompt required"}, status_code=400)
+
+    from .task_queue import get_task_queue
+    queue = get_task_queue()
+    try:
+        job_id = queue.submit(
+            user_id=username,
+            prompt=prompt,
+            pipeline_type=body.get("pipeline_type", "general"),
+            priority=body.get("priority", 5),
+            role=role,
+        )
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=429)
+
+    return JSONResponse({"job_id": job_id, "status": "queued"}, status_code=201)
+
+
+async def _api_tasks_list(request: Request):
+    """GET /api/tasks — list tasks for current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    status_filter = request.query_params.get("status")
+    from .task_queue import get_task_queue
+    queue = get_task_queue()
+    # Admins can see all, others see own
+    uid = None if role == "admin" else username
+    jobs = queue.list_jobs(user_id=uid, status=status_filter)
+    return JSONResponse({"jobs": jobs, "count": len(jobs), "stats": queue.queue_stats})
+
+
+async def _api_tasks_detail(request: Request):
+    """GET /api/tasks/{job_id} — get task status."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    job_id = request.path_params.get("job_id", "")
+    from .task_queue import get_task_queue
+    queue = get_task_queue()
+    job = queue.get_status(job_id)
+    if not job:
+        return JSONResponse({"error": "Task not found"}, status_code=404)
+    return JSONResponse(job)
+
+
+async def _api_tasks_cancel(request: Request):
+    """DELETE /api/tasks/{job_id} — cancel a task."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    job_id = request.path_params.get("job_id", "")
+    from .task_queue import get_task_queue
+    queue = get_task_queue()
+    ok = queue.cancel(job_id)
+    if not ok:
+        return JSONResponse({"error": "Task not found or not cancellable"}, status_code=404)
+    return JSONResponse({"status": "cancelled", "job_id": job_id})
+
+
+# ---------------------------------------------------------------------------
+# Proactive Suggestions API (v11.0.3)
+# ---------------------------------------------------------------------------
+
+
+async def _api_suggestions_list(request: Request):
+    """GET /api/suggestions — list pending analysis suggestions."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _role = _set_user_context(user)
+
+    from .proactive_explorer import get_suggestions
+    suggestions = get_suggestions(username)
+    return JSONResponse({"suggestions": suggestions, "count": len(suggestions)})
+
+
+async def _api_suggestions_execute(request: Request):
+    """POST /api/suggestions/{id}/execute — execute a suggestion via task queue."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    obs_id = request.path_params.get("id", "")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    prompt = body.get("prompt", "")
+    pipeline_type = body.get("pipeline_type", "general")
+
+    if not prompt:
+        return JSONResponse({"error": "prompt required"}, status_code=400)
+
+    from .task_queue import get_task_queue
+    queue = get_task_queue()
+    try:
+        job_id = queue.submit(username, prompt, pipeline_type, role=role)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=429)
+
+    return JSONResponse({"job_id": job_id, "status": "queued"}, status_code=201)
+
+
+async def _api_suggestions_dismiss(request: Request):
+    """POST /api/suggestions/{id}/dismiss — dismiss a suggestion."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    obs_id = request.path_params.get("id", "")
+    from .proactive_explorer import dismiss_suggestion
+    ok = dismiss_suggestion(obs_id)
+    if not ok:
+        return JSONResponse({"error": "Suggestion not found"}, status_code=404)
+    return JSONResponse({"status": "dismissed"})
+
+
+# ---------------------------------------------------------------------------
+# A2A Server API (v11.0.4)
+# ---------------------------------------------------------------------------
+
+
+async def _api_a2a_card(request: Request):
+    """GET /api/a2a/card — return the A2A agent card."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .a2a_server import build_agent_card
+    card = build_agent_card()
+    return JSONResponse(card)
+
+
+async def _api_a2a_status(request: Request):
+    """GET /api/a2a/status — A2A server status."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .a2a_server import get_a2a_status
+    return JSONResponse(get_a2a_status())
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -1934,6 +2103,18 @@ def get_frontend_api_routes():
         Route("/api/analytics/agent-breakdown", endpoint=_api_analytics_agent_breakdown, methods=["GET"]),
         # Pipeline SSE Streaming (v9.5.4)
         Route("/api/pipeline/stream", endpoint=_api_pipeline_stream, methods=["GET"]),
+        # Task Queue (v11.0.1)
+        Route("/api/tasks/submit", endpoint=_api_tasks_submit, methods=["POST"]),
+        Route("/api/tasks", endpoint=_api_tasks_list, methods=["GET"]),
+        Route("/api/tasks/{job_id}", endpoint=_api_tasks_detail, methods=["GET"]),
+        Route("/api/tasks/{job_id}", endpoint=_api_tasks_cancel, methods=["DELETE"]),
+        # Proactive Suggestions (v11.0.3)
+        Route("/api/suggestions", endpoint=_api_suggestions_list, methods=["GET"]),
+        Route("/api/suggestions/{id}/execute", endpoint=_api_suggestions_execute, methods=["POST"]),
+        Route("/api/suggestions/{id}/dismiss", endpoint=_api_suggestions_dismiss, methods=["POST"]),
+        # A2A Server (v11.0.4)
+        Route("/api/a2a/card", endpoint=_api_a2a_card, methods=["GET"]),
+        Route("/api/a2a/status", endpoint=_api_a2a_status, methods=["GET"]),
     ]
 
 
