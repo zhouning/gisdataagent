@@ -1,23 +1,23 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v10.0
+# GIS Data Agent (ADK Edition) v11.0
 
 基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
 
-系统实现了《Agentic Design Patterns》21 种设计模式中的 **16 种 (76%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、跨会话记忆持久化、DAG 任务分解与波次并行执行、Pipeline 分析仪表盘以及 Agent 生命周期钩子。前端为 React 三面板 SPA，后端集成 76 个 REST API。
+系统实现了《Agentic Design Patterns》21 种设计模式中的 **19 种 (90%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、跨会话记忆持久化、DAG 任务分解与波次并行执行、A2A 智能体互操作、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA，后端集成 85 个 REST API。
 
 ## 核心指标
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 1993 tests, 85 test files |
+| 测试覆盖 | 2074 tests, 90 test files |
 | 工具集 | 22 BaseToolset, 5 SkillBundle, 121+ 工具 |
 | ADK Skills | 16 场景化领域技能 + DB 驱动自定义 Skills |
-| REST API | 76 endpoints |
+| REST API | 85 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
-| 设计模式覆盖 | 16/21 (76%) |
+| 设计模式覆盖 | 19/21 (90%) |
 | Streaming | 批量 + SSE 流式 |
 
 ## 核心能力
@@ -241,7 +241,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（76 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（85 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -441,9 +441,10 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v9.0 | Agent Plugins (4)、ParallelAgent、跨会话记忆、任务分解、Pipeline Analytics、Agent Hooks | 1859 | ✅ 完成 |
 | v9.5 | conftest.py、Guardrails (4)、SSE Streaming、LongRunningFunctionTool、评估增强 | 1895 | ✅ 完成 |
 | v10.0 | GraphRAG、per-User MCP 隔离、自定义技能包、高级空间分析 Tier 2、工作流模板 | 1993 | ✅ 完成 |
-| v11.0 | A2A 智能体互操作、主动探索与发现、多任务智能调度、高级推理技术 | — | ⬅️ 下一阶段 |
+| v11.0 | 并发任务队列、推理链+置信度、主动探索建议、A2A 互操作、设计模式 19/21 | 2074 | ✅ 完成 |
+| v12.0 | 多目标优化、Agent 特化与组合、端到端自动测试 | — | ⬅️ 下一阶段 |
 
-## 设计模式覆盖 (16/21 = 76%)
+## 设计模式覆盖 (19/21 = 90%)
 
 | 模式 | 状态 | 实现 |
 |------|------|------|

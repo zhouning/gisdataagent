@@ -1,23 +1,23 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v10.0
+# GIS Data Agent (ADK Edition) v11.0
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security.
 
-The system implements **16 of 21 (76%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, cross-session memory persistence, DAG task decomposition with wave-parallel execution, pipeline analytics dashboard, and agent lifecycle hooks. Backend serves 76 REST API endpoints.
+The system implements **19 of 21 (90%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 85 REST API endpoints.
 
 ## Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 1993 tests, 85 test files |
+| Test Coverage | 2074 tests, 90 test files |
 | Toolsets | 22 BaseToolset, 5 SkillBundle, 121+ tools |
 | ADK Skills | 16 scenario skills + DB-driven custom Skills |
-| REST API | 76 endpoints |
+| REST API | 85 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |
-| Design Pattern Coverage | 16/21 (76%) |
+| Design Pattern Coverage | 19/21 (90%) |
 | Streaming | Batch + SSE streaming |
 
 ## Core Capabilities
@@ -246,7 +246,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 | **Framework** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router) |
 | **Frontend** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **Backend** | Chainlit + Starlette (76 REST API endpoints + SSE Streaming) |
+| **Backend** | Chainlit + Starlette (85 REST API endpoints + SSE Streaming) |
 | **Database** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -447,7 +447,8 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v9.0 | Agent Plugins (4), ParallelAgent, Cross-Session Memory, Task Decomposition, Pipeline Analytics, Agent Hooks | 1859 | ✅ Done |
 | v9.5 | conftest.py, Guardrails (4), SSE Streaming, LongRunningFunctionTool, Evaluation Enhancement | 1895 | ✅ Done |
 | v10.0 | GraphRAG, per-User MCP Isolation, Custom Skill Bundles, Spatial Analysis Tier 2, Workflow Templates | 1993 | ✅ Done |
-| v11.0 | A2A Agent Interop, Proactive Exploration, Multi-Task Scheduling, Advanced Reasoning | — | ⬅️ Next |
+| v11.0 | Concurrent Task Queue, Chain-of-Thought Reasoning, Proactive Exploration, A2A Interop, Design Patterns 19/21 | 2074 | ✅ Done |
+| v12.0 | Multi-Objective Optimization, Agent Specialization & Composition, End-to-End Auto-Testing | — | ⬅️ Next |
 
 ## Design Pattern Coverage (16/21 = 76%)
 
