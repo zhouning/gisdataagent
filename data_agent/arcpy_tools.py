@@ -395,3 +395,102 @@ def arcpy_zonal_statistics(zone_vector: str, value_raster: str,
         return f"Error in arcpy_zonal_statistics: {result.get('message', 'Unknown error')}"
     except Exception as e:
         return f"Error in arcpy_zonal_statistics: {str(e)}"
+
+
+def arcpy_extract_watershed(dem_path: str, pour_point_x: str = "",
+                            pour_point_y: str = "", threshold: str = "1000",
+                            boundary_path: str = "") -> str:
+    """使用 ArcPy Spatial Analyst 进行小流域提取（专业级精度）。
+
+    需要 ArcGIS Spatial Analyst 扩展授权。功能等同于开源版 extract_watershed，
+    但使用 ArcPy 的 Fill/FlowDirection/FlowAccumulation/Watershed 引擎。
+
+    Args:
+        dem_path: DEM 文件路径(GeoTIFF)，或 PostGIS 表名（配合 boundary_path 下载 DEM）
+        pour_point_x: 出口点经度（留空=自动检测汇流累积最大点）
+        pour_point_y: 出口点纬度
+        threshold: 河网提取阈值（汇流累积单元数，默认1000）
+        boundary_path: 当需要先下载 DEM 时，提供行政区边界文件
+
+    Returns:
+        JSON 包含流域边界文件、河网文件、统计信息。
+    """
+    import json
+    try:
+        bridge = ArcPyBridge.get_instance()
+        if not bridge:
+            return json.dumps({"status": "error",
+                               "message": "ArcPy 环境未配置或不可用。请使用开源版 extract_watershed。"})
+
+        # Resolve DEM path — support "auto" download mode
+        resolved_dem = dem_path
+        if dem_path.strip().lower() == "auto" and boundary_path:
+            try:
+                from .remote_sensing import download_dem
+                dem_result = download_dem(boundary_path)
+                # Extract file path from result
+                for line in str(dem_result).split("\n"):
+                    if ".tif" in line.lower():
+                        parts = line.split(":")
+                        resolved_dem = parts[-1].strip() if len(parts) > 1 else line.strip()
+                        break
+            except Exception as e:
+                return json.dumps({"status": "error", "message": f"DEM 下载失败: {e}"})
+        else:
+            resolved_dem = _resolve_path(dem_path)
+
+        if not os.path.exists(resolved_dem):
+            return json.dumps({"status": "error", "message": f"DEM 文件不存在: {resolved_dem}"})
+
+        output_dir = os.path.dirname(_generate_output_path("arcpy_ws", "tmp"))
+
+        result = bridge.call("extract_watershed", {
+            "dem_path": resolved_dem,
+            "threshold": int(threshold),
+            "pour_point_x": pour_point_x if pour_point_x else None,
+            "pour_point_y": pour_point_y if pour_point_y else None,
+            "output_dir": output_dir,
+        }, timeout=300)  # 5 min timeout for large DEMs
+
+        if result.get("status") == "success":
+            # Build report text consistent with pysheds version
+            elev = result.get("elevation", {})
+            report_lines = [
+                "# 小流域水文分析报告 (ArcPy Spatial Analyst)",
+                "",
+                "## 一、分析概述",
+                f"- **分析引擎**: ArcPy Spatial Analyst",
+                f"- **DEM 数据**: {os.path.basename(resolved_dem)}",
+                f"- **河网阈值**: {threshold}",
+                "",
+                "## 二、高程特征",
+            ]
+            if elev:
+                report_lines += [
+                    f"- **最低高程**: {elev.get('min', 'N/A')} m",
+                    f"- **最高高程**: {elev.get('max', 'N/A')} m",
+                    f"- **平均高程**: {elev.get('mean', 'N/A')} m",
+                    f"- **高差**: {elev.get('range', 'N/A')} m",
+                ]
+            report_lines += [
+                "",
+                "## 三、方法说明",
+                "使用 ArcPy Spatial Analyst 引擎的专业水文分析链：",
+                "1. **Fill**: 填充 DEM 洼地",
+                "2. **FlowDirection**: D8 流向计算",
+                "3. **FlowAccumulation**: 汇流累积",
+                "4. **Watershed**: 流域划分",
+                "5. **StreamOrder**: Strahler 河流分级",
+            ]
+
+            result["report_text"] = "\n".join(report_lines)
+            files = [f for f in [result.get("watershed_boundary"),
+                                  result.get("stream_network"),
+                                  result.get("flow_accumulation")] if f]
+            result["files"] = files
+
+        return json.dumps(result, default=str, ensure_ascii=False)
+
+    except Exception as e:
+        import json
+        return json.dumps({"status": "error", "message": f"ArcPy 水文分析失败: {str(e)}"})

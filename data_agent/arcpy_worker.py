@@ -265,6 +265,128 @@ def handle_zonal_statistics(arcpy, params):
 
 
 # ---------------------------------------------------------------------------
+# Watershed extraction (Spatial Analyst hydrology chain)
+# ---------------------------------------------------------------------------
+
+def handle_extract_watershed(arcpy, params):
+    """Full hydrological analysis: Fill → FlowDirection → FlowAccumulation → Watershed."""
+    dem_path = params["dem_path"]
+    threshold = int(params.get("threshold", 1000))
+    pour_point_x = params.get("pour_point_x")
+    pour_point_y = params.get("pour_point_y")
+    output_dir = params.get("output_dir", os.path.dirname(dem_path))
+
+    arcpy.CheckOutExtension("Spatial")
+    try:
+        from arcpy.sa import Fill, FlowDirection, FlowAccumulation, Con, Watershed, SnapPourPoint, StreamOrder
+
+        # 1. Fill sinks
+        filled = Fill(dem_path)
+
+        # 2. Flow Direction (D8)
+        fdir = FlowDirection(filled)
+
+        # 3. Flow Accumulation
+        acc = FlowAccumulation(fdir)
+
+        # 4. Stream Network (Con: acc > threshold → 1)
+        streams = Con(acc > threshold, 1)
+
+        # 5. Stream Order (Strahler)
+        try:
+            stream_order = StreamOrder(streams, fdir, "STRAHLER")
+            stream_order_path = os.path.join(output_dir, "stream_order_arcpy.tif")
+            stream_order.save(stream_order_path)
+        except Exception:
+            stream_order_path = None
+
+        # 6. Determine pour point
+        acc_path = os.path.join(output_dir, "flow_acc_arcpy.tif")
+        acc.save(acc_path)
+
+        if pour_point_x and pour_point_y:
+            # Create pour point from coordinates
+            px, py = float(pour_point_x), float(pour_point_y)
+            sr = arcpy.Describe(dem_path).spatialReference
+            pp_fc = os.path.join(output_dir, "pour_point_arcpy.shp")
+            arcpy.management.CreateFeatureclass(output_dir, "pour_point_arcpy.shp", "POINT", spatial_reference=sr)
+            with arcpy.da.InsertCursor(pp_fc, ["SHAPE@XY"]) as cursor:
+                cursor.insertRow([(px, py)])
+            # Snap to high-accumulation cell
+            snap_pp = SnapPourPoint(pp_fc, acc, 500)  # 500m snap distance
+        else:
+            # Auto-detect: use maximum accumulation point
+            max_acc_result = arcpy.management.GetRasterProperties(acc_path, "MAXIMUM")
+            max_val = float(max_acc_result.getOutput(0))
+            snap_pp = Con(acc >= max_val * 0.99, 1)
+
+        # 7. Watershed delineation
+        ws = Watershed(fdir, snap_pp)
+        ws_raster_path = os.path.join(output_dir, "watershed_arcpy.tif")
+        ws.save(ws_raster_path)
+
+        # 8. Convert watershed raster to polygon
+        ws_polygon_path = os.path.join(output_dir, "watershed_boundary_arcpy.shp")
+        arcpy.conversion.RasterToPolygon(ws_raster_path, ws_polygon_path, "SIMPLIFY")
+
+        # 9. Convert stream raster to polyline
+        stream_line_path = os.path.join(output_dir, "stream_network_arcpy.shp")
+        try:
+            arcpy.conversion.RasterToPolyline(streams, stream_line_path, simplify="SIMPLIFY")
+        except Exception:
+            stream_line_path = None
+
+        # 10. Compute statistics
+        desc = arcpy.Describe(ws_polygon_path)
+        extent = desc.extent
+
+        # Elevation stats within watershed
+        elev_stats = {}
+        try:
+            from arcpy.sa import ZonalStatisticsAsTable
+            stats_table = os.path.join(output_dir, "ws_elev_stats")
+            ZonalStatisticsAsTable(ws_raster_path, "Value", dem_path, stats_table, "DATA", "ALL")
+            with arcpy.da.SearchCursor(stats_table, ["MIN", "MAX", "MEAN", "RANGE", "AREA"]) as cursor:
+                for row in cursor:
+                    elev_stats = {"min": round(row[0], 1), "max": round(row[1], 1),
+                                  "mean": round(row[2], 1), "range": round(row[3], 1),
+                                  "area_m2": round(row[4], 2)}
+                    break
+        except Exception:
+            pass
+
+        # 11. Export to GeoJSON for frontend compatibility
+        ws_geojson = os.path.join(output_dir, "watershed_boundary_arcpy.geojson")
+        try:
+            arcpy.conversion.FeaturesToJSON(ws_polygon_path, ws_geojson, geoJSON="GEOJSON")
+        except Exception:
+            ws_geojson = ws_polygon_path  # fallback to shapefile
+
+        stream_geojson = None
+        if stream_line_path:
+            stream_geojson = os.path.join(output_dir, "stream_network_arcpy.geojson")
+            try:
+                arcpy.conversion.FeaturesToJSON(stream_line_path, stream_geojson, geoJSON="GEOJSON")
+            except Exception:
+                stream_geojson = stream_line_path
+
+    finally:
+        arcpy.CheckInExtension("Spatial")
+
+    return {
+        "status": "success",
+        "watershed_boundary": ws_geojson,
+        "stream_network": stream_geojson,
+        "flow_accumulation": acc_path,
+        "stream_order": stream_order_path,
+        "elevation": elev_stats,
+        "extent": {"xmin": extent.XMin, "ymin": extent.YMin,
+                   "xmax": extent.XMax, "ymax": extent.YMax},
+        "message": f"ArcPy watershed extraction complete. Threshold={threshold}",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -294,6 +416,7 @@ def main():
         "repair_geometry": handle_repair_geometry,
         "slope": handle_slope,
         "zonal_statistics": handle_zonal_statistics,
+        "extract_watershed": handle_extract_watershed,
     }
 
     # Main loop: read JSON lines from stdin
