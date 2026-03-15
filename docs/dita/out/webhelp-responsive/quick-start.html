@@ -1,0 +1,176 @@
+<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-cn" lang="zh-cn" data-whc_version="28.0">
+    <head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="description" content="您可以选择通过 Docker 快速拉起服务，或者在本地直接配置并运行 Data Agent 的开发环境。本节主要介绍本地开发的标准启动流程。 配置环境变量 复制根目录下的 .env.example 文件为 .env ，并填入 PostgreSQL/PostGIS 的连接凭据以及 Vertex AI / Gemini API 密钥。 安装后端依赖 确保您的 Python 版本为 3.13 ..."/><meta name="DC.rights.owner" content="(C) 版权 2026"/><meta name="copyright" content="(C) 版权 2026"/><meta name="generator" content="DITA-OT"/><meta name="DC.type" content="task"/><meta name="DC.format" content="HTML5"/><meta name="DC.identifier" content="quick-start"/><meta name="DC.language" content="zh-CN"/><title>快速开始</title><!--  Generated with Oxygen version 28.0, build number 2026013010.  --><meta name="wh-path2root" content=""/><meta name="wh-toc-id" content="quick-start-d166e17"/><meta name="wh-source-relpath" content="quick-start.dita"/><meta name="wh-out-relpath" content="quick-start.html"/>
+    <link rel="stylesheet" type="text/css" href="./oxygen-webhelp/app/bootstrap.css?buildId=2026013010"/>
+    <link rel="stylesheet" type="text/css" href="./oxygen-webhelp/app/jquery-ui.css?buildId=2026013010"/>
+        
+    <link rel="stylesheet" type="text/css" href="./oxygen-webhelp/app/topic.css?buildId=2026013010"/>
+<link rel="stylesheet" type="text/css" href="oxygen-webhelp/template/oxygen-theme.css?buildId=20260315180506"/><link rel="stylesheet" type="text/css" href="oxygen-webhelp/template/oxygen.css?buildId=20260315180506"/><link rel="stylesheet" type="text/css" href="oxygen-webhelp/template/notes.css?buildId=20260315180506"/>
+    <script src="./oxygen-webhelp/app/options/properties.js?buildId=20260315180506"></script>
+    <script src="./oxygen-webhelp/app/themes.js?buildId=20260315180506"></script>
+    <script src="./oxygen-webhelp/app/localization/strings.js?buildId=2026013010"></script>
+    <script src="./oxygen-webhelp/app/search/index/keywords.js?buildId=20260315180506"></script>
+    
+    <script defer="defer" src="./oxygen-webhelp/app/jquery.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/jquery-ui.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/jquery-bootpag.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/jquery-highlight.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/popperjs-core.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/bootstrap.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/dompurify.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/image-map.js?buildId=2026013010"></script>
+    <script defer="defer" src="./oxygen-webhelp/app/maphilight.js?buildId=2026013010"></script>
+
+    <script defer="defer" src="./oxygen-webhelp/app/topic.js?buildId=2026013010"></script>
+</head>
+
+    <body id="quick-start" class="wh_topic_page frmBody">
+        <a class="visually-hidden-focusable" id="wh_jump_to_content" href="#wh_topic_body">
+            跳转到主要内容
+        </a>
+        
+        
+        
+        
+        <header class="navbar navbar-default wh_header">
+    <div class="container-fluid navbar-expand-md">
+        <div class="wh_header_flex_container navbar-nav navbar-dark">
+            <div class="wh_logo_and_publication_title_container">
+                <div class="wh_logo_and_publication_title">
+                    
+                    
+                    <div class=" wh_publication_title "><a href="index.html">Data Agent 用户指南</a></div>
+                    
+                </div>
+                
+                <button type="button" data-bs-target="#wh_top_menu_and_indexterms_link" id="wh_menu_mobile_button" data-bs-toggle="collapse" class="navbar-toggler collapsed wh_toggle_button" aria-expanded="false" aria-label="切换菜单" aria-controls="wh_top_menu_and_indexterms_link">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+
+            <div class="wh_top_menu_and_indexterms_link collapse navbar-collapse" id="wh_top_menu_and_indexterms_link">
+                
+                <nav class=" wh_top_menu " aria-label="Menu Container"><ul role="menubar" aria-label="Menu"><li role="menuitem"><span id="system-overview-d166e8-mi" data-tocid="system-overview-d166e8" data-state="leaf" class=" topicref " data-id="system-overview"><span class="title"><a href="system-overview.html">系统概述</a></span></span></li><li role="menuitem"><span id="quick-start-d166e17-mi" data-tocid="quick-start-d166e17" data-state="leaf" class=" topicref " data-id="quick-start"><span class="title"><a href="quick-start.html">快速开始</a></span></span></li><li role="menuitem"><span id="multi-agent-architecture-d166e26-mi" data-tocid="multi-agent-architecture-d166e26" data-state="leaf" class=" topicref " data-id="multi-agent-architecture"><span class="title"><a href="multi-agent-architecture.html">多智能体架构</a></span></span></li><li role="menuitem"><span id="dual-engine-gis-configuration-d166e35-mi" data-tocid="dual-engine-gis-configuration-d166e35" data-state="leaf" class=" topicref " data-id="dual-engine-gis-configuration"><span class="title"><a href="dual-engine-gis-configuration.html">双引擎 GIS 配置</a></span></span></li></ul></nav>
+                
+                <div class=" wh_theme "><button id="wh_theme_button" class="wh_theme_btn" data-wh-theme="auto" title="切换主题" aria-label="切换主题" aria-haspopup="menu" aria-expanded="false"></button></div>
+                
+            </div>
+        </div>
+    </div>
+</header>
+        
+        
+         
+        
+        <div class=" wh_search_input navbar-form wh_topic_page_search search " role="form">
+            
+            
+            
+            <form id="searchForm" method="get" role="search" action="search.html"><div><input type="search" placeholder="搜索 " class="wh_search_textfield" id="textToSearch" name="searchQuery" aria-label="搜索查询" required="required"/><button type="submit" class="wh_search_button" aria-label="搜索"><span class="search_input_text">搜索</span></button></div></form>
+            
+            
+            
+        </div>
+        
+        <div class="container-fluid navbar-expand-md" id="wh_topic_container">
+            <div class="row">
+
+                <nav class="wh_tools d-print-none" aria-label="Tools">
+                    
+                    <div data-tooltip-position="bottom" class=" wh_breadcrumb "><ol class="d-print-none"><li><span class="home"><a href="index.html"><span>主页</span></a></span></li><li class="active"><div class="topicref" data-id="quick-start"><div class="title"><a href="quick-start.html">快速开始</a></div></div></li></ol></div>
+                    
+                    
+                    
+                    <div class="wh_right_tools">
+                        <button class="wh_hide_highlight" aria-label="切换搜索突出显示" title="切换搜索突出显示"></button>
+                        <button class="webhelp_full_width_link" data-next-state="expanded" aria-label="最大化至全宽" title="最大化至全宽"></button>
+                        <button class="webhelp_expand_collapse_sections" data-next-state="collapsed" aria-label="折叠截面" title="折叠截面"></button>
+                        
+                        
+                        
+                        
+                        <div class=" wh_print_link print d-none d-md-inline-block "><button onClick="window.print()" title="打印此页" aria-label="打印此页"></button></div>
+                        
+                        
+                        
+                    </div>
+                    
+                </nav>
+            </div>
+            
+            
+            
+            
+            <div class="wh_content_area">
+                <div class="row">
+                    
+                    
+                    <div class="col-12" id="wh_topic_body">
+                        
+                        <div class=" wh_topic_content body "><main role="main"><article class="- topic/topic task/task topic task" role="article" aria-labelledby="ariaid-title1">
+    <h1 class="- topic/title title topictitle1" id="ariaid-title1">快速开始</h1>
+    <div class="- topic/body task/taskbody body taskbody">
+        <section class="- topic/section task/context section context">
+            <p class="- topic/p p">您可以选择通过 Docker 快速拉起服务，或者在本地直接配置并运行 Data Agent 的开发环境。本节主要介绍本地开发的标准启动流程。</p>
+        </section>
+        <section><ol class="- topic/ol task/steps ol steps"><li class="- topic/li task/step li step stepexpand">
+                <span class="- topic/ph task/cmd ph cmd">配置环境变量</span>
+                <div class="- topic/itemgroup task/info itemgroup info">复制根目录下的 <code class="+ topic/ph pr-d/codeph ph codeph">.env.example</code> 文件为 <code class="+ topic/ph pr-d/codeph ph codeph">.env</code>，并填入 PostgreSQL/PostGIS 的连接凭据以及 Vertex AI / Gemini API 密钥。</div>
+            </li><li class="- topic/li task/step li step stepexpand">
+                <span class="- topic/ph task/cmd ph cmd">安装后端依赖</span>
+                <div class="- topic/itemgroup task/info itemgroup info">确保您的 Python 版本为 3.13 或以上，执行以下命令安装依赖：</div>
+                <div class="- topic/itemgroup task/info itemgroup info"><pre class="+ topic/pre pr-d/codeblock pre codeblock"><code>pip install -r requirements.txt</code></pre></div>
+            </li><li class="- topic/li task/step li step stepexpand">
+                <span class="- topic/ph task/cmd ph cmd">启动后端服务 (Chainlit)</span>
+                <div class="- topic/itemgroup task/info itemgroup info">通过命令行接口启动后端的大模型驱动界面与 API 服务：</div>
+                <div class="- topic/itemgroup task/info itemgroup info"><pre class="+ topic/pre pr-d/codeblock pre codeblock"><code>chainlit run data_agent/app.py -w</code></pre></div>
+            </li><li class="- topic/li task/step li step stepexpand">
+                <span class="- topic/ph task/cmd ph cmd">启动 React 前端（可选）</span>
+                <div class="- topic/itemgroup task/info itemgroup info">如果您需要使用完整的三面板交互式 UI，请进入 <code class="+ topic/ph pr-d/codeph ph codeph">frontend</code> 目录并启动 Vite 开发服务器：</div>
+                <div class="- topic/itemgroup task/info itemgroup info"><pre class="+ topic/pre pr-d/codeblock pre codeblock"><code>cd frontend &amp;&amp; npm install &amp;&amp; npm run dev</code></pre></div>
+                
+                <div class="- topic/itemgroup task/info itemgroup info">
+                    <figure class="- topic/fig fig fignone" id="quick-start__react-frontend-dashboard" data-ofbid="quick-start__react-frontend-dashboard"><figcaption data-caption-side="top" class="- topic/title title figcap"><span class="figtitleprefix fig--title-label">图<span class="fig--title-label-number"> 1</span><span class="fig--title-label-punctuation">. </span></span><span class="fig--title">React Frontend Dashboard</span></figcaption>
+                        
+                        <br/><img class="- topic/image image" src="images/react-frontend-dashboard.png"/><br/>
+                    </figure>
+                </div>
+            </li><li class="- topic/li task/step li step stepexpand">
+                <span class="- topic/ph task/cmd ph cmd">登录系统</span>
+                <div class="- topic/itemgroup task/info itemgroup info">访问系统后，可以使用默认的管理员账号 <code class="+ topic/ph pr-d/codeph ph codeph">admin</code> / <code class="+ topic/ph pr-d/codeph ph codeph">admin123</code> 进行登录，首次运行时系统将自动初始化该账号并完成数据库表结构的构建。</div>
+            </li></ol></section>
+    </div>
+</article></main></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                    </div>
+                    
+                </div>
+            </div>
+            
+            
+            
+        </div> 
+        <footer class="navbar navbar-default wh_footer">
+  <div class=" footer-container mx-auto ">
+    Generated by <a class="oxyFooter" href="http://www.oxygenxml.com/xml_webhelp.html" target="_blank" rel="noopener">&lt;oXygen/&gt; XML WebHelp</a> - Evaluation Version
+  </div>
+</footer>
+        
+        <button id="go2top" class="d-print-none" title="返回顶部">
+            <span class="oxy-icon oxy-icon-up"></span>
+        </button>
+        
+        <div id="modal_img_large" class="modal">
+            <span class="close oxy-icon oxy-icon-remove"></span>
+            <div id="modal_img_container"></div>
+            <div id="caption"></div>
+        </div>
+        
+        
+        
+    </body>
+</html>

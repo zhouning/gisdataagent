@@ -6,6 +6,15 @@
 
 系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（11 标签页），后端集成 85 个 REST API。
 
+## 📚 官方技术文档
+
+本项目提供基于 **DITA XML** 标准编写的工业级技术文档，内容涵盖架构白皮书、API 参考及多引擎配置指南等。
+
+👉 **[在线阅读完整的 HTML 预览版 (中文)](docs/dita/preview.html)**
+
+> **提示：** 
+> 您可以通过运行 `python preview_docs.py` 自行编译最新的 DITA XML 源文件（位于 `docs/dita/` 目录），并查阅《多智能体架构深度解析》、《多源多模态数据融合引擎(MMFE)》、《GraphRAG 知识图谱》等深度内容。
+
 ## 核心指标
 
 | 指标 | 数值 |

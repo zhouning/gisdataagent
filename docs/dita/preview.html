@@ -1,0 +1,186 @@
+
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <title>Data Agent 用户指南 - 预览</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 40px; color: #333; }
+            h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #0366d6; }
+            h2 { border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 40px; color: #24292e; }
+            h3 { color: #444; margin-top: 30px; }
+            code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; }
+            table { margin: 20px 0; border-collapse: collapse; }
+            th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+            th { background: #f6f8fa; }
+            .nav { position: fixed; left: 20px; top: 100px; width: 200px; font-size: 0.9em; }
+            .nav ul { list-style: none; padding: 0; }
+            .nav li { margin-bottom: 8px; }
+            .nav a { text-decoration: none; color: #0366d6; }
+            .nav a:hover { text-decoration: underline; }
+            @media (max-width: 1200px) { .nav { position: static; width: auto; margin-bottom: 40px; } }
+        </style>
+    </head>
+    <body>
+        <h1>Data Agent 用户指南</h1>
+        <div class="nav">
+            <b>目录</b>
+            <ul>
+    <li><a href='#system-overview'>系统概述</a></li><li><a href='#local-environment-deployment'>本地环境部署</a></li><li><a href='#gis-engine-configuration'>GIS 引擎配置</a></li><li><a href='#multi-modal-data-fusion'>多源多模态数据融合引擎 (MMFE)</a></li><li><a href='#graph-rag-knowledge-enhancement'>GraphRAG 图增强向量检索与知识图谱</a></li><li><a href='#agent-plugins-and-guardrails'>Agent 插件系统与安全护栏架构</a></li><li><a href='#advanced-spatial-analysis'>高级空间分析模型 (Tier 2)</a></li><li><a href='#mcp-hub-and-custom-skills'>MCP Hub 工具市场与自定义技能包</a></li><li><a href='#pipeline-analytics-api-reference'>管线分析 API 参考</a></li><li><a href='#troubleshooting-common-issues'>常见问题排查</a></li>
+            </ul>
+        </div>
+    <article id='system-overview'><h2>系统概述</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>GIS Data Agent (ADK Edition) 是一个基于 Google Agent Developer Kit 构建的地理空间分析平台，主要用于空间数据治理、用地优化和多源数据融合。</p>
+    
+        作者姓名
+        
+            
+                GIS
+                Data Agent
+                ADK
+            
+        
+    
+    <p>系统采用多智能体架构（Multi-Agent Architecture），前端提供 React 编写的三面板单页应用，后端提供 RESTful API，并支持基于 PostgreSQL/PostGIS 的空间数据持久化。</p><section><h3>架构组件</h3><p>系统的核心处理逻辑分布在多个独立的智能体管道（Pipeline）中：</p><ul><li><b>动态规划器 (Dynamic Planner)：</b> 负责接收自然语言输入，解析意图，并将任务路由至对应的处理管道。</li><li><b>数据管道 (Data Pipeline)：</b> 处理多源数据的空间连接、属性融合与分析。支持矢量、栅格、点云等多种数据模态。</li><li><b>治理管道 (Governance Pipeline)：</b> 专门用于拓扑审计和数据合规性检查（如 GB/T 21010 标准验证）。</li></ul></section><section><h3>安全与合规性</h3><p>系统在运行时对输入和输出执行严格的安全校验：</p><ul><li>InputLength 护栏限制超长输入以防止拒绝服务攻击。</li><li>SQLInjection 护栏拦截针对底层数据库的恶意注入。</li><li>OutputSanitizer 护栏对智能体生成的敏感信息进行脱敏处理。</li></ul></section>
+</article><hr/><article id='local-environment-deployment'><h2>本地环境部署</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>本任务指导开发者在本地环境配置并启动 Data Agent 的后端服务与前端界面。</p>
+    
+        作者姓名
+    
+    <p>执行部署前，请确保操作系统已安装以下组件：</p><ul><li>Python 3.13 或以上版本</li><li>Node.js 18 或以上版本</li><li>PostgreSQL 16（需启用 PostGIS 3.4 扩展）</li></ul><p>本地开发模式支持代码的热重载（Hot Reload），便于调试前端 UI 和后端 Agent 逻辑。</p><ol><li><b>配置环境变量</b><div style='margin-left: 20px; color: #555;'>将代码库根目录下的示例配置复制为生效文件，并更新数据库连接字符串与大模型 API 密钥。</div><div style='margin: 10px 0 10px 20px; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 10px;'><i>示例:</i><br/><pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>cp data_agent/.env.example data_agent/.env</code></pre></div></li><li><b>安装后端依赖并初始化数据库</b><div style='margin-left: 20px; color: #555;'>建议在虚拟环境中安装 requirements.txt 中列出的依赖项。依赖安装完成后，执行 SQL 脚本初始化表结构。</div><div style='margin: 10px 0 10px 20px; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 10px;'><i>示例:</i><br/><pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>pip install -r requirements.txt
+psql -U postgres -d data_agent_db -f docker-db-init.sql</code></pre></div><div style='margin: 10px 0 10px 20px; border: 1px solid #e0e0e0; padding: 10px; background: #f5f5f5;'><i>结果:</i><br/><figure style='text-align: center; margin: 20px; border: 1px solid #ddd; padding: 10px; background: #f9f9f9;'><div style='height: 150px; background: #eee; line-height: 150px; color: #999; border: 1px dashed #ccc;'>[图片占位符: images/database-initialization-success.png] (待放入图片)</div><figcaption style='margin-top: 10px; font-style: italic; color: #555;'>图: Database Initialization Success</figcaption></figure></div></li><li><b>启动后端服务</b><div style='margin-left: 20px; color: #555;'>使用 Chainlit 启动应用，并附加 -w 参数以启用监控重载。</div><div style='margin: 10px 0 10px 20px; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 10px;'><i>示例:</i><br/><pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>chainlit run data_agent/app.py -w</code></pre></div></li><li><b>启动前端开发服务器</b><div style='margin-left: 20px; color: #555;'>进入 frontend 目录，安装 NPM 依赖并启动 Vite 服务。</div><div style='margin: 10px 0 10px 20px; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 10px;'><i>示例:</i><br/><pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>cd frontend
+npm install
+npm run dev</code></pre></div><div style='margin: 10px 0 10px 20px; border: 1px solid #e0e0e0; padding: 10px; background: #f5f5f5;'><i>结果:</i><br/><p>前端启动后，默认在 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>http://localhost:5173</code> 可访问系统。登录使用默认账号 admin 和密码 admin123。</p><figure style='text-align: center; margin: 20px; border: 1px solid #ddd; padding: 10px; background: #f9f9f9;'><img src='images/react-frontend-dashboard.png' alt='React Frontend Dashboard' style='max-width: 100%; height: auto; display: block; margin: 0 auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);' /><figcaption style='margin-top: 10px; font-style: italic; color: #555;'>图: React Frontend Dashboard</figcaption></figure></div></li></ol>
+</article><hr/><article id='gis-engine-configuration'><h2>GIS 引擎配置</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>指导管理员在开源 GIS 工具链（GeoPandas/GDAL）与商业 GIS 软件（ArcPy）之间进行底层引擎的切换。</p>
+    
+        作者姓名
+    
+    <p>系统默认采用开源工具链处理空间数据。当业务需要调用特定高阶拓扑分析模型或处理专有数据格式（如 File Geodatabase）时，可切换至 ArcPy 引擎。</p><ol><li><b>修改引擎优先级参数</b><div style='margin-left: 20px; color: #555;'>编辑 data_agent/.env 文件，修改 GIS_BACKEND_PRIORITY 参数的值。</div>
+                    <b>使用开源引擎（默认）：</b>设置值为 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>opensource</code>。
+                    <b>使用商业引擎：</b>设置值为 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>arcpy</code>。
+                </li><li><b>配置严格校验模式（可选）</b><div style='margin-left: 20px; color: #555;'>若强制要求业务流仅在 ArcPy 环境下执行，可追加强校验参数。当验证失败时，系统将阻断启动过程。</div><div style='margin: 10px 0 10px 20px; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 10px;'><i>示例:</i><br/><pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>REQUIRE_ARCPY=true</code></pre></div></li><li><b>重启服务并验证</b><div style='margin-left: 20px; color: #555;'>重新启动 Chainlit 后端进程，并在启动日志中观察引擎挂载状态。</div><div style='margin: 10px 0 10px 20px; border: 1px solid #e0e0e0; padding: 10px; background: #f5f5f5;'><i>结果:</i><br/><figure style='text-align: center; margin: 20px; border: 1px solid #ddd; padding: 10px; background: #f9f9f9;'><div style='height: 150px; background: #eee; line-height: 150px; color: #999; border: 1px dashed #ccc;'>[图片占位符: images/engine-switching-logs.png] (待放入图片)</div><figcaption style='margin-top: 10px; font-style: italic; color: #555;'>图: Engine Switching Logs</figcaption></figure></div></li></ol>
+</article><hr/><article id='multi-modal-data-fusion'><h2>多源多模态数据融合引擎 (MMFE)</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>详细介绍了系统核心模块之一——多模态融合引擎 (Multi-Modal Fusion Engine) 的五阶段处理流水线、内置策略以及智能语义匹配算法。</p>
+    
+        作者姓名
+    
+    <p>在复杂的城市计算和选址分析中，业务人员通常需要整合不同格式、不同结构、不同坐标系甚至不同维度的数据。Data Agent 的核心之一即是多模态融合引擎（MMFE），它能够自动将这些异构数据对齐为可供大模型和下游算子直接使用的标准空间视图。</p><section><h3>五阶段流水线架构</h3><p>引擎的每次数据融合请求都会经过严格的五阶段自动流水线：</p><ol><li><b>数据画像 (Profiling)：</b> 自动检测数据类型（矢量、栅格、点云、CSV、Redis 实时流）。分析矢量属性分布，对长尾文本计算嵌入；对栅格提取波段信息与空间分辨率。</li><li><b>模式评估 (Scoring)：</b> 引擎计算 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_score_strategies</code> 并根据数据分布为 10 种融合策略打分。</li><li><b>对齐阶段 (Alignment)：</b> 进行自动的地理对齐与尺度归一。例如利用 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_reproject_raster</code> 修正坐标系，或使用 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_resample_raster_to_match</code> 对齐空间分辨率。</li><li><b>智能融合 (Fusion)：</b> 执行最高分的融合算子。对于超大型数据集 (>500,000 行)，触发分布式核外计算（Out-of-Core Processing）与 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_read_vector_chunked</code> 块读取，防止系统 OOM。</li><li><b>质量验证 (Validation)：</b> 对融合后的结果进行包含几何有效性、空值率、以及 Kolmogorov-Smirnov 分布偏移检测在内的 10 项联合质量验证。</li></ol></section><section><h3>渐进式语义匹配策略</h3><p>在属性拼接（Attribute Join）或多表融合场景下，字段名通常不一致。系统内置了渐进式的智能匹配算法：</p><ul><li><b>字典组精确匹配 (Dictionary Equivalence)：</b> 首先匹配通过 semantic_catalog.yaml 注册的本地字典及同义词池。</li><li><b>上下文分词 (Tokenized Similarity)：</b> 提取字段名的分词树（如将 "Pop_Dens" 转为 "Population Density"），计算 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_tokenized_similarity</code>。</li><li><b>向量嵌入相似度 (LLM Embedding)：</b> 选用 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>text-embedding-004</code> 获取文本的密集表示，并计算余弦相似度 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_cosine_similarity</code>，应对无规则缩写。</li><li><b>单位感知推断 (Unit Awareness)：</b> 对类似 "Area_sqm" 与 "Area_Hectares" 的字段不仅实现匹配，还会通过 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_apply_unit_conversions</code> 自动实施换算。</li></ul></section><section><h3>支持的融合策略矩阵</h3><p>引擎共实现 10 种空间融合算子：</p><h4>内置融合策略</h4><table border='1' style='border-collapse: collapse; width: 100%;'><thead><tr><th>策略名称</th><th>适用模态</th><th>典型应用场景</th></tr></thead><tbody><tr><td>Spatial Join / Overlay</td><td>Vector + Vector</td><td>行政区划内叠加 POI 设施；计算容积率与绿地重叠度。</td></tr><tr><td>Zonal Statistics (分区统计)</td><td>Vector + Raster</td><td>提取指定行政区网格内的夜间灯光强度或植被指数 (NDVI) 均值。</td></tr><tr><td>Height Assign (点云赋值)</td><td>Vector + Point Cloud</td><td>读取 LAS/LAZ 格式雷达数据，为建筑矢量轮廓自动附加三维高程信息。</td></tr><tr><td>Time Snapshot (时态融合)</td><td>Stream + Vector</td><td>提取 Redis Streams 中的实时车辆轨迹，按特定时间窗融合到路网拓扑段。</td></tr></tbody></table></section><section><h3>LLM 策略自动路由</h3><p>为减轻用户选择负担，用户在自然语言意图中可选用 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>strategy="llm_auto"</code> 模式。引擎会收集输入数据的前 50 行样例和字典分布画像，将其发送至 Gemini 2.0 Flash。模型分析后不仅会从上述 10 种策略中推荐最佳方案，还会附带针对容差 (Tolerance) 和缓存参数的配置建议（即 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>_llm_select_strategy</code>）。</p></section>
+</article><hr/><article id='graph-rag-knowledge-enhancement'><h2>GraphRAG 图增强向量检索与知识图谱</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>介绍了系统中如何将传统的向量检索升级为以 NetworkX 为核心的地理实体关系检索 (GraphRAG)，以回答复杂的多跳空间推断问题。</p>
+    
+        作者姓名
+    
+    <p>在传统的 RAG (Retrieval-Augmented Generation) 系统中，纯粹基于向量相似度（Vector Search）的查询容易在处理宏大的“系统性”问题或涉及长距离地理空间依赖时丢失上下文。为了解决该问题，系统在 v10.0 中引入了 <b>GraphRAG</b> 引擎。</p><section><h3>实体识别与图谱构建 (Entity Extraction & Construction)</h3><p>当用户向平台的系统知识库上传规划文稿、政府公告及地籍记录档后，GraphRAG 引擎会自动触发后台抽取任务：</p><ol><li><b>文本分块与过滤：</b> 剥离冗余的停用词及非核心信息。</li><li><b>实体链接抽取：</b> 调用大模型（Gemini），结合特定的正则表达式规则，精细提取四类实体（Entity）：<b>地域（Region）、政策限制（Policy）、设施基建（Infrastructure）和时空约束（Temporal Constraint）</b>。</li><li><b>关系与共现权重分配：</b> 分析实体间在相同段落的共现频率以及潜在的空间邻接关系，并将这些连接（Edges）写入后端的有向图（Directed Graph）引擎。</li></ol><p>底层图数据库采用了内存分析库 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>NetworkX</code> 并配合持久化技术，能够支撑万级规模节点的闪电查询。</p></section><section><h3>图增强检索引擎 (Graph-Enhanced Search)</h3><p>在回答用户问题时，常规 RAG 仅找寻与提问词句最相似的文本片段；而 GraphRAG 将执行“双轨寻回”：</p><dl><dt><b>多跳邻居发掘 (N-Hop Neighbor Query)</b></dt><dd>从匹配到的源头实体（例如“深圳高新南区”）出发，系统在图谱中沿边缘跳跃式检索，连带抓取 N-hop 的邻接实体及其描述（如其相连的“供电站”、“环保要求”）。这构成了完整上下文，让分析变得立体。</dd><dt><b>向量重排序 (Vector & Graph Re-ranking)</b></dt><dd>提取出的海量网络路径会被送入排序算法。系统会计算文本的余弦相似度与网络中的 <i>PageRank 权重 / 中心度</i> 乘积，仅将最有说服力的节点文本（Top K）返回给规划体大模型生成最终报告。</dd></dl></section><section><h3>相关的后端 API 接口</h3><p>您可以利用 REST API 监控和重构特定的知识图谱：</p><ul><li>POST /api/kb/{id}/build-graph：触发针对当前知识库实体关系网的重构操作。</li><li>GET /api/kb/{id}/graph：导出当前的实体拓扑关系数据（JSON）。</li><li>POST /api/kb/{id}/graph-search：通过 API 单独测试图增强检索算法的效果。</li></ul></section>
+</article><hr/><article id='agent-plugins-and-guardrails'><h2>Agent 插件系统与安全护栏架构</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>详述在系统核心智能体上所挂载的关键生命周期插件（Plugins）以及用于内容拦截和审核的安全护栏（Guardrails）。</p>
+    
+        作者姓名
+    
+    
+        <section><h3></h3><p>为满足大模型在严肃地理数据与企业内网环境中的可用性及安全性，Data Agent 构建了一套灵活的切面拦截器框架（AOP），所有管道在被 Dynamic Planner 拉起前都会进行自动的拦截器注入。</p></section>
+
+        <section><h3>生命周期插件 (Agent Plugins)</h3><p>插件被挂载至 Agent 调用的 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>on_tool_start</code>, <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>on_tool_end</code>, 以及 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>on_llm_start</code> 等核心钩子上。</p><h4>核心插件清单</h4><table border='1' style='border-collapse: collapse; width: 100%;'><thead><tr><th>插件名称</th><th>功能说明与动作机制</th></tr></thead><tbody><tr><td>CostGuard</td><td>Token 预算防护插件。实时监听管线在每一波操作中对 Gemini API 产生的输入输出开销；如果单个会话的累积消耗超越配置文件设置的硬上限（Hard Limit），则抛出 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>QuotaExceededError</code>，主动熔断会话。</td></tr><tr><td>GISToolRetry</td><td>空间算法智能重试系统。底层 GIS 操作常因精度误差（如 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>TopologyException</code>）崩溃。插件拦截工具报错后，通过检索历史修复经验（failure_learning.py），带回给大模型进行参数微调（如尝试修复自相交环或改变容差精度）并自动重入。</td></tr><tr><td>Provenance</td><td>数据血缘与溯源插件。每当产生临时数据对象或报告，此插件自动记录其生成的依赖来源（源表、源模型以及时间戳），使所有的结论都有迹可循，满足企业级白盒要求。</td></tr><tr><td>HITLApproval</td><td>人机交互（Human-In-The-Loop）审批组件。拦截系统定义的 13 种危险空间算子（包含批量删表、强资源消耗的 DRL 模型强化学习）。该任务在触发前将被置于挂起状态，在管理员通过前端仪表盘点击授权（Approve）后方可继续执行。</td></tr></tbody></table></section>
+
+        <section><h3>双向安全护栏 (Guardrails)</h3><p>护栏工作在纯粹的数据层面，拦截并审核输入/输出文本以抵御攻击：</p><ul><li><b>InputLength (输入限长)：</b> 直接拒绝大于 50K 字符但未提供文本语义压缩映射的长报文。</li><li><b>SQLInjection (防注入校验)：</b> 调用词法扫描工具检查大模型生成的 SQL 代码，禁止 Drop、Truncate 及所有针对系统配置表（如 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>auth_users</code>）的越权扫描语句。</li><li><b>OutputSanitizer (输出脱敏)：</b> 替换和屏蔽输出内容中可能包含的底层系统服务器 IP、私有文件绝对路径以及密码散列，确保面向前台和 API 的响应高度纯净。</li><li><b>Hallucination (幻觉警告与降级)：</b> 对大模型输出的重要统计学结论进行交叉审查。当大模型的引用内容偏离源文档内容时，发出幻觉置信度警告并降级处理，将风险告知用户。</li></ul></section>
+    
+</article><hr/><article id='advanced-spatial-analysis'><h2>高级空间分析模型 (Tier 2)</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>罗列系统在 v10.0 版本中加入的高级地理分析算子库（Tier 2），支持更严密的科学预测与空间统计回归。</p>
+    
+        作者姓名
+    
+    
+        <section><h3></h3><p>除了基础的缓冲区、叠加与网络网络计算（归属 Tier 1 基础分析工具），Data Agent 为处理复杂的地学业务场景引入了高阶的空间模型。这些模型被封装在 spatial_analysis_tier2.py 中，供大模型编排调用。</p></section>
+
+        <section><h3>模型矩阵参考</h3><dl><dt><b>反距离加权插值 (IDW - Inverse Distance Weighting)</b></dt><dd>基于已知散点的属性值，根据距离衰减原理估算未知点的值。常用于降雨量插值、空气质量（PM2.5）分布面重建等场景，对空间均匀分布现象有极好的生成效果。</dd><dt><b>克里金空间插值 (Kriging Interpolation)</b></dt><dd>比 IDW 更加复杂的地质统计算法。利用半方差函数计算自相关性，生成包含预测结果和置信区间（标准误差）的概率面栅格。适用于采矿、土壤养分含量的估算。</dd><dt><b>地理加权回归 (GWR - Geographically Weighted Regression)</b></dt><dd>探究变量间的非平稳关系（Spatial Non-stationarity）。相较于传统 OLS 全局回归模型，GWR 为每一个观测点生成局部回归系数，进而描绘出自变量对于因变量（例如：学区质量对于房价）影响力的空间异质性热力图。</dd><dt><b>多时相变化检测 (Multi-Temporal Change Detection)</b></dt><dd>用于对比两个不同时相的卫星遥感栅格影像或地表覆被（LULC）数据。通过代数运算、聚类检测或影像分类对齐技术，智能提取并标记“新增用地”、“林地退化”等发生显著变化的像素区域。</dd><dt><b>DEM 可视域分析 (Viewshed Analysis)</b></dt><dd>利用数字高程模型（DEM / DTM）及观察者坐标，辅以雷达扫描和透视算法（Line-of-Sight），计算该视点在该地形条件下所能看到的范围（视域体）。广泛应用在基站选址、风电机组布局或景观环境评估中。</dd></dl></section>
+    
+</article><hr/><article id='mcp-hub-and-custom-skills'><h2>MCP Hub 工具市场与自定义技能包</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>指导具有开发者权限的用户如何挂载第三方 MCP (Model Context Protocol) 工具服务器以及构建个性化的技能包 (Skill Bundles)。</p>
+    
+        作者姓名
+    
+    <p>为防止系统陷入“工具孤岛”，Data Agent 完整集成了工业界最新的 <b>MCP (Model Context Protocol)</b> 协议。通过 mcp_hub.py 与前端隔离体系，用户可以在私有或共享级别，即插即用地将外部系统（如天气 API、企业内网 OA 机器人、遥感下载器）注册为系统的能力扩展（Custom Skills）。</p><ol><li><b>接入第三方 MCP Server</b><div style='margin-left: 20px; color: #555;'>
+                    <p>您可以在系统的 Data Panel > MCP Tools 标签页，使用图形化界面直接注册新的服务，或者使用如下接口操作：</p>
+                    <pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>POST /api/mcp/servers</code></pre>
+                </div><div style='margin: 10px 0 10px 20px; border: 1px solid #e0e0e0; padding: 10px; background: #f5f5f5;'><i>结果:</i><br/><p>MCP 服务注册后，后端引擎会在沙箱中解析该服务器的工具配置并实现热加载。用户即可获得全新的自然语言交互能力。</p></div></li><li><b>启用 Per-User MCP 安全隔离</b><div style='margin-left: 20px; color: #555;'>
+                    <p>系统支持严密的网络隔离设计（基于 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>owner_username</code> 与 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>is_shared</code> 属性）。</p>
+                    <ul><li>当用户注册包含个人隐私令牌（如 GitHub Access Token）的 MCP 服务器时，将其配置为 Private，系统会阻止除该用户外的任何人调用该连接。</li><li>只有具备 Admin 权限的用户可以使用以下 API 将该服务器全局透出：</li></ul>
+                    <pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>POST /api/mcp/servers/{name}/share</code></pre>
+                </div></li><li><b>编排与发布技能包 (Custom Skill Bundles)</b><div style='margin-left: 20px; color: #555;'>
+                    <p>工具挂载后，企业业务专家无需编写代码，即可组合多个原生的分析工具与新引入的 MCP 工具，打造场景化的 <b>Skill Bundle（技能包）</b>。在创建时，专家需定义清晰的系统提示词（System Instructions）与触发意图（Triggers）。</p>
+                    <p>例如：创建一个“农用地流转评估引擎”，其中包含“克里金插值”原生工具与“国家法规智库” MCP 工具。完成后，所有被许可的业务员在其会话中 @mention 该技能包即可调取专门的 Agent 进行回答。</p>
+                </div></li></ol>
+</article><hr/><article id='pipeline-analytics-api-reference'><h2>管线分析 API 参考</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>列出了用于获取系统智能体管线（Pipeline）运行状态与性能分析指标的 REST API 端点。</p>
+    
+        作者姓名
+    
+    
+        <section><h3>获取管线延迟分析</h3><p>该接口返回各类管道的平均执行时长和 P99 延迟数据。</p>
+                
+                    属性
+                    说明
+                
+                
+                    <b>Endpoint</b>
+                    <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>GET /api/analytics/latency</code>
+                
+                
+                    <b>Auth Required</b>
+                    Yes (Admin Role)
+                
+                
+                    <b>Response Format</b>
+                    JSON
+                
+            
+                
+                <pre style='background: #2d2d2d; color: #ccc; padding: 15px; border-radius: 5px; overflow-x: auto;'><code>{
+  "data_pipeline": { "avg_ms": 1450, "p99_ms": 3200 },
+  "governance_pipeline": { "avg_ms": 890, "p99_ms": 1500 }
+}</code></pre>
+            </section>
+        <section><h3>获取 Token 效率分析</h3><p>该接口统计大模型调用的输入与输出 Token 消耗，以及由于缓存（Context Caching）带来的节省量。</p>
+                
+                    属性
+                    说明
+                
+                
+                    <b>Endpoint</b>
+                    <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>GET /api/analytics/token-efficiency</code>
+                
+                
+                    <b>Auth Required</b>
+                    Yes (Admin Role)
+                
+            </section>
+    
+</article><hr/><article id='troubleshooting-common-issues'><h2>常见问题排查</h2>
+    
+    <p style='font-size: 1.2em; color: #666; font-style: italic;'>提供针对服务启动失败、依赖缺失及网络连接异常的标准排查流程。</p>
+    
+        作者姓名
+    
+    <p>发生异常时，请首先通过后端控制台日志或前端的 管线历史 标签页收集详细的 Agent 执行轨迹（Trajectory）和错误堆栈。</p><ol><li><b>排查 ArcPy 模块缺失错误</b><div style='margin-left: 20px; color: #555;'>
+                    <p><b>现象：</b> 启动应用时抛出 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>ModuleNotFoundError: No module named 'arcpy'</code>。</p>
+                    <p><b>原因：</b> .env 配置了强制加载 ArcPy 引擎，但当前 Python 解释器并非 ArcGIS Pro 的克隆环境。</p>
+                </div><div style='margin: 10px 0 10px 20px; border: 1px solid #e0e0e0; padding: 10px; background: #f5f5f5;'><i>结果:</i><br/><p><b>解决办法：</b></p><ol><li>确认本机已安装 ArcGIS Pro 并完成授权。</li><li>通过 ArcGIS Pro 的包管理器或 Conda 命令行，克隆默认的 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>arcgispro-py3</code> 环境。</li><li>在此克隆环境中安装本项目的 requirements.txt。</li><li>使用该环境的 Python 解释器重新启动服务。</li></ol></div></li><li><b>排查 API 速率超限 (429 Error)</b><div style='margin-left: 20px; color: #555;'>
+                    <p><b>现象：</b> 大模型管线执行中断，日志提示 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>RateLimitError: 429 Resource has been exhausted</code>。</p>
+                    <p><b>原因：</b> 当前调用的模型配额不足，特别是在启用 ParallelAgent 进行高并发任务分解时易发生。</p>
+                </div><div style='margin: 10px 0 10px 20px; border: 1px solid #e0e0e0; padding: 10px; background: #f5f5f5;'><i>结果:</i><br/><p><b>解决办法：</b></p><ul><li>系统内的 <code style='background: #eee; padding: 2px 4px; border-radius: 3px;'>GISToolRetry</code> 插件通常会自动执行指数退避重试，观察任务是否能自我恢复。</li><li>如果持续失败，需在前端降低单次任务传入的数据量（如缩小切片区域），或升级云服务商的 API 计费层级。</li></ul><figure style='text-align: center; margin: 20px; border: 1px solid #ddd; padding: 10px; background: #f9f9f9;'><div style='height: 150px; background: #eee; line-height: 150px; color: #999; border: 1px dashed #ccc;'>[图片占位符: images/rate-limit-error-dashboard.png] (待放入图片)</div><figcaption style='margin-top: 10px; font-style: italic; color: #555;'>图: Rate Limit Error Dashboard</figcaption></figure></div></li></ol>
+</article><hr/>
+    <footer style='margin-top: 100px; text-align: center; color: #888; font-size: 0.8em;'>
+        Generated by Data Agent Doc Previewer for Peking University Technical Writing Course
+    </footer>
+    </body>
+    </html>
+    

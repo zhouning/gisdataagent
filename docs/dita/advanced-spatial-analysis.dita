@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="advanced-spatial-analysis" xml:lang="zh-CN">
+    <title>高级空间分析模型 (Tier 2)</title>
+    <shortdesc>罗列系统在 v10.0 版本中加入的高级地理分析算子库（Tier 2），支持更严密的科学预测与空间统计回归。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <refbody>
+        <section id="tier2-overview">
+            <p>除了基础的缓冲区、叠加与网络网络计算（归属 Tier 1 基础分析工具），Data Agent 为处理复杂的地学业务场景引入了高阶的空间模型。这些模型被封装在 <filepath>spatial_analysis_tier2.py</filepath> 中，供大模型编排调用。</p>
+        </section>
+
+        <section id="tier2-models">
+            <title>模型矩阵参考</title>
+            <dl>
+                <dlentry>
+                    <dt>反距离加权插值 (IDW - Inverse Distance Weighting)</dt>
+                    <dd>基于已知散点的属性值，根据距离衰减原理估算未知点的值。常用于降雨量插值、空气质量（PM2.5）分布面重建等场景，对空间均匀分布现象有极好的生成效果。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>克里金空间插值 (Kriging Interpolation)</dt>
+                    <dd>比 IDW 更加复杂的地质统计算法。利用半方差函数计算自相关性，生成包含预测结果和置信区间（标准误差）的概率面栅格。适用于采矿、土壤养分含量的估算。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>地理加权回归 (GWR - Geographically Weighted Regression)</dt>
+                    <dd>探究变量间的非平稳关系（Spatial Non-stationarity）。相较于传统 OLS 全局回归模型，GWR 为每一个观测点生成局部回归系数，进而描绘出自变量对于因变量（例如：学区质量对于房价）影响力的空间异质性热力图。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>多时相变化检测 (Multi-Temporal Change Detection)</dt>
+                    <dd>用于对比两个不同时相的卫星遥感栅格影像或地表覆被（LULC）数据。通过代数运算、聚类检测或影像分类对齐技术，智能提取并标记“新增用地”、“林地退化”等发生显著变化的像素区域。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>DEM 可视域分析 (Viewshed Analysis)</dt>
+                    <dd>利用数字高程模型（DEM / DTM）及观察者坐标，辅以雷达扫描和透视算法（Line-of-Sight），计算该视点在该地形条件下所能看到的范围（视域体）。广泛应用在基站选址、风电机组布局或景观环境评估中。</dd>
+                </dlentry>
+            </dl>
+        </section>
+    </refbody>
+</reference>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><map xmlns:css2fo="http://www.oxygenxml.com/css2fo" xmlns:dita-ot="http://dita-ot.sourceforge.net/ns/201007/dita-ot" xmlns:ditaarch="http://dita.oasis-open.org/architecture/2005/" xmlns:nd="http://www.oxygenxml.com/css2fo/named-destinations" xmlns:opentopic="http://www.idiominc.com/opentopic" xmlns:opentopic-index="http://www.idiominc.com/opentopic/index" xmlns:oxy="http://www.oxygenxml.com/extensions/author" xmlns:xs="http://www.w3.org/2001/XMLSchema" cascade="merge" class="- map/map " ditaarch:DITAArchVersion="1.3" domains="(map mapgroup-d) (topic abbrev-d) (topic delay-d) a(props deliveryTarget) (map ditavalref-d) (map glossref-d) (topic hazard-d) (topic hi-d) (topic indexing-d) (topic markup-d) (topic pr-d) (topic relmgmt-d) (topic sw-d) (topic ui-d) (topic ut-d) (topic markup-d xml-d)" id="data-agent-user-guide" specializations="@props/deliveryTarget" title="Data Agent 用户指南" xml:lang="zh-CN" xtrc="map:1;3:74" xtrf="file:/D:/adk/docs/dita/data-agent-user-guide.ditamap"><oxy:front-page class="- front-page/front-page "><oxy:front-page-title class="- front-page/front-page-title ">Data Agent 用户指南</oxy:front-page-title></oxy:front-page><opentopic:map xmlns:ot-placeholder="http://suite-sol.com/namespaces/ot-placeholder" class="- toc/toc "><oxy:toc-title class="- toc/title " empty="true"/>
+    <topicref is-chapter="true" class="- map/topicref " format="dita" href="#unique_1" type="concept"><topicmeta class="- map/topicmeta " data-topic-id="system-overview"><resourceid appid="system-overview" class="- topic/resourceid " oxy-source="topic"/><navtitle href="#unique_1" class="- topic/navtitle ">系统概述</navtitle><?ditaot gentext?></topicmeta></topicref>
+    <topicref is-chapter="true" class="- map/topicref " format="dita" href="#unique_2" type="task"><topicmeta class="- map/topicmeta " data-topic-id="quick-start"><resourceid appid="quick-start" class="- topic/resourceid " oxy-source="topic"/><navtitle href="#unique_2" class="- topic/navtitle ">快速开始</navtitle><?ditaot gentext?></topicmeta></topicref>
+    <topicref is-chapter="true" class="- map/topicref " format="dita" href="#unique_3" type="concept"><topicmeta class="- map/topicmeta " data-topic-id="multi-agent-architecture"><resourceid appid="multi-agent-architecture" class="- topic/resourceid " oxy-source="topic"/><navtitle href="#unique_3" class="- topic/navtitle ">多智能体架构</navtitle><?ditaot gentext?></topicmeta></topicref>
+    <topicref is-chapter="true" class="- map/topicref " format="dita" href="#unique_4" type="task"><topicmeta class="- map/topicmeta " data-topic-id="dual-engine-gis-configuration"><resourceid appid="dual-engine-gis-configuration" class="- topic/resourceid " oxy-source="topic"/><navtitle href="#unique_4" class="- topic/navtitle ">双引擎 GIS 配置</navtitle><?ditaot gentext?></topicmeta></topicref>
+</opentopic:map><concept break-before="true" is-chapter="true" class="- topic/topic concept/concept " id="unique_1" topicrefclass="- map/topicref " nd:nd-id="system-overview" oid="system-overview" specializations="@props/deliveryTarget" xml:lang="zh-CN">
+    <title class="- topic/title "><ph class="- topic/ph topic/title-wrapper ">系统概述</ph></title>
+    <conbody class="- topic/body  concept/conbody ">
+        <p class="- topic/p "><b class="+ topic/ph hi-d/b ">GIS Data Agent</b> 是一个基于 Google Agent Developer Kit (ADK) v1.26 构建的 AI 驱动地理空间分析平台。该系统通过自然语言语义路由，自动调度多条专业管道，从而高效完成空间数据治理、用地优化、多源数据融合和商业智能分析等任务。</p>
+        
+        <section class="- topic/section ">
+            <title class="- topic/title ">核心能力</title>
+            <p class="- topic/p ">系统集成了众多强大的 GIS 与 AI 分析能力，主要包括：</p>
+            <ul class="- topic/ul "><li class="- topic/li "><b class="+ topic/ph hi-d/b ">多源数据智能融合：</b> 支持矢量、栅格、表格、点云及实时流五种数据模态，内置 10 种融合策略，并可通过大模型进行意图感知的策略推荐。</li><li class="- topic/li "><b class="+ topic/ph hi-d/b ">智能 Agent 协作：</b> 完美践行了 21 种智能体设计模式（100% 覆盖率），支持并行数据摄取、跨会话记忆、TaskGraph DAG 任务分解以及人机审批（HITL）等 Agent 插件。</li><li class="- topic/li "><b class="+ topic/ph hi-d/b ">3D 空间可视化：</b> 前端基于 React 18 打造，集成了 Leaflet 与 deck.gl，支持拉伸体、散点图等高级图层的 2D/3D 一键切换及协作标注。</li><li class="- topic/li "><b class="+ topic/ph hi-d/b ">工作流编排与扩展：</b> 提供 React Flow 可视化拖拽编辑器，支持模型动态加载、MCP 工具市场以及 GraphRAG 图增强向量检索能力。</li></ul>
+        </section>
+        
+        <section class="- topic/section ">
+            <title class="- topic/title ">生产级安全与保障</title>
+            <p class="- topic/p ">作为一款企业级应用，系统在子 Agent 的递归调用层面上挂载了 4 种安全护栏（InputLength、SQLInjection、OutputSanitizer、Hallucination），配备了完整的 RBAC 权限控制体系与结构化审计日志。</p>
+        </section>
+    </conbody>
+</concept><task break-before="true" is-chapter="true" class="- topic/topic task/task " id="unique_2" topicrefclass="- map/topicref " nd:nd-id="quick-start" oid="quick-start" specializations="@props/deliveryTarget" xml:lang="zh-CN">
+    <title class="- topic/title "><ph class="- topic/ph topic/title-wrapper ">快速开始</ph></title>
+    <taskbody class="- topic/body task/taskbody ">
+        <context class="- topic/section task/context ">
+            <p class="- topic/p ">您可以选择通过 Docker 快速拉起服务，或者在本地直接配置并运行 Data Agent 的开发环境。本节主要介绍本地开发的标准启动流程。</p>
+        </context>
+        <steps class="- topic/ol task/steps "><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">配置环境变量</cmd>
+                <info class="- topic/itemgroup task/info ">复制根目录下的 <codeph class="+ topic/ph pr-d/codeph ">.env.example</codeph> 文件为 <codeph class="+ topic/ph pr-d/codeph ">.env</codeph>，并填入 PostgreSQL/PostGIS 的连接凭据以及 Vertex AI / Gemini API 密钥。</info>
+            </step><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">安装后端依赖</cmd>
+                <info class="- topic/itemgroup task/info ">确保您的 Python 版本为 3.13 或以上，执行以下命令安装依赖：</info>
+                <info class="- topic/itemgroup task/info "><codeblock class="+ topic/pre pr-d/codeblock " xml:space="preserve">pip install -r requirements.txt</codeblock></info>
+            </step><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">启动后端服务 (Chainlit)</cmd>
+                <info class="- topic/itemgroup task/info ">通过命令行接口启动后端的大模型驱动界面与 API 服务：</info>
+                <info class="- topic/itemgroup task/info "><codeblock class="+ topic/pre pr-d/codeblock " xml:space="preserve">chainlit run data_agent/app.py -w</codeblock></info>
+            </step><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">启动 React 前端（可选）</cmd>
+                <info class="- topic/itemgroup task/info ">如果您需要使用完整的三面板交互式 UI，请进入 <codeph class="+ topic/ph pr-d/codeph ">frontend</codeph> 目录并启动 Vite 开发服务器：</info>
+                <info class="- topic/itemgroup task/info "><codeblock class="+ topic/pre pr-d/codeblock " xml:space="preserve">cd frontend &amp;&amp; npm install &amp;&amp; npm run dev</codeblock></info>
+                
+                <info class="- topic/itemgroup task/info ">
+                    <fig class="- topic/fig " id="unique_2_Connect_42_react-frontend-dashboard" nd:nd-id="react-frontend-dashboard"><title class="- topic/title "><ph class="- topic/ph topic/title-wrapper ">React Frontend Dashboard</ph></title><image class="- topic/image " href="file:/D:/adk/docs/dita/images/react-frontend-dashboard.png" placement="break"/></fig>
+                </info>
+            </step><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">登录系统</cmd>
+                <info class="- topic/itemgroup task/info ">访问系统后，可以使用默认的管理员账号 <codeph class="+ topic/ph pr-d/codeph ">admin</codeph> / <codeph class="+ topic/ph pr-d/codeph ">admin123</codeph> 进行登录，首次运行时系统将自动初始化该账号并完成数据库表结构的构建。</info>
+            </step></steps>
+    </taskbody>
+</task><concept break-before="true" is-chapter="true" class="- topic/topic concept/concept " id="unique_3" topicrefclass="- map/topicref " nd:nd-id="multi-agent-architecture" oid="multi-agent-architecture" specializations="@props/deliveryTarget" xml:lang="zh-CN">
+    <title class="- topic/title "><ph class="- topic/ph topic/title-wrapper ">多智能体架构</ph></title>
+    <conbody class="- topic/body  concept/conbody ">
+        <p class="- topic/p ">GIS Data Agent 采用了层级式多智能体协作网络（Hierarchical Multi-Agent Architecture），旨在降低单体大模型的上下文负担，提高执行速度与空间推理质量。</p>
+        <section class="- topic/section ">
+            <title class="- topic/title ">意图分发与管道路由</title>
+            <p class="- topic/p ">系统顶层设有一个由 Gemini 2.0 Flash 驱动的 <b class="+ topic/ph hi-d/b ">Dynamic Planner</b>。当用户输入自然语言指令时，规划器会自动进行意图识别并分配到对应的子管线（Pipeline），主要包括：</p>
+            <ul class="- topic/ul "><li class="- topic/li "><b class="+ topic/ph hi-d/b ">Data Pipeline（数据优化管道）：</b> 负责数据的探查、处理、深入分析及可视化，是处理多源融合与商业智能分析的核心。</li><li class="- topic/li "><b class="+ topic/ph hi-d/b ">Governance Pipeline（数据治理管道）：</b> 负责执行拓扑审计、合规性检查（如 GB/T 21010）并自动生成合规报告。</li><li class="- topic/li "><b class="+ topic/ph hi-d/b ">General Pipeline（通用问答管道）：</b> 用于处理常规咨询及无需复杂地理计算的请求。</li></ul>
+        </section>
+        <section class="- topic/section ">
+            <title class="- topic/title ">核心 Agent 模式</title>
+            <p class="- topic/p ">在管道内部，系统混合使用了以下设计模式：</p>
+            <ul class="- topic/ul "><li class="- topic/li "><b class="+ topic/ph hi-d/b ">ParallelAgent：</b> 用于并行数据摄取，使得不同数据源（如 SHP 与 PDF）的处理能同时进行，提升吞吐量。</li><li class="- topic/li "><b class="+ topic/ph hi-d/b ">LoopAgent：</b> 应用了 Generator-Critic 模式，分析 Agent (Generator) 产出结果后交由 Quality Check Agent (Critic) 审核，若未达到标准则打回重做。</li><li class="- topic/li "><b class="+ topic/ph hi-d/b ">SequentialAgent：</b> 将探查、处理、可视化步骤按有向无环图 (DAG) 顺序串联，保证逻辑链的稳健性。</li></ul>
+        </section>
+    </conbody>
+</concept><task break-before="true" is-chapter="true" class="- topic/topic task/task " id="unique_4" topicrefclass="- map/topicref " nd:nd-id="dual-engine-gis-configuration" oid="dual-engine-gis-configuration" specializations="@props/deliveryTarget" xml:lang="zh-CN">
+    <title class="- topic/title "><ph class="- topic/ph topic/title-wrapper ">双引擎 GIS 配置</ph></title>
+    <taskbody class="- topic/body task/taskbody ">
+        <context class="- topic/section task/context ">
+            <p class="- topic/p ">基于灵活性设计，Data Agent 在底层分析工具集 (<codeph class="+ topic/ph pr-d/codeph ">toolsets/</codeph>) 中抽象了 <codeph class="+ topic/ph pr-d/codeph ">GISEngine</codeph> 接口，原生支持“开源环境优先，商业软件兼容”的自动降级/切换策略。</p>
+            <p class="- topic/p ">系统默认使用基于 GeoPandas, Shapely 和 GDAL 的开源实现；但在政企内网或必须依赖 ArcGIS 模型构建器的高阶场景下，客户可以通过配置切换到 ArcPy 商业引擎。</p>
+        </context>
+        <steps class="- topic/ol task/steps "><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">进入配置目录</cmd>
+                <info class="- topic/itemgroup task/info ">打开项目根目录下的 <codeph class="+ topic/ph pr-d/codeph ">.env</codeph> 配置文件。</info>
+            </step><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">修改后端优先级标识</cmd>
+                <info class="- topic/itemgroup task/info ">定位到 <codeph class="+ topic/ph pr-d/codeph ">GIS_BACKEND_PRIORITY</codeph> 字段，将其值从默认的 <codeph class="+ topic/ph pr-d/codeph ">opensource</codeph> 更改为 <codeph class="+ topic/ph pr-d/codeph ">arcpy</codeph>：</info>
+                <info class="- topic/itemgroup task/info "><codeblock class="+ topic/pre pr-d/codeblock " xml:space="preserve">GIS_BACKEND_PRIORITY=arcpy</codeblock></info>
+            </step><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">可选：配置强校验模式</cmd>
+                <info class="- topic/itemgroup task/info ">如果您希望在缺乏 ArcPy 授权时阻止系统启动，请添加如下强校验开关：</info>
+                <info class="- topic/itemgroup task/info "><codeblock class="+ topic/pre pr-d/codeblock " xml:space="preserve">REQUIRE_ARCPY=true</codeblock></info>
+            </step><step class="- topic/li task/step ">
+                <cmd class="- topic/ph task/cmd ">重启后端 Agent 服务</cmd>
+                <info class="- topic/itemgroup task/info ">使用终端重启 Chainlit 应用或 Docker 容器。在服务引导（Bootstrap）阶段，系统会执行许可证检测及环境依赖初始化，此过程记录在系统的结构化日志中。</info>
+                
+                <info class="- topic/itemgroup task/info ">
+                    <fig class="- topic/fig " id="unique_4_Connect_42_engine-switching-logs" nd:nd-id="engine-switching-logs"><title class="- topic/title "><ph class="- topic/ph topic/title-wrapper ">Engine Switching Logs</ph></title><image class="- topic/image " href="file:/D:/adk/docs/dita/images/engine-switching-logs.png" placement="break"/></fig>
+                </info>
+            </step></steps>
+    </taskbody>
+</task></map>
