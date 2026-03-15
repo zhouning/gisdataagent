@@ -1,23 +1,23 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v11.0
+# GIS Data Agent (ADK Edition) v12.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend, and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend (11 tabs), and enterprise-grade security.
 
-The system implements **19 of 21 (90%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 85 REST API endpoints.
+The system implements **all 21 of 21 (100%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, Pareto multi-objective optimization, dynamic agent composition, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 85 REST API endpoints.
 
 ## Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2074 tests, 90 test files |
-| Toolsets | 22 BaseToolset, 5 SkillBundle, 121+ tools |
+| Test Coverage | 2104 tests, 92 test files |
+| Toolsets | 22 BaseToolset, 5 SkillBundle, 122+ tools |
 | ADK Skills | 16 scenario skills + DB-driven custom Skills |
 | REST API | 85 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |
-| Design Pattern Coverage | 19/21 (90%) |
+| Design Pattern Coverage | **21/21 (100%)** |
 | Streaming | Batch + SSE streaming |
 
 ## Core Capabilities
@@ -448,7 +448,8 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v9.5 | conftest.py, Guardrails (4), SSE Streaming, LongRunningFunctionTool, Evaluation Enhancement | 1895 | ✅ Done |
 | v10.0 | GraphRAG, per-User MCP Isolation, Custom Skill Bundles, Spatial Analysis Tier 2, Workflow Templates | 1993 | ✅ Done |
 | v11.0 | Concurrent Task Queue, Chain-of-Thought Reasoning, Proactive Exploration, A2A Interop, Design Patterns 19/21 | 2074 | ✅ Done |
-| v12.0 | Multi-Objective Optimization, Agent Specialization & Composition, End-to-End Auto-Testing | — | ⬅️ Next |
+| v12.0 | Pareto Multi-Objective Optimization, Dynamic Agent Composition, Frontend 11-Tab DataPanel | 2104 | ✅ Done |
+| | **Design Pattern Coverage: 21/21 (100%) — Full Coverage** | | |
 
 ## Design Pattern Coverage (16/21 = 76%)
 
