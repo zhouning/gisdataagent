@@ -1,23 +1,23 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v11.0
+# GIS Data Agent (ADK Edition) v12.0
 
 基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
 
-系统实现了《Agentic Design Patterns》21 种设计模式中的 **19 种 (90%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、跨会话记忆持久化、DAG 任务分解与波次并行执行、A2A 智能体互操作、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA，后端集成 85 个 REST API。
+系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（11 标签页），后端集成 85 个 REST API。
 
 ## 核心指标
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2074 tests, 90 test files |
-| 工具集 | 22 BaseToolset, 5 SkillBundle, 121+ 工具 |
+| 测试覆盖 | 2104 tests, 92 test files |
+| 工具集 | 22 BaseToolset, 5 SkillBundle, 122+ 工具 |
 | ADK Skills | 16 场景化领域技能 + DB 驱动自定义 Skills |
 | REST API | 85 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
-| 设计模式覆盖 | 19/21 (90%) |
+| 设计模式覆盖 | **21/21 (100%)** |
 | Streaming | 批量 + SSE 流式 |
 
 ## 核心能力
@@ -442,9 +442,10 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v9.5 | conftest.py、Guardrails (4)、SSE Streaming、LongRunningFunctionTool、评估增强 | 1895 | ✅ 完成 |
 | v10.0 | GraphRAG、per-User MCP 隔离、自定义技能包、高级空间分析 Tier 2、工作流模板 | 1993 | ✅ 完成 |
 | v11.0 | 并发任务队列、推理链+置信度、主动探索建议、A2A 互操作、设计模式 19/21 | 2074 | ✅ 完成 |
-| v12.0 | 多目标优化、Agent 特化与组合、端到端自动测试 | — | ⬅️ 下一阶段 |
+| v12.0 | Pareto 多目标优化、动态 Agent 组合、前端 11 标签页 | 2104 | ✅ 完成 |
+| | **设计模式 21/21 (100%) 全覆盖** | | |
 
-## 设计模式覆盖 (19/21 = 90%)
+## 设计模式覆盖 (21/21 = 100%)
 
 | 模式 | 状态 | 实现 |
 |------|------|------|
