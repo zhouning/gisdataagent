@@ -611,7 +611,8 @@ planner_agent = LlmAgent(
         DataLakeToolset(tool_filter=_DATALAKE_READ),
         VisualizationToolset(tool_filter=["visualize_interactive_map"]),  # For direct admin boundary display
         RemoteSensingToolset(tool_filter=["download_dem"]),  # For DEM download in watershed workflow
-        WatershedToolset(),  # For watershed/catchment extraction
+        WatershedToolset(),  # For watershed/catchment extraction (open-source)
+        GeoProcessingToolset(include_arcpy=True),  # ArcPy tools including arcpy_extract_watershed (dynamic loading)
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,
