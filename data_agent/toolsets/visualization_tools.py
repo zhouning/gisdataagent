@@ -21,6 +21,48 @@ from ..gis_processors import generate_heatmap, _generate_output_path
 from ..utils import _load_spatial_data, _configure_fonts, _add_basemap_layers
 
 
+def _load_spatial_data_with_filter(data_path: str, sql_filter: str = None) -> gpd.GeoDataFrame:
+    """Load spatial data with optional SQL WHERE filter for PostGIS tables.
+
+    If sql_filter is provided and data_path looks like a PostGIS table name,
+    applies the WHERE clause to filter data at the database level.
+    Otherwise falls back to _load_spatial_data (full table load).
+    """
+    import re as _re
+    stripped = data_path.strip().strip('"').strip("'")
+    _, ext_check = os.path.splitext(stripped)
+
+    # Only apply SQL filter for PostGIS table names (no file extension)
+    if sql_filter and not ext_check and _re.match(r'^[a-zA-Z0-9_]+$', stripped):
+        try:
+            from ..db_engine import get_engine
+            from ..database_tools import _inject_user_context
+            engine = get_engine()
+            if engine:
+                # Sanitize filter to prevent injection (basic check)
+                forbidden = ['drop ', 'delete ', 'insert ', 'update ', 'alter ', '--', ';']
+                filter_lower = sql_filter.lower()
+                if any(f in filter_lower for f in forbidden):
+                    print(f"[Warning] Rejected sql_filter for safety: {sql_filter}")
+                    return _load_spatial_data(data_path)
+
+                sql = f'SELECT * FROM "{stripped}" WHERE {sql_filter}'
+                with engine.connect() as conn:
+                    _inject_user_context(conn)
+                    for geom_col in ['geometry', 'geom', 'the_geom', 'shape']:
+                        try:
+                            gdf = gpd.read_postgis(sql, conn, geom_col=geom_col)
+                            if not gdf.empty:
+                                print(f"[SQL Filter] Loaded {len(gdf)} rows from {stripped} WHERE {sql_filter}")
+                                return gdf
+                        except Exception:
+                            continue
+        except Exception as e:
+            print(f"[Warning] SQL filter failed, falling back to full load: {e}")
+
+    return _load_spatial_data(data_path)
+
+
 def _save_map_config(html_path: str, gdf, layers: list, center: list = None,
                      zoom: int = None, pitch: int = None, bearing: int = None):
     """Save GeoJSON + mapconfig.json alongside HTML for frontend rendering.
@@ -140,7 +182,7 @@ def visualize_optimization_comparison(original_data_path: str, optimized_data_pa
     except Exception as e: return f"Error: {str(e)}"
 
 
-def visualize_interactive_map(original_data_path: str, optimized_data_path: str = None, center_lat: float = None, center_lng: float = None, zoom: int = None) -> str:
+def visualize_interactive_map(original_data_path: str, optimized_data_path: str = None, center_lat: float = None, center_lng: float = None, zoom: int = None, sql_filter: str = None) -> str:
     """
     Generate multi-layer interactive map.
     Supports:
@@ -153,9 +195,10 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
         center_lat: 可选，地图中心纬度。不指定则自动根据数据范围居中。
         center_lng: 可选，地图中心经度。不指定则自动根据数据范围居中。
         zoom: 可选，缩放级别(1-18)。不指定则自动计算。
+        sql_filter: 可选，SQL WHERE 过滤条件（仅对 PostGIS 表名有效）。例如: "county LIKE '%璧山%'"
     """
     try:
-        gdf_orig = _load_spatial_data(original_data_path)
+        gdf_orig = _load_spatial_data_with_filter(original_data_path, sql_filter)
         # Ensure CRS is set before transforming. Assume WGS84 or project default if not set.
         if gdf_orig.crs is None:
             gdf_orig.set_crs(epsg=4326, inplace=True)

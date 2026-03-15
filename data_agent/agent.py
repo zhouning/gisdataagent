@@ -51,6 +51,7 @@ from .toolsets import (
     KnowledgeBaseToolset,
     AdvancedAnalysisToolset,
 )
+from .toolsets.watershed_tools import WatershedToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -608,6 +609,9 @@ planner_agent = LlmAgent(
         AdminToolset(),
         TeamToolset(),
         DataLakeToolset(tool_filter=_DATALAKE_READ),
+        VisualizationToolset(tool_filter=["visualize_interactive_map"]),  # For direct admin boundary display
+        RemoteSensingToolset(tool_filter=["download_dem"]),  # For DEM download in watershed workflow
+        WatershedToolset(),  # For watershed/catchment extraction
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,

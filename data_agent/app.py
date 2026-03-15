@@ -1889,7 +1889,11 @@ async def _execute_pipeline(
                             if isinstance(_resp_val, str):
                                 _resp_str = _resp_val
                             elif isinstance(_resp_val, dict):
-                                _resp_str = str(_resp_val.get("output_path", "")) + " " + str(_resp_val.get("message", ""))
+                                # Try common keys, then fall back to full dict string
+                                _resp_str = str(_resp_val.get("output_path", "")) + " " + str(_resp_val.get("message", "")) + " " + str(_resp_val.get("result", ""))
+                                # If no paths found in common keys, stringify the whole dict
+                                if not extract_file_paths(_resp_str):
+                                    _resp_str = json.dumps(_resp_val, default=str)
                             _tool_artifacts = extract_file_paths(_resp_str)
                             logger.info(f"[ArtifactDetect] tool_resp_type={type(_resp_val).__name__}, resp_str_len={len(_resp_str)}, artifacts={len(_tool_artifacts)}")
                             for _ta in _tool_artifacts:
@@ -1917,6 +1921,37 @@ async def _execute_pipeline(
                                         shown_artifacts.add(_ta_path)
                                         _pending_data_update = {"file": _ta_name}
                                         _final_data_update = {"file": _ta_name}
+                                    elif _ta['type'] == 'geojson':
+                                        # Directly load GeoJSON as a map layer — no HTML wrapper needed
+                                        shown_artifacts.add(_ta_path)
+                                        try:
+                                            import geopandas as _gdf_lib
+                                            _gdf_tmp = _gdf_lib.read_file(_ta_path)
+                                            if not _gdf_tmp.empty:
+                                                # Detect layer type from geometry
+                                                _geom_types = set(_gdf_tmp.geom_type.dropna().unique())
+                                                if _geom_types & {"Point", "MultiPoint"}:
+                                                    _ltype = "point"
+                                                elif _geom_types & {"LineString", "MultiLineString"}:
+                                                    _ltype = "line"
+                                                else:
+                                                    _ltype = "polygon"
+                                                # Derive human-readable name
+                                                _layer_label = _ta_name.replace(".geojson", "").replace("_", " ").title()
+                                                _new_layer = {"name": _layer_label, "type": _ltype, "geojson": _ta_name}
+                                                # Compute center from data
+                                                _gdf_4326 = _gdf_tmp.to_crs(epsg=4326) if _gdf_tmp.crs and _gdf_tmp.crs.to_epsg() != 4326 else _gdf_tmp
+                                                _center = [float(_gdf_4326.geometry.centroid.y.mean()),
+                                                           float(_gdf_4326.geometry.centroid.x.mean())]
+                                                # Merge into existing map_update or create new
+                                                if _pending_map_update and "layers" in _pending_map_update:
+                                                    _pending_map_update["layers"].append(_new_layer)
+                                                else:
+                                                    _pending_map_update = {"layers": [_new_layer], "center": _center, "zoom": 13}
+                                                _final_map_update = _pending_map_update
+                                                logger.info(f"[ArtifactGeoJSON] Added map layer: {_layer_label} ({_ltype}, {len(_gdf_tmp)} features)")
+                                        except Exception as _geo_err:
+                                            logger.debug(f"[ArtifactGeoJSON] Failed to load {_ta_name}: {_geo_err}")
                         except Exception:
                             pass
                         # Sync tool output files to OBS and register in data catalog
@@ -2395,7 +2430,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
         Additionally, identify which tool subcategories are needed (comma-separated, minimum list):
         - spatial_processing: buffer, clip, overlay, tessellation, clustering, zonal stats, geocoding, spatial join
         - poi_location: POI search, population, driving distance, admin boundaries
-        - remote_sensing: raster/NDVI/DEM/LULC
+        - remote_sensing: raster/NDVI/DEM/LULC/watershed/hydrology/流域/水文/河网/汇水
         - database_management: PostGIS import/export/describe table schema
         - quality_audit: topology check, field standards, semantic layer, consistency
         - streaming_iot: real-time/IoT data streams, geofence
