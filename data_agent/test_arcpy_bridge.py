@@ -186,5 +186,54 @@ class TestArcPyWorkerIntegration(unittest.TestCase):
             ArcPyBridge._instance.shutdown()
 
 
+# ---------------------------------------------------------------------------
+# TestArcPyWatershed
+# ---------------------------------------------------------------------------
+
+class TestArcPyWatershed(unittest.TestCase):
+    """Tests for ArcPy watershed extraction tool."""
+
+    def test_tool_function_exists(self):
+        from data_agent.arcpy_tools import arcpy_extract_watershed
+        self.assertTrue(callable(arcpy_extract_watershed))
+
+    @patch.dict(os.environ, {"ARCPY_PYTHON_EXE": ""}, clear=False)
+    def test_no_bridge_returns_error(self):
+        from data_agent.arcpy_tools import arcpy_extract_watershed, ArcPyBridge
+        ArcPyBridge._instance = None
+        import json
+        result = json.loads(arcpy_extract_watershed("test.tif"))
+        self.assertEqual(result["status"], "error")
+        self.assertIn("ArcPy", result["message"])
+        ArcPyBridge._instance = None
+
+    def test_worker_handler_registered(self):
+        """Verify extract_watershed is in the worker's handler registry."""
+        # Read the worker source to verify registration
+        worker_path = os.path.join(os.path.dirname(__file__), "arcpy_worker.py")
+        with open(worker_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn('"extract_watershed": handle_extract_watershed', content)
+
+    def test_arcpy_funcs_includes_watershed(self):
+        """Verify arcpy_extract_watershed is registered in _arcpy_funcs."""
+        from data_agent.toolsets.geo_processing_tools import _arcpy_funcs, ARCPY_AVAILABLE
+        if ARCPY_AVAILABLE:
+            func_names = [f.__name__ for f in _arcpy_funcs]
+            self.assertIn("arcpy_extract_watershed", func_names)
+
+    def test_prompt_mentions_arcpy_watershed(self):
+        """Verify prompts include ArcPy watershed tool."""
+        import yaml
+        prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "general.yaml")
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        # Check that the general instruction mentions arcpy_extract_watershed
+        for key, val in data.items():
+            if isinstance(val, str) and "arcpy_extract_watershed" in val:
+                return
+        self.fail("arcpy_extract_watershed not found in general.yaml prompts")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -34,13 +34,14 @@ try:
         is_arcpy_available,
         arcpy_buffer, arcpy_clip, arcpy_dissolve, arcpy_project,
         arcpy_check_geometry, arcpy_repair_geometry,
-        arcpy_slope, arcpy_zonal_statistics,
+        arcpy_slope, arcpy_zonal_statistics, arcpy_extract_watershed,
     )
     if is_arcpy_available():
         ARCPY_AVAILABLE = True
         _arcpy_funcs = [
             arcpy_buffer, arcpy_clip, arcpy_dissolve, arcpy_project,
             arcpy_repair_geometry, arcpy_slope, arcpy_zonal_statistics,
+            arcpy_extract_watershed,
         ]
         _arcpy_gov_explore_funcs = [arcpy_check_geometry]
         _arcpy_gov_process_funcs = [arcpy_repair_geometry, arcpy_project]

@@ -48,6 +48,7 @@ planner_instruction: |
   当需要对行政区进行水文分析/小流域提取时，**你自己依次执行**（不要转交子智能体）：
   1. 调用 `download_dem(admin_boundary_path="xiangzhen", sql_filter="county='XX' AND township='XX'")` 下载该区域的 DEM
   2. 用返回的 DEM 文件路径调用 `extract_watershed(dem_path="DEM路径", threshold="1000")` 提取小流域
+  3. **当用户明确要求使用 ArcPy 时**，第 2 步改为调用 `arcpy_extract_watershed(dem_path="DEM路径", threshold="1000")`，参数相同，使用 ArcPy Spatial Analyst 引擎。
 
   **后备方案**：如果 search_data_assets/download_cloud_asset 失败，直接调用 `transfer_to_agent(agent_name="PlannerVisualizer")` 并说明"目录搜索失败，请用 list_user_files 查找本地文件"。
 

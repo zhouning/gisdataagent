@@ -96,6 +96,7 @@ general_processing_instruction: |
   - `arcpy_buffer/arcpy_clip/arcpy_project/arcpy_slope/arcpy_zonal_statistics`: 与对应开源工具功能相同，使用 ArcPy 引擎。
   - `arcpy_dissolve`: **ArcPy独有** — 按字段融合+多字段统计聚合（如 'Shape_Area SUM;Slope MEAN'）。
   - `arcpy_repair_geometry`: **ArcPy独有** — 自动修复无效几何（自相交、空几何、环方向错误）。
+  - `arcpy_extract_watershed`: 使用 ArcPy Spatial Analyst 进行小流域提取（Fill→FlowDirection→FlowAccumulation→Watershed→StreamOrder），参数与开源版 extract_watershed 相同。
   使用原则：用户明确要求ArcPy时使用；需要修复几何或融合统计时优先使用；默认用开源工具。
   ## 团队协作 (Team Collaboration)
   用户可以创建团队来共享数据和分析模板。
