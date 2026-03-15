@@ -1871,31 +1871,22 @@ async def _execute_pipeline(
                         progress_msg.content = _build_progress_content(
                             pipeline_name, pipeline_type, stages, stage_timings)
                         await progress_msg.update()
-                        # Detect layer_control in tool response → send as metadata
-                        try:
-                            _lc_resp = part.function_response.response
-                            if isinstance(_lc_resp, dict) and "layer_control" in _lc_resp:
-                                await cl.Message(
-                                    content="",
-                                    metadata={"layer_control": _lc_resp["layer_control"]},
-                                ).send()
-                        except Exception:
-                            pass
                         # Extract artifacts from tool response (map HTML, files)
-                        # so MapPanel rendering works even if LLM doesn't output paths
+                        # Delegates to artifact_handler module for cleaner separation
                         try:
-                            _resp_str = ""
+                            from .artifact_handler import (
+                                detect_artifacts, build_map_update_from_html,
+                                build_map_update_from_geojson, check_layer_control,
+                            )
                             _resp_val = part.function_response.response
-                            if isinstance(_resp_val, str):
-                                _resp_str = _resp_val
-                            elif isinstance(_resp_val, dict):
-                                # Try common keys, then fall back to full dict string
-                                _resp_str = str(_resp_val.get("output_path", "")) + " " + str(_resp_val.get("message", "")) + " " + str(_resp_val.get("result", ""))
-                                # If no paths found in common keys, stringify the whole dict
-                                if not extract_file_paths(_resp_str):
-                                    _resp_str = json.dumps(_resp_val, default=str)
-                            _tool_artifacts = extract_file_paths(_resp_str)
-                            logger.info(f"[ArtifactDetect] tool_resp_type={type(_resp_val).__name__}, resp_str_len={len(_resp_str)}, artifacts={len(_tool_artifacts)}")
+
+                            # Layer control detection
+                            _lc = check_layer_control(_resp_val)
+                            if _lc:
+                                await cl.Message(content="", metadata={"layer_control": _lc}).send()
+
+                            # Artifact detection
+                            _tool_artifacts = detect_artifacts(_resp_val)
                             for _ta in _tool_artifacts:
                                 _ta_path = _ta['path']
                                 logger.info(f"[ArtifactDetect] Found: {_ta_path} (type={_ta['type']}, already_shown={_ta_path in shown_artifacts})")
@@ -1904,15 +1895,10 @@ async def _execute_pipeline(
                                     if _ta['type'] == 'html':
                                         _pending_elements.append(cl.File(path=_ta_path, name=_ta_name))
                                         shown_artifacts.add(_ta_path)
-                                        _cfg_path = _ta_path.replace('.html', '.mapconfig.json')
-                                        if os.path.exists(_cfg_path):
-                                            try:
-                                                with open(_cfg_path, 'r', encoding='utf-8') as _mcf:
-                                                    _mc_data = json.load(_mcf)
-                                                    _pending_map_update = _mc_data
-                                                    _final_map_update = _mc_data
-                                            except Exception:
-                                                pass
+                                        _mc = build_map_update_from_html(_ta_path)
+                                        if _mc:
+                                            _pending_map_update = _mc
+                                            _final_map_update = _mc
                                     elif _ta['type'] == 'png':
                                         _pending_elements.append(cl.Image(path=_ta_path, name=_ta_name, display="inline"))
                                         shown_artifacts.add(_ta_path)
@@ -1922,36 +1908,11 @@ async def _execute_pipeline(
                                         _pending_data_update = {"file": _ta_name}
                                         _final_data_update = {"file": _ta_name}
                                     elif _ta['type'] == 'geojson':
-                                        # Directly load GeoJSON as a map layer — no HTML wrapper needed
                                         shown_artifacts.add(_ta_path)
-                                        try:
-                                            import geopandas as _gdf_lib
-                                            _gdf_tmp = _gdf_lib.read_file(_ta_path)
-                                            if not _gdf_tmp.empty:
-                                                # Detect layer type from geometry
-                                                _geom_types = set(_gdf_tmp.geom_type.dropna().unique())
-                                                if _geom_types & {"Point", "MultiPoint"}:
-                                                    _ltype = "point"
-                                                elif _geom_types & {"LineString", "MultiLineString"}:
-                                                    _ltype = "line"
-                                                else:
-                                                    _ltype = "polygon"
-                                                # Derive human-readable name
-                                                _layer_label = _ta_name.replace(".geojson", "").replace("_", " ").title()
-                                                _new_layer = {"name": _layer_label, "type": _ltype, "geojson": _ta_name}
-                                                # Compute center from data
-                                                _gdf_4326 = _gdf_tmp.to_crs(epsg=4326) if _gdf_tmp.crs and _gdf_tmp.crs.to_epsg() != 4326 else _gdf_tmp
-                                                _center = [float(_gdf_4326.geometry.centroid.y.mean()),
-                                                           float(_gdf_4326.geometry.centroid.x.mean())]
-                                                # Merge into existing map_update or create new
-                                                if _pending_map_update and "layers" in _pending_map_update:
-                                                    _pending_map_update["layers"].append(_new_layer)
-                                                else:
-                                                    _pending_map_update = {"layers": [_new_layer], "center": _center, "zoom": 13}
-                                                _final_map_update = _pending_map_update
-                                                logger.info(f"[ArtifactGeoJSON] Added map layer: {_layer_label} ({_ltype}, {len(_gdf_tmp)} features)")
-                                        except Exception as _geo_err:
-                                            logger.debug(f"[ArtifactGeoJSON] Failed to load {_ta_name}: {_geo_err}")
+                                        _pending_map_update = build_map_update_from_geojson(
+                                            _ta_path, _pending_map_update)
+                                        if _pending_map_update:
+                                            _final_map_update = _pending_map_update
                         except Exception:
                             pass
                         # Sync tool output files to OBS and register in data catalog
