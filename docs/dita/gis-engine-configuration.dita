@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE task PUBLIC "-//OASIS//DTD DITA Task//EN" "task.dtd">
+<task id="gis-engine-configuration" xml:lang="zh-CN">
+    <title>GIS 引擎配置</title>
+    <shortdesc>指导管理员在开源 GIS 工具链（GeoPandas/GDAL）与商业 GIS 软件（ArcPy）之间进行底层引擎的切换。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <taskbody>
+        <context>
+            <p>系统默认采用开源工具链处理空间数据。当业务需要调用特定高阶拓扑分析模型或处理专有数据格式（如 File Geodatabase）时，可切换至 ArcPy 引擎。</p>
+        </context>
+        <steps>
+            <step>
+                <cmd>修改引擎优先级参数</cmd>
+                <info>编辑 <filepath>data_agent/.env</filepath> 文件，修改 <parmname>GIS_BACKEND_PRIORITY</parmname> 参数的值。</info>
+                <choices>
+                    <choice><b>使用开源引擎（默认）：</b>设置值为 <codeph>opensource</codeph>。</choice>
+                    <choice><b>使用商业引擎：</b>设置值为 <codeph>arcpy</codeph>。</choice>
+                </choices>
+            </step>
+            <step>
+                <cmd>配置严格校验模式（可选）</cmd>
+                <info>若强制要求业务流仅在 ArcPy 环境下执行，可追加强校验参数。当验证失败时，系统将阻断启动过程。</info>
+                <stepxmp>
+                    <codeblock>REQUIRE_ARCPY=true</codeblock>
+                </stepxmp>
+            </step>
+            <step>
+                <cmd>重启服务并验证</cmd>
+                <info>重新启动 Chainlit 后端进程，并在启动日志中观察引擎挂载状态。</info>
+                <stepresult>
+                    <fig id="engine-switching-logs">
+                        <title>Engine Switching Logs</title>
+                        <image href="images/engine-switching-logs.png" placement="break" scale="80"/>
+                    </fig>
+                </stepresult>
+            </step>
+        </steps>
+    </taskbody>
+</task>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE task PUBLIC "-//OASIS//DTD DITA Task//EN" "task.dtd">
+<task id="mcp-hub-and-custom-skills" xml:lang="zh-CN">
+    <title>MCP Hub 工具市场与自定义技能包</title>
+    <shortdesc>指导具有开发者权限的用户如何挂载第三方 MCP (Model Context Protocol) 工具服务器以及构建个性化的技能包 (Skill Bundles)。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <taskbody>
+        <context>
+            <p>为防止系统陷入“工具孤岛”，Data Agent 完整集成了工业界最新的 <b>MCP (Model Context Protocol)</b> 协议。通过 <filepath>mcp_hub.py</filepath> 与前端隔离体系，用户可以在私有或共享级别，即插即用地将外部系统（如天气 API、企业内网 OA 机器人、遥感下载器）注册为系统的能力扩展（Custom Skills）。</p>
+        </context>
+
+        <steps>
+            <step>
+                <cmd>接入第三方 MCP Server</cmd>
+                <info>
+                    <p>您可以在系统的 <uicontrol>Data Panel</uicontrol> > <uicontrol>MCP Tools</uicontrol> 标签页，使用图形化界面直接注册新的服务，或者使用如下接口操作：</p>
+                    <codeblock>POST /api/mcp/servers</codeblock>
+                </info>
+                <stepresult>
+                    <p>MCP 服务注册后，后端引擎会在沙箱中解析该服务器的工具配置并实现热加载。用户即可获得全新的自然语言交互能力。</p>
+                </stepresult>
+            </step>
+
+            <step>
+                <cmd>启用 Per-User MCP 安全隔离</cmd>
+                <info>
+                    <p>系统支持严密的网络隔离设计（基于 <codeph>owner_username</codeph> 与 <codeph>is_shared</codeph> 属性）。</p>
+                    <ul>
+                        <li>当用户注册包含个人隐私令牌（如 GitHub Access Token）的 MCP 服务器时，将其配置为 <uicontrol>Private</uicontrol>，系统会阻止除该用户外的任何人调用该连接。</li>
+                        <li>只有具备 Admin 权限的用户可以使用以下 API 将该服务器全局透出：</li>
+                    </ul>
+                    <codeblock>POST /api/mcp/servers/{name}/share</codeblock>
+                </info>
+            </step>
+
+            <step>
+                <cmd>编排与发布技能包 (Custom Skill Bundles)</cmd>
+                <info>
+                    <p>工具挂载后，企业业务专家无需编写代码，即可组合多个原生的分析工具与新引入的 MCP 工具，打造场景化的 <b>Skill Bundle（技能包）</b>。在创建时，专家需定义清晰的系统提示词（System Instructions）与触发意图（Triggers）。</p>
+                    <p>例如：创建一个“农用地流转评估引擎”，其中包含“克里金插值”原生工具与“国家法规智库” MCP 工具。完成后，所有被许可的业务员在其会话中 @mention 该技能包即可调取专门的 Agent 进行回答。</p>
+                </info>
+            </step>
+        </steps>
+    </taskbody>
+</task>

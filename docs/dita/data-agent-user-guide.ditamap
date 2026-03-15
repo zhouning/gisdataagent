@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE map PUBLIC "-//OASIS//DTD DITA Map//EN" "map.dtd">
+<map id="data-agent-user-guide" title="Data Agent 用户指南" xml:lang="zh-CN">
+    <topicmeta>
+        <author>技术写作课题组</author>
+        <copyright>
+            <copyryear year="2026"/>
+            <copyrholder>Data Agent 项目组</copyrholder>
+        </copyright>
+    </topicmeta>
+    
+    <topichead navtitle="入门与配置">
+        <topicref href="system-overview.dita" format="dita" navtitle="系统概述"/>
+        <topicref href="local-environment-deployment.dita" format="dita" navtitle="本地环境部署"/>
+        <topicref href="gis-engine-configuration.dita" format="dita" navtitle="GIS 引擎配置"/>
+    </topichead>
+
+    <topichead navtitle="核心技术架构">
+        <topicref href="multi-modal-data-fusion.dita" format="dita" navtitle="多源多模态数据融合引擎 (MMFE)"/>
+        <topicref href="graph-rag-knowledge-enhancement.dita" format="dita" navtitle="GraphRAG 图增强向量检索与知识图谱"/>
+        <topicref href="agent-plugins-and-guardrails.dita" format="dita" navtitle="Agent 插件系统与安全护栏架构"/>
+    </topichead>
+
+    <topichead navtitle="高级分析与扩展">
+        <topicref href="advanced-spatial-analysis.dita" format="dita" navtitle="高级空间分析模型 (Tier 2)"/>
+        <topicref href="mcp-hub-and-custom-skills.dita" format="dita" navtitle="MCP Hub 工具市场与自定义技能包"/>
+    </topichead>
+
+    <topichead navtitle="运维与支持">
+        <topicref href="pipeline-analytics-api-reference.dita" format="dita" navtitle="管线分析 API 参考"/>
+        <topicref href="troubleshooting-common-issues.dita" format="dita" navtitle="常见问题排查"/>
+    </topichead>
+</map>

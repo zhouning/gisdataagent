@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE task PUBLIC "-//OASIS//DTD DITA Task//EN" "task.dtd">
+<task id="troubleshooting-common-issues" xml:lang="zh-CN">
+    <title>常见问题排查</title>
+    <shortdesc>提供针对服务启动失败、依赖缺失及网络连接异常的标准排查流程。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <taskbody>
+        <context>
+            <p>发生异常时，请首先通过后端控制台日志或前端的 <uicontrol>管线历史</uicontrol> 标签页收集详细的 Agent 执行轨迹（Trajectory）和错误堆栈。</p>
+        </context>
+
+        <steps>
+            <step>
+                <cmd>排查 ArcPy 模块缺失错误</cmd>
+                <info>
+                    <p><b>现象：</b> 启动应用时抛出 <codeph>ModuleNotFoundError: No module named 'arcpy'</codeph>。</p>
+                    <p><b>原因：</b> <filepath>.env</filepath> 配置了强制加载 ArcPy 引擎，但当前 Python 解释器并非 ArcGIS Pro 的克隆环境。</p>
+                </info>
+                <stepresult>
+                    <p><b>解决办法：</b></p>
+                    <ol>
+                        <li>确认本机已安装 ArcGIS Pro 并完成授权。</li>
+                        <li>通过 ArcGIS Pro 的包管理器或 Conda 命令行，克隆默认的 <codeph>arcgispro-py3</codeph> 环境。</li>
+                        <li>在此克隆环境中安装本项目的 <filepath>requirements.txt</filepath>。</li>
+                        <li>使用该环境的 Python 解释器重新启动服务。</li>
+                    </ol>
+                </stepresult>
+            </step>
+
+            <step>
+                <cmd>排查 API 速率超限 (429 Error)</cmd>
+                <info>
+                    <p><b>现象：</b> 大模型管线执行中断，日志提示 <codeph>RateLimitError: 429 Resource has been exhausted</codeph>。</p>
+                    <p><b>原因：</b> 当前调用的模型配额不足，特别是在启用 ParallelAgent 进行高并发任务分解时易发生。</p>
+                </info>
+                <stepresult>
+                    <p><b>解决办法：</b></p>
+                    <ul>
+                        <li>系统内的 <codeph>GISToolRetry</codeph> 插件通常会自动执行指数退避重试，观察任务是否能自我恢复。</li>
+                        <li>如果持续失败，需在前端降低单次任务传入的数据量（如缩小切片区域），或升级云服务商的 API 计费层级。</li>
+                    </ul>
+                    <fig id="rate-limit-error-dashboard">
+                        <title>Rate Limit Error Dashboard</title>
+                        <image href="images/rate-limit-error-dashboard.png" placement="break" scale="80"/>
+                    </fig>
+                </stepresult>
+            </step>
+        </steps>
+    </taskbody>
+</task>

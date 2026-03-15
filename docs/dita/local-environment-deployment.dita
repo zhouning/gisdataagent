@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE task PUBLIC "-//OASIS//DTD DITA Task//EN" "task.dtd">
+<task id="local-environment-deployment" xml:lang="zh-CN">
+    <title>本地环境部署</title>
+    <shortdesc>本任务指导开发者在本地环境配置并启动 Data Agent 的后端服务与前端界面。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <taskbody>
+        <prereq>
+            <p>执行部署前，请确保操作系统已安装以下组件：</p>
+            <ul>
+                <li>Python 3.13 或以上版本</li>
+                <li>Node.js 18 或以上版本</li>
+                <li>PostgreSQL 16（需启用 PostGIS 3.4 扩展）</li>
+            </ul>
+        </prereq>
+        <context>
+            <p>本地开发模式支持代码的热重载（Hot Reload），便于调试前端 UI 和后端 Agent 逻辑。</p>
+        </context>
+        <steps>
+            <step>
+                <cmd>配置环境变量</cmd>
+                <info>将代码库根目录下的示例配置复制为生效文件，并更新数据库连接字符串与大模型 API 密钥。</info>
+                <stepxmp>
+                    <codeblock>cp data_agent/.env.example data_agent/.env</codeblock>
+                </stepxmp>
+            </step>
+            <step>
+                <cmd>安装后端依赖并初始化数据库</cmd>
+                <info>建议在虚拟环境中安装 <filepath>requirements.txt</filepath> 中列出的依赖项。依赖安装完成后，执行 SQL 脚本初始化表结构。</info>
+                <stepxmp>
+                    <codeblock>pip install -r requirements.txt
+psql -U postgres -d data_agent_db -f docker-db-init.sql</codeblock>
+                </stepxmp>
+                <stepresult>
+                    <fig id="database-initialization-success">
+                        <title>Database Initialization Success</title>
+                        <image href="images/database-initialization-success.png" placement="break" scale="80"/>
+                    </fig>
+                </stepresult>
+            </step>
+            <step>
+                <cmd>启动后端服务</cmd>
+                <info>使用 Chainlit 启动应用，并附加 <parmname>-w</parmname> 参数以启用监控重载。</info>
+                <stepxmp>
+                    <codeblock>chainlit run data_agent/app.py -w</codeblock>
+                </stepxmp>
+            </step>
+            <step>
+                <cmd>启动前端开发服务器</cmd>
+                <info>进入 <filepath>frontend</filepath> 目录，安装 NPM 依赖并启动 Vite 服务。</info>
+                <stepxmp>
+                    <codeblock>cd frontend
+npm install
+npm run dev</codeblock>
+                </stepxmp>
+                <stepresult>
+                    <p>前端启动后，默认在 <codeph>http://localhost:5173</codeph> 可访问系统。登录使用默认账号 <uicontrol>admin</uicontrol> 和密码 <uicontrol>admin123</uicontrol>。</p>
+                    <fig id="react-frontend-dashboard">
+                        <title>React Frontend Dashboard</title>
+                        <image href="images/react-frontend-dashboard.png" placement="break" scale="80"/>
+                    </fig>
+                </stepresult>
+            </step>
+        </steps>
+    </taskbody>
+</task>

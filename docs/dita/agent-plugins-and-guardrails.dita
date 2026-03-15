@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="agent-plugins-and-guardrails" xml:lang="zh-CN">
+    <title>Agent 插件系统与安全护栏架构</title>
+    <shortdesc>详述在系统核心智能体上所挂载的关键生命周期插件（Plugins）以及用于内容拦截和审核的安全护栏（Guardrails）。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <refbody>
+        <section id="overview">
+            <p>为满足大模型在严肃地理数据与企业内网环境中的可用性及安全性，Data Agent 构建了一套灵活的切面拦截器框架（AOP），所有管道在被 Dynamic Planner 拉起前都会进行自动的拦截器注入。</p>
+        </section>
+
+        <section id="agent-plugins">
+            <title>生命周期插件 (Agent Plugins)</title>
+            <p>插件被挂载至 Agent 调用的 <codeph>on_tool_start</codeph>, <codeph>on_tool_end</codeph>, 以及 <codeph>on_llm_start</codeph> 等核心钩子上。</p>
+            <table frame="all" rowsep="1" colsep="1" id="plugins-table">
+                <title>核心插件清单</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="3*"/>
+                    <thead>
+                        <row>
+                            <entry>插件名称</entry>
+                            <entry>功能说明与动作机制</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><uicontrol>CostGuard</uicontrol></entry>
+                            <entry>Token 预算防护插件。实时监听管线在每一波操作中对 Gemini API 产生的输入输出开销；如果单个会话的累积消耗超越配置文件设置的硬上限（Hard Limit），则抛出 <codeph>QuotaExceededError</codeph>，主动熔断会话。</entry>
+                        </row>
+                        <row>
+                            <entry><uicontrol>GISToolRetry</uicontrol></entry>
+                            <entry>空间算法智能重试系统。底层 GIS 操作常因精度误差（如 <codeph>TopologyException</codeph>）崩溃。插件拦截工具报错后，通过检索历史修复经验（<filepath>failure_learning.py</filepath>），带回给大模型进行参数微调（如尝试修复自相交环或改变容差精度）并自动重入。</entry>
+                        </row>
+                        <row>
+                            <entry><uicontrol>Provenance</uicontrol></entry>
+                            <entry>数据血缘与溯源插件。每当产生临时数据对象或报告，此插件自动记录其生成的依赖来源（源表、源模型以及时间戳），使所有的结论都有迹可循，满足企业级白盒要求。</entry>
+                        </row>
+                        <row>
+                            <entry><uicontrol>HITLApproval</uicontrol></entry>
+                            <entry>人机交互（Human-In-The-Loop）审批组件。拦截系统定义的 13 种危险空间算子（包含批量删表、强资源消耗的 DRL 模型强化学习）。该任务在触发前将被置于挂起状态，在管理员通过前端仪表盘点击授权（Approve）后方可继续执行。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="guardrails">
+            <title>双向安全护栏 (Guardrails)</title>
+            <p>护栏工作在纯粹的数据层面，拦截并审核输入/输出文本以抵御攻击：</p>
+            <ul>
+                <li><b>InputLength (输入限长)：</b> 直接拒绝大于 50K 字符但未提供文本语义压缩映射的长报文。</li>
+                <li><b>SQLInjection (防注入校验)：</b> 调用词法扫描工具检查大模型生成的 SQL 代码，禁止 Drop、Truncate 及所有针对系统配置表（如 <codeph>auth_users</codeph>）的越权扫描语句。</li>
+                <li><b>OutputSanitizer (输出脱敏)：</b> 替换和屏蔽输出内容中可能包含的底层系统服务器 IP、私有文件绝对路径以及密码散列，确保面向前台和 API 的响应高度纯净。</li>
+                <li><b>Hallucination (幻觉警告与降级)：</b> 对大模型输出的重要统计学结论进行交叉审查。当大模型的引用内容偏离源文档内容时，发出幻觉置信度警告并降级处理，将风险告知用户。</li>
+            </ul>
+        </section>
+    </refbody>
+</reference>
