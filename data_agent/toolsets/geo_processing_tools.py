@@ -50,6 +50,34 @@ except Exception as e:
     print(f"[ArcPy] ArcPy integration not available: {e}")
 
 
+def retry_arcpy_init():
+    """Retry ArcPy initialization (called after app startup if first attempt failed)."""
+    global ARCPY_AVAILABLE, _arcpy_funcs, _arcpy_gov_explore_funcs, _arcpy_gov_process_funcs
+    if ARCPY_AVAILABLE:
+        return True
+    try:
+        from ..arcpy_tools import is_arcpy_available
+        if is_arcpy_available():
+            from ..arcpy_tools import (
+                arcpy_buffer, arcpy_clip, arcpy_dissolve, arcpy_project,
+                arcpy_check_geometry, arcpy_repair_geometry,
+                arcpy_slope, arcpy_zonal_statistics, arcpy_extract_watershed,
+            )
+            ARCPY_AVAILABLE = True
+            _arcpy_funcs[:] = [
+                arcpy_buffer, arcpy_clip, arcpy_dissolve, arcpy_project,
+                arcpy_repair_geometry, arcpy_slope, arcpy_zonal_statistics,
+                arcpy_extract_watershed,
+            ]
+            _arcpy_gov_explore_funcs[:] = [arcpy_check_geometry]
+            _arcpy_gov_process_funcs[:] = [arcpy_repair_geometry, arcpy_project]
+            print(f"[ArcPy] Retry succeeded: {len(_arcpy_funcs)} ArcPy tools registered.")
+            return True
+    except Exception:
+        pass
+    return False
+
+
 _CORE_FUNCS = [
     generate_tessellation,
     raster_to_polygon,

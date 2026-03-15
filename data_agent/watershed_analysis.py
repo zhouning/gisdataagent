@@ -293,6 +293,23 @@ def extract_watershed(
             ax.set_title(f"小流域提取结果 (阈值={thresh})", fontsize=14, fontweight='bold')
             ax.set_xlabel("经度")
             ax.set_ylabel("纬度")
+
+            # Zoom to watershed extent (avoid large blank areas from full DEM)
+            ws_rows, ws_cols = np.where(catch_mask)
+            if len(ws_rows) > 0:
+                r_min, r_max = ws_rows.min(), ws_rows.max()
+                c_min, c_max = ws_cols.min(), ws_cols.max()
+                # Convert pixel to geographic coordinates
+                x_min_ws = affine[2] + c_min * affine[0]
+                x_max_ws = affine[2] + (c_max + 1) * affine[0]
+                y_min_ws = affine[5] + (r_max + 1) * affine[4]
+                y_max_ws = affine[5] + r_min * affine[4]
+                # Add 10% padding
+                dx = (x_max_ws - x_min_ws) * 0.1
+                dy = (y_max_ws - y_min_ws) * 0.1
+                ax.set_xlim(x_min_ws - dx, x_max_ws + dx)
+                ax.set_ylim(y_min_ws - dy, y_max_ws + dy)
+
             plt.tight_layout()
             plt.savefig(viz_path, dpi=150, bbox_inches='tight', facecolor='white')
             plt.close(fig)

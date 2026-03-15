@@ -92,28 +92,49 @@ def get_logger(name: str) -> logging.Logger:
 
 
 # =====================================================================
-# Prometheus Metrics
+# Prometheus Metrics (guarded against duplicate registration on hot reload)
 # =====================================================================
 
+from prometheus_client import CollectorRegistry, REGISTRY
+
+def _safe_counter(name, desc, labels):
+    try:
+        return Counter(name, desc, labels)
+    except ValueError:
+        # Already registered — retrieve existing
+        for c in REGISTRY.collect():
+            if hasattr(c, '_name') and c._name == name.replace('_total', ''):
+                return c
+        return Counter(name, desc, labels, registry=CollectorRegistry())
+
+def _safe_histogram(name, desc, labels):
+    try:
+        return Histogram(name, desc, labels)
+    except ValueError:
+        for c in REGISTRY.collect():
+            if hasattr(c, '_name') and c._name == name:
+                return c
+        return Histogram(name, desc, labels, registry=CollectorRegistry())
+
 # Counters
-pipeline_runs = Counter(
+pipeline_runs = _safe_counter(
     "agent_pipeline_runs_total",
     "Total pipeline executions",
     ["pipeline", "status"],
 )
-tool_calls = Counter(
+tool_calls = _safe_counter(
     "agent_tool_calls_total",
     "Total tool invocations",
     ["tool_name", "status"],
 )
-auth_events = Counter(
+auth_events = _safe_counter(
     "agent_auth_events_total",
     "Authentication events",
     ["event_type"],
 )
 
 # Histograms
-pipeline_duration = Histogram(
+pipeline_duration = _safe_histogram(
     "agent_pipeline_duration_seconds",
     "Pipeline execution latency",
     ["pipeline"],
