@@ -118,12 +118,14 @@ class TestDRLLongRunning(unittest.TestCase):
         self.assertNotIsInstance(ffi_tools[0], LongRunningFunctionTool)
 
     def test_toolset_tool_count(self):
-        """AnalysisToolset should have exactly 2 tools: ffi + drl_model."""
+        """AnalysisToolset should have 3 tools: ffi + drl_model + drl_multi_objective."""
         toolset = AnalysisToolset()
         tools = self._run(toolset.get_tools())
-        self.assertEqual(len(tools), 2)
+        self.assertEqual(len(tools), 3)
         names = {t.name for t in tools}
-        self.assertEqual(names, {"ffi", "drl_model"})
+        self.assertIn("ffi", names)
+        self.assertIn("drl_model", names)
+        self.assertIn("drl_multi_objective", names)
 
 
 if __name__ == "__main__":

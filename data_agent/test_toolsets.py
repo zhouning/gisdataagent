@@ -53,7 +53,7 @@ class TestToolsetCounts(unittest.TestCase):
         names = [t.name for t in tools]
         self.assertIn("ffi", names)
         self.assertIn("drl_model", names)
-        self.assertEqual(len(tools), 2)
+        self.assertEqual(len(tools), 3)
 
     def test_visualization_toolset(self):
         from data_agent.toolsets.visualization_tools import VisualizationToolset

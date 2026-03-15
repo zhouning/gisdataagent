@@ -383,3 +383,175 @@ class LandUseOptEnv(gym.Env):
         }
 
         return self._get_obs(), float(reward), terminated, False, info
+
+
+# ---------------------------------------------------------------------------
+# Multi-Objective Optimization (v12.0.1, Design Pattern Ch14)
+# ---------------------------------------------------------------------------
+
+class ParetoFrontier:
+    """Maintains a set of non-dominated solutions (Pareto front).
+
+    Each solution is a tuple of (objectives_vector, metadata_dict).
+    A solution A dominates B iff A is at least as good in all objectives
+    and strictly better in at least one.
+    """
+
+    def __init__(self, maximize: list[bool] = None):
+        """
+        Args:
+            maximize: list of bools indicating direction per objective.
+                      True = higher is better, False = lower is better.
+                      Default: all True (maximize).
+        """
+        self._solutions: list[tuple[list[float], dict]] = []
+        self._maximize = maximize
+
+    def _dominates(self, a: list[float], b: list[float]) -> bool:
+        """Check if solution a dominates solution b."""
+        dirs = self._maximize or [True] * len(a)
+        at_least_as_good = True
+        strictly_better = False
+        for i in range(len(a)):
+            if dirs[i]:  # maximize
+                if a[i] < b[i]:
+                    at_least_as_good = False
+                    break
+                if a[i] > b[i]:
+                    strictly_better = True
+            else:  # minimize
+                if a[i] > b[i]:
+                    at_least_as_good = False
+                    break
+                if a[i] < b[i]:
+                    strictly_better = True
+        return at_least_as_good and strictly_better
+
+    def add_solution(self, objectives: list[float], metadata: dict = None) -> bool:
+        """Add a solution if it is not dominated by existing solutions.
+
+        Also removes any existing solutions dominated by the new one.
+        Returns True if solution was added to the frontier.
+        """
+        metadata = metadata or {}
+
+        # Check if new solution is dominated by any existing
+        for obj, _ in self._solutions:
+            if self._dominates(obj, objectives):
+                return False  # dominated, don't add
+
+        # Remove solutions dominated by the new one
+        self._solutions = [
+            (obj, meta) for obj, meta in self._solutions
+            if not self._dominates(objectives, obj)
+        ]
+
+        self._solutions.append((objectives, metadata))
+        return True
+
+    def get_frontier(self) -> list[dict]:
+        """Return all Pareto-optimal solutions as dicts."""
+        return [
+            {"objectives": obj, "metadata": meta}
+            for obj, meta in self._solutions
+        ]
+
+    @property
+    def size(self) -> int:
+        return len(self._solutions)
+
+    def clear(self):
+        self._solutions.clear()
+
+
+def compute_objectives(env: LandUseOptEnv) -> list[float]:
+    """Compute individual objective values from current environment state.
+
+    Returns [slope_score, contiguity_score, area_balance_score].
+    - slope_score: lower avg farmland slope is better (minimize) → negate for maximize
+    - contiguity_score: higher farmland clustering (maximize)
+    - area_balance_score: 1.0 - deviation ratio (maximize, 1.0 = perfect balance)
+    """
+    slope_score = -env.avg_farmland_slope  # negate: lower slope → higher score
+    contiguity_score = env.contiguity
+    count_dev = abs(env.n_farmland - env.initial_n_farmland_count) / max(env.initial_n_farmland_count, 1)
+    area_balance = 1.0 - min(count_dev, 1.0)  # 1.0 = perfect, 0.0 = max deviation
+    return [round(slope_score, 4), round(contiguity_score, 4), round(area_balance, 4)]
+
+
+def optimize_multi_objective(
+    gdf: gpd.GeoDataFrame,
+    weight_sets: list[tuple[float, float, float]] = None,
+    max_steps: int = 200,
+) -> dict:
+    """Run multi-objective optimization with different weight combinations.
+
+    Collects Pareto-optimal solutions across runs.
+
+    Args:
+        gdf: GeoDataFrame with land-use parcels.
+        weight_sets: List of (slope_w, cont_w, count_w) weight tuples.
+                     Default: 5 evenly spaced weight combinations.
+        max_steps: Steps per optimization run.
+
+    Returns:
+        dict with pareto_frontier, run_count, objective_names.
+    """
+    if weight_sets is None:
+        weight_sets = [
+            (1000, 200, 500),   # slope-focused
+            (500, 500, 500),    # balanced
+            (200, 1000, 500),   # contiguity-focused
+            (800, 400, 200),    # relaxed area constraint
+            (400, 800, 800),    # strict area + contiguity
+        ]
+
+    # Objective directions: all maximize (slope is negated in compute_objectives)
+    frontier = ParetoFrontier(maximize=[True, True, True])
+
+    for i, (sw, cw, pw) in enumerate(weight_sets):
+        try:
+            # Create env with custom weights
+            env = LandUseOptEnv(gdf, max_steps=max_steps)
+
+            # Override reward weights for this run
+            global SLOPE_REWARD_WEIGHT, CONT_REWARD_WEIGHT, COUNT_PENALTY_WEIGHT
+            orig_sw, orig_cw, orig_pw = SLOPE_REWARD_WEIGHT, CONT_REWARD_WEIGHT, COUNT_PENALTY_WEIGHT
+            SLOPE_REWARD_WEIGHT, CONT_REWARD_WEIGHT, COUNT_PENALTY_WEIGHT = sw, cw, pw
+
+            # Run random policy (lightweight — no training needed for demonstration)
+            obs, _ = env.reset()
+            for step in range(max_steps):
+                mask = env.action_masks()
+                valid = np.where(mask)[0]
+                if len(valid) == 0:
+                    break
+                action = np.random.choice(valid)
+                obs, reward, done, truncated, info = env.step(action)
+                if done:
+                    break
+
+            # Restore weights
+            SLOPE_REWARD_WEIGHT, CONT_REWARD_WEIGHT, COUNT_PENALTY_WEIGHT = orig_sw, orig_cw, orig_pw
+
+            # Record objectives
+            objectives = compute_objectives(env)
+            metadata = {
+                "run_index": i,
+                "weights": {"slope": sw, "contiguity": cw, "count_penalty": pw},
+                "steps": env.step_count,
+                "pairs": env.completed_pairs,
+                "farmland_change": env.n_farmland - env.initial_n_farmland_count,
+            }
+            frontier.add_solution(objectives, metadata)
+
+        except Exception:
+            continue
+
+    return {
+        "pareto_frontier": frontier.get_frontier(),
+        "frontier_size": frontier.size,
+        "run_count": len(weight_sets),
+        "objective_names": ["slope_score", "contiguity_score", "area_balance"],
+        "objective_directions": ["maximize", "maximize", "maximize"],
+    }
