@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map>
+   <appContext helpID="system-overview" path="system-overview.html"/>
+   <appContext helpID="quick-start" path="quick-start.html"/>
+   <appContext helpID="multi-agent-architecture" path="multi-agent-architecture.html"/>
+   <appContext helpID="dual-engine-gis-configuration"
+               path="dual-engine-gis-configuration.html"/>
+</map>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="graph-rag-knowledge-enhancement" xml:lang="zh-CN">
+    <title>GraphRAG 图增强向量检索与知识图谱</title>
+    <shortdesc>介绍了系统中如何将传统的向量检索升级为以 NetworkX 为核心的地理实体关系检索 (GraphRAG)，以回答复杂的多跳空间推断问题。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <conbody>
+        <p>在传统的 RAG (Retrieval-Augmented Generation) 系统中，纯粹基于向量相似度（Vector Search）的查询容易在处理宏大的“系统性”问题或涉及长距离地理空间依赖时丢失上下文。为了解决该问题，系统在 v10.0 中引入了 <b>GraphRAG</b> 引擎。</p>
+
+        <section id="entity-extraction">
+            <title>实体识别与图谱构建 (Entity Extraction &amp; Construction)</title>
+            <p>当用户向平台的系统知识库上传规划文稿、政府公告及地籍记录档后，GraphRAG 引擎会自动触发后台抽取任务：</p>
+            <ol>
+                <li><b>文本分块与过滤：</b> 剥离冗余的停用词及非核心信息。</li>
+                <li><b>实体链接抽取：</b> 调用大模型（Gemini），结合特定的正则表达式规则，精细提取四类实体（Entity）：<b>地域（Region）、政策限制（Policy）、设施基建（Infrastructure）和时空约束（Temporal Constraint）</b>。</li>
+                <li><b>关系与共现权重分配：</b> 分析实体间在相同段落的共现频率以及潜在的空间邻接关系，并将这些连接（Edges）写入后端的有向图（Directed Graph）引擎。</li>
+            </ol>
+            <p>底层图数据库采用了内存分析库 <codeph>NetworkX</codeph> 并配合持久化技术，能够支撑万级规模节点的闪电查询。</p>
+        </section>
+
+        <section id="retrieval-mechanisms">
+            <title>图增强检索引擎 (Graph-Enhanced Search)</title>
+            <p>在回答用户问题时，常规 RAG 仅找寻与提问词句最相似的文本片段；而 GraphRAG 将执行“双轨寻回”：</p>
+            <dl>
+                <dlentry>
+                    <dt>多跳邻居发掘 (N-Hop Neighbor Query)</dt>
+                    <dd>从匹配到的源头实体（例如“深圳高新南区”）出发，系统在图谱中沿边缘跳跃式检索，连带抓取 N-hop 的邻接实体及其描述（如其相连的“供电站”、“环保要求”）。这构成了完整上下文，让分析变得立体。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>向量重排序 (Vector &amp; Graph Re-ranking)</dt>
+                    <dd>提取出的海量网络路径会被送入排序算法。系统会计算文本的余弦相似度与网络中的 <i>PageRank 权重 / 中心度</i> 乘积，仅将最有说服力的节点文本（Top K）返回给规划体大模型生成最终报告。</dd>
+                </dlentry>
+            </dl>
+        </section>
+
+        <section id="api-integration">
+            <title>相关的后端 API 接口</title>
+            <p>您可以利用 REST API 监控和重构特定的知识图谱：</p>
+            <ul>
+                <li><filepath>POST /api/kb/{id}/build-graph</filepath>：触发针对当前知识库实体关系网的重构操作。</li>
+                <li><filepath>GET /api/kb/{id}/graph</filepath>：导出当前的实体拓扑关系数据（JSON）。</li>
+                <li><filepath>POST /api/kb/{id}/graph-search</filepath>：通过 API 单独测试图增强检索算法的效果。</li>
+            </ul>
+        </section>
+    </conbody>
+</concept>

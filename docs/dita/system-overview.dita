@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="system-overview" xml:lang="zh-CN">
+    <title>系统概述</title>
+    <shortdesc>GIS Data Agent (ADK Edition) 是一个基于 Google Agent Developer Kit 构建的地理空间分析平台，主要用于空间数据治理、用地优化和多源数据融合。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+        <metadata>
+            <keywords>
+                <keyword>GIS</keyword>
+                <keyword>Data Agent</keyword>
+                <keyword>ADK</keyword>
+            </keywords>
+        </metadata>
+    </prolog>
+    <conbody>
+        <p>系统采用多智能体架构（Multi-Agent Architecture），前端提供 React 编写的三面板单页应用，后端提供 RESTful API，并支持基于 PostgreSQL/PostGIS 的空间数据持久化。</p>
+        
+        <section id="architecture">
+            <title>架构组件</title>
+            <p>系统的核心处理逻辑分布在多个独立的智能体管道（Pipeline）中：</p>
+            <ul>
+                <li><b>动态规划器 (Dynamic Planner)：</b> 负责接收自然语言输入，解析意图，并将任务路由至对应的处理管道。</li>
+                <li><b>数据管道 (Data Pipeline)：</b> 处理多源数据的空间连接、属性融合与分析。支持矢量、栅格、点云等多种数据模态。</li>
+                <li><b>治理管道 (Governance Pipeline)：</b> 专门用于拓扑审计和数据合规性检查（如 GB/T 21010 标准验证）。</li>
+            </ul>
+        </section>
+
+        <section id="safety">
+            <title>安全与合规性</title>
+            <p>系统在运行时对输入和输出执行严格的安全校验：</p>
+            <ul>
+                <li><uicontrol>InputLength</uicontrol> 护栏限制超长输入以防止拒绝服务攻击。</li>
+                <li><uicontrol>SQLInjection</uicontrol> 护栏拦截针对底层数据库的恶意注入。</li>
+                <li><uicontrol>OutputSanitizer</uicontrol> 护栏对智能体生成的敏感信息进行脱敏处理。</li>
+            </ul>
+        </section>
+    </conbody>
+</concept>

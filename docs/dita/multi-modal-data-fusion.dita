@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="multi-modal-data-fusion" xml:lang="zh-CN">
+    <title>多源多模态数据融合引擎 (MMFE)</title>
+    <shortdesc>详细介绍了系统核心模块之一——多模态融合引擎 (Multi-Modal Fusion Engine) 的五阶段处理流水线、内置策略以及智能语义匹配算法。</shortdesc>
+    <prolog>
+        <author>作者姓名</author>
+    </prolog>
+    <conbody>
+        <p>在复杂的城市计算和选址分析中，业务人员通常需要整合不同格式、不同结构、不同坐标系甚至不同维度的数据。Data Agent 的核心之一即是多模态融合引擎（MMFE），它能够自动将这些异构数据对齐为可供大模型和下游算子直接使用的标准空间视图。</p>
+        
+        <section id="fusion-pipeline">
+            <title>五阶段流水线架构</title>
+            <p>引擎的每次数据融合请求都会经过严格的五阶段自动流水线：</p>
+            <ol>
+                <li><b>数据画像 (Profiling)：</b> 自动检测数据类型（矢量、栅格、点云、CSV、Redis 实时流）。分析矢量属性分布，对长尾文本计算嵌入；对栅格提取波段信息与空间分辨率。</li>
+                <li><b>模式评估 (Scoring)：</b> 引擎计算 <codeph>_score_strategies</codeph> 并根据数据分布为 10 种融合策略打分。</li>
+                <li><b>对齐阶段 (Alignment)：</b> 进行自动的地理对齐与尺度归一。例如利用 <codeph>_reproject_raster</codeph> 修正坐标系，或使用 <codeph>_resample_raster_to_match</codeph> 对齐空间分辨率。</li>
+                <li><b>智能融合 (Fusion)：</b> 执行最高分的融合算子。对于超大型数据集 (>500,000 行)，触发分布式核外计算（Out-of-Core Processing）与 <codeph>_read_vector_chunked</codeph> 块读取，防止系统 OOM。</li>
+                <li><b>质量验证 (Validation)：</b> 对融合后的结果进行包含几何有效性、空值率、以及 Kolmogorov-Smirnov 分布偏移检测在内的 10 项联合质量验证。</li>
+            </ol>
+        </section>
+
+        <section id="semantic-matching">
+            <title>渐进式语义匹配策略</title>
+            <p>在属性拼接（Attribute Join）或多表融合场景下，字段名通常不一致。系统内置了渐进式的智能匹配算法：</p>
+            <ul>
+                <li><b>字典组精确匹配 (Dictionary Equivalence)：</b> 首先匹配通过 <filepath>semantic_catalog.yaml</filepath> 注册的本地字典及同义词池。</li>
+                <li><b>上下文分词 (Tokenized Similarity)：</b> 提取字段名的分词树（如将 "Pop_Dens" 转为 "Population Density"），计算 <codeph>_tokenized_similarity</codeph>。</li>
+                <li><b>向量嵌入相似度 (LLM Embedding)：</b> 选用 <codeph>text-embedding-004</codeph> 获取文本的密集表示，并计算余弦相似度 <codeph>_cosine_similarity</codeph>，应对无规则缩写。</li>
+                <li><b>单位感知推断 (Unit Awareness)：</b> 对类似 "Area_sqm" 与 "Area_Hectares" 的字段不仅实现匹配，还会通过 <codeph>_apply_unit_conversions</codeph> 自动实施换算。</li>
+            </ul>
+        </section>
+
+        <section id="fusion-strategies">
+            <title>支持的融合策略矩阵</title>
+            <p>引擎共实现 10 种空间融合算子：</p>
+            <table frame="all" rowsep="1" colsep="1" id="strategy-table">
+                <title>内置融合策略</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>策略名称</entry>
+                            <entry>适用模态</entry>
+                            <entry>典型应用场景</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>Spatial Join / Overlay</entry>
+                            <entry>Vector + Vector</entry>
+                            <entry>行政区划内叠加 POI 设施；计算容积率与绿地重叠度。</entry>
+                        </row>
+                        <row>
+                            <entry>Zonal Statistics (分区统计)</entry>
+                            <entry>Vector + Raster</entry>
+                            <entry>提取指定行政区网格内的夜间灯光强度或植被指数 (NDVI) 均值。</entry>
+                        </row>
+                        <row>
+                            <entry>Height Assign (点云赋值)</entry>
+                            <entry>Vector + Point Cloud</entry>
+                            <entry>读取 LAS/LAZ 格式雷达数据，为建筑矢量轮廓自动附加三维高程信息。</entry>
+                        </row>
+                        <row>
+                            <entry>Time Snapshot (时态融合)</entry>
+                            <entry>Stream + Vector</entry>
+                            <entry>提取 Redis Streams 中的实时车辆轨迹，按特定时间窗融合到路网拓扑段。</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+        
+        <section id="llm-strategy-routing">
+            <title>LLM 策略自动路由</title>
+            <p>为减轻用户选择负担，用户在自然语言意图中可选用 <codeph>strategy="llm_auto"</codeph> 模式。引擎会收集输入数据的前 50 行样例和字典分布画像，将其发送至 Gemini 2.0 Flash。模型分析后不仅会从上述 10 种策略中推荐最佳方案，还会附带针对容差 (Tolerance) 和缓存参数的配置建议（即 <codeph>_llm_select_strategy</codeph>）。</p>
+        </section>
+    </conbody>
+</concept>
