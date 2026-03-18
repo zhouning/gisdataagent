@@ -2009,6 +2009,113 @@ async def _api_suggestions_dismiss(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# System Status API (v12.0)
+# ---------------------------------------------------------------------------
+
+
+async def _api_system_status(request: Request):
+    """GET /api/system/status — aggregated system health for admin dashboard."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .health import check_database, check_mcp_hub, _get_feature_flags
+
+    # Database
+    db = check_database()
+
+    # MCP Hub
+    mcp = check_mcp_hub()
+
+    # Feature flags (arcpy, cloud, streaming, planner)
+    flags = _get_feature_flags()
+
+    # Bots status
+    bots = {}
+    for bot_name, module_name, func_name, env_keys in [
+        ("wecom", "wecom_bot", "is_wecom_configured",
+         ["WECOM_CORP_ID", "WECOM_APP_SECRET", "WECOM_TOKEN", "WECOM_ENCODING_AES_KEY", "WECOM_AGENT_ID"]),
+        ("dingtalk", "dingtalk_bot", "is_dingtalk_configured",
+         ["DINGTALK_APP_KEY", "DINGTALK_APP_SECRET", "DINGTALK_ROBOT_CODE"]),
+        ("feishu", "feishu_bot", "is_feishu_configured",
+         ["FEISHU_APP_ID", "FEISHU_APP_SECRET"]),
+    ]:
+        import importlib
+        try:
+            mod = importlib.import_module(f".{module_name}", package="data_agent")
+            configured = getattr(mod, func_name)()
+        except Exception:
+            configured = False
+        missing = [k for k in env_keys if not os.environ.get(k)]
+        bots[bot_name] = {
+            "configured": configured,
+            "missing_env": missing,
+        }
+
+    # A2A status
+    try:
+        from .a2a_server import get_a2a_status, A2A_ENABLED
+        a2a = get_a2a_status()
+    except Exception:
+        a2a = {"enabled": False}
+
+    # Model config
+    import os as _os
+    model_config = {
+        "fast": _os.environ.get("MODEL_FAST", "gemini-2.0-flash"),
+        "standard": _os.environ.get("MODEL_STANDARD", "gemini-2.5-flash"),
+        "premium": _os.environ.get("MODEL_PREMIUM", "gemini-2.5-pro"),
+        "router": "gemini-2.0-flash",
+    }
+
+    return JSONResponse({
+        "database": db,
+        "mcp_hub": mcp,
+        "bots": bots,
+        "a2a": a2a,
+        "features": flags,
+        "models": model_config,
+    })
+
+
+async def _api_bots_status(request: Request):
+    """GET /api/bots/status — detailed bot status for each platform."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    result = {}
+    for bot_name, module_name, func_name, env_keys, label in [
+        ("wecom", "wecom_bot", "is_wecom_configured",
+         ["WECOM_CORP_ID", "WECOM_APP_SECRET", "WECOM_TOKEN", "WECOM_ENCODING_AES_KEY", "WECOM_AGENT_ID"],
+         "企业微信"),
+        ("dingtalk", "dingtalk_bot", "is_dingtalk_configured",
+         ["DINGTALK_APP_KEY", "DINGTALK_APP_SECRET", "DINGTALK_ROBOT_CODE"],
+         "钉钉"),
+        ("feishu", "feishu_bot", "is_feishu_configured",
+         ["FEISHU_APP_ID", "FEISHU_APP_SECRET"],
+         "飞书"),
+    ]:
+        import importlib
+        try:
+            mod = importlib.import_module(f".{module_name}", package="data_agent")
+            configured = getattr(mod, func_name)()
+        except Exception:
+            configured = False
+        configured_keys = [k for k in env_keys if os.environ.get(k)]
+        missing_keys = [k for k in env_keys if not os.environ.get(k)]
+        result[bot_name] = {
+            "label": label,
+            "configured": configured,
+            "total_env_keys": len(env_keys),
+            "configured_keys": len(configured_keys),
+            "missing_keys": missing_keys,
+        }
+
+    return JSONResponse({"bots": result})
+
+
+# ---------------------------------------------------------------------------
 # A2A Server API (v11.0.4)
 # ---------------------------------------------------------------------------
 
@@ -2302,6 +2409,9 @@ def get_frontend_api_routes():
         # A2A Server (v11.0.4)
         Route("/api/a2a/card", endpoint=_api_a2a_card, methods=["GET"]),
         Route("/api/a2a/status", endpoint=_api_a2a_status, methods=["GET"]),
+        # System Status (v12.0)
+        Route("/api/system/status", endpoint=_api_system_status, methods=["GET"]),
+        Route("/api/bots/status", endpoint=_api_bots_status, methods=["GET"]),
         # User-Defined Tools (v12.0)
         Route("/api/user-tools", endpoint=_api_user_tools_list, methods=["GET"]),
         Route("/api/user-tools", endpoint=_api_user_tools_create, methods=["POST"]),
