@@ -132,7 +132,7 @@ class TestToolCategories(unittest.TestCase):
 class TestClassifyIntentToolCats(unittest.TestCase):
     """Test classify_intent extended return value parsing."""
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_parses_tools_field(self, mock_client):
         """classify_intent parses TOOLS: field from response."""
         mock_resp = MagicMock()
@@ -146,7 +146,7 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, {"spatial_processing"})
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_multiple_tools(self, mock_client):
         """classify_intent parses multiple tool categories."""
         mock_resp = MagicMock()
@@ -160,7 +160,7 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, {"poi_location", "spatial_processing"})
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_tools_all_returns_empty(self, mock_client):
         """TOOLS:all returns empty set (no filtering)."""
         mock_resp = MagicMock()
@@ -174,7 +174,7 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         self.assertEqual(intent, "AMBIGUOUS")
         self.assertEqual(cats, set())
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_no_tools_field_returns_empty(self, mock_client):
         """Old-format response without TOOLS: returns empty set."""
         mock_resp = MagicMock()
@@ -188,7 +188,7 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, set())
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_error_returns_empty_cats(self, mock_client):
         """API error returns 4-tuple with empty set."""
         mock_client.models.generate_content.side_effect = Exception("API down")
@@ -198,7 +198,7 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, set())
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_governance_with_tools(self, mock_client):
         """GOVERNANCE intent with quality_audit tools."""
         mock_resp = MagicMock()

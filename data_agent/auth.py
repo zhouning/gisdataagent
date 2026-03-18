@@ -1,11 +1,13 @@
 """
 Authentication module for GIS Data Agent.
 Supports password login and Google OAuth2.
+Includes brute-force protection: per-username lockout after consecutive failures.
 """
 import os
 import re
 import hashlib
 import secrets
+import time
 from typing import Optional
 from sqlalchemy import text
 import chainlit as cl
@@ -13,6 +15,43 @@ import chainlit as cl
 from .db_engine import get_engine
 from .database_tools import T_APP_USERS
 from .i18n import t
+
+# ---------------------------------------------------------------------------
+# Brute-force protection (in-memory, per-username)
+# ---------------------------------------------------------------------------
+
+_MAX_FAILED_ATTEMPTS = 5       # Lock after N consecutive failures
+_LOCKOUT_DURATION = 900        # 15 minutes lockout
+_login_failures: dict[str, dict] = {}  # username → {"count": int, "locked_until": float}
+
+
+def _check_lockout(username: str) -> Optional[str]:
+    """Check if username is locked out. Returns error message or None."""
+    entry = _login_failures.get(username)
+    if not entry:
+        return None
+    if entry.get("locked_until", 0) > time.time():
+        remaining = int(entry["locked_until"] - time.time())
+        return f"账户已锁定，请 {remaining} 秒后重试"
+    return None
+
+
+def _record_login_failure(username: str):
+    """Record a failed login attempt. Lock account after threshold."""
+    entry = _login_failures.setdefault(username, {"count": 0, "locked_until": 0})
+    # Reset if lockout has expired
+    if entry.get("locked_until", 0) > 0 and entry["locked_until"] <= time.time():
+        entry["count"] = 0
+        entry["locked_until"] = 0
+    entry["count"] = entry.get("count", 0) + 1
+    if entry["count"] >= _MAX_FAILED_ATTEMPTS:
+        entry["locked_until"] = time.time() + _LOCKOUT_DURATION
+        print(f"[Auth] Account '{username}' locked for {_LOCKOUT_DURATION}s after {_MAX_FAILED_ATTEMPTS} failed attempts")
+
+
+def _clear_login_failures(username: str):
+    """Clear failed attempts on successful login."""
+    _login_failures.pop(username, None)
 
 
 def _hash_password(password: str, salt: str = None) -> tuple:
@@ -80,12 +119,17 @@ def ensure_users_table():
 
 
 def authenticate_user(username: str, password: str) -> Optional[dict]:
-    """Verify credentials against database. Returns user dict or None."""
+    """Verify credentials against database. Returns user dict or None.
+
+    Enforces brute-force protection: locks account after repeated failures.
+    """
+    lockout_msg = _check_lockout(username)
+    if lockout_msg:
+        return None
+
     engine = get_engine()
     if not engine:
-        # Fallback: accept admin/admin123 without DB
-        if username == "admin" and password == "admin123":
-            return {"username": "admin", "display_name": "Admin (Offline)", "role": "admin"}
+        print("[Auth] WARNING: Database not available. Authentication denied.")
         return None
 
     try:
@@ -95,6 +139,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
             ), {"u": username})
             row = result.fetchone()
             if row and _verify_password(password, row[1]):
+                _clear_login_failures(username)
                 return {
                     "username": row[0],
                     "display_name": row[2] or row[0],
@@ -102,6 +147,8 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
                 }
     except Exception as e:
         print(f"[Auth] Error during authentication: {e}")
+
+    _record_login_failure(username)
     return None
 
 

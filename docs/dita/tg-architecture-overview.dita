@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-architecture-overview" xml:lang="zh-CN">
+    <title>系统架构总览</title>
+    <shortdesc>GIS Data Agent v12.0 基于 Google ADK v1.26.0 构建，采用语义意图路由驱动的多管线 Agent 架构，集成 130+ 工具、18 个 ADK Skills、23 个 Toolset 和 92 个 REST API 端点，支持用户自助扩展 Skills、Tools 和多 Agent 工作流，面向地理空间数据治理、用地优化与多源融合分析场景。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+        <metadata>
+            <keywords>
+                <keyword>架构</keyword>
+                <keyword>ADK</keyword>
+                <keyword>多管线</keyword>
+                <keyword>语义路由</keyword>
+            </keywords>
+        </metadata>
+    </prolog>
+    <conbody>
+        <section id="system-positioning">
+            <title>系统定位</title>
+            <p>GIS Data Agent 是一个基于大语言模型的地理空间智能分析平台。它接收用户的自然语言指令（文本、语音、图片、PDF），通过语义意图路由将请求分发到三条专业化 Agent 管线中执行，最终以交互式地图、数据表格、分析报告等形式返回结果。</p>
+        </section>
+
+        <section id="layered-architecture">
+            <title>分层架构</title>
+            <p>系统自上而下分为六个层级：</p>
+            <ol>
+                <li><b>前端展示层：</b>React 18 三面板 SPA（ChatPanel | MapPanel | DataPanel），面板宽度可拖拽调整，支持 Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎，DataPanel 包含 12 个功能 Tab。</li>
+                <li><b>REST API 层：</b>92 个 Starlette 端点，挂载于 Chainlit catch-all 路由之前，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析等功能域。</li>
+                <li><b>应用层：</b>Chainlit 框架承载认证回调、会话管理、文件上传与管线调度（<codeph>app.py</codeph> 3267 行），语义路由已提取至 <codeph>intent_router.py</codeph>，管线辅助逻辑提取至 <codeph>pipeline_helpers.py</codeph>。</li>
+                <li><b>Agent 编排层：</b>四条管线（Optimization、Governance、General、Planner），基于 ADK <codeph>SequentialAgent</codeph> 与 <codeph>LlmAgent</codeph> 组合编排，内置 LoopAgent 质量保证循环。用户可通过 WorkflowEditor 可视化编排自定义 Agent Pipeline。</li>
+                <li><b>工具执行层：</b>23 个 <codeph>BaseToolset</codeph> 子类（130+ 工具函数）、18 个 ADK Skills、MCP Hub 外部工具集成、UserToolset 用户自定义声明式工具。</li>
+                <li><b>数据与基础设施层：</b>PostgreSQL 16 + PostGIS 3.4、融合引擎（22 模块）、DRL 引擎、知识图谱、语义层、数据目录。</li>
+            </ol>
+        </section>
+
+        <section id="tech-stack">
+            <title>核心技术栈</title>
+            <table frame="all" rowsep="1" colsep="1" id="tech-stack-table">
+                <title>技术栈矩阵</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="2*"/>
+                    <colspec colname="c3" colnum="3" colwidth="1*"/>
+                    <thead>
+                        <row>
+                            <entry>层级</entry>
+                            <entry>技术</entry>
+                            <entry>版本</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>Agent 框架</entry>
+                            <entry>Google Agent Developer Kit (ADK)</entry>
+                            <entry>v1.26.0</entry>
+                        </row>
+                        <row>
+                            <entry>LLM（Agent）</entry>
+                            <entry>Gemini 2.5 Flash / 2.5 Pro</entry>
+                            <entry>Latest</entry>
+                        </row>
+                        <row>
+                            <entry>LLM（路由）</entry>
+                            <entry>Gemini 2.0 Flash</entry>
+                            <entry>Latest</entry>
+                        </row>
+                        <row>
+                            <entry>前端</entry>
+                            <entry>React + TypeScript + Vite</entry>
+                            <entry>18.3 / 5.7 / 6.3</entry>
+                        </row>
+                        <row>
+                            <entry>地图渲染</entry>
+                            <entry>Leaflet.js + deck.gl + MapLibre GL</entry>
+                            <entry>1.9 / 9.2 / 5.19</entry>
+                        </row>
+                        <row>
+                            <entry>后端</entry>
+                            <entry>Chainlit + Starlette</entry>
+                            <entry>Latest</entry>
+                        </row>
+                        <row>
+                            <entry>数据库</entry>
+                            <entry>PostgreSQL + PostGIS</entry>
+                            <entry>16 / 3.4</entry>
+                        </row>
+                        <row>
+                            <entry>GIS</entry>
+                            <entry>GeoPandas, Shapely, Rasterio, PySAL, Folium</entry>
+                            <entry>Latest</entry>
+                        </row>
+                        <row>
+                            <entry>机器学习</entry>
+                            <entry>PyTorch, Stable Baselines 3, Gymnasium</entry>
+                            <entry>Latest</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="request-lifecycle">
+            <title>请求生命周期</title>
+            <p>一次完整的用户请求经历以下阶段：</p>
+            <ol>
+                <li><b>文件处理：</b>ZIP 自动解压，多模态分类（IMAGE / PDF / SPATIAL）。</li>
+                <li><b>上下文注入：</b>拼接上轮分析结果、空间记忆、语义层映射、用户分析视角、ArcPy 可用性标志。</li>
+                <li><b>语义意图路由：</b><codeph>classify_intent()</codeph> 调用 Gemini 2.0 Flash，返回意图分类（OPTIMIZATION / GOVERNANCE / GENERAL / AMBIGUOUS）、分类理由、工具类别集合。</li>
+                <li><b>RBAC 鉴权：</b>viewer 角色禁止访问 Governance 与 Optimization 管线。</li>
+                <li><b>管线调度：</b>根据意图分发至对应的 ADK SequentialAgent 或 Planner LlmAgent。</li>
+                <li><b>Agent 执行：</b>ADK Runner 驱动 Agent 链式调用工具，Token 消耗实时记录。</li>
+                <li><b>结果聚合：</b>检测 <codeph>layer_control</codeph> 元数据，注入地图更新配置至 <codeph>pending_map_updates</codeph> 缓存。</li>
+                <li><b>前端渲染：</b>ChatPanel 轮询 <codeph>GET /api/map/pending</codeph> 获取地图配置，MapPanel 渲染图层。</li>
+            </ol>
+        </section>
+
+        <section id="codebase-organization">
+            <title>代码组织</title>
+            <p>核心代码位于 <filepath>data_agent/</filepath> 目录，主要模块如下：</p>
+            <table frame="all" rowsep="1" colsep="1" id="codebase-table">
+                <title>核心模块清单</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>模块</entry>
+                            <entry>规模</entry>
+                            <entry>职责</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><filepath>app.py</filepath></entry>
+                            <entry>3267 行</entry>
+                            <entry>Chainlit 入口：RBAC、文件上传、会话管理、管线调度（路由逻辑已提取）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>intent_router.py</filepath></entry>
+                            <entry>153 行</entry>
+                            <entry>语义意图分类（从 app.py 提取）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>pipeline_helpers.py</filepath></entry>
+                            <entry>284 行</entry>
+                            <entry>工具说明格式化、进度渲染、错误分类（从 app.py 提取）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>agent.py</filepath></entry>
+                            <entry>626 行</entry>
+                            <entry>Agent 定义、管线组装、工厂函数、模型分层</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>frontend_api.py</filepath></entry>
+                            <entry>2330 行</entry>
+                            <entry>92 个 REST API 端点</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>fusion/</filepath></entry>
+                            <entry>22 模块</entry>
+                            <entry>多模态数据融合引擎（10 种策略）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>toolsets/</filepath></entry>
+                            <entry>25 文件</entry>
+                            <entry>23 个 BaseToolset 子类（130+ 工具函数，含 UserToolset）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>skills/</filepath></entry>
+                            <entry>18 目录</entry>
+                            <entry>ADK Skills（场景化技能）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>semantic_layer.py</filepath></entry>
+                            <entry>1551 行</entry>
+                            <entry>语义目录、字段映射、缓存</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>workflow_engine.py</filepath></entry>
+                            <entry>1166 行</entry>
+                            <entry>工作流 CRUD、顺序 + DAG 执行、Custom Skill 步骤、Cron 调度</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>mcp_hub.py</filepath></entry>
+                            <entry>773 行</entry>
+                            <entry>MCP 服务器生命周期管理、加密、热重载</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+    </conbody>
+</concept>

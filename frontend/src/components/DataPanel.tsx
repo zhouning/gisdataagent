@@ -7,7 +7,7 @@ interface DataPanelProps {
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb';
 
 interface FileInfo {
   name: string;
@@ -122,6 +122,10 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
           onClick={() => setActiveTab('templates')}>模板</button>
         <button className={`data-panel-tab ${activeTab === 'analytics' ? 'active' : ''}`}
           onClick={() => setActiveTab('analytics')}>分析</button>
+        <button className={`data-panel-tab ${activeTab === 'capabilities' ? 'active' : ''}`}
+          onClick={() => setActiveTab('capabilities')}>能力</button>
+        <button className={`data-panel-tab ${activeTab === 'kb' ? 'active' : ''}`}
+          onClick={() => setActiveTab('kb')}>知识库</button>
       </div>
 
       <div className="data-panel-content">
@@ -136,6 +140,8 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'tasks' && <TasksView />}
         {activeTab === 'templates' && <TemplatesView />}
         {activeTab === 'analytics' && <AnalyticsView />}
+        {activeTab === 'capabilities' && <CapabilitiesView userRole={userRole} />}
+        {activeTab === 'kb' && <KnowledgeBaseView />}
       </div>
     </div>
   );
@@ -738,6 +744,732 @@ function ToolsView({ userRole }: { userRole?: string }) {
 
       {loading && tools.length === 0 && connectedCount > 0 && (
         <div className="empty-state">加载工具中...</div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   Capabilities View — Skills & Toolsets Browser
+   ============================================================ */
+
+interface CapabilityItem {
+  name: string;
+  description: string;
+  domain?: string;
+  version?: string;
+  intent_triggers?: string;
+  type: string;
+  id?: number;
+  owner_username?: string;
+  skill_name?: string;
+  toolset_names?: string[];
+  trigger_keywords?: string[];
+  model_tier?: string;
+  is_shared?: boolean;
+}
+
+type CapFilter = 'all' | 'builtin_skill' | 'custom_skill' | 'toolset' | 'user_tool';
+
+const TOOLSETS = [
+  { name: 'ExplorationToolset', label: '数据探查与质量审计' },
+  { name: 'GeoProcessingToolset', label: '缓冲区、叠加、裁剪' },
+  { name: 'LocationToolset', label: '地理编码、POI搜索' },
+  { name: 'AnalysisToolset', label: '空间统计与属性分析' },
+  { name: 'VisualizationToolset', label: '地图渲染、3D可视化' },
+  { name: 'DatabaseToolset', label: 'PostGIS查询与管理' },
+  { name: 'FileToolset', label: '文件读写与格式转换' },
+  { name: 'MemoryToolset', label: '空间记忆存储与检索' },
+  { name: 'AdminToolset', label: '用户管理与系统配置' },
+  { name: 'RemoteSensingToolset', label: '遥感影像与DEM下载' },
+  { name: 'SpatialStatisticsToolset', label: '空间自相关与热点' },
+  { name: 'SemanticLayerToolset', label: '语义目录浏览' },
+  { name: 'StreamingToolset', label: '流式输出与进度推送' },
+  { name: 'TeamToolset', label: '团队协作与资产共享' },
+  { name: 'DataLakeToolset', label: '数据湖资产注册' },
+  { name: 'McpHubToolset', label: 'MCP外部工具集成' },
+  { name: 'FusionToolset', label: '多源数据融合' },
+  { name: 'KnowledgeGraphToolset', label: '知识图谱构建' },
+  { name: 'KnowledgeBaseToolset', label: '知识库与RAG检索' },
+  { name: 'AdvancedAnalysisToolset', label: '时序、网络、假设分析' },
+  { name: 'SpatialAnalysisTier2Toolset', label: '高级空间分析' },
+  { name: 'WatershedToolset', label: '流域提取与水文分析' },
+  { name: 'UserToolset', label: '用户自定义工具' },
+];
+
+const EMPTY_SKILL_FORM = {
+  skill_name: '', instruction: '', description: '',
+  toolset_names: [] as string[], trigger_keywords: '',
+  model_tier: 'standard', is_shared: false,
+};
+
+function CapabilitiesView({ userRole }: { userRole?: string }) {
+  const [items, setItems] = useState<CapabilityItem[]>([]);
+  const [filter, setFilter] = useState<CapFilter>('all');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [counts, setCounts] = useState({ builtin: 0, custom: 0, toolset: 0 });
+
+  // Skill form state
+  const [showSkillForm, setShowSkillForm] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<CapabilityItem | null>(null);
+  const [skillForm, setSkillForm] = useState({ ...EMPTY_SKILL_FORM });
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // User tool form state
+  const [showToolForm, setShowToolForm] = useState(false);
+  const [editingTool, setEditingTool] = useState<any>(null);
+  const [toolForm, setToolForm] = useState({
+    tool_name: '', description: '', template_type: 'http_call',
+    template_config: '{}', parameters: [] as {name: string; type: string; description: string; required: boolean; default?: string}[],
+    is_shared: false,
+  });
+  const [toolError, setToolError] = useState('');
+  const [savingTool, setSavingTool] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  const fetchCapabilities = async () => {
+    setLoading(true);
+    try {
+      const [capResp, utResp] = await Promise.all([
+        fetch('/api/capabilities', { credentials: 'include' }),
+        fetch('/api/user-tools', { credentials: 'include' }),
+      ]);
+      let builtin: CapabilityItem[] = [], custom: CapabilityItem[] = [], toolsets: CapabilityItem[] = [], userTools: CapabilityItem[] = [];
+      if (capResp.ok) {
+        const data = await capResp.json();
+        builtin = data.builtin_skills || [];
+        custom = (data.custom_skills || []).map((s: any) => ({
+          ...s, name: s.skill_name, type: 'custom_skill',
+          intent_triggers: (s.trigger_keywords || []).join(', '),
+        }));
+        toolsets = data.toolsets || [];
+      }
+      if (utResp.ok) {
+        const utData = await utResp.json();
+        userTools = (utData.tools || []).map((t: any) => ({
+          ...t, name: t.tool_name, type: 'user_tool',
+        }));
+      }
+      setItems([...builtin, ...custom, ...toolsets, ...userTools]);
+      setCounts({ builtin: builtin.length, custom: custom.length, toolset: toolsets.length, userTool: userTools.length } as any);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchCapabilities(); }, []);
+
+  const handleDeleteSkill = async (id: number) => {
+    if (!confirm('确定删除此自定义技能？')) return;
+    try {
+      const resp = await fetch(`/api/skills/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (resp.ok) fetchCapabilities();
+    } catch { /* ignore */ }
+  };
+
+  const handleEditSkill = (item: CapabilityItem) => {
+    setEditingSkill(item);
+    setSkillForm({
+      skill_name: item.skill_name || item.name || '',
+      instruction: (item as any).instruction || '',
+      description: item.description || '',
+      toolset_names: item.toolset_names || [],
+      trigger_keywords: (item.trigger_keywords || []).join(', '),
+      model_tier: item.model_tier || 'standard',
+      is_shared: item.is_shared || false,
+    });
+    setFormError('');
+    setShowSkillForm(true);
+  };
+
+  const handleNewSkill = () => {
+    setEditingSkill(null);
+    setSkillForm({ ...EMPTY_SKILL_FORM });
+    setFormError('');
+    setShowSkillForm(true);
+  };
+
+  const handleSaveSkill = async () => {
+    setFormError('');
+    if (!skillForm.skill_name.trim()) { setFormError('技能名称必填'); return; }
+    if (!skillForm.instruction.trim()) { setFormError('指令必填'); return; }
+    setSaving(true);
+    try {
+      const body = {
+        skill_name: skillForm.skill_name.trim(),
+        instruction: skillForm.instruction.trim(),
+        description: skillForm.description.trim(),
+        toolset_names: skillForm.toolset_names,
+        trigger_keywords: skillForm.trigger_keywords.split(',').map(s => s.trim()).filter(Boolean),
+        model_tier: skillForm.model_tier,
+        is_shared: skillForm.is_shared,
+      };
+      const url = editingSkill ? `/api/skills/${editingSkill.id}` : '/api/skills';
+      const method = editingSkill ? 'PUT' : 'POST';
+      const resp = await fetch(url, {
+        method, credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setShowSkillForm(false);
+        setEditingSkill(null);
+        setSkillForm({ ...EMPTY_SKILL_FORM });
+        fetchCapabilities();
+      } else {
+        setFormError(data.error || '保存失败');
+      }
+    } catch { setFormError('网络错误'); }
+    finally { setSaving(false); }
+  };
+
+  const toggleToolset = (name: string) => {
+    setSkillForm(f => ({
+      ...f,
+      toolset_names: f.toolset_names.includes(name)
+        ? f.toolset_names.filter(n => n !== name)
+        : [...f.toolset_names, name],
+    }));
+  };
+
+  // --- User Tool handlers ---
+  const handleNewTool = () => {
+    setEditingTool(null);
+    setToolForm({ tool_name: '', description: '', template_type: 'http_call', template_config: '{}', parameters: [], is_shared: false });
+    setToolError(''); setTestResult(null);
+    setShowToolForm(true); setShowSkillForm(false);
+  };
+
+  const handleEditTool = (item: any) => {
+    setEditingTool(item);
+    setToolForm({
+      tool_name: item.tool_name || item.name || '',
+      description: item.description || '',
+      template_type: item.template_type || 'http_call',
+      template_config: JSON.stringify(item.template_config || {}, null, 2),
+      parameters: item.parameters || [],
+      is_shared: item.is_shared || false,
+    });
+    setToolError(''); setTestResult(null);
+    setShowToolForm(true); setShowSkillForm(false);
+  };
+
+  const handleDeleteTool = async (id: number) => {
+    if (!confirm('确定删除此自定义工具？')) return;
+    try {
+      const resp = await fetch(`/api/user-tools/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (resp.ok) fetchCapabilities();
+    } catch { /* ignore */ }
+  };
+
+  const handleSaveTool = async () => {
+    setToolError('');
+    if (!toolForm.tool_name.trim()) { setToolError('工具名称必填'); return; }
+    let configObj: any;
+    try { configObj = JSON.parse(toolForm.template_config); }
+    catch { setToolError('模板配置必须是有效 JSON'); return; }
+    setSavingTool(true);
+    try {
+      const body = {
+        tool_name: toolForm.tool_name.trim(),
+        description: toolForm.description.trim(),
+        template_type: toolForm.template_type,
+        template_config: configObj,
+        parameters: toolForm.parameters,
+        is_shared: toolForm.is_shared,
+      };
+      const url = editingTool ? `/api/user-tools/${editingTool.id}` : '/api/user-tools';
+      const method = editingTool ? 'PUT' : 'POST';
+      const resp = await fetch(url, {
+        method, credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setShowToolForm(false); setEditingTool(null);
+        fetchCapabilities();
+      } else { setToolError(data.error || '保存失败'); }
+    } catch { setToolError('网络错误'); }
+    finally { setSavingTool(false); }
+  };
+
+  const handleTestTool = async () => {
+    if (!editingTool?.id) return;
+    setTesting(true); setTestResult(null);
+    const testParams: Record<string, string> = {};
+    toolForm.parameters.forEach(p => { testParams[p.name] = p.default || ''; });
+    try {
+      const resp = await fetch(`/api/user-tools/${editingTool.id}/test`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: testParams }),
+      });
+      const data = await resp.json();
+      setTestResult(data.result || data.message || JSON.stringify(data));
+    } catch (e) { setTestResult('测试失败: ' + e); }
+    finally { setTesting(false); }
+  };
+
+  const addParam = () => {
+    setToolForm(f => ({
+      ...f, parameters: [...f.parameters, { name: '', type: 'string', description: '', required: true }],
+    }));
+  };
+
+  const updateParam = (idx: number, field: string, value: any) => {
+    setToolForm(f => {
+      const params = [...f.parameters];
+      (params[idx] as any)[field] = value;
+      return { ...f, parameters: params };
+    });
+  };
+
+  const removeParam = (idx: number) => {
+    setToolForm(f => ({ ...f, parameters: f.parameters.filter((_, i) => i !== idx) }));
+  };
+
+  const TEMPLATE_TYPES = [
+    { value: 'http_call', label: 'HTTP 调用' },
+    { value: 'sql_query', label: 'SQL 查询' },
+    { value: 'file_transform', label: '文件转换' },
+    { value: 'chain', label: '链式组合' },
+  ];
+
+  const TEMPLATE_HINTS: Record<string, string> = {
+    http_call: '{"method":"GET","url":"https://api.example.com/data","headers":{},"extract_path":"data.result"}',
+    sql_query: '{"query":"SELECT * FROM parcels WHERE area > :min_area","readonly":true}',
+    file_transform: '{"operations":[{"op":"filter","column":"area","condition":">","value":100}],"output_format":"geojson"}',
+    chain: '{"steps":[{"tool_name":"my_query","param_map":{"x":"$input.x"}}]}',
+  };
+
+  const filtered = items.filter(item => {
+    if (filter !== 'all' && item.type !== filter) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (item.name || '').toLowerCase().includes(q)
+      || (item.description || '').toLowerCase().includes(q)
+      || (item.domain || '').toLowerCase().includes(q)
+      || (item.intent_triggers || '').toLowerCase().includes(q);
+  });
+
+  const domainMap: Record<string, string> = {
+    gis: 'GIS', governance: '治理', visualization: '可视化',
+    analysis: '分析', database: '数据库', fusion: '融合',
+    collaboration: '协作', general: '通用',
+  };
+
+  const typeLabel = (t: string) =>
+    t === 'builtin_skill' ? '内置技能' : t === 'custom_skill' ? '自定义技能' : t === 'user_tool' ? '自定义工具' : '工具集';
+
+  const typeClass = (t: string) =>
+    t === 'builtin_skill' ? 'cap-type-builtin' : t === 'custom_skill' ? 'cap-type-custom' : t === 'user_tool' ? 'cap-type-usertool' : 'cap-type-toolset';
+
+  return (
+    <div className="capabilities-view">
+      <div className="capabilities-summary">
+        <span>{(counts as any).builtin} 内置技能</span>
+        <span className="cap-sep">/</span>
+        <span>{(counts as any).custom} 自定义</span>
+        <span className="cap-sep">/</span>
+        <span>{(counts as any).toolset} 工具集</span>
+        <span className="cap-sep">/</span>
+        <span>{(counts as any).userTool || 0} 自建工具</span>
+        <button className="btn-add-server" onClick={() => showSkillForm ? setShowSkillForm(false) : handleNewSkill()} title="新建自定义技能">+技能</button>
+        <button className="btn-add-server" onClick={() => showToolForm ? setShowToolForm(false) : handleNewTool()} title="新建自定义工具">+工具</button>
+      </div>
+
+      {showSkillForm && (
+        <div className="skill-add-form">
+          <div className="skill-add-form-title">{editingSkill ? `编辑: ${editingSkill.name}` : '新建自定义技能'}</div>
+          <input placeholder="技能名称 (必填，如: 土壤分析专家)" maxLength={100}
+            value={skillForm.skill_name} onChange={e => setSkillForm({ ...skillForm, skill_name: e.target.value })} />
+          <textarea placeholder="指令 (必填，描述技能的行为和专业知识，最多10000字)" rows={4} maxLength={10000}
+            value={skillForm.instruction} onChange={e => setSkillForm({ ...skillForm, instruction: e.target.value })} />
+          <input placeholder="描述 (可选)" value={skillForm.description}
+            onChange={e => setSkillForm({ ...skillForm, description: e.target.value })} />
+          <div className="skill-section-label">选择工具集</div>
+          <div className="skill-toolset-grid">
+            {TOOLSETS.map(t => (
+              <label key={t.name} className="skill-toolset-item">
+                <input type="checkbox" checked={skillForm.toolset_names.includes(t.name)}
+                  onChange={() => toggleToolset(t.name)} />
+                <span>{t.label}</span>
+              </label>
+            ))}
+          </div>
+          <input placeholder="触发关键词 (逗号分隔，如: 土壤, 地质)" value={skillForm.trigger_keywords}
+            onChange={e => setSkillForm({ ...skillForm, trigger_keywords: e.target.value })} />
+          <div className="skill-row">
+            <select value={skillForm.model_tier} onChange={e => setSkillForm({ ...skillForm, model_tier: e.target.value })}>
+              <option value="fast">快速 (fast)</option>
+              <option value="standard">标准 (standard)</option>
+              <option value="premium">高级 (premium)</option>
+            </select>
+            <label className="skill-checkbox">
+              <input type="checkbox" checked={skillForm.is_shared}
+                onChange={e => setSkillForm({ ...skillForm, is_shared: e.target.checked })} />
+              共享给其他用户
+            </label>
+          </div>
+          {formError && <div className="skill-add-error">{formError}</div>}
+          <div className="skill-add-actions">
+            <button className="btn-secondary btn-sm" onClick={() => { setShowSkillForm(false); setEditingSkill(null); }}>取消</button>
+            <button className="btn-primary btn-sm" disabled={saving} onClick={handleSaveSkill}>
+              {saving ? '保存中...' : editingSkill ? '保存' : '创建'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showToolForm && (
+        <div className="skill-add-form">
+          <div className="skill-add-form-title">{editingTool ? `编辑工具: ${editingTool.name}` : '新建自定义工具'}</div>
+          <input placeholder="工具名称 (必填，如: query_weather)" maxLength={100}
+            value={toolForm.tool_name} onChange={e => setToolForm({ ...toolForm, tool_name: e.target.value })} />
+          <input placeholder="描述 (给 LLM 看的工具说明)" value={toolForm.description}
+            onChange={e => setToolForm({ ...toolForm, description: e.target.value })} />
+          <div className="skill-row">
+            <select value={toolForm.template_type} onChange={e => {
+              const tt = e.target.value;
+              setToolForm({ ...toolForm, template_type: tt, template_config: TEMPLATE_HINTS[tt] || '{}' });
+            }}>
+              {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <label className="skill-checkbox">
+              <input type="checkbox" checked={toolForm.is_shared}
+                onChange={e => setToolForm({ ...toolForm, is_shared: e.target.checked })} />
+              共享
+            </label>
+          </div>
+
+          <div className="skill-section-label">参数定义 <button className="param-add-btn" onClick={addParam}>+ 添加参数</button></div>
+          {toolForm.parameters.map((p, idx) => (
+            <div key={idx} className="param-row">
+              <input placeholder="参数名" value={p.name} className="param-name"
+                onChange={e => updateParam(idx, 'name', e.target.value)} />
+              <select value={p.type} onChange={e => updateParam(idx, 'type', e.target.value)}>
+                <option value="string">string</option>
+                <option value="number">number</option>
+                <option value="integer">integer</option>
+                <option value="boolean">boolean</option>
+              </select>
+              <input placeholder="说明" value={p.description} className="param-desc"
+                onChange={e => updateParam(idx, 'description', e.target.value)} />
+              <button className="param-remove-btn" onClick={() => removeParam(idx)}>×</button>
+            </div>
+          ))}
+
+          <div className="skill-section-label">模板配置 (JSON)</div>
+          <textarea className="tool-config-editor" rows={5} value={toolForm.template_config}
+            onChange={e => setToolForm({ ...toolForm, template_config: e.target.value })}
+            placeholder={TEMPLATE_HINTS[toolForm.template_type] || '{}'} />
+
+          {toolError && <div className="skill-add-error">{toolError}</div>}
+          {testResult && <div className="tool-test-result">{testResult}</div>}
+          <div className="skill-add-actions">
+            <button className="btn-secondary btn-sm" onClick={() => { setShowToolForm(false); setEditingTool(null); }}>取消</button>
+            {editingTool?.id && <button className="btn-secondary btn-sm" disabled={testing} onClick={handleTestTool}>{testing ? '测试中...' : '测试'}</button>}
+            <button className="btn-primary btn-sm" disabled={savingTool} onClick={handleSaveTool}>
+              {savingTool ? '保存中...' : editingTool ? '保存' : '创建'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <input className="capabilities-search" placeholder="搜索技能或工具集..."
+        value={search} onChange={e => setSearch(e.target.value)} />
+
+      <div className="capabilities-filters">
+        {(['all', 'builtin_skill', 'custom_skill', 'toolset', 'user_tool'] as CapFilter[]).map(f => (
+          <button key={f} className={`cap-filter-btn ${filter === f ? 'active' : ''}`}
+            onClick={() => setFilter(f)}>
+            {f === 'all' ? '全部' : f === 'builtin_skill' ? '内置技能' : f === 'custom_skill' ? '自定义' : f === 'user_tool' ? '自建工具' : '工具集'}
+          </button>
+        ))}
+      </div>
+
+      {loading && items.length === 0 ? (
+        <div className="empty-state">加载中...</div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state">暂无匹配项</div>
+      ) : (
+        <div className="capabilities-list">
+          {filtered.map((item, i) => (
+            <div key={`${item.type}-${item.id || item.name}-${i}`} className="capability-card">
+              <div className="cap-card-header">
+                <span className="cap-card-name">{item.name}</span>
+                <span className={`cap-badge ${typeClass(item.type)}`}>{typeLabel(item.type)}</span>
+                {item.domain && <span className="cap-badge cap-domain">{domainMap[item.domain] || item.domain}</span>}
+              </div>
+              {item.description && <div className="cap-card-desc">{item.description}</div>}
+              {item.intent_triggers && (
+                <div className="cap-card-triggers">
+                  {item.intent_triggers.split(',').map((t, j) => (
+                    <span key={j} className="cap-trigger-tag">{t.trim()}</span>
+                  ))}
+                </div>
+              )}
+              {item.type === 'custom_skill' && (
+                <div className="cap-card-footer">
+                  {item.owner_username && <span className="cap-owner">by {item.owner_username}</span>}
+                  {item.is_shared && <span className="cap-badge cap-shared">共享</span>}
+                  {item.id && (
+                    <>
+                      <button className="cap-edit-btn" onClick={() => handleEditSkill(item)}>编辑</button>
+                      <button className="cap-delete-btn" onClick={() => handleDeleteSkill(item.id!)}>删除</button>
+                    </>
+                  )}
+                </div>
+              )}
+              {item.type === 'user_tool' && (
+                <div className="cap-card-footer">
+                  <span className="cap-badge cap-template-type">{(item as any).template_type}</span>
+                  {item.owner_username && <span className="cap-owner">by {item.owner_username}</span>}
+                  {item.is_shared && <span className="cap-badge cap-shared">共享</span>}
+                  {item.id && (
+                    <>
+                      <button className="cap-edit-btn" onClick={() => handleEditTool(item)}>编辑</button>
+                      <button className="cap-delete-btn" onClick={() => handleDeleteTool(item.id!)}>删除</button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   Knowledge Base View
+   ============================================================ */
+
+interface KBItem {
+  id: number; name: string; description: string;
+  owner_username: string; is_shared: boolean;
+  doc_count: number; chunk_count: number;
+  created_at: string;
+}
+
+interface KBDoc {
+  id: number; filename: string; content_type: string;
+  chunk_count: number; created_at: string;
+}
+
+function KnowledgeBaseView() {
+  const [kbs, setKbs] = useState<KBItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedKb, setSelectedKb] = useState<(KBItem & { documents?: KBDoc[] }) | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createDesc, setCreateDesc] = useState('');
+  const [createShared, setCreateShared] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [docText, setDocText] = useState('');
+  const [docName, setDocName] = useState('');
+
+  const fetchKbs = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch('/api/kb', { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setKbs(data.knowledge_bases || []);
+      }
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchKbs(); }, []);
+
+  const handleCreate = async () => {
+    setCreateError('');
+    if (!createName.trim()) { setCreateError('名称必填'); return; }
+    try {
+      const resp = await fetch('/api/kb', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: createName.trim(), description: createDesc.trim(), is_shared: createShared }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setShowCreateForm(false);
+        setCreateName(''); setCreateDesc(''); setCreateShared(false);
+        fetchKbs();
+      } else { setCreateError(data.error || '创建失败'); }
+    } catch { setCreateError('网络错误'); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定删除此知识库及所有文档？')) return;
+    try {
+      const resp = await fetch(`/api/kb/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (resp.ok) { setSelectedKb(null); fetchKbs(); }
+    } catch { /* ignore */ }
+  };
+
+  const handleSelectKb = async (kb: KBItem) => {
+    try {
+      const resp = await fetch(`/api/kb/${kb.id}`, { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setSelectedKb(data);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleAddDoc = async () => {
+    if (!selectedKb || !docText.trim()) return;
+    try {
+      const resp = await fetch(`/api/kb/${selectedKb.id}/documents`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: docText.trim(), filename: docName.trim() || 'document.txt' }),
+      });
+      if (resp.ok) {
+        setDocText(''); setDocName('');
+        handleSelectKb(selectedKb);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleDeleteDoc = async (docId: number) => {
+    if (!selectedKb) return;
+    try {
+      const resp = await fetch(`/api/kb/${selectedKb.id}/documents/${docId}`, { method: 'DELETE', credentials: 'include' });
+      if (resp.ok) handleSelectKb(selectedKb);
+    } catch { /* ignore */ }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const resp = await fetch('/api/kb/search', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery.trim(), top_k: 5 }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setSearchResults(data.results || []);
+      }
+    } catch { /* ignore */ }
+    finally { setSearching(false); }
+  };
+
+  // Detail view for a selected KB
+  if (selectedKb) {
+    return (
+      <div className="kb-view">
+        <div className="kb-detail-header">
+          <button className="btn-secondary btn-sm" onClick={() => setSelectedKb(null)}>← 返回</button>
+          <span className="kb-detail-name">{selectedKb.name}</span>
+          <button className="cap-delete-btn" onClick={() => handleDelete(selectedKb.id)}>删除</button>
+        </div>
+        {selectedKb.description && <div className="kb-detail-desc">{selectedKb.description}</div>}
+
+        <div className="skill-section-label">文档 ({(selectedKb.documents || []).length})</div>
+        <div className="kb-doc-list">
+          {(selectedKb.documents || []).map(doc => (
+            <div key={doc.id} className="kb-doc-item">
+              <span className="kb-doc-name">{doc.filename}</span>
+              <span className="kb-doc-meta">{doc.chunk_count} 块</span>
+              <button className="param-remove-btn" onClick={() => handleDeleteDoc(doc.id)}>×</button>
+            </div>
+          ))}
+        </div>
+
+        <div className="skill-section-label">添加文档</div>
+        <input placeholder="文件名 (如: 政策文件.txt)" value={docName}
+          onChange={e => setDocName(e.target.value)} className="capabilities-search" style={{ margin: '0 0 4px' }} />
+        <textarea placeholder="粘贴文档内容..." rows={3} value={docText}
+          onChange={e => setDocText(e.target.value)}
+          className="tool-config-editor" style={{ margin: '0 0 6px', fontSize: '12px' }} />
+        <button className="btn-primary btn-sm" onClick={handleAddDoc} disabled={!docText.trim()}>添加文档</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="kb-view">
+      <div className="capabilities-summary">
+        <span>{kbs.length} 个知识库</span>
+        <button className="btn-add-server" onClick={() => setShowCreateForm(!showCreateForm)} title="新建知识库">+</button>
+      </div>
+
+      {showCreateForm && (
+        <div className="skill-add-form">
+          <div className="skill-add-form-title">新建知识库</div>
+          <input placeholder="知识库名称 (必填)" value={createName}
+            onChange={e => setCreateName(e.target.value)} />
+          <input placeholder="描述 (可选)" value={createDesc}
+            onChange={e => setCreateDesc(e.target.value)} />
+          <label className="skill-checkbox">
+            <input type="checkbox" checked={createShared}
+              onChange={e => setCreateShared(e.target.checked)} />
+            共享给其他用户
+          </label>
+          {createError && <div className="skill-add-error">{createError}</div>}
+          <div className="skill-add-actions">
+            <button className="btn-secondary btn-sm" onClick={() => setShowCreateForm(false)}>取消</button>
+            <button className="btn-primary btn-sm" onClick={handleCreate}>创建</button>
+          </div>
+        </div>
+      )}
+
+      <div className="kb-search-bar">
+        <input className="capabilities-search" placeholder="语义搜索所有知识库..." value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+        <button className="btn-primary btn-sm" onClick={handleSearch} disabled={searching}>
+          {searching ? '搜索中...' : '搜索'}
+        </button>
+      </div>
+
+      {searchResults.length > 0 && (
+        <div className="kb-search-results">
+          <div className="skill-section-label">搜索结果 ({searchResults.length})</div>
+          {searchResults.map((r: any, i: number) => (
+            <div key={i} className="kb-search-result-item">
+              <div className="kb-result-score">相似度 {(r.score * 100).toFixed(0)}%</div>
+              <div className="kb-result-text">{(r.text || r.chunk_text || '').slice(0, 200)}</div>
+              <div className="kb-result-meta">{r.kb_name} / {r.filename}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading && kbs.length === 0 ? (
+        <div className="empty-state">加载中...</div>
+      ) : kbs.length === 0 ? (
+        <div className="empty-state">暂无知识库，点击 + 创建</div>
+      ) : (
+        <div className="capabilities-list">
+          {kbs.map(kb => (
+            <div key={kb.id} className="capability-card" onClick={() => handleSelectKb(kb)} style={{ cursor: 'pointer' }}>
+              <div className="cap-card-header">
+                <span className="cap-card-name">{kb.name}</span>
+                <span className="cap-badge cap-type-builtin">{kb.doc_count || 0} 文档</span>
+                <span className="cap-badge cap-domain">{kb.chunk_count || 0} 块</span>
+              </div>
+              {kb.description && <div className="cap-card-desc">{kb.description}</div>}
+              <div className="cap-card-footer">
+                <span className="cap-owner">by {kb.owner_username}</span>
+                {kb.is_shared && <span className="cap-badge cap-shared">共享</span>}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
