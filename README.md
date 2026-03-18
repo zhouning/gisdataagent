@@ -4,7 +4,7 @@
 
 基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
 
-系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（11 标签页），后端集成 85 个 REST API。
+系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（13 标签页），后端集成 92 个 REST API。**v12.0 新增用户自助扩展能力**：自定义 Skills（Agent 行为）、User Tools（声明式工具模板）、多 Agent Pipeline 可视化编排。
 
 ## 📚 官方技术文档
 
@@ -19,10 +19,10 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2104 tests, 92 test files |
-| 工具集 | 22 BaseToolset, 5 SkillBundle, 122+ 工具 |
-| ADK Skills | 16 场景化领域技能 + DB 驱动自定义 Skills |
-| REST API | 85 endpoints |
+| 测试覆盖 | 2121 tests, 92 test files |
+| 工具集 | 23 BaseToolset (含 UserToolset), 5 SkillBundle, 130+ 工具 |
+| ADK Skills | 18 场景化领域技能 + DB 驱动自定义 Skills + 用户自定义 Tools |
+| REST API | 92 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
@@ -97,9 +97,20 @@
 
 ### 工作流编排 (v5.4)
 - 多步管道链式执行，参数化 Prompt 模板
-- React Flow 可视化拖拽编辑器（数据输入/管道/输出三种节点）
+- React Flow 可视化拖拽编辑器（数据输入/管道/技能 Agent/输出四种节点）
+- **DAG 执行引擎**：拓扑排序 + 并行层 + 条件节点 + 跨步骤参数引用
 - APScheduler Cron 定时执行
 - Webhook 结果推送
+
+### 用户自助扩展平台 (v12.0)
+- **Custom Skills 前端 CRUD**：在"能力"Tab 创建/编辑/删除自定义 Agent（指令+工具集+触发词+模型等级）
+- **User-Defined Tools**：声明式工具模板（HTTP 调用/SQL 查询/文件转换/链式组合），动态构建 ADK FunctionTool，通过 UserToolset 暴露给 Agent
+- **多 Agent Pipeline 编排**：WorkflowEditor 新增 Skill Agent 节点，可视化编排多个自定义 Agent 组成 DAG 工作流
+- **能力浏览 Tab**：聚合展示内置技能、自定义技能、工具集、自建工具，支持分类过滤和搜索
+- **知识库 Tab**：KB CRUD、文档管理、语义搜索，支持 GraphRAG 图增强检索
+- **面板拖拽调整**：三面板布局支持拖拽分隔条调整宽度（240-700px）
+- **安全加固**：DB 降级后门移除 + 暴力破解防护（5 次失败锁定 15 分钟）
+- **架构重构**：app.py 拆分（intent_router.py + pipeline_helpers.py 提取）+ React Error Boundaries
 
 ## 核心架构：多智能体协作网络
 
@@ -167,15 +178,16 @@ chainlit run data_agent/app.py -w
 cd frontend && npm install && npm run dev
 ```
 
-默认账号：`admin` / `admin123`（首次运行自动创建）。登录页内置自助注册。
+默认账号：`admin` / `admin123`（首次运行自动创建种子用户，建议登录后修改密码）。登录页内置自助注册。注意：数据库必须可用才能登录。
 
 ## 功能矩阵
 
 | 类别 | 功能 | 描述 |
 |---|---|---|
 | **AI 核心** | 语义层 | YAML 目录（15 领域、7 区域、8 空间算子）+ 3 级层次 + DB 注解 |
-| | 技能包 | 16 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析等），三级增量加载 (v7.5) |
-| | 自定义 Skills | DB 驱动用户自建专家 Agent：自定义指令/工具集/触发词，@mention 调用，LLM 注入防护 (v8.0) |
+| | 技能包 | 18 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析等），三级增量加载 (v7.5) |
+| | 自定义 Skills | DB 驱动用户自建专家 Agent：自定义指令/工具集/触发词，@mention 调用，LLM 注入防护，**前端完整 CRUD** (v8.0/v12.0) |
+| | 自定义 Tools | 声明式工具模板 (HTTP/SQL/文件/链式)，动态 FunctionTool 构建，UserToolset (v12.0) |
 | | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
 | | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 + DB 持久化 + 管理 UI + per-User 隔离 (v7.1/v10.0) |
 | | 分析视角注入 | 用户自定义分析关注点，自动注入 Agent 提示词 (v7.1) |
@@ -215,21 +227,21 @@ cd frontend && npm install && npm run dev
 | **3D 可视化** | deck.gl 渲染 | 拉伸体、柱状图、弧线、散点图层 |
 | | 2D/3D 切换 | MapPanel 一键切换，自动检测 3D 图层 |
 | **工作流** | 引擎 | 多步管道链式执行 + 参数化模板 |
-| | 可视化编辑器 | React Flow 拖拽编辑，3 种自定义节点 (v7.1) |
+| | 可视化编辑器 | React Flow 拖拽编辑，4 种自定义节点（数据输入/管道/技能Agent/输出）(v7.1/v12.0) |
 | | 定时执行 | APScheduler Cron 调度 |
 | | Webhook 推送 | 执行完成后 HTTP POST 结果 |
 | **数据** | 数据湖 | 统一数据目录 + 血缘追踪 + 资产一键下载（本地/云/PostGIS） |
 | | RAG 知识库 | 用户上传文档 → 向量化存储 → 语义搜索，多租户隔离 (v8.0) |
 | | 实时流 | Redis Streams 地理围栏告警 + IoT 数据 |
 | | 遥感分析 | 栅格分析、NDVI、LULC/DEM 下载 |
-| **前端** | 三面板 UI | 对话 + 地图 + 数据；支持 HTML/CSV 伪影渲染；React 18 + Leaflet + deck.gl |
+| **前端** | 三面板 UI | 对话 + 地图 + 数据；13 个标签页；面板拖拽调整；React Error Boundary；React 18 + Leaflet + deck.gl |
 | | 分类着色图层 | `categorized` 图层类型：按属性字段自动着色多边形 + 中文图例（v7.5） |
 | | 文件管理 | 数据面板点击文件即可打开/下载（PDF/DOCX/HTML 等）(v7.5) |
 | | Action 按钮 | 导出 PDF 报告、分享结果等按钮通过 ChainlitAPI 调用后端回调 (v7.5) |
 | | Token 仪表盘 | 每用户日/月用量 + 管线分布可视化 |
 | | 地图标注 | 协作式点击标注 + 团队共享 |
 | | 底图切换 | 高德、天地图、CartoDB、OSM |
-| **安全** | 认证 | 密码 + OAuth2 (Google) + 应用内自注册 |
+| **安全** | 认证 | 密码 + OAuth2 (Google) + 应用内自注册 + 暴力破解防护 (v12.0) |
 | | MCP 安全加固 | per-User 工具隔离 + 安全沙箱 + 审计日志 (v7.5) |
 | | RBAC + RLS | admin/analyst/viewer 角色 + PostgreSQL 行级安全 |
 | | 账户管理 | 用户自助删除 + 级联清理 + 管理员保护 |
@@ -247,10 +259,10 @@ cd frontend && npm install && npm run dev
 
 | 层级 | 技术 |
 |---|---|
-| **框架** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
+| **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（85 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（92 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -264,17 +276,23 @@ cd frontend && npm install && npm run dev
 
 ```
 data_agent/
-├── app.py                       # Chainlit UI、语义路由、认证、RBAC
+├── app.py                       # Chainlit UI、RBAC、文件上传、管线调度 (3267 行)
 ├── agent.py                     # Agent 定义、管道组装、ParallelAgent
-├── frontend_api.py              # 76 个 REST API 端点
+├── intent_router.py             # 语义意图路由 (从 app.py 提取)
+├── pipeline_helpers.py          # 管线辅助：工具说明、进度渲染、错误分类
+├── frontend_api.py              # 92 个 REST API 端点
 ├── pipeline_runner.py           # 无头管道执行器 + SSE 流式输出
-├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
+├── workflow_engine.py           # 工作流引擎：CRUD、顺序+DAG 执行、Webhook、Cron
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
 ├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
 ├── fusion_engine.py             # 多模态数据融合引擎（MMFE，~2100 行）
 ├── knowledge_graph.py           # 地理知识图谱引擎（networkx，~625 行）
 ├── custom_skills.py             # DB 驱动自定义 Skills：CRUD、验证、Agent 工厂
+├── user_tools.py                # 用户自定义工具：声明式模板 CRUD (v12.0)
+├── user_tool_engines.py         # 工具执行引擎：http_call/sql_query/file_transform/chain (v12.0)
+├── capabilities.py              # 能力发现：聚合内置技能+工具集元数据 (v12.0)
 ├── failure_learning.py          # 工具失败模式学习：记录、查询、标记已解决
+├── auth.py                      # 认证：密码/OAuth + 暴力破解防护 (v12.0 加固)
 ├── plugins.py                   # Agent Plugins：CostGuard、GISToolRetry、Provenance、HITL
 ├── guardrails.py                # Agent Guardrails：4 个输入/输出护栏（递归挂载）
 ├── conversation_memory.py       # PostgresMemoryService 跨会话记忆
@@ -287,16 +305,17 @@ data_agent/
 ├── workflow_templates.py        # 工作流模板市场：CRUD + 克隆 + 评分 (v10.0)
 ├── spatial_analysis_tier2.py    # 高级空间分析：IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 ├── conftest.py                  # 集中测试夹具 + 事件循环安全
-├── toolsets/                    # 22 个 BaseToolset 模块
+├── toolsets/                    # 23 个 BaseToolset 模块 (含 UserToolset)
 │   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
 │   ├── analysis_tools.py        #   分析工具 + LongRunningFunctionTool (DRL)
 │   ├── fusion_tools.py          #   数据融合工具集（4 个工具）
 │   ├── knowledge_graph_tools.py #   知识图谱工具集（3 个工具）
+│   ├── user_tools_toolset.py    #   用户自定义工具桥接 (v12.0)
 │   ├── mcp_hub_toolset.py       #   MCP 工具桥接
-│   ├── skill_bundles.py         #   16 个场景技能分组
+│   ├── skill_bundles.py         #   18 个场景技能分组
 │   ├── spatial_analysis_tier2_tools.py # IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 │   └── ...                      #   探查、地理处理、数据库、语义层等
-├── skills/                      # 16 个 ADK 场景技能（kebab-case 目录）
+├── skills/                      # 18 个 ADK 场景技能（kebab-case 目录）
 ├── prompts/                     # 3 个 YAML 提示词文件
 ├── evals/                       # Agent 评估框架（trajectory + rubric）
 ├── migrations/                  # 29 个 SQL 迁移脚本
@@ -306,7 +325,7 @@ data_agent/
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 85 个测试文件 (1993 测试)
+├── test_*.py                    # 92 个测试文件 (2121 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -316,12 +335,12 @@ frontend/
 │   │   ├── ChatPanel.tsx        # 对话 + 语音输入 + NL 图层控制
 │   │   ├── MapPanel.tsx         # Leaflet 地图 + 2D/3D 切换 + 标注
 │   │   ├── Map3DView.tsx        # deck.gl 3D 渲染器
-│   │   ├── DataPanel.tsx        # 7 标签页：文件/表格/资产/历史/用量/工具/工作流
-│   │   ├── WorkflowEditor.tsx   # React Flow 工作流可视化编辑器
+│   │   ├── DataPanel.tsx        # 13 标签页：文件/表格/资产/历史/用量/工具/工作流/建议/任务/模板/分析/能力/知识库
+│   │   ├── WorkflowEditor.tsx   # React Flow 工作流可视化编辑器（含 Skill Agent 节点）
 │   │   ├── LoginPage.tsx        # 登录 + 应用内注册
 │   │   ├── AdminDashboard.tsx   # 管理仪表盘
 │   │   └── UserSettings.tsx     # 账户设置 + 自助删除
-│   └── styles/layout.css        # 全部样式 (~2100 行)
+│   └── styles/layout.css        # 全部样式 (~2400 行)
 └── package.json
 
 .github/workflows/ci.yml        # GitHub Actions CI 管道
@@ -335,9 +354,9 @@ docs/                            # 文档
 
 ```
 ┌───────────────────┬──────────────────────────┬──────────────────────┐
-│  对话面板 (320px)   │    地图面板 (flex-1)       │   数据面板 (360px)    │
+│  对话面板 (var)    │    地图面板 (flex-1)       │   数据面板 (var)     │
 │                    │                           │                      │
-│  消息流             │  Leaflet / deck.gl 地图    │  7 个标签页:           │
+│  消息流             │  Leaflet / deck.gl 地图    │  13 个标签页:         │
 │  流式输出           │  GeoJSON 图层              │  - 文件               │
 │  操作卡片           │  2D/3D 切换               │  - 表格预览            │
 │  语音输入           │  图层控制                  │  - 数据资产            │
@@ -345,10 +364,12 @@ docs/                            # 文档
 │                    │  底图切换                   │  - Token 用量         │
 │                    │  图例                      │  - MCP 工具           │
 │                    │                           │  - 工作流              │
+│                    │                           │  - 建议/任务/模板/分析 │
+│                    │                           │  - 能力/知识库         │
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API 端点（76 条路由）
+## REST API 端点（92 条路由）
 
 | 方法 | 路径 | 描述 |
 |---|---|---|
@@ -411,11 +432,21 @@ docs/                            # 文档
 | GET | `/api/kb/{id}/graph` | 实体关系图谱数据 (v10.0) |
 | POST | `/api/kb/{id}/graph-search` | 图增强语义搜索 (v10.0) |
 | GET | `/api/kb/{id}/entities` | 知识库实体列表 (v10.0) |
+| GET | `/api/capabilities` | 能力聚合（内置技能+自定义技能+工具集+用户工具）(v12.0) |
+| GET/POST | `/api/user-tools` | 用户自定义工具列表/创建 (v12.0) |
+| GET/PUT/DELETE | `/api/user-tools/{id}` | 用户工具详情/更新/删除 (v12.0) |
+| POST | `/api/user-tools/{id}/test` | 用户工具试运行 (v12.0) |
+| POST | `/api/tasks/submit` | 异步任务提交 |
+| GET | `/api/tasks` | 任务列表 |
+| GET/DELETE | `/api/tasks/{id}` | 任务详情/取消 |
+| GET | `/api/suggestions` | 主动探索建议 |
+| POST | `/api/suggestions/{id}/execute` | 执行建议 |
+| POST | `/api/suggestions/{id}/dismiss` | 忽略建议 |
 
 ## 运行测试
 
 ```bash
-# 全量测试 (1993 测试)
+# 全量测试 (2121 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -451,7 +482,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v9.5 | conftest.py、Guardrails (4)、SSE Streaming、LongRunningFunctionTool、评估增强 | 1895 | ✅ 完成 |
 | v10.0 | GraphRAG、per-User MCP 隔离、自定义技能包、高级空间分析 Tier 2、工作流模板 | 1993 | ✅ 完成 |
 | v11.0 | 并发任务队列、推理链+置信度、主动探索建议、A2A 互操作、设计模式 19/21 | 2074 | ✅ 完成 |
-| v12.0 | Pareto 多目标优化、动态 Agent 组合、前端 11 标签页 | 2104 | ✅ 完成 |
+| v12.0 | 自助扩展平台：Custom Skills CRUD、User Tools、多 Agent Pipeline 编排、能力浏览 Tab、知识库 Tab、面板拖拽、安全加固（SEC-1/SEC-2）、app.py 拆分、ADK v1.27.2 | 2121 | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 
 ## 设计模式覆盖 (21/21 = 100%)
@@ -462,7 +493,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | 路由 (Ch2) | ✅ | Gemini 2.0 Flash 意图分类 |
 | 并行化 (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | 反思 (Ch4) | ✅ | LoopAgent 全部 3 管道 |
-| 工具使用 (Ch5) | ✅ | 21 工具集, 113+ 工具, 16 Skills |
+| 工具使用 (Ch5) | ✅ | 23 工具集, 130+ 工具, 18 Skills |
 | 规划 (Ch6) | ✅ | DAG 任务分解 + 波次并行 |
 | 多智能体 (Ch7) | ✅ | 层级 Planner + 7 子 Agent |
 | 记忆管理 (Ch8) | ✅ | Memory ETL + PostgresMemoryService |
