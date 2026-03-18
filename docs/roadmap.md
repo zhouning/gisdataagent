@@ -29,9 +29,9 @@
 
 ### 安全加固
 
-- [ ] **SEC-3**: 沙箱路径验证改用 `os.path.realpath()` + `os.path.commonpath()`，防止符号链接绕过
+- [ ] **SEC-3**: 沙箱路径验证改用 `os.path.realpath()` + `os.path.commonpath()`，防止符号链接绕过 ✅ 已修复
 - [ ] **SEC-4**: Custom Skill 指令 Prompt 注入防护增强 — 考虑 LLM 语义验证 + 输出隔离
-- [ ] **SEC-5**: ContextVar 默认角色从 `analyst` 改为 `anonymous`，强制显式设置
+- [ ] **SEC-5**: ContextVar 默认角色从 `analyst` 改为 `anonymous`，强制显式设置 ✅ 已修复
 
 ### 前端质量
 
