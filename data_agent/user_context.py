@@ -9,7 +9,7 @@ from contextvars import ContextVar
 # Context variables - set in app.py on each request, read by tool functions
 current_user_id: ContextVar[str] = ContextVar('current_user_id', default='anonymous')
 current_session_id: ContextVar[str] = ContextVar('current_session_id', default='default')
-current_user_role: ContextVar[str] = ContextVar('current_user_role', default='analyst')
+current_user_role: ContextVar[str] = ContextVar('current_user_role', default='anonymous')
 current_trace_id: ContextVar[str] = ContextVar('current_trace_id', default='')
 current_tool_categories: ContextVar[set] = ContextVar('current_tool_categories', default=set())
 current_model_tier: ContextVar[str] = ContextVar('current_model_tier', default='standard')
@@ -28,8 +28,10 @@ def get_user_upload_dir() -> str:
 
 def is_path_in_sandbox(path: str) -> bool:
     """Check if a resolved path is within the current user's sandbox or the shared uploads dir."""
-    abs_path = os.path.abspath(path)
-    user_dir = os.path.abspath(get_user_upload_dir())
-    base_dir = os.path.abspath(_BASE_UPLOAD_DIR)
-    # Allow: user's own directory or the shared base (for backward compat)
-    return abs_path.startswith(user_dir) or abs_path.startswith(base_dir)
+    real_path = os.path.realpath(path)
+    real_user_dir = os.path.realpath(get_user_upload_dir())
+    real_base_dir = os.path.realpath(_BASE_UPLOAD_DIR)
+    return (
+        (real_path.startswith(real_user_dir + os.sep) or real_path == real_user_dir)
+        or (real_path.startswith(real_base_dir + os.sep) or real_path == real_base_dir)
+    )

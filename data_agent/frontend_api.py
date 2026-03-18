@@ -2115,6 +2115,38 @@ async def _api_bots_status(request: Request):
     return JSONResponse({"bots": result})
 
 
+async def _api_config_models(request: Request):
+    """GET /api/config/models — current LLM model configuration."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .agent import get_model_config
+    config = get_model_config()
+
+    # Add provider detection
+    for tier_info in config["tiers"].values():
+        model = tier_info["model"]
+        if "gemini" in model.lower():
+            tier_info["provider"] = "Google Gemini"
+        elif "claude" in model.lower():
+            tier_info["provider"] = "Anthropic"
+        elif "gpt" in model.lower() or "o1" in model.lower() or "o3" in model.lower():
+            tier_info["provider"] = "OpenAI"
+        else:
+            tier_info["provider"] = "LiteLLM / Other"
+
+    router_model = config["router_model"]
+    if "gemini" in router_model.lower():
+        config["router_provider"] = "Google Gemini"
+    elif "claude" in router_model.lower():
+        config["router_provider"] = "Anthropic"
+    else:
+        config["router_provider"] = "Other"
+
+    return JSONResponse(config)
+
+
 # ---------------------------------------------------------------------------
 # A2A Server API (v11.0.4)
 # ---------------------------------------------------------------------------
@@ -2412,6 +2444,7 @@ def get_frontend_api_routes():
         # System Status (v12.0)
         Route("/api/system/status", endpoint=_api_system_status, methods=["GET"]),
         Route("/api/bots/status", endpoint=_api_bots_status, methods=["GET"]),
+        Route("/api/config/models", endpoint=_api_config_models, methods=["GET"]),
         # User-Defined Tools (v12.0)
         Route("/api/user-tools", endpoint=_api_user_tools_list, methods=["GET"]),
         Route("/api/user-tools", endpoint=_api_user_tools_create, methods=["POST"]),
