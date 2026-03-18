@@ -97,10 +97,10 @@ _DB_READ = ["query_database", "list_tables"]
 _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
 _DATALAKE_READ = ["list_data_assets", "describe_data_asset", "search_data_assets", "download_cloud_asset"]
 
-# --- Model Tiering ---
-MODEL_FAST = "gemini-2.0-flash"
-MODEL_STANDARD = "gemini-2.5-flash"
-MODEL_PREMIUM = "gemini-2.5-pro"
+# --- Model Tiering (configurable via env vars) ---
+MODEL_FAST = os.environ.get("MODEL_FAST", "gemini-2.0-flash")
+MODEL_STANDARD = os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
+MODEL_PREMIUM = os.environ.get("MODEL_PREMIUM", "gemini-2.5-pro")
 
 # --- Dynamic Model Selection ---
 MODEL_TIER_MAP = {
@@ -108,6 +108,18 @@ MODEL_TIER_MAP = {
     "standard": MODEL_STANDARD,
     "premium": MODEL_PREMIUM,
 }
+
+
+def get_model_config() -> dict:
+    """Return current model configuration for API exposure."""
+    return {
+        "tiers": {
+            "fast": {"model": MODEL_FAST, "env_var": "MODEL_FAST"},
+            "standard": {"model": MODEL_STANDARD, "env_var": "MODEL_STANDARD"},
+            "premium": {"model": MODEL_PREMIUM, "env_var": "MODEL_PREMIUM"},
+        },
+        "router_model": os.environ.get("ROUTER_MODEL", "gemini-2.0-flash"),
+    }
 
 
 def get_model_for_tier(base_tier: str = "standard") -> str:

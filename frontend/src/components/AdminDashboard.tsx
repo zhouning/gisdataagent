@@ -34,7 +34,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'bots' | 'a2a'>('metrics');
+  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'bots' | 'a2a' | 'models'>('metrics');
 
   return (
     <div className="admin-dashboard">
@@ -50,6 +50,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
             onClick={() => setActiveSection('bots')}>Bot 管理</button>
           <button className={activeSection === 'a2a' ? 'active' : ''}
             onClick={() => setActiveSection('a2a')}>A2A</button>
+          <button className={activeSection === 'models' ? 'active' : ''}
+            onClick={() => setActiveSection('models')}>模型配置</button>
           <button className={activeSection === 'users' ? 'active' : ''}
             onClick={() => setActiveSection('users')}>用户管理</button>
           <button className={activeSection === 'audit' ? 'active' : ''}
@@ -61,6 +63,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         {activeSection === 'system' && <SystemStatusSection />}
         {activeSection === 'bots' && <BotsSection />}
         {activeSection === 'a2a' && <A2ASection />}
+        {activeSection === 'models' && <ModelsSection />}
         {activeSection === 'users' && <UsersSection />}
         {activeSection === 'audit' && <AuditSection />}
       </div>
@@ -427,6 +430,104 @@ function A2ASection() {
           设置 <code>A2A_ENABLED=true</code> 环境变量启用。启用后，外部 Agent 可通过
           <code>/api/a2a/card</code> 发现能力，通过 <code>/api/a2a/tasks/send</code> 提交任务。
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Models Configuration Section
+   ============================================================ */
+
+function ModelsSection() {
+  const [config, setConfig] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/config/models', { credentials: 'include' })
+      .then(r => r.json())
+      .then(setConfig)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="admin-loading">加载中...</div>;
+  if (!config) return <div className="admin-loading">无法加载模型配置</div>;
+
+  const tierLabels: Record<string, string> = {
+    fast: 'Fast（低成本快速）',
+    standard: 'Standard（平衡）',
+    premium: 'Premium（复杂推理）',
+  };
+  const tierUsage: Record<string, string> = {
+    fast: '路由器、数据探查、质量检查、语义预取',
+    standard: '数据处理、分析、可视化、摘要、Planner 调度',
+    premium: '治理报告、Planner 报告撰写',
+  };
+
+  return (
+    <div>
+      <h3>LLM 模型配置</h3>
+      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
+        通过环境变量配置各层级使用的 LLM 模型。支持 Gemini、Anthropic Claude、OpenAI 及 LiteLLM 兼容模型。
+      </p>
+
+      <div className="data-table-container">
+        <table className="data-table admin-table">
+          <thead>
+            <tr>
+              <th>层级</th>
+              <th>当前模型</th>
+              <th>提供商</th>
+              <th>环境变量</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(config.tiers || {}).map(([tier, info]: [string, any]) => (
+              <tr key={tier}>
+                <td style={{ fontWeight: 600 }}>{tierLabels[tier] || tier}</td>
+                <td><code style={{ fontSize: 12, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>{info.model}</code></td>
+                <td>{info.provider}</td>
+                <td><code style={{ fontSize: 11 }}>{info.env_var}</code></td>
+                <td style={{ fontSize: 11, color: '#6b7280' }}>{tierUsage[tier]}</td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ fontWeight: 600 }}>Router（意图路由）</td>
+              <td><code style={{ fontSize: 12, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>{config.router_model}</code></td>
+              <td>{config.router_provider}</td>
+              <td><code style={{ fontSize: 11 }}>ROUTER_MODEL</code></td>
+              <td style={{ fontSize: 11, color: '#6b7280' }}>语义意图分类（每次请求首先调用）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="metrics-chart-section" style={{ marginTop: 16 }}>
+        <h3>配置说明</h3>
+        <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.8 }}>
+          <p>在 <code>.env</code> 或环境变量中设置即可切换模型，重启后生效：</p>
+          <pre style={{ background: '#f8fafc', padding: 12, borderRadius: 6, fontSize: 11, overflow: 'auto' }}>
+{`# Gemini (默认)
+MODEL_FAST=gemini-2.0-flash
+MODEL_STANDARD=gemini-2.5-flash
+MODEL_PREMIUM=gemini-2.5-pro
+
+# Anthropic Claude
+MODEL_FAST=claude-haiku-4-5-20251001
+MODEL_STANDARD=claude-sonnet-4-6
+MODEL_PREMIUM=claude-opus-4-6
+
+# OpenAI (通过 LiteLLM)
+MODEL_FAST=openai/gpt-4o-mini
+MODEL_STANDARD=openai/gpt-4o
+MODEL_PREMIUM=openai/o3`}
+          </pre>
+          <p style={{ marginTop: 8 }}>
+            ADK v1.27.2 原生支持 Gemini 和 Anthropic。其他模型（OpenAI、Mistral、Llama 等）通过 LiteLLM 适配。
+          </p>
+        </div>
       </div>
     </div>
   );
