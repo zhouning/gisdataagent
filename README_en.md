@@ -4,7 +4,7 @@
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend (11 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, Pareto multi-objective optimization, dynamic agent composition, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 85 REST API endpoints.
+The system implements **all 21 of 21 (100%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, Pareto multi-objective optimization, dynamic agent composition, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 92 REST API endpoints. **v12.0 adds user self-service extensibility**: Custom Skills (agent behaviors), User Tools (declarative templates), and multi-agent pipeline visual composition.
 
 ## 📚 Official Technical Documentation
 
@@ -19,10 +19,10 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2104 tests, 92 test files |
-| Toolsets | 22 BaseToolset, 5 SkillBundle, 122+ tools |
-| ADK Skills | 16 scenario skills + DB-driven custom Skills |
-| REST API | 85 endpoints |
+| Test Coverage | 2121 tests, 92 test files |
+| Toolsets | 23 BaseToolset (incl. UserToolset), 5 SkillBundle, 130+ tools |
+| ADK Skills | 18 scenario skills + DB-driven custom Skills + User Tools |
+| REST API | 92 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |
