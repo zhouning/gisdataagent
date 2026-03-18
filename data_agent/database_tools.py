@@ -28,6 +28,7 @@ T_CUSTOM_SKILLS = f"{TABLE_PREFIX}custom_skills"
 T_KNOWLEDGE_BASES = f"{TABLE_PREFIX}knowledge_bases"
 T_KB_DOCUMENTS = f"{TABLE_PREFIX}kb_documents"
 T_KB_CHUNKS = f"{TABLE_PREFIX}kb_chunks"
+T_USER_TOOLS = f"{TABLE_PREFIX}user_tools"
 
 def get_db_connection_url():
     """Constructs database URL from environment variables."""

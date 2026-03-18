@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-frontend-architecture" xml:lang="zh-CN">
+    <title>前端三面板架构</title>
+    <shortdesc>前端采用 React 18 + TypeScript + Vite 构建的三面板 SPA 布局，通过 CSS Grid + CSS 变量实现 ChatPanel | MapPanel | DataPanel 的自适应分栏，支持面板拖拽调整宽度（240-700px 范围）。DataPanel 包含 12 个功能 Tab（含能力浏览、工作流编辑器等）。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <conbody>
+        <section id="layout-design">
+            <title>布局设计</title>
+            <p>三面板布局通过 CSS Grid 实现：</p>
+            <codeblock>.app-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr 360px;
+    height: 100vh;
+}</codeblock>
+            <table frame="all" rowsep="1" colsep="1" id="panel-table">
+                <title>三面板职责</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="1*"/>
+                    <colspec colname="c4" colnum="4" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>面板</entry>
+                            <entry>宽度</entry>
+                            <entry>可折叠</entry>
+                            <entry>职责</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>ChatPanel（左）</entry>
+                            <entry>320px</entry>
+                            <entry>是</entry>
+                            <entry>Chainlit 对话界面嵌入（iframe），路由信息卡片，文件上传</entry>
+                        </row>
+                        <row>
+                            <entry>MapPanel（中）</entry>
+                            <entry>flex-1</entry>
+                            <entry>否</entry>
+                            <entry>Leaflet.js 2D 地图 + deck.gl/MapLibre GL 3D 渲染，图层控制，标注工具</entry>
+                        </row>
+                        <row>
+                            <entry>DataPanel（右）</entry>
+                            <entry>360px</entry>
+                            <entry>是</entry>
+                            <entry>数据表格（AG Grid）、属性面板、分析报告、Token 用量</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="component-tree">
+            <title>组件树</title>
+            <p>核心组件结构：</p>
+            <codeblock>&lt;App&gt;
+  ├── &lt;ChatPanel&gt;           // Chainlit iframe 嵌入
+  │     ├── &lt;RouterInfoCard/&gt;  // 路由信息展示
+  │     └── &lt;FileUpload/&gt;     // 多模态文件上传
+  ├── &lt;MapPanel&gt;            // 地图渲染容器
+  │     ├── &lt;LeafletMap/&gt;     // 2D 渲染引擎
+  │     ├── &lt;DeckGLOverlay/&gt;  // 3D 渲染引擎
+  │     ├── &lt;LayerControl/&gt;   // 图层管理
+  │     └── &lt;AnnotationTool/&gt; // 协作标注
+  └── &lt;DataPanel&gt;           // 数据展示容器
+        ├── &lt;DataTable/&gt;      // AG Grid 表格
+        ├── &lt;PropertyPanel/&gt;  // 要素属性
+        ├── &lt;ReportViewer/&gt;   // 分析报告
+        └── &lt;TokenUsage/&gt;     // Token 消耗仪表盘</codeblock>
+        </section>
+
+        <section id="map-update-polling">
+            <title>地图更新轮询机制</title>
+            <p>ChatPanel 通过定时轮询 <codeph>GET /api/map/pending</codeph> 获取后端 Agent 产出的地图更新配置：</p>
+            <ol>
+                <li>Agent 工具函数（如 <codeph>create_interactive_map()</codeph>）将 <codeph>layer_control</codeph> 元数据写入 <codeph>pending_map_updates</codeph> 字典。</li>
+                <li>前端每 2 秒轮询一次 <codeph>/api/map/pending</codeph>。</li>
+                <li>若有更新，MapPanel 解析配置并渲染新图层。</li>
+                <li>后端清空 <codeph>pending_map_updates</codeph>。</li>
+            </ol>
+            <note>v7.5 引入了指数退避重试机制——连续 3 次空响应后轮询间隔从 2s 递增至 8s，减少空闲时的网络开销。</note>
+        </section>
+
+        <section id="state-management">
+            <title>状态管理</title>
+            <p>前端使用 React Context + useReducer 管理全局状态，主要状态域包括：</p>
+            <ul>
+                <li><b>MapState：</b>当前视口、图层列表、底图配置、标注数据</li>
+                <li><b>DataState：</b>当前数据集、选中行、过滤条件</li>
+                <li><b>UserState：</b>认证信息、角色、Token 用量</li>
+                <li><b>UIState：</b>面板折叠状态、主题、语言</li>
+            </ul>
+            <note type="attention">
+                <ul>
+                    <li>轮询模式而非 WebSocket——每 2 秒一次 HTTP 请求，高并发时对服务器造成压力。</li>
+                    <li>Chainlit iframe 嵌入导致跨域通信复杂——需要 <codeph>postMessage</codeph> 桥接。</li>
+                    <li>无虚拟化——DataPanel 的 AG Grid 在超过 10,000 行时性能下降。</li>
+                </ul>
+            </note>
+        </section>
+    </conbody>
+</concept>

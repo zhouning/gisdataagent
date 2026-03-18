@@ -338,7 +338,7 @@ class TestHandleUploadedFile(unittest.TestCase):
 class TestClassifyIntentMultimodal(unittest.TestCase):
     """Tests for classify_intent() with multimodal parameters."""
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_with_pdf_context(self, mock_client):
         mock_response = MagicMock()
         mock_response.text = "GENERAL|PDF contains spatial data analysis"
@@ -360,7 +360,7 @@ class TestClassifyIntentMultimodal(unittest.TestCase):
         else:
             self.assertIn("PDF", prompt_content)
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_without_multimodal_params(self, mock_client):
         """Existing behavior preserved when no multimodal params."""
         mock_response = MagicMock()
@@ -372,7 +372,7 @@ class TestClassifyIntentMultimodal(unittest.TestCase):
         intent, reason, tokens, _ = classify_intent("优化土地布局")
         self.assertEqual(intent, "OPTIMIZATION")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_with_image_paths_no_pil(self, mock_client):
         """Images gracefully skipped if PIL fails."""
         mock_response = MagicMock()

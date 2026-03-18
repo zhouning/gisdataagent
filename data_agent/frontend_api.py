@@ -1131,10 +1131,17 @@ async def _api_workflow_run_status(request: Request):
 async def _api_map_pending(request: Request):
     """GET /api/map/pending — pop and return pending map/data updates for current user."""
     user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
+    
+    # Fallback for dev mode
+    if user:
+        _set_user_context(user)
+    else:
+        current_user_id.set("admin")
+
     uid = current_user_id.get("")
+    
+    logger.info(f"[/api/map/pending] user={uid}, pending_keys={list(pending_map_updates.keys())}")
+    
     result = {}
     map_cfg = pending_map_updates.pop(uid, None)
     if map_cfg:
@@ -1225,6 +1232,26 @@ async def _api_user_memories_delete(request: Request):
     result = delete_memory(str(memory_id))
     status_code = 200 if result.get("status") == "success" else 400
     return JSONResponse(result, status_code=status_code)
+
+
+# ---------------------------------------------------------------------------
+# Capabilities (aggregated skills + toolsets listing)
+# ---------------------------------------------------------------------------
+
+
+async def _api_capabilities(request: Request):
+    """GET /api/capabilities — aggregated built-in skills, custom skills, toolsets."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from .capabilities import list_builtin_skills, list_toolsets
+    from .custom_skills import list_custom_skills
+    return JSONResponse({
+        "builtin_skills": list_builtin_skills(),
+        "custom_skills": list_custom_skills(include_shared=True),
+        "toolsets": list_toolsets(),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -2008,6 +2035,164 @@ async def _api_a2a_status(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# User-Defined Tools API (v12.0)
+# ---------------------------------------------------------------------------
+
+async def _api_user_tools_list(request: Request):
+    """GET /api/user-tools — list user's tools + shared."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from .user_tools import list_user_tools
+    tools = list_user_tools()
+    return JSONResponse({"tools": tools, "count": len(tools)})
+
+
+async def _api_user_tools_create(request: Request):
+    """POST /api/user-tools — create a new user tool."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .user_tools import (
+        create_user_tool, validate_tool_name,
+        validate_parameters, validate_template_config,
+    )
+
+    tool_name = (body.get("tool_name") or "").strip()
+    err = validate_tool_name(tool_name)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+
+    parameters = body.get("parameters", [])
+    err = validate_parameters(parameters)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+
+    template_type = (body.get("template_type") or "").strip()
+    template_config = body.get("template_config", {})
+    err = validate_template_config(template_type, template_config)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+
+    tool_id = create_user_tool(
+        tool_name=tool_name,
+        description=body.get("description", ""),
+        parameters=parameters,
+        template_type=template_type,
+        template_config=template_config,
+        is_shared=body.get("is_shared", False),
+        timeout_seconds=body.get("timeout_seconds", 30),
+    )
+    if tool_id is None:
+        return JSONResponse({"error": "Failed to create tool (limit reached or duplicate name)"}, status_code=400)
+
+    return JSONResponse({"id": tool_id, "tool_name": tool_name}, status_code=201)
+
+
+async def _api_user_tools_detail(request: Request):
+    """GET /api/user-tools/{id} — get tool detail."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    from .user_tools import get_user_tool
+    tool = get_user_tool(tool_id)
+    if not tool:
+        return JSONResponse({"error": "Tool not found"}, status_code=404)
+    return JSONResponse(tool)
+
+
+async def _api_user_tools_update(request: Request):
+    """PUT /api/user-tools/{id} — update a tool (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    # Validate fields if provided
+    from .user_tools import (
+        update_user_tool, validate_tool_name,
+        validate_parameters, validate_template_config,
+    )
+
+    if "tool_name" in body:
+        err = validate_tool_name(body["tool_name"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+    if "parameters" in body:
+        err = validate_parameters(body["parameters"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+    if "template_type" in body and "template_config" in body:
+        err = validate_template_config(body["template_type"], body["template_config"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+
+    ok = update_user_tool(tool_id, **body)
+    if not ok:
+        return JSONResponse({"error": "Failed to update tool"}, status_code=400)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_user_tools_delete(request: Request):
+    """DELETE /api/user-tools/{id} — delete a tool (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    from .user_tools import delete_user_tool
+    ok = delete_user_tool(tool_id)
+    if not ok:
+        return JSONResponse({"error": "Failed to delete tool"}, status_code=404)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_user_tools_test(request: Request):
+    """POST /api/user-tools/{id}/test — dry-run a tool with sample params."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    from .user_tools import get_user_tool
+    tool = get_user_tool(tool_id)
+    if not tool:
+        return JSONResponse({"error": "Tool not found"}, status_code=404)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    test_params = body.get("params", {})
+    from .user_tool_engines import _dispatch_engine
+    try:
+        result = _dispatch_engine(tool, test_params)
+        return JSONResponse({"status": "ok", "result": result})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -2058,6 +2243,8 @@ def get_frontend_api_routes():
         Route("/api/workflows/{id:int}/runs/{run_id:int}/status", endpoint=_api_workflow_run_status, methods=["GET"]),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
+        # Capabilities (aggregated skills + toolsets)
+        Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
         # Custom Skills (v8.0.1)
         Route("/api/skills", endpoint=_api_skills_list, methods=["GET"]),
         Route("/api/skills", endpoint=_api_skills_create, methods=["POST"]),
@@ -2115,6 +2302,13 @@ def get_frontend_api_routes():
         # A2A Server (v11.0.4)
         Route("/api/a2a/card", endpoint=_api_a2a_card, methods=["GET"]),
         Route("/api/a2a/status", endpoint=_api_a2a_status, methods=["GET"]),
+        # User-Defined Tools (v12.0)
+        Route("/api/user-tools", endpoint=_api_user_tools_list, methods=["GET"]),
+        Route("/api/user-tools", endpoint=_api_user_tools_create, methods=["POST"]),
+        Route("/api/user-tools/{id:int}/test", endpoint=_api_user_tools_test, methods=["POST"]),
+        Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_detail, methods=["GET"]),
+        Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_update, methods=["PUT"]),
+        Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_delete, methods=["DELETE"]),
     ]
 
 

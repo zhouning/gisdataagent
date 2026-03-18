@@ -38,42 +38,42 @@ def _setup_mock_client(mock_client, intent: str, reason: str = "test"):
 class TestRouterResponseParsing(unittest.TestCase):
     """Test that classify_intent correctly parses Gemini responses."""
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_governance_intent(self, mock_client):
         _setup_mock_client(mock_client, "GOVERNANCE", "用户请求数据治理")
         from data_agent.app import classify_intent
         intent, reason, tokens, _ = classify_intent("请对数据进行质量审计")
         self.assertEqual(intent, "GOVERNANCE")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_optimization_intent(self, mock_client):
         _setup_mock_client(mock_client, "OPTIMIZATION", "用户请求空间优化")
         from data_agent.app import classify_intent
         intent, reason, tokens, _ = classify_intent("对地块进行布局优化")
         self.assertEqual(intent, "OPTIMIZATION")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_general_intent(self, mock_client):
         _setup_mock_client(mock_client, "GENERAL", "用户请求查看地图")
         from data_agent.app import classify_intent
         intent, reason, tokens, _ = classify_intent("生成一张热力图")
         self.assertEqual(intent, "GENERAL")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_ambiguous_intent(self, mock_client):
         _setup_mock_client(mock_client, "AMBIGUOUS", "输入不明确")
         from data_agent.app import classify_intent
         intent, reason, tokens, _ = classify_intent("你好")
         self.assertEqual(intent, "AMBIGUOUS")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_returns_reason(self, mock_client):
         _setup_mock_client(mock_client, "GENERAL", "用户请求SQL查询")
         from data_agent.app import classify_intent
         intent, reason, tokens, _ = classify_intent("查询数据库")
         self.assertIn("SQL查询", reason)
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_returns_token_count(self, mock_client):
         _setup_mock_client(mock_client, "GENERAL", "test")
         from data_agent.app import classify_intent
@@ -92,14 +92,14 @@ class TestRouterResponseParsing(unittest.TestCase):
 class TestRouterEdgeCases(unittest.TestCase):
     """Test edge cases in routing logic."""
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_empty_input_returns_ambiguous(self, mock_client):
         _setup_mock_client(mock_client, "AMBIGUOUS", "空输入")
         from data_agent.app import classify_intent
         intent, _, _, _ = classify_intent("")
         self.assertEqual(intent, "AMBIGUOUS")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_malformed_response_defaults_general(self, mock_client):
         """If Gemini returns unparseable response, should default to GENERAL."""
         mock_resp = MagicMock()
@@ -114,7 +114,7 @@ class TestRouterEdgeCases(unittest.TestCase):
         # Should fall back to GENERAL or AMBIGUOUS (implementation-dependent)
         self.assertIn(intent, ("GENERAL", "AMBIGUOUS"))
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_previous_pipeline_hint_passed(self, mock_client):
         """Verify previous_pipeline is used in prompt construction."""
         _setup_mock_client(mock_client, "OPTIMIZATION", "延续上轮")
@@ -125,7 +125,7 @@ class TestRouterEdgeCases(unittest.TestCase):
         call_args = mock_client.models.generate_content.call_args
         self.assertIsNotNone(call_args)
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_pdf_context_appended(self, mock_client):
         """Verify PDF context is included in router prompt."""
         _setup_mock_client(mock_client, "GOVERNANCE", "PDF审计")
@@ -133,7 +133,7 @@ class TestRouterEdgeCases(unittest.TestCase):
         intent, _, _, _ = classify_intent("分析这份PDF", pdf_context="这是一份土地利用变更报告...")
         self.assertEqual(intent, "GOVERNANCE")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_gemini_exception_returns_general(self, mock_client):
         """If Gemini call fails, should gracefully default to GENERAL."""
         mock_client.models.generate_content.side_effect = Exception("API error")
@@ -190,7 +190,7 @@ class TestRoutingCoverage(unittest.TestCase):
         """Helper to verify a batch of inputs map to expected intent."""
         for text in inputs:
             with self.subTest(text=text):
-                with patch("data_agent.app._genai_router_client") as mock_client:
+                with patch("data_agent.intent_router._router_client") as mock_client:
                     _setup_mock_client(mock_client, expected_intent, f"matched: {text}")
                     from data_agent.app import classify_intent
                     intent, _, _, _ = classify_intent(text)

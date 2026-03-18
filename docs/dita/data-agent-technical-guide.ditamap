@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE map PUBLIC "-//OASIS//DTD DITA Map//EN" "map.dtd">
+<map id="data-agent-technical-guide" title="Data Agent 技术架构指南" xml:lang="zh-CN">
+    <topicmeta>
+        <author>技术写作课题组</author>
+        <copyright>
+            <copyryear year="2026"/>
+            <copyrholder>Data Agent 项目组</copyrholder>
+        </copyright>
+    </topicmeta>
+
+    <topichead navtitle="总体架构">
+        <topicref href="tg-architecture-overview.dita" format="dita" navtitle="系统架构总览"/>
+        <topicref href="tg-semantic-intent-router.dita" format="dita" navtitle="语义意图路由层"/>
+        <topicref href="tg-multi-pipeline-orchestration.dita" format="dita" navtitle="多管线 Agent 编排"/>
+    </topichead>
+
+    <topichead navtitle="核心子系统">
+        <topicref href="tg-toolset-framework.dita" format="dita" navtitle="工具体系与 BaseToolset 框架"/>
+        <topicref href="tg-fusion-engine.dita" format="dita" navtitle="多模态数据融合引擎架构"/>
+        <topicref href="tg-drl-optimization.dita" format="dita" navtitle="深度强化学习优化引擎"/>
+        <topicref href="tg-knowledge-graph.dita" format="dita" navtitle="地理知识图谱"/>
+    </topichead>
+
+    <topichead navtitle="平台服务层">
+        <topicref href="tg-multi-tenancy.dita" format="dita" navtitle="多租户隔离与用户上下文"/>
+        <topicref href="tg-auth-rbac.dita" format="dita" navtitle="认证与 RBAC 权限模型"/>
+        <topicref href="tg-database-architecture.dita" format="dita" navtitle="数据库架构与连接管理"/>
+        <topicref href="tg-rest-api-layer.dita" format="dita" navtitle="REST API 层"/>
+    </topichead>
+
+    <topichead navtitle="前端与交互">
+        <topicref href="tg-frontend-architecture.dita" format="dita" navtitle="前端三面板架构"/>
+        <topicref href="tg-map-rendering-pipeline.dita" format="dita" navtitle="地图渲染管线"/>
+    </topichead>
+
+    <topichead navtitle="运维与质量保障">
+        <topicref href="tg-observability.dita" format="dita" navtitle="可观测性与运维体系"/>
+        <topicref href="tg-evaluation-cicd.dita" format="dita" navtitle="评测体系与 CI/CD 流水线"/>
+        <topicref href="tg-architecture-assessment.dita" format="dita" navtitle="架构评估与改进建议"/>
+    </topichead>
+</map>
