@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -25,6 +25,8 @@ interface WorkflowStep {
   pipeline_type: string;
   prompt: string;
   depends_on: string[];
+  skill_id?: number;
+  skill_name?: string;
 }
 
 interface WorkflowDef {
@@ -121,10 +123,25 @@ function OutputNode({ data }: NodeProps) {
   );
 }
 
+function SkillNode({ data }: NodeProps) {
+  return (
+    <div className="workflow-node workflow-skill-node">
+      <Handle type="target" position={Position.Top} />
+      <div className="workflow-node-title">技能 Agent</div>
+      <div className="workflow-node-body">
+        <div className="workflow-node-label">{(data as any).skill_name || '(选择技能)'}</div>
+        <div className="workflow-node-prompt">{((data as any).prompt || '').slice(0, 60)}</div>
+      </div>
+      <Handle type="source" position={Position.Bottom} />
+    </div>
+  );
+}
+
 const nodeTypes = {
   dataInput: DataInputNode,
   pipeline: PipelineNode,
   output: OutputNode,
+  skill: SkillNode,
 };
 
 /* ------------------------------------------------------------------
@@ -132,22 +149,28 @@ const nodeTypes = {
    ------------------------------------------------------------------ */
 
 function nodesToSteps(nodes: Node[], edges: Edge[]): WorkflowStep[] {
-  const pipelineNodes = nodes.filter((n) => n.type === 'pipeline');
-  return pipelineNodes.map((n) => {
+  const agentNodes = nodes.filter((n) => n.type === 'pipeline' || n.type === 'skill');
+  return agentNodes.map((n) => {
     const incoming = edges
       .filter((e) => e.target === n.id)
       .map((e) => {
         const src = nodes.find((nn) => nn.id === e.source);
-        return src?.type === 'pipeline' ? e.source : null;
+        return (src?.type === 'pipeline' || src?.type === 'skill') ? e.source : null;
       })
       .filter(Boolean) as string[];
-    return {
+    const d = n.data as any;
+    const step: WorkflowStep = {
       step_id: n.id,
-      label: (n.data as any).label || n.id,
-      pipeline_type: (n.data as any).pipeline_type || 'general',
-      prompt: (n.data as any).prompt || '',
+      label: d.label || d.skill_name || n.id,
+      pipeline_type: n.type === 'skill' ? 'custom_skill' : (d.pipeline_type || 'general'),
+      prompt: d.prompt || '',
       depends_on: incoming,
     };
+    if (n.type === 'skill') {
+      step.skill_id = d.skill_id;
+      step.skill_name = d.skill_name;
+    }
+    return step;
   });
 }
 
@@ -162,9 +185,11 @@ function stepsToNodesEdges(
   // Auto-layout from steps
   const nodes: Node[] = steps.map((s, i) => ({
     id: s.step_id,
-    type: 'pipeline',
+    type: s.pipeline_type === 'custom_skill' ? 'skill' : 'pipeline',
     position: { x: 200, y: 100 + i * 140 },
-    data: { label: s.label, pipeline_type: s.pipeline_type, prompt: s.prompt },
+    data: s.pipeline_type === 'custom_skill'
+      ? { label: s.label, skill_id: s.skill_id, skill_name: s.skill_name || s.label, prompt: s.prompt }
+      : { label: s.label, pipeline_type: s.pipeline_type, prompt: s.prompt },
   }));
   const edges: Edge[] = [];
   steps.forEach((s) => {
@@ -182,9 +207,11 @@ function stepsToNodesEdges(
 function PropPanel({
   node,
   onChange,
+  skills,
 }: {
   node: Node | null;
   onChange: (id: string, data: Record<string, any>) => void;
+  skills: { id: number; skill_name: string }[];
 }) {
   if (!node) {
     return (
@@ -244,6 +271,35 @@ function PropPanel({
     );
   }
 
+  if (node.type === 'skill') {
+    return (
+      <div className="workflow-props-panel">
+        <h4>技能 Agent 节点</h4>
+        <label>选择技能</label>
+        <select
+          value={d.skill_id || ''}
+          onChange={(e) => {
+            const sid = Number(e.target.value);
+            const sk = skills.find(s => s.id === sid);
+            onChange(node.id, { ...d, skill_id: sid, skill_name: sk?.skill_name || '', label: sk?.skill_name || '' });
+          }}
+        >
+          <option value="">-- 选择自定义技能 --</option>
+          {skills.map(s => (
+            <option key={s.id} value={s.id}>{s.skill_name}</option>
+          ))}
+        </select>
+        <label>Prompt 模板</label>
+        <textarea
+          rows={4}
+          value={d.prompt || ''}
+          onChange={(e) => onChange(node.id, { ...d, prompt: e.target.value })}
+          placeholder="使用 {参数名} 或 {step_id.output} 引用上游结果"
+        />
+      </div>
+    );
+  }
+
   if (node.type === 'output') {
     return (
       <div className="workflow-props-panel">
@@ -279,7 +335,16 @@ export default function WorkflowEditor({ workflow, onSave, onCancel }: WorkflowE
   const [description, setDescription] = useState(initial.description);
   const [cronSchedule, setCronSchedule] = useState(initial.cron_schedule);
   const [webhookUrl, setWebhookUrl] = useState(initial.webhook_url);
+  const [skills, setSkills] = useState<{ id: number; skill_name: string }[]>([]);
   const reactFlowRef = useRef<HTMLDivElement>(null);
+
+  // Load available custom skills for the skill node dropdown
+  useEffect(() => {
+    fetch('/api/skills', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { skills: [] })
+      .then(data => setSkills((data.skills || []).map((s: any) => ({ id: s.id, skill_name: s.skill_name }))))
+      .catch(() => {});
+  }, []);
 
   const onConnect = useCallback(
     (conn: Connection) => setEdges((eds) => addEdge(conn, eds)),
@@ -300,12 +365,13 @@ export default function WorkflowEditor({ workflow, onSave, onCancel }: WorkflowE
     [setNodes],
   );
 
-  const addNode = (type: 'dataInput' | 'pipeline' | 'output') => {
+  const addNode = (type: 'dataInput' | 'pipeline' | 'output' | 'skill') => {
     const id = nextNodeId(type);
     const defaults: Record<string, Record<string, any>> = {
       dataInput: { paramName: '', defaultPath: '' },
       pipeline: { label: '新步骤', pipeline_type: 'general', prompt: '' },
       output: { webhook_url: '' },
+      skill: { label: '(选择技能)', skill_id: null, skill_name: '', prompt: '' },
     };
     const newNode: Node = {
       id,
@@ -369,6 +435,7 @@ export default function WorkflowEditor({ workflow, onSave, onCancel }: WorkflowE
       <div className="workflow-toolbar">
         <button onClick={() => addNode('dataInput')}>+ 数据输入</button>
         <button onClick={() => addNode('pipeline')}>+ 管道</button>
+        <button onClick={() => addNode('skill')}>+ 技能 Agent</button>
         <button onClick={() => addNode('output')}>+ 输出</button>
         <div className="workflow-toolbar-right">
           <input
@@ -398,7 +465,7 @@ export default function WorkflowEditor({ workflow, onSave, onCancel }: WorkflowE
             <Controls />
           </ReactFlow>
         </div>
-        <PropPanel node={selectedNode} onChange={onNodeDataChange} />
+        <PropPanel node={selectedNode} onChange={onNodeDataChange} skills={skills} />
       </div>
 
       {/* Description */}

@@ -138,16 +138,20 @@ def check_mcp_hub() -> dict:
         hub = get_mcp_hub()
         statuses = hub.get_server_statuses()
         connected = sum(1 for s in statuses if s["status"] == "connected")
+        enabled = sum(1 for s in statuses if s.get("enabled", True))
         total = len(statuses)
         if total == 0:
-            return {"status": "unconfigured", "connected": 0, "total": 0}
+            return {"status": "unconfigured", "connected": 0, "enabled": 0, "total": 0}
+        if enabled == 0:
+            return {"status": "all_disabled", "connected": 0, "enabled": 0, "total": total}
         return {
             "status": "ok" if connected > 0 else "disconnected",
             "connected": connected,
+            "enabled": enabled,
             "total": total,
         }
     except Exception:
-        return {"status": "unconfigured", "connected": 0, "total": 0}
+        return {"status": "unconfigured", "connected": 0, "enabled": 0, "total": 0}
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +220,7 @@ def format_startup_summary(session_svc=None) -> str:
     flags = _get_feature_flags()
 
     def _icon(status):
-        return "OK" if status in ("ok",) else ("--" if status in ("unconfigured", "degraded") else "!!")
+        return "OK" if status in ("ok",) else ("--" if status in ("unconfigured", "degraded", "all_disabled") else "!!")
 
     lines = [
         "=" * 50,
@@ -253,10 +257,12 @@ def format_startup_summary(session_svc=None) -> str:
     mcp = check_mcp_hub()
     if mcp["status"] == "unconfigured":
         mcp_detail = "Not configured"
+    elif mcp["status"] == "all_disabled":
+        mcp_detail = f"{mcp['total']} servers configured (all disabled)"
     elif mcp["status"] == "ok":
-        mcp_detail = f"{mcp['connected']}/{mcp['total']} servers connected"
+        mcp_detail = f"{mcp['connected']}/{mcp['enabled']} servers connected"
     else:
-        mcp_detail = f"0/{mcp['total']} servers connected"
+        mcp_detail = f"0/{mcp['enabled']} servers connected"
     lines.append(f"  [{_icon(mcp['status'])}] MCP Hub:        {mcp_detail}")
 
     lines.append("-" * 50)

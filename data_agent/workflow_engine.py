@@ -381,7 +381,7 @@ async def execute_workflow(
         intent = pipeline_type.upper()
 
         # Select agent
-        agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type)
+        agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
         if not agent_obj:
             error_msg = f"Unknown pipeline_type: {pipeline_type}"
             status = "failed"
@@ -498,8 +498,22 @@ async def execute_workflow(
     }
 
 
-def _get_agent_for_pipeline(agent_module, pipeline_type: str):
-    """Get the appropriate agent for a pipeline type."""
+def _get_agent_for_pipeline(agent_module, pipeline_type: str, step: dict = None):
+    """Get the appropriate agent for a pipeline type.
+
+    For 'custom_skill' type, dynamically builds an LlmAgent from the
+    referenced skill in the database.
+    """
+    if pipeline_type == "custom_skill":
+        skill_id = (step or {}).get("skill_id")
+        if not skill_id:
+            return None
+        from .custom_skills import get_custom_skill, build_custom_agent
+        skill = get_custom_skill(int(skill_id))
+        if not skill:
+            return None
+        return build_custom_agent(skill)
+
     mapping = {
         "general": "general_pipeline",
         "governance": "governance_pipeline",
@@ -999,7 +1013,7 @@ async def execute_workflow_dag(
             pipeline_type = step.get("pipeline_type", "general")
             prompt = _substitute_params_dag(step.get("prompt", ""), params, node_outputs)
 
-            agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type)
+            agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
             if not agent_obj:
                 err = f"Unknown pipeline_type: {pipeline_type}"
                 if run_id:

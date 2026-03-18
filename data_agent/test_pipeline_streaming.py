@@ -201,7 +201,7 @@ class TestSSEEndpointRoute(unittest.TestCase):
     def test_route_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 85)
+        self.assertEqual(len(routes), 92)
 
 
 if __name__ == "__main__":

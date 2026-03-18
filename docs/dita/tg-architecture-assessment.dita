@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="tg-architecture-assessment" xml:lang="zh-CN">
+    <title>架构评估与改进建议</title>
+    <shortdesc>基于对系统全部源码的审查，本章从可维护性、可扩展性、安全性、性能四个维度总结 20 个具体的架构缺陷，并给出优先级排序的改进建议。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <refbody>
+        <section id="severity-legend">
+            <title>严重度说明</title>
+            <table frame="all" rowsep="1" colsep="1" id="severity-table">
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>级别</entry>
+                            <entry>含义</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row><entry>P0 — 阻断</entry><entry>生产环境安全风险或数据丢失风险，需立即修复</entry></row>
+                        <row><entry>P1 — 严重</entry><entry>影响可扩展性或可维护性，应在下一迭代修复</entry></row>
+                        <row><entry>P2 — 中等</entry><entry>技术债务，影响开发效率，可规划修复</entry></row>
+                        <row><entry>P3 — 建议</entry><entry>最佳实践改进，可在重构时顺带处理</entry></row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="security-issues">
+            <title>安全性（4 项）</title>
+            <table frame="all" rowsep="1" colsep="1" id="security-table">
+                <title>安全缺陷</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="3*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <colspec colname="c4" colnum="4" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>优先级</entry>
+                            <entry>缺陷</entry>
+                            <entry>影响</entry>
+                            <entry>建议</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>P0 ✅</entry>
+                            <entry>数据库不可用时接受硬编码 <codeph>admin/admin123</codeph></entry>
+                            <entry>攻击者可在数据库故障期间以管理员身份登录</entry>
+                            <entry><b>[v12.0 已修复]</b> DB 不可用时直接拒绝认证</entry>
+                        </row>
+                        <row>
+                            <entry>P0</entry>
+                            <entry><codeph>current_user_role</codeph> 默认值为 <codeph>analyst</codeph></entry>
+                            <entry>ContextVar 未设置时工具以 analyst 权限运行，存在权限提升风险</entry>
+                            <entry>默认值改为无权限角色（如 <codeph>anonymous</codeph>），所有操作需显式鉴权</entry>
+                        </row>
+                        <row>
+                            <entry>P1 ✅</entry>
+                            <entry>缺少暴力破解防护</entry>
+                            <entry>无账户锁定、无 IP 速率限制，密码可被暴力枚举</entry>
+                            <entry><b>[v12.0 已修复]</b> per-username 连续 5 次失败锁定 15 分钟</entry>
+                        </row>
+                        <row>
+                            <entry>P1</entry>
+                            <entry>沙箱验证基于字符串前缀匹配</entry>
+                            <entry>符号链接可能绕过 <codeph>startswith()</codeph> 检查</entry>
+                            <entry>使用 <codeph>os.path.realpath()</codeph> 解析后再比较</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="maintainability-issues">
+            <title>可维护性（7 项）</title>
+            <table frame="all" rowsep="1" colsep="1" id="maintain-table">
+                <title>可维护性缺陷</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="3*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <colspec colname="c4" colnum="4" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>优先级</entry>
+                            <entry>缺陷</entry>
+                            <entry>影响</entry>
+                            <entry>建议</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>P1</entry>
+                            <entry><filepath>app.py</filepath> 3267 行（已从 3700+ 行重构，提取 intent_router.py + pipeline_helpers.py）</entry>
+                            <entry>认证、路由、RBAC、文件处理、管线调度全部耦合，修改任一功能需理解全部上下文</entry>
+                            <entry>按职责拆分为 <filepath>auth.py</filepath>、<filepath>router.py</filepath>、<filepath>file_handler.py</filepath>、<filepath>pipeline_dispatcher.py</filepath></entry>
+                        </row>
+                        <row>
+                            <entry>P1</entry>
+                            <entry><filepath>frontend_api.py</filepath> 2330 行单文件</entry>
+                            <entry>92 个端点定义在同一文件（2330 行），功能完整但建议按域拆分</entry>
+                            <entry>按功能域拆分为独立路由模块（catalog_routes、mcp_routes、workflow_routes 等）</entry>
+                        </row>
+                        <row>
+                            <entry>P1</entry>
+                            <entry>缺少 Alembic 数据库迁移</entry>
+                            <entry>Schema 变更无版本控制，多环境部署一致性难以保证</entry>
+                            <entry>引入 Alembic，将现有 <codeph>ensure_*_table()</codeph> 转换为初始迁移</entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>工厂函数增殖</entry>
+                            <entry>每新增一种可复用 Agent 需新增工厂函数，且所有工厂必须保持配置同步</entry>
+                            <entry>引入 Agent 配置注册表，通过声明式配置（YAML/dataclass）生成 Agent 实例</entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>路由器 Prompt 硬编码</entry>
+                            <entry>新增管线需修改路由器 Prompt 源码，无法通过配置扩展</entry>
+                            <entry>将意图列表和路由规则外部化为 YAML 配置</entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>缺少 API 版本控制</entry>
+                            <entry>所有端点均为 <codeph>/api/...</codeph>，breaking changes 无法平滑迁移</entry>
+                            <entry>引入 <codeph>/api/v1/...</codeph> 前缀，支持多版本并行</entry>
+                        </row>
+                        <row>
+                            <entry>P3</entry>
+                            <entry>缺少统一请求验证</entry>
+                            <entry>输入参数验证分散在各处理函数中，容易遗漏</entry>
+                            <entry>引入 Pydantic models 作为请求/响应 schema</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="scalability-issues">
+            <title>可扩展性（5 项）</title>
+            <table frame="all" rowsep="1" colsep="1" id="scale-table">
+                <title>可扩展性缺陷</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="3*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <colspec colname="c4" colnum="4" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>优先级</entry>
+                            <entry>缺陷</entry>
+                            <entry>影响</entry>
+                            <entry>建议</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>P1</entry>
+                            <entry>知识图谱纯内存存储</entry>
+                            <entry>大数据集受内存限制，进程重启丢失</entry>
+                            <entry>引入 Neo4j 或 Apache AGE（PostgreSQL 图扩展）作为持久化后端</entry>
+                        </row>
+                        <row>
+                            <entry>P1</entry>
+                            <entry>连接池大小硬编码</entry>
+                            <entry><codeph>pool_size=5</codeph> 对高并发部署不足</entry>
+                            <entry>改为环境变量配置，支持按部署规模调整</entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>前端轮询而非 WebSocket</entry>
+                            <entry>每 2 秒一次 HTTP 请求，高并发时服务器压力大</entry>
+                            <entry>引入 WebSocket 或 SSE 推送地图更新</entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>GeoJSON 直接传输无矢量切片</entry>
+                            <entry>10,000+ 要素时前端渲染卡顿</entry>
+                            <entry>引入 Tippecanoe 生成 MVT 矢量切片，或使用 pg_tileserv</entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>DRL 引擎无早停机制</entry>
+                            <entry>无论是否收敛都执行完 200 步</entry>
+                            <entry>引入收敛检测（连续 N 步奖励变化 &lt; ε 时提前终止）</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="observability-issues">
+            <title>可观测性（4 项）</title>
+            <table frame="all" rowsep="1" colsep="1" id="obs-table">
+                <title>可观测性缺陷</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="3*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <colspec colname="c4" colnum="4" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>优先级</entry>
+                            <entry>缺陷</entry>
+                            <entry>影响</entry>
+                            <entry>建议</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>P1</entry>
+                            <entry>路由器 Token 未纳入追踪</entry>
+                            <entry>计费盲区，无法准确核算成本</entry>
+                            <entry>在 <codeph>classify_intent()</codeph> 返回后将 <codeph>router_tokens</codeph> 写入 <codeph>token_tracker</codeph></entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>缺少分布式追踪</entry>
+                            <entry>跨 Agent 调用链无法端到端追踪</entry>
+                            <entry>引入 OpenTelemetry，通过 <codeph>trace_id</codeph> 串联路由→管线→工具全链路</entry>
+                        </row>
+                        <row>
+                            <entry>P2</entry>
+                            <entry>审计日志无自动归档</entry>
+                            <entry>长期运行后表膨胀</entry>
+                            <entry>引入 pg_partman 按月分区 + 自动归档策略</entry>
+                        </row>
+                        <row>
+                            <entry>P3</entry>
+                            <entry>缺少端到端 Agent 评测</entry>
+                            <entry>模型升级后行为变化无法检测</entry>
+                            <entry>建立"黄金数据集"（20+ 标准查询），CI 中自动验证路由准确率和工具选择质量</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="recommended-roadmap">
+            <title>建议修复路线图</title>
+            <ol>
+                <li><b>Sprint 1（1-2 周）：</b>修复 P0 安全问题——移除硬编码凭据、修改默认角色、加固沙箱验证。</li>
+                <li><b>Sprint 2（2-3 周）：</b>拆分 <filepath>app.py</filepath> 和 <filepath>frontend_api.py</filepath>，引入 Alembic 迁移框架。</li>
+                <li><b>Sprint 3（2-3 周）：</b>引入暴力破解防护、连接池配置外部化、路由器 Token 追踪。</li>
+                <li><b>Sprint 4（3-4 周）：</b>WebSocket 替代轮询、矢量切片支持、DRL 早停机制。</li>
+                <li><b>Sprint 5（持续）：</b>OpenTelemetry 集成、Agent 评测框架、审计日志归档。</li>
+            </ol>
+        </section>
+    </refbody>
+</reference>

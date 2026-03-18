@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="tg-auth-rbac" xml:lang="zh-CN">
+    <title>认证与 RBAC 权限模型</title>
+    <shortdesc>系统支持密码认证（PBKDF2-HMAC-SHA256）、OAuth2（Google/GitHub）和 Bot 平台（微信/钉钉/飞书）三种认证方式，配合三级 RBAC 角色模型实现细粒度访问控制。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <refbody>
+        <section id="auth-methods">
+            <title>认证方式</title>
+            <table frame="all" rowsep="1" colsep="1" id="auth-table">
+                <title>三种认证方式</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="3*"/>
+                    <colspec colname="c3" colnum="3" colwidth="2*"/>
+                    <colspec colname="c4" colnum="4" colwidth="2*"/>
+                    <thead>
+                        <row>
+                            <entry>方式</entry>
+                            <entry>实现</entry>
+                            <entry>用户创建</entry>
+                            <entry>条件</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>密码认证</entry>
+                            <entry>PBKDF2-HMAC-SHA256，100k 迭代，<codeph>secrets.compare_digest()</codeph> 常量时间比较</entry>
+                            <entry>手动注册</entry>
+                            <entry>始终可用</entry>
+                        </row>
+                        <row>
+                            <entry>OAuth2</entry>
+                            <entry>Google / GitHub，通过 Chainlit <codeph>@cl.oauth_callback</codeph></entry>
+                            <entry>首次登录自动创建</entry>
+                            <entry>需设置 <codeph>OAUTH_GOOGLE_CLIENT_ID</codeph> 等环境变量</entry>
+                        </row>
+                        <row>
+                            <entry>Bot 平台</entry>
+                            <entry>微信企业号 / 钉钉 / 飞书，用户名格式 <codeph>{prefix}_{platform_id}</codeph></entry>
+                            <entry>首次交互自动创建</entry>
+                            <entry>需配置对应平台 Webhook</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <p>密码存储格式为 <codeph>salt$hash</codeph>，注册时校验用户名（3-30 字符，字母数字下划线）和密码（8+ 字符，必须含字母和数字）。</p>
+        </section>
+
+        <section id="rbac-model">
+            <title>RBAC 角色模型</title>
+            <table frame="all" rowsep="1" colsep="1" id="rbac-table">
+                <title>三级角色权限</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>角色</entry>
+                            <entry>权限范围</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><codeph>admin</codeph></entry>
+                            <entry>全部功能 + 用户管理 + 审计日志 + MCP 管理 + 无 Token 限制</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>analyst</codeph></entry>
+                            <entry>三条管线 + 自定义技能 + 工作流 + 日限 20 次分析</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>viewer</codeph></entry>
+                            <entry>仅 General 管线（只读查询）</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <p>RBAC 检查在语义路由调度前执行——viewer 角色的请求若被路由到 Governance 或 Optimization 管线，将被直接拒绝并返回权限不足提示。</p>
+        </section>
+
+        <section id="account-lifecycle">
+            <title>账户生命周期</title>
+            <p>账户注销时执行级联删除，清理 8 张关联表：</p>
+            <ol>
+                <li><codeph>agent_token_usage</codeph>（Token 消耗记录）</li>
+                <li><codeph>agent_user_memories</codeph>（空间记忆）</li>
+                <li><codeph>agent_share_links</codeph>（共享链接）</li>
+                <li><codeph>agent_team_members</codeph>（团队成员）</li>
+                <li><codeph>agent_audit_log</codeph>（审计日志）</li>
+                <li><codeph>agent_map_annotations</codeph>（地图标注）</li>
+                <li><codeph>agent_knowledge_bases</codeph>（知识库）</li>
+                <li><codeph>app_users</codeph>（用户账户）</li>
+            </ol>
+            <p>同时物理删除用户上传目录 <filepath>uploads/{username}/</filepath>。</p>
+            <note type="attention">
+                <ul>
+                    <li>缺少密码重置功能——用户遗忘密码后只能由管理员介入。</li>
+                    <li>缺少暴力破解防护——审计日志记录了登录失败，但无账户锁定机制和 IP 级速率限制。</li>
+                    <li>✅ <b>[已修复]</b> 数据库不可用时不再接受硬编码凭据，直接拒绝认证（v12.0）。</li>
+                    <li>✅ <b>[已修复]</b> 新增暴力破解防护：per-username 连续 5 次失败锁定 15 分钟（v12.0）。</li>
+                    <li>级联删除列表需手动维护——新增关联表时容易遗漏。</li>
+                </ul>
+            </note>
+        </section>
+    </refbody>
+</reference>

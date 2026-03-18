@@ -31,7 +31,7 @@ TOOLSET_NAMES: set[str] = {
     "DataLakeToolset", "McpHubToolset", "FusionToolset",
     "KnowledgeGraphToolset", "KnowledgeBaseToolset",
     "AdvancedAnalysisToolset", "SpatialAnalysisTier2Toolset",
-    "WatershedToolset",
+    "WatershedToolset", "UserToolset",
 }
 
 _toolset_registry_cache: dict[str, type] | None = None
@@ -54,6 +54,7 @@ def _get_toolset_registry() -> dict[str, type]:
     )
     from .toolsets.spatial_analysis_tier2_tools import SpatialAnalysisTier2Toolset
     from .toolsets.watershed_tools import WatershedToolset
+    from .toolsets.user_tools_toolset import UserToolset
     _toolset_registry_cache = {
         "ExplorationToolset": ExplorationToolset,
         "GeoProcessingToolset": GeoProcessingToolset,
@@ -77,6 +78,7 @@ def _get_toolset_registry() -> dict[str, type]:
         "AdvancedAnalysisToolset": AdvancedAnalysisToolset,
         "SpatialAnalysisTier2Toolset": SpatialAnalysisTier2Toolset,
         "WatershedToolset": WatershedToolset,
+        "UserToolset": UserToolset,
     }
     return _toolset_registry_cache
 
