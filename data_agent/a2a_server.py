@@ -148,7 +148,10 @@ async def execute_a2a_task(message_text: str, caller_id: str = "a2a_client") -> 
 # A2A Server Status
 # ---------------------------------------------------------------------------
 
+import threading
+
 _a2a_started_at: Optional[float] = None
+_a2a_lock = threading.Lock()
 
 
 def get_a2a_status() -> dict:
@@ -162,6 +165,7 @@ def get_a2a_status() -> dict:
 
 
 def mark_started():
-    """Mark the A2A server as started."""
+    """Mark the A2A server as started (thread-safe)."""
     global _a2a_started_at
-    _a2a_started_at = time.time()
+    with _a2a_lock:
+        _a2a_started_at = time.time()

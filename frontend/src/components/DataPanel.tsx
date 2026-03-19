@@ -1513,6 +1513,9 @@ function KnowledgeBaseView() {
           onChange={e => setDocText(e.target.value)}
           className="tool-config-editor" style={{ margin: '0 0 6px', fontSize: '12px' }} />
         <button className="btn-primary btn-sm" onClick={handleAddDoc} disabled={!docText.trim()}>添加文档</button>
+
+        {/* ── Knowledge Graph Section (GraphRAG v10.0.5) ── */}
+        <GraphRAGSection kbId={selectedKb.id} />
       </div>
     );
   }
@@ -1586,6 +1589,131 @@ function KnowledgeBaseView() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   GraphRAG Section (Knowledge Graph visualization)
+   ============================================================ */
+
+function GraphRAGSection({ kbId }: { kbId: number }) {
+  const [building, setBuilding] = useState(false);
+  const [graph, setGraph] = useState<{ nodes: any[]; edges: any[] } | null>(null);
+  const [entities, setEntities] = useState<any[]>([]);
+  const [graphSearch, setGraphSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [tab, setTab] = useState<'entities' | 'graph'>('entities');
+
+  const fetchGraph = async () => {
+    try {
+      const [gResp, eResp] = await Promise.all([
+        fetch(`/api/kb/${kbId}/graph`, { credentials: 'include' }),
+        fetch(`/api/kb/${kbId}/entities`, { credentials: 'include' }),
+      ]);
+      if (gResp.ok) {
+        const g = await gResp.json();
+        setGraph(g);
+      }
+      if (eResp.ok) {
+        const e = await eResp.json();
+        setEntities(e.entities || []);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { fetchGraph(); }, [kbId]);
+
+  const handleBuild = async () => {
+    setBuilding(true);
+    try {
+      await fetch(`/api/kb/${kbId}/build-graph`, { method: 'POST', credentials: 'include' });
+      await fetchGraph();
+    } catch { /* ignore */ }
+    finally { setBuilding(false); }
+  };
+
+  const handleGraphSearch = async () => {
+    if (!graphSearch.trim()) return;
+    setSearching(true);
+    try {
+      const resp = await fetch(`/api/kb/${kbId}/graph-search`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: graphSearch.trim() }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setSearchResults(data.results || []);
+      }
+    } catch { /* ignore */ }
+    finally { setSearching(false); }
+  };
+
+  const nodeCount = graph?.nodes?.length || 0;
+  const edgeCount = graph?.edges?.length || 0;
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div className="skill-section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>知识图谱 ({nodeCount} 实体, {edgeCount} 关系)</span>
+        <button className="btn-primary btn-sm" onClick={handleBuild} disabled={building}>
+          {building ? '构建中...' : nodeCount > 0 ? '重新构建' : '构建图谱'}
+        </button>
+      </div>
+
+      {nodeCount > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+            <button className={`cap-filter-btn ${tab === 'entities' ? 'active' : ''}`} onClick={() => setTab('entities')}>实体列表</button>
+            <button className={`cap-filter-btn ${tab === 'graph' ? 'active' : ''}`} onClick={() => setTab('graph')}>图谱搜索</button>
+          </div>
+
+          {tab === 'entities' && (
+            <div style={{ maxHeight: 200, overflow: 'auto' }}>
+              {entities.map((ent, i) => (
+                <div key={i} style={{ padding: '4px 8px', borderBottom: '1px solid #f0f0f0', fontSize: 12 }}>
+                  <span style={{ fontWeight: 500 }}>{ent.name || ent.entity}</span>
+                  {ent.type && <span style={{ marginLeft: 6, color: '#6b7280', fontSize: 11 }}>[{ent.type}]</span>}
+                  {ent.description && <div style={{ color: '#9ca3af', fontSize: 11 }}>{ent.description}</div>}
+                </div>
+              ))}
+              {entities.length === 0 && <div style={{ color: '#9ca3af', fontSize: 12, padding: 8 }}>暂无实体</div>}
+            </div>
+          )}
+
+          {tab === 'graph' && (
+            <div>
+              <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                <input className="capabilities-search" placeholder="搜索图谱实体或关系..."
+                  value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleGraphSearch()}
+                  style={{ margin: 0, flex: 1 }} />
+                <button className="btn-primary btn-sm" onClick={handleGraphSearch} disabled={searching}>
+                  {searching ? '...' : '搜索'}
+                </button>
+              </div>
+              {searchResults.length > 0 && (
+                <div style={{ maxHeight: 200, overflow: 'auto' }}>
+                  {searchResults.map((r, i) => (
+                    <div key={i} style={{ padding: '4px 8px', borderBottom: '1px solid #f0f0f0', fontSize: 12 }}>
+                      <div style={{ fontWeight: 500 }}>{r.source} → <span style={{ color: '#6b7280' }}>{r.relation}</span> → {r.target}</div>
+                      {r.context && <div style={{ color: '#9ca3af', fontSize: 11 }}>{r.context}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {nodeCount === 0 && !building && (
+        <div style={{ textAlign: 'center', color: '#9ca3af', padding: 12, fontSize: 12 }}>
+          点击"构建图谱"从文档中提取实体和关系
         </div>
       )}
     </div>

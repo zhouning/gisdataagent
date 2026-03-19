@@ -38,12 +38,12 @@
 - [ ] **F-1**: Props drilling → React Context API 或 Zustand 状态管理
   - 优先提取: mapLayers, mapCenter, mapZoom, layerControl 为 MapContext
   - dataFile, userRole 为 AppContext
-- [ ] **F-2**: 移除全局回调 `window.__resolveAnnotation()` / `window.__deleteAnnotation()`，改用事件总线或 Context
+- [ ] **F-2**: 移除全局回调 `window.__resolveAnnotation()` / `window.__deleteAnnotation()`，改用事件总线或 Context ✅ 已修复 (CustomEvent)
 
 ### 代码质量
 
 - [ ] **T-3**: 评测通过率阈值改为环境变量配置 (`EVAL_THRESHOLD_GENERAL=0.7` 等) ✅ 已修复
-- [ ] **S-2**: 模块级全局变量 (`_mcp_started`, `_workflow_scheduler`) 改为 ContextVar 或单例类
+- [ ] **S-2**: 模块级全局变量 (`_mcp_started`, `_workflow_scheduler`) 改为 ContextVar 或单例类 ✅ 已修复 (threading.Lock)
 
 ---
 
@@ -92,9 +92,9 @@
 - [ ] **Skill Bundles 前端 UI** — 组合编排多个 Skill + Toolset 的可视化界面 ✅ 已完成
   - 后端 API 已就绪 (`/api/bundles` CRUD + `/api/bundles/available-tools`)
   - 前端: bundle 列表、创建/编辑表单、toolset/skill 多选 ✅
-- [ ] **Knowledge Base GraphRAG UI** — 知识图谱可视化
+- [ ] **Knowledge Base GraphRAG UI** — 知识图谱可视化 ✅ 已完成
   - 后端 API 已就绪 (`/api/kb/{id}/build-graph`, `/api/kb/{id}/graph`, `/api/kb/{id}/entities`)
-  - 前端: 图构建按钮、实体/关系列表、可视化 (d3-force 或 ReactFlow)
+  - 前端: 图构建按钮、实体/关系列表、图谱搜索 ✅
 
 ---
 
