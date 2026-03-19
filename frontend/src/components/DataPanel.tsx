@@ -265,24 +265,53 @@ function AssetDetail({ asset, onBack }: { asset: CatalogAsset; onBack: () => voi
       {lineage && (
         <div className="lineage-section">
           <h4>数据血缘</h4>
-          {lineage.ancestors && lineage.ancestors.length > 0 && (
-            <div className="lineage-group">
-              <span className="lineage-label">来源</span>
-              {lineage.ancestors.map((a: any, i: number) => (
-                <div key={i} className="lineage-item">{a.asset_name || a.name || `Asset #${a.id}`}</div>
-              ))}
+          {(lineage.ancestors?.length > 0 || lineage.descendants?.length > 0) ? (
+            <div className="lineage-dag">
+              {/* Ancestors column */}
+              {lineage.ancestors?.length > 0 && (
+                <div className="lineage-col">
+                  {lineage.ancestors.map((a: any, i: number) => (
+                    <div key={i} className="lineage-node ancestor">
+                      <div className="lineage-node-name">{a.name || `#${a.id}`}</div>
+                      {a.type && <span className={`type-badge ${a.type}`}>{a.type}</span>}
+                      {a.creation_tool && <div className="lineage-node-tool">{a.creation_tool}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Arrow */}
+              {lineage.ancestors?.length > 0 && (
+                <div className="lineage-arrow">
+                  <svg width="32" height="24"><path d="M4 12 L24 12" stroke="var(--primary)" strokeWidth="2" fill="none"/><path d="M20 7 L28 12 L20 17" stroke="var(--primary)" strokeWidth="2" fill="none"/></svg>
+                </div>
+              )}
+              {/* Current asset (center) */}
+              <div className="lineage-col">
+                <div className="lineage-node current">
+                  <div className="lineage-node-name">{lineage.asset?.name || asset.asset_name}</div>
+                  {lineage.asset?.type && <span className={`type-badge ${lineage.asset.type}`}>{lineage.asset.type}</span>}
+                </div>
+              </div>
+              {/* Arrow */}
+              {lineage.descendants?.length > 0 && (
+                <div className="lineage-arrow">
+                  <svg width="32" height="24"><path d="M4 12 L24 12" stroke="var(--primary)" strokeWidth="2" fill="none"/><path d="M20 7 L28 12 L20 17" stroke="var(--primary)" strokeWidth="2" fill="none"/></svg>
+                </div>
+              )}
+              {/* Descendants column */}
+              {lineage.descendants?.length > 0 && (
+                <div className="lineage-col">
+                  {lineage.descendants.map((d: any, i: number) => (
+                    <div key={i} className="lineage-node descendant">
+                      <div className="lineage-node-name">{d.name || `#${d.id}`}</div>
+                      {d.type && <span className={`type-badge ${d.type}`}>{d.type}</span>}
+                      {d.creation_tool && <div className="lineage-node-tool">{d.creation_tool}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-          {lineage.descendants && lineage.descendants.length > 0 && (
-            <div className="lineage-group">
-              <span className="lineage-label">派生</span>
-              {lineage.descendants.map((d: any, i: number) => (
-                <div key={i} className="lineage-item">{d.asset_name || d.name || `Asset #${d.id}`}</div>
-              ))}
-            </div>
-          )}
-          {(!lineage.ancestors || lineage.ancestors.length === 0) &&
-           (!lineage.descendants || lineage.descendants.length === 0) && (
+          ) : (
             <div className="empty-state" style={{ height: 60 }}>无血缘关系</div>
           )}
         </div>
@@ -769,7 +798,7 @@ interface CapabilityItem {
   is_shared?: boolean;
 }
 
-type CapFilter = 'all' | 'builtin_skill' | 'custom_skill' | 'toolset' | 'user_tool' | 'bundle';
+type CapFilter = 'all' | 'builtin_skill' | 'custom_skill' | 'toolset' | 'user_tool' | 'bundle' | 'template';
 
 const TOOLSETS = [
   { name: 'ExplorationToolset', label: '数据探查与质量审计' },
@@ -842,11 +871,12 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
   const fetchCapabilities = async () => {
     setLoading(true);
     try {
-      const [capResp, utResp, bundleResp, availResp] = await Promise.all([
+      const [capResp, utResp, bundleResp, availResp, tmplResp] = await Promise.all([
         fetch('/api/capabilities', { credentials: 'include' }),
         fetch('/api/user-tools', { credentials: 'include' }),
         fetch('/api/bundles', { credentials: 'include' }),
         fetch('/api/bundles/available-tools', { credentials: 'include' }),
+        fetch('/api/templates', { credentials: 'include' }),
       ]);
       let builtin: CapabilityItem[] = [], custom: CapabilityItem[] = [], toolsets: CapabilityItem[] = [], userTools: CapabilityItem[] = [];
       if (capResp.ok) {
@@ -871,8 +901,17 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
       if (availResp.ok) {
         setAvailableTools(await availResp.json());
       }
-      setItems([...builtin, ...custom, ...toolsets, ...userTools]);
-      setCounts({ builtin: builtin.length, custom: custom.length, toolset: toolsets.length, userTool: userTools.length } as any);
+      let templateItems: CapabilityItem[] = [];
+      if (tmplResp.ok) {
+        const tData = await tmplResp.json();
+        templateItems = (tData.templates || []).map((t: any) => ({
+          ...t, name: t.template_name, type: 'template' as const,
+          description: `[${t.category || '通用'}] ${t.description || ''}`,
+          domain: t.category,
+        }));
+      }
+      setItems([...builtin, ...custom, ...toolsets, ...userTools, ...templateItems]);
+      setCounts({ builtin: builtin.length, custom: custom.length, toolset: toolsets.length, userTool: userTools.length, template: templateItems.length } as any);
     } catch { /* ignore */ }
     finally { setLoading(false); }
   };
@@ -1083,10 +1122,10 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
   };
 
   const typeLabel = (t: string) =>
-    t === 'builtin_skill' ? '内置技能' : t === 'custom_skill' ? '自定义技能' : t === 'user_tool' ? '自定义工具' : '工具集';
+    t === 'builtin_skill' ? '内置技能' : t === 'custom_skill' ? '自定义技能' : t === 'user_tool' ? '自定义工具' : t === 'template' ? '行业模板' : '工具集';
 
   const typeClass = (t: string) =>
-    t === 'builtin_skill' ? 'cap-type-builtin' : t === 'custom_skill' ? 'cap-type-custom' : t === 'user_tool' ? 'cap-type-usertool' : 'cap-type-toolset';
+    t === 'builtin_skill' ? 'cap-type-builtin' : t === 'custom_skill' ? 'cap-type-custom' : t === 'user_tool' ? 'cap-type-usertool' : t === 'template' ? 'cap-type-template' : 'cap-type-toolset';
 
   return (
     <div className="capabilities-view">
@@ -1204,10 +1243,10 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
         value={search} onChange={e => setSearch(e.target.value)} />
 
       <div className="capabilities-filters">
-        {(['all', 'builtin_skill', 'custom_skill', 'toolset', 'user_tool', 'bundle'] as CapFilter[]).map(f => (
+        {(['all', 'builtin_skill', 'custom_skill', 'toolset', 'user_tool', 'bundle', 'template'] as CapFilter[]).map(f => (
           <button key={f} className={`cap-filter-btn ${filter === f ? 'active' : ''}`}
             onClick={() => setFilter(f)}>
-            {f === 'all' ? '全部' : f === 'builtin_skill' ? '内置技能' : f === 'custom_skill' ? '自定义' : f === 'user_tool' ? '自建工具' : f === 'bundle' ? `技能包(${bundles.length})` : '工具集'}
+            {f === 'all' ? '全部' : f === 'builtin_skill' ? '内置技能' : f === 'custom_skill' ? '自定义' : f === 'user_tool' ? '自建工具' : f === 'bundle' ? `技能包(${bundles.length})` : f === 'template' ? '行业模板' : '工具集'}
           </button>
         ))}
       </div>
@@ -1949,7 +1988,7 @@ function WorkflowsView() {
                 <div key={nodeId} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, padding: '3px 0' }}>
                   <span style={{
                     width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                    background: node.status === 'completed' ? '#22c55e' : node.status === 'running' ? '#3b82f6' : node.status === 'failed' ? '#ef4444' : '#d1d5db',
+                    background: node.status === 'completed' ? '#22c55e' : node.status === 'running' ? '#0d9488' : node.status === 'failed' ? '#ef4444' : '#d1d5db',
                   }} />
                   <span style={{ fontWeight: 500 }}>{node.label || nodeId}</span>
                   <span style={{ color: '#9ca3af' }}>{node.status}</span>
@@ -2174,7 +2213,7 @@ function SuggestionsView() {
               <div style={{ fontWeight: 600, fontSize: 13 }}>{s.title}</div>
               <div style={{ fontSize: 12, color: '#aaa', margin: '2px 0' }}>{s.description}</div>
               <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                <span className="data-panel-badge" style={{ background: '#2563eb' }}>{s.category}</span>
+                <span className="data-panel-badge" style={{ background: '#0d9488' }}>{s.category}</span>
                 <span style={{ fontSize: 11, color: '#888' }}>相关度: {'★'.repeat(Math.round((s.relevance_score || 0) * 5))}</span>
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
@@ -2225,7 +2264,7 @@ function TasksView() {
   };
 
   const statusColor: Record<string, string> = {
-    queued: '#6b7280', running: '#3b82f6', completed: '#22c55e', failed: '#ef4444', cancelled: '#eab308',
+    queued: '#6b7280', running: '#0d9488', completed: '#22c55e', failed: '#ef4444', cancelled: '#eab308',
   };
 
   if (loading) return <div className="data-panel-empty">加载中...</div>;
@@ -2307,10 +2346,16 @@ function TemplatesView() {
   return (
     <div className="data-panel-list">
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-        {['', 'general', 'governance', 'optimization', 'analysis'].map(cat => (
-          <button key={cat} className={`data-panel-btn-sm ${category === cat ? '' : 'secondary'}`}
-            onClick={() => setCategory(cat)}>{cat || '全部'}</button>
-        ))}
+        {['', 'general', 'governance', 'optimization', 'analysis', '城市规划', '环境监测', '国土资源'].map(cat => {
+          const label: Record<string, string> = {
+            '': '全部', general: '通用', governance: '治理', optimization: '优化',
+            analysis: '分析', '城市规划': '城市规划', '环境监测': '环境监测', '国土资源': '国土资源',
+          };
+          return (
+            <button key={cat} className={`data-panel-btn-sm ${category === cat ? '' : 'secondary'}`}
+              onClick={() => setCategory(cat)}>{label[cat] || cat}</button>
+          );
+        })}
       </div>
       {templates.length === 0 && <div className="data-panel-empty">暂无模板</div>}
       {templates.map((t: any) => (
@@ -2363,7 +2408,7 @@ function AnalyticsView() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {['p50', 'p75', 'p90', 'p99'].map(k => (
               <div key={k} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#3b82f6' }}>{latency[k] || 0}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#0d9488' }}>{latency[k] || 0}</div>
                 <div style={{ color: '#888' }}>{k.toUpperCase()}</div>
               </div>
             ))}
@@ -2392,7 +2437,7 @@ function AnalyticsView() {
         {throughput.slice(-7).map((d: any, i: number) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
             <span>{d.date}</span>
-            <span style={{ color: '#3b82f6' }}>{d.count} 次</span>
+            <span style={{ color: '#0d9488' }}>{d.count} 次</span>
           </div>
         ))}
         {throughput.length === 0 && <div style={{ color: '#888' }}>无数据</div>}

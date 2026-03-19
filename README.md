@@ -1,10 +1,10 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v12.0
+# GIS Data Agent (ADK Edition) v12.1
 
 基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
 
-系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（13 标签页），后端集成 92 个 REST API。**v12.0 新增用户自助扩展能力**：自定义 Skills（Agent 行为）、User Tools（声明式工具模板）、多 Agent Pipeline 可视化编排。
+系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（13 标签页），后端集成 95 个 REST API。**v12.1 新增数据血缘自动追踪、行业分析模板和 Cartographic Precision UI 设计系统**。
 
 ## 📚 官方技术文档
 
@@ -19,10 +19,10 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2121 tests, 92 test files |
+| 测试覆盖 | 2123 tests, 92 test files |
 | 工具集 | 23 BaseToolset (含 UserToolset), 5 SkillBundle, 130+ 工具 |
 | ADK Skills | 18 场景化领域技能 + DB 驱动自定义 Skills + 用户自定义 Tools |
-| REST API | 92 endpoints |
+| REST API | 95 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
@@ -109,6 +109,14 @@
 - **能力浏览 Tab**：聚合展示内置技能、自定义技能、工具集、自建工具，支持分类过滤和搜索
 - **知识库 Tab**：KB CRUD、文档管理、语义搜索，支持 GraphRAG 图增强检索
 - **面板拖拽调整**：三面板布局支持拖拽分隔条调整宽度（240-700px）
+
+### 数据血缘与行业模板 (v12.1)
+- **分析血缘自动追踪**：pipeline_run_id ContextVar 贯穿执行链，每次工具输出自动注册到 Data Catalog 并关联来源资产
+- **血缘 DAG 可视化**：DataPanel 资产详情中横向 DAG 布局（来源→当前→派生），SVG 箭头连接，类型徽章
+- **行业分析模板**：3 个首批行业模板（城市热岛效应分析、植被变化检测、土地利用优化），一键导入为工作流
+- **CapabilitiesView 行业分组**：能力浏览 Tab 新增"行业模板"过滤器，按行业分类展示
+- **API 模块化重构 (S-4)**：MCP Hub / Workflow / Skills 路由提取至独立模块，提取率 42%
+- **Cartographic Precision UI**：Space Grotesk 字体 + Teal/Amber 配色 + 暖白 Stone 背景 + 等高线登录页
 - **安全加固**：DB 降级后门移除 + 暴力破解防护（5 次失败锁定 15 分钟）
 - **架构重构**：app.py 拆分（intent_router.py + pipeline_helpers.py 提取）+ React Error Boundaries
 
@@ -369,7 +377,7 @@ docs/                            # 文档
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API 端点（92 条路由）
+## REST API 端点（95 条路由）
 
 | 方法 | 路径 | 描述 |
 |---|---|---|
@@ -446,7 +454,7 @@ docs/                            # 文档
 ## 运行测试
 
 ```bash
-# 全量测试 (2121 测试)
+# 全量测试 (2123 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -483,6 +491,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v10.0 | GraphRAG、per-User MCP 隔离、自定义技能包、高级空间分析 Tier 2、工作流模板 | 1993 | ✅ 完成 |
 | v11.0 | 并发任务队列、推理链+置信度、主动探索建议、A2A 互操作、设计模式 19/21 | 2074 | ✅ 完成 |
 | v12.0 | 自助扩展平台：Custom Skills CRUD、User Tools、多 Agent Pipeline 编排、能力浏览 Tab、知识库 Tab、面板拖拽、安全加固（SEC-1/SEC-2）、app.py 拆分、ADK v1.27.2 | 2121 | ✅ 完成 |
+| v12.1 | 数据血缘自动追踪（pipeline_run_id + ContextVar）、血缘 DAG 可视化、行业分析模板（城市规划/环境监测/国土资源）、CapabilitiesView 行业分组、S-4 API 模块化 42%、Cartographic Precision UI 重设计 | 2123 | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 
 ## 设计模式覆盖 (21/21 = 100%)

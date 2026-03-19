@@ -8,8 +8,12 @@ No Chainlit dependency — reusable by CLI/API/Bot channels.
 import os
 import time
 import logging
+from contextvars import ContextVar
 
 logger = logging.getLogger("data_agent.pipeline_helpers")
+
+# Pipeline run context — set by app.py at pipeline start, read by sync_tool_output_to_obs
+current_pipeline_run_id: ContextVar[str] = ContextVar("current_pipeline_run_id", default="")
 
 # Lazy imports to avoid circular dependencies
 _user_context_imported = False
@@ -113,8 +117,10 @@ def sync_tool_output_to_obs(resp_data, tool_name: str = "", tool_args: dict = No
     # Register in data catalog (always, even without cloud)
     try:
         from data_agent.data_catalog import register_tool_output
+        run_id = current_pipeline_run_id.get("")
         for p in paths:
-            register_tool_output(p, tool_name or "unknown", source_paths=source_paths)
+            register_tool_output(p, tool_name or "unknown", tool_params=tool_args,
+                                 source_paths=source_paths, pipeline_run_id=run_id or None)
     except Exception:
         pass
 

@@ -544,7 +544,7 @@ class TestGetDataLineage(unittest.TestCase):
         target_row = (10, "buffer_result.shp", "vector", "create_buffer",
                       [{"id": 5, "name": "parcels.shp"}])
         # Second call: look up ancestor
-        ancestor_row = (5, "parcels.shp", "vector", "upload", [])
+        ancestor_row = (5, "parcels.shp", "vector", "upload", [], None)
 
         call_count = [0]
         def mock_execute(query, params=None):
@@ -581,8 +581,8 @@ class TestGetDataLineage(unittest.TestCase):
         target_row = (5, "parcels.shp", "vector", "upload", [])
         # Descendants
         desc_rows = [
-            (10, "buffer_result.shp", "vector", "create_buffer"),
-            (11, "clipped.shp", "vector", "pairwise_clip"),
+            (10, "buffer_result.shp", "vector", "create_buffer", None),
+            (11, "clipped.shp", "vector", "pairwise_clip", None),
         ]
 
         call_count = [0]
@@ -617,7 +617,7 @@ class TestGetDataLineage(unittest.TestCase):
         mock_conn = MagicMock()
         target_row = (10, "output.shp", "vector", "create_buffer",
                       [{"id": 5, "name": "input.shp"}])
-        ancestor_row = (5, "input.shp", "vector", "upload", [])
+        ancestor_row = (5, "input.shp", "vector", "upload", [], None)
 
         call_count = [0]
         def mock_execute(query, params=None):
@@ -679,7 +679,7 @@ class TestFindDescendants(unittest.TestCase):
     def test_with_descendants(self):
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = [
-            (20, "derived.shp", "vector", "create_buffer"),
+            (20, "derived.shp", "vector", "create_buffer", None),
         ]
         from data_agent.data_catalog import _find_descendants
         result = _find_descendants(mock_conn, 1, "test.shp")

@@ -40,9 +40,11 @@ ENTITY_TYPES = {
     "admin": ["行政区", "admin", "district", "区划", "xzq"],
     "vegetation": ["植被", "vegetation", "林地", "forest", "ld"],
     "poi": ["兴趣点", "poi", "point_of_interest", "设施"],
+    "data_asset": [],  # v12.1: data lineage nodes (not auto-detected from columns)
 }
 
-RELATIONSHIP_TYPES = ["contains", "within", "adjacent_to", "overlaps", "nearest_to"]
+RELATIONSHIP_TYPES = ["contains", "within", "adjacent_to", "overlaps", "nearest_to",
+                      "derives_from", "feeds_into"]  # v12.1: lineage edges
 
 T_KNOWLEDGE_GRAPHS = "agent_knowledge_graphs"
 
@@ -335,6 +337,16 @@ class GeoKnowledgeGraph:
             if "_geom_wkt" in g.nodes[nid]:
                 del g.nodes[nid]["_geom_wkt"]
         return nx.node_link_data(g)
+
+    # --- v12.1: Data lineage edges ---
+
+    def add_lineage_edge(self, source_id: str, target_id: str, tool_name: str = ""):
+        """Add derives_from/feeds_into edges between data assets for lineage tracking."""
+        for nid in (source_id, target_id):
+            if nid not in self.graph:
+                self.graph.add_node(nid, _entity_type="data_asset")
+        self.graph.add_edge(source_id, target_id, type="feeds_into", tool=tool_name)
+        self.graph.add_edge(target_id, source_id, type="derives_from", tool=tool_name)
 
     def get_stats(self) -> GraphStats:
         """Compute summary statistics for the current graph state.

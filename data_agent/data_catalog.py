@@ -84,6 +84,10 @@ def ensure_data_catalog_table():
             conn.execute(text(
                 f"CREATE INDEX IF NOT EXISTS idx_data_catalog_backend ON {T_DATA_CATALOG} (storage_backend)"
             ))
+            # v12.1 migration: pipeline_run_id for lineage tracking
+            conn.execute(text(
+                f"ALTER TABLE {T_DATA_CATALOG} ADD COLUMN IF NOT EXISTS pipeline_run_id VARCHAR(100) DEFAULT NULL"
+            ))
             conn.commit()
         print("[DataCatalog] Data catalog table ready.")
     except Exception as e:
@@ -171,7 +175,8 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                             storage_backend: str = "local",
                             cloud_key: str = "",
                             owner: str = "",
-                            source_assets: list = None) -> Optional[int]:
+                            source_assets: list = None,
+                            pipeline_run_id: str = None) -> Optional[int]:
     """Register a data asset from a file path. Returns asset ID or None.
 
     Extracts spatial metadata automatically. Upserts on (asset_name, owner, backend).
@@ -195,12 +200,12 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                     (asset_name, asset_type, format, storage_backend, cloud_key,
                      local_path, spatial_extent, crs, srid, feature_count,
                      file_size_bytes, creation_tool, creation_params,
-                     source_assets, owner_username)
+                     source_assets, owner_username, pipeline_run_id)
                 VALUES
                     (:name, :type, :fmt, :backend, :cloud_key,
                      :local_path, CAST(:extent AS jsonb), :crs, :srid, :count,
                      :size, :tool, CAST(:params AS jsonb),
-                     CAST(:sources AS jsonb), :owner)
+                     CAST(:sources AS jsonb), :owner, :run_id)
                 ON CONFLICT (asset_name, owner_username, storage_backend)
                 DO UPDATE SET
                     asset_type = EXCLUDED.asset_type,
@@ -215,6 +220,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                     creation_tool = EXCLUDED.creation_tool,
                     creation_params = EXCLUDED.creation_params,
                     source_assets = EXCLUDED.source_assets,
+                    pipeline_run_id = EXCLUDED.pipeline_run_id,
                     updated_at = NOW()
                 RETURNING id
             """), {
@@ -233,6 +239,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                 "params": json.dumps(creation_params or {}),
                 "sources": json.dumps(source_assets or []),
                 "owner": owner,
+                "run_id": pipeline_run_id,
             })
             row = result.fetchone()
             conn.commit()
@@ -281,7 +288,8 @@ def _resolve_source_assets(paths: list) -> list:
 
 def register_tool_output(local_path: str, tool_name: str,
                          tool_params: dict = None, cloud_key: str = "",
-                         source_paths: list = None) -> Optional[int]:
+                         source_paths: list = None,
+                         pipeline_run_id: str = None) -> Optional[int]:
     """Non-fatal wrapper for auto_register_from_path. Used by app.py after tool execution."""
     try:
         backend = "cloud" if cloud_key else "local"
@@ -291,6 +299,7 @@ def register_tool_output(local_path: str, tool_name: str,
             creation_params=tool_params,
             storage_backend=backend, cloud_key=cloud_key,
             source_assets=source_assets,
+            pipeline_run_id=pipeline_run_id,
         )
     except Exception as e:
         logger.debug("[DataCatalog] register_tool_output non-fatal error: %s", e)
@@ -919,12 +928,14 @@ def _walk_ancestors(conn, source_assets_raw, max_depth: int = 10) -> list:
             if asset_id:
                 entry["id"] = asset_id
                 row = conn.execute(text(f"""
-                    SELECT id, asset_name, asset_type, creation_tool, source_assets
+                    SELECT id, asset_name, asset_type, creation_tool, source_assets, pipeline_run_id
                     FROM {T_DATA_CATALOG} WHERE id = :id
                 """), {"id": asset_id}).fetchone()
                 if row:
                     entry["type"] = row[2]
                     entry["creation_tool"] = row[3]
+                    if row[5]:
+                        entry["pipeline_run_id"] = row[5]
                     parent_sources = row[4] if isinstance(row[4], list) else json.loads(
                         row[4] or "[]")
                     if parent_sources:
@@ -940,7 +951,7 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
     descendants = []
     try:
         rows = conn.execute(text(f"""
-            SELECT id, asset_name, asset_type, creation_tool
+            SELECT id, asset_name, asset_type, creation_tool, pipeline_run_id
             FROM {T_DATA_CATALOG}
             WHERE source_assets::text LIKE :pattern_id
                OR source_assets::text LIKE :pattern_name
@@ -952,10 +963,13 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
         }).fetchall()
 
         for r in rows:
-            descendants.append({
+            entry = {
                 "id": r[0], "name": r[1],
                 "type": r[2], "creation_tool": r[3],
-            })
+            }
+            if r[4]:
+                entry["pipeline_run_id"] = r[4]
+            descendants.append(entry)
     except Exception:
         pass
     return descendants
