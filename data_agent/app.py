@@ -143,6 +143,10 @@ try:
     ensure_kb_tables()
     from data_agent.user_tools import ensure_user_tools_table
     ensure_user_tools_table()
+    from data_agent.workflow_templates import ensure_workflow_template_tables
+    ensure_workflow_template_tables()
+    from data_agent.custom_skill_bundles import ensure_skill_bundles_table
+    ensure_skill_bundles_table()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
