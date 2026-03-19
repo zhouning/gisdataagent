@@ -26,7 +26,7 @@ TOOL_NAME_MAX_LENGTH = 100
 TOOL_NAME_PATTERN = re.compile(r'^[\w\u4e00-\u9fff\-]+$')
 MAX_TOOLS_PER_USER = 50
 VALID_PARAM_TYPES = {"string", "number", "integer", "boolean"}
-VALID_TEMPLATE_TYPES = {"http_call", "sql_query", "file_transform", "chain"}
+VALID_TEMPLATE_TYPES = {"http_call", "sql_query", "file_transform", "chain", "python_sandbox"}
 DESCRIPTION_MAX_LENGTH = 2000
 MAX_PARAMETERS = 20
 MAX_CHAIN_STEPS = 5
@@ -142,6 +142,8 @@ def validate_template_config(template_type: str, config: dict) -> Optional[str]:
         return _validate_file_transform(config)
     elif template_type == "chain":
         return _validate_chain(config)
+    elif template_type == "python_sandbox":
+        return _validate_python_sandbox(config)
     return None
 
 
@@ -207,6 +209,85 @@ def _validate_chain(config: dict) -> Optional[str]:
             return f"chain.steps[{i}] must be an object"
         if not step.get("tool_name"):
             return f"chain.steps[{i}].tool_name is required"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Python sandbox validation (Phase 2)
+# ---------------------------------------------------------------------------
+
+_ALLOWED_IMPORTS = {
+    "json", "math", "re", "datetime", "collections", "csv", "os.path",
+    "statistics", "itertools", "functools", "string", "hashlib", "uuid",
+    "decimal", "fractions", "operator", "copy", "textwrap",
+}
+
+_FORBIDDEN_NAMES = {
+    "exec", "eval", "compile", "__import__", "globals", "locals",
+    "getattr", "setattr", "delattr", "open", "input",
+    "breakpoint", "exit", "quit",
+}
+
+_FORBIDDEN_ATTRS = {
+    "__builtins__", "__class__", "__subclasses__", "__bases__",
+    "__code__", "__globals__", "__dict__",
+}
+
+PYTHON_CODE_MAX_LENGTH = 5000
+
+
+def validate_python_code(code: str) -> Optional[str]:
+    """Validate user Python code via AST analysis. Returns error or None."""
+    import ast
+
+    if not code or not code.strip():
+        return "python_code is required for python_sandbox"
+    if len(code) > PYTHON_CODE_MAX_LENGTH:
+        return f"python_code exceeds {PYTHON_CODE_MAX_LENGTH} characters"
+
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return f"Python syntax error: {e}"
+
+    # Walk AST to check for forbidden constructs
+    for node in ast.walk(tree):
+        # Forbidden function calls
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name) and func.id in _FORBIDDEN_NAMES:
+                return f"Forbidden function: {func.id}()"
+            if isinstance(func, ast.Attribute) and func.attr in _FORBIDDEN_NAMES:
+                return f"Forbidden method: .{func.attr}()"
+
+        # Forbidden attribute access
+        if isinstance(node, ast.Attribute):
+            if node.attr in _FORBIDDEN_ATTRS:
+                return f"Forbidden attribute access: .{node.attr}"
+
+        # Check imports
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                mod_root = alias.name.split(".")[0]
+                if mod_root not in _ALLOWED_IMPORTS and alias.name not in _ALLOWED_IMPORTS:
+                    return f"Forbidden import: {alias.name}. Allowed: {sorted(_ALLOWED_IMPORTS)}"
+        if isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            mod_root = mod.split(".")[0]
+            if mod_root not in _ALLOWED_IMPORTS and mod not in _ALLOWED_IMPORTS:
+                return f"Forbidden import from: {mod}. Allowed: {sorted(_ALLOWED_IMPORTS)}"
+
+    # Must define a function named tool_function
+    func_names = [n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    if "tool_function" not in func_names:
+        return "Code must define a function named 'tool_function'"
+
+    return None
+
+
+def _validate_python_sandbox(config: dict) -> Optional[str]:
+    """Validate python_sandbox template config."""
+    # Config is minimal for python_sandbox — the code is in python_code field
     return None
 
 

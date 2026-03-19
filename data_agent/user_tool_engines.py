@@ -295,6 +295,12 @@ def _dispatch_engine(tool_def: dict, params: dict) -> str:
         all_tools = list_user_tools(include_shared=True)
         lookup = {t["tool_name"]: t for t in all_tools}
         return execute_chain(config, params, lookup)
+    elif ttype == "python_sandbox":
+        from .python_sandbox import execute_python_sandbox
+        code = config.get("python_code", "")
+        timeout = config.get("timeout", 30)
+        result = execute_python_sandbox(code, params, timeout=timeout)
+        return json.dumps(result, ensure_ascii=False)
     else:
         return json.dumps({"status": "error", "message": f"Unknown template_type: {ttype}"}, ensure_ascii=False)
 

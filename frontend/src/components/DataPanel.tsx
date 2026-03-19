@@ -1055,6 +1055,7 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
     { value: 'sql_query', label: 'SQL 查询' },
     { value: 'file_transform', label: '文件转换' },
     { value: 'chain', label: '链式组合' },
+    { value: 'python_sandbox', label: 'Python 沙箱' },
   ];
 
   const TEMPLATE_HINTS: Record<string, string> = {
@@ -1062,6 +1063,7 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
     sql_query: '{"query":"SELECT * FROM parcels WHERE area > :min_area","readonly":true}',
     file_transform: '{"operations":[{"op":"filter","column":"area","condition":">","value":100}],"output_format":"geojson"}',
     chain: '{"steps":[{"tool_name":"my_query","param_map":{"x":"$input.x"}}]}',
+    python_sandbox: '{"python_code":"def tool_function(params):\\n    # 在此编写处理逻辑\\n    return {\\\"result\\\": params.get(\\\"input\\\", \\\"hello\\\")}","timeout":30}',
   };
 
   const filtered = items.filter(item => {

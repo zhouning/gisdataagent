@@ -2151,6 +2151,16 @@ async def _api_user_tools_create(request: Request):
     if err:
         return JSONResponse({"error": err}, status_code=400)
 
+    # Python sandbox: validate code via AST
+    if template_type == "python_sandbox":
+        python_code = template_config.get("python_code", "")
+        if not python_code.strip():
+            return JSONResponse({"error": "python_sandbox requires python_code in template_config"}, status_code=400)
+        from .user_tools import validate_python_code
+        code_err = validate_python_code(python_code)
+        if code_err:
+            return JSONResponse({"error": code_err}, status_code=400)
+
     tool_id = create_user_tool(
         tool_name=tool_name,
         description=body.get("description", ""),
@@ -2212,6 +2222,14 @@ async def _api_user_tools_update(request: Request):
         err = validate_template_config(body["template_type"], body["template_config"])
         if err:
             return JSONResponse({"error": err}, status_code=400)
+        if body["template_type"] == "python_sandbox":
+            python_code = body["template_config"].get("python_code", "")
+            if not python_code.strip():
+                return JSONResponse({"error": "python_sandbox requires python_code"}, status_code=400)
+            from .user_tools import validate_python_code
+            code_err = validate_python_code(python_code)
+            if code_err:
+                return JSONResponse({"error": code_err}, status_code=400)
 
     ok = update_user_tool(tool_id, **body)
     if not ok:

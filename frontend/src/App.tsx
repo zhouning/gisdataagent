@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef, Component, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, Component, type ReactNode } from 'react';
 import { useChatSession, useAuth, useConfig } from '@chainlit/react-client';
 import { useRecoilValue } from 'recoil';
 import { sessionState } from '@chainlit/react-client';
+import { MapContext, AppContext } from './contexts';
 import LoginPage from './components/LoginPage';
 import ChatPanel from './components/ChatPanel';
 import MapPanel from './components/MapPanel';
@@ -143,6 +144,16 @@ export default function App() {
   const userRole = (user?.metadata as any)?.role || '';
   const isAdmin = userRole === 'admin';
 
+  // Context values (F-1: eliminates props drilling)
+  const mapContextValue = useMemo(() => ({
+    layers: mapLayers, center: mapCenter, zoom: mapZoom, layerControl,
+    onMapUpdate: handleMapUpdate, onLayerControl: handleLayerControl,
+  }), [mapLayers, mapCenter, mapZoom, layerControl, handleMapUpdate, handleLayerControl]);
+
+  const appContextValue = useMemo(() => ({
+    userRole, dataFile, onDataUpdate: handleDataUpdate,
+  }), [userRole, dataFile, handleDataUpdate]);
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -179,6 +190,8 @@ export default function App() {
       {showAdmin ? (
         <AdminDashboard onBack={() => setShowAdmin(false)} />
       ) : (
+        <MapContext.Provider value={mapContextValue}>
+        <AppContext.Provider value={appContextValue}>
         <div className="workspace" ref={workspaceRef}
           style={{ '--chat-width': `${chatWidth}px`, '--data-width': `${dataWidth}px` } as React.CSSProperties}>
           <ErrorBoundary name="聊天面板">
@@ -195,6 +208,8 @@ export default function App() {
             <DataPanel dataFile={dataFile} userRole={userRole} />
           </ErrorBoundary>
         </div>
+        </AppContext.Provider>
+        </MapContext.Provider>
       )}
       {showSettings && (
         <UserSettings
