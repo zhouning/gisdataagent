@@ -1580,6 +1580,15 @@ async def _execute_pipeline(
         total_stages = len(stages)
     pipeline_start_time = time.time()
 
+    # v12.1: Set pipeline run context for lineage tracking
+    import uuid as _uuid
+    _pipeline_run_id = _uuid.uuid4().hex[:12]
+    try:
+        from data_agent.pipeline_helpers import current_pipeline_run_id
+        current_pipeline_run_id.set(_pipeline_run_id)
+    except Exception:
+        pass
+
     pipeline_step = cl.Step(name=pipeline_name, type="process")
     await pipeline_step.send()
 
