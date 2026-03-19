@@ -30,7 +30,9 @@
 ### 安全加固
 
 - [ ] **SEC-3**: 沙箱路径验证改用 `os.path.realpath()` + `os.path.commonpath()`，防止符号链接绕过 ✅ 已修复
-- [ ] **SEC-4**: Custom Skill 指令 Prompt 注入防护增强 — 考虑 LLM 语义验证 + 输出隔离
+- [ ] **SEC-4**: Custom Skill 指令 Prompt 注入防护增强 ✅ 已完成
+  - 扩展 FORBIDDEN_PATTERNS（24 个模式，覆盖角色劫持/指令覆盖/数据窃取）
+  - build_custom_agent() 输出隔离：安全边界包裹用户指令 + 拒绝泄露提示
 - [ ] **SEC-5**: ContextVar 默认角色从 `analyst` 改为 `anonymous`，强制显式设置 ✅ 已修复
 
 ### 前端质量
@@ -83,9 +85,9 @@
   - 按组件拆分: ChatPanel.module.css, MapPanel.module.css, DataPanel.module.css 等
   - 或引入 Tailwind v4 + CSS-first 配置
 - [ ] **WorkflowEditor 增强**:
+  - ✅ 实时执行状态展示 (轮询 `/api/workflows/{id}/runs/{run_id}/status`)
   - 条件节点可视化编辑 (表达式编辑器)
   - 并行分支自动布局算法
-  - 实时执行状态展示 (轮询 `/api/workflows/{id}/runs/{run_id}/status`)
   - 步骤结果预览面板
 
 ### 能力完善
