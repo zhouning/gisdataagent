@@ -70,14 +70,14 @@
   - 后续 schema 变更通过 `alembic revision --autogenerate`
 - [ ] **S-4**: `frontend_api.py` (2330 行) 按功能域拆分 — 进行中
   - ✅ 创建 `api/` 包 + `helpers.py` (共享 auth) + `bundle_routes.py` (技能包)
-  - `api/catalog_routes.py` — 数据目录
+  - ✅ `api/kb_routes.py` — 知识库 (11 handlers, 228 行)
   - `api/mcp_routes.py` — MCP Hub
+  - `api/catalog_routes.py` — 数据目录
   - `api/workflow_routes.py` — 工作流
   - `api/skill_routes.py` — 技能/工具
-  - `api/kb_routes.py` — 知识库
   - `api/admin_routes.py` — 管理端点
   - `api/user_routes.py` — 用户端点
-  - 保留 `frontend_api.py` 作为路由注册入口
+  - 保留 `frontend_api.py` 作为路由注册入口 (2473 → 1996 行)
 
 ### 前端架构
 
@@ -166,7 +166,7 @@
 - [ ] **ComputerUse Tool**: 评估桌面自动化能力用于 GIS 软件操作（如 ArcGIS Desktop 自动化）
 - [ ] **UiWidget (实验性)**: MCP 工具返回 UI 组件，前端直接渲染交互表单
 - [ ] **adk optimize**: 自动优化 3 个 YAML prompt 文件，提升 Agent 效果
-- [ ] **list_skills_in_dir**: 替代 capabilities.py 中的手动目录遍历
+- [ ] **list_skills_in_dir**: 替代 capabilities.py 中的手动目录遍历 ✅ 已完成
 - [ ] **OpenTelemetry 增强**: 集成 agent.version, tool.definitions, error code 等新 span 属性到可观测性体系
 
 - [ ] **Webhook/API 模式**: 无 UI 的纯 API 调用 (pipeline_runner.py 已就绪)
