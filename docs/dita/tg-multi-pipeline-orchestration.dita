@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-multi-pipeline-orchestration" xml:lang="zh-CN">
+    <title>多管线 Agent 编排</title>
+    <shortdesc>系统定义了四条独立管线（Optimization、Governance、General、Planner），基于 ADK SequentialAgent 与 LlmAgent 组合编排，内置 LoopAgent 质量保证循环和工厂函数解决 ADK 单父约束。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <conbody>
+        <section id="pipeline-overview">
+            <title>管线架构总览</title>
+            <table frame="all" rowsep="1" colsep="1" id="pipeline-table">
+                <title>四条管线对比</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="2*"/>
+                    <colspec colname="c3" colnum="3" colwidth="1*"/>
+                    <colspec colname="c4" colnum="4" colwidth="3*"/>
+                    <thead>
+                        <row>
+                            <entry>管线</entry>
+                            <entry>ADK 类型</entry>
+                            <entry>默认模型</entry>
+                            <entry>用途</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><codeph>data_pipeline</codeph></entry>
+                            <entry>SequentialAgent</entry>
+                            <entry>Flash</entry>
+                            <entry>空间布局优化（DRL 深度强化学习）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>governance_pipeline</codeph></entry>
+                            <entry>SequentialAgent</entry>
+                            <entry>Flash / Pro</entry>
+                            <entry>数据质量治理审计</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>general_pipeline</codeph></entry>
+                            <entry>SequentialAgent</entry>
+                            <entry>Flash</entry>
+                            <entry>通用空间分析</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>planner_agent</codeph></entry>
+                            <entry>LlmAgent</entry>
+                            <entry>Flash</entry>
+                            <entry>动态编排（含子 Agent + 工作流）</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="optimization-pipeline">
+            <title>Optimization Pipeline</title>
+            <p>该管线处理空间布局优化任务，执行顺序如下：</p>
+            <ol>
+                <li><b>ParallelDataIngestion：</b>数据探索（Exploration）与语义预取（SemanticPreFetch）并行执行，减少延迟。</li>
+                <li><b>DataProcessing：</b>特征工程、GIS 操作、数据融合。</li>
+                <li><b>AnalysisQualityLoop：</b>LoopAgent 模式——DataAnalysis 产出分析报告后，QualityChecker 验证结果完整性与 DRL 优化效果，最多循环 3 次。</li>
+                <li><b>DataVisualization：</b>专题图、气泡图、交互式地图生成。</li>
+                <li><b>DataSummary：</b>决策报告输出。</li>
+            </ol>
+        </section>
+
+        <section id="governance-pipeline">
+            <title>Governance Pipeline</title>
+            <p>该管线专注于数据质量治理审计：</p>
+            <ol>
+                <li><b>GovExploration：</b>拓扑审计、字段标准检查、一致性验证。</li>
+                <li><b>GovProcessing：</b>数据修复、地理编码、融合。</li>
+                <li><b>GovernanceReportLoop：</b>Reporter（使用 Gemini 2.5 Pro）生成治理报告，Checker 验证后最多循环 3 次。</li>
+            </ol>
+            <note>Reporter 使用 Premium 模型（Gemini 2.5 Pro），因为治理报告需要更强的综合推理能力来整合多维度审计结果。</note>
+        </section>
+
+        <section id="general-pipeline">
+            <title>General Pipeline</title>
+            <p>通用管线具有最广的工具覆盖范围：</p>
+            <ol>
+                <li><b>GeneralProcessing：</b>全工具集，通过 <codeph>intent_tool_predicate</codeph> 根据路由器返回的 <codeph>tool_categories</codeph> 动态过滤。</li>
+                <li><b>GeneralViz：</b>热力图、专题图、气泡图、交互式地图。</li>
+                <li><b>GeneralSummaryLoop：</b>摘要生成 + 质量检查循环。</li>
+            </ol>
+        </section>
+
+        <section id="planner-agent">
+            <title>Planner Agent（动态编排器）</title>
+            <p>Planner 不走固定的 Sequential 顺序，而是由 LLM 根据任务需求动态选择调用哪个子 Agent 或工作流：</p>
+            <ul>
+                <li><b>5 个子 Agent：</b>PlannerExplorer、PlannerProcessor、PlannerAnalyzer、PlannerVisualizer、PlannerReporter</li>
+                <li><b>2 个打包工作流：</b><codeph>ExploreAndProcess</codeph>（并行摄入 + 处理，8 跳→3 跳）、<codeph>AnalyzeAndVisualize</codeph>（分析 + 可视化，2 跳）</li>
+                <li><b>工具集：</b>19 Toolsets + SkillBundles + MCP Hub + Fusion + KnowledgeGraph</li>
+            </ul>
+        </section>
+
+        <section id="factory-functions">
+            <title>ADK 单父约束与工厂函数</title>
+            <p>ADK 框架强制要求每个 Agent 实例只能有一个父级（<codeph>already has a parent</codeph> 约束）。当多条管线需要复用相同配置的 Agent 时，不能共享实例。</p>
+            <p>解决方案：4 个工厂函数（<codeph>_make_planner_explorer</codeph>、<codeph>_make_planner_processor</codeph>、<codeph>_make_planner_analyzer</codeph>、<codeph>_make_planner_visualizer</codeph>）创建配置相同但实例独立的 Agent。</p>
+            <note type="attention">工厂函数增殖是已知的维护负担——每新增一种可复用 Agent 就要新增一个工厂函数，且所有工厂必须保持配置同步。</note>
+        </section>
+
+        <section id="model-tiering">
+            <title>模型分层策略</title>
+            <table frame="all" rowsep="1" colsep="1" id="model-tier-table">
+                <title>三级模型分层</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="2*"/>
+                    <colspec colname="c3" colnum="3" colwidth="3*"/>
+                    <thead>
+                        <row>
+                            <entry>层级</entry>
+                            <entry>模型</entry>
+                            <entry>使用场景</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>Fast</entry>
+                            <entry>Gemini 2.0 Flash</entry>
+                            <entry>路由器、质量检查器、语义预取</entry>
+                        </row>
+                        <row>
+                            <entry>Standard</entry>
+                            <entry>Gemini 2.5 Flash</entry>
+                            <entry>主 Agent（默认）</entry>
+                        </row>
+                        <row>
+                            <entry>Premium</entry>
+                            <entry>Gemini 2.5 Pro</entry>
+                            <entry>Reporter（复杂综合推理）</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <p>通过 ContextVar <codeph>current_model_tier</codeph> 支持按请求粒度的模型覆盖，使管理员或高级用户可以在特定场景使用更强的模型。</p>
+        </section>
+
+        <section id="quality-loop">
+            <title>质量保证循环</title>
+            <p>三条 Sequential 管线均内置了 LoopAgent 质量保证循环：</p>
+            <ol>
+                <li>Generator Agent（如 DataAnalysis）产出分析报告。</li>
+                <li>Critic Agent（QualityChecker）通过 <codeph>approve_quality</codeph> 工具评估输出。</li>
+                <li>若发现问题，输出修改意见，LoopAgent 驱动 Generator 重新执行（最多 3 次迭代）。</li>
+                <li>若通过，输出传递给下一个 Agent。</li>
+            </ol>
+            <p>质量检查器验证的维度包括：结果完整性、DRL 优化效果（是否产生了地块置换）、遥感/统计分析值域合理性（如 NDVI 取值范围 -1~1、Moran's I 取值范围 -1~1）。</p>
+        </section>
+    </conbody>
+</concept>

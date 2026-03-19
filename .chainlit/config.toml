@@ -3,6 +3,7 @@
 name = "Data Agent"
 user_env = []
 duration = 0
+watch_ignore = ["data_agent/uploads/**", "data_agent/downloads/**", "*.log", "*.db"]
 
 [features]
 prompt_playground = true

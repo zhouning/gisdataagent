@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-knowledge-graph" xml:lang="zh-CN">
+    <title>地理知识图谱</title>
+    <shortdesc>基于 NetworkX DiGraph 的内存图结构，通过 STRtree 空间索引自动检测地块间的邻接、包含、重叠关系，支持多图层合并与路径查询。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <conbody>
+        <section id="graph-design">
+            <title>图结构设计</title>
+            <p><filepath>knowledge_graph.py</filepath>（625 行）封装了 <codeph>GeoKnowledgeGraph</codeph> 类：</p>
+            <ul>
+                <li><b>节点属性：</b><codeph>_entity_type</codeph>、<codeph>_geometry_type</codeph>、<codeph>_geom_wkt</codeph> + 源 GeoDataFrame 的全部列。</li>
+                <li><b>边属性：</b><codeph>type</codeph>（adjacent_to、contains、within、overlaps、nearest_to）。</li>
+                <li><b>持久化：</b><codeph>agent_knowledge_graphs</codeph> 表（JSONB 存储 graph_data、entity_types、source_files）。</li>
+            </ul>
+        </section>
+
+        <section id="spatial-relations">
+            <title>空间关系检测</title>
+            <table frame="all" rowsep="1" colsep="1" id="relations-table">
+                <title>五种空间关系</title>
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>关系类型</entry>
+                            <entry>检测方法</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><codeph>adjacent_to</codeph></entry>
+                            <entry>STRtree 空间索引 + 边界 touch / 共边检测</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>contains</codeph> / <codeph>within</codeph></entry>
+                            <entry><codeph>geom.contains()</codeph> 有向边（A contains B ⟹ B within A）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>overlaps</codeph></entry>
+                            <entry>几何相交判定</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>nearest_to</codeph></entry>
+                            <entry>最近邻距离检测</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="query-api">
+            <title>查询接口</title>
+            <dl>
+                <dlentry>
+                    <dt><codeph>query_neighbors(node_id, depth=1)</codeph></dt>
+                    <dd>自我图遍历至指定深度，返回 ego-graph 子图。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt><codeph>query_path(source_id, target_id)</codeph></dt>
+                    <dd>无向视图上的最短路径。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt><codeph>query_by_type(entity_type)</codeph></dt>
+                    <dd>按实体类型过滤节点。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt><codeph>merge_layer(gdf, entity_type)</codeph></dt>
+                    <dd>跨图层关系检测——新节点与已有节点建立空间关系。</dd>
+                </dlentry>
+            </dl>
+            <note type="attention">
+                <ul>
+                    <li>纯内存图，无持久化到图数据库（如 Neo4j），大数据集受内存限制。</li>
+                    <li>O(n²) 空间对检测以 <codeph>_MAX_SPATIAL_PAIRS = 1000</codeph> 为硬上限截断。</li>
+                    <li>几何体以 WKT 字符串存储供 JSON 序列化，丧失了图内空间索引能力。</li>
+                    <li>无时序建模——关系是静态的，不支持土地利用变化序列。</li>
+                </ul>
+            </note>
+        </section>
+    </conbody>
+</concept>
