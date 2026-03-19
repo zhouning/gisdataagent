@@ -1,10 +1,10 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v12.0
+# GIS Data Agent (ADK Edition) v12.1
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend (11 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend (13 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, Pareto multi-objective optimization, dynamic agent composition, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 92 REST API endpoints. **v12.0 adds user self-service extensibility**: Custom Skills (agent behaviors), User Tools (declarative templates), and multi-agent pipeline visual composition.
+The system implements **all 21 of 21 (100%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, Pareto multi-objective optimization, dynamic agent composition, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 95 REST API endpoints. **v12.1 adds automatic data lineage tracking, industry analysis templates, and the Cartographic Precision UI design system**.
 
 ## 📚 Official Technical Documentation
 
@@ -19,10 +19,10 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2121 tests, 92 test files |
+| Test Coverage | 2123 tests, 92 test files |
 | Toolsets | 23 BaseToolset (incl. UserToolset), 5 SkillBundle, 130+ tools |
 | ADK Skills | 18 scenario skills + DB-driven custom Skills + User Tools |
-| REST API | 92 endpoints |
+| REST API | 95 endpoints |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |

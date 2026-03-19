@@ -418,10 +418,47 @@ _BUILTIN_TEMPLATES = [
         "default_parameters": {"t1_file": "", "t2_file": ""},
         "tags": ["change-detection", "temporal", "comparison"],
     },
+    # --- v12.1: 行业分析模板 ---
+    {
+        "template_name": "城市热岛效应分析",
+        "description": "基于遥感影像计算地表温度(LST)，分析城市热岛效应空间分布与强度",
+        "category": "城市规划",
+        "pipeline_type": "general",
+        "steps": [
+            {"id": "load", "prompt": "加载研究区域遥感影像数据，提取热红外波段信息", "pipeline_type": "general"},
+            {"id": "lst", "prompt": "计算地表温度(LST)并生成温度分布栅格", "pipeline_type": "general", "depends_on": ["load"]},
+            {"id": "uhi", "prompt": "执行热岛效应空间统计分析，识别热岛中心和冷岛区域，计算UHI强度指数", "pipeline_type": "general", "depends_on": ["lst"]},
+            {"id": "report", "prompt": "生成热岛效应分析报告，包含温度分布图、热岛强度等级图和统计摘要", "pipeline_type": "general", "depends_on": ["uhi"]},
+        ],
+        "tags": ["urban", "heat-island", "LST", "remote-sensing"],
+    },
+    {
+        "template_name": "植被变化检测",
+        "description": "对比两期遥感影像的NDVI指数，检测植被覆盖变化区域和趋势",
+        "category": "环境监测",
+        "pipeline_type": "general",
+        "steps": [
+            {"id": "load", "prompt": "加载两期遥感影像数据（{t1_file}和{t2_file}），提取近红外和红光波段", "pipeline_type": "general"},
+            {"id": "ndvi", "prompt": "分别计算两期影像的NDVI植被指数", "pipeline_type": "general", "depends_on": ["load"]},
+            {"id": "change", "prompt": "执行NDVI差值变化检测，识别植被增加、减少和稳定区域，统计变化面积", "pipeline_type": "general", "depends_on": ["ndvi"]},
+            {"id": "report", "prompt": "生成植被变化检测报告，包含NDVI对比图、变化分类图和面积统计表", "pipeline_type": "general", "depends_on": ["change"]},
+        ],
+        "tags": ["vegetation", "NDVI", "change-detection", "remote-sensing"],
+    },
+    {
+        "template_name": "土地利用优化方案",
+        "description": "使用深度强化学习(DRL)优化土地利用布局，降低碎片化指数并提升空间效率",
+        "category": "国土资源",
+        "pipeline_type": "optimization",
+        "steps": [
+            {"id": "load", "prompt": "加载土地利用现状数据，分析用地类型分布和碎片化指数", "pipeline_type": "optimization"},
+            {"id": "optimize", "prompt": "执行DRL土地利用优化，目标为降低碎片化指数、提升连片度", "pipeline_type": "optimization", "depends_on": ["load"]},
+            {"id": "compare", "prompt": "对比优化前后的碎片化指数、面积变化和空间布局差异", "pipeline_type": "optimization", "depends_on": ["optimize"]},
+            {"id": "report", "prompt": "生成优化方案报告，包含前后对比可视化和量化指标", "pipeline_type": "optimization", "depends_on": ["compare"]},
+        ],
+        "tags": ["land-use", "optimization", "DRL", "fragmentation"],
+    },
 ]
-
-
-def seed_builtin_templates() -> int:
     """Insert built-in templates if they don't exist. Returns count of inserted."""
     engine = get_engine()
     if not engine:

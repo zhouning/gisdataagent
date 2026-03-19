@@ -2102,6 +2102,10 @@ async def _api_user_tools_test(request: Request):
 
 def get_frontend_api_routes():
     """Return list of Starlette routes for the frontend API."""
+    from .api.mcp_routes import get_mcp_routes
+    from .api.workflow_routes import get_workflow_routes
+    from .api.skills_routes import get_skills_routes
+
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}", endpoint=_api_catalog_detail, methods=["GET"]),
@@ -2126,35 +2130,18 @@ def get_frontend_api_routes():
         Route("/api/user/memories/{id:int}", endpoint=_api_user_memories_delete, methods=["DELETE"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
-        Route("/api/mcp/servers", endpoint=_api_mcp_servers, methods=["GET"]),
-        Route("/api/mcp/servers", endpoint=_api_mcp_server_create, methods=["POST"]),
-        Route("/api/mcp/tools", endpoint=_api_mcp_tools, methods=["GET"]),
-        Route("/api/mcp/servers/mine", endpoint=_api_mcp_servers_mine, methods=["GET"]),
-        Route("/api/mcp/servers/test", endpoint=_api_mcp_test_connection, methods=["POST"]),
-        Route("/api/mcp/servers/{name}/toggle", endpoint=_api_mcp_toggle, methods=["POST"]),
-        Route("/api/mcp/servers/{name}/reconnect", endpoint=_api_mcp_reconnect, methods=["POST"]),
-        Route("/api/mcp/servers/{name}/share", endpoint=_api_mcp_server_share, methods=["POST"]),
-        Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_update, methods=["PUT"]),
-        Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_delete, methods=["DELETE"]),
+        # MCP Hub (S-4: delegated to api/mcp_routes.py)
+        *get_mcp_routes(),
         # Workflows (v5.4)
-        Route("/api/workflows", endpoint=_api_workflows_list, methods=["GET"]),
-        Route("/api/workflows", endpoint=_api_workflows_create, methods=["POST"]),
-        Route("/api/workflows/{id:int}", endpoint=_api_workflow_detail, methods=["GET"]),
-        Route("/api/workflows/{id:int}", endpoint=_api_workflow_update, methods=["PUT"]),
-        Route("/api/workflows/{id:int}", endpoint=_api_workflow_delete, methods=["DELETE"]),
-        Route("/api/workflows/{id:int}/execute", endpoint=_api_workflow_execute, methods=["POST"]),
-        Route("/api/workflows/{id:int}/runs", endpoint=_api_workflow_runs, methods=["GET"]),
-        Route("/api/workflows/{id:int}/runs/{run_id:int}/status", endpoint=_api_workflow_run_status, methods=["GET"]),
+        # Workflows (S-4: delegated to api/workflow_routes.py)
+        *get_workflow_routes(),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
         # Capabilities (aggregated skills + toolsets)
         Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
         # Custom Skills (v8.0.1)
-        Route("/api/skills", endpoint=_api_skills_list, methods=["GET"]),
-        Route("/api/skills", endpoint=_api_skills_create, methods=["POST"]),
-        Route("/api/skills/{id:int}", endpoint=_api_skills_detail, methods=["GET"]),
-        Route("/api/skills/{id:int}", endpoint=_api_skills_update, methods=["PUT"]),
-        Route("/api/skills/{id:int}", endpoint=_api_skills_delete, methods=["DELETE"]),
+        # Custom Skills (S-4: delegated to api/skills_routes.py)
+        *get_skills_routes(),
         # Knowledge Base (v8.0.2)
         # Bundles (v10.0.2)
         Route("/api/bundles", endpoint=_api_bundles_list, methods=["GET"]),
