@@ -60,11 +60,12 @@ PIPELINE_CONFIG = {
 
 # Per-pipeline pass rate thresholds (0.0 – 1.0).
 # A pipeline passes if its pass_rate >= threshold.
+# Override via env vars: EVAL_THRESHOLD_GENERAL=0.8 etc.
 PIPELINE_THRESHOLDS = {
-    "optimization": 0.6,
-    "governance": 0.6,
-    "general": 0.7,
-    "planner": 0.5,
+    "optimization": float(os.environ.get("EVAL_THRESHOLD_OPTIMIZATION", "0.6")),
+    "governance": float(os.environ.get("EVAL_THRESHOLD_GOVERNANCE", "0.6")),
+    "general": float(os.environ.get("EVAL_THRESHOLD_GENERAL", "0.7")),
+    "planner": float(os.environ.get("EVAL_THRESHOLD_PLANNER", "0.5")),
 }
 
 # ---------------------------------------------------------------------------
