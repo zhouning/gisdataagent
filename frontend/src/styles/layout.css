@@ -2356,6 +2356,10 @@ body {
 .workflow-run-time { font-size: 11px; color: var(--text-tertiary); }
 .workflow-run-detail { display: flex; gap: 12px; font-size: 11px; color: var(--text-secondary); }
 .workflow-run-error { font-size: 10.5px; color: #dc2626; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workflow-live-status {
+  padding: 10px 12px; margin-bottom: 8px; background: #eff6ff; border: 1px solid #bfdbfe;
+  border-radius: var(--radius-sm); border-left: 3px solid #3b82f6;
+}
 
 /* Workflow Editor */
 .workflow-editor { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
