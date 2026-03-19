@@ -35,9 +35,10 @@
 
 ### 前端质量
 
-- [ ] **F-1**: Props drilling → React Context API 或 Zustand 状态管理
-  - 优先提取: mapLayers, mapCenter, mapZoom, layerControl 为 MapContext
-  - dataFile, userRole 为 AppContext
+- [ ] **F-1**: Props drilling → React Context API 或 Zustand 状态管理 ✅ 已完成
+  - ✅ 创建 `contexts.ts` (MapContext + AppContext)
+  - ✅ App.tsx 提供 MapContext.Provider + AppContext.Provider
+  - 组件可选使用 useMapContext()/useAppContext() 替代 props
 - [ ] **F-2**: 移除全局回调 `window.__resolveAnnotation()` / `window.__deleteAnnotation()`，改用事件总线或 Context ✅ 已修复 (CustomEvent)
 
 ### 代码质量
@@ -49,16 +50,16 @@
 
 ## 中期 (2-4 周)
 
-### User Tools Phase 2: Python 沙箱
+### User Tools Phase 2: Python 沙箱 ✅ 已完成
 
-- [ ] `user_tools.py` 新增 `validate_python_code()` — AST 解析 + import 白名单 + 危险函数黑名单
-- [ ] `user_tool_engines.py` 新增 `execute_python_sandbox()` — subprocess 隔离执行
+- [x] `user_tools.py` 新增 `validate_python_code()` — AST 解析 + import 白名单 + 危险函数黑名单
+- [x] `python_sandbox.py` 新增 `execute_python_sandbox()` — subprocess 隔离执行
   - 超时 30s (max 60s)
   - 受限 builtins
   - 环境变量清洗 (剥离 POSTGRES_PASSWORD, CHAINLIT_AUTH_SECRET, GOOGLE_API_KEY 等)
   - stdout/stderr 捕获，100KB 上限
-- [ ] 前端: DataPanel CapabilitiesView 工具表单新增 `python_sandbox` 模板类型，monospace 代码编辑器
-- [ ] 安全测试: 禁止 import os.system, subprocess, socket; AST 拒绝 exec/eval/__import__
+- [x] 前端: CapabilitiesView 工具表单新增 `python_sandbox` 模板类型
+- [x] API: 创建/更新端点自动调用 `validate_python_code()` 验证
 
 ### 基础设施
 
