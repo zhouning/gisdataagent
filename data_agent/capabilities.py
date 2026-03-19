@@ -1,12 +1,10 @@
 """
 Capabilities introspection — list built-in ADK skills and toolsets with metadata.
 
-Lightweight module: parses SKILL.md frontmatter directly (no ADK agent imports).
+Uses ADK's list_skills_in_dir() for skill discovery (v1.27+).
 Results are module-level cached since skills/toolsets are static at runtime.
 """
 import pathlib
-
-import yaml
 
 _SKILLS_DIR = pathlib.Path(__file__).parent / "skills"
 
@@ -15,39 +13,28 @@ _toolsets_cache: list[dict] | None = None
 
 
 def list_builtin_skills() -> list[dict]:
-    """Parse SKILL.md frontmatter from each skill directory. Cached."""
+    """Discover skills via ADK list_skills_in_dir(). Cached."""
     global _builtin_skills_cache
     if _builtin_skills_cache is not None:
         return _builtin_skills_cache
 
     results: list[dict] = []
-    if not _SKILLS_DIR.is_dir():
-        _builtin_skills_cache = results
-        return results
-
-    for p in sorted(_SKILLS_DIR.iterdir()):
-        skill_md = p / "SKILL.md"
-        if not p.is_dir() or not skill_md.exists():
-            continue
-        try:
-            text = skill_md.read_text(encoding="utf-8")
-            parts = text.split("---", 2)
-            if len(parts) < 3:
-                continue
-            fm = yaml.safe_load(parts[1])
-            if not isinstance(fm, dict):
-                continue
-            metadata = fm.get("metadata") or {}
+    try:
+        from google.adk.skills import list_skills_in_dir
+        raw = list_skills_in_dir(str(_SKILLS_DIR))
+        for skill_id, frontmatter in sorted(raw.items()):
+            data = frontmatter.model_dump() if hasattr(frontmatter, "model_dump") else {}
+            meta = data.get("metadata") or {}
             results.append({
-                "name": fm.get("name", p.name),
-                "description": fm.get("description", ""),
-                "domain": metadata.get("domain", ""),
-                "version": metadata.get("version", ""),
-                "intent_triggers": metadata.get("intent_triggers", ""),
+                "name": data.get("name", skill_id),
+                "description": data.get("description", ""),
+                "domain": meta.get("domain", ""),
+                "version": meta.get("version", ""),
+                "intent_triggers": meta.get("intent_triggers", ""),
                 "type": "builtin_skill",
             })
-        except Exception:
-            continue
+    except Exception:
+        pass
 
     _builtin_skills_cache = results
     return results
