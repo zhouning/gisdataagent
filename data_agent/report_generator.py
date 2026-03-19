@@ -139,7 +139,7 @@ def _add_cover_page(doc, title, author, pipeline_type):
 def _render_markdown_body(doc, markdown_text):
     """Parse markdown text and render into the Word document."""
     lines = markdown_text.split('\n')
-    img_pattern = r'(?:[a-zA-Z]:\\|/)[^<>:"|?*]+\.png'
+    img_pattern = r'[^<>:"|?*\s]+\.png'
 
     i = 0
     while i < len(lines):

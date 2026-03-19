@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-multi-tenancy" xml:lang="zh-CN">
+    <title>多租户隔离与用户上下文</title>
+    <shortdesc>系统通过 Python ContextVar 实现异步安全的用户身份传播，配合文件沙箱和数据库 RLS 注入，在不修改任何工具函数签名的前提下实现多租户隔离。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <conbody>
+        <section id="contextvar-design">
+            <title>ContextVar 模式</title>
+            <p><filepath>user_context.py</filepath>（36 行）定义了六个上下文变量：</p>
+            <table frame="all" rowsep="1" colsep="1" id="contextvar-table">
+                <title>上下文变量清单</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="3*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>变量</entry>
+                            <entry>默认值</entry>
+                            <entry>用途</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><codeph>current_user_id</codeph></entry>
+                            <entry>空字符串</entry>
+                            <entry>用户标识，用于文件沙箱、审计日志、Token 追踪</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>current_session_id</codeph></entry>
+                            <entry>空字符串</entry>
+                            <entry>Chainlit 会话 ID</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>current_user_role</codeph></entry>
+                            <entry>analyst</entry>
+                            <entry>RBAC 角色（admin / analyst / viewer）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>current_trace_id</codeph></entry>
+                            <entry>空字符串</entry>
+                            <entry>请求追踪 UUID</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>current_tool_categories</codeph></entry>
+                            <entry>空集合</entry>
+                            <entry>路由器返回的工具类别，用于动态过滤</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>current_model_tier</codeph></entry>
+                            <entry>空字符串</entry>
+                            <entry>模型层级覆盖（fast / standard / premium）</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <p>ContextVar 在每条用户消息到达时由 <filepath>app.py</filepath> 的 <codeph>_set_user_context()</codeph> 设置，所有工具函数通过 <codeph>current_user_id.get()</codeph> 隐式读取，无需修改函数签名。</p>
+        </section>
+
+        <section id="file-sandbox">
+            <title>文件沙箱</title>
+            <p>每个用户的文件隔离在 <filepath>uploads/{user_id}/</filepath> 目录下：</p>
+            <ul>
+                <li><codeph>get_user_upload_dir()</codeph>：返回用户沙箱路径，不存在则自动创建。</li>
+                <li><codeph>_generate_output_path(prefix, ext)</codeph>：所有工具输出文件写入用户沙箱，文件名带 UUID 后缀防冲突。</li>
+                <li><codeph>_resolve_path(file_path)</codeph>：三级路径解析——用户沙箱 → 共享上传目录 → 云存储 OBS 下载。</li>
+                <li><codeph>is_path_in_sandbox(path)</codeph>：验证路径在用户沙箱或共享目录内，防止路径遍历攻击。</li>
+            </ul>
+        </section>
+
+        <section id="database-rls">
+            <title>数据库级隔离</title>
+            <p>在 SQL 查询执行前，<filepath>database_tools.py</filepath> 注入用户上下文：</p>
+            <codeblock>SET app.current_user = :user_id</codeblock>
+            <p>该设置为 PostgreSQL 行级安全策略（RLS）提供运行时上下文，使数据库层面的多租户隔离成为可能。</p>
+        </section>
+
+        <section id="tenancy-concerns">
+            <title>架构评价</title>
+            <note type="attention">
+                <ul>
+                    <li><codeph>current_user_role</codeph> 默认值为 <codeph>analyst</codeph>——若 ContextVar 未设置（异常路径），工具将以 analyst 权限运行，存在权限提升风险。建议改为无权限默认。</li>
+                    <li>沙箱验证基于 <codeph>abs_path.startswith(user_dir)</codeph> 字符串前缀匹配，可能被符号链接绕过。</li>
+                    <li>ContextVar 无过期机制——正常情况下随异步任务结束自动清理，但事件循环异常时可能泄露上下文。</li>
+                </ul>
+            </note>
+        </section>
+    </conbody>
+</concept>

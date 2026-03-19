@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-fusion-engine" xml:lang="zh-CN">
+    <title>多模态数据融合引擎架构</title>
+    <shortdesc>融合引擎是系统中最复杂的子系统之一，由 22 个聚焦模块组成，实现五阶段融合流水线、四级语义字段匹配、10 种融合策略和 PostGIS 推算下沉。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <conbody>
+        <section id="package-structure">
+            <title>包结构</title>
+            <p>融合引擎从早期的单一 <filepath>fusion_engine.py</filepath> 重构为职责清晰的包结构：</p>
+            <table frame="all" rowsep="1" colsep="1" id="fusion-modules-table">
+                <title>核心模块清单</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>模块</entry>
+                            <entry>规模</entry>
+                            <entry>职责</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><filepath>models.py</filepath></entry>
+                            <entry>~50 行</entry>
+                            <entry>数据模型：<codeph>FusionSource</codeph>、<codeph>CompatibilityReport</codeph>、<codeph>FusionResult</codeph></entry>
+                        </row>
+                        <row>
+                            <entry><filepath>profiling.py</filepath></entry>
+                            <entry>~300 行</entry>
+                            <entry>数据源画像（vector/raster/tabular/point_cloud/PostGIS）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>matching.py</filepath></entry>
+                            <entry>~393 行</entry>
+                            <entry>四级语义字段匹配（精确→等价→嵌入→模糊）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>compatibility.py</filepath></entry>
+                            <entry>~150 行</entry>
+                            <entry>CRS 兼容性、空间重叠 IoU、时间对齐评估</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>alignment.py</filepath></entry>
+                            <entry>~200 行</entry>
+                            <entry>单位转换、列冲突解决、CRS 重投影</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>execution.py</filepath></entry>
+                            <entry>~363 行</entry>
+                            <entry>策略选择、多源编排、自动路由</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>validation.py</filepath></entry>
+                            <entry>~100 行</entry>
+                            <entry>10 维质量验证（完整性、精度、一致性等）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>strategies/</filepath></entry>
+                            <entry>12 文件</entry>
+                            <entry>10 种融合策略实现 + 注册表</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="fusion-pipeline">
+            <title>五阶段融合流水线</title>
+            <ol>
+                <li><b>数据画像（Profiling）：</b><codeph>profile_source()</codeph> 自动检测数据类型、CRS、边界、行数、列结构、几何类型。对矢量/栅格/表格/点云/PostGIS 五种后端分别处理。</li>
+                <li><b>兼容性评估（Compatibility）：</b><codeph>assess_compatibility()</codeph> 计算 CRS 兼容性、空间重叠 IoU、时间对齐程度、字段匹配得分，输出 <codeph>CompatibilityReport</codeph> 并推荐可用策略。</li>
+                <li><b>源对齐（Alignment）：</b><codeph>align_sources()</codeph> 执行 CRS 重投影、单位转换（如 sqm→hectares）、列名冲突解决。</li>
+                <li><b>策略执行（Fusion）：</b><codeph>execute_fusion(strategy='auto')</codeph> 调用 <codeph>_auto_select_strategy()</codeph> 进行规则式评分（IoU、几何类型、行数比、用户提示），选择最高分策略执行。</li>
+                <li><b>质量验证（Validation）：</b><codeph>validate_quality()</codeph> 对融合结果执行 10 维质量评分。</li>
+            </ol>
+        </section>
+
+        <section id="semantic-matching">
+            <title>四级语义字段匹配</title>
+            <table frame="all" rowsep="1" colsep="1" id="matching-table">
+                <title>渐进式匹配策略</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>级别</entry>
+                            <entry>分数</entry>
+                            <entry>机制</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>L1 精确匹配</entry>
+                            <entry>1.0</entry>
+                            <entry>字段名完全相同（大小写不敏感）</entry>
+                        </row>
+                        <row>
+                            <entry>L2 等价组匹配</entry>
+                            <entry>0.8</entry>
+                            <entry>通过 <filepath>semantic_catalog.yaml</filepath> 注册的同义词组（如 [area, 面积, zmj]）</entry>
+                        </row>
+                        <row>
+                            <entry>L3 嵌入匹配</entry>
+                            <entry>≥0.78</entry>
+                            <entry>Gemini <codeph>text-embedding-004</codeph> 向量余弦相似度</entry>
+                        </row>
+                        <row>
+                            <entry>L4 模糊匹配</entry>
+                            <entry>0.5-0.7</entry>
+                            <entry><codeph>SequenceMatcher</codeph> 字符串相似度</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="strategy-matrix">
+            <title>策略矩阵</title>
+            <p>策略矩阵将数据类型对映射到可用策略：</p>
+            <ul>
+                <li><b>Vector + Vector：</b>spatial_join、overlay、nearest_join、attribute_join</li>
+                <li><b>Vector + Raster：</b>zonal_statistics、point_sampling、height_assign</li>
+                <li><b>Raster + Raster：</b>band_stack</li>
+                <li><b>Stream + Vector：</b>time_snapshot</li>
+                <li><b>Any + Raster：</b>raster_vectorize</li>
+            </ul>
+            <p>v7.1 将 LLM 策略路由替换为规则式评分，基于 IoU、几何类型组合、行数比和用户提示中的关键词进行策略排序。</p>
+        </section>
+
+        <section id="postgis-pushdown">
+            <title>PostGIS 推算下沉</title>
+            <p>对于大数据集（行数超过阈值且双源均在 PostGIS 中），融合操作可直接在数据库中以 SQL 执行，减少内存占用和数据传输开销。</p>
+            <note type="attention">
+                <ul>
+                    <li>嵌入 API 依赖 Gemini <codeph>text-embedding-004</codeph>，模块级缓存无 TTL，故障时跳过嵌入匹配降级到 L4。</li>
+                    <li>空间对爆炸保护硬上限 <codeph>_MAX_SPATIAL_PAIRS = 1000</codeph>，超限后静默截断，对被截断数据无告知。</li>
+                    <li>多源融合按固定顺序（vector→raster→tabular）两两配对，非最优执行计划。</li>
+                </ul>
+            </note>
+        </section>
+    </conbody>
+</concept>

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="tg-map-rendering-pipeline" xml:lang="zh-CN">
+    <title>地图渲染管线</title>
+    <shortdesc>系统支持 Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎，通过 layer_control 元数据协议驱动前端图层渲染，支持 7 种图层类型和 4 种底图。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <refbody>
+        <section id="dual-engine">
+            <title>双渲染引擎</title>
+            <table frame="all" rowsep="1" colsep="1" id="engine-table">
+                <title>渲染引擎对比</title>
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="2*"/>
+                    <colspec colname="c3" colnum="3" colwidth="2*"/>
+                    <colspec colname="c4" colnum="4" colwidth="3*"/>
+                    <thead>
+                        <row>
+                            <entry>引擎</entry>
+                            <entry>库</entry>
+                            <entry>维度</entry>
+                            <entry>适用场景</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>2D 引擎</entry>
+                            <entry>Leaflet.js 1.9</entry>
+                            <entry>2D</entry>
+                            <entry>专题图、热力图、气泡图、矢量叠加</entry>
+                        </row>
+                        <row>
+                            <entry>3D 引擎</entry>
+                            <entry>deck.gl 9.2 + MapLibre GL 5.19</entry>
+                            <entry>2.5D / 3D</entry>
+                            <entry>建筑拉伸、地形渲染、点云可视化</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <p>默认使用 Leaflet.js 2D 引擎。当 <codeph>layer_control</codeph> 中包含 <codeph>render_3d: true</codeph> 或图层类型为 <codeph>extrusion</codeph>/<codeph>point_cloud</codeph> 时，自动切换到 deck.gl 3D 引擎。</p>
+        </section>
+
+        <section id="layer-control-protocol">
+            <title>layer_control 元数据协议</title>
+            <p>后端 Agent 工具函数通过 <codeph>layer_control</codeph> 字典描述图层渲染配置：</p>
+            <codeblock>{
+    "action": "add_layer",
+    "layer_type": "choropleth",
+    "data_url": "/api/files/{file_id}",
+    "style": {
+        "column": "population",
+        "scheme": "YlOrRd",
+        "classes": 5,
+        "opacity": 0.7
+    },
+    "bounds": [[lat1, lng1], [lat2, lng2]],
+    "tooltip_fields": ["name", "population", "area"],
+    "render_3d": false
+}</codeblock>
+        </section>
+
+        <section id="layer-types">
+            <title>支持的图层类型</title>
+            <table frame="all" rowsep="1" colsep="1" id="layer-types-table">
+                <title>7 种图层类型</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>图层类型</entry>
+                            <entry>引擎</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><codeph>choropleth</codeph></entry>
+                            <entry>2D</entry>
+                            <entry>分级设色专题图（等间距/自然断点/分位数）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>heatmap</codeph></entry>
+                            <entry>2D</entry>
+                            <entry>核密度热力图</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>bubble</codeph></entry>
+                            <entry>2D</entry>
+                            <entry>气泡图（面积映射数值）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>marker_cluster</codeph></entry>
+                            <entry>2D</entry>
+                            <entry>点聚合（MarkerCluster 插件）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>geojson</codeph></entry>
+                            <entry>2D</entry>
+                            <entry>通用 GeoJSON 矢量叠加</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>extrusion</codeph></entry>
+                            <entry>3D</entry>
+                            <entry>建筑/地块拉伸（deck.gl PolygonLayer）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>point_cloud</codeph></entry>
+                            <entry>3D</entry>
+                            <entry>LiDAR 点云渲染（deck.gl PointCloudLayer）</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="basemaps">
+            <title>底图配置</title>
+            <p>通过 <codeph>/api/config/basemaps</codeph> 端点提供 4 种底图选项：</p>
+            <ul>
+                <li><b>天地图矢量：</b>中国官方地图服务（需 API Key）</li>
+                <li><b>天地图影像：</b>卫星影像底图</li>
+                <li><b>OpenStreetMap：</b>开源社区地图</li>
+                <li><b>暗色底图：</b>CartoDB Dark Matter（数据可视化场景）</li>
+            </ul>
+        </section>
+
+        <section id="zoom-and-bounds">
+            <title>视口控制</title>
+            <p>Agent 工具函数通过 <codeph>bounds</codeph> 字段指定图层边界，前端自动执行 <codeph>map.fitBounds()</codeph> 缩放到数据范围。v7.5.6 修复了流域分析场景下的缩放问题——当 <codeph>bounds</codeph> 为空时 fallback 到数据集质心。</p>
+            <note type="attention">
+                <ul>
+                    <li>大数据集（10,000+ 要素）的 GeoJSON 直接传输到前端，无矢量切片（Vector Tiles）支持。</li>
+                    <li>2D/3D 引擎切换时地图状态（视口、图层）不保留。</li>
+                    <li>缺少图层缓存——每次轮询到新配置都重新加载数据。</li>
+                </ul>
+            </note>
+        </section>
+    </refbody>
+</reference>
