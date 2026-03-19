@@ -234,8 +234,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         (ann.comment ? `<p>${ann.comment}</p>` : '') +
         `<div class="annotation-popup-meta">${ann.username} · ${time}</div>` +
         `<div class="annotation-popup-actions">` +
-        `<button onclick="window.__resolveAnnotation(${ann.id})">${ann.is_resolved ? '取消解决' : '标为已解决'}</button>` +
-        `<button onclick="window.__deleteAnnotation(${ann.id})" class="danger">删除</button>` +
+        `<button onclick="document.dispatchEvent(new CustomEvent('ann-resolve', {detail: ${ann.id}}))">${ann.is_resolved ? '取消解决' : '标为已解决'}</button>` +
+        `<button onclick="document.dispatchEvent(new CustomEvent('ann-delete', {detail: ${ann.id}}))" class="danger">删除</button>` +
         `</div></div>`,
         { maxWidth: 250 }
       );
@@ -243,9 +243,10 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     }
   }, [annotations]);
 
-  // Global callbacks for popup buttons
+  // Event-driven annotation actions (replaces window.__ globals — F-2)
   useEffect(() => {
-    (window as any).__resolveAnnotation = async (id: number) => {
+    const handleResolve = async (e: Event) => {
+      const id = (e as CustomEvent).detail;
       const ann = annotations.find((a) => a.id === id);
       if (!ann) return;
       try {
@@ -258,7 +259,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         fetchAnnotations();
       } catch { /* ignore */ }
     };
-    (window as any).__deleteAnnotation = async (id: number) => {
+    const handleDelete = async (e: Event) => {
+      const id = (e as CustomEvent).detail;
       try {
         await fetch(`/api/annotations/${id}`, {
           method: 'DELETE',
@@ -267,9 +269,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         fetchAnnotations();
       } catch { /* ignore */ }
     };
+    document.addEventListener('ann-resolve', handleResolve);
+    document.addEventListener('ann-delete', handleDelete);
     return () => {
-      delete (window as any).__resolveAnnotation;
-      delete (window as any).__deleteAnnotation;
+      document.removeEventListener('ann-resolve', handleResolve);
+      document.removeEventListener('ann-delete', handleDelete);
     };
   }, [annotations, fetchAnnotations]);
 

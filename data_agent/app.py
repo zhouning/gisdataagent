@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import asyncio
+import threading
 import time
 import json
 import zipfile
@@ -209,6 +210,7 @@ except Exception as _mcp_err:
     logger.warning("MCP Hub config loading failed: %s", _mcp_err)
     _mcp_hub_loaded = False
 _mcp_started = False
+_mcp_lock = threading.Lock()
 
 # --- Chainlit Data Layer: thread/message persistence in PostgreSQL ---
 try:
@@ -2251,14 +2253,16 @@ async def start():
     # Set i18n language from env (default: zh)
     set_language(os.environ.get("UI_LANGUAGE", "zh"))
 
-    # Start MCP Hub connections (once, on first chat start)
+    # Start MCP Hub connections (once, on first chat start — thread-safe)
     global _mcp_started
     if not _mcp_started and _mcp_hub_loaded:
-        try:
-            await get_mcp_hub().startup()
-        except Exception as e:
-            logger.warning("MCP Hub startup failed: %s", e)
-        _mcp_started = True
+        with _mcp_lock:
+            if not _mcp_started:  # double-check after acquiring lock
+                try:
+                    await get_mcp_hub().startup()
+                except Exception as e:
+                    logger.warning("MCP Hub startup failed: %s", e)
+                _mcp_started = True
 
     # Get authenticated user from Chainlit (set by auth callbacks in auth.py)
     cl_user = cl.user_session.get("user")
