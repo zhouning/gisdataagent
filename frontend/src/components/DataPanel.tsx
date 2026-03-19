@@ -769,7 +769,7 @@ interface CapabilityItem {
   is_shared?: boolean;
 }
 
-type CapFilter = 'all' | 'builtin_skill' | 'custom_skill' | 'toolset' | 'user_tool';
+type CapFilter = 'all' | 'builtin_skill' | 'custom_skill' | 'toolset' | 'user_tool' | 'bundle';
 
 const TOOLSETS = [
   { name: 'ExplorationToolset', label: '数据探查与质量审计' },
@@ -827,15 +827,26 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
   });
   const [toolError, setToolError] = useState('');
   const [savingTool, setSavingTool] = useState(false);
+
+  // Bundle state
+  const [bundles, setBundles] = useState<any[]>([]);
+  const [showBundleForm, setShowBundleForm] = useState(false);
+  const [editingBundle, setEditingBundle] = useState<any>(null);
+  const [bundleForm, setBundleForm] = useState({ bundle_name: '', description: '', toolset_names: [] as string[], skill_names: [] as string[], intent_triggers: '', is_shared: false });
+  const [bundleError, setBundleError] = useState('');
+  const [savingBundle, setSavingBundle] = useState(false);
+  const [availableTools, setAvailableTools] = useState<{ toolsets: string[]; skills: string[] }>({ toolsets: [], skills: [] });
   const [testResult, setTestResult] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
 
   const fetchCapabilities = async () => {
     setLoading(true);
     try {
-      const [capResp, utResp] = await Promise.all([
+      const [capResp, utResp, bundleResp, availResp] = await Promise.all([
         fetch('/api/capabilities', { credentials: 'include' }),
         fetch('/api/user-tools', { credentials: 'include' }),
+        fetch('/api/bundles', { credentials: 'include' }),
+        fetch('/api/bundles/available-tools', { credentials: 'include' }),
       ]);
       let builtin: CapabilityItem[] = [], custom: CapabilityItem[] = [], toolsets: CapabilityItem[] = [], userTools: CapabilityItem[] = [];
       if (capResp.ok) {
@@ -852,6 +863,13 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
         userTools = (utData.tools || []).map((t: any) => ({
           ...t, name: t.tool_name, type: 'user_tool',
         }));
+      }
+      if (bundleResp.ok) {
+        const bData = await bundleResp.json();
+        setBundles(bData.bundles || []);
+      }
+      if (availResp.ok) {
+        setAvailableTools(await availResp.json());
       }
       setItems([...builtin, ...custom, ...toolsets, ...userTools]);
       setCounts({ builtin: builtin.length, custom: custom.length, toolset: toolsets.length, userTool: userTools.length } as any);
@@ -1184,10 +1202,10 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
         value={search} onChange={e => setSearch(e.target.value)} />
 
       <div className="capabilities-filters">
-        {(['all', 'builtin_skill', 'custom_skill', 'toolset', 'user_tool'] as CapFilter[]).map(f => (
+        {(['all', 'builtin_skill', 'custom_skill', 'toolset', 'user_tool', 'bundle'] as CapFilter[]).map(f => (
           <button key={f} className={`cap-filter-btn ${filter === f ? 'active' : ''}`}
             onClick={() => setFilter(f)}>
-            {f === 'all' ? '全部' : f === 'builtin_skill' ? '内置技能' : f === 'custom_skill' ? '自定义' : f === 'user_tool' ? '自建工具' : '工具集'}
+            {f === 'all' ? '全部' : f === 'builtin_skill' ? '内置技能' : f === 'custom_skill' ? '自定义' : f === 'user_tool' ? '自建工具' : f === 'bundle' ? `技能包(${bundles.length})` : '工具集'}
           </button>
         ))}
       </div>
@@ -1240,6 +1258,105 @@ function CapabilitiesView({ userRole }: { userRole?: string }) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Skill Bundles Section ── */}
+      {filter === 'bundle' && (
+        <div className="capabilities-list">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, color: '#6b7280' }}>组合多个工具集+技能为可复用的技能包</span>
+            <button className="cap-add-btn" onClick={() => { setEditingBundle(null); setBundleForm({ bundle_name: '', description: '', toolset_names: [], skill_names: [], intent_triggers: '', is_shared: false }); setShowBundleForm(true); }}>+ 技能包</button>
+          </div>
+
+          {showBundleForm && (
+            <div className="cap-skill-form" style={{ marginBottom: 12 }}>
+              <h4>{editingBundle ? '编辑技能包' : '创建技能包'}</h4>
+              {bundleError && <div className="cap-form-error">{bundleError}</div>}
+              <input placeholder="技能包名称" value={bundleForm.bundle_name} onChange={e => setBundleForm(f => ({ ...f, bundle_name: e.target.value }))} />
+              <input placeholder="描述（可选）" value={bundleForm.description} onChange={e => setBundleForm(f => ({ ...f, description: e.target.value }))} />
+              <input placeholder="触发关键词（逗号分隔）" value={bundleForm.intent_triggers} onChange={e => setBundleForm(f => ({ ...f, intent_triggers: e.target.value }))} />
+
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 8 }}>工具集</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                {(availableTools.toolsets || []).map(ts => (
+                  <label key={ts} style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <input type="checkbox" checked={bundleForm.toolset_names.includes(ts)}
+                      onChange={e => {
+                        const names = e.target.checked ? [...bundleForm.toolset_names, ts] : bundleForm.toolset_names.filter(n => n !== ts);
+                        setBundleForm(f => ({ ...f, toolset_names: names }));
+                      }} />
+                    {ts}
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 11, fontWeight: 600 }}>技能</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                {(availableTools.skills || []).map(sk => (
+                  <label key={sk} style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <input type="checkbox" checked={bundleForm.skill_names.includes(sk)}
+                      onChange={e => {
+                        const names = e.target.checked ? [...bundleForm.skill_names, sk] : bundleForm.skill_names.filter(n => n !== sk);
+                        setBundleForm(f => ({ ...f, skill_names: names }));
+                      }} />
+                    {sk}
+                  </label>
+                ))}
+              </div>
+
+              <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input type="checkbox" checked={bundleForm.is_shared} onChange={e => setBundleForm(f => ({ ...f, is_shared: e.target.checked }))} />
+                共享给其他用户
+              </label>
+
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button className="cap-save-btn" disabled={savingBundle} onClick={async () => {
+                  if (!bundleForm.bundle_name.trim()) { setBundleError('名称不能为空'); return; }
+                  if (bundleForm.toolset_names.length === 0 && bundleForm.skill_names.length === 0) { setBundleError('至少选择一个工具集或技能'); return; }
+                  setSavingBundle(true); setBundleError('');
+                  try {
+                    const url = editingBundle ? `/api/bundles/${editingBundle.id}` : '/api/bundles';
+                    const method = editingBundle ? 'PUT' : 'POST';
+                    const resp = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bundleForm) });
+                    if (!resp.ok) { const d = await resp.json(); setBundleError(d.error || '保存失败'); return; }
+                    setShowBundleForm(false); fetchCapabilities();
+                  } catch { setBundleError('网络错误'); }
+                  finally { setSavingBundle(false); }
+                }}>{savingBundle ? '保存中...' : '保存'}</button>
+                <button className="cap-cancel-btn" onClick={() => setShowBundleForm(false)}>取消</button>
+              </div>
+            </div>
+          )}
+
+          {bundles.map(b => (
+            <div key={b.id} className="capability-card">
+              <div className="cap-card-header">
+                <span className="cap-type-badge cap-type-custom">技能包</span>
+                <span className="cap-name">{b.bundle_name}</span>
+              </div>
+              {b.description && <div className="cap-description">{b.description}</div>}
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+                工具集: {(b.toolset_names || []).join(', ') || '无'} | 技能: {(b.skill_names || []).join(', ') || '无'}
+              </div>
+              {b.intent_triggers && <div style={{ fontSize: 11, color: '#9ca3af' }}>触发: {b.intent_triggers}</div>}
+              <div className="cap-card-actions">
+                {b.owner_username && <span className="cap-owner">by {b.owner_username}</span>}
+                {b.is_shared && <span className="cap-badge cap-shared">共享</span>}
+                <button className="cap-edit-btn" onClick={() => { setEditingBundle(b); setBundleForm({ bundle_name: b.bundle_name, description: b.description || '', toolset_names: b.toolset_names || [], skill_names: b.skill_names || [], intent_triggers: b.intent_triggers || '', is_shared: b.is_shared || false }); setShowBundleForm(true); }}>编辑</button>
+                <button className="cap-delete-btn" onClick={async () => {
+                  if (!confirm(`确定删除技能包 "${b.bundle_name}"？`)) return;
+                  await fetch(`/api/bundles/${b.id}`, { method: 'DELETE', credentials: 'include' });
+                  fetchCapabilities();
+                }}>删除</button>
+              </div>
+            </div>
+          ))}
+          {bundles.length === 0 && !showBundleForm && (
+            <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20, fontSize: 12 }}>
+              暂无技能包，点击 "+ 技能包" 创建
+            </div>
+          )}
         </div>
       )}
     </div>

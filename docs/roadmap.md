@@ -42,7 +42,7 @@
 
 ### 代码质量
 
-- [ ] **T-3**: 评测通过率阈值改为环境变量配置 (`EVAL_THRESHOLD_GENERAL=0.7` 等)
+- [ ] **T-3**: 评测通过率阈值改为环境变量配置 (`EVAL_THRESHOLD_GENERAL=0.7` 等) ✅ 已修复
 - [ ] **S-2**: 模块级全局变量 (`_mcp_started`, `_workflow_scheduler`) 改为 ContextVar 或单例类
 
 ---
@@ -65,11 +65,12 @@
 - [ ] **S-3**: 引入 Alembic 数据库迁移框架
   - 从现有 17 张表的 `CREATE TABLE IF NOT EXISTS` 生成 initial migration
   - 后续 schema 变更通过 `alembic revision --autogenerate`
-- [ ] **S-4**: `frontend_api.py` (2330 行) 按功能域拆分
+- [ ] **S-4**: `frontend_api.py` (2330 行) 按功能域拆分 — 进行中
+  - ✅ 创建 `api/` 包 + `helpers.py` (共享 auth) + `bundle_routes.py` (技能包)
   - `api/catalog_routes.py` — 数据目录
   - `api/mcp_routes.py` — MCP Hub
   - `api/workflow_routes.py` — 工作流
-  - `api/skill_routes.py` — 技能/工具/Bundles
+  - `api/skill_routes.py` — 技能/工具
   - `api/kb_routes.py` — 知识库
   - `api/admin_routes.py` — 管理端点
   - `api/user_routes.py` — 用户端点
@@ -88,9 +89,9 @@
 
 ### 能力完善
 
-- [ ] **Skill Bundles 前端 UI** — 组合编排多个 Skill + Toolset 的可视化界面
+- [ ] **Skill Bundles 前端 UI** — 组合编排多个 Skill + Toolset 的可视化界面 ✅ 已完成
   - 后端 API 已就绪 (`/api/bundles` CRUD + `/api/bundles/available-tools`)
-  - 需要前端: bundle 列表、创建/编辑表单、toolset/skill 多选
+  - 前端: bundle 列表、创建/编辑表单、toolset/skill 多选 ✅
 - [ ] **Knowledge Base GraphRAG UI** — 知识图谱可视化
   - 后端 API 已就绪 (`/api/kb/{id}/build-graph`, `/api/kb/{id}/graph`, `/api/kb/{id}/entities`)
   - 前端: 图构建按钮、实体/关系列表、可视化 (d3-force 或 ReactFlow)
