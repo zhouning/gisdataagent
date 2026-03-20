@@ -7,7 +7,7 @@ interface DataPanelProps {
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources';
 
 interface FileInfo {
   name: string;
@@ -126,6 +126,8 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
           onClick={() => setActiveTab('capabilities')}>能力</button>
         <button className={`data-panel-tab ${activeTab === 'kb' ? 'active' : ''}`}
           onClick={() => setActiveTab('kb')}>知识库</button>
+        <button className={`data-panel-tab ${activeTab === 'vsources' ? 'active' : ''}`}
+          onClick={() => setActiveTab('vsources')}>数据源</button>
       </div>
 
       <div className="data-panel-content">
@@ -142,6 +144,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'analytics' && <AnalyticsView />}
         {activeTab === 'capabilities' && <CapabilitiesView userRole={userRole} />}
         {activeTab === 'kb' && <KnowledgeBaseView />}
+        {activeTab === 'vsources' && <VirtualSourcesView />}
       </div>
     </div>
   );
@@ -2442,6 +2445,236 @@ function AnalyticsView() {
         ))}
         {throughput.length === 0 && <div style={{ color: '#888' }}>无数据</div>}
       </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Virtual Sources View (v13.0)
+   ============================================================ */
+
+interface VSource {
+  id: number;
+  source_name: string;
+  source_type: string;
+  endpoint_url: string;
+  owner_username: string;
+  is_shared: boolean;
+  enabled: boolean;
+  health_status: string;
+  default_crs: string;
+  refresh_policy: string;
+  created_at: string | null;
+}
+
+const EMPTY_VS_FORM = {
+  source_name: '', source_type: 'wfs', endpoint_url: '',
+  auth_config: {} as Record<string, string>,
+  query_config: '{}', default_crs: 'EPSG:4326',
+  refresh_policy: 'on_demand', is_shared: false,
+};
+
+function VirtualSourcesView() {
+  const [sources, setSources] = useState<VSource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState({ ...EMPTY_VS_FORM });
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState<number | null>(null);
+
+  const fetchSources = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/virtual-sources', { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setSources(d.sources || []); }
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchSources(); }, []);
+
+  const handleNew = () => {
+    setForm({ ...EMPTY_VS_FORM });
+    setEditId(null);
+    setFormError('');
+    setShowForm(true);
+  };
+
+  const handleEdit = (s: VSource) => {
+    setForm({
+      source_name: s.source_name,
+      source_type: s.source_type,
+      endpoint_url: s.endpoint_url,
+      auth_config: {},
+      query_config: '{}',
+      default_crs: s.default_crs,
+      refresh_policy: s.refresh_policy,
+      is_shared: s.is_shared,
+    });
+    setEditId(s.id);
+    setFormError('');
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.source_name || !form.endpoint_url) {
+      setFormError('名称和端点URL不能为空');
+      return;
+    }
+    let qcfg = {};
+    try { qcfg = JSON.parse(form.query_config); } catch { setFormError('查询配置JSON格式错误'); return; }
+    setSaving(true);
+    setFormError('');
+    try {
+      const body = {
+        source_name: form.source_name,
+        source_type: form.source_type,
+        endpoint_url: form.endpoint_url,
+        auth_config: form.auth_config.type ? form.auth_config : undefined,
+        query_config: qcfg,
+        default_crs: form.default_crs,
+        refresh_policy: form.refresh_policy,
+        is_shared: form.is_shared,
+      };
+      const url = editId ? `/api/virtual-sources/${editId}` : '/api/virtual-sources';
+      const method = editId ? 'PUT' : 'POST';
+      const r = await fetch(url, {
+        method, credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) { setShowForm(false); fetchSources(); }
+      else { const d = await r.json(); setFormError(d.error || '保存失败'); }
+    } catch (e: any) { setFormError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定删除此数据源？')) return;
+    await fetch(`/api/virtual-sources/${id}`, { method: 'DELETE', credentials: 'include' });
+    fetchSources();
+  };
+
+  const handleTest = async (id: number) => {
+    setTesting(id);
+    try {
+      const r = await fetch(`/api/virtual-sources/${id}/test`, { method: 'POST', credentials: 'include' });
+      if (r.ok) { fetchSources(); }
+    } catch { /* ignore */ }
+    finally { setTesting(null); }
+  };
+
+  const healthColor = (h: string) => {
+    if (h === 'healthy') return '#10b981';
+    if (h === 'error') return '#ef4444';
+    if (h === 'timeout') return '#f59e0b';
+    return '#888';
+  };
+
+  const typeLabel = (t: string) => {
+    const map: Record<string, string> = { wfs: 'WFS', stac: 'STAC', ogc_api: 'OGC API', custom_api: 'API' };
+    return map[t] || t;
+  };
+
+  if (loading) return <div style={{ padding: 16, color: '#888' }}>加载中...</div>;
+
+  return (
+    <div style={{ padding: '8px 12px', fontSize: 13 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontWeight: 600 }}>虚拟数据源 ({sources.length})</span>
+        <button className="btn-primary btn-sm" onClick={handleNew}
+          style={{ fontSize: 12, padding: '2px 10px' }}>+ 新增</button>
+      </div>
+
+      {showForm && (
+        <div style={{ background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, padding: 12, marginBottom: 10 }}>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <input placeholder="数据源名称" value={form.source_name}
+              onChange={e => setForm({ ...form, source_name: e.target.value })}
+              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select value={form.source_type}
+                onChange={e => setForm({ ...form, source_type: e.target.value })}
+                style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }}>
+                <option value="wfs">WFS</option>
+                <option value="stac">STAC</option>
+                <option value="ogc_api">OGC API</option>
+                <option value="custom_api">自定义 API</option>
+              </select>
+              <select value={form.refresh_policy}
+                onChange={e => setForm({ ...form, refresh_policy: e.target.value })}
+                style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }}>
+                <option value="on_demand">按需</option>
+                <option value="interval:5m">5分钟</option>
+                <option value="interval:30m">30分钟</option>
+              </select>
+            </div>
+            <input placeholder="端点 URL" value={form.endpoint_url}
+              onChange={e => setForm({ ...form, endpoint_url: e.target.value })}
+              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+            <input placeholder="默认CRS (EPSG:4326)" value={form.default_crs}
+              onChange={e => setForm({ ...form, default_crs: e.target.value })}
+              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+            <textarea placeholder='查询配置 JSON (如 {"feature_type":"topp:states"})' value={form.query_config}
+              onChange={e => setForm({ ...form, query_config: e.target.value })} rows={2}
+              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0', fontFamily: 'monospace', fontSize: 12 }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#aaa' }}>
+              <input type="checkbox" checked={form.is_shared}
+                onChange={e => setForm({ ...form, is_shared: e.target.checked })} />
+              共享给其他用户
+            </label>
+          </div>
+          {formError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{formError}</div>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}
+              style={{ fontSize: 12 }}>{saving ? '保存中...' : (editId ? '更新' : '创建')}</button>
+            <button className="btn-secondary btn-sm" onClick={() => setShowForm(false)}
+              style={{ fontSize: 12 }}>取消</button>
+          </div>
+        </div>
+      )}
+
+      {sources.length === 0 && !showForm && (
+        <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>
+          暂无虚拟数据源，点击"+ 新增"注册远程 WFS/STAC/API 服务
+        </div>
+      )}
+
+      {sources.map(s => (
+        <div key={s.id} style={{
+          background: '#111827', border: '1px solid #1f2937', borderRadius: 6,
+          padding: '8px 12px', marginBottom: 6, cursor: 'pointer',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{s.source_name}</span>
+              <span style={{
+                marginLeft: 8, fontSize: 11, padding: '1px 6px', borderRadius: 3,
+                background: '#1e3a5f', color: '#7dd3fc',
+              }}>{typeLabel(s.source_type)}</span>
+              {s.is_shared && <span style={{ marginLeft: 6, fontSize: 11, color: '#888' }}>共享</span>}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                background: healthColor(s.health_status),
+              }} title={s.health_status} />
+              <button onClick={(e) => { e.stopPropagation(); handleTest(s.id); }}
+                style={{ fontSize: 11, color: '#7dd3fc', background: 'none', border: 'none', cursor: 'pointer' }}
+                disabled={testing === s.id}>{testing === s.id ? '测试中...' : '测试'}</button>
+              <button onClick={(e) => { e.stopPropagation(); handleEdit(s); }}
+                style={{ fontSize: 11, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>编辑</button>
+              <button onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
+                style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>删除</button>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: '#888', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {s.endpoint_url}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

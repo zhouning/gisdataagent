@@ -2096,6 +2096,44 @@ async def _api_user_tools_test(request: Request):
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
+async def _api_user_tools_rate(request: Request):
+    """POST /api/user-tools/{id}/rate — rate a shared user tool (1-5)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    tool_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    score = body.get("score", 0)
+    if not isinstance(score, int) or score < 1 or score > 5:
+        return JSONResponse({"error": "score must be 1-5"}, status_code=400)
+    from .user_tools import rate_tool
+    if rate_tool(tool_id, score):
+        return JSONResponse({"ok": True})
+    return JSONResponse({"error": "Tool not found or not shared"}, status_code=404)
+
+
+async def _api_user_tools_clone(request: Request):
+    """POST /api/user-tools/{id}/clone — clone a shared user tool to current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    tool_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    from .user_tools import clone_tool
+    new_id = clone_tool(tool_id, username, new_name=body.get("tool_name"))
+    if new_id is None:
+        return JSONResponse({"error": "Clone failed (not found or not shared)"}, status_code=404)
+    return JSONResponse({"ok": True, "id": new_id}, status_code=201)
+
+
 # ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
@@ -2105,6 +2143,7 @@ def get_frontend_api_routes():
     from .api.mcp_routes import get_mcp_routes
     from .api.workflow_routes import get_workflow_routes
     from .api.skills_routes import get_skills_routes
+    from .api.virtual_routes import get_virtual_source_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -2142,6 +2181,8 @@ def get_frontend_api_routes():
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),
+        # Virtual Data Sources (v13.0)
+        *get_virtual_source_routes(),
         # Knowledge Base (v8.0.2)
         # Bundles (v10.0.2)
         Route("/api/bundles", endpoint=_api_bundles_list, methods=["GET"]),
@@ -2201,6 +2242,8 @@ def get_frontend_api_routes():
         Route("/api/user-tools", endpoint=_api_user_tools_list, methods=["GET"]),
         Route("/api/user-tools", endpoint=_api_user_tools_create, methods=["POST"]),
         Route("/api/user-tools/{id:int}/test", endpoint=_api_user_tools_test, methods=["POST"]),
+        Route("/api/user-tools/{id:int}/rate", endpoint=_api_user_tools_rate, methods=["POST"]),
+        Route("/api/user-tools/{id:int}/clone", endpoint=_api_user_tools_clone, methods=["POST"]),
         Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_detail, methods=["GET"]),
         Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_update, methods=["PUT"]),
         Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_delete, methods=["DELETE"]),

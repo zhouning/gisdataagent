@@ -149,6 +149,44 @@ async def skills_delete(request: Request):
     return JSONResponse({"ok": True})
 
 
+async def skills_rate(request: Request):
+    """POST /api/skills/{id}/rate — rate a shared skill (1-5)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    score = body.get("score", 0)
+    if not isinstance(score, int) or score < 1 or score > 5:
+        return JSONResponse({"error": "score must be 1-5"}, status_code=400)
+    from ..custom_skills import rate_skill
+    if rate_skill(skill_id, score):
+        return JSONResponse({"ok": True})
+    return JSONResponse({"error": "Skill not found or not shared"}, status_code=404)
+
+
+async def skills_clone(request: Request):
+    """POST /api/skills/{id}/clone — clone a shared skill to current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    from ..custom_skills import clone_skill
+    new_id = clone_skill(skill_id, username, new_name=body.get("skill_name"))
+    if new_id is None:
+        return JSONResponse({"error": "Clone failed (not found or not shared)"}, status_code=404)
+    return JSONResponse({"ok": True, "id": new_id}, status_code=201)
+
+
 def get_skills_routes() -> list:
     """Return Route objects for custom skills endpoints."""
     return [
@@ -157,4 +195,6 @@ def get_skills_routes() -> list:
         Route("/api/skills/{id:int}", skills_detail, methods=["GET"]),
         Route("/api/skills/{id:int}", skills_update, methods=["PUT"]),
         Route("/api/skills/{id:int}", skills_delete, methods=["DELETE"]),
+        Route("/api/skills/{id:int}/rate", skills_rate, methods=["POST"]),
+        Route("/api/skills/{id:int}/clone", skills_clone, methods=["POST"]),
     ]
