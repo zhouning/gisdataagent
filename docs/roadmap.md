@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-03-20 &nbsp;|&nbsp; **Current version**: v13.1 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-03-20 &nbsp;|&nbsp; **Current version**: v14.1 &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）
 >
@@ -71,7 +71,7 @@
 
 ---
 
-## v14.0 — 交互增强 + 扩展市场 (3-4 周)
+## 已完成 (v14.0) — 交互增强 + 扩展市场
 
 > **主题**: 用户可见的体验提升，快速出价值
 
@@ -100,7 +100,7 @@
 
 ---
 
-## v14.1 — 智能深化 + 协作基础 (3-4 周)
+## 已完成 (v14.1) — 智能深化 + 协作基础
 
 > **主题**: AI 更聪明，协作开始落地
 
