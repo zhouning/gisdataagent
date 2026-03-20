@@ -45,6 +45,8 @@ function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
 export default function Map3DView({ layers, center, zoom }: Map3DViewProps) {
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+  const [showLayerPanel, setShowLayerPanel] = useState(false);
 
   // Determine pitch/bearing from layer configs
   const pitch = useMemo(() => {
@@ -113,6 +115,7 @@ export default function Map3DView({ layers, center, zoom }: Map3DViewProps) {
     return layers.map((layer, idx) => {
       const data = layerData[layer.name];
       if (!data) return null;
+      if (layerVisibility[layer.name] === false) return null;
 
       const fillColor = hexToRgba(layer.style?.fillColor || '#4682B4', Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
       const lineColor = hexToRgba(layer.style?.color || '#333333', 200);
@@ -222,6 +225,44 @@ export default function Map3DView({ layers, center, zoom }: Map3DViewProps) {
         });
       }
 
+      // Heatmap: density-colored scatter (no aggregation-layers dep needed)
+      if (layer.type === 'heatmap') {
+        const features = data.features || [];
+        const points: { position: [number, number]; weight: number }[] = [];
+        const valCol = layer.value_column;
+        let maxW = 1;
+        for (const f of features) {
+          const g = f.geometry;
+          if (!g) continue;
+          let coord: [number, number] | null = null;
+          if (g.type === 'Point') coord = [g.coordinates[0], g.coordinates[1]];
+          else if (g.type === 'Polygon') {
+            const ring = g.coordinates[0];
+            const cx = ring.reduce((s: number, c: number[]) => s + c[0], 0) / ring.length;
+            const cy = ring.reduce((s: number, c: number[]) => s + c[1], 0) / ring.length;
+            coord = [cx, cy];
+          }
+          if (coord) {
+            const w = valCol && f.properties?.[valCol] != null ? Math.abs(parseFloat(f.properties[valCol])) || 1 : 1;
+            if (w > maxW) maxW = w;
+            points.push({ position: coord, weight: w });
+          }
+        }
+        return new ScatterplotLayer({
+          id: `heatmap-${idx}-${layer.name}`,
+          data: points,
+          getPosition: (d: any) => d.position,
+          getRadius: (d: any) => 50 + (d.weight / maxW) * 200,
+          getFillColor: (d: any) => {
+            const t = d.weight / maxW;
+            return [Math.round(255 * t), Math.round(255 * (1 - t) * 0.6), 50, Math.round(180 + t * 75)];
+          },
+          radiusUnits: 'meters',
+          pickable: true,
+          onHover: onHover,
+        });
+      }
+
       // Default: flat GeoJSON rendering (polygon, line, choropleth)
       return new GeoJsonLayer({
         id: `layer-${idx}-${layer.name}`,
@@ -242,7 +283,7 @@ export default function Map3DView({ layers, center, zoom }: Map3DViewProps) {
         onHover,
       });
     }).filter(Boolean);
-  }, [layers, layerData, onHover]);
+  }, [layers, layerData, onHover, layerVisibility]);
 
   return (
     <div className="map-3d-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -265,6 +306,42 @@ export default function Map3DView({ layers, center, zoom }: Map3DViewProps) {
           {tooltip.text.split('\n').map((line, i) => (
             <div key={i}>{line}</div>
           ))}
+        </div>
+      )}
+
+      {/* 3D Layer Control Panel (v14.0) */}
+      {layers.length > 0 && (
+        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 1000 }}>
+          <button onClick={() => setShowLayerPanel(!showLayerPanel)}
+            style={{
+              background: showLayerPanel ? '#1e3a5f' : 'rgba(0,0,0,0.6)',
+              color: '#e0e0e0', border: '1px solid #444', borderRadius: 4,
+              padding: '4px 8px', cursor: 'pointer', fontSize: 12,
+            }}>
+            图层
+          </button>
+          {showLayerPanel && (
+            <div style={{
+              background: 'rgba(0,0,0,0.85)', border: '1px solid #333', borderRadius: 6,
+              padding: 8, marginTop: 4, minWidth: 160,
+            }}>
+              {layers.map(l => (
+                <label key={l.name} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '3px 0', color: '#ccc', fontSize: 12, cursor: 'pointer',
+                }}>
+                  <input type="checkbox"
+                    checked={layerVisibility[l.name] !== false}
+                    onChange={() => setLayerVisibility(prev => ({
+                      ...prev, [l.name]: prev[l.name] === false ? true : false
+                    }))}
+                  />
+                  {l.name}
+                  <span style={{ marginLeft: 'auto', fontSize: 10, color: '#888' }}>{l.type}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

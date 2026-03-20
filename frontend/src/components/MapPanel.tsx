@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
+import 'leaflet.heat';
 import Map3DView from './Map3DView';
 
 interface MapLayer {
@@ -76,6 +77,12 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [annotationForm, setAnnotationForm] = useState<{lng: number; lat: number} | null>(null);
   const [annotationTitle, setAnnotationTitle] = useState('');
   const [annotationComment, setAnnotationComment] = useState('');
+
+  // Measurement state (v14.0)
+  const [measureMode, setMeasureMode] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
+  const [measureResult, setMeasureResult] = useState<string>('');
+  const measureLayerRef = useRef<L.LayerGroup | null>(null);
   const annotationLayerRef = useRef<L.LayerGroup | null>(null);
   const [availableBasemaps, setAvailableBasemaps] = useState<Record<string, string>>({ ...BASEMAPS });
 
@@ -293,6 +300,62 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     return () => { map.off('click', handleClick); };
   }, [annotationMode]);
 
+  // Measurement click handler (v14.0)
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    if (!measureLayerRef.current) {
+      measureLayerRef.current = L.layerGroup().addTo(map);
+    }
+
+    const handleMeasureClick = (e: L.LeafletMouseEvent) => {
+      if (!measureMode) return;
+      const pt: [number, number] = [e.latlng.lat, e.latlng.lng];
+      setMeasurePoints(prev => {
+        const pts = [...prev, pt];
+        // Draw markers and lines
+        const lg = measureLayerRef.current!;
+        L.circleMarker(e.latlng, { radius: 4, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 }).addTo(lg);
+        if (pts.length > 1) {
+          const prev2 = pts[pts.length - 2];
+          L.polyline([[prev2[0], prev2[1]], [pt[0], pt[1]]], { color: '#f59e0b', weight: 2, dashArray: '5,5' }).addTo(lg);
+        }
+        // Calculate total distance
+        let totalDist = 0;
+        for (let i = 1; i < pts.length; i++) {
+          totalDist += L.latLng(pts[i-1][0], pts[i-1][1]).distanceTo(L.latLng(pts[i][0], pts[i][1]));
+        }
+        if (totalDist < 1000) {
+          setMeasureResult(`距离: ${totalDist.toFixed(1)} m`);
+        } else {
+          setMeasureResult(`距离: ${(totalDist / 1000).toFixed(2)} km`);
+        }
+        // Area if 3+ points (shoelace formula on lat/lng approximation)
+        if (pts.length >= 3) {
+          let area = 0;
+          for (let i = 0; i < pts.length; i++) {
+            const j = (i + 1) % pts.length;
+            area += pts[i][1] * pts[j][0];
+            area -= pts[j][1] * pts[i][0];
+          }
+          area = Math.abs(area / 2) * 111320 * 111320 * Math.cos(pts[0][0] * Math.PI / 180);
+          const areaStr = area > 1e6 ? `${(area / 1e6).toFixed(2)} km²` : `${area.toFixed(0)} m²`;
+          setMeasureResult(prev => `${prev} | 面积: ${areaStr}`);
+        }
+        return pts;
+      });
+    };
+
+    map.on('click', handleMeasureClick);
+    return () => { map.off('click', handleMeasureClick); };
+  }, [measureMode]);
+
+  const clearMeasurement = () => {
+    setMeasurePoints([]);
+    setMeasureResult('');
+    if (measureLayerRef.current) measureLayerRef.current.clearLayers();
+  };
+
   const submitAnnotation = async () => {
     if (!annotationForm) return;
     try {
@@ -508,6 +571,33 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         </svg>
       </button>
 
+      {/* Measurement toggle (v14.0) */}
+      <button
+        className={`annotation-toggle ${measureMode ? 'active' : ''}`}
+        onClick={() => { setMeasureMode(!measureMode); if (measureMode) clearMeasurement(); }}
+        title={measureMode ? '退出测量模式' : '距离/面积测量'}
+        style={{ bottom: annotationMode ? 90 : 50 }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 20h20M4 20V4l4 4 4-4 4 4 4-4v16"/>
+        </svg>
+      </button>
+
+      {/* Measurement result display */}
+      {measureResult && (
+        <div style={{
+          position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.8)', color: '#f59e0b', padding: '4px 12px',
+          borderRadius: 4, fontSize: 12, zIndex: 1000, whiteSpace: 'nowrap',
+        }}>
+          {measureResult}
+          <button onClick={clearMeasurement}
+            style={{ marginLeft: 8, background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11 }}>
+            清除
+          </button>
+        </div>
+      )}
+
       {/* Annotation form popup */}
       {annotationForm && (
         <div className="annotation-form">
@@ -633,19 +723,48 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
         onEachFeature: bindPopup,
       });
 
-    case 'heatmap':
-      // Heatmap requires leaflet.heat plugin — render as point layer fallback
+    case 'heatmap': {
+      // Extract point coordinates + optional intensity from value_column
+      const valCol = config.value_column;
+      const heatPoints: [number, number, number][] = [];
+      if (geojsonData.features) {
+        for (const f of geojsonData.features) {
+          const geom = f.geometry;
+          if (!geom) continue;
+          let coords: [number, number] | null = null;
+          if (geom.type === 'Point') {
+            coords = [geom.coordinates[1], geom.coordinates[0]];
+          } else if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+            // Use centroid approximation
+            const ring = geom.type === 'Polygon' ? geom.coordinates[0] : geom.coordinates[0][0];
+            if (ring && ring.length > 0) {
+              const cx = ring.reduce((s: number, c: number[]) => s + c[0], 0) / ring.length;
+              const cy = ring.reduce((s: number, c: number[]) => s + c[1], 0) / ring.length;
+              coords = [cy, cx];
+            }
+          }
+          if (coords) {
+            const intensity = valCol && f.properties?.[valCol] != null
+              ? parseFloat(f.properties[valCol]) || 1 : 1;
+            heatPoints.push([coords[0], coords[1], intensity]);
+          }
+        }
+      }
+      if (heatPoints.length > 0 && (L as any).heatLayer) {
+        return (L as any).heatLayer(heatPoints, {
+          radius: config.style?.radius || 25,
+          blur: config.style?.blur || 15,
+          maxZoom: 17,
+          gradient: { 0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red' },
+        });
+      }
+      // Fallback if leaflet.heat not loaded
       return L.geoJSON(geojsonData, {
         pointToLayer: (_feature, latlng) =>
-          L.circleMarker(latlng, {
-            radius: 4,
-            fillColor: '#ff4444',
-            color: '#ff0000',
-            weight: 0,
-            fillOpacity: 0.5,
-          }),
+          L.circleMarker(latlng, { radius: 4, fillColor: '#ff4444', color: '#ff0000', weight: 0, fillOpacity: 0.5 }),
         onEachFeature: bindPopup,
       });
+    }
 
     case 'categorized': {
       const catCol = config.category_column;
