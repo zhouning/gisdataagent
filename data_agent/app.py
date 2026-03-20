@@ -149,6 +149,8 @@ try:
     ensure_skill_bundles_table()
     from data_agent.virtual_sources import ensure_virtual_sources_table
     ensure_virtual_sources_table()
+    from data_agent.agent_registry import ensure_registry_table
+    ensure_registry_table()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -2015,6 +2017,22 @@ async def _execute_pipeline(
 
                 asyncio.create_task(_do_extract())
                 cl.user_session.set("auto_extract_count", extract_count + 1)
+        except Exception:
+            pass  # non-fatal
+
+        # --- v14.1: Recommended follow-up questions ---
+        try:
+            from data_agent.pipeline_helpers import generate_followup_questions
+            followups = generate_followup_questions(report_text, user_text, pipeline_type)
+            if followups:
+                actions = [
+                    cl.Action(name=f"followup_{i}", payload={"value": q}, label=q)
+                    for i, q in enumerate(followups)
+                ]
+                await cl.Message(
+                    content="💡 **推荐后续分析：**",
+                    actions=actions,
+                ).send()
         except Exception:
             pass  # non-fatal
 

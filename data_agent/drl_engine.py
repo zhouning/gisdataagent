@@ -137,8 +137,26 @@ class LandUseOptEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, shp_path, max_conversions=200):
+    def __init__(self, shp_path, max_conversions=200, scenario: 'DRLScenario | None' = None):
         super().__init__()
+
+        # Apply scenario config if provided
+        self.scenario = scenario
+        if scenario:
+            self.source_types = scenario.source_types
+            self.target_types = scenario.target_types
+            self.slope_w = scenario.slope_weight
+            self.cont_w = scenario.contiguity_weight
+            self.balance_w = scenario.balance_weight
+            self.pair_b = scenario.pair_bonus
+            max_conversions = scenario.max_conversions
+        else:
+            self.source_types = FARMLAND_TYPES
+            self.target_types = FOREST_TYPES
+            self.slope_w = SLOPE_REWARD_WEIGHT
+            self.cont_w = CONT_REWARD_WEIGHT
+            self.balance_w = COUNT_PENALTY_WEIGHT
+            self.pair_b = PAIR_BONUS
 
         # Load shapefile
         print(f"Loading shapefile: {shp_path}")
@@ -162,12 +180,12 @@ class LandUseOptEnv(gym.Env):
              raise KeyError(f"Column 'DLMC' not found (tried '{dlmc_col}'). Available: {list(self.gdf.columns)}")
         dlmc = self.gdf[dlmc_col].values
 
-        # Classify parcels
+        # Classify parcels (v14.1: use scenario types if provided)
         self.initial_types = np.full(self.n_parcels, OTHER, dtype=np.int8)
         for i, t in enumerate(dlmc):
-            if t in FARMLAND_TYPES:
+            if t in self.source_types:
                 self.initial_types[i] = FARMLAND
-            elif t in FOREST_TYPES:
+            elif t in self.target_types:
                 self.initial_types[i] = FOREST
 
         # Identify swappable parcels (farmland or forest)
@@ -429,13 +447,13 @@ class LandUseOptEnv(gym.Env):
         cont_r = (cont - self.prev_contiguity) / (abs(self.initial_contiguity) + 1e-8)
         count_dev = abs(self.n_farmland - self.initial_n_farmland_count) / self.initial_n_farmland_count
 
-        reward = (SLOPE_REWARD_WEIGHT * slope_r
-                  + CONT_REWARD_WEIGHT * cont_r
-                  - COUNT_PENALTY_WEIGHT * count_dev * count_dev)
+        reward = (self.slope_w * slope_r
+                  + self.cont_w * cont_r
+                  - self.balance_w * count_dev * count_dev)
 
         # Pair completion bonus
         if self.n_farmland == self.initial_n_farmland_count:
-            reward += PAIR_BONUS
+            reward += self.pair_b
             self.completed_pairs += 1
 
         self.prev_avg_slope = avg_sl
