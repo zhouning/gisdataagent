@@ -1,6 +1,6 @@
 # GIS Data Agent Technical Architecture Guide
 
-**Version**: v12.0 &nbsp;|&nbsp; **Framework**: Google ADK v1.26.0 &nbsp;|&nbsp; **Date**: 2026-03-18
+**Version**: v14.3 &nbsp;|&nbsp; **Framework**: Google ADK v1.27.2 &nbsp;|&nbsp; **Date**: 2026-03-20
 
 ---
 
@@ -1318,102 +1318,144 @@ jobs:
 
 ## 21. 架构缺陷与改进建议
 
-> **注：本节于 2026-03-18 更新，反映最新修复状态。已修复项标记为 ✅。**
+> **注：本节于 2026-03-21 基于 v14.3 代码库全面重写。审计覆盖后端（3340 行 app.py、2572 行 frontend_api.py、123 个 REST 端点）、前端（2922 行 DataPanel.tsx、16 tabs）、及 v13–v14 新增模块（agent_registry / circuit_breaker / a2a_server / analysis_chains / plugin_registry / drl_engine NSGA-II）。已修复项标记为 ✅，新发现标记为 🔴/🟡。**
 
-### 21.1 系统级问题
+### 21.1 关键缺陷（Critical）
 
-| 编号 | 问题 | 严重性 | 影响 | 状态 |
-|------|------|--------|------|------|
-| S-1 | `app.py` 3700+ 行，承担路由/认证/文件处理/会话/管线调度等多重职责 | 高 | 可维护性差，改动风险高 | ✅ 已拆分：`intent_router.py`（153 行）+ `pipeline_helpers.py`（284 行）提取，app.py 降至 3267 行 |
-| S-2 | 模块级全局变量（`_mcp_started`, `_workflow_scheduler`）非线程安全 | 中 | 并发请求下可能竞态 | 待修复 |
-| S-3 | 无数据库迁移框架 | 中 | schema 变更依赖手动操作 | 待修复 |
-| S-4 | `frontend_api.py` 2165 行包含 44 个端点 | 中 | 单一职责违反 | 部分缓解（现 2330 行 92 端点，功能更多但结构清晰） |
+| 编号 | 问题 | 严重性 | 文件:行 | 说明 |
+|------|------|--------|---------|------|
+| C-1 | A2A Task API 无认证检查 | 🔴 严重 | `frontend_api.py:2386-2418` | `POST /api/a2a/tasks`、`GET /api/a2a/tasks/{id}`、`POST /api/a2a/tasks/{id}/execute` 三个端点未经过 JWT cookie 认证，任何匿名请求均可创建和执行 A2A 任务 |
+| C-2 | `agent_registry.py` SQL INTERVAL 参数化错误 | 🔴 严重 | `agent_registry.py:150-153` | `INTERVAL ':t seconds'` 中 `:t` 被 PostgreSQL 视为字面字符串而非参数占位符，导致心跳超时清理永远不生效。应改为 `NOW() - :t * INTERVAL '1 second'` |
+| C-3 | `circuit_breaker.py` 无线程安全保护 | 🔴 高 | `circuit_breaker.py:44,50-52` | `_circuits: dict` 在并发环境下无 `threading.Lock` 保护，`_get_circuit()` 存在 TOCTOU 竞态——两个并发请求可能同时创建同名 circuit |
+| C-4 | `a2a_server._tasks` 无并发保护 | 🔴 高 | `a2a_server.py:180-220` | 虽有 `len > 100` 时的裁剪逻辑，但 `create_task()` / `execute_task()` / `get_task_status()` 均无锁保护，并发裁剪可导致 KeyError |
+| C-5 | `virtual_sources.py` Fernet 密钥 TOCTOU 竞态 | 🟡 中 | `virtual_sources.py:43-55` | `_get_or_create_key()` 先检查文件是否存在再写入，两个并发进程可能同时生成不同密钥，导致后续解密失败 |
 
 ### 21.2 安全问题
 
 | 编号 | 问题 | 严重性 | 状态 |
 |------|------|--------|------|
-| SEC-1 | DB 不可用时接受硬编码 admin/admin123 | 高 | ✅ 已修复：DB 不可用时直接拒绝认证 |
-| SEC-2 | 无暴力破解防护（无速率限制、无账户锁定） | 中 | ✅ 已修复：per-username 连续 5 次失败锁定 15 分钟 |
-| SEC-3 | 沙箱验证基于字符串前缀匹配 | 中 | 待修复 |
-| SEC-4 | 自定义技能的 Prompt 注入防护仅为模式匹配 | 中 | 待修复 |
-| SEC-5 | ContextVar 默认角色为 analyst | 低 | 待修复 |
+| SEC-1 | DB 不可用时接受硬编码 admin/admin123 | 高 | ✅ v12.0 已修复：DB 不可用时直接拒绝认证 |
+| SEC-2 | 无暴力破解防护 | 中 | ✅ v12.0 已修复：per-username 连续 5 次失败锁定 15 分钟 |
+| SEC-3 | 沙箱验证基于字符串前缀匹配 | 中 | 待修复：`_resolve_path()` 仅做 `startswith` 检查，可被 `..` 编码绕过 |
+| SEC-4 | Prompt 注入防护 | 中 | ✅ v12.2 已修复：24 模式 `FORBIDDEN_PATTERNS` + 安全边界包裹 |
+| SEC-5 | ContextVar 默认角色为 analyst | 低 | 待修复：未认证请求默认获得 analyst 权限 |
+| SEC-6 | `auth.py` `_login_failures` 字典无锁 | 🟡 中 | `auth.py:25` — 内存计数器在并发登录下可能丢失计数，削弱暴力破解防护效果 |
+| SEC-7 | A2A Task 端点无认证 | 🔴 严重 | 同 C-1，匿名可执行任意 A2A 任务 |
 
-### 21.3 可扩展性问题
+### 21.3 线程安全与并发问题
 
-| 编号 | 问题 | 影响 | 状态 |
+| 编号 | 位置 | 问题 | 建议 |
 |------|------|------|------|
-| E-1 | 知识图谱纯内存，无持久化图数据库 | 大数据集无法处理 | 待修复 |
-| E-2 | 工作流仅支持顺序执行 | 独立步骤无法并行 | ✅ 已实现：DAG 执行引擎 `execute_workflow_dag()` 支持拓扑排序 + 并行层 + 条件节点 + Custom Skill Agent 节点 |
-| E-3 | Cron 调度基于内存 (APScheduler) | 重启后丢失 | 部分缓解（APScheduler 已安装，DB 持久化调度待实现） |
-| E-4 | Prometheus 指标标签基数无限制 | 时间序列膨胀 | 待修复 |
-| E-5 | 多源融合按固定顺序配对 | 非最优执行计划 | 待修复 |
+| TS-1 | `app.py` `pending_map_updates` | 模块级 `dict`，多个异步任务并发读写 | 改用 `asyncio.Lock` 或 `defaultdict` + 锁 |
+| TS-2 | `app.py` `_mcp_started` / `_a2a_started_at` | 布尔/时间戳全局变量，双检锁已部分实现 | ✅ v12.2 已加双检锁 |
+| TS-3 | `circuit_breaker._circuits` | 无锁 dict 操作 | 添加 `threading.Lock`，`_get_circuit()` 内加锁 |
+| TS-4 | `a2a_server._tasks` | 无锁 dict + 并发裁剪 | 添加 `asyncio.Lock`，裁剪逻辑原子化 |
+| TS-5 | `auth._login_failures` | 无锁计数器 | 改用 `threading.Lock` 或 `collections.Counter` + 锁 |
+| TS-6 | `frontend_api.py` `pending_map_updates` | 同 TS-1 | 统一到 app.py 的锁保护下 |
+| TS-7 | `mcp_hub.py` 全局 hub 实例 | `_hub` 单例无并发保护 | 添加模块级锁或改用 `functools.lru_cache` |
 
-### 21.4 前端问题
+### 21.4 v13–v14 新增模块缺陷
+
+| 模块 | 文件 | 行数 | 问题 | 严重性 |
+|------|------|------|------|--------|
+| Agent Registry | `agent_registry.py` | ~200 | SQL INTERVAL 参数化错误（C-2）；无连接池复用，每次操作新建连接 | 🔴 高 |
+| Circuit Breaker | `circuit_breaker.py` | ~95 | 无线程安全（C-3）；状态仅内存，进程重启后丢失 | 🔴 高 |
+| A2A Server | `a2a_server.py` | ~250 | `_tasks` 无锁（C-4）；任务字典无上限时可 OOM；缺少任务超时机制 | 🔴 高 |
+| Virtual Sources | `virtual_sources.py` | ~380 | Fernet 密钥 TOCTOU（C-5）；连接器超时硬编码 30s | 🟡 中 |
+| DRL Engine (NSGA-II) | `drl_engine.py` | ~850 | `_crowding_distance()` 空 front 时 `front[0]` 触发 IndexError；训练异常时临时文件可能泄漏 | 🟡 中 |
+| Analysis Chains | `analysis_chains.py` | 222 | 实现清晰，无明显缺陷 | ✅ |
+| Plugin Registry | `plugin_registry.py` | 113 | 实现清晰，无明显缺陷 | ✅ |
+| Workflow Engine | `workflow_engine.py` | 1370 | 节点级重试已实现 (`retry_workflow_node`)；断点续跑 (`resume_workflow_dag`) 尚未实现 | 🟡 中 |
+
+### 21.5 系统级问题
+
+| 编号 | 问题 | 严重性 | 状态 |
+|------|------|--------|------|
+| S-1 | `app.py` 职责过重 | 高 | 部分缓解：已拆分 `intent_router.py`（197 行）+ `pipeline_helpers.py`（284 行），但 app.py 仍有 3340 行 |
+| S-2 | 模块级全局可变状态 10+ 处 | 高 | 部分缓解：`_mcp_started` 已加双检锁，其余待修复 |
+| S-3 | 无数据库迁移框架 | 中 | 部分缓解：已有 `migrations/012-017` SQL 文件，但无 Alembic 等自动化工具 |
+| S-4 | `frontend_api.py` 2572 行 / 123 端点 | 中 | 部分缓解：已拆分 `api/` 子模块（bundle_routes / kb_routes / mcp_routes / workflow_routes / skills_routes / virtual_routes），但主文件仍膨胀 |
+| S-5 | 知识图谱纯内存 | 中 | 待修复：networkx DiGraph 无持久化，大数据集无法处理 |
+| S-6 | Cron 调度基于内存 | 中 | 待修复：APScheduler 已安装但无 DB 持久化，重启后丢失 |
+| S-7 | Prometheus 指标标签基数无限制 | 低 | 待修复 |
+
+### 21.6 前端问题
+
+| 编号 | 问题 | 严重性 | 状态 |
+|------|------|--------|------|
+| F-1 | `DataPanel.tsx` 2922 行 / 16 tabs — God Component | 🔴 高 | 应拆分为独立 tab 组件（MarketplaceView / GeoJsonEditorView / VirtualSourcesView 等） |
+| F-2 | Props drilling 无全局状态管理 | 🟡 中 | 所有组件依赖 props + local useState，无 Context API / Zustand |
+| F-3 | 全局回调函数 (`window.__*`) | 🟡 中 | ✅ v12.2 已改为 CustomEvent，但部分遗留仍存在 |
+| F-4 | 缺少 Error Boundaries | 🟡 中 | DataPanel / ChatPanel / MapPanel 均无 ErrorBoundary 包裹 |
+| F-5 | REST 轮询地图更新 | 低 | 受限于 Chainlit `@chainlit/react-client` v0.3.1 不传递 step metadata |
+| F-6 | 单文件 CSS | 低 | `layout.css` 仍为单文件，随功能增长持续膨胀 |
+| F-7 | ChatPanel 缺少参数调整重跑 UI | 🟡 中 | roadmap v14.0 规划但未实现前端交互 |
+| F-8 | ChatPanel 缺少记忆搜索面板 | 🟡 中 | `/recall` 命令未实现 |
+
+### 21.7 测试与质量
 
 | 编号 | 问题 | 状态 |
 |------|------|------|
-| F-1 | Props drilling 过深 | 待修复 |
-| F-2 | 全局回调函数 (`window.__*`) | 待修复 |
-| F-3 | 单文件 CSS (2291 行) | 部分缓解（现 2366 行，功能更多但结构仍是单文件） |
-| F-4 | 缺少 Error Boundaries | 待修复 |
-| F-5 | REST 轮询地图更新 | 待修复（受限于 Chainlit 客户端） |
-
-### 21.5 测试与质量
-
-| 编号 | 问题 | 状态 |
-|------|------|------|
-| T-1 | test_knowledge_agent.py 有语法错误被永久排除 | ✅ 已修复：修正 imports、prompts 路径、字符串字面量 |
-| T-2 | arcpy_tools.py:424 有语法错误 | ✅ 已修复：删除重复的 `import json` + `try:` 块 |
+| T-1 | test_knowledge_agent.py 语法错误 | ✅ 已修复 |
+| T-2 | arcpy_tools.py 语法错误 | ✅ 已修复 |
 | T-3 | 评测通过率阈值硬编码 | 待修复 |
 | T-4 | 路由器 Token 未纳入 token_tracker | 待修复 |
+| T-5 | 测试覆盖：93 文件 / 2193 个测试函数 | ✅ 覆盖率良好 |
+| T-6 | 新模块测试覆盖不均 | 🟡 `circuit_breaker` / `agent_registry` / `analysis_chains` 缺少独立测试文件 |
 
-### 21.6 v12.0 新增能力（2026-03-18）
+### 21.8 架构优势总结
 
-| 能力 | 描述 |
-|------|------|
-| **用户自定义技能 (Custom Skills CRUD)** | 前端 CapabilitiesView 支持创建/编辑/删除自定义 LlmAgent（指令+工具集+触发词+模型等级） |
-| **用户自定义工具 (User Tools)** | 声明式工具模板：http_call / sql_query / file_transform / chain，DB 存储，动态 FunctionTool 构建，通过 UserToolset 暴露给 ADK Agent |
-| **能力浏览 (Capabilities Tab)** | DataPanel 第 12 个 tab，聚合展示内置技能、自定义技能、工具集、自建工具，支持分类过滤和搜索 |
-| **多 Agent Pipeline 编排** | WorkflowEditor 新增 Skill Agent 节点类型，用户可可视化编排多个自定义技能为 DAG 工作流 |
-| **面板拖拽调整** | 三面板布局支持拖拽分隔条调整宽度（240-700px） |
-| **安全加固** | DB 降级后门移除 (SEC-1) + 暴力破解防护 (SEC-2) |
-| **代码拆分** | app.py 拆分为 intent_router.py + pipeline_helpers.py (S-1) |
+尽管存在上述改进空间，v14.3 系统在以下方面展现了成熟且持续演进的架构设计：
 
-### 21.4 前端问题
+1. **语义路由 + 多管线分发**：Gemini Flash 低成本路由 → 高能力模型推理，成本结构合理；v14.3 新增多语言检测（zh/en/ja）
+2. **ContextVar 多租户隔离**：零侵入式用户上下文传播，4 个 ContextVar（user_id / session_id / role / model_tier）
+3. **质量保证循环**：Generator + Critic 的 LoopAgent 模式，3 条管线均有自动质量自检
+4. **虚拟数据层**：v13.0 实现 4 种连接器（WFS/STAC/OGC API/Custom API）+ Fernet 加密 + 语义 schema 映射，从"用户带数据来"转向"Agent 主动发现数据"
+5. **MCP Server v2.0**：36+ 工具暴露（底层 GIS + 高阶元数据 + pipeline 执行），外部 Agent 可通过 MCP 调用完整分析能力
+6. **数据融合包**：22 模块 / 10 种策略的清晰职责分离 + PostGIS 下推优化
+7. **懒加载工具注册表**：`_RegistryProxy` 避免导入 24 个重型 toolset 类，显著优化冷启动
+8. **用户自扩展生态**：Custom Skills（版本管理 + 评分 + 克隆 + 审批发布）+ User Tools（4 种模板）+ Skill Bundles + Workflow Templates + Plugin Registry
+9. **多 Agent 编排**：DAG 工作流 + 节点级重试 + A2A 协议（Agent Card + Task lifecycle）+ Agent Registry（心跳 + 服务发现）
+10. **DRL 优化深度**：5 个场景模板 + NSGA-II 多目标优化 + MaskablePPO + Pareto 前沿搜索
+11. **无头管线执行器**：`pipeline_runner.py` 零 UI 依赖，为 CLI/TUI/Bot 等多形态接入奠定基础
+12. **失败学习机制**：从历史失败中提取提示注入后续尝试，提升系统韧性
+13. **分析链自动化**：条件触发后续分析（"如果 X > 阈值则自动执行 Y"），减少人工干预
+14. **端到端评测**：4 管线独立评测 + CI 集成 + 自动改进建议
 
-| 编号 | 问题 | 建议 |
-|------|------|------|
-| F-1 | Props drilling 过深 | React Context API 或 Zustand |
-| F-2 | 全局回调函数 (`window.__*`) | 事件总线或 Context |
-| F-3 | 单文件 CSS (2291 行) | CSS Modules 或 Tailwind |
-| F-4 | 缺少 Error Boundaries | 主要区域添加 `<ErrorBoundary>` |
-| F-5 | REST 轮询地图更新 | 升级 Chainlit 客户端后改为 WS 直推 |
+### 21.9 v12.0 → v14.3 演进总结
 
-### 21.5 测试与质量
+| 维度 | v12.0 (2026-03-18) | v14.3 (2026-03-21) | 变化 |
+|------|--------------------|--------------------|------|
+| REST 端点 | 92 | 123 | +31 |
+| 测试数量 | ~2100 / 92 文件 | ~2193 / 93 文件 | +93 |
+| DataPanel Tabs | 12 | 16 | +4（vsources / market / geojson / kb） |
+| 工具集 | 23 | 24+ | +VirtualSourceToolset |
+| MCP 工具 | 30+ | 36+ | +6 高阶元数据工具 |
+| 数据库迁移 | 无 | 6 个 SQL 文件 (012-017) | 新增 |
+| 新增后端模块 | — | agent_registry / circuit_breaker / a2a_server / analysis_chains / plugin_registry / virtual_sources | +6 |
+| DRL 场景 | 1（耕地优化） | 5（+城市绿地/设施选址/交通网络/综合规划） | +4 |
+| 多目标优化 | 加权和 | NSGA-II Pareto 前沿 | 升级 |
+| A2A 协议 | 单向 Agent Card | 双向 RPC + Task lifecycle + Agent Registry | 升级 |
+| 意图路由 | 3 分类 | 3 分类 + 多语言检测 + 工具类别过滤 | 增强 |
+| 用户扩展 | Skills + Tools | + 版本管理 / 评分 / 克隆 / 审批 / 依赖图 / Webhook / SDK spec | 大幅增强 |
 
-| 编号 | 问题 | 建议 |
-|------|------|------|
-| T-1 | test_knowledge_agent.py 有语法错误被永久排除 | 修复或删除 |
-| T-2 | arcpy_tools.py:424 有语法错误 | 修复 |
-| T-3 | 评测通过率阈值硬编码 | 改为环境变量配置 |
-| T-4 | 路由器 Token 未纳入 token_tracker | 应同步记录到使用追踪 |
+### 21.10 优先修复建议
 
-### 21.6 架构优势总结
+按影响面和修复成本排序：
 
-尽管存在上述改进空间，系统在以下方面展现了成熟的架构设计：
-
-1. **语义路由 + 多管线分发**：用低成本 Flash 模型做路由、高能力模型做推理，成本结构合理
-2. **ContextVar 多租户隔离**：零侵入式的用户上下文传播，是 Python 异步应用的最佳实践
-3. **质量保证循环**：Generator + Critic 的 LoopAgent 模式提供了自动质量自检
-4. **四级语义字段匹配**：从精确到模糊的渐进式匹配策略，兼顾准确性和鲁棒性
-5. **数据融合包结构**：22 模块的清晰职责分离，10 种策略的可扩展注册表
-6. **懒加载工具注册表**：显著优化冷启动性能
-7. **MCP Hub 热重载**：运行时 CRUD + Fernet 加密，外部工具集成的生产级方案
-8. **端到端评测体系**：4 管线独立评测 + CI 集成 + 自动改进建议
-9. **无头管线执行器**：解耦 UI，为 CLI/TUI/Bot 等多形态接入奠定基础
-10. **失败学习机制**：从历史失败中提取提示注入后续尝试，提升系统韧性
+| 优先级 | 编号 | 修复建议 | 预估工作量 |
+|--------|------|----------|-----------|
+| P0 | C-1 | A2A Task 端点添加 `_require_auth()` 认证装饰器 | 0.5h |
+| P0 | C-2 | `agent_registry.py:152` 修正 SQL INTERVAL 为 `:t * INTERVAL '1 second'` | 0.5h |
+| P1 | C-3 | `circuit_breaker.py` 添加 `threading.Lock` | 1h |
+| P1 | C-4 | `a2a_server.py` 添加 `asyncio.Lock` + 原子化裁剪 | 1h |
+| P1 | F-1 | `DataPanel.tsx` 拆分为独立 tab 组件 | 4-6h |
+| P2 | C-5 | `virtual_sources.py` Fernet 密钥初始化加文件锁 | 1h |
+| P2 | TS-1/5/6 | 统一全局可变状态的锁保护 | 2h |
+| P2 | F-2 | 引入 Zustand 或 React Context 替代 props drilling | 4h |
+| P3 | S-3 | 引入 Alembic 数据库迁移框架 | 4h |
+| P3 | F-4 | 主要面板添加 Error Boundaries | 1h |
 
 ---
 
-*本文档基于 GIS Data Agent v12.0 代码库（2026-03-18）编写。文中所有模块描述、行数、函数签名均来自实际代码审查。§21 已标注各问题的修复状态。*
+*本文档基于 GIS Data Agent v14.3 代码库（2026-03-21）编写。审计覆盖 app.py（3340 行）、frontend_api.py（2572 行 / 123 端点）、DataPanel.tsx（2922 行 / 16 tabs）及全部 v13–v14 新增模块。所有发现均来自实际代码审查。*
