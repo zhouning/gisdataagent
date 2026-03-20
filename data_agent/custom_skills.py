@@ -201,6 +201,13 @@ def ensure_custom_skills_table():
                 conn.execute(text(
                     f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
                 ))
+            # v14.3: dependency graph + webhook
+            for col in ("depends_on INTEGER[] DEFAULT '{}'::integer[]",
+                        "webhook_url VARCHAR(500) DEFAULT ''",
+                        "webhook_events TEXT[] DEFAULT '{}'::text[]"):
+                conn.execute(text(
+                    f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
+                ))
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS agent_skill_versions (
                     id SERIAL PRIMARY KEY,
