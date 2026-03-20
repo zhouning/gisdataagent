@@ -2248,6 +2248,108 @@ async def _api_memory_search(request: Request):
     return JSONResponse(result)
 
 
+async def _api_chains_list(request: Request):
+    """GET /api/chains — list analysis chains for current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    from .analysis_chains import list_chains
+    return JSONResponse({"chains": list_chains(username)})
+
+
+async def _api_chains_create(request: Request):
+    """POST /api/chains — create an analysis chain."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    if not body.get("chain_name") or not body.get("trigger_condition") or not body.get("follow_up_prompt"):
+        return JSONResponse({"error": "chain_name, trigger_condition, follow_up_prompt required"}, status_code=400)
+    from .analysis_chains import create_chain
+    result = create_chain(
+        chain_name=body["chain_name"],
+        trigger_condition=body["trigger_condition"],
+        follow_up_prompt=body["follow_up_prompt"],
+        follow_up_pipeline=body.get("follow_up_pipeline", "general"),
+        description=body.get("description", ""),
+    )
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result, status_code=201)
+
+
+async def _api_chains_delete(request: Request):
+    """DELETE /api/chains/{id} — delete an analysis chain."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    chain_id = int(request.path_params.get("id", 0))
+    from .analysis_chains import delete_chain
+    if delete_chain(chain_id):
+        return JSONResponse({"ok": True})
+    return JSONResponse({"error": "Chain not found"}, status_code=404)
+
+
+async def _api_annotations_export(request: Request):
+    """GET /api/annotations/export?format=geojson — export annotations as GeoJSON or CSV."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    fmt = request.query_params.get("format", "geojson")
+
+    from .db_engine import get_engine
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not available"}, status_code=500)
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT id, lng, lat, title, comment, color, is_resolved, created_at "
+                "FROM agent_map_annotations WHERE user_id = :u ORDER BY created_at"
+            ), {"u": username}).fetchall()
+
+        if fmt == "geojson":
+            features = []
+            for r in rows:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [float(r[1]), float(r[2])]},
+                    "properties": {
+                        "id": r[0], "title": r[3], "comment": r[4],
+                        "color": r[5], "resolved": bool(r[6]),
+                        "created_at": str(r[7]),
+                    },
+                })
+            return JSONResponse({
+                "type": "FeatureCollection",
+                "features": features,
+            })
+        else:  # csv
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["id", "lng", "lat", "title", "comment", "color", "resolved", "created_at"])
+            for r in rows:
+                writer.writerow([r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]])
+            from starlette.responses import Response
+            return Response(
+                content=output.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=annotations.csv"},
+            )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
@@ -2298,6 +2400,12 @@ def get_frontend_api_routes():
         Route("/api/drl/scenarios", endpoint=_api_drl_scenarios, methods=["GET"]),
         # Memory Search (v14.0)
         Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
+        # Analysis Chains (v14.2)
+        Route("/api/chains", endpoint=_api_chains_list, methods=["GET"]),
+        Route("/api/chains", endpoint=_api_chains_create, methods=["POST"]),
+        Route("/api/chains/{id:int}", endpoint=_api_chains_delete, methods=["DELETE"]),
+        # Annotation Export (v14.2)
+        Route("/api/annotations/export", endpoint=_api_annotations_export, methods=["GET"]),
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),

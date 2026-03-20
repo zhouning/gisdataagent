@@ -151,6 +151,10 @@ try:
     ensure_virtual_sources_table()
     from data_agent.agent_registry import ensure_registry_table
     ensure_registry_table()
+    from data_agent.analysis_chains import ensure_chains_table
+    ensure_chains_table()
+    from data_agent.workflow_engine import recover_incomplete_runs
+    recover_incomplete_runs()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -2032,6 +2036,21 @@ async def _execute_pipeline(
                 await cl.Message(
                     content="💡 **推荐后续分析：**",
                     actions=actions,
+                ).send()
+        except Exception:
+            pass  # non-fatal
+
+        # --- v14.2: Evaluate analysis chains ---
+        try:
+            from data_agent.analysis_chains import evaluate_chains
+            triggered = evaluate_chains(report_text, pipeline_type, generated_files, user_id)
+            for chain in triggered[:2]:  # max 2 auto-triggered per turn
+                await cl.Message(
+                    content=f"🔗 **分析链触发**: {chain['chain_name']}\n执行: {chain['follow_up_prompt'][:100]}",
+                    actions=[
+                        cl.Action(name="chain_exec", payload={"value": chain["follow_up_prompt"]},
+                                  label=f"执行: {chain['follow_up_prompt'][:40]}..."),
+                    ],
                 ).send()
         except Exception:
             pass  # non-fatal
