@@ -41,6 +41,83 @@ COUNT_PENALTY_WEIGHT = 500.0     # v7: drastically reduced from 100,000
 PAIR_BONUS = 1.0                 # v7: increased from 0.5
 
 
+# ---------------------------------------------------------------------------
+# Scenario Templates (v14.0)
+# ---------------------------------------------------------------------------
+
+class DRLScenario:
+    """Configuration template for DRL optimization scenarios."""
+    def __init__(self, name: str, description: str,
+                 source_types: set, target_types: set,
+                 slope_weight: float = 1000.0,
+                 contiguity_weight: float = 500.0,
+                 balance_weight: float = 500.0,
+                 pair_bonus: float = 1.0,
+                 max_conversions: int = 200):
+        self.name = name
+        self.description = description
+        self.source_types = source_types
+        self.target_types = target_types
+        self.slope_weight = slope_weight
+        self.contiguity_weight = contiguity_weight
+        self.balance_weight = balance_weight
+        self.pair_bonus = pair_bonus
+        self.max_conversions = max_conversions
+
+
+# Built-in scenario templates
+SCENARIOS: dict[str, DRLScenario] = {
+    "farmland_optimization": DRLScenario(
+        name="耕地布局优化",
+        description="优化耕地与林地的空间分布，最小化耕地坡度、最大化连片度",
+        source_types={'旱地', '水田'},
+        target_types={'果园', '有林地'},
+        slope_weight=1000.0,
+        contiguity_weight=500.0,
+        balance_weight=500.0,
+    ),
+    "urban_green_space": DRLScenario(
+        name="城市绿地布局",
+        description="优化城市绿地空间分布，最大化绿地可达性和连通性",
+        source_types={'绿地', '公园', '草地'},
+        target_types={'建设用地', '硬化地面'},
+        slope_weight=200.0,
+        contiguity_weight=1000.0,
+        balance_weight=800.0,
+    ),
+    "facility_siting": DRLScenario(
+        name="设施选址优化",
+        description="优化公共设施布局，平衡服务覆盖和交通可达",
+        source_types={'公共服务设施', '公共设施'},
+        target_types={'居住用地', '商业用地'},
+        slope_weight=300.0,
+        contiguity_weight=800.0,
+        balance_weight=600.0,
+        max_conversions=100,
+    ),
+}
+
+
+def list_scenarios() -> list[dict]:
+    """Return available DRL scenario templates."""
+    return [
+        {
+            "id": sid,
+            "name": s.name,
+            "description": s.description,
+            "source_types": sorted(s.source_types),
+            "target_types": sorted(s.target_types),
+            "weights": {
+                "slope": s.slope_weight,
+                "contiguity": s.contiguity_weight,
+                "balance": s.balance_weight,
+            },
+            "max_conversions": s.max_conversions,
+        }
+        for sid, s in SCENARIOS.items()
+    ]
+
+
 class LandUseOptEnv(gym.Env):
     """
     Land use optimization environment (v7).
