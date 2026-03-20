@@ -1,6 +1,6 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v12.1
+# GIS Data Agent (ADK Edition) v12.2
 
 基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
 
@@ -492,6 +492,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v11.0 | 并发任务队列、推理链+置信度、主动探索建议、A2A 互操作、设计模式 19/21 | 2074 | ✅ 完成 |
 | v12.0 | 自助扩展平台：Custom Skills CRUD、User Tools、多 Agent Pipeline 编排、能力浏览 Tab、知识库 Tab、面板拖拽、安全加固（SEC-1/SEC-2）、app.py 拆分、ADK v1.27.2 | 2121 | ✅ 完成 |
 | v12.1 | 数据血缘自动追踪（pipeline_run_id + ContextVar）、血缘 DAG 可视化、行业分析模板（城市规划/环境监测/国土资源）、CapabilitiesView 行业分组、S-4 API 模块化 42%、Cartographic Precision UI 重设计 | 2123 | ✅ 完成 |
+| v12.2 | 语义数据发现：向量嵌入混合搜索（text-embedding-004 + n-gram）、数据资产入图（KG 域边 + 关联发现）、Planner 数据发现优先策略 v7.2.0、语义度量定义（5 个预置度量 + register/resolve/list） | 2123 | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 
 ## 设计模式覆盖 (21/21 = 100%)

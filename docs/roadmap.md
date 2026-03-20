@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-03-19 &nbsp;|&nbsp; **Current version**: v12.0 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-03-19 &nbsp;|&nbsp; **Current version**: v12.2 &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）
 >
@@ -8,7 +8,7 @@
 
 ---
 
-## 已完成 (v12.0)
+## 已完成 (v12.2)
 
 - [x] 能力浏览 Tab (CapabilitiesView) — 内置技能/自定义技能/工具集/用户工具聚合展示
 - [x] Custom Skills 前端 CRUD — 创建/编辑/删除自定义 Agent
@@ -26,31 +26,16 @@
 - [x] SEC-4: Prompt 注入增强 — 24 模式 + 安全边界包裹
 - [x] WorkflowEditor 实时执行状态 — 轮询 run status + per-node 状态面板
 - [x] ADK list_skills_in_dir 采用 — 替代手动 YAML 解析
-- [x] S-4 API 拆分 (部分) — api/helpers + bundle_routes + kb_routes
+- [x] S-4 API 拆分 — api/helpers + bundle_routes + kb_routes + mcp_routes + workflow_routes + skills_routes (42%)
 - [x] 启动缺表修复 — workflow_templates + skill_bundles 表初始化
+- [x] BP-3 分析血缘自动记录 — pipeline_run_id ContextVar + tool_params 传递 + KG derives_from/feeds_into 边
+- [x] 血缘 DAG 可视化 — DataPanel 资产详情横向 DAG 布局 (SVG 箭头 + 类型徽章)
+- [x] BP-5 行业分析模板 (首批) — 城市热岛效应/植被变化检测/土地利用优化 3 个模板
+- [x] CapabilitiesView 行业分组 — 行业模板过滤器 + /api/templates 集成
+- [x] Cartographic Precision UI — Space Grotesk + Teal/Amber + Stone 暖白 + 等高线登录页
+
 
 ---
-
-## v12.1 — 血缘追踪 + 行业模板 (1-2 周)
-
-> 低投入快速见效，利用现有基础设施补齐可追溯性短板
-
-- [ ] **BP-3 分析血缘自动记录** — 管线执行时自动将步骤写入 knowledge_graph（新增 `derives_from` / `feeds_into` 边类型），从 ADK agent `output_key` 链提取血缘
-- [ ] **血缘可视化** — DataPanel Catalog tab 渲染血缘链（lineage 字段已有，需前端 DAG 渲染）
-- [ ] **BP-5 行业分析模板 (首批)** — 基于现有 18 Skills + Workflow 引擎，按场景组织 2-3 个端到端模板：城市规划（热岛效应/设施选址）、环境监测（植被变化/水体提取）、国土资源（用地优化）
-- [ ] **CapabilitiesView 行业分类** — 模板按行业场景分组浏览，一键导入为 Workflow
-- [ ] S-4 API 拆分 (续) — 剩余路由模块化提取
-
----
-
-## v12.2 — 语义数据发现 (2-3 周)
-
-> 核心转变：Agent 从"等用户上传"到"主动搜索数据目录"（参照 SeerAI 知识图谱语义层）
-
-- [ ] **BP-2 数据资产入图** — knowledge_graph.py 新增数据资产节点类型（当前仅地理实体），建立资产↔实体↔分析工作流的语义关系网络
-- [ ] **向量嵌入搜索** — 为数据资产生成 Gemini embedding，`search_data_assets` 工具增加向量相似度搜索（当前仅 n-gram 文本匹配）
-- [ ] **Planner 数据发现优先** — 优化 Planner prompt：收到分析请求时先搜索数据目录，找到相关数据集后确认再执行，而非直接要求用户上传
-- [ ] **语义层增强** — semantic_layer.py 增加业务度量定义能力（如"植被覆盖率 = NDVI > 0.3 面积占比"），支持自然语言→度量映射
 
 ---
 
@@ -95,10 +80,10 @@
 | 标杆能力 | 来源 | 状态 | 目标版本 |
 |----------|------|------|----------|
 | 空间数据虚拟化 | SeerAI | 🔴 未开始 | v13.0 |
-| 知识图谱语义发现 | SeerAI | 🟡 基础已有 | v12.2 |
-| 分析血缘自动追踪 | SeerAI | 🟡 字段已有 | v12.1 |
+| 知识图谱语义发现 | SeerAI | 🟢 已完成 | v12.2 |
+| 分析血缘自动追踪 | SeerAI | 🟢 已完成 | v12.1 |
 | MCP Server 暴露 | SeerAI | 🔴 未开始 | v13.1 |
-| 行业预置模板 | SeerAI | 🟡 基础设施就绪 | v12.1 |
+| 行业预置模板 | SeerAI | 🟢 已完成 | v12.1 |
 | Agent 对话交互 | OpenClaw | 🟢 已领先 | 持续 |
 | 企业级治理 | Frontier | 🟡 RBAC+审计已有 | 持续 |
 | 多 Agent 协作 | CoWork | 🟢 DAG 编排已有 | 持续 |

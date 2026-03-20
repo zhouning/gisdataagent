@@ -1,6 +1,6 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v12.1
+# GIS Data Agent (ADK Edition) v12.2
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend (13 tabs), and enterprise-grade security.
 
