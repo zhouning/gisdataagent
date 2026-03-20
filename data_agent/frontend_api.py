@@ -2350,6 +2350,74 @@ async def _api_annotations_export(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+async def _api_plugins_list(request: Request):
+    """GET /api/plugins — list installed plugins."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .plugin_registry import list_plugins
+    return JSONResponse({"plugins": list_plugins()})
+
+
+async def _api_plugins_install(request: Request):
+    """POST /api/plugins — install a plugin."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    from .plugin_registry import register_plugin
+    result = register_plugin(
+        plugin_id=body.get("plugin_id", ""),
+        plugin_name=body.get("plugin_name", ""),
+        tab_label=body.get("tab_label", ""),
+        description=body.get("description", ""),
+        entry_url=body.get("entry_url", ""),
+        owner_username=username,
+    )
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result, status_code=201)
+
+
+async def _api_a2a_task_create(request: Request):
+    """POST /api/a2a/tasks — create a new A2A task (v14.3 lifecycle)."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    from .a2a_server import create_task
+    result = create_task(body.get("message", ""), body.get("caller_id", "api"))
+    return JSONResponse(result, status_code=201)
+
+
+async def _api_a2a_task_execute(request: Request):
+    """POST /api/a2a/tasks/{task_id}/execute — execute a submitted task."""
+    task_id = request.path_params.get("task_id", "")
+    from .a2a_server import execute_task
+    result = await execute_task(task_id)
+    return JSONResponse(result)
+
+
+async def _api_a2a_task_status(request: Request):
+    """GET /api/a2a/tasks/{task_id} — get task status."""
+    task_id = request.path_params.get("task_id", "")
+    from .a2a_server import get_task_status
+    status = get_task_status(task_id)
+    if not status:
+        return JSONResponse({"error": "Task not found"}, status_code=404)
+    return JSONResponse(status)
+
+
+async def _api_a2a_federation(request: Request):
+    """GET /api/a2a/federation — get federation config and peer agents."""
+    from .a2a_server import get_federation_config
+    return JSONResponse(get_federation_config())
+
+
 # ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
@@ -2406,6 +2474,14 @@ def get_frontend_api_routes():
         Route("/api/chains/{id:int}", endpoint=_api_chains_delete, methods=["DELETE"]),
         # Annotation Export (v14.2)
         Route("/api/annotations/export", endpoint=_api_annotations_export, methods=["GET"]),
+        # Plugins (v14.3)
+        Route("/api/plugins", endpoint=_api_plugins_list, methods=["GET"]),
+        Route("/api/plugins", endpoint=_api_plugins_install, methods=["POST"]),
+        # A2A Task Lifecycle (v14.3)
+        Route("/api/a2a/tasks", endpoint=_api_a2a_task_create, methods=["POST"]),
+        Route("/api/a2a/tasks/{task_id}", endpoint=_api_a2a_task_status, methods=["GET"]),
+        Route("/api/a2a/tasks/{task_id}/execute", endpoint=_api_a2a_task_execute, methods=["POST"]),
+        Route("/api/a2a/federation", endpoint=_api_a2a_federation, methods=["GET"]),
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),

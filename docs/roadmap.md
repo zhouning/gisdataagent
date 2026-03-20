@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-03-20 &nbsp;|&nbsp; **Current version**: v14.1 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-03-20 &nbsp;|&nbsp; **Current version**: v14.3 &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）
 >
@@ -132,7 +132,7 @@
 
 ---
 
-## v14.2 — 深度智能 + 生产就绪 (4-5 周)
+## 已完成 (v14.2) — 深度智能 + 生产就绪
 
 > **主题**: DRL 专业化，系统可投产
 
@@ -161,7 +161,7 @@
 
 ---
 
-## v14.3 — 联邦多 Agent + 生态开放 (4-6 周)
+## 已完成 (v14.3) — 联邦多 Agent + 生态开放
 
 > **主题**: 从单机走向分布式，从工具走向平台
 

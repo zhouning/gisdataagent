@@ -3,8 +3,10 @@ Intent Router — Semantic classification of user queries into pipeline categori
 
 Extracted from app.py (S-1 refactoring). Uses Gemini 2.0 Flash for low-latency
 intent classification with multimodal support (text + images + PDF context).
+v14.3: Added multi-language detection (zh/en/ja).
 """
 import logging
+import re
 
 from google import genai as genai_client
 from google.genai import types
@@ -15,15 +17,57 @@ logger = logging.getLogger("data_agent.intent_router")
 _router_client = genai_client.Client()
 
 
+# ---------------------------------------------------------------------------
+# Language Detection (v14.3)
+# ---------------------------------------------------------------------------
+
+def detect_language(text: str) -> str:
+    """Detect input language from character distribution.
+
+    Returns: 'zh' (Chinese), 'en' (English), 'ja' (Japanese), or 'zh' as default.
+    """
+    if not text:
+        return "zh"
+    # Count character types
+    cjk = 0
+    hiragana_katakana = 0
+    latin = 0
+    for ch in text:
+        cp = ord(ch)
+        if 0x4E00 <= cp <= 0x9FFF or 0x3400 <= cp <= 0x4DBF:
+            cjk += 1
+        elif 0x3040 <= cp <= 0x30FF:
+            hiragana_katakana += 1
+        elif 0x0041 <= cp <= 0x007A:
+            latin += 1
+
+    total = cjk + hiragana_katakana + latin
+    if total == 0:
+        return "zh"
+    if hiragana_katakana / max(total, 1) > 0.1:
+        return "ja"
+    if latin / max(total, 1) > 0.7:
+        return "en"
+    return "zh"
+
+
+_LANG_HINTS = {
+    "zh": "请用中文回复。",
+    "en": "Please respond in English.",
+    "ja": "日本語で回答してください。",
+}
+
+
 def classify_intent(text: str, previous_pipeline: str = None,
                     image_paths: list = None, pdf_context: str = None) -> tuple:
     """
     Uses Gemini Flash to semantically classify user intent into one of the 3 pipelines,
     plus tool subcategories for dynamic tool filtering (v7.5.6).
     Supports multimodal input: images are embedded directly, PDF text is appended to prompt.
-    Returns: (intent, reason, router_tokens, tool_categories) where intent is
-    'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS'.
+    Returns: (intent, reason, router_tokens, tool_categories, language) where intent is
+    'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS', and language is 'zh'/'en'/'ja'.
     """
+    lang = detect_language(text)
     try:
         prev_hint = ""
         if previous_pipeline:
@@ -124,14 +168,14 @@ def classify_intent(text: str, previous_pipeline: str = None,
         else:
             intent = raw.upper()
             reason = ""
-        if "OPTIMIZATION" in intent: return ("OPTIMIZATION", reason, router_tokens, tool_cats)
-        if "GOVERNANCE" in intent: return ("GOVERNANCE", reason, router_tokens, tool_cats)
-        if "AMBIGUOUS" in intent: return ("AMBIGUOUS", reason, router_tokens, tool_cats)
-        if "GENERAL" in intent: return ("GENERAL", reason, router_tokens, tool_cats)
-        return ("GENERAL", reason, router_tokens, tool_cats)
+        if "OPTIMIZATION" in intent: return ("OPTIMIZATION", reason, router_tokens, tool_cats, lang)
+        if "GOVERNANCE" in intent: return ("GOVERNANCE", reason, router_tokens, tool_cats, lang)
+        if "AMBIGUOUS" in intent: return ("AMBIGUOUS", reason, router_tokens, tool_cats, lang)
+        if "GENERAL" in intent: return ("GENERAL", reason, router_tokens, tool_cats, lang)
+        return ("GENERAL", reason, router_tokens, tool_cats, lang)
     except Exception as e:
         logger.error("Router error: %s", e)
-        return ("GENERAL", "", 0, set())
+        return ("GENERAL", "", 0, set(), detect_language(text))
 
 
 def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) -> str:
