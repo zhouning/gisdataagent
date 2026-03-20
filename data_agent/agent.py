@@ -52,6 +52,7 @@ from .toolsets import (
     AdvancedAnalysisToolset,
 )
 from .toolsets.watershed_tools import WatershedToolset
+from .toolsets.virtual_source_tools import VirtualSourceToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -388,6 +389,7 @@ general_processing_agent = LlmAgent(
         KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
         KnowledgeBaseToolset(tool_filter=intent_tool_predicate),
         AdvancedAnalysisToolset(tool_filter=intent_tool_predicate),
+        VirtualSourceToolset(tool_filter=intent_tool_predicate),
     ] + _arcpy_tools,
 )
 
@@ -493,6 +495,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             FusionToolset(tool_filter=intent_tool_predicate),
             KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
             KnowledgeBaseToolset(tool_filter=["search_knowledge_base", "get_kb_context", "list_knowledge_bases"]),
+            VirtualSourceToolset(tool_filter=intent_tool_predicate),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)

@@ -81,6 +81,13 @@ def ensure_user_tools_table():
                 CREATE INDEX IF NOT EXISTS idx_ut_enabled
                 ON {T_USER_TOOLS}(enabled) WHERE enabled = TRUE
             """))
+            # v14.0: rating + clone columns
+            for col in ("rating_sum INTEGER DEFAULT 0",
+                        "rating_count INTEGER DEFAULT 0",
+                        "clone_count INTEGER DEFAULT 0"):
+                conn.execute(text(
+                    f"ALTER TABLE {T_USER_TOOLS} ADD COLUMN IF NOT EXISTS {col}"
+                ))
             conn.commit()
     except Exception as e:
         print(f"[UserTools] Failed to ensure table: {e}")
@@ -355,7 +362,8 @@ def list_user_tools(include_shared: bool = True) -> list[dict]:
             sql = f"""
                 SELECT id, owner_username, tool_name, description, parameters,
                        template_type, template_config, python_code,
-                       is_shared, enabled, timeout_seconds, created_at, updated_at
+                       is_shared, enabled, timeout_seconds, created_at, updated_at,
+                       rating_sum, rating_count, clone_count
                 FROM {T_USER_TOOLS}
                 WHERE (owner_username = :owner OR is_shared = TRUE)
                   AND enabled = TRUE
@@ -365,7 +373,8 @@ def list_user_tools(include_shared: bool = True) -> list[dict]:
             sql = f"""
                 SELECT id, owner_username, tool_name, description, parameters,
                        template_type, template_config, python_code,
-                       is_shared, enabled, timeout_seconds, created_at, updated_at
+                       is_shared, enabled, timeout_seconds, created_at, updated_at,
+                       rating_sum, rating_count, clone_count
                 FROM {T_USER_TOOLS}
                 WHERE owner_username = :owner
                 ORDER BY created_at DESC
@@ -389,7 +398,8 @@ def get_user_tool(tool_id: int) -> Optional[dict]:
             row = conn.execute(text(f"""
                 SELECT id, owner_username, tool_name, description, parameters,
                        template_type, template_config, python_code,
-                       is_shared, enabled, timeout_seconds, created_at, updated_at
+                       is_shared, enabled, timeout_seconds, created_at, updated_at,
+                       rating_sum, rating_count, clone_count
                 FROM {T_USER_TOOLS}
                 WHERE id = :id AND (owner_username = :owner OR is_shared = TRUE)
             """), {"id": tool_id, "owner": username}).fetchone()
@@ -485,4 +495,61 @@ def _row_to_dict(row) -> dict:
         "timeout_seconds": row[10],
         "created_at": row[11].isoformat() if isinstance(row[11], datetime) else str(row[11]),
         "updated_at": row[12].isoformat() if isinstance(row[12], datetime) else str(row[12]),
+        "rating_sum": row[13] if len(row) > 13 else 0,
+        "rating_count": row[14] if len(row) > 14 else 0,
+        "clone_count": row[15] if len(row) > 15 else 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Rating & Clone (v14.0)
+# ---------------------------------------------------------------------------
+
+def rate_tool(tool_id: int, score: int) -> bool:
+    """Rate a shared user tool (1-5). Adds to running average."""
+    if score < 1 or score > 5:
+        return False
+    engine = get_engine()
+    if not engine:
+        return False
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                f"UPDATE {T_USER_TOOLS} "
+                f"SET rating_sum = COALESCE(rating_sum, 0) + :score, "
+                f"rating_count = COALESCE(rating_count, 0) + 1 "
+                f"WHERE id = :id AND is_shared = TRUE"
+            ), {"id": tool_id, "score": score})
+            conn.commit()
+        return result.rowcount > 0
+    except Exception:
+        return False
+
+
+def clone_tool(tool_id: int, new_owner: str, new_name: str = None) -> Optional[int]:
+    """Clone a shared user tool to a new owner. Returns new tool ID or None."""
+    source = get_user_tool(tool_id)
+    if not source or not source.get("is_shared"):
+        return None
+    name = new_name or f"{source['tool_name']}_copy"
+    new_id = create_user_tool(
+        tool_name=name,
+        description=source.get("description", ""),
+        parameters=source.get("parameters", []),
+        template_type=source["template_type"],
+        template_config=source.get("template_config", {}),
+        is_shared=False,
+    )
+    if new_id is not None:
+        engine = get_engine()
+        if engine:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(
+                        f"UPDATE {T_USER_TOOLS} SET clone_count = COALESCE(clone_count, 0) + 1 "
+                        f"WHERE id = :id"
+                    ), {"id": tool_id})
+                    conn.commit()
+            except Exception:
+                pass
+    return new_id
