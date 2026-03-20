@@ -461,7 +461,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   return (
     <div className="map-panel">
       {viewMode === '3d' ? (
-        <Map3DView layers={layers} center={center} zoom={zoom} />
+        <Map3DView layers={layers} center={center} zoom={zoom} basemap={activeBasemap} />
       ) : (
         <>
           <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />

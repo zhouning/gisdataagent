@@ -24,6 +24,7 @@ interface Map3DViewProps {
   layers: MapLayer[];
   center: [number, number];
   zoom: number;
+  basemap?: string;
 }
 
 interface TooltipInfo {
@@ -32,7 +33,11 @@ interface TooltipInfo {
   text: string;
 }
 
-const BASEMAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const BASEMAP_STYLES: Record<string, string> = {
+  'CartoDB Positron': 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  'CartoDB Dark': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  'OpenStreetMap': 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+};
 
 function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
   const h = hex.replace('#', '');
@@ -42,7 +47,7 @@ function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
   return [r, g, b, alpha];
 }
 
-export default function Map3DView({ layers, center, zoom }: Map3DViewProps) {
+export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewProps) {
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
@@ -294,7 +299,7 @@ export default function Map3DView({ layers, center, zoom }: Map3DViewProps) {
         style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
       >
         <Map
-          mapStyle={BASEMAP_STYLE}
+          mapStyle={BASEMAP_STYLES[basemap || 'CartoDB Positron'] || BASEMAP_STYLES['CartoDB Positron']}
           style={{ width: '100%', height: '100%' }}
         />
       </DeckGL>

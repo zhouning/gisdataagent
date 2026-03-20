@@ -88,6 +88,26 @@ def ensure_user_tools_table():
                 conn.execute(text(
                     f"ALTER TABLE {T_USER_TOOLS} ADD COLUMN IF NOT EXISTS {col}"
                 ))
+            # v14.1: version, tags, usage
+            for col in ("version INTEGER DEFAULT 1",
+                        "category VARCHAR(50) DEFAULT ''",
+                        "tags TEXT[] DEFAULT '{}'::text[]",
+                        "use_count INTEGER DEFAULT 0"):
+                conn.execute(text(
+                    f"ALTER TABLE {T_USER_TOOLS} ADD COLUMN IF NOT EXISTS {col}"
+                ))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS agent_tool_versions (
+                    id SERIAL PRIMARY KEY,
+                    tool_id INTEGER NOT NULL,
+                    version INTEGER NOT NULL,
+                    description TEXT DEFAULT '',
+                    parameters JSONB DEFAULT '[]',
+                    template_config JSONB DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(tool_id, version)
+                )
+            """))
             conn.commit()
     except Exception as e:
         print(f"[UserTools] Failed to ensure table: {e}")
@@ -363,7 +383,8 @@ def list_user_tools(include_shared: bool = True) -> list[dict]:
                 SELECT id, owner_username, tool_name, description, parameters,
                        template_type, template_config, python_code,
                        is_shared, enabled, timeout_seconds, created_at, updated_at,
-                       rating_sum, rating_count, clone_count
+                       rating_sum, rating_count, clone_count,
+                       version, category, tags, use_count
                 FROM {T_USER_TOOLS}
                 WHERE (owner_username = :owner OR is_shared = TRUE)
                   AND enabled = TRUE
@@ -374,7 +395,8 @@ def list_user_tools(include_shared: bool = True) -> list[dict]:
                 SELECT id, owner_username, tool_name, description, parameters,
                        template_type, template_config, python_code,
                        is_shared, enabled, timeout_seconds, created_at, updated_at,
-                       rating_sum, rating_count, clone_count
+                       rating_sum, rating_count, clone_count,
+                       version, category, tags, use_count
                 FROM {T_USER_TOOLS}
                 WHERE owner_username = :owner
                 ORDER BY created_at DESC
@@ -399,7 +421,8 @@ def get_user_tool(tool_id: int) -> Optional[dict]:
                 SELECT id, owner_username, tool_name, description, parameters,
                        template_type, template_config, python_code,
                        is_shared, enabled, timeout_seconds, created_at, updated_at,
-                       rating_sum, rating_count, clone_count
+                       rating_sum, rating_count, clone_count,
+                       version, category, tags, use_count
                 FROM {T_USER_TOOLS}
                 WHERE id = :id AND (owner_username = :owner OR is_shared = TRUE)
             """), {"id": tool_id, "owner": username}).fetchone()
@@ -498,7 +521,30 @@ def _row_to_dict(row) -> dict:
         "rating_sum": row[13] if len(row) > 13 else 0,
         "rating_count": row[14] if len(row) > 14 else 0,
         "clone_count": row[15] if len(row) > 15 else 0,
+        "version": row[16] if len(row) > 16 else 1,
+        "category": row[17] if len(row) > 17 else "",
+        "tags": list(row[18]) if len(row) > 18 and row[18] else [],
+        "use_count": row[19] if len(row) > 19 else 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Version Management & Usage Tracking (v14.1)
+# ---------------------------------------------------------------------------
+
+def increment_tool_use_count(tool_id: int):
+    """Increment the use_count for a tool (called on each invocation)."""
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"UPDATE {T_USER_TOOLS} SET use_count = COALESCE(use_count, 0) + 1 WHERE id = :id"
+            ), {"id": tool_id})
+            conn.commit()
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
