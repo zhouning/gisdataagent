@@ -149,6 +149,41 @@ async def workflow_run_status(request: Request):
     return JSONResponse(status)
 
 
+async def workflow_retry_node(request: Request):
+    """POST /api/workflows/{id}/runs/{run_id}/retry — retry a single failed node."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    run_id = int(request.path_params.get("run_id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    step_id = body.get("step_id", "")
+    if not step_id:
+        return JSONResponse({"error": "step_id is required"}, status_code=400)
+    from ..workflow_engine import retry_workflow_node
+    result = await retry_workflow_node(run_id, step_id, username)
+    if result.get("status") == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result)
+
+
+async def workflow_run_checkpoint(request: Request):
+    """GET /api/workflows/{id}/runs/{run_id}/checkpoint — get checkpoint data."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = int(request.path_params.get("run_id", 0))
+    from ..workflow_engine import get_run_checkpoint
+    cp = get_run_checkpoint(run_id)
+    if not cp:
+        return JSONResponse({"error": "Checkpoint not found"}, status_code=404)
+    return JSONResponse(cp)
+
+
 def get_workflow_routes() -> list:
     """Return Route objects for workflow endpoints."""
     return [
@@ -160,4 +195,6 @@ def get_workflow_routes() -> list:
         Route("/api/workflows/{id:int}/execute", workflow_execute, methods=["POST"]),
         Route("/api/workflows/{id:int}/runs", workflow_runs, methods=["GET"]),
         Route("/api/workflows/{id:int}/runs/{run_id:int}/status", workflow_run_status, methods=["GET"]),
+        Route("/api/workflows/{id:int}/runs/{run_id:int}/retry", workflow_retry_node, methods=["POST"]),
+        Route("/api/workflows/{id:int}/runs/{run_id:int}/checkpoint", workflow_run_checkpoint, methods=["GET"]),
     ]

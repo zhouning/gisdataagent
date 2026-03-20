@@ -2134,6 +2134,98 @@ async def _api_user_tools_clone(request: Request):
     return JSONResponse({"ok": True, "id": new_id}, status_code=201)
 
 
+async def _api_marketplace(request: Request):
+    """GET /api/marketplace — aggregated view of all shared skills/tools/templates/bundles."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    sort_by = request.query_params.get("sort", "rating")  # rating | usage | recent
+
+    items = []
+    # Shared custom skills
+    try:
+        from .custom_skills import list_custom_skills
+        for s in list_custom_skills(include_shared=True):
+            if s.get("is_shared"):
+                rating_count = s.get("rating_count", 0) or 0
+                rating_avg = round(s.get("rating_sum", 0) / rating_count, 1) if rating_count else 0
+                items.append({
+                    "id": s["id"], "name": s["skill_name"], "type": "skill",
+                    "description": s.get("description", ""),
+                    "owner": s["owner_username"],
+                    "rating": rating_avg, "rating_count": rating_count,
+                    "clone_count": s.get("clone_count", 0) or 0,
+                    "created_at": s.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Shared user tools
+    try:
+        from .user_tools import list_user_tools
+        for t in list_user_tools(include_shared=True):
+            if t.get("is_shared"):
+                rating_count = t.get("rating_count", 0) or 0
+                rating_avg = round(t.get("rating_sum", 0) / rating_count, 1) if rating_count else 0
+                items.append({
+                    "id": t["id"], "name": t["tool_name"], "type": "tool",
+                    "description": t.get("description", ""),
+                    "template_type": t.get("template_type", ""),
+                    "owner": t["owner_username"],
+                    "rating": rating_avg, "rating_count": rating_count,
+                    "clone_count": t.get("clone_count", 0) or 0,
+                    "created_at": t.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Published workflow templates
+    try:
+        from .workflow_templates import list_templates
+        for tmpl in list_templates():
+            if tmpl.get("is_published"):
+                rc = tmpl.get("rating_count", 0) or 0
+                items.append({
+                    "id": tmpl["id"], "name": tmpl["template_name"], "type": "template",
+                    "description": tmpl.get("description", ""),
+                    "category": tmpl.get("category", ""),
+                    "owner": tmpl.get("owner_username", ""),
+                    "rating": round(tmpl.get("rating_sum", 0) / rc, 1) if rc else 0,
+                    "rating_count": rc,
+                    "clone_count": tmpl.get("clone_count", 0) or 0,
+                    "created_at": tmpl.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Shared skill bundles
+    try:
+        from .custom_skill_bundles import list_skill_bundles
+        for b in list_skill_bundles():
+            if b.get("is_shared"):
+                items.append({
+                    "id": b["id"], "name": b["bundle_name"], "type": "bundle",
+                    "description": b.get("description", ""),
+                    "owner": b.get("owner_username", ""),
+                    "rating": 0, "rating_count": 0,
+                    "clone_count": b.get("use_count", 0) or 0,
+                    "created_at": b.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Sort
+    if sort_by == "rating":
+        items.sort(key=lambda x: (x.get("rating", 0), x.get("clone_count", 0)), reverse=True)
+    elif sort_by == "usage":
+        items.sort(key=lambda x: x.get("clone_count", 0), reverse=True)
+    else:  # recent
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    return JSONResponse({"items": items, "count": len(items)})
+
+
 # ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
@@ -2178,6 +2270,8 @@ def get_frontend_api_routes():
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
         # Capabilities (aggregated skills + toolsets)
         Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
+        # Marketplace (v14.0)
+        Route("/api/marketplace", endpoint=_api_marketplace, methods=["GET"]),
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),
