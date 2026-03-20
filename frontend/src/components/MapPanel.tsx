@@ -571,6 +571,18 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         </svg>
       </button>
 
+      {/* Export annotations (v14.2) */}
+      <button
+        className="annotation-toggle"
+        onClick={() => window.open('/api/annotations/export?format=geojson', '_blank')}
+        title="导出标注 (GeoJSON)"
+        style={{ bottom: 10, right: 50 }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+
       {/* Measurement toggle (v14.0) */}
       <button
         className={`annotation-toggle ${measureMode ? 'active' : ''}`}

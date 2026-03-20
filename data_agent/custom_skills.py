@@ -194,6 +194,13 @@ def ensure_custom_skills_table():
                 conn.execute(text(
                     f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
                 ))
+            # v14.2: publish approval workflow
+            for col in ("publish_status VARCHAR(30) DEFAULT 'draft'",
+                        "review_note TEXT DEFAULT ''",
+                        "reviewed_by VARCHAR(100) DEFAULT ''"):
+                conn.execute(text(
+                    f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
+                ))
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS agent_skill_versions (
                     id SERIAL PRIMARY KEY,
@@ -692,3 +699,75 @@ def rollback_skill(skill_id: int, target_version: int, owner_username: str) -> b
             return result.rowcount > 0
     except Exception:
         return False
+
+
+# ---------------------------------------------------------------------------
+# Publish Approval Workflow (v14.2)
+# ---------------------------------------------------------------------------
+
+def request_publish(skill_id: int) -> dict:
+    """Submit a skill for publish approval (owner action)."""
+    username = current_user_id.get("")
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not available"}
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                f"UPDATE {T_CUSTOM_SKILLS} SET publish_status = 'pending_approval', "
+                f"is_shared = FALSE, updated_at = NOW() "
+                f"WHERE id = :id AND owner_username = :u AND publish_status IN ('draft', 'rejected')"
+            ), {"id": skill_id, "u": username})
+            conn.commit()
+        if result.rowcount == 0:
+            return {"status": "error", "message": "Skill not found or already pending/approved"}
+        return {"status": "ok", "publish_status": "pending_approval"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def review_publish(skill_id: int, approve: bool, reviewer: str,
+                   note: str = "") -> dict:
+    """Admin reviews a pending publish request."""
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not available"}
+    new_status = "approved" if approve else "rejected"
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                f"UPDATE {T_CUSTOM_SKILLS} SET publish_status = :status, "
+                f"is_shared = :shared, reviewed_by = :reviewer, review_note = :note, "
+                f"updated_at = NOW() "
+                f"WHERE id = :id AND publish_status = 'pending_approval'"
+            ), {
+                "id": skill_id, "status": new_status,
+                "shared": approve, "reviewer": reviewer, "note": note,
+            })
+            conn.commit()
+        if result.rowcount == 0:
+            return {"status": "error", "message": "Skill not found or not pending approval"}
+        return {"status": "ok", "publish_status": new_status}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def list_pending_approvals() -> list[dict]:
+    """List all skills pending approval (admin view)."""
+    engine = get_engine()
+    if not engine:
+        return []
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                f"SELECT id, owner_username, skill_name, description, instruction "
+                f"FROM {T_CUSTOM_SKILLS} WHERE publish_status = 'pending_approval' "
+                f"ORDER BY updated_at ASC"
+            )).fetchall()
+        return [
+            {"id": r[0], "owner": r[1], "skill_name": r[2],
+             "description": r[3], "instruction": r[4][:300]}
+            for r in rows
+        ]
+    except Exception:
+        return []

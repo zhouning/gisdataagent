@@ -187,14 +187,64 @@ async def skills_clone(request: Request):
     return JSONResponse({"ok": True, "id": new_id}, status_code=201)
 
 
+async def skills_request_publish(request: Request):
+    """POST /api/skills/{id}/publish — request publish approval."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    from ..custom_skills import request_publish
+    result = request_publish(skill_id)
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result)
+
+
+async def skills_review_publish(request: Request):
+    """POST /api/skills/{id}/review — admin approves or rejects publish (admin only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    from ..custom_skills import review_publish
+    result = review_publish(skill_id, approve=body.get("approve", False),
+                            reviewer=username, note=body.get("note", ""))
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result)
+
+
+async def skills_pending_list(request: Request):
+    """GET /api/skills/pending — list skills pending approval (admin only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+    from ..custom_skills import list_pending_approvals
+    return JSONResponse({"pending": list_pending_approvals()})
+
+
 def get_skills_routes() -> list:
     """Return Route objects for custom skills endpoints."""
     return [
         Route("/api/skills", skills_list, methods=["GET"]),
         Route("/api/skills", skills_create, methods=["POST"]),
+        Route("/api/skills/pending", skills_pending_list, methods=["GET"]),
         Route("/api/skills/{id:int}", skills_detail, methods=["GET"]),
         Route("/api/skills/{id:int}", skills_update, methods=["PUT"]),
         Route("/api/skills/{id:int}", skills_delete, methods=["DELETE"]),
         Route("/api/skills/{id:int}/rate", skills_rate, methods=["POST"]),
         Route("/api/skills/{id:int}/clone", skills_clone, methods=["POST"]),
+        Route("/api/skills/{id:int}/publish", skills_request_publish, methods=["POST"]),
+        Route("/api/skills/{id:int}/review", skills_review_publish, methods=["POST"]),
     ]

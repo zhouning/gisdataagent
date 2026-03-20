@@ -1313,3 +1313,58 @@ async def retry_workflow_node(run_id: int, step_id: str, username: str) -> dict:
         return {"status": "ok", "node": step_id, "result": result_data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Crash Recovery (v14.2)
+# ---------------------------------------------------------------------------
+
+def find_incomplete_runs(max_age_hours: int = 24) -> list[dict]:
+    """Find workflow runs stuck in 'running' state (likely from process crash)."""
+    engine = get_engine()
+    if not engine:
+        return []
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                f"SELECT id, workflow_id, run_by, status, started_at "
+                f"FROM {T_WORKFLOW_RUNS} "
+                f"WHERE status = 'running' AND started_at < NOW() - INTERVAL ':h hours'"
+            ), {"h": max_age_hours}).fetchall()
+        return [
+            {"run_id": r[0], "workflow_id": r[1], "run_by": r[2],
+             "status": r[3], "started_at": str(r[4])}
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
+def mark_run_failed(run_id: int, error_message: str = "Process crashed — marked as failed"):
+    """Mark a stuck run as failed so it can be retried."""
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"UPDATE {T_WORKFLOW_RUNS} SET status = 'failed', "
+                f"error_message = :err, completed_at = NOW() WHERE id = :id"
+            ), {"id": run_id, "err": error_message})
+            conn.commit()
+    except Exception:
+        pass
+
+
+def recover_incomplete_runs():
+    """Scan for and mark crashed runs on startup. Returns count recovered."""
+    incomplete = find_incomplete_runs(max_age_hours=1)
+    count = 0
+    for run in incomplete:
+        mark_run_failed(run["run_id"])
+        logger.info("Recovered crashed workflow run %d (workflow=%d, user=%s)",
+                     run["run_id"], run["workflow_id"], run["run_by"])
+        count += 1
+    if count:
+        logger.info("Recovered %d crashed workflow runs", count)
+    return count
