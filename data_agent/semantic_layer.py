@@ -157,6 +157,7 @@ def ensure_semantic_tables():
     migration_files = [
         "009_create_semantic_registry.sql",
         "010_create_semantic_domains.sql",
+        "011_create_semantic_metrics.sql",
     ]
 
     try:
@@ -1549,3 +1550,239 @@ def export_semantic_model(format: str = "json") -> dict:
         "model": model,
         "message": "\n".join(lines),
     }
+
+
+# ---------------------------------------------------------------------------
+# Semantic Metrics (v12.2) — business metric definitions
+# ---------------------------------------------------------------------------
+
+T_SEMANTIC_METRICS = "agent_semantic_metrics"
+
+
+def register_metric(metric_name: str, definition: str, domain: str = "",
+                    description: str = "", unit: str = "", aliases: str = "") -> dict:
+    """
+    [Semantic Tool] Register a business metric definition.
+
+    Args:
+        metric_name: Metric name (e.g. "植被覆盖率").
+        definition: SQL expression or formula (e.g. "SUM(CASE WHEN ndvi > 0.3 THEN area ELSE 0 END) / SUM(area) * 100").
+        domain: Related semantic domain (e.g. "LAND_USE").
+        description: Human-readable description.
+        unit: Unit of measurement (e.g. "%", "m²").
+        aliases: Comma-separated alternative names.
+
+    Returns:
+        Dict with status and metric id.
+    """
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not configured"}
+
+    owner = current_user_id.get() or "system"
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(f"""
+                INSERT INTO {T_SEMANTIC_METRICS}
+                    (metric_name, definition, domain, description, unit, aliases, owner_username)
+                VALUES (:name, :def, :domain, :desc, :unit, :aliases, :owner)
+                ON CONFLICT (metric_name, owner_username)
+                DO UPDATE SET definition = EXCLUDED.definition,
+                    domain = EXCLUDED.domain, description = EXCLUDED.description,
+                    unit = EXCLUDED.unit, aliases = EXCLUDED.aliases
+                RETURNING id
+            """), {
+                "name": metric_name.strip(), "def": definition.strip(),
+                "domain": domain, "desc": description, "unit": unit,
+                "aliases": aliases, "owner": owner,
+            })
+            row = result.fetchone()
+            conn.commit()
+            return {"status": "success", "id": row[0], "metric_name": metric_name}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def resolve_metric(user_text: str) -> dict:
+    """
+    [Semantic Tool] Resolve a natural language metric reference to its SQL definition.
+
+    Args:
+        user_text: User's natural language (e.g. "植被覆盖率" or "建筑密度").
+
+    Returns:
+        Dict with matched metric definition or empty if no match.
+    """
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not configured"}
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(f"""
+                SELECT id, metric_name, definition, domain, description, unit, aliases
+                FROM {T_SEMANTIC_METRICS}
+                ORDER BY metric_name
+            """)).fetchall()
+
+        if not rows:
+            return {"status": "success", "matched": False, "message": "No metrics registered"}
+
+        user_lower = user_text.lower()
+        best_match = None
+        best_score = 0.0
+
+        for r in rows:
+            name = r[1] or ""
+            aliases_str = r[6] or ""
+            all_names = [name] + [a.strip() for a in aliases_str.split(",") if a.strip()]
+
+            for candidate in all_names:
+                # Exact match
+                if user_lower == candidate.lower():
+                    best_match = r
+                    best_score = 1.0
+                    break
+                # Substring match
+                if candidate.lower() in user_lower or user_lower in candidate.lower():
+                    score = 0.8
+                    if score > best_score:
+                        best_match = r
+                        best_score = score
+                # Fuzzy match
+                from difflib import SequenceMatcher
+                ratio = SequenceMatcher(None, user_lower, candidate.lower()).ratio()
+                if ratio > best_score and ratio >= 0.5:
+                    best_match = r
+                    best_score = ratio
+
+            if best_score >= 1.0:
+                break
+
+        if best_match and best_score >= 0.5:
+            return {
+                "status": "success", "matched": True,
+                "metric": {
+                    "id": best_match[0], "name": best_match[1],
+                    "definition": best_match[2], "domain": best_match[3],
+                    "description": best_match[4], "unit": best_match[5],
+                },
+                "confidence": round(best_score, 2),
+                "message": f"度量 '{best_match[1]}' 的定义: {best_match[2]}",
+            }
+        return {"status": "success", "matched": False, "message": f"No metric matching '{user_text}'"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def list_metrics(domain: str = None) -> dict:
+    """
+    [Semantic Tool] List registered business metrics.
+
+    Args:
+        domain: Optional domain filter (e.g. "LAND_USE").
+
+    Returns:
+        Dict with list of metrics.
+    """
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not configured"}
+
+    try:
+        with engine.connect() as conn:
+            if domain:
+                rows = conn.execute(text(f"""
+                    SELECT id, metric_name, definition, domain, description, unit
+                    FROM {T_SEMANTIC_METRICS} WHERE domain = :domain
+                    ORDER BY metric_name
+                """), {"domain": domain}).fetchall()
+            else:
+                rows = conn.execute(text(f"""
+                    SELECT id, metric_name, definition, domain, description, unit
+                    FROM {T_SEMANTIC_METRICS} ORDER BY metric_name
+                """)).fetchall()
+
+        metrics = [{
+            "id": r[0], "name": r[1], "definition": r[2],
+            "domain": r[3], "description": r[4], "unit": r[5],
+        } for r in rows]
+
+        return {"status": "success", "count": len(metrics), "metrics": metrics}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def seed_builtin_metrics() -> int:
+    """Insert built-in metric definitions if they don't exist. Returns count inserted."""
+    engine = get_engine()
+    if not engine:
+        return 0
+
+    _BUILTIN_METRICS = [
+        {
+            "metric_name": "植被覆盖率",
+            "definition": "SUM(CASE WHEN ndvi > 0.3 THEN area ELSE 0 END) / SUM(area) * 100",
+            "domain": "LAND_USE",
+            "description": "NDVI > 0.3 的面积占总面积的百分比",
+            "unit": "%",
+            "aliases": "vegetation coverage,绿化率,植被指数覆盖",
+        },
+        {
+            "metric_name": "建筑密度",
+            "definition": "SUM(building_area) / total_area * 100",
+            "domain": "LAND_USE",
+            "description": "建筑占地面积与用地面积之比",
+            "unit": "%",
+            "aliases": "building density,建筑覆盖率",
+        },
+        {
+            "metric_name": "碎片化指数",
+            "definition": "1 - (max_patch_area / total_area)",
+            "domain": "LAND_USE",
+            "description": "最大斑块面积占比的补数，值越大碎片化越严重",
+            "unit": "",
+            "aliases": "fragmentation index,景观碎片化,斑块碎片度",
+        },
+        {
+            "metric_name": "人口密度",
+            "definition": "population / area_km2",
+            "domain": "POPULATION",
+            "description": "每平方公里人口数",
+            "unit": "人/km²",
+            "aliases": "population density,人口集中度",
+        },
+        {
+            "metric_name": "坡度均值",
+            "definition": "AVG(slope_degrees)",
+            "domain": "SLOPE",
+            "description": "区域内坡度的算术平均值",
+            "unit": "°",
+            "aliases": "mean slope,平均坡度",
+        },
+    ]
+
+    inserted = 0
+    try:
+        with engine.connect() as conn:
+            for m in _BUILTIN_METRICS:
+                existing = conn.execute(text(
+                    f"SELECT 1 FROM {T_SEMANTIC_METRICS} "
+                    f"WHERE metric_name = :name AND owner_username = 'system'"
+                ), {"name": m["metric_name"]}).fetchone()
+                if existing:
+                    continue
+                conn.execute(text(f"""
+                    INSERT INTO {T_SEMANTIC_METRICS}
+                        (metric_name, definition, domain, description, unit, aliases, owner_username)
+                    VALUES (:name, :def, :domain, :desc, :unit, :aliases, 'system')
+                """), {
+                    "name": m["metric_name"], "def": m["definition"],
+                    "domain": m["domain"], "desc": m["description"],
+                    "unit": m["unit"], "aliases": m["aliases"],
+                })
+                inserted += 1
+            conn.commit()
+    except Exception as e:
+        logger.warning("[Semantic] Failed to seed metrics: %s", e)
+    return inserted
