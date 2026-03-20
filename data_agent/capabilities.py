@@ -64,6 +64,7 @@ _TOOLSET_DESCRIPTIONS: dict[str, str] = {
     "SpatialAnalysisTier2Toolset": "高级空间分析（Tier-2）",
     "WatershedToolset": "流域提取与水文分析",
     "UserToolset": "用户自定义工具（HTTP/SQL/文件/链式）",
+    "VirtualSourceToolset": "虚拟数据源连接（WFS/STAC/OGC API/自定义API）",
 }
 
 

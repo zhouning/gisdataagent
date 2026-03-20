@@ -118,7 +118,7 @@ class TestToolDefinitions(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)), f"Duplicate names: {names}")
 
     def test_minimum_tool_count(self):
-        self.assertGreaterEqual(len(TOOL_DEFINITIONS), 25)
+        self.assertGreaterEqual(len(TOOL_DEFINITIONS), 31)
 
     def test_annotations_present(self):
         for defn in TOOL_DEFINITIONS:
@@ -272,6 +272,68 @@ class TestResources(unittest.TestCase):
         self.assertIn("tool_count", parsed)
         self.assertIsInstance(parsed["tool_count"], int)
         self.assertGreater(parsed["tool_count"], 0)
+
+    def test_server_version_2(self):
+        from data_agent.mcp_server import server_status
+        parsed = json.loads(server_status())
+        self.assertEqual(parsed.get("version"), "2.0.0")
+
+
+# ---------------------------------------------------------------------------
+# TestHighLevelWrappers (v13.1)
+# ---------------------------------------------------------------------------
+
+class TestHighLevelWrappers(unittest.TestCase):
+    """Test the v13.1 high-level metadata tool wrappers."""
+
+    def test_list_skills_returns_json(self):
+        from data_agent.mcp_tool_registry import _mcp_list_skills
+        result = _mcp_list_skills()
+        parsed = json.loads(result)
+        self.assertIn("skills", parsed)
+        self.assertIn("count", parsed)
+        self.assertIsInstance(parsed["skills"], list)
+
+    def test_list_toolsets_returns_json(self):
+        from data_agent.mcp_tool_registry import _mcp_list_toolsets
+        result = _mcp_list_toolsets()
+        parsed = json.loads(result)
+        self.assertIn("toolsets", parsed)
+        self.assertIn("count", parsed)
+        self.assertGreaterEqual(parsed["count"], 24)
+
+    @patch("data_agent.virtual_sources.list_virtual_sources", return_value=[])
+    def test_list_virtual_sources_wrapper(self, _):
+        from data_agent.mcp_tool_registry import _mcp_list_virtual_sources
+        result = _mcp_list_virtual_sources()
+        parsed = json.loads(result)
+        self.assertEqual(parsed["count"], 0)
+        self.assertEqual(parsed["sources"], [])
+
+    def test_run_pipeline_wrapper_signature(self):
+        """Verify _mcp_run_pipeline has correct parameter signature."""
+        from data_agent.mcp_tool_registry import _mcp_run_pipeline
+        import inspect
+        sig = inspect.signature(_mcp_run_pipeline)
+        self.assertIn("prompt", sig.parameters)
+        self.assertIn("pipeline_type", sig.parameters)
+        self.assertEqual(sig.parameters["pipeline_type"].default, "general")
+
+    def test_high_level_tools_in_definitions(self):
+        """All 6 v13.1 tools are in TOOL_DEFINITIONS."""
+        names = {d["name"] for d in TOOL_DEFINITIONS}
+        for tool_name in ("search_catalog", "get_data_lineage", "list_skills",
+                          "list_toolsets", "list_virtual_sources", "run_analysis_pipeline"):
+            self.assertIn(tool_name, names)
+
+    def test_high_level_tools_in_fn_map(self):
+        """All 6 v13.1 tools resolve in _get_tool_functions."""
+        from data_agent.mcp_tool_registry import _get_tool_functions
+        fn_map = _get_tool_functions()
+        for tool_name in ("search_catalog", "get_data_lineage", "list_skills",
+                          "list_toolsets", "list_virtual_sources", "run_analysis_pipeline"):
+            self.assertIn(tool_name, fn_map, f"Missing: {tool_name}")
+            self.assertTrue(callable(fn_map[tool_name]))
 
 
 if __name__ == "__main__":

@@ -75,6 +75,9 @@ mcp = FastMCP(
     instructions=(
         "GIS空间数据分析工具集。支持数据探查、空间处理、地理编码、"
         "可视化、数据库查询等30+专业GIS分析工具。\n\n"
+        "v2.0 新增高阶工具：search_catalog（语义搜索数据目录）、"
+        "get_data_lineage（血缘追踪）、list_skills/list_toolsets（能力查询）、"
+        "list_virtual_sources（远程数据源）、run_analysis_pipeline（执行完整分析管线）。\n\n"
         "文件路径说明：工具接受的 file_path 参数为用户上传目录下的相对路径或文件名。"
         "输出文件保存在用户上传目录中并返回路径。"
     ),
@@ -107,7 +110,7 @@ def server_status() -> str:
 
     return json.dumps({
         "server": "GIS Data Agent MCP",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "user": current_user_id.get(),
         "role": current_user_role.get(),
         "tool_count": len(TOOL_DEFINITIONS),

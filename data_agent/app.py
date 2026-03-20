@@ -147,6 +147,8 @@ try:
     ensure_workflow_template_tables()
     from data_agent.custom_skill_bundles import ensure_skill_bundles_table
     ensure_skill_bundles_table()
+    from data_agent.virtual_sources import ensure_virtual_sources_table
+    ensure_virtual_sources_table()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure

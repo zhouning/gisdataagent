@@ -31,7 +31,7 @@ TOOLSET_NAMES: set[str] = {
     "DataLakeToolset", "McpHubToolset", "FusionToolset",
     "KnowledgeGraphToolset", "KnowledgeBaseToolset",
     "AdvancedAnalysisToolset", "SpatialAnalysisTier2Toolset",
-    "WatershedToolset", "UserToolset",
+    "WatershedToolset", "UserToolset", "VirtualSourceToolset",
 }
 
 _toolset_registry_cache: dict[str, type] | None = None
@@ -55,6 +55,7 @@ def _get_toolset_registry() -> dict[str, type]:
     from .toolsets.spatial_analysis_tier2_tools import SpatialAnalysisTier2Toolset
     from .toolsets.watershed_tools import WatershedToolset
     from .toolsets.user_tools_toolset import UserToolset
+    from .toolsets.virtual_source_tools import VirtualSourceToolset
     _toolset_registry_cache = {
         "ExplorationToolset": ExplorationToolset,
         "GeoProcessingToolset": GeoProcessingToolset,
@@ -79,6 +80,7 @@ def _get_toolset_registry() -> dict[str, type]:
         "SpatialAnalysisTier2Toolset": SpatialAnalysisTier2Toolset,
         "WatershedToolset": WatershedToolset,
         "UserToolset": UserToolset,
+        "VirtualSourceToolset": VirtualSourceToolset,
     }
     return _toolset_registry_cache
 
@@ -176,6 +178,14 @@ def ensure_custom_skills_table():
                 CREATE INDEX IF NOT EXISTS idx_cs_enabled
                 ON {T_CUSTOM_SKILLS}(enabled) WHERE enabled = TRUE
             """))
+            # v14.0: rating + clone columns
+            for col in ("rating_sum INTEGER DEFAULT 0",
+                        "rating_count INTEGER DEFAULT 0",
+                        "clone_count INTEGER DEFAULT 0"):
+                col_name = col.split()[0]
+                conn.execute(text(
+                    f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
+                ))
             conn.commit()
     except Exception as e:
         print(f"[CustomSkills] Failed to ensure table: {e}")
@@ -273,7 +283,8 @@ def list_custom_skills(include_shared: bool = True) -> list[dict]:
             sql = f"""
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
-                       is_shared, enabled, created_at, updated_at
+                       is_shared, enabled, created_at, updated_at,
+                       rating_sum, rating_count, clone_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE (owner_username = :owner OR is_shared = TRUE)
                   AND enabled = TRUE
@@ -283,7 +294,8 @@ def list_custom_skills(include_shared: bool = True) -> list[dict]:
             sql = f"""
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
-                       is_shared, enabled, created_at, updated_at
+                       is_shared, enabled, created_at, updated_at,
+                       rating_sum, rating_count, clone_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE owner_username = :owner
                 ORDER BY created_at DESC
@@ -307,7 +319,8 @@ def get_custom_skill(skill_id: int) -> Optional[dict]:
             row = conn.execute(text(f"""
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
-                       is_shared, enabled, created_at, updated_at
+                       is_shared, enabled, created_at, updated_at,
+                       rating_sum, rating_count, clone_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE id = :id AND (owner_username = :owner OR is_shared = TRUE)
             """), {"id": skill_id, "owner": username}).fetchone()
@@ -401,7 +414,8 @@ def find_skill_by_name(mention_name: str) -> Optional[dict]:
             row = conn.execute(text(f"""
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
-                       is_shared, enabled, created_at, updated_at
+                       is_shared, enabled, created_at, updated_at,
+                       rating_sum, rating_count, clone_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE LOWER(skill_name) = LOWER(:name)
                   AND (owner_username = :owner OR is_shared = TRUE)
@@ -495,4 +509,62 @@ def _row_to_dict(row) -> dict:
         "enabled": row[9],
         "created_at": row[10].isoformat() if isinstance(row[10], datetime) else str(row[10]),
         "updated_at": row[11].isoformat() if isinstance(row[11], datetime) else str(row[11]),
+        "rating_sum": row[12] if len(row) > 12 else 0,
+        "rating_count": row[13] if len(row) > 13 else 0,
+        "clone_count": row[14] if len(row) > 14 else 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Rating & Clone (v14.0)
+# ---------------------------------------------------------------------------
+
+def rate_skill(skill_id: int, score: int) -> bool:
+    """Rate a shared skill (1-5). Adds to running average."""
+    if score < 1 or score > 5:
+        return False
+    engine = get_engine()
+    if not engine:
+        return False
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                f"UPDATE {T_CUSTOM_SKILLS} "
+                f"SET rating_sum = COALESCE(rating_sum, 0) + :score, "
+                f"rating_count = COALESCE(rating_count, 0) + 1 "
+                f"WHERE id = :id AND is_shared = TRUE"
+            ), {"id": skill_id, "score": score})
+            conn.commit()
+        return result.rowcount > 0
+    except Exception:
+        return False
+
+
+def clone_skill(skill_id: int, new_owner: str, new_name: str = None) -> Optional[int]:
+    """Clone a shared skill to a new owner. Returns new skill ID or None."""
+    source = get_custom_skill(skill_id)
+    if not source or not source.get("is_shared"):
+        return None
+    name = new_name or f"{source['skill_name']}_copy"
+    new_id = create_custom_skill(
+        skill_name=name,
+        instruction=source["instruction"],
+        description=source.get("description", ""),
+        toolset_names=source.get("toolset_names", []),
+        model_tier=source.get("model_tier", "standard"),
+        is_shared=False,
+    )
+    if new_id is not None:
+        # Increment clone_count on source
+        engine = get_engine()
+        if engine:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(
+                        f"UPDATE {T_CUSTOM_SKILLS} SET clone_count = COALESCE(clone_count, 0) + 1 "
+                        f"WHERE id = :id"
+                    ), {"id": skill_id})
+                    conn.commit()
+            except Exception:
+                pass
+    return new_id
