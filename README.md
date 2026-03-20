@@ -1,10 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v12.2
+# GIS Data Agent (ADK Edition) v14.3
 
-基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
+基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
-系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（13 标签页），后端集成 95 个 REST API。**v12.1 新增数据血缘自动追踪、行业分析模板和 Cartographic Precision UI 设计系统**。
+系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（16 标签页），后端集成 **123 个 REST API**。
+
+**v13.0–v14.3 新增**：虚拟数据层（WFS/STAC/OGC API 连接器）、MCP Server v2.0（36+ 工具暴露）、Marketplace 画廊、Skill 版本管理/评分/克隆/审批发布、NSGA-II 多目标优化、Agent Registry 服务发现、Plugin 插件系统、多语言意图检测、Skill SDK 规范。
 
 ## 📚 官方技术文档
 
@@ -19,13 +21,15 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2123 tests, 92 test files |
-| 工具集 | 23 BaseToolset (含 UserToolset), 5 SkillBundle, 130+ 工具 |
+| 测试覆盖 | 2193 tests, 93 test files |
+| 工具集 | 24 BaseToolset (含 UserToolset + VirtualSourceToolset), 5 SkillBundle, 130+ 工具 |
 | ADK Skills | 18 场景化领域技能 + DB 驱动自定义 Skills + 用户自定义 Tools |
-| REST API | 95 endpoints |
+| REST API | 123 endpoints |
+| MCP Server | v2.0 — 36+ 工具暴露（底层 GIS + 高阶元数据 + Pipeline 执行） |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
+| DRL 优化场景 | 5（耕地优化 / 城市绿地 / 设施选址 / 交通网络 / 综合规划）+ NSGA-II Pareto |
 | 设计模式覆盖 | **21/21 (100%)** |
 | Streaming | 批量 + SSE 流式 |
 
@@ -54,6 +58,8 @@
 
 ### 空间优化
 - 深度强化学习引擎（MaskablePPO）用地布局优化
+- **5 个 DRL 场景**：耕地优化、城市绿地布局、设施选址、交通网络、综合规划
+- **NSGA-II 多目标 Pareto 优化**：快速非支配排序 + 拥挤距离，替代加权和方法
 - 耕地/林地配对交换，严格面积平衡
 - 分类着色地图渲染（Categorized Layer）：按地类/变化类型自动着色，中文图例
 
@@ -84,6 +90,44 @@
 - **用户自定义技能包**：DB 驱动的工具集 + ADK Skills 自由组合，意图触发匹配
 - **高级空间分析 Tier 2**：IDW 插值、Kriging、地理加权回归 (GWR)、多时相变化检测、DEM 可视域分析
 - **工作流模板市场**：5 个预置模板 + 发布/克隆/评分，一键复用工作流
+
+### 虚拟数据层 (v13.0)
+- **4 种数据源连接器**：WFS / STAC / OGC API / Custom API，零复制按需查询
+- **Fernet 加密凭证存储**：连接器密钥安全持久化
+- **查询时 CRS 自动对齐**：连接器返回 GeoDataFrame 后自动 `to_crs(target_crs)`
+- **语义 Schema 映射**：text-embedding-004 向量嵌入 + 35 个规范地理空间词汇表自动字段匹配
+- **连接器健康监控**：端点连通性检测 + DataPanel 健康状态指示灯
+
+### MCP Server v2.0 (v13.1)
+- **36+ 工具暴露**：底层 GIS 工具 + 6 个高阶元数据工具（search_catalog / get_data_lineage / list_skills / list_toolsets / list_virtual_sources / run_analysis_pipeline）
+- 外部 Agent（Claude Desktop / Cursor）可通过 MCP 调用完整分析能力
+
+### 可扩展平台 (v12.0–v14.3)
+- **Custom Skills CRUD**：前端创建/编辑/删除自定义 LlmAgent，支持版本管理（最近 10 版回滚）、评分、克隆、审批发布
+- **User-Defined Tools**：声明式工具模板（http_call / sql_query / file_transform / chain）
+- **Marketplace 画廊**：聚合 Skills / Tools / Templates / Bundles，支持排序和热度排行
+- **Skill SDK 规范**：`gis-skill-sdk` Python 包规范，外部开发者可独立开发 Skill
+- **Plugin 插件系统**：动态注册自定义 DataPanel tab 插件
+- **Skill 依赖图**：Skill A 依赖 Skill B 的 DAG 编排
+- **Webhook 集成**：第三方平台 Skill 注册（GitHub Action / Zapier trigger）
+
+### 多 Agent 编排增强 (v14.0–v14.3)
+- **DAG 工作流**：拓扑排序 + 并行层 + 条件节点 + Custom Skill Agent 节点
+- **节点级重试**：DAG 失败节点可单独重试，不重跑整个 workflow
+- **A2A 双向 RPC**：Agent Card + Task lifecycle（submitted→working→completed）+ 主动调用远程 Agent
+- **Agent Registry**：PostgreSQL 服务发现 + 心跳 + 状态管理
+- **Circuit Breaker**：工具/Agent 连续失败时熔断，自动降级
+- **条件分析链**：用户定义触发条件，pipeline 完成后自动执行后续分析
+
+### 交互增强 (v14.0–v14.3)
+- **多语言意图检测**：中/英/日自动识别 + 路由
+- **意图消歧对话**：AMBIGUOUS 分类时弹出选择卡片
+- **热力图支持**：deck.gl HeatmapLayer 集成
+- **测量工具**：距离（Haversine）+ 面积（Shoelace）计算
+- **3D 图层控制**：show/hide/opacity 调节面板
+- **3D basemap 同步**：2D 底图选择自动同步到 3D 视图
+- **GeoJSON 编辑器**：DataPanel 内粘贴/编辑 GeoJSON + 地图预览
+- **标注导出**：GeoJSON / CSV 格式导出
 
 ### 多模态输入 (v5.2)
 - 图片理解：自动分类上传图片，Gemini 视觉分析
@@ -493,6 +537,12 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v12.0 | 自助扩展平台：Custom Skills CRUD、User Tools、多 Agent Pipeline 编排、能力浏览 Tab、知识库 Tab、面板拖拽、安全加固（SEC-1/SEC-2）、app.py 拆分、ADK v1.27.2 | 2121 | ✅ 完成 |
 | v12.1 | 数据血缘自动追踪（pipeline_run_id + ContextVar）、血缘 DAG 可视化、行业分析模板（城市规划/环境监测/国土资源）、CapabilitiesView 行业分组、S-4 API 模块化 42%、Cartographic Precision UI 重设计 | 2123 | ✅ 完成 |
 | v12.2 | 语义数据发现：向量嵌入混合搜索（text-embedding-004 + n-gram）、数据资产入图（KG 域边 + 关联发现）、Planner 数据发现优先策略 v7.2.0、语义度量定义（5 个预置度量 + register/resolve/list） | 2123 | ✅ 完成 |
+| v13.0 | 虚拟数据层：4 种连接器（WFS/STAC/OGC API/Custom API）、Fernet 加密、CRS 自动对齐、语义 Schema 映射、连接器健康监控、VirtualSourceToolset、6 个 REST 端点 | 2150 | ✅ 完成 |
+| v13.1 | MCP Server v2.0：6 个高阶元数据工具（search_catalog / get_data_lineage / list_skills / list_toolsets / list_virtual_sources / run_analysis_pipeline），36+ 工具暴露 | 2150 | ✅ 完成 |
+| v14.0 | 交互增强 + 扩展市场：意图消歧、Marketplace 画廊、评分/克隆系统、DRL 场景模板（5 场景）、热力图、测量工具、3D 图层控制、DAG 断点续跑、节点级重试 | 2170 | ✅ 完成 |
+| v14.1 | 智能深化 + 协作基础：追问上下文链、版本管理、标签分类、多场景 DRL 引擎、3D basemap 同步、GeoJSON 编辑器、Agent Registry、A2A 双向 RPC | 2180 | ✅ 完成 |
+| v14.2 | 深度智能 + 生产就绪：条件分析链、NSGA-II 多目标 Pareto 优化、Circuit Breaker 熔断、标注导出、自适应布局 | 2190 | ✅ 完成 |
+| v14.3 | 联邦多 Agent + 生态开放：多语言检测（zh/en/ja）、Skill 依赖图、Webhook 集成、Skill SDK 规范、Plugin 插件系统、完整 A2A 协议、Agent 联邦 | 2193 | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 
 ## 设计模式覆盖 (21/21 = 100%)
@@ -503,7 +553,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | 路由 (Ch2) | ✅ | Gemini 2.0 Flash 意图分类 |
 | 并行化 (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | 反思 (Ch4) | ✅ | LoopAgent 全部 3 管道 |
-| 工具使用 (Ch5) | ✅ | 23 工具集, 130+ 工具, 18 Skills |
+| 工具使用 (Ch5) | ✅ | 24 工具集, 130+ 工具, 18 Skills |
 | 规划 (Ch6) | ✅ | DAG 任务分解 + 波次并行 |
 | 多智能体 (Ch7) | ✅ | 层级 Planner + 7 子 Agent |
 | 记忆管理 (Ch8) | ✅ | Memory ETL + PostgresMemoryService |

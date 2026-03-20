@@ -1,10 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v12.2
+# GIS Data Agent (ADK Edition) v14.3
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK)** with semantic intent routing, four specialized pipelines, a React three-panel frontend (13 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (16 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns from *"Agentic Design Patterns"*, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 input/output Guardrails, SSE streaming, A2A agent interop, Pareto multi-objective optimization, dynamic agent composition, proactive exploration, chain-of-thought reasoning with confidence scoring, and self-improvement. Backend serves 95 REST API endpoints. **v12.1 adds automatic data lineage tracking, industry analysis templates, and the Cartographic Precision UI design system**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **123 REST API endpoints**.
+
+**v13.0–v14.3 highlights**: Virtual data layer (WFS/STAC/OGC API connectors), MCP Server v2.0 (36+ tools exposed), Marketplace gallery, Skill versioning/rating/cloning/approval, NSGA-II multi-objective optimization, Agent Registry with service discovery, Plugin system, multi-language intent detection, and Skill SDK specification.
 
 ## 📚 Official Technical Documentation
 
@@ -19,13 +21,15 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2123 tests, 92 test files |
-| Toolsets | 23 BaseToolset (incl. UserToolset), 5 SkillBundle, 130+ tools |
+| Test Coverage | 2193 tests, 93 test files |
+| Toolsets | 24 BaseToolset (incl. UserToolset + VirtualSourceToolset), 5 SkillBundle, 130+ tools |
 | ADK Skills | 18 scenario skills + DB-driven custom Skills + User Tools |
-| REST API | 95 endpoints |
+| REST API | 123 endpoints |
+| MCP Server | v2.0 — 36+ tools exposed (GIS primitives + high-level metadata + pipeline execution) |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |
+| DRL Scenarios | 5 (Farmland / Urban Green / Facility Siting / Transport Network / Comprehensive) + NSGA-II Pareto |
 | Design Pattern Coverage | **21/21 (100%)** |
 | Streaming | Batch + SSE streaming |
 
@@ -54,6 +58,8 @@ This project provides industrial-grade technical documentation written in the **
 
 ### Land Use Optimization
 - Deep Reinforcement Learning engine (MaskablePPO) for layout optimization
+- **5 DRL scenarios**: Farmland optimization, urban green space, facility siting, transport network, comprehensive planning
+- **NSGA-II multi-objective Pareto optimization**: Fast non-dominated sorting + crowding distance
 - Paired farmland/forest swaps with strict area balance
 - Categorized map rendering: per-feature coloring by land type / change type with Chinese legend
 
@@ -84,6 +90,44 @@ This project provides industrial-grade technical documentation written in the **
 - **Custom Skill Bundles**: DB-driven user-defined toolset + ADK Skills compositions with intent trigger matching
 - **Spatial Analysis Tier 2**: IDW interpolation, Kriging, Geographically Weighted Regression (GWR), multi-temporal change detection, DEM viewshed analysis
 - **Workflow Template Marketplace**: 5 built-in templates + publish/clone/rate, one-click workflow reuse
+
+### Virtual Data Layer (v13.0)
+- **4 data source connectors**: WFS / STAC / OGC API / Custom API, zero-copy on-demand queries
+- **Fernet-encrypted credential storage**: Secure connector key persistence
+- **Auto CRS alignment**: GeoDataFrame auto `to_crs(target_crs)` on query return
+- **Semantic schema mapping**: text-embedding-004 vector embeddings + 35 canonical geospatial vocabulary for auto field matching
+- **Connector health monitoring**: Endpoint connectivity checks + DataPanel health indicators
+
+### MCP Server v2.0 (v13.1)
+- **36+ tools exposed**: GIS primitives + 6 high-level metadata tools (search_catalog / get_data_lineage / list_skills / list_toolsets / list_virtual_sources / run_analysis_pipeline)
+- External agents (Claude Desktop / Cursor) can invoke full analysis capabilities via MCP
+
+### Extensible Platform (v12.0–v14.3)
+- **Custom Skills CRUD**: Create/edit/delete custom LlmAgents with versioning (last 10 rollback), rating, cloning, and approval workflow
+- **User-Defined Tools**: Declarative tool templates (http_call / sql_query / file_transform / chain)
+- **Marketplace Gallery**: Aggregates Skills / Tools / Templates / Bundles with sorting and popularity ranking
+- **Skill SDK Specification**: `gis-skill-sdk` Python package spec for external developers
+- **Plugin System**: Dynamic registration of custom DataPanel tab plugins
+- **Skill Dependency Graph**: Skill A depends on Skill B via DAG orchestration
+- **Webhook Integration**: Third-party Skill registration (GitHub Action / Zapier trigger)
+
+### Multi-Agent Orchestration (v14.0–v14.3)
+- **DAG Workflows**: Topological sort + parallel layers + conditional nodes + Custom Skill Agent nodes
+- **Node-level Retry**: Retry individual failed DAG nodes without re-running entire workflow
+- **Bidirectional A2A RPC**: Agent Card + Task lifecycle (submitted→working→completed) + active remote agent invocation
+- **Agent Registry**: PostgreSQL-backed service discovery + heartbeat + status management
+- **Circuit Breaker**: Auto-degrade on consecutive tool/agent failures
+- **Conditional Analysis Chains**: User-defined triggers for automatic follow-up analysis after pipeline completion
+
+### Interaction Enhancements (v14.0–v14.3)
+- **Multi-language intent detection**: Chinese/English/Japanese auto-detection + routing
+- **Intent disambiguation dialog**: Selection cards for AMBIGUOUS classifications
+- **Heatmap support**: deck.gl HeatmapLayer integration
+- **Measurement tools**: Distance (Haversine) + area (Shoelace) calculation
+- **3D layer control**: Show/hide/opacity adjustment panel
+- **3D basemap sync**: 2D basemap selection auto-synced to 3D view
+- **GeoJSON editor**: In-DataPanel paste/edit GeoJSON + map preview
+- **Annotation export**: GeoJSON / CSV format export
 
 ### Multimodal Input (v5.2)
 - Image understanding: auto-classify uploaded images for Gemini vision analysis
@@ -457,10 +501,18 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | v9.5 | conftest.py, Guardrails (4), SSE Streaming, LongRunningFunctionTool, Evaluation Enhancement | 1895 | ✅ Done |
 | v10.0 | GraphRAG, per-User MCP Isolation, Custom Skill Bundles, Spatial Analysis Tier 2, Workflow Templates | 1993 | ✅ Done |
 | v11.0 | Concurrent Task Queue, Chain-of-Thought Reasoning, Proactive Exploration, A2A Interop, Design Patterns 19/21 | 2074 | ✅ Done |
-| v12.0 | Pareto Multi-Objective Optimization, Dynamic Agent Composition, Frontend 11-Tab DataPanel | 2104 | ✅ Done |
+| v12.0 | Extensible Platform: Custom Skills CRUD, User Tools, Multi-Agent Pipeline, Capabilities Tab, Security Hardening, ADK v1.27.2 | 2121 | ✅ Done |
+| v12.1 | Data Lineage Tracking, Industry Templates, Cartographic Precision UI, API Modularization | 2123 | ✅ Done |
+| v12.2 | Semantic Data Discovery: Vector Embedding Hybrid Search, KG Asset Graph, Semantic Metrics | 2123 | ✅ Done |
+| v13.0 | Virtual Data Layer: 4 Connectors (WFS/STAC/OGC API/Custom API), Fernet Encryption, Semantic Schema Mapping | 2150 | ✅ Done |
+| v13.1 | MCP Server v2.0: 6 High-Level Metadata Tools, 36+ Tools Exposed | 2150 | ✅ Done |
+| v14.0 | Interaction + Marketplace: Intent Disambiguation, Rating/Clone, 5 DRL Scenarios, Heatmap, Measurement, 3D Layer Control | 2170 | ✅ Done |
+| v14.1 | Smart + Collaboration: Follow-up Chains, Versioning, Tags, Multi-Scenario DRL, GeoJSON Editor, Agent Registry, A2A Bidirectional RPC | 2180 | ✅ Done |
+| v14.2 | Deep Intelligence + Production: Analysis Chains, NSGA-II Pareto, Circuit Breaker, Annotation Export | 2190 | ✅ Done |
+| v14.3 | Federation + Ecosystem: Multi-Language Detection (zh/en/ja), Skill Dependencies, Webhook, Skill SDK, Plugin System, Full A2A Protocol | 2193 | ✅ Done |
 | | **Design Pattern Coverage: 21/21 (100%) — Full Coverage** | | |
 
-## Design Pattern Coverage (16/21 = 76%)
+## Design Pattern Coverage (21/21 = 100%)
 
 | Pattern | Status | Implementation |
 |---------|--------|----------------|
@@ -468,7 +520,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`/`dev
 | Routing (Ch2) | ✅ | Gemini 2.0 Flash intent classification |
 | Parallelization (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | Reflection (Ch4) | ✅ | LoopAgent across all 3 pipelines |
-| Tool Use (Ch5) | ✅ | 21 toolsets, 113+ tools, 16 Skills |
+| Tool Use (Ch5) | ✅ | 24 toolsets, 130+ tools, 18 Skills |
 | Planning (Ch6) | ✅ | DAG task decomposition + wave-parallel |
 | Multi-Agent (Ch7) | ✅ | Hierarchical Planner + 7 sub-agents |
 | Memory (Ch8) | ✅ | Memory ETL + PostgresMemoryService |
