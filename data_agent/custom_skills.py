@@ -186,6 +186,26 @@ def ensure_custom_skills_table():
                 conn.execute(text(
                     f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
                 ))
+            # v14.1: version, tags, usage
+            for col in ("version INTEGER DEFAULT 1",
+                        "category VARCHAR(50) DEFAULT ''",
+                        "tags TEXT[] DEFAULT '{}'::text[]",
+                        "use_count INTEGER DEFAULT 0"):
+                conn.execute(text(
+                    f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
+                ))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS agent_skill_versions (
+                    id SERIAL PRIMARY KEY,
+                    skill_id INTEGER NOT NULL,
+                    version INTEGER NOT NULL,
+                    instruction TEXT NOT NULL,
+                    description TEXT DEFAULT '',
+                    toolset_names TEXT[] DEFAULT '{}'::text[],
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(skill_id, version)
+                )
+            """))
             conn.commit()
     except Exception as e:
         print(f"[CustomSkills] Failed to ensure table: {e}")
@@ -284,7 +304,8 @@ def list_custom_skills(include_shared: bool = True) -> list[dict]:
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
-                       rating_sum, rating_count, clone_count
+                       rating_sum, rating_count, clone_count,
+                       version, category, tags, use_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE (owner_username = :owner OR is_shared = TRUE)
                   AND enabled = TRUE
@@ -295,7 +316,8 @@ def list_custom_skills(include_shared: bool = True) -> list[dict]:
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
-                       rating_sum, rating_count, clone_count
+                       rating_sum, rating_count, clone_count,
+                       version, category, tags, use_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE owner_username = :owner
                 ORDER BY created_at DESC
@@ -320,7 +342,8 @@ def get_custom_skill(skill_id: int) -> Optional[dict]:
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
-                       rating_sum, rating_count, clone_count
+                       rating_sum, rating_count, clone_count,
+                       version, category, tags, use_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE id = :id AND (owner_username = :owner OR is_shared = TRUE)
             """), {"id": skill_id, "owner": username}).fetchone()
@@ -415,7 +438,8 @@ def find_skill_by_name(mention_name: str) -> Optional[dict]:
                 SELECT id, owner_username, skill_name, description, instruction,
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
-                       rating_sum, rating_count, clone_count
+                       rating_sum, rating_count, clone_count,
+                       version, category, tags, use_count
                 FROM {T_CUSTOM_SKILLS}
                 WHERE LOWER(skill_name) = LOWER(:name)
                   AND (owner_username = :owner OR is_shared = TRUE)
@@ -512,6 +536,10 @@ def _row_to_dict(row) -> dict:
         "rating_sum": row[12] if len(row) > 12 else 0,
         "rating_count": row[13] if len(row) > 13 else 0,
         "clone_count": row[14] if len(row) > 14 else 0,
+        "version": row[15] if len(row) > 15 else 1,
+        "category": row[16] if len(row) > 16 else "",
+        "tags": list(row[17]) if len(row) > 17 and row[17] else [],
+        "use_count": row[18] if len(row) > 18 else 0,
     }
 
 
@@ -568,3 +596,99 @@ def clone_skill(skill_id: int, new_owner: str, new_name: str = None) -> Optional
             except Exception:
                 pass
     return new_id
+
+
+# ---------------------------------------------------------------------------
+# Version Management & Usage Tracking (v14.1)
+# ---------------------------------------------------------------------------
+
+def _save_skill_version(skill_id: int, instruction: str, description: str,
+                        toolset_names: list, version: int):
+    """Save a snapshot of the skill's current state as a version."""
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                INSERT INTO agent_skill_versions (skill_id, version, instruction, description, toolset_names)
+                VALUES (:sid, :ver, :instr, :desc, :tools)
+                ON CONFLICT (skill_id, version) DO NOTHING
+            """), {
+                "sid": skill_id, "ver": version, "instr": instruction,
+                "desc": description, "tools": toolset_names,
+            })
+            # Prune old versions (keep last 10)
+            conn.execute(text("""
+                DELETE FROM agent_skill_versions
+                WHERE skill_id = :sid AND version NOT IN (
+                    SELECT version FROM agent_skill_versions
+                    WHERE skill_id = :sid ORDER BY version DESC LIMIT 10
+                )
+            """), {"sid": skill_id})
+            conn.commit()
+    except Exception:
+        pass
+
+
+def increment_skill_use_count(skill_id: int):
+    """Increment the use_count for a skill (called on each invocation)."""
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"UPDATE {T_CUSTOM_SKILLS} SET use_count = COALESCE(use_count, 0) + 1 WHERE id = :id"
+            ), {"id": skill_id})
+            conn.commit()
+    except Exception:
+        pass
+
+
+def get_skill_versions(skill_id: int) -> list[dict]:
+    """List version history for a skill."""
+    engine = get_engine()
+    if not engine:
+        return []
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT version, instruction, description, toolset_names, created_at "
+                "FROM agent_skill_versions WHERE skill_id = :sid ORDER BY version DESC"
+            ), {"sid": skill_id}).fetchall()
+        return [
+            {"version": r[0], "instruction": r[1][:200] + "..." if len(r[1]) > 200 else r[1],
+             "description": r[2], "toolset_names": list(r[3]) if r[3] else [],
+             "created_at": str(r[4])}
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
+def rollback_skill(skill_id: int, target_version: int, owner_username: str) -> bool:
+    """Rollback a skill to a previous version."""
+    engine = get_engine()
+    if not engine:
+        return False
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "SELECT instruction, description, toolset_names "
+                "FROM agent_skill_versions WHERE skill_id = :sid AND version = :ver"
+            ), {"sid": skill_id, "ver": target_version}).fetchone()
+            if not row:
+                return False
+            result = conn.execute(text(
+                f"UPDATE {T_CUSTOM_SKILLS} SET instruction = :instr, description = :desc, "
+                f"toolset_names = :tools, version = version + 1, updated_at = NOW() "
+                f"WHERE id = :id AND owner_username = :owner"
+            ), {
+                "id": skill_id, "owner": owner_username,
+                "instr": row[0], "desc": row[1], "tools": row[2],
+            })
+            conn.commit()
+            return result.rowcount > 0
+    except Exception:
+        return False

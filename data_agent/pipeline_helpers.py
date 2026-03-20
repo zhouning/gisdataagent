@@ -288,3 +288,54 @@ def classify_error(exc: Exception) -> tuple:
             return (True, "transient")
 
     return (True, "unknown")
+
+
+# ---------------------------------------------------------------------------
+# Recommended Follow-up Questions (v14.1)
+# ---------------------------------------------------------------------------
+
+def generate_followup_questions(report_text: str, user_text: str, pipeline_type: str) -> list[str]:
+    """Generate 3 recommended follow-up questions based on analysis results.
+
+    Uses Gemini Flash for low-latency generation. Returns empty list on failure.
+    """
+    if not report_text or len(report_text) < 50:
+        return []
+    try:
+        from google import genai as genai_client
+        from google.genai import types
+
+        client = genai_client.Client()
+        prompt = f"""根据以下GIS分析结果，生成3个有价值的后续分析建议。
+每个建议应该是一个具体的分析请求（用户可以直接发送给Agent执行）。
+
+用户原始问题：{user_text[:200]}
+管线类型：{pipeline_type}
+分析结果摘要：{report_text[:1500]}
+
+要求：
+- 每行一个建议，不要编号
+- 每个建议不超过50字
+- 建议应该是递进式或互补的分析方向
+- 用中文表述"""
+
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                http_options=types.HttpOptions(timeout=10_000),
+            ),
+        )
+        lines = [l.strip() for l in response.text.strip().split('\n') if l.strip()]
+        # Clean up: remove numbering if present
+        cleaned = []
+        for line in lines[:3]:
+            for prefix in ("1.", "2.", "3.", "- ", "· "):
+                if line.startswith(prefix):
+                    line = line[len(prefix):].strip()
+            if line:
+                cleaned.append(line)
+        return cleaned[:3]
+    except Exception as e:
+        logger.debug("Follow-up generation failed: %s", e)
+        return []
