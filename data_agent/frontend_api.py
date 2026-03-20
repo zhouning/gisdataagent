@@ -2226,6 +2226,28 @@ async def _api_marketplace(request: Request):
     return JSONResponse({"items": items, "count": len(items)})
 
 
+async def _api_drl_scenarios(request: Request):
+    """GET /api/drl/scenarios — list available DRL scenario templates."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .drl_engine import list_scenarios
+    return JSONResponse({"scenarios": list_scenarios()})
+
+
+async def _api_memory_search(request: Request):
+    """GET /api/memory/search?q=keyword&type=region — search user spatial memories."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    query = request.query_params.get("q", "")
+    mem_type = request.query_params.get("type", "")
+    from .memory import recall_memories
+    result = recall_memories(memory_type=mem_type, keyword=query)
+    return JSONResponse(result)
+
+
 # ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
@@ -2272,6 +2294,10 @@ def get_frontend_api_routes():
         Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
         # Marketplace (v14.0)
         Route("/api/marketplace", endpoint=_api_marketplace, methods=["GET"]),
+        # DRL Scenarios (v14.0)
+        Route("/api/drl/scenarios", endpoint=_api_drl_scenarios, methods=["GET"]),
+        # Memory Search (v14.0)
+        Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),
