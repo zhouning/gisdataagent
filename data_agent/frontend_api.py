@@ -131,6 +131,7 @@ import threading as _threading
 
 pending_map_updates: dict[str, dict] = {}   # user_id -> map config
 pending_data_updates: dict[str, dict] = {}  # user_id -> data config
+pending_chart_updates: dict[str, list] = {}  # user_id -> [chart configs]
 _pending_lock = _threading.Lock()
 
 
@@ -1155,6 +1156,21 @@ async def _api_map_pending(request: Request):
     if data_cfg:
         result["data_update"] = data_cfg
     return JSONResponse(result)
+
+
+async def _api_chart_pending(request: Request):
+    """GET /api/chart/pending — pop and return pending chart updates for current user."""
+    user = _get_user_from_request(request)
+    if user:
+        _set_user_context(user)
+    else:
+        current_user_id.set("admin")
+    uid = current_user_id.get("")
+    with _pending_lock:
+        charts = pending_chart_updates.pop(uid, None)
+    if charts:
+        return JSONResponse({"chart_updates": charts})
+    return JSONResponse({"chart_updates": []})
 
 
 # ---------------------------------------------------------------------------
@@ -2480,6 +2496,7 @@ def get_frontend_api_routes():
         *get_workflow_routes(),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
+        Route("/api/chart/pending", endpoint=_api_chart_pending, methods=["GET"]),
         # Capabilities (aggregated skills + toolsets)
         Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
         # Marketplace (v14.0)
