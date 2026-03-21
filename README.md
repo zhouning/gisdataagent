@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v14.4
+# GIS Data Agent (ADK Edition) v14.5
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
-系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 17 标签页），后端集成 **124 个 REST API**。
+系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 17 标签页），后端集成 **125 个 REST API**。
 
-**v14.4 治理深化 + 交互式可视化**：GovernanceToolset（7 个专项审计工具 + 6 维 0-100 综合评分）、独立 governance.yaml 治理 Prompt、4 阶段治理管道（GovExploration→GovProcessing→GovernanceViz→GovernanceReportLoop）；ChartToolset（9 种 ECharts 交互式图表：柱状/折线/饼图/散点/直方/箱线/热力矩阵/树图/雷达）；DataPanel 重构为"工作台"分组 Tab（数据/智能/运维/编排）。
+**v14.5 连接器插件化 + 数据标准治理 + 数据清洗**：BaseConnector 插件架构（ConnectorRegistry 注册表 + 6 个内置连接器，含新增 WMS/WMTS 和 ArcGIS REST FeatureServer）；Data Standard Registry（预置 GB/T 21010 地类编码表 73 值 + DLTB 30 字段规范 + 4 个代码表）；DataCleaningToolset（7 个清洗工具：空值填充/编码映射/字段重命名/类型转换/异常值裁剪/CRS 统一/缺失字段补齐）；FGDB 格式支持；前端 WMS 图层渲染 + 类型专属表单 + 图层发现。
 
 ## 📚 官方技术文档
 
@@ -21,10 +21,12 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2193 tests, 93 test files |
-| 工具集 | 26 BaseToolset (含 GovernanceToolset + ChartToolset + UserToolset + VirtualSourceToolset), 5 SkillBundle, 145+ 工具 |
+| 测试覆盖 | 2310+ tests, 96 test files |
+| 工具集 | 28 BaseToolset (含 GovernanceToolset + ChartToolset + DataCleaningToolset + VirtualSourceToolset), 5 SkillBundle, 160+ 工具 |
 | ADK Skills | 18 场景化领域技能 + DB 驱动自定义 Skills + 用户自定义 Tools |
-| REST API | 124 endpoints |
+| REST API | 125 endpoints |
+| 数据标准 | Data Standard Registry — GB/T 21010 (73 地类编码) + DLTB (30 字段规范 + 4 代码表) |
+| 连接器 | 6 个插件式连接器 (WFS / STAC / OGC API / Custom API / WMS / ArcGIS REST) |
 | MCP Server | v2.0 — 36+ 工具暴露（底层 GIS + 高阶元数据 + Pipeline 执行） |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
@@ -91,12 +93,20 @@
 - **高级空间分析 Tier 2**：IDW 插值、Kriging、地理加权回归 (GWR)、多时相变化检测、DEM 可视域分析
 - **工作流模板市场**：5 个预置模板 + 发布/克隆/评分，一键复用工作流
 
-### 虚拟数据层 (v13.0)
-- **4 种数据源连接器**：WFS / STAC / OGC API / Custom API，零复制按需查询
+### 虚拟数据层 + 连接器插件化 (v13.0–v14.5)
+- **BaseConnector 插件架构 (v14.5)**：抽象基类 + ConnectorRegistry 注册表，6 个内置连接器
+- **6 种数据源连接器**：WFS / STAC / OGC API / Custom API / **WMS/WMTS** (v14.5) / **ArcGIS REST FeatureServer** (v14.5)
 - **Fernet 加密凭证存储**：连接器密钥安全持久化
 - **查询时 CRS 自动对齐**：连接器返回 GeoDataFrame 后自动 `to_crs(target_crs)`
 - **语义 Schema 映射**：text-embedding-004 向量嵌入 + 35 个规范地理空间词汇表自动字段匹配
-- **连接器健康监控**：端点连通性检测 + DataPanel 健康状态指示灯
+- **连接器健康监控 + 图层发现**：端点连通性检测 + GetCapabilities / 服务信息自动发现
+- **前端 WMS 图层渲染**：MapPanel 支持 `L.TileLayer.WMS` 直接渲染
+- **FGDB 格式支持 (v14.5)**：Esri File Geodatabase 目录格式读取 + 图层枚举
+
+### 数据标准与治理引擎 (v14.5)
+- **Data Standard Registry**：YAML 标准定义 + 预置 GB/T 21010 地类编码表 (73 值) + DLTB 字段规范 (30 字段 M/C/O 约束) + 4 个代码表
+- **标准驱动校验**：`check_field_standards` 通过标准 ID 自动加载，一键校验字段缺失/值域超限/类型不匹配
+- **DataCleaningToolset (7 工具)**：空值填充（5 种策略）/ 编码映射转换 / 字段重命名 / 类型转换 / 异常值裁剪 / CRS 统一 / 缺失字段补齐
 
 ### MCP Server v2.0 (v13.1)
 - **36+ 工具暴露**：底层 GIS 工具 + 6 个高阶元数据工具（search_catalog / get_data_lineage / list_skills / list_toolsets / list_virtual_sources / run_analysis_pipeline）
@@ -314,7 +324,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（92 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（125 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -357,9 +367,12 @@ data_agent/
 ├── workflow_templates.py        # 工作流模板市场：CRUD + 克隆 + 评分 (v10.0)
 ├── spatial_analysis_tier2.py    # 高级空间分析：IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 ├── conftest.py                  # 集中测试夹具 + 事件循环安全
-├── toolsets/                    # 23 个 BaseToolset 模块 (含 UserToolset)
+├── toolsets/                    # 28 个 BaseToolset 模块 (含 DataCleaningToolset)
 │   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
 │   ├── analysis_tools.py        #   分析工具 + LongRunningFunctionTool (DRL)
+│   ├── governance_tools.py      #   9 个工具：质量审计 + 标准校验
+│   ├── data_cleaning_tools.py   #   7 个工具：清洗/转换/补齐 (v14.5)
+│   ├── virtual_source_tools.py  #   7 个工具：数据源查询 + WMS 图层 + 图层发现
 │   ├── fusion_tools.py          #   数据融合工具集（4 个工具）
 │   ├── knowledge_graph_tools.py #   知识图谱工具集（3 个工具）
 │   ├── user_tools_toolset.py    #   用户自定义工具桥接 (v12.0)
@@ -367,6 +380,15 @@ data_agent/
 │   ├── skill_bundles.py         #   18 个场景技能分组
 │   ├── spatial_analysis_tier2_tools.py # IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 │   └── ...                      #   探查、地理处理、数据库、语义层等
+├── connectors/                  # 插件式数据源连接器 (v14.5)
+│   ├── __init__.py              #   BaseConnector ABC + ConnectorRegistry
+│   ├── wfs.py / stac.py / ogc_api.py / custom_api.py
+│   ├── wms.py                   #   WMS/WMTS 图层配置连接器
+│   └── arcgis_rest.py           #   ArcGIS FeatureServer 分页查询连接器
+├── standard_registry.py         # 数据标准注册表 (v14.5)
+├── standards/                   # 预置行业标准 YAML (v14.5)
+│   ├── dltb_2023.yaml           #   DLTB 30 字段 + 4 代码表
+│   └── gb_t_21010_2017.yaml     #   GB/T 21010 地类编码 73 值
 ├── skills/                      # 18 个 ADK 场景技能（kebab-case 目录）
 ├── prompts/                     # 3 个 YAML 提示词文件
 ├── evals/                       # Agent 评估框架（trajectory + rubric）
@@ -377,7 +399,7 @@ data_agent/
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 92 个测试文件 (2121 测试)
+├── test_*.py                    # 96 个测试文件 (2310+ 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -498,7 +520,7 @@ docs/                            # 文档
 ## 运行测试
 
 ```bash
-# 全量测试 (2123 测试)
+# 全量测试 (2310+ 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -543,6 +565,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v14.1 | 智能深化 + 协作基础：追问上下文链、版本管理、标签分类、多场景 DRL 引擎、3D basemap 同步、GeoJSON 编辑器、Agent Registry、A2A 双向 RPC | 2180 | ✅ 完成 |
 | v14.2 | 深度智能 + 生产就绪：条件分析链、NSGA-II 多目标 Pareto 优化、Circuit Breaker 熔断、标注导出、自适应布局 | 2190 | ✅ 完成 |
 | v14.3 | 联邦多 Agent + 生态开放：多语言检测（zh/en/ja）、Skill 依赖图、Webhook 集成、Skill SDK 规范、Plugin 插件系统、完整 A2A 协议、Agent 联邦 | 2193 | ✅ 完成 |
+| v14.4 | 治理深化 + 交互式可视化：GovernanceToolset (7 工具 + 6 维评分)、ChartToolset (9 ECharts 图表)、治理 Prompt 独立化、DataPanel 工作台重构 (4 分组 17 标签页) | 2193 | ✅ 完成 |
+| v14.5 | **连接器插件化 + 数据标准治理 + 清洗引擎**：BaseConnector 架构 (6 连接器含 WMS+ArcGIS)、Data Standard Registry (GB/T 21010 + DLTB)、DataCleaningToolset (7 工具)、FGDB 支持、前端 WMS 渲染 + 图层发现 | 2310+ | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 
 ## 设计模式覆盖 (21/21 = 100%)
@@ -553,7 +577,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | 路由 (Ch2) | ✅ | Gemini 2.0 Flash 意图分类 |
 | 并行化 (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | 反思 (Ch4) | ✅ | LoopAgent 全部 3 管道 |
-| 工具使用 (Ch5) | ✅ | 24 工具集, 130+ 工具, 18 Skills |
+| 工具使用 (Ch5) | ✅ | 28 工具集, 160+ 工具, 18 Skills |
 | 规划 (Ch6) | ✅ | DAG 任务分解 + 波次并行 |
 | 多智能体 (Ch7) | ✅ | 层级 Planner + 7 子 Agent |
 | 记忆管理 (Ch8) | ✅ | Memory ETL + PostgresMemoryService |
