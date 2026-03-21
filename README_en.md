@@ -1,12 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v14.3.1
+# GIS Data Agent (ADK Edition) v14.4
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (16 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 17 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **123 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **124 REST API endpoints**.
 
-**v14.3.1 security & quality hardening**: All Ch21 technical audit P0/P1/P2 issues resolved (A2A auth, SQL parameterization, 6 thread-safety fixes); DataPanel.tsx refactored from 2922 lines into 17 modular components; Fernet key TOCTOU race fix; roadmap v14.0–v14.3 checkboxes aligned + v14.4 planned.
+**v14.4 governance deepening + interactive visualization**: GovernanceToolset (7 dedicated audit tools + 6-dimension 0-100 composite scoring), dedicated governance.yaml prompts, 4-stage governance pipeline (GovExploration→GovProcessing→GovernanceViz→GovernanceReportLoop); ChartToolset (9 Apache ECharts interactive charts: bar/line/pie/scatter/histogram/boxplot/heatmap/treemap/radar); DataPanel redesigned as "Workbench" with grouped tabs (Data/Intelligence/Ops/Orchestration).
 
 ## 📚 Official Technical Documentation
 
@@ -22,9 +22,9 @@ This project provides industrial-grade technical documentation written in the **
 | Metric | Value |
 |--------|-------|
 | Test Coverage | 2193 tests, 93 test files |
-| Toolsets | 24 BaseToolset (incl. UserToolset + VirtualSourceToolset), 5 SkillBundle, 130+ tools |
+| Toolsets | 26 BaseToolset (incl. GovernanceToolset + ChartToolset + UserToolset + VirtualSourceToolset), 5 SkillBundle, 145+ tools |
 | ADK Skills | 18 scenario skills + DB-driven custom Skills + User Tools |
-| REST API | 123 endpoints |
+| REST API | 124 endpoints |
 | MCP Server | v2.0 — 36+ tools exposed (GIS primitives + high-level metadata + pipeline execution) |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |

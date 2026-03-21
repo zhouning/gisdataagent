@@ -217,19 +217,26 @@
 
 ---
 
-## v14.5 — 数据源增强 + 生产打磨 (规划中)
+## v14.5 — 可观测性 + 数据源增强 + 交互打磨 (规划中)
 
-> **主题**: 补齐数据接入短板 (对标 `docs/data-source-connector-assessment.md`)，打磨交互体验
+> **主题**: Agent 从黑盒走向白盒，数据接入补齐短板，交互体验收尾
 >
-> **依据**: 数据源评估 S1 阶段 (增强现有能力) + 治理评估剩余 P0 项
+> **依据**: `docs/agent-observability-enhancement.md` (Phase 1 指标增强)、`docs/data-source-connector-assessment.md` (S1 阶段)、治理评估剩余 P0 项
 
-### 数据接入增强
+### Agent 可观测性 Phase 1 (对标可观测性文档 §3.2)
+- [ ] **Prometheus 指标扩展 (4→25+)** — LLM 调用延迟/Token 直方图、工具延迟直方图、缓存命中率、队列深度、熔断器状态
+- [ ] **ObservabilityPlugin** — 统一 6 层 ADK 回调 (before/after agent + model + tool)，替代分散的 callback 注册
+- [ ] **HTTP 可观测性中间件** — `ObservabilityMiddleware` 为 124 个 REST 端点添加延迟/QPS/错误率指标
+- [ ] **缓存命中率指标** — `semantic_layer.py` / `memory.py` / `data_catalog.py` 增加 hit/miss Counter
+- [ ] **Grafana Dashboard 模板** — JSON 模板：Pipeline 概览、LLM Token 消耗、工具延迟 Top 10、熔断器状态
+
+### 数据接入增强 (对标数据源评估 S1)
 - [ ] **WMS/WMTS 连接器** — `virtual_sources.py` 新增 source_type，前端 MapPanel Leaflet 图层叠加
 - [ ] **ArcGIS REST FeatureServer 连接器** — JSON→GeoJSON 自动转换，支持政企 ArcGIS Server
 - [ ] **数据源注册向导** — 前端分步引导：选类型 → 填连接 → 测试 → 映射字段 → 预览 → 保存
 - [ ] **字段映射可视化编辑器** — 源字段 ↔ 目标字段拖拽映射 (前端组件)
 
-### 治理能力补齐
+### 治理能力补齐 (对标治理评估 P0)
 - [ ] **质量规则库 CRUD** — 用户自定义规则/阈值/关联字段，DB 持久化 + REST API (对标评估 P0-3)
 - [ ] **定时质量巡检** — Workflow Engine Cron 触发质量检查 → 结果写入趋势表 (对标评估 P0-4)
 - [ ] **质量趋势仪表盘** — DataPanel "运维" 组新增趋势图 Tab，ECharts 折线图展示评分变化
@@ -246,11 +253,19 @@
 
 ---
 
-## v15.0 — 数据安全 + 连接器插件化 (远期规划)
+## v15.0 — 深度可观测 + 数据安全 + 连接器插件化 (远期规划)
 
-> **主题**: 对标治理评估 P0 安全缺口 + 连接器架构升级
+> **主题**: OpenTelemetry 分布式追踪、Agent 决策透明化、安全合规、连接器架构升级
 >
-> **依据**: 治理评估 §4 数据安全 (25%) + 数据源评估 S2 连接器插件化
+> **依据**: 可观测性文档 Phase 2-4 + 治理评估 §4 数据安全 + 数据源评估 S2 + Spark 架构文档
+
+### Agent 可观测性 Phase 2-4 (对标可观测性文档 §3.3-§7)
+- [ ] **OpenTelemetry 分布式追踪** — `otel_tracing.py`：Pipeline/Agent/Tool 三级嵌套 Span，Jaeger/Tempo 集成
+- [ ] **Agent 决策追踪** — `agent_decision_tracer.py`：工具选择理由、拒绝路径、质量门判定，Mermaid 序列图生成
+- [ ] **Pipeline 执行瀑布图** — 前端 AgentObservabilityTab：各 Agent 耗时甘特图 + Token 分布 + 决策路径
+- [ ] **Agent 质量评估** — `quality_monitor.py`：10% 抽样 LLM 评分（忠实度/相关性/完整性），异步不阻塞主流程
+- [ ] **实时 Agent 行为 SSE 流** — `/api/observability/realtime/stream` 推送当前执行事件
+- [ ] **Prometheus Alert 规则** — Pipeline 慢执行、LLM 高延迟、工具错误率、熔断器、Token 消耗异常 7 条告警
 
 ### 数据安全 (对标评估 §4)
 - [ ] **数据分类分级引擎** — NLP + 正则识别敏感字段 (身份证/电话/地址)，五级分类标签体系
@@ -298,6 +313,7 @@
 | Agent 对话交互 | OpenClaw | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 参数重跑 | 🟢🟢🟢 |
 | 企业级治理 | Frontier | 🟢 | 🟢🟢 评分+可视化 | 🟢🟢 规则库+巡检 | 🟢🟢🟢 安全+脱敏 |
 | 数据可视化 | — | 🟡 仅地图 | 🟢 ECharts 9 图表 | 🟢 趋势仪表盘 | 🟢🟢 |
+| **Agent 可观测性** | — | 🟡 4指标+日志 | 🟡 | 🟢 25+指标+中间件 | 🟢🟢 OTel+决策追踪+质量评估 |
 | 多 Agent 协作 | CoWork | 🟢 | 🟢 | 🟢🟢 断点+重试 | 🟢🟢 Spark 分布式 |
 | 用户生态 | — | 🟢 | 🟢 | 🟢 向导+映射 | 🟢🟢 插件化连接器 |
 | DRL 优化深度 | — | 🟢 | 🟢 | 🟢 | 🟢 |
