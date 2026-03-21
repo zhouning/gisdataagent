@@ -157,6 +157,8 @@ try:
     recover_incomplete_runs()
     from data_agent.plugin_registry import ensure_plugins_table
     ensure_plugins_table()
+    from data_agent.proactive_explorer import ensure_observations_table
+    ensure_observations_table()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -2553,6 +2555,7 @@ async def main(message: cl.Message):
         full_prompt += "\n\n[系统环境] ArcPy 引擎可用。当用户需要修复几何、按字段融合统计、或对比ArcPy与开源工具结果时，可使用 arcpy_ 前缀的工具。"
 
     # v14.3: Language hint injection
+    user_lang = None
     if user_lang and user_lang != "zh":
         from data_agent.intent_router import _LANG_HINTS
         lang_hint = _LANG_HINTS.get(user_lang, "")
