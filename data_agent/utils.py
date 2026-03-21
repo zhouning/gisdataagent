@@ -77,8 +77,9 @@ def _add_basemap_layers(m):
 def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
     """
     Robustly loads spatial data from SHP, GeoJSON, CSV, Excel, KML, KMZ,
-    or directly from a PostGIS table name.
+    FGDB (.gdb), or directly from a PostGIS table name.
     For CSV/Excel, auto-detects geometry columns (lon/lat, x/y).
+    For FGDB, reads the first layer by default (use list_fgdb_layers for multi-layer).
     """
     import re as _re
     # --- PostGIS table name detection ---
@@ -188,6 +189,21 @@ def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
     # --- KML: read directly ---
     elif ext == '.kml':
         return gpd.read_file(path, driver='KML')
+
+    # --- FGDB: Esri File Geodatabase (directory format xxx.gdb/) ---
+    elif ext == '.gdb' or (os.path.isdir(path) and any(
+        f.endswith('.gdbtable') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))
+    )):
+        import fiona
+        layers = fiona.listlayers(path)
+        if not layers:
+            raise ValueError(f"FGDB 为空，无可读取图层: {path}")
+        layer_name = layers[0]
+        if len(layers) > 1:
+            logger.info("[FGDB] 多图层 GDB (%d 图层)，默认读取第一个: '%s'。可用图层: %s",
+                        len(layers), layer_name, layers)
+        gdf = gpd.read_file(path, layer=layer_name)
+        return gdf
 
     # --- All other spatial formats: SHP, GeoJSON, GPKG, etc. ---
     else:

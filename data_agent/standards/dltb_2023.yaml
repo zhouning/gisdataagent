@@ -1,0 +1,86 @@
+# DLTB 地类图斑字段规范 — 基于《自然资源统一调查监测》
+# 30 个标准字段，含类型、必填约束、描述
+id: dltb_2023
+name: 地类图斑 (DLTB)
+version: "2023"
+source: 《自然资源"一张图"数据库体系结构——统一调查监测》
+description: 地类图斑数据标准，含 30 个字段的完整定义，适用于三调及年度变更调查数据的质量校验。
+
+fields:
+  - { name: BSM,      type: string,  required: M, max_length: 18, description: "标识码（唯一编号）" }
+  - { name: YSDM,     type: string,  required: M, max_length: 8,  description: "要素代码" }
+  - { name: DLTBBH,   type: string,  required: M, max_length: 16, description: "地类图斑编号" }
+  - { name: DLBM,     type: string,  required: M, max_length: 5,  description: "地类编码（GB/T 21010）" }
+  - { name: DLMC,     type: string,  required: M, max_length: 60, description: "地类名称" }
+  - { name: QSXZ,     type: string,  required: M, max_length: 4,  description: "权属性质代码" }
+  - { name: QSDWDM,   type: string,  required: M, max_length: 19, description: "权属单位代码" }
+  - { name: QSDWMC,   type: string,  required: M, max_length: 60, description: "权属单位名称" }
+  - { name: ZLDWDM,   type: string,  required: M, max_length: 19, description: "坐落单位代码" }
+  - { name: ZLDWMC,   type: string,  required: M, max_length: 60, description: "坐落单位名称" }
+  - { name: TBMJ,     type: numeric, required: M, description: "图斑面积（㎡）" }
+  - { name: TKXS,     type: numeric, required: C, description: "田坎系数" }
+  - { name: TBDLMJ,   type: numeric, required: M, description: "图斑地类面积（㎡），TBDLMJ = TBMJ - KCMJ" }
+  - { name: KCMJ,     type: numeric, required: C, description: "扣除面积（㎡）" }
+  - { name: GDLX,     type: string,  required: C, max_length: 4,  description: "耕地类型代码（梯田/坡耕地等）" }
+  - { name: GDPDJB,   type: string,  required: C, max_length: 4,  description: "耕地坡度级别" }
+  - { name: XZDWKD,   type: numeric, required: C, description: "线状地物宽度（m）" }
+  - { name: TBXHDM,   type: string,  required: C, max_length: 6,  description: "图斑细化代码" }
+  - { name: TBXHMC,   type: string,  required: C, max_length: 60, description: "图斑细化名称" }
+  - { name: ZZSXDM,   type: string,  required: C, max_length: 4,  description: "种植属性代码" }
+  - { name: ZZSXMC,   type: string,  required: C, max_length: 60, description: "种植属性名称" }
+  - { name: GDDB,     type: string,  required: C, max_length: 4,  description: "耕地等别" }
+  - { name: FRDBS,    type: string,  required: C, max_length: 4,  description: "非耕地等别补充" }
+  - { name: CZCSXM,   type: string,  required: C, max_length: 6,  description: "城镇村属性码" }
+  - { name: MSSM,     type: string,  required: O, max_length: 4,  description: "描述说明" }
+  - { name: HDMC,     type: string,  required: O, max_length: 60, description: "海岛名称" }
+  - { name: SJNF,     type: string,  required: M, max_length: 4,  description: "数据年份" }
+  - { name: BZ,       type: string,  required: O, max_length: 200, description: "备注" }
+  - { name: GXSJ,     type: date,    required: M, description: "更新时间" }
+  - { name: SHAPE_Area, type: numeric, required: M, description: "几何面积（系统计算）" }
+
+code_tables:
+  DLBM: []   # 73 个值定义在 gb_t_21010_2017.yaml
+  QSXZ:
+    - { code: "10", name: "国有土地" }
+    - { code: "20", name: "集体土地" }
+    - { code: "30", name: "国有土地使用权" }
+    - { code: "40", name: "集体土地使用权" }
+    - { code: "50", name: "国有建设用地使用权" }
+    - { code: "60", name: "集体建设用地使用权" }
+    - { code: "70", name: "宅基地使用权" }
+    - { code: "80", name: "土地承包经营权" }
+    - { code: "90", name: "林地使用权" }
+    - { code: "99", name: "其他" }
+  GDPDJB:
+    - { code: "1", name: "≤2°" }
+    - { code: "2", name: "2°~6°" }
+    - { code: "3", name: "6°~15°" }
+    - { code: "4", name: "15°~25°" }
+    - { code: "5", name: ">25°" }
+  TBXHDM:
+    - { code: "HDGD",   name: "旱地改水田" }
+    - { code: "LQGD",   name: "林区耕地" }
+    - { code: "MQGD",   name: "牧区耕地" }
+    - { code: "SHGD",   name: "沙化耕地" }
+    - { code: "YQGD",   name: "盐碱耕地" }
+    - { code: "WJGD",   name: "污染耕地" }
+    - { code: "GCCD",   name: "工厂草地" }
+    - { code: "GCLD",   name: "工厂林地" }
+    - { code: "HQGD",   name: "河区耕地" }
+    - { code: "KSGD",   name: "矿区耕地" }
+    - { code: "LYGD",   name: "陵园耕地" }
+    - { code: "GFGD",   name: "光伏耕地" }
+    - { code: "FDGD",   name: "风电耕地" }
+    - { code: "SFGD",   name: "设施耕地" }
+    - { code: "XJGD",   name: "新建耕地" }
+    - { code: "JSYD",   name: "建设用地" }
+    - { code: "WLYD",   name: "未利用地" }
+  ZZSXDM:
+    - { code: "ZZ01", name: "粮食作物" }
+    - { code: "ZZ02", name: "非粮食作物" }
+    - { code: "ZZ03", name: "粮与非粮轮作" }
+    - { code: "ZZ04", name: "林粮间作" }
+    - { code: "ZZ05", name: "休耕" }
+    - { code: "ZZ06", name: "撂荒" }
+    - { code: "ZZ07", name: "未耕种" }
+    - { code: "ZZ99", name: "其他" }

@@ -21,3 +21,6 @@ from .knowledge_base_tools import KnowledgeBaseToolset
 from .advanced_analysis_tools import AdvancedAnalysisToolset
 from .user_tools_toolset import UserToolset
 from .virtual_source_tools import VirtualSourceToolset
+from .chart_tools import ChartToolset
+from .governance_tools import GovernanceToolset
+from .data_cleaning_tools import DataCleaningToolset

@@ -30,6 +30,19 @@ export default function VirtualSourcesTab() {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<number | null>(null);
+  const [discoveredLayers, setDiscoveredLayers] = useState<any[]>([]);
+  const [discovering, setDiscovering] = useState(false);
+
+  // WMS-specific form state
+  const [wmsLayers, setWmsLayers] = useState('');
+  const [wmsStyles, setWmsStyles] = useState('');
+  const [wmsFormat, setWmsFormat] = useState('image/png');
+  const [wmsTransparent, setWmsTransparent] = useState(true);
+  const [wmsVersion, setWmsVersion] = useState('1.1.1');
+  // ArcGIS-specific form state
+  const [arcLayerId, setArcLayerId] = useState('0');
+  const [arcWhere, setArcWhere] = useState('1=1');
+  const [arcOutFields, setArcOutFields] = useState('*');
 
   const fetchSources = async () => {
     setLoading(true);
@@ -65,13 +78,45 @@ export default function VirtualSourcesTab() {
     setShowForm(true);
   };
 
+  const handleDiscover = async () => {
+    if (!form.endpoint_url || !form.source_type) return;
+    setDiscovering(true);
+    setDiscoveredLayers([]);
+    try {
+      const r = await fetch('/api/virtual-sources/discover', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_type: form.source_type, endpoint_url: form.endpoint_url, auth_config: form.auth_config }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setDiscoveredLayers(d.layers || []);
+      }
+    } catch { /* ignore */ }
+    finally { setDiscovering(false); }
+  };
+
+  const buildQueryConfig = (): object => {
+    if (form.source_type === 'wms') {
+      return { layers: wmsLayers, styles: wmsStyles, format: wmsFormat, transparent: wmsTransparent, version: wmsVersion };
+    }
+    if (form.source_type === 'arcgis_rest') {
+      return { layer_id: parseInt(arcLayerId) || 0, where: arcWhere, out_fields: arcOutFields };
+    }
+    try { return JSON.parse(form.query_config); } catch { return {}; }
+  };
+
   const handleSave = async () => {
     if (!form.source_name || !form.endpoint_url) {
       setFormError('名称和端点URL不能为空');
       return;
     }
     let qcfg = {};
-    try { qcfg = JSON.parse(form.query_config); } catch { setFormError('查询配置JSON格式错误'); return; }
+    if (['wms', 'arcgis_rest'].includes(form.source_type)) {
+      qcfg = buildQueryConfig();
+    } else {
+      try { qcfg = JSON.parse(form.query_config); } catch { setFormError('查询配置JSON格式错误'); return; }
+    }
     setSaving(true);
     setFormError('');
     try {
@@ -121,7 +166,10 @@ export default function VirtualSourcesTab() {
   };
 
   const typeLabel = (t: string) => {
-    const map: Record<string, string> = { wfs: 'WFS', stac: 'STAC', ogc_api: 'OGC API', custom_api: 'API' };
+    const map: Record<string, string> = {
+      wfs: 'WFS', stac: 'STAC', ogc_api: 'OGC API', custom_api: 'API',
+      wms: 'WMS', arcgis_rest: 'ArcGIS',
+    };
     return map[t] || t;
   };
 
@@ -149,6 +197,8 @@ export default function VirtualSourcesTab() {
                 <option value="stac">STAC</option>
                 <option value="ogc_api">OGC API</option>
                 <option value="custom_api">自定义 API</option>
+                <option value="wms">WMS/WMTS</option>
+                <option value="arcgis_rest">ArcGIS REST</option>
               </select>
               <select value={form.refresh_policy}
                 onChange={e => setForm({ ...form, refresh_policy: e.target.value })}
@@ -164,9 +214,87 @@ export default function VirtualSourcesTab() {
             <input placeholder="默认CRS (EPSG:4326)" value={form.default_crs}
               onChange={e => setForm({ ...form, default_crs: e.target.value })}
               style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
-            <textarea placeholder='查询配置 JSON (如 {"feature_type":"topp:states"})' value={form.query_config}
-              onChange={e => setForm({ ...form, query_config: e.target.value })} rows={2}
-              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0', fontFamily: 'monospace', fontSize: 12 }} />
+            {/* Type-specific query config */}
+            {form.source_type === 'wms' ? (
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input placeholder="图层 (layers)" value={wmsLayers}
+                    onChange={e => setWmsLayers(e.target.value)}
+                    style={{ flex: 2, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+                  <input placeholder="样式 (styles)" value={wmsStyles}
+                    onChange={e => setWmsStyles(e.target.value)}
+                    style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select value={wmsFormat} onChange={e => setWmsFormat(e.target.value)}
+                    style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }}>
+                    <option value="image/png">PNG</option>
+                    <option value="image/jpeg">JPEG</option>
+                  </select>
+                  <select value={wmsVersion} onChange={e => setWmsVersion(e.target.value)}
+                    style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }}>
+                    <option value="1.1.1">WMS 1.1.1</option>
+                    <option value="1.3.0">WMS 1.3.0</option>
+                  </select>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#aaa', fontSize: 12 }}>
+                    <input type="checkbox" checked={wmsTransparent} onChange={e => setWmsTransparent(e.target.checked)} />
+                    透明
+                  </label>
+                </div>
+                {form.endpoint_url && (
+                  <button onClick={handleDiscover} disabled={discovering}
+                    style={{ fontSize: 11, color: '#7dd3fc', background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '3px 10px', cursor: 'pointer' }}>
+                    {discovering ? '发现中...' : '发现图层'}
+                  </button>
+                )}
+                {discoveredLayers.length > 0 && (
+                  <div style={{ fontSize: 11, color: '#aaa', maxHeight: 80, overflow: 'auto', background: '#0d1117', borderRadius: 4, padding: 6 }}>
+                    {discoveredLayers.map((l: any, i: number) => (
+                      <div key={i} style={{ cursor: 'pointer', padding: '2px 0' }}
+                        onClick={() => setWmsLayers(l.name)}>
+                        <span style={{ color: '#7dd3fc' }}>{l.name}</span>
+                        {l.title && <span style={{ marginLeft: 6, color: '#666' }}>{l.title}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : form.source_type === 'arcgis_rest' ? (
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input placeholder="图层ID (layer_id)" value={arcLayerId}
+                    onChange={e => setArcLayerId(e.target.value)} type="number"
+                    style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+                  <input placeholder="字段 (out_fields: *)" value={arcOutFields}
+                    onChange={e => setArcOutFields(e.target.value)}
+                    style={{ flex: 2, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+                </div>
+                <input placeholder="WHERE 条件 (默认: 1=1)" value={arcWhere}
+                  onChange={e => setArcWhere(e.target.value)}
+                  style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0', fontFamily: 'monospace', fontSize: 12 }} />
+                {form.endpoint_url && (
+                  <button onClick={handleDiscover} disabled={discovering}
+                    style={{ fontSize: 11, color: '#7dd3fc', background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '3px 10px', cursor: 'pointer' }}>
+                    {discovering ? '发现中...' : '发现图层'}
+                  </button>
+                )}
+                {discoveredLayers.length > 0 && (
+                  <div style={{ fontSize: 11, color: '#aaa', maxHeight: 80, overflow: 'auto', background: '#0d1117', borderRadius: 4, padding: 6 }}>
+                    {discoveredLayers.map((l: any, i: number) => (
+                      <div key={i} style={{ cursor: 'pointer', padding: '2px 0' }}
+                        onClick={() => setArcLayerId(String(l.id ?? 0))}>
+                        <span style={{ color: '#7dd3fc' }}>{l.id}: {l.name}</span>
+                        {l.geometryType && <span style={{ marginLeft: 6, color: '#666' }}>{l.geometryType}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <textarea placeholder='查询配置 JSON (如 {"feature_type":"topp:states"})' value={form.query_config}
+                onChange={e => setForm({ ...form, query_config: e.target.value })} rows={2}
+                style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0', fontFamily: 'monospace', fontSize: 12 }} />
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#aaa' }}>
               <input type="checkbox" checked={form.is_shared}
                 onChange={e => setForm({ ...form, is_shared: e.target.checked })} />

@@ -743,19 +743,65 @@ def check_topology(file_path: str) -> dict[str, any]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def check_field_standards(file_path: str, standard_schema: dict) -> dict[str, any]:
-    """
-    [Governance Tool] Validates attribute data against a standard schema (field names, types, and allowed values).
-    
+
+def list_fgdb_layers(file_path: str) -> dict:
+    """列出 Esri File Geodatabase (.gdb) 中的所有图层及其要素数、几何类型。
+
     Args:
-        file_path: Path to the data file.
-        standard_schema: Dict e.g. {"DLMC": {"type": "string", "allowed": ["水田", "旱地", "有林地"]}}
+        file_path: File Geodatabase 目录路径（xxx.gdb）。
+
+    Returns:
+        包含图层列表的字典，每个图层有 name、count、geometry_type 字段。
     """
     try:
+        import fiona
+        path = _resolve_path(file_path)
+        layers = fiona.listlayers(path)
+        if not layers:
+            return {"status": "ok", "layers": [], "message": "GDB 为空"}
+        result = []
+        for name in layers:
+            try:
+                with fiona.open(path, layer=name) as src:
+                    result.append({
+                        "name": name,
+                        "count": len(src),
+                        "geometry_type": src.schema.get("geometry", "Unknown"),
+                        "fields": list(src.schema.get("properties", {}).keys()),
+                    })
+            except Exception as e:
+                result.append({"name": name, "error": str(e)[:100]})
+        return {"status": "ok", "layer_count": len(result), "layers": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def check_field_standards(file_path: str, standard_schema: str = "") -> dict[str, any]:
+    """
+    [Governance Tool] Validates attribute data against a standard schema (field names, types, and allowed values).
+
+    Args:
+        file_path: Path to the data file.
+        standard_schema: Either a standard ID (e.g. "dltb_2023") to auto-load from Standard Registry,
+                         or a JSON dict string e.g. '{"DLMC": {"type": "string", "allowed": ["水田", "旱地"]}}'
+    """
+    try:
+        # Resolve schema: standard_id or inline JSON
+        if standard_schema and not standard_schema.strip().startswith("{"):
+            from .standard_registry import StandardRegistry
+            schema = StandardRegistry.get_field_schema(standard_schema.strip())
+            if not schema:
+                return {"status": "error", "message": f"未找到标准定义: {standard_schema}"}
+        elif standard_schema:
+            import json as _json
+            schema = _json.loads(standard_schema)
+        else:
+            return {"status": "error", "message": "请提供标准ID (如 'dltb_2023') 或 JSON schema"}
+
         gdf = gpd.read_file(_resolve_path(file_path))
         results = {"missing_fields": [], "type_mismatches": [], "invalid_values": []}
-        
-        for field, rules in standard_schema.items():
+
+        for field, rules in schema.items():
             if field not in gdf.columns:
                 results["missing_fields"].append(field)
                 continue
