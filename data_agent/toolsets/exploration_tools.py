@@ -10,6 +10,7 @@ from ..utils import _load_spatial_data, _configure_fonts
 from ..gis_processors import (
     check_topology,
     check_field_standards,
+    list_fgdb_layers,
     _generate_output_path,
     _resolve_path,
 )
@@ -182,6 +183,7 @@ _ALL_FUNCS = [
     check_topology,
     check_field_standards,
     check_consistency,
+    list_fgdb_layers,
 ]
 
 

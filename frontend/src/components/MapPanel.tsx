@@ -6,7 +6,7 @@ import Map3DView from './Map3DView';
 interface MapLayer {
   name: string;
   type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
-      | 'extrusion' | 'arc' | 'column' | 'categorized';
+      | 'extrusion' | 'arc' | 'column' | 'categorized' | 'wms';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
@@ -22,6 +22,9 @@ interface MapLayer {
   extruded?: boolean;
   pitch?: number;
   bearing?: number;
+  // WMS properties
+  wms_url?: string;
+  wms_params?: Record<string, any>;
 }
 
 interface Annotation {
@@ -395,6 +398,18 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
       for (const layerConfig of layers) {
         try {
+          // WMS layers don't need GeoJSON — render directly as tile layers
+          if (layerConfig.type === 'wms') {
+            const leafletLayer = createLeafletLayer(layerConfig, null);
+            if (leafletLayer) {
+              leafletLayer.addTo(mapRef.current!);
+              layerGroupsRef.current.set(layerConfig.name, leafletLayer);
+              loaded.push(layerConfig);
+              visibility[layerConfig.name] = true;
+            }
+            continue;
+          }
+
           let geojsonData = layerConfig.geojsonData;
 
           // Fetch GeoJSON if we only have a filename
@@ -798,6 +813,16 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
         onEachFeature: bindPopup,
       });
     }
+
+    case 'wms':
+      return L.tileLayer.wms(config.wms_url || '', {
+        layers: config.wms_params?.layers || '',
+        styles: config.wms_params?.styles || '',
+        format: config.wms_params?.format || 'image/png',
+        transparent: config.wms_params?.transparent ?? true,
+        version: config.wms_params?.version || '1.1.1',
+        ...(config.style || {}),
+      } as L.WMSOptions);
 
     default:
       return L.geoJSON(geojsonData, { onEachFeature: bindPopup });

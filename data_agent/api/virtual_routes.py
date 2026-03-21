@@ -126,11 +126,43 @@ async def vsource_test(request: Request):
     return JSONResponse(result)
 
 
+async def vsource_discover(request: Request):
+    """POST /api/virtual-sources/discover — discover layers/collections from a remote service."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    source_type = body.get("source_type", "")
+    endpoint_url = body.get("endpoint_url", "")
+    auth_config = body.get("auth_config") or {}
+
+    if not source_type or not endpoint_url:
+        return JSONResponse({"error": "source_type and endpoint_url required"}, status_code=400)
+
+    from ..connectors import ConnectorRegistry
+    connector = ConnectorRegistry.get(source_type)
+    if not connector:
+        return JSONResponse({"error": f"Unknown source type: {source_type}"}, status_code=400)
+
+    try:
+        caps = await connector.get_capabilities(endpoint_url, auth_config)
+        return JSONResponse(caps)
+    except Exception as e:
+        logger.warning("Discover failed for %s %s: %s", source_type, endpoint_url, e)
+        return JSONResponse({"error": str(e)[:300]}, status_code=502)
+
+
 def get_virtual_source_routes() -> list:
     """Return Route objects for virtual source endpoints."""
     return [
         Route("/api/virtual-sources", vsource_list, methods=["GET"]),
         Route("/api/virtual-sources", vsource_create, methods=["POST"]),
+        Route("/api/virtual-sources/discover", vsource_discover, methods=["POST"]),
         Route("/api/virtual-sources/{id:int}", vsource_detail, methods=["GET"]),
         Route("/api/virtual-sources/{id:int}", vsource_update, methods=["PUT"]),
         Route("/api/virtual-sources/{id:int}", vsource_delete, methods=["DELETE"]),
