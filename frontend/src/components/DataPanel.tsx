@@ -13,6 +13,7 @@ import SuggestionsTab from './datapanel/SuggestionsTab';
 import TasksTab from './datapanel/TasksTab';
 import TemplatesTab from './datapanel/TemplatesTab';
 import AnalyticsTab from './datapanel/AnalyticsTab';
+import ChartsTab from './datapanel/ChartsTab';
 import VirtualSourcesTab from './datapanel/VirtualSourcesTab';
 import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
@@ -22,7 +23,7 @@ interface DataPanelProps {
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts';
 
 type GroupKey = 'data' | 'intelligence' | 'ops' | 'orchestration';
 
@@ -41,6 +42,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
       { key: 'catalog', label: '资产', icon: '🗃️' },
       { key: 'vsources', label: '数据源', icon: '🔗' },
       { key: 'geojson', label: 'GeoJSON', icon: '✏️' },
+      { key: 'charts', label: '图表', icon: '📈' },
     ],
   },
   {
@@ -203,6 +205,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'vsources' && <VirtualSourcesTab />}
         {activeTab === 'market' && <MarketplaceTab />}
         {activeTab === 'geojson' && <GeoJsonEditorTab />}
+        {activeTab === 'charts' && <ChartsTab />}
       </div>
     </div>
   );

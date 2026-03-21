@@ -1611,6 +1611,7 @@ async def _execute_pipeline(
     _pending_data_update = None # data update from tool responses
     _final_map_update = None    # accumulated map config (not cleared during flush, injected into final_msg)
     _final_data_update = None   # accumulated data update
+    _final_chart_updates = []   # accumulated chart configs
     current_agent_name = None
     current_agent_step = None
     current_tool_step = None
@@ -1782,6 +1783,13 @@ async def _execute_pipeline(
                                             _final_map_update = _pending_map_update
                         except Exception as _art_err:
                             logger.warning("[ArtifactDetect] Error: %s", _art_err)
+                        # Chart config detection (v14.4)
+                        try:
+                            if isinstance(_resp_val, dict) and "chart_type" in _resp_val and "option" in _resp_val:
+                                _final_chart_updates.append(_resp_val)
+                                logger.info("[ChartDetect] Found chart: type=%s", _resp_val.get("chart_type"))
+                        except Exception:
+                            pass
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
                             _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
@@ -1951,6 +1959,12 @@ async def _execute_pipeline(
                 from data_agent.frontend_api import pending_data_updates, _pending_lock
                 with _pending_lock:
                     pending_data_updates[user_id] = _final_data_update
+            if _final_chart_updates:
+                meta["chart_updates"] = _final_chart_updates
+                from data_agent.frontend_api import pending_chart_updates, _pending_lock
+                with _pending_lock:
+                    pending_chart_updates.setdefault(user_id, []).extend(_final_chart_updates)
+                logger.info(f"[ChartInject] Injected {len(_final_chart_updates)} chart(s) into pending")
                 
             # Send a dedicated message for metadata so the React frontend sees a new ID
             # and doesn't skip it due to processedMetaRef.current.has(msg.id)
