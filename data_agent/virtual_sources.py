@@ -1,9 +1,9 @@
 """
-Virtual Data Sources — remote WFS/STAC/OGC API/custom API connectors (v13.0).
+Virtual Data Sources — pluggable remote connector framework (v14.5).
 
 Users register external geospatial data services and query them on demand.
-Credentials are Fernet-encrypted at rest. Connectors return GeoDataFrames
-(WFS/OGC) or structured dicts (STAC/custom API) with automatic CRS alignment.
+Credentials are Fernet-encrypted at rest.  Connector logic lives in
+``data_agent.connectors`` (BaseConnector plugin architecture).
 
 All DB operations are non-fatal (never raise to caller).
 """
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-VALID_SOURCE_TYPES = {"wfs", "stac", "ogc_api", "custom_api"}
+VALID_SOURCE_TYPES = {"wfs", "stac", "ogc_api", "custom_api", "wms", "arcgis_rest"}
 VALID_REFRESH_POLICIES = {"on_demand", "interval:5m", "interval:30m", "interval:1h", "realtime"}
 VALID_AUTH_TYPES = {"bearer", "basic", "apikey", "none"}
 SOURCE_NAME_MAX = 200
@@ -368,255 +368,17 @@ def delete_virtual_source(source_id: int, owner_username: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Auth header builder
+# Auth header builder (delegates to connectors package)
 # ---------------------------------------------------------------------------
 
 def _build_auth_headers(auth_config: dict) -> dict:
     """Build HTTP headers from auth_config."""
-    if not auth_config:
-        return {}
-    atype = auth_config.get("type", "none")
-    if atype == "bearer":
-        return {"Authorization": f"Bearer {auth_config.get('token', '')}"}
-    if atype == "basic":
-        import base64 as b64
-        cred = b64.b64encode(
-            f"{auth_config.get('username', '')}:{auth_config.get('password', '')}".encode()
-        ).decode()
-        return {"Authorization": f"Basic {cred}"}
-    if atype == "apikey":
-        header = auth_config.get("header", "X-API-Key")
-        return {header: auth_config.get("key", "")}
-    return {}
+    from .connectors import build_auth_headers
+    return build_auth_headers(auth_config)
 
 
 # ---------------------------------------------------------------------------
-# Connectors
-# ---------------------------------------------------------------------------
-
-_HTTP_TIMEOUT = 30
-
-
-async def query_wfs(
-    endpoint_url: str,
-    auth_config: dict,
-    query_config: dict,
-    bbox: list[float] | None = None,
-    cql_filter: str | None = None,
-    max_features: int = 1000,
-    target_crs: str | None = None,
-):
-    """Query a WFS service and return a GeoDataFrame.
-
-    Parameters
-    ----------
-    endpoint_url : WFS base URL
-    auth_config  : decrypted auth config dict
-    query_config : {feature_type, version, max_features, ...}
-    bbox         : [minx, miny, maxx, maxy] in EPSG:4326
-    cql_filter   : optional CQL filter string
-    max_features : feature limit
-    target_crs   : target CRS for auto-alignment (e.g. "EPSG:4326")
-    """
-    import httpx
-    import geopandas as gpd
-
-    feature_type = query_config.get("feature_type", "")
-    version = query_config.get("version", "2.0.0")
-    max_feat = query_config.get("max_features", max_features)
-
-    params = {
-        "service": "WFS",
-        "request": "GetFeature",
-        "typeName": feature_type,
-        "version": version,
-        "outputFormat": "application/json",
-        "count": str(min(max_feat, max_features)),
-    }
-    if bbox:
-        params["bbox"] = ",".join(str(v) for v in bbox)
-    if cql_filter:
-        params["CQL_FILTER"] = cql_filter
-
-    headers = _build_auth_headers(auth_config)
-
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-        resp = await client.get(endpoint_url, params=params, headers=headers)
-        resp.raise_for_status()
-
-    data = resp.json()
-    if not data.get("features"):
-        return gpd.GeoDataFrame()
-
-    gdf = gpd.GeoDataFrame.from_features(data["features"], crs="EPSG:4326")
-
-    # CRS from response
-    crs_info = data.get("crs", {}).get("properties", {}).get("name")
-    if crs_info:
-        try:
-            gdf = gdf.set_crs(crs_info, allow_override=True)
-        except Exception:
-            pass
-
-    # Auto-align CRS
-    if target_crs and gdf.crs and str(gdf.crs) != target_crs:
-        gdf = gdf.to_crs(target_crs)
-
-    return gdf
-
-
-async def search_stac(
-    endpoint_url: str,
-    auth_config: dict,
-    query_config: dict,
-    bbox: list[float] | None = None,
-    datetime_range: str | None = None,
-    limit: int = 20,
-) -> list[dict]:
-    """Search a STAC catalog and return items.
-
-    Parameters
-    ----------
-    endpoint_url   : STAC API base URL (e.g. https://earth-search.aws.element84.com/v1)
-    auth_config    : decrypted auth config dict
-    query_config   : {collection_id, datetime_range, ...}
-    bbox           : [minx, miny, maxx, maxy]
-    datetime_range : ISO 8601 range (e.g. "2024-01-01/2024-12-31")
-    limit          : max items to return
-    """
-    import httpx
-
-    search_url = endpoint_url.rstrip("/") + "/search"
-    headers = _build_auth_headers(auth_config)
-    headers["Content-Type"] = "application/json"
-
-    body: dict = {"limit": min(limit, 100)}
-    collection_id = query_config.get("collection_id")
-    if collection_id:
-        body["collections"] = [collection_id]
-    if bbox:
-        body["bbox"] = bbox
-    dt = datetime_range or query_config.get("datetime_range")
-    if dt:
-        body["datetime"] = dt
-
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-        resp = await client.post(search_url, json=body, headers=headers)
-        resp.raise_for_status()
-
-    data = resp.json()
-    items = data.get("features", [])
-    # Flatten useful fields
-    results = []
-    for item in items:
-        props = item.get("properties", {})
-        assets = item.get("assets", {})
-        results.append({
-            "id": item.get("id"),
-            "datetime": props.get("datetime"),
-            "bbox": item.get("bbox"),
-            "collection": item.get("collection"),
-            "cloud_cover": props.get("eo:cloud_cover"),
-            "thumbnail": assets.get("thumbnail", {}).get("href"),
-            "data_href": (assets.get("data", {}).get("href")
-                          or assets.get("visual", {}).get("href")),
-            "properties": props,
-        })
-    return results
-
-
-async def query_api(
-    endpoint_url: str,
-    auth_config: dict,
-    query_config: dict,
-    params: dict | None = None,
-) -> dict:
-    """Query a custom REST API and return parsed response.
-
-    Parameters
-    ----------
-    endpoint_url : API endpoint URL (may contain {placeholders})
-    auth_config  : decrypted auth config dict
-    query_config : {method, response_path, params, body, ...}
-    params       : runtime parameter overrides
-    """
-    import httpx
-
-    method = query_config.get("method", "GET").upper()
-    response_path = query_config.get("response_path", "")
-    default_params = query_config.get("params", {})
-    body = query_config.get("body")
-
-    merged_params = {**default_params, **(params or {})}
-
-    # Template URL placeholders
-    url = endpoint_url
-    try:
-        url = url.format_map(merged_params)
-    except (KeyError, ValueError):
-        pass
-
-    headers = _build_auth_headers(auth_config)
-
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-        if method in ("POST", "PUT", "PATCH") and body:
-            headers["Content-Type"] = "application/json"
-            resp = await client.request(method, url, json=body, headers=headers)
-        else:
-            resp = await client.request(method, url, params=merged_params, headers=headers)
-        resp.raise_for_status()
-
-    data = resp.json()
-
-    # Extract nested path (e.g. "data.features")
-    if response_path:
-        for key in response_path.split("."):
-            if isinstance(data, dict):
-                data = data.get(key, data)
-            else:
-                break
-
-    return data if isinstance(data, dict) else {"results": data}
-
-
-async def query_ogc_api(
-    endpoint_url: str,
-    auth_config: dict,
-    query_config: dict,
-    bbox: list[float] | None = None,
-    limit: int = 1000,
-    target_crs: str | None = None,
-):
-    """Query an OGC API Features service and return a GeoDataFrame."""
-    import httpx
-    import geopandas as gpd
-
-    collection = query_config.get("collection", "")
-    items_url = f"{endpoint_url.rstrip('/')}/collections/{collection}/items"
-
-    params = {"f": "json", "limit": str(min(limit, query_config.get("limit", 1000)))}
-    if bbox:
-        params["bbox"] = ",".join(str(v) for v in bbox)
-
-    headers = _build_auth_headers(auth_config)
-
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-        resp = await client.get(items_url, params=params, headers=headers)
-        resp.raise_for_status()
-
-    data = resp.json()
-    features = data.get("features", [])
-    if not features:
-        return gpd.GeoDataFrame()
-
-    gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
-    if target_crs and gdf.crs and str(gdf.crs) != target_crs:
-        gdf = gdf.to_crs(target_crs)
-    return gdf
-
-
-# ---------------------------------------------------------------------------
-# Unified query dispatcher
+# Unified query dispatcher (registry-based)
 # ---------------------------------------------------------------------------
 
 async def query_virtual_source(
@@ -627,26 +389,23 @@ async def query_virtual_source(
     extra_params: dict | None = None,
 ):
     """Query a virtual source by its config dict. Returns GeoDataFrame or list/dict."""
-    stype = source["source_type"]
-    url = source["endpoint_url"]
-    auth = source.get("auth_config", {})
-    qcfg = source.get("query_config", {})
-    target_crs = source.get("default_crs", "EPSG:4326")
+    from .connectors import ConnectorRegistry
 
-    if stype == "wfs":
-        return await query_wfs(url, auth, qcfg, bbox=bbox,
-                               cql_filter=filter_expr, max_features=limit,
-                               target_crs=target_crs)
-    elif stype == "stac":
-        return await search_stac(url, auth, qcfg, bbox=bbox,
-                                 datetime_range=filter_expr, limit=limit)
-    elif stype == "ogc_api":
-        return await query_ogc_api(url, auth, qcfg, bbox=bbox,
-                                   limit=limit, target_crs=target_crs)
-    elif stype == "custom_api":
-        return await query_api(url, auth, qcfg, params=extra_params)
-    else:
+    stype = source["source_type"]
+    connector = ConnectorRegistry.get(stype)
+    if not connector:
         return {"status": "error", "message": f"Unknown source type: {stype}"}
+
+    return await connector.query(
+        endpoint_url=source["endpoint_url"],
+        auth_config=source.get("auth_config", {}),
+        query_config=source.get("query_config", {}),
+        bbox=bbox,
+        filter_expr=filter_expr,
+        limit=limit,
+        extra_params=extra_params,
+        target_crs=source.get("default_crs", "EPSG:4326"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -800,33 +559,20 @@ async def check_source_health(source_id: int, owner_username: str) -> dict:
     if not source:
         return {"status": "error", "message": "Source not found"}
 
-    import httpx
+    from .connectors import ConnectorRegistry
+
+    stype = source["source_type"]
     url = source["endpoint_url"]
     auth = source.get("auth_config", {})
-    headers = _build_auth_headers(auth)
-    health = "healthy"
-    message = "OK"
 
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            stype = source["source_type"]
-            if stype == "wfs":
-                resp = await client.get(url, params={
-                    "service": "WFS", "request": "GetCapabilities"
-                }, headers=headers)
-            elif stype == "stac":
-                resp = await client.get(url, headers=headers)
-            elif stype == "ogc_api":
-                resp = await client.get(url, headers=headers)
-            else:
-                resp = await client.request("HEAD", url, headers=headers)
-            resp.raise_for_status()
-    except httpx.TimeoutException:
-        health = "timeout"
-        message = "Connection timed out"
-    except Exception as e:
+    connector = ConnectorRegistry.get(stype)
+    if connector:
+        result = await connector.health_check(url, auth)
+        health = result.get("health", "error")
+        message = result.get("message", "")
+    else:
         health = "error"
-        message = str(e)[:200]
+        message = f"Unknown source type: {stype}"
 
     # Persist health status
     engine = get_engine()

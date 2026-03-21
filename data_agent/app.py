@@ -1790,6 +1790,25 @@ async def _execute_pipeline(
                                 logger.info("[ChartDetect] Found chart: type=%s", _resp_val.get("chart_type"))
                         except Exception:
                             pass
+                        # Direct map_update from tool response (v14.5 — WMS layers etc.)
+                        try:
+                            if isinstance(_resp_val, str):
+                                try:
+                                    _parsed = json.loads(_resp_val)
+                                except (json.JSONDecodeError, TypeError):
+                                    _parsed = None
+                            elif isinstance(_resp_val, dict):
+                                _parsed = _resp_val
+                            else:
+                                _parsed = None
+                            if isinstance(_parsed, dict) and "map_update" in _parsed:
+                                _direct_mu = _parsed["map_update"]
+                                if isinstance(_direct_mu, dict) and "layers" in _direct_mu:
+                                    _pending_map_update = _direct_mu
+                                    _final_map_update = _direct_mu
+                                    logger.info("[MapUpdateDirect] Injected map_update from tool: layers=%s", len(_direct_mu.get("layers", [])))
+                        except Exception:
+                            pass
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
                             _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)

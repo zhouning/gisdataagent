@@ -32,6 +32,7 @@ TOOLSET_NAMES: set[str] = {
     "KnowledgeGraphToolset", "KnowledgeBaseToolset",
     "AdvancedAnalysisToolset", "SpatialAnalysisTier2Toolset",
     "WatershedToolset", "UserToolset", "VirtualSourceToolset",
+    "ChartToolset", "GovernanceToolset", "DataCleaningToolset",
 }
 
 _toolset_registry_cache: dict[str, type] | None = None

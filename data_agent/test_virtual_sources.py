@@ -470,8 +470,9 @@ class TestWFSConnector(unittest.IsolatedAsyncioTestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        from data_agent.virtual_sources import query_wfs
-        gdf = await query_wfs(
+        from data_agent.connectors.wfs import WfsConnector
+        conn = WfsConnector()
+        gdf = await conn.query(
             "https://example.com/wfs", {},
             {"feature_type": "topp:states", "version": "2.0.0"},
         )
@@ -490,8 +491,9 @@ class TestWFSConnector(unittest.IsolatedAsyncioTestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        from data_agent.virtual_sources import query_wfs
-        gdf = await query_wfs("https://example.com/wfs", {}, {"feature_type": "x"})
+        from data_agent.connectors.wfs import WfsConnector
+        conn = WfsConnector()
+        gdf = await conn.query("https://example.com/wfs", {}, {"feature_type": "x"})
         self.assertEqual(len(gdf), 0)
 
 
@@ -521,8 +523,9 @@ class TestSTACConnector(unittest.IsolatedAsyncioTestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        from data_agent.virtual_sources import search_stac
-        items = await search_stac(
+        from data_agent.connectors.stac import StacConnector
+        conn = StacConnector()
+        items = await conn.query(
             "https://earth-search.example.com/v1", {},
             {"collection_id": "sentinel-2"},
         )
@@ -542,8 +545,9 @@ class TestSTACConnector(unittest.IsolatedAsyncioTestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        from data_agent.virtual_sources import search_stac
-        items = await search_stac("https://example.com/v1", {}, {})
+        from data_agent.connectors.stac import StacConnector
+        conn = StacConnector()
+        items = await conn.query("https://example.com/v1", {}, {})
         self.assertEqual(items, [])
 
 
@@ -560,8 +564,9 @@ class TestAPIConnector(unittest.IsolatedAsyncioTestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        from data_agent.virtual_sources import query_api
-        result = await query_api(
+        from data_agent.connectors.custom_api import CustomApiConnector
+        conn = CustomApiConnector()
+        result = await conn.query(
             "https://api.example.com/data", {},
             {"method": "GET", "response_path": "data.features"},
         )
@@ -587,8 +592,9 @@ class TestOGCAPIConnector(unittest.IsolatedAsyncioTestCase):
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        from data_agent.virtual_sources import query_ogc_api
-        gdf = await query_ogc_api(
+        from data_agent.connectors.ogc_api import OgcApiConnector
+        conn = OgcApiConnector()
+        gdf = await conn.query(
             "https://example.com/ogc", {},
             {"collection": "buildings"},
         )
@@ -600,9 +606,11 @@ class TestOGCAPIConnector(unittest.IsolatedAsyncioTestCase):
 # ---------------------------------------------------------------------------
 
 class TestDispatcher(unittest.IsolatedAsyncioTestCase):
-    @patch("data_agent.virtual_sources.query_wfs", new_callable=AsyncMock)
-    async def test_dispatch_wfs(self, mock_wfs):
-        mock_wfs.return_value = "wfs-result"
+    @patch("data_agent.connectors.ConnectorRegistry.get")
+    async def test_dispatch_wfs(self, mock_get):
+        mock_connector = AsyncMock()
+        mock_connector.query = AsyncMock(return_value="wfs-result")
+        mock_get.return_value = mock_connector
         from data_agent.virtual_sources import query_virtual_source
         r = await query_virtual_source({
             "source_type": "wfs", "endpoint_url": "https://x.com",
@@ -610,11 +618,13 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
             "default_crs": "EPSG:4326",
         })
         self.assertEqual(r, "wfs-result")
-        mock_wfs.assert_called_once()
+        mock_connector.query.assert_called_once()
 
-    @patch("data_agent.virtual_sources.search_stac", new_callable=AsyncMock)
-    async def test_dispatch_stac(self, mock_stac):
-        mock_stac.return_value = []
+    @patch("data_agent.connectors.ConnectorRegistry.get")
+    async def test_dispatch_stac(self, mock_get):
+        mock_connector = AsyncMock()
+        mock_connector.query = AsyncMock(return_value=[])
+        mock_get.return_value = mock_connector
         from data_agent.virtual_sources import query_virtual_source
         r = await query_virtual_source({
             "source_type": "stac", "endpoint_url": "https://x.com",
@@ -623,9 +633,11 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         })
         self.assertEqual(r, [])
 
-    @patch("data_agent.virtual_sources.query_api", new_callable=AsyncMock)
-    async def test_dispatch_custom_api(self, mock_api):
-        mock_api.return_value = {"result": "ok"}
+    @patch("data_agent.connectors.ConnectorRegistry.get")
+    async def test_dispatch_custom_api(self, mock_get):
+        mock_connector = AsyncMock()
+        mock_connector.query = AsyncMock(return_value={"result": "ok"})
+        mock_get.return_value = mock_connector
         from data_agent.virtual_sources import query_virtual_source
         r = await query_virtual_source({
             "source_type": "custom_api", "endpoint_url": "https://x.com",
@@ -651,20 +663,15 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 class TestHealthCheck(unittest.IsolatedAsyncioTestCase):
     @patch("data_agent.virtual_sources.get_engine")
     @patch("data_agent.virtual_sources.get_virtual_source")
-    @patch("httpx.AsyncClient")
-    async def test_health_check_healthy(self, mock_client_cls, mock_get_src, mock_eng):
+    @patch("data_agent.connectors.ConnectorRegistry.get")
+    async def test_health_check_healthy(self, mock_reg_get, mock_get_src, mock_eng):
         mock_get_src.return_value = {
             "source_type": "wfs", "endpoint_url": "https://x.com/wfs",
             "auth_config": {},
         }
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status = MagicMock()
-
-        mock_client = AsyncMock()
-        mock_client.get = AsyncMock(return_value=mock_resp)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+        mock_connector = AsyncMock()
+        mock_connector.health_check = AsyncMock(return_value={"health": "healthy", "message": "OK"})
+        mock_reg_get.return_value = mock_connector
 
         engine = MagicMock()
         conn = MagicMock()
@@ -690,7 +697,7 @@ class TestHealthCheck(unittest.IsolatedAsyncioTestCase):
 class TestConstants(unittest.TestCase):
     def test_valid_source_types(self):
         from data_agent.virtual_sources import VALID_SOURCE_TYPES
-        self.assertEqual(VALID_SOURCE_TYPES, {"wfs", "stac", "ogc_api", "custom_api"})
+        self.assertEqual(VALID_SOURCE_TYPES, {"wfs", "stac", "ogc_api", "custom_api", "wms", "arcgis_rest"})
 
     def test_valid_auth_types(self):
         from data_agent.virtual_sources import VALID_AUTH_TYPES

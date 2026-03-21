@@ -559,6 +559,48 @@ def governance_summary(file_path: str, audit_results: dict, score: dict) -> dict
 
 
 # ---------------------------------------------------------------------------
+# Data Standard Registry tools (v14.5)
+# ---------------------------------------------------------------------------
+
+def list_data_standards() -> str:
+    """列出所有已注册的数据标准（如 GB/T 21010 地类编码、DLTB 地类图斑字段规范）。
+
+    Returns:
+        JSON格式的标准列表，含ID、名称、版本、字段数、代码表数。
+    """
+    import json
+    try:
+        from ..standard_registry import StandardRegistry
+        standards = StandardRegistry.list_standards()
+        if not standards:
+            return json.dumps({"status": "ok", "message": "暂无已注册的数据标准", "standards": []},
+                              ensure_ascii=False)
+        return json.dumps({"status": "ok", "count": len(standards), "standards": standards},
+                          ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def validate_against_standard(file_path: str, standard_id: str) -> str:
+    """按预置数据标准一键校验数据文件。检查字段缺失、值域超限、类型不匹配等。
+
+    Args:
+        file_path: 待校验数据文件路径（Shapefile/GeoJSON/GPKG/FGDB等）。
+        standard_id: 标准ID（如 "dltb_2023" 或 "gb_t_21010_2017"），可通过 list_data_standards 查看。
+
+    Returns:
+        JSON格式的校验报告：缺失字段、非法值、类型错误等。
+    """
+    import json
+    try:
+        from ..gis_processors import check_field_standards
+        result = check_field_standards(file_path, standard_id)
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
 
@@ -570,6 +612,8 @@ _ALL_FUNCS = [
     check_crs_consistency,
     governance_score,
     governance_summary,
+    list_data_standards,
+    validate_against_standard,
 ]
 
 
