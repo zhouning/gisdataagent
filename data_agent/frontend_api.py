@@ -127,8 +127,11 @@ async def _api_pipeline_stream(request: Request):
 # ---------------------------------------------------------------------------
 # Chainlit's React client does not deliver step-level metadata to the frontend.
 # This in-memory store + polling endpoint provides an alternative delivery path.
+import threading as _threading
+
 pending_map_updates: dict[str, dict] = {}   # user_id -> map config
 pending_data_updates: dict[str, dict] = {}  # user_id -> data config
+_pending_lock = _threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -1142,12 +1145,13 @@ async def _api_map_pending(request: Request):
     uid = current_user_id.get("")
     
     logger.info(f"[/api/map/pending] user={uid}, pending_keys={list(pending_map_updates.keys())}")
-    
+
     result = {}
-    map_cfg = pending_map_updates.pop(uid, None)
+    with _pending_lock:
+        map_cfg = pending_map_updates.pop(uid, None)
+        data_cfg = pending_data_updates.pop(uid, None)
     if map_cfg:
         result["map_update"] = map_cfg
-    data_cfg = pending_data_updates.pop(uid, None)
     if data_cfg:
         result["data_update"] = data_cfg
     return JSONResponse(result)
@@ -2385,6 +2389,10 @@ async def _api_plugins_install(request: Request):
 
 async def _api_a2a_task_create(request: Request):
     """POST /api/a2a/tasks — create a new A2A task (v14.3 lifecycle)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
     try:
         body = await request.json()
     except Exception:
@@ -2396,6 +2404,10 @@ async def _api_a2a_task_create(request: Request):
 
 async def _api_a2a_task_execute(request: Request):
     """POST /api/a2a/tasks/{task_id}/execute — execute a submitted task."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
     task_id = request.path_params.get("task_id", "")
     from .a2a_server import execute_task
     result = await execute_task(task_id)
@@ -2404,6 +2416,10 @@ async def _api_a2a_task_execute(request: Request):
 
 async def _api_a2a_task_status(request: Request):
     """GET /api/a2a/tasks/{task_id} — get task status."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
     task_id = request.path_params.get("task_id", "")
     from .a2a_server import get_task_status
     status = get_task_status(task_id)
@@ -2414,6 +2430,10 @@ async def _api_a2a_task_status(request: Request):
 
 async def _api_a2a_federation(request: Request):
     """GET /api/a2a/federation — get federation config and peer agents."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
     from .a2a_server import get_federation_config
     return JSONResponse(get_federation_config())
 

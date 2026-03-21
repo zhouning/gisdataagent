@@ -12,6 +12,7 @@ import logging
 import os
 import base64
 import hashlib
+import threading
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -38,6 +39,7 @@ MAX_SOURCES_PER_USER = 50
 # ---------------------------------------------------------------------------
 
 _FERNET_KEY: Optional[bytes] = None
+_fernet_lock = threading.Lock()
 
 
 def _get_fernet():
@@ -46,13 +48,18 @@ def _get_fernet():
     if _FERNET_KEY is not None:
         from cryptography.fernet import Fernet
         return Fernet(_FERNET_KEY)
-    secret = os.environ.get("CHAINLIT_AUTH_SECRET", "")
-    if not secret:
-        return None
-    _FERNET_KEY = base64.urlsafe_b64encode(
-        hashlib.pbkdf2_hmac("sha256", secret.encode(), b"vsource-salt", 100_000, dklen=32))
-    from cryptography.fernet import Fernet
-    return Fernet(_FERNET_KEY)
+    with _fernet_lock:
+        # Double-check after acquiring lock
+        if _FERNET_KEY is not None:
+            from cryptography.fernet import Fernet
+            return Fernet(_FERNET_KEY)
+        secret = os.environ.get("CHAINLIT_AUTH_SECRET", "")
+        if not secret:
+            return None
+        _FERNET_KEY = base64.urlsafe_b64encode(
+            hashlib.pbkdf2_hmac("sha256", secret.encode(), b"vsource-salt", 100_000, dklen=32))
+        from cryptography.fernet import Fernet
+        return Fernet(_FERNET_KEY)
 
 
 def _encrypt_dict(d: dict) -> str:
