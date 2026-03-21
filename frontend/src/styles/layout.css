@@ -609,6 +609,40 @@ body {
 }
 
 /* Underline-style tabs */
+.data-panel-groups {
+  display: flex;
+  gap: 2px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+.data-panel-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.data-panel-group:hover { background: var(--bg-hover); color: var(--text); }
+.data-panel-group.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.group-icon { font-size: 13px; line-height: 1; }
+.group-label { font-size: 12px; }
+.tab-icon { font-size: 12px; margin-right: 2px; }
+
 .data-panel-tabs {
   display: flex;
   gap: 0;
@@ -2228,7 +2262,7 @@ body {
 .btn-delete-server { padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 14px; cursor: pointer; color: #ef4444; transition: all 0.15s; line-height: 1; margin-left: auto; }
 .btn-delete-server:hover { border-color: #ef4444; background: #fef2f2; }
 .btn-delete-server:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-add-server { margin-left: auto; width: 24px; height: 24px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 16px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+.btn-add-server { margin-left: auto; min-width: 24px; height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 12px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; gap: 2px; transition: all 0.15s; flex-shrink: 0; white-space: nowrap; }
 .btn-add-server:hover { border-color: var(--primary); background: var(--primary-light); }
 .mcp-add-form { padding: 10px 12px; border-bottom: 1px solid var(--border-light); background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
 .mcp-add-form-title { font-size: 12px; font-weight: 600; color: var(--text); }

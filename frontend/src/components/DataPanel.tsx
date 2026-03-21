@@ -24,6 +24,57 @@ interface DataPanelProps {
 
 type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson';
 
+type GroupKey = 'data' | 'intelligence' | 'ops' | 'orchestration';
+
+interface TabDef {
+  key: TabKey;
+  label: string;
+  icon: string;
+}
+
+const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }[] = [
+  {
+    key: 'data', label: '数据', icon: '📊',
+    tabs: [
+      { key: 'files', label: '文件', icon: '📁' },
+      { key: 'table', label: '表格', icon: '📋' },
+      { key: 'catalog', label: '资产', icon: '🗃️' },
+      { key: 'vsources', label: '数据源', icon: '🔗' },
+      { key: 'geojson', label: 'GeoJSON', icon: '✏️' },
+    ],
+  },
+  {
+    key: 'intelligence', label: '智能', icon: '🤖',
+    tabs: [
+      { key: 'capabilities', label: '能力', icon: '⚡' },
+      { key: 'tools', label: '工具', icon: '🔧' },
+      { key: 'kb', label: '知识库', icon: '📚' },
+      { key: 'suggestions', label: '建议', icon: '💡' },
+      { key: 'market', label: '市场', icon: '🏪' },
+    ],
+  },
+  {
+    key: 'ops', label: '运维', icon: '📈',
+    tabs: [
+      { key: 'history', label: '历史', icon: '🕐' },
+      { key: 'usage', label: '用量', icon: '📉' },
+      { key: 'analytics', label: '分析', icon: '📊' },
+      { key: 'tasks', label: '任务', icon: '✅' },
+    ],
+  },
+  {
+    key: 'orchestration', label: '编排', icon: '🔀',
+    tabs: [
+      { key: 'workflows', label: '工作流', icon: '⚙️' },
+      { key: 'templates', label: '模板', icon: '📄' },
+    ],
+  },
+];
+
+// Build a lookup: tabKey → groupKey
+const TAB_TO_GROUP: Record<TabKey, GroupKey> = {} as any;
+TAB_GROUPS.forEach(g => g.tabs.forEach(t => { TAB_TO_GROUP[t.key] = g.key; }));
+
 interface FileInfo {
   name: string;
   size: number;
@@ -33,6 +84,7 @@ interface FileInfo {
 
 export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('files');
+  const [activeGroup, setActiveGroup] = useState<GroupKey>('data');
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [tableData, setTableData] = useState<any[]>([]);
   const [tableColumns, setTableColumns] = useState<string[]>([]);
@@ -48,6 +100,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
     if (!dataFile) return;
     loadCsvData(dataFile);
     setActiveTab('table');
+    setActiveGroup('data');
   }, [dataFile]);
 
   const fetchFiles = async () => {
@@ -79,48 +132,58 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
     }
   };
 
+  const handleTabClick = (tab: TabKey) => {
+    setActiveTab(tab);
+    setActiveGroup(TAB_TO_GROUP[tab]);
+  };
+
+  const handleGroupClick = (groupKey: GroupKey) => {
+    setActiveGroup(groupKey);
+    // Switch to first tab in group if current tab is not in this group
+    const group = TAB_GROUPS.find(g => g.key === groupKey);
+    if (group && !group.tabs.some(t => t.key === activeTab)) {
+      setActiveTab(group.tabs[0].key);
+    }
+  };
+
+  const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup) || TAB_GROUPS[0];
+
   return (
     <div className="data-panel">
       <div className="data-panel-header">
         <svg className="data-panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
         </svg>
-        <span>数据</span>
+        <span>工作台</span>
       </div>
 
+      {/* Group selector */}
+      <div className="data-panel-groups">
+        {TAB_GROUPS.map(g => (
+          <button
+            key={g.key}
+            className={`data-panel-group ${activeGroup === g.key ? 'active' : ''}`}
+            onClick={() => handleGroupClick(g.key)}
+            title={g.label}
+          >
+            <span className="group-icon">{g.icon}</span>
+            <span className="group-label">{g.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tabs within active group */}
       <div className="data-panel-tabs">
-        <button className={`data-panel-tab ${activeTab === 'files' ? 'active' : ''}`}
-          onClick={() => setActiveTab('files')}>文件</button>
-        <button className={`data-panel-tab ${activeTab === 'table' ? 'active' : ''}`}
-          onClick={() => setActiveTab('table')}>表格</button>
-        <button className={`data-panel-tab ${activeTab === 'catalog' ? 'active' : ''}`}
-          onClick={() => setActiveTab('catalog')}>资产</button>
-        <button className={`data-panel-tab ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}>历史</button>
-        <button className={`data-panel-tab ${activeTab === 'usage' ? 'active' : ''}`}
-          onClick={() => setActiveTab('usage')}>用量</button>
-        <button className={`data-panel-tab ${activeTab === 'tools' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tools')}>工具</button>
-        <button className={`data-panel-tab ${activeTab === 'workflows' ? 'active' : ''}`}
-          onClick={() => setActiveTab('workflows')}>工作流</button>
-        <button className={`data-panel-tab ${activeTab === 'suggestions' ? 'active' : ''}`}
-          onClick={() => setActiveTab('suggestions')}>建议</button>
-        <button className={`data-panel-tab ${activeTab === 'tasks' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tasks')}>任务</button>
-        <button className={`data-panel-tab ${activeTab === 'templates' ? 'active' : ''}`}
-          onClick={() => setActiveTab('templates')}>模板</button>
-        <button className={`data-panel-tab ${activeTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analytics')}>分析</button>
-        <button className={`data-panel-tab ${activeTab === 'capabilities' ? 'active' : ''}`}
-          onClick={() => setActiveTab('capabilities')}>能力</button>
-        <button className={`data-panel-tab ${activeTab === 'kb' ? 'active' : ''}`}
-          onClick={() => setActiveTab('kb')}>知识库</button>
-        <button className={`data-panel-tab ${activeTab === 'vsources' ? 'active' : ''}`}
-          onClick={() => setActiveTab('vsources')}>数据源</button>
-        <button className={`data-panel-tab ${activeTab === 'market' ? 'active' : ''}`}
-          onClick={() => setActiveTab('market')}>市场</button>
-        <button className={`data-panel-tab ${activeTab === 'geojson' ? 'active' : ''}`}
-          onClick={() => setActiveTab('geojson')}>GeoJSON</button>
+        {currentGroup.tabs.map(t => (
+          <button
+            key={t.key}
+            className={`data-panel-tab ${activeTab === t.key ? 'active' : ''}`}
+            onClick={() => handleTabClick(t.key)}
+          >
+            <span className="tab-icon">{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div className="data-panel-content">
