@@ -459,6 +459,9 @@ _BUILTIN_TEMPLATES = [
         "tags": ["land-use", "optimization", "DRL", "fragmentation"],
     },
 ]
+
+
+def seed_builtin_templates() -> int:
     """Insert built-in templates if they don't exist. Returns count of inserted."""
     engine = get_engine()
     if not engine:
