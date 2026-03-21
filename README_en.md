@@ -1,12 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v14.3
+# GIS Data Agent (ADK Edition) v14.3.1
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (16 tabs), and enterprise-grade security.
 
 The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **123 REST API endpoints**.
 
-**v13.0–v14.3 highlights**: Virtual data layer (WFS/STAC/OGC API connectors), MCP Server v2.0 (36+ tools exposed), Marketplace gallery, Skill versioning/rating/cloning/approval, NSGA-II multi-objective optimization, Agent Registry with service discovery, Plugin system, multi-language intent detection, and Skill SDK specification.
+**v14.3.1 security & quality hardening**: All Ch21 technical audit P0/P1/P2 issues resolved (A2A auth, SQL parameterization, 6 thread-safety fixes); DataPanel.tsx refactored from 2922 lines into 17 modular components; Fernet key TOCTOU race fix; roadmap v14.0–v14.3 checkboxes aligned + v14.4 planned.
 
 ## 📚 Official Technical Documentation
 

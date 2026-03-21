@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-03-20 &nbsp;|&nbsp; **Current version**: v14.3 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-03-21 &nbsp;|&nbsp; **Current version**: v14.3 &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）
 >
@@ -76,23 +76,23 @@
 > **主题**: 用户可见的体验提升，快速出价值
 
 ### 自然语言交互
-- [ ] **意图消歧对话** — AMBIGUOUS 分类时弹出选择卡片（Optimization/Governance/General），用户点选后路由
+- [x] **意图消歧对话** — AMBIGUOUS 分类时弹出选择卡片（Optimization/Governance/General），用户点选后路由
 - [ ] **参数调整重跑** — pipeline 完成后显示"调整参数"按钮，提取上次参数 → 编辑表单 → 重新执行
 - [ ] **记忆搜索面板** — ChatPanel 增加 `/recall` 命令或搜索图标，调用 `search_memory()` 展示历史分析
 
 ### 用户自扩展
-- [ ] **Marketplace 画廊** — DataPanel 新增"市场"tab，聚合所有 is_shared=true 的 Skills/Tools/Templates/Bundles，支持排序（评分/使用量/时间）
-- [ ] **统一评分系统** — Skills 和 Tools 增加 `rating_sum`/`rating_count` 字段 + REST 端点 `POST /api/skills/{id}/rate`、`POST /api/user-tools/{id}/rate`
-- [ ] **Skill/Tool Clone** — 允许用户克隆他人共享的 Skill/Tool 到自己名下
+- [x] **Marketplace 画廊** — DataPanel 新增"市场"tab，聚合所有 is_shared=true 的 Skills/Tools/Templates/Bundles，支持排序（评分/使用量/时间）
+- [x] **统一评分系统** — Skills 和 Tools 增加 `rating_sum`/`rating_count` 字段 + REST 端点 `POST /api/skills/{id}/rate`、`POST /api/user-tools/{id}/rate`
+- [x] **Skill/Tool Clone** — 允许用户克隆他人共享的 Skill/Tool 到自己名下
 
 ### DRL 优化
-- [ ] **场景模板系统** — 定义 `DRLScenario` 配置类，内置 3 个场景模板：耕地优化（现有）、城市绿地布局、设施选址
+- [x] **场景模板系统** — 定义 `DRLScenario` 配置类，内置 3 个场景模板：耕地优化（现有）、城市绿地布局、设施选址
 - [ ] **奖励权重 UI** — 前端可调 slope_weight / contiguity_weight / balance_weight 滑块 → 传入 pipeline
 
 ### 三面板 SPA
-- [ ] **热力图支持** — 集成 deck.gl `HeatmapLayer` 到 Map3DView，MapPanel 增加 `type: heatmap` 处理
-- [ ] **测量工具** — MapPanel 工具栏增加距离测量 + 面积测量（Leaflet.Draw 或 Turf.js）
-- [ ] **3D 图层控制** — Map3DView 增加图层列表面板，支持 show/hide/opacity 调节
+- [x] **热力图支持** — 集成 deck.gl `HeatmapLayer` 到 Map3DView，MapPanel 增加 `type: heatmap` 处理
+- [x] **测量工具** — MapPanel 工具栏增加距离测量 + 面积测量（Leaflet.Draw 或 Turf.js）
+- [x] **3D 图层控制** — Map3DView 增加图层列表面板，支持 show/hide/opacity 调节
 
 ### 多 Agent 编排
 - [ ] **Workflow 断点续跑** — DAG 执行时每个 node 输出持久化到 DB，新增 `resume_workflow_dag(run_id, from_node)`
@@ -105,12 +105,12 @@
 > **主题**: AI 更聪明，协作开始落地
 
 ### 自然语言交互
-- [ ] **追问与上下文链** — Agent 输出后自动生成 3 个推荐追问，用户点击即发送
+- [x] **追问与上下文链** — Agent 输出后自动生成 3 个推荐追问，用户点击即发送
 - [ ] **分析意图消歧 v2** — 对复杂查询拆解为子任务列表，用户确认后按序执行
 - [ ] **自动记忆提取增强** — pipeline 完成后自动调用 `extract_facts_from_conversation()` + 弹出确认
 
 ### 用户自扩展
-- [ ] **版本管理** — Skills/Tools 新增 `version` 字段，更新时自动 +1，保留最近 10 个版本，支持回滚
+- [x] **版本管理** — Skills/Tools 新增 `version` 字段，更新时自动 +1，保留最近 10 个版本，支持回滚
 - [ ] **标签分类** — Skills/Tools 新增 `category`/`tags[]` 字段
 - [ ] **使用统计** — Skills/Tools 增加 `use_count` + 调用日志，前端 Marketplace 显示热度排行
 
@@ -122,12 +122,12 @@
 ### 三面板 SPA
 - [ ] **3D basemap 同步** — Map3DView 读取 2D 选择的 basemap，MapLibre style 动态切换
 - [ ] **标注协同** — WebSocket 实时推送标注变更 + 在线用户光标显示
-- [ ] **GeoJSON 编辑器** — DataPanel 新增 tab/modal，支持粘贴/编辑 GeoJSON + 预览到地图
+- [x] **GeoJSON 编辑器** — DataPanel 新增 tab/modal，支持粘贴/编辑 GeoJSON + 预览到地图
 - [ ] **跨图层关联** — 选中 A 图层要素时高亮 B 图层空间关联要素
 
 ### 多 Agent 编排
-- [ ] **Agent 注册中心** — 新增 `agent_registry.py`：注册/发现/心跳，Redis 或 PostgreSQL 后端
-- [ ] **A2A 双向 RPC** — 扩展 `a2a_server.py` 支持主动调用远程 Agent
+- [x] **Agent 注册中心** — 新增 `agent_registry.py`：注册/发现/心跳，Redis 或 PostgreSQL 后端
+- [x] **A2A 双向 RPC** — 扩展 `a2a_server.py` 支持主动调用远程 Agent
 - [ ] **消息总线持久化** — `AgentMessageBus` 升级为 PostgreSQL 持久化 + 投递确认
 
 ---
@@ -137,12 +137,12 @@
 > **主题**: DRL 专业化，系统可投产
 
 ### 自然语言交互
-- [ ] **多轮分析工作流** — 支持"分析链"：用户定义条件触发后续分析
+- [x] **多轮分析工作流** — 支持"分析链"：用户定义条件触发后续分析
 - [ ] **语音输入** — 集成语音转文字（Whisper API 或浏览器 SpeechRecognition）
 
 ### 用户自扩展
 - [ ] **Skill Marketplace 社区** — 公开 Gallery（匿名浏览）、Skill 详情页（README）、一键安装
-- [ ] **审批工作流** — 管理员审核 is_shared Skill 的发布请求
+- [x] **审批工作流** — 管理员审核 is_shared Skill 的发布请求
 
 ### DRL 优化
 - [ ] **自定义训练 API** — 暴露 `train_drl_model(data_path, scenario, epochs, reward_config)` 工具
@@ -151,13 +151,13 @@
 
 ### 三面板 SPA
 - [ ] **要素绘制编辑** — Leaflet.Draw 集成：绘制点/线/面 → 保存为 GeoJSON → 可作为分析输入
-- [ ] **标注导出** — 标注集导出为 GeoJSON / CSV
+- [x] **标注导出** — 标注集导出为 GeoJSON / CSV
 - [ ] **自适应布局** — 移动端响应式（Chat 全屏 ↔ 地图全屏切换）
 
 ### 多 Agent 编排
 - [ ] **分布式任务队列** — TaskQueue 升级为 Celery + Redis，支持跨进程/跨机器调度
 - [ ] **Pipeline 断点恢复 v2** — 进程崩溃后从 DB checkpoint 自动恢复未完成 DAG
-- [ ] **Circuit Breaker** — 工具/Agent 连续失败时熔断，自动降级到备选 Agent
+- [x] **Circuit Breaker** — 工具/Agent 连续失败时熔断，自动降级到备选 Agent
 
 ---
 
@@ -167,27 +167,60 @@
 
 ### 自然语言交互
 - [ ] **个性化模型微调** — 根据用户历史分析偏好微调 Agent 行为（LoRA adapter on Gemini）
-- [ ] **多语言支持** — 英文/日文 prompt 自动检测 + 路由到对应语言 Agent
+- [x] **多语言支持** — 英文/日文 prompt 自动检测 + 路由到对应语言 Agent
 
 ### 用户自扩展
-- [ ] **Skill 依赖图** — 允许 Skill A 依赖 Skill B（DAG 编排），类似 npm 包依赖
-- [ ] **Webhook 集成** — 第三方平台 Skill 注册（GitHub Action、Zapier trigger）
+- [~] **Skill 依赖图** — 允许 Skill A 依赖 Skill B（DAG 编排），类似 npm 包依赖 *(schema only, 图遍历待实现)*
+- [x] **Webhook 集成** — 第三方平台 Skill 注册（GitHub Action、Zapier trigger）
 - [ ] **Skill SDK** — 发布 `gis-skill-sdk` Python 包，外部开发者可独立开发 Skill
 
 ### DRL 优化
-- [ ] **多目标优化 v2** — NSGA-II 替代加权和方法，真 Pareto 前沿搜索
+- [x] **多目标优化 v2** — NSGA-II 替代加权和方法，真 Pareto 前沿搜索
 - [ ] **交通网络/设施布局场景** — 新增 2 个 Gymnasium 环境（路网优化、公共设施选址）
 - [ ] **联邦学习** — 多租户共享模型权重但不共享数据（隐私保护 DRL）
 
 ### 三面板 SPA
 - [ ] **协同工作空间** — 多用户同时编辑同一项目（CRDT 冲突解决）
-- [ ] **插件系统** — 允许用户开发自定义 DataPanel tab 插件
+- [x] **插件系统** — 允许用户开发自定义 DataPanel tab 插件
 - [ ] **离线模式** — Service Worker 缓存基础地图 + 已下载数据集
 
 ### 多 Agent 编排
-- [ ] **完整 A2A 协议** — 实现 Google A2A spec：Agent Card、Task lifecycle、Streaming、Push Notification
-- [ ] **跨实例 Agent 协作** — Agent A (本机) 调用 Agent B (远程) 的工具，结果回传
+- [x] **完整 A2A 协议** — 实现 Google A2A spec：Agent Card、Task lifecycle、Streaming、Push Notification
+- [x] **跨实例 Agent 协作** — Agent A (本机) 调用 Agent B (远程) 的工具，结果回传
 - [ ] **Agent 联邦** — 多个 GIS Data Agent 实例组成联邦，共享 Skill 注册表 + 负载均衡
+
+---
+
+## v14.4 — 生产打磨 + 交互闭环 (规划中)
+
+> **主题**: 补齐用户体验短板，让已有功能真正可用；Workflow 可靠性达到生产级
+
+### 自然语言交互
+- [ ] **参数调整重跑** — pipeline 完成后显示"调整参数"按钮，提取上次参数 → 编辑表单 → 重新执行
+- [ ] **记忆搜索面板** — ChatPanel 增加 `/recall` 命令或搜索图标，调用 `search_memory()` 展示历史分析
+- [ ] **自动记忆提取增强** — pipeline 完成后自动调用 `extract_facts_from_conversation()` + 弹出确认
+
+### 用户自扩展
+- [ ] **标签分类** — Skills/Tools 新增 `category`/`tags[]` 字段，Marketplace 按标签筛选
+- [ ] **使用统计** — Skills/Tools 增加 `use_count` + 调用日志，前端 Marketplace 显示热度排行
+- [ ] **Skill 依赖图完善** — 补齐图遍历、环检测、依赖解析逻辑（schema 已就绪）
+
+### DRL 优化
+- [ ] **奖励权重 UI** — 前端可调 slope_weight / contiguity_weight / balance_weight 滑块 → 传入 pipeline
+- [ ] **自定义训练 API** — 暴露 `train_drl_model(data_path, scenario, epochs, reward_config)` 工具
+
+### 三面板 SPA
+- [ ] **3D basemap 同步** — Map3DView 读取 2D 选择的 basemap，MapLibre style 动态切换
+- [ ] **要素绘制编辑** — Leaflet.Draw 集成：绘制点/线/面 → 保存为 GeoJSON → 可作为分析输入
+
+### 多 Agent 编排
+- [ ] **Workflow 断点续跑** — DAG 执行时每个 node 输出持久化到 DB，新增 `resume_workflow_dag(run_id, from_node)`
+- [ ] **步骤级重试** — DAG 失败节点可单独重试（不重跑整个 workflow）
+
+### 质量与安全
+- [ ] **Ch21 审计修复** — P0/P1/P2 全部清零 ✅ (2026-03-21 已完成)
+- [ ] **DataPanel 组件拆分** — 2922 行 → 17 个文件 ✅ (2026-03-21 已完成)
+- [ ] **外部 Agent 接入验证** — Claude Desktop / Cursor 通过 MCP 连接 GIS Data Agent 的端到端测试
 
 ---
 
@@ -207,15 +240,15 @@
 
 ## 标杆对标进度
 
-| 标杆能力 | 来源 | 当前状态 | v14.0 后 | v14.3 后 |
-|----------|------|---------|---------|---------|
-| 空间数据虚拟化 | SeerAI | 🟢 已完成 | 🟢 | 🟢 |
-| 知识图谱语义发现 | SeerAI | 🟢 已完成 | 🟢 | 🟢 |
-| 分析血缘自动追踪 | SeerAI | 🟢 已完成 | 🟢 | 🟢 |
-| MCP Server 暴露 | SeerAI | 🟢 v2.0 已完成 | 🟢 | 🟢 |
-| 行业预置模板 | SeerAI | 🟢 已完成 | 🟢 | 🟢 |
-| Agent 对话交互 | OpenClaw | 🟢 已领先 | 🟢🟢 显著领先 | 🟢🟢🟢 |
-| 企业级治理 | Frontier | 🟡 RBAC+审计 | 🟡 | 🟢 审批+联邦 |
-| 多 Agent 协作 | CoWork | 🟢 DAG 编排 | 🟡 断点续跑 | 🟢 完整 A2A+联邦 |
-| 用户生态 | — | 🟡 共享标志 | 🟡 市场+评分 | 🟢 SDK+社区 |
-| DRL 优化深度 | — | 🟡 单场景+Pareto | 🟡 多场景 | 🟢 训练API+NSGA-II |
+| 标杆能力 | 来源 | 当前状态 | v14.0 后 | v14.3 后 | v14.4 目标 |
+|----------|------|---------|---------|---------|-----------|
+| 空间数据虚拟化 | SeerAI | 🟢 已完成 | 🟢 | 🟢 | 🟢 |
+| 知识图谱语义发现 | SeerAI | 🟢 已完成 | 🟢 | 🟢 | 🟢 |
+| 分析血缘自动追踪 | SeerAI | 🟢 已完成 | 🟢 | 🟢 | 🟢 |
+| MCP Server 暴露 | SeerAI | 🟢 v2.0 已完成 | 🟢 | 🟢 | 🟢 E2E 验证 |
+| 行业预置模板 | SeerAI | 🟢 已完成 | 🟢 | 🟢 | 🟢 |
+| Agent 对话交互 | OpenClaw | 🟢 已领先 | 🟢🟢 显著领先 | 🟢🟢🟢 | 🟢🟢🟢 参数重跑+记忆 |
+| 企业级治理 | Frontier | 🟡 RBAC+审计 | 🟡 | 🟢 审批+联邦 | 🟢 标签+统计 |
+| 多 Agent 协作 | CoWork | 🟢 DAG 编排 | 🟡 断点续跑 | 🟢 完整 A2A+联邦 | 🟢🟢 断点+重试 |
+| 用户生态 | — | 🟡 共享标志 | 🟡 市场+评分 | 🟢 SDK+社区 | 🟢 标签+热度+依赖 |
+| DRL 优化深度 | — | 🟡 单场景+Pareto | 🟡 多场景 | 🟢 训练API+NSGA-II | 🟢🟢 权重UI+训练API |

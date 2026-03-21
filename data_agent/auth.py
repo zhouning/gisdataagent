@@ -7,6 +7,7 @@ import os
 import re
 import hashlib
 import secrets
+import threading
 import time
 from typing import Optional
 from sqlalchemy import text
@@ -23,35 +24,39 @@ from .i18n import t
 _MAX_FAILED_ATTEMPTS = 5       # Lock after N consecutive failures
 _LOCKOUT_DURATION = 900        # 15 minutes lockout
 _login_failures: dict[str, dict] = {}  # username → {"count": int, "locked_until": float}
+_login_failures_lock = threading.Lock()
 
 
 def _check_lockout(username: str) -> Optional[str]:
     """Check if username is locked out. Returns error message or None."""
-    entry = _login_failures.get(username)
-    if not entry:
+    with _login_failures_lock:
+        entry = _login_failures.get(username)
+        if not entry:
+            return None
+        if entry.get("locked_until", 0) > time.time():
+            remaining = int(entry["locked_until"] - time.time())
+            return f"账户已锁定，请 {remaining} 秒后重试"
         return None
-    if entry.get("locked_until", 0) > time.time():
-        remaining = int(entry["locked_until"] - time.time())
-        return f"账户已锁定，请 {remaining} 秒后重试"
-    return None
 
 
 def _record_login_failure(username: str):
     """Record a failed login attempt. Lock account after threshold."""
-    entry = _login_failures.setdefault(username, {"count": 0, "locked_until": 0})
-    # Reset if lockout has expired
-    if entry.get("locked_until", 0) > 0 and entry["locked_until"] <= time.time():
-        entry["count"] = 0
-        entry["locked_until"] = 0
-    entry["count"] = entry.get("count", 0) + 1
-    if entry["count"] >= _MAX_FAILED_ATTEMPTS:
-        entry["locked_until"] = time.time() + _LOCKOUT_DURATION
-        print(f"[Auth] Account '{username}' locked for {_LOCKOUT_DURATION}s after {_MAX_FAILED_ATTEMPTS} failed attempts")
+    with _login_failures_lock:
+        entry = _login_failures.setdefault(username, {"count": 0, "locked_until": 0})
+        # Reset if lockout has expired
+        if entry.get("locked_until", 0) > 0 and entry["locked_until"] <= time.time():
+            entry["count"] = 0
+            entry["locked_until"] = 0
+        entry["count"] = entry.get("count", 0) + 1
+        if entry["count"] >= _MAX_FAILED_ATTEMPTS:
+            entry["locked_until"] = time.time() + _LOCKOUT_DURATION
+            print(f"[Auth] Account '{username}' locked for {_LOCKOUT_DURATION}s after {_MAX_FAILED_ATTEMPTS} failed attempts")
 
 
 def _clear_login_failures(username: str):
     """Clear failed attempts on successful login."""
-    _login_failures.pop(username, None)
+    with _login_failures_lock:
+        _login_failures.pop(username, None)
 
 
 def _hash_password(password: str, salt: str = None) -> tuple:
