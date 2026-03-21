@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GIS Data Agent (ADK Edition) v12.0 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication. Users can self-service extend the platform with custom Skills (agent behaviors), User Tools (declarative templates), and multi-Agent pipeline workflows.
+GIS Data Agent (ADK Edition) v14.3.1 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication. Users can self-service extend the platform with custom Skills (agent behaviors), User Tools (declarative templates), and multi-Agent pipeline workflows.
 
 ## Commands
 
@@ -86,14 +86,14 @@ Custom React SPA replacing Chainlit's default UI. Three-panel layout with dragga
 - **ChatPanel**: Messages, streaming, action cards, NL layer control relay
 - **MapPanel**: Leaflet.js 2D map + deck.gl/MapLibre 3D view with toggle, GeoJSON layers, layer control, annotations, basemap switcher (Gaode/Tianditu/CartoDB/OSM), legend
 - **Map3DView**: deck.gl + MapLibre GL 3D renderer — extrusion, column, arc, scatterplot layers with hover tooltips
-- **DataPanel**: 12 tabs — files, CSV preview, data catalog, pipeline history, token usage dashboard, MCP tools, workflows, suggestions, tasks, templates, analytics, capabilities (skills/tools browser with CRUD)
+- **DataPanel**: 16 tabs — files, CSV preview, data catalog, pipeline history, token usage dashboard, MCP tools, workflows, suggestions, tasks, templates, analytics, capabilities, knowledge base, virtual sources, marketplace, GeoJSON editor (modularized into `datapanel/` — 17 component files)
 - **WorkflowEditor**: ReactFlow-based visual DAG editor with 4 node types (DataInput, Pipeline, Skill Agent, Output)
 - **LoginPage**: Login + in-app registration mode toggle
 - **AdminDashboard**: Metrics, user management, audit log (admin only)
 - **UserSettings**: Account info + self-deletion modal (danger zone)
 - **App.tsx**: Auth state, map/data state, layer control, user menu dropdown, resizable panel widths
 
-### Frontend API (92 REST endpoints in `frontend_api.py`)
+### Frontend API (123 REST endpoints in `frontend_api.py`)
 All endpoints use JWT cookie auth. Routes mounted before Chainlit catch-all via `mount_frontend_api()`.
 
 Key endpoint groups:

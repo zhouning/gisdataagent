@@ -1941,12 +1941,14 @@ async def _execute_pipeline(
                 meta["map_update"] = _final_map_update
                 logger.info(f"[MapInject] Injected map_update into meta message: layers={len(_final_map_update.get('layers', []))}")
                 # Also store in REST API pending dict
-                from data_agent.frontend_api import pending_map_updates
-                pending_map_updates[user_id] = _final_map_update
+                from data_agent.frontend_api import pending_map_updates, _pending_lock
+                with _pending_lock:
+                    pending_map_updates[user_id] = _final_map_update
             if _final_data_update:
                 meta["data_update"] = _final_data_update
-                from data_agent.frontend_api import pending_data_updates
-                pending_data_updates[user_id] = _final_data_update
+                from data_agent.frontend_api import pending_data_updates, _pending_lock
+                with _pending_lock:
+                    pending_data_updates[user_id] = _final_data_update
                 
             # Send a dedicated message for metadata so the React frontend sees a new ID
             # and doesn't skip it due to processedMetaRef.current.has(msg.id)

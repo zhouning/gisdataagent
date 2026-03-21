@@ -176,8 +176,10 @@ def mark_started():
 # ---------------------------------------------------------------------------
 
 import uuid as _uuid
+import asyncio as _asyncio
 
 _tasks: dict[str, dict] = {}  # task_id → task state
+_tasks_lock = _asyncio.Lock()
 
 
 def create_task(message_text: str, caller_id: str = "a2a_client") -> dict:
@@ -197,26 +199,27 @@ def create_task(message_text: str, caller_id: str = "a2a_client") -> dict:
 
 async def execute_task(task_id: str) -> dict:
     """Execute a submitted task (transitions: submitted → working → completed/failed)."""
-    task = _tasks.get(task_id)
-    if not task:
-        return {"status": "error", "message": f"Task {task_id} not found"}
-    if task["status"] != "submitted":
-        return {"status": "error", "message": f"Task {task_id} is {task['status']}, not submitted"}
-
-    task["status"] = "working"
-    task["updated_at"] = time.time()
+    async with _tasks_lock:
+        task = _tasks.get(task_id)
+        if not task:
+            return {"status": "error", "message": f"Task {task_id} not found"}
+        if task["status"] != "submitted":
+            return {"status": "error", "message": f"Task {task_id} is {task['status']}, not submitted"}
+        task["status"] = "working"
+        task["updated_at"] = time.time()
 
     result = await execute_a2a_task(task["message"], task["caller_id"])
 
-    task["status"] = result.get("status", "failed")
-    task["result"] = result
-    task["updated_at"] = time.time()
+    async with _tasks_lock:
+        task["status"] = result.get("status", "failed")
+        task["result"] = result
+        task["updated_at"] = time.time()
 
-    # Prune old tasks (keep last 100)
-    if len(_tasks) > 100:
-        oldest = sorted(_tasks.keys(), key=lambda k: _tasks[k]["created_at"])
-        for k in oldest[:len(_tasks) - 100]:
-            _tasks.pop(k, None)
+        # Prune old tasks (keep last 100)
+        if len(_tasks) > 100:
+            oldest = sorted(_tasks.keys(), key=lambda k: _tasks[k]["created_at"])
+            for k in oldest[:len(_tasks) - 100]:
+                _tasks.pop(k, None)
 
     return result
 

@@ -149,7 +149,7 @@ def mark_stale_agents(timeout_seconds: int = 300):
         with engine.connect() as conn:
             result = conn.execute(text(
                 f"UPDATE {T_AGENT_REGISTRY} SET status = 'offline' "
-                f"WHERE status = 'online' AND last_heartbeat < NOW() - INTERVAL ':t seconds'"
+                f"WHERE status = 'online' AND last_heartbeat < NOW() - INTERVAL '1 second' * :t"
             ), {"t": timeout_seconds})
             conn.commit()
         return result.rowcount

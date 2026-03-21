@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v14.3
+# GIS Data Agent (ADK Edition) v14.3.1
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（16 标签页），后端集成 **123 个 REST API**。
 
-**v13.0–v14.3 新增**：虚拟数据层（WFS/STAC/OGC API 连接器）、MCP Server v2.0（36+ 工具暴露）、Marketplace 画廊、Skill 版本管理/评分/克隆/审批发布、NSGA-II 多目标优化、Agent Registry 服务发现、Plugin 插件系统、多语言意图检测、Skill SDK 规范。
+**v14.3.1 安全与质量加固**：Ch21 技术审计 P0/P1/P2 全部修复（A2A 认证、SQL 参数化、线程安全 6 处）；DataPanel.tsx 从 2922 行拆分为 17 个模块化组件；Fernet 密钥 TOCTOU 竞态修复；roadmap v14.0–v14.3 checkbox 对齐 + v14.4 规划。
 
 ## 📚 官方技术文档
 
