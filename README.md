@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v14.3.1
+# GIS Data Agent (ADK Edition) v14.4
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
-系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（16 标签页），后端集成 **123 个 REST API**。
+系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 17 标签页），后端集成 **124 个 REST API**。
 
-**v14.3.1 安全与质量加固**：Ch21 技术审计 P0/P1/P2 全部修复（A2A 认证、SQL 参数化、线程安全 6 处）；DataPanel.tsx 从 2922 行拆分为 17 个模块化组件；Fernet 密钥 TOCTOU 竞态修复；roadmap v14.0–v14.3 checkbox 对齐 + v14.4 规划。
+**v14.4 治理深化 + 交互式可视化**：GovernanceToolset（7 个专项审计工具 + 6 维 0-100 综合评分）、独立 governance.yaml 治理 Prompt、4 阶段治理管道（GovExploration→GovProcessing→GovernanceViz→GovernanceReportLoop）；ChartToolset（9 种 ECharts 交互式图表：柱状/折线/饼图/散点/直方/箱线/热力矩阵/树图/雷达）；DataPanel 重构为"工作台"分组 Tab（数据/智能/运维/编排）。
 
 ## 📚 官方技术文档
 
@@ -22,9 +22,9 @@
 | 指标 | 数值 |
 |------|------|
 | 测试覆盖 | 2193 tests, 93 test files |
-| 工具集 | 24 BaseToolset (含 UserToolset + VirtualSourceToolset), 5 SkillBundle, 130+ 工具 |
+| 工具集 | 26 BaseToolset (含 GovernanceToolset + ChartToolset + UserToolset + VirtualSourceToolset), 5 SkillBundle, 145+ 工具 |
 | ADK Skills | 18 场景化领域技能 + DB 驱动自定义 Skills + 用户自定义 Tools |
-| REST API | 123 endpoints |
+| REST API | 124 endpoints |
 | MCP Server | v2.0 — 36+ 工具暴露（底层 GIS + 高阶元数据 + Pipeline 执行） |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |

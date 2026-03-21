@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GIS Data Agent (ADK Edition) v14.3.1 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication. Users can self-service extend the platform with custom Skills (agent behaviors), User Tools (declarative templates), and multi-Agent pipeline workflows.
+GIS Data Agent (ADK Edition) v14.4 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication. Users can self-service extend the platform with custom Skills (agent behaviors), User Tools (declarative templates), and multi-Agent pipeline workflows.
 
 ## Commands
 
