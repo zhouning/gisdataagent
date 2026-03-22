@@ -353,6 +353,21 @@ def add_missing_fields(file_path: str, standard_id: str) -> str:
         return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
 
 
+def mask_sensitive_fields_tool(file_path: str, field_rules: str) -> str:
+    """对数据文件中的敏感字段进行脱敏处理。
+
+    Args:
+        file_path: 数据文件路径。
+        field_rules: JSON映射表，如 '{"phone": "mask", "id_card": "redact", "address": "generalize"}'。
+                     策略: mask(部分隐藏) / redact(完全替换) / hash(单向哈希) / generalize(泛化)。
+
+    Returns:
+        脱敏后文件路径和处理统计。
+    """
+    from ..data_masking import mask_sensitive_fields
+    return mask_sensitive_fields(file_path, field_rules)
+
+
 # ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
@@ -365,6 +380,7 @@ _ALL_FUNCS = [
     clip_outliers,
     standardize_crs,
     add_missing_fields,
+    mask_sensitive_fields_tool,
 ]
 
 
