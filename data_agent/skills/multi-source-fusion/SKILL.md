@@ -1,154 +1,105 @@
 ---
 name: multi-source-fusion
-description: "多源数据融合技能。支持10种融合策略，包括空间连接、属性关联、时序合并和插值融合，含兼容性评估和质量验证。"
+description: "多源数据融合技能（Pipeline 模式）。分步执行数据融合：源识别 → 兼容性评估 → Schema 匹配 → 融合执行 → 质量验证，每步设 Gate 需用户确认。"
 metadata:
   domain: fusion
-  version: "2.0"
+  version: "3.0"
   intent_triggers: "fusion, 融合, 多源, merge, join, 关联, 匹配, 数据整合"
 ---
 
-# 多源数据融合技能
+# 多源数据融合技能（Pipeline 模式 v3.0）
 
 ## 概述
 
-本技能用于将来自不同来源、不同格式、不同时间的空间数据集进行整合融合。通过兼容性评估、
-数据对齐、策略选择和质量验证四个阶段，确保融合结果的准确性和完整性。融合引擎支持 10 种
-策略，覆盖空间连接、属性关联、时序合并、插值补全等常见需求。
+本技能采用 **Pipeline 设计模式**——将融合过程拆分为 5 个检查点步骤，
+每步完成后向用户展示中间结果并等待确认，避免 LLM 跳步或在错误数据上执行昂贵操作。
+
+## Pipeline Workflow: 5 Steps with Gates
+
+### Step 1: 数据源识别与画像
+
+Load: references/ 中无需额外文档（使用内置 profile 工具）
+
+Actions:
+- 对所有输入数据集执行 `profile_datasets` / `describe_geodataframe`
+- 输出每个数据源的：格式、CRS、要素数、字段列表、几何类型
+
+**🔶 GATE 1**: Present source summary table to user → user confirms datasets are correct before proceeding.
+
+### Step 2: 兼容性评估
+
+Actions:
+- 调用 `assess_compatibility` 检查 CRS 一致性、空间重叠率、字段匹配度
+- 根据评估结果推荐融合策略（spatial_join / union / attribute_join / temporal_merge 等）
+
+**🔶 GATE 2**: Present compatibility matrix and recommended strategy → user confirms or overrides strategy choice.
+
+### Step 3: Schema 匹配与对齐
+
+Actions:
+- CRS 统一（自动 reproject 到公共坐标系）
+- 字段名映射（识别等价字段，处理命名冲突）
+- 时间格式标准化（如需）
+
+**🔶 GATE 3**: Present mapping table (field A → field B, CRS changes) → user confirms or adjusts mappings.
+
+### Step 4: 融合执行
+
+Actions:
+- 按确认的策略和映射执行 `execute_fusion`
+- 记录融合参数和执行日志
+
+⛔ This step may be compute-intensive. Do NOT proceed without Gates 1-3 cleared.
+
+### Step 5: 质量验证
+
+Actions:
+- 检查融合结果：匹配率、冲突率、覆盖率、空值引入率
+- 对照质量阈值（匹配率 >80%、冲突率 <5%、覆盖率 >90%、空值引入率 <10%）
+- 注册结果到数据目录 + 记录血缘关系
+
+**🔶 GATE 5**: Present quality report → user confirms result is acceptable or requests re-execution with different parameters.
+
+## ⛔ Execution Rules
+
+1. **NEVER skip gates** — each gate requires explicit user confirmation
+2. **NEVER auto-select strategy** — always present options and wait for user choice
+3. **If any quality metric fails threshold** — highlight the issue and ask user whether to proceed or retry
+4. **Log all decisions** in `tool_context.state` for auditability
 
 ## 十种融合策略
 
-### 空间类策略
+### 空间类
+- **spatial_join**: 基于空间关系关联属性 (intersects/within/nearest)
+- **union**: 同构数据纵向拼接
+- **intersection**: 提取重叠区域
+- **overlay**: 完整叠加运算 (union/intersection/difference)
 
-#### spatial_join（空间连接）
-- 原理：基于空间关系（相交、包含、最近邻）将两个数据集的属性关联
-- 适用：将地块属性关联到行政区、将 POI 归属到网格单元
-- 参数：`how`（inner/left）、`predicate`（intersects/within/nearest）
-- 注意：多对多关系时需指定聚合规则（取第一个/求和/取众数）
+### 属性类
+- **attribute_join**: 基于公共键关联 (left_on/right_on)
+- **enrich**: 从参考数据集提取统计值
 
-#### union（合并）
-- 原理：将多个同构数据集纵向拼接，保留所有要素
-- 适用：合并多个区县的同类型数据、拼接分幅数据
-- 前提：字段结构基本一致，几何类型相同
-- 注意：合并后需检查重叠区域是否有重复要素
+### 时序类
+- **temporal_merge**: 多时期数据按时间轴合并
 
-#### intersection（交集）
-- 原理：提取两个数据集空间重叠部分，保留双方属性
-- 适用：叠加分析（耕地 ∩ 规划区）、提取公共区域
-- 输出：几何为交集部分，属性为两侧字段合并
+### 数值类
+- **interpolation**: 采样点空间插值 (IDW/Kriging/Spline)
+- **blend**: 重叠区数值加权混合
+- **aggregate**: 细粒度→粗粒度聚合
 
-#### overlay（叠加）
-- 原理：完整的空间叠加运算，支持 union/intersection/difference/symmetric_difference
-- 适用：用地变更分析、冲突检测、规划对比
-- 输出：切割后的几何碎片，每片携带来源标识
+## 质量验证阈值
 
-### 属性类策略
-
-#### attribute_join（属性关联）
-- 原理：基于公共键字段（如行政区代码、地块编号）进行表连接
-- 适用：将统计数据关联到空间数据、补充属性信息
-- 参数：`left_on`、`right_on`（关联键）、`how`（inner/left/outer）
-- 注意：关联键数据类型必须一致（字符串 vs 数字需统一）
-
-#### enrich（属性增强）
-- 原理：从参考数据集中提取空间范围内的统计值附加到目标要素
-- 适用：为地块添加周边 POI 数量、平均地价、人口密度等派生属性
-- 方法：缓冲区统计、面积加权、最近邻赋值
-
-### 时序类策略
-
-#### temporal_merge（时序合并）
-- 原理：将不同时间点的同区域数据按时间轴合并
-- 适用：多期土地利用变更分析、时序监测数据整合
-- 关键：时间字段对齐、空间范围匹配
-- 输出：包含时间维度的面板数据或变更标记
-
-### 数值类策略
-
-#### interpolation（插值融合）
-- 原理：基于已知采样点通过空间插值生成连续面
-- 方法：IDW（反距离加权）、Kriging（克里金）、Spline（样条）
-- 适用：气象站点→温度面、土壤采样→养分分布、地价点→地价面
-- 参数：搜索半径、幂次（IDW）、变异函数模型（Kriging）
-
-#### blend（混合融合）
-- 原理：对重叠区域的数值属性进行加权混合
-- 适用：多源 DEM 融合、遥感影像拼接过渡带处理
-- 权重策略：距离衰减、质量评分、时间新鲜度
-
-#### aggregate（聚合融合）
-- 原理：将细粒度数据聚合到粗粒度空间单元
-- 适用：地块级→村级汇总、网格级→区县级统计
-- 聚合函数：sum（面积）、mean（均值）、count（计数）、dominant（众数）
-
-## 兼容性评估
-
-### 评估维度
-| 维度 | 检查内容 | 通过标准 |
-|------|---------|---------|
-| CRS 一致性 | 两数据集坐标参考系是否相同 | EPSG 代码一致或可自动转换 |
-| 空间重叠率 | 两数据集空间范围的交集比例 | > 10% 才有融合意义 |
-| 字段匹配度 | 公共字段数量和类型兼容性 | 至少 1 个可关联字段 |
-| 几何类型兼容 | 点/线/面类型是否匹配策略要求 | spatial_join 支持异构；union 需同构 |
-| 时间对齐度 | 时间范围和粒度是否可对齐 | temporal_merge 需有时间重叠 |
-
-### 策略推荐逻辑
-- 有公共键字段 → attribute_join
-- 有空间重叠且需关联属性 → spatial_join
-- 同构数据需拼接 → union
-- 需提取重叠区域 → intersection / overlay
-- 有时间维度 → temporal_merge
-- 点数据需生成面 → interpolation
-- 需补充派生属性 → enrich
-
-## 数据对齐
-
-### CRS 统一
-- 自动检测两侧 CRS，不一致时转换到公共坐标系
-- 默认目标 CRS：EPSG:4326（WGS84）
-- 面积计算场景：转换到投影坐标系（如 UTM）后再融合
-
-### 时间对齐
-- 日期格式标准化（统一为 ISO 8601）
-- 时间粒度对齐（日→月→年，取粗粒度）
-- 时间范围裁剪（取交集或并集，视策略而定）
-
-### 分辨率匹配
-- 矢量：无需分辨率对齐
-- 栅格：重采样到公共分辨率（最近邻/双线性/三次卷积）
-- 混合：矢量栅格化或栅格矢量化后再融合
-
-## 质量验证指标
-
-| 指标 | 计算方式 | 合格阈值 |
-|------|---------|---------|
-| 匹配率 | 成功关联记录数 / 总记录数 | > 80% |
-| 冲突率 | 属性值矛盾的记录数 / 匹配记录数 | < 5% |
-| 覆盖率 | 融合结果空间范围 / 源数据空间范围 | > 90% |
-| 空值引入率 | 融合后新增 NULL 字段数 / 总字段数 | < 10% |
-
-## 工作流程
-
-1. 多源数据概况分析（`profile_datasets`）：了解各数据集的结构、CRS、范围
-2. 兼容性评估（`assess_compatibility`）：检查 CRS、重叠率、字段匹配
-3. 根据评估结果和分析目标选择融合策略
-4. 数据对齐（CRS 统一、时间对齐、分辨率匹配）
-5. 执行融合（`execute_fusion`）：调用选定策略
-6. 质量验证：检查匹配率、冲突率、覆盖率、空值引入率
-7. 结果注册到数据目录，记录血缘关系
-
-## 常见问题与解决
-
-- 空间连接无结果：CRS 不一致导致坐标不在同一空间，先用 `ST_Transform` 统一
-- 时间合并错位：时间字段格式不统一（如 `2025-01` vs `202501`），需标准化
-- 字段名冲突：两侧有同名但含义不同的字段，融合前重命名或添加前缀
-- 属性丢失：空间操作（intersection/overlay）可能丢弃非几何字段，需显式保留
-- 融合结果过大：overlay 产生大量碎片几何，考虑先简化或聚合后再融合
-- 匹配率低：检查关联键的数据质量（空值、格式不一致、编码差异）
+| 指标 | 合格阈值 |
+|------|---------|
+| 匹配率 | > 80% |
+| 冲突率 | < 5% |
+| 覆盖率 | > 90% |
+| 空值引入率 | < 10% |
 
 ## 相关工具
 
-- `profile_datasets`：多源数据概况分析
-- `assess_compatibility`：数据兼容性评估
-- `execute_fusion`：执行融合操作
-- `register_data_asset`：注册融合结果到数据目录
-- `get_data_lineage`：查询融合血缘关系
+- `profile_datasets` / `describe_geodataframe` — 数据画像
+- `assess_compatibility` — 兼容性评估
+- `execute_fusion` — 融合执行
+- `register_data_asset` — 结果注册
+- `get_data_lineage` — 血缘查询
