@@ -880,11 +880,31 @@ _ALL_FUNCS = [
 ]
 
 
+def classify_data_sensitivity(file_path: str) -> str:
+    """扫描数据文件中的敏感信息（手机号/身份证/银行卡/邮箱/地址），自动分级。
+
+    Args:
+        file_path: 数据文件路径。
+
+    Returns:
+        JSON格式的分类结果：敏感等级、各字段 PII 检测结果。
+    """
+    try:
+        from ..data_classification import classify_asset
+        result = classify_asset(file_path)
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+_ALL_FUNCS_FINAL = _ALL_FUNCS + [classify_data_sensitivity]
+
+
 class GovernanceToolset(BaseToolset):
-    """数据治理专项审计工具集 — 间隙/完整性/属性/重复/CRS/评分"""
+    """数据治理专项审计工具集 — 间隙/完整性/属性/重复/CRS/评分/标准/分类"""
 
     async def get_tools(self, readonly_context=None):
-        all_tools = [FunctionTool(f) for f in _ALL_FUNCS]
+        all_tools = [FunctionTool(f) for f in _ALL_FUNCS_FINAL]
         if self.tool_filter is None:
             return all_tools
         return [t for t in all_tools if self._is_tool_selected(t, readonly_context)]
