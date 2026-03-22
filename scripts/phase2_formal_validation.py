@@ -154,6 +154,44 @@ def metrics(z_pred, z_true):
     }
 
 
+def change_pixel_metrics(z_prev, z_pred, z_true):
+    """Compute metrics separately for changed vs stable pixels.
+
+    Changed pixels: where z_prev -> z_true has large L2 distance (top 20%).
+    Stable pixels: where z_prev -> z_true has small L2 distance (bottom 20%).
+    """
+    n = min(len(z_prev), len(z_pred), len(z_true))
+    z_prev, z_pred, z_true = z_prev[:n], z_pred[:n], z_true[:n]
+
+    # Compute actual change magnitude
+    actual_change = np.linalg.norm(z_true - z_prev, axis=1)
+    threshold_high = np.percentile(actual_change, 80)
+    threshold_low = np.percentile(actual_change, 20)
+
+    changed_mask = actual_change >= threshold_high
+    stable_mask = actual_change <= threshold_low
+    n_changed = int(np.sum(changed_mask))
+    n_stable = int(np.sum(stable_mask))
+
+    result = {"n_changed": n_changed, "n_stable": n_stable}
+
+    if n_changed > 0:
+        m_changed = metrics(z_pred[changed_mask], z_true[changed_mask])
+        m_persist_changed = metrics(z_prev[changed_mask], z_true[changed_mask])
+        result["changed_model_cos"] = m_changed["cos_sim"]
+        result["changed_persist_cos"] = m_persist_changed["cos_sim"]
+        result["changed_advantage"] = m_changed["cos_sim"] - m_persist_changed["cos_sim"]
+
+    if n_stable > 0:
+        m_stable = metrics(z_pred[stable_mask], z_true[stable_mask])
+        m_persist_stable = metrics(z_prev[stable_mask], z_true[stable_mask])
+        result["stable_model_cos"] = m_stable["cos_sim"]
+        result["stable_persist_cos"] = m_persist_stable["cos_sim"]
+        result["stable_advantage"] = m_stable["cos_sim"] - m_persist_stable["cos_sim"]
+
+    return result
+
+
 # ====================================================================
 # Model prediction (point mode)
 # ====================================================================
@@ -264,6 +302,7 @@ def run_eval(data, areas, label):
             continue
 
         model_scores, persist_scores, linear_scores, meanrev_scores = [], [], [], []
+        change_metrics_list = []
         for i in range(1, len(years_avail) - 1):
             y0, y1, y2 = years_avail[i - 1], years_avail[i], years_avail[i + 1]
             z_pred_model = predict_1step(d[y1])
@@ -276,6 +315,15 @@ def run_eval(data, areas, label):
             if global_mean is not None:
                 m_mr = metrics(baseline_mean_reversion(d[y1], global_mean), d[y2])
                 meanrev_scores.append(m_mr["cos_sim"])
+            # Change-pixel metrics
+            cm = change_pixel_metrics(d[y1], z_pred_model, d[y2])
+            change_metrics_list.append(cm)
+
+        # Aggregate change metrics
+        changed_model = [c["changed_model_cos"] for c in change_metrics_list if "changed_model_cos" in c]
+        changed_persist = [c["changed_persist_cos"] for c in change_metrics_list if "changed_persist_cos" in c]
+        stable_model = [c["stable_model_cos"] for c in change_metrics_list if "stable_model_cos" in c]
+        stable_persist = [c["stable_persist_cos"] for c in change_metrics_list if "stable_persist_cos" in c]
 
         results[name] = {
             "model": float(np.mean(model_scores)),
@@ -283,6 +331,15 @@ def run_eval(data, areas, label):
             "linear": float(np.mean(linear_scores)),
             "mean_reversion": float(np.mean(meanrev_scores)) if meanrev_scores else None,
             "n_pairs": len(model_scores),
+            "changed_pixels": {
+                "model_cos": float(np.mean(changed_model)) if changed_model else None,
+                "persist_cos": float(np.mean(changed_persist)) if changed_persist else None,
+                "advantage": float(np.mean(changed_model)) - float(np.mean(changed_persist)) if changed_model and changed_persist else None,
+            },
+            "stable_pixels": {
+                "model_cos": float(np.mean(stable_model)) if stable_model else None,
+                "persist_cos": float(np.mean(stable_persist)) if stable_persist else None,
+            },
         }
     return results
 
@@ -389,6 +446,17 @@ def main():
         for name, steps in ms.items():
             wins = sum(1 for s in steps if s["advantage"] > 0)
             print(f"    [{label}] {name:<20} {wins}/{len(steps)} steps better than persistence")
+
+    # Change-pixel analysis
+    print(f"\n  Change-pixel analysis (top 20% changed vs bottom 20% stable):")
+    for label, results in [("TRAIN", r_train), ("VAL", r_val), ("TEST", r_test), ("OOD", r_ood)]:
+        for name, v in results.items():
+            cp = v.get("changed_pixels", {})
+            sp = v.get("stable_pixels", {})
+            if cp.get("model_cos") is not None:
+                print(f"    [{label}] {name:<20} "
+                      f"changed: model={cp['model_cos']:.4f} persist={cp['persist_cos']:.4f} adv={cp['advantage']:+.4f}  |  "
+                      f"stable: model={sp.get('model_cos', 0):.4f} persist={sp.get('persist_cos', 0):.4f}")
 
     elapsed = time.time() - t0
 
