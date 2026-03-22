@@ -897,7 +897,82 @@ def classify_data_sensitivity(file_path: str) -> str:
         return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
 
 
-_ALL_FUNCS_FINAL = _ALL_FUNCS + [classify_data_sensitivity]
+def recommend_data_model(file_path: str, standard_id: str = "") -> str:
+    """根据数据探查结果和目标标准，LLM 自动推荐治理路径和目标数据模型。
+
+    Args:
+        file_path: 数据文件路径。
+        standard_id: 目标标准ID（如 "dltb_2023"），可选。
+
+    Returns:
+        JSON格式的推荐方案：差距分析 + 治理路径 + 目标模型建议。
+    """
+    try:
+        from ..gis_processors import check_field_standards, _resolve_path
+        from ..utils import _load_spatial_data
+
+        gdf = _load_spatial_data(file_path)
+        current_cols = [c for c in gdf.columns if c != "geometry"]
+        col_types = {c: str(gdf[c].dtype) for c in current_cols}
+
+        recommendation = {
+            "status": "ok",
+            "current_model": {
+                "columns": current_cols,
+                "column_count": len(current_cols),
+                "column_types": col_types,
+                "row_count": len(gdf),
+                "crs": str(gdf.crs) if gdf.crs else None,
+                "geometry_type": list(gdf.geometry.geom_type.unique()) if not gdf.empty else [],
+            },
+        }
+
+        # If standard provided, compute gap and recommend transformation steps
+        if standard_id:
+            gap_result = json.loads(generate_gap_matrix(file_path, standard_id))
+            if gap_result.get("status") == "ok":
+                summary = gap_result.get("summary", {})
+                missing = [m["field"] for m in gap_result.get("matrix", []) if m.get("status") == "missing"]
+                extra = [m["field"] for m in gap_result.get("matrix", []) if m.get("status") == "extra"]
+                type_mismatches = [m["field"] for m in gap_result.get("matrix", [])
+                                   if m.get("type_match") is False]
+
+                transforms = []
+                if missing:
+                    transforms.append({
+                        "step": "add_missing_fields",
+                        "description": f"补齐 {len(missing)} 个缺失字段",
+                        "tool": "add_missing_fields",
+                        "fields": missing[:10],
+                    })
+                if type_mismatches:
+                    transforms.append({
+                        "step": "cast_field_types",
+                        "description": f"转换 {len(type_mismatches)} 个类型不匹配字段",
+                        "tool": "cast_field_type",
+                        "fields": type_mismatches[:10],
+                    })
+                if extra:
+                    transforms.append({
+                        "step": "review_extra_fields",
+                        "description": f"审查 {len(extra)} 个标准外字段（保留或移除）",
+                        "fields": extra[:10],
+                    })
+
+                recommendation["target_standard"] = standard_id
+                recommendation["gap_summary"] = summary
+                recommendation["recommended_transforms"] = transforms
+                recommendation["estimated_effort"] = (
+                    "低" if len(transforms) <= 1 else
+                    "中" if len(transforms) <= 3 else "高"
+                )
+
+        return json.dumps(recommendation, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+_ALL_FUNCS_FINAL = _ALL_FUNCS + [classify_data_sensitivity, recommend_data_model]
 
 
 class GovernanceToolset(BaseToolset):
