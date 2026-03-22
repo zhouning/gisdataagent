@@ -24,3 +24,4 @@ from .virtual_source_tools import VirtualSourceToolset
 from .chart_tools import ChartToolset
 from .governance_tools import GovernanceToolset
 from .data_cleaning_tools import DataCleaningToolset
+from .spark_tools import SparkToolset
