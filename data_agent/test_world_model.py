@@ -85,6 +85,40 @@ class TestLatentDynamicsNet(unittest.TestCase):
         z_t = torch.randn(1, 64, 8, 8, requires_grad=True)
         scenario = torch.randn(1, 16)
         z_tp1 = model(z_t, scenario)
+
+    def test_l2_normalization_prevents_drift(self):
+        """After multiple autoregressive steps with L2 norm, embeddings stay on unit sphere."""
+        import torch
+        from data_agent.world_model import _build_model
+
+        model = _build_model()
+        model.eval()
+        # Start with unit-normalized embeddings
+        z = torch.randn(1, 64, 4, 4)
+        z = torch.nn.functional.normalize(z, p=2, dim=1)
+        s = torch.zeros(1, 16)
+
+        with torch.no_grad():
+            for _ in range(20):  # 20 autoregressive steps
+                z = model(z, s)
+                z = torch.nn.functional.normalize(z, p=2, dim=1)
+
+        # Check all pixel vectors are still unit length
+        norms = z.norm(p=2, dim=1)  # [1, H, W]
+        self.assertTrue(
+            torch.allclose(norms, torch.ones_like(norms), atol=1e-5),
+            f"Norms drifted: min={norms.min():.6f}, max={norms.max():.6f}",
+        )
+
+    def test_gradient_flow(self):
+        """Gradients should flow through all layers."""
+        import torch
+        from data_agent.world_model import _build_model
+
+        model = _build_model()
+        z_t = torch.randn(1, 64, 8, 8, requires_grad=True)
+        scenario = torch.randn(1, 16)
+        z_tp1 = model(z_t, scenario)
         loss = z_tp1.sum()
         loss.backward()
         for name, p in model.named_parameters():
