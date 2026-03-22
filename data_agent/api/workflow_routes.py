@@ -184,6 +184,20 @@ async def workflow_run_checkpoint(request: Request):
     return JSONResponse(cp)
 
 
+async def workflow_resume(request: Request):
+    """POST /api/workflows/{id}/runs/{run_id}/resume — resume failed/paused DAG from checkpoint."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    run_id = int(request.path_params.get("run_id", 0))
+    from ..workflow_engine import resume_workflow_dag
+    result = await resume_workflow_dag(run_id, username)
+    if result.get("status") == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result)
+
+
 def get_workflow_routes() -> list:
     """Return Route objects for workflow endpoints."""
     return [
@@ -197,4 +211,5 @@ def get_workflow_routes() -> list:
         Route("/api/workflows/{id:int}/runs/{run_id:int}/status", workflow_run_status, methods=["GET"]),
         Route("/api/workflows/{id:int}/runs/{run_id:int}/retry", workflow_retry_node, methods=["POST"]),
         Route("/api/workflows/{id:int}/runs/{run_id:int}/checkpoint", workflow_run_checkpoint, methods=["GET"]),
+        Route("/api/workflows/{id:int}/runs/{run_id:int}/resume", workflow_resume, methods=["POST"]),
     ]
