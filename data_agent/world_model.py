@@ -71,6 +71,9 @@ WEIGHTS_DIR = os.path.join(os.path.dirname(__file__), "weights")
 WEIGHTS_PATH = os.path.join(WEIGHTS_DIR, "latent_dynamics_v1.pt")
 DECODER_PATH = os.path.join(WEIGHTS_DIR, "lulc_decoder_v1.pkl")
 
+# Raw data cache (embeddings + LULC labels downloaded from GEE)
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "weights", "raw_data")
+
 # Default study areas for training (same as Phase 0)
 DEFAULT_TRAINING_AREAS = [
     {"name": "yangtze_delta", "bbox": [121.2, 31.0, 121.3, 31.1]},
@@ -305,7 +308,12 @@ def _build_training_pairs(
     """
     Build (z_t, scenario_vec, z_{t+1}) training pairs from GEE data.
     Each pair uses 'baseline' scenario (historical trend).
+
+    Downloaded embeddings are cached as .npy files under RAW_DATA_DIR
+    for offline reproducibility.
     """
+    os.makedirs(RAW_DATA_DIR, exist_ok=True)
+
     z_t_list, scenario_list, z_tp1_list = [], [], []
     scenario_vec = np.zeros(SCENARIO_DIM, dtype=np.float32)
     scenario_vec[SCENARIOS["baseline"].id] = 1.0  # historical = baseline
@@ -315,11 +323,14 @@ def _build_training_pairs(
         name = area.get("name", str(bbox))
         for i in range(len(years) - 1):
             y1, y2 = years[i], years[i + 1]
-            logger.info("Extracting %s: %d→%d", name, y1, y2)
-            emb1 = extract_embeddings(bbox, y1)
-            emb2 = extract_embeddings(bbox, y2)
+            logger.info("Extracting %s: %d->%d", name, y1, y2)
+
+            # Try loading from cache first
+            emb1 = _load_or_fetch_embedding(name, bbox, y1)
+            emb2 = _load_or_fetch_embedding(name, bbox, y2)
+
             if emb1 is None or emb2 is None:
-                logger.warning("Skipping %s %d→%d: missing data", name, y1, y2)
+                logger.warning("Skipping %s %d->%d: missing data", name, y1, y2)
                 continue
             # Ensure same shape
             h = min(emb1.shape[0], emb2.shape[0])
@@ -332,6 +343,38 @@ def _build_training_pairs(
             scenario_list.append(scenario_vec.copy())
 
     return z_t_list, scenario_list, z_tp1_list
+
+
+def _load_or_fetch_embedding(
+    area_name: str, bbox: list[float], year: int
+) -> Optional[np.ndarray]:
+    """Load embedding from .npy cache, or fetch from GEE and save."""
+    cache_path = os.path.join(RAW_DATA_DIR, f"emb_{area_name}_{year}.npy")
+    if os.path.exists(cache_path):
+        logger.info("  Loading cached %s %d", area_name, year)
+        return np.load(cache_path)
+
+    emb = extract_embeddings(bbox, year)
+    if emb is not None:
+        np.save(cache_path, emb)
+        logger.info("  Saved %s %d -> %s  shape=%s", area_name, year, cache_path, emb.shape)
+    return emb
+
+
+def _load_or_fetch_lulc(
+    area_name: str, bbox: list[float], year: int
+) -> Optional[np.ndarray]:
+    """Load LULC labels from .npy cache, or fetch from GEE and save."""
+    cache_path = os.path.join(RAW_DATA_DIR, f"lulc_{area_name}_{year}.npy")
+    if os.path.exists(cache_path):
+        logger.info("  Loading cached LULC %s %d", area_name, year)
+        return np.load(cache_path)
+
+    lulc = extract_lulc_labels(bbox, year)
+    if lulc is not None:
+        np.save(cache_path, lulc)
+        logger.info("  Saved LULC %s %d -> %s  shape=%s", area_name, year, cache_path, lulc.shape)
+    return lulc
 
 
 def train_dynamics_model(
@@ -375,7 +418,10 @@ def train_dynamics_model(
             z_tp1_true = torch.tensor(z_tp1_np).unsqueeze(0)  # [1, 64, H, W]
 
             z_tp1_pred = model(z_t, scenario)
-            loss = mse_loss(z_tp1_pred, z_tp1_true)
+            # L2 normalize prediction to match unit-sphere target
+            z_tp1_pred = torch.nn.functional.normalize(z_tp1_pred, p=2, dim=1)
+            z_tp1_true_norm = torch.nn.functional.normalize(z_tp1_true, p=2, dim=1)
+            loss = mse_loss(z_tp1_pred, z_tp1_true_norm)
 
             optimizer.zero_grad()
             loss.backward()
@@ -424,8 +470,9 @@ def train_lulc_decoder(areas: list[dict] | None = None) -> dict:
     mid_year = 2020  # middle of training range
 
     for area in areas:
-        emb = extract_embeddings(area["bbox"], mid_year)
-        lulc = extract_lulc_labels(area["bbox"], mid_year)
+        name = area.get("name", str(area["bbox"]))
+        emb = _load_or_fetch_embedding(name, area["bbox"], mid_year)
+        lulc = _load_or_fetch_lulc(name, area["bbox"], mid_year)
         if emb is None or lulc is None:
             continue
         h = min(emb.shape[0], lulc.shape[0])
@@ -692,6 +739,10 @@ def predict_sequence(
     with torch.no_grad():
         for step in range(n_years):
             z = model(z, s)
+            # L2 normalize to stay on the unit hypersphere
+            # (AlphaEarth embeddings are unit vectors; residual addition
+            #  causes manifold drift without re-normalization)
+            z = torch.nn.functional.normalize(z, p=2, dim=1)
             year = start_year + step + 1
             years.append(year)
 
