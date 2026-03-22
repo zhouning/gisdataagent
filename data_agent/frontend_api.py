@@ -1291,6 +1291,22 @@ async def _api_user_drawn_features(request: Request):
     return JSONResponse({"status": "ok", "file_path": fpath, "file_name": fname})
 
 
+async def _api_pipeline_trace(request: Request):
+    """GET /api/pipeline/trace/{trace_id} — get decision trace for a pipeline run."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    trace_id = request.path_params.get("trace_id", "")
+    # Look up trace from session or DB
+    import chainlit as cl
+    decision_trace = cl.user_session.get("decision_trace")
+    if decision_trace and decision_trace.trace_id == trace_id:
+        result = decision_trace.to_dict()
+        result["mermaid"] = decision_trace.to_mermaid_sequence()
+        return JSONResponse(result)
+    return JSONResponse({"error": "Trace not found"}, status_code=404)
+
+
 # ---------------------------------------------------------------------------
 # Capabilities (aggregated skills + toolsets listing)
 # ---------------------------------------------------------------------------
@@ -2603,6 +2619,7 @@ def get_frontend_api_routes():
         Route("/api/analytics/agent-breakdown", endpoint=_api_analytics_agent_breakdown, methods=["GET"]),
         # Pipeline SSE Streaming (v9.5.4)
         Route("/api/pipeline/stream", endpoint=_api_pipeline_stream, methods=["GET"]),
+        Route("/api/pipeline/trace/{trace_id}", endpoint=_api_pipeline_trace, methods=["GET"]),
         # Task Queue (v11.0.1)
         Route("/api/tasks/submit", endpoint=_api_tasks_submit, methods=["POST"]),
         Route("/api/tasks", endpoint=_api_tasks_list, methods=["GET"]),
