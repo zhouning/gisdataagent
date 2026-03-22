@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet.heat';
+import 'leaflet-draw';
+import 'leaflet-draw/dist/leaflet.draw.css';
 import Map3DView from './Map3DView';
 
 interface MapLayer {
@@ -83,6 +85,9 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
   // Measurement state (v14.0)
   const [measureMode, setMeasureMode] = useState(false);
+  const [drawMode, setDrawMode] = useState(false);
+  const drawControlRef = useRef<any>(null);
+  const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
   const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   const [measureResult, setMeasureResult] = useState<string>('');
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
@@ -609,6 +614,60 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           <path d="M2 20h20M4 20V4l4 4 4-4 4 4 4-4v16"/>
         </svg>
       </button>
+
+      {/* Draw mode toggle (v14.5) */}
+      <button
+        className={`annotation-toggle ${drawMode ? 'active' : ''}`}
+        onClick={() => {
+          const newMode = !drawMode;
+          setDrawMode(newMode);
+          if (mapRef.current) {
+            if (newMode) {
+              mapRef.current.addLayer(drawnItemsRef.current);
+              if (!drawControlRef.current) {
+                const L_draw = require('leaflet-draw');
+                drawControlRef.current = new (L.Control as any).Draw({
+                  edit: { featureGroup: drawnItemsRef.current },
+                  draw: { marker: true, polyline: true, polygon: true, rectangle: true, circle: false, circlemarker: false },
+                });
+              }
+              mapRef.current.addControl(drawControlRef.current);
+              mapRef.current.on((L as any).Draw.Event.CREATED, (e: any) => {
+                drawnItemsRef.current.addLayer(e.layer);
+              });
+            } else {
+              if (drawControlRef.current) mapRef.current.removeControl(drawControlRef.current);
+            }
+          }
+        }}
+        title={drawMode ? '退出绘制模式' : '绘制要素 (点/线/面)'}
+        style={{ bottom: annotationMode ? 130 : 90 }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="14 2 18 6 7 17 3 17 3 13 14 2"/>
+          <line x1="3" y1="22" x2="21" y2="22"/>
+        </svg>
+      </button>
+
+      {/* Export drawn features button */}
+      {drawMode && drawnItemsRef.current.getLayers().length > 0 && (
+        <button
+          style={{ position: 'absolute', bottom: annotationMode ? 170 : 130, right: 10, zIndex: 1000,
+            background: '#1e3a5f', color: '#7dd3fc', border: 'none', borderRadius: 4,
+            padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}
+          onClick={async () => {
+            const geojson = drawnItemsRef.current.toGeoJSON();
+            try {
+              const r = await fetch('/api/user/drawn-features', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(geojson),
+              });
+              if (r.ok) { const d = await r.json(); alert(`已保存: ${d.file_path || '成功'}`); }
+            } catch { alert('保存失败'); }
+          }}
+        >导出 GeoJSON</button>
+      )}
 
       {/* Measurement result display */}
       {measureResult && (

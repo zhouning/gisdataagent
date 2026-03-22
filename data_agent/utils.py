@@ -205,6 +205,50 @@ def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
         gdf = gpd.read_file(path, layer=layer_name)
         return gdf
 
+    # --- DXF/DWG: AutoCAD format (ezdxf for DXF; DWG needs ODA converter) ---
+    elif ext in ('.dxf', '.dwg'):
+        try:
+            import ezdxf
+            from shapely.geometry import Point as _Pt, LineString as _Ls, Polygon as _Pg
+        except ImportError:
+            raise ImportError("DXF/DWG 读取需要安装 ezdxf: pip install ezdxf")
+        if ext == '.dwg':
+            logger.warning("[DWG] ezdxf 原生不支持 DWG 格式，尝试读取（可能失败）。建议先用 ODA File Converter 转为 DXF。")
+        doc = ezdxf.readfile(str(path))
+        msp = doc.modelspace()
+        geometries = []
+        attrs = []
+        for entity in msp:
+            etype = entity.dxftype()
+            layer = entity.dxf.layer if hasattr(entity.dxf, 'layer') else ''
+            if etype == 'POINT':
+                geometries.append(_Pt(entity.dxf.location.x, entity.dxf.location.y))
+                attrs.append({"layer": layer, "entity_type": etype})
+            elif etype == 'LINE':
+                geometries.append(_Ls([
+                    (entity.dxf.start.x, entity.dxf.start.y),
+                    (entity.dxf.end.x, entity.dxf.end.y),
+                ]))
+                attrs.append({"layer": layer, "entity_type": etype})
+            elif etype in ('LWPOLYLINE', 'POLYLINE'):
+                try:
+                    pts = [(p.x, p.y) for p in entity.get_points(format='xy')]
+                    if len(pts) >= 2:
+                        if entity.closed:
+                            if len(pts) >= 3:
+                                geometries.append(_Pg(pts))
+                            else:
+                                geometries.append(_Ls(pts))
+                        else:
+                            geometries.append(_Ls(pts))
+                        attrs.append({"layer": layer, "entity_type": etype})
+                except Exception:
+                    pass
+        if not geometries:
+            raise ValueError(f"DXF 文件中未找到可解析的几何实体: {path}")
+        gdf = gpd.GeoDataFrame(attrs, geometry=geometries)
+        return gdf
+
     # --- All other spatial formats: SHP, GeoJSON, GPKG, etc. ---
     else:
         return gpd.read_file(path)
