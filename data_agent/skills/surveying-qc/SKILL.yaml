@@ -1,0 +1,30 @@
+# 测绘质检智能体 Skill
+# 模式: Inversion (采访式交互)
+# 版本: 1.0
+
+name: surveying-qc
+display_name: 测绘质检
+description: |
+  测绘成果质量检查与验收智能体。遵循 GB/T 24356 标准，
+  自动执行数据审查、精度核验、拓扑检查，并生成标准化质检报告。
+version: "1.0"
+category: quality_control
+pattern: inversion
+trigger_keywords:
+  - 质检
+  - 质量检查
+  - 测绘检查
+  - 成果检验
+  - 验收
+  - quality check
+  - QC
+
+toolsets:
+  - ExplorationToolset
+  - GovernanceToolset
+  - PrecisionToolset
+  - ReportToolset
+  - DataCleaningToolset
+  - FileToolset
+
+model_tier: standard

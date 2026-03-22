@@ -1,7 +1,7 @@
 """
 Token Usage Tracking for per-user LLM consumption management.
 Stores usage records in PostgreSQL (token_usage table).
-Supports daily analysis limits and monthly usage summaries.
+Supports daily analysis limits, monthly usage summaries, and USD cost calculation.
 """
 import os
 from sqlalchemy import text
@@ -9,6 +9,72 @@ from sqlalchemy import text
 from .db_engine import get_engine
 from .database_tools import _inject_user_context, T_TOKEN_USAGE
 from .user_context import current_user_id
+
+
+# ---------------------------------------------------------------------------
+# Model pricing (USD per 1M tokens, as of 2026-03)
+# ---------------------------------------------------------------------------
+
+MODEL_PRICING = {
+    # Gemini
+    "gemini-2.5-flash": {"input": 0.15, "output": 0.60},
+    "gemini-2.5-pro": {"input": 1.25, "output": 5.00},
+    "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
+    "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
+    "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
+    # GPT
+    "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    # Claude
+    "claude-sonnet-4": {"input": 3.00, "output": 15.00},
+    "claude-haiku-3.5": {"input": 0.80, "output": 4.00},
+    # Default fallback
+    "_default": {"input": 0.50, "output": 2.00},
+}
+
+
+def calculate_cost_usd(input_tokens: int, output_tokens: int,
+                       model_name: str = "gemini-2.5-flash") -> float:
+    """Calculate USD cost for a given token count and model.
+
+    Returns cost in USD (float).
+    """
+    pricing = MODEL_PRICING.get(model_name, MODEL_PRICING["_default"])
+    cost = (input_tokens * pricing["input"] + output_tokens * pricing["output"]) / 1_000_000
+    return round(cost, 6)
+
+
+def estimate_pipeline_cost(pipeline_type: str, model_name: str = "gemini-2.5-flash") -> dict:
+    """Estimate cost for a pipeline run based on historical averages.
+
+    Returns:
+        {"estimated_tokens": int, "estimated_cost_usd": float, "based_on_runs": int}
+    """
+    engine = get_engine()
+    if not engine:
+        return {"estimated_tokens": 0, "estimated_cost_usd": 0.0, "based_on_runs": 0}
+
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(f"""
+                SELECT COUNT(*) AS cnt,
+                       COALESCE(AVG(input_tokens), 0) AS avg_in,
+                       COALESCE(AVG(output_tokens), 0) AS avg_out
+                FROM {T_TOKEN_USAGE}
+                WHERE pipeline_type = :p
+                  AND created_at >= NOW() - INTERVAL '30 days'
+            """), {"p": pipeline_type}).fetchone()
+            avg_in = int(row[1])
+            avg_out = int(row[2])
+            cost = calculate_cost_usd(avg_in, avg_out, model_name)
+            return {
+                "estimated_tokens": avg_in + avg_out,
+                "estimated_cost_usd": cost,
+                "based_on_runs": row[0],
+                "model": model_name,
+            }
+    except Exception:
+        return {"estimated_tokens": 0, "estimated_cost_usd": 0.0, "based_on_runs": 0}
 
 
 def ensure_token_table():
@@ -47,18 +113,13 @@ def ensure_token_table():
 def record_usage(username: str, pipeline_type: str, input_tokens: int,
                  output_tokens: int, model_name: str = "gemini-2.5-flash") -> None:
     """
-    Record a pipeline run's token consumption. Non-fatal on failure.
-
-    Args:
-        username: User identifier.
-        pipeline_type: Pipeline type (optimization/governance/general/router).
-        input_tokens: Total prompt tokens consumed.
-        output_tokens: Total completion tokens consumed.
-        model_name: LLM model name.
+    Record a pipeline run's token consumption with USD cost. Non-fatal on failure.
     """
     engine = get_engine()
     if not engine:
         return
+
+    cost_usd = calculate_cost_usd(input_tokens, output_tokens, model_name)
 
     try:
         with engine.connect() as conn:
@@ -179,25 +240,34 @@ def check_usage_limit(username: str, role: str) -> dict:
 
 def get_usage_summary() -> dict:
     """
-    查看当前用户的 Token 消费统计摘要，包括今日和本月用量。
+    查看当前用户的 Token 消费统计摘要，包括今日和本月用量及 USD 成本。
 
     Returns:
-        用量统计信息，包含今日次数、token数和本月汇总。
+        用量统计信息，包含今日次数、token数、成本和本月汇总。
     """
     username = current_user_id.get()
     daily = get_daily_usage(username)
     monthly = get_monthly_usage(username)
     daily_limit = int(os.environ.get("DAILY_ANALYSIS_LIMIT", 20))
 
+    # Calculate costs
+    daily_cost = calculate_cost_usd(
+        daily.get("tokens", 0) // 2, daily.get("tokens", 0) // 2)  # rough split
+    monthly_cost = calculate_cost_usd(
+        monthly.get("input_tokens", 0), monthly.get("output_tokens", 0))
+
     return {
         "status": "success",
         "message": (
             f"Token 消费统计\n"
             f"今日：{daily['count']} 次分析，{daily['tokens']:,} tokens"
-            f"（限额 {daily_limit} 次/天）\n"
-            f"本月：{monthly['count']} 次分析，{monthly['total_tokens']:,} tokens\n"
+            f"（限额 {daily_limit} 次/天），约 ${daily_cost:.4f}\n"
+            f"本月：{monthly['count']} 次分析，{monthly['total_tokens']:,} tokens"
+            f"，约 ${monthly_cost:.4f}\n"
             f"  输入：{monthly['input_tokens']:,} | 输出：{monthly['output_tokens']:,}"
         ),
+        "daily_cost_usd": daily_cost,
+        "monthly_cost_usd": monthly_cost,
     }
 
 

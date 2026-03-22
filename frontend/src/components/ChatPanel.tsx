@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useContext, KeyboardEvent, ChangeEvent } from 'react';
 import { useChatMessages, useChatInteract, useChatData, useChatSession, ChainlitContext } from '@chainlit/react-client';
+import { useSetRecoilState } from 'recoil';
+import { threadIdToResumeState } from '@chainlit/react-client';
 import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
 
@@ -16,11 +18,19 @@ interface PendingFile {
   error?: boolean;
 }
 
+interface SessionInfo {
+  id: string;
+  name: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }: ChatPanelProps) {
   const { messages } = useChatMessages();
-  const { sendMessage, uploadFile } = useChatInteract();
+  const { sendMessage, uploadFile, clear } = useChatInteract();
   const { askUser, actions, loading } = useChatData();
-  const { sessionId } = useChatSession();
+  const { sessionId, connect, disconnect } = useChatSession();
+  const setIdToResume = useSetRecoilState(threadIdToResumeState);
   const apiClient = useContext(ChainlitContext);
   const [input, setInput] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
@@ -32,6 +42,11 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const processedMetaRef = useRef<Set<string>>(new Set());
   const recognitionRef = useRef<any>(null);
   const prevLoadingRef = useRef(false);
+
+  // Session management state
+  const [showSessions, setShowSessions] = useState(false);
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   // Check browser support for Web Speech API
   const speechSupported = typeof window !== 'undefined' &&
@@ -200,6 +215,53 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     setVoiceLang((prev) => prev === 'zh-CN' ? 'en-US' : 'zh-CN');
   }, []);
 
+  // --- Session management ---
+  const fetchSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const resp = await fetch('/api/sessions', { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setSessions(data.sessions || []);
+      }
+    } catch { /* ignore */ }
+    finally { setSessionsLoading(false); }
+  }, []);
+
+  const handleNewChat = useCallback(() => {
+    // Clear resume ID so Chainlit creates a fresh thread
+    setIdToResume(undefined);
+    clear();
+    processedMetaRef.current.clear();
+    disconnect();
+    setTimeout(() => connect({ userEnv: {} }), 300);
+    setShowSessions(false);
+  }, [clear, disconnect, connect, setIdToResume]);
+
+  const handleResumeSession = useCallback((threadId: string) => {
+    setIdToResume(threadId);
+    clear();
+    processedMetaRef.current.clear();
+    disconnect();
+    setTimeout(() => connect({ userEnv: {} }), 300);
+    setShowSessions(false);
+  }, [clear, disconnect, connect, setIdToResume]);
+
+  const handleDeleteSession = useCallback(async (threadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('确定删除此会话？')) return;
+    try {
+      await fetch(`/api/sessions/${threadId}`, { method: 'DELETE', credentials: 'include' });
+      setSessions(prev => prev.filter(s => s.id !== threadId));
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleToggleSessions = useCallback(() => {
+    const next = !showSessions;
+    setShowSessions(next);
+    if (next) fetchSessions();
+  }, [showSessions, fetchSessions]);
+
   const flatMessages = flattenMessages(messages || []);
 
   return (
@@ -209,7 +271,54 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         <span>对话</span>
+        <div className="chat-header-actions">
+          <button className="chat-header-btn" onClick={handleNewChat} title="新建对话">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <button className={`chat-header-btn ${showSessions ? 'active' : ''}`} onClick={handleToggleSessions} title="历史会话">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {/* Session history panel */}
+      {showSessions && (
+        <div className="session-list">
+          <div className="session-list-header">
+            <span>历史会话</span>
+            <button className="session-close-btn" onClick={() => setShowSessions(false)}>&times;</button>
+          </div>
+          {sessionsLoading ? (
+            <div className="session-empty">加载中...</div>
+          ) : sessions.length === 0 ? (
+            <div className="session-empty">暂无历史会话</div>
+          ) : (
+            <div className="session-items">
+              {sessions.map(s => (
+                <div
+                  key={s.id}
+                  className={`session-item ${s.id === sessionId ? 'session-item-active' : ''}`}
+                  onClick={() => handleResumeSession(s.id)}
+                >
+                  <div className="session-item-name">{s.name || '未命名会话'}</div>
+                  <div className="session-item-meta">
+                    {s.updated_at ? new Date(s.updated_at).toLocaleString() : ''}
+                  </div>
+                  <button
+                    className="session-item-delete"
+                    onClick={(e) => handleDeleteSession(s.id, e)}
+                    title="删除"
+                  >&times;</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="chat-messages">
         {flatMessages.map((msg) => {
