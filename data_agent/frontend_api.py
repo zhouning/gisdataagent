@@ -2517,6 +2517,7 @@ def get_frontend_api_routes():
     from .api.skills_routes import get_skills_routes
     from .api.virtual_routes import get_virtual_source_routes
     from .api.quality_routes import get_quality_routes
+    from .api.distribution_routes import get_distribution_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -2580,6 +2581,7 @@ def get_frontend_api_routes():
         # Virtual Data Sources (v13.0)
         *get_virtual_source_routes(),
         *get_quality_routes(),
+        *get_distribution_routes(),
         # Knowledge Base (v8.0.2)
         # Bundles (v10.0.2)
         Route("/api/bundles", endpoint=_api_bundles_list, methods=["GET"]),
