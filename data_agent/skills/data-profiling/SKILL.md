@@ -1,18 +1,19 @@
 ---
 name: data-profiling
-description: "空间数据画像与质量评估技能。对空间数据进行全面画像分析，评估数据质量并给出改进建议。"
+description: "空间数据画像与质量评估技能（Generator 模式）。对空间数据进行全面画像分析，按标准化模板输出四维质量评估报告。"
 metadata:
   domain: governance
-  version: "2.0"
+  version: "3.0"
   intent_triggers: "profile, 画像, 数据质量, describe, 探查, 概览, 数据评估"
 ---
 
-# 空间数据画像与质量评估技能
+# 空间数据画像与质量评估技能（Generator 模式）
 
 ## 技能概述
 
-数据画像是所有空间分析的第一步。在执行任何处理或分析之前，必须充分了解
-数据的结构、质量和特征。本技能提供系统化的数据探查框架，覆盖属性维度
+数据画像是所有空间分析的第一步。本技能采用 **Generator 设计模式**——
+使用标准化报告模板（assets/data_quality_report_template.md）和四维评分标准
+（references/quality_dimensions.md）确保每次输出格式统一、可比较。
 和空间维度的全面评估。
 
 ## 画像分析维度
@@ -127,4 +128,17 @@ WGS84 坐标中经度超过 180° 或纬度超过 90° 表示数据错误。
 - `describe_geodataframe` — 核心画像工具，输出字段统计与空间摘要
 - `check_field_standards` — 字段标准化检查（配合画像结果使用）
 - `check_topology` — 空间质量的拓扑维度检查
+
+## Generator 输出协议
+
+When generating data quality assessment results, you MUST:
+
+1. **Load the report template** from `assets/data_quality_report_template.md`
+2. **Load scoring standards** from `references/quality_dimensions.md`
+3. Run `describe_geodataframe` to collect raw profile data
+4. Calculate four-dimension scores using the scoring rubric
+5. **Fill all {{variable}} placeholders** in the template with actual values
+6. Output the completed report in Markdown format
+
+Do NOT invent your own report structure — always use the template to ensure consistency across assessments.
 - `check_consistency` — 属性一致性校验

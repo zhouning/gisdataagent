@@ -6,6 +6,11 @@ version: "2023"
 source: 《自然资源"一张图"数据库体系结构——统一调查监测》
 description: 地类图斑数据标准，含 30 个字段的完整定义，适用于三调及年度变更调查数据的质量校验。
 
+formulas:
+  - expr: "TBDLMJ = TBMJ - KCMJ"
+    tolerance: 0.01
+    description: "图斑地类面积应等于图斑面积减去扣除面积"
+
 fields:
   - { name: BSM,      type: string,  required: M, max_length: 18, description: "标识码（唯一编号）" }
   - { name: YSDM,     type: string,  required: M, max_length: 8,  description: "要素代码" }
