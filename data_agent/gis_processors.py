@@ -16,7 +16,11 @@ _BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 
 
 def _generate_output_path(prefix: str, extension: str = "shp") -> str:
-    """Generates a unique output file path in the current user's upload directory."""
+    """Generates a unique output file path in the current user's upload directory.
+
+    When DEFAULT_STORAGE_BACKEND=cloud, also schedules async upload after write.
+    The returned path is always local (tools write locally first).
+    """
     unique_id = uuid.uuid4().hex[:8]
     filename = f"{prefix}_{unique_id}.{extension}"
     user_dir = get_user_upload_dir()
@@ -24,19 +28,25 @@ def _generate_output_path(prefix: str, extension: str = "shp") -> str:
 
 
 def sync_to_obs(local_path: str) -> None:
-    """Synchronous upload to OBS and register in data catalog. Silent on failure."""
+    """Upload to cloud storage and register in data catalog. Silent on failure.
+
+    Uses StorageManager for consistent cloud I/O.
+    """
     try:
-        from .obs_storage import is_obs_configured, upload_file_smart
+        from .storage_manager import get_storage_manager
         from .user_context import current_user_id
         uid = current_user_id.get()
-        if is_obs_configured():
-            keys = upload_file_smart(local_path, uid)
-            # Register cloud asset
-            if keys:
+        sm = get_storage_manager()
+        if sm.cloud_available:
+            uri = sm.store(local_path, user_id=uid)
+            # Register cloud asset in catalog
+            if uri.startswith("s3://"):
                 try:
                     from .data_catalog import auto_register_from_path
+                    # Extract key from URI
+                    key = uri.split("://", 1)[1].split("/", 1)[1] if "/" in uri else ""
                     auto_register_from_path(
-                        local_path, storage_backend="cloud", cloud_key=keys[0],
+                        local_path, storage_backend="cloud", cloud_key=key,
                     )
                 except Exception:
                     pass
@@ -45,7 +55,17 @@ def sync_to_obs(local_path: str) -> None:
 
 
 def _resolve_path(file_path: str) -> str:
-    """Resolve file path, checking user sandbox first, then shared uploads."""
+    """Resolve file path, checking URI schemes → user sandbox → subdirs → LOCAL_DATA_DIRS → shared → cloud.
+
+    Supports s3://, obs://, postgis:// URIs via StorageManager.
+    """
+    # Handle URI schemes (s3://, obs://, postgis://, file://)
+    if "://" in file_path:
+        try:
+            from .storage_manager import get_storage_manager
+            return get_storage_manager().resolve(file_path)
+        except Exception:
+            pass
     if os.path.isabs(file_path):
         if os.path.exists(file_path):
             return file_path
@@ -56,6 +76,34 @@ def _resolve_path(file_path: str) -> str:
     user_path = os.path.join(user_dir, os.path.basename(file_path))
     if os.path.exists(user_path):
         return user_path
+    # Check subdirectories of user folder (recursive basename search)
+    basename = os.path.basename(file_path)
+    for root, dirs, files in os.walk(user_dir):
+        if basename in files:
+            return os.path.join(root, basename)
+        # Limit depth to avoid excessive scanning
+        depth = root[len(user_dir):].count(os.sep)
+        if depth >= 3:
+            dirs.clear()
+    # Check LOCAL_DATA_DIRS (read-only mounted directories)
+    local_data_dirs = os.environ.get("LOCAL_DATA_DIRS", "")
+    if local_data_dirs:
+        for entry in local_data_dirs.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            # Strip label if present (label:path format)
+            if ":" in entry and not (len(entry) > 1 and entry[1] == ":"):
+                _, entry = entry.split(":", 1)
+            entry = entry.strip()
+            # Try exact relative path under this dir
+            candidate = os.path.join(entry, file_path)
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
+            # Try basename match
+            candidate = os.path.join(entry, basename)
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
     # Fallback: check shared uploads folder (backward compat)
     upload_path = os.path.join(_BASE_UPLOAD_DIR, file_path)
     if os.path.exists(upload_path):

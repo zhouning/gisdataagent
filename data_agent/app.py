@@ -226,7 +226,7 @@ except Exception as _mcp_err:
     logger.warning("MCP Hub config loading failed: %s", _mcp_err)
     _mcp_hub_loaded = False
 _mcp_started = False
-_mcp_lock = threading.Lock()
+_mcp_alock = asyncio.Lock()
 
 # --- Chainlit Data Layer: thread/message persistence in PostgreSQL ---
 try:
@@ -574,17 +574,19 @@ async def _api_serve_user_file(request: Request):
     return FileResponse(real_path, media_type=content_type or "application/octet-stream")
 
 
-# Insert file API routes BEFORE Chainlit's catch-all /{full_path:path}
+# Insert file list route BEFORE Chainlit's catch-all /{full_path:path}
+# NOTE: The greedy serve route (/api/user/files/{filename:path}) is registered
+# AFTER mount_frontend_api() so that specific routes like /api/user/files/browse
+# take priority. See line ~953 where mount_frontend_api is called, and ~959
+# where the serve route is appended.
 _file_list_route = Route("/api/user/files", endpoint=_api_list_user_files, methods=["GET"])
 _file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
 for _i, _r in enumerate(chainlit_app.router.routes):
     if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
         chainlit_app.router.routes.insert(_i, _file_list_route)
-        chainlit_app.router.routes.insert(_i + 1, _file_serve_route)
         break
 else:
     chainlit_app.router.routes.append(_file_list_route)
-    chainlit_app.router.routes.append(_file_serve_route)
 
 logger.info("User file API routes enabled at /api/user/files")
 
@@ -949,6 +951,15 @@ try:
     mount_frontend_api(chainlit_app)
 except Exception as _fe_err:
     logger.warning("Frontend API mount failed: %s", _fe_err)
+
+# Register the greedy file serve route AFTER frontend_api routes to avoid
+# /api/user/files/{filename:path} swallowing /api/user/files/browse etc.
+for _i, _r in enumerate(chainlit_app.router.routes):
+    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+        chainlit_app.router.routes.insert(_i, _file_serve_route)
+        break
+else:
+    chainlit_app.router.routes.append(_file_serve_route)
 
 # --- Workflow Scheduler (v5.4) ---
 _workflow_scheduler = None
@@ -2374,13 +2385,15 @@ async def start():
     # Set i18n language from env (default: zh)
     set_language(os.environ.get("UI_LANGUAGE", "zh"))
 
-    # Start MCP Hub connections (once, on first chat start — thread-safe)
+    # Start MCP Hub connections (once, on first chat start — async-safe)
     global _mcp_started
     if not _mcp_started and _mcp_hub_loaded:
-        with _mcp_lock:
+        async with _mcp_alock:
             if not _mcp_started:  # double-check after acquiring lock
                 try:
-                    await get_mcp_hub().startup()
+                    await asyncio.wait_for(get_mcp_hub().startup(), timeout=15)
+                except asyncio.TimeoutError:
+                    logger.warning("MCP Hub startup timed out after 15s — skipping")
                 except Exception as e:
                     logger.warning("MCP Hub startup failed: %s", e)
                 _mcp_started = True

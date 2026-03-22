@@ -33,7 +33,7 @@ TOOLSET_NAMES: set[str] = {
     "AdvancedAnalysisToolset", "SpatialAnalysisTier2Toolset",
     "WatershedToolset", "UserToolset", "VirtualSourceToolset",
     "ChartToolset", "GovernanceToolset", "DataCleaningToolset",
-    "SparkToolset",
+    "SparkToolset", "StorageToolset", "ReportToolset", "PrecisionToolset",
 }
 
 _toolset_registry_cache: dict[str, type] | None = None
@@ -58,6 +58,9 @@ def _get_toolset_registry() -> dict[str, type]:
     from .toolsets.watershed_tools import WatershedToolset
     from .toolsets.user_tools_toolset import UserToolset
     from .toolsets.virtual_source_tools import VirtualSourceToolset
+    from .toolsets.storage_tools import StorageToolset
+    from .toolsets.report_tools import ReportToolset
+    from .toolsets.precision_tools import PrecisionToolset
     _toolset_registry_cache = {
         "ExplorationToolset": ExplorationToolset,
         "GeoProcessingToolset": GeoProcessingToolset,
@@ -83,6 +86,9 @@ def _get_toolset_registry() -> dict[str, type]:
         "WatershedToolset": WatershedToolset,
         "UserToolset": UserToolset,
         "VirtualSourceToolset": VirtualSourceToolset,
+        "StorageToolset": StorageToolset,
+        "ReportToolset": ReportToolset,
+        "PrecisionToolset": PrecisionToolset,
     }
     return _toolset_registry_cache
 

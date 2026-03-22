@@ -116,7 +116,7 @@ export default function GovernanceTab() {
               color: section === s ? '#7dd3fc' : '#888',
               border: `1px solid ${section === s ? '#2563eb' : '#333'}`,
             }}>
-            {s === 'overview' ? '资源总览' : s === 'rules' ? '质量规则' : '质量趋势'}
+            {s === 'overview' ? '质量总览' : s === 'rules' ? '质量规则' : '质量趋势'}
           </button>
         ))}
       </div>
@@ -126,21 +126,21 @@ export default function GovernanceTab() {
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#7dd3fc' }}>{overview.total_assets}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#7dd3fc' }}>{overview.total_assets ?? 0}</div>
               <div style={{ color: '#888', fontSize: 11 }}>数据资产</div>
             </div>
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{overview.enabled_rules}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{overview.enabled_rules ?? 0}</div>
               <div style={{ color: '#888', fontSize: 11 }}>启用规则</div>
             </div>
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>{overview.total_rules}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#f59e0b' }}>{overview.total_rules ?? 0}</div>
               <div style={{ color: '#888', fontSize: 11 }}>总规则数</div>
             </div>
           </div>
-          {Object.keys(overview.type_distribution).length > 0 && (
+          {overview.type_distribution && Object.keys(overview.type_distribution).length > 0 && (
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, marginBottom: 8 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6, color: '#e0e0e0' }}>资产类型分布</div>
+              <div style={{ fontWeight: 600, marginBottom: 6, color: '#e0e0e0' }}>资产类型覆盖</div>
               {Object.entries(overview.type_distribution).map(([type, count]) => (
                 <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#aaa', fontSize: 12 }}>
                   <span>{type}</span><span style={{ color: '#7dd3fc' }}>{count}</span>
@@ -148,7 +148,7 @@ export default function GovernanceTab() {
               ))}
             </div>
           )}
-          {overview.recent_scores.length > 0 && (
+          {overview.recent_scores && overview.recent_scores.length > 0 && (
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
               <div style={{ fontWeight: 600, marginBottom: 6, color: '#e0e0e0' }}>最近质量评分</div>
               {overview.recent_scores.map((s, i) => (

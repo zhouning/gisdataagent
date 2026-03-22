@@ -14,6 +14,14 @@ export default function UserSettings({ username, displayName, role, onClose, onD
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
+  // Password change state
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [pwChanging, setPwChanging] = useState(false);
+  const [pwMessage, setPwMessage] = useState('');
+  const [pwError, setPwError] = useState('');
+
   // Analysis perspective state
   const [perspective, setPerspective] = useState('');
   const [perspectiveLoading, setPerspectiveLoading] = useState(false);
@@ -198,6 +206,48 @@ export default function UserSettings({ username, displayName, role, onClose, onD
               ))}
             </div>
           )}
+        </div>
+
+        {/* Password Change */}
+        <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>修改密码</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <input type="password" placeholder="当前密码" value={oldPassword}
+              onChange={e => { setOldPassword(e.target.value); setPwError(''); setPwMessage(''); }}
+              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '6px 10px', color: '#e0e0e0' }} />
+            <input type="password" placeholder="新密码 (至少6位)" value={newPassword}
+              onChange={e => { setNewPassword(e.target.value); setPwError(''); setPwMessage(''); }}
+              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '6px 10px', color: '#e0e0e0' }} />
+            <input type="password" placeholder="确认新密码" value={confirmNewPassword}
+              onChange={e => { setConfirmNewPassword(e.target.value); setPwError(''); setPwMessage(''); }}
+              style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '6px 10px', color: '#e0e0e0' }} />
+            {pwError && <div style={{ color: '#ef4444', fontSize: 12 }}>{pwError}</div>}
+            {pwMessage && <div style={{ color: '#10b981', fontSize: 12 }}>{pwMessage}</div>}
+            <button
+              disabled={pwChanging || !oldPassword || !newPassword}
+              onClick={async () => {
+                if (newPassword !== confirmNewPassword) { setPwError('两次输入的新密码不一致'); return; }
+                if (newPassword.length < 6) { setPwError('新密码至少6位'); return; }
+                setPwChanging(true); setPwError(''); setPwMessage('');
+                try {
+                  const r = await fetch('/api/user/password', {
+                    method: 'PUT', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+                  });
+                  const d = await r.json();
+                  if (r.ok) { setPwMessage('密码修改成功'); setOldPassword(''); setNewPassword(''); setConfirmNewPassword(''); }
+                  else { setPwError(d.error || d.message || '修改失败'); }
+                } catch { setPwError('请求失败'); }
+                finally { setPwChanging(false); }
+              }}
+              style={{
+                background: '#1e3a5f', color: '#7dd3fc', border: 'none', borderRadius: 4,
+                padding: '8px 16px', cursor: 'pointer', fontSize: 13,
+                opacity: (pwChanging || !oldPassword || !newPassword) ? 0.5 : 1,
+              }}
+            >{pwChanging ? '修改中...' : '修改密码'}</button>
+          </div>
         </div>
 
         <div className="danger-zone">

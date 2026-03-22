@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy import text
 
 from .db_engine import get_engine
-from .database_tools import T_AUDIT_LOG
+from .database_tools import T_AUDIT_LOG, T_APP_USERS
 from .user_context import current_user_id, current_user_role
 
 # --- Action constants ---
@@ -219,9 +219,13 @@ def get_audit_stats(days: int = 30) -> dict:
 
     try:
         with engine.connect() as conn:
-            # Total events and active users
+            # Total events and active users (only count users still in app_users)
             row = conn.execute(text(f"""
-                SELECT COUNT(*) AS total, COUNT(DISTINCT username) AS users
+                SELECT COUNT(*) AS total,
+                       (SELECT COUNT(DISTINCT a.username)
+                        FROM {T_AUDIT_LOG} a
+                        INNER JOIN {T_APP_USERS} u ON a.username = u.username
+                        WHERE a.created_at >= NOW() - make_interval(days => :d)) AS users
                 FROM {T_AUDIT_LOG}
                 WHERE created_at >= NOW() - make_interval(days => :d)
             """), {"d": days}).fetchone()

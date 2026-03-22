@@ -26,4 +26,6 @@ from .governance_tools import GovernanceToolset
 from .data_cleaning_tools import DataCleaningToolset
 from .spark_tools import SparkToolset
 from .storage_tools import StorageToolset
+from .report_tools import ReportToolset
+from .precision_tools import PrecisionToolset
 from .world_model_tools import WorldModelToolset

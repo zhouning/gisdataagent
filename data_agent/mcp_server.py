@@ -30,7 +30,7 @@ All database/API credentials are loaded from data_agent/.env automatically.
 """
 import json
 import os
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 
 # Load .env before any tool imports (DB credentials, API keys, etc.)
 from dotenv import load_dotenv
@@ -47,8 +47,8 @@ from .user_context import current_user_id, current_session_id, current_user_role
 # Lifespan — set ContextVars for stdio (single-user) mode
 # ---------------------------------------------------------------------------
 
-@contextmanager
-def gis_lifespan(server: FastMCP):
+@asynccontextmanager
+async def gis_lifespan(server: FastMCP):
     """Initialize user context for the MCP session.
 
     In stdio transport (single-user), we set ContextVars once from env vars.

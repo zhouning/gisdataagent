@@ -2530,6 +2530,103 @@ async def _api_a2a_federation(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# HITL Dashboard API
+# ---------------------------------------------------------------------------
+
+async def _api_hitl_stats(request: Request):
+    """GET /api/hitl/stats — HITL decision statistics."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    days = int(request.query_params.get("days", "30"))
+    from .hitl_approval import get_hitl_stats
+    return JSONResponse(get_hitl_stats(days))
+
+
+async def _api_hitl_risk_registry(request: Request):
+    """GET /api/hitl/risk-registry — current risk registry."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .hitl_approval import get_risk_registry
+    return JSONResponse({"tools": get_risk_registry()})
+
+
+async def _api_cost_estimate(request: Request):
+    """GET /api/cost/estimate?pipeline=general — pre-execution cost estimate."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    pipeline = request.query_params.get("pipeline", "general")
+    model = request.query_params.get("model", "gemini-2.5-flash")
+    from .token_tracker import estimate_pipeline_cost
+    return JSONResponse(estimate_pipeline_cost(pipeline, model))
+
+
+async def _api_eval_history(request: Request):
+    """GET /api/eval/history?pipeline=general&limit=50 — evaluation history."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    pipeline = request.query_params.get("pipeline", "")
+    limit = int(request.query_params.get("limit", "50"))
+    from .eval_history import get_eval_history
+    return JSONResponse({"history": get_eval_history(pipeline or None, limit)})
+
+
+async def _api_eval_trend(request: Request):
+    """GET /api/eval/trend?pipeline=general&days=90 — score trend over time."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    pipeline = request.query_params.get("pipeline", "general")
+    days = int(request.query_params.get("days", "90"))
+    from .eval_history import get_eval_trend
+    return JSONResponse({"trend": get_eval_trend(pipeline, days)})
+
+
+# ---------------------------------------------------------------------------
+# Feature Flags API (admin only)
+# ---------------------------------------------------------------------------
+
+async def _api_flags_list(request: Request):
+    """GET /api/admin/flags — list all feature flags."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    from .feature_flags import get_all_flags
+    return JSONResponse({"flags": get_all_flags()})
+
+
+async def _api_flags_set(request: Request):
+    """PUT /api/admin/flags — set a feature flag."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    body = await request.json()
+    flag_name = body.get("name", "")
+    enabled = body.get("enabled", False)
+    if not flag_name:
+        return JSONResponse({"error": "name required"}, status_code=400)
+    from .feature_flags import set_flag
+    set_flag(flag_name, bool(enabled))
+    return JSONResponse({"status": "success", "flag": flag_name, "enabled": bool(enabled)})
+
+
+async def _api_flags_delete(request: Request):
+    """DELETE /api/admin/flags/{name} — delete a feature flag."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    name = request.path_params.get("name", "")
+    from .feature_flags import delete_flag
+    deleted = delete_flag(name)
+    if deleted:
+        return JSONResponse({"status": "success", "deleted": name})
+    return JSONResponse({"error": "Flag not found"}, status_code=404)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -2601,6 +2698,18 @@ def get_frontend_api_routes():
         Route("/api/a2a/tasks/{task_id}", endpoint=_api_a2a_task_status, methods=["GET"]),
         Route("/api/a2a/tasks/{task_id}/execute", endpoint=_api_a2a_task_execute, methods=["POST"]),
         Route("/api/a2a/federation", endpoint=_api_a2a_federation, methods=["GET"]),
+        # HITL Dashboard
+        Route("/api/hitl/stats", endpoint=_api_hitl_stats, methods=["GET"]),
+        Route("/api/hitl/risk-registry", endpoint=_api_hitl_risk_registry, methods=["GET"]),
+        # Cost Management
+        Route("/api/cost/estimate", endpoint=_api_cost_estimate, methods=["GET"]),
+        # Eval History
+        Route("/api/eval/history", endpoint=_api_eval_history, methods=["GET"]),
+        Route("/api/eval/trend", endpoint=_api_eval_trend, methods=["GET"]),
+        # Feature Flags (admin)
+        Route("/api/admin/flags", endpoint=_api_flags_list, methods=["GET"]),
+        Route("/api/admin/flags", endpoint=_api_flags_set, methods=["PUT"]),
+        Route("/api/admin/flags/{name}", endpoint=_api_flags_delete, methods=["DELETE"]),
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),
