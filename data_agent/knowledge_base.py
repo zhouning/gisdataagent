@@ -798,3 +798,77 @@ def reindex_kb(kb_id: int) -> dict:
     except Exception as e:
         logger.warning("[KB] reindex_kb failed: %s", e)
         return {"reindexed": 0, "failed": 0, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Graph / Entity helpers (used by kb_routes)
+# ---------------------------------------------------------------------------
+
+def get_kb_graph(kb_id: int) -> dict:
+    """Return knowledge graph data for a KB. Delegates to knowledge_graph if available."""
+    try:
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        nodes = [{"id": n, **gkg.graph.nodes[n]} for n in gkg.graph.nodes]
+        edges = [{"source": u, "target": v, **d} for u, v, d in gkg.graph.edges(data=True)]
+        return {"nodes": nodes, "edges": edges}
+    except Exception as e:
+        logger.debug("[KB] get_kb_graph fallback: %s", e)
+        return {"nodes": [], "edges": []}
+
+
+def get_kb_entities(kb_id: int) -> list[dict]:
+    """Return entities extracted from KB documents."""
+    try:
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        return [{"id": n, **gkg.graph.nodes[n]} for n in gkg.graph.nodes]
+    except Exception as e:
+        logger.debug("[KB] get_kb_entities fallback: %s", e)
+        return []
+
+
+def build_kb_graph(kb_id: int) -> dict:
+    """Build/rebuild knowledge graph from KB documents."""
+    try:
+        docs = list_documents(kb_id)
+        if not docs:
+            return {"status": "no_documents", "entities": 0, "relations": 0}
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        entity_count = len(gkg.graph.nodes)
+        edge_count = len(gkg.graph.edges)
+        return {"status": "ok", "entities": entity_count, "relations": edge_count}
+    except Exception as e:
+        logger.warning("[KB] build_kb_graph failed: %s", e)
+        return {"status": "error", "error": str(e), "entities": 0, "relations": 0}
+
+
+def graph_rag_search(kb_id: int, query: str) -> list[dict]:
+    """Search KB using graph-augmented retrieval."""
+    try:
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        # Try entity name matching first
+        results = []
+        for node_id, data in gkg.graph.nodes(data=True):
+            name = data.get("name", str(node_id))
+            if query.lower() in str(name).lower():
+                neighbors = list(gkg.graph.neighbors(node_id))
+                results.append({
+                    "entity": name,
+                    "type": data.get("type", "unknown"),
+                    "neighbors": neighbors[:10],
+                    "data": {k: v for k, v in data.items() if k != "embedding"},
+                })
+        # Also do vector search from KB chunks
+        kb_results = search_kb(query, kb_ids=[kb_id], top_k=5)
+        return {"graph_results": results[:20], "chunk_results": kb_results}
+    except Exception as e:
+        logger.debug("[KB] graph_rag_search fallback: %s", e)
+        # Fall back to pure vector search
+        try:
+            kb_results = search_kb(query, kb_ids=[kb_id], top_k=5)
+            return {"graph_results": [], "chunk_results": kb_results}
+        except Exception:
+            return {"graph_results": [], "chunk_results": []}

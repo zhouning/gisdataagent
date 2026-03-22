@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-semantic-intent-router" xml:lang="zh-CN">
+    <title>语义意图路由层</title>
+    <shortdesc>语义意图路由是系统的入口决策点，使用 Gemini 2.0 Flash 对自然语言进行实时分类，将请求分发至对应的 Agent 管线，同时返回工具类别用于动态裁剪可用工具集。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <conbody>
+        <section id="design-rationale">
+            <title>设计目标</title>
+            <p>传统 GIS 系统依赖菜单和表单驱动。本系统通过 LLM 语义分类实现"说什么做什么"的交互范式。路由层需同时满足三个约束：</p>
+            <ul>
+                <li><b>低延迟：</b>选用 Gemini 2.0 Flash（成本最低、延迟最低的模型），将昂贵的 Pro 模型留给需要深度推理的 Agent。</li>
+                <li><b>多模态支持：</b>文本、图片（缩放至 512px 后编码为 JPEG Blob）、PDF（pypdf 文本提取）三种模态可组合输入。</li>
+                <li><b>可解释性：</b>路由器返回分类理由（<codeph>reason</codeph>），前端展示路由信息卡片供用户理解系统决策。</li>
+            </ul>
+        </section>
+
+        <section id="router-implementation">
+            <title>路由实现</title>
+            <p>核心函数 <codeph>classify_intent()</codeph> 位于 <filepath>app.py</filepath>，通过结构化 Prompt 要求 Gemini 返回 JSON 格式的分类结果：</p>
+            <table frame="all" rowsep="1" colsep="1" id="router-output-table">
+                <title>路由器输出字段</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="2*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>字段</entry>
+                            <entry>类型</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><codeph>intent</codeph></entry>
+                            <entry>枚举</entry>
+                            <entry>OPTIMIZATION | GOVERNANCE | GENERAL | AMBIGUOUS</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>reason</codeph></entry>
+                            <entry>字符串</entry>
+                            <entry>分类理由，用于前端路由信息卡片展示</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>router_tokens</codeph></entry>
+                            <entry>整数</entry>
+                            <entry>路由器本次调用消耗的 Token 数</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>tool_categories</codeph></entry>
+                            <entry>集合</entry>
+                            <entry>工具类别（如 <codeph>spatial_processing</codeph>、<codeph>poi_location</codeph>、<codeph>remote_sensing</codeph>），用于 General 管线的动态工具过滤</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+
+        <section id="tool-category-filtering">
+            <title>工具类别动态过滤（v7.5.6）</title>
+            <p>路由器不仅返回意图，还返回工具类别集合。General 管线通过 <codeph>intent_tool_predicate</codeph> 根据这些类别动态裁剪可用工具，减少 Token 消耗并防止工具幻觉。预定义的工具子集包括：</p>
+            <ul>
+                <li><codeph>_AUDIT_TOOLS</codeph>：数据画像、拓扑审计、字段标准检查</li>
+                <li><codeph>_TRANSFORM_TOOLS</codeph>：坐标重投影、空间特征工程</li>
+                <li><codeph>_DB_READ</codeph>：数据库查询、表列表</li>
+                <li><codeph>_DATALAKE_READ</codeph>：数据湖资产搜索</li>
+            </ul>
+        </section>
+
+        <section id="context-injection">
+            <title>多源上下文注入</title>
+            <p>路由前，系统从 5 个来源拼接上下文到 Prompt 中：</p>
+            <ol>
+                <li>上轮分析结果（管线名称、生成文件、摘要）</li>
+                <li>空间记忆（用户偏好、近期分析结果）</li>
+                <li>语义层映射（列名→业务含义的预解析）</li>
+                <li>用户分析视角（2000 字以内的个人偏好描述）</li>
+                <li>ArcPy 可用性标志</li>
+            </ol>
+        </section>
+
+        <section id="router-error-handling">
+            <title>错误处理与降级</title>
+            <p>路由器异常时 fallback 到 GENERAL 管线。这是一个务实的设计选择——GENERAL 管线具有最广的工具覆盖范围，可以处理大多数请求。</p>
+            <note type="attention">路由器 Token 消耗当前未持久化到 <codeph>token_tracker</codeph>，存在计费盲区。路由器 Prompt 与意图列表硬编码在 <codeph>app.py</codeph> 中，新增管线需修改路由器 Prompt，无法通过配置扩展。</note>
+        </section>
+    </conbody>
+</concept>

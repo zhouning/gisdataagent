@@ -10,6 +10,7 @@ from ..utils import _load_spatial_data, _configure_fonts
 from ..gis_processors import (
     check_topology,
     check_field_standards,
+    list_fgdb_layers,
     _generate_output_path,
     _resolve_path,
 )
@@ -175,6 +176,99 @@ def engineer_spatial_features(file_path: str) -> dict[str, any]:
 # Toolset class
 # ---------------------------------------------------------------------------
 
+def batch_profile_datasets(directory_path: str, standard_id: str = "") -> str:
+    """批量探查目录下所有空间数据文件，生成汇总报告。支持 SHP/GeoJSON/GPKG/FGDB/CSV/Excel/KML。
+
+    Args:
+        directory_path: 数据目录路径。
+        standard_id: 可选标准ID（如 "dltb_2023"），探查时同时进行标准对照。
+
+    Returns:
+        JSON格式的汇总报告：文件总数、总记录数、格式分布、CRS 分布、关键问题列表。
+    """
+    import json as _json
+
+    SPATIAL_EXTS = {'.shp', '.geojson', '.gpkg', '.gdb', '.csv', '.xlsx', '.xls', '.kml', '.kmz'}
+
+    try:
+        resolved = _resolve_path(directory_path)
+        if not os.path.isdir(resolved):
+            return _json.dumps({"status": "error", "message": f"目录不存在: {directory_path}"},
+                               ensure_ascii=False)
+
+        files = []
+        for root, dirs, fnames in os.walk(resolved):
+            # Detect .gdb directories
+            for d in dirs:
+                if d.endswith('.gdb'):
+                    files.append(os.path.join(root, d))
+            for fn in fnames:
+                ext = os.path.splitext(fn)[1].lower()
+                if ext in SPATIAL_EXTS and ext != '.gdb':
+                    # Skip .shp sidecars
+                    if ext in ('.dbf', '.shx', '.prj', '.cpg'):
+                        continue
+                    files.append(os.path.join(root, fn))
+
+        if not files:
+            return _json.dumps({"status": "ok", "message": "目录下未找到可识别的空间数据文件", "file_count": 0},
+                               ensure_ascii=False)
+
+        profiles = []
+        total_records = 0
+        format_dist: dict[str, int] = {}
+        crs_dist: dict[str, int] = {}
+        issues = []
+
+        for fp in files:
+            ext = os.path.splitext(fp)[1].lower() or ".gdb"
+            format_dist[ext] = format_dist.get(ext, 0) + 1
+            try:
+                result = describe_geodataframe(fp)
+                if result.get("status") == "success":
+                    summ = result.get("summary", {})
+                    nf = summ.get("num_features", 0)
+                    total_records += nf
+                    crs = summ.get("crs", "Unknown")
+                    crs_dist[crs] = crs_dist.get(crs, 0) + 1
+                    entry = {
+                        "file": os.path.basename(fp), "format": ext,
+                        "features": nf, "crs": crs,
+                        "severity": summ.get("data_health", {}).get("severity", "unknown"),
+                    }
+                    # Optional standard check
+                    if standard_id:
+                        std_result = check_field_standards(fp, standard_id)
+                        entry["compliance_rate"] = std_result.get("compliance_rate", 0)
+                        entry["missing_mandatory"] = len(std_result.get("missing_mandatory", []))
+                    profiles.append(entry)
+
+                    # Collect issues
+                    warns = summ.get("data_health", {}).get("warnings", [])
+                    for w in warns[:3]:
+                        issues.append({"file": os.path.basename(fp), "issue": w})
+                else:
+                    profiles.append({"file": os.path.basename(fp), "format": ext, "error": result.get("message", "加载失败")})
+            except Exception as e:
+                profiles.append({"file": os.path.basename(fp), "format": ext, "error": str(e)[:100]})
+
+        summary = {
+            "file_count": len(files),
+            "total_records": total_records,
+            "format_distribution": format_dist,
+            "crs_distribution": crs_dist,
+            "issue_count": len(issues),
+        }
+        if standard_id:
+            rates = [p.get("compliance_rate", 0) for p in profiles if "compliance_rate" in p]
+            summary["avg_compliance_rate"] = round(sum(rates) / len(rates), 1) if rates else 0
+
+        return _json.dumps({"status": "ok", "summary": summary, "files": profiles, "issues": issues[:20]},
+                           ensure_ascii=False, default=str)
+    except Exception as e:
+        return _json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
 _ALL_FUNCS = [
     describe_geodataframe,
     reproject_spatial_data,
@@ -182,6 +276,8 @@ _ALL_FUNCS = [
     check_topology,
     check_field_standards,
     check_consistency,
+    list_fgdb_layers,
+    batch_profile_datasets,
 ]
 
 

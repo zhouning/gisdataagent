@@ -1,13 +1,36 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, Component, type ReactNode } from 'react';
 import { useChatSession, useAuth, useConfig } from '@chainlit/react-client';
 import { useRecoilValue } from 'recoil';
 import { sessionState } from '@chainlit/react-client';
+import { MapContext, AppContext } from './contexts';
 import LoginPage from './components/LoginPage';
 import ChatPanel from './components/ChatPanel';
 import MapPanel from './components/MapPanel';
 import DataPanel from './components/DataPanel';
 import AdminDashboard from './components/AdminDashboard';
 import UserSettings from './components/UserSettings';
+
+/* --- Error Boundary (F-4 fix) --- */
+class ErrorBoundary extends Component<{ name: string; children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: any) {
+    console.error(`[ErrorBoundary:${this.props.name}]`, error, info?.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="error-boundary">
+          <div className="error-boundary-icon">!</div>
+          <div className="error-boundary-title">{this.props.name} 发生错误</div>
+          <div className="error-boundary-msg">{this.state.error.message}</div>
+          <button className="btn-secondary btn-sm" onClick={() => this.setState({ error: null })}>重试</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const { data: authConfig, user, isReady, isAuthenticated, setUserFromAPI, logout } = useAuth();
@@ -60,6 +83,41 @@ export default function App() {
   const handleDataUpdate = useCallback((file: string) => {
     setDataFile(file);
   }, []);
+
+  // --- Resizable panels ---
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [chatWidth, setChatWidth] = useState(360);
+  const [dataWidth, setDataWidth] = useState(340);
+  const dragging = useRef<'chat' | 'data' | null>(null);
+
+  const onResizeStart = useCallback((panel: 'chat' | 'data') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = panel;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const startX = e.clientX;
+    const startChat = chatWidth;
+    const startData = dataWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startX;
+      if (dragging.current === 'chat') {
+        setChatWidth(Math.max(240, Math.min(600, startChat + dx)));
+      } else {
+        setDataWidth(Math.max(240, Math.min(700, startData - dx)));
+      }
+    };
+    const onUp = () => {
+      dragging.current = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [chatWidth, dataWidth]);
 
   // Show loading while checking auth
   if (!isReady) {
@@ -122,10 +180,21 @@ export default function App() {
       {showAdmin ? (
         <AdminDashboard onBack={() => setShowAdmin(false)} />
       ) : (
-        <div className="workspace">
-          <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} onLayerControl={handleLayerControl} />
-          <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} layerControl={layerControl} />
-          <DataPanel dataFile={dataFile} userRole={userRole} />
+        <div className="workspace" ref={workspaceRef}
+          style={{ '--chat-width': `${chatWidth}px`, '--data-width': `${dataWidth}px` } as React.CSSProperties}>
+          <ErrorBoundary name="聊天面板">
+            <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} onLayerControl={handleLayerControl} />
+          </ErrorBoundary>
+          <div className={`panel-resizer${dragging.current === 'chat' ? ' dragging' : ''}`}
+            onMouseDown={onResizeStart('chat')} />
+          <ErrorBoundary name="地图面板">
+            <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} layerControl={layerControl} />
+          </ErrorBoundary>
+          <div className={`panel-resizer${dragging.current === 'data' ? ' dragging' : ''}`}
+            onMouseDown={onResizeStart('data')} />
+          <ErrorBoundary name="数据面板">
+            <DataPanel dataFile={dataFile} userRole={userRole} />
+          </ErrorBoundary>
         </div>
       )}
       {showSettings && (

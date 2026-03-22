@@ -41,6 +41,83 @@ COUNT_PENALTY_WEIGHT = 500.0     # v7: drastically reduced from 100,000
 PAIR_BONUS = 1.0                 # v7: increased from 0.5
 
 
+# ---------------------------------------------------------------------------
+# Scenario Templates (v14.0)
+# ---------------------------------------------------------------------------
+
+class DRLScenario:
+    """Configuration template for DRL optimization scenarios."""
+    def __init__(self, name: str, description: str,
+                 source_types: set, target_types: set,
+                 slope_weight: float = 1000.0,
+                 contiguity_weight: float = 500.0,
+                 balance_weight: float = 500.0,
+                 pair_bonus: float = 1.0,
+                 max_conversions: int = 200):
+        self.name = name
+        self.description = description
+        self.source_types = source_types
+        self.target_types = target_types
+        self.slope_weight = slope_weight
+        self.contiguity_weight = contiguity_weight
+        self.balance_weight = balance_weight
+        self.pair_bonus = pair_bonus
+        self.max_conversions = max_conversions
+
+
+# Built-in scenario templates
+SCENARIOS: dict[str, DRLScenario] = {
+    "farmland_optimization": DRLScenario(
+        name="耕地布局优化",
+        description="优化耕地与林地的空间分布，最小化耕地坡度、最大化连片度",
+        source_types={'旱地', '水田'},
+        target_types={'果园', '有林地'},
+        slope_weight=1000.0,
+        contiguity_weight=500.0,
+        balance_weight=500.0,
+    ),
+    "urban_green_space": DRLScenario(
+        name="城市绿地布局",
+        description="优化城市绿地空间分布，最大化绿地可达性和连通性",
+        source_types={'绿地', '公园', '草地'},
+        target_types={'建设用地', '硬化地面'},
+        slope_weight=200.0,
+        contiguity_weight=1000.0,
+        balance_weight=800.0,
+    ),
+    "facility_siting": DRLScenario(
+        name="设施选址优化",
+        description="优化公共设施布局，平衡服务覆盖和交通可达",
+        source_types={'公共服务设施', '公共设施'},
+        target_types={'居住用地', '商业用地'},
+        slope_weight=300.0,
+        contiguity_weight=800.0,
+        balance_weight=600.0,
+        max_conversions=100,
+    ),
+}
+
+
+def list_scenarios() -> list[dict]:
+    """Return available DRL scenario templates."""
+    return [
+        {
+            "id": sid,
+            "name": s.name,
+            "description": s.description,
+            "source_types": sorted(s.source_types),
+            "target_types": sorted(s.target_types),
+            "weights": {
+                "slope": s.slope_weight,
+                "contiguity": s.contiguity_weight,
+                "balance": s.balance_weight,
+            },
+            "max_conversions": s.max_conversions,
+        }
+        for sid, s in SCENARIOS.items()
+    ]
+
+
 class LandUseOptEnv(gym.Env):
     """
     Land use optimization environment (v7).
@@ -60,8 +137,26 @@ class LandUseOptEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, shp_path, max_conversions=200):
+    def __init__(self, shp_path, max_conversions=200, scenario: 'DRLScenario | None' = None):
         super().__init__()
+
+        # Apply scenario config if provided
+        self.scenario = scenario
+        if scenario:
+            self.source_types = scenario.source_types
+            self.target_types = scenario.target_types
+            self.slope_w = scenario.slope_weight
+            self.cont_w = scenario.contiguity_weight
+            self.balance_w = scenario.balance_weight
+            self.pair_b = scenario.pair_bonus
+            max_conversions = scenario.max_conversions
+        else:
+            self.source_types = FARMLAND_TYPES
+            self.target_types = FOREST_TYPES
+            self.slope_w = SLOPE_REWARD_WEIGHT
+            self.cont_w = CONT_REWARD_WEIGHT
+            self.balance_w = COUNT_PENALTY_WEIGHT
+            self.pair_b = PAIR_BONUS
 
         # Load shapefile
         print(f"Loading shapefile: {shp_path}")
@@ -85,12 +180,12 @@ class LandUseOptEnv(gym.Env):
              raise KeyError(f"Column 'DLMC' not found (tried '{dlmc_col}'). Available: {list(self.gdf.columns)}")
         dlmc = self.gdf[dlmc_col].values
 
-        # Classify parcels
+        # Classify parcels (v14.1: use scenario types if provided)
         self.initial_types = np.full(self.n_parcels, OTHER, dtype=np.int8)
         for i, t in enumerate(dlmc):
-            if t in FARMLAND_TYPES:
+            if t in self.source_types:
                 self.initial_types[i] = FARMLAND
-            elif t in FOREST_TYPES:
+            elif t in self.target_types:
                 self.initial_types[i] = FOREST
 
         # Identify swappable parcels (farmland or forest)
@@ -352,13 +447,13 @@ class LandUseOptEnv(gym.Env):
         cont_r = (cont - self.prev_contiguity) / (abs(self.initial_contiguity) + 1e-8)
         count_dev = abs(self.n_farmland - self.initial_n_farmland_count) / self.initial_n_farmland_count
 
-        reward = (SLOPE_REWARD_WEIGHT * slope_r
-                  + CONT_REWARD_WEIGHT * cont_r
-                  - COUNT_PENALTY_WEIGHT * count_dev * count_dev)
+        reward = (self.slope_w * slope_r
+                  + self.cont_w * cont_r
+                  - self.balance_w * count_dev * count_dev)
 
         # Pair completion bonus
         if self.n_farmland == self.initial_n_farmland_count:
-            reward += PAIR_BONUS
+            reward += self.pair_b
             self.completed_pairs += 1
 
         self.prev_avg_slope = avg_sl
@@ -555,3 +650,214 @@ def optimize_multi_objective(
         "objective_names": ["slope_score", "contiguity_score", "area_balance"],
         "objective_directions": ["maximize", "maximize", "maximize"],
     }
+
+
+# ---------------------------------------------------------------------------
+# NSGA-II Multi-Objective Optimizer (v14.3)
+# ---------------------------------------------------------------------------
+
+def _dominates(a: list[float], b: list[float]) -> bool:
+    """True if solution a Pareto-dominates solution b (all >= and at least one >)."""
+    at_least_one_better = False
+    for ai, bi in zip(a, b):
+        if ai < bi:
+            return False
+        if ai > bi:
+            at_least_one_better = True
+    return at_least_one_better
+
+
+def _fast_nondominated_sort(population: list[dict]) -> list[list[int]]:
+    """NSGA-II fast non-dominated sorting. Returns list of fronts (index lists)."""
+    n = len(population)
+    domination_count = [0] * n
+    dominated_by = [[] for _ in range(n)]
+    fronts = [[]]
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            oi = population[i]["objectives"]
+            oj = population[j]["objectives"]
+            if _dominates(oi, oj):
+                dominated_by[i].append(j)
+                domination_count[j] += 1
+            elif _dominates(oj, oi):
+                dominated_by[j].append(i)
+                domination_count[i] += 1
+
+    for i in range(n):
+        if domination_count[i] == 0:
+            fronts[0].append(i)
+
+    k = 0
+    while fronts[k]:
+        next_front = []
+        for i in fronts[k]:
+            for j in dominated_by[i]:
+                domination_count[j] -= 1
+                if domination_count[j] == 0:
+                    next_front.append(j)
+        k += 1
+        fronts.append(next_front)
+
+    return [f for f in fronts if f]
+
+
+def _crowding_distance(population: list[dict], front: list[int]) -> list[float]:
+    """Compute crowding distance for a Pareto front."""
+    n = len(front)
+    if n <= 2:
+        return [float('inf')] * n
+    n_obj = len(population[front[0]]["objectives"])
+    distances = [0.0] * n
+
+    for m in range(n_obj):
+        sorted_idx = sorted(range(n), key=lambda i: population[front[i]]["objectives"][m])
+        distances[sorted_idx[0]] = float('inf')
+        distances[sorted_idx[-1]] = float('inf')
+        obj_range = (population[front[sorted_idx[-1]]]["objectives"][m]
+                     - population[front[sorted_idx[0]]]["objectives"][m])
+        if obj_range == 0:
+            continue
+        for i in range(1, n - 1):
+            distances[sorted_idx[i]] += (
+                population[front[sorted_idx[i + 1]]]["objectives"][m]
+                - population[front[sorted_idx[i - 1]]]["objectives"][m]
+            ) / obj_range
+
+    return distances
+
+
+def nsga2_optimize(
+    gdf: gpd.GeoDataFrame,
+    population_size: int = 20,
+    generations: int = 10,
+    max_steps: int = 200,
+    scenario: 'DRLScenario | None' = None,
+) -> dict:
+    """NSGA-II multi-objective optimization.
+
+    Generates diverse Pareto-optimal solutions via evolutionary selection
+    with non-dominated sorting and crowding distance.
+    """
+    import random
+    import tempfile
+    import os
+
+    # Save GeoDataFrame to temp file for env loading
+    tmp_path = os.path.join(tempfile.gettempdir(), f"nsga2_{id(gdf)}.shp")
+    gdf.to_file(tmp_path)
+
+    # Generate initial population with random weight combinations
+    population = []
+    for _ in range(population_size):
+        sw = random.uniform(100, 2000)
+        cw = random.uniform(100, 1500)
+        bw = random.uniform(100, 1000)
+
+        try:
+            sc = DRLScenario(
+                name="nsga2_run",
+                description="",
+                source_types=scenario.source_types if scenario else FARMLAND_TYPES,
+                target_types=scenario.target_types if scenario else FOREST_TYPES,
+                slope_weight=sw, contiguity_weight=cw, balance_weight=bw,
+                max_conversions=max_steps,
+            )
+            env = LandUseOptEnv(tmp_path, scenario=sc)
+            obs, _ = env.reset()
+            for _ in range(max_steps):
+                masks = env.action_masks()
+                if not masks.any():
+                    break
+                action = random.choice(np.where(masks)[0])
+                obs, _, done, trunc, _ = env.step(action)
+                if done or trunc:
+                    break
+
+            slope_score = max(0, 1.0 - env.avg_farmland_slope / (env.initial_avg_slope + 1e-8))
+            cont_score = env.contiguity / (env.initial_contiguity + 1e-8)
+            balance = 1.0 - abs(env.n_farmland - env.initial_n_farmland_count) / (env.initial_n_farmland_count + 1e-8)
+
+            population.append({
+                "objectives": [slope_score, cont_score, balance],
+                "weights": [sw, cw, bw],
+                "conversions": env.step_count,
+            })
+        except Exception:
+            continue
+
+    if not population:
+        return {"status": "error", "message": "All runs failed"}
+
+    # NSGA-II selection over generations
+    for gen in range(generations):
+        fronts = _fast_nondominated_sort(population)
+        new_pop = []
+        for front in fronts:
+            if len(new_pop) + len(front) <= population_size:
+                new_pop.extend(front)
+            else:
+                dist = _crowding_distance(population, front)
+                ranked = sorted(range(len(front)), key=lambda i: dist[i], reverse=True)
+                remaining = population_size - len(new_pop)
+                new_pop.extend([front[ranked[i]] for i in range(remaining)])
+                break
+        population = [population[i] for i in new_pop]
+
+    # Return Pareto front
+    fronts = _fast_nondominated_sort(population)
+    pareto = [population[i] for i in fronts[0]] if fronts else population
+
+    # Cleanup
+    try:
+        os.remove(tmp_path)
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "pareto_frontier": [
+            {
+                "objectives": p["objectives"],
+                "weights": p["weights"],
+                "slope_score": round(p["objectives"][0], 4),
+                "contiguity_score": round(p["objectives"][1], 4),
+                "area_balance": round(p["objectives"][2], 4),
+            }
+            for p in pareto
+        ],
+        "frontier_size": len(pareto),
+        "generations": generations,
+        "population_size": population_size,
+        "objective_names": ["slope_score", "contiguity_score", "area_balance"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Additional Scenario Environments (v14.3 stubs)
+# ---------------------------------------------------------------------------
+
+# Transport Network scenario — road network optimization
+SCENARIOS["transport_network"] = DRLScenario(
+    name="交通网络优化",
+    description="优化道路网络布局，平衡通行效率和建设成本",
+    source_types={'主干路', '次干路', '支路'},
+    target_types={'绿化带', '人行道'},
+    slope_weight=400.0,
+    contiguity_weight=1200.0,
+    balance_weight=600.0,
+    max_conversions=150,
+)
+
+# Public Facility Siting — already in SCENARIOS, add hospital/school variant
+SCENARIOS["public_services"] = DRLScenario(
+    name="公共服务设施选址",
+    description="优化学校、医院等公共服务设施空间分布，最大化服务覆盖人口",
+    source_types={'公共服务设施', '学校', '医院', '社区中心'},
+    target_types={'居住用地', '商业用地', '工业用地'},
+    slope_weight=200.0,
+    contiguity_weight=600.0,
+    balance_weight=1000.0,
+    max_conversions=80,
+)

@@ -95,6 +95,15 @@ class CostGuardPlugin(BasePlugin):
             accumulated = callback_context.state.get(self.STATE_KEY, 0) + delta
             callback_context.state[self.STATE_KEY] = accumulated
 
+            # Record LLM metrics for Prometheus (v14.5)
+            try:
+                from .observability import record_llm_call
+                agent_name = getattr(callback_context, 'agent_name', '') or 'unknown'
+                model = getattr(llm_response, 'model', '') or 'unknown'
+                record_llm_call(agent_name, model, prompt_tokens, output_tokens)
+            except Exception:
+                pass
+
             if not self._warned and accumulated >= self.warn_threshold:
                 self._warned = True
                 logger.warning(

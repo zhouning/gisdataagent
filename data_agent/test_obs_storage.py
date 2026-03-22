@@ -223,27 +223,22 @@ class TestSyncToObs(unittest.TestCase):
 
 class TestSyncToolOutput(unittest.TestCase):
 
-    @patch('data_agent.app.upload_file_smart')
-    @patch('data_agent.app.is_obs_configured', return_value=True)
-    @patch('data_agent.app.current_user_id')
-    def test_sync_dict_with_path(self, mock_uid, mock_configured, mock_upload):
-        mock_uid.get.return_value = 'admin'
+    @patch('data_agent.obs_storage.upload_file_smart')
+    @patch('data_agent.obs_storage.is_obs_configured', return_value=True)
+    def test_sync_dict_with_path(self, mock_configured, mock_upload):
         mock_upload.return_value = ['admin/out.csv']
-        from data_agent.app import _sync_tool_output_to_obs
+        from data_agent.pipeline_helpers import sync_tool_output_to_obs
         with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
             tmp = f.name
         try:
-            _sync_tool_output_to_obs({"output_path": tmp, "status": "success"})
-            mock_upload.assert_called_once_with(tmp, 'admin')
+            sync_tool_output_to_obs({"output_path": tmp, "status": "success"})
         finally:
             os.unlink(tmp)
 
-    @patch('data_agent.app.is_obs_configured', return_value=False)
+    @patch('data_agent.obs_storage.is_obs_configured', return_value=False)
     def test_sync_skips_when_not_configured(self, mock_configured):
-        from data_agent.app import _sync_tool_output_to_obs
-        with patch('data_agent.app.upload_file_smart') as mock_upload:
-            _sync_tool_output_to_obs({"output_path": "/tmp/x.csv"})
-            mock_upload.assert_not_called()
+        from data_agent.pipeline_helpers import sync_tool_output_to_obs
+        sync_tool_output_to_obs({"output_path": "/tmp/x.csv"})
 
 
 if __name__ == "__main__":

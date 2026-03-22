@@ -743,34 +743,148 @@ def check_topology(file_path: str) -> dict[str, any]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def check_field_standards(file_path: str, standard_schema: dict) -> dict[str, any]:
-    """
-    [Governance Tool] Validates attribute data against a standard schema (field names, types, and allowed values).
-    
+
+def list_fgdb_layers(file_path: str) -> dict:
+    """列出 Esri File Geodatabase (.gdb) 中的所有图层及其要素数、几何类型。
+
     Args:
-        file_path: Path to the data file.
-        standard_schema: Dict e.g. {"DLMC": {"type": "string", "allowed": ["水田", "旱地", "有林地"]}}
+        file_path: File Geodatabase 目录路径（xxx.gdb）。
+
+    Returns:
+        包含图层列表的字典，每个图层有 name、count、geometry_type 字段。
     """
     try:
-        gdf = gpd.read_file(_resolve_path(file_path))
-        results = {"missing_fields": [], "type_mismatches": [], "invalid_values": []}
-        
-        for field, rules in standard_schema.items():
-            if field not in gdf.columns:
-                results["missing_fields"].append(field)
-                continue
-            
-            # Check values if 'allowed' list exists
-            if "allowed" in rules:
-                invalid = gdf[~gdf[field].isin(rules["allowed"])]
-                if not invalid.empty:
-                    results["invalid_values"].append({
-                        "field": field, 
-                        "count": len(invalid), 
-                        "sample": invalid[field].unique().tolist()[:5]
+        import fiona
+        path = _resolve_path(file_path)
+        layers = fiona.listlayers(path)
+        if not layers:
+            return {"status": "ok", "layers": [], "message": "GDB 为空"}
+        result = []
+        for name in layers:
+            try:
+                with fiona.open(path, layer=name) as src:
+                    result.append({
+                        "name": name,
+                        "count": len(src),
+                        "geometry_type": src.schema.get("geometry", "Unknown"),
+                        "fields": list(src.schema.get("properties", {}).keys()),
                     })
-        
-        results["is_standard"] = not (results["missing_fields"] or results["invalid_values"])
+            except Exception as e:
+                result.append({"name": name, "error": str(e)[:100]})
+        return {"status": "ok", "layer_count": len(result), "layers": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def check_field_standards(file_path: str, standard_schema: str = "") -> dict[str, any]:
+    """
+    [Governance Tool] 按数据标准校验属性字段：字段存在性、必填约束(M/C/O)、值域枚举、类型兼容、长度限制。
+
+    Args:
+        file_path: Path to the data file.
+        standard_schema: Either a standard ID (e.g. "dltb_2023") to auto-load from Standard Registry,
+                         or a JSON dict string e.g. '{"DLMC": {"type": "string", "allowed": ["水田", "旱地"]}}'
+    """
+    try:
+        standard_obj = None  # Full DataStandard for M/C/O + max_length checks
+
+        # Resolve schema: standard_id or inline JSON
+        if standard_schema and not standard_schema.strip().startswith("{"):
+            from .standard_registry import StandardRegistry
+            std_id = standard_schema.strip()
+            schema = StandardRegistry.get_field_schema(std_id)
+            standard_obj = StandardRegistry.get(std_id)
+            if not schema:
+                return {"status": "error", "message": f"未找到标准定义: {standard_schema}"}
+        elif standard_schema:
+            import json as _json
+            schema = _json.loads(standard_schema)
+        else:
+            return {"status": "error", "message": "请提供标准ID (如 'dltb_2023') 或 JSON schema"}
+
+        gdf = gpd.read_file(_resolve_path(file_path))
+        results = {
+            "missing_fields": [],
+            "missing_mandatory": [],
+            "mandatory_nulls": [],
+            "type_mismatches": [],
+            "length_violations": [],
+            "invalid_values": [],
+        }
+
+        # --- Enumeration / allowed-value checks (existing logic) ---
+        for field_name, rules in schema.items():
+            if field_name not in gdf.columns:
+                results["missing_fields"].append(field_name)
+                continue
+            if "allowed" in rules and rules["allowed"]:
+                non_null = gdf[field_name].dropna()
+                if not non_null.empty:
+                    invalid = non_null[~non_null.astype(str).isin([str(v) for v in rules["allowed"]])]
+                    if not invalid.empty:
+                        results["invalid_values"].append({
+                            "field": field_name,
+                            "count": len(invalid),
+                            "sample": invalid.unique().tolist()[:5],
+                        })
+
+        # --- Extended checks when full standard is available ---
+        TYPE_MAP = {
+            "string": ["object", "str", "string"],
+            "numeric": ["float64", "float32", "int64", "int32", "Float64", "Int64"],
+            "integer": ["int64", "int32", "Int64", "int16"],
+            "date": ["datetime64"],
+        }
+
+        if standard_obj:
+            for fspec in standard_obj.fields:
+                # M/C/O mandatory check
+                if fspec.required == "M":
+                    if fspec.name not in gdf.columns:
+                        if fspec.name not in results["missing_mandatory"]:
+                            results["missing_mandatory"].append(fspec.name)
+                    else:
+                        null_count = int(gdf[fspec.name].isna().sum())
+                        empty_count = 0
+                        if gdf[fspec.name].dtype == object:
+                            empty_count = int((gdf[fspec.name] == "").sum())
+                        total_missing = null_count + empty_count
+                        if total_missing > 0:
+                            results["mandatory_nulls"].append({
+                                "field": fspec.name, "null_count": total_missing,
+                            })
+
+                # Type compatibility check
+                if fspec.name in gdf.columns and fspec.type in TYPE_MAP:
+                    actual = str(gdf[fspec.name].dtype)
+                    if not any(t in actual for t in TYPE_MAP[fspec.type]):
+                        results["type_mismatches"].append({
+                            "field": fspec.name,
+                            "expected": fspec.type,
+                            "actual": actual,
+                        })
+
+                # max_length check (string fields)
+                if fspec.max_length and fspec.name in gdf.columns:
+                    try:
+                        str_col = gdf[fspec.name].dropna().astype(str)
+                        over = str_col[str_col.str.len() > fspec.max_length]
+                        if not over.empty:
+                            results["length_violations"].append({
+                                "field": fspec.name,
+                                "max_length": fspec.max_length,
+                                "violation_count": len(over),
+                                "sample": over.head(3).tolist(),
+                            })
+                    except Exception:
+                        pass
+
+        # --- Compliance rate ---
+        total_checks = len(schema)
+        issue_fields = set(results["missing_fields"]) | {v["field"] for v in results["invalid_values"]}
+        passed = total_checks - len(issue_fields)
+        results["compliance_rate"] = round(passed / total_checks * 100, 1) if total_checks else 100.0
+        results["is_standard"] = not (results["missing_mandatory"] or results["invalid_values"])
         return results
     except Exception as e:
         return {"status": "error", "message": str(e)}

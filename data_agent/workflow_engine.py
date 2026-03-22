@@ -87,6 +87,11 @@ def ensure_workflow_tables():
                 f"CREATE INDEX IF NOT EXISTS idx_workflow_runs_wf "
                 f"ON {T_WORKFLOW_RUNS} (workflow_id, started_at DESC)"
             ))
+            # v14.0: checkpoint column
+            conn.execute(text(
+                f"ALTER TABLE {T_WORKFLOW_RUNS} "
+                f"ADD COLUMN IF NOT EXISTS node_checkpoints JSONB DEFAULT '{{}}'::jsonb"
+            ))
             conn.commit()
             print("[Workflows] Tables ready.")
     except Exception as e:
@@ -381,7 +386,7 @@ async def execute_workflow(
         intent = pipeline_type.upper()
 
         # Select agent
-        agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type)
+        agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
         if not agent_obj:
             error_msg = f"Unknown pipeline_type: {pipeline_type}"
             status = "failed"
@@ -498,8 +503,22 @@ async def execute_workflow(
     }
 
 
-def _get_agent_for_pipeline(agent_module, pipeline_type: str):
-    """Get the appropriate agent for a pipeline type."""
+def _get_agent_for_pipeline(agent_module, pipeline_type: str, step: dict = None):
+    """Get the appropriate agent for a pipeline type.
+
+    For 'custom_skill' type, dynamically builds an LlmAgent from the
+    referenced skill in the database.
+    """
+    if pipeline_type == "custom_skill":
+        skill_id = (step or {}).get("skill_id")
+        if not skill_id:
+            return None
+        from .custom_skills import get_custom_skill, build_custom_agent
+        skill = get_custom_skill(int(skill_id))
+        if not skill:
+            return None
+        return build_custom_agent(skill)
+
     mapping = {
         "general": "general_pipeline",
         "governance": "governance_pipeline",
@@ -999,7 +1018,7 @@ async def execute_workflow_dag(
             pipeline_type = step.get("pipeline_type", "general")
             prompt = _substitute_params_dag(step.get("prompt", ""), params, node_outputs)
 
-            agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type)
+            agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
             if not agent_obj:
                 err = f"Unknown pipeline_type: {pipeline_type}"
                 if run_id:
@@ -1085,6 +1104,10 @@ async def execute_workflow_dag(
             total_input += result_data.get("input_tokens", 0)
             total_output += result_data.get("output_tokens", 0)
 
+        # v14.0: Save checkpoint after each layer
+        if engine and run_id:
+            _save_checkpoint(engine, run_id, node_outputs, step_results)
+
     duration = time.time() - start_time
 
     # Update run record
@@ -1150,3 +1173,198 @@ async def execute_workflow_dag(
         "error": error_msg,
         "webhook_sent": webhook_sent,
     }
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint helpers (v14.0)
+# ---------------------------------------------------------------------------
+
+def _save_checkpoint(engine, run_id: int, node_outputs: dict, step_results: list):
+    """Persist node_outputs to DB as checkpoint for resume capability."""
+    try:
+        # Serialize node_outputs (strip non-serializable fields)
+        safe_outputs = {}
+        for k, v in node_outputs.items():
+            if isinstance(v, dict):
+                safe_outputs[k] = {
+                    kk: vv for kk, vv in v.items()
+                    if isinstance(vv, (str, int, float, bool, list, dict, type(None)))
+                }
+            else:
+                safe_outputs[k] = str(v)
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"UPDATE {T_WORKFLOW_RUNS} SET node_checkpoints = :cp::jsonb, "
+                f"step_results = :sr::jsonb WHERE id = :id"
+            ), {
+                "id": run_id,
+                "cp": json.dumps(safe_outputs, ensure_ascii=False, default=str),
+                "sr": json.dumps(step_results, ensure_ascii=False, default=str),
+            })
+            conn.commit()
+    except Exception as e:
+        logger.debug("Checkpoint save failed for run %s: %s", run_id, e)
+
+
+def get_run_checkpoint(run_id: int) -> dict | None:
+    """Load checkpoint data for a workflow run."""
+    engine = get_engine()
+    if not engine:
+        return None
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                f"SELECT status, step_results, node_checkpoints, workflow_id "
+                f"FROM {T_WORKFLOW_RUNS} WHERE id = :id"
+            ), {"id": run_id}).fetchone()
+        if not row:
+            return None
+        sr = row[1] if isinstance(row[1], list) else json.loads(row[1] or "[]")
+        cp = row[2] if isinstance(row[2], dict) else json.loads(row[2] or "{}")
+        return {
+            "status": row[0],
+            "step_results": sr,
+            "node_checkpoints": cp,
+            "workflow_id": row[3],
+        }
+    except Exception:
+        return None
+
+
+async def retry_workflow_node(run_id: int, step_id: str, username: str) -> dict:
+    """Retry a single failed node in a DAG workflow run.
+
+    Loads the checkpoint, re-executes the specified node, and updates results.
+    """
+    checkpoint = get_run_checkpoint(run_id)
+    if not checkpoint:
+        return {"status": "error", "message": f"Run {run_id} not found"}
+    if checkpoint["status"] not in ("failed", "completed"):
+        return {"status": "error", "message": "Can only retry nodes in failed/completed runs"}
+
+    workflow_id = checkpoint["workflow_id"]
+    workflow = get_workflow(workflow_id, username)
+    if not workflow:
+        return {"status": "error", "message": "Workflow not found"}
+
+    steps = workflow.get("steps", [])
+    target_step = None
+    for s in steps:
+        if s.get("step_id") == step_id or s.get("name") == step_id:
+            target_step = s
+            break
+    if not target_step:
+        return {"status": "error", "message": f"Step '{step_id}' not found in workflow"}
+
+    # Re-execute just this node
+    node_outputs = checkpoint.get("node_checkpoints", {})
+    params = workflow.get("parameters", {})
+
+    from .pipeline_runner import run_pipeline_headless
+    from .agent import general_pipeline
+    from google.adk.sessions import InMemorySessionService
+
+    prompt = _substitute_params_dag(
+        target_step.get("prompt", ""), params, node_outputs
+    )
+    pipeline_type = target_step.get("pipeline_type", "general")
+
+    try:
+        session_svc = InMemorySessionService()
+        session_id = f"retry_{run_id}_{step_id}"
+        result = await run_pipeline_headless(
+            agent=general_pipeline,
+            session_service=session_svc,
+            user_id=username,
+            session_id=session_id,
+            prompt=prompt,
+            pipeline_type=pipeline_type,
+        )
+        result_data = {
+            "step_id": step_id,
+            "status": "completed" if not result.error else "failed",
+            "files": result.generated_files,
+            "input_tokens": result.total_input_tokens,
+            "output_tokens": result.total_output_tokens,
+            "duration": round(result.duration_seconds, 2),
+            "error": result.error,
+        }
+
+        # Update checkpoint
+        node_outputs[step_id] = result_data
+        step_results = checkpoint.get("step_results", [])
+        # Replace the old result for this step
+        step_results = [sr for sr in step_results if sr.get("step_id") != step_id]
+        step_results.append(result_data)
+
+        engine = get_engine()
+        if engine:
+            new_status = "completed" if not result.error else "failed"
+            _save_checkpoint(engine, run_id, node_outputs, step_results)
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(
+                        f"UPDATE {T_WORKFLOW_RUNS} SET status = :s WHERE id = :id"
+                    ), {"s": new_status, "id": run_id})
+                    conn.commit()
+            except Exception:
+                pass
+
+        return {"status": "ok", "node": step_id, "result": result_data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Crash Recovery (v14.2)
+# ---------------------------------------------------------------------------
+
+def find_incomplete_runs(max_age_hours: int = 24) -> list[dict]:
+    """Find workflow runs stuck in 'running' state (likely from process crash)."""
+    engine = get_engine()
+    if not engine:
+        return []
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                f"SELECT id, workflow_id, run_by, status, started_at "
+                f"FROM {T_WORKFLOW_RUNS} "
+                f"WHERE status = 'running' AND started_at < NOW() - INTERVAL ':h hours'"
+            ), {"h": max_age_hours}).fetchall()
+        return [
+            {"run_id": r[0], "workflow_id": r[1], "run_by": r[2],
+             "status": r[3], "started_at": str(r[4])}
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
+def mark_run_failed(run_id: int, error_message: str = "Process crashed — marked as failed"):
+    """Mark a stuck run as failed so it can be retried."""
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"UPDATE {T_WORKFLOW_RUNS} SET status = 'failed', "
+                f"error_message = :err, completed_at = NOW() WHERE id = :id"
+            ), {"id": run_id, "err": error_message})
+            conn.commit()
+    except Exception:
+        pass
+
+
+def recover_incomplete_runs():
+    """Scan for and mark crashed runs on startup. Returns count recovered."""
+    incomplete = find_incomplete_runs(max_age_hours=1)
+    count = 0
+    for run in incomplete:
+        mark_run_failed(run["run_id"])
+        logger.info("Recovered crashed workflow run %d (workflow=%d, user=%s)",
+                     run["run_id"], run["workflow_id"], run["run_by"])
+        count += 1
+    if count:
+        logger.info("Recovered %d crashed workflow runs", count)
+    return count

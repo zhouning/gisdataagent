@@ -80,7 +80,7 @@ class TestStartupResilience(unittest.TestCase):
 class TestIntentClassification(unittest.TestCase):
     """Test classify_intent with mock Gemini."""
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_classify_general(self, mock_client):
         """Normal classification returns 3-tuple with GENERAL intent."""
         mock_response = MagicMock()
@@ -96,7 +96,7 @@ class TestIntentClassification(unittest.TestCase):
         self.assertIn("数据库", reason)
         self.assertGreaterEqual(tokens, 0)
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_classify_governance(self, mock_client):
         """Classification correctly returns GOVERNANCE."""
         mock_response = MagicMock()
@@ -110,7 +110,7 @@ class TestIntentClassification(unittest.TestCase):
         intent, reason, tokens, _ = classify_intent("对这个数据做拓扑检查")
         self.assertEqual(intent, "GOVERNANCE")
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_classify_api_error_fallback(self, mock_client):
         """classify_intent falls back to GENERAL on API error."""
         mock_client.models.generate_content.side_effect = Exception("API timeout")
@@ -120,7 +120,7 @@ class TestIntentClassification(unittest.TestCase):
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(tokens, 0)
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_classify_malformed_response(self, mock_client):
         """classify_intent handles malformed model output."""
         mock_response = MagicMock()

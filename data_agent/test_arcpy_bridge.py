@@ -200,9 +200,10 @@ class TestArcPyWatershed(unittest.TestCase):
     @patch.dict(os.environ, {"ARCPY_PYTHON_EXE": ""}, clear=False)
     def test_no_bridge_returns_error(self):
         from data_agent.arcpy_tools import arcpy_extract_watershed, ArcPyBridge
+        import asyncio
         ArcPyBridge._instance = None
         import json
-        result = json.loads(arcpy_extract_watershed("test.tif"))
+        result = json.loads(asyncio.get_event_loop().run_until_complete(arcpy_extract_watershed("test.tif")))
         self.assertEqual(result["status"], "error")
         self.assertIn("ArcPy", result["message"])
         ArcPyBridge._instance = None

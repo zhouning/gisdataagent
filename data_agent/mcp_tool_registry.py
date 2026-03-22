@@ -61,6 +61,95 @@ def _wrap_tool(fn: Callable) -> Callable:
 # Lazy imports — avoid importing heavy GIS libraries at registry definition
 # ---------------------------------------------------------------------------
 
+# --- High-level wrapper functions (v13.1) ---
+
+def _mcp_list_skills() -> str:
+    """列出所有可用的内置 ADK 技能（Skills），包括名称、描述、领域和触发关键词。
+
+    Returns:
+        JSON格式的技能列表。
+    """
+    from .capabilities import list_builtin_skills
+    skills = list_builtin_skills()
+    return json.dumps({"skills": skills, "count": len(skills)}, ensure_ascii=False)
+
+
+def _mcp_list_toolsets() -> str:
+    """列出所有可用的工具集（Toolsets），每个工具集包含多个专业 GIS 分析工具。
+
+    Returns:
+        JSON格式的工具集列表。
+    """
+    from .capabilities import list_toolsets
+    toolsets = list_toolsets()
+    return json.dumps({"toolsets": toolsets, "count": len(toolsets)}, ensure_ascii=False)
+
+
+def _mcp_list_virtual_sources() -> str:
+    """列出当前用户可访问的虚拟数据源（WFS/STAC/OGC API/自定义API），包括共享源。
+
+    Returns:
+        JSON格式的虚拟数据源列表。
+    """
+    from .virtual_sources import list_virtual_sources
+    from .user_context import current_user_id
+    username = current_user_id.get("mcp_user")
+    sources = list_virtual_sources(username, include_shared=True)
+    return json.dumps({"sources": sources, "count": len(sources)}, ensure_ascii=False)
+
+
+def _mcp_run_pipeline(prompt: str, pipeline_type: str = "general") -> str:
+    """执行完整的 GIS 分析管线。支持通用分析、治理报告、优化布局三种管线。
+
+    Args:
+        prompt: 用户分析需求描述（自然语言，如"分析北京市土地利用变化趋势"）。
+        pipeline_type: 管线类型（general=通用分析, governance=治理报告, optimization=DRL优化）。
+
+    Returns:
+        JSON格式的分析结果，包含报告文本、生成文件、工具执行日志、Token消耗等。
+    """
+    import asyncio
+    try:
+        from .pipeline_runner import run_pipeline_headless
+        from .user_context import current_user_id, current_session_id
+        from .agent import general_pipeline, governance_pipeline, data_pipeline
+        from google.adk.sessions import InMemorySessionService
+
+        user_id = current_user_id.get("mcp_user")
+        session_id = current_session_id.get(f"mcp_{user_id}")
+
+        agents = {
+            "general": general_pipeline,
+            "governance": governance_pipeline,
+            "optimization": data_pipeline,
+        }
+        agent = agents.get(pipeline_type, general_pipeline)
+        session_service = InMemorySessionService()
+
+        result = asyncio.run(run_pipeline_headless(
+            agent=agent,
+            session_service=session_service,
+            user_id=user_id,
+            session_id=session_id,
+            prompt=prompt,
+            pipeline_type=pipeline_type,
+            intent=pipeline_type.upper(),
+        ))
+
+        return json.dumps({
+            "status": "ok",
+            "report": result.report_text[:5000],
+            "files": result.generated_files,
+            "pipeline_type": result.pipeline_type,
+            "duration_seconds": round(result.duration_seconds, 1),
+            "input_tokens": result.total_input_tokens,
+            "output_tokens": result.total_output_tokens,
+            "error": result.error,
+        }, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
 def _get_tool_functions() -> Dict[str, Callable]:
     """Lazy-import all tool functions. Called once during registration."""
     from .toolsets.exploration_tools import (
@@ -120,6 +209,8 @@ def _get_tool_functions() -> Dict[str, Callable]:
         local_moran,
         hotspot_analysis,
     )
+    from .data_catalog import search_data_assets, get_data_lineage
+    from .capabilities import list_builtin_skills, list_toolsets
 
     return {
         "describe_geodataframe": describe_geodataframe,
@@ -165,6 +256,13 @@ def _get_tool_functions() -> Dict[str, Callable]:
         "spatial_autocorrelation": spatial_autocorrelation,
         "local_moran": local_moran,
         "hotspot_analysis": hotspot_analysis,
+        # --- High-level metadata tools (v13.1) ---
+        "search_catalog": search_data_assets,
+        "get_data_lineage": get_data_lineage,
+        "list_skills": _mcp_list_skills,
+        "list_toolsets": _mcp_list_toolsets,
+        "list_virtual_sources": _mcp_list_virtual_sources,
+        "run_analysis_pipeline": _mcp_run_pipeline,
     }
 
 
@@ -404,6 +502,38 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
     {
         "name": "hotspot_analysis",
         "description": "Getis-Ord Gi* 热点分析：识别统计显著的热点和冷点区域，输出 SHP + PNG。",
+        "annotations": _WRITE_SAFE,
+    },
+
+    # --- High-level metadata & pipeline tools (v13.1) ---
+    {
+        "name": "search_catalog",
+        "description": "语义搜索数据目录：结合模糊匹配和向量嵌入检索已注册的数据资产（支持自然语言查询）。",
+        "annotations": _READ_ONLY,
+    },
+    {
+        "name": "get_data_lineage",
+        "description": "数据血缘追踪：查看数据资产的来源链（ancestors）和衍生链（descendants）。",
+        "annotations": _READ_ONLY,
+    },
+    {
+        "name": "list_skills",
+        "description": "列出所有内置 ADK 技能：返回名称、描述、领域和触发关键词。",
+        "annotations": _READ_ONLY,
+    },
+    {
+        "name": "list_toolsets",
+        "description": "列出所有工具集：返回 24 个专业工具集的名称和功能描述。",
+        "annotations": _READ_ONLY,
+    },
+    {
+        "name": "list_virtual_sources",
+        "description": "列出虚拟数据源：返回已注册的远程 WFS/STAC/OGC API/自定义 API 数据源。",
+        "annotations": _READ_ONLY,
+    },
+    {
+        "name": "run_analysis_pipeline",
+        "description": "执行完整分析管线：将自然语言分析需求交给 GIS Agent 执行（通用分析/治理报告/DRL优化），返回分析报告和文件。",
         "annotations": _WRITE_SAFE,
     },
 ]

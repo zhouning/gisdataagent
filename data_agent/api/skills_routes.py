@@ -1,0 +1,250 @@
+"""Custom Skills CRUD routes — extracted from frontend_api.py (S-4 refactoring v12.1)."""
+
+import logging
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
+from .helpers import _get_user_from_request, _set_user_context
+
+logger = logging.getLogger("data_agent.api.skills_routes")
+
+
+async def skills_list(request: Request):
+    """GET /api/skills — list custom skills for current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..custom_skills import list_custom_skills
+    skills = list_custom_skills(include_shared=True)
+    return JSONResponse({"skills": skills})
+
+
+async def skills_create(request: Request):
+    """POST /api/skills — create a custom skill."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from ..custom_skills import (
+        validate_skill_name, validate_instruction, validate_toolset_names,
+        create_custom_skill, VALID_MODEL_TIERS,
+    )
+    err = validate_skill_name(body.get("skill_name", ""))
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+    err = validate_instruction(body.get("instruction", ""))
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+    err = validate_toolset_names(body.get("toolset_names") or [])
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+    model_tier = body.get("model_tier", "standard")
+    if model_tier not in VALID_MODEL_TIERS:
+        return JSONResponse({"error": f"model_tier must be one of {sorted(VALID_MODEL_TIERS)}"}, status_code=400)
+
+    skill_id = create_custom_skill(
+        skill_name=body["skill_name"].strip(),
+        instruction=body["instruction"].strip(),
+        description=body.get("description", ""),
+        toolset_names=body.get("toolset_names") or [],
+        model_tier=model_tier,
+        output_mode=body.get("output_mode", ""),
+        is_shared=body.get("is_shared", False),
+    )
+    if skill_id is None:
+        return JSONResponse({"error": "Failed to create skill"}, status_code=500)
+
+    try:
+        from ..audit_logger import record_audit, ACTION_CUSTOM_SKILL_CREATE
+        record_audit(ACTION_CUSTOM_SKILL_CREATE, details={"id": skill_id, "name": body["skill_name"]})
+    except Exception:
+        pass
+
+    return JSONResponse({"id": skill_id, "skill_name": body["skill_name"].strip()}, status_code=201)
+
+
+async def skills_detail(request: Request):
+    """GET /api/skills/{id} — get skill detail."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    skill_id = request.path_params.get("id", 0)
+    from ..custom_skills import get_custom_skill
+    skill = get_custom_skill(int(skill_id))
+    if not skill:
+        return JSONResponse({"error": "Skill not found"}, status_code=404)
+    return JSONResponse(skill)
+
+
+async def skills_update(request: Request):
+    """PUT /api/skills/{id} — update a custom skill."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from ..custom_skills import (
+        validate_skill_name, validate_instruction, validate_toolset_names,
+        update_custom_skill, VALID_MODEL_TIERS,
+    )
+    if "skill_name" in body:
+        err = validate_skill_name(body["skill_name"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+    if "instruction" in body:
+        err = validate_instruction(body["instruction"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+    if "toolset_names" in body:
+        err = validate_toolset_names(body["toolset_names"] or [])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+    if "model_tier" in body and body["model_tier"] not in VALID_MODEL_TIERS:
+        return JSONResponse({"error": f"model_tier must be one of {sorted(VALID_MODEL_TIERS)}"}, status_code=400)
+
+    ok = update_custom_skill(skill_id, **body)
+    if not ok:
+        return JSONResponse({"error": "Skill not found or not owned by you"}, status_code=404)
+
+    try:
+        from ..audit_logger import record_audit, ACTION_CUSTOM_SKILL_UPDATE
+        record_audit(ACTION_CUSTOM_SKILL_UPDATE, details={"id": skill_id})
+    except Exception:
+        pass
+
+    return JSONResponse({"ok": True})
+
+
+async def skills_delete(request: Request):
+    """DELETE /api/skills/{id} — delete a custom skill."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    from ..custom_skills import delete_custom_skill
+    ok = delete_custom_skill(skill_id)
+    if not ok:
+        return JSONResponse({"error": "Skill not found or not owned by you"}, status_code=404)
+
+    try:
+        from ..audit_logger import record_audit, ACTION_CUSTOM_SKILL_DELETE
+        record_audit(ACTION_CUSTOM_SKILL_DELETE, details={"id": skill_id})
+    except Exception:
+        pass
+
+    return JSONResponse({"ok": True})
+
+
+async def skills_rate(request: Request):
+    """POST /api/skills/{id}/rate — rate a shared skill (1-5)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    score = body.get("score", 0)
+    if not isinstance(score, int) or score < 1 or score > 5:
+        return JSONResponse({"error": "score must be 1-5"}, status_code=400)
+    from ..custom_skills import rate_skill
+    if rate_skill(skill_id, score):
+        return JSONResponse({"ok": True})
+    return JSONResponse({"error": "Skill not found or not shared"}, status_code=404)
+
+
+async def skills_clone(request: Request):
+    """POST /api/skills/{id}/clone — clone a shared skill to current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    from ..custom_skills import clone_skill
+    new_id = clone_skill(skill_id, username, new_name=body.get("skill_name"))
+    if new_id is None:
+        return JSONResponse({"error": "Clone failed (not found or not shared)"}, status_code=404)
+    return JSONResponse({"ok": True, "id": new_id}, status_code=201)
+
+
+async def skills_request_publish(request: Request):
+    """POST /api/skills/{id}/publish — request publish approval."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    from ..custom_skills import request_publish
+    result = request_publish(skill_id)
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result)
+
+
+async def skills_review_publish(request: Request):
+    """POST /api/skills/{id}/review — admin approves or rejects publish (admin only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    from ..custom_skills import review_publish
+    result = review_publish(skill_id, approve=body.get("approve", False),
+                            reviewer=username, note=body.get("note", ""))
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result)
+
+
+async def skills_pending_list(request: Request):
+    """GET /api/skills/pending — list skills pending approval (admin only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+    from ..custom_skills import list_pending_approvals
+    return JSONResponse({"pending": list_pending_approvals()})
+
+
+def get_skills_routes() -> list:
+    """Return Route objects for custom skills endpoints."""
+    return [
+        Route("/api/skills", skills_list, methods=["GET"]),
+        Route("/api/skills", skills_create, methods=["POST"]),
+        Route("/api/skills/pending", skills_pending_list, methods=["GET"]),
+        Route("/api/skills/{id:int}", skills_detail, methods=["GET"]),
+        Route("/api/skills/{id:int}", skills_update, methods=["PUT"]),
+        Route("/api/skills/{id:int}", skills_delete, methods=["DELETE"]),
+        Route("/api/skills/{id:int}/rate", skills_rate, methods=["POST"]),
+        Route("/api/skills/{id:int}/clone", skills_clone, methods=["POST"]),
+        Route("/api/skills/{id:int}/publish", skills_request_publish, methods=["POST"]),
+        Route("/api/skills/{id:int}/review", skills_review_publish, methods=["POST"]),
+    ]

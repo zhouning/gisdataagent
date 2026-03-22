@@ -23,6 +23,54 @@ logger = get_logger("data_catalog")
 
 T_DATA_CATALOG = "agent_data_catalog"
 
+# ---------------------------------------------------------------------------
+# Embedding helpers (v12.2 — reuses fusion/matching infrastructure)
+# ---------------------------------------------------------------------------
+
+_embedding_cache: dict[str, list[float]] = {}
+
+
+def _generate_asset_embedding(asset_name: str, description: str = "",
+                              tags: str = "", asset_type: str = "") -> list[float]:
+    """Generate embedding vector for a data asset's textual metadata."""
+    text_parts = [asset_name]
+    if description:
+        text_parts.append(description)
+    if tags:
+        text_parts.append(tags)
+    if asset_type:
+        text_parts.append(asset_type)
+    combined = " | ".join(text_parts)
+
+    if combined in _embedding_cache:
+        return _embedding_cache[combined]
+
+    try:
+        from google import genai
+        client = genai.Client()
+        response = client.models.embed_content(
+            model="text-embedding-004",
+            contents=[combined],
+        )
+        vec = response.embeddings[0].values
+        _embedding_cache[combined] = vec
+        return vec
+    except Exception as e:
+        logger.debug("[DataCatalog] Embedding generation failed: %s", e)
+        return []
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
 # Asset type detection by file extension
 _EXT_TYPE_MAP = {
     '.tif': 'raster', '.tiff': 'raster', '.img': 'raster', '.nc': 'raster',
@@ -83,6 +131,14 @@ def ensure_data_catalog_table():
             ))
             conn.execute(text(
                 f"CREATE INDEX IF NOT EXISTS idx_data_catalog_backend ON {T_DATA_CATALOG} (storage_backend)"
+            ))
+            # v12.1 migration: pipeline_run_id for lineage tracking
+            conn.execute(text(
+                f"ALTER TABLE {T_DATA_CATALOG} ADD COLUMN IF NOT EXISTS pipeline_run_id VARCHAR(100) DEFAULT NULL"
+            ))
+            # v12.2 migration: embedding vector for semantic search
+            conn.execute(text(
+                f"ALTER TABLE {T_DATA_CATALOG} ADD COLUMN IF NOT EXISTS embedding JSONB DEFAULT NULL"
             ))
             conn.commit()
         print("[DataCatalog] Data catalog table ready.")
@@ -171,7 +227,8 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                             storage_backend: str = "local",
                             cloud_key: str = "",
                             owner: str = "",
-                            source_assets: list = None) -> Optional[int]:
+                            source_assets: list = None,
+                            pipeline_run_id: str = None) -> Optional[int]:
     """Register a data asset from a file path. Returns asset ID or None.
 
     Extracts spatial metadata automatically. Upserts on (asset_name, owner, backend).
@@ -187,6 +244,9 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
 
     meta = _extract_spatial_metadata(local_path)
 
+    # v12.2: generate embedding for semantic search (non-blocking)
+    embedding = _generate_asset_embedding(asset_name, asset_type=asset_type) or None
+
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
@@ -195,12 +255,12 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                     (asset_name, asset_type, format, storage_backend, cloud_key,
                      local_path, spatial_extent, crs, srid, feature_count,
                      file_size_bytes, creation_tool, creation_params,
-                     source_assets, owner_username)
+                     source_assets, owner_username, pipeline_run_id, embedding)
                 VALUES
                     (:name, :type, :fmt, :backend, :cloud_key,
                      :local_path, CAST(:extent AS jsonb), :crs, :srid, :count,
                      :size, :tool, CAST(:params AS jsonb),
-                     CAST(:sources AS jsonb), :owner)
+                     CAST(:sources AS jsonb), :owner, :run_id, CAST(:embedding AS jsonb))
                 ON CONFLICT (asset_name, owner_username, storage_backend)
                 DO UPDATE SET
                     asset_type = EXCLUDED.asset_type,
@@ -215,6 +275,8 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                     creation_tool = EXCLUDED.creation_tool,
                     creation_params = EXCLUDED.creation_params,
                     source_assets = EXCLUDED.source_assets,
+                    pipeline_run_id = EXCLUDED.pipeline_run_id,
+                    embedding = COALESCE(EXCLUDED.embedding, {T_DATA_CATALOG}.embedding),
                     updated_at = NOW()
                 RETURNING id
             """), {
@@ -233,6 +295,8 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                 "params": json.dumps(creation_params or {}),
                 "sources": json.dumps(source_assets or []),
                 "owner": owner,
+                "run_id": pipeline_run_id,
+                "embedding": json.dumps(embedding) if embedding else None,
             })
             row = result.fetchone()
             conn.commit()
@@ -281,7 +345,8 @@ def _resolve_source_assets(paths: list) -> list:
 
 def register_tool_output(local_path: str, tool_name: str,
                          tool_params: dict = None, cloud_key: str = "",
-                         source_paths: list = None) -> Optional[int]:
+                         source_paths: list = None,
+                         pipeline_run_id: str = None) -> Optional[int]:
     """Non-fatal wrapper for auto_register_from_path. Used by app.py after tool execution."""
     try:
         backend = "cloud" if cloud_key else "local"
@@ -291,6 +356,7 @@ def register_tool_output(local_path: str, tool_name: str,
             creation_params=tool_params,
             storage_backend=backend, cloud_key=cloud_key,
             source_assets=source_assets,
+            pipeline_run_id=pipeline_run_id,
         )
     except Exception as e:
         logger.debug("[DataCatalog] register_tool_output non-fatal error: %s", e)
@@ -510,13 +576,13 @@ def describe_data_asset(asset_name_or_id: str) -> dict:
 
 def search_data_assets(query: str) -> dict:
     """
-    [Data Lake Tool] Semantic fuzzy search across data assets.
+    [Data Lake Tool] Semantic hybrid search across data assets.
 
-    Searches asset names, descriptions, and tags using fuzzy string matching.
-    More flexible than list_data_assets keyword filtering.
+    Combines fuzzy string matching with vector embedding similarity for
+    semantic understanding (e.g. "热岛效应" can find "地表温度" datasets).
 
     Args:
-        query: Search query (natural language, e.g. "土地利用" or "DEM 斑竹").
+        query: Search query (natural language, e.g. "土地利用" or "热岛效应分析").
 
     Returns:
         Dict with ranked list of matching assets.
@@ -622,6 +688,40 @@ def search_data_assets(query: str) -> dict:
                     scored.append((score, asset_info))
 
             scored.sort(key=lambda x: x[0], reverse=True)
+
+            # v12.2: Vector embedding boost — re-rank using semantic similarity
+            if scored:
+                query_emb = _generate_asset_embedding(query)
+                if query_emb:
+                    # Fetch embeddings for scored assets
+                    asset_ids = [s[1]["id"] for s in scored]
+                    emb_rows = conn.execute(text(f"""
+                        SELECT id, embedding FROM {T_DATA_CATALOG}
+                        WHERE id = ANY(:ids) AND embedding IS NOT NULL
+                    """), {"ids": asset_ids}).fetchall()
+                    emb_map = {}
+                    for er in emb_rows:
+                        try:
+                            vec = er[1] if isinstance(er[1], list) else json.loads(er[1] or "[]")
+                            if vec:
+                                emb_map[er[0]] = vec
+                        except Exception:
+                            pass
+                    if emb_map:
+                        boosted = []
+                        for fuzzy_score, info in scored:
+                            vec = emb_map.get(info["id"])
+                            if vec:
+                                sim = _cosine_similarity(query_emb, vec)
+                                # Hybrid: 60% fuzzy + 40% vector
+                                combined = fuzzy_score * 0.6 + sim * 0.4
+                            else:
+                                combined = fuzzy_score
+                            info["relevance"] = round(combined, 2)
+                            boosted.append((combined, info))
+                        boosted.sort(key=lambda x: x[0], reverse=True)
+                        scored = boosted
+
             results = [s[1] for s in scored[:20]]
 
             return {
@@ -919,12 +1019,14 @@ def _walk_ancestors(conn, source_assets_raw, max_depth: int = 10) -> list:
             if asset_id:
                 entry["id"] = asset_id
                 row = conn.execute(text(f"""
-                    SELECT id, asset_name, asset_type, creation_tool, source_assets
+                    SELECT id, asset_name, asset_type, creation_tool, source_assets, pipeline_run_id
                     FROM {T_DATA_CATALOG} WHERE id = :id
                 """), {"id": asset_id}).fetchone()
                 if row:
                     entry["type"] = row[2]
                     entry["creation_tool"] = row[3]
+                    if row[5]:
+                        entry["pipeline_run_id"] = row[5]
                     parent_sources = row[4] if isinstance(row[4], list) else json.loads(
                         row[4] or "[]")
                     if parent_sources:
@@ -940,7 +1042,7 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
     descendants = []
     try:
         rows = conn.execute(text(f"""
-            SELECT id, asset_name, asset_type, creation_tool
+            SELECT id, asset_name, asset_type, creation_tool, pipeline_run_id
             FROM {T_DATA_CATALOG}
             WHERE source_assets::text LIKE :pattern_id
                OR source_assets::text LIKE :pattern_name
@@ -952,10 +1054,13 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
         }).fetchall()
 
         for r in rows:
-            descendants.append({
+            entry = {
                 "id": r[0], "name": r[1],
                 "type": r[2], "creation_tool": r[3],
-            })
+            }
+            if r[4]:
+                entry["pipeline_run_id"] = r[4]
+            descendants.append(entry)
     except Exception:
         pass
     return descendants

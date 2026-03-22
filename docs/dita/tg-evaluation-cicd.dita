@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
+<reference id="tg-evaluation-cicd" xml:lang="zh-CN">
+    <title>评测体系与 CI/CD 流水线</title>
+    <shortdesc>系统通过 pytest 测试套件覆盖核心模块，配合工具失败学习机制和管线历史分析，构建了面向 Agent 系统的质量保障体系。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <refbody>
+        <section id="test-suite">
+            <title>测试套件</title>
+            <table frame="all" rowsep="1" colsep="1" id="test-table">
+                <title>测试模块清单</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="3*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="4*"/>
+                    <thead>
+                        <row>
+                            <entry>测试文件</entry>
+                            <entry>用例数</entry>
+                            <entry>覆盖范围</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><filepath>test_frontend_api.py</filepath></entry>
+                            <entry>44</entry>
+                            <entry>全部 REST API 端点（HTTPX AsyncClient）</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>test_workflow_engine.py</filepath></entry>
+                            <entry>15</entry>
+                            <entry>工作流 CRUD、执行、Cron 调度</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>test_knowledge_agent.py</filepath></entry>
+                            <entry>12</entry>
+                            <entry>知识库 CRUD、搜索、Vertex AI 集成</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>test_knowledge_base.py</filepath></entry>
+                            <entry>10</entry>
+                            <entry>知识库底层存储与检索</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>test_pipeline_streaming.py</filepath></entry>
+                            <entry>8</entry>
+                            <entry>管线流式输出、Token 追踪</entry>
+                        </row>
+                        <row>
+                            <entry><filepath>test_arcpy_bridge.py</filepath></entry>
+                            <entry>6</entry>
+                            <entry>ArcPy Worker 进程通信</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <p>测试使用 <codeph>pytest-asyncio</codeph> 驱动异步测试，通过 <codeph>unittest.mock.patch</codeph> 隔离外部依赖（数据库、Gemini API、文件系统）。</p>
+        </section>
+
+        <section id="tool-failure-learning">
+            <title>工具失败学习</title>
+            <p><codeph>tool_failures</codeph> 表记录每次工具调用失败的详细信息：</p>
+            <ul>
+                <li><codeph>tool_name</codeph>：失败的工具函数名</li>
+                <li><codeph>error_type</codeph>：异常类型</li>
+                <li><codeph>error_message</codeph>：错误信息</li>
+                <li><codeph>input_summary</codeph>：输入参数摘要（脱敏后）</li>
+                <li><codeph>stack_trace</codeph>：调用栈</li>
+                <li><codeph>resolution</codeph>：修复方案（人工标注）</li>
+            </ul>
+            <p>Agent 的 System Prompt 中注入近期高频失败工具的警告信息，引导 LLM 避免重复调用已知有问题的工具或调整参数。</p>
+        </section>
+
+        <section id="pipeline-analytics">
+            <title>管线分析</title>
+            <p><codeph>/api/analytics/*</codeph> 端点提供运行时质量指标：</p>
+            <dl>
+                <dlentry>
+                    <dt>延迟分析（<codeph>/api/analytics/latency</codeph>）</dt>
+                    <dd>按管线、Agent、工具三级粒度的 P50/P95/P99 延迟。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>工具成功率（<codeph>/api/analytics/tool-success</codeph>）</dt>
+                    <dd>按工具名统计成功/失败/超时比例。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>路由准确率（<codeph>/api/analytics/routing</codeph>）</dt>
+                    <dd>意图分类分布、AMBIGUOUS 比例趋势。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>质量循环统计（<codeph>/api/analytics/quality-loops</codeph>）</dt>
+                    <dd>LoopAgent 平均迭代次数、首次通过率。</dd>
+                </dlentry>
+            </dl>
+        </section>
+
+        <section id="cicd-considerations">
+            <title>CI/CD 考量</title>
+            <p>当前项目尚未配置自动化 CI/CD 流水线。建议的流水线设计：</p>
+            <ol>
+                <li><b>Lint &amp; Type Check：</b><codeph>ruff check</codeph> + <codeph>mypy --strict</codeph></li>
+                <li><b>Unit Tests：</b><codeph>pytest -x --timeout=60</codeph>（隔离模式，mock 外部依赖）</li>
+                <li><b>Integration Tests：</b>启动 PostgreSQL + PostGIS 容器，运行数据库相关测试</li>
+                <li><b>Agent Evaluation：</b>预定义 20 个标准查询，验证路由准确率 ≥ 90%、工具调用成功率 ≥ 95%</li>
+                <li><b>Build &amp; Deploy：</b>Docker 镜像构建 → 推送至 Artifact Registry → Cloud Run 部署</li>
+            </ol>
+            <note type="attention">
+                <ul>
+                    <li>缺少端到端 Agent 评测——当前测试仅覆盖工具函数和 API 层，未验证 LLM 的路由准确率和工具选择质量。</li>
+                    <li>无回归测试基准——缺少"黄金数据集"来检测模型升级后的行为变化。</li>
+                    <li>测试覆盖率未量化——建议引入 <codeph>pytest-cov</codeph> 并设置最低覆盖率门槛。</li>
+                </ul>
+            </note>
+        </section>
+    </refbody>
+</reference>

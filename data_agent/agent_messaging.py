@@ -41,12 +41,40 @@ class AgentMessage:
 
 
 class AgentMessageBus:
-    """Simple in-memory publish/subscribe message bus for agent communication."""
+    """Publish/subscribe message bus with optional PostgreSQL persistence (v14.1)."""
 
     def __init__(self):
         self._subscribers: dict[str, list[Callable]] = {}
         self._message_log: list[AgentMessage] = []
         self._max_log_size = 1000
+        self._persist = False
+        self._ensure_persistence()
+
+    def _ensure_persistence(self):
+        """Try to create the persistence table. Falls back to in-memory."""
+        try:
+            from .db_engine import get_engine
+            engine = get_engine()
+            if engine:
+                from sqlalchemy import text
+                with engine.connect() as conn:
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS agent_messages (
+                            id SERIAL PRIMARY KEY,
+                            message_id VARCHAR(20) NOT NULL,
+                            from_agent VARCHAR(100),
+                            to_agent VARCHAR(100),
+                            message_type VARCHAR(30) DEFAULT 'notification',
+                            payload JSONB DEFAULT '{}',
+                            correlation_id VARCHAR(100) DEFAULT '',
+                            delivered BOOLEAN DEFAULT FALSE,
+                            created_at TIMESTAMP DEFAULT NOW()
+                        )
+                    """))
+                    conn.commit()
+                self._persist = True
+        except Exception:
+            pass  # In-memory fallback
 
     def subscribe(self, agent_name: str, callback: Callable[[AgentMessage], None]):
         """Register a callback for messages sent to agent_name."""
@@ -59,10 +87,14 @@ class AgentMessageBus:
         self._subscribers.pop(agent_name, None)
 
     def publish(self, msg: AgentMessage):
-        """Send a message to the target agent(s)."""
+        """Send a message to the target agent(s). Persists to DB if available."""
         self._message_log.append(msg)
         if len(self._message_log) > self._max_log_size:
             self._message_log = self._message_log[-500:]  # trim
+
+        # Persist to DB
+        if self._persist:
+            self._persist_message(msg)
 
         # Deliver to specific agent
         if msg.to_agent and msg.to_agent in self._subscribers:
@@ -93,6 +125,30 @@ class AgentMessageBus:
         """Clear all subscriptions and message log."""
         self._subscribers.clear()
         self._message_log.clear()
+
+    def _persist_message(self, msg: AgentMessage):
+        """Save message to PostgreSQL for audit trail and delivery guarantee."""
+        try:
+            import json
+            from .db_engine import get_engine
+            from sqlalchemy import text
+            engine = get_engine()
+            if not engine:
+                return
+            with engine.connect() as conn:
+                conn.execute(text(
+                    "INSERT INTO agent_messages (message_id, from_agent, to_agent, "
+                    "message_type, payload, correlation_id) "
+                    "VALUES (:mid, :from, :to, :mtype, :payload::jsonb, :cid)"
+                ), {
+                    "mid": msg.message_id, "from": msg.from_agent,
+                    "to": msg.to_agent, "mtype": msg.message_type,
+                    "payload": json.dumps(msg.payload, ensure_ascii=False, default=str),
+                    "cid": msg.correlation_id,
+                })
+                conn.commit()
+        except Exception as e:
+            logger.debug("Message persistence failed: %s", e)
 
 
 # Singleton

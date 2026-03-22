@@ -51,7 +51,10 @@ from .toolsets import (
     KnowledgeBaseToolset,
     AdvancedAnalysisToolset,
 )
+from .toolsets.governance_tools import GovernanceToolset
+from .toolsets.chart_tools import ChartToolset
 from .toolsets.watershed_tools import WatershedToolset
+from .toolsets.virtual_source_tools import VirtualSourceToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -97,10 +100,10 @@ _DB_READ = ["query_database", "list_tables"]
 _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
 _DATALAKE_READ = ["list_data_assets", "describe_data_asset", "search_data_assets", "download_cloud_asset"]
 
-# --- Model Tiering ---
-MODEL_FAST = "gemini-2.0-flash"
-MODEL_STANDARD = "gemini-2.5-flash"
-MODEL_PREMIUM = "gemini-2.5-pro"
+# --- Model Tiering (configurable via env vars) ---
+MODEL_FAST = os.environ.get("MODEL_FAST", "gemini-2.0-flash")
+MODEL_STANDARD = os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
+MODEL_PREMIUM = os.environ.get("MODEL_PREMIUM", "gemini-2.5-pro")
 
 # --- Dynamic Model Selection ---
 MODEL_TIER_MAP = {
@@ -108,6 +111,18 @@ MODEL_TIER_MAP = {
     "standard": MODEL_STANDARD,
     "premium": MODEL_PREMIUM,
 }
+
+
+def get_model_config() -> dict:
+    """Return current model configuration for API exposure."""
+    return {
+        "tiers": {
+            "fast": {"model": MODEL_FAST, "env_var": "MODEL_FAST"},
+            "standard": {"model": MODEL_STANDARD, "env_var": "MODEL_STANDARD"},
+            "premium": {"model": MODEL_PREMIUM, "env_var": "MODEL_PREMIUM"},
+        },
+        "router_model": os.environ.get("ROUTER_MODEL", "gemini-2.0-flash"),
+    }
 
 
 def get_model_for_tier(base_tier: str = "standard") -> str:
@@ -290,20 +305,21 @@ data_pipeline = SequentialAgent(
 
 governance_exploration_agent = LlmAgent(
     name="GovExploration",
-    instruction=get_prompt("optimization", "data_exploration_agent_instruction"),
-    description="数据质量审计员",
+    instruction=get_prompt("governance", "governance_exploration_instruction"),
+    description="数据质量审计员 — 7 项治理检查 + 综合评分",
     model=MODEL_STANDARD,
     output_key="data_profile",
     after_tool_callback=_self_correction_after_tool,
     tools=[
         ExplorationToolset(tool_filter=_AUDIT_TOOLS),
         DatabaseToolset(tool_filter=_DB_READ),
+        GovernanceToolset(),
     ] + _arcpy_gov_explore_tools,
 )
 
 governance_processing_agent = LlmAgent(
     name="GovProcessing",
-    instruction=get_prompt("optimization", "data_processing_agent_instruction"),
+    instruction=get_prompt("governance", "governance_processing_instruction"),
     description="数据修复专家",
     model=MODEL_STANDARD,
     output_key="processed_data",
@@ -315,12 +331,27 @@ governance_processing_agent = LlmAgent(
         ]),
         LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
         FusionToolset(),
+        GovernanceToolset(tool_filter=["check_gaps", "check_duplicates"]),
     ] + _arcpy_gov_process_tools,
+)
+
+governance_viz_agent = LlmAgent(
+    name="GovernanceViz",
+    instruction=get_prompt("governance", "governance_viz_instruction"),
+    description="治理审计可视化 — 雷达图 + 问题分布图",
+    model=MODEL_STANDARD,
+    output_key="governance_visualizations",
+    tools=[
+        VisualizationToolset(tool_filter=[
+            "visualize_interactive_map", "generate_choropleth", "compose_map",
+        ]),
+        ChartToolset(),
+    ],
 )
 
 governance_report_agent = LlmAgent(
     name="GovernanceReporter",
-    instruction=get_prompt("general", "governance_reporter_instruction"),
+    instruction=get_prompt("governance", "governance_reporter_instruction"),
     model=MODEL_STANDARD,
     output_key="governance_report",
 )
@@ -328,8 +359,8 @@ governance_report_agent = LlmAgent(
 # --- Governance Quality Checker + LoopAgent (v7.1.6) ---
 governance_checker_agent = LlmAgent(
     name="GovernanceChecker",
-    instruction=get_prompt("general", "governance_checker_instruction"),
-    description="治理报告合规性审查员。验证报告完整性和审计方法覆盖。",
+    instruction=get_prompt("governance", "governance_checker_instruction"),
+    description="治理报告合规性审查员。验证评分、方法覆盖和整改建议。",
     model=MODEL_FAST,
     output_key="gov_quality_verdict",
     tools=[approve_quality],
@@ -343,7 +374,7 @@ governance_report_loop = LoopAgent(
 
 governance_pipeline = SequentialAgent(
     name="GovernancePipeline",
-    sub_agents=[governance_exploration_agent, governance_processing_agent, governance_report_loop],
+    sub_agents=[governance_exploration_agent, governance_processing_agent, governance_viz_agent, governance_report_loop],
 )
 
 # ============================================================================
@@ -376,6 +407,7 @@ general_processing_agent = LlmAgent(
         KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
         KnowledgeBaseToolset(tool_filter=intent_tool_predicate),
         AdvancedAnalysisToolset(tool_filter=intent_tool_predicate),
+        VirtualSourceToolset(tool_filter=intent_tool_predicate),
     ] + _arcpy_tools,
 )
 
@@ -390,6 +422,7 @@ general_viz_agent = LlmAgent(
             "generate_heatmap", "generate_choropleth",
             "generate_bubble_map", "export_map_png", "compose_map",
         ]),
+        ChartToolset(),
     ],
 )
 
@@ -481,6 +514,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             FusionToolset(tool_filter=intent_tool_predicate),
             KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
             KnowledgeBaseToolset(tool_filter=["search_knowledge_base", "get_kb_context", "list_knowledge_bases"]),
+            VirtualSourceToolset(tool_filter=intent_tool_predicate),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)
