@@ -1315,6 +1315,106 @@ async def retry_workflow_node(run_id: int, step_id: str, username: str) -> dict:
         return {"status": "error", "message": str(e)}
 
 
+async def resume_workflow_dag(run_id: int, username: str) -> dict:
+    """Resume a failed/paused DAG workflow run from the last checkpoint.
+
+    Loads the checkpoint, identifies incomplete nodes, and re-executes the
+    remaining DAG layers from where execution stopped.
+    """
+    checkpoint = get_run_checkpoint(run_id)
+    if not checkpoint:
+        return {"status": "error", "message": f"Run {run_id} not found"}
+    if checkpoint["status"] not in ("failed", "paused"):
+        return {"status": "error", "message": f"Cannot resume run with status '{checkpoint['status']}'"}
+
+    workflow_id = checkpoint["workflow_id"]
+    workflow = get_workflow(workflow_id, username)
+    if not workflow:
+        return {"status": "error", "message": "Workflow not found"}
+
+    node_outputs = checkpoint.get("node_checkpoints", {})
+    completed_nodes = {k for k, v in node_outputs.items()
+                       if isinstance(v, dict) and v.get("status") == "completed"}
+
+    steps = workflow.get("steps", [])
+    remaining_steps = [s for s in steps
+                       if s.get("step_id", s.get("name", "")) not in completed_nodes]
+
+    if not remaining_steps:
+        return {"status": "ok", "message": "所有节点已完成，无需恢复", "completed": len(completed_nodes)}
+
+    # Mark as running
+    engine = get_engine()
+    if engine:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(
+                    f"UPDATE {T_WORKFLOW_RUNS} SET status = 'running' WHERE id = :id"
+                ), {"id": run_id})
+                conn.commit()
+        except Exception:
+            pass
+
+    # Re-execute remaining nodes sequentially
+    params = workflow.get("parameters", {})
+    from .pipeline_runner import run_pipeline_headless
+    from .agent import general_pipeline
+    from google.adk.sessions import InMemorySessionService
+
+    new_results = []
+    final_error = None
+    for step in remaining_steps:
+        step_id = step.get("step_id", step.get("name", ""))
+        prompt = _substitute_params_dag(step.get("prompt", ""), params, node_outputs)
+        pipeline_type = step.get("pipeline_type", "general")
+        try:
+            session_svc = InMemorySessionService()
+            result = await run_pipeline_headless(
+                agent=general_pipeline, session_service=session_svc,
+                user_id=username, session_id=f"resume_{run_id}_{step_id}",
+                prompt=prompt, pipeline_type=pipeline_type,
+            )
+            result_data = {
+                "step_id": step_id, "status": "completed" if not result.error else "failed",
+                "files": result.generated_files,
+                "duration": round(result.duration_seconds, 2),
+                "error": result.error,
+            }
+            node_outputs[step_id] = result_data
+            new_results.append(result_data)
+            if result.error:
+                final_error = result.error
+                break
+        except Exception as e:
+            node_outputs[step_id] = {"step_id": step_id, "status": "failed", "error": str(e)}
+            new_results.append(node_outputs[step_id])
+            final_error = str(e)
+            break
+
+    # Update checkpoint
+    all_results = checkpoint.get("step_results", []) + new_results
+    if engine:
+        _save_checkpoint(engine, run_id, node_outputs, all_results)
+        new_status = "completed" if not final_error else "failed"
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(
+                    f"UPDATE {T_WORKFLOW_RUNS} SET status = :s WHERE id = :id"
+                ), {"s": new_status, "id": run_id})
+                conn.commit()
+        except Exception:
+            pass
+
+    return {
+        "status": "ok",
+        "resumed_nodes": len(new_results),
+        "completed_total": len([n for n in node_outputs.values()
+                                if isinstance(n, dict) and n.get("status") == "completed"]),
+        "final_status": "completed" if not final_error else "failed",
+        "error": final_error,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Crash Recovery (v14.2)
 # ---------------------------------------------------------------------------

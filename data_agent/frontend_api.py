@@ -1255,6 +1255,20 @@ async def _api_user_memories_delete(request: Request):
     return JSONResponse(result, status_code=status_code)
 
 
+async def _api_memory_search(request: Request):
+    """GET /api/memory/search — search user memories by keyword and type."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    keyword = request.query_params.get("keyword", "")
+    memory_type = request.query_params.get("type", "")
+    from .memory import recall_memories
+    result = recall_memories(memory_type=memory_type, keyword=keyword)
+    return JSONResponse(result)
+
+
 # ---------------------------------------------------------------------------
 # Capabilities (aggregated skills + toolsets listing)
 # ---------------------------------------------------------------------------
@@ -2488,6 +2502,7 @@ def get_frontend_api_routes():
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_put, methods=["PUT"]),
         Route("/api/user/memories", endpoint=_api_user_memories_list, methods=["GET"]),
         Route("/api/user/memories/{id:int}", endpoint=_api_user_memories_delete, methods=["DELETE"]),
+        Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
         # MCP Hub (S-4: delegated to api/mcp_routes.py)

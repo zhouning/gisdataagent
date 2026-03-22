@@ -2033,6 +2033,14 @@ async def _execute_pipeline(
         cl.user_session.set("tool_execution_log", tool_execution_log)
         cl.user_session.set("last_intent", intent)
 
+        # --- Store pipeline params for re-run (v14.5) ---
+        cl.user_session.set("last_pipeline_params", {
+            "prompt": user_text,
+            "intent": intent,
+            "pipeline": pipeline_type,
+            "files": generated_files[:10],
+        })
+
         # --- Auto-save analysis result as spatial memory ---
         try:
             from data_agent.memory import save_memory
@@ -2174,6 +2182,13 @@ async def _execute_pipeline(
                 label=t("action.browse_steps"),
                 description=t("action.browse_steps_desc"),
                 payload={"action": "browse_steps"}
+            ),
+            cl.Action(
+                name="rerun_with_params",
+                value="rerun",
+                label="调整参数重跑",
+                description="查看上次分析参数，修改后重新执行",
+                payload={"action": "rerun"}
             ),
         ]
         await cl.Message(content=t("pipeline.complete"), actions=actions).send()
@@ -2840,6 +2855,27 @@ async def on_retry_pipeline(action: cl.Action):
         extra_parts=retry_extra_parts,
     )
 
+
+@cl.action_callback("rerun_with_params")
+async def on_rerun_with_params(action: cl.Action):
+    """Show last pipeline parameters so user can adjust and re-run (v14.5)."""
+    params = cl.user_session.get("last_pipeline_params", {})
+    if not params:
+        await cl.Message(content="没有可用的上次分析参数。").send()
+        return
+    prompt = params.get("prompt", "")
+    intent = params.get("intent", "")
+    pipeline = params.get("pipeline", "")
+    files = params.get("files", [])
+    files_str = "\n".join(f"  - {f}" for f in files[:5]) if files else "  无"
+    await cl.Message(content=(
+        f"**上次分析参数**\n\n"
+        f"- **意图**: {intent}\n"
+        f"- **管线**: {pipeline}\n"
+        f"- **文件**: \n{files_str}\n"
+        f"- **提示词**: {prompt}\n\n"
+        f"请修改提示词后直接发送，即可使用相同数据重新执行分析。"
+    )).send()
 
 @cl.action_callback("export_report")
 async def on_export_report(action: cl.Action):
