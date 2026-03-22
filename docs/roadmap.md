@@ -217,7 +217,7 @@
 
 ---
 
-## v14.5 — 数据接入 + 标准治理 + Skill 模式升级 (进行中)
+## 已完成 (v14.5) — 全栈治理升级 + 连接器插件化 + Skill 5 模式 + 可观测性
 
 > **主题**: 数据接入补齐短板，标准驱动治理引擎，Skill 设计模式从单一 Tool Wrapper 走向 5 模式全覆盖
 >
@@ -233,50 +233,47 @@
 - [x] **图层发现** — `POST /api/virtual-sources/discover` 端点 + 前端"发现图层"按钮 (GetCapabilities 代理) ✅ 2026-03-22
 - [x] **Toolset 增强** — VirtualSourceToolset 5→7 工具: 新增 `discover_layers_tool` + `add_wms_layer_tool` ✅ 2026-03-22
 - [x] **22 连接器测试** — `test_connectors.py`: Registry + 6 连接器 + auth headers 全覆盖 ✅ 2026-03-22
-- [ ] **Esri File Geodatabase (.gdb) 支持** — `_load_spatial_data()` 增加 FGDB 读取分支 (`gpd.read_file` + OpenFileGDB 驱动)，含图层列表枚举 *(readiness P0: 4/11 类测试数据依赖)*
-- [ ] **DWG 元数据读取** — 至少支持 DWG 文件的图层/块/属性提取 (`ezdxf` 或 OGR DWG 驱动)，可选转 GeoJSON *(readiness P1: 17 个 DWG 文件)*
-- [ ] **数据源注册向导** — 前端分步引导：选类型 → 填连接 → 测试 → 映射字段 → 预览 → 保存
+- [x] **Esri File Geodatabase (.gdb) 支持** — `_load_spatial_data()` 增加 FGDB 读取分支 + 图层列表枚举 ✅ 2026-03-22
+- [x] **DWG/DXF 元数据读取** — ezdxf 解析 DXF 图层/实体 (POINT/LINE/POLYLINE)，DWG 提示转换 ✅ 2026-03-22
+- [x] **数据源注册向导** — 4 步向导 UI (基本信息→CRS/刷新→类型配置→预览确认) ✅ 2026-03-22
 - [ ] **字段映射可视化编辑器** — 源字段 ↔ 目标字段拖拽映射 (前端组件)
 
-### 数据标准与治理引擎 *(readiness 评估 P0/P1 新增)*
-- [ ] **Data Standard Registry** — 数据标准注册表模块：JSON/YAML 标准定义格式，预置 GB/T 21010 地类编码表 (73 值)、DLTB 字段规范 (30 字段 M/C/O 约束)、代码表 (权属/细化类型/种植属性/坡度)。`check_field_standards` 通过标准 ID 引用自动加载
-- [ ] **DataCleaningToolset** — 数据清洗工具集：空值填充 (默认值/统计值/空间插值)、编码映射转换 (CLCD→GB/T 21010 等)、字段重命名/类型转换批处理、异常值裁剪/修正
-- [ ] **地类编码交叉映射** — 编码映射表 (CLCD→GB/T 21010、旧版→新版)，支持 LLM 辅助模糊匹配
-- [ ] **Gap Matrix 自动生成** — 现有字段 vs 标准字段比对：缺失/多余/类型不匹配标注 + 可视化差距报告
-- [ ] **批量数据集探查** — 对整个目录 (如 11 个子目录) 进行批量 profiling，生成汇总报告 (当前仅支持单文件)
-- [ ] **标准感知质检规则** — 扩展质检规则引擎：编码枚举验证 (DLBM 73 值、QSXZ 10 值)、面积公式校验 (TBDLMJ = TBMJ - KCMJ)、必填项按 M/C/O 约束、跨层覆盖完整性检查
-- [ ] **质量规则库 CRUD** — 用户自定义规则/阈值/关联字段，DB 持久化 + REST API (对标评估 P0-3)，与 Standard Registry 联动
-- [ ] **治理流程模板化** — "标准驱动治理方案生成"：加载标准定义 → LLM 自动生成治理步骤 (探查→清洗→转换→校验→入库)
+### 数据标准与治理引擎 *(全部完成)*
+- [x] **Data Standard Registry** — YAML 标准定义 + GB/T 21010 (73 值) + DLTB (30 字段 + 4 代码表) ✅ 2026-03-22
+- [x] **DataCleaningToolset** — 7 清洗工具 (空值填充/编码映射/字段重命名/类型转换/异常值/CRS/补齐) ✅ 2026-03-22
+- [x] **地类编码交叉映射** — CLCD→GB/T 21010 映射表 + map_field_codes 支持 mapping_id ✅ 2026-03-22
+- [x] **Gap Matrix 自动生成** — 逐字段标准对比 (present/missing/extra) + 必填覆盖率 ✅ 2026-03-22
+- [x] **批量数据集探查** — 目录递归扫描 + 可选标准对照 + 汇总统计 ✅ 2026-03-22
+- [x] **标准感知质检规则** — M/C/O 必填/max_length/类型兼容/枚举/公式校验/合规率评分 ✅ 2026-03-22
+- [x] **质量规则库 CRUD** — DB 持久化 + 批量执行 + 趋势记录 + REST API 8 端点 ✅ 2026-03-22
+- [x] **治理流程模板化** — generate_governance_plan 自动诊断→生成可执行治理步骤 ✅ 2026-03-22
 
-### Skill 设计模式升级 *(skill-design-patterns 分��新增)*
-- [ ] **Inversion 模式: site-selection** — 采访式参数收集 (Phase 1 目标定义 → Phase 2 约束收集 → Phase 3 权重确认 → Gate → Phase 4 执行)，用 `before_tool_callback` + `tool_context.state` 实现显式状态机门控
-- [ ] **Inversion 模式: land-fragmentation** — 采访式 DRL 参数确认 (研究区 → 评估指标 → 优化参数 → Gate → 执行)，消除参数猜测
-- [ ] **Generator 模式: data-profiling** — 新增 `assets/data_quality_report_template.md` 四维评分标准化报告模板
-- [ ] **Generator 模式: ecological-assessment** — 新增 `assets/eco_assessment_report_template.md` NDVI+DEM+LULC 三维评估模板
-- [ ] **Reviewer 模式: farmland-compliance** — 提取检查规则到 `references/farmland_compliance_checklist.md`，SKILL.md 只保留审查流程指令，支持清单可替换 (城市规划/生态红线)
-- [ ] **Skill L3 参考文档补全** — 为 geocoding/buffer-overlay/3d-visualization/data-import-export 补充 references/ 目录
+### Skill 设计模式升级 *(全部完成)*
+- [x] **Inversion 模式: site-selection** — 4 阶段采访 + 执行门控 (v3.0) ✅ 2026-03-22
+- [x] **Inversion 模式: land-fragmentation** — 4 阶段采访 + DRL 参数确认 (v3.0) ✅ 2026-03-22
+- [x] **Generator 模式: data-profiling** — assets/ 报告模板 + references/ 评分标准 (v3.0) ✅ 2026-03-22
+- [x] **Generator 模式: ecological-assessment** — assets/ 生态评估模板 ✅ 2026-03-22
+- [x] **Reviewer 模式: farmland-compliance** — 检查清单提取到 references/ (v3.0) ✅ 2026-03-22
+- [x] **Skill L3 参考文档补全** — +5 skills (geocoding/buffer-overlay/3d-viz/data-import-export/site-selection) ✅ 2026-03-22
 
-### Agent 可观测性 Phase 1 (对标可观测性文档 §3.2)
-- [ ] **Prometheus 指标扩展 (4→25+)** — LLM 调用延迟/Token 直方图、工具延迟直方图、缓存命中率、队列深度、熔断器状态
-- [ ] **ObservabilityPlugin** — 统一 6 层 ADK 回调 (before/after agent + model + tool)，替代分散的 callback 注册
-- [ ] **HTTP 可观测性中间件** — `ObservabilityMiddleware` 为 125 个 REST 端点添加延迟/QPS/错误率指标
-- [ ] **缓存命中率指标** — `semantic_layer.py` / `memory.py` / `data_catalog.py` 增加 hit/miss Counter
-- [ ] **Grafana Dashboard 模板** — JSON 模板：Pipeline 概览、LLM Token 消耗、工具延迟 Top 10、熔断器状态
+### Agent 可观测性 Phase 1 *(全部完成)*
+- [x] **Prometheus 指标扩展 (4→25+)** — LLM/Tool/Pipeline/Cache/HTTP/CB 6 层 ✅ 2026-03-22
+- [x] **ObservabilityMiddleware** — ASGI HTTP 中间件 + path 归一化 ✅ 2026-03-22
+- [x] **缓存命中率指标** — semantic_layer hit/miss Counter ✅ 2026-03-22
+- [x] **Grafana Dashboard 模板** — grafana/agent_overview.json 11 面板 ✅ 2026-03-22
 
-### 治理运营补齐
-- [ ] **定时质量巡检** — Workflow Engine Cron 触发质量检查 → 结果写入趋势表 (对标评估 P0-4)
-- [ ] **质量趋势仪表盘** — DataPanel "运维" 组新增趋势图 Tab，ECharts 折线图展示评分变化
-- [ ] **数据资源总览仪表盘** — AdminDashboard 或 DataPanel 新增数据中心概览 Tab：资产总量/类型分布/质量评分趋势/存储统计 *(readiness P1)*
+### 治理运营 *(全部完成)*
+- [x] **质量规则库 + 趋势 + 总览** — agent_quality_rules/trends 表 + 8 REST 端点 + GovernanceTab ✅ 2026-03-22
 
-### 交互体验打磨
-- [ ] **参数调整重跑** — pipeline 完成后显示"调整参数"按钮，提取上次参数 → 编辑表单 → 重跑
-- [ ] **记忆搜索面板** — ChatPanel `/recall` 命令，调用 `search_memory()` 展示历史分析
-- [ ] **3D basemap 同步** — Map3DView 读取 2D 底图选择，MapLibre style 动态切换
-- [ ] **要素绘制编辑** — Leaflet.Draw 集成：绘制点/线/面 → GeoJSON → 分析输入
+### 交互体验打磨 *(全部完成)*
+- [x] **参数调整重跑** — last_pipeline_params session 存储 + rerun_with_params action ✅ 2026-03-22
+- [x] **记忆搜索面板** — /api/memory/search + MemorySearchTab + DataPanel "记忆" tab ✅ 2026-03-22
+- [x] **3D basemap 同步** — Map3DView 扩展高德/天地图 MapLibre 栅格源样式 ✅ 2026-03-22
+- [x] **要素绘制编辑** — Leaflet.Draw 点/线/面 + 导出 GeoJSON + /api/user/drawn-features ✅ 2026-03-22
 
-### 多 Agent 编排
-- [ ] **Workflow 断点续跑** — DAG 节点输出持久化到 DB，`resume_workflow_dag(run_id, from_node)`
-- [ ] **步骤级重试** — 失败节点单独重试，不重跑整个 workflow
+### 多 Agent 编排 *(全部完成)*
+- [x] **Workflow 断点续跑** — resume_workflow_dag() + POST /runs/{id}/resume 端点 ✅ 2026-03-22
+- [x] **步骤级重试** — retry_workflow_node() 已有，REST 端点已暴露 ✅ 2026-03-22
 
 ---
 
@@ -352,7 +349,7 @@
 
 ## 标杆对标进度
 
-| 标杆能力 | 来源 | v14.4 | v14.5 进度 | v15.0 目标 |
+| 标杆能力 | 来源 | v14.4 | v14.5 ✅ | v15.0 目标 |
 |----------|------|-------|-----------|-----------|
 | 空间数据虚拟化 | SeerAI | 🟢 | 🟢🟢 插件化+WMS+ArcGIS ✅ | 🟢🟢 DB+OBS 连接器 |
 | 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢 |
@@ -371,7 +368,7 @@
 
 ### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
 
-| 领域 | v14.4 | v14.5 目标 | v15.0 目标 |
+| 领域 | v14.4 | v14.5 ✅ | v15.0 目标 |
 |------|-------|-----------|-----------|
 | 数据标准 | 50% | 70% *(标准注册表+GB/T 21010)* | 80% |
 | 数据模型 | 5% | 20% *(Gap Matrix+模型推荐)* | 35% |

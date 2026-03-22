@@ -24,7 +24,8 @@
 | 测试覆盖 | 2340+ tests, 97 test files |
 | 工具集 | 28 BaseToolset (含 GovernanceToolset 12 工具 + ChartToolset + DataCleaningToolset + VirtualSourceToolset 7 工具), 5 SkillBundle, 170+ 工具 |
 | ADK Skills | 18 场景化领域技能 (5 种设计模式: Tool Wrapper + Inversion + Generator + Reviewer) + DB 驱动自定义 Skills + 用户自定义 Tools |
-| REST API | 133 endpoints |
+| REST API | 134 endpoints |
+| DataPanel | 19 标签页 (4 分组: 数据/智能/运维/编排) |
 | 数据标准 | Data Standard Registry — GB/T 21010 (73 地类编码) + DLTB (30 字段规范 + 4 代码表 + 公式校验) |
 | 连接器 | 6 个插件式连接器 (WFS / STAC / OGC API / Custom API / WMS / ArcGIS REST) |
 | 可观测性 | 25+ Prometheus 指标 (6 层) + HTTP 中间件 + Grafana Dashboard 模板 |
