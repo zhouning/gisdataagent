@@ -1,0 +1,71 @@
+# GIS Data Agent — Prometheus Alert Rules (v15.0)
+# Load via: --rules.file=alert_rules.yml in Prometheus config
+
+groups:
+  - name: gis_data_agent_alerts
+    rules:
+      - alert: PipelineSlowExecution
+        expr: histogram_quantile(0.95, rate(agent_pipeline_duration_seconds_bucket[5m])) > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline P95 延迟超过 60s"
+          description: "管道执行 P95 延迟 {{ $value }}s，超过 60s 阈值"
+
+      - alert: LLMHighLatency
+        expr: histogram_quantile(0.95, rate(agent_llm_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM 调用 P95 延迟超过 10s"
+
+      - alert: ToolHighErrorRate
+        expr: |
+          (rate(agent_tool_calls_total{status="error"}[5m])
+          / rate(agent_tool_calls_total[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "工具错误率超过 20%"
+          description: "工具 {{ $labels.tool_name }} 错误率 {{ $value | humanizePercentage }}"
+
+      - alert: CircuitBreakerOpen
+        expr: agent_circuit_breaker_state > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "熔断器打开: {{ $labels.tool_name }}"
+
+      - alert: TokenBudgetBurn
+        expr: |
+          (rate(agent_llm_input_tokens_sum[1h]) + rate(agent_llm_output_tokens_sum[1h])) > 100000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Token 消耗速率超过 100K/h"
+
+      - alert: CacheHitRateLow
+        expr: |
+          rate(agent_cache_operations_total{operation="hit"}[5m])
+          / (rate(agent_cache_operations_total{operation="hit"}[5m])
+             + rate(agent_cache_operations_total{operation="miss"}[5m])) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "缓存命中率低于 50%: {{ $labels.cache_name }}"
+
+      - alert: HTTPErrorRateHigh
+        expr: |
+          rate(http_requests_total{status_code=~"5.."}[5m])
+          / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP 5xx 错误率超过 5%"

@@ -936,6 +936,13 @@ try:
 except Exception as _obs_err:
     logger.warning("Observability middleware failed: %s", _obs_err)
 
+# --- Initialize OpenTelemetry tracing (v15.0) ---
+try:
+    from data_agent.otel_tracing import setup_otel_tracing
+    setup_otel_tracing()
+except Exception as _otel_err:
+    logger.warning("OTel tracing init failed: %s", _otel_err)
+
 # --- Mount Frontend API routes ---
 try:
     from data_agent.frontend_api import mount_frontend_api
