@@ -928,6 +928,14 @@ try:
 except Exception as _stream_mount_err:
     logger.warning("Stream route mount failed: %s", _stream_mount_err)
 
+# --- Mount Observability Middleware (before frontend API routes) ---
+try:
+    from data_agent.observability import ObservabilityMiddleware
+    chainlit_app.add_middleware(ObservabilityMiddleware)
+    logger.info("[Observability] HTTP metrics middleware installed")
+except Exception as _obs_err:
+    logger.warning("Observability middleware failed: %s", _obs_err)
+
 # --- Mount Frontend API routes ---
 try:
     from data_agent.frontend_api import mount_frontend_api
