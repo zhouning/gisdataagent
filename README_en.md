@@ -1,12 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v14.5
+# GIS Data Agent (ADK Edition) v15.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 19 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 20 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **133 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **143+ REST API endpoints**.
 
-**v14.5 full-stack governance upgrade**: BaseConnector plugin architecture (6 connectors incl. WMS/ArcGIS REST); Data Standard Registry (GB/T 21010 + DLTB 30-field spec); DataCleaningToolset (7 tools) + standard-aware QC (M/C/O validation, formula checks, Gap Matrix, batch profiling, governance plan generation); Skill 5-pattern upgrade (Inversion interview / Generator templates / Reviewer checklists); Agent Observability Phase 1 (25+ Prometheus metrics + HTTP middleware + Grafana); governance ops (quality rule library CRUD + trend dashboard + resource overview); parameter re-run + workflow breakpoint/resume + memory search panel.
+**v15.0 deep observability + data security + distributed compute**: OpenTelemetry distributed tracing (Pipeline/Agent/Tool 3-level span tree) + Agent decision tracing (DecisionTrace + Mermaid diagrams) + 9 Prometheus alert rules; PII classification engine (5 sensitivity levels) + field-level masking (4 strategies) + RLS policies for 8 tables; data distribution lifecycle (request/approval + packaging + reviews + access tracking); 8 pluggable connectors (+Database +ObjectStorage); data versioning (snapshots/rollback/incremental diff/notifications); 19 ADK Skills (5 design patterns with Pipeline fusion); SparkGateway 3-tier execution routing (L1 local / L2 queue / L3 Spark).
 
 ## 📚 Official Technical Documentation
 
