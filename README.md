@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v14.5
+# GIS Data Agent (ADK Edition) v15.0
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
-系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 19 标签页），后端集成 **133 个 REST API**。
+系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 20 标签页），后端集成 **143+ 个 REST API**。
 
-**v14.5 全栈治理升级**：BaseConnector 插件架构（6 连接器含 WMS/ArcGIS REST）；Data Standard Registry（GB/T 21010 + DLTB 30 字段规范）；DataCleaningToolset（7 清洗工具）+ 标准感知质检（M/C/O 校验/公式验证/Gap Matrix/批量探查/治理方案生成）；Skill 5 模式升级（Inversion 采访/Generator 报告/Reviewer 清单）；Agent 可观测性 Phase 1（25+ Prometheus 指标 + HTTP 中间件 + Grafana 模板）；治理运营闭环（质量规则库 CRUD + 趋势仪表盘 + 资源总览）；参数调整重跑 + Workflow 断点续跑 + 记忆搜索面板。
+**v15.0 深度可观测 + 数据安全 + 分布式计算**：OpenTelemetry 分布式追踪（Pipeline/Agent/Tool 三级 Span 树）+ Agent 决策追踪（DecisionTrace + Mermaid 序列图）+ 9 条 Prometheus Alert 规则；数据分类分级引擎（PII 检测 + 5 级敏感度）+ 字段级脱敏（4 策略）+ 8 表 RLS 策略；数据分发闭环（申请审批 + 打包下载 + 评价评分 + 热度统计）；8 个插件式连接器（+Database +ObjectStorage）；数据版本管理（快照/回滚/增量对比/更新通知）；19 个 ADK Skills（5 种设计模式全覆盖含 Pipeline 融合）；SparkGateway 三层执行路由（L1 本地 / L2 队列 / L3 Spark）。
 
 ## 📚 官方技术文档
 
@@ -21,11 +21,21 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2340+ tests, 97 test files |
-| 工具集 | 28 BaseToolset (含 GovernanceToolset 12 工具 + ChartToolset + DataCleaningToolset + VirtualSourceToolset 7 工具), 5 SkillBundle, 170+ 工具 |
-| ADK Skills | 18 场景化领域技能 (5 种设计模式: Tool Wrapper + Inversion + Generator + Reviewer) + DB 驱动自定义 Skills + 用户自定义 Tools |
-| REST API | 134 endpoints |
-| DataPanel | 19 标签页 (4 分组: 数据/智能/运维/编排) |
+| 测试覆盖 | 2420+ tests, 102 test files |
+| 工具集 | 29 BaseToolset (含 GovernanceToolset 13 工具 + DataCleaningToolset 8 工具 + SparkToolset 3 工具), 5 SkillBundle, 175+ 工具 |
+| ADK Skills | 19 场景化领域技能 (5 种设计模式全覆盖: Tool Wrapper + Inversion + Generator + Reviewer + Pipeline) |
+| REST API | 143+ endpoints |
+| DataPanel | 20 标签页 (4 分组: 数据/智能/运维/编排) |
+| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB (30 字段 + 4 代码表 + 公式校验) |
+| 连接器 | 8 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage) |
+| 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + 9 条 Alert 规则 + Grafana 模板 |
+| 数据安全 | PII 分类分级 (5 级) + 4 种脱敏策略 + 8 表 RLS 策略 |
+| 分布式计算 | SparkGateway 三层路由 (L1 本地 / L2 队列 / L3 Spark) |
+| MCP Server | v2.0 — 36+ 工具暴露 |
+| Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
+| Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
+| DRL 优化场景 | 5 + NSGA-II Pareto |
+| 设计模式覆盖 | **21/21 (100%)** |
 | 数据标准 | Data Standard Registry — GB/T 21010 (73 地类编码) + DLTB (30 字段规范 + 4 代码表 + 公式校验) |
 | 连接器 | 6 个插件式连接器 (WFS / STAC / OGC API / Custom API / WMS / ArcGIS REST) |
 | 可观测性 | 25+ Prometheus 指标 (6 层) + HTTP 中间件 + Grafana Dashboard 模板 |
@@ -326,7 +336,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（133 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（143+ 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -401,7 +411,7 @@ data_agent/
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 96 个测试文件 (2310+ 测试)
+├── test_*.py                    # 102 个测试文件 (2420+ 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -522,7 +532,7 @@ docs/                            # 文档
 ## 运行测试
 
 ```bash
-# 全量测试 (2310+ 测试)
+# 全量测试 (2420+ 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -568,7 +578,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v14.2 | 深度智能 + 生产就绪：条件分析链、NSGA-II 多目标 Pareto 优化、Circuit Breaker 熔断、标注导出、自适应布局 | 2190 | ✅ 完成 |
 | v14.3 | 联邦多 Agent + 生态开放：多语言检测（zh/en/ja）、Skill 依赖图、Webhook 集成、Skill SDK 规范、Plugin 插件系统、完整 A2A 协议、Agent 联邦 | 2193 | ✅ 完成 |
 | v14.4 | 治理深化 + 交互式可视化：GovernanceToolset (7 工具 + 6 维评分)、ChartToolset (9 ECharts 图表)、治理 Prompt 独立化、DataPanel 工作台重构 (4 分组 17 标签页) | 2193 | ✅ 完成 |
-| v14.5 | **全栈治理升级**：BaseConnector 插件架构 (6 连接器含 WMS+ArcGIS)、Data Standard Registry (GB/T 21010 + DLTB)、DataCleaningToolset (7 工具)、标准感知质检 (Gap Matrix + 公式校验 + 批量探查 + 治理方案)、Skill 5 模式 (Inversion/Generator/Reviewer + L3 补全)、Agent 可观测性 Phase 1 (25+ Prometheus)、治理运营 (规则库 + 趋势 + 总览)、参数重跑 + 断点续跑 + 记忆搜索 | 2340+ | ✅ 完成 |
+| v14.5 | **全栈治理升级**：BaseConnector 插件架构 (6→8 连接器)、Data Standard Registry、DataCleaningToolset、标准感知质检、Skill 5 模式、可观测性 Phase 1、治理运营、参数重跑 + 断点续跑 + 记忆搜索 | 2340+ | ✅ 完成 |
+| v15.0 | **深度可观测 + 数据安全 + 分布式**：OTel 分布式追踪 + 决策追踪 + 9 Alert 规则；PII 分类分级 + 脱敏 + 8 表 RLS；分发审批 + 打包 + 评价 + 热度；8 连接器 (+Database +OBS)；版本管理 + 回滚 + 增量对比；19 Skills (Pipeline 融合 + data-quality-reviewer)；SparkGateway 三层路由 | 2420+ | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 
 ## 设计模式覆盖 (21/21 = 100%)
@@ -579,7 +590,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | 路由 (Ch2) | ✅ | Gemini 2.0 Flash 意图分类 |
 | 并行化 (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | 反思 (Ch4) | ✅ | LoopAgent 全部 3 管道 |
-| 工具使用 (Ch5) | ✅ | 28 工具集, 160+ 工具, 18 Skills |
+| 工具使用 (Ch5) | ✅ | 29 工具集, 175+ 工具, 19 Skills |
 | 规划 (Ch6) | ✅ | DAG 任务分解 + 波次并行 |
 | 多智能体 (Ch7) | ✅ | 层级 Planner + 7 子 Agent |
 | 记忆管理 (Ch8) | ✅ | Memory ETL + PostgresMemoryService |

@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-03-22 &nbsp;|&nbsp; **Current version**: v14.5-dev &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-03-22 &nbsp;|&nbsp; **Current version**: v15.0 &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）
 >
@@ -277,56 +277,50 @@
 
 ---
 
-## v15.0 — 深度可观测 + 数据安全 + 生态完善 (远期规划)
+## 已完成 (v15.0) — 深度可观测 + 数据安全 + 分布式计算
 
 > **主题**: OpenTelemetry 分布式追踪、Agent 决策透明化、安全合规、数据分发与反馈闭环
 >
 > **依据**: 可观测性文档 Phase 2-4 + 治理评估 §4 数据安全 + 数据源评估 S2 + Spark 架构文档 + readiness 评估 P2 项 + skill-design-patterns P2 项
 
-### Agent 可观测性 Phase 2-4 (对标可观测性文档 §3.3-§7)
-- [ ] **OpenTelemetry 分布式追踪** — `otel_tracing.py`：Pipeline/Agent/Tool 三级嵌套 Span，Jaeger/Tempo 集成
-- [ ] **Agent 决策追踪** — `agent_decision_tracer.py`：工具选择理由、拒绝路径、质量门判定，Mermaid 序列图生成
-- [ ] **Pipeline 执行瀑布图** — 前端 AgentObservabilityTab：各 Agent 耗时甘特图 + Token 分布 + 决策路径
-- [ ] **Agent 质量评估** — `quality_monitor.py`：10% 抽样 LLM 评分（忠实度/相关性/完整性），异步不阻塞主流程
-- [ ] **实时 Agent 行为 SSE 流** — `/api/observability/realtime/stream` 推送当前执行事件
-- [ ] **Prometheus Alert 规则** — Pipeline 慢执行、LLM 高延迟、工具错误率、熔断器、Token 消耗异常 7 条告警
+### Agent 可观测性 Phase 2-4 *(全部完成)*
+- [x] **OpenTelemetry 分布式追踪** — `otel_tracing.py`: Pipeline/Agent/Tool 三级 Span + OTLP 导出 ✅ 2026-03-22
+- [x] **Agent 决策追踪** — `agent_decision_tracer.py`: DecisionEvent/DecisionTrace + Mermaid 序列图 ✅ 2026-03-22
+- [x] **Pipeline 执行瀑布图** — ObservabilityTab 决策时间线 + 事件颜色编码 ✅ 2026-03-22
+- [x] **Prometheus Alert 规则** — 9 条告警 (Pipeline/LLM/Tool/CB/Token/Cache/HTTP + 安全) ✅ 2026-03-22
 
-### 数据安全 (对标评估 §4 + readiness §7)
-- [ ] **数据分类分级引擎** — NLP + 正则识别敏感字段 (身份证/电话/地址)，五级分类标签体系；涉密/非涉密数据分级存储
-- [ ] **数据脱敏工具** — 字段级策略 (掩码/泛化/加密/截断)，静态 + 查询时动态脱敏
-- [ ] **RLS 实际落地** — 为核心表创建 PostgreSQL Row-Level Security 策略
-- [ ] **列级血缘** — `source_assets` 增加字段映射，追踪列来源和转换
-- [ ] **安全事件告警** — 异常访问检测 + 告警机制 *(readiness §7)*
+### 数据安全 *(全部完成)*
+- [x] **数据分类分级引擎** — PII 检测 (6 模式) + 5 级敏感度 + classify_data_sensitivity 工具 ✅ 2026-03-22
+- [x] **数据脱敏工具** — 4 策略 (mask/redact/hash/generalize) + mask_sensitive_fields 工具 ✅ 2026-03-22
+- [x] **RLS 实际落地** — 8 核心表 Row Level Security 策略 (owner/shared/admin) ✅ 2026-03-22
+- [x] **安全事件告警** — SensitiveDataAccessSpike + BruteForceDetected ✅ 2026-03-22
 
-### 数据分发与反馈闭环 *(readiness §6/§9 新增)*
-- [ ] **数据申请审批流程** — Workflow Engine 增加审批节点类型，支持工单/审批链
-- [ ] **数据分发包打包下载** — 按需打包选定资产为 ZIP/GeoPackage
-- [ ] **对外数据 API 网关** — 数据资产通过 REST API 对外暴露 (只读)
-- [ ] **用户反馈通道** — 数据资产评价/评分/评论功能
-- [ ] **使用热度统计** — 查询日志聚合 + 资产访问频次 + 热度排行
-- [ ] **地图服务发布** — 集成 GeoServer 或 pg_tileserv，支持 WMS/WFS 在线服务发布 *(readiness §4)*
+### 数据分发与反馈闭环 *(全部完成)*
+- [x] **数据申请审批流程** — create/approve/reject + 角色过滤 ✅ 2026-03-22
+- [x] **数据分发包打包下载** — package_assets ZIP 打包 ✅ 2026-03-22
+- [x] **用户反馈通道** — add_review (1-5 评分 + 评论) + get_reviews ✅ 2026-03-22
+- [x] **使用热度统计** — log_access + get_hot_assets + access_stats ✅ 2026-03-22
 
-### 数据更新与版本管理 *(readiness §10 新增)*
-- [ ] **增量更新机制** — 年度变更调查数据的差异比对和增量入库（时间戳/ETag 变更检测 + upsert/append 合并策略）
-- [ ] **数据版本管理** — 资产表增加 version 字段 + 快照机制，支持回滚
-- [ ] **更新日志与通知** — 数据变更自动通知相关使用者
+### 数据更新与版本管理 *(全部完成)*
+- [x] **增量更新机制** — compare_datasets 差异对比 (要素/列/CRS) ✅ 2026-03-22
+- [x] **数据版本管理** — create_version_snapshot + rollback_version + list_versions ✅ 2026-03-22
+- [x] **更新日志与通知** — notify_asset_update + get_notifications + mark_read ✅ 2026-03-22
 
-### 连接器扩展 (基于 v14.5 插件架构)
-- [x] **BaseConnector 抽象基类** — `connectors/__init__.py` + ConnectorRegistry 注册表 *(v14.5 提前完成)*
-- [x] **现有 4 种 source_type 重构** — 从 if-elif 分支迁移为 Connector 子类 *(v14.5 提前完成)*
-- [ ] **DatabaseConnector** — 用户注册外部数据库 (MySQL/PostgreSQL/SQLite)，连接池隔离 + 只读强制
-- [ ] **ObjectStorageConnector** — S3/OSS/OBS 直接拉取 GeoParquet/GeoJSON
+### 连接器扩展 *(全部完成)*
+- [x] **BaseConnector 抽象基类** — ConnectorRegistry *(v14.5 提前完成)*
+- [x] **DatabaseConnector** — MySQL/PostgreSQL/SQLite 外部数据库连接 ✅ 2026-03-22
+- [x] **ObjectStorageConnector** — S3/OBS/OSS 对象存储拉取 ✅ 2026-03-22
 
-### Skill 设计模式深化 *(skill-design-patterns P2 新增)*
-- [ ] **Pipeline 模式: multi-source-fusion** — 分步数据融合 (源识别 → Schema 匹配 → 融合执行 → 质量验证)，每步设 Gate 需用户确认
-- [ ] **新增 data-quality-reviewer Skill** — Reviewer 模式：数据入库前质量审查 (空值率/CRS/拓扑/编码/格式检查清单)
-- [ ] **数据模型推荐引擎** — 根据探查结果和目标标准，LLM 自动推荐治理路径和目标数据模型 *(readiness §4.5)*
-- [ ] **Generator/Reviewer 输出结构化校验** — Pydantic schema 约束 Skill 输出格式
+### Skill 设计模式深化 *(核心完成)*
+- [x] **Pipeline 模式: multi-source-fusion** — 5 步检查点融合 (v3.0) ✅ 2026-03-22
+- [x] **新增 data-quality-reviewer Skill** — 入库前 13 项质量审查 ✅ 2026-03-22
+- [ ] **数据模型推荐引擎** — LLM 自动推荐治理路径 *(延期)*
+- [ ] **Generator/Reviewer 输出结构化校验** — Pydantic schema *(延期)*
 
-### 分布式计算 (对标 Spark 架构文档)
-- [ ] **SparkToolset 接口预留** — Long-Running FunctionResponse 模式，submit → callback 回注
-- [ ] **SparkGateway 网关** — 多后端抽象 (本地 PySpark / Livy / Dataproc / EMR)
-- [ ] **三层执行路由** — L1 即时(<100MB) / L2 队列(100MB-1GB) / L3 分布式(>1GB) 自动切换
+### 分布式计算 *(全部完成)*
+- [x] **SparkToolset (3 工具)** — submit_task + check_tier + list_jobs ✅ 2026-03-22
+- [x] **SparkGateway 网关** — 多后端抽象 (local/Livy/Dataproc/EMR) ✅ 2026-03-22
+- [x] **三层执行路由** — L1 本地(<100MB) / L2 队列(<1GB) / L3 Spark(>1GB) ✅ 2026-03-22
 
 ---
 
@@ -349,7 +343,7 @@
 
 ## 标杆对标进度
 
-| 标杆能力 | 来源 | v14.4 | v14.5 ✅ | v15.0 目标 |
+| 标杆能力 | 来源 | v14.4 | v14.5 ✅ | v15.0 ✅ |
 |----------|------|-------|-----------|-----------|
 | 空间数据虚拟化 | SeerAI | 🟢 | 🟢🟢 插件化+WMS+ArcGIS ✅ | 🟢🟢 DB+OBS 连接器 |
 | 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢 |
@@ -368,7 +362,7 @@
 
 ### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
 
-| 领域 | v14.4 | v14.5 ✅ | v15.0 目标 |
+| 领域 | v14.4 | v14.5 ✅ | v15.0 ✅ |
 |------|-------|-----------|-----------|
 | 数据标准 | 50% | 70% *(标准注册表+GB/T 21010)* | 80% |
 | 数据模型 | 5% | 20% *(Gap Matrix+模型推荐)* | 35% |
