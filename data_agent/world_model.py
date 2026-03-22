@@ -194,11 +194,16 @@ def _build_model(z_dim: int = Z_DIM, scenario_dim: int = SCENARIO_DIM, n_context
             )
             # Input: z_t (z_dim) + scenario (z_dim) + context (n_context)
             in_channels = z_dim_ * 2 + n_context_
+            # Dilated convolutions: dilation 1,2,4 gives receptive field 17x17
+            # At 10m resolution: 170m x 170m — captures local urban/road influence
             self.dynamics = nn.Sequential(
-                nn.Conv2d(in_channels, 128, 3, padding=1),
+                nn.Conv2d(in_channels, 128, 3, padding=1, dilation=1),
                 nn.GroupNorm(8, 128),
                 nn.GELU(),
-                nn.Conv2d(128, 128, 3, padding=1),
+                nn.Conv2d(128, 128, 3, padding=2, dilation=2),
+                nn.GroupNorm(8, 128),
+                nn.GELU(),
+                nn.Conv2d(128, 128, 3, padding=4, dilation=4),
                 nn.GroupNorm(8, 128),
                 nn.GELU(),
                 nn.Conv2d(128, z_dim_, 1),
@@ -557,33 +562,72 @@ def train_dynamics_model(
 
     logger.info("Training samples: %d", len(z_t_list))
 
+    # Group consecutive pairs by area for multi-step unrolling
+    # Build area -> list of (z_t, z_tp1) sequences
+    area_sequences: dict[str, list[np.ndarray]] = {}
+    seq_idx = 0
+    for area in areas:
+        name = area.get("name", str(area["bbox"]))
+        area_sequences[name] = []
+        for i in range(len(TRAINING_YEARS) - 1):
+            if seq_idx < len(z_t_list):
+                if not area_sequences[name]:
+                    area_sequences[name].append(z_t_list[seq_idx])
+                area_sequences[name].append(z_tp1_list[seq_idx])
+                seq_idx += 1
+
     # Build model
     model = _build_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     mse_loss = torch.nn.MSELoss()
 
-    # Training loop
+    # Training loop with multi-step unrolled loss (3-step)
+    # Reduces exposure bias: model learns from its own predictions
+    UNROLL_STEPS = 3
     model.train()
     losses = []
     for epoch in range(epochs):
         epoch_loss = 0.0
-        for z_t_np, s_np, z_tp1_np in zip(z_t_list, scenario_list, z_tp1_list):
-            z_t = torch.tensor(z_t_np).unsqueeze(0)  # [1, 64, H, W]
-            scenario = torch.tensor(s_np).unsqueeze(0)  # [1, 16]
-            z_tp1_true = torch.tensor(z_tp1_np).unsqueeze(0)  # [1, 64, H, W]
+        n_samples = 0
 
-            z_tp1_pred = model(z_t, scenario)
-            # L2 normalize prediction to match unit-sphere target
-            z_tp1_pred = torch.nn.functional.normalize(z_tp1_pred, p=2, dim=1)
-            z_tp1_true_norm = torch.nn.functional.normalize(z_tp1_true, p=2, dim=1)
-            loss = mse_loss(z_tp1_pred, z_tp1_true_norm)
+        for area_name, seq in area_sequences.items():
+            if len(seq) < 2:
+                continue
+            s_np = np.zeros(SCENARIO_DIM, dtype=np.float32)
+            s_np[SCENARIOS["baseline"].id] = 1.0
+            scenario = torch.tensor(s_np).unsqueeze(0)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
+            # Slide a window of UNROLL_STEPS over the sequence
+            for start in range(len(seq) - 1):
+                end = min(start + UNROLL_STEPS, len(seq) - 1)
+                steps = end - start
 
-        avg_loss = epoch_loss / len(z_t_list)
+                z = torch.tensor(seq[start]).unsqueeze(0).float()
+                total_loss = torch.tensor(0.0)
+
+                for step in range(steps):
+                    z_pred = model(z, scenario)
+                    z_pred = torch.nn.functional.normalize(z_pred, p=2, dim=1)
+                    z_true = torch.tensor(seq[start + step + 1]).unsqueeze(0).float()
+                    z_true = torch.nn.functional.normalize(z_true, p=2, dim=1)
+
+                    # Decaying weight: step 1 = 1.0, step 2 = 0.5, step 3 = 0.25
+                    weight = 1.0 / (2 ** step)
+                    total_loss = total_loss + weight * mse_loss(z_pred, z_true)
+
+                    # Use predicted z for next step (not teacher forcing)
+                    z = z_pred.detach()  # detach to avoid memory explosion
+                    z.requires_grad_(False)
+                    # Re-feed as input (but don't backprop through detach)
+                    z = z_pred  # keep grad for current step's loss
+
+                optimizer.zero_grad()
+                total_loss.backward()
+                optimizer.step()
+                epoch_loss += total_loss.item()
+                n_samples += 1
+
+        avg_loss = epoch_loss / max(n_samples, 1)
         losses.append(avg_loss)
         if (epoch + 1) % 10 == 0:
             logger.info("Epoch %d/%d  loss=%.6f", epoch + 1, epochs, avg_loss)
