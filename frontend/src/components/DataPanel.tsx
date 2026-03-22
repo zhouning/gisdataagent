@@ -8,7 +8,7 @@ import ToolsTab from './datapanel/ToolsTab';
 import CapabilitiesTab from './datapanel/CapabilitiesTab';
 import KnowledgeBaseTab from './datapanel/KnowledgeBaseTab';
 import WorkflowsTab from './datapanel/WorkflowsTab';
-import { FileList, DataTable } from './datapanel/FileListTab';
+import { FileManager, DataTable } from './datapanel/FileListTab';
 import SuggestionsTab from './datapanel/SuggestionsTab';
 import TasksTab from './datapanel/TasksTab';
 import TemplatesTab from './datapanel/TemplatesTab';
@@ -20,13 +20,14 @@ import ObservabilityTab from './datapanel/ObservabilityTab';
 import VirtualSourcesTab from './datapanel/VirtualSourcesTab';
 import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
+import WorldModelTab from './datapanel/WorldModelTab';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel';
 
 type GroupKey = 'data' | 'intelligence' | 'ops' | 'orchestration';
 
@@ -57,6 +58,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
       { key: 'suggestions', label: '建议', icon: '💡' },
       { key: 'memory', label: '记忆', icon: '🧠' },
       { key: 'market', label: '市场', icon: '🏪' },
+      { key: 'worldmodel', label: '世界模型', icon: '🌍' },
     ],
   },
   {
@@ -83,26 +85,12 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
 const TAB_TO_GROUP: Record<TabKey, GroupKey> = {} as any;
 TAB_GROUPS.forEach(g => g.tabs.forEach(t => { TAB_TO_GROUP[t.key] = g.key; }));
 
-interface FileInfo {
-  name: string;
-  size: number;
-  modified: string;
-  type: string;
-}
-
 export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('files');
   const [activeGroup, setActiveGroup] = useState<GroupKey>('data');
-  const [files, setFiles] = useState<FileInfo[]>([]);
   const [tableData, setTableData] = useState<any[]>([]);
   const [tableColumns, setTableColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchFiles();
-    const interval = setInterval(fetchFiles, 10000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (!dataFile) return;
@@ -111,17 +99,10 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
     setActiveGroup('data');
   }, [dataFile]);
 
-  const fetchFiles = async () => {
-    try {
-      const resp = await fetch('/api/user/files', { credentials: 'include' });
-      if (resp.ok) setFiles(await resp.json());
-    } catch { /* ignore */ }
-  };
-
   const loadCsvData = async (filename: string) => {
     setLoading(true);
     try {
-      const resp = await fetch(`/api/user/files/${filename}`, { credentials: 'include' });
+      const resp = await fetch(`/api/user/files/${encodeURIComponent(filename)}`, { credentials: 'include' });
       if (!resp.ok) return;
       const text = await resp.text();
       const result = Papa.parse(text, { header: true, skipEmptyLines: true });
@@ -131,13 +112,6 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
       }
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  };
-
-  const handleFileClick = (file: FileInfo) => {
-    if (file.type === 'csv') { loadCsvData(file.name); setActiveTab('table'); }
-    else {
-      window.open(`/api/user/files/${encodeURIComponent(file.name)}`, '_blank');
-    }
   };
 
   const handleTabClick = (tab: TabKey) => {
@@ -195,7 +169,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
       </div>
 
       <div className="data-panel-content">
-        {activeTab === 'files' && <FileList files={files} onFileClick={handleFileClick} />}
+        {activeTab === 'files' && <FileManager onFileClick={(name) => { loadCsvData(name); setActiveTab('table'); }} />}
         {activeTab === 'table' && <DataTable columns={tableColumns} data={tableData} loading={loading} />}
         {activeTab === 'catalog' && <CatalogTab />}
         {activeTab === 'history' && <HistoryTab />}
@@ -215,6 +189,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'market' && <MarketplaceTab />}
         {activeTab === 'geojson' && <GeoJsonEditorTab />}
         {activeTab === 'charts' && <ChartsTab />}
+        {activeTab === 'worldmodel' && <WorldModelTab />}
       </div>
     </div>
   );

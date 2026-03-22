@@ -8,3 +8,4 @@ from .bundle_routes import get_bundle_routes
 from .mcp_routes import get_mcp_routes
 from .workflow_routes import get_workflow_routes
 from .skills_routes import get_skills_routes
+from .world_model_routes import get_world_model_routes
