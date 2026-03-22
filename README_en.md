@@ -2,11 +2,11 @@
 
 # GIS Data Agent (ADK Edition) v14.5
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 17 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 19 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **125 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **133 REST API endpoints**.
 
-**v14.5 connector plugin architecture + data standards + cleaning**: BaseConnector plugin architecture (ConnectorRegistry + 6 built-in connectors including new WMS/WMTS and ArcGIS REST FeatureServer); Data Standard Registry (pre-built GB/T 21010 land classification codes with 73 values + DLTB 30-field specification + 4 code tables); DataCleaningToolset (7 tools: null filling / code mapping / field rename / type cast / outlier clipping / CRS standardization / missing field completion); FGDB format support; frontend WMS layer rendering + type-specific forms + layer discovery.
+**v14.5 full-stack governance upgrade**: BaseConnector plugin architecture (6 connectors incl. WMS/ArcGIS REST); Data Standard Registry (GB/T 21010 + DLTB 30-field spec); DataCleaningToolset (7 tools) + standard-aware QC (M/C/O validation, formula checks, Gap Matrix, batch profiling, governance plan generation); Skill 5-pattern upgrade (Inversion interview / Generator templates / Reviewer checklists); Agent Observability Phase 1 (25+ Prometheus metrics + HTTP middleware + Grafana); governance ops (quality rule library CRUD + trend dashboard + resource overview); parameter re-run + workflow breakpoint/resume + memory search panel.
 
 ## 📚 Official Technical Documentation
 
