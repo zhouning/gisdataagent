@@ -35,6 +35,7 @@ AEF_COLLECTION = "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
 AEF_BANDS = [f"A{i:02d}" for i in range(64)]  # A00 ~ A63
 Z_DIM = 64
 SCENARIO_DIM = 16
+N_CONTEXT = 2  # DEM elevation + slope
 
 # LULC label source for decoder training
 LULC_COLLECTION = (
@@ -74,11 +75,27 @@ DECODER_PATH = os.path.join(WEIGHTS_DIR, "lulc_decoder_v1.pkl")
 # Raw data cache (embeddings + LULC labels downloaded from GEE)
 RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "weights", "raw_data")
 
-# Default study areas for training (same as Phase 0)
+# Default study areas for training — 15 regions covering all major land types in China
 DEFAULT_TRAINING_AREAS = [
-    {"name": "yangtze_delta", "bbox": [121.2, 31.0, 121.3, 31.1]},
-    {"name": "northeast_plain", "bbox": [126.5, 45.7, 126.6, 45.8]},
-    {"name": "yunnan_eco", "bbox": [100.2, 25.0, 100.3, 25.1]},
+    # --- Urban / Urbanizing (4) ---
+    {"name": "yangtze_delta", "bbox": [121.2, 31.0, 121.3, 31.1]},      # Shanghai suburbs
+    {"name": "jing_jin_ji", "bbox": [116.3, 39.8, 116.4, 39.9]},        # Beijing suburbs
+    {"name": "pearl_river", "bbox": [113.2, 23.0, 113.3, 23.1]},        # Guangzhou
+    {"name": "chengdu_plain", "bbox": [104.0, 30.6, 104.1, 30.7]},      # Chengdu plain
+    # --- Agricultural (4) ---
+    {"name": "northeast_plain", "bbox": [126.5, 45.7, 126.6, 45.8]},    # Harbin farmland
+    {"name": "north_china_plain", "bbox": [115.0, 36.5, 115.1, 36.6]},  # Hebei farmland
+    {"name": "jianghan_plain", "bbox": [113.5, 30.3, 113.6, 30.4]},     # Hubei farmland
+    {"name": "hetao", "bbox": [107.0, 40.7, 107.1, 40.8]},              # Inner Mongolia irrigated
+    # --- Ecological / Forest / Mountain (4) ---
+    {"name": "yunnan_eco", "bbox": [100.2, 25.0, 100.3, 25.1]},         # Dali area
+    {"name": "daxinganling", "bbox": [124.0, 50.3, 124.1, 50.4]},       # NE forest
+    {"name": "qinghai_edge", "bbox": [101.5, 36.5, 101.6, 36.6]},       # Qinghai-Tibet edge
+    {"name": "wuyi_mountain", "bbox": [117.6, 27.7, 117.7, 27.8]},      # Fujian forest
+    # --- Mixed / Transitional (3) ---
+    {"name": "guanzhong", "bbox": [108.9, 34.2, 109.0, 34.3]},          # Xi'an peri-urban
+    {"name": "minnan_coast", "bbox": [118.0, 24.4, 118.1, 24.5]},       # Xiamen coast
+    {"name": "poyang_lake", "bbox": [116.0, 29.0, 116.1, 29.1]},        # Wetland/farm mix
 ]
 
 TRAINING_YEARS = list(range(2017, 2025))  # 2017-2024
@@ -152,25 +169,33 @@ def encode_scenario(scenario_name: str) -> "torch.Tensor":
 #  LatentDynamicsNet — the world model
 # ====================================================================
 
-def _build_model(z_dim: int = Z_DIM, scenario_dim: int = SCENARIO_DIM):
+def _build_model(z_dim: int = Z_DIM, scenario_dim: int = SCENARIO_DIM, n_context: int = N_CONTEXT):
     """Build a LatentDynamicsNet instance. Deferred torch import."""
     import torch
     import torch.nn as nn
 
     class LatentDynamicsNet(nn.Module):
-        """Residual CNN predicting embedding delta: z_{t+1} = z_t + f(z_t, s)."""
+        """Residual CNN predicting embedding delta: z_{t+1} = z_t + f(z_t, s, ctx).
 
-        def __init__(self, z_dim_: int = z_dim, scenario_dim_: int = scenario_dim):
+        Now accepts optional spatial context (DEM elevation + slope) to enable
+        spatially heterogeneous predictions under the same scenario.
+        """
+
+        def __init__(self, z_dim_: int = z_dim, scenario_dim_: int = scenario_dim,
+                     n_context_: int = n_context):
             super().__init__()
             self.z_dim = z_dim_
             self.scenario_dim = scenario_dim_
+            self.n_context = n_context_
             self.scenario_enc = nn.Sequential(
                 nn.Linear(scenario_dim_, 64),
                 nn.ReLU(),
                 nn.Linear(64, z_dim_),
             )
+            # Input: z_t (z_dim) + scenario (z_dim) + context (n_context)
+            in_channels = z_dim_ * 2 + n_context_
             self.dynamics = nn.Sequential(
-                nn.Conv2d(z_dim_ * 2, 128, 3, padding=1),
+                nn.Conv2d(in_channels, 128, 3, padding=1),
                 nn.GroupNorm(8, 128),
                 nn.GELU(),
                 nn.Conv2d(128, 128, 3, padding=1),
@@ -179,16 +204,26 @@ def _build_model(z_dim: int = Z_DIM, scenario_dim: int = SCENARIO_DIM):
                 nn.Conv2d(128, z_dim_, 1),
             )
 
-        def forward(self, z_t: torch.Tensor, scenario: torch.Tensor) -> torch.Tensor:
+        def forward(self, z_t: torch.Tensor, scenario: torch.Tensor,
+                    context: torch.Tensor | None = None) -> torch.Tensor:
             """
             Args:
                 z_t: [B, z_dim, H, W] current embedding grid
                 scenario: [B, scenario_dim] scenario vector
+                context: [B, n_context, H, W] optional spatial context (DEM, slope)
+                         If None, zeros are used (backward compatible).
             Returns:
                 z_tp1: [B, z_dim, H, W] predicted next embedding grid
             """
             s = self.scenario_enc(scenario)[:, :, None, None].expand_as(z_t)
-            delta_z = self.dynamics(torch.cat([z_t, s], dim=1))
+            if context is not None:
+                inp = torch.cat([z_t, s, context], dim=1)
+            else:
+                # Backward compatible: zero context
+                B, _, H, W = z_t.shape
+                zeros = torch.zeros(B, self.n_context, H, W, device=z_t.device)
+                inp = torch.cat([z_t, s, zeros], dim=1)
+            delta_z = self.dynamics(inp)
             return z_t + delta_z  # residual connection
 
     return LatentDynamicsNet()
@@ -274,6 +309,65 @@ def extract_embeddings(
         return grid
     except Exception as e:
         logger.error("Failed to extract embeddings: %s", e)
+        return None
+
+
+def extract_terrain_context(
+    bbox: list[float], target_shape: tuple[int, int] | None = None
+) -> Optional[np.ndarray]:
+    """
+    Extract DEM elevation + slope from SRTM 30m via GEE.
+
+    Returns:
+        ndarray of shape [2, H, W] (channel 0 = normalized elevation, channel 1 = slope in degrees)
+        or None if GEE unavailable.
+    """
+    if not _init_gee():
+        return None
+    import ee
+
+    try:
+        region = ee.Geometry.Rectangle(bbox)
+        dem = ee.Image("USGS/SRTMGL1_003").clip(region)
+        slope = ee.Terrain.slope(dem)
+        combined = dem.select("elevation").addBands(slope.select("slope"))
+
+        result = combined.sampleRectangle(region=region, defaultValue=0).getInfo()
+        properties = result.get("properties", {})
+
+        elev_data = properties.get("elevation")
+        slope_data = properties.get("slope")
+        if elev_data is None or slope_data is None:
+            return None
+
+        elev = np.array(elev_data, dtype=np.float32)
+        slp = np.array(slope_data, dtype=np.float32)
+
+        # Normalize: elevation to [0, 1] range, slope to [0, 1] range
+        elev_min, elev_max = elev.min(), elev.max()
+        if elev_max > elev_min:
+            elev = (elev - elev_min) / (elev_max - elev_min)
+        else:
+            elev = np.zeros_like(elev)
+
+        slp = np.clip(slp / 45.0, 0, 1)  # normalize slope (45° = max)
+
+        ctx = np.stack([elev, slp], axis=0)  # [2, H, W]
+
+        # Resize to match embedding grid if needed
+        if target_shape is not None and (ctx.shape[1] != target_shape[0] or ctx.shape[2] != target_shape[1]):
+            from PIL import Image as PILImage
+            ctx_resized = np.stack([
+                np.array(PILImage.fromarray(ctx[i]).resize(
+                    (target_shape[1], target_shape[0]), PILImage.BILINEAR
+                ), dtype=np.float32)
+                for i in range(ctx.shape[0])
+            ], axis=0)
+            ctx = ctx_resized
+
+        return ctx  # [2, H, W]
+    except Exception as e:
+        logger.error("Failed to extract terrain context: %s", e)
         return None
 
 
@@ -501,6 +595,7 @@ def train_dynamics_model(
             "model_state_dict": model.state_dict(),
             "z_dim": Z_DIM,
             "scenario_dim": SCENARIO_DIM,
+            "n_context": N_CONTEXT,
             "training_areas": [a["name"] for a in areas],
             "training_years": TRAINING_YEARS,
             "epochs": epochs,
@@ -594,7 +689,8 @@ def _load_model():
     checkpoint = torch.load(WEIGHTS_PATH, map_location="cpu", weights_only=False)
     z_dim = checkpoint.get("z_dim", Z_DIM)
     scenario_dim = checkpoint.get("scenario_dim", SCENARIO_DIM)
-    model = _build_model(z_dim, scenario_dim)
+    n_ctx = checkpoint.get("n_context", N_CONTEXT)
+    model = _build_model(z_dim, scenario_dim, n_ctx)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     _CACHED_MODEL = model
@@ -780,6 +876,13 @@ def predict_sequence(
     model = _load_model()
     decoder = _load_decoder()
 
+    # Extract terrain context (DEM + slope)
+    ctx_np = extract_terrain_context(bbox, target_shape=(h, w))
+    ctx = None
+    if ctx_np is not None:
+        ctx = torch.tensor(ctx_np).unsqueeze(0).float()  # [1, 2, H, W]
+        logger.info("Terrain context: %s", ctx.shape)
+
     # Prepare tensors
     z = torch.tensor(emb.transpose(2, 0, 1)).unsqueeze(0).float()  # [1, 64, H, W]
     s = encode_scenario(scenario)  # [1, 16]
@@ -799,10 +902,8 @@ def predict_sequence(
 
     with torch.no_grad():
         for step in range(n_years):
-            z = model(z, s)
+            z = model(z, s, context=ctx)
             # L2 normalize to stay on the unit hypersphere
-            # (AlphaEarth embeddings are unit vectors; residual addition
-            #  causes manifold drift without re-normalization)
             z = torch.nn.functional.normalize(z, p=2, dim=1)
             year = start_year + step + 1
             years.append(year)
