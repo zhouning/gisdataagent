@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-VALID_SOURCE_TYPES = {"wfs", "stac", "ogc_api", "custom_api", "wms", "arcgis_rest"}
+VALID_SOURCE_TYPES = {"wfs", "stac", "ogc_api", "custom_api", "wms", "arcgis_rest", "database", "object_storage"}
 VALID_REFRESH_POLICIES = {"on_demand", "interval:5m", "interval:30m", "interval:1h", "realtime"}
 VALID_AUTH_TYPES = {"bearer", "basic", "apikey", "none"}
 SOURCE_NAME_MAX = 200
