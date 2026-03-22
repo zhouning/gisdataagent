@@ -4,9 +4,9 @@
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
-系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 17 标签页），后端集成 **125 个 REST API**。
+系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 19 标签页），后端集成 **133 个 REST API**。
 
-**v14.5 连接器插件化 + 数据标准治理 + 数据清洗**：BaseConnector 插件架构（ConnectorRegistry 注册表 + 6 个内置连接器，含新增 WMS/WMTS 和 ArcGIS REST FeatureServer）；Data Standard Registry（预置 GB/T 21010 地类编码表 73 值 + DLTB 30 字段规范 + 4 个代码表）；DataCleaningToolset（7 个清洗工具：空值填充/编码映射/字段重命名/类型转换/异常值裁剪/CRS 统一/缺失字段补齐）；FGDB 格式支持；前端 WMS 图层渲染 + 类型专属表单 + 图层发现。
+**v14.5 全栈治理升级**：BaseConnector 插件架构（6 连接器含 WMS/ArcGIS REST）；Data Standard Registry（GB/T 21010 + DLTB 30 字段规范）；DataCleaningToolset（7 清洗工具）+ 标准感知质检（M/C/O 校验/公式验证/Gap Matrix/批量探查/治理方案生成）；Skill 5 模式升级（Inversion 采访/Generator 报告/Reviewer 清单）；Agent 可观测性 Phase 1（25+ Prometheus 指标 + HTTP 中间件 + Grafana 模板）；治理运营闭环（质量规则库 CRUD + 趋势仪表盘 + 资源总览）；参数调整重跑 + Workflow 断点续跑 + 记忆搜索面板。
 
 ## 📚 官方技术文档
 
@@ -21,12 +21,13 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2310+ tests, 96 test files |
-| 工具集 | 28 BaseToolset (含 GovernanceToolset + ChartToolset + DataCleaningToolset + VirtualSourceToolset), 5 SkillBundle, 160+ 工具 |
-| ADK Skills | 18 场景化领域技能 + DB 驱动自定义 Skills + 用户自定义 Tools |
-| REST API | 125 endpoints |
-| 数据标准 | Data Standard Registry — GB/T 21010 (73 地类编码) + DLTB (30 字段规范 + 4 代码表) |
+| 测试覆盖 | 2340+ tests, 97 test files |
+| 工具集 | 28 BaseToolset (含 GovernanceToolset 12 工具 + ChartToolset + DataCleaningToolset + VirtualSourceToolset 7 工具), 5 SkillBundle, 170+ 工具 |
+| ADK Skills | 18 场景化领域技能 (5 种设计模式: Tool Wrapper + Inversion + Generator + Reviewer) + DB 驱动自定义 Skills + 用户自定义 Tools |
+| REST API | 133 endpoints |
+| 数据标准 | Data Standard Registry — GB/T 21010 (73 地类编码) + DLTB (30 字段规范 + 4 代码表 + 公式校验) |
 | 连接器 | 6 个插件式连接器 (WFS / STAC / OGC API / Custom API / WMS / ArcGIS REST) |
+| 可观测性 | 25+ Prometheus 指标 (6 层) + HTTP 中间件 + Grafana Dashboard 模板 |
 | MCP Server | v2.0 — 36+ 工具暴露（底层 GIS + 高阶元数据 + Pipeline 执行） |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
@@ -324,7 +325,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（125 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（133 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -566,7 +567,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v14.2 | 深度智能 + 生产就绪：条件分析链、NSGA-II 多目标 Pareto 优化、Circuit Breaker 熔断、标注导出、自适应布局 | 2190 | ✅ 完成 |
 | v14.3 | 联邦多 Agent + 生态开放：多语言检测（zh/en/ja）、Skill 依赖图、Webhook 集成、Skill SDK 规范、Plugin 插件系统、完整 A2A 协议、Agent 联邦 | 2193 | ✅ 完成 |
 | v14.4 | 治理深化 + 交互式可视化：GovernanceToolset (7 工具 + 6 维评分)、ChartToolset (9 ECharts 图表)、治理 Prompt 独立化、DataPanel 工作台重构 (4 分组 17 标签页) | 2193 | ✅ 完成 |
-| v14.5 | **连接器插件化 + 数据标准治理 + 清洗引擎**：BaseConnector 架构 (6 连接器含 WMS+ArcGIS)、Data Standard Registry (GB/T 21010 + DLTB)、DataCleaningToolset (7 工具)、FGDB 支持、前端 WMS 渲染 + 图层发现 | 2310+ | ✅ 完成 |
+| v14.5 | **全栈治理升级**：BaseConnector 插件架构 (6 连接器含 WMS+ArcGIS)、Data Standard Registry (GB/T 21010 + DLTB)、DataCleaningToolset (7 工具)、标准感知质检 (Gap Matrix + 公式校验 + 批量探查 + 治理方案)、Skill 5 模式 (Inversion/Generator/Reviewer + L3 补全)、Agent 可观测性 Phase 1 (25+ Prometheus)、治理运营 (规则库 + 趋势 + 总览)、参数重跑 + 断点续跑 + 记忆搜索 | 2340+ | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 
 ## 设计模式覆盖 (21/21 = 100%)
