@@ -18,6 +18,7 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "leaflet": "^1.9.4",
+    "leaflet-draw": "^1.0.4",
     "leaflet.heat": "^0.2.0",
     "maplibre-gl": "^5.19.0",
     "papaparse": "^5.5.2",

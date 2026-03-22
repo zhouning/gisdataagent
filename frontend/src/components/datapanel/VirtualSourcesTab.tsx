@@ -25,6 +25,7 @@ export default function VirtualSourcesTab() {
   const [sources, setSources] = useState<VSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...EMPTY_VS_FORM });
   const [formError, setFormError] = useState('');
@@ -59,6 +60,8 @@ export default function VirtualSourcesTab() {
     setForm({ ...EMPTY_VS_FORM });
     setEditId(null);
     setFormError('');
+    setWizardStep(1);
+    setDiscoveredLayers([]);
     setShowForm(true);
   };
 
@@ -185,7 +188,22 @@ export default function VirtualSourcesTab() {
 
       {showForm && (
         <div style={{ background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, padding: 12, marginBottom: 10 }}>
+          {/* Wizard step indicator */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 10, justifyContent: 'center' }}>
+            {[1, 2, 3, 4].map(s => (
+              <div key={s} style={{
+                width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                background: wizardStep === s ? '#2563eb' : wizardStep > s ? '#10b981' : '#333',
+                color: wizardStep >= s ? '#fff' : '#666',
+              }} onClick={() => { if (s <= wizardStep) setWizardStep(s); }}>
+                {wizardStep > s ? '✓' : s}
+              </div>
+            ))}
+          </div>
           <div style={{ display: 'grid', gap: 8 }}>
+            {/* Step 1: Basic Info */}
+            {wizardStep === 1 && (<>
             <input placeholder="数据源名称" value={form.source_name}
               onChange={e => setForm({ ...form, source_name: e.target.value })}
               style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
@@ -211,9 +229,22 @@ export default function VirtualSourcesTab() {
             <input placeholder="端点 URL" value={form.endpoint_url}
               onChange={e => setForm({ ...form, endpoint_url: e.target.value })}
               style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+            </>)}
+
+            {/* Step 2: CRS + Refresh + Shared */}
+            {wizardStep === 2 && (<>
             <input placeholder="默认CRS (EPSG:4326)" value={form.default_crs}
               onChange={e => setForm({ ...form, default_crs: e.target.value })}
               style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#aaa' }}>
+              <input type="checkbox" checked={form.is_shared}
+                onChange={e => setForm({ ...form, is_shared: e.target.checked })} />
+              共享给其他用户
+            </label>
+            </>)}
+
+            {/* Step 3: Type-specific query config */}
+            {wizardStep === 3 && (<>
             {/* Type-specific query config */}
             {form.source_type === 'wms' ? (
               <div style={{ display: 'grid', gap: 6 }}>
@@ -295,18 +326,44 @@ export default function VirtualSourcesTab() {
                 onChange={e => setForm({ ...form, query_config: e.target.value })} rows={2}
                 style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0', fontFamily: 'monospace', fontSize: 12 }} />
             )}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#aaa' }}>
-              <input type="checkbox" checked={form.is_shared}
-                onChange={e => setForm({ ...form, is_shared: e.target.checked })} />
-              共享给其他用户
-            </label>
+            </>)}
+
+            {/* Step 4: Confirm & Create */}
+            {wizardStep === 4 && (<>
+            <div style={{ background: '#0d1117', borderRadius: 4, padding: 8, fontSize: 12, color: '#aaa' }}>
+              <div><strong style={{ color: '#e0e0e0' }}>名称:</strong> {form.source_name}</div>
+              <div><strong style={{ color: '#e0e0e0' }}>类型:</strong> {form.source_type}</div>
+              <div><strong style={{ color: '#e0e0e0' }}>端点:</strong> {form.endpoint_url}</div>
+              <div><strong style={{ color: '#e0e0e0' }}>CRS:</strong> {form.default_crs}</div>
+              <div><strong style={{ color: '#e0e0e0' }}>刷新:</strong> {form.refresh_policy}</div>
+              <div><strong style={{ color: '#e0e0e0' }}>共享:</strong> {form.is_shared ? '是' : '否'}</div>
+            </div>
+            </>)}
           </div>
           {formError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{formError}</div>}
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}
-              style={{ fontSize: 12 }}>{saving ? '保存中...' : (editId ? '更新' : '创建')}</button>
-            <button className="btn-secondary btn-sm" onClick={() => setShowForm(false)}
-              style={{ fontSize: 12 }}>取消</button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {wizardStep > 1 && (
+                <button className="btn-secondary btn-sm" onClick={() => setWizardStep(wizardStep - 1)}
+                  style={{ fontSize: 12 }}>上一步</button>
+              )}
+              <button className="btn-secondary btn-sm" onClick={() => setShowForm(false)}
+                style={{ fontSize: 12 }}>取消</button>
+            </div>
+            <div>
+              {wizardStep < 4 ? (
+                <button className="btn-primary btn-sm" onClick={() => {
+                  if (wizardStep === 1 && (!form.source_name || !form.endpoint_url)) {
+                    setFormError('名称和端点URL不能为空'); return;
+                  }
+                  setFormError('');
+                  setWizardStep(wizardStep + 1);
+                }} style={{ fontSize: 12 }}>下一步</button>
+              ) : (
+                <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving}
+                  style={{ fontSize: 12 }}>{saving ? '保存中...' : (editId ? '更新' : '创建')}</button>
+              )}
+            </div>
           </div>
         </div>
       )}
