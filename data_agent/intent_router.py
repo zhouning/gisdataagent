@@ -168,11 +168,21 @@ def classify_intent(text: str, previous_pipeline: str = None,
         else:
             intent = raw.upper()
             reason = ""
-        if "OPTIMIZATION" in intent: return ("OPTIMIZATION", reason, router_tokens, tool_cats, lang)
-        if "GOVERNANCE" in intent: return ("GOVERNANCE", reason, router_tokens, tool_cats, lang)
-        if "AMBIGUOUS" in intent: return ("AMBIGUOUS", reason, router_tokens, tool_cats, lang)
-        if "GENERAL" in intent: return ("GENERAL", reason, router_tokens, tool_cats, lang)
-        return ("GENERAL", reason, router_tokens, tool_cats, lang)
+        if "OPTIMIZATION" in intent: result_intent = "OPTIMIZATION"
+        elif "GOVERNANCE" in intent: result_intent = "GOVERNANCE"
+        elif "AMBIGUOUS" in intent: result_intent = "AMBIGUOUS"
+        elif "GENERAL" in intent: result_intent = "GENERAL"
+        else: result_intent = "GENERAL"
+
+        # Record intent metrics (v14.5)
+        try:
+            from data_agent.observability import record_intent
+            import time as _time
+            record_intent(result_intent, lang, 0)  # duration tracked at caller level
+        except Exception:
+            pass
+
+        return (result_intent, reason, router_tokens, tool_cats, lang)
     except Exception as e:
         logger.error("Router error: %s", e)
         return ("GENERAL", "", 0, set(), detect_language(text))

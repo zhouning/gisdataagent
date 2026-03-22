@@ -1,0 +1,85 @@
+{
+  "dashboard": {
+    "title": "GIS Data Agent — Overview",
+    "description": "v14.5 Observability Phase 1 dashboard",
+    "tags": ["gis-data-agent", "observability"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Pipeline Executions (rate/5m)",
+        "type": "timeseries",
+        "targets": [{"expr": "rate(agent_pipeline_runs_total[5m])", "legendFormat": "{{pipeline}} — {{status}}"}],
+        "gridPos": {"x": 0, "y": 0, "w": 8, "h": 6}
+      },
+      {
+        "title": "Pipeline Duration P50 / P99",
+        "type": "timeseries",
+        "targets": [
+          {"expr": "histogram_quantile(0.5, rate(agent_pipeline_duration_seconds_bucket[5m]))", "legendFormat": "P50"},
+          {"expr": "histogram_quantile(0.99, rate(agent_pipeline_duration_seconds_bucket[5m]))", "legendFormat": "P99"}
+        ],
+        "gridPos": {"x": 8, "y": 0, "w": 8, "h": 6}
+      },
+      {
+        "title": "LLM Token Consumption",
+        "type": "timeseries",
+        "targets": [
+          {"expr": "rate(agent_llm_input_tokens_sum[5m])", "legendFormat": "Input — {{agent_name}}"},
+          {"expr": "rate(agent_llm_output_tokens_sum[5m])", "legendFormat": "Output — {{agent_name}}"}
+        ],
+        "gridPos": {"x": 16, "y": 0, "w": 8, "h": 6}
+      },
+      {
+        "title": "Tool Latency Top 10",
+        "type": "bargauge",
+        "targets": [{"expr": "topk(10, histogram_quantile(0.95, rate(agent_tool_duration_seconds_bucket[5m])))", "legendFormat": "{{tool_name}}"}],
+        "gridPos": {"x": 0, "y": 6, "w": 12, "h": 6}
+      },
+      {
+        "title": "Tool Call Rate",
+        "type": "timeseries",
+        "targets": [{"expr": "rate(agent_tool_calls_total[5m])", "legendFormat": "{{tool_name}} — {{status}}"}],
+        "gridPos": {"x": 12, "y": 6, "w": 12, "h": 6}
+      },
+      {
+        "title": "Cache Hit Rate",
+        "type": "gauge",
+        "targets": [{"expr": "rate(agent_cache_operations_total{operation='hit'}[5m]) / (rate(agent_cache_operations_total{operation='hit'}[5m]) + rate(agent_cache_operations_total{operation='miss'}[5m]))", "legendFormat": "{{cache_name}}"}],
+        "gridPos": {"x": 0, "y": 12, "w": 8, "h": 6}
+      },
+      {
+        "title": "HTTP API QPS",
+        "type": "timeseries",
+        "targets": [{"expr": "sum(rate(http_requests_total[5m])) by (path)", "legendFormat": "{{path}}"}],
+        "gridPos": {"x": 8, "y": 12, "w": 8, "h": 6}
+      },
+      {
+        "title": "HTTP API Latency P95",
+        "type": "timeseries",
+        "targets": [{"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path))", "legendFormat": "{{path}}"}],
+        "gridPos": {"x": 16, "y": 12, "w": 8, "h": 6}
+      },
+      {
+        "title": "Intent Classification",
+        "type": "piechart",
+        "targets": [{"expr": "increase(agent_intent_classification_total[1h])", "legendFormat": "{{intent}} ({{language}})"}],
+        "gridPos": {"x": 0, "y": 18, "w": 8, "h": 6}
+      },
+      {
+        "title": "Circuit Breaker Status",
+        "type": "stat",
+        "targets": [{"expr": "agent_circuit_breaker_state", "legendFormat": "{{tool_name}}"}],
+        "gridPos": {"x": 8, "y": 18, "w": 8, "h": 6},
+        "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "CLOSED"}, "1": {"text": "OPEN"}, "2": {"text": "HALF_OPEN"}}}]}}
+      },
+      {
+        "title": "LLM Call Duration P95",
+        "type": "timeseries",
+        "targets": [{"expr": "histogram_quantile(0.95, rate(agent_llm_duration_seconds_bucket[5m]))", "legendFormat": "{{agent_name}} / {{model_name}}"}],
+        "gridPos": {"x": 16, "y": 18, "w": 8, "h": 6}
+      }
+    ],
+    "time": {"from": "now-3h", "to": "now"},
+    "refresh": "30s"
+  }
+}
