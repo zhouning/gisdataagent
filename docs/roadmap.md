@@ -77,8 +77,8 @@
 
 ### 自然语言交互
 - [x] **意图消歧对话** — AMBIGUOUS 分类时弹出选择卡片（Optimization/Governance/General），用户点选后路由
-- [ ] **参数调整重跑** — pipeline 完成后显示"调整参数"按钮，提取上次参数 → 编辑表单 → 重新执行
-- [ ] **记忆搜索面板** — ChatPanel 增加 `/recall` 命令或搜索图标，调用 `search_memory()` 展示历史分析
+- [x] **参数调整重跑** — rerun_with_params action + session 参数存储 ✅ v14.5
+- [x] **记忆搜索面板** — MemorySearchTab + /api/memory/search ✅ v14.5
 
 ### 用户自扩展
 - [x] **Marketplace 画廊** — DataPanel 新增"市场"tab，聚合所有 is_shared=true 的 Skills/Tools/Templates/Bundles，支持排序（评分/使用量/时间）
@@ -95,8 +95,8 @@
 - [x] **3D 图层控制** — Map3DView 增加图层列表面板，支持 show/hide/opacity 调节
 
 ### 多 Agent 编排
-- [ ] **Workflow 断点续跑** — DAG 执行时每个 node 输出持久化到 DB，新增 `resume_workflow_dag(run_id, from_node)`
-- [ ] **步骤级重试** — DAG 失败节点可单独重试（不重跑整个 workflow）
+- [x] **Workflow 断点续跑** — resume_workflow_dag + /runs/{id}/resume ✅ v14.5
+- [x] **步骤级重试** — retry_workflow_node + REST 端点 ✅ v14.5
 
 ---
 
@@ -111,8 +111,8 @@
 
 ### 用户自扩展
 - [x] **版本管理** — Skills/Tools 新增 `version` 字段，更新时自动 +1，保留最近 10 个版本，支持回滚
-- [ ] **标签分类** — Skills/Tools 新增 `category`/`tags[]` 字段
-- [ ] **使用统计** — Skills/Tools 增加 `use_count` + 调用日志，前端 Marketplace 显示热度排行
+- [x] **标签分类** — category + tags[] 列 + migration 035 ✅ v15.0
+- [x] **使用统计** — use_count 列 + increment_skill_use_count ✅ v15.0
 
 ### DRL 优化
 - [ ] **多场景环境引擎** — 重构 `LandUseOptEnv` 支持配置驱动：任意 N 种地类、自定义转换规则、自定义奖励公式
@@ -120,7 +120,7 @@
 - [ ] **结果对比面板** — 前端支持 A/B 对比两次优化结果（差异热力图 + 指标表格）
 
 ### 三面板 SPA
-- [ ] **3D basemap 同步** — Map3DView 读取 2D 选择的 basemap，MapLibre style 动态切换
+- [x] **3D basemap 同步** — Map3DView 高德/天地图 MapLibre 栅格源 ✅ v14.5
 - [ ] **标注协同** — WebSocket 实时推送标注变更 + 在线用户光标显示
 - [x] **GeoJSON 编辑器** — DataPanel 新增 tab/modal，支持粘贴/编辑 GeoJSON + 预览到地图
 - [ ] **跨图层关联** — 选中 A 图层要素时高亮 B 图层空间关联要素
@@ -150,7 +150,7 @@
 - [ ] **时序动画** — 优化过程 200 步回放动画（逐步地块转换 GIF/MP4）
 
 ### 三面板 SPA
-- [ ] **要素绘制编辑** — Leaflet.Draw 集成：绘制点/线/面 → 保存为 GeoJSON → 可作为分析输入
+- [x] **要素绘制编辑** — Leaflet.Draw 点/线/面/矩形 + 导出 GeoJSON ✅ v14.5
 - [x] **标注导出** — 标注集导出为 GeoJSON / CSV
 - [ ] **自适应布局** — 移动端响应式（Chat 全屏 ↔ 地图全屏切换）
 
@@ -314,13 +314,46 @@
 ### Skill 设计模式深化 *(核心完成)*
 - [x] **Pipeline 模式: multi-source-fusion** — 5 步检查点融合 (v3.0) ✅ 2026-03-22
 - [x] **新增 data-quality-reviewer Skill** — 入库前 13 项质量审查 ✅ 2026-03-22
-- [ ] **数据模型推荐引擎** — LLM 自动推荐治理路径 *(延期)*
-- [ ] **Generator/Reviewer 输出结构化校验** — Pydantic schema *(延期)*
+- [x] **数据模型推荐引擎** — recommend_data_model 工具 (差距分析+转换路径+工作量评估) ✅ 2026-03-22
+- [ ] **Generator/Reviewer 输出结构化校验** — Pydantic schema *(v16.0+)*
 
 ### 分布式计算 *(全部完成)*
 - [x] **SparkToolset (3 工具)** — submit_task + check_tier + list_jobs ✅ 2026-03-22
 - [x] **SparkGateway 网关** — 多后端抽象 (local/Livy/Dataproc/EMR) ✅ 2026-03-22
 - [x] **三层执行路由** — L1 本地(<100MB) / L2 队列(<1GB) / L3 Spark(>1GB) ✅ 2026-03-22
+
+---
+
+## v16.0+ — 遥感智能体能力增强 (远期规划)
+
+> **主题**: 从"通用 GIS 分析平台"升级为"遥感领域专业智能体平台"
+>
+> **理论基础**: Tang et al. (2026) *Intelligent Remote Sensing Agents: A Survey*
+>
+> **详细方案**: 见 `docs/roadmap_v6.0_rs_agents.md`
+
+### Phase 1 — 遥感核心能力 (v16.0)
+- [ ] **光谱指数库** — 15+ 遥感指数 (EVI/SAVI/NDWI/NDBI/NBR 等) + 智能推荐
+- [ ] **经验池 (Experience Pool)** — 成功分析经验记录 + RAG 检索 + 经验进化
+- [ ] **数据质量门控** — 云覆盖检测 + 自动降级 (光学→SAR 切换)
+- [ ] **卫星数据预置** — Sentinel-2/Landsat STAC 模板 + 3-5 预置源
+- [ ] **新增 Skills** — spectral-analysis + satellite-imagery
+
+### Phase 2 — 时空分析 (v17.0)
+- [ ] **变化检测引擎** — 双时相差异 + 指数差异 + 分类后比较 + 语义描述
+- [ ] **时间序列分析** — Mann-Kendall 趋势 + 断点检测 + 物候提取
+- [ ] **证据充分性评估** — 数据覆盖度 × 方法多样性 × 结论支撑强度
+
+### Phase 3 — 智能化可信度 (v18.0)
+- [ ] **代码生成执行** — Agent 动态生成 Python + 沙箱执行
+- [ ] **幻觉检测增强** — 空间约束 Fact-Checking + 多源交叉验证
+- [ ] **多 Agent Debate** — 主分析 + 独立验证 + 统计检验 + Judge 汇总
+- [ ] **RS 领域知识库** — 光谱特性 + 处理流程 + 分类体系 + 法规标准
+
+### Phase 4 — 高级遥感 (v19.0+)
+- [ ] **SAR/高光谱/LiDAR** 数据处理
+- [ ] **深度学习推理** — segment-anything-geo / SatMAE / Prithvi
+- [ ] **具身执行接口** — 卫星调度 / 无人机航线规划 (预留)
 
 ---
 
