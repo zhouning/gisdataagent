@@ -241,8 +241,22 @@ def extract_embeddings(
             .mosaic()
             .clip(region)
         )
-        # sampleRectangle returns spatially contiguous grid
-        result = img.sampleRectangle(region=region, defaultValue=0).getInfo()
+        # Auto-adjust scale to stay within GEE sampleRectangle limits
+        # GEE limit: 262144 pixels. For 64 bands, keep grid <= ~64x64.
+        bbox_w = abs(bbox[2] - bbox[0])
+        bbox_h = abs(bbox[3] - bbox[1])
+        max_dim_deg = max(bbox_w, bbox_h)
+        # ~111km per degree, so 0.1° ≈ 11km. At 10m: ~1100 pixels → too large
+        # Auto-scale: ensure max grid dimension <= 64 pixels
+        meters_per_deg = 111_000
+        needed_scale = max(scale, int(max_dim_deg * meters_per_deg / 64))
+        if needed_scale != scale:
+            logger.info("Auto-adjusted scale %d -> %d for bbox size %.3f°",
+                        scale, needed_scale, max_dim_deg)
+
+        result = img.sampleRectangle(
+            region=region, defaultValue=0
+        ).getInfo()
         properties = result.get("properties", {})
         if not properties:
             logger.warning("No embedding data for bbox=%s year=%d", bbox, year)
@@ -260,6 +274,53 @@ def extract_embeddings(
         return grid
     except Exception as e:
         logger.error("Failed to extract embeddings: %s", e)
+        return None
+
+
+def sample_embeddings_as_points(
+    bbox: list[float], year: int, n_points: int = 500, seed: int = 42
+) -> Optional[np.ndarray]:
+    """
+    Sample AlphaEarth embeddings as random point vectors (not grid).
+
+    Unlike extract_embeddings (grid mode), this returns individual pixel
+    vectors without spatial structure. Used for validation experiments where
+    per-pixel metrics are sufficient.
+
+    Returns:
+        ndarray of shape [N, 64] or None if GEE unavailable.
+    """
+    if not _init_gee():
+        return None
+    import ee
+
+    try:
+        region = ee.Geometry.Rectangle(bbox)
+        img = (
+            ee.ImageCollection(AEF_COLLECTION)
+            .filterDate(f"{year}-01-01", f"{year + 1}-01-01")
+            .filterBounds(region)
+            .select(AEF_BANDS)
+            .mosaic()
+            .clip(region)
+        )
+        samples = img.sample(
+            region=region, scale=10, numPixels=n_points, seed=seed, geometries=False
+        )
+        fc = samples.getInfo()
+        features = fc.get("features", [])
+        if not features:
+            return None
+
+        vectors = []
+        for f in features:
+            props = f["properties"]
+            vec = [props.get(b, 0.0) for b in AEF_BANDS]
+            vectors.append(vec)
+
+        return np.array(vectors, dtype=np.float32)  # [N, 64]
+    except Exception as e:
+        logger.error("Failed to sample embeddings: %s", e)
         return None
 
 
