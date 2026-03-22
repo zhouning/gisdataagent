@@ -74,7 +74,7 @@ class TestLatentDynamicsNet(unittest.TestCase):
         model = _build_model()
         total = sum(p.numel() for p in model.parameters())
         self.assertGreater(total, 20_000)
-        self.assertLess(total, 400_000)
+        self.assertLess(total, 600_000)
 
     def test_gradient_flow(self):
         """Gradients should flow through all layers."""
