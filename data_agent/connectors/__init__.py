@@ -113,4 +113,4 @@ class ConnectorRegistry:
 # Auto-import all built-in connectors to trigger self-registration
 # ---------------------------------------------------------------------------
 
-from . import wfs, stac, ogc_api, custom_api, wms, arcgis_rest  # noqa: E402,F401
+from . import wfs, stac, ogc_api, custom_api, wms, arcgis_rest, database, object_storage  # noqa: E402,F401

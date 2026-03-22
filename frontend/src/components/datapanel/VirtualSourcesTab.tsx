@@ -171,7 +171,7 @@ export default function VirtualSourcesTab() {
   const typeLabel = (t: string) => {
     const map: Record<string, string> = {
       wfs: 'WFS', stac: 'STAC', ogc_api: 'OGC API', custom_api: 'API',
-      wms: 'WMS', arcgis_rest: 'ArcGIS',
+      wms: 'WMS', arcgis_rest: 'ArcGIS', database: 'DB', object_storage: 'OBS',
     };
     return map[t] || t;
   };
@@ -217,6 +217,8 @@ export default function VirtualSourcesTab() {
                 <option value="custom_api">自定义 API</option>
                 <option value="wms">WMS/WMTS</option>
                 <option value="arcgis_rest">ArcGIS REST</option>
+                <option value="database">外部数据库</option>
+                <option value="object_storage">对象存储 (S3/OBS)</option>
               </select>
               <select value={form.refresh_policy}
                 onChange={e => setForm({ ...form, refresh_policy: e.target.value })}
