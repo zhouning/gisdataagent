@@ -15,6 +15,7 @@ import TemplatesTab from './datapanel/TemplatesTab';
 import AnalyticsTab from './datapanel/AnalyticsTab';
 import ChartsTab from './datapanel/ChartsTab';
 import GovernanceTab from './datapanel/GovernanceTab';
+import MemorySearchTab from './datapanel/MemorySearchTab';
 import VirtualSourcesTab from './datapanel/VirtualSourcesTab';
 import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
@@ -24,7 +25,7 @@ interface DataPanelProps {
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory';
 
 type GroupKey = 'data' | 'intelligence' | 'ops' | 'orchestration';
 
@@ -53,6 +54,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
       { key: 'tools', label: '工具', icon: '🔧' },
       { key: 'kb', label: '知识库', icon: '📚' },
       { key: 'suggestions', label: '建议', icon: '💡' },
+      { key: 'memory', label: '记忆', icon: '🧠' },
       { key: 'market', label: '市场', icon: '🏪' },
     ],
   },
@@ -203,6 +205,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'templates' && <TemplatesTab />}
         {activeTab === 'analytics' && <AnalyticsTab />}
         {activeTab === 'governance' && <GovernanceTab />}
+        {activeTab === 'memory' && <MemorySearchTab />}
         {activeTab === 'capabilities' && <CapabilitiesTab userRole={userRole} />}
         {activeTab === 'kb' && <KnowledgeBaseTab />}
         {activeTab === 'vsources' && <VirtualSourcesTab />}
