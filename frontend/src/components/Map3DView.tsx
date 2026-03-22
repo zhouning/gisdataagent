@@ -33,10 +33,20 @@ interface TooltipInfo {
   text: string;
 }
 
-const BASEMAP_STYLES: Record<string, string> = {
+const BASEMAP_STYLES: Record<string, any> = {
   'CartoDB Positron': 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   'CartoDB Dark': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   'OpenStreetMap': 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  '高德地图': {
+    version: 8, name: 'Gaode',
+    sources: { gaode: { type: 'raster', tiles: ['https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}'], tileSize: 256 } },
+    layers: [{ id: 'gaode', type: 'raster', source: 'gaode' }],
+  },
+  '天地图': {
+    version: 8, name: 'Tianditu',
+    sources: { tdt: { type: 'raster', tiles: ['https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'], tileSize: 256 } },
+    layers: [{ id: 'tdt', type: 'raster', source: 'tdt' }],
+  },
 };
 
 function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {

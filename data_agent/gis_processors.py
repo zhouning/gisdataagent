@@ -776,6 +776,34 @@ def list_fgdb_layers(file_path: str) -> dict:
         return {"status": "error", "message": str(e)}
 
 
+def list_dxf_layers(file_path: str) -> dict:
+    """列出 DXF/DWG 文件中的图层及其实体类型和数量。
+
+    Args:
+        file_path: DXF 或 DWG 文件路径。
+
+    Returns:
+        包含图层列表的字典，每个图层有 name、entity_types、count 字段。
+    """
+    try:
+        import ezdxf
+        path = _resolve_path(file_path)
+        doc = ezdxf.readfile(str(path))
+        msp = doc.modelspace()
+        layer_stats: dict = {}
+        for entity in msp:
+            layer = entity.dxf.layer if hasattr(entity.dxf, 'layer') else '0'
+            etype = entity.dxftype()
+            if layer not in layer_stats:
+                layer_stats[layer] = {"name": layer, "entity_types": {}, "count": 0}
+            layer_stats[layer]["count"] += 1
+            layer_stats[layer]["entity_types"][etype] = layer_stats[layer]["entity_types"].get(etype, 0) + 1
+        layers = sorted(layer_stats.values(), key=lambda x: x["count"], reverse=True)
+        return {"status": "ok", "layer_count": len(layers), "layers": layers}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 def check_field_standards(file_path: str, standard_schema: str = "") -> dict[str, any]:
     """
     [Governance Tool] 按数据标准校验属性字段：字段存在性、必填约束(M/C/O)、值域枚举、类型兼容、长度限制。

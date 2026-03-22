@@ -1269,6 +1269,28 @@ async def _api_memory_search(request: Request):
     return JSONResponse(result)
 
 
+async def _api_user_drawn_features(request: Request):
+    """POST /api/user/drawn-features — save drawn GeoJSON features to user uploads."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        geojson = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    import json as _json, uuid as _uuid, os as _os
+    from data_agent.user_context import get_user_upload_dir
+    upload_dir = get_user_upload_dir()
+    _os.makedirs(upload_dir, exist_ok=True)
+    fname = f"drawn_{_uuid.uuid4().hex[:8]}.geojson"
+    fpath = _os.path.join(upload_dir, fname)
+    with open(fpath, 'w', encoding='utf-8') as f:
+        _json.dump(geojson, f, ensure_ascii=False)
+    return JSONResponse({"status": "ok", "file_path": fpath, "file_name": fname})
+
+
 # ---------------------------------------------------------------------------
 # Capabilities (aggregated skills + toolsets listing)
 # ---------------------------------------------------------------------------
@@ -2503,6 +2525,7 @@ def get_frontend_api_routes():
         Route("/api/user/memories", endpoint=_api_user_memories_list, methods=["GET"]),
         Route("/api/user/memories/{id:int}", endpoint=_api_user_memories_delete, methods=["DELETE"]),
         Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
+        Route("/api/user/drawn-features", endpoint=_api_user_drawn_features, methods=["POST"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
         # MCP Hub (S-4: delegated to api/mcp_routes.py)

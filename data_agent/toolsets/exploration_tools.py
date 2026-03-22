@@ -11,6 +11,7 @@ from ..gis_processors import (
     check_topology,
     check_field_standards,
     list_fgdb_layers,
+    list_dxf_layers,
     _generate_output_path,
     _resolve_path,
 )
@@ -278,6 +279,7 @@ _ALL_FUNCS = [
     check_consistency,
     list_fgdb_layers,
     batch_profile_datasets,
+    list_dxf_layers,
 ]
 
 
