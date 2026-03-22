@@ -41,6 +41,7 @@ class DataStandard:
     description: str = ""
     fields: list[FieldSpec] = field(default_factory=list)
     code_tables: dict[str, list[dict]] = field(default_factory=dict)
+    formulas: list[dict] = field(default_factory=list)  # e.g. [{"expr":"A = B - C","tolerance":0.01}]
 
     def get_mandatory_fields(self) -> list[str]:
         return [f.name for f in self.fields if f.required == "M"]
@@ -125,6 +126,7 @@ class StandardRegistry:
             description=data.get("description", ""),
             fields=fields,
             code_tables=data.get("code_tables", {}),
+            formulas=data.get("formulas", []),
         )
 
     @classmethod
@@ -179,6 +181,27 @@ class StandardRegistry:
         if not std:
             return []
         return std.code_tables.get(table_name, [])
+
+    @classmethod
+    def get_code_mapping(cls, mapping_id: str) -> Optional[dict]:
+        """Load a code mapping file from standards/code_mappings/ directory."""
+        try:
+            import yaml
+        except ImportError:
+            return None
+        mappings_dir = os.path.join(_STANDARDS_DIR, "code_mappings")
+        for fname in os.listdir(mappings_dir) if os.path.isdir(mappings_dir) else []:
+            if not fname.endswith(('.yaml', '.yml')):
+                continue
+            fpath = os.path.join(mappings_dir, fname)
+            try:
+                with open(fpath, 'r', encoding='utf-8') as f:
+                    data = yaml.safe_load(f)
+                if data and data.get("id") == mapping_id:
+                    return data
+            except Exception:
+                continue
+        return None
 
     @classmethod
     def reset(cls):

@@ -1,16 +1,14 @@
 """
-GovernanceToolset — 7 dedicated governance audit tools (v14.4).
+GovernanceToolset — 12 governance audit + standard tools (v14.5).
 
 Provides comprehensive data quality audit capabilities:
-- Gap detection between polygons
-- Attribute completeness checking
-- Attribute range validation
-- Duplicate detection (geometry + attributes)
-- CRS consistency auditing
+- Gap detection, completeness, attribute range, duplicates, CRS consistency
 - Composite governance scoring (0-100, 6 dimensions)
-- Structured audit summary generation
+- Data Standard Registry integration (list/validate/formulas/gap matrix)
+- Governance plan generation
 """
 
+import json
 import logging
 
 import geopandas as gpd
@@ -600,6 +598,268 @@ def validate_against_standard(file_path: str, standard_id: str) -> str:
         return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
 
 
+def validate_field_formulas(file_path: str, standard_id: str = "", formulas: str = "") -> str:
+    """验证数据字段间的计算关系是否正确（如 TBDLMJ = TBMJ - KCMJ）。
+
+    Args:
+        file_path: 数据文件路径。
+        standard_id: 标准ID（自动加载标准内置公式），可选。
+        formulas: JSON公式列表，如 '[{"expr":"TBDLMJ = TBMJ - KCMJ","tolerance":0.01}]'。留空则使用标准内置公式。
+
+    Returns:
+        JSON格式的公式校验结果。
+    """
+    try:
+        from ..gis_processors import _resolve_path
+
+        formula_list = []
+        if formulas:
+            formula_list = json.loads(formulas)
+        elif standard_id:
+            from ..standard_registry import StandardRegistry
+            std = StandardRegistry.get(standard_id)
+            if std and std.formulas:
+                formula_list = std.formulas
+        if not formula_list:
+            return json.dumps({"status": "error", "message": "请提供公式或标准ID（含内置公式）"},
+                              ensure_ascii=False)
+
+        gdf = gpd.read_file(_resolve_path(file_path))
+        results = []
+        for f in formula_list:
+            expr = f.get("expr", "")
+            tol = f.get("tolerance", 0.01)
+            desc = f.get("description", expr)
+            if "=" not in expr:
+                results.append({"expr": expr, "status": "error", "message": "公式格式错误，需包含 '='"})
+                continue
+            lhs, rhs = expr.split("=", 1)
+            lhs = lhs.strip()
+            rhs = rhs.strip()
+            # Check required fields exist
+            import re
+            fields_in_expr = re.findall(r'[A-Za-z_]\w*', rhs)
+            missing = [fn for fn in [lhs] + fields_in_expr if fn not in gdf.columns]
+            if missing:
+                results.append({"expr": expr, "status": "skip", "missing_fields": missing})
+                continue
+            try:
+                expected = gdf.eval(rhs)
+                actual = gdf[lhs]
+                diff = (actual - expected).abs()
+                violations = int((diff > tol).sum())
+                results.append({
+                    "expr": expr, "description": desc, "tolerance": tol,
+                    "status": "pass" if violations == 0 else "fail",
+                    "violations": violations, "total_rows": len(gdf),
+                    "max_diff": round(float(diff.max()), 4) if violations > 0 else 0,
+                })
+            except Exception as calc_err:
+                results.append({"expr": expr, "status": "error", "message": str(calc_err)[:200]})
+
+        all_pass = all(r.get("status") == "pass" for r in results if r.get("status") != "skip")
+        return json.dumps({"status": "ok", "all_pass": all_pass, "results": results},
+                          ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def generate_gap_matrix(file_path: str, standard_id: str) -> str:
+    """生成数据字段与标准字段的差距矩阵：缺失/多余/类型不匹配/完整性评分。
+
+    Args:
+        file_path: 数据文件路径。
+        standard_id: 标准ID（如 "dltb_2023"）。
+
+    Returns:
+        JSON格式的差距矩阵，含逐字段对比和汇总统计。
+    """
+    try:
+        from ..gis_processors import _resolve_path
+        from ..standard_registry import StandardRegistry
+
+        std = StandardRegistry.get(standard_id)
+        if not std:
+            return json.dumps({"status": "error", "message": f"未找到标准: {standard_id}"},
+                              ensure_ascii=False)
+
+        gdf = gpd.read_file(_resolve_path(file_path))
+        data_cols = set(gdf.columns) - {"geometry"}
+        std_fields = {f.name for f in std.fields}
+
+        TYPE_MAP = {
+            "string": ["object", "str", "string"],
+            "numeric": ["float64", "float32", "int64", "int32", "Float64", "Int64"],
+            "integer": ["int64", "int32", "Int64"],
+            "date": ["datetime64"],
+        }
+
+        matrix = []
+        mandatory_total = 0
+        mandatory_present = 0
+
+        for fspec in std.fields:
+            entry = {
+                "field": fspec.name, "required": fspec.required,
+                "expected_type": fspec.type, "description": fspec.description,
+            }
+            if fspec.required == "M":
+                mandatory_total += 1
+            if fspec.name in data_cols:
+                entry["status"] = "present"
+                actual_type = str(gdf[fspec.name].dtype)
+                entry["actual_type"] = actual_type
+                if fspec.type in TYPE_MAP:
+                    entry["type_match"] = any(t in actual_type for t in TYPE_MAP[fspec.type])
+                else:
+                    entry["type_match"] = True
+                non_null = gdf[fspec.name].notna().sum()
+                total = len(gdf)
+                entry["completeness"] = round(non_null / total * 100, 1) if total else 0
+                if fspec.required == "M":
+                    mandatory_present += 1
+            else:
+                entry["status"] = "missing"
+                entry["type_match"] = None
+                entry["completeness"] = 0
+            matrix.append(entry)
+
+        # Extra fields (in data but not in standard)
+        extra_cols = data_cols - std_fields
+        for col in sorted(extra_cols):
+            matrix.append({
+                "field": col, "status": "extra", "required": "-",
+                "expected_type": "-", "actual_type": str(gdf[col].dtype),
+                "type_match": None, "completeness": 100.0,
+            })
+
+        present = sum(1 for m in matrix if m["status"] == "present")
+        missing = sum(1 for m in matrix if m["status"] == "missing")
+        extra = sum(1 for m in matrix if m["status"] == "extra")
+        gap_score = round(present / len(std.fields) * 100, 1) if std.fields else 0
+
+        summary = {
+            "total_standard_fields": len(std.fields),
+            "present": present, "missing": missing, "extra": extra,
+            "mandatory_coverage": f"{mandatory_present}/{mandatory_total} ({round(mandatory_present/mandatory_total*100,1) if mandatory_total else 100}%)",
+            "overall_gap_score": gap_score,
+        }
+        return json.dumps({"status": "ok", "standard": standard_id, "matrix": matrix, "summary": summary},
+                          ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def generate_governance_plan(file_path: str, standard_id: str) -> str:
+    """根据数据探查结果和目标标准，自动生成治理方案（探查→差距分析→治理步骤）。
+
+    Args:
+        file_path: 数据文件路径。
+        standard_id: 目标标准ID（如 "dltb_2023"）。
+
+    Returns:
+        JSON格式的治理方案，含问题诊断和推荐治理步骤。
+    """
+    try:
+        from ..gis_processors import check_field_standards, _resolve_path
+        from ..utils import _load_spatial_data
+
+        # 1. Profile data
+        gdf = _load_spatial_data(file_path)
+        profile = {
+            "row_count": len(gdf),
+            "columns": [c for c in gdf.columns if c != "geometry"],
+            "crs": str(gdf.crs) if gdf.crs else None,
+            "null_summary": {c: int(gdf[c].isna().sum()) for c in gdf.columns if c != "geometry"},
+        }
+
+        # 2. Gap analysis
+        gap_result = json.loads(generate_gap_matrix(file_path, standard_id))
+        if gap_result.get("status") == "error":
+            return json.dumps(gap_result, ensure_ascii=False)
+
+        # 3. Standards check
+        std_result = check_field_standards(file_path, standard_id)
+
+        # 4. Generate governance steps
+        steps = []
+        priority = 1
+
+        # Missing mandatory fields → add_missing_fields
+        missing_m = std_result.get("missing_mandatory", [])
+        if missing_m:
+            steps.append({
+                "priority": priority, "tool": "add_missing_fields",
+                "action": f"补齐 {len(missing_m)} 个缺失必填字段",
+                "params": {"standard_id": standard_id},
+                "fields": missing_m,
+            })
+            priority += 1
+
+        # Type mismatches → cast_field_type
+        type_issues = std_result.get("type_mismatches", [])
+        for ti in type_issues:
+            steps.append({
+                "priority": priority, "tool": "cast_field_type",
+                "action": f"字段 {ti['field']} 类型转换: {ti['actual']} → {ti['expected']}",
+                "params": {"field": ti["field"], "target_type": ti["expected"]},
+            })
+            priority += 1
+
+        # Invalid values → map_field_codes
+        invalid = std_result.get("invalid_values", [])
+        for iv in invalid:
+            steps.append({
+                "priority": priority, "tool": "map_field_codes",
+                "action": f"字段 {iv['field']} 有 {iv['count']} 个非法值需映射",
+                "params": {"field": iv["field"]},
+                "sample_issues": iv.get("sample", [])[:3],
+            })
+            priority += 1
+
+        # Mandatory nulls → fill_null_values
+        m_nulls = std_result.get("mandatory_nulls", [])
+        for mn in m_nulls:
+            steps.append({
+                "priority": priority, "tool": "fill_null_values",
+                "action": f"必填字段 {mn['field']} 有 {mn['null_count']} 个空值需填充",
+                "params": {"field": mn["field"], "strategy": "mode"},
+            })
+            priority += 1
+
+        # CRS check
+        if not gdf.crs or "4490" not in str(gdf.crs):
+            steps.append({
+                "priority": priority, "tool": "standardize_crs",
+                "action": f"坐标系从 {gdf.crs or '未定义'} 统一为 EPSG:4490 (CGCS2000)",
+                "params": {"target_crs": "EPSG:4490"},
+            })
+            priority += 1
+
+        # Length violations
+        for lv in std_result.get("length_violations", []):
+            steps.append({
+                "priority": priority, "tool": "clip_outliers",
+                "action": f"字段 {lv['field']} 有 {lv['violation_count']} 个值超长 (限{lv['max_length']}字符)",
+                "params": {"field": lv["field"]},
+            })
+            priority += 1
+
+        gap_summary = gap_result.get("summary", {})
+        return json.dumps({
+            "status": "ok",
+            "standard": standard_id,
+            "data_profile": profile,
+            "gap_summary": gap_summary,
+            "compliance_rate": std_result.get("compliance_rate", 0),
+            "governance_steps": steps,
+            "step_count": len(steps),
+            "estimated_actions": f"需执行 {len(steps)} 步治理操作",
+        }, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
 # ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
@@ -614,6 +874,9 @@ _ALL_FUNCS = [
     governance_summary,
     list_data_standards,
     validate_against_standard,
+    validate_field_formulas,
+    generate_gap_matrix,
+    generate_governance_plan,
 ]
 
 
