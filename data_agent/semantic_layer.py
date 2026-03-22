@@ -74,7 +74,18 @@ def _get_cached_sources(conn) -> list:
     """Get all semantic sources with 5-minute TTL cache."""
     global _sources_cache, _sources_cache_time
     if _sources_cache is not None and (time.time() - _sources_cache_time < _CACHE_TTL):
+        try:
+            from .observability import record_cache_op
+            record_cache_op("semantic_sources", "hit")
+        except Exception:
+            pass
         return _sources_cache
+
+    try:
+        from .observability import record_cache_op
+        record_cache_op("semantic_sources", "miss")
+    except Exception:
+        pass
 
     has_sources = conn.execute(text(
         "SELECT EXISTS (SELECT 1 FROM information_schema.tables "

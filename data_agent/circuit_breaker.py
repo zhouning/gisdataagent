@@ -81,6 +81,11 @@ class CircuitBreaker:
                 circuit.state = "closed"
                 circuit.failure_count = 0
                 logger.info("Circuit '%s' closed (recovered)", name)
+                try:
+                    from .observability import record_circuit_breaker
+                    record_circuit_breaker(name, "closed")
+                except Exception:
+                    pass
             elif circuit.state == "closed":
                 circuit.failure_count = max(0, circuit.failure_count - 1)
 
@@ -106,6 +111,11 @@ class CircuitBreaker:
                 circuit.opened_at = now
                 logger.warning("Circuit '%s' opened (%d failures in %.0fs)",
                                name, circuit.failure_count, self.window_seconds)
+                try:
+                    from .observability import record_circuit_breaker
+                    record_circuit_breaker(name, "open", tripped=True)
+                except Exception:
+                    pass
 
     def get_status(self) -> dict:
         """Return status of all tracked circuits."""
