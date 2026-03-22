@@ -69,3 +69,20 @@ groups:
           severity: critical
         annotations:
           summary: "HTTP 5xx 错误率超过 5%"
+
+      # --- Security Alerts (v15.0) ---
+      - alert: SensitiveDataAccessSpike
+        expr: increase(agent_auth_events_total{event_type="sensitive_data_access"}[1h]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "敏感数据访问频次异常 (1h > 10次)"
+
+      - alert: BruteForceDetected
+        expr: increase(agent_auth_events_total{event_type="login_failure"}[5m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "暴力破解检测: 5分钟内登录失败 > 10次"
