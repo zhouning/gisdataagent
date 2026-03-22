@@ -55,6 +55,7 @@ from .toolsets.governance_tools import GovernanceToolset
 from .toolsets.chart_tools import ChartToolset
 from .toolsets.watershed_tools import WatershedToolset
 from .toolsets.virtual_source_tools import VirtualSourceToolset
+from .toolsets.world_model_tools import WorldModelToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -408,6 +409,7 @@ general_processing_agent = LlmAgent(
         KnowledgeBaseToolset(tool_filter=intent_tool_predicate),
         AdvancedAnalysisToolset(tool_filter=intent_tool_predicate),
         VirtualSourceToolset(tool_filter=intent_tool_predicate),
+        WorldModelToolset(tool_filter=intent_tool_predicate),
     ] + _arcpy_tools,
 )
 
