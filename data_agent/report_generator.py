@@ -302,3 +302,124 @@ def generate_pdf_report(
     except Exception as e:
         print(f"[Report] PDF conversion failed ({e}). Returning Word document instead.")
         return os.path.abspath(docx_path)
+
+
+# =====================================================================
+# Template-based Report Generation (v15.1 — 测绘质检报告扩展)
+# =====================================================================
+
+# Built-in report templates
+REPORT_TEMPLATES = {
+    "surveying_qc": {
+        "id": "surveying_qc",
+        "name": "测绘质检报告",
+        "description": "测绘成果质量检查与验收报告（符合 GB/T 24356）",
+        "pipeline_type": "governance",
+        "sections": [
+            "项目概况", "检查依据", "数据审查结果",
+            "精度核验结果", "缺陷统计", "质量评分", "整改建议", "结论",
+        ],
+    },
+    "data_quality": {
+        "id": "data_quality",
+        "name": "数据质量报告",
+        "description": "空间数据质量评估报告",
+        "pipeline_type": "governance",
+        "sections": [
+            "数据集概览", "质量评估", "问题清单", "改进建议",
+        ],
+    },
+    "governance": {
+        "id": "governance",
+        "name": "数据治理报告",
+        "description": "数据治理综合评估报告",
+        "pipeline_type": "governance",
+        "sections": [
+            "治理概览", "标准符合性", "质量评分", "Gap分析", "治理建议",
+        ],
+    },
+    "general_analysis": {
+        "id": "general_analysis",
+        "name": "空间分析报告",
+        "description": "通用空间数据分析报告",
+        "pipeline_type": "general",
+        "sections": [
+            "分析概览", "数据描述", "分析结果", "可视化", "结论",
+        ],
+    },
+}
+
+
+def list_report_templates() -> list[dict]:
+    """List available report templates."""
+    return [
+        {"id": t["id"], "name": t["name"], "description": t["description"]}
+        for t in REPORT_TEMPLATES.values()
+    ]
+
+
+def generate_structured_report(
+    template_id: str,
+    section_data: dict[str, str],
+    title: str = None,
+    author: str = None,
+    output_format: str = "docx",
+    output_dir: str = None,
+) -> str:
+    """Generate a report from a template with section data.
+
+    Args:
+        template_id: Template identifier (e.g., 'surveying_qc').
+        section_data: Dict mapping section names to markdown content.
+        title: Report title override.
+        author: Author name.
+        output_format: 'docx', 'pdf', or 'md'.
+        output_dir: Output directory.
+
+    Returns:
+        Absolute path to the generated report file.
+    """
+    template = REPORT_TEMPLATES.get(template_id)
+    if not template:
+        available = ", ".join(REPORT_TEMPLATES.keys())
+        raise ValueError(f"Unknown template: {template_id}. Available: {available}")
+
+    # Build markdown from sections
+    report_title = title or template["name"]
+    lines = [f"# {report_title}\n"]
+
+    for section_name in template["sections"]:
+        content = section_data.get(section_name, "")
+        lines.append(f"## {section_name}\n")
+        if content:
+            lines.append(content + "\n")
+        else:
+            lines.append(f"*（{section_name}暂无数据）*\n")
+
+    markdown_text = "\n".join(lines)
+
+    # Determine output path
+    import uuid as _uuid
+    uid = _uuid.uuid4().hex[:8]
+    if not output_dir:
+        from .user_context import get_user_upload_dir
+        output_dir = get_user_upload_dir()
+    os.makedirs(output_dir, exist_ok=True)
+
+    if output_format == "md":
+        path = os.path.join(output_dir, f"report_{uid}.md")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(markdown_text)
+        return os.path.abspath(path)
+    elif output_format == "pdf":
+        path = os.path.join(output_dir, f"report_{uid}.pdf")
+        return generate_pdf_report(
+            markdown_text, path, report_title, author,
+            pipeline_type=template.get("pipeline_type", "general"),
+        )
+    else:
+        path = os.path.join(output_dir, f"report_{uid}.docx")
+        return generate_word_report(
+            markdown_text, path, report_title, author,
+            pipeline_type=template.get("pipeline_type", "general"),
+        )

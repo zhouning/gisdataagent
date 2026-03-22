@@ -111,9 +111,16 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       .catch(() => {});
   }, []);
 
-  // Initialize Leaflet map
+  // Initialize Leaflet map (re-create when switching back from 3D)
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (viewMode !== '2d') return;
+    if (!mapContainerRef.current) return;
+
+    // Clean up any stale map instance
+    if (mapRef.current) {
+      try { mapRef.current.remove(); } catch { /* already removed */ }
+      mapRef.current = null;
+    }
 
     const map = L.map(mapContainerRef.current, {
       center,
@@ -132,7 +139,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [viewMode]);
 
   // Update center/zoom when props change
   useEffect(() => {

@@ -1,0 +1,121 @@
+# =============================================================================
+# GIS Data Agent — Docker Compose (Staging Environment)
+# Usage: docker compose -f docker-compose.staging.yml up -d
+#
+# Staging is a production-like environment for:
+# - Post-merge validation (CD Phase 2)
+# - Integration testing with real DB
+# - Agent evaluation against golden datasets
+# - Internal user testing ("dogfooding")
+# =============================================================================
+
+services:
+  db-staging:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gis_agent_staging
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:-staging_password}
+    ports:
+      - "5434:5432"  # Different port from prod (5433) and dev
+    volumes:
+      - pgdata-staging:/var/lib/postgresql/data
+      - ./docker-db-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging-net
+
+  app-staging:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db-staging:
+        condition: service_healthy
+    ports:
+      - "8001:8000"  # Staging on port 8001
+    environment:
+      # Environment identifier
+      DEPLOY_ENV: staging
+      # PostgreSQL connection (staging DB)
+      POSTGRES_HOST: db-staging
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent_staging
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:-staging_password}
+      POSTGRES_ADMIN_USER: postgres
+      POSTGRES_ADMIN_PASSWORD: ${STAGING_POSTGRES_PASSWORD:-staging_password}
+      # Google AI
+      GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      # Chainlit
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-staging_secret}
+      DYNAMIC_PLANNER: "true"
+      # Cost controls (tighter in staging)
+      DAILY_ANALYSIS_LIMIT: "50"
+      COST_GUARD_WARN: "30000"
+      COST_GUARD_ABORT: "100000"
+      COST_GUARD_USD_ABORT: "0.50"
+      # Feature flags (staging can test new features)
+      FEATURE_FLAGS: ${STAGING_FEATURE_FLAGS:-}
+      # Redis
+      REDIS_URL: redis://redis-staging:6379/0
+      # Cloud storage (optional, same bucket with staging prefix)
+      HUAWEI_OBS_AK: ${HUAWEI_OBS_AK:-}
+      HUAWEI_OBS_SK: ${HUAWEI_OBS_SK:-}
+      HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-}
+      HUAWEI_OBS_BUCKET: ${HUAWEI_OBS_BUCKET:-}
+    volumes:
+      - uploads-staging:/app/data_agent/uploads
+    networks:
+      - staging-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  redis-staging:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - staging-net
+
+  # ---------------------------------------------------------------------------
+  # Evaluation Runner — runs agent evaluation after staging deployment
+  # ---------------------------------------------------------------------------
+  eval-runner:
+    build: .
+    depends_on:
+      app-staging:
+        condition: service_started
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      EVAL_TARGET_URL: "http://app-staging:8000"
+    entrypoint: ["python", "-m", "pytest", "data_agent/", "--ignore=data_agent/test_knowledge_agent.py", "-q", "--tb=short"]
+    networks:
+      - staging-net
+    profiles:
+      - eval  # Only run with: docker compose --profile eval up eval-runner
+
+volumes:
+  pgdata-staging:
+  uploads-staging:
+
+networks:
+  staging-net:
+    driver: bridge

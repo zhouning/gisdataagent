@@ -157,6 +157,39 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     return None
 
 
+def change_password(username: str, old_password: str, new_password: str) -> dict:
+    """Change user password after verifying current password.
+
+    Returns: {"status": "success"} or {"status": "error", "message": "..."}
+    """
+    if not new_password or len(new_password) < 6:
+        return {"status": "error", "message": "新密码至少 6 个字符"}
+
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "数据库不可用"}
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                f"SELECT password_hash FROM {T_APP_USERS} WHERE username = :u"
+            ), {"u": username}).fetchone()
+            if not row:
+                return {"status": "error", "message": "用户不存在"}
+
+            stored_hash = row[0]
+            if not _verify_password(old_password, stored_hash):
+                return {"status": "error", "message": "当前密码错误"}
+
+            new_hash = _make_password_hash(new_password)
+            conn.execute(text(
+                f"UPDATE {T_APP_USERS} SET password_hash = :h WHERE username = :u"
+            ), {"h": new_hash, "u": username})
+            conn.commit()
+        return {"status": "success", "message": "密码修改成功"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 def register_user(username: str, password: str, display_name: str = "",
                    email: str = "") -> dict:
     """Register a new user with 'analyst' role.

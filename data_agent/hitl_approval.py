@@ -334,3 +334,163 @@ def _extract_action_value(response: Any) -> str:
     if isinstance(response, str):
         return response.upper() if response.upper() in ("APPROVE", "REJECT") else "REJECT"
     return "REJECT"
+
+
+# ---------------------------------------------------------------------------
+# HITL Decision Tracking (DB persistence)
+# ---------------------------------------------------------------------------
+
+T_HITL_DECISIONS = "agent_hitl_decisions"
+
+
+def ensure_hitl_table():
+    """Create HITL decisions table if not exists."""
+    from .db_engine import get_engine
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS {T_HITL_DECISIONS} (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(100) NOT NULL,
+                    tool_name VARCHAR(200) NOT NULL,
+                    risk_level VARCHAR(20) DEFAULT 'LOW',
+                    decision VARCHAR(20) DEFAULT 'REJECT',
+                    reason TEXT DEFAULT '',
+                    impact TEXT DEFAULT '',
+                    tool_args JSONB DEFAULT '{{}}',
+                    response_time_ms INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """))
+            conn.execute(text(f"""
+                CREATE INDEX IF NOT EXISTS idx_hitl_decisions_user
+                ON {T_HITL_DECISIONS} (username, created_at DESC)
+            """))
+            conn.commit()
+    except Exception:
+        pass
+
+
+def record_hitl_decision(
+    username: str, tool_name: str, risk_level: str,
+    decision: str, reason: str = "", impact: str = "",
+    tool_args: dict = None, response_time_ms: int = 0,
+) -> None:
+    """Record HITL decision to DB. Non-fatal."""
+    from .db_engine import get_engine
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        import json
+        with engine.connect() as conn:
+            conn.execute(text(f"""
+                INSERT INTO {T_HITL_DECISIONS}
+                (username, tool_name, risk_level, decision, reason, impact, tool_args, response_time_ms)
+                VALUES (:u, :t, :r, :d, :reason, :impact, :args, :rt)
+            """), {
+                "u": username, "t": tool_name, "r": risk_level,
+                "d": decision, "reason": reason, "impact": impact,
+                "args": json.dumps(tool_args or {}, default=str),
+                "rt": response_time_ms,
+            })
+            conn.commit()
+    except Exception:
+        pass
+
+
+def get_hitl_stats(days: int = 30) -> dict:
+    """Get HITL decision statistics for the dashboard.
+
+    Returns:
+        {total, approved, rejected, approval_rate, avg_response_ms,
+         by_risk_level, by_tool, recent_decisions}
+    """
+    from .db_engine import get_engine
+    engine = get_engine()
+    if not engine:
+        return {"total": 0, "approved": 0, "rejected": 0, "approval_rate": 0,
+                "avg_response_ms": 0, "by_risk_level": {}, "by_tool": [],
+                "recent_decisions": []}
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            # Totals
+            row = conn.execute(text(f"""
+                SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN decision = 'APPROVE' THEN 1 ELSE 0 END) AS approved,
+                       SUM(CASE WHEN decision = 'REJECT' THEN 1 ELSE 0 END) AS rejected,
+                       AVG(response_time_ms) AS avg_rt
+                FROM {T_HITL_DECISIONS}
+                WHERE created_at >= NOW() - make_interval(days => :d)
+            """), {"d": days}).fetchone()
+            total = row[0] or 0
+            approved = row[1] or 0
+            rejected = row[2] or 0
+            avg_rt = int(row[3] or 0)
+
+            # By risk level
+            risk_rows = conn.execute(text(f"""
+                SELECT risk_level, COUNT(*) AS cnt,
+                       SUM(CASE WHEN decision = 'APPROVE' THEN 1 ELSE 0 END) AS app
+                FROM {T_HITL_DECISIONS}
+                WHERE created_at >= NOW() - make_interval(days => :d)
+                GROUP BY risk_level
+            """), {"d": days}).fetchall()
+            by_risk = {r[0]: {"total": r[1], "approved": r[2]} for r in risk_rows}
+
+            # By tool (top 10)
+            tool_rows = conn.execute(text(f"""
+                SELECT tool_name, COUNT(*) AS cnt,
+                       SUM(CASE WHEN decision = 'APPROVE' THEN 1 ELSE 0 END) AS app
+                FROM {T_HITL_DECISIONS}
+                WHERE created_at >= NOW() - make_interval(days => :d)
+                GROUP BY tool_name ORDER BY cnt DESC LIMIT 10
+            """), {"d": days}).fetchall()
+            by_tool = [{"tool": r[0], "total": r[1], "approved": r[2]} for r in tool_rows]
+
+            # Recent decisions
+            recent_rows = conn.execute(text(f"""
+                SELECT username, tool_name, risk_level, decision, reason,
+                       response_time_ms, created_at
+                FROM {T_HITL_DECISIONS}
+                ORDER BY created_at DESC LIMIT 20
+            """)).fetchall()
+            recent = [{
+                "username": r[0], "tool": r[1], "risk_level": r[2],
+                "decision": r[3], "reason": r[4],
+                "response_ms": r[5],
+                "time": r[6].isoformat() if r[6] else None,
+            } for r in recent_rows]
+
+            return {
+                "total": total,
+                "approved": approved,
+                "rejected": rejected,
+                "approval_rate": round(approved / total * 100, 1) if total > 0 else 0,
+                "avg_response_ms": avg_rt,
+                "by_risk_level": by_risk,
+                "by_tool": by_tool,
+                "recent_decisions": recent,
+            }
+    except Exception as e:
+        return {"total": 0, "approved": 0, "rejected": 0, "approval_rate": 0,
+                "avg_response_ms": 0, "by_risk_level": {}, "by_tool": [],
+                "recent_decisions": [], "error": str(e)}
+
+
+def get_risk_registry() -> list[dict]:
+    """Return the current risk registry as a list for API/UI consumption."""
+    return [
+        {
+            "tool_name": name,
+            "level": meta["level"].name,
+            "level_value": int(meta["level"]),
+            "description": meta.get("description", ""),
+            "impact": meta.get("impact", ""),
+        }
+        for name, meta in _RISK_REGISTRY.items()
+    ]

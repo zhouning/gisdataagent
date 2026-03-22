@@ -1,0 +1,161 @@
+# =============================================================================
+# CD Pipeline — Staging Deployment + Evaluation
+#
+# Triggered: After merge to main (post CI pass)
+# Phase 2 of 3-phase CI/CD (per Google AgentOps whitepaper)
+# =============================================================================
+name: CD - Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: gis_agent_staging
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: staging_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run full test suite (staging validation)
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: gis_agent_staging
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: staging_password
+          DEPLOY_ENV: staging
+        run: |
+          python -m pytest data_agent/ \
+            --ignore=data_agent/test_knowledge_agent.py \
+            -q --tb=short --junitxml=staging-test-results.xml
+
+      - name: Upload staging test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-test-results
+          path: staging-test-results.xml
+
+  evaluate-staging:
+    name: Agent Evaluation (Staging)
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    if: ${{ vars.GOOGLE_API_KEY != '' || secrets.GOOGLE_API_KEY != '' }}
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: gis_agent_staging
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: staging_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run agent evaluation
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_GENAI_USE_VERTEXAI: ${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: gis_agent_staging
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: staging_password
+          DEPLOY_ENV: staging
+        run: |
+          python data_agent/run_evaluation.py --num-runs 2 2>&1 | tee eval-output.log
+          echo "Evaluation complete"
+
+      - name: Record eval results to history
+        if: always()
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: gis_agent_staging
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: staging_password
+        run: |
+          python -c "
+          from data_agent.eval_history import ensure_eval_table, record_eval_result
+          import json, os
+          ensure_eval_table()
+          summary_path = 'eval_results/eval_summary.json'
+          if os.path.exists(summary_path):
+              with open(summary_path) as f:
+                  s = json.load(f)
+              for pipeline, verdict in s.get('pipeline_verdicts', {}).items():
+                  record_eval_result(
+                      pipeline=pipeline,
+                      overall_score=s.get('pass_rate', 0),
+                      pass_rate=s.get('pass_rate', 0),
+                      verdict=verdict,
+                  )
+              print(f'Recorded eval results: {s.get(\"pipeline_verdicts\", {})}')
+          "
+
+      - name: Upload evaluation results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-eval-results
+          path: |
+            eval_results/
+            eval-output.log
+
+  staging-approval:
+    name: Staging Sign-off
+    needs: [deploy-staging, evaluate-staging]
+    runs-on: ubuntu-latest
+    if: always() && needs.deploy-staging.result == 'success'
+    environment: staging  # Requires manual approval in GitHub
+    steps:
+      - name: Staging validated
+        run: |
+          echo "✅ Staging validation complete."
+          echo "Tests: ${{ needs.deploy-staging.result }}"
+          echo "Eval: ${{ needs.evaluate-staging.result }}"
+          echo "Ready for production deployment."

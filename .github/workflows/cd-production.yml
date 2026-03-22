@@ -1,0 +1,150 @@
+# =============================================================================
+# CD Pipeline — Production Deployment (Gated)
+#
+# Phase 3 of 3-phase CI/CD (per Google AgentOps whitepaper)
+# Requires:
+#   1. Staging validation passed (cd-staging.yml)
+#   2. Manual approval from Product Owner (GitHub Environment protection)
+#
+# Supports canary rollout via CANARY_WEIGHT variable.
+# =============================================================================
+name: CD - Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      canary_weight:
+        description: 'Canary traffic weight (0-100, 0=skip canary)'
+        required: false
+        default: '10'
+      skip_eval:
+        description: 'Skip pre-deploy evaluation'
+        required: false
+        default: 'false'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate 1: Final evaluation before production
+  # ---------------------------------------------------------------------------
+  pre-deploy-eval:
+    name: Pre-Deploy Evaluation
+    if: ${{ github.event.inputs.skip_eval != 'true' }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: gis_agent
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: prod_eval_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r requirements.txt
+      - name: Run evaluation suite
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: gis_agent
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: prod_eval_password
+        run: python data_agent/run_evaluation.py --num-runs 3
+      - name: Check evaluation verdict
+        run: |
+          if [ -f eval_results/eval_summary.json ]; then
+            VERDICT=$(python -c "import json; d=json.load(open('eval_results/eval_summary.json')); print(d.get('overall_pass', False))")
+            if [ "$VERDICT" != "True" ]; then
+              echo "❌ Evaluation FAILED. Blocking production deployment."
+              exit 1
+            fi
+            echo "✅ Evaluation PASSED."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Gate 2: Manual approval (Product Owner sign-off)
+  # ---------------------------------------------------------------------------
+  approval:
+    name: Production Approval
+    needs: pre-deploy-eval
+    if: always() && (needs.pre-deploy-eval.result == 'success' || needs.pre-deploy-eval.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: production  # GitHub Environment with required reviewers
+    steps:
+      - name: Approved for production
+        run: echo "✅ Production deployment approved."
+
+  # ---------------------------------------------------------------------------
+  # Deploy: Canary → Full rollout
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to Production
+    needs: approval
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t gis-data-agent:${{ github.sha }} .
+          docker tag gis-data-agent:${{ github.sha }} gis-data-agent:latest
+          echo "Built image: gis-data-agent:${{ github.sha }}"
+
+      - name: Canary deployment
+        if: ${{ github.event.inputs.canary_weight != '0' }}
+        run: |
+          echo "🐤 Canary deployment with ${{ github.event.inputs.canary_weight }}% traffic"
+          echo "In production, this would:"
+          echo "  1. Deploy new version alongside current"
+          echo "  2. Route ${{ github.event.inputs.canary_weight }}% traffic to new version"
+          echo "  3. Monitor error rates and latency for 15 minutes"
+          echo "  4. If healthy, proceed to full rollout"
+          echo "  5. If unhealthy, automatic rollback"
+          echo ""
+          echo "Implementation options:"
+          echo "  - Cloud Run: gcloud run services update-traffic --to-revisions=NEW=${{ github.event.inputs.canary_weight }}"
+          echo "  - K8s: kubectl apply -f k8s/canary-ingress.yaml"
+          echo "  - Docker: CANARY_WEIGHT=${{ github.event.inputs.canary_weight }} docker compose -f docker-compose.prod.yml up -d"
+
+      - name: Full rollout
+        run: |
+          echo "🚀 Full production rollout"
+          echo "Image: gis-data-agent:${{ github.sha }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
+
+      - name: Record deployment
+        run: |
+          echo "📝 Deployment record:"
+          echo "  Version: ${{ github.sha }}"
+          echo "  Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "  Deployer: ${{ github.actor }}"
+          echo "  Canary: ${{ github.event.inputs.canary_weight }}%"
+
+  # ---------------------------------------------------------------------------
+  # Post-deploy smoke test
+  # ---------------------------------------------------------------------------
+  smoke-test:
+    name: Post-Deploy Smoke Test
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: |
+          echo "🔍 Running smoke tests against production..."
+          echo "  - Health endpoint: GET /health/live"
+          echo "  - Readiness: GET /health/ready"
+          echo "  - API response: GET /api/capabilities"
+          echo ""
+          echo "In production, these would be real HTTP checks."
+          echo "If any fail, trigger automatic rollback."
