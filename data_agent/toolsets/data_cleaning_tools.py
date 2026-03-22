@@ -85,6 +85,9 @@ def map_field_codes(
     Args:
         file_path: 数据文件路径。
         field: 要映射的字段名。
+        mapping_table: 映射ID（如 "clcd_to_gbt21010"，自动从标准库加载）或 JSON映射表（如 '{"1": "0101"}'）。
+        unmapped_strategy: 未匹配值处理策略 — "keep"(保留原值) | "null"(设为空) | "error"(报错)。
+        field: 要映射的字段名。
         mapping_table: JSON映射表，如 '{"1": "0101", "2": "0201"}'。
         unmapped_strategy: 未匹配值处理策略 — "keep"(保留原值) | "null"(设为空) | "error"(报错)。
 
@@ -97,8 +100,18 @@ def map_field_codes(
             return json.dumps({"status": "error", "message": f"字段 '{field}' 不存在"},
                               ensure_ascii=False)
 
-        mapping = json.loads(mapping_table) if isinstance(mapping_table, str) else mapping_table
-        original_values = set(gdf[field].dropna().astype(str).unique())
+        # Resolve mapping: mapping_id or inline JSON
+        if isinstance(mapping_table, str) and not mapping_table.strip().startswith("{"):
+            from ..standard_registry import StandardRegistry
+            mapping_data = StandardRegistry.get_code_mapping(mapping_table.strip())
+            if mapping_data and "mapping" in mapping_data:
+                mapping = mapping_data["mapping"]
+            else:
+                return json.dumps({"status": "error", "message": f"未找到映射表: {mapping_table}"},
+                                  ensure_ascii=False)
+        else:
+            mapping = json.loads(mapping_table) if isinstance(mapping_table, str) else mapping_table
+
         mapped_count = 0
         unmapped_values = []
 
