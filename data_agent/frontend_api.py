@@ -595,6 +595,29 @@ async def _api_user_delete_account(request: Request):
     return JSONResponse(result, status_code=status_code)
 
 
+async def _api_user_change_password(request: Request):
+    """PUT /api/user/password — change current user's password."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    old_password = body.get("old_password", "")
+    new_password = body.get("new_password", "")
+    if not old_password or not new_password:
+        return JSONResponse({"error": "old_password and new_password required"}, status_code=400)
+
+    from .auth import change_password
+    result = change_password(username, old_password, new_password)
+    status_code = 200 if result.get("status") == "success" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
 # ---------------------------------------------------------------------------
 # Sessions — thread history
 # ---------------------------------------------------------------------------
@@ -2516,8 +2539,10 @@ def get_frontend_api_routes():
     from .api.workflow_routes import get_workflow_routes
     from .api.skills_routes import get_skills_routes
     from .api.virtual_routes import get_virtual_source_routes
+    from .api.world_model_routes import get_world_model_routes
     from .api.quality_routes import get_quality_routes
     from .api.distribution_routes import get_distribution_routes
+    from .api.file_routes import get_file_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -2537,6 +2562,7 @@ def get_frontend_api_routes():
         Route("/api/annotations/{id:int}", endpoint=_api_annotations_delete, methods=["DELETE"]),
         Route("/api/config/basemaps", endpoint=_api_config_basemaps, methods=["GET"]),
         Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
+        Route("/api/user/password", endpoint=_api_user_change_password, methods=["PUT"]),
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_get, methods=["GET"]),
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_put, methods=["PUT"]),
         Route("/api/user/memories", endpoint=_api_user_memories_list, methods=["GET"]),
@@ -2580,8 +2606,12 @@ def get_frontend_api_routes():
         *get_skills_routes(),
         # Virtual Data Sources (v13.0)
         *get_virtual_source_routes(),
+        # World Model (Tech Preview)
+        *get_world_model_routes(),
         *get_quality_routes(),
         *get_distribution_routes(),
+        # File Management (upload, browse, delete, local-data)
+        *get_file_routes(),
         # Knowledge Base (v8.0.2)
         # Bundles (v10.0.2)
         Route("/api/bundles", endpoint=_api_bundles_list, methods=["GET"]),

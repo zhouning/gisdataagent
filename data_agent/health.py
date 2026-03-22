@@ -115,6 +115,11 @@ def _get_feature_flags() -> dict:
     except Exception:
         flags["streaming_redis"] = False
 
+    # World Model
+    flags["world_model"] = os.environ.get(
+        "WORLD_MODEL_ENABLED", "true"
+    ).lower() in ("true", "1", "yes")
+
     # Bots
     for bot_name, module_name, func_name in [
         ("wecom", "wecom_bot", "is_wecom_configured"),
