@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.0
+# GIS Data Agent (ADK Edition) v15.1
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
-系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，涵盖 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个 Guardrails、SSE 流式输出、A2A 双向互操作（Agent Card + Task lifecycle + Agent Registry）、NSGA-II 多目标 Pareto 优化（5 场景）、动态 Agent 组合、Circuit Breaker 熔断降级、条件分析链和自我改进。前端为 React 三面板 SPA（工作台 4 分组 20 标签页），后端集成 **143+ 个 REST API**。
+系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.0 深度可观测 + 数据安全 + 分布式计算**：OpenTelemetry 分布式追踪（Pipeline/Agent/Tool 三级 Span 树）+ Agent 决策追踪（DecisionTrace + Mermaid 序列图）+ 9 条 Prometheus Alert 规则；数据分类分级引擎（PII 检测 + 5 级敏感度）+ 字段级脱敏（4 策略）+ 8 表 RLS 策略；数据分发闭环（申请审批 + 打包下载 + 评价评分 + 热度统计）；8 个插件式连接器（+Database +ObjectStorage）；数据版本管理（快照/回滚/增量对比/更新通知）；19 个 ADK Skills（5 种设计模式全覆盖含 Pipeline 融合）；SparkGateway 三层执行路由（L1 本地 / L2 队列 / L3 Spark）。
+**v15.1 数据接入 + 数据湖 + 质检能力 + AgentOps 增强**：文件管理器（批量上传 + 拖拽 + 文件夹 + 预览 + 本地目录挂载）；StorageManager 数据湖抽象层（s3:// / file:// / postgis:// URI 路由 + 透明缓存）；测绘质检能力（GB/T 24356 标准 + PrecisionToolset + ReportToolset + surveying-qc Skill）；AgentOps 四维增强（USD 成本计算 + HITL 决策持久化 + 评估回归跟踪 + Feature Flags）；3 阶段 CI/CD + Canary 部署 + Terraform IaC。
 
 ## 📚 官方技术文档
 
@@ -21,31 +21,24 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2420+ tests, 102 test files |
-| 工具集 | 29 BaseToolset (含 GovernanceToolset 13 工具 + DataCleaningToolset 8 工具 + SparkToolset 3 工具), 5 SkillBundle, 175+ 工具 |
-| ADK Skills | 19 场景化领域技能 (5 种设计模式全覆盖: Tool Wrapper + Inversion + Generator + Reviewer + Pipeline) |
-| REST API | 143+ endpoints |
-| DataPanel | 20 标签页 (4 分组: 数据/智能/运维/编排) |
-| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB (30 字段 + 4 代码表 + 公式校验) |
+| 测试覆盖 | 2550+ tests, 108 test files |
+| 工具集 | 34 BaseToolset (含 GovernanceToolset 14 工具 + PrecisionToolset 4 工具 + ReportToolset 3 工具 + StorageToolset 4 工具), 5 SkillBundle, 200+ 工具 |
+| ADK Skills | 21 场景化领域技能 (5 种设计模式 + surveying-qc Inversion 质检技能) |
+| REST API | 170+ endpoints |
+| DataPanel | 21 标签页 (4 分组: 数据/智能/运维/编排) |
+| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) |
 | 连接器 | 8 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage) |
+| 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
 | 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + 9 条 Alert 规则 + Grafana 模板 |
-| 数据安全 | PII 分类分级 (5 级) + 4 种脱敏策略 + 8 表 RLS 策略 |
+| 成本管理 | USD 定价表 (10 模型) + Token/USD 双级预算熔断 + 成本预估 |
+| 数据安全 | PII 分类分级 (5 级) + 4 种脱敏策略 + 8 表 RLS 策略 + HITL 审批 (12 工具风险表) |
+| CI/CD | 3 阶段 (CI → Staging → Production) + Canary 部署 + Feature Flags + Terraform IaC |
 | 分布式计算 | SparkGateway 三层路由 (L1 本地 / L2 队列 / L3 Spark) |
 | MCP Server | v2.0 — 36+ 工具暴露 |
-| Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
+| Agent Plugins | 4 (CostGuard + USD 熔断, GISToolRetry + 指数退避, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
-| DRL 优化场景 | 5 + NSGA-II Pareto |
+| AgentOps 成熟度 | 3.9/5 (10 维度评估, 对标 Google Prototype-to-Production 白皮书 78%) |
 | 设计模式覆盖 | **21/21 (100%)** |
-| 数据标准 | Data Standard Registry — GB/T 21010 (73 地类编码) + DLTB (30 字段规范 + 4 代码表 + 公式校验) |
-| 连接器 | 6 个插件式连接器 (WFS / STAC / OGC API / Custom API / WMS / ArcGIS REST) |
-| 可观测性 | 25+ Prometheus 指标 (6 层) + HTTP 中间件 + Grafana Dashboard 模板 |
-| MCP Server | v2.0 — 36+ 工具暴露（底层 GIS + 高阶元数据 + Pipeline 执行） |
-| Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
-| Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
-| ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
-| DRL 优化场景 | 5（耕地优化 / 城市绿地 / 设施选址 / 交通网络 / 综合规划）+ NSGA-II Pareto |
-| 设计模式覆盖 | **21/21 (100%)** |
-| Streaming | 批量 + SSE 流式 |
 
 ## 核心能力
 
