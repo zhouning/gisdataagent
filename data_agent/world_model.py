@@ -282,17 +282,23 @@ def extract_embeddings(
             .clip(region)
         )
         # Auto-adjust scale to stay within GEE sampleRectangle limits
-        # GEE limit: 262144 pixels. For 64 bands, keep grid <= ~64x64.
+        # GEE limit: 262144 pixels. For 64 bands, keep total pixels reasonable.
+        # Allow up to 256x256 grid for small areas, cap at 128x128 for large areas.
         bbox_w = abs(bbox[2] - bbox[0])
         bbox_h = abs(bbox[3] - bbox[1])
         max_dim_deg = max(bbox_w, bbox_h)
-        # ~111km per degree, so 0.1° ≈ 11km. At 10m: ~1100 pixels → too large
-        # Auto-scale: ensure max grid dimension <= 64 pixels
         meters_per_deg = 111_000
-        needed_scale = max(scale, int(max_dim_deg * meters_per_deg / 64))
+        # For small areas (<0.1°), allow finer grid (up to 256px)
+        # For larger areas, cap at 128px to stay within GEE limits
+        max_grid = 256 if max_dim_deg < 0.1 else 128
+        needed_scale = max(scale, int(max_dim_deg * meters_per_deg / max_grid))
         if needed_scale != scale:
-            logger.info("Auto-adjusted scale %d -> %d for bbox size %.3f°",
-                        scale, needed_scale, max_dim_deg)
+            logger.info("Auto-adjusted scale %d -> %d for bbox size %.3f° (max_grid=%d)",
+                        scale, needed_scale, max_dim_deg, max_grid)
+
+        # Reproject to needed_scale so sampleRectangle returns a reasonable grid
+        proj = ee.Projection("EPSG:4326").atScale(needed_scale)
+        img = img.setDefaultProjection(proj)
 
         result = img.sampleRectangle(
             region=region, defaultValue=0
@@ -336,6 +342,16 @@ def extract_terrain_context(
         dem = ee.Image("USGS/SRTMGL1_003").clip(region)
         slope = ee.Terrain.slope(dem)
         combined = dem.select("elevation").addBands(slope.select("slope"))
+
+        # Match scale to embeddings grid
+        bbox_w = abs(bbox[2] - bbox[0])
+        bbox_h = abs(bbox[3] - bbox[1])
+        max_dim_deg = max(bbox_w, bbox_h)
+        meters_per_deg = 111_000
+        terrain_scale = int(max_dim_deg * meters_per_deg / 64)
+        terrain_scale = max(terrain_scale, 30)  # at least SRTM native 30m
+        proj = ee.Projection("EPSG:4326").atScale(terrain_scale)
+        combined = combined.setDefaultProjection(proj)
 
         result = combined.sampleRectangle(region=region, defaultValue=0).getInfo()
         properties = result.get("properties", {})
@@ -446,6 +462,15 @@ def extract_lulc_labels(
             .mosaic()
             .clip(region)
         )
+        # Match scale to embeddings grid
+        bbox_w = abs(bbox[2] - bbox[0])
+        bbox_h = abs(bbox[3] - bbox[1])
+        max_dim_deg = max(bbox_w, bbox_h)
+        meters_per_deg = 111_000
+        lulc_scale = max(scale, int(max_dim_deg * meters_per_deg / 64))
+        proj = ee.Projection("EPSG:4326").atScale(lulc_scale)
+        img = img.setDefaultProjection(proj)
+
         result = img.sampleRectangle(region=region, defaultValue=0).getInfo()
         properties = result.get("properties", {})
         band_data = properties.get("b1")
@@ -828,8 +853,9 @@ def _lulc_grid_to_geojson(
     lulc_grid: np.ndarray, bbox: list[float], year: int
 ) -> dict:
     """
-    Convert LULC grid to a simplified GeoJSON FeatureCollection.
-    Each unique class becomes a multi-polygon feature.
+    Convert LULC grid to a GeoJSON FeatureCollection with pixel polygons.
+    Each unique class becomes one Feature with a MultiPolygon geometry
+    representing all pixels of that class.
     """
     h, w = lulc_grid.shape
     if h == 0 or w == 0:
@@ -848,14 +874,25 @@ def _lulc_grid_to_geojson(
         count = int(np.sum(mask))
         if count == 0:
             continue
-        # Compute centroid of class pixels for a simple point representation
+        # Build MultiPolygon: one small rectangle per pixel
+        polygons = []
         ys, xs = np.where(mask)
-        cx = float(minx + (np.mean(xs) + 0.5) * dx)
-        cy = float(maxy - (np.mean(ys) + 0.5) * dy)
+        for yi, xi in zip(ys, xs):
+            px_minx = minx + xi * dx
+            px_maxy = maxy - yi * dy
+            px_maxx = px_minx + dx
+            px_miny = px_maxy - dy
+            polygons.append([[
+                [round(px_minx, 6), round(px_miny, 6)],
+                [round(px_maxx, 6), round(px_miny, 6)],
+                [round(px_maxx, 6), round(px_maxy, 6)],
+                [round(px_minx, 6), round(px_maxy, 6)],
+                [round(px_minx, 6), round(px_miny, 6)],
+            ]])
         features.append(
             {
                 "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [cx, cy]},
+                "geometry": {"type": "MultiPolygon", "coordinates": polygons},
                 "properties": {
                     "class_id": cls_id,
                     "class_name": cls_name,

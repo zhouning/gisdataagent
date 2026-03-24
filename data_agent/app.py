@@ -2416,6 +2416,25 @@ async def start():
     # Set context variables for this session
     _set_user_context(user_id, session_id, role)
 
+    # --- Fix: Ensure Thread.userIdentifier is populated for session history ---
+    try:
+        thread_id = cl.context.session.thread_id if cl.context.session else None
+        if thread_id and user_id:
+            from data_agent.session_storage import get_db_connection_url
+            import asyncpg
+            _db_url = get_db_connection_url(async_driver=True)
+            if _db_url:
+                _conn = await asyncpg.connect(_db_url)
+                try:
+                    await _conn.execute(
+                        'UPDATE "Thread" SET "userIdentifier" = $1 WHERE "id" = $2 AND "userIdentifier" IS NULL',
+                        user_id, thread_id,
+                    )
+                finally:
+                    await _conn.close()
+    except Exception as e:
+        logger.debug("Thread userIdentifier update skipped: %s", e)
+
     # Create or resume ADK session (get-first for page refresh recovery)
     adk_session = None
     try:
@@ -2779,6 +2798,143 @@ async def main(message: cl.Message):
         selected_agent = data_pipeline
         pipeline_type = "optimization"
         pipeline_name = "Optimization Pipeline (空间优化)"
+
+    # --- World Model shortcut: skip LLM planner, call tool directly ---
+    elif 'world_model' in tool_cats:
+        pipeline_type = "world_model_direct"
+        pipeline_name = "World Model (直接调用)"
+        # Extract scenario/year/n_years from user text with simple parsing
+        import re
+        _scenario = "baseline"
+        for sc in ["urban_sprawl", "ecological_restoration", "agricultural_intensification", "climate_adaptation"]:
+            if sc in full_prompt or sc.replace("_", "") in full_prompt.lower():
+                _scenario = sc
+                break
+        if "城市蔓延" in full_prompt or "城市扩张" in full_prompt:
+            _scenario = "urban_sprawl"
+        elif "生态恢复" in full_prompt or "生态修复" in full_prompt:
+            _scenario = "ecological_restoration"
+        elif "农业" in full_prompt:
+            _scenario = "agricultural_intensification"
+
+        _year_match = re.search(r'(?:从|起始|start).*?(\d{4})', full_prompt)
+        _start_year = _year_match.group(1) if _year_match else "2023"
+        # Match "5年" or "5 years" but NOT "2023年" (4-digit year)
+        _nyears_match = re.search(r'(?<!\d)(\d{1,2})\s*(?:年|years)', full_prompt)
+        _n_years = _nyears_match.group(1) if _nyears_match else "5"
+
+        await cl.Message(
+            content=f"🌍 世界模型预测启动\n- 情景: {_scenario}\n- 起始年份: {_start_year}\n- 预测年数: {_n_years}\n- bbox: 自动从已加载数据提取",
+            metadata={"routing_info": {"intent": "WORLD_MODEL", "pipeline": "world_model_direct"}},
+        ).send()
+
+        try:
+            from data_agent.world_model import predict_sequence
+            from data_agent.user_context import current_user_id
+            _uid = current_user_id.get("admin")
+            _upload_dir = os.path.join(os.path.dirname(__file__), "uploads", _uid)
+
+            # Auto-discover bbox from most recent GeoJSON
+            import glob as _glob
+            _candidates = (
+                _glob.glob(os.path.join(_upload_dir, "*.geojson"))
+                + _glob.glob(os.path.join(_upload_dir, "*.shp"))
+            )
+            if not _candidates:
+                await cl.Message(content="❌ 未找到已加载的区域数据，请先加载行政区划").send()
+                return
+            _latest = max(_candidates, key=os.path.getmtime)
+            import geopandas as _gpd
+            _gdf = _gpd.read_file(_latest)
+            if _gdf.crs and _gdf.crs.to_epsg() != 4326:
+                _gdf = _gdf.to_crs(epsg=4326)
+            _bounds = _gdf.total_bounds
+            _bbox = [float(_bounds[0]), float(_bounds[1]), float(_bounds[2]), float(_bounds[3])]
+            logger.info("World model direct: bbox=%s from %s", _bbox, os.path.basename(_latest))
+
+            # Call predict_sequence directly (keeps geojson_layers)
+            result = await asyncio.to_thread(
+                predict_sequence, _bbox, _scenario, int(_start_year), int(_n_years)
+            )
+
+            if result.get("status") == "error":
+                await cl.Message(content=f"❌ 预测失败: {result.get('error', '未知错误')}").send()
+            else:
+                # Save GeoJSON layers and push to map
+                geojson_layers = result.get("geojson_layers", {})
+                map_layers = []
+                # LULC color mapping for categorized rendering
+                _lulc_colors = {
+                    "水体": "#4169E1", "Water": "#4169E1",
+                    "树木": "#228B22", "Trees": "#228B22",
+                    "灌木": "#DEB887", "Shrubland": "#DEB887",
+                    "耕地": "#FFD700", "Cropland": "#FFD700",
+                    "建设用地": "#FF4500", "Built Area": "#FF4500",
+                    "裸地": "#D2B48C", "Bare Ground": "#D2B48C",
+                    "冰雪": "#F0F8FF", "Snow/Ice": "#F0F8FF",
+                    "云": "#C0C0C0", "Clouds": "#C0C0C0",
+                    "湿地": "#20B2AA", "Flooded Vegetation": "#20B2AA",
+                    "草地": "#90EE90", "Rangeland": "#90EE90",
+                }
+                for yr, geojson in geojson_layers.items():
+                    fname = f"world_model_{_scenario}_{yr}.geojson"
+                    fpath = os.path.join(_upload_dir, fname)
+                    with open(fpath, "w", encoding="utf-8") as f:
+                        json.dump(geojson, f, ensure_ascii=False)
+                    map_layers.append({
+                        "type": "categorized",
+                        "geojson": fname,
+                        "name": f"LULC {yr} ({_scenario})",
+                        "year": int(yr),
+                        "category_column": "class_name",
+                        "category_colors": _lulc_colors,
+                        "style": {"weight": 0.3, "opacity": 0.8, "fillOpacity": 0.7},
+                    })
+
+                # Push to frontend map via pending_map_updates
+                if map_layers:
+                    _map_update = {
+                        "layers": map_layers,
+                        "center": [(_bbox[1]+_bbox[3])/2, (_bbox[0]+_bbox[2])/2],
+                        "zoom": 13,
+                        "timeline": True,
+                    }
+                    from data_agent.frontend_api import pending_map_updates, _pending_lock
+                    with _pending_lock:
+                        pending_map_updates[_uid] = _map_update
+                    logger.info("World model: pushed %d layers to map", len(map_layers))
+
+                # Format summary
+                summary_lines = [f"✅ 世界模型预测完成 ({_scenario}, {_start_year}-{int(_start_year)+int(_n_years)})"]
+                if "area_timeline" in result:
+                    summary_lines.append("\n📊 面积变化时间线:")
+                    for yr_data in result["area_timeline"]:
+                        yr = yr_data.get("year", "?")
+                        areas = yr_data.get("areas", {})
+                        top3 = sorted(areas.items(), key=lambda x: -x[1])[:3]
+                        top_str = ", ".join(f"{k}: {v:.1f}%" for k, v in top3)
+                        summary_lines.append(f"  {yr}: {top_str}")
+                if "transition_matrix" in result:
+                    summary_lines.append("\n🔄 主要转变:")
+                    tm = result.get("transition_matrix", {})
+                    if isinstance(tm, dict):
+                        changes = []
+                        for from_cls, to_dict in tm.items():
+                            for to_cls, count in to_dict.items():
+                                if from_cls != to_cls:
+                                    changes.append((from_cls, to_cls, count))
+                        changes.sort(key=lambda x: -x[2])
+                        for from_cls, to_cls, count in changes[:5]:
+                            summary_lines.append(f"  {from_cls} → {to_cls}: {count} pixels")
+                    elif isinstance(tm, list):
+                        for t_item in tm[:5]:
+                            summary_lines.append(f"  {t_item.get('from','')} → {t_item.get('to','')}: {t_item.get('percent', 0):.1f}%")
+                summary_lines.append(f"\n📁 已保存 {len(map_layers)} 个图层到地图，请查看时间轴滑块。")
+                await cl.Message(content="\n".join(summary_lines)).send()
+        except Exception as e:
+            logger.error("World model direct call failed: %s", e)
+            await cl.Message(content=f"❌ 世界模型调用异常: {e}").send()
+        return
     elif DYNAMIC_PLANNER:
         selected_agent = planner_agent
         pipeline_type = "planner"

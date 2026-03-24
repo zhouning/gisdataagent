@@ -3,10 +3,13 @@ import sys, io
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
+from pathlib import Path
 from docx import Document
 from docx.shared import Pt, Cm, Emu
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
+
+ARCH_FIG = Path(__file__).resolve().parent.parent / "docs" / "fig_architecture.png"
 
 
 def make_doc():
@@ -70,6 +73,19 @@ def add_para(doc, text, bold=False, italic=False, size=11):
     return p
 
 
+def add_figure(doc, img_path, caption, width_cm=15):
+    """Insert a figure image with a caption below it."""
+    p_img = doc.add_paragraph()
+    p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p_img.add_run()
+    run.add_picture(str(img_path), width=Cm(width_cm))
+    p_cap = doc.add_paragraph()
+    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_cap = p_cap.add_run(caption)
+    run_cap.font.size = Pt(9)
+    run_cap.italic = True
+
+
 def add_table(doc, headers, rows):
     table = doc.add_table(rows=1 + len(rows), cols=len(headers), style="Light Grid Accent 1")
     for i, h in enumerate(headers):
@@ -99,7 +115,7 @@ def build_english():
     add_affil(doc, "Target journal: International Journal of Geographical Information Science (IJGIS)")
 
     add_heading(doc, "Abstract")
-    add_para(doc, "Predicting land-use and land-cover (LULC) change is fundamental to geographic information science, yet existing methods either operate on discrete categorical maps (CA-Markov, ConvLSTM) or require prohibitively large pixel-level generative models (EarthPT, DiffusionSat). We propose a geospatial world model that predicts LULC change entirely within a learned embedding space, following the Joint Embedding Predictive Architecture (JEPA) paradigm. Our approach combines a frozen geospatial foundation model---Google AlphaEarth Foundations (480M+ parameters)---as a fixed encoder producing 64-dimensional per-pixel embeddings, with a lightweight LatentDynamicsNet (459K parameters) that learns residual state transitions in this embedding space via autoregressive rollout. We introduce three key technical contributions: (1) explicit L2 re-normalization after each autoregressive step to prevent manifold drift on the unit hypersphere; (2) dilated convolutions (dilation rates 1, 2, 4) to expand the receptive field from 50 m to 170 m for capturing macro-scale land-use drivers; and (3) multi-step unrolled training loss with decaying weights to mitigate exposure bias in long-horizon prediction. Experiments span 17 study areas across China (12 training, 2 validation, 1 test, 2 out-of-distribution), with 500 sample points per area per year over 2017-2024, evaluated against three baselines (persistence, linear extrapolation, mean reversion). On the 12 training areas, the model achieves a mean cosine similarity of 0.9575 with ground truth, surpassing the persistence baseline (0.9460) on all 12 areas (+0.012 average). Critically, on pixels that underwent actual land-use change (top 20% by embedding displacement), the model advantage amplifies to +0.030 to +0.108 over persistence. The validation set shows positive advantage (+0.005), and OOD degradation is limited to -0.012. Multi-step rollout sustains above-baseline quality for 5 of 6 autoregressive steps. These results demonstrate that frozen foundation model embeddings provide a viable state space for geospatial world modeling, achieving meaningful dynamics learning with three orders of magnitude fewer parameters than comparable autoregressive earth observation models.")
+    add_para(doc, "Predicting land-use and land-cover (LULC) change is fundamental to geographic information science, yet existing methods either operate on discrete categorical maps (CA-Markov, ConvLSTM) or require prohibitively large pixel-level generative models (EarthPT, DiffusionSat). We propose a geospatial world model that predicts LULC change entirely within a learned embedding space, following the Joint Embedding Predictive Architecture (JEPA) paradigm. Our approach combines a frozen geospatial foundation model---Google AlphaEarth Foundations (480M+ parameters)---as a fixed encoder producing 64-dimensional per-pixel embeddings, with a lightweight LatentDynamicsNet (459K parameters) that learns residual state transitions in this embedding space via autoregressive rollout. We introduce three key technical contributions: (1) explicit L2 re-normalization after each autoregressive step to prevent manifold drift on the unit hypersphere; (2) dilated convolutions (dilation rates 1, 2, 4) to expand the receptive field from 50 m to 170 m for capturing macro-scale land-use drivers; and (3) multi-step unrolled training loss with decaying weights to mitigate exposure bias in long-horizon prediction. A formal ablation study confirms that all three components are critical: removing L2 normalization degrades training advantage by 62%, removing dilated convolutions reduces change-pixel advantage by 32%, and removing unrolled loss causes the validation set to turn negative. Experiments span 17 study areas across China (12 training, 2 validation, 1 test, 2 out-of-distribution), with 500 sample points per area per year over 2017-2024, evaluated against two baselines (persistence and linear extrapolation). On the 12 training areas, the model achieves a mean cosine similarity of 0.9575 with ground truth, surpassing the persistence baseline (0.9460) on all 12 areas (+0.014 average). Critically, on pixels that underwent actual land-use change (top 20% by embedding displacement), the model advantage amplifies to +0.030 to +0.108 over persistence. The validation set shows positive advantage (+0.002), and OOD degradation is limited to -0.012. Multi-step rollout sustains above-baseline quality for up to 6 autoregressive steps on training areas. These results demonstrate that frozen foundation model embeddings provide a viable state space for geospatial world modeling, achieving meaningful dynamics learning with three orders of magnitude fewer parameters than comparable autoregressive earth observation models.")
 
     add_para(doc, "Keywords: geospatial world model; JEPA; foundation model embeddings; land-use change prediction; latent dynamics; AlphaEarth", bold=True, size=10)
 
@@ -115,7 +131,7 @@ def build_english():
         "(1) We formulate geospatial world modeling as residual dynamics learning in a frozen GeoFM embedding space, and demonstrate its feasibility through a three-phase validation pipeline.",
         "(2) We design the LatentDynamicsNet, a 459K-parameter dilated convolutional network with L2 manifold preservation, scenario conditioning, and terrain context inputs, achieving meaningful prediction with 1,500x fewer parameters than EarthPT.",
         "(3) We introduce multi-step unrolled training loss to combat exposure bias, extending the effective prediction horizon from 3 to 5+ years.",
-        "(4) We provide comprehensive experiments on 17 Chinese study areas with strict train/val/test/OOD splits, three baselines, and a novel change-pixel evaluation protocol.",
+        "(4) We provide comprehensive experiments on 17 Chinese study areas with strict train/val/test/OOD splits, two baselines, and a novel change-pixel evaluation protocol.",
     ]:
         doc.add_paragraph(c, style="List Number")
 
@@ -146,7 +162,15 @@ def build_english():
     # 4. Methodology
     add_heading(doc, "4. Methodology")
     add_heading(doc, "4.1 Architecture overview", level=2)
-    add_para(doc, "Our system follows a two-layer JEPA architecture: Layer 1 (Frozen encoder): AlphaEarth Foundations (480M+ parameters) maps satellite observations to 64-dimensional unit vectors. This layer is never trained. Layer 2 (Learned dynamics): LatentDynamicsNet (459K parameters) predicts the next year's embedding given the current embedding, scenario encoding, and terrain context.")
+    add_para(doc, "Our system follows a two-layer JEPA architecture (see Figure 1): Layer 1 (Frozen encoder): AlphaEarth Foundations (480M+ parameters) maps satellite observations to 64-dimensional unit vectors. This layer is never trained. Layer 2 (Learned dynamics): LatentDynamicsNet (459K parameters) predicts the next year's embedding given the current embedding, scenario encoding, and terrain context.")
+    add_figure(doc, ARCH_FIG,
+               "Figure 1. Architecture of the proposed geospatial world model following the JEPA paradigm. "
+               "Layer 1 (frozen) is the AlphaEarth foundation model encoder that maps satellite observations "
+               "to 64-dimensional unit-vector embeddings. Layer 2 (learned) is the LatentDynamicsNet that "
+               "predicts residual state transitions in embedding space, with explicit L2 re-normalization "
+               "after each step. The dashed arrow represents the autoregressive feedback loop during "
+               "multi-step rollout. The linear probe decoder is used only for LULC visualization, "
+               "not during dynamics prediction.")
     add_heading(doc, "4.2 LatentDynamicsNet", level=2)
     add_para(doc, "The dynamics model predicts residual change: z_{t+1} = normalize(z_t + f(concat[z_t, s(sigma), c])), where z_t is the 64-dim embedding, s is the scenario encoder (Linear 16->64->64), and c is the terrain context (2 channels: DEM elevation + slope). The dynamics function f uses dilated convolutions with rates [1, 2, 4], expanding the receptive field from 5x5 (50 m) to 17x17 (170 m). Architecture: DilConv3x3(d=1, 130->128) + GN + GELU -> DilConv3x3(d=2, 128->128) + GN + GELU -> DilConv3x3(d=4, 128->128) + GN + GELU -> Conv1x1(128->64). Total: 459K parameters.")
     add_heading(doc, "4.3 L2 manifold preservation", level=2)
@@ -212,6 +236,11 @@ def build_english():
     add_heading(doc, "6. Discussion")
     add_para(doc, "JEPA realization. Our architecture directly instantiates the JEPA framework: AlphaEarth = encoder, LatentDynamicsNet = predictor, operating entirely in representation space. The frozen-encoder approach decouples representation quality from dynamics learning, enabling 459K-parameter dynamics training in <2 minutes on CPU.")
     add_para(doc, "Why the model works on changing pixels. The change-pixel analysis reveals that the model's advantage concentrates on pixels undergoing genuine transitions (+0.030 to +0.108), while stable pixels are near-identical to persistence. The model has learned to identify which embeddings are in unstable pre-transition states.")
+    add_heading(doc, "6.3 Interpretability and geographic theory alignment", level=2)
+    add_para(doc, "Spatial autocorrelation and Tobler's First Law. Tobler's First Law of Geography states that 'near things are more related than distant things' (Tobler, 1970). Our dilated convolutional architecture (receptive field 170 m) is a direct computational implementation of this principle: each pixel's predicted future state is determined by its spatial neighborhood. The ablation study confirms this --- removing dilated convolutions reduces change-pixel advantage by 32%, demonstrating that macro-scale spatial context is essential for land-use transitions at the urban-rural interface.")
+    add_para(doc, "Spatial diffusion theory. Hagerstrand's spatial diffusion theory posits that land-use changes propagate outward from centers of origin. The convolutional dynamics naturally encode this pattern: urbanized pixels at the city edge 'influence' adjacent agricultural pixels, producing gradual outward expansion. The transition matrices confirm this --- dominant transitions (cropland to shrubland, cropland to water) concentrate at boundary zones rather than occurring uniformly.")
+    add_para(doc, "Linear decodability as semantic interpretability. The 83.5% accuracy of a linear probe (logistic regression) in decoding LULC classes demonstrates that the 64-dimensional embedding space is linearly separable with respect to land-cover semantics. The residual delta_z predicted by the dynamics model can be decomposed along the linear classifier's decision boundaries: its magnitude indicates change intensity, and its direction reveals which land-cover transition is predicted. Unlike pixel-level generative models where intermediate representations are opaque, our predictions remain in a semantically structured space throughout the autoregressive rollout.")
+    add_para(doc, "Relationship to classical LULC models. The autoregressive formulation z_{t+1} = f(z_t, sigma) is mathematically a continuous-state Markov process, generalizing discrete CA-Markov transition matrices to a 64-dimensional continuous manifold. The transition matrix output provides a direct bridge to practitioners familiar with Markov-based modeling, while the underlying continuous dynamics retain richer information than categorical transitions.")
     add_para(doc, "Scenario conditioning caveat. All training data uses the baseline scenario (historical observations). The scenario-conditioning architecture is in place but untrained for counterfactual scenarios. Activating it requires scenario-labeled training data (e.g., regions with known policy interventions) — this is identified as the primary direction for future work.")
     add_para(doc, "Limitations. (1) Annual temporal resolution limits sub-year dynamics. (2) Scenario conditioning currently operates only on baseline (see above). (3) 170 m receptive field may miss city-scale drivers. (4) Extreme biomes absent from training would show degradation.")
 
@@ -250,7 +279,7 @@ def build_chinese():
     add_affil(doc, "目标期刊: International Journal of Geographical Information Science (IJGIS)")
 
     add_heading(doc, "摘要")
-    add_para(doc, "预测土地利用/覆盖（LULC）变化是地理信息科学的核心问题，然而现有方法要么在离散类别地图上操作（CA-Markov、ConvLSTM），要么需要计算代价极高的像素级生成模型（EarthPT、DiffusionSat）。本文提出了一种地理空间世界模型，遵循联合嵌入预测架构（JEPA）范式，完全在学习到的嵌入空间中预测LULC变化。我们的方法将冻结的地理空间基础模型——Google AlphaEarth Foundations（480M+参数）——作为固定编码器产生64维逐像素嵌入向量，与轻量级LatentDynamicsNet（459K参数）相结合，后者通过自回归展开学习该嵌入空间中的残差状态转移。我们引入三个关键技术贡献：（1）每步自回归后显式L2重归一化以防止单位超球面上的流形漂移；（2）空洞卷积（膨胀率1、2、4）将感受野从50 m扩展到170 m以捕捉宏观尺度的土地利用驱动因素；（3）带衰减权重的多步展开训练损失以缓解长时域预测中的暴露偏差。实验涵盖中国17个研究区域（12个训练、2个验证、1个测试、2个域外），每个区域每年500个采样点，覆盖2017-2024年，与三个基线（持续性、线性外推、均值回归）对比评估。在12个训练区域上，模型与真实值的平均余弦相似度达到0.9575，超越持续性基线（0.9460），全部12个区域均优于基线（平均+0.012）。关键发现：在实际发生土地利用变化的像素（嵌入位移前20%）上，模型优势放大至+0.030至+0.108。验证集显示正向优势（+0.005），域外退化仅为-0.012。多步展开在6步中维持5步高于基线的质量。这些结果表明，冻结的基础模型嵌入为地理空间世界建模提供了可行的状态空间，以少于可比模型三个数量级的参数量实现了有意义的动力学学习。")
+    add_para(doc, "预测土地利用/覆盖（LULC）变化是地理信息科学的核心问题，然而现有方法要么在离散类别地图上操作（CA-Markov、ConvLSTM），要么需要计算代价极高的像素级生成模型（EarthPT、DiffusionSat）。本文提出了一种地理空间世界模型，遵循联合嵌入预测架构（JEPA）范式，完全在学习到的嵌入空间中预测LULC变化。我们的方法将冻结的地理空间基础模型——Google AlphaEarth Foundations（480M+参数）——作为固定编码器产生64维逐像素嵌入向量，与轻量级LatentDynamicsNet（459K参数）相结合，后者通过自回归展开学习该嵌入空间中的残差状态转移。我们引入三个关键技术贡献：（1）每步自回归后显式L2重归一化以防止单位超球面上的流形漂移；（2）空洞卷积（膨胀率1、2、4）将感受野从50 m扩展到170 m以捕捉宏观尺度的土地利用驱动因素；（3）带衰减权重的多步展开训练损失以缓解长时域预测中的暴露偏差。正式的消融实验证实三个组件均不可或缺：移除L2归一化使训练集优势下降62%，移除空洞卷积使变化像素优势下降32%，移除展开损失导致验证集转负。实验涵盖中国17个研究区域（12个训练、2个验证、1个测试、2个域外），每个区域每年500个采样点，覆盖2017-2024年，与两个基线（持续性和线性外推）对比评估。在12个训练区域上，模型与真实值的平均余弦相似度达到0.9575，超越持续性基线（0.9460），全部12个区域均优于基线（平均+0.014）。关键发现：在实际发生土地利用变化的像素（嵌入位移前20%）上，模型优势放大至+0.030至+0.108。验证集显示正向优势（+0.002），域外退化仅为-0.012。多步展开在训练区域可维持6步自回归高于基线的预测质量。这些结果表明，冻结的基础模型嵌入为地理空间世界建模提供了可行的状态空间，以少于可比模型三个数量级的参数量实现了有意义的动力学学习。")
 
     add_para(doc, "关键词: 地理空间世界模型; JEPA; 基础模型嵌入; 土地利用变化预测; 潜空间动力学; AlphaEarth", bold=True, size=10)
 
@@ -266,7 +295,7 @@ def build_chinese():
         "（1）将地理空间世界建模建模为冻结GeoFM嵌入空间中的残差动力学学习，通过三阶段验证流程证明其可行性。",
         "（2）设计LatentDynamicsNet——459K参数的空洞卷积网络，具备L2流形保持、情景条件和地形上下文输入，以EarthPT千分之一的参数量实现有意义的预测。",
         "（3）引入多步展开训练损失以对抗暴露偏差，将有效预测窗口从3年扩展到5年以上。",
-        "（4）在17个中国研究区域上进行严格的训练/验证/测试/OOD分割实验，对比三个基线，并提出新的变化像素评估协议。",
+        "（4）在17个中国研究区域上进行严格的训练/验证/测试/OOD分割实验，对比两个基线，并提出新的变化像素评估协议。",
     ]:
         doc.add_paragraph(c, style="List Number")
 
@@ -297,7 +326,12 @@ def build_chinese():
     # 4. 方法
     add_heading(doc, "4. 方法")
     add_heading(doc, "4.1 架构概述", level=2)
-    add_para(doc, "系统采用两层JEPA架构：第1层（冻结编码器）：AlphaEarth Foundations（480M+参数）将卫星观测映射为64维单位向量，此层从不训练。第2层（学习动力学）：LatentDynamicsNet（459K参数）根据当前嵌入、情景编码和地形上下文预测下一年的嵌入。")
+    add_para(doc, "系统采用两层JEPA架构（见图1）：第1层（冻结编码器）：AlphaEarth Foundations（480M+参数）将卫星观测映射为64维单位向量，此层从不训练。第2层（学习动力学）：LatentDynamicsNet（459K参数）根据当前嵌入、情景编码和地形上下文预测下一年的嵌入。")
+    add_figure(doc, ARCH_FIG,
+               "图1. 遵循JEPA范式的地理空间世界模型架构。第1层（冻结）为AlphaEarth基础模型编码器，"
+               "将卫星观测映射为64维单位向量嵌入。第2层（学习）为LatentDynamicsNet，在嵌入空间中预测"
+               "残差状态转移，每步后进行显式L2重归一化。虚线箭头表示多步展开时的自回归反馈环路。"
+               "线性探测解码器仅用于LULC可视化，不参与动力学预测。")
     add_heading(doc, "4.2 LatentDynamicsNet", level=2)
     add_para(doc, "动力学模型预测残差变化：z_{t+1} = normalize(z_t + f(concat[z_t, s(sigma), c]))，其中z_t为64维嵌入，s为情景编码器（Linear 16->64->64），c为地形上下文（2通道：DEM高程+坡度）。动力学函数f使用空洞卷积，膨胀率[1, 2, 4]，将感受野从5x5（50 m）扩展到17x17（170 m）。架构：DilConv3x3(d=1, 130->128) + GN + GELU -> DilConv3x3(d=2, 128->128) + GN + GELU -> DilConv3x3(d=4, 128->128) + GN + GELU -> Conv1x1(128->64)。总参数：459K。")
     add_heading(doc, "4.3 L2流形保持", level=2)
@@ -363,6 +397,11 @@ def build_chinese():
     add_heading(doc, "6. 讨论")
     add_para(doc, "JEPA实现。我们的架构直接实例化了JEPA框架：AlphaEarth=编码器，LatentDynamicsNet=预测器，完全在表征空间中操作。冻结编码器方案将表征质量与动力学学习解耦，使459K参数的动力学模型在CPU上不到2分钟即可完成训练。")
     add_para(doc, "为什么模型在变化像素上有效。变化像素分析揭示，模型优势集中在发生真实转变的像素上（+0.030至+0.108），而稳定像素与持续性基线几乎相同。模型学会了识别哪些嵌入处于不稳定的转变前状态。")
+    add_heading(doc, "6.3 可解释性与地理学理论对齐", level=2)
+    add_para(doc, '空间自相关与Tobler地理学第一定律。Tobler地理学第一定律指出"一切事物都与其他事物相关,但近处的事物比远处的事物更相关"(Tobler, 1970)。我们的空洞卷积架构(感受野170m)是这一原理的直接计算实现:每个像素的预测未来状态由其空间邻域决定。消融实验证实了这一点--移除空洞卷积使变化像素优势下降32%,表明宏观尺度的空间上下文对城乡交界带的土地利用转变至关重要。')
+    add_para(doc, '空间扩散理论。Hagerstrand的空间扩散理论认为土地利用变化从起源中心向外传播。卷积动力学天然编码了这种模式:城市边缘的已城市化像素"影响"相邻的农业像素,产生逐步向外扩展的效果。转移矩阵证实了这一点--主要转变(耕地->灌木、耕地->水体)集中在边界地带而非均匀分布。')
+    add_para(doc, '线性可解码性作为语义可解释性。线性探测器(逻辑回归)以83.5%的精度解码LULC类别,证明64维嵌入空间在土地覆盖语义上是线性可分的。动力学模型预测的残差delta_z可以沿线性分类器的决策边界分解:其幅度表示变化强度,方向揭示预测的土地覆盖转变类型。与像素级生成模型中中间表示不透明不同,我们的预测在整个自回归推演过程中始终保持在语义结构化的空间中。')
+    add_para(doc, '与经典LULC模型的关系。自回归公式z_{t+1} = f(z_t, sigma)在数学上是连续状态空间的马尔可夫过程,将离散的CA-Markov转移矩阵推广到64维连续流形。转移矩阵输出为熟悉马尔可夫建模的从业者提供了直接桥梁,而底层的连续动力学保留了比类别转移更丰富的信息。')
     add_para(doc, "情景编码说明。所有训练数据使用基线情景（历史观测）。情景条件架构已就位但尚未针对反事实情景进行训练。激活它需要情景标签数据（如已知政策干预区域）——这被确定为最主要的未来工作方向。")
     add_para(doc, "局限性。（1）年度时间分辨率限制了亚年度动力学。（2）情景条件当前仅在基线情景上运行（见上文）。（3）170 m感受野可能不足以捕捉城市尺度驱动因素。（4）训练集中缺失的极端生物群落可能导致更大退化。")
 

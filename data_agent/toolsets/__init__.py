@@ -29,3 +29,4 @@ from .storage_tools import StorageToolset
 from .report_tools import ReportToolset
 from .precision_tools import PrecisionToolset
 from .world_model_tools import WorldModelToolset
+from .nl2sql_tools import NL2SQLToolset

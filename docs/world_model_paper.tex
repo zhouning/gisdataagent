@@ -18,6 +18,8 @@
 \usepackage{hyperref}
 \usepackage{color}
 \usepackage{natbib}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc}
 \bibliographystyle{plainnat}
 
 \begin{document}
@@ -37,7 +39,7 @@
 \maketitle
 
 \begin{abstract}
-Predicting land-use and land-cover (LULC) change is fundamental to geographic information science, yet existing methods either operate on discrete categorical maps (CA-Markov, ConvLSTM) or require prohibitively large pixel-level generative models (EarthPT, DiffusionSat). We propose a geospatial world model that predicts LULC change entirely within a learned embedding space, following the Joint Embedding Predictive Architecture (JEPA) paradigm. Our approach combines a frozen geospatial foundation model---Google AlphaEarth Foundations (480M+ parameters)---as a fixed encoder producing 64-dimensional per-pixel embeddings, with a lightweight \textit{LatentDynamicsNet} (459K parameters) that learns residual state transitions in this embedding space via autoregressive rollout. We introduce three key technical contributions: (1) explicit L2 re-normalization after each autoregressive step to prevent manifold drift on the unit hypersphere; (2) dilated convolutions (dilation rates 1, 2, 4) to expand the receptive field from 50\,m to 170\,m for capturing macro-scale land-use drivers; and (3) multi-step unrolled training loss with decaying weights to mitigate exposure bias in long-horizon prediction. A formal ablation study confirms that all three components are critical: removing L2 normalization degrades training advantage by 62\%, removing dilated convolutions reduces change-pixel advantage by 32\%, and removing unrolled loss causes the validation set to turn negative. Experiments span 17 study areas across China (12 training, 2 validation, 1 test, 2 out-of-distribution), with 500 sample points per area per year over 2017--2024, evaluated against three baselines (persistence, linear extrapolation, mean reversion). On the 12 training areas, the model achieves a mean cosine similarity of 0.9575 with ground truth, surpassing the persistence baseline (0.9460) on all 12 areas ($+0.014$ average). Critically, on pixels that underwent actual land-use change (top 20\% by embedding displacement), the model advantage amplifies to $+0.030$--$+0.108$ over persistence. The validation set shows positive advantage ($+0.002$), and OOD degradation is limited to $-0.012$. Multi-step rollout sustains above-baseline quality for up to 6 autoregressive steps on training areas. These results demonstrate that frozen foundation model embeddings provide a viable state space for geospatial world modeling, achieving meaningful dynamics learning with three orders of magnitude fewer parameters than comparable autoregressive earth observation models.
+Predicting land-use and land-cover (LULC) change is fundamental to geographic information science, yet existing methods either operate on discrete categorical maps (CA-Markov, ConvLSTM) or require prohibitively large pixel-level generative models (EarthPT, DiffusionSat). We propose a geospatial world model that predicts LULC change entirely within a learned embedding space, following the Joint Embedding Predictive Architecture (JEPA) paradigm. Our approach combines a frozen geospatial foundation model---Google AlphaEarth Foundations (480M+ parameters)---as a fixed encoder producing 64-dimensional per-pixel embeddings, with a lightweight \textit{LatentDynamicsNet} (459K parameters) that learns residual state transitions in this embedding space via autoregressive rollout. We introduce three key technical contributions: (1) explicit L2 re-normalization after each autoregressive step to prevent manifold drift on the unit hypersphere; (2) dilated convolutions (dilation rates 1, 2, 4) to expand the receptive field from 50\,m to 170\,m for capturing macro-scale land-use drivers; and (3) multi-step unrolled training loss with decaying weights to mitigate exposure bias in long-horizon prediction. A formal ablation study confirms that all three components are critical: removing L2 normalization degrades training advantage by 62\%, removing dilated convolutions reduces change-pixel advantage by 32\%, and removing unrolled loss causes the validation set to turn negative. Experiments span 17 study areas across China (12 training, 2 validation, 1 test, 2 out-of-distribution), with 500 sample points per area per year over 2017--2024, evaluated against two baselines (persistence and linear extrapolation). On the 12 training areas, the model achieves a mean cosine similarity of 0.9575 with ground truth, surpassing the persistence baseline (0.9460) on all 12 areas ($+0.014$ average). Critically, on pixels that underwent actual land-use change (top 20\% by embedding displacement), the model advantage amplifies to $+0.030$--$+0.108$ over persistence. The validation set shows positive advantage ($+0.002$), and OOD degradation is limited to $-0.012$. Multi-step rollout sustains above-baseline quality for up to 6 autoregressive steps on training areas. These results demonstrate that frozen foundation model embeddings provide a viable state space for geospatial world modeling, achieving meaningful dynamics learning with three orders of magnitude fewer parameters than comparable autoregressive earth observation models.
 \end{abstract}
 
 \begin{keywords}
@@ -70,7 +72,7 @@ Our contributions are:
 
 \item We introduce multi-step unrolled training loss to combat exposure bias, extending the effective prediction horizon from 1--3 years to 5+ years on training domains.
 
-\item We provide comprehensive experiments on 17 Chinese study areas with strict train/val/test/OOD splits, three baselines, and a novel change-pixel evaluation protocol that reveals model advantages masked by globally dominant stable pixels.
+\item We provide comprehensive experiments on 17 Chinese study areas with strict train/val/test/OOD splits, two baselines, and a novel change-pixel evaluation protocol that reveals model advantages masked by globally dominant stable pixels.
 \end{enumerate}
 
 
@@ -153,7 +155,7 @@ Test (1) & Wuyi Mountain & Forest & [117.6, 27.7, 117.7, 27.8] \\
 
 \subsection{Architecture overview}
 
-Our system follows a two-layer architecture:
+Our system follows a two-layer architecture (Fig.~\ref{fig:architecture}):
 
 \begin{itemize}
 \item \textbf{Layer 1: Frozen encoder.} AlphaEarth Foundations (480M+ parameters) maps satellite observations to 64-dimensional unit vectors. This layer is never trained; we consume its outputs as pre-computed embeddings.
@@ -161,6 +163,77 @@ Our system follows a two-layer architecture:
 \end{itemize}
 
 This corresponds to the JEPA framework \citep{lecun2022jepa}: the encoder produces representations; the predictor operates in representation space. The decoder (a linear classifier) is used only for visualization, not during dynamics prediction.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm and 1.8cm,
+    box/.style={draw, rounded corners, minimum height=1.0cm, minimum width=2.6cm, align=center, font=\small},
+    frozen/.style={box, fill=blue!12, draw=blue!50, thick},
+    learned/.style={box, fill=orange!15, draw=orange!60, thick},
+    input/.style={box, fill=green!10, draw=green!50, dashed},
+    output/.style={box, fill=gray!10, draw=gray!50},
+    arr/.style={-{Stealth[length=3mm]}, thick},
+    label/.style={font=\scriptsize\itshape, text=gray!70},
+]
+
+% Row 1: Inputs
+\node[input] (sat) {Satellite\\Observations};
+\node[input, right=2.5cm of sat] (scenario) {Scenario\\$\sigma \in \mathbb{R}^{16}$};
+\node[input, right=2.5cm of scenario] (terrain) {Terrain Context\\DEM + Slope};
+
+% Row 2: Encoder + Scenario MLP
+\node[frozen, below=1.0cm of sat] (encoder) {AlphaEarth\\Encoder\\{\scriptsize(480M params, frozen)}};
+\node[learned, below=1.0cm of scenario] (smlp) {Scenario MLP\\$s_\phi: \mathbb{R}^{16} \to \mathbb{R}^{64}$};
+
+% Row 3: Embedding
+\node[output, below=1.0cm of encoder] (zt) {$z_t \in \mathbb{R}^{64 \times H \times W}$};
+
+% Row 4: Dynamics
+\node[learned, below=1.5cm of smlp, minimum width=5cm] (dynamics) {LatentDynamicsNet $f_\theta$\\{\scriptsize Dilated Conv (d=1,2,4) + Residual}\\{\scriptsize (459K params, learned)}};
+
+% Row 5: Normalize
+\node[learned, below=1.0cm of dynamics, minimum width=3.5cm] (norm) {L2 Normalize\\$z / \|z\|_2$};
+
+% Row 6: Output + Decoder
+\node[output, below=1.0cm of norm] (ztp1) {$\hat{z}_{t+1} \in S^{63}$};
+\node[output, right=2.0cm of ztp1] (lulc) {LULC Map};
+
+% Decoder
+\node[frozen, below right=0.3cm and 0.5cm of ztp1, minimum width=2.2cm] (decoder) {Linear Probe\\{\scriptsize(Logistic Reg.)}};
+
+% Arrows: inputs to processing
+\draw[arr] (sat) -- (encoder);
+\draw[arr] (encoder) -- (zt);
+\draw[arr] (scenario) -- (smlp);
+
+% Concat arrows into dynamics
+\draw[arr] (zt.south) -- ++(0,-0.4) -| ([xshift=-1.5cm]dynamics.north);
+\draw[arr] (smlp.south) -- ([xshift=0cm]dynamics.north);
+\draw[arr] (terrain.south) -- ++(0,-2.15) -| ([xshift=1.5cm]dynamics.north);
+
+% Dynamics to normalize
+\draw[arr] (dynamics) -- (norm);
+
+% Normalize to output
+\draw[arr] (norm) -- (ztp1);
+
+% Autoregressive loop
+\draw[arr, dashed, blue!60] (ztp1.west) -- ++(-2.8,0) |- ([xshift=-1.5cm]dynamics.north west) node[pos=0.25, above, label] {autoregressive};
+
+% Decoder path
+\draw[arr, gray] (ztp1) -- (decoder);
+\draw[arr, gray] (decoder) -- (lulc);
+
+% Labels
+\node[label, above=0.05cm of encoder] {Layer 1: Frozen};
+\node[label, above=0.05cm of dynamics] {Layer 2: Learned};
+\node[label, below=0.05cm of decoder, text=gray!60] {Visualization only};
+
+\end{tikzpicture}
+\caption{Architecture of the proposed geospatial world model following the JEPA paradigm. Layer~1 (blue, frozen) is the AlphaEarth foundation model encoder that maps satellite observations to 64-dimensional unit-vector embeddings. Layer~2 (orange, learned) is the LatentDynamicsNet that predicts residual state transitions in embedding space, with explicit L2 re-normalization after each step. The dashed blue arrow represents the autoregressive feedback loop during multi-step rollout. The linear probe decoder (gray) is used only for LULC visualization, not during dynamics prediction.}
+\label{fig:architecture}
+\end{figure}
 
 \subsection{LatentDynamicsNet}
 \label{sec:network}
@@ -258,7 +331,6 @@ Given a bounding box, scenario, and prediction horizon $N$:
 \begin{itemize}
 \item \textbf{Persistence:} $\hat{z}_{t+1} = z_t$ (``next year equals this year'')---the standard naive baseline in time-series forecasting.
 \item \textbf{Linear extrapolation:} $\hat{z}_{t+1} = 2z_t - z_{t-1}$ (linear trend continuation).
-\item \textbf{Mean reversion:} $\hat{z}_{t+1} = 0.5 z_t + 0.5 \bar{z}$ where $\bar{z}$ is the global training-set mean embedding (shrinkage toward the population mean).
 \end{itemize}
 
 \subsection{Change-pixel evaluation protocol}
@@ -453,6 +525,26 @@ The change-pixel analysis reveals that the model's advantage concentrates on pix
 
 The manifold drift problem we identified and solved (Section~\ref{sec:manifold}) is not specific to our system; it will arise in any approach that applies residual dynamics to L2-normalized embeddings. As GeoFM embeddings become more widely used, we expect this to become a recognized architectural consideration for the community.
 
+\subsection{Interpretability and geographic theory alignment}
+\label{sec:interpretability}
+
+A key advantage of operating in a frozen foundation model embedding space---rather than in raw pixel space or a jointly trained latent space---is that the resulting predictions are inherently more interpretable. We identify three layers of interpretability that connect our model to established geographic theory.
+
+\textbf{Spatial autocorrelation and Tobler's First Law.}
+Tobler's First Law of Geography states that ``everything is related to everything else, but near things are more related than distant things'' \citep{tobler1970computer}. Our dilated convolutional architecture (receptive field 170\,m) is a direct computational implementation of this principle: each pixel's predicted future state is determined by its spatial neighborhood, with influence decaying with distance. The ablation study confirms this alignment---removing dilated convolutions (reducing the receptive field from 170\,m to 50\,m) degrades change-pixel advantage by 32\%, demonstrating that macro-scale spatial context is essential for capturing land-use transitions at the urban--rural interface.
+
+\textbf{Spatial diffusion theory.}
+H\"{a}gerstrand's spatial diffusion theory posits that innovations and land-use changes propagate outward from centers of origin. The convolutional dynamics naturally encode this diffusion pattern: urbanized pixels at the city edge ``influence'' adjacent agricultural pixels through the learned kernel weights, producing gradual outward expansion consistent with observed urbanization processes. The transition matrices in our experiments confirm this---the dominant transitions (cropland $\to$ shrubland, cropland $\to$ water) concentrate at boundary zones rather than occurring uniformly across the study area.
+
+\textbf{Linear decodability as semantic interpretability.}
+The 83.5\% accuracy of a simple linear probe (logistic regression) in decoding LULC classes from AlphaEarth embeddings \citep{rahman2026interpretable} demonstrates that the 64-dimensional embedding space is \textit{linearly separable} with respect to land-cover semantics. This has a profound implication for interpretability: the residual $\Delta z = f_\theta(z_t, \sigma, c)$ predicted by the dynamics model can be decomposed along the linear classifier's decision boundaries. A large $\|\Delta z\|$ indicates predicted change intensity; the direction of $\Delta z$ relative to the class centroids reveals \textit{which} land-cover transition is predicted. Unlike pixel-level generative models where intermediate representations are opaque, our predictions remain in a semantically structured space throughout the entire autoregressive rollout.
+
+\textbf{Relationship to classical LULC models.}
+The autoregressive formulation $z_{t+1} = f(z_t, \sigma)$ is mathematically a continuous-state Markov process, generalizing the discrete transition matrices of CA-Markov models to a 64-dimensional continuous manifold. The transition matrix output of our system (Table~\ref{tab:changepixel}) provides a direct bridge to practitioners familiar with Markov-based LULC modeling, while the underlying continuous dynamics retain richer information than categorical transitions can express.
+
+\textbf{Directions for enhanced interpretability.}
+Several techniques could further strengthen interpretability in future work: (1) gradient attribution (Grad-CAM) on the convolutional layers to visualize which neighboring pixels most influence each prediction, validating spatial diffusion patterns; (2) principal component analysis of the embedding residuals $\Delta z$ to identify dominant modes of land-use change; and (3) correlation analysis between embedding principal components and known geophysical variables (NDVI, impervious surface fraction, population density) to establish explicit physical meaning for the latent dimensions.
+
 \subsection{Limitations}
 
 \begin{enumerate}
@@ -557,6 +649,9 @@ Shi, X. et al., 2015. Convolutional LSTM Network: A Machine Learning Approach fo
 
 \bibitem[Smith et al., 2023]{smith2023earthpt}
 Smith, O. et al., 2023. EarthPT: A Foundation Model for Earth Observation. arXiv:2309.07207.
+
+\bibitem[Tobler, 1970]{tobler1970computer}
+Tobler, W.R., 1970. A computer movie simulating urban growth in the Detroit region. Economic Geography 46(sup1), 234--240.
 
 \bibitem[Turnbull et al., 2025]{turnbull2025themeda}
 Turnbull, M., Mannion, J., Wells, R. et al., 2025. Themeda: Autoregressive Land Cover Change Prediction. Journal of Remote Sensing.
