@@ -32,6 +32,7 @@ def load_admin_boundary(
     try:
         from ..db_engine import get_engine
         from ..database_tools import _inject_user_context
+        from sqlalchemy import text
         import geopandas as gpd
 
         # Build WHERE clause
@@ -56,7 +57,7 @@ def load_admin_boundary(
             return json.dumps({"error": "数据库连接不可用"}, ensure_ascii=False)
         with engine.connect() as conn:
             _inject_user_context(conn)
-            gdf = gpd.read_postgis(sql, conn, geom_col="geometry")
+            gdf = gpd.read_postgis(text(sql), conn, geom_col="geometry")
 
         if gdf.empty:
             return json.dumps({
