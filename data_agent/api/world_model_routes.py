@@ -177,6 +177,60 @@ async def wm_history(request: Request):
     return JSONResponse({"predictions": []})
 
 
+async def wm_embedding_coverage(request: Request):
+    """GET /api/world-model/embeddings/coverage — cached embedding coverage summary."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    from ..embedding_store import get_coverage
+    return JSONResponse(get_coverage())
+
+
+async def wm_embedding_search(request: Request):
+    """POST /api/world-model/embeddings/search — similarity search in embedding space."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    import numpy as np
+    embedding = body.get("embedding")
+    k = body.get("k", 10)
+    radius_km = body.get("radius_km")
+    center = body.get("center")  # [lng, lat]
+
+    if not embedding or len(embedding) != 64:
+        return JSONResponse({"error": "embedding must be a 64-dim array"}, status_code=400)
+
+    from ..embedding_store import find_similar_embeddings
+    results = find_similar_embeddings(
+        target_embedding=np.array(embedding, dtype=np.float32),
+        k=k,
+        spatial_radius_km=radius_km,
+        center_point=tuple(center) if center else None,
+    )
+    return JSONResponse({"results": results, "count": len(results)})
+
+
+async def wm_embedding_import(request: Request):
+    """POST /api/world-model/embeddings/import — import .npy cache into pgvector."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    from ..embedding_store import import_npy_cache
+    result = await asyncio.to_thread(import_npy_cache)
+    return JSONResponse(result)
+
+
 # ====================================================================
 #  Route factory
 # ====================================================================
@@ -189,4 +243,7 @@ def get_world_model_routes() -> list:
         Route("/api/world-model/scenarios", wm_scenarios, methods=["GET"]),
         Route("/api/world-model/predict", wm_predict, methods=["POST"]),
         Route("/api/world-model/history", wm_history, methods=["GET"]),
+        Route("/api/world-model/embeddings/coverage", wm_embedding_coverage, methods=["GET"]),
+        Route("/api/world-model/embeddings/search", wm_embedding_search, methods=["POST"]),
+        Route("/api/world-model/embeddings/import", wm_embedding_import, methods=["POST"]),
     ]
