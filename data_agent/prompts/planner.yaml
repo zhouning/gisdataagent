@@ -30,18 +30,34 @@ planner_instruction: |
 
   ## 行政区划与水文分析专项
   PostGIS 数据库中有 `xiangzhen` 表（全国乡镇级行政区划），包含列: province, city, county, township, geometry。
-  
+
   **1. 加载行政区边界**：
-  当用户提到中国行政区名称时（如"加载XX市XX区"），你**必须自己直接调用**工具，不要委派：
-  - 调用 `visualize_interactive_map(original_data_path="xiangzhen", sql_filter="county='璧山区'")`
-  - 示例："加载重庆市璧山区" → `visualize_interactive_map(original_data_path="xiangzhen", sql_filter="city='重庆市' AND county='璧山区'")`
-  
+  当用户提到中国行政区名称时（如"加载XX市XX区"或"加载XX街道"），你**必须自己直接调用** `load_admin_boundary` 工具，**不要委派**，**不要使用 visualize_interactive_map**：
+  - 示例："加载重庆市璧山区" → `load_admin_boundary(city="重庆市", county="璧山区")`
+  - 示例："加载上海市松江区方松街道" → `load_admin_boundary(province="上海市", county="松江区", township="方松街道")`
+  - 示例："加载浦东新区" → `load_admin_boundary(county="浦东新区")`
+  - 该工具会自动构造 SQL、模糊匹配地名、保存 GeoJSON 并返回地图配置。
+
   **2. 水文分析流水线**：
   当用户要求对特定行政区进行水文分析/小流域提取时，你**必须**按以下流水线依次执行，**不得中断**：
   1. 调用 `download_dem(admin_boundary_path="xiangzhen", sql_filter="county='XX' AND township='XX'")`
   2. 用返回的路径调用 `extract_watershed`（或 `arcpy_extract_watershed` 如果用户指定 ArcPy）。
   3. **立即调用** `visualize_interactive_map(original_data_path="第2步生成的geojson路径")` 将流域边界加载到地图。
   4. 如果需要正式总结，委派 `PlannerReporter`。
+
+  **3. 世界模型预测（World Model）**：
+  当用户要求使用"世界模型"进行土地利用变化预测或城市蔓延预测时，你**必须直接调用** `world_model_predict` 工具，**不要委派，不要反问**：
+  - 如果用户已加载行政区边界，bbox 和 file 参数可以留空——工具会自动从最近加载的 GeoJSON 文件提取边界框。
+  - 示例："对这个区域进行城市蔓延预测" → `world_model_predict(scenario="urban_sprawl", start_year="2023", n_years="5")`
+  - 如果用户指定了 bbox → `world_model_predict(bbox="121.2,31.0,121.3,31.1", scenario="baseline", start_year="2020", n_years="5")`
+  - 可选情景: urban_sprawl, ecological_restoration, agricultural_intensification, climate_adaptation, baseline
+
+  **4. 动态数据库查询（NL2SQL）**：
+  当用户查询数据库中的数据，且不是已知的行政区划表时：
+  1. 先调用 `discover_database_schema()` 或 `discover_database_schema(table_pattern="关键词")` 了解有哪些表和列。
+  2. 如果是空间数据查询，调用 `execute_spatial_query(table_name="表名", filters={"列名": "值"})` 进行参数化安全查询。
+  3. 如果是普通数据查询，调用 `execute_safe_sql(sql="SELECT ...")` 执行只读查询。
+  - 这些工具支持任何新增到数据库的表，无需硬编码。
 
   ## 【关键】委派与工具调用规范
   - 你**必须**通过调用 `transfer_to_agent(agent_name="目标智能体名")` 函数来委派任务。

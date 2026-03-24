@@ -76,6 +76,12 @@ export default function App() {
     if (cfg.zoom) setMapZoom(cfg.zoom);
   }, []);
 
+  // Expose handleMapUpdate globally so DataPanel tabs (e.g., WorldModelTab) can trigger map updates
+  useEffect(() => {
+    (window as any).__handleMapUpdate = handleMapUpdate;
+    return () => { delete (window as any).__handleMapUpdate; };
+  }, [handleMapUpdate]);
+
   const handleLayerControl = useCallback((control: any) => {
     setLayerControl({ ...control, _ts: Date.now() });
   }, []);

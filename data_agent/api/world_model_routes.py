@@ -3,12 +3,21 @@ World Model API routes — REST endpoints for geospatial world model (Plan D Tec
 """
 
 import asyncio
+import json
+import os
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
+
+
+# LULC color scheme for map styling
+_LULC_COLORS = {
+    "水体": "#4169E1", "树木": "#228B22", "草地": "#90EE90", "灌木": "#DEB887",
+    "耕地": "#FFD700", "建设用地": "#DC143C", "裸地": "#D2B48C", "湿地": "#20B2AA",
+}
 
 
 # ====================================================================
@@ -90,6 +99,69 @@ async def wm_predict(request: Request):
         )
         if result.get("status") == "error":
             return JSONResponse(result, status_code=503)
+
+        # --- Push GeoJSON layers to map panel ---
+        geojson_layers = result.get("geojson_layers", {})
+        if geojson_layers:
+            try:
+                from ..user_context import current_user_id
+                from ..frontend_api import pending_map_updates, _pending_lock
+
+                uid = current_user_id.get("admin")
+                upload_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    "uploads", uid,
+                )
+                os.makedirs(upload_dir, exist_ok=True)
+
+                map_layers = []
+                # Use the last predicted year for the primary map layer
+                years_sorted = sorted(geojson_layers.keys())
+                last_year = years_sorted[-1] if years_sorted else None
+                first_year = years_sorted[0] if years_sorted else None
+
+                for yr_key in years_sorted:
+                    geojson_data = geojson_layers[yr_key]
+                    fname = f"wm_lulc_{yr_key}.geojson"
+                    fpath = os.path.join(upload_dir, fname)
+                    with open(fpath, "w", encoding="utf-8") as f:
+                        json.dump(geojson_data, f, ensure_ascii=False)
+
+                    # Build categorized layer with LULC colors
+                    is_last = (yr_key == last_year)
+                    style_map = {}
+                    for feat in geojson_data.get("features", []):
+                        cls_name = feat.get("properties", {}).get("class_name", "")
+                        color = feat.get("properties", {}).get("color", "#808080")
+                        style_map[cls_name] = {
+                            "fillColor": color, "color": color,
+                            "fillOpacity": 0.7, "weight": 0.3,
+                        }
+                    map_layers.append({
+                        "name": f"LULC {yr_key} ({scenario})",
+                        "type": "categorized",
+                        "geojson": fname,
+                        "category_column": "class_name",
+                        "style_map": style_map,
+                        "visible": is_last,  # only show last year by default
+                    })
+
+                # Compute map center from bbox
+                center_lat = (bbox[1] + bbox[3]) / 2
+                center_lng = (bbox[0] + bbox[2]) / 2
+                map_config = {
+                    "layers": map_layers,
+                    "center": [center_lat, center_lng],
+                    "zoom": 14,
+                }
+                with _pending_lock:
+                    pending_map_updates[uid] = map_config
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Failed to push map update: %s", e
+                )
+
         return JSONResponse(result)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

@@ -5,9 +5,13 @@
 
 import asyncio
 import json
+import logging
+import os
 
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.base_toolset import BaseToolset
+
+logger = logging.getLogger(__name__)
 
 
 # ====================================================================
@@ -16,33 +20,111 @@ from google.adk.tools.base_toolset import BaseToolset
 
 
 def world_model_predict(
-    bbox: str,
+    bbox: str = "",
     scenario: str = "baseline",
     start_year: str = "2023",
     n_years: str = "5",
+    file: str = "",
 ) -> str:
     """使用世界模型预测土地利用变化。基于 AlphaEarth 嵌入 + LatentDynamicsNet 残差 CNN
-    进行潜空间动力学预测。输入研究区域边界框、情景名称、起始年份和预测年数。
+    进行潜空间动力学预测。
+
+    可以通过 bbox 直接指定区域，也可以通过 file 参数传入已加载的 GeoJSON/Shapefile 文件名，
+    系统会自动从文件中提取边界框。当用户说"对这个区域"或"对刚才加载的数据"时，
+    应使用 file 参数传入之前加载的文件名。
 
     Args:
-        bbox: 研究区域边界框，格式 "minx,miny,maxx,maxy" (WGS84)，例如 "121.2,31.0,121.3,31.1"
+        bbox: 研究区域边界框，格式 "minx,miny,maxx,maxy" (WGS84)，例如 "121.2,31.0,121.3,31.1"。
+              如果提供了 file 参数则可留空。
         scenario: 模拟情景名称，可选 urban_sprawl/ecological_restoration/agricultural_intensification/climate_adaptation/baseline
         start_year: 起始年份 (2017-2024)
         n_years: 向前预测年数 (1-50)
+        file: 已加载的空间数据文件名（如 interactive_map_xxx.geojson），系统自动提取 bbox。
+              当用户提到"这个区域"、"刚才加载的数据"时使用此参数。
 
     Returns:
         JSON 字符串包含面积分布时间线、转移矩阵、每年 GeoJSON 图层
     """
     from ..world_model import predict_sequence
+    import os
 
     try:
-        # Parse bbox
-        parts = [float(x.strip()) for x in bbox.split(",")]
-        if len(parts) != 4:
-            return json.dumps(
-                {"error": "bbox 格式错误，应为 'minx,miny,maxx,maxy'"},
-                ensure_ascii=False,
-            )
+        parts = None
+
+        # If file is provided, extract bbox from it
+        if file and not bbox:
+            try:
+                import geopandas as gpd
+                from ..user_context import current_user_id
+                uid = current_user_id.get("admin")
+                upload_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    "uploads", uid,
+                )
+                fpath = os.path.join(upload_dir, file)
+                if not os.path.exists(fpath):
+                    # Try without directory prefix
+                    fpath = file
+                if os.path.exists(fpath):
+                    gdf = gpd.read_file(fpath)
+                    if gdf.crs and gdf.crs.to_epsg() != 4326:
+                        gdf = gdf.to_crs(epsg=4326)
+                    bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
+                    parts = [float(bounds[0]), float(bounds[1]),
+                             float(bounds[2]), float(bounds[3])]
+                else:
+                    return json.dumps(
+                        {"error": f"文件不存在: {file}"},
+                        ensure_ascii=False,
+                    )
+            except Exception as e:
+                return json.dumps(
+                    {"error": f"从文件提取bbox失败: {e}"},
+                    ensure_ascii=False,
+                )
+
+        # Parse bbox string if not extracted from file
+        if parts is None:
+            if not bbox:
+                # Auto-discover: find most recent GeoJSON in user uploads
+                try:
+                    import glob
+                    from ..user_context import current_user_id
+                    uid = current_user_id.get("admin")
+                    upload_dir = os.path.join(
+                        os.path.dirname(os.path.dirname(__file__)),
+                        "uploads", uid,
+                    )
+                    candidates = (
+                        glob.glob(os.path.join(upload_dir, "*.geojson"))
+                        + glob.glob(os.path.join(upload_dir, "*.shp"))
+                    )
+                    if candidates:
+                        latest = max(candidates, key=os.path.getmtime)
+                        import geopandas as gpd
+                        gdf = gpd.read_file(latest)
+                        if gdf.crs and gdf.crs.to_epsg() != 4326:
+                            gdf = gdf.to_crs(epsg=4326)
+                        bounds = gdf.total_bounds
+                        parts = [float(bounds[0]), float(bounds[1]),
+                                 float(bounds[2]), float(bounds[3])]
+                        logger.info("Auto-discovered bbox from %s: %s",
+                                    os.path.basename(latest), parts)
+                except Exception as e:
+                    logger.debug("Auto-discover failed: %s", e)
+
+            if parts is None and not bbox:
+                return json.dumps(
+                    {"error": "请提供 bbox 或 file 参数，或确保之前已加载行政区划数据"},
+                    ensure_ascii=False,
+                )
+            if parts is None:            parts = [float(x.strip()) for x in bbox.split(",")]
+            if len(parts) != 4:
+                return json.dumps(
+                    {"error": "bbox 格式错误，应为 'minx,miny,maxx,maxy'"},
+                    ensure_ascii=False,
+                )
+
         year = int(start_year)
         years = int(n_years)
         if years < 1 or years > 50:
@@ -51,21 +133,25 @@ def world_model_predict(
             )
 
         result = predict_sequence(parts, scenario, year, years)
+        # Strip geojson_layers from LLM response to avoid token explosion
+        # (GeoJSON is pushed to map via REST API separately)
+        result.pop("geojson_layers", None)
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
 
 async def world_model_predict_long_running(
-    bbox: str,
+    bbox: str = "",
     scenario: str = "baseline",
     start_year: str = "2023",
     n_years: str = "5",
+    file: str = "",
 ) -> str:
     """使用世界模型预测土地利用变化。基于 AlphaEarth 嵌入 + LatentDynamicsNet 残差 CNN
-    进行潜空间动力学预测。输入研究区域边界框、情景名称、起始年份和预测年数。"""
+    进行潜空间动力学预测。可通过 bbox 或 file 参数指定区域。"""
     return await asyncio.to_thread(
-        world_model_predict, bbox, scenario, start_year, n_years
+        world_model_predict, bbox, scenario, start_year, n_years, file
     )
 
 

@@ -18,6 +18,8 @@ interface MapLayer {
   category_column?: string;                  // field for categorized coloring
   category_colors?: Record<string, string>;  // value -> color mapping
   category_labels?: Record<string, string>;  // value -> display label
+  style_map?: Record<string, Record<string, any>>; // value -> full style obj
+  visible?: boolean;                         // initial visibility (default true)
   // 3D properties
   elevation_column?: string;
   elevation_scale?: number;
@@ -53,6 +55,8 @@ const BASEMAPS: Record<string, string> = {
   'CartoDB Dark': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   'OpenStreetMap': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   'Gaode': 'https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
+  'Gaode Satellite': 'https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
+  'ESRI Satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
 };
 
 const COLOR_RAMPS: Record<string, string[]> = {
@@ -438,10 +442,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
           const leafletLayer = createLeafletLayer(layerConfig, geojsonData);
           if (leafletLayer) {
-            leafletLayer.addTo(mapRef.current!);
+            const isVisible = layerConfig.visible !== false;
+            if (isVisible) {
+              leafletLayer.addTo(mapRef.current!);
+            }
             layerGroupsRef.current.set(layerConfig.name, leafletLayer);
             loaded.push({ ...layerConfig, geojsonData });
-            visibility[layerConfig.name] = true;
+            visibility[layerConfig.name] = isVisible;
           }
         } catch (err) {
           console.warn(`Failed to load layer ${layerConfig.name}:`, err);
@@ -482,8 +489,78 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   );
   // Find categorized layers for legend
   const categorizedLayers = loadedLayers.filter(
-    (l) => l.type === 'categorized' && l.category_colors
+    (l) => l.type === 'categorized' && (l.category_colors || l.style_map)
   );
+
+  // --- Timeline slider for temporal layers (e.g., World Model LULC predictions) ---
+  // Detect layers with year pattern in name: "LULC 2023 (baseline)"
+  const yearPattern = /\b(20\d{2})\b/;
+  const temporalYears: number[] = [];
+  const temporalLayerNames: Map<number, string> = new Map();
+  for (const l of loadedLayers) {
+    const m = l.name.match(yearPattern);
+    if (m) {
+      const yr = parseInt(m[1]);
+      temporalYears.push(yr);
+      temporalLayerNames.set(yr, l.name);
+    }
+  }
+  temporalYears.sort((a, b) => a - b);
+  const hasTimeline = temporalYears.length >= 2;
+
+  const [timelineYear, setTimelineYear] = useState<number>(0);
+
+  // Initialize timeline to last year when temporal layers appear
+  useEffect(() => {
+    if (hasTimeline && temporalYears.length > 0) {
+      setTimelineYear(temporalYears[temporalYears.length - 1]);
+    }
+  }, [loadedLayers.length]);
+
+  const handleTimelineChange = useCallback((year: number) => {
+    setTimelineYear(year);
+    if (!mapRef.current) return;
+    // Show only the selected year's layer, hide others
+    for (const [yr, layerName] of temporalLayerNames) {
+      const leafletLayer = layerGroupsRef.current.get(layerName);
+      if (!leafletLayer) continue;
+      if (yr === year) {
+        if (!mapRef.current.hasLayer(leafletLayer)) {
+          leafletLayer.addTo(mapRef.current);
+        }
+        setLayerVisibility((prev) => ({ ...prev, [layerName]: true }));
+      } else {
+        if (mapRef.current.hasLayer(leafletLayer)) {
+          mapRef.current.removeLayer(leafletLayer);
+        }
+        setLayerVisibility((prev) => ({ ...prev, [layerName]: false }));
+      }
+    }
+  }, [loadedLayers]);
+
+  // --- Timeline animation (play/pause) ---
+  const [timelinePlaying, setTimelinePlaying] = useState(false);
+  const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (timelinePlaying && hasTimeline) {
+      playIntervalRef.current = setInterval(() => {
+        setTimelineYear((prev) => {
+          const idx = temporalYears.indexOf(prev);
+          const nextIdx = (idx + 1) % temporalYears.length;
+          const nextYear = temporalYears[nextIdx];
+          handleTimelineChange(nextYear);
+          return nextYear;
+        });
+      }, 1200);
+    } else if (playIntervalRef.current) {
+      clearInterval(playIntervalRef.current);
+      playIntervalRef.current = null;
+    }
+    return () => {
+      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+    };
+  }, [timelinePlaying, hasTimeline, temporalYears, handleTimelineChange]);
 
   return (
     <div className="map-panel">
@@ -571,18 +648,74 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         <div className="map-legend">
           {categorizedLayers.map((layer) => {
             const labels = layer.category_labels || {};
+            const colors = layer.category_colors || {};
+            const smap = layer.style_map || {};
+            // Build color entries from either category_colors or style_map
+            const entries = Object.keys(colors).length > 0
+              ? Object.entries(colors)
+              : Object.entries(smap).map(([val, s]) => [val, s.fillColor || '#999'] as [string, string]);
             return (
             <div key={layer.name} style={{ marginBottom: categorizedLayers.length > 1 ? 8 : 0 }}>
               <div className="map-legend-title">{layer.name}</div>
-              {Object.entries(layer.category_colors!).map(([val, color]) => (
+              {entries.map(([val, color]) => (
                 <div key={val} className="map-legend-item">
-                  <span className="map-legend-color" style={{ background: color }} />
+                  <span className="map-legend-color" style={{ background: color as string }} />
                   <span className="map-legend-label">{labels[val] || val}</span>
                 </div>
               ))}
             </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Timeline slider for temporal layers (e.g., World Model LULC predictions) */}
+      {hasTimeline && (
+        <div className="map-timeline" style={{
+          position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(255,255,255,0.95)', borderRadius: 8, padding: '8px 16px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 1000, minWidth: 320,
+          display: 'flex', alignItems: 'center', gap: 8
+        }}>
+          <button
+            onClick={() => setTimelinePlaying(!timelinePlaying)}
+            title={timelinePlaying ? '暂停' : '播放'}
+            style={{
+              background: timelinePlaying ? '#ef4444' : '#2563eb', color: '#fff',
+              border: 'none', borderRadius: 6, width: 28, height: 28,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', flexShrink: 0, fontSize: 14
+            }}
+          >
+            {timelinePlaying ? (
+              <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="3.5" height="10" fill="white"/><rect x="7.5" y="1" width="3.5" height="10" fill="white"/></svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,1 11,6 2,11" fill="white"/></svg>
+            )}
+          </button>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#555', whiteSpace: 'nowrap' }}>
+            {temporalYears[0]}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={temporalYears.length - 1}
+            value={temporalYears.indexOf(timelineYear)}
+            onChange={(e) => {
+              setTimelinePlaying(false);
+              handleTimelineChange(temporalYears[parseInt(e.target.value)]);
+            }}
+            style={{ flex: 1, cursor: 'pointer', accentColor: '#2563eb' }}
+          />
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#555', whiteSpace: 'nowrap' }}>
+            {temporalYears[temporalYears.length - 1]}
+          </span>
+          <span style={{
+            fontSize: 13, fontWeight: 700, color: '#2563eb', minWidth: 40, textAlign: 'center',
+            background: '#eff6ff', borderRadius: 4, padding: '2px 6px'
+          }}>
+            {timelineYear}
+          </span>
         </div>
       )}
 
@@ -862,11 +995,22 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
     case 'categorized': {
       const catCol = config.category_column;
       const catColors = config.category_colors || {};
+      const styleMap = config.style_map || {};
       return L.geoJSON(geojsonData, {
         style: (feature) => {
           const raw = String(feature?.properties?.[catCol || ''] ?? '');
-          // Try exact match, then integer form (e.g. "1.0" → "1")
           const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+          // Check style_map first (full style per category), then category_colors
+          const catStyle = styleMap[raw] || styleMap[intForm];
+          if (catStyle) {
+            return {
+              fillColor: catStyle.fillColor || style.fillColor || '#999',
+              color: catStyle.color || style.color || '#666',
+              weight: catStyle.weight ?? style.weight ?? 0.5,
+              opacity: catStyle.opacity ?? style.opacity ?? 0.8,
+              fillOpacity: catStyle.fillOpacity ?? style.fillOpacity ?? 0.7,
+            };
+          }
           const fillColor = catColors[raw] || catColors[intForm] || style.fillColor || '#999';
           return {
             fillColor,
