@@ -6,6 +6,7 @@
 -- Enable PostGIS extension
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_topology;
+CREATE EXTENSION IF NOT EXISTS vector;  -- pgvector for embedding similarity search
 
 -- Create application user (if not exists)
 DO $$
