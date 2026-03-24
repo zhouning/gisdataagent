@@ -534,16 +534,42 @@ def _build_training_pairs(
 def _load_or_fetch_embedding(
     area_name: str, bbox: list[float], year: int
 ) -> Optional[np.ndarray]:
-    """Load embedding from .npy cache, or fetch from GEE and save."""
+    """Load embedding from pgvector → .npy cache → GEE (auto-store on fetch)."""
+    # 1. Try pgvector (fastest)
+    try:
+        from .embedding_store import load_grid_embeddings, store_grid_embeddings
+        cached = load_grid_embeddings(bbox, year)
+        if cached is not None:
+            logger.info("  [pgvector] Loaded %s %d  shape=%s", area_name, year, cached.shape)
+            return cached
+    except Exception as e:
+        logger.debug("  [pgvector] Skip: %s", e)
+
+    # 2. Try .npy file cache (backward compatible)
     cache_path = os.path.join(RAW_DATA_DIR, f"emb_{area_name}_{year}.npy")
     if os.path.exists(cache_path):
-        logger.info("  Loading cached %s %d", area_name, year)
-        return np.load(cache_path)
+        logger.info("  [npy] Loading cached %s %d", area_name, year)
+        emb = np.load(cache_path)
+        # Auto-migrate to pgvector
+        try:
+            from .embedding_store import store_grid_embeddings, find_cached_bbox
+            if not find_cached_bbox(bbox, year):
+                store_grid_embeddings(area_name, year, bbox, emb, source="npy_migrate")
+        except Exception:
+            pass
+        return emb
 
+    # 3. Fetch from GEE (slowest, auto-store)
     emb = extract_embeddings(bbox, year)
     if emb is not None:
         np.save(cache_path, emb)
-        logger.info("  Saved %s %d -> %s  shape=%s", area_name, year, cache_path, emb.shape)
+        logger.info("  [gee] Saved %s %d -> %s  shape=%s", area_name, year, cache_path, emb.shape)
+        # Auto-store in pgvector
+        try:
+            from .embedding_store import store_grid_embeddings
+            store_grid_embeddings(area_name, year, bbox, emb, source="gee")
+        except Exception:
+            pass
     return emb
 
 
@@ -942,9 +968,27 @@ def predict_sequence(
             "error": f"Unknown scenario '{scenario}'. Available: {list(SCENARIOS.keys())}",
         }
 
-    # Extract current embeddings
+    # Extract current embeddings (try pgvector cache first)
     logger.info("Extracting embeddings for %s year=%d...", bbox, start_year)
-    emb = extract_embeddings(bbox, start_year, scale)
+    emb = None
+    try:
+        from .embedding_store import load_grid_embeddings
+        emb = load_grid_embeddings(bbox, start_year)
+        if emb is not None:
+            logger.info("[pgvector] Cache hit for bbox=%s year=%d", bbox, start_year)
+    except Exception:
+        pass
+
+    if emb is None:
+        emb = extract_embeddings(bbox, start_year, scale)
+        if emb is not None:
+            # Auto-store in pgvector for next time
+            try:
+                from .embedding_store import store_grid_embeddings
+                store_grid_embeddings("adhoc", start_year, bbox, emb, source="gee")
+            except Exception:
+                pass
+
     if emb is None:
         return {
             "status": "error",

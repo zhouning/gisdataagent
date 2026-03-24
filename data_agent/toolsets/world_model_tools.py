@@ -181,12 +181,98 @@ def world_model_status() -> str:
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
+def world_model_embedding_coverage() -> str:
+    """查询向量库中已缓存的 AlphaEarth 嵌入覆盖范围。
+
+    返回每个区域的缓存年份范围、像素数量和边界框。
+    """
+    try:
+        from ..embedding_store import get_coverage
+        return json.dumps(get_coverage(), ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, ensure_ascii=False)
+
+
+def world_model_find_similar(
+    bbox: str = "",
+    year: str = "2023",
+    k: str = "10",
+) -> str:
+    """在向量库中查找与指定区域最相似的土地利用模式。
+
+    基于 AlphaEarth 64 维嵌入的余弦距离进行相似性检索。
+    可用于发现具有相似土地利用结构的区域。
+
+    Args:
+        bbox: 目标区域边界框 "minx,miny,maxx,maxy"。如留空则使用最近加载的区域。
+        year: 目标年份。
+        k: 返回最相似的前 k 个结果。
+
+    Returns:
+        JSON 字符串，包含相似区域列表及距离。
+    """
+    try:
+        import numpy as np
+        from ..embedding_store import find_similar_embeddings, load_grid_embeddings
+
+        # Get target embedding
+        if bbox:
+            parts = [float(x.strip()) for x in bbox.split(",")]
+        else:
+            # Auto-discover from recent GeoJSON
+            import glob
+            from ..user_context import current_user_id
+            uid = current_user_id.get("admin")
+            upload_dir = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                "uploads", uid,
+            )
+            candidates = glob.glob(os.path.join(upload_dir, "*.geojson"))
+            if not candidates:
+                return json.dumps({"error": "请提供 bbox 或确保已加载区域数据"}, ensure_ascii=False)
+            import geopandas as gpd
+            latest = max(candidates, key=os.path.getmtime)
+            gdf = gpd.read_file(latest)
+            if gdf.crs and gdf.crs.to_epsg() != 4326:
+                gdf = gdf.to_crs(epsg=4326)
+            bounds = gdf.total_bounds
+            parts = [float(b) for b in bounds]
+
+        yr = int(year)
+
+        # Try loading from pgvector
+        grid = load_grid_embeddings(parts, yr)
+        if grid is None:
+            return json.dumps({"error": f"向量库中没有 bbox={parts} year={yr} 的缓存嵌入"}, ensure_ascii=False)
+
+        # Use mean embedding as query vector
+        mean_emb = grid.reshape(-1, 64).mean(axis=0).astype(np.float32)
+        center_lng = (parts[0] + parts[2]) / 2
+        center_lat = (parts[1] + parts[3]) / 2
+
+        results = find_similar_embeddings(
+            target_embedding=mean_emb,
+            k=int(k),
+            spatial_radius_km=500,
+            center_point=(center_lng, center_lat),
+        )
+
+        return json.dumps({
+            "status": "ok",
+            "query_bbox": parts,
+            "query_year": yr,
+            "results": results,
+        }, ensure_ascii=False)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)}, ensure_ascii=False)
+
 
 # ====================================================================
 #  Toolset class
 # ====================================================================
 
-_SYNC_FUNCS = [world_model_scenarios, world_model_status]
+_SYNC_FUNCS = [world_model_scenarios, world_model_status, world_model_embedding_coverage, world_model_find_similar]
 _LONG_RUNNING_FUNCS = [world_model_predict_long_running]
 
 
