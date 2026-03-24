@@ -288,9 +288,10 @@ def extract_embeddings(
         bbox_h = abs(bbox[3] - bbox[1])
         max_dim_deg = max(bbox_w, bbox_h)
         meters_per_deg = 111_000
-        # For small areas (<0.1°), allow finer grid (up to 256px)
-        # For larger areas, cap at 128px to stay within GEE limits
-        max_grid = 256 if max_dim_deg < 0.1 else 128
+        # GEE sampleRectangle limit: 262144 total pixels (all bands combined)
+        # AlphaEarth has 64 bands, so max spatial pixels = 262144/64 = 4096 ≈ 64x64
+        # Use 64x64 as safe maximum for any bbox size
+        max_grid = 64
         needed_scale = max(scale, int(max_dim_deg * meters_per_deg / max_grid))
         if needed_scale != scale:
             logger.info("Auto-adjusted scale %d -> %d for bbox size %.3f° (max_grid=%d)",
