@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.1
+# GIS Data Agent (ADK Edition) v15.2
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.1 数据接入 + 数据湖 + 质检能力 + AgentOps 增强**：文件管理器（批量上传 + 拖拽 + 文件夹 + 预览 + 本地目录挂载）；StorageManager 数据湖抽象层（s3:// / file:// / postgis:// URI 路由 + 透明缓存）；测绘质检能力（GB/T 24356 标准 + PrecisionToolset + ReportToolset + surveying-qc Skill）；AgentOps 四维增强（USD 成本计算 + HITL 决策持久化 + 评估回归跟踪 + Feature Flags）；3 阶段 CI/CD + Canary 部署 + Terraform IaC。
+**v15.2 地理空间世界模型 + NL2SQL + 地图时间轴**：World Model Tech Preview（AlphaEarth 64 维嵌入 + LatentDynamicsNet 残差 CNN，JEPA 架构实现土地利用变化预测）；NL2SQL 工具集（Schema-aware 动态数据库查询 + 参数化安全查询）；地图时间轴播放器（多时序 LULC 图层动画切换）；世界模型快捷路径（跳过 LLM Planner 直接调用，1 次 API 调用完成预测）；行政区划加载工具（模糊匹配 + 自动 SQL 构造）；卫星影像底图（Gaode Satellite + ESRI World Imagery）。
 
 ## 📚 官方技术文档
 
@@ -22,10 +22,12 @@
 | 指标 | 数值 |
 |------|------|
 | 测试覆盖 | 2550+ tests, 108 test files |
-| 工具集 | 34 BaseToolset (含 GovernanceToolset 14 工具 + PrecisionToolset 4 工具 + ReportToolset 3 工具 + StorageToolset 4 工具), 5 SkillBundle, 200+ 工具 |
-| ADK Skills | 21 场景化领域技能 (5 种设计模式 + surveying-qc Inversion 质检技能) |
+| 工具集 | 35 BaseToolset (含 WorldModelToolset 3 工具 + NL2SQLToolset 3 工具 + GovernanceToolset 14 工具), 5 SkillBundle, 210+ 工具 |
+| ADK Skills | 21 场景化领域技能 (5 种设计模式 + world-model JEPA 预测技能) |
 | REST API | 170+ endpoints |
 | DataPanel | 21 标签页 (4 分组: 数据/智能/运维/编排) |
+| 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 |
+| NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
 | 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) |
 | 连接器 | 8 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage) |
 | 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
@@ -41,6 +43,20 @@
 | 设计模式覆盖 | **21/21 (100%)** |
 
 ## 核心能力
+
+### 地理空间世界模型 (v15.2 Tech Preview)
+- **JEPA 架构**：冻结 AlphaEarth 编码器（480M 参数）+ 轻量 LatentDynamicsNet 预测器（459K 参数）
+- **嵌入空间预测**：在 64 维 L2 归一化超球面上学习土地利用变化动力学，无需像素级生成
+- **5 种情景模拟**：城市蔓延、生态修复、农业集约化、气候适应、基线趋势
+- **三大技术创新**：L2 流形保持 + 空洞卷积（170m 感受野）+ 多步展开训练损失
+- **地图时间轴**：多年份 LULC 预测图层动画播放 + 卫星影像底图叠加
+- **快捷路径**：世界模型请求跳过 LLM Planner 直接调用，仅 1 次 API 调用
+
+### NL2SQL 动态数据查询 (v15.2)
+- **Schema 发现**：`discover_database_schema()` 自动探索表结构、列类型、注释
+- **参数化安全查询**：`execute_spatial_query()` 自动构造 LIKE 模糊匹配，零 SQL 注入风险
+- **行政区划加载**：`load_admin_boundary()` 专用工具，自然语言地名 → 模糊匹配 → 自动 SQL → GeoJSON
+- **动态扩展**：新增表到数据库后无需改代码，LLM 先发现 schema 再构造查询
 
 ### 多源数据智能融合 (v5.5–v7.0)
 - **五阶段流水线**：画像 → 评估 → 对齐 → 融合 → 验证
@@ -574,6 +590,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v14.5 | **全栈治理升级**：BaseConnector 插件架构 (6→8 连接器)、Data Standard Registry、DataCleaningToolset、标准感知质检、Skill 5 模式、可观测性 Phase 1、治理运营、参数重跑 + 断点续跑 + 记忆搜索 | 2340+ | ✅ 完成 |
 | v15.0 | **深度可观测 + 数据安全 + 分布式**：OTel 分布式追踪 + 决策追踪 + 9 Alert 规则；PII 分类分级 + 脱敏 + 8 表 RLS；分发审批 + 打包 + 评价 + 热度；8 连接器 (+Database +OBS)；版本管理 + 回滚 + 增量对比；19 Skills (Pipeline 融合 + data-quality-reviewer)；SparkGateway 三层路由 | 2420+ | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
+| v15.2 | **地理空间世界模型 + NL2SQL + 地图时间轴**：World Model Tech Preview (AlphaEarth JEPA, LatentDynamicsNet 459K params, 5 情景, L2 流形保持 + 空洞卷积 + 多步展开训练)；NL2SQLToolset (Schema 发现 + 参数化安全查询 + 行政区模糊匹配)；地图时间轴播放器 + 卫星底图；世界模型快捷路径 (1 API call)；意图路由优化 (确认语/世界模型关键词)；429 重试机制；会话历史修复 | 2550+ | ✅ 完成 |
 
 ## 设计模式覆盖 (21/21 = 100%)
 
@@ -583,7 +600,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | 路由 (Ch2) | ✅ | Gemini 2.0 Flash 意图分类 |
 | 并行化 (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | 反思 (Ch4) | ✅ | LoopAgent 全部 3 管道 |
-| 工具使用 (Ch5) | ✅ | 29 工具集, 175+ 工具, 19 Skills |
+| 工具使用 (Ch5) | ✅ | 35 工具集, 210+ 工具, 21 Skills |
 | 规划 (Ch6) | ✅ | DAG 任务分解 + 波次并行 |
 | 多智能体 (Ch7) | ✅ | 层级 Planner + 7 子 Agent |
 | 记忆管理 (Ch8) | ✅ | Memory ETL + PostgresMemoryService |
