@@ -56,6 +56,7 @@ from .toolsets.chart_tools import ChartToolset
 from .toolsets.watershed_tools import WatershedToolset
 from .toolsets.virtual_source_tools import VirtualSourceToolset
 from .toolsets.world_model_tools import WorldModelToolset
+from .toolsets.nl2sql_tools import NL2SQLToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -106,6 +107,19 @@ MODEL_FAST = os.environ.get("MODEL_FAST", "gemini-2.0-flash")
 MODEL_STANDARD = os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
 MODEL_PREMIUM = os.environ.get("MODEL_PREMIUM", "gemini-2.5-pro")
 
+# --- Retry Configuration for 429 RESOURCE_EXHAUSTED ---
+def _create_model_with_retry(model_name: str):
+    """Create a Gemini model instance with retry configuration for 429 errors."""
+    from google.adk.models.google_llm import Gemini
+    from google.genai import types
+    return Gemini(
+        model_name=model_name,
+        retry_options=types.HttpRetryOptions(
+            initial_delay=2.0,  # 2 seconds initial backoff
+            attempts=3,         # retry up to 3 times
+        ),
+    )
+
 # --- Dynamic Model Selection ---
 MODEL_TIER_MAP = {
     "fast": MODEL_FAST,
@@ -126,8 +140,8 @@ def get_model_config() -> dict:
     }
 
 
-def get_model_for_tier(base_tier: str = "standard") -> str:
-    """Get model name based on ContextVar override or base tier.
+def get_model_for_tier(base_tier: str = "standard"):
+    """Get Gemini model instance with retry config based on ContextVar override or base tier.
 
     The current_model_tier ContextVar is set per-request by app.py
     based on assess_complexity(). Factory functions call this to
@@ -136,13 +150,17 @@ def get_model_for_tier(base_tier: str = "standard") -> str:
     When the ContextVar is at its default ('standard'), ``base_tier``
     takes precedence so that module-level agent creation honours the
     intended tier (e.g. 'fast' for PlannerExplorer).
+
+    Returns:
+        Gemini instance with retry configuration for 429 errors.
     """
     from .user_context import current_model_tier
     tier = current_model_tier.get()
     # Use base_tier when ContextVar hasn't been explicitly overridden
     if tier == "standard":
         tier = base_tier
-    return MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+    model_name = MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+    return _create_model_with_retry(model_name)
 
 # --- Vertex AI Search Datastore ---
 DATASTORE_ID = os.environ.get(
@@ -156,7 +174,7 @@ DATASTORE_ID = os.environ.get(
 
 knowledge_agent = Agent(
     name="vertex_search_agent",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     instruction=get_prompt("optimization", "knowledge_agent_instruction"),
     description="Vertex AI Search 企业文档搜索助手",
     output_key="domain_knowledge",
@@ -172,7 +190,7 @@ data_exploration_agent = LlmAgent(
     name="DataExploration",
     instruction=get_prompt("optimization", "data_exploration_opt_instruction"),
     description="优化管道数据准备专家",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="data_profile",
     after_tool_callback=_self_correction_after_tool,
     tools=[
@@ -193,7 +211,7 @@ semantic_prefetch_agent = LlmAgent(
         "保持只读操作，不修改任何数据。"
     ),
     description="语义层预取助手——并行加载语义目录与数据资产信息",
-    model=MODEL_FAST,
+    model=_create_model_with_retry(MODEL_FAST),
     output_key="semantic_context",
     tools=[
         SemanticLayerToolset(tool_filter=[
@@ -215,7 +233,7 @@ data_processing_agent = LlmAgent(
     name="DataProcessing",
     instruction=get_prompt("optimization", "data_processing_opt_instruction"),
     description="优化管道数据预处理专家",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="processed_data",
     after_tool_callback=_self_correction_after_tool,
     tools=[
@@ -242,7 +260,7 @@ data_analysis_agent = LlmAgent(
     name="DataAnalysis",
     instruction=get_prompt("optimization", "data_analysis_agent_instruction"),
     description="空间分析与优化专家",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="analysis_report",
     tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset()],
 )
@@ -254,7 +272,7 @@ quality_checker_agent = LlmAgent(
     name="QualityChecker",
     instruction=get_prompt("optimization", "quality_checker_instruction"),
     description="分析结果质量审查员。验证DRL优化/遥感指标合理性。",
-    model=MODEL_FAST,
+    model=_create_model_with_retry(MODEL_FAST),
     output_key="quality_verdict",
     tools=[approve_quality],
 )
@@ -269,7 +287,7 @@ data_visualization_agent = LlmAgent(
     name="DataVisualization",
     instruction=get_prompt("optimization", "data_visualization_agent_instruction"),
     description="制图与可视化专家",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="visualizations",
     tools=[
         VisualizationToolset(tool_filter=[
@@ -285,7 +303,7 @@ data_summary_agent = LlmAgent(
     instruction=get_prompt("optimization", "data_summary_agent_instruction"),
     global_instruction=f"今天的时间是： {date.today()}",
     description="决策总结专家",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="final_summary",
 )
 
@@ -308,7 +326,7 @@ governance_exploration_agent = LlmAgent(
     name="GovExploration",
     instruction=get_prompt("governance", "governance_exploration_instruction"),
     description="数据质量审计员 — 7 项治理检查 + 综合评分",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="data_profile",
     after_tool_callback=_self_correction_after_tool,
     tools=[
@@ -322,7 +340,7 @@ governance_processing_agent = LlmAgent(
     name="GovProcessing",
     instruction=get_prompt("governance", "governance_processing_instruction"),
     description="数据修复专家",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="processed_data",
     after_tool_callback=_self_correction_after_tool,
     tools=[
@@ -340,7 +358,7 @@ governance_viz_agent = LlmAgent(
     name="GovernanceViz",
     instruction=get_prompt("governance", "governance_viz_instruction"),
     description="治理审计可视化 — 雷达图 + 问题分布图",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="governance_visualizations",
     tools=[
         VisualizationToolset(tool_filter=[
@@ -353,7 +371,7 @@ governance_viz_agent = LlmAgent(
 governance_report_agent = LlmAgent(
     name="GovernanceReporter",
     instruction=get_prompt("governance", "governance_reporter_instruction"),
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="governance_report",
 )
 
@@ -362,7 +380,7 @@ governance_checker_agent = LlmAgent(
     name="GovernanceChecker",
     instruction=get_prompt("governance", "governance_checker_instruction"),
     description="治理报告合规性审查员。验证评分、方法覆盖和整改建议。",
-    model=MODEL_FAST,
+    model=_create_model_with_retry(MODEL_FAST),
     output_key="gov_quality_verdict",
     tools=[approve_quality],
 )
@@ -386,7 +404,7 @@ general_processing_agent = LlmAgent(
     name="GeneralProcessing",
     instruction=get_prompt("general", "general_processing_instruction"),
     description="通用数据处理与语义映射",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="processed_data",
     after_tool_callback=_self_correction_after_tool,
     tools=[
@@ -416,7 +434,7 @@ general_processing_agent = LlmAgent(
 general_viz_agent = LlmAgent(
     name="GeneralViz",
     instruction=get_prompt("general", "general_viz_instruction"),
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="visualizations",
     tools=[
         VisualizationToolset(tool_filter=[
@@ -431,7 +449,7 @@ general_viz_agent = LlmAgent(
 general_summary_agent = LlmAgent(
     name="GeneralSummary",
     instruction=get_prompt("general", "general_summary_instruction"),
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="final_summary",
 )
 
@@ -440,7 +458,7 @@ general_result_checker = LlmAgent(
     name="GeneralResultChecker",
     instruction=get_prompt("general", "general_result_checker_instruction"),
     description="分析结果完整性审查员。验证输出文件、方法说明和汇报质量。",
-    model=MODEL_FAST,
+    model=_create_model_with_retry(MODEL_FAST),
     output_key="general_quality_verdict",
     tools=[approve_quality],
 )
@@ -569,7 +587,7 @@ planner_reporter = LlmAgent(
     name="PlannerReporter",
     instruction=get_prompt("planner", "planner_reporter_instruction"),
     description="综合分析报告撰写专家。汇总所有分析步骤为专业报告。",
-    model=MODEL_PREMIUM,
+    model=_create_model_with_retry(MODEL_PREMIUM),
     output_key="final_report",
     disallow_transfer_to_peers=True,
 )
@@ -637,7 +655,7 @@ planner_agent = LlmAgent(
     instruction=get_prompt("planner", "planner_instruction"),
     global_instruction=f"今天的日期是：{date.today()}",
     description="GIS数据智能体总调度（动态规划模式）",
-    model=MODEL_STANDARD,
+    model=_create_model_with_retry(MODEL_STANDARD),
     output_key="planner_summary",
     tools=[
         build_all_skills_toolset(),  # 5 domain skills, incremental loading
@@ -645,10 +663,12 @@ planner_agent = LlmAgent(
         AdminToolset(),
         TeamToolset(),
         DataLakeToolset(tool_filter=_DATALAKE_READ),
-        VisualizationToolset(tool_filter=["visualize_interactive_map"]),  # For direct admin boundary display
+        VisualizationToolset(tool_filter=["visualize_interactive_map", "load_admin_boundary"]),
         RemoteSensingToolset(tool_filter=["download_dem"]),  # For DEM download in watershed workflow
         WatershedToolset(),  # For watershed/catchment extraction (open-source)
         GeoProcessingToolset(include_arcpy=True),  # ArcPy tools including arcpy_extract_watershed (dynamic loading)
+        WorldModelToolset(),  # World model LULC prediction tools
+        NL2SQLToolset(),  # Schema-aware NL2SQL for dynamic table queries
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,

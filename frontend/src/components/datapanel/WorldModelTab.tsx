@@ -94,6 +94,14 @@ export default function WorldModelTab() {
         setError(data.error);
       } else {
         setPrediction(data);
+        // Trigger map panel update by fetching pending map data
+        try {
+          const mapResp = await fetch('/api/map/pending', { credentials: 'include' });
+          const mapData = await mapResp.json();
+          if (mapData.map_update && (window as any).__handleMapUpdate) {
+            (window as any).__handleMapUpdate(mapData.map_update);
+          }
+        } catch { /* map update is best-effort */ }
       }
     } catch (e: any) {
       setError(e.message || 'Request failed');

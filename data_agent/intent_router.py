@@ -71,7 +71,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
     try:
         prev_hint = ""
         if previous_pipeline:
-            prev_hint = f"\n        - The previous turn used the {previous_pipeline.upper()} pipeline. If the user references prior results (上面, 刚才, 继续, 之前, 在此基础上), prefer routing to the SAME pipeline: {previous_pipeline.upper()}."
+            prev_hint = f"\n        - The previous turn used the {previous_pipeline.upper()} pipeline. If the user is continuing the conversation (上面, 刚才, 继续, 之前, 在此基础上) or confirming/agreeing (确认, 确认无误, 好的, 是的, 对, 没问题, OK, yes, 可以, 执行, 开始, 同意), ALWAYS route to the SAME pipeline: {previous_pipeline.upper()}. Short confirmations are NOT new tasks."
 
         # Append PDF context summary if available
         pdf_hint = ""
@@ -84,7 +84,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
 
         1. **GOVERNANCE**: Data auditing, quality check, topology fix, standardization, consistency check. (Keywords: 治理, 审计, 质检, 核查, 拓扑, 标准)
         2. **OPTIMIZATION**: Land use optimization, DRL, FFI calculation, spatial layout planning. (Keywords: 优化, 布局, 破碎化, 规划)
-        3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史)
+        3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences, world model prediction. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史, 世界模型, world model, LULC预测, 土地利用预测, 变化预测)
         4. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
 
         Additionally, identify which tool subcategories are needed (comma-separated, minimum list):
@@ -96,10 +96,13 @@ def classify_intent(text: str, previous_pipeline: str = None,
         - streaming_iot: real-time/IoT data streams, geofence
         - collaboration: team management, templates, asset management
         - advanced_analysis: spatial statistics (Moran/hotspot), data fusion, knowledge graph
+        - world_model: world model prediction, LULC forecasting, scenario simulation, 世界模型, 土地利用预测
 
         User Input: "{text}"{pdf_hint}
 
         Rules:
+        - CRITICAL: Short confirmations (确认, 确认无误, 好的, 是的, 对, OK, yes, 可以, 执行, 开始) are NOT new tasks. They continue the previous conversation. If a previous pipeline exists, route to the SAME pipeline. Otherwise, treat as AMBIGUOUS.
+        - If input mentions "世界模型" or "world model" or "LULC预测" or "土地利用预测", prioritize GENERAL (the world model tool is in the General pipeline).
         - If input mentions "optimize" or "FFI", prioritize OPTIMIZATION.
         - If input is asking "what data is there" or "show map", choose GENERAL.{prev_hint}
         - If the input is a greeting (你好, hello, hi), casual chat, or contains no identifiable GIS task, output AMBIGUOUS.
@@ -132,7 +135,13 @@ def classify_intent(text: str, previous_pipeline: str = None,
             model='gemini-2.0-flash',
             contents=content_parts,
             config=types.GenerateContentConfig(
-                http_options=types.HttpOptions(timeout=30_000),  # 30s
+                http_options=types.HttpOptions(
+                    timeout=30_000,  # 30s
+                    retry_options=types.HttpRetryOptions(
+                        initial_delay=2.0,
+                        attempts=3,
+                    ),
+                ),
             ),
         )
         # Track router token consumption
@@ -200,6 +209,14 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
         response = _router_client.models.generate_content(
             model='gemini-2.0-flash',
             contents=prompt,
+            config=types.GenerateContentConfig(
+                http_options=types.HttpOptions(
+                    retry_options=types.HttpRetryOptions(
+                        initial_delay=2.0,
+                        attempts=3,
+                    ),
+                ),
+            ),
         )
         return response.text.strip()
     except Exception as e:
