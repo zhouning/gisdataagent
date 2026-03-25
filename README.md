@@ -1,12 +1,21 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.2
+# GIS Data Agent (ADK Edition) v15.3
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.2 地理空间世界模型 + NL2SQL + 地图时间轴**：World Model Tech Preview（AlphaEarth 64 维嵌入 + LatentDynamicsNet 残差 CNN，JEPA 架构实现土地利用变化预测）；NL2SQL 工具集（Schema-aware 动态数据库查询 + 参数化安全查询）；地图时间轴播放器（多时序 LULC 图层动画切换）；世界模型快捷路径（跳过 LLM Planner 直接调用，1 次 API 调用完成预测）；行政区划加载工具（模糊匹配 + 自动 SQL 构造）；卫星影像底图（Gaode Satellite + ESRI World Imagery）。
+**v15.3 三角度时空因果推断体系**：Angle A — GeoFM 嵌入因果推断（PSM/ERF/DiD/Granger/GCCM/Causal Forest + AlphaEarth 64 维嵌入增强）；Angle B — LLM 因果推理（Gemini 驱动因果 DAG 构建 + 反事实推理 + 机制解释 + What-If 情景生成）；Angle C — 因果世界模型（空间干预预测 + 反事实对比 + 嵌入空间处理效应 + 统计先验校准）。
+
+## 项目思想起源
+
+> 本项目的核心思想始于 2023 年 9 月，当时构想了一个将时空数据中台、时空知识图谱、因果推断平台与 AI Agent 决策模拟相融合的体系架构。经过两年多的迭代开发，这一愿景已在 GIS Data Agent 中逐步实现。
+
+<p align="center">
+  <img src="docs/origin_vision.png" alt="GIS Data Agent 项目的思想起源" width="800" />
+</p>
+<p align="center"><em>GIS Data Agent 项目的思想起源（2023 年 9 月）— 时空数据中台 × 因果推断 × 知识图谱 × AI Agent 决策</em></p>
 
 ## 📚 官方技术文档
 
@@ -21,12 +30,13 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2550+ tests, 108 test files |
-| 工具集 | 35 BaseToolset (含 WorldModelToolset 3 工具 + NL2SQLToolset 3 工具 + GovernanceToolset 14 工具), 5 SkillBundle, 210+ 工具 |
+| 测试覆盖 | 2630+ tests, 111 test files |
+| 工具集 | 37 BaseToolset (含 CausalInferenceToolset 6 + LLMCausalToolset 4 + CausalWorldModelToolset 4 + WorldModelToolset 3 + NL2SQLToolset 3), 5 SkillBundle, 220+ 工具 |
 | ADK Skills | 21 场景化领域技能 (5 种设计模式 + world-model JEPA 预测技能) |
-| REST API | 170+ endpoints |
-| DataPanel | 21 标签页 (4 分组: 数据/智能/运维/编排) |
-| 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 |
+| REST API | 178+ endpoints |
+| DataPanel | 22 标签页 (4 分组: 数据/智能/运维/编排) |
+| 因果推断 | 三角度体系: A (GeoFM 统计 6 工具) + B (LLM 推理 4 工具) + C (因果世界模型 4 工具), 82 tests |
+| 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
 | NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
 | 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) |
 | 连接器 | 8 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage) |
@@ -43,6 +53,31 @@
 | 设计模式覆盖 | **21/21 (100%)** |
 
 ## 核心能力
+
+### 三角度时空因果推断体系 (v15.3)
+
+三个互补角度构建完整的地理空间因果推断能力，为论文提供多维度证据支撑：
+
+**Angle A — GeoFM 嵌入因果推断** (6 tools)
+- **倾向得分匹配 (PSM)**：估计平均处理效应 (ATE/ATT)，支持空间距离加权匹配
+- **暴露-响应函数 (ERF)**：连续暴露变量的因果剂量-响应关系
+- **双重差分 (DiD)**：面板数据前后对比，支持实体固定效应
+- **空间 Granger 因果**：VAR 模型逐对因果检验 + 热力图可视化
+- **地理收敛交叉映射 (GCCM)**：非线性动力系统因果检测
+- **因果森林**：异质性处理效应 (CATE) + 特征重要性
+- **GeoFM 嵌入增强**：所有工具支持 `use_geofm_embedding=True`，将 AlphaEarth 64 维嵌入作为空间混淆控制变量
+
+**Angle B — LLM 因果推理** (4 tools)
+- **因果 DAG 构建**：Gemini 2.5 Pro 从地理问题中识别变量、混淆因子、中介变量和碰撞因子，生成 Mermaid 图 + networkx 可视化
+- **反事实推理**：结构化推理链（"如果X没有发生，Y会怎样？"），含置信度和敏感性因子
+- **因果机制解释**：接收 Angle A 的统计结果 JSON，LLM 给出因果机制解读和替代解释
+- **What-If 情景生成**：生成结构化情景，自动映射到 Angle A 工具参数和 Angle C 世界模型情景
+
+**Angle C — 因果世界模型** (4 tools)
+- **空间干预预测**：对子区域施加干预情景，分析空间溢出效应（局部干预 → 全局影响）
+- **反事实对比**：平行运行两个情景，逐像素计算 LULC 差异和因果效应图
+- **嵌入空间处理效应**：用 cosine/euclidean/manhattan 距离度量两情景在嵌入空间的因果影响
+- **统计先验整合**：用 Angle A 的 ATT 估计校准世界模型预测偏移（二分搜索情景编码缩放）
 
 ### 地理空间世界模型 (v15.2 Tech Preview)
 - **JEPA 架构**：冻结 AlphaEarth 编码器（480M 参数）+ 轻量 LatentDynamicsNet 预测器（459K 参数）
@@ -345,7 +380,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（143+ 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（178+ 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
