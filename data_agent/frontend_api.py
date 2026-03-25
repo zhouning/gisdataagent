@@ -198,6 +198,8 @@ async def _api_catalog_list(request: Request):
         tags=params.get("tags", ""),
         keyword=params.get("keyword", ""),
         storage_backend=params.get("storage_backend", ""),
+        offset=int(params.get("offset", "0")),
+        limit=int(params.get("limit", "50")),
     )
     return JSONResponse(result)
 
@@ -212,6 +214,12 @@ async def _api_catalog_detail(request: Request):
     asset_id = request.path_params.get("asset_id", "")
     from .data_catalog import describe_data_asset
     result = describe_data_asset(asset_id)
+    if result.get("status") == "success":
+        try:
+            from .data_distribution import log_access
+            log_access(int(asset_id), user.identifier, "view")
+        except Exception:
+            pass
     return JSONResponse(result)
 
 
@@ -226,6 +234,22 @@ async def _api_catalog_lineage(request: Request):
     direction = request.query_params.get("direction", "both")
     from .data_catalog import get_data_lineage
     result = get_data_lineage(asset_id, direction)
+    return JSONResponse(result)
+
+
+async def _api_catalog_search(request: Request):
+    """GET /api/catalog/search — semantic hybrid search."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    q = request.query_params.get("q", "").strip()
+    if not q:
+        return JSONResponse({"error": "参数 q 必填"}, status_code=400)
+
+    from .data_catalog import search_data_assets
+    result = search_data_assets(q)
     return JSONResponse(result)
 
 
@@ -2637,12 +2661,15 @@ def get_frontend_api_routes():
     from .api.skills_routes import get_skills_routes
     from .api.virtual_routes import get_virtual_source_routes
     from .api.world_model_routes import get_world_model_routes
+    from .api.causal_routes import get_causal_routes
+    from .api.causal_world_model_routes import get_causal_world_model_routes
     from .api.quality_routes import get_quality_routes
     from .api.distribution_routes import get_distribution_routes
     from .api.file_routes import get_file_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
+        Route("/api/catalog/search", endpoint=_api_catalog_search, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}", endpoint=_api_catalog_detail, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}/lineage", endpoint=_api_catalog_lineage, methods=["GET"]),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
@@ -2717,6 +2744,9 @@ def get_frontend_api_routes():
         *get_virtual_source_routes(),
         # World Model (Tech Preview)
         *get_world_model_routes(),
+        # Causal Reasoning (Angle B) + Causal World Model (Angle C)
+        *get_causal_routes(),
+        *get_causal_world_model_routes(),
         *get_quality_routes(),
         *get_distribution_routes(),
         # File Management (upload, browse, delete, local-data)

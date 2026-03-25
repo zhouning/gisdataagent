@@ -697,7 +697,7 @@ class TestHealthCheck(unittest.IsolatedAsyncioTestCase):
 class TestConstants(unittest.TestCase):
     def test_valid_source_types(self):
         from data_agent.virtual_sources import VALID_SOURCE_TYPES
-        self.assertEqual(VALID_SOURCE_TYPES, {"wfs", "stac", "ogc_api", "custom_api", "wms", "arcgis_rest"})
+        self.assertEqual(VALID_SOURCE_TYPES, {"wfs", "stac", "ogc_api", "custom_api", "wms", "arcgis_rest", "database", "object_storage"})
 
     def test_valid_auth_types(self):
         from data_agent.virtual_sources import VALID_AUTH_TYPES

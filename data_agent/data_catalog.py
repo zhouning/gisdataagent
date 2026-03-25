@@ -9,6 +9,7 @@ Provides:
 """
 import os
 import json
+from collections import OrderedDict
 from difflib import SequenceMatcher
 from typing import Optional, List
 
@@ -27,7 +28,22 @@ T_DATA_CATALOG = "agent_data_catalog"
 # Embedding helpers (v12.2 — reuses fusion/matching infrastructure)
 # ---------------------------------------------------------------------------
 
-_embedding_cache: dict[str, list[float]] = {}
+_embedding_cache: OrderedDict[str, list[float]] = OrderedDict()
+_EMBEDDING_CACHE_MAX = 1024
+
+
+def _cache_get(key: str) -> list[float] | None:
+    if key in _embedding_cache:
+        _embedding_cache.move_to_end(key)
+        return _embedding_cache[key]
+    return None
+
+
+def _cache_put(key: str, value: list[float]) -> None:
+    _embedding_cache[key] = value
+    _embedding_cache.move_to_end(key)
+    while len(_embedding_cache) > _EMBEDDING_CACHE_MAX:
+        _embedding_cache.popitem(last=False)
 
 
 def _generate_asset_embedding(asset_name: str, description: str = "",
@@ -42,8 +58,9 @@ def _generate_asset_embedding(asset_name: str, description: str = "",
         text_parts.append(asset_type)
     combined = " | ".join(text_parts)
 
-    if combined in _embedding_cache:
-        return _embedding_cache[combined]
+    cached = _cache_get(combined)
+    if cached is not None:
+        return cached
 
     try:
         from google import genai
@@ -53,7 +70,7 @@ def _generate_asset_embedding(asset_name: str, description: str = "",
             contents=[combined],
         )
         vec = response.embeddings[0].values
-        _embedding_cache[combined] = vec
+        _cache_put(combined, vec)
         return vec
     except Exception as e:
         logger.debug("[DataCatalog] Embedding generation failed: %s", e)
@@ -140,6 +157,10 @@ def ensure_data_catalog_table():
             conn.execute(text(
                 f"ALTER TABLE {T_DATA_CATALOG} ADD COLUMN IF NOT EXISTS embedding JSONB DEFAULT NULL"
             ))
+            # P1: column-level schema for file assets
+            conn.execute(text(
+                f"ALTER TABLE {T_DATA_CATALOG} ADD COLUMN IF NOT EXISTS column_schema JSONB DEFAULT NULL"
+            ))
             conn.commit()
         print("[DataCatalog] Data catalog table ready.")
     except Exception as e:
@@ -156,7 +177,7 @@ def _extract_spatial_metadata(path: str) -> dict:
     Non-fatal: returns partial metadata on errors.
     """
     meta = {"file_size_bytes": 0, "crs": "", "srid": 0,
-            "feature_count": 0, "spatial_extent": None}
+            "feature_count": 0, "spatial_extent": None, "column_schema": None}
 
     if not os.path.exists(path):
         return meta
@@ -183,6 +204,11 @@ def _extract_spatial_metadata(path: str) -> dict:
                     "maxx": round(float(bounds[2]), 6),
                     "maxy": round(float(bounds[3]), 6),
                 }
+            # Extract column schema
+            meta["column_schema"] = [
+                {"name": col, "type": str(gdf[col].dtype)}
+                for col in gdf.columns
+            ]
         elif ext in ('.tif', '.tiff', '.img'):
             import rasterio
             with rasterio.open(path) as src:
@@ -199,6 +225,10 @@ def _extract_spatial_metadata(path: str) -> dict:
                     "maxy": round(float(bounds.top), 6),
                 }
                 meta["feature_count"] = src.count  # band count for rasters
+                meta["column_schema"] = [
+                    {"name": f"band_{i+1}", "type": str(src.dtypes[i])}
+                    for i in range(src.count)
+                ]
         elif ext in ('.csv', '.xlsx', '.xls'):
             import pandas as pd
             if ext == '.csv':
@@ -206,6 +236,10 @@ def _extract_spatial_metadata(path: str) -> dict:
             else:
                 df = pd.read_excel(path, nrows=0)
             meta["feature_count"] = 0  # header only
+            meta["column_schema"] = [
+                {"name": col, "type": str(df[col].dtype)}
+                for col in df.columns
+            ]
     except Exception as e:
         logger.debug("[DataCatalog] Metadata extraction partial for %s: %s", path, e)
 
@@ -255,12 +289,14 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                     (asset_name, asset_type, format, storage_backend, cloud_key,
                      local_path, spatial_extent, crs, srid, feature_count,
                      file_size_bytes, creation_tool, creation_params,
-                     source_assets, owner_username, pipeline_run_id, embedding)
+                     source_assets, owner_username, pipeline_run_id, embedding,
+                     column_schema)
                 VALUES
                     (:name, :type, :fmt, :backend, :cloud_key,
                      :local_path, CAST(:extent AS jsonb), :crs, :srid, :count,
                      :size, :tool, CAST(:params AS jsonb),
-                     CAST(:sources AS jsonb), :owner, :run_id, CAST(:embedding AS jsonb))
+                     CAST(:sources AS jsonb), :owner, :run_id, CAST(:embedding AS jsonb),
+                     CAST(:col_schema AS jsonb))
                 ON CONFLICT (asset_name, owner_username, storage_backend)
                 DO UPDATE SET
                     asset_type = EXCLUDED.asset_type,
@@ -277,6 +313,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                     source_assets = EXCLUDED.source_assets,
                     pipeline_run_id = EXCLUDED.pipeline_run_id,
                     embedding = COALESCE(EXCLUDED.embedding, {T_DATA_CATALOG}.embedding),
+                    column_schema = COALESCE(EXCLUDED.column_schema, {T_DATA_CATALOG}.column_schema),
                     updated_at = NOW()
                 RETURNING id
             """), {
@@ -297,6 +334,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                 "owner": owner,
                 "run_id": pipeline_run_id,
                 "embedding": json.dumps(embedding) if embedding else None,
+                "col_schema": json.dumps(meta["column_schema"]) if meta["column_schema"] else None,
             })
             row = result.fetchone()
             conn.commit()
@@ -454,7 +492,8 @@ def register_postgis_asset(table_name: str, owner: str = "",
 # =====================================================================
 
 def list_data_assets(asset_type: str = "", tags: str = "",
-                     keyword: str = "", storage_backend: str = "") -> dict:
+                     keyword: str = "", storage_backend: str = "",
+                     offset: int = 0, limit: int = 50) -> dict:
     """
     [Data Lake Tool] Browse the data asset catalog.
 
@@ -466,6 +505,8 @@ def list_data_assets(asset_type: str = "", tags: str = "",
         tags: Comma-separated tags to filter by. Empty = all.
         keyword: Search keyword to match against asset_name and description.
         storage_backend: Filter by backend (local/cloud/postgis). Empty = all.
+        offset: Number of rows to skip (for pagination). Default 0.
+        limit: Max rows to return (1-200). Default 50.
 
     Returns:
         Dict with status and list of matching assets.
@@ -499,14 +540,27 @@ def list_data_assets(asset_type: str = "", tags: str = "",
 
             where = " AND ".join(conditions) if conditions else "TRUE"
 
+            limit = max(1, min(int(limit), 200))
+            offset = max(0, int(offset))
+
+            total_row = conn.execute(text(f"""
+                SELECT COUNT(*) FROM {T_DATA_CATALOG} WHERE {where}
+            """), params).fetchone()
+            total_count = total_row[0] if total_row else 0
+
+            params["_limit"] = limit
+            params["_offset"] = offset
+
             rows = conn.execute(text(f"""
                 SELECT id, asset_name, asset_type, format, storage_backend,
                        crs, feature_count, file_size_bytes, tags, description,
-                       owner_username, is_shared, created_at
+                       owner_username, is_shared, created_at,
+                       COALESCE(sensitivity_level, 'public') as sensitivity_level,
+                       COALESCE(version, 1) as version
                 FROM {T_DATA_CATALOG}
                 WHERE {where}
                 ORDER BY updated_at DESC
-                LIMIT 100
+                LIMIT :_limit OFFSET :_offset
             """), params).fetchall()
 
             assets = []
@@ -519,11 +573,16 @@ def list_data_assets(asset_type: str = "", tags: str = "",
                     "description": r[9],
                     "owner": r[10], "shared": r[11],
                     "created": str(r[12]),
+                    "sensitivity_level": r[13] or "public",
+                    "version": r[14] or 1,
                 })
 
             return {
                 "status": "success",
                 "count": len(assets),
+                "total": total_count,
+                "offset": offset,
+                "limit": limit,
                 "assets": assets,
                 "message": f"Found {len(assets)} data assets"
                            + (f" matching '{keyword}'" if keyword else ""),
@@ -1041,16 +1100,17 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
     """Find assets whose source_assets reference this asset."""
     descendants = []
     try:
+        # Use JSONB containment @> for precise matching instead of text LIKE
         rows = conn.execute(text(f"""
             SELECT id, asset_name, asset_type, creation_tool, pipeline_run_id
             FROM {T_DATA_CATALOG}
-            WHERE source_assets::text LIKE :pattern_id
-               OR source_assets::text LIKE :pattern_name
+            WHERE source_assets @> CAST(:pattern_id AS jsonb)
+               OR source_assets @> CAST(:pattern_name AS jsonb)
             ORDER BY created_at
             LIMIT 50
         """), {
-            "pattern_id": f'%"id": {asset_id}%',
-            "pattern_name": f'%"name": "{asset_name}"%',
+            "pattern_id": json.dumps([{"id": asset_id}]),
+            "pattern_name": json.dumps([{"name": asset_name}]),
         }).fetchall()
 
         for r in rows:
