@@ -396,7 +396,7 @@ async def query_virtual_source(
     if not connector:
         return {"status": "error", "message": f"Unknown source type: {stype}"}
 
-    return await connector.query(
+    result = await connector.query(
         endpoint_url=source["endpoint_url"],
         auth_config=source.get("auth_config", {}),
         query_config=source.get("query_config", {}),
@@ -406,6 +406,44 @@ async def query_virtual_source(
         extra_params=extra_params,
         target_crs=source.get("default_crs", "EPSG:4326"),
     )
+
+    # Auto-register successful query results into the data catalog
+    _auto_register_virtual_result(source, result)
+
+    return result
+
+
+def _auto_register_virtual_result(source: dict, result) -> None:
+    """Register a virtual source query result in the data catalog (non-fatal)."""
+    try:
+        import geopandas as gpd
+        if not isinstance(result, gpd.GeoDataFrame) or result.empty:
+            return
+
+        from .data_catalog import auto_register_from_path
+        from .user_context import current_user_id
+
+        # Save result as GeoJSON in user sandbox for traceability
+        user_id = current_user_id.get() or "anonymous"
+        out_dir = os.path.join(os.path.dirname(__file__), "uploads", user_id)
+        os.makedirs(out_dir, exist_ok=True)
+
+        import uuid
+        src_name = source.get("name", source.get("source_type", "virtual"))
+        safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in src_name)
+        fname = f"vs_{safe_name}_{uuid.uuid4().hex[:8]}.geojson"
+        out_path = os.path.join(out_dir, fname)
+
+        result.to_file(out_path, driver="GeoJSON")
+
+        auto_register_from_path(
+            out_path,
+            creation_tool=f"virtual_source:{source.get('source_type', '')}",
+            creation_params={"source_name": src_name,
+                             "endpoint": source.get("endpoint_url", "")},
+        )
+    except Exception:
+        pass  # non-fatal
 
 
 # ---------------------------------------------------------------------------

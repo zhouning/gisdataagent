@@ -57,6 +57,9 @@ from .toolsets.watershed_tools import WatershedToolset
 from .toolsets.virtual_source_tools import VirtualSourceToolset
 from .toolsets.world_model_tools import WorldModelToolset
 from .toolsets.nl2sql_tools import NL2SQLToolset
+from .toolsets.causal_inference_tools import CausalInferenceToolset
+from .toolsets.llm_causal_tools import LLMCausalToolset
+from .toolsets.causal_world_model_tools import CausalWorldModelToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -262,7 +265,7 @@ data_analysis_agent = LlmAgent(
     description="空间分析与优化专家",
     model=_create_model_with_retry(MODEL_STANDARD),
     output_key="analysis_report",
-    tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset()],
+    tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset()],
 )
 
 # --- Quality Checker + LoopAgent (ADK Optimization 2.2) ---
@@ -428,6 +431,8 @@ general_processing_agent = LlmAgent(
         AdvancedAnalysisToolset(tool_filter=intent_tool_predicate),
         VirtualSourceToolset(tool_filter=intent_tool_predicate),
         WorldModelToolset(tool_filter=intent_tool_predicate),
+        CausalWorldModelToolset(tool_filter=intent_tool_predicate),
+        LLMCausalToolset(tool_filter=intent_tool_predicate),
     ] + _arcpy_tools,
 )
 
@@ -551,7 +556,7 @@ def _make_planner_analyzer(name: str, **overrides) -> LlmAgent:
         output_key="analysis_report",
         disallow_transfer_to_peers=True,
         after_tool_callback=_self_correction_after_tool,
-        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset()],
+        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset()],
     )
     defaults.update(overrides)
     return LlmAgent(**defaults)
@@ -668,6 +673,7 @@ planner_agent = LlmAgent(
         WatershedToolset(),  # For watershed/catchment extraction (open-source)
         GeoProcessingToolset(include_arcpy=True),  # ArcPy tools including arcpy_extract_watershed (dynamic loading)
         WorldModelToolset(),  # World model LULC prediction tools
+        CausalWorldModelToolset(),  # Causal intervention + counterfactual on world model
         NL2SQLToolset(),  # Schema-aware NL2SQL for dynamic table queries
     ],
     sub_agents=[

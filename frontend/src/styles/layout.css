@@ -1307,6 +1307,153 @@ body {
 }
 
 /* ============================================================
+   Catalog P0 Enhancements — Search Mode, Sensitivity, Pagination,
+   Rating, BBox Preview
+   ============================================================ */
+
+.catalog-search-mode {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+.catalog-search-mode.active {
+  background: var(--primary-100);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.catalog-search-mode:hover {
+  background: var(--primary-light);
+}
+
+.sensitivity-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.relevance-score {
+  font-size: 11px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.catalog-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--border-light);
+  margin-top: 8px;
+}
+.catalog-pagination button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font);
+}
+.catalog-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.catalog-pagination button:not(:disabled):hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.catalog-page-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.asset-rating-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.asset-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.rating-star {
+  transition: color 0.15s, transform 0.15s;
+}
+.rating-star:hover {
+  transform: scale(1.15);
+}
+
+.bbox-preview-section {
+  margin-top: 4px;
+}
+.bbox-preview {
+  height: 160px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.bbox-coords {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+.column-schema-section {
+  margin-top: 4px;
+}
+.column-schema-table {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-size: 12px;
+}
+.column-schema-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--surface);
+  padding: 6px 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border-light);
+}
+.column-schema-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+.column-schema-row:last-child {
+  border-bottom: none;
+}
+.column-schema-row span:first-child {
+  font-family: 'Courier New', monospace;
+  color: var(--text);
+}
+.column-schema-row span:last-child {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+/* ============================================================
    History View (DataPanel)
    ============================================================ */
 .history-view {

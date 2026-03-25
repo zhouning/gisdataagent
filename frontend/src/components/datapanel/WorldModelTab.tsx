@@ -46,6 +46,16 @@ const LULC_COLORS: Record<string, string> = {
   '湿地': '#20B2AA',
 };
 
+interface CounterfactualResult {
+  status: string;
+  error?: string;
+  scenario_a: string;
+  scenario_b: string;
+  per_year_effects?: { [year: string]: { changed_pixels: number; changed_pct: number } };
+  aggregate_effects?: { total_changed_pct: number; dominant_change: string };
+  summary?: string;
+}
+
 export default function WorldModelTab() {
   const [scenarios, setScenarios] = useState<ScenarioInfo[]>([]);
   const [status, setStatus] = useState<ModelStatus | null>(null);
@@ -56,6 +66,13 @@ export default function WorldModelTab() {
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // --- Intervention mode state (Angle C) ---
+  const [mode, setMode] = useState<'predict' | 'intervene' | 'counterfactual'>('predict');
+  const [interventionSubBbox, setInterventionSubBbox] = useState('');
+  const [interventionType, setInterventionType] = useState('ecological_restoration');
+  const [scenarioB, setScenarioB] = useState('ecological_restoration');
+  const [cfResult, setCfResult] = useState<CounterfactualResult | null>(null);
 
   useEffect(() => {
     fetch('/api/world-model/status', { credentials: 'include' })
@@ -110,6 +127,63 @@ export default function WorldModelTab() {
     }
   };
 
+  const handleIntervene = async () => {
+    setLoading(true);
+    setError('');
+    setPrediction(null);
+    setCfResult(null);
+    try {
+      const resp = await fetch('/api/causal-world-model/intervene', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bbox,
+          intervention_sub_bbox: interventionSubBbox,
+          intervention_type: interventionType,
+          baseline_scenario: selectedScenario,
+          start_year: startYear,
+          n_years: nYears,
+        }),
+      });
+      const data = await resp.json();
+      if (data.error) setError(data.error);
+      else setCfResult(data);
+    } catch (e: any) {
+      setError(e.message || 'Request failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCounterfactual = async () => {
+    setLoading(true);
+    setError('');
+    setPrediction(null);
+    setCfResult(null);
+    try {
+      const resp = await fetch('/api/causal-world-model/counterfactual', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bbox,
+          scenario_a: selectedScenario,
+          scenario_b: scenarioB,
+          start_year: startYear,
+          n_years: nYears,
+        }),
+      });
+      const data = await resp.json();
+      if (data.error) setError(data.error);
+      else setCfResult(data);
+    } catch (e: any) {
+      setError(e.message || 'Request failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Build stacked area data for timeline chart
   const buildTimelineData = () => {
     if (!prediction) return null;
@@ -142,8 +216,24 @@ export default function WorldModelTab() {
 
   return (
     <div className="worldmodel-tab">
-      {/* Configuration Panel */}
+      {/* Mode Toggle */}
       <div className="worldmodel-config">
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+          {(['predict', 'intervene', 'counterfactual'] as const).map(m => (
+            <button
+              key={m}
+              onClick={() => { setMode(m); setError(''); setPrediction(null); setCfResult(null); }}
+              style={{
+                flex: 1, padding: '4px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer',
+                background: mode === m ? 'var(--color-primary, #4169E1)' : '#fff',
+                color: mode === m ? '#fff' : '#333',
+              }}
+            >
+              {m === 'predict' ? '预测' : m === 'intervene' ? '干预' : '反事实'}
+            </button>
+          ))}
+        </div>
+
         <div className="worldmodel-status">
           {status ? (
             <span className={`status-badge ${status.weights_exist && status.gee_available ? 'ready' : 'warning'}`}>
@@ -205,12 +295,45 @@ export default function WorldModelTab() {
           </div>
         </div>
 
+        {/* Mode-specific inputs */}
+        {mode === 'intervene' && (
+          <>
+            <div className="config-row">
+              <label>干预子区域</label>
+              <input
+                type="text"
+                value={interventionSubBbox}
+                onChange={e => setInterventionSubBbox(e.target.value)}
+                placeholder="minx,miny,maxx,maxy (须在主区域内)"
+              />
+            </div>
+            <div className="config-row">
+              <label>干预类型</label>
+              <select value={interventionType} onChange={e => setInterventionType(e.target.value)}>
+                {scenarios.map(s => (
+                  <option key={s.id} value={s.id}>{s.name_zh}</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+        {mode === 'counterfactual' && (
+          <div className="config-row">
+            <label>对照情景 (B)</label>
+            <select value={scenarioB} onChange={e => setScenarioB(e.target.value)}>
+              {scenarios.map(s => (
+                <option key={s.id} value={s.id}>{s.name_zh}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <button
           className="predict-btn"
-          onClick={handlePredict}
+          onClick={mode === 'predict' ? handlePredict : mode === 'intervene' ? handleIntervene : handleCounterfactual}
           disabled={loading}
         >
-          {loading ? '预测中...' : '运行预测'}
+          {loading ? '计算中...' : mode === 'predict' ? '运行预测' : mode === 'intervene' ? '运行干预分析' : '运行反事实对比'}
         </button>
 
         {error && <div className="error-msg">{error}</div>}
@@ -341,8 +464,45 @@ export default function WorldModelTab() {
         </div>
       )}
 
+      {/* Causal World Model Results (Angle C) */}
+      {cfResult && (
+        <div className="worldmodel-results">
+          <div className="result-summary">{cfResult.summary || '分析完成'}</div>
+          {cfResult.aggregate_effects && (
+            <div style={{ background: '#f5f5f5', padding: '8px 12px', borderRadius: '6px', margin: '8px 0', fontSize: '13px' }}>
+              <strong>总体效应：</strong>
+              变化像素占比 {cfResult.aggregate_effects.total_changed_pct?.toFixed(1)}%
+              {cfResult.aggregate_effects.dominant_change && ` | 主要变化: ${cfResult.aggregate_effects.dominant_change}`}
+            </div>
+          )}
+          {cfResult.per_year_effects && (
+            <div className="timeline-section">
+              <h4>逐年效应</h4>
+              <table className="timeline-table">
+                <thead>
+                  <tr>
+                    <th>年份</th>
+                    <th>变化像素</th>
+                    <th>变化比例</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(cfResult.per_year_effects).map(([year, eff]) => (
+                    <tr key={year}>
+                      <td>{year}</td>
+                      <td>{(eff as any).changed_pixels}</td>
+                      <td>{((eff as any).changed_pct ?? 0).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Empty state */}
-      {!prediction && !loading && !error && (
+      {!prediction && !cfResult && !loading && !error && (
         <div className="empty-state">
           <div className="empty-icon">🌍</div>
           <div>配置参数后点击"运行预测"</div>
