@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import FieldMappingEditor from './FieldMappingEditor';
 
 interface VSource {
   id: number;
@@ -28,6 +29,7 @@ export default function VirtualSourcesTab() {
   const [wizardStep, setWizardStep] = useState(1);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...EMPTY_VS_FORM });
+  const [mappingSource, setMappingSource] = useState<VSource | null>(null);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<number | null>(null);
@@ -400,6 +402,8 @@ export default function VirtualSourcesTab() {
                 disabled={testing === s.id}>{testing === s.id ? '测试中...' : '测试'}</button>
               <button onClick={(e) => { e.stopPropagation(); handleEdit(s); }}
                 style={{ fontSize: 11, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>编辑</button>
+              <button onClick={(e) => { e.stopPropagation(); setMappingSource(s); }}
+                style={{ fontSize: 11, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer' }}>映射</button>
               <button onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
                 style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>删除</button>
             </div>
@@ -409,6 +413,17 @@ export default function VirtualSourcesTab() {
           </div>
         </div>
       ))}
+
+    {/* Field Mapping Modal */}
+    {mappingSource && (
+      <FieldMappingEditor
+        sourceId={mappingSource.id}
+        sourceName={mappingSource.source_name}
+        existingMapping={{}}
+        onClose={() => setMappingSource(null)}
+        onSave={() => { setMappingSource(null); fetchSources(); }}
+      />
+    )}
     </div>
   );
 }

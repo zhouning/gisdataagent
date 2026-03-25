@@ -157,6 +157,81 @@ async def vsource_discover(request: Request):
         return JSONResponse({"error": str(e)[:300]}, status_code=502)
 
 
+async def vsource_preview_columns(request: Request):
+    """POST /api/virtual-sources/{id}/preview-columns — fetch remote column info."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    source_id = int(request.path_params["id"])
+    try:
+        from ..virtual_sources import get_virtual_source, query_virtual_source
+        source = get_virtual_source(source_id, username)
+        if not source:
+            return JSONResponse({"error": "数据源不存在"}, status_code=404)
+        # Query a small sample to get column info
+        gdf = await query_virtual_source(source, limit=5)
+        if gdf is None or (hasattr(gdf, '__len__') and len(gdf) == 0):
+            return JSONResponse({"columns": [], "sample_count": 0})
+        if isinstance(gdf, dict):
+            return JSONResponse({"error": gdf.get("message", "查询失败")}, status_code=500)
+        columns = []
+        for col in gdf.columns:
+            sample_vals = gdf[col].dropna().head(3).tolist()
+            columns.append({
+                "name": col,
+                "dtype": str(gdf[col].dtype),
+                "samples": [str(v)[:80] for v in sample_vals],
+            })
+        return JSONResponse({"columns": columns, "sample_count": len(gdf)})
+    except Exception as e:
+        logger.warning("preview-columns error: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def vsource_infer_mapping(request: Request):
+    """POST /api/virtual-sources/{id}/infer-mapping — auto-infer schema mapping."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    source_id = int(request.path_params["id"])
+    try:
+        from ..virtual_sources import get_virtual_source, query_virtual_source, infer_schema_mapping
+        source = get_virtual_source(source_id, username)
+        if not source:
+            return JSONResponse({"error": "数据源不存在"}, status_code=404)
+        # Get remote columns
+        gdf = await query_virtual_source(source, limit=1)
+        if gdf is None or isinstance(gdf, dict) or len(gdf.columns) == 0:
+            return JSONResponse({"mapping": {}, "message": "无法获取远程列名"})
+        mapping = infer_schema_mapping(list(gdf.columns))
+        return JSONResponse({"mapping": mapping})
+    except Exception as e:
+        logger.warning("infer-mapping error: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def vsource_update_mapping(request: Request):
+    """PUT /api/virtual-sources/{id}/schema-mapping — update schema mapping."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    source_id = int(request.path_params["id"])
+    try:
+        body = await request.json()
+        schema_mapping = body.get("schema_mapping", {})
+        if not isinstance(schema_mapping, dict):
+            return JSONResponse({"error": "schema_mapping 须为 JSON 对象"}, status_code=400)
+        from ..virtual_sources import update_virtual_source
+        update_virtual_source(source_id, username, schema_mapping=schema_mapping)
+        return JSONResponse({"status": "ok", "mapping_count": len(schema_mapping)})
+    except Exception as e:
+        logger.warning("update-mapping error: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 def get_virtual_source_routes() -> list:
     """Return Route objects for virtual source endpoints."""
     return [
@@ -167,4 +242,7 @@ def get_virtual_source_routes() -> list:
         Route("/api/virtual-sources/{id:int}", vsource_update, methods=["PUT"]),
         Route("/api/virtual-sources/{id:int}", vsource_delete, methods=["DELETE"]),
         Route("/api/virtual-sources/{id:int}/test", vsource_test, methods=["POST"]),
+        Route("/api/virtual-sources/{id:int}/preview-columns", vsource_preview_columns, methods=["POST"]),
+        Route("/api/virtual-sources/{id:int}/infer-mapping", vsource_infer_mapping, methods=["POST"]),
+        Route("/api/virtual-sources/{id:int}/schema-mapping", vsource_update_mapping, methods=["PUT"]),
     ]

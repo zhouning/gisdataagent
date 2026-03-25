@@ -22,13 +22,14 @@ import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
 import WorldModelTab from './datapanel/WorldModelTab';
 import CausalReasoningTab from './datapanel/CausalReasoningTab';
+import OptimizationTab from './datapanel/OptimizationTab';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal';
+type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization';
 
 type GroupKey = 'data' | 'intelligence' | 'ops' | 'orchestration';
 
@@ -79,6 +80,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
     tabs: [
       { key: 'workflows', label: '工作流', icon: '⚙️' },
       { key: 'templates', label: '模板', icon: '📄' },
+      { key: 'optimization', label: '优化', icon: '🎯' },
     ],
   },
 ];
@@ -193,6 +195,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'charts' && <ChartsTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
         {activeTab === 'causal' && <CausalReasoningTab />}
+        {activeTab === 'optimization' && <OptimizationTab />}
       </div>
     </div>
   );
