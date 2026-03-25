@@ -2354,6 +2354,60 @@ async def _api_drl_scenarios(request: Request):
     return JSONResponse({"scenarios": list_scenarios()})
 
 
+async def _api_drl_run_custom(request: Request):
+    """POST /api/drl/run-custom — run DRL optimization with custom weights."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    body = await request.json()
+    scenario_id = body.get("scenario_id", "farmland_optimization")
+    data_path = body.get("data_path", "")
+    if not data_path:
+        return JSONResponse({"error": "data_path 必填"}, status_code=400)
+
+    # Validate weight ranges
+    weights = {}
+    for key, lo, hi in [
+        ("slope_weight", 100, 3000),
+        ("contiguity_weight", 100, 2000),
+        ("balance_weight", 100, 2000),
+        ("pair_bonus", 0.1, 10.0),
+    ]:
+        val = body.get(key)
+        if val is not None:
+            try:
+                fval = float(val)
+                if not (lo <= fval <= hi):
+                    return JSONResponse(
+                        {"error": f"{key} 须在 [{lo}, {hi}] 范围内，当前值: {fval}"},
+                        status_code=400,
+                    )
+                weights[key] = str(fval)
+            except (ValueError, TypeError):
+                return JSONResponse({"error": f"{key} 须为数值"}, status_code=400)
+
+    import asyncio
+    from .toolsets.analysis_tools import drl_model
+    try:
+        result = await asyncio.to_thread(
+            drl_model,
+            data_path,
+            scenario_id,
+            weights.get("slope_weight", ""),
+            weights.get("contiguity_weight", ""),
+            weights.get("balance_weight", ""),
+            weights.get("pair_bonus", ""),
+        )
+        if isinstance(result, dict):
+            return JSONResponse(result)
+        import json
+        return JSONResponse(json.loads(result) if result.startswith("{") else {"result": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 async def _api_memory_search(request: Request):
     """GET /api/memory/search?q=keyword&type=region — search user spatial memories."""
     user = _get_user_from_request(request)
@@ -2707,8 +2761,9 @@ def get_frontend_api_routes():
         Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
         # Marketplace (v14.0)
         Route("/api/marketplace", endpoint=_api_marketplace, methods=["GET"]),
-        # DRL Scenarios (v14.0)
+        # DRL Scenarios (v14.0) + Custom Weights (v15.3)
         Route("/api/drl/scenarios", endpoint=_api_drl_scenarios, methods=["GET"]),
+        Route("/api/drl/run-custom", endpoint=_api_drl_run_custom, methods=["POST"]),
         # Memory Search (v14.0)
         Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
         # Analysis Chains (v14.2)

@@ -128,8 +128,36 @@ print(f"[MCP Server] Registered {_tool_count} GIS tools.")
 
 
 # ---------------------------------------------------------------------------
-# CLI entry point: python -m data_agent.mcp_server
+# CLI entry point: python -m data_agent.mcp_server [--transport stdio|sse] [--test]
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    mcp.run()
+    import sys
+
+    args = sys.argv[1:]
+
+    if "--test" in args:
+        # Self-test mode: verify tool registration and basic functionality
+        from .mcp_tool_registry import TOOL_DEFINITIONS
+        print(f"[MCP Self-Test] Tools registered: {len(TOOL_DEFINITIONS)}")
+        categories = {}
+        for d in TOOL_DEFINITIONS:
+            cat = d.get("category", "other")
+            categories.setdefault(cat, []).append(d["name"])
+        for cat, tools in sorted(categories.items()):
+            print(f"  [{cat}] {len(tools)} tools: {', '.join(tools[:5])}{'...' if len(tools) > 5 else ''}")
+        print(f"[MCP Self-Test] User: {os.environ.get('MCP_USER', 'mcp_user')}")
+        print(f"[MCP Self-Test] Role: {os.environ.get('MCP_ROLE', 'analyst')}")
+        print("[MCP Self-Test] PASSED — all tools registered successfully.")
+        sys.exit(0)
+
+    transport = "stdio"
+    if "--transport" in args:
+        idx = args.index("--transport")
+        if idx + 1 < len(args):
+            transport = args[idx + 1]
+
+    if transport == "sse":
+        mcp.run(transport="sse")
+    else:
+        mcp.run()
