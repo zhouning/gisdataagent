@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-03-22 &nbsp;|&nbsp; **Current version**: v15.0 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-03-25 &nbsp;|&nbsp; **Current version**: v15.3 &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）
 >
@@ -324,6 +324,121 @@
 
 ---
 
+## 已完成 (v15.2) — 地理空间世界模型 + NL2SQL + 地图时间轴
+
+> **主题**: 从"分析已有数据"到"预测未来演变"——构建地理空间 JEPA 世界模型，自然语言直达数据库
+>
+> **依据**: `docs/world-model-tech-preview-design.md` (方案 A/B/C/D 评审 + 阶段 0 验证)、`docs/multimodal-semantic-fusion-plus-alphaearth-strategy.md`
+
+### 地理空间世界模型 (Plan D: AlphaEarth + LatentDynamicsNet)
+- [x] **LatentDynamicsNet 残差 CNN** — `world_model.py`: 459K 参数, 空洞卷积 (dilation 1/2/4, 170m 感受野), 残差连接 + L2 流形保持 ✅ 2026-03-22
+- [x] **AlphaEarth 64 维嵌入集成** — GEE `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL` 采集 + zonal 聚合 ✅ 2026-03-22
+- [x] **5 种情景模拟** — 城市蔓延 / 生态修复 / 农业集约化 / 气候适应 / 基线趋势，one-hot 编码 ✅ 2026-03-22
+- [x] **地形上下文感知** — DEM elevation + slope 作为 CNN 额外通道 ✅ 2026-03-22
+- [x] **LULC 解码器** — LogisticRegression: 嵌入 → 9 类 ESRI LULC (准确率 83.7%) ✅ 2026-03-22
+- [x] **训练管线** — 15 区域 × 8 年嵌入对 + 多步展开训练损失 + GEE 自动下载 ✅ 2026-03-22
+- [x] **WorldModelToolset (5 工具)** — predict / scenarios / status / embedding_coverage / find_similar ✅ 2026-03-22
+- [x] **世界模型快捷路径** — 意图分类直判 world_model → 跳过 LLM Planner，1 次 API 调用完成预测 ✅ 2026-03-22
+- [x] **阶段 0 验证通过** — 年际 cos_sim=0.953, 变化/稳定分离度=2.44x, 嵌入→LULC 解码 83.7% ✅ 2026-03-22
+
+### pgvector 嵌入缓存
+- [x] **embedding_store.py** — `agent_geo_embeddings` 表 + pgvector VECTOR(64) + IVFFlat 索引 ✅ 2026-03-23
+- [x] **三级缓存** — pgvector (24ms) → .npy 文件 (ms) → GEE 下载 (seconds)，自动回填 ✅ 2026-03-23
+- [x] **余弦相似度搜索** — `find_similar_embeddings()` 支持空间半径 + top-K ✅ 2026-03-23
+
+### NL2SQL 动态数据查询
+- [x] **NL2SQLToolset (3 工具)** — discover_database_schema / execute_spatial_query / load_admin_boundary ✅ 2026-03-22
+- [x] **Schema 发现** — 自动探索 public schema 表结构 + 列类型 + 注释 ✅ 2026-03-22
+- [x] **参数化安全查询** — 自动 LIKE 模糊匹配构造，零 SQL 注入风险 ✅ 2026-03-22
+- [x] **行政区划加载** — 自然语言地名 → 模糊匹配 → 自动 SQL → GeoJSON ✅ 2026-03-22
+
+### 地图时间轴 + 底图增强
+- [x] **时间轴播放器** — MapPanel 多时序 LULC 图层动画切换 + 年份滑块 ✅ 2026-03-22
+- [x] **卫星影像底图** — Gaode Satellite + ESRI World Imagery 底图选项 ✅ 2026-03-22
+- [x] **WorldModelTab** — DataPanel 新增世界模型专属 Tab (情景选择/预测/面积趋势表/转移矩阵/堆叠条形图) ✅ 2026-03-22
+
+### 质量保障
+- [x] **世界模型测试** — `test_world_model.py` 场景/模型/预测/缓存全覆盖 ✅ 2026-03-22
+- [x] **NL2SQL 测试** — `test_nl2sql.py` Schema/Query/AdminBoundary 测试 ✅ 2026-03-22
+
+---
+
+## 已完成 (v15.3) — 三角度时空因果推断体系
+
+> **主题**: 为论文构建三个互补角度的因果推断能力——统计方法 × LLM 推理 × 因果世界模型
+>
+> **依据**: 项目思想起源 (2023-09) 时空因果推断平台构想
+
+### Angle A — GeoFM 嵌入因果推断 (6 tools)
+- [x] **CausalInferenceToolset** — `causal_inference.py` (1247 行): PSM / ERF / DiD / Granger / GCCM / Causal Forest ✅ 2026-03-25
+- [x] **AlphaEarth 嵌入增强** — 全部 6 工具支持 `use_geofm_embedding=True`，64 维嵌入作为空间混淆控制 ✅ 2026-03-25
+- [x] **空间距离加权匹配** — PSM 支持 `spatial_distance_weight` 空间邻近约束 ✅ 2026-03-25
+- [x] **21 测试** — 合成数据 ground truth 验证 (Park-price ATE, Pollution DiD, 灌溉 CATE 等) ✅ 2026-03-25
+
+### Angle B — LLM 因果推理 (4 tools)
+- [x] **LLMCausalToolset** — `llm_causal.py` (949 行): Gemini 2.5 Pro/Flash 驱动 ✅ 2026-03-25
+- [x] **因果 DAG 构建** — `construct_causal_dag()`: 变量/混淆因子/中介/碰撞因子识别 + networkx 可视化 + Mermaid 图 ✅ 2026-03-25
+- [x] **反事实推理** — `counterfactual_reasoning()`: 结构化推理链 + 置信度 + 敏感性因子 ✅ 2026-03-25
+- [x] **因果机制解释** — `explain_causal_mechanism()`: 接收 Angle A 统计结果 JSON 自动解读 ✅ 2026-03-25
+- [x] **What-If 情景生成** — `generate_what_if_scenarios()`: 自动映射到世界模型情景 + Angle A 参数 ✅ 2026-03-25
+- [x] **33 测试** — Gemini mock + JSON 解析 + DAG 渲染 + Mermaid 生成 ✅ 2026-03-25
+
+### Angle C — 因果世界模型 (4 tools)
+- [x] **CausalWorldModelToolset** — `causal_world_model.py` (1049 行): 世界模型 + 因果干预 ✅ 2026-03-25
+- [x] **空间干预预测** — `intervention_predict()`: 子区域施加干预 + 空间溢出效应分析 ✅ 2026-03-25
+- [x] **反事实对比** — `counterfactual_comparison()`: 平行情景 + 逐像素 LULC 差异 + 效应图 ✅ 2026-03-25
+- [x] **嵌入空间处理效应** — `embedding_treatment_effect()`: cosine/euclidean/manhattan 距离度量 ✅ 2026-03-25
+- [x] **统计先验整合** — `integrate_statistical_prior()`: ATT → 校准世界模型预测偏移 ✅ 2026-03-25
+- [x] **28 测试** — 空间 mask + 干预/反事实/嵌入效应/校准 全覆盖 ✅ 2026-03-25
+
+### 集成与前端
+- [x] **8 REST API 端点** — `/api/causal/*` (4) + `/api/causal-world-model/*` (4) ✅ 2026-03-25
+- [x] **CausalReasoningTab** — DataPanel 新增"因果推理" Tab (DAG/反事实/机制/情景 4 区域) ✅ 2026-03-25
+- [x] **WorldModelTab 扩展** — 模式切换 (预测/干预/反事实) + 子区域输入 + 双情景选择 ✅ 2026-03-25
+- [x] **Data Catalog 语义搜索** — `/api/catalog/search` + CatalogTab 双搜索模式 + 分页 ✅ 2026-03-25
+- [x] **intent_router 扩展** — `causal_reasoning` + `world_model` 子类别增强 ✅ 2026-03-25
+- [x] **tool_filter 扩展** — `causal_reasoning` 类别 (4 工具) + `world_model` 类别扩展 (7 工具) ✅ 2026-03-25
+
+---
+
+## 历史遗留未完成项 (v13~v14 积累)
+
+> 以下项目在各版本迭代中被跳过或延期，按优先级分类管理
+
+### 优先完成 (低成本高价值)
+- [ ] **奖励权重 UI** — DRL 前端 slope/contiguity/balance 滑块 *(v14.0, 前端 ~100 行)*
+- [ ] **字段映射可视化编辑器** — 源↔目标字段拖拽映射 *(v14.5, 前端中等工作量)*
+- [ ] **MCP 外部 Agent 接入验证** — Claude Desktop / Cursor E2E 测试 *(v13.1)*
+
+### 择机完成 (中等价值)
+- [ ] **分析意图消歧 v2** — 复杂查询拆解子任务列表 *(v14.1)*
+- [ ] **自动记忆提取增强** — pipeline 后 extract_facts + 弹窗确认 *(v14.1)*
+- [ ] **消息总线持久化** — AgentMessageBus → PostgreSQL *(v14.1)*
+- [ ] **自适应布局** — 移动端响应式 *(v14.2)*
+- [ ] **Skill SDK 发布** — `gis-skill-sdk` Python 包 *(v14.3)*
+
+### 远期/冻结
+- [~] **标注协同 (WebSocket)** — 实时协同复杂度高 *(v14.1, 冻结)*
+- [~] **跨图层关联高亮** — 选中要素联动 *(v14.1, 冻结)*
+- [~] **Skill Marketplace 社区** — 需要公网部署 *(v14.2, 冻结)*
+- [~] **DRL 自定义训练 API** — *(v14.2, 冻结)*
+- [~] **DRL 可解释性 (SHAP)** — *(v14.2, 冻结)*
+- [~] **DRL 时序动画** — 优化过程回放 *(v14.2, 冻结)*
+- [~] **多场景环境引擎** — DRL 配置驱动重构 *(v14.1, 冻结)*
+- [~] **约束建模** — 硬/软约束 Gymnasium 扩展 *(v14.1, 冻结)*
+- [~] **结果对比面板** — A/B 对比优化结果 *(v14.1, 冻结)*
+- [~] **分布式任务队列 (Celery)** — *(v14.2, 冻结)*
+- [~] **Pipeline 断点恢复 v2** — 崩溃后自动恢复 *(v14.2, 冻结)*
+- [~] **协同工作空间 (CRDT)** — *(v14.3, 冻结)*
+- [~] **Agent 联邦** — 多实例负载均衡 *(v14.3, 冻结)*
+- [~] **联邦学习** — 隐私保护 DRL *(v14.3, 冻结)*
+- [~] **个性化模型微调 (LoRA)** — *(v14.3, 冻结)*
+- [~] **离线模式** — Service Worker *(v14.3, 冻结)*
+- [~] **语音输入 (Whisper)** — *(v14.2, 冻结)*
+- [~] **Generator/Reviewer 输出结构化校验** — Pydantic schema *(v15.0, 移至 v16.0+)*
+
+---
+
 ## v16.0+ — 遥感智能体能力增强 (远期规划)
 
 > **主题**: 从"通用 GIS 分析平台"升级为"遥感领域专业智能体平台"
@@ -361,46 +476,51 @@
 
 > 数据层补课的同时，继续拉大智能层和交互层的领先距离
 
-| 方向 | 规划 |
-|------|------|
-| **自然语言交互** | Inversion 采访模式、分析意图消歧、结果追问与参数调整 |
-| **Skill 设计模式** | 5 模式覆盖 (Tool Wrapper→Generator→Reviewer→Inversion→Pipeline)，结构化输出校验 |
-| **标准驱动治理** | 数据标准注册表、Gap Matrix、标准感知质检、编码交叉映射、治理流程模板化 |
-| **用户自扩展** | Skill Marketplace（社区共享）、User Tool 版本管理、Workflow 模板市场 |
-| **DRL 优化** | 多目标优化（碳汇+经济+生态）、更多场景（交通网络、设施布局） |
-| **三面板 SPA** | 3D 地图增强（deck.gl 更多图层类型）、数据资源总览仪表盘、协同标注 |
-| **数据生态** | 分发审批流程、API 网关、使用热度统计、地图服务发布 |
-| **多 Agent 编排** | Pipeline 断点续跑、步骤级重试、Spark 分布式计算 |
+| 方向 | 规划 | v15.3 状态 |
+|------|------|-----------|
+| **因果推断** | 三角度体系 (统计+LLM+世界模型) | ✅ 14 工具全部交付 |
+| **世界模型** | AlphaEarth JEPA + 因果干预/反事实 | ✅ 核心+因果扩展 |
+| **自然语言交互** | Inversion 采访、意图消歧、NL2SQL | ✅ NL2SQL 已交付，消歧 v2 待做 |
+| **Skill 设计模式** | 5 模式覆盖 + 结构化输出校验 | ✅ 5 模式完成，Pydantic 校验待做 |
+| **标准驱动治理** | 标准注册表、Gap Matrix、标准感知质检 | ✅ 全部完成 |
+| **用户自扩展** | Marketplace 社区、Skill SDK | 🟡 基础完成，社区/SDK 冻结 |
+| **DRL 优化** | 多目标优化、更多场景 | 🟡 NSGA-II 完成，新场景冻结 |
+| **三面板 SPA** | 3D 增强、时间轴、因果推理 Tab | ✅ 时间轴+因果 Tab+22 Tab |
+| **数据生态** | 分发审批、热度统计 | ✅ 全部完成 |
+| **多 Agent 编排** | 断点续跑、Spark 分布式 | ✅ 全部完成 |
 
 ---
 
 ## 标杆对标进度
 
-| 标杆能力 | 来源 | v14.4 | v14.5 ✅ | v15.0 ✅ |
-|----------|------|-------|-----------|-----------|
-| 空间数据虚拟化 | SeerAI | 🟢 | 🟢🟢 插件化+WMS+ArcGIS ✅ | 🟢🟢 DB+OBS 连接器 |
+| 标杆能力 | 来源 | v14.5 ✅ | v15.0 ✅ | v15.3 ✅ |
+|----------|------|-----------|-----------|-----------|
+| 空间数据虚拟化 | SeerAI | 🟢🟢 插件化+WMS+ArcGIS | 🟢🟢 DB+OBS 连接器 | 🟢🟢 |
 | 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢 |
-| 分析血缘自动追踪 | SeerAI | 🟢 | 🟢 批量探查+跨集关联 | 🟢🟢 列级血缘 |
+| 分析血缘自动追踪 | SeerAI | 🟢 批量探查+跨集关联 | 🟢🟢 列级血缘 | 🟢🟢 |
 | MCP Server 暴露 | SeerAI | 🟢 | 🟢 | 🟢 |
-| 行业预置模板 | SeerAI | 🟢 | 🟢🟢 标准注册表+DLTB | 🟢🟢 |
-| Agent 对话交互 | OpenClaw | 🟢🟢🟢 | 🟢🟢🟢 Inversion 采访 | 🟢🟢🟢 |
-| 企业级治理 | Frontier | 🟢🟢 评分+可视化 ✅ | 🟢🟢🟢 标准驱动+清洗+Gap | 🟢🟢🟢 安全+脱敏 |
-| 数据可视化 | — | 🟢 ECharts 9 图表 ✅ | 🟢 趋势+总览仪表盘 | 🟢🟢 |
-| **Agent 可观测性** | — | 🟡 4指标+日志 | 🟢 25+指标+中间件 | 🟢🟢 OTel+决策追踪+质量评估 |
-| 多 Agent 协作 | CoWork | 🟢 | 🟢🟢 断点+重试 | 🟢🟢 Spark 分布式 |
-| 用户生态 | — | 🟢 | 🟢 图层发现+类型表单 ✅ | 🟢🟢 分发+反馈+服务发布 |
-| Skill 设计模式 | Skillmatic | 🟡 仅 Tool Wrapper | 🟢 Inversion+Generator+Reviewer | 🟢🟢 Pipeline+结构化校验 |
-| 数据分发/反馈 | Frontier | 🟡 30%/25% | 🟡 | 🟢 审批+热度+API 网关 |
+| 行业预置模板 | SeerAI | 🟢🟢 标准注册表+DLTB | 🟢🟢 | 🟢🟢 |
+| Agent 对话交互 | OpenClaw | 🟢🟢🟢 Inversion 采访 | 🟢🟢🟢 | 🟢🟢🟢 + LLM 因果推理 |
+| 企业级治理 | Frontier | 🟢🟢🟢 标准驱动+清洗+Gap | 🟢🟢🟢 安全+脱敏 | 🟢🟢🟢 |
+| 数据可视化 | — | 🟢 趋势+总览仪表盘 | 🟢🟢 | 🟢🟢🟢 世界模型时间轴+因果效应图 |
+| **Agent 可观测性** | — | 🟢 25+指标+中间件 | 🟢🟢 OTel+决策追踪 | 🟢🟢 |
+| 多 Agent 协作 | CoWork | 🟢🟢 断点+重试 | 🟢🟢 Spark 分布式 | 🟢🟢 |
+| 用户生态 | — | 🟢 图层发现+类型表单 | 🟢🟢 分发+反馈 | 🟢🟢 |
+| Skill 设计模式 | Skillmatic | 🟢 Inversion+Generator+Reviewer | 🟢🟢 Pipeline | 🟢🟢 |
+| 数据分发/反馈 | Frontier | 🟡 | 🟢 审批+热度+API 网关 | 🟢 |
 | DRL 优化深度 | — | 🟢 | 🟢 | 🟢 |
+| **时空预测** | — | — | 🟢 世界模型 Tech Preview | 🟢🟢🟢 JEPA+因果干预+反事实 |
+| **因果推断** | — | — | — | 🟢🟢🟢 三角度 14 工具 + 82 测试 |
+| **NL2SQL** | — | — | — | 🟢🟢 Schema-aware 动态查询 |
 
 ### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
 
-| 领域 | v14.4 | v14.5 ✅ | v15.0 ✅ |
-|------|-------|-----------|-----------|
-| 数据标准 | 50% | 70% *(标准注册表+GB/T 21010)* | 80% |
-| 数据模型 | 5% | 20% *(Gap Matrix+模型推荐)* | 35% |
-| 数据质量 | 75% | 90% *(标准感知质检+清洗工具链)* | 95% |
-| 数据安全 | 25% | 30% | 60% |
-| 元数据 | 70% | 80% *(批量探查+跨集关联)* | 85% |
-| 数据资源 | 65% | 80% *(FGDB+DWG+总览仪表盘)* | 85% |
-| **综合** | **~48%** | **~62%** | **~73%** |
+| 领域 | v14.5 ✅ | v15.0 ✅ | v15.3 ✅ |
+|------|-----------|-----------|-----------|
+| 数据标准 | 70% | 80% | 80% |
+| 数据模型 | 20% | 35% | 40% *(因果 DAG 建模)* |
+| 数据质量 | 90% | 95% | 95% |
+| 数据安全 | 30% | 60% | 60% |
+| 元数据 | 80% | 85% | 88% *(语义搜索+嵌入缓存)* |
+| 数据资源 | 80% | 85% | 88% *(世界模型+NL2SQL)* |
+| **综合** | **~62%** | **~73%** | **~75%** |
