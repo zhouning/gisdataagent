@@ -96,7 +96,8 @@ def classify_intent(text: str, previous_pipeline: str = None,
         - streaming_iot: real-time/IoT data streams, geofence
         - collaboration: team management, templates, asset management
         - advanced_analysis: spatial statistics (Moran/hotspot), data fusion, knowledge graph
-        - world_model: world model prediction, LULC forecasting, scenario simulation, 世界模型, 土地利用预测
+        - world_model: world model prediction, LULC forecasting, scenario simulation, 世界模型, 土地利用预测, 干预预测, 反事实对比
+        - causal_reasoning: causal DAG, counterfactual reasoning, causal mechanism, what-if scenarios, 因果推理, 因果图, 反事实
 
         User Input: "{text}"{pdf_hint}
 

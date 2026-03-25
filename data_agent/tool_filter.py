@@ -100,9 +100,16 @@ TOOL_CATEGORIES: dict[str, frozenset[str]] = {
         "fuse_datasets", "validate_fusion_quality",
         "build_knowledge_graph", "query_knowledge_graph", "export_knowledge_graph",
     }),
-    # World model prediction
+    # World model prediction + causal world model
     "world_model": frozenset({
         "world_model_predict", "world_model_scenarios", "world_model_status",
+        "intervention_predict", "counterfactual_comparison",
+        "embedding_treatment_effect", "integrate_statistical_prior",
+    }),
+    # LLM causal reasoning (Angle B)
+    "causal_reasoning": frozenset({
+        "construct_causal_dag", "counterfactual_reasoning",
+        "explain_causal_mechanism", "generate_what_if_scenarios",
     }),
 }
 
