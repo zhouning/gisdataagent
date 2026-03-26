@@ -27,6 +27,7 @@ EXPECTED_SKILLS = [
     "postgis-analysis",
     "site-selection",
     "spatial-clustering",
+    "surveying-qc",
     "team-collaboration",
     "thematic-mapping",
     "topology-validation",
@@ -150,7 +151,7 @@ class TestSkillLoading(unittest.TestCase):
     def test_load_all_skills_count(self):
         from data_agent.skills import load_all_skills
         skills = load_all_skills()
-        self.assertEqual(len(skills), 20)
+        self.assertEqual(len(skills), 21)
 
     def test_load_all_skills_names(self):
         from data_agent.skills import load_all_skills
@@ -213,7 +214,7 @@ class TestSkillToolsetIntegration(unittest.TestCase):
         from data_agent.toolsets.skill_bundles import build_all_skills_toolset
         ts = build_all_skills_toolset()
         # Access the skills list directly
-        self.assertEqual(len(ts._skills), 20)
+        self.assertEqual(len(ts._skills), 21)
 
     def test_single_skill_toolset_count(self):
         from data_agent.toolsets.skill_bundles import build_skill_toolset
@@ -237,7 +238,7 @@ class TestPlannerSkillIntegration(unittest.TestCase):
         from google.adk.tools.skill_toolset import SkillToolset
         for t in planner_agent.tools:
             if isinstance(t, SkillToolset):
-                self.assertEqual(len(t._skills), 20)
+                self.assertEqual(len(t._skills), 21)
                 return
         self.fail("No SkillToolset found in Planner tools")
 
