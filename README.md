@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.3
+# GIS Data Agent (ADK Edition) v15.5
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.3 三角度时空因果推断体系**：Angle A — GeoFM 嵌入因果推断（PSM/ERF/DiD/Granger/GCCM/Causal Forest + AlphaEarth 64 维嵌入增强）；Angle B — LLM 因果推理（Gemini 驱动因果 DAG 构建 + 反事实推理 + 机制解释 + What-If 情景生成）；Angle C — 因果世界模型（空间干预预测 + 反事实对比 + 嵌入空间处理效应 + 统计先验校准）。
+**v15.5 新增**：DRL-World Model Dreamer 集成（世界模型作为 DRL 环境模型提供前瞻奖励）+ 三角度因果推断论文 + 世界模型论文 R2 审稿回复 + 12 项平台成熟度交付（意图消歧 v2、自适应布局、消息总线、Skill SDK、Helm Chart 等）。
 
 ## 项目思想起源
 
@@ -16,6 +16,11 @@
   <img src="docs/origin_vision.png" alt="GIS Data Agent 项目的思想起源" width="800" />
 </p>
 <p align="center"><em>GIS Data Agent 项目的思想起源（2023 年 9 月）— 时空数据中台 × 因果推断 × 知识图谱 × AI Agent 决策</em></p>
+
+<p align="center">
+  <img src="docs/thesis_topics.png" alt="毕业论文选题方向" width="800" />
+</p>
+<p align="center"><em>Data Agent 项目中集成的世界模型、时空因果推断、深度强化学习的内容包含了毕业论文选题时所罗列的方向</em></p>
 
 ## 📚 官方技术文档
 
@@ -30,13 +35,14 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2630+ tests, 111 test files |
-| 工具集 | 37 BaseToolset (含 CausalInferenceToolset 6 + LLMCausalToolset 4 + CausalWorldModelToolset 4 + WorldModelToolset 3 + NL2SQLToolset 3), 5 SkillBundle, 220+ 工具 |
+| 测试覆盖 | 2650+ tests, 113 test files |
+| 工具集 | 38 BaseToolset (含 DreamerToolset + CausalInferenceToolset 6 + LLMCausalToolset 4 + CausalWorldModelToolset 4 + WorldModelToolset 5 + NL2SQLToolset 3), 5 SkillBundle, 220+ 工具 |
 | ADK Skills | 21 场景化领域技能 (5 种设计模式 + world-model JEPA 预测技能) |
-| REST API | 178+ endpoints |
+| REST API | 191+ endpoints |
 | DataPanel | 22 标签页 (4 分组: 数据/智能/运维/编排) |
 | 因果推断 | 三角度体系: A (GeoFM 统计 6 工具) + B (LLM 推理 4 工具) + C (因果世界模型 4 工具), 82 tests |
 | 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
+| DRL + World Model | Dreamer 式集成: ParcelEmbeddingMapper + ActionToScenarioEncoder + 辅助奖励前瞻 |
 | NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
 | 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) |
 | 连接器 | 8 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage) |
@@ -118,6 +124,7 @@
 - 深度强化学习引擎（MaskablePPO）用地布局优化
 - **5 个 DRL 场景**：耕地优化、城市绿地布局、设施选址、交通网络、综合规划
 - **NSGA-II 多目标 Pareto 优化**：快速非支配排序 + 拥挤距离，替代加权和方法
+- **DRL + World Model Dreamer 集成 (v15.5)**：世界模型作为环境模型提供前瞻辅助奖励，ParcelEmbeddingMapper 将地块映射到 AlphaEarth 64D 嵌入，ActionToScenarioEncoder 将动作历史转换为场景向量
 - 耕地/林地配对交换，严格面积平衡
 - 分类着色地图渲染（Categorized Layer）：按地类/变化类型自动着色，中文图例
 
@@ -398,8 +405,9 @@ data_agent/
 ├── agent.py                     # Agent 定义、管道组装、ParallelAgent
 ├── intent_router.py             # 语义意图路由 (从 app.py 提取)
 ├── pipeline_helpers.py          # 管线辅助：工具说明、进度渲染、错误分类
-├── frontend_api.py              # 92 个 REST API 端点
+├── frontend_api.py              # 124 个 REST API 端点
 ├── pipeline_runner.py           # 无头管道执行器 + SSE 流式输出
+├── dreamer_env.py               # DRL-World Model Dreamer 环境 (v15.5)
 ├── workflow_engine.py           # 工作流引擎：CRUD、顺序+DAG 执行、Webhook、Cron
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
 ├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
@@ -423,9 +431,10 @@ data_agent/
 ├── workflow_templates.py        # 工作流模板市场：CRUD + 克隆 + 评分 (v10.0)
 ├── spatial_analysis_tier2.py    # 高级空间分析：IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 ├── conftest.py                  # 集中测试夹具 + 事件循环安全
-├── toolsets/                    # 28 个 BaseToolset 模块 (含 DataCleaningToolset)
-│   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
+├── toolsets/                    # 38 个 BaseToolset 模块 (含 DreamerToolset)
+│   ├── visualization_tools.py   #   11 个工具：分级设色、热力图、3D、图层控制
 │   ├── analysis_tools.py        #   分析工具 + LongRunningFunctionTool (DRL)
+│   ├── dreamer_tools.py         #   DRL-World Model Dreamer 集成工具 (v15.5)
 │   ├── governance_tools.py      #   9 个工具：质量审计 + 标准校验
 │   ├── data_cleaning_tools.py   #   7 个工具：清洗/转换/补齐 (v14.5)
 │   ├── virtual_source_tools.py  #   7 个工具：数据源查询 + WMS 图层 + 图层发现
@@ -448,7 +457,7 @@ data_agent/
 ├── skills/                      # 18 个 ADK 场景技能（kebab-case 目录）
 ├── prompts/                     # 3 个 YAML 提示词文件
 ├── evals/                       # Agent 评估框架（trajectory + rubric）
-├── migrations/                  # 29 个 SQL 迁移脚本
+├── migrations/                  # 38 个 SQL 迁移脚本
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
 ├── tool_filter.py               # 意图驱动动态工具过滤（ToolPredicate + ContextVar）
