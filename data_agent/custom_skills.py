@@ -35,6 +35,7 @@ TOOLSET_NAMES: set[str] = {
     "ChartToolset", "GovernanceToolset", "DataCleaningToolset",
     "SparkToolset", "StorageToolset", "ReportToolset", "PrecisionToolset",
     "CausalInferenceToolset",
+    "DreamerToolset",
 }
 
 _toolset_registry_cache: dict[str, type] | None = None
@@ -63,6 +64,7 @@ def _get_toolset_registry() -> dict[str, type]:
     from .toolsets.report_tools import ReportToolset
     from .toolsets.precision_tools import PrecisionToolset
     from .toolsets.causal_inference_tools import CausalInferenceToolset
+    from .toolsets.dreamer_tools import DreamerToolset
     _toolset_registry_cache = {
         "ExplorationToolset": ExplorationToolset,
         "GeoProcessingToolset": GeoProcessingToolset,
@@ -92,6 +94,7 @@ def _get_toolset_registry() -> dict[str, type]:
         "ReportToolset": ReportToolset,
         "PrecisionToolset": PrecisionToolset,
         "CausalInferenceToolset": CausalInferenceToolset,
+        "DreamerToolset": DreamerToolset,
     }
     return _toolset_registry_cache
 

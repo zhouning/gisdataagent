@@ -60,6 +60,7 @@ from .toolsets.nl2sql_tools import NL2SQLToolset
 from .toolsets.causal_inference_tools import CausalInferenceToolset
 from .toolsets.llm_causal_tools import LLMCausalToolset
 from .toolsets.causal_world_model_tools import CausalWorldModelToolset
+from .toolsets.dreamer_tools import DreamerToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -265,7 +266,7 @@ data_analysis_agent = LlmAgent(
     description="空间分析与优化专家",
     model=_create_model_with_retry(MODEL_STANDARD),
     output_key="analysis_report",
-    tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset()],
+    tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset(), DreamerToolset()],
 )
 
 # --- Quality Checker + LoopAgent (ADK Optimization 2.2) ---
@@ -556,7 +557,7 @@ def _make_planner_analyzer(name: str, **overrides) -> LlmAgent:
         output_key="analysis_report",
         disallow_transfer_to_peers=True,
         after_tool_callback=_self_correction_after_tool,
-        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset()],
+        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset(), DreamerToolset()],
     )
     defaults.update(overrides)
     return LlmAgent(**defaults)

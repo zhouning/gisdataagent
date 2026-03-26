@@ -26,7 +26,7 @@ class TestTemplateConstants(unittest.TestCase):
 
     def test_builtin_templates_count(self):
         from data_agent.workflow_templates import _BUILTIN_TEMPLATES
-        self.assertEqual(len(_BUILTIN_TEMPLATES), 5)
+        self.assertEqual(len(_BUILTIN_TEMPLATES), 8)
 
 
 class TestTemplateCRUD(unittest.TestCase):
