@@ -198,6 +198,28 @@ def classify_intent(text: str, previous_pipeline: str = None,
         return ("GENERAL", "", 0, set(), detect_language(text))
 
 
+def should_decompose(text: str) -> bool:
+    """Heuristic: returns True when user text likely contains multiple analysis steps."""
+    if len(text) < 15:
+        return False
+    # Chinese multi-step markers
+    zh_markers = ["然后", "接着", "之后", "并且", "同时", "首先", "第一步", "第二步",
+                  "最后", "再", "还要", "以及", "分别"]
+    # English multi-step markers
+    en_markers = ["then", "after that", "next", "and also", "first", "second",
+                  "finally", "additionally", "followed by", "step 1", "step 2"]
+    text_lower = text.lower()
+    marker_count = sum(1 for m in zh_markers + en_markers if m in text_lower)
+    # Need at least 2 markers or a numbered list pattern
+    if marker_count >= 2:
+        return True
+    # Numbered list pattern: "1. xxx 2. xxx" or "1、xxx 2、xxx"
+    numbered = re.findall(r'(?:^|[\s\n])[1-9][.、)]\s*\S', text, re.MULTILINE)
+    if len(numbered) >= 2:
+        return True
+    return False
+
+
 def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) -> str:
     """Generate a lightweight analysis plan for user confirmation before expensive pipelines."""
     try:

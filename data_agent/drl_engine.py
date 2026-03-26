@@ -15,10 +15,17 @@ v7 changes vs v6:
     incremental metrics, no-undo mechanism.
 """
 
+import json
+import logging
+from typing import Optional
+
 import numpy as np
 import geopandas as gpd
 import gymnasium as gym
 from gymnasium import spaces
+from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
 
 
 # Land use type constants
@@ -861,3 +868,73 @@ SCENARIOS["public_services"] = DRLScenario(
     balance_weight=1000.0,
     max_conversions=80,
 )
+
+
+# ---------------------------------------------------------------------------
+# Run History (v15.4)
+# ---------------------------------------------------------------------------
+
+def save_run_result(username: str, scenario_id: str, weights: dict,
+                    output_path: str, summary: str, metrics: dict) -> Optional[int]:
+    """Save a DRL optimization run result for history/comparison."""
+    from .db_engine import get_engine
+    engine = get_engine()
+    if not engine:
+        return None
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "INSERT INTO drl_run_history (username, scenario_id, weights, output_path, summary, metrics) "
+                "VALUES (:u, :s, :w, :o, :sum, :m) RETURNING id"
+            ), {"u": username, "s": scenario_id, "w": json.dumps(weights),
+                "o": output_path, "sum": summary, "m": json.dumps(metrics)}).fetchone()
+            conn.commit()
+            return row.id if row else None
+    except Exception as e:
+        logger.warning("save_run_result failed: %s", e)
+        return None
+
+
+def list_run_history(username: str, limit: int = 20) -> list:
+    """List recent DRL optimization runs for a user."""
+    from .db_engine import get_engine
+    engine = get_engine()
+    if not engine:
+        return []
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT id, scenario_id, weights, summary, metrics, created_at "
+                "FROM drl_run_history WHERE username = :u ORDER BY created_at DESC LIMIT :lim"
+            ), {"u": username, "lim": limit}).fetchall()
+            return [{"id": r.id, "scenario_id": r.scenario_id,
+                     "weights": r.weights if isinstance(r.weights, dict) else json.loads(r.weights or "{}"),
+                     "summary": r.summary,
+                     "metrics": r.metrics if isinstance(r.metrics, dict) else json.loads(r.metrics or "{}"),
+                     "created_at": str(r.created_at)} for r in rows]
+    except Exception as e:
+        logger.warning("list_run_history failed: %s", e)
+        return []
+
+
+def compare_runs(run_a: dict, run_b: dict) -> dict:
+    """Compare two DRL optimization runs."""
+    metrics_a = run_a.get("metrics", {})
+    metrics_b = run_b.get("metrics", {})
+
+    all_keys = set(list(metrics_a.keys()) + list(metrics_b.keys()))
+    comparison = {}
+    for key in sorted(all_keys):
+        va = metrics_a.get(key)
+        vb = metrics_b.get(key)
+        comparison[key] = {
+            "run_a": va,
+            "run_b": vb,
+            "delta": round(vb - va, 4) if isinstance(va, (int, float)) and isinstance(vb, (int, float)) else None,
+        }
+
+    return {
+        "run_a": {"id": run_a.get("id"), "scenario": run_a.get("scenario_id"), "weights": run_a.get("weights")},
+        "run_b": {"id": run_b.get("id"), "scenario": run_b.get("scenario_id"), "weights": run_b.get("weights")},
+        "metrics_comparison": comparison,
+    }

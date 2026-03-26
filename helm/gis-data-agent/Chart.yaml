@@ -1,0 +1,13 @@
+apiVersion: v2
+name: gis-data-agent
+description: GIS Data Agent — AI-powered geospatial analysis platform
+type: application
+version: 0.1.0
+appVersion: "15.4"
+keywords:
+  - gis
+  - geospatial
+  - ai-agent
+  - adk
+maintainers:
+  - name: GIS Data Agent Team

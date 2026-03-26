@@ -91,6 +91,11 @@ export default function MemorySearchTab() {
         </select>
       </div>
 
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary, #888)', cursor: 'pointer', margin: '4px 0' }}>
+        <input type="checkbox" checked={typeFilter === 'auto_extract'} onChange={() => setTypeFilter(typeFilter === 'auto_extract' ? '' : 'auto_extract')} />
+        仅显示自动提取
+      </label>
+
       {loading && <div style={{ color: '#888', textAlign: 'center', padding: 16 }}>搜索中...</div>}
 
       {!loading && searched && memories.length === 0 && (
