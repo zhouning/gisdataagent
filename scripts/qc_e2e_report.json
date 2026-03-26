@@ -1,0 +1,110 @@
+{
+  "format_validation": {
+    "status": "ok",
+    "file": "中心城区建筑数据带层高.shp",
+    "record_count": 107452,
+    "crs": "EPSG:4326",
+    "geometry_type": [
+      "Polygon",
+      null,
+      "MultiPolygon"
+    ],
+    "columns": [
+      "Id",
+      "Floor",
+      "geometry"
+    ],
+    "bounds": [
+      106.2095,
+      29.2126,
+      106.8216,
+      29.8312
+    ],
+    "load_time_s": 0.62,
+    "crs_compliance": "WGS84 (需转换为CGCS2000)",
+    "crs_defect": "NRM-01"
+  },
+  "geometry_topology": {
+    "status": "ok",
+    "total_features": 107452,
+    "invalid_geometries": 0,
+    "null_geometries": 417,
+    "duplicate_geometries": 416,
+    "union_test": "pass",
+    "defects": [
+      {
+        "code": "MIS-01",
+        "desc": "空几何",
+        "count": 417,
+        "source_step": "geometry_topology"
+      },
+      {
+        "code": "TOP-03",
+        "desc": "重复几何",
+        "count": 416,
+        "source_step": "geometry_topology"
+      }
+    ],
+    "elapsed_s": 6.64
+  },
+  "attribute_check": {
+    "status": "ok",
+    "total_features": 107452,
+    "null_stats": {},
+    "floor_stats": {
+      "min": 1.0,
+      "max": 66.0,
+      "mean": 6.5,
+      "median": 4.0
+    },
+    "defects": [],
+    "elapsed_s": 0.0
+  },
+  "overlay_precision": {
+    "status": "ok",
+    "crs_match": false,
+    "buildings_in_districts": 1591,
+    "offset_stats": {
+      "mean_offset_deg": 0.148311,
+      "max_offset_deg": 0.15095,
+      "min_offset_deg": 0.145693
+    },
+    "defects": [
+      {
+        "code": "NRM-01",
+        "desc": "CRS不一致: A=EPSG:4326 vs B=EPSG:4490",
+        "source_step": "overlay_precision"
+      }
+    ],
+    "elapsed_s": 0.69
+  },
+  "defect_summary": {
+    "total_defect_types": 3,
+    "by_category": {
+      "MIS": 1,
+      "TOP": 1,
+      "NRM": 1
+    },
+    "score": 79.5,
+    "grade": "良",
+    "details": [
+      {
+        "code": "MIS-01",
+        "desc": "空几何",
+        "count": 417,
+        "source_step": "geometry_topology"
+      },
+      {
+        "code": "TOP-03",
+        "desc": "重复几何",
+        "count": 416,
+        "source_step": "geometry_topology"
+      },
+      {
+        "code": "NRM-01",
+        "desc": "CRS不一致: A=EPSG:4326 vs B=EPSG:4490",
+        "source_step": "overlay_precision"
+      }
+    ]
+  }
+}
