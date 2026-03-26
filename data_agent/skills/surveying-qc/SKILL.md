@@ -3,6 +3,9 @@ name: surveying-qc
 display_name: 测绘质检
 description: 测绘成果质量检查与验收智能体，遵循 GB/T 24356 标准
 version: "1.0"
+metadata:
+  domain: quality_control
+  intent_triggers: 测绘质检,质量检查,质检报告,GB/T 24356,成果验收,精度核验
 ---
 
 # 测绘质检智能体 — Skill 指令

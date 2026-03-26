@@ -273,7 +273,8 @@ class TestPredictSequence(unittest.TestCase):
     @patch("data_agent.world_model._load_model")
     @patch("data_agent.world_model.extract_embeddings")
     @patch("data_agent.world_model._init_gee", return_value=True)
-    def test_predict_basic(self, mock_gee, mock_extract, mock_load_model, mock_load_decoder):
+    @patch("data_agent.embedding_store.load_grid_embeddings", return_value=None)
+    def test_predict_basic(self, mock_cache, mock_gee, mock_extract, mock_load_model, mock_load_decoder):
         """Full prediction should return expected structure."""
         import torch
         from data_agent.world_model import predict_sequence, _build_model
@@ -308,9 +309,10 @@ class TestPredictSequence(unittest.TestCase):
         self.assertEqual(result["status"], "error")
         self.assertIn("Unknown scenario", result["error"])
 
+    @patch("data_agent.embedding_store.load_grid_embeddings", return_value=None)
     @patch("data_agent.world_model.extract_embeddings", return_value=None)
     @patch("data_agent.world_model._init_gee", return_value=True)
-    def test_predict_gee_unavailable(self, mock_gee, mock_extract):
+    def test_predict_gee_unavailable(self, mock_gee, mock_extract, mock_cache):
         """Should return error when embeddings can't be extracted."""
         from data_agent.world_model import predict_sequence
 
@@ -345,13 +347,13 @@ class TestWorldModelTools(unittest.TestCase):
         self.assertIn("z_dim", result)
 
     def test_toolset_get_tools(self):
-        """WorldModelToolset should return 3 tools."""
+        """WorldModelToolset should return 5 tools."""
         import asyncio
         from data_agent.toolsets.world_model_tools import WorldModelToolset
 
         ts = WorldModelToolset()
         tools = asyncio.get_event_loop().run_until_complete(ts.get_tools())
-        self.assertEqual(len(tools), 3)
+        self.assertEqual(len(tools), 5)
         names = {t.name for t in tools}
         self.assertIn("world_model_predict", names)
         self.assertIn("world_model_scenarios", names)
@@ -367,11 +369,11 @@ class TestWorldModelRoutes(unittest.TestCase):
     """Test API route factory."""
 
     def test_route_count(self):
-        """Should return 4 routes."""
+        """Should return 7 routes."""
         from data_agent.api.world_model_routes import get_world_model_routes
 
         routes = get_world_model_routes()
-        self.assertEqual(len(routes), 4)
+        self.assertEqual(len(routes), 7)
 
     def test_route_paths(self):
         """Routes should have correct paths."""
