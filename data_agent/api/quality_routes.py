@@ -128,6 +128,155 @@ async def resource_overview(request: Request):
     return JSONResponse(result)
 
 
+async def qc_report_generate(request: Request):
+    """POST /api/reports/generate — generate a QC report from section data."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    section_data = body.get("section_data", {})
+    metadata = body.get("metadata")
+    charts = body.get("charts")
+    images = body.get("images")
+
+    try:
+        from ..report_generator import generate_qc_report
+        path = generate_qc_report(
+            section_data=section_data,
+            metadata=metadata,
+            charts=charts,
+            images=images,
+        )
+        return JSONResponse({"path": path, "status": "ok"})
+    except Exception as e:
+        logger.exception("QC report generation failed")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def defect_taxonomy_list(request: Request):
+    """GET /api/defect-taxonomy — list all defect types."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from ..standard_registry import DefectTaxonomy
+    return JSONResponse({
+        "defects": DefectTaxonomy.list_summary(),
+        "categories": [{"id": c.id, "name": c.name, "description": c.description}
+                       for c in DefectTaxonomy.all_categories()],
+        "severity_levels": [{"code": s.code, "name": s.name, "weight": s.weight}
+                           for s in DefectTaxonomy.all_severity_levels()],
+    })
+
+
+async def qc_reviews_list(request: Request):
+    """GET /api/qc/reviews — list QC review items."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    status_filter = request.query_params.get("status", "")
+    try:
+        from ..db_engine import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        sql = "SELECT * FROM agent_qc_reviews"
+        params = {}
+        if status_filter:
+            sql += " WHERE status = :s"
+            params["s"] = status_filter
+        sql += " ORDER BY created_at DESC LIMIT 100"
+        with engine.connect() as conn:
+            rows = conn.execute(text(sql), params).mappings().all()
+            return JSONResponse({"reviews": [dict(r) for r in rows]})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def qc_reviews_create(request: Request):
+    """POST /api/qc/reviews — create a QC review item."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    try:
+        from ..db_engine import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                INSERT INTO agent_qc_reviews
+                    (workflow_run_id, file_path, defect_code, defect_description,
+                     severity, assigned_to, created_by)
+                VALUES (:wrid, :fp, :dc, :dd, :sev, :at, :cb)
+                RETURNING id
+            """), {
+                "wrid": body.get("workflow_run_id"),
+                "fp": body.get("file_path", ""),
+                "dc": body.get("defect_code", ""),
+                "dd": body.get("defect_description", ""),
+                "sev": body.get("severity", "B"),
+                "at": body.get("assigned_to", ""),
+                "cb": username,
+            })
+            row = result.fetchone()
+            conn.commit()
+            return JSONResponse({"id": row[0]}, status_code=201)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def qc_reviews_update(request: Request):
+    """PUT /api/qc/reviews/{id} — update review status (approve/reject/fix)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    review_id = int(request.path_params["id"])
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    try:
+        from ..db_engine import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        new_status = body.get("status", "")
+        with engine.connect() as conn:
+            sets = ["updated_at = NOW()"]
+            params = {"id": review_id}
+            if new_status:
+                sets.append("status = :s")
+                params["s"] = new_status
+            if body.get("review_comment"):
+                sets.append("review_comment = :rc")
+                params["rc"] = body["review_comment"]
+            if body.get("fix_description"):
+                sets.append("fix_description = :fd")
+                params["fd"] = body["fix_description"]
+            if body.get("reviewer"):
+                sets.append("reviewer = :rv")
+                params["rv"] = body["reviewer"]
+            if new_status in ("approved", "rejected"):
+                sets.append("resolved_at = NOW()")
+
+            conn.execute(text(
+                f"UPDATE agent_qc_reviews SET {', '.join(sets)} WHERE id = :id"
+            ), params)
+            conn.commit()
+            return JSONResponse({"id": review_id, "status": new_status})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 def get_quality_routes() -> list:
     return [
         Route("/api/quality-rules", qrule_list, methods=["GET"]),
@@ -138,4 +287,9 @@ def get_quality_routes() -> list:
         Route("/api/quality-rules/{id:int}", qrule_delete, methods=["DELETE"]),
         Route("/api/quality-trends", quality_trends, methods=["GET"]),
         Route("/api/resource-overview", resource_overview, methods=["GET"]),
+        Route("/api/reports/generate", qc_report_generate, methods=["POST"]),
+        Route("/api/defect-taxonomy", defect_taxonomy_list, methods=["GET"]),
+        Route("/api/qc/reviews", qc_reviews_list, methods=["GET"]),
+        Route("/api/qc/reviews", qc_reviews_create, methods=["POST"]),
+        Route("/api/qc/reviews/{id:int}", qc_reviews_update, methods=["PUT"]),
     ]

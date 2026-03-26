@@ -198,11 +198,48 @@ async def workflow_resume(request: Request):
     return JSONResponse(result)
 
 
+async def qc_templates_list(request: Request):
+    """GET /api/workflows/qc-templates — list available QC workflow templates."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from ..workflow_engine import list_qc_templates
+    return JSONResponse({"templates": list_qc_templates()})
+
+
+async def qc_template_create(request: Request):
+    """POST /api/workflows/from-template — create workflow from QC template."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    template_id = body.get("template_id", "").strip()
+    if not template_id:
+        return JSONResponse({"error": "template_id is required"}, status_code=400)
+
+    from ..workflow_engine import create_workflow_from_template
+    wf_id = create_workflow_from_template(
+        template_id=template_id,
+        name_override=body.get("name", ""),
+        param_overrides=body.get("parameters"),
+    )
+    if wf_id is None:
+        return JSONResponse({"error": f"Template '{template_id}' not found or creation failed"}, status_code=404)
+    return JSONResponse({"id": wf_id, "template_id": template_id}, status_code=201)
+
+
 def get_workflow_routes() -> list:
     """Return Route objects for workflow endpoints."""
     return [
         Route("/api/workflows", workflows_list, methods=["GET"]),
         Route("/api/workflows", workflows_create, methods=["POST"]),
+        Route("/api/workflows/qc-templates", qc_templates_list, methods=["GET"]),
+        Route("/api/workflows/from-template", qc_template_create, methods=["POST"]),
         Route("/api/workflows/{id:int}", workflow_detail, methods=["GET"]),
         Route("/api/workflows/{id:int}", workflow_update, methods=["PUT"]),
         Route("/api/workflows/{id:int}", workflow_delete, methods=["DELETE"]),

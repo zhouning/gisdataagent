@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GIS Data Agent (ADK Edition) v14.4 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication. Users can self-service extend the platform with custom Skills (agent behaviors), User Tools (declarative templates), and multi-Agent pipeline workflows.
+GIS Data Agent (ADK Edition) v15.7 — an AI-powered geospatial analysis platform built on **Google Agent Developer Kit (ADK)**. It uses LLM-based semantic routing to dispatch user requests across three specialized pipelines for data governance, land-use optimization (via Deep Reinforcement Learning), and general spatial intelligence. The frontend is a custom React three-panel SPA served via **Chainlit** with password/OAuth2 authentication. Users can self-service extend the platform with custom Skills (agent behaviors), User Tools (declarative templates), and multi-Agent pipeline workflows.
+
+v15.7 adds the **Surveying QC Agent** subsystem: defect taxonomy (30 codes, 5 categories per GB/T 24356), SLA-enforced QC workflow templates, enhanced governance/precision/cleaning toolsets, QC report engine, alert rules, case library, MCP tool selection rules, human review workflow, and 4 independent subsystems under `subsystems/` (CV detection, CAD/3D parser, professional tool MCP servers, reference data service).
 
 ## Commands
 
@@ -17,7 +19,7 @@ Default login: `admin` / `admin123` (seeded on first run). In-app self-registrat
 
 ### Run tests
 ```bash
-# All tests (2100+ tests, 92 test files)
+# All tests (2650+ tests, 94 test files)
 .venv/Scripts/python.exe -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # Single test file
@@ -142,8 +144,8 @@ Key endpoint groups:
 | `mcp_hub.py` | MCP Hub Manager — DB + YAML config, 3 transport protocols, CRUD + hot reload |
 | `multimodal.py` | Multimodal input processing — image/PDF classification, Gemini Part builders |
 
-### Toolsets (23 registered in `TOOLSET_NAMES`, 25 .py files in `toolsets/`)
-ExplorationToolset, GeoProcessingToolset, VisualizationToolset, AnalysisToolset, DatabaseToolset, SemanticLayerToolset, DataLakeToolset, StreamingToolset, TeamToolset, LocationToolset, MemoryToolset, AdminToolset, FileToolset, RemoteSensingToolset, SpatialStatisticsToolset, McpHubToolset, FusionToolset, KnowledgeGraphToolset, KnowledgeBaseToolset, AdvancedAnalysisToolset, SpatialAnalysisTier2Toolset, WatershedToolset, **UserToolset**.
+### Toolsets (26 registered, 28 .py files in `toolsets/`)
+ExplorationToolset, GeoProcessingToolset, VisualizationToolset, AnalysisToolset, DatabaseToolset, SemanticLayerToolset, DataLakeToolset, StreamingToolset, TeamToolset, LocationToolset, MemoryToolset, AdminToolset, FileToolset, RemoteSensingToolset, SpatialStatisticsToolset, McpHubToolset, FusionToolset, KnowledgeGraphToolset, KnowledgeBaseToolset, AdvancedAnalysisToolset, SpatialAnalysisTier2Toolset, WatershedToolset, **UserToolset**, **GovernanceToolset** (18 tools), **DataCleaningToolset** (11 tools), **PrecisionToolset** (5 tools).
 
 ### ADK Skills (18 built-in + DB custom skills)
 18 fine-grained scenario skills in `data_agent/skills/` (kebab-case dirs). Three-level incremental loading (L1 metadata → L2 instructions → L3 resources).
@@ -166,12 +168,32 @@ The DRL model uses `MaskablePPO` (from `sb3_contrib`) with a custom `ParcelScori
 - **evaluate**: ADK agent evaluation (main push only, requires GOOGLE_API_KEY secret)
 
 ## Tech Stack
-- **Framework**: Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`)
+- **Framework**: Google ADK v1.27 (`google.adk.agents`, `google.adk.runners`)
 - **LLM**: Gemini 2.5 Flash / 2.5 Pro (agents), Gemini 2.0 Flash (router)
 - **Frontend**: React 18 + TypeScript + Vite + Leaflet.js + deck.gl + ReactFlow + @chainlit/react-client v0.3.1
-- **Backend**: Chainlit + Starlette (92 REST API endpoints)
-- **Database**: PostgreSQL 16 + PostGIS 3.4 (17 system tables)
+- **Backend**: Chainlit + Starlette (202 REST API endpoints)
+- **Database**: PostgreSQL 16 + PostGIS 3.4 (22 system tables, 43 migrations)
 - **GIS**: GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify, branca
 - **ML**: PyTorch, Stable Baselines 3, Gymnasium
 - **CI**: GitHub Actions (pytest + frontend build + evaluation)
 - **Language**: Prompts and UI text are primarily in Chinese; code comments mix Chinese and English
+
+### Subsystems (`subsystems/`, v15.7)
+Independent microservices integrated via MCP protocol or REST API:
+| Subsystem | Path | Integration | Key Tech |
+|-----------|------|-------------|----------|
+| CV Detection | `subsystems/cv-service/` | MCP (stdio) | FastAPI + YOLO/ultralytics |
+| CAD/3D Parser | `subsystems/cad-parser/` | MCP (stdio) | FastAPI + ezdxf + trimesh |
+| Tool MCP Servers | `subsystems/tool-mcp-servers/` | MCP (stdio) | arcgis-mcp (subprocess→arcpy), qgis-mcp, blender-mcp |
+| Reference Data | `subsystems/reference-data/` | REST + BaseConnector | FastAPI + PostGIS |
+
+ArcPy environment: `D:/Users/zn198/AppData/Local/ESRI/conda/envs/arcgispro-py3-clone-new2/python.exe` (configured in `data_agent/.env` as `ARCPY_PYTHON_EXE`).
+
+### Surveying QC System (v15.7)
+- **Defect Taxonomy**: `data_agent/standards/defect_taxonomy.yaml` — 30 codes, 5 categories (FMT/PRE/TOP/MIS/NRM), severity A/B/C per GB/T 24356
+- **QC Workflow Templates**: `data_agent/standards/qc_workflow_templates.yaml` — 3 presets (standard 5-step, quick 2-step, full 7-step) with SLA/timeout per step
+- **Alert Engine**: `AlertEngine` in `observability.py` — configurable threshold rules with webhook push
+- **MCP Tool Rules**: `ToolRuleEngine` in `mcp_hub.py` — task_type → tool selection with fallback chain
+- **Case Library**: `add_case()` / `search_cases()` in `knowledge_base.py` — structured QC experience records
+- **Human Review**: `agent_qc_reviews` table — review→mark→fix→approve workflow via `/api/qc/reviews`
+- **DB Migrations**: 039 (workflow SLA), 040 (MCP tool rules), 041 (alert rules), 042 (KB case library), 043 (QC reviews)

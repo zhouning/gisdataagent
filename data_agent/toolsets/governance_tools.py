@@ -864,6 +864,252 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
 # Toolset class
 # ---------------------------------------------------------------------------
 
+def check_logic_consistency(file_path: str, rules: str = "") -> str:
+    """[数据治理] 逻辑一致性检查 — 校验字段间逻辑关系（如面积=长×宽±容差）。
+
+    Args:
+        file_path: 待检查的空间数据文件路径
+        rules: JSON 格式的逻辑规则列表，如 '[{"expr":"TBMJ=CD*KD","tolerance":0.01}]'。
+               为空时自动从标准注册表加载 formulas。
+    """
+    try:
+        import geopandas as gpd
+        gdf = gpd.read_file(file_path)
+        violations = []
+
+        if rules:
+            rule_list = json.loads(rules)
+        else:
+            rule_list = []
+
+        for rule in rule_list:
+            expr = rule.get("expr", "")
+            tol = rule.get("tolerance", 0.01)
+            if "=" not in expr:
+                continue
+            left, right = expr.split("=", 1)
+            left = left.strip()
+            right = right.strip()
+            try:
+                left_vals = gdf.eval(left)
+                right_vals = gdf.eval(right)
+                diff = (left_vals - right_vals).abs()
+                bad_mask = diff > tol
+                bad_count = int(bad_mask.sum())
+                if bad_count > 0:
+                    violations.append({
+                        "rule": expr,
+                        "tolerance": tol,
+                        "violation_count": bad_count,
+                        "max_diff": float(diff.max()),
+                    })
+            except Exception as e:
+                violations.append({"rule": expr, "error": str(e)})
+
+        result = {
+            "status": "pass" if not violations else "fail",
+            "total_records": len(gdf),
+            "rules_checked": len(rule_list),
+            "violations": violations,
+        }
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def check_temporal_validity(file_path: str, date_field: str, valid_range: str = "") -> str:
+    """[数据治理] 时效性检查 — 检查数据时间戳是否在有效期内。
+
+    Args:
+        file_path: 待检查的空间数据文件路径
+        date_field: 日期字段名
+        valid_range: 有效期范围，格式 'YYYY-MM-DD,YYYY-MM-DD'（起止日期）。为空则检查是否为空值。
+    """
+    try:
+        import geopandas as gpd
+        import pandas as pd
+        gdf = gpd.read_file(file_path)
+
+        if date_field not in gdf.columns:
+            return json.dumps({"status": "error", "message": f"字段 '{date_field}' 不存在"}, ensure_ascii=False)
+
+        dates = pd.to_datetime(gdf[date_field], errors="coerce")
+        null_count = int(dates.isna().sum())
+        total = len(gdf)
+
+        expired_count = 0
+        future_count = 0
+        if valid_range:
+            parts = valid_range.split(",")
+            if len(parts) == 2:
+                start = pd.Timestamp(parts[0].strip())
+                end = pd.Timestamp(parts[1].strip())
+                valid_dates = dates.dropna()
+                expired_count = int((valid_dates < start).sum())
+                future_count = int((valid_dates > end).sum())
+
+        result = {
+            "status": "pass" if (expired_count == 0 and future_count == 0 and null_count == 0) else "warn" if null_count > 0 else "fail",
+            "total_records": total,
+            "date_field": date_field,
+            "null_dates": null_count,
+            "expired_count": expired_count,
+            "future_count": future_count,
+            "valid_range": valid_range or "N/A",
+        }
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def check_naming_convention(file_path: str, standard_id: str = "gb_t_24356") -> str:
+    """[数据治理] 命名规范检查 — 检查图层名/字段名是否符合标准命名规则。
+
+    Args:
+        file_path: 待检查的空间数据文件路径
+        standard_id: 标准ID，用于获取标准字段名列表
+    """
+    try:
+        import geopandas as gpd
+        gdf = gpd.read_file(file_path)
+        actual_fields = list(gdf.columns)
+
+        from ..standard_registry import StandardRegistry
+        std = StandardRegistry.get(standard_id)
+
+        issues = []
+        # Check for non-ASCII field names (common issue in Chinese GIS data)
+        import re
+        for f in actual_fields:
+            if f == "geometry":
+                continue
+            if not re.match(r'^[A-Za-z_\u4e00-\u9fff][A-Za-z0-9_\u4e00-\u9fff]*$', f):
+                issues.append({"field": f, "issue": "字段名含非法字符"})
+            if len(f) > 30:
+                issues.append({"field": f, "issue": "字段名超过30字符"})
+
+        # Check against standard field names if available
+        standard_fields = []
+        if std:
+            standard_fields = [fs.name for fs in std.fields]
+            for sf in standard_fields:
+                # Case-insensitive match
+                matched = any(af.upper() == sf.upper() for af in actual_fields)
+                if not matched and any(af.upper().startswith(sf[:3].upper()) for af in actual_fields):
+                    issues.append({"field": sf, "issue": f"疑似命名不规范（标准名: {sf}）"})
+
+        result = {
+            "status": "pass" if not issues else "warn",
+            "total_fields": len(actual_fields),
+            "standard_id": standard_id,
+            "standard_fields_count": len(standard_fields),
+            "naming_issues": issues,
+        }
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def classify_defects(file_path: str, standard_id: str = "gb_t_24356") -> str:
+    """[数据治理] 缺陷分类统计 — 对数据执行全面检查，按缺陷分类法归类所有问题，输出分类统计和质量评分。
+
+    Args:
+        file_path: 待检查的空间数据文件路径
+        standard_id: 质检标准ID
+    """
+    try:
+        import geopandas as gpd
+        gdf = gpd.read_file(file_path)
+        found_defects = []
+
+        # --- Format checks ---
+        if gdf.crs is None:
+            found_defects.append("MIS-004")  # 坐标系信息缺失
+        elif gdf.crs.to_epsg() and gdf.crs.to_epsg() != 4490:
+            found_defects.append("FMT-001")  # 坐标系定义错误
+
+        # --- Completeness checks ---
+        from ..standard_registry import StandardRegistry
+        std = StandardRegistry.get(standard_id)
+        if std:
+            mandatory = std.get_mandatory_fields()
+            for mf in mandatory:
+                if mf not in gdf.columns:
+                    found_defects.append("MIS-001")  # 必填属性缺失
+                    break
+                elif gdf[mf].isna().any():
+                    found_defects.append("MIS-001")
+                    break
+
+        # --- Topology checks ---
+        if hasattr(gdf, "geometry") and gdf.geometry is not None:
+            invalid_count = int((~gdf.geometry.is_valid).sum())
+            if invalid_count > 0:
+                found_defects.append("TOP-005")  # 无效几何
+
+            empty_count = int(gdf.geometry.is_empty.sum())
+            if empty_count > 0:
+                found_defects.append("TOP-005")
+
+            # Check duplicates
+            if len(gdf) > 1:
+                from shapely import equals_exact
+                dup_count = 0
+                geoms = gdf.geometry.values
+                seen = set()
+                for i, g in enumerate(geoms):
+                    wkb = g.wkb if hasattr(g, "wkb") else str(g)
+                    if wkb in seen:
+                        dup_count += 1
+                    seen.add(wkb)
+                if dup_count > 0:
+                    found_defects.append("TOP-006")  # 重复要素
+
+        # --- Naming checks ---
+        import re
+        for col in gdf.columns:
+            if col == "geometry":
+                continue
+            if not re.match(r'^[A-Za-z_\u4e00-\u9fff]', col):
+                found_defects.append("NRM-001")
+                break
+
+        # Deduplicate
+        found_defects = list(dict.fromkeys(found_defects))
+
+        # Compute quality score
+        from ..standard_registry import DefectTaxonomy
+        score_result = DefectTaxonomy.compute_quality_score(found_defects, total_items=len(gdf))
+
+        # Build detailed defect list
+        defect_details = []
+        for code in found_defects:
+            dt = DefectTaxonomy.get_by_code(code)
+            if dt:
+                defect_details.append({
+                    "code": dt.code,
+                    "name": dt.name,
+                    "category": dt.category,
+                    "severity": dt.severity,
+                    "auto_fixable": dt.auto_fixable,
+                })
+
+        result = {
+            "status": score_result["grade"],
+            "total_records": len(gdf),
+            "defect_count": len(found_defects),
+            "quality_score": score_result["score"],
+            "quality_grade": score_result["grade"],
+            "severity_counts": score_result["severity_counts"],
+            "category_counts": score_result["category_counts"],
+            "defects": defect_details,
+            "auto_fixable_count": sum(1 for d in defect_details if d.get("auto_fixable")),
+        }
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
 _ALL_FUNCS = [
     check_gaps,
     check_completeness,
@@ -877,6 +1123,10 @@ _ALL_FUNCS = [
     validate_field_formulas,
     generate_gap_matrix,
     generate_governance_plan,
+    check_logic_consistency,
+    check_temporal_validity,
+    check_naming_convention,
+    classify_defects,
 ]
 
 

@@ -60,3 +60,42 @@ servers:
   #   enabled: false
   #   category: analytics
   #   pipelines: ["general", "planner"]
+
+  # --- Surveying QC subsystem servers ---
+  - name: cv-detection-service
+    description: "CV visual detection for CAD layers, raster quality, 3D model validation"
+    transport: stdio
+    command: "D:\\adk\\.venv\\Scripts\\python.exe"
+    args: ["-m", "subsystems.cv-service.mcp_wrapper.server"]
+    enabled: false
+    category: qc
+    pipelines: ["governance"]
+
+  - name: cad-parser-service
+    description: "CAD/3D file parsing and format conversion"
+    transport: stdio
+    command: "D:\\adk\\.venv\\Scripts\\python.exe"
+    args: ["-m", "subsystems.cad-parser.mcp_wrapper.server"]
+    enabled: false
+    category: qc
+    pipelines: ["governance"]
+
+  - name: arcgis-pro-tools
+    description: "ArcGIS Pro topology check, spatial join, buffer, map export via arcpy"
+    transport: stdio
+    command: "D:\\adk\\.venv\\Scripts\\python.exe"
+    args: ["D:\\adk\\subsystems\\tool-mcp-servers\\arcgis-mcp\\server.py"]
+    env:
+      ARCPY_PYTHON_EXE: "D:/Users/zn198/AppData/Local/ESRI/conda/envs/arcgispro-py3-clone-new2/python.exe"
+    enabled: false
+    category: qc
+    pipelines: ["governance"]
+
+  - name: qgis-tools
+    description: "QGIS geometry validation, topology check, raster calculator"
+    transport: stdio
+    command: "D:\\adk\\.venv\\Scripts\\python.exe"
+    args: ["D:\\adk\\subsystems\\tool-mcp-servers\\qgis-mcp\\server.py"]
+    enabled: false
+    category: qc
+    pipelines: ["governance"]
