@@ -219,6 +219,11 @@ def ensure_custom_skills_table():
                 conn.execute(text(
                     f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS {col}"
                 ))
+            # v15.1: output schema validation (Phase 3c)
+            conn.execute(text(
+                f"ALTER TABLE {T_CUSTOM_SKILLS} ADD COLUMN IF NOT EXISTS "
+                f"output_schema VARCHAR(100) DEFAULT ''"
+            ))
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS agent_skill_versions (
                     id SERIAL PRIMARY KEY,
@@ -286,6 +291,8 @@ def create_custom_skill(
     trigger_keywords: list[str] | None = None,
     model_tier: str = "standard",
     is_shared: bool = False,
+    output_schema: str = "",
+    output_mode: str = "",
 ) -> Optional[int]:
     """Create a custom skill. Returns skill id or None on failure."""
     engine = get_engine()
@@ -297,8 +304,10 @@ def create_custom_skill(
             row = conn.execute(text(f"""
                 INSERT INTO {T_CUSTOM_SKILLS}
                     (owner_username, skill_name, description, instruction,
-                     toolset_names, trigger_keywords, model_tier, is_shared)
-                VALUES (:owner, :name, :desc, :instr, :tools, :triggers, :tier, :shared)
+                     toolset_names, trigger_keywords, model_tier, is_shared,
+                     output_schema)
+                VALUES (:owner, :name, :desc, :instr, :tools, :triggers, :tier, :shared,
+                        :output_schema)
                 RETURNING id
             """), {
                 "owner": username,
@@ -309,6 +318,7 @@ def create_custom_skill(
                 "triggers": trigger_keywords or [],
                 "tier": model_tier if model_tier in VALID_MODEL_TIERS else "standard",
                 "shared": is_shared,
+                "output_schema": output_schema or "",
             }).fetchone()
             conn.commit()
             return row[0] if row else None
@@ -330,7 +340,7 @@ def list_custom_skills(include_shared: bool = True) -> list[dict]:
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
                        rating_sum, rating_count, clone_count,
-                       version, category, tags, use_count
+                       version, category, tags, use_count, output_schema
                 FROM {T_CUSTOM_SKILLS}
                 WHERE (owner_username = :owner OR is_shared = TRUE)
                   AND enabled = TRUE
@@ -342,7 +352,7 @@ def list_custom_skills(include_shared: bool = True) -> list[dict]:
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
                        rating_sum, rating_count, clone_count,
-                       version, category, tags, use_count
+                       version, category, tags, use_count, output_schema
                 FROM {T_CUSTOM_SKILLS}
                 WHERE owner_username = :owner
                 ORDER BY created_at DESC
@@ -368,7 +378,7 @@ def get_custom_skill(skill_id: int) -> Optional[dict]:
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
                        rating_sum, rating_count, clone_count,
-                       version, category, tags, use_count
+                       version, category, tags, use_count, output_schema
                 FROM {T_CUSTOM_SKILLS}
                 WHERE id = :id AND (owner_username = :owner OR is_shared = TRUE)
             """), {"id": skill_id, "owner": username}).fetchone()
@@ -388,6 +398,7 @@ def update_custom_skill(skill_id: int, **fields) -> bool:
     allowed = {
         "skill_name", "description", "instruction", "toolset_names",
         "trigger_keywords", "model_tier", "is_shared", "enabled",
+        "output_schema",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
@@ -464,7 +475,7 @@ def find_skill_by_name(mention_name: str) -> Optional[dict]:
                        toolset_names, trigger_keywords, model_tier,
                        is_shared, enabled, created_at, updated_at,
                        rating_sum, rating_count, clone_count,
-                       version, category, tags, use_count
+                       version, category, tags, use_count, output_schema
                 FROM {T_CUSTOM_SKILLS}
                 WHERE LOWER(skill_name) = LOWER(:name)
                   AND (owner_username = :owner OR is_shared = TRUE)
@@ -535,6 +546,12 @@ def build_custom_agent(skill: dict):
         after_tool_callback=_self_correction_after_tool,
         tools=tools,
     )
+    # NOTE: output_schema validation is available via:
+    #   from .skill_output_schemas import try_validate_output
+    #   output = try_validate_output(output, skill.get("output_schema"))
+    # Since ADK agents return through the LLM pipeline, structured validation
+    # is applied at the caller site (e.g., workflow_engine or app.py) rather
+    # than inside the agent factory.
 
 
 # ---------------------------------------------------------------------------
@@ -565,6 +582,7 @@ def _row_to_dict(row) -> dict:
         "category": row[16] if len(row) > 16 else "",
         "tags": list(row[17]) if len(row) > 17 and row[17] else [],
         "use_count": row[18] if len(row) > 18 else 0,
+        "output_schema": row[19] if len(row) > 19 else "",
     }
 
 

@@ -108,3 +108,7 @@ scripts/generate_paper_docx.py
 scripts/generate_architecture_fig.py
 scripts/ablation_study.py
 scripts/ablation_results/
+
+# Benchmark generated data and results
+benchmarks/data/
+benchmarks/benchmark_results.json

@@ -96,6 +96,16 @@ export default function App() {
   const [dataWidth, setDataWidth] = useState(340);
   const dragging = useRef<'chat' | 'data' | null>(null);
 
+  // --- Mobile adaptive layout ---
+  const [activePanel, setActivePanel] = useState<'chat' | 'map' | 'data'>('chat');
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1024px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+
   const onResizeStart = useCallback((panel: 'chat' | 'data') => (e: React.MouseEvent) => {
     e.preventDefault();
     dragging.current = panel;
@@ -188,19 +198,45 @@ export default function App() {
       ) : (
         <div className="workspace" ref={workspaceRef}
           style={{ '--chat-width': `${chatWidth}px`, '--data-width': `${dataWidth}px` } as React.CSSProperties}>
-          <ErrorBoundary name="聊天面板">
-            <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} onLayerControl={handleLayerControl} />
-          </ErrorBoundary>
-          <div className={`panel-resizer${dragging.current === 'chat' ? ' dragging' : ''}`}
-            onMouseDown={onResizeStart('chat')} />
-          <ErrorBoundary name="地图面板">
-            <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} layerControl={layerControl} />
-          </ErrorBoundary>
-          <div className={`panel-resizer${dragging.current === 'data' ? ' dragging' : ''}`}
-            onMouseDown={onResizeStart('data')} />
-          <ErrorBoundary name="数据面板">
-            <DataPanel dataFile={dataFile} userRole={userRole} />
-          </ErrorBoundary>
+          {(!isMobile || activePanel === 'chat') && (
+            <ErrorBoundary name="聊天面板">
+              <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} onLayerControl={handleLayerControl} />
+            </ErrorBoundary>
+          )}
+          {!isMobile && (
+            <div className={`panel-resizer${dragging.current === 'chat' ? ' dragging' : ''}`}
+              onMouseDown={onResizeStart('chat')} />
+          )}
+          {(!isMobile || activePanel === 'map') && (
+            <ErrorBoundary name="地图面板">
+              <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} layerControl={layerControl} />
+            </ErrorBoundary>
+          )}
+          {!isMobile && (
+            <div className={`panel-resizer${dragging.current === 'data' ? ' dragging' : ''}`}
+              onMouseDown={onResizeStart('data')} />
+          )}
+          {(!isMobile || activePanel === 'data') && (
+            <ErrorBoundary name="数据面板">
+              <DataPanel dataFile={dataFile} userRole={userRole} />
+            </ErrorBoundary>
+          )}
+        </div>
+      )}
+      {isMobile && !showAdmin && (
+        <div className="mobile-tab-bar">
+          <button className={`mobile-tab-btn${activePanel === 'chat' ? ' active' : ''}`} onClick={() => setActivePanel('chat')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>对话</span>
+          </button>
+          <button className={`mobile-tab-btn${activePanel === 'map' ? ' active' : ''}`} onClick={() => setActivePanel('map')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+            <span>地图</span>
+          </button>
+          <button className={`mobile-tab-btn${activePanel === 'data' ? ' active' : ''}`} onClick={() => setActivePanel('data')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span>数据</span>
+          </button>
         </div>
       )}
       {showSettings && (

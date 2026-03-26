@@ -38,6 +38,14 @@ export default function OptimizationTab() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<RunResult | null>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explainResult, setExplainResult] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [compareA, setCompareA] = useState<number | null>(null);
+  const [compareB, setCompareB] = useState<number | null>(null);
+  const [compareResult, setCompareResult] = useState<any>(null);
 
   useEffect(() => {
     fetch('/api/drl/scenarios', { credentials: 'include' })
@@ -98,6 +106,23 @@ export default function OptimizationTab() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const r = await fetch('/api/drl/history', { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setHistory(d.runs || []); }
+    } catch { /* ignore */ }
+    finally { setHistoryLoading(false); }
+  };
+
+  const doCompare = async () => {
+    if (!compareA || !compareB) return;
+    try {
+      const r = await fetch(`/api/drl/compare?a=${compareA}&b=${compareB}`, { credentials: 'include' });
+      if (r.ok) setCompareResult(await r.json());
+    } catch { /* ignore */ }
   };
 
   const sliderRow = (
@@ -239,6 +264,127 @@ export default function OptimizationTab() {
           )}
         </div>
       )}
+
+      {/* Explainability section */}
+      <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+        <button
+          onClick={async () => {
+            setExplainLoading(true);
+            try {
+              const r = await fetch('/api/drl/explain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ scenario_id: scenarioId }),
+              });
+              if (r.ok) setExplainResult(await r.json());
+            } catch { /* ignore */ }
+            finally { setExplainLoading(false); }
+          }}
+          disabled={explainLoading}
+          style={{
+            padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)', background: 'var(--surface-elevated)',
+            cursor: explainLoading ? 'not-allowed' : 'pointer', color: 'var(--text-secondary)',
+          }}
+        >
+          {explainLoading ? '分析中...' : '特征重要性分析'}
+        </button>
+        {explainResult && explainResult.feature_importance && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>特征重要性排名</div>
+            {explainResult.feature_importance.slice(0, 6).map((f: any, i: number) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 4 }}>
+                <span style={{ width: 140, color: 'var(--text-secondary)' }}>{f.feature}</span>
+                <div style={{ flex: 1, background: 'var(--bg-secondary)', borderRadius: 4, height: 14 }}>
+                  <div style={{ width: `${f.importance}%`, background: i < 3 ? 'var(--primary)' : 'var(--text-secondary)', borderRadius: 4, height: '100%' }} />
+                </div>
+                <span style={{ fontSize: 11, width: 40, textAlign: 'right' }}>{f.importance}%</span>
+              </div>
+            ))}
+            {explainResult.summary && (
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>{explainResult.summary}</div>
+            )}
+          </div>
+        )}
+        {explainResult && explainResult.mode === 'scenario_based' && (
+          <div style={{ marginTop: 8, fontSize: 12 }}>
+            <div style={{ fontWeight: 600 }}>场景特征分析</div>
+            <div style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{explainResult.description}</div>
+            <div style={{ marginTop: 4 }}>关键特征: {explainResult.key_features?.join(', ')}</div>
+          </div>
+        )}
+      </div>
+
+      {/* History & Comparison */}
+      <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+        <button
+          className="btn-secondary btn-sm"
+          onClick={() => { setShowHistory(!showHistory); if (!showHistory) loadHistory(); }}
+          style={{
+            padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)', background: 'var(--surface-elevated)',
+            cursor: 'pointer', color: 'var(--text-secondary)',
+          }}
+        >
+          {showHistory ? '收起历史' : '运行历史'}
+        </button>
+        {showHistory && (
+          <div style={{ marginTop: 8 }}>
+            {historyLoading ? <div style={{ fontSize: 12 }}>加载中...</div> : (
+              <>
+                {history.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>暂无历史记录</div>}
+                {history.map(run => (
+                  <div key={run.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 0', borderBottom: '1px solid var(--border-light, #eee)' }}>
+                    <input type="radio" name="compareA" checked={compareA === run.id} onChange={() => setCompareA(run.id)} />
+                    <input type="radio" name="compareB" checked={compareB === run.id} onChange={() => setCompareB(run.id)} />
+                    <span style={{ flex: 1 }}>#{run.id} {run.scenario_id} — {run.summary?.slice(0, 40) || '(无摘要)'}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{run.created_at?.slice(0, 16)}</span>
+                  </div>
+                ))}
+                {compareA && compareB && compareA !== compareB && (
+                  <button
+                    onClick={doCompare}
+                    style={{
+                      marginTop: 8, padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-sm)',
+                      border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer',
+                    }}
+                  >
+                    对比 #{compareA} vs #{compareB}
+                  </button>
+                )}
+                {compareResult && compareResult.metrics_comparison && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>指标对比</div>
+                    <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ textAlign: 'left', padding: '4px' }}>指标</th>
+                          <th style={{ textAlign: 'right', padding: '4px' }}>Run A</th>
+                          <th style={{ textAlign: 'right', padding: '4px' }}>Run B</th>
+                          <th style={{ textAlign: 'right', padding: '4px' }}>差异</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(compareResult.metrics_comparison).map(([key, v]: [string, any]) => (
+                          <tr key={key} style={{ borderBottom: '1px solid var(--border-light, #eee)' }}>
+                            <td style={{ padding: '3px 4px' }}>{key}</td>
+                            <td style={{ textAlign: 'right', padding: '3px 4px' }}>{v.run_a ?? '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '3px 4px' }}>{v.run_b ?? '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '3px 4px', color: v.delta > 0 ? '#22c55e' : v.delta < 0 ? '#ef4444' : '' }}>
+                              {v.delta != null ? (v.delta > 0 ? '+' : '') + v.delta.toFixed(3) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Empty state */}
       {!result && !loading && !error && (
