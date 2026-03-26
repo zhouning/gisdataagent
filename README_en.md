@@ -1,12 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v15.0
+# GIS Data Agent (ADK Edition) v15.5
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 20 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 22 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **143+ REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **191+ REST API endpoints**.
 
-**v15.0 deep observability + data security + distributed compute**: OpenTelemetry distributed tracing (Pipeline/Agent/Tool 3-level span tree) + Agent decision tracing (DecisionTrace + Mermaid diagrams) + 9 Prometheus alert rules; PII classification engine (5 sensitivity levels) + field-level masking (4 strategies) + RLS policies for 8 tables; data distribution lifecycle (request/approval + packaging + reviews + access tracking); 8 pluggable connectors (+Database +ObjectStorage); data versioning (snapshots/rollback/incremental diff/notifications); 19 ADK Skills (5 design patterns with Pipeline fusion); SparkGateway 3-tier execution routing (L1 local / L2 queue / L3 Spark).
+**v15.5**: DRL-World Model Dreamer integration (world model as environment model providing look-ahead auxiliary reward) + three-angle causal inference paper + world model paper R2 reviewer response + 12 platform maturity items (intent disambiguation v2, adaptive layout, message bus, Skill SDK, Helm Chart, etc.).
 
 ## 📚 Official Technical Documentation
 
@@ -21,10 +21,13 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2193 tests, 93 test files |
-| Toolsets | 26 BaseToolset (incl. GovernanceToolset + ChartToolset + UserToolset + VirtualSourceToolset), 5 SkillBundle, 145+ tools |
-| ADK Skills | 18 scenario skills + DB-driven custom Skills + User Tools |
-| REST API | 124 endpoints |
+| Test Coverage | 2650+ tests, 113 test files |
+| Toolsets | 38 BaseToolset (incl. DreamerToolset + CausalInferenceToolset + LLMCausalToolset + CausalWorldModelToolset + WorldModelToolset + NL2SQLToolset), 5 SkillBundle, 220+ tools |
+| ADK Skills | 21 scenario skills + DB-driven custom Skills + User Tools |
+| REST API | 191+ endpoints |
+| Causal Inference | Three-angle system: A (GeoFM statistical 6 tools) + B (LLM reasoning 4 tools) + C (Causal world model 4 tools), 82 tests |
+| World Model | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 scenarios + timeline animation |
+| DRL + World Model | Dreamer-style integration: embedding look-ahead + scenario encoding + auxiliary reward |
 | MCP Server | v2.0 — 36+ tools exposed (GIS primitives + high-level metadata + pipeline execution) |
 | Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
