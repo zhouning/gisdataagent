@@ -2089,6 +2089,16 @@ async def _execute_pipeline(
                         if facts:
                             save_auto_extract_memories(facts)
                             logger.info("[MemoryETL] Extracted %d facts for user=%s", len(facts), _uid)
+                            # Notify frontend about extracted facts
+                            fact_lines = "\n".join(
+                                f"- **{f.get('category', '')}**: {f.get('key', '')} → {str(f.get('value', ''))[:80]}"
+                                for f in facts[:5]
+                            )
+                            await cl.Message(
+                                content=f"💡 已自动提取 {len(facts)} 条知识：\n{fact_lines}",
+                                metadata={"memory_extract": {"count": len(facts), "facts": facts[:5]}},
+                                author="system",
+                            ).send()
                     except Exception as ex:
                         logger.debug("[MemoryETL] Extraction failed: %s", ex)
 
@@ -2772,6 +2782,30 @@ async def main(message: cl.Message):
                         await cl.Message(content=t("routing.confirm_timeout")).send()
             except Exception as e:
                 logger.error("Plan confirmation error: %s", e)
+
+    # --- Task Decomposition Preview (Phase 2a) ---
+    try:
+        from data_agent.intent_router import should_decompose
+        if should_decompose(user_text):
+            from data_agent.task_decomposer import decompose_task, build_parallel_execution_plan
+            task_graph = await decompose_task(user_text)
+            waves = build_parallel_execution_plan(task_graph)
+            if task_graph.node_count > 1:
+                lines = ["\U0001f4cb **已识别多步骤任务：**\n"]
+                for node in task_graph.nodes.values():
+                    deps = f" (依赖: {', '.join(node.dependencies)})" if node.dependencies else ""
+                    lines.append(f"  {node.id}. {node.description}{deps}")
+                lines.append(f"\n共 {task_graph.node_count} 步，{len(waves)} 批次执行")
+                await cl.Message(
+                    content="\n".join(lines),
+                    author="system",
+                    metadata={"subtask_progress": {
+                        "total": task_graph.node_count,
+                        "waves": len(waves),
+                    }},
+                ).send()
+    except Exception as _decomp_err:
+        logger.debug("[TaskDecompose] Preview skipped: %s", _decomp_err)
 
     # --- Custom Skill trigger keyword check (v8.0.1) ---
     if not _custom_skill_agent:

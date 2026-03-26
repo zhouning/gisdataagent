@@ -1,0 +1,11 @@
+GIS Data Agent deployed successfully!
+
+Get the application URL:
+{{- if .Values.ingress.enabled }}
+  http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}
+{{- else }}
+  kubectl port-forward svc/{{ include "gis-data-agent.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  Then open: http://localhost:{{ .Values.service.port }}
+{{- end }}
+
+Default login: admin / admin123

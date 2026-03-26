@@ -49,6 +49,17 @@ async def skills_create(request: Request):
     if model_tier not in VALID_MODEL_TIERS:
         return JSONResponse({"error": f"model_tier must be one of {sorted(VALID_MODEL_TIERS)}"}, status_code=400)
 
+    # Validate output_schema if provided
+    output_schema = body.get("output_schema", "")
+    if output_schema:
+        from ..skill_output_schemas import SCHEMA_REGISTRY
+        if output_schema not in SCHEMA_REGISTRY:
+            valid = sorted(SCHEMA_REGISTRY.keys()) if SCHEMA_REGISTRY else []
+            return JSONResponse(
+                {"error": f"Unknown output_schema '{output_schema}'. Valid: {valid}"},
+                status_code=400,
+            )
+
     skill_id = create_custom_skill(
         skill_name=body["skill_name"].strip(),
         instruction=body["instruction"].strip(),
@@ -56,6 +67,7 @@ async def skills_create(request: Request):
         toolset_names=body.get("toolset_names") or [],
         model_tier=model_tier,
         output_mode=body.get("output_mode", ""),
+        output_schema=body.get("output_schema", ""),
         is_shared=body.get("is_shared", False),
     )
     if skill_id is None:
@@ -222,6 +234,15 @@ async def skills_review_publish(request: Request):
     return JSONResponse(result)
 
 
+async def skill_schemas_list(request: Request):
+    """GET /api/skills/schemas — list available output schemas."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from ..skill_output_schemas import list_schemas
+    return JSONResponse({"schemas": list_schemas()})
+
+
 async def skills_pending_list(request: Request):
     """GET /api/skills/pending — list skills pending approval (admin only)."""
     user = _get_user_from_request(request)
@@ -234,12 +255,65 @@ async def skills_pending_list(request: Request):
     return JSONResponse({"pending": list_pending_approvals()})
 
 
+# ---------------------------------------------------------------------------
+# Skill Dependency Graph (Phase 2c)
+# ---------------------------------------------------------------------------
+
+async def skill_dependency_graph(request: Request):
+    """GET /api/skills/dependency-graph — get full dependency graph."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    from ..skill_dependency_graph import build_skill_graph
+    graph = build_skill_graph(username)
+    return JSONResponse(graph)
+
+
+async def skill_dependencies_get(request: Request):
+    """GET /api/skills/{id}/dependencies — get skill dependencies."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    from ..skill_dependency_graph import get_dependencies, get_dependents
+    deps = get_dependencies(skill_id, username)
+    dependents = get_dependents(skill_id, username)
+    return JSONResponse({"dependencies": deps, "dependents": dependents})
+
+
+async def skill_dependencies_update(request: Request):
+    """PUT /api/skills/{id}/dependencies — update skill dependencies."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    skill_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    depends_on = body.get("depends_on", [])
+    if not isinstance(depends_on, list):
+        return JSONResponse({"error": "depends_on must be array"}, status_code=400)
+    from ..skill_dependency_graph import update_dependencies
+    result = update_dependencies(skill_id, depends_on, username)
+    if result.get("status") == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result)
+
+
 def get_skills_routes() -> list:
     """Return Route objects for custom skills endpoints."""
     return [
         Route("/api/skills", skills_list, methods=["GET"]),
         Route("/api/skills", skills_create, methods=["POST"]),
+        Route("/api/skills/schemas", skill_schemas_list, methods=["GET"]),
         Route("/api/skills/pending", skills_pending_list, methods=["GET"]),
+        Route("/api/skills/dependency-graph", skill_dependency_graph, methods=["GET"]),
+        Route("/api/skills/{id:int}/dependencies", skill_dependencies_get, methods=["GET"]),
+        Route("/api/skills/{id:int}/dependencies", skill_dependencies_update, methods=["PUT"]),
         Route("/api/skills/{id:int}", skills_detail, methods=["GET"]),
         Route("/api/skills/{id:int}", skills_update, methods=["PUT"]),
         Route("/api/skills/{id:int}", skills_delete, methods=["DELETE"]),

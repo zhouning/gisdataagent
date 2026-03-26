@@ -2408,6 +2408,70 @@ async def _api_drl_run_custom(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+async def _api_drl_explain(request: Request):
+    """POST /api/drl/explain — explain DRL decision feature importance."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    scenario_id = body.get("scenario_id", "farmland_optimization")
+
+    # Try to find model weights
+    import os
+    model_path = os.path.join(os.path.dirname(__file__), "weights", "scorer_weights_v7")
+
+    from data_agent.drl_interpretability import explain_drl_decision, get_scenario_feature_summary
+
+    # If no model available, return scenario-based summary
+    if not os.path.exists(model_path + ".zip"):
+        summary = get_scenario_feature_summary(scenario_id)
+        return JSONResponse({"status": "ok", "mode": "scenario_based", **summary})
+
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads", username)
+    os.makedirs(upload_dir, exist_ok=True)
+
+    result = explain_drl_decision(model_path, output_dir=upload_dir)
+    return JSONResponse(result)
+
+
+async def _api_drl_history(request: Request):
+    """GET /api/drl/history — list DRL optimization run history."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    from data_agent.drl_engine import list_run_history
+    runs = list_run_history(username)
+    return JSONResponse({"runs": runs})
+
+
+async def _api_drl_compare(request: Request):
+    """GET /api/drl/compare?a=ID&b=ID — compare two DRL runs."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    run_a_id = request.query_params.get("a")
+    run_b_id = request.query_params.get("b")
+    if not run_a_id or not run_b_id:
+        return JSONResponse({"error": "Both a and b run IDs required"}, status_code=400)
+
+    from data_agent.drl_engine import list_run_history, compare_runs
+    runs = list_run_history(username, limit=100)
+    run_a = next((r for r in runs if str(r["id"]) == str(run_a_id)), None)
+    run_b = next((r for r in runs if str(r["id"]) == str(run_b_id)), None)
+    if not run_a or not run_b:
+        return JSONResponse({"error": "Run not found"}, status_code=404)
+
+    result = compare_runs(run_a, run_b)
+    return JSONResponse(result)
+
+
 async def _api_memory_search(request: Request):
     """GET /api/memory/search?q=keyword&type=region — search user spatial memories."""
     user = _get_user_from_request(request)
@@ -2764,6 +2828,9 @@ def get_frontend_api_routes():
         # DRL Scenarios (v14.0) + Custom Weights (v15.3)
         Route("/api/drl/scenarios", endpoint=_api_drl_scenarios, methods=["GET"]),
         Route("/api/drl/run-custom", endpoint=_api_drl_run_custom, methods=["POST"]),
+        Route("/api/drl/explain", endpoint=_api_drl_explain, methods=["POST"]),
+        Route("/api/drl/history", endpoint=_api_drl_history, methods=["GET"]),
+        Route("/api/drl/compare", endpoint=_api_drl_compare, methods=["GET"]),
         # Memory Search (v14.0)
         Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
         # Analysis Chains (v14.2)

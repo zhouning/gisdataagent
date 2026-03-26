@@ -79,6 +79,12 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         onDataUpdate(meta.data_update.csv || meta.data_update.file);
         processedMetaRef.current.add(msg.id);
       }
+      if (meta.memory_extract) {
+        processedMetaRef.current.add(msg.id);
+      }
+      if (meta.subtask_progress) {
+        processedMetaRef.current.add(msg.id);
+      }
     }
   }, [messages, onMapUpdate, onDataUpdate, onLayerControl]);
 

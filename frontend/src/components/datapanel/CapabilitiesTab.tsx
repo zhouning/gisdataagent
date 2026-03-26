@@ -14,6 +14,7 @@ interface CapabilityItem {
   trigger_keywords?: string[];
   model_tier?: string;
   is_shared?: boolean;
+  depends_on?: number[];
 }
 
 type CapFilter = 'all' | 'builtin_skill' | 'custom_skill' | 'toolset' | 'user_tool' | 'bundle' | 'template';
@@ -494,6 +495,11 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
                 <div className="cap-card-footer">
                   {item.owner_username && <span className="cap-owner">by {item.owner_username}</span>}
                   {item.is_shared && <span className="cap-badge cap-shared">共享</span>}
+                  {item.depends_on && item.depends_on.length > 0 && (
+                    <span className="cap-badge cap-domain" title="依赖技能 ID">
+                      依赖: {item.depends_on.map((d: number) => `#${d}`).join(', ')}
+                    </span>
+                  )}
                   {item.id && (
                     <>
                       <button className="cap-edit-btn" onClick={() => handleEditSkill(item)}>编辑</button>
