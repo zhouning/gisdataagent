@@ -33,15 +33,31 @@ interface QcReview {
   created_at: string;
 }
 
+interface DashboardData {
+  templates: { count: number };
+  reviews: { total: number; pending: number; approved: number; rejected: number; fixed: number };
+  workflows: { total: number; running: number; completed: number; failed: number; sla_violated: number };
+  alerts: { total_rules: number; enabled_rules: number; recent_alerts: number };
+  recent_reviews: Array<{ id: number; file_path: string; defect_code: string; severity: string; status: string; created_at: string }>;
+}
+
 export default function QcMonitorTab() {
   const [templates, setTemplates] = useState<QcTemplate[]>([]);
   const [categories, setCategories] = useState<DefectCategory[]>([]);
   const [defects, setDefects] = useState<DefectCode[]>([]);
   const [reviews, setReviews] = useState<QcReview[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [section, setSection] = useState<'templates' | 'taxonomy' | 'reviews'>('templates');
+  const [section, setSection] = useState<'dashboard' | 'templates' | 'taxonomy' | 'reviews'>('dashboard');
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
+  const fetchDashboard = async () => {
+    try {
+      const r = await fetch('/api/qc/dashboard', { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setDashboard(d); }
+    } catch { /* ignore */ }
+  };
 
   const fetchTemplates = async () => {
     try {
@@ -69,7 +85,7 @@ export default function QcMonitorTab() {
   };
 
   useEffect(() => {
-    Promise.all([fetchTemplates(), fetchTaxonomy(), fetchReviews()]).finally(() => setLoading(false));
+    Promise.all([fetchDashboard(), fetchTemplates(), fetchTaxonomy(), fetchReviews()]).finally(() => setLoading(false));
   }, []);
 
   const createFromTemplate = async (templateId: string) => {
@@ -136,7 +152,7 @@ export default function QcMonitorTab() {
 
       {/* Section switcher */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-        {(['templates', 'taxonomy', 'reviews'] as const).map(s => (
+        {(['dashboard', 'templates', 'taxonomy', 'reviews'] as const).map(s => (
           <button key={s} onClick={() => setSection(s)}
             style={{
               padding: '4px 12px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
@@ -144,10 +160,114 @@ export default function QcMonitorTab() {
               color: section === s ? '#7dd3fc' : '#888',
               border: `1px solid ${section === s ? '#2563eb' : '#333'}`,
             }}>
-            {s === 'templates' ? '质检模板' : s === 'taxonomy' ? '缺陷分类' : '复核管理'}
+            {s === 'dashboard' ? '概览' : s === 'templates' ? '模板' : s === 'taxonomy' ? '缺陷分类' : '复核'}
           </button>
         ))}
       </div>
+
+      {/* Dashboard */}
+      {section === 'dashboard' && (
+        <div>
+          {/* Stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#7dd3fc' }}>{dashboard?.templates.count || 0}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>质检模板</div>
+            </div>
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#fb8c00' }}>{dashboard?.reviews.pending || 0}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>待复核</div>
+            </div>
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{dashboard?.workflows.running || 0}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>运行中工作流</div>
+            </div>
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#e53935' }}>{dashboard?.alerts.recent_alerts || 0}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>近期告警</div>
+            </div>
+          </div>
+
+          {/* Recent Reviews */}
+          <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#e0e0e0' }}>最近复核</div>
+            {dashboard?.recent_reviews && dashboard.recent_reviews.length > 0 ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead><tr style={{ background: '#1f2937' }}>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>文件</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>缺陷码</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>严重度</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>状态</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>创建时间</th>
+                </tr></thead>
+                <tbody>
+                  {dashboard.recent_reviews.map(r => {
+                    const ss = statusStyle(r.status);
+                    return (
+                      <tr key={r.id}>
+                        <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#ccc', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.file_path}</td>
+                        <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', fontFamily: 'monospace', color: '#7dd3fc' }}>{r.defect_code}</td>
+                        <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937' }}>
+                          <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: sevColor(r.severity), color: 'white' }}>{r.severity}</span>
+                        </td>
+                        <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937' }}>
+                          <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: ss.bg, color: ss.color }}>{r.status}</span>
+                        </td>
+                        <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#aaa' }}>{new Date(r.created_at).toLocaleString('zh-CN')}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ color: '#888', fontSize: 12, textAlign: 'center', padding: 12 }}>暂无复核记录</div>
+            )}
+          </div>
+
+          {/* Workflow Stats */}
+          <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#e0e0e0' }}>工作流统计</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
+                  <span>已完成</span>
+                  <span>{dashboard?.workflows.completed || 0}</span>
+                </div>
+                <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#10b981', width: `${dashboard?.workflows.total ? (dashboard.workflows.completed / dashboard.workflows.total * 100) : 0}%` }} />
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
+                  <span>运行中</span>
+                  <span>{dashboard?.workflows.running || 0}</span>
+                </div>
+                <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#3b82f6', width: `${dashboard?.workflows.total ? (dashboard.workflows.running / dashboard.workflows.total * 100) : 0}%` }} />
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
+                  <span>失败</span>
+                  <span>{dashboard?.workflows.failed || 0}</span>
+                </div>
+                <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#e53935', width: `${dashboard?.workflows.total ? (dashboard.workflows.failed / dashboard.workflows.total * 100) : 0}%` }} />
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
+                  <span>SLA违规</span>
+                  <span>{dashboard?.workflows.sla_violated || 0}</span>
+                </div>
+                <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#fb8c00', width: `${dashboard?.workflows.total ? (dashboard.workflows.sla_violated / dashboard.workflows.total * 100) : 0}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Templates */}
       {section === 'templates' && (
