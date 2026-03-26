@@ -116,11 +116,79 @@ services:
     networks:
       - agent-net
 
+  # ---------------------------------------------------------------------------
+  # CV Detection Service (Surveying QC — v15.7)
+  # ---------------------------------------------------------------------------
+  cv-service:
+    build: ./subsystems/cv-service
+    restart: unless-stopped
+    ports:
+      - "8010:8000"
+    environment:
+      MODEL_DIR: /app/models
+      DEVICE: ${CV_DEVICE:-cpu}
+    volumes:
+      - cv-models:/app/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - agent-net
+    profiles:
+      - qc
+
+  # ---------------------------------------------------------------------------
+  # CAD/3D Parser Service (Surveying QC — v15.7)
+  # ---------------------------------------------------------------------------
+  cad-parser:
+    build: ./subsystems/cad-parser
+    restart: unless-stopped
+    ports:
+      - "8011:8000"
+    volumes:
+      - cad-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - agent-net
+    profiles:
+      - qc
+
+  # ---------------------------------------------------------------------------
+  # Reference Data Service (Surveying QC — v15.7)
+  # ---------------------------------------------------------------------------
+  reference-data:
+    build: ./subsystems/reference-data
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8012:8000"
+    environment:
+      DATABASE_URL: postgresql://agent_user:${POSTGRES_PASSWORD:-change_me_strong_password}@db:5432/gis_agent
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - agent-net
+    profiles:
+      - qc
+
 volumes:
   pgdata:
   uploads:
   worldpop_cache:
   redis-data:
+  cv-models:
+  cad-uploads:
 
 networks:
   agent-net:
