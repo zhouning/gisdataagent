@@ -5,6 +5,7 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 import geopandas as gpd
 from shapely.geometry import box
+from gymnasium import spaces
 
 
 # --- Test data helper ---
@@ -235,6 +236,126 @@ class TestDreamerEnv(unittest.TestCase):
         env.reset()
         _, _, _, _, info = env.step(0)
         self.assertEqual(len(info['scenario_vector']), 16)
+
+
+# --- EmbeddingAugmentedEnv tests ---
+class TestEmbeddingAugmentedEnv(unittest.TestCase):
+
+    def test_augmented_obs_dimension(self):
+        from data_agent.dreamer_env import DreamerEnv, EmbeddingAugmentedEnv
+        base = MagicMock()
+        base.gdf = _make_gdf(10)
+        base.types = np.array([1] * 5 + [2] * 5)
+        base.n_swappable = 10
+        base.swappable_indices = list(range(10))
+        base.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(68,))
+        base.action_space = spaces.Discrete(10)
+        base.reset.return_value = (np.zeros(68), {})
+        base.step.return_value = (np.zeros(68), 1.0, False, False, {})
+        base.total_bounds = base.gdf.total_bounds
+
+        dreamer = DreamerEnv(base, enable_world_model=False)
+        aug_env = EmbeddingAugmentedEnv(dreamer)
+        self.assertEqual(aug_env.observation_space.shape[0], 68 + 20)  # +2*10
+
+    def test_augmented_reset_returns_correct_shape(self):
+        from data_agent.dreamer_env import DreamerEnv, EmbeddingAugmentedEnv
+        base = MagicMock()
+        base.gdf = _make_gdf(10)
+        base.types = np.array([1] * 5 + [2] * 5)
+        base.n_swappable = 10
+        base.swappable_indices = list(range(10))
+        base.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(68,))
+        base.action_space = spaces.Discrete(10)
+        base.reset.return_value = (np.zeros(68), {})
+        base.total_bounds = base.gdf.total_bounds
+
+        dreamer = DreamerEnv(base, enable_world_model=False)
+        aug_env = EmbeddingAugmentedEnv(dreamer)
+        obs, info = aug_env.reset()
+        self.assertEqual(obs.shape[0], 88)
+
+    def test_augment_passthrough_when_no_mapper(self):
+        """When embedding_mapper is None, obs is returned unchanged."""
+        from data_agent.dreamer_env import DreamerEnv, EmbeddingAugmentedEnv
+        base = MagicMock()
+        base.gdf = _make_gdf(4)
+        base.n_swappable = 0
+        base.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(68,))
+        base.action_space = spaces.Discrete(4)
+        base.reset.return_value = (np.ones(68), {})
+        base.total_bounds = base.gdf.total_bounds
+
+        dreamer = DreamerEnv(base, enable_world_model=False)
+        aug_env = EmbeddingAugmentedEnv(dreamer)
+        obs, _ = aug_env.reset()
+        self.assertEqual(obs.shape[0], 68)
+
+
+# --- DreamPlanner tests ---
+class TestDreamPlanner(unittest.TestCase):
+
+    def test_dream_trajectory_without_model(self):
+        from data_agent.dreamer_env import DreamPlanner, ParcelEmbeddingMapper, ActionToScenarioEncoder
+        mapper = MagicMock(spec=ParcelEmbeddingMapper)
+        encoder = ActionToScenarioEncoder()
+        planner = DreamPlanner(mapper, encoder)
+        # Force model loading to fail so trajectory returns empty
+        with patch('data_agent.dreamer_env.DreamPlanner._ensure_model', return_value=False):
+            result = planner.dream_trajectory(np.zeros((64, 8, 8)), np.zeros(16))
+        self.assertEqual(result, [])
+
+    def test_evaluate_candidates_without_model(self):
+        from data_agent.dreamer_env import DreamPlanner, ParcelEmbeddingMapper, ActionToScenarioEncoder
+        mapper = MagicMock(spec=ParcelEmbeddingMapper)
+        mapper.embeddings = None
+        encoder = ActionToScenarioEncoder()
+        planner = DreamPlanner(mapper, encoder)
+        result = planner.evaluate_action_candidates(mapper, [0, 1, 2], np.array([1, 2, 1]))
+        self.assertEqual(len(result), 3)
+        self.assertTrue(all(score == 0.0 for _, score in result))
+
+    def test_default_horizon(self):
+        from data_agent.dreamer_env import DreamPlanner, ActionToScenarioEncoder
+        mapper = MagicMock()
+        encoder = ActionToScenarioEncoder()
+        planner = DreamPlanner(mapper, encoder, horizon=5)
+        self.assertEqual(planner.horizon, 5)
+        self.assertAlmostEqual(planner.gamma, 0.95)
+
+
+# --- LatentValueEstimator tests ---
+class TestLatentValueEstimator(unittest.TestCase):
+
+    def test_predict_returns_scalar(self):
+        from data_agent.dreamer_env import LatentValueEstimator
+        estimator = LatentValueEstimator()
+        v = estimator.predict(np.zeros(64), np.zeros(8))
+        self.assertIsInstance(v, float)
+
+    def test_add_experience_and_train(self):
+        from data_agent.dreamer_env import LatentValueEstimator
+        estimator = LatentValueEstimator()
+        for i in range(50):
+            estimator.add_experience(np.random.randn(64), np.random.randn(8), float(i))
+        loss = estimator.train_step(batch_size=32)
+        self.assertGreater(loss, 0.0)
+
+    def test_clear_buffer(self):
+        from data_agent.dreamer_env import LatentValueEstimator
+        estimator = LatentValueEstimator()
+        estimator.add_experience(np.zeros(64), np.zeros(8), 1.0)
+        self.assertEqual(len(estimator._buffer), 1)
+        estimator.clear_buffer()
+        self.assertEqual(len(estimator._buffer), 0)
+
+    def test_train_step_insufficient_data(self):
+        """train_step returns 0 when buffer has fewer items than batch_size."""
+        from data_agent.dreamer_env import LatentValueEstimator
+        estimator = LatentValueEstimator()
+        estimator.add_experience(np.zeros(64), np.zeros(8), 1.0)
+        loss = estimator.train_step(batch_size=32)
+        self.assertEqual(loss, 0.0)
 
 
 # --- DreamerToolset registration ---

@@ -378,6 +378,277 @@ class DreamerEnv:
         return self.base_env.close()
 
 
+# ---- EmbeddingAugmentedEnv ----
+class EmbeddingAugmentedEnv:
+    """Augments DreamerEnv observations with per-parcel embedding features.
+
+    Adds 2 features per swappable parcel to the observation vector:
+    - Embedding coherence: cosine similarity with spatial neighbors
+    - Predicted change magnitude: L2 distance of 1-step world model prediction
+    """
+
+    def __init__(self, dreamer_env: DreamerEnv):
+        self.env = dreamer_env
+        self.n_swappable = getattr(dreamer_env.base_env, 'n_swappable', 0)
+        # Augmented observation space: original + 2 * n_swappable
+        orig_dim = (
+            dreamer_env.observation_space.shape[0]
+            if hasattr(dreamer_env.observation_space, 'shape')
+            else 0
+        )
+        self._aug_dim = 2 * self.n_swappable
+        if orig_dim > 0:
+            from gymnasium import spaces
+            self.observation_space = spaces.Box(
+                low=-np.inf, high=np.inf,
+                shape=(orig_dim + self._aug_dim,), dtype=np.float32,
+            )
+        else:
+            self.observation_space = dreamer_env.observation_space
+        self.action_space = dreamer_env.action_space
+
+    def _augment_obs(self, obs):
+        """Append embedding coherence + predicted change to observation."""
+        if self._aug_dim == 0:
+            return obs
+        if self.env.embedding_mapper is None:
+            aug = np.zeros(self._aug_dim, dtype=np.float32)
+            return np.concatenate([obs, aug]).astype(np.float32)
+        coherence = np.zeros(self.n_swappable, dtype=np.float32)
+        change_mag = np.zeros(self.n_swappable, dtype=np.float32)
+        swappable = getattr(self.env.base_env, 'swappable_indices', [])
+        for i, si in enumerate(swappable[:self.n_swappable]):
+            # Build neighbor list (adjacent indices) for coherence calculation
+            neighbors = [
+                idx for idx in [si - 1, si + 1]
+                if 0 <= idx < len(swappable)
+            ]
+            coherence[i] = self.env.embedding_mapper.get_coherence(si, neighbors)
+            emb = self.env.embedding_mapper.get_embedding(si)
+            change_mag[i] = float(np.linalg.norm(emb)) if emb is not None else 0.0
+        aug = np.concatenate([coherence, change_mag])
+        return np.concatenate([obs, aug]).astype(np.float32)
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        return self._augment_obs(obs), info
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        return self._augment_obs(obs), reward, terminated, truncated, info
+
+    def __getattr__(self, name):
+        return getattr(self.env, name)
+
+
+# ---- DreamPlanner ----
+class DreamPlanner:
+    """Plans actions by imagining future states via the world model.
+
+    Uses LatentDynamicsNet to simulate N-step rollouts in embedding space,
+    evaluating candidate actions by their predicted long-term impact.
+    """
+
+    def __init__(
+        self,
+        embedding_mapper: ParcelEmbeddingMapper,
+        scenario_encoder: ActionToScenarioEncoder,
+        horizon: int = 3,
+        gamma: float = 0.95,
+    ):
+        self.embedding_mapper = embedding_mapper
+        self.scenario_encoder = scenario_encoder
+        self.horizon = horizon
+        self.gamma = gamma
+        self._model = None
+        self._decoder = None
+
+    def _ensure_model(self):
+        """Lazy-load world model and decoder."""
+        if self._model is not None:
+            return True
+        try:
+            import torch  # noqa: F401
+            from data_agent.world_model import _load_model, _load_decoder
+            self._model = _load_model()
+            self._decoder = _load_decoder()
+            return True
+        except Exception as e:
+            logger.warning("DreamPlanner: cannot load world model: %s", e)
+            return False
+
+    def dream_trajectory(
+        self,
+        current_embeddings: np.ndarray,
+        scenario_vec: np.ndarray,
+        horizon: int | None = None,
+    ) -> list[np.ndarray]:
+        """Predict embedding trajectory for ``horizon`` steps.
+
+        Args:
+            current_embeddings: [C, H, W] or [H, W, C] embedding grid
+            scenario_vec: 16D scenario vector
+            horizon: override default horizon
+
+        Returns:
+            List of [C, H, W] predicted embedding arrays, length = horizon
+        """
+        if not self._ensure_model():
+            return []
+
+        import torch
+
+        steps = horizon or self.horizon
+
+        # Ensure CHW format
+        if current_embeddings.ndim == 3 and current_embeddings.shape[-1] == 64:
+            z = current_embeddings.transpose(2, 0, 1)  # HWC -> CHW
+        else:
+            z = current_embeddings
+
+        z_t = torch.tensor(z).unsqueeze(0).float()
+        s = torch.tensor(scenario_vec).unsqueeze(0).float()
+
+        trajectory: list[np.ndarray] = []
+        with torch.no_grad():
+            for _ in range(steps):
+                z_t = self._model(z_t, s, context=None)
+                trajectory.append(z_t.squeeze(0).numpy().copy())
+
+        return trajectory
+
+    def evaluate_action_candidates(
+        self,
+        embedding_mapper: ParcelEmbeddingMapper,
+        candidate_actions: list[int],
+        base_types: np.ndarray,
+    ) -> list[tuple[int, float]]:
+        """Score candidate actions by predicted embedding change magnitude.
+
+        For each candidate action (parcel index to flip), simulate the flip,
+        predict 1-step forward, and score by embedding displacement.
+
+        Args:
+            embedding_mapper: current parcel embeddings
+            candidate_actions: list of parcel indices to evaluate
+            base_types: current land use types array
+
+        Returns:
+            List of (action, score) sorted by score descending (higher = more change)
+        """
+        if not self._ensure_model() or embedding_mapper.embeddings is None:
+            return [(a, 0.0) for a in candidate_actions]
+
+        scores: list[tuple[int, float]] = []
+        for action in candidate_actions:
+            emb = embedding_mapper.get_embedding(action)
+            if emb is None:
+                scores.append((action, 0.0))
+                continue
+            # Score = embedding norm as proxy for change potential
+            score = float(np.linalg.norm(emb))
+            scores.append((action, score))
+
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return scores
+
+
+# ---- LatentValueEstimator ----
+class LatentValueEstimator:
+    """Estimates state value V(z) from embedding + global features.
+
+    A lightweight MLP trained on (embedding, cumulative_reward) pairs
+    collected during episodes.  Used to compute advantage-based auxiliary rewards.
+    """
+
+    def __init__(
+        self,
+        embedding_dim: int = 64,
+        global_dim: int = 8,
+        hidden_dim: int = 64,
+        lr: float = 1e-3,
+    ):
+        self.embedding_dim = embedding_dim
+        self.global_dim = global_dim
+        self.hidden_dim = hidden_dim
+        self.lr = lr
+        self._model = None
+        self._optimizer = None
+        self._buffer: list[tuple[np.ndarray, float]] = []
+
+    def _ensure_model(self):
+        """Lazy-initialize PyTorch model."""
+        if self._model is not None:
+            return True
+        try:
+            import torch
+            import torch.nn as nn
+            input_dim = self.embedding_dim + self.global_dim
+            self._model = nn.Sequential(
+                nn.Linear(input_dim, self.hidden_dim),
+                nn.ReLU(),
+                nn.Linear(self.hidden_dim, self.hidden_dim),
+                nn.ReLU(),
+                nn.Linear(self.hidden_dim, 1),
+            )
+            self._optimizer = torch.optim.Adam(
+                self._model.parameters(), lr=self.lr
+            )
+            return True
+        except ImportError:
+            logger.warning("LatentValueEstimator: torch not available")
+            return False
+
+    def predict(self, embedding: np.ndarray, global_features: np.ndarray) -> float:
+        """Predict V(z) for given state."""
+        if not self._ensure_model():
+            return 0.0
+        import torch
+        x = np.concatenate([embedding, global_features]).astype(np.float32)
+        with torch.no_grad():
+            v = self._model(torch.tensor(x).unsqueeze(0))
+        return float(v.item())
+
+    def add_experience(
+        self,
+        embedding: np.ndarray,
+        global_features: np.ndarray,
+        cumulative_reward: float,
+    ):
+        """Store (state, return) pair for training."""
+        x = np.concatenate([embedding, global_features]).astype(np.float32)
+        self._buffer.append((x, cumulative_reward))
+
+    def train_step(self, batch_size: int = 32) -> float:
+        """Train on buffered experiences. Returns mean loss."""
+        if not self._ensure_model() or len(self._buffer) < batch_size:
+            return 0.0
+
+        import torch
+        import torch.nn.functional as F
+
+        # Sample batch
+        indices = np.random.choice(len(self._buffer), batch_size, replace=False)
+        xs = np.array([self._buffer[i][0] for i in indices])
+        ys = np.array([self._buffer[i][1] for i in indices])
+
+        x_t = torch.tensor(xs, dtype=torch.float32)
+        y_t = torch.tensor(ys, dtype=torch.float32).unsqueeze(1)
+
+        pred = self._model(x_t)
+        loss = F.mse_loss(pred, y_t)
+
+        self._optimizer.zero_grad()
+        loss.backward()
+        self._optimizer.step()
+
+        return float(loss.item())
+
+    def clear_buffer(self):
+        """Clear experience buffer."""
+        self._buffer.clear()
+
+
 # ---- Top-level entry point ----
 
 def run_dreamer_optimization(
