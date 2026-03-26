@@ -277,6 +277,86 @@ async def qc_reviews_update(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+async def qc_dashboard(request: Request):
+    """QC dashboard statistics — aggregated overview for monitoring."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    from ..workflow_engine import list_qc_templates
+    templates = list_qc_templates()
+
+    review_stats = {"total": 0, "pending": 0, "approved": 0, "rejected": 0, "fixed": 0}
+    workflow_stats = {"total": 0, "running": 0, "completed": 0, "failed": 0, "sla_violated": 0}
+    recent_reviews = []
+
+    try:
+        from ..database_tools import _get_engine
+        from sqlalchemy import text
+        engine = _get_engine()
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "SELECT COUNT(*), "
+                "SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN status='fixed' THEN 1 ELSE 0 END) "
+                "FROM agent_qc_reviews"
+            )).fetchone()
+            review_stats = {
+                "total": row[0] or 0, "pending": row[1] or 0,
+                "approved": row[2] or 0, "rejected": row[3] or 0, "fixed": row[4] or 0,
+            }
+
+            wrow = conn.execute(text(
+                "SELECT COUNT(*), "
+                "SUM(CASE WHEN status='running' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN sla_violated THEN 1 ELSE 0 END) "
+                "FROM agent_workflow_runs"
+            )).fetchone()
+            workflow_stats = {
+                "total": wrow[0] or 0, "running": wrow[1] or 0,
+                "completed": wrow[2] or 0, "failed": wrow[3] or 0, "sla_violated": wrow[4] or 0,
+            }
+
+            rows = conn.execute(text(
+                "SELECT id, file_path, defect_code, severity, status, created_at "
+                "FROM agent_qc_reviews ORDER BY created_at DESC LIMIT 10"
+            )).fetchall()
+            for r in rows:
+                recent_reviews.append({
+                    "id": r[0], "file_path": r[1], "defect_code": r[2],
+                    "severity": r[3], "status": r[4], "created_at": str(r[5]),
+                })
+    except Exception:
+        pass
+
+    alert_stats = {"total_rules": 0, "enabled_rules": 0, "recent_alerts": 0}
+    try:
+        from ..database_tools import _get_engine
+        from sqlalchemy import text
+        engine = _get_engine()
+        with engine.connect() as conn:
+            r1 = conn.execute(text("SELECT COUNT(*), SUM(CASE WHEN enabled THEN 1 ELSE 0 END) FROM agent_alert_rules")).fetchone()
+            alert_stats["total_rules"] = r1[0] or 0
+            alert_stats["enabled_rules"] = r1[1] or 0
+            r2 = conn.execute(text("SELECT COUNT(*) FROM agent_alert_history WHERE created_at > NOW() - INTERVAL '24 hours'")).fetchone()
+            alert_stats["recent_alerts"] = r2[0] or 0
+    except Exception:
+        pass
+
+    return JSONResponse({
+        "templates": {"count": len(templates), "items": templates},
+        "reviews": review_stats,
+        "workflows": workflow_stats,
+        "alerts": alert_stats,
+        "recent_reviews": recent_reviews,
+    })
+
+
 def get_quality_routes() -> list:
     return [
         Route("/api/quality-rules", qrule_list, methods=["GET"]),
@@ -292,4 +372,5 @@ def get_quality_routes() -> list:
         Route("/api/qc/reviews", qc_reviews_list, methods=["GET"]),
         Route("/api/qc/reviews", qc_reviews_create, methods=["POST"]),
         Route("/api/qc/reviews/{id:int}", qc_reviews_update, methods=["PUT"]),
+        Route("/api/qc/dashboard", qc_dashboard, methods=["GET"]),
     ]
