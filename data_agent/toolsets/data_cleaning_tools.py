@@ -372,6 +372,169 @@ def mask_sensitive_fields_tool(file_path: str, field_rules: str) -> str:
 # Toolset class
 # ---------------------------------------------------------------------------
 
+def auto_fix_defects(file_path: str, standard_id: str = "gb_t_24356") -> str:
+    """[数据清洗] 按缺陷分类自动修正 — 检测数据中的可自动修正缺陷并执行修正。
+
+    Args:
+        file_path: 待修正的空间数据文件路径
+        standard_id: 质检标准ID
+    Returns:
+        JSON string with fix results: fixed_count, skipped_count, details
+    """
+    try:
+        import geopandas as gpd
+        gdf = gpd.read_file(file_path)
+        from ..standard_registry import DefectTaxonomy
+        fixable = DefectTaxonomy.get_auto_fixable()
+
+        fixed = []
+        skipped = []
+
+        for defect in fixable:
+            strategy = defect.fix_strategy
+            try:
+                if strategy == "make_valid" and hasattr(gdf, "geometry"):
+                    invalid_mask = ~gdf.geometry.is_valid
+                    if invalid_mask.any():
+                        gdf.loc[invalid_mask, "geometry"] = gdf.loc[invalid_mask, "geometry"].buffer(0)
+                        fixed.append({"code": defect.code, "name": defect.name, "count": int(invalid_mask.sum())})
+
+                elif strategy == "remove_duplicates" and hasattr(gdf, "geometry"):
+                    before = len(gdf)
+                    gdf = gdf.drop_duplicates(subset=["geometry"])
+                    removed = before - len(gdf)
+                    if removed > 0:
+                        fixed.append({"code": defect.code, "name": defect.name, "count": removed})
+
+                elif strategy == "crs_auto_detect_and_set":
+                    if gdf.crs is None:
+                        gdf = gdf.set_crs("EPSG:4490")
+                        fixed.append({"code": defect.code, "name": defect.name, "count": 1})
+
+                elif strategy == "round_precision":
+                    for col in gdf.select_dtypes(include=["float64"]).columns:
+                        if col != "geometry":
+                            gdf[col] = gdf[col].round(6)
+                    fixed.append({"code": defect.code, "name": defect.name, "count": 1})
+
+                else:
+                    skipped.append({"code": defect.code, "name": defect.name, "reason": "strategy not implemented"})
+            except Exception as e:
+                skipped.append({"code": defect.code, "name": defect.name, "reason": str(e)})
+
+        # Save fixed file
+        output_path = file_path.rsplit(".", 1)[0] + "_fixed." + file_path.rsplit(".", 1)[-1]
+        gdf.to_file(output_path)
+
+        result = {
+            "status": "ok",
+            "fixed_count": len(fixed),
+            "skipped_count": len(skipped),
+            "output_path": output_path,
+            "fixed": fixed,
+            "skipped": skipped,
+        }
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def auto_classify_archive(file_path: str, standard_id: str = "gb_t_24356") -> str:
+    """[数据清洗] 自动分类归档 — 按成果类型、精度等级、项目归属自动分类数据。
+
+    Args:
+        file_path: 待分类的空间数据文件路径
+        standard_id: 质检标准ID
+    Returns:
+        JSON string with classification results
+    """
+    try:
+        import geopandas as gpd
+        gdf = gpd.read_file(file_path)
+
+        # Detect product type from geometry
+        geom_types = set(gdf.geometry.geom_type.unique()) if hasattr(gdf, "geometry") else set()
+        if "Polygon" in geom_types or "MultiPolygon" in geom_types:
+            product_type = "vector_polygon"
+        elif "LineString" in geom_types or "MultiLineString" in geom_types:
+            product_type = "vector_line"
+        elif "Point" in geom_types or "MultiPoint" in geom_types:
+            product_type = "vector_point"
+        else:
+            product_type = "unknown"
+
+        # Detect CRS
+        crs_info = str(gdf.crs) if gdf.crs else "undefined"
+
+        # Detect precision class based on coordinate decimal places
+        if hasattr(gdf, "geometry") and len(gdf) > 0:
+            sample = gdf.geometry.iloc[0]
+            if hasattr(sample, "x"):
+                coord_str = str(sample.x)
+                decimals = len(coord_str.split(".")[-1]) if "." in coord_str else 0
+                if decimals >= 8:
+                    precision_class = "高精度"
+                elif decimals >= 5:
+                    precision_class = "中精度"
+                else:
+                    precision_class = "低精度"
+            else:
+                precision_class = "未知"
+        else:
+            precision_class = "未知"
+
+        result = {
+            "status": "ok",
+            "file_path": file_path,
+            "product_type": product_type,
+            "geometry_types": list(geom_types),
+            "crs": crs_info,
+            "precision_class": precision_class,
+            "record_count": len(gdf),
+            "field_count": len(gdf.columns) - 1,
+            "suggested_archive": f"{product_type}/{precision_class}",
+        }
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def batch_standardize_crs(file_path: str, target_crs: str = "EPSG:4490") -> str:
+    """[数据清洗] 批量坐标系统一 — 将数据统一转换到目标坐标系（默认 CGCS2000）。
+
+    Args:
+        file_path: 待转换的空间数据文件路径
+        target_crs: 目标坐标系 (默认 EPSG:4490 即 CGCS2000)
+    Returns:
+        JSON string with conversion results
+    """
+    try:
+        import geopandas as gpd
+        gdf = gpd.read_file(file_path)
+
+        source_crs = str(gdf.crs) if gdf.crs else "undefined"
+        if gdf.crs is None:
+            gdf = gdf.set_crs("EPSG:4326")
+            source_crs = "EPSG:4326 (assumed)"
+
+        target_epsg = target_crs
+        gdf_reprojected = gdf.to_crs(target_epsg)
+
+        output_path = file_path.rsplit(".", 1)[0] + f"_{target_epsg.replace(':', '_')}." + file_path.rsplit(".", 1)[-1]
+        gdf_reprojected.to_file(output_path)
+
+        result = {
+            "status": "ok",
+            "source_crs": source_crs,
+            "target_crs": target_crs,
+            "record_count": len(gdf_reprojected),
+            "output_path": output_path,
+        }
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
 _ALL_FUNCS = [
     fill_null_values,
     map_field_codes,
@@ -381,6 +544,9 @@ _ALL_FUNCS = [
     standardize_crs,
     add_missing_fields,
     mask_sensitive_fields_tool,
+    auto_fix_defects,
+    auto_classify_archive,
+    batch_standardize_crs,
 ]
 
 

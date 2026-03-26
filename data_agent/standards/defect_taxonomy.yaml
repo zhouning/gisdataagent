@@ -1,0 +1,319 @@
+# 测绘质检缺陷分类法 (Defect Taxonomy)
+# 基于 GB/T 24356-2009 测绘成果质量检查与验收
+# 5 大类，约 30 个缺陷编码
+
+id: defect_taxonomy
+name: 测绘质检缺陷分类法
+version: "1.0"
+source: "GB/T 24356-2009 + 行业实践"
+
+severity_levels:
+  - code: A
+    name: 严重缺陷
+    weight: 12
+    description: 影响成果使用的严重错误
+  - code: B
+    name: 较严重缺陷
+    weight: 4
+    description: 影响成果质量但不影响基本使用
+  - code: C
+    name: 一般缺陷
+    weight: 1
+    description: 轻微错误，不影响成果使用
+
+categories:
+  - id: format_error
+    name: 格式错误
+    description: 数据格式、编码、文件结构方面的错误
+
+  - id: precision_deviation
+    name: 精度偏差
+    description: 坐标精度、高程精度、几何精度超限
+
+  - id: topology_error
+    name: 拓扑错误
+    description: 空间拓扑关系不正确
+
+  - id: info_missing
+    name: 信息缺失
+    description: 必要属性、图层、元数据缺失
+
+  - id: norm_violation
+    name: 规范性错误
+    description: 不符合行业标准或命名规范
+
+defects:
+  # ===== 格式错误 (FMT) =====
+  - code: FMT-001
+    category: format_error
+    severity: B
+    name: 坐标系定义错误
+    description: 数据文件的坐标参考系定义缺失或与实际不符
+    product_types: [CAD, DLG, DEM, DOM, vector, 3D_MODEL]
+    auto_fixable: true
+    fix_strategy: crs_auto_detect_and_set
+
+  - code: FMT-002
+    category: format_error
+    severity: C
+    name: 字段类型不匹配
+    description: 属性字段的数据类型与标准定义不一致
+    product_types: [DLG, vector]
+    auto_fixable: true
+    fix_strategy: cast_field_type
+
+  - code: FMT-003
+    category: format_error
+    severity: B
+    name: 编码格式错误
+    description: 文件编码非 UTF-8 或含非法字符
+    product_types: [CAD, DLG, vector]
+    auto_fixable: true
+    fix_strategy: encoding_convert
+
+  - code: FMT-004
+    category: format_error
+    severity: A
+    name: 文件结构损坏
+    description: 文件头信息损坏或无法正常解析
+    product_types: [CAD, DLG, DEM, DOM, 3D_MODEL]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: FMT-005
+    category: format_error
+    severity: C
+    name: 数据格式版本不兼容
+    description: 数据文件版本与目标系统不兼容
+    product_types: [CAD, 3D_MODEL]
+    auto_fixable: true
+    fix_strategy: format_version_convert
+
+  - code: FMT-006
+    category: format_error
+    severity: C
+    name: 坐标单位不一致
+    description: 坐标值单位与坐标系定义不匹配（如度与米混用）
+    product_types: [CAD, DLG, vector]
+    auto_fixable: true
+    fix_strategy: unit_convert
+
+  # ===== 精度偏差 (PRE) =====
+  - code: PRE-001
+    category: precision_deviation
+    severity: A
+    name: 平面坐标精度超限
+    description: 实测坐标与参考坐标的平面偏差超出允许限差
+    product_types: [DLG, CAD, vector]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: PRE-002
+    category: precision_deviation
+    severity: A
+    name: 高程精度超限
+    description: 高程值偏差超出允许限差
+    product_types: [DEM, DLG, vector]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: PRE-003
+    category: precision_deviation
+    severity: B
+    name: 影像分辨率不达标
+    description: 遥感影像空间分辨率低于要求
+    product_types: [DOM]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: PRE-004
+    category: precision_deviation
+    severity: B
+    name: 套合精度超限
+    description: 不同数据源叠加后的位置偏差超出允许限差
+    product_types: [DLG, DOM, CAD, vector]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: PRE-005
+    category: precision_deviation
+    severity: B
+    name: 接边精度超限
+    description: 相邻图幅接边处的坐标偏差超出允许限差
+    product_types: [DLG, DEM, DOM]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: PRE-006
+    category: precision_deviation
+    severity: C
+    name: 属性精度偏差
+    description: 属性值的精度（小数位数）不符合标准要求
+    product_types: [DLG, vector]
+    auto_fixable: true
+    fix_strategy: round_precision
+
+  # ===== 拓扑错误 (TOP) =====
+  - code: TOP-001
+    category: topology_error
+    severity: A
+    name: 自相交几何
+    description: 多边形或线要素存在自相交
+    product_types: [DLG, CAD, vector]
+    auto_fixable: true
+    fix_strategy: fix_self_intersection
+
+  - code: TOP-002
+    category: topology_error
+    severity: B
+    name: 悬挂节点
+    description: 线要素端点未与其他要素连接（悬挂线）
+    product_types: [DLG, CAD, vector]
+    auto_fixable: true
+    fix_strategy: snap_dangles
+
+  - code: TOP-003
+    category: topology_error
+    severity: B
+    name: 面重叠
+    description: 相邻多边形之间存在重叠区域
+    product_types: [DLG, vector]
+    auto_fixable: true
+    fix_strategy: resolve_overlaps
+
+  - code: TOP-004
+    category: topology_error
+    severity: B
+    name: 面缝隙
+    description: 相邻多边形之间存在缝隙（gap）
+    product_types: [DLG, vector]
+    auto_fixable: true
+    fix_strategy: fill_gaps
+
+  - code: TOP-005
+    category: topology_error
+    severity: A
+    name: 无效几何
+    description: 几何对象不符合 OGC 规范（如零面积多边形）
+    product_types: [DLG, CAD, vector, 3D_MODEL]
+    auto_fixable: true
+    fix_strategy: make_valid
+
+  - code: TOP-006
+    category: topology_error
+    severity: C
+    name: 重复要素
+    description: 存在完全重复的几何要素
+    product_types: [DLG, CAD, vector]
+    auto_fixable: true
+    fix_strategy: remove_duplicates
+
+  # ===== 信息缺失 (MIS) =====
+  - code: MIS-001
+    category: info_missing
+    severity: A
+    name: 必填属性缺失
+    description: 标准要求的必填字段值为空
+    product_types: [DLG, CAD, vector]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: MIS-002
+    category: info_missing
+    severity: B
+    name: 图层缺失
+    description: 标准要求的图层在数据中不存在
+    product_types: [CAD, DLG]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: MIS-003
+    category: info_missing
+    severity: B
+    name: 元数据缺失
+    description: 数据集的元数据信息不完整
+    product_types: [DLG, DEM, DOM, CAD, vector, 3D_MODEL]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: MIS-004
+    category: info_missing
+    severity: C
+    name: 坐标系信息缺失
+    description: 数据文件未定义坐标参考系
+    product_types: [DLG, CAD, vector]
+    auto_fixable: true
+    fix_strategy: crs_auto_detect_and_set
+
+  - code: MIS-005
+    category: info_missing
+    severity: B
+    name: 纹理文件缺失
+    description: 三维模型引用的纹理文件不存在
+    product_types: [3D_MODEL]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: MIS-006
+    category: info_missing
+    severity: C
+    name: 标注信息缺失
+    description: 图面标注（注记、图例）不完整
+    product_types: [CAD, DLG]
+    auto_fixable: false
+    fix_strategy: ""
+
+  # ===== 规范性错误 (NRM) =====
+  - code: NRM-001
+    category: norm_violation
+    severity: C
+    name: 图层命名不规范
+    description: 图层名称不符合行业标准命名规则
+    product_types: [CAD, DLG]
+    auto_fixable: true
+    fix_strategy: rename_layer
+
+  - code: NRM-002
+    category: norm_violation
+    severity: C
+    name: 字段命名不规范
+    description: 属性字段名称不符合标准定义
+    product_types: [DLG, vector]
+    auto_fixable: true
+    fix_strategy: rename_fields
+
+  - code: NRM-003
+    category: norm_violation
+    severity: B
+    name: 代码值不在允许范围
+    description: 属性字段值不在标准代码表允许范围内
+    product_types: [DLG, vector]
+    auto_fixable: true
+    fix_strategy: map_field_codes
+
+  - code: NRM-004
+    category: norm_violation
+    severity: C
+    name: 比例尺标注错误
+    description: 图面比例尺标注与实际不符
+    product_types: [CAD, DLG]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: NRM-005
+    category: norm_violation
+    severity: B
+    name: 分幅编号错误
+    description: 图幅编号不符合国家标准分幅规则
+    product_types: [DLG, DEM, DOM]
+    auto_fixable: false
+    fix_strategy: ""
+
+  - code: NRM-006
+    category: norm_violation
+    severity: C
+    name: 时间格式不规范
+    description: 日期时间字段格式不符合 ISO 8601 或标准要求
+    product_types: [DLG, vector]
+    auto_fixable: true
+    fix_strategy: normalize_datetime

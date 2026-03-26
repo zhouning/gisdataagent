@@ -1,5 +1,5 @@
 """
-Observability module — structured logging + Prometheus metrics + HTTP middleware (v14.5).
+Observability module — structured logging + Prometheus metrics + HTTP middleware + Alert Engine (v15.6).
 
 Provides:
 - setup_logging(): configures root logger with text or JSON format
@@ -8,6 +8,7 @@ Provides:
 - ObservabilityMiddleware: ASGI middleware for HTTP request metrics
 - record_*() convenience functions for metric recording
 - generate_latest / CONTENT_TYPE_LATEST for /metrics endpoint
+- AlertEngine: configurable threshold-based alerts with push channels (v15.6)
 """
 import json
 import logging
@@ -354,3 +355,212 @@ class ObservabilityMiddleware:
                 http_duration.labels(method=method, path=normalized_path, status_code=status_code).observe(duration)
             except Exception:
                 pass
+
+
+# ---------------------------------------------------------------------------
+# Alert Rule Engine (v15.6)
+# ---------------------------------------------------------------------------
+
+_alert_logger = logging.getLogger("data_agent.alerts")
+
+_CONDITION_OPS = {
+    "gt": lambda v, t: v > t,
+    "gte": lambda v, t: v >= t,
+    "lt": lambda v, t: v < t,
+    "lte": lambda v, t: v <= t,
+    "eq": lambda v, t: v == t,
+    "neq": lambda v, t: v != t,
+}
+
+
+class AlertEngine:
+    """Configurable threshold-based alert engine.
+
+    Rules are stored in agent_alert_rules table. When a metric value
+    is checked against rules, violations trigger alerts stored in
+    agent_alert_history and optionally pushed via webhook/websocket.
+    """
+
+    _TABLE_RULES = "agent_alert_rules"
+    _TABLE_HISTORY = "agent_alert_history"
+    _last_fired: dict = {}  # rule_id -> timestamp (cooldown tracking)
+
+    @classmethod
+    def add_rule(cls, name: str, metric_name: str, condition: str, threshold: float,
+                 severity: str = "warning", channel: str = "webhook",
+                 channel_config: dict = None, cooldown_seconds: int = 300) -> int | None:
+        """Create an alert rule. Returns rule ID."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return None
+        try:
+            from sqlalchemy import text
+            from .user_context import current_user_id
+            username = current_user_id.get() or "system"
+            with engine.connect() as conn:
+                result = conn.execute(text(f"""
+                    INSERT INTO {cls._TABLE_RULES}
+                        (name, metric_name, condition, threshold, severity,
+                         channel, channel_config, cooldown_seconds, owner_username)
+                    VALUES (:name, :metric, :cond, :thresh, :sev,
+                            :chan, :cc::jsonb, :cool, :user)
+                    RETURNING id
+                """), {
+                    "name": name, "metric": metric_name, "cond": condition,
+                    "thresh": threshold, "sev": severity, "chan": channel,
+                    "cc": json.dumps(channel_config or {}), "cool": cooldown_seconds,
+                    "user": username,
+                })
+                row = result.fetchone()
+                conn.commit()
+                return row[0] if row else None
+        except Exception as e:
+            _alert_logger.error("Failed to add alert rule: %s", e)
+            return None
+
+    @classmethod
+    def list_rules(cls, metric_name: str = None, enabled_only: bool = True) -> list[dict]:
+        """List alert rules."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return []
+        try:
+            from sqlalchemy import text
+            conditions = []
+            params = {}
+            if enabled_only:
+                conditions.append("enabled = TRUE")
+            if metric_name:
+                conditions.append("metric_name = :metric")
+                params["metric"] = metric_name
+            where = " WHERE " + " AND ".join(conditions) if conditions else ""
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text(f"SELECT * FROM {cls._TABLE_RULES}{where} ORDER BY id"),
+                    params,
+                ).mappings().all()
+                return [dict(r) for r in rows]
+        except Exception:
+            return []
+
+    @classmethod
+    def check_metric(cls, metric_name: str, value: float) -> list[dict]:
+        """Check a metric value against all matching rules.
+
+        Returns list of triggered alerts (empty if no violations).
+        """
+        rules = cls.list_rules(metric_name=metric_name)
+        triggered = []
+
+        for rule in rules:
+            cond_fn = _CONDITION_OPS.get(rule.get("condition", "gt"))
+            if not cond_fn:
+                continue
+            threshold = rule.get("threshold", 0)
+            if not cond_fn(value, threshold):
+                continue
+
+            # Cooldown check
+            rule_id = rule["id"]
+            cooldown = rule.get("cooldown_seconds", 300)
+            last = cls._last_fired.get(rule_id, 0)
+            now = time.time()
+            if now - last < cooldown:
+                continue
+
+            cls._last_fired[rule_id] = now
+
+            alert = {
+                "rule_id": rule_id,
+                "rule_name": rule.get("name", ""),
+                "metric_name": metric_name,
+                "metric_value": value,
+                "threshold": threshold,
+                "condition": rule.get("condition"),
+                "severity": rule.get("severity", "warning"),
+                "message": f"[{rule.get('severity', 'warning').upper()}] {rule.get('name', '')}: "
+                           f"{metric_name}={value} {rule.get('condition')} {threshold}",
+            }
+            triggered.append(alert)
+
+            # Record to history
+            cls._record_alert(alert)
+
+            # Push notification
+            channel = rule.get("channel", "webhook")
+            channel_config = rule.get("channel_config", {})
+            if channel == "webhook" and channel_config.get("url"):
+                cls._push_webhook(channel_config["url"], alert)
+
+        return triggered
+
+    @classmethod
+    def _record_alert(cls, alert: dict):
+        """Save alert to history table."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return
+        try:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text(f"""
+                    INSERT INTO {cls._TABLE_HISTORY}
+                        (rule_id, metric_name, metric_value, threshold, severity, message)
+                    VALUES (:rid, :mn, :mv, :th, :sev, :msg)
+                """), {
+                    "rid": alert["rule_id"], "mn": alert["metric_name"],
+                    "mv": alert["metric_value"], "th": alert["threshold"],
+                    "sev": alert["severity"], "msg": alert["message"],
+                })
+                conn.commit()
+        except Exception:
+            pass
+
+    @classmethod
+    def _push_webhook(cls, url: str, alert: dict):
+        """Push alert via webhook (fire-and-forget)."""
+        try:
+            import httpx
+            httpx.post(url, json=alert, timeout=5)
+        except Exception as e:
+            _alert_logger.warning("Webhook push failed for %s: %s", url, e)
+
+    @classmethod
+    def get_history(cls, rule_id: int = None, limit: int = 50) -> list[dict]:
+        """Get alert history."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return []
+        try:
+            from sqlalchemy import text
+            sql = f"SELECT * FROM {cls._TABLE_HISTORY}"
+            params = {"lim": limit}
+            if rule_id:
+                sql += " WHERE rule_id = :rid"
+                params["rid"] = rule_id
+            sql += " ORDER BY created_at DESC LIMIT :lim"
+            with engine.connect() as conn:
+                rows = conn.execute(text(sql), params).mappings().all()
+                return [dict(r) for r in rows]
+        except Exception:
+            return []
+
+    @classmethod
+    def delete_rule(cls, rule_id: int) -> bool:
+        """Delete an alert rule."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return False
+        try:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text(f"DELETE FROM {cls._TABLE_RULES} WHERE id = :id"), {"id": rule_id})
+                conn.commit()
+                return True
+        except Exception:
+            return False

@@ -406,6 +406,93 @@ def precision_score(file_path: str, standard_id: str = "gb_t_24356") -> str:
     return "\n".join(lines)
 
 
+def overlay_precision_check(
+    file_a: str,
+    file_b: str,
+    tolerance_m: float = 1.0,
+) -> str:
+    """
+    [Precision Tool] Overlay precision check — compare spatial alignment of two datasets.
+
+    Measures the positional offset between corresponding features in two datasets
+    by computing nearest-neighbor distances. Used for checking map overlay accuracy
+    between different data sources or time periods.
+
+    Args:
+        file_a: First spatial data file path.
+        file_b: Second spatial data file path.
+        tolerance_m: Maximum acceptable overlay offset in meters.
+    Returns:
+        JSON report with RMSE, max offset, mean offset, compliance rate, and grade.
+    """
+    import json
+    try:
+        import geopandas as gpd
+        import numpy as np
+
+        gdf_a = gpd.read_file(_resolve_path(file_a))
+        gdf_b = gpd.read_file(_resolve_path(file_b))
+
+        # Ensure same CRS
+        if gdf_a.crs and gdf_b.crs and gdf_a.crs != gdf_b.crs:
+            gdf_b = gdf_b.to_crs(gdf_a.crs)
+
+        # Compute nearest distances from A to B
+        from shapely.ops import nearest_points
+
+        distances = []
+        for idx, row_a in gdf_a.iterrows():
+            geom_a = row_a.geometry
+            if geom_a is None or geom_a.is_empty:
+                continue
+            # Find nearest geometry in B
+            min_dist = float("inf")
+            for _, row_b in gdf_b.iterrows():
+                geom_b = row_b.geometry
+                if geom_b is None or geom_b.is_empty:
+                    continue
+                d = geom_a.distance(geom_b)
+                if d < min_dist:
+                    min_dist = d
+            if min_dist < float("inf"):
+                distances.append(min_dist)
+
+        if not distances:
+            return json.dumps({"status": "error", "message": "No valid geometries to compare"})
+
+        distances = np.array(distances)
+        rmse = float(np.sqrt(np.mean(distances ** 2)))
+        max_offset = float(np.max(distances))
+        mean_offset = float(np.mean(distances))
+        median_offset = float(np.median(distances))
+        exceed_count = int(np.sum(distances > tolerance_m))
+        compliance_rate = round((1 - exceed_count / len(distances)) * 100, 1)
+
+        if rmse < tolerance_m / 2:
+            grade = "优"
+        elif rmse < tolerance_m:
+            grade = "合格"
+        else:
+            grade = "不合格"
+
+        result = {
+            "status": "pass" if grade != "不合格" else "fail",
+            "total_compared": len(distances),
+            "rmse_m": round(rmse, 4),
+            "max_offset_m": round(max_offset, 4),
+            "mean_offset_m": round(mean_offset, 4),
+            "median_offset_m": round(median_offset, 4),
+            "tolerance_m": tolerance_m,
+            "exceed_count": exceed_count,
+            "compliance_rate_pct": compliance_rate,
+            "grade": grade,
+        }
+        return json.dumps(result, ensure_ascii=False)
+    except Exception as e:
+        import json
+        return json.dumps({"status": "error", "message": str(e)})
+
+
 # ---------------------------------------------------------------------------
 # Toolset Registration
 # ---------------------------------------------------------------------------
@@ -414,7 +501,7 @@ class PrecisionToolset(BaseToolset):
     """Precision verification tools for surveying QC."""
 
     name = "PrecisionToolset"
-    description = "精度核验工具：坐标对比、拓扑完整性、接边检查、综合精度评分"
+    description = "精度核验工具：坐标对比、拓扑完整性、接边检查、综合精度评分、套合精度"
     category = "quality_control"
 
     def get_tools(self):
@@ -423,4 +510,5 @@ class PrecisionToolset(BaseToolset):
             FunctionTool(check_topology_integrity),
             FunctionTool(check_edge_matching),
             FunctionTool(precision_score),
+            FunctionTool(overlay_precision_check),
         ]

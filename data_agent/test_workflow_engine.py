@@ -306,10 +306,10 @@ class TestWorkflowAPI(unittest.TestCase):
         self.assertIn("/api/workflows/{id:int}/runs", paths)
 
     def test_route_count(self):
-        """Should have 44 routes (37 existing + 7 workflow)."""
+        """Route count should reflect all registered endpoints."""
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 191)
+        self.assertEqual(len(routes), 202)
 
     def test_dag_status_route(self):
         """DAG live status route should be registered."""

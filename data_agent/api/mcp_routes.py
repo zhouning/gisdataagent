@@ -258,6 +258,73 @@ async def mcp_server_share(request: Request):
     return JSONResponse({"status": "ok", "server": server_name, "is_shared": is_shared})
 
 
+async def mcp_rules_list(request: Request):
+    """GET /api/mcp/rules — list tool selection rules."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    task_type = request.query_params.get("task_type", "")
+    from ..mcp_hub import ToolRuleEngine
+    rules = ToolRuleEngine.list_rules(task_type=task_type or None)
+    return JSONResponse({"rules": rules})
+
+
+async def mcp_rules_create(request: Request):
+    """POST /api/mcp/rules — create a tool selection rule."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    task_type = body.get("task_type", "").strip()
+    tool_name = body.get("tool_name", "").strip()
+    server_name = body.get("server_name", "").strip()
+    if not task_type or not tool_name or not server_name:
+        return JSONResponse({"error": "task_type, tool_name, server_name required"}, status_code=400)
+
+    from ..mcp_hub import ToolRuleEngine
+    rule_id = ToolRuleEngine.add_rule(
+        task_type=task_type, tool_name=tool_name, server_name=server_name,
+        parameters=body.get("parameters"), priority=body.get("priority", 0),
+        fallback_tool=body.get("fallback_tool"), fallback_server=body.get("fallback_server"),
+    )
+    if rule_id is None:
+        return JSONResponse({"error": "Failed to create rule"}, status_code=500)
+    return JSONResponse({"id": rule_id}, status_code=201)
+
+
+async def mcp_rules_match(request: Request):
+    """GET /api/mcp/rules/match — find best tool for a task type."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    task_type = request.query_params.get("task_type", "")
+    if not task_type:
+        return JSONResponse({"error": "task_type query param required"}, status_code=400)
+    from ..mcp_hub import ToolRuleEngine
+    match = ToolRuleEngine.match_tool(task_type)
+    if not match:
+        return JSONResponse({"error": f"No rule found for task_type '{task_type}'"}, status_code=404)
+    return JSONResponse({"match": match})
+
+
+async def mcp_rules_delete(request: Request):
+    """DELETE /api/mcp/rules/{id} — delete a tool selection rule."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    rule_id = int(request.path_params["id"])
+    from ..mcp_hub import ToolRuleEngine
+    ok = ToolRuleEngine.delete_rule(rule_id)
+    if not ok:
+        return JSONResponse({"error": "Failed to delete rule"}, status_code=500)
+    return JSONResponse({"deleted": rule_id})
+
+
 def get_mcp_routes() -> list:
     """Return Route objects for MCP Hub endpoints."""
     return [
@@ -266,6 +333,10 @@ def get_mcp_routes() -> list:
         Route("/api/mcp/servers/mine", mcp_servers_mine, methods=["GET"]),
         Route("/api/mcp/tools", mcp_tools, methods=["GET"]),
         Route("/api/mcp/test", mcp_test_connection, methods=["POST"]),
+        Route("/api/mcp/rules", mcp_rules_list, methods=["GET"]),
+        Route("/api/mcp/rules", mcp_rules_create, methods=["POST"]),
+        Route("/api/mcp/rules/match", mcp_rules_match, methods=["GET"]),
+        Route("/api/mcp/rules/{id:int}", mcp_rules_delete, methods=["DELETE"]),
         Route("/api/mcp/servers/{name:path}/toggle", mcp_toggle, methods=["POST"]),
         Route("/api/mcp/servers/{name:path}/reconnect", mcp_reconnect, methods=["POST"]),
         Route("/api/mcp/servers/{name:path}/share", mcp_server_share, methods=["POST"]),

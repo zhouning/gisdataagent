@@ -1,11 +1,14 @@
 """
-Workflow Engine — Multi-step pipeline workflows with scheduling and webhook push.
+Workflow Engine — Multi-step pipeline workflows with scheduling, webhook push, and SLA.
 
 v5.4: Users create reusable workflows that chain pipeline executions,
 run them manually or on a cron schedule, and push results via webhook.
+v15.6: SLA/timeout per step, QC workflow templates, priority.
 """
 import asyncio
 import json
+import logging
+import os
 import time
 import uuid
 from datetime import datetime
@@ -16,6 +19,8 @@ from sqlalchemy import text
 
 from .db_engine import get_engine
 from .user_context import current_user_id, current_session_id, current_user_role
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +96,27 @@ def ensure_workflow_tables():
             conn.execute(text(
                 f"ALTER TABLE {T_WORKFLOW_RUNS} "
                 f"ADD COLUMN IF NOT EXISTS node_checkpoints JSONB DEFAULT '{{}}'::jsonb"
+            ))
+            # v15.6: SLA and priority columns
+            conn.execute(text(
+                f"ALTER TABLE {T_WORKFLOWS} "
+                f"ADD COLUMN IF NOT EXISTS sla_total_seconds INTEGER"
+            ))
+            conn.execute(text(
+                f"ALTER TABLE {T_WORKFLOWS} "
+                f"ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'"
+            ))
+            conn.execute(text(
+                f"ALTER TABLE {T_WORKFLOWS} "
+                f"ADD COLUMN IF NOT EXISTS template_source VARCHAR(100)"
+            ))
+            conn.execute(text(
+                f"ALTER TABLE {T_WORKFLOW_RUNS} "
+                f"ADD COLUMN IF NOT EXISTS sla_violated BOOLEAN DEFAULT FALSE"
+            ))
+            conn.execute(text(
+                f"ALTER TABLE {T_WORKFLOW_RUNS} "
+                f"ADD COLUMN IF NOT EXISTS timeout_steps JSONB DEFAULT '[]'::jsonb"
             ))
             conn.commit()
             print("[Workflows] Tables ready.")
@@ -378,12 +404,17 @@ async def execute_workflow(
     total_output = 0
     error_msg = None
     status = "completed"
+    timeout_steps = []
+    sla_total = workflow.get("sla_total_seconds")
 
     for i, step in enumerate(steps):
         step_id = step.get("step_id", f"step_{i}")
         pipeline_type = step.get("pipeline_type", "general")
         prompt = _substitute_params(step.get("prompt", ""), params)
         intent = pipeline_type.upper()
+        sla_seconds = step.get("sla_seconds")
+        retry_on_timeout = step.get("retry_on_timeout", False)
+        max_retries = step.get("max_retries", 0)
 
         # Select agent
         agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
@@ -392,47 +423,86 @@ async def execute_workflow(
             status = "failed"
             break
 
-        try:
-            result = await run_pipeline_headless(
-                agent=agent_obj,
-                session_service=session_service,
-                user_id=user,
-                session_id=f"{session_id}_{step_id}",
-                prompt=prompt,
-                pipeline_type=pipeline_type,
-                intent=intent,
-                role="analyst",
-            )
-            step_results.append({
-                "step_id": step_id,
-                "label": step.get("label", step_id),
-                "status": "failed" if result.error else "completed",
-                "duration": result.duration_seconds,
-                "input_tokens": result.total_input_tokens,
-                "output_tokens": result.total_output_tokens,
-                "files": result.generated_files,
-                "error": result.error,
-                "summary": (result.report_text or "")[:500],
-            })
-            total_input += result.total_input_tokens
-            total_output += result.total_output_tokens
+        attempt = 0
+        step_done = False
+        while not step_done:
+            try:
+                coro = run_pipeline_headless(
+                    agent=agent_obj,
+                    session_service=session_service,
+                    user_id=user,
+                    session_id=f"{session_id}_{step_id}_{attempt}",
+                    prompt=prompt,
+                    pipeline_type=pipeline_type,
+                    intent=intent,
+                    role="analyst",
+                )
+                # Apply SLA timeout if configured
+                if sla_seconds and sla_seconds > 0:
+                    result = await asyncio.wait_for(coro, timeout=sla_seconds)
+                else:
+                    result = await coro
 
-            if result.error:
-                error_msg = f"Step '{step_id}' failed: {result.error}"
+                step_results.append({
+                    "step_id": step_id,
+                    "label": step.get("label", step_id),
+                    "status": "failed" if result.error else "completed",
+                    "duration": result.duration_seconds,
+                    "input_tokens": result.total_input_tokens,
+                    "output_tokens": result.total_output_tokens,
+                    "files": result.generated_files,
+                    "error": result.error,
+                    "summary": (result.report_text or "")[:500],
+                    "attempt": attempt + 1,
+                })
+                total_input += result.total_input_tokens
+                total_output += result.total_output_tokens
+
+                if result.error:
+                    error_msg = f"Step '{step_id}' failed: {result.error}"
+                    status = "failed"
+                step_done = True
+
+            except asyncio.TimeoutError:
+                timeout_steps.append({
+                    "step_id": step_id,
+                    "attempt": attempt + 1,
+                    "sla_seconds": sla_seconds,
+                    "timestamp": datetime.now().isoformat(),
+                })
+                logger.warning("Step '%s' timed out (SLA: %ds, attempt %d)", step_id, sla_seconds, attempt + 1)
+                if retry_on_timeout and attempt < max_retries:
+                    attempt += 1
+                    continue
+                step_results.append({
+                    "step_id": step_id,
+                    "label": step.get("label", step_id),
+                    "status": "timeout",
+                    "error": f"SLA timeout ({sla_seconds}s) after {attempt + 1} attempt(s)",
+                    "attempt": attempt + 1,
+                })
+                error_msg = f"Step '{step_id}' timed out"
                 status = "failed"
-                break
-        except Exception as e:
-            error_msg = f"Step '{step_id}' exception: {str(e)}"
-            status = "failed"
-            step_results.append({
-                "step_id": step_id,
-                "label": step.get("label", step_id),
-                "status": "failed",
-                "error": str(e),
-            })
+                step_done = True
+
+            except Exception as e:
+                error_msg = f"Step '{step_id}' exception: {str(e)}"
+                status = "failed"
+                step_results.append({
+                    "step_id": step_id,
+                    "label": step.get("label", step_id),
+                    "status": "failed",
+                    "error": str(e),
+                })
+                step_done = True
+
+        if status == "failed":
             break
 
     duration = time.time() - start_time
+
+    # Check SLA violation
+    sla_violated = bool(timeout_steps) or (sla_total and duration > sla_total)
 
     # Update run record
     webhook_sent = False
@@ -444,6 +514,7 @@ async def execute_workflow(
                     SET status = :status, step_results = :results::jsonb,
                         total_duration = :dur, total_input_tokens = :inp,
                         total_output_tokens = :out, error_message = :err,
+                        sla_violated = :sla_v, timeout_steps = :ts::jsonb,
                         completed_at = NOW()
                     WHERE id = :id
                 """), {
@@ -454,6 +525,8 @@ async def execute_workflow(
                     "inp": total_input,
                     "out": total_output,
                     "err": error_msg,
+                    "sla_v": sla_violated,
+                    "ts": json.dumps(timeout_steps),
                 })
                 # Increment use_count
                 conn.execute(text(f"""
@@ -1468,3 +1541,118 @@ def recover_incomplete_runs():
     if count:
         logger.info("Recovered %d crashed workflow runs", count)
     return count
+
+
+# ---------------------------------------------------------------------------
+# QC Workflow Templates (v15.6)
+# ---------------------------------------------------------------------------
+
+_QC_TEMPLATES_FILE = os.path.join(
+    os.path.dirname(__file__), "standards", "qc_workflow_templates.yaml"
+)
+_qc_templates_cache: Optional[dict] = None
+
+
+def load_qc_templates() -> dict[str, dict]:
+    """Load QC workflow templates from YAML. Returns {template_id: template_dict}."""
+    global _qc_templates_cache
+    if _qc_templates_cache is not None:
+        return _qc_templates_cache
+
+    try:
+        import yaml
+    except ImportError:
+        logger.warning("PyYAML not installed — cannot load QC templates")
+        return {}
+
+    if not os.path.isfile(_QC_TEMPLATES_FILE):
+        logger.warning("QC templates file not found: %s", _QC_TEMPLATES_FILE)
+        return {}
+
+    try:
+        with open(_QC_TEMPLATES_FILE, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except Exception as e:
+        logger.warning("Failed to load QC templates: %s", e)
+        return {}
+
+    templates = {}
+    for t in data.get("templates", []):
+        tid = t.get("id")
+        if tid:
+            templates[tid] = t
+    _qc_templates_cache = templates
+    logger.debug("Loaded %d QC workflow templates", len(templates))
+    return templates
+
+
+def list_qc_templates() -> list[dict]:
+    """List available QC workflow templates (summary only)."""
+    templates = load_qc_templates()
+    return [
+        {
+            "id": t["id"],
+            "name": t.get("name", t["id"]),
+            "description": t.get("description", ""),
+            "step_count": len(t.get("steps", [])),
+            "priority": t.get("priority", "normal"),
+            "sla_total_seconds": t.get("sla_total_seconds"),
+        }
+        for t in templates.values()
+    ]
+
+
+def create_workflow_from_template(
+    template_id: str,
+    name_override: str = "",
+    param_overrides: dict = None,
+) -> Optional[int]:
+    """Create a workflow instance from a QC template. Returns workflow ID or None."""
+    templates = load_qc_templates()
+    tmpl = templates.get(template_id)
+    if not tmpl:
+        return None
+
+    wf_name = name_override or f"{tmpl.get('name', template_id)}_{uuid.uuid4().hex[:6]}"
+    params = {}
+    for k, v in tmpl.get("parameters", {}).items():
+        params[k] = v if not isinstance(v, dict) else v
+    if param_overrides:
+        for k, v in param_overrides.items():
+            if k in params:
+                if isinstance(params[k], dict):
+                    params[k]["default"] = v
+                else:
+                    params[k] = v
+
+    engine = get_engine()
+    if not engine:
+        return None
+
+    username = current_user_id.get() or "system"
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(f"""
+                INSERT INTO {T_WORKFLOWS}
+                    (workflow_name, description, owner_username, pipeline_type,
+                     steps, parameters, sla_total_seconds, priority, template_source)
+                VALUES (:name, :desc, :user, :ptype,
+                        :steps::jsonb, :params::jsonb, :sla, :pri, :src)
+                RETURNING id
+            """), {
+                "name": wf_name,
+                "desc": tmpl.get("description", ""),
+                "user": username,
+                "ptype": tmpl.get("pipeline_type", "governance"),
+                "steps": json.dumps(tmpl.get("steps", [])),
+                "params": json.dumps(params),
+                "sla": tmpl.get("sla_total_seconds"),
+                "pri": tmpl.get("priority", "normal"),
+                "src": template_id,
+            })
+            row = result.fetchone()
+            conn.commit()
+            return row[0] if row else None
+    except Exception as e:
+        logger.error("Failed to create workflow from template %s: %s", template_id, e)
+        return None
