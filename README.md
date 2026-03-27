@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.5
+# GIS Data Agent (ADK Edition) v15.7
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.5 新增**：DRL-World Model Dreamer 集成（世界模型作为 DRL 环境模型提供前瞻奖励）+ 三角度因果推断论文 + 世界模型论文 R2 审稿回复 + 12 项平台成熟度交付（意图消歧 v2、自适应布局、消息总线、Skill SDK、Helm Chart 等）。
+**v15.7 新增**：测绘质检智能体系统 — 缺陷分类法（30 编码, GB/T 24356）、SLA 工作流引擎（7 个模板含 DLG/DOM/DEM/三维模型专属）、ArcGIS Pro 双引擎 MCP（基础 arcpy + DL 深度学习 arcgis.learn 2.4.2）、4 个独立子系统（CV 视觉检测 / CAD 解析 / ArcGIS MCP / 参考数据）、实时监控仪表盘、告警规则引擎、人工复核工作流。端到端验证：107,452 个建筑要素 8 秒完成全流程质检。
 
 ## 项目思想起源
 
@@ -35,24 +35,28 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2650+ tests, 113 test files |
-| 工具集 | 38 BaseToolset (含 DreamerToolset + CausalInferenceToolset 6 + LLMCausalToolset 4 + CausalWorldModelToolset 4 + WorldModelToolset 5 + NL2SQLToolset 3), 5 SkillBundle, 220+ 工具 |
-| ADK Skills | 21 场景化领域技能 (5 种设计模式 + world-model JEPA 预测技能) |
-| REST API | 191+ endpoints |
-| DataPanel | 22 标签页 (4 分组: 数据/智能/运维/编排) |
+| 测试覆盖 | 2700+ tests, 116 test files |
+| 工具集 | 40+ BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具), 5 SkillBundle, 230+ 工具 |
+| ADK Skills | 22 场景化领域技能 (含 surveying-qc 质检技能) |
+| REST API | 203+ endpoints |
+| DataPanel | 24 标签页 (4 分组: 数据/智能/运维/编排, 含质检仪表盘+告警管理) |
+| 质检工作流 | 7 个预置模板 (3 通用 + DLG/DOM/DEM/三维模型专属), SLA 超时控制, DAG 并行 |
+| 缺陷分类 | 30 个缺陷编码, 5 大类别 (FMT/PRE/TOP/MIS/NRM), 3 级严重度 (A/B/C), GB/T 24356 |
+| ArcGIS MCP | 双引擎: 4 基础 arcpy 工具 + 5 DL 工具 (arcgis.learn 2.4.2 + PyTorch 2.5.1) |
+| 独立子系统 | 4 个 (cv-service / cad-parser / arcgis-mcp / reference-data), Docker 部署, MCP 集成 |
 | 因果推断 | 三角度体系: A (GeoFM 统计 6 工具) + B (LLM 推理 4 工具) + C (因果世界模型 4 工具), 82 tests |
 | 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
 | DRL + World Model | Dreamer 式集成: ParcelEmbeddingMapper + ActionToScenarioEncoder + 辅助奖励前瞻 |
 | NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
-| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) |
-| 连接器 | 8 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage) |
+| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) + **缺陷分类法** |
+| 连接器 | 9 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage/ReferenceData) |
 | 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
-| 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + 9 条 Alert 规则 + Grafana 模板 |
+| 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + **告警规则引擎** + 实时监控仪表盘 + Grafana 模板 |
 | 成本管理 | USD 定价表 (10 模型) + Token/USD 双级预算熔断 + 成本预估 |
 | 数据安全 | PII 分类分级 (5 级) + 4 种脱敏策略 + 8 表 RLS 策略 + HITL 审批 (12 工具风险表) |
 | CI/CD | 3 阶段 (CI → Staging → Production) + Canary 部署 + Feature Flags + Terraform IaC |
 | 分布式计算 | SparkGateway 三层路由 (L1 本地 / L2 队列 / L3 Spark) |
-| MCP Server | v2.0 — 36+ 工具暴露 |
+| MCP Server | v2.0 — 36+ 工具暴露 + 4 个子系统 MCP 集成 |
 | Agent Plugins | 4 (CostGuard + USD 熔断, GISToolRetry + 指数退避, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | AgentOps 成熟度 | 3.9/5 (10 维度评估, 对标 Google Prototype-to-Production 白皮书 78%) |
@@ -635,6 +639,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v15.0 | **深度可观测 + 数据安全 + 分布式**：OTel 分布式追踪 + 决策追踪 + 9 Alert 规则；PII 分类分级 + 脱敏 + 8 表 RLS；分发审批 + 打包 + 评价 + 热度；8 连接器 (+Database +OBS)；版本管理 + 回滚 + 增量对比；19 Skills (Pipeline 融合 + data-quality-reviewer)；SparkGateway 三层路由 | 2420+ | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
 | v15.2 | **地理空间世界模型 + NL2SQL + 地图时间轴**：World Model Tech Preview (AlphaEarth JEPA, LatentDynamicsNet 459K params, 5 情景, L2 流形保持 + 空洞卷积 + 多步展开训练)；NL2SQLToolset (Schema 发现 + 参数化安全查询 + 行政区模糊匹配)；地图时间轴播放器 + 卫星底图；世界模型快捷路径 (1 API call)；意图路由优化 (确认语/世界模型关键词)；429 重试机制；会话历史修复 | 2550+ | ✅ 完成 |
+| v15.5 | **DRL-World Model Dreamer + 因果推断论文**：DreamerEnv (ParcelEmbeddingMapper + ActionToScenarioEncoder)；三角度因果推断论文 (~520 行 LaTeX)；平台成熟度 12 项 | 2650+ | ✅ 完成 |
+| v15.7 | **测绘质检智能体系统**：缺陷分类法 (30 编码, 5 类, GB/T 24356)；SLA 工作流引擎 (7 模板含 DLG/DOM/DEM/3D 专属)；GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具；报告排版引擎 (封面+目录+动态表格+图表)；ArcGIS Pro 双引擎 MCP (arcpy + arcgis.learn 2.4.2)；4 个独立子系统 (cv-service/cad-parser/arcgis-mcp/reference-data)；告警规则引擎；案例库；人工复核工作流；实时监控仪表盘；端到端验证 (107K 要素, 8 秒) | 2700+ | ✅ 完成 |
 
 ## 设计模式覆盖 (21/21 = 100%)
 
