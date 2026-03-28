@@ -143,6 +143,47 @@ Key endpoint groups:
 | `knowledge_graph.py` | Geographic knowledge graph — networkx DiGraph |
 | `mcp_hub.py` | MCP Hub Manager — DB + YAML config, 3 transport protocols, CRUD + hot reload |
 | `multimodal.py` | Multimodal input processing — image/PDF classification, Gemini Part builders |
+| `model_gateway.py` | Model registry + task-aware routing with cost optimization (v15.8) |
+| `context_manager.py` | Pluggable context providers with token budget enforcement (v15.8) |
+| `eval_scenario.py` | Scenario-based evaluation framework with custom metrics (v15.8) |
+| `prompt_registry.py` | DB-backed prompt versioning with environment isolation (v15.8) |
+
+### BCG Platform Features (v15.8)
+Enterprise agent platform capabilities based on BCG's "Building Effective Enterprise Agents" framework:
+
+**1. Prompt Registry** (`prompt_registry.py`):
+- Version control for agent prompts with environment isolation (dev/staging/prod)
+- DB-backed storage with YAML fallback when DB unavailable
+- `create_version()`, `deploy()`, `rollback()` operations
+- API: GET /api/prompts/versions, POST /api/prompts/deploy
+
+**2. Model Gateway** (`model_gateway.py`):
+- Task-aware model routing (3 models: gemini-2.0-flash, 2.5-flash, 2.5-pro)
+- Automatic selection based on task_type, context_tokens, quality_requirement, budget
+- Cost tracking with scenario/project attribution in `agent_token_usage` table
+- API: GET /api/gateway/models, GET /api/gateway/cost-summary
+
+**3. Context Manager** (`context_manager.py`):
+- Pluggable context providers (SemanticProvider wraps existing semantic_layer.py)
+- Token budget enforcement with relevance-based prioritization
+- `prepare()` method collects context blocks for task execution
+- API: GET /api/context/preview
+
+**4. Eval Scenario Framework** (`eval_scenario.py`):
+- Scenario-specific evaluation with custom metrics (SurveyingQCScenario)
+- Golden test dataset management (`agent_eval_datasets` table)
+- Metrics: defect_precision, defect_recall, defect_f1, fix_success_rate
+- API: POST /api/eval/datasets, POST /api/eval/run, GET /api/eval/scenarios
+
+**5. Enhanced Token Tracking** (`token_tracker.py`):
+- Scenario and project_id attribution for cost analysis
+- `record_usage()` enhanced with optional scenario/project_id params
+
+**6. Enhanced Eval History** (`eval_history.py`):
+- Scenario, dataset_id, and metrics columns in `agent_eval_history`
+- `record_eval_result()` supports scenario-based evaluation tracking
+
+All enhancements use fallback mechanisms (DB unavailable → YAML/defaults) and are backward compatible.
 
 ### Toolsets (26 registered, 28 .py files in `toolsets/`)
 ExplorationToolset, GeoProcessingToolset, VisualizationToolset, AnalysisToolset, DatabaseToolset, SemanticLayerToolset, DataLakeToolset, StreamingToolset, TeamToolset, LocationToolset, MemoryToolset, AdminToolset, FileToolset, RemoteSensingToolset, SpatialStatisticsToolset, McpHubToolset, FusionToolset, KnowledgeGraphToolset, KnowledgeBaseToolset, AdvancedAnalysisToolset, SpatialAnalysisTier2Toolset, WatershedToolset, **UserToolset**, **GovernanceToolset** (18 tools), **DataCleaningToolset** (11 tools), **PrecisionToolset** (5 tools).
