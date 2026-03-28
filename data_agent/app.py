@@ -2499,12 +2499,24 @@ async def _execute_workflow_with_steps(workflow_id: int, file_path: str, templat
         await root_step.update()
 
         if final_status == "completed":
-            await cl.Message(content=(
+            # Extract report from last step summary
+            step_results = result.get("step_results", [])
+            report_text = ""
+            for sr in reversed(step_results):
+                summary = sr.get("summary", "")
+                if summary and len(summary) > 100:
+                    report_text = summary
+                    break
+
+            completion_msg = (
                 f"✅ 工作流执行完成\n"
                 f"- 模板: {template_name}\n"
                 f"- 总耗时: {total_dur:.1f}s\n"
-                f"- 步骤: {len(result.get('step_results', []))} 步完成"
-            )).send()
+                f"- 步骤: {len(step_results)} 步完成"
+            )
+            if report_text:
+                completion_msg += f"\n\n---\n\n{report_text}"
+            await cl.Message(content=completion_msg).send()
         else:
             err = result.get("error", "未知错误")
             await cl.Message(content=f"❌ 工作流执行失败: {err}").send()
@@ -2996,15 +3008,21 @@ async def main(message: cl.Message):
             await cl.Message(content="❌ 未识别到具体的质检模板。支持的模板：标准质检、快速质检、完整质检、DLG质检、DOM质检、DEM质检、三维模型质检").send()
             return
 
-        # Get most recent uploaded spatial file
+        # Get spatial file: prefer filename mentioned in user text, fallback to most recent
         user_dir = Path(get_user_upload_dir())
         file_path = None
+        spatial_exts = ['.shp', '.geojson', '.gpkg', '.kml']
         if user_dir.exists():
-            files = sorted(user_dir.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
-            for f in files:
-                if f.suffix.lower() in ['.shp', '.geojson', '.gpkg', '.kml', '.json']:
+            # First: try to match filename from user text
+            all_spatial = [f for f in user_dir.rglob("*") if f.suffix.lower() in spatial_exts]
+            for f in all_spatial:
+                if f.stem in full_prompt or f.name in full_prompt:
                     file_path = str(f)
                     break
+            # Fallback: most recent spatial file
+            if not file_path and all_spatial:
+                all_spatial.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                file_path = str(all_spatial[0])
 
         if not file_path:
             await cl.Message(content="❌ 未找到可用的数据文件。请先上传 Shapefile、GeoJSON、GPKG 或 KML 文件。").send()
