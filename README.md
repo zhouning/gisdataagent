@@ -1,12 +1,14 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.7
+# GIS Data Agent (ADK Edition) v15.8
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.7 新增**：测绘质检智能体系统 — 缺陷分类法（30 编码, GB/T 24356）、SLA 工作流引擎（7 个模板含 DLG/DOM/DEM/三维模型专属）、ArcGIS Pro 双引擎 MCP（基础 arcpy + DL 深度学习 arcgis.learn 2.4.2）、4 个独立子系统（CV 视觉检测 / CAD 解析 / ArcGIS MCP / 参考数据）、实时监控仪表盘、告警规则引擎、人工复核工作流。端到端验证：107,452 个建筑要素 8 秒完成全流程质检。
+**v15.8 新增**：BCG 企业级平台能力 — 基于 BCG《Building Effective Enterprise Agents》框架，新增 6 大平台能力：Prompt Registry（环境隔离版本控制）、Model Gateway（任务感知路由 + 成本优化）、Context Manager（可插拔上下文提供者 + Token 预算）、Eval Scenario Framework（场景化评估 + 黄金数据集）、增强 Token 追踪（场景/项目归因）、增强评估历史（场景指标）。8 个新 REST 端点，12/12 测试通过，零破坏性变更。
+
+**v15.7**：测绘质检智能体系统 — 缺陷分类法（30 编码, GB/T 24356）、SLA 工作流引擎（7 个模板含 DLG/DOM/DEM/三维模型专属）、ArcGIS Pro 双引擎 MCP（基础 arcpy + DL 深度学习 arcgis.learn 2.4.2）、4 个独立子系统（CV 视觉检测 / CAD 解析 / ArcGIS MCP / 参考数据）、实时监控仪表盘、告警规则引擎、人工复核工作流。端到端验证：107,452 个建筑要素 8 秒完成全流程质检。
 
 ## 项目思想起源
 
@@ -35,11 +37,12 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2700+ tests, 116 test files |
+| 测试覆盖 | 2712+ tests, 116 test files |
 | 工具集 | 40+ BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具), 5 SkillBundle, 230+ 工具 |
 | ADK Skills | 22 场景化领域技能 (含 surveying-qc 质检技能) |
-| REST API | 203+ endpoints |
+| REST API | 211+ endpoints (v15.8 新增 8 个 BCG 平台端点) |
 | DataPanel | 24 标签页 (4 分组: 数据/智能/运维/编排, 含质检仪表盘+告警管理) |
+| BCG 平台能力 | 6 大模块: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token 追踪 + Eval 历史 |
 | 质检工作流 | 7 个预置模板 (3 通用 + DLG/DOM/DEM/三维模型专属), SLA 超时控制, DAG 并行 |
 | 缺陷分类 | 30 个缺陷编码, 5 大类别 (FMT/PRE/TOP/MIS/NRM), 3 级严重度 (A/B/C), GB/T 24356 |
 | ArcGIS MCP | 双引擎: 4 基础 arcpy 工具 + 5 DL 工具 (arcgis.learn 2.4.2 + PyTorch 2.5.1) |
@@ -63,6 +66,39 @@
 | 设计模式覆盖 | **21/21 (100%)** |
 
 ## 核心能力
+
+### BCG 企业级平台能力 (v15.8)
+
+基于 BCG《Building Effective Enterprise Agents》框架的 6 大平台能力，支持多场景部署和企业级运维：
+
+**1. Prompt Registry（提示词注册表）**
+- 环境隔离版本控制（dev/staging/prod）
+- 数据库存储 + YAML 降级
+- 版本部署与回滚：`create_version()` / `deploy()` / `rollback()`
+
+**2. Model Gateway（模型网关）**
+- 任务感知路由：3 模型（gemini-2.0-flash / 2.5-flash / 2.5-pro）
+- 自动选择：基于 task_type、context_tokens、quality_requirement、budget
+- 成本追踪：场景/项目归因，支持 FinOps 分析
+
+**3. Context Manager（上下文管理器）**
+- 可插拔提供者（语义层、知识库等）
+- Token 预算强制执行
+- 相关性排序优先级
+
+**4. Eval Scenario Framework（场景化评估框架）**
+- 场景专属指标（如测绘质检：defect_precision/recall/F1/fix_success_rate）
+- 黄金数据集管理（`agent_eval_datasets` 表）
+- 评估历史追踪
+
+**5. 增强 Token 追踪**
+- 场景和项目归因：`record_usage(scenario, project_id)`
+- 多维度成本分析
+
+**6. 增强评估历史**
+- 场景、数据集、指标列：`record_eval_result(scenario, dataset_id, metrics)`
+
+**API 端点**：8 个新端点（/api/prompts/*, /api/gateway/*, /api/context/*, /api/eval/*）
 
 ### 三角度时空因果推断体系 (v15.3)
 
