@@ -111,7 +111,8 @@ def ensure_token_table():
 
 
 def record_usage(username: str, pipeline_type: str, input_tokens: int,
-                 output_tokens: int, model_name: str = "gemini-2.5-flash") -> None:
+                 output_tokens: int, model_name: str = "gemini-2.5-flash",
+                 scenario: str = None, project_id: str = None) -> None:
     """
     Record a pipeline run's token consumption with USD cost. Non-fatal on failure.
     """
@@ -126,10 +127,11 @@ def record_usage(username: str, pipeline_type: str, input_tokens: int,
             _inject_user_context(conn)
             conn.execute(text(f"""
                 INSERT INTO {T_TOKEN_USAGE} (username, pipeline_type, model_name,
-                                         input_tokens, output_tokens, total_tokens)
-                VALUES (:u, :p, :m, :i, :o, :i + :o)
+                                         input_tokens, output_tokens, total_tokens,
+                                         scenario, project_id)
+                VALUES (:u, :p, :m, :i, :o, :i + :o, :s, :proj)
             """), {"u": username, "p": pipeline_type, "m": model_name,
-                   "i": input_tokens, "o": output_tokens})
+                   "i": input_tokens, "o": output_tokens, "s": scenario, "proj": project_id})
             conn.commit()
     except Exception as e:
         print(f"[TokenTracker] Failed to record usage: {e}")

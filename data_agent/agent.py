@@ -144,7 +144,8 @@ def get_model_config() -> dict:
     }
 
 
-def get_model_for_tier(base_tier: str = "standard"):
+def get_model_for_tier(base_tier: str = "standard", task_type: str = None,
+                       context_tokens: int = 0):
     """Get Gemini model instance with retry config based on ContextVar override or base tier.
 
     The current_model_tier ContextVar is set per-request by app.py
@@ -155,6 +156,8 @@ def get_model_for_tier(base_tier: str = "standard"):
     takes precedence so that module-level agent creation honours the
     intended tier (e.g. 'fast' for PlannerExplorer).
 
+    If task_type is provided, uses ModelRouter for task-aware selection.
+
     Returns:
         Gemini instance with retry configuration for 429 errors.
     """
@@ -163,7 +166,19 @@ def get_model_for_tier(base_tier: str = "standard"):
     # Use base_tier when ContextVar hasn't been explicitly overridden
     if tier == "standard":
         tier = base_tier
-    model_name = MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+
+    # Task-aware routing if task_type provided
+    if task_type:
+        try:
+            from .model_gateway import ModelRouter
+            router = ModelRouter()
+            model_name = router.route(task_type=task_type, context_tokens=context_tokens,
+                                     quality_requirement=tier)
+        except Exception:
+            model_name = MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+    else:
+        model_name = MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+
     return _create_model_with_retry(model_name)
 
 # --- Vertex AI Search Datastore ---

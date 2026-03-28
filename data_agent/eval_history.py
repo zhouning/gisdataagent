@@ -62,6 +62,9 @@ def record_eval_result(
     model: str = "",
     details: dict = None,
     run_id: str = None,
+    scenario: str = None,
+    dataset_id: int = None,
+    metrics: dict = None,
 ) -> Optional[int]:
     """Record an evaluation result. Returns the record ID or None."""
     engine = get_engine()
@@ -92,8 +95,9 @@ def record_eval_result(
             result = conn.execute(text(f"""
                 INSERT INTO {T_EVAL_HISTORY}
                 (run_id, pipeline, model, git_commit, git_branch,
-                 overall_score, pass_rate, verdict, num_tests, num_passed, details)
-                VALUES (:rid, :p, :m, :gc, :gb, :score, :pr, :v, :nt, :np, :d)
+                 overall_score, pass_rate, verdict, num_tests, num_passed, details,
+                 scenario, dataset_id, metrics)
+                VALUES (:rid, :p, :m, :gc, :gb, :score, :pr, :v, :nt, :np, :d, :s, :ds, :met)
                 RETURNING id
             """), {
                 "rid": rid, "p": pipeline, "m": model,
@@ -101,6 +105,8 @@ def record_eval_result(
                 "score": overall_score, "pr": pass_rate,
                 "v": verdict, "nt": num_tests, "np": num_passed,
                 "d": json.dumps(details or {}, default=str),
+                "s": scenario, "ds": dataset_id,
+                "met": json.dumps(metrics or {}, default=str),
             })
             conn.commit()
             row = result.fetchone()
