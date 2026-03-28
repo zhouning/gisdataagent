@@ -2679,6 +2679,12 @@ async def main(message: cl.Message):
     # Register metadata for spatial uploads
     for _uf in uploaded_files:
         try:
+            from data_agent.data_catalog import auto_register_from_path
+            auto_register_from_path(_uf, creation_tool="user_upload",
+                                    storage_backend="local", owner=user_id)
+        except Exception:
+            pass
+        try:
             from data_agent.metadata_integration import register_uploaded_file_metadata
             register_uploaded_file_metadata(_uf)
         except Exception:
