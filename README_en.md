@@ -1,12 +1,14 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v15.5
+# GIS Data Agent (ADK Edition) v15.8
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 22 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 24 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **191+ REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **211+ REST API endpoints**.
 
-**v15.5**: DRL-World Model Dreamer integration (world model as environment model providing look-ahead auxiliary reward) + three-angle causal inference paper + world model paper R2 reviewer response + 12 platform maturity items (intent disambiguation v2, adaptive layout, message bus, Skill SDK, Helm Chart, etc.).
+**v15.8**: BCG Enterprise Platform Capabilities — Based on BCG's "Building Effective Enterprise Agents" framework, adds 6 platform capabilities: Prompt Registry (environment-isolated versioning), Model Gateway (task-aware routing + cost optimization), Context Manager (pluggable providers + token budget), Eval Scenario Framework (scenario-specific metrics + golden datasets), enhanced token tracking (scenario/project attribution), enhanced eval history (scenario metrics). 8 new REST endpoints, 12/12 tests passing, zero breaking changes.
+
+**v15.7**: Surveying QC Agent System — Defect taxonomy (30 codes, GB/T 24356), SLA workflow engine (7 templates for DLG/DOM/DEM/3D models), ArcGIS Pro dual-engine MCP (basic arcpy + DL arcgis.learn 2.4.2), 4 independent subsystems (CV detection / CAD parser / ArcGIS MCP / reference data), real-time monitoring dashboard, alert rule engine, human review workflow.
 
 ## 📚 Official Technical Documentation
 
@@ -21,10 +23,11 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2650+ tests, 113 test files |
-| Toolsets | 38 BaseToolset (incl. DreamerToolset + CausalInferenceToolset + LLMCausalToolset + CausalWorldModelToolset + WorldModelToolset + NL2SQLToolset), 5 SkillBundle, 220+ tools |
-| ADK Skills | 21 scenario skills + DB-driven custom Skills + User Tools |
-| REST API | 191+ endpoints |
+| Test Coverage | 2712+ tests, 116 test files |
+| Toolsets | 40+ BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools), 5 SkillBundle, 230+ tools |
+| ADK Skills | 22 scenario skills (incl. surveying-qc) + DB-driven custom Skills + User Tools |
+| REST API | 211+ endpoints (v15.8 adds 8 BCG platform endpoints) |
+| BCG Platform | 6 modules: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token Tracking + Eval History |
 | Causal Inference | Three-angle system: A (GeoFM statistical 6 tools) + B (LLM reasoning 4 tools) + C (Causal world model 4 tools), 82 tests |
 | World Model | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 scenarios + timeline animation |
 | DRL + World Model | Dreamer-style integration: embedding look-ahead + scenario encoding + auxiliary reward |
@@ -37,6 +40,24 @@ This project provides industrial-grade technical documentation written in the **
 | Streaming | Batch + SSE streaming |
 
 ## Core Capabilities
+
+### BCG Enterprise Platform Capabilities (v15.8)
+
+Six platform capabilities based on BCG's "Building Effective Enterprise Agents" framework for multi-scenario deployment:
+
+**1. Prompt Registry** - Environment-isolated version control (dev/staging/prod), DB storage + YAML fallback, deploy/rollback operations
+
+**2. Model Gateway** - Task-aware routing (3 models: gemini-2.0-flash/2.5-flash/2.5-pro), auto-selection based on task_type/context_tokens/quality/budget, cost tracking with scenario/project attribution
+
+**3. Context Manager** - Pluggable providers (semantic layer, knowledge base), token budget enforcement, relevance-based prioritization
+
+**4. Eval Scenario Framework** - Scenario-specific metrics (e.g., surveying QC: defect_precision/recall/F1/fix_success_rate), golden dataset management, evaluation history tracking
+
+**5. Enhanced Token Tracking** - Scenario and project attribution: `record_usage(scenario, project_id)`, multi-dimensional cost analysis
+
+**6. Enhanced Eval History** - Scenario, dataset, metrics columns: `record_eval_result(scenario, dataset_id, metrics)`
+
+**API Endpoints**: 8 new endpoints (/api/prompts/*, /api/gateway/*, /api/context/*, /api/eval/*)
 
 ### Multi-Source Data Fusion (v5.5–v7.0)
 - **Five-stage pipeline**: Profile → Assess → Align → Fuse → Validate
