@@ -28,9 +28,14 @@ def load_prompts(domain: str) -> dict:
     return _cache[domain]
 
 
-def get_prompt(domain: str, key: str) -> str:
-    """Get a single prompt by domain and key."""
-    return load_prompts(domain)[key]
+def get_prompt(domain: str, key: str, env: str = "prod") -> str:
+    """Get a single prompt by domain and key. Tries DB first, falls back to YAML."""
+    try:
+        from ..prompt_registry import PromptRegistry
+        registry = PromptRegistry()
+        return registry.get_prompt(domain, key, env)
+    except Exception:
+        return load_prompts(domain)[key]
 
 
 def get_prompt_version(domain: str) -> str:

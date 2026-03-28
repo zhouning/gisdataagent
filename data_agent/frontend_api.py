@@ -2705,6 +2705,87 @@ async def _api_cost_estimate(request: Request):
     return JSONResponse(estimate_pipeline_cost(pipeline, model))
 
 
+# ---------------------------------------------------------------------------
+# BCG Platform Enhancement APIs (v15.8)
+# ---------------------------------------------------------------------------
+
+async def _api_prompts_versions(request: Request):
+    """GET /api/prompts/versions?domain=general&env=prod — list prompt versions."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    domain = request.query_params.get("domain", "general")
+    env = request.query_params.get("env", "prod")
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"versions": []})
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT id, prompt_key, version, is_active, deployed_at, created_at
+            FROM agent_prompt_versions
+            WHERE domain = :domain AND environment = :env
+            ORDER BY prompt_key, version DESC
+        """), {"domain": domain, "env": env})
+        versions = [{"id": r[0], "prompt_key": r[1], "version": r[2], "is_active": r[3],
+                     "deployed_at": r[4].isoformat() if r[4] else None,
+                     "created_at": r[5].isoformat() if r[5] else None} for r in result]
+    return JSONResponse({"versions": versions})
+
+
+async def _api_prompts_deploy(request: Request):
+    """POST /api/prompts/deploy — deploy prompt version to target env."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    version_id = body.get("version_id")
+    target_env = body.get("target_env", "prod")
+    if not version_id:
+        return JSONResponse({"error": "version_id required"}, status_code=400)
+    from .prompt_registry import PromptRegistry
+    registry = PromptRegistry()
+    try:
+        result = registry.deploy(version_id, target_env)
+        return JSONResponse({"status": "success", "result": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_gateway_models(request: Request):
+    """GET /api/gateway/models — list available models with capabilities."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .model_gateway import ModelRegistry
+    registry = ModelRegistry()
+    models = [{"name": m.name, "context_window": m.context_window, "cost_per_1k_input": m.cost_per_1k_input,
+               "cost_per_1k_output": m.cost_per_1k_output, "capabilities": m.capabilities}
+              for m in registry.models.values()]
+    return JSONResponse({"models": models})
+
+
+async def _api_gateway_cost_summary(request: Request):
+    """GET /api/gateway/cost-summary?days=30 — cost breakdown by scenario/project."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    days = int(request.query_params.get("days", "30"))
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"summary": []})
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT scenario, project_id, SUM(cost_usd) as total_cost, COUNT(*) as call_count
+            FROM agent_token_usage
+            WHERE timestamp > NOW() - INTERVAL :days DAY
+            GROUP BY scenario, project_id
+            ORDER BY total_cost DESC
+        """), {"days": days})
+        summary = [{"scenario": r[0], "project_id": r[1], "total_cost": float(r[2] or 0),
+                    "call_count": r[3]} for r in result]
+    return JSONResponse({"summary": summary})
+
+
 async def _api_eval_history(request: Request):
     """GET /api/eval/history?pipeline=general&limit=50 — evaluation history."""
     user = _get_user_from_request(request)
@@ -2725,6 +2806,77 @@ async def _api_eval_trend(request: Request):
     days = int(request.query_params.get("days", "90"))
     from .eval_history import get_eval_trend
     return JSONResponse({"trend": get_eval_trend(pipeline, days)})
+
+
+async def _api_context_preview(request: Request):
+    """GET /api/context/preview?task_type=qc&step=detection — preview context blocks."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    task_type = request.query_params.get("task_type", "general")
+    step = request.query_params.get("step", "")
+    from .context_manager import ContextManager
+    manager = ContextManager()
+    blocks = manager.prepare(task_type, step, {"user_id": user})
+    return JSONResponse({"blocks": [{"source": b.source, "content": b.content[:200],
+                                     "relevance": b.relevance, "tokens": b.tokens} for b in blocks]})
+
+
+async def _api_eval_datasets_create(request: Request):
+    """POST /api/eval/datasets — create evaluation dataset."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    scenario = body.get("scenario", "")
+    name = body.get("name", "")
+    test_cases = body.get("test_cases", [])
+    if not scenario or not name or not test_cases:
+        return JSONResponse({"error": "scenario, name, test_cases required"}, status_code=400)
+    from .eval_scenario import EvalDatasetManager
+    manager = EvalDatasetManager()
+    try:
+        dataset_id = manager.create_dataset(scenario, name, test_cases,
+                                           version=body.get("version", "1.0"),
+                                           description=body.get("description", ""),
+                                           created_by=user)
+        return JSONResponse({"status": "success", "dataset_id": dataset_id})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_eval_run(request: Request):
+    """POST /api/eval/run — run evaluation against dataset."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    dataset_id = body.get("dataset_id")
+    scenario = body.get("scenario", "surveying_qc")
+    if not dataset_id:
+        return JSONResponse({"error": "dataset_id required"}, status_code=400)
+    from .eval_scenario import EvalDatasetManager, SurveyingQCScenario
+    manager = EvalDatasetManager()
+    try:
+        dataset = manager.get_dataset(dataset_id)
+        evaluator = SurveyingQCScenario()
+        results = []
+        for case in dataset["test_cases"]:
+            metrics = evaluator.evaluate(case.get("actual", ), case.get("expected", {}))
+            results.append({"case_id": case.get("id"), "metrics": metrics})
+        return JSONResponse({"status": "success", "results": results})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_eval_scenarios(request: Request):
+    """GET /api/eval/scenarios — list available evaluation scenarios."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    scenarios = [{"name": "surveying_qc", "description": "测绘质检评估场景",
+                  "metrics": ["defect_precision", "defect_recall", "defect_f1", "fix_success_rate"]}]
+    return JSONResponse({"scenarios": scenarios})
 
 
 # ---------------------------------------------------------------------------
@@ -2784,6 +2936,8 @@ def get_frontend_api_routes():
     from .api.quality_routes import get_quality_routes
     from .api.distribution_routes import get_distribution_routes
     from .api.file_routes import get_file_routes
+    from .api.topology_routes import get_topology_routes
+    from .api.metadata_routes import get_metadata_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -2852,6 +3006,15 @@ def get_frontend_api_routes():
         Route("/api/hitl/risk-registry", endpoint=_api_hitl_risk_registry, methods=["GET"]),
         # Cost Management
         Route("/api/cost/estimate", endpoint=_api_cost_estimate, methods=["GET"]),
+        # BCG Platform Enhancement APIs (v15.8)
+        Route("/api/prompts/versions", endpoint=_api_prompts_versions, methods=["GET"]),
+        Route("/api/prompts/deploy", endpoint=_api_prompts_deploy, methods=["POST"]),
+        Route("/api/gateway/models", endpoint=_api_gateway_models, methods=["GET"]),
+        Route("/api/gateway/cost-summary", endpoint=_api_gateway_cost_summary, methods=["GET"]),
+        Route("/api/context/preview", endpoint=_api_context_preview, methods=["GET"]),
+        Route("/api/eval/datasets", endpoint=_api_eval_datasets_create, methods=["POST"]),
+        Route("/api/eval/run", endpoint=_api_eval_run, methods=["POST"]),
+        Route("/api/eval/scenarios", endpoint=_api_eval_scenarios, methods=["GET"]),
         # Eval History
         Route("/api/eval/history", endpoint=_api_eval_history, methods=["GET"]),
         Route("/api/eval/trend", endpoint=_api_eval_trend, methods=["GET"]),
@@ -2938,6 +3101,10 @@ def get_frontend_api_routes():
         Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_detail, methods=["GET"]),
         Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_update, methods=["PUT"]),
         Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_delete, methods=["DELETE"]),
+        # Agent Topology (v15.8)
+        *get_topology_routes(),
+        # Metadata Management (v15.8)
+        *get_metadata_routes(),
     ]
 
 
