@@ -8,6 +8,7 @@ import time
 import json
 import zipfile
 import shutil
+from pathlib import Path
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
 from google import genai as genai_client
@@ -574,19 +575,82 @@ async def _api_serve_user_file(request: Request):
     return FileResponse(real_path, media_type=content_type or "application/octet-stream")
 
 
+async def _api_upload_user_file(request: Request):
+    """POST /api/user/files — upload a file to user's directory (multipart/form-data).
+
+    Returns the resolved spatial file path (e.g. extracted .shp from .zip).
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+    user_id = user.identifier if hasattr(user, "identifier") else "admin"
+    user_dir = os.path.join(_UPLOADS_BASE, user_id)
+    os.makedirs(user_dir, exist_ok=True)
+
+    form = await request.form()
+    upload = form.get("file")
+    if not upload:
+        return JSONResponse(content={"error": "No file field in form data"}, status_code=400)
+
+    filename = getattr(upload, "filename", "upload")
+    contents = await upload.read()
+
+    dest_path = os.path.join(user_dir, filename)
+    with open(dest_path, "wb") as f:
+        f.write(contents)
+
+    ext = os.path.splitext(filename)[1].lower()
+    result_path = os.path.abspath(dest_path)
+    file_type = ext.lstrip(".")
+
+    # Handle zip: extract and find spatial file
+    if ext == ".zip":
+        extract_dir = os.path.join(user_dir, os.path.splitext(filename)[0])
+        os.makedirs(extract_dir, exist_ok=True)
+        try:
+            import zipfile as _zf
+            with _zf.ZipFile(dest_path, "r") as zr:
+                zr.extractall(extract_dir)
+            # Search for spatial files
+            for target_ext in (".shp", ".kml", ".geojson", ".json", ".gpkg"):
+                for root, _dirs, files in os.walk(extract_dir):
+                    for fname in files:
+                        if fname.lower().endswith(target_ext):
+                            result_path = os.path.abspath(os.path.join(root, fname))
+                            file_type = target_ext.lstrip(".")
+                            break
+                    if file_type != "zip":
+                        break
+                if file_type != "zip":
+                    break
+        except Exception as e:
+            logger.warning("Zip extraction failed during REST upload: %s", e)
+
+    return JSONResponse(content={
+        "name": os.path.basename(result_path),
+        "path": result_path,
+        "type": file_type,
+        "size": os.path.getsize(result_path) if os.path.exists(result_path) else 0,
+    })
+
+
 # Insert file list route BEFORE Chainlit's catch-all /{full_path:path}
 # NOTE: The greedy serve route (/api/user/files/{filename:path}) is registered
 # AFTER mount_frontend_api() so that specific routes like /api/user/files/browse
 # take priority. See line ~953 where mount_frontend_api is called, and ~959
 # where the serve route is appended.
 _file_list_route = Route("/api/user/files", endpoint=_api_list_user_files, methods=["GET"])
+_file_upload_route = Route("/api/user/files", endpoint=_api_upload_user_file, methods=["POST"])
 _file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
 for _i, _r in enumerate(chainlit_app.router.routes):
     if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
         chainlit_app.router.routes.insert(_i, _file_list_route)
+        chainlit_app.router.routes.insert(_i + 1, _file_upload_route)
         break
 else:
     chainlit_app.router.routes.append(_file_list_route)
+    chainlit_app.router.routes.append(_file_upload_route)
 
 logger.info("User file API routes enabled at /api/user/files")
 
@@ -963,10 +1027,11 @@ else:
 
 # --- Workflow Scheduler (v5.4) ---
 _workflow_scheduler = None
+_workflow_scheduler_started = False
+_workflow_scheduler_lock = asyncio.Lock()
 try:
     from data_agent.workflow_engine import WorkflowScheduler
     _workflow_scheduler = WorkflowScheduler()
-    _workflow_scheduler.start()
 except Exception as _wf_sched_err:
     logger.warning("Workflow scheduler init failed: %s", _wf_sched_err)
 
@@ -2389,6 +2454,66 @@ async def on_resume(thread: dict):
         logger.warning("ADK session resume failed: %s", e)
 
 
+async def _execute_workflow_with_steps(workflow_id: int, file_path: str, template_name: str):
+    """Execute workflow directly with Chainlit Step progress updates."""
+    from data_agent.workflow_engine import execute_workflow
+
+    root_step = cl.Step(name=f"工作流: {template_name}", type="process")
+    await root_step.send()
+
+    step_map = {}
+
+    async def progress_cb(info: dict):
+        """Callback invoked by workflow_engine after each step."""
+        step_id = info.get("step_id", f"step_{info.get('step_idx', 0)}")
+        label = info.get("step_label", step_id)
+        status = info.get("status", "unknown")
+        duration = info.get("duration")
+        summary = info.get("summary", "")
+
+        if step_id not in step_map:
+            step = cl.Step(name=label, type="process", parent_id=root_step.id)
+            await step.send()
+            step_map[step_id] = step
+        else:
+            step = step_map[step_id]
+
+        status_icon = {"completed": "✅", "failed": "❌", "running": "⏳"}.get(status, "")
+        step.output = f"{status_icon} {status}"
+        if duration:
+            step.output += f" ({duration:.1f}s)"
+        if summary:
+            step.output += f"\n{summary[:300]}"
+        await step.update()
+
+    try:
+        result = await execute_workflow(
+            workflow_id,
+            param_overrides={"file_path": file_path},
+            progress_callback=progress_cb,
+        )
+
+        final_status = result.get("status", "unknown")
+        total_dur = result.get("duration", 0)
+        root_step.output = f"状态: {final_status} | 耗时: {total_dur:.1f}s"
+        await root_step.update()
+
+        if final_status == "completed":
+            await cl.Message(content=(
+                f"✅ 工作流执行完成\n"
+                f"- 模板: {template_name}\n"
+                f"- 总耗时: {total_dur:.1f}s\n"
+                f"- 步骤: {len(result.get('step_results', []))} 步完成"
+            )).send()
+        else:
+            err = result.get("error", "未知错误")
+            await cl.Message(content=f"❌ 工作流执行失败: {err}").send()
+
+    except Exception as e:
+        logger.error("Workflow execution error: %s", e)
+        await cl.Message(content=f"⚠️ 工作流执行异常: {str(e)}").send()
+
+
 @cl.on_chat_start
 async def start():
     """Initialize session with authenticated user."""
@@ -2407,6 +2532,14 @@ async def start():
                 except Exception as e:
                     logger.warning("MCP Hub startup failed: %s", e)
                 _mcp_started = True
+
+    # Start Workflow Scheduler (deferred to async context — needs event loop)
+    global _workflow_scheduler_started
+    if not _workflow_scheduler_started and _workflow_scheduler is not None:
+        async with _workflow_scheduler_lock:
+            if not _workflow_scheduler_started:
+                _workflow_scheduler.start()
+                _workflow_scheduler_started = True
 
     # Get authenticated user from Chainlit (set by auth callbacks in auth.py)
     cl_user = cl.user_session.get("user")
@@ -2528,6 +2661,14 @@ async def main(message: cl.Message):
                 "file_name": os.path.basename(_uf),
                 "file_size": os.path.getsize(_uf) if os.path.exists(_uf) else 0,
             })
+        except Exception:
+            pass
+
+    # Register metadata for spatial uploads
+    for _uf in uploaded_files:
+        try:
+            from data_agent.metadata_integration import register_uploaded_file_metadata
+            register_uploaded_file_metadata(_uf)
         except Exception:
             pass
 
@@ -2832,6 +2973,71 @@ async def main(message: cl.Message):
         selected_agent = data_pipeline
         pipeline_type = "optimization"
         pipeline_name = "Optimization Pipeline (空间优化)"
+    elif intent == "WORKFLOW":
+        # Async workflow execution via natural language
+        template_map = {
+            "标准质检": "surveying_qc_standard",
+            "快速质检": "surveying_qc_quick",
+            "完整质检": "surveying_qc_full",
+            "DLG质检": "qc_dlg",
+            "DOM质检": "qc_dom",
+            "DEM质检": "qc_dem",
+            "三维模型质检": "qc_3dmodel",
+        }
+        template_id = None
+        template_name = None
+        for name, tid in template_map.items():
+            if name in full_prompt:
+                template_id = tid
+                template_name = name
+                break
+
+        if not template_id:
+            await cl.Message(content="❌ 未识别到具体的质检模板。支持的模板：标准质检、快速质检、完整质检、DLG质检、DOM质检、DEM质检、三维模型质检").send()
+            return
+
+        # Get most recent uploaded spatial file
+        user_dir = Path(get_user_upload_dir())
+        file_path = None
+        if user_dir.exists():
+            files = sorted(user_dir.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
+            for f in files:
+                if f.suffix.lower() in ['.shp', '.geojson', '.gpkg', '.kml', '.json']:
+                    file_path = str(f)
+                    break
+
+        if not file_path:
+            await cl.Message(content="❌ 未找到可用的数据文件。请先上传 Shapefile、GeoJSON、GPKG 或 KML 文件。").send()
+            return
+
+        # Create workflow from template and execute directly (no HTTP roundtrip)
+        try:
+            from data_agent.workflow_engine import create_workflow_from_template, execute_workflow
+
+            workflow_id = create_workflow_from_template(
+                template_id, param_overrides={"file_path": file_path}
+            )
+            if not workflow_id:
+                await cl.Message(content=f"❌ 模板 {template_name} 创建工作流失败").send()
+                return
+
+            await cl.Message(content=(
+                f"✅ 工作流已启动\n"
+                f"- 模板: {template_name}\n"
+                f"- 文件: {Path(file_path).name}\n"
+                f"- 工作流ID: {workflow_id}\n\n"
+                f"正在执行，进度将实时更新..."
+            )).send()
+
+            # Execute in current context so Chainlit Steps work properly
+            await _execute_workflow_with_steps(
+                workflow_id, file_path, template_name
+            )
+            return
+        except Exception as e:
+            logger.error("Workflow execution error: %s", e)
+            await cl.Message(content=f"❌ 工作流执行失败: {str(e)}").send()
+            return
 
     # --- World Model shortcut: skip LLM planner, call tool directly ---
     elif 'world_model' in tool_cats:
