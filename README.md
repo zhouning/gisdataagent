@@ -1,14 +1,16 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.8
+# GIS Data Agent (ADK Edition) v15.9
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.8 新增**：BCG 企业级平台能力 — 基于 BCG《Building Effective Enterprise Agents》框架，新增 6 大平台能力：Prompt Registry（环境隔离版本控制）、Model Gateway（任务感知路由 + 成本优化）、Context Manager（可插拔上下文提供者 + Token 预算）、Eval Scenario Framework（场景化评估 + 黄金数据集）、增强 Token 追踪（场景/项目归因）、增强评估历史（场景指标）。8 个新 REST 端点，12/12 测试通过，零破坏性变更。
+**v15.9 新增**：7 项 UI 增强与工具完善 — DRL 权重预设（平衡/坡度/连片 3 模式 + 工具提示）、字段映射拖拽编辑器（原生 HTML5 拖放 + 双视图切换）、MCP 外部客户端验证（Claude Desktop/Cursor 集成指南）、任务分解确认 UI（交互式子任务编辑）、记忆提取确认流程（批量保存端点）、消息总线监控面板（统计/重放/清理）、Skill SDK 完整发布（CLI + 验证器 + 13/13 测试通过）。
 
-**v15.7**：测绘质检智能体系统 — 缺陷分类法（30 编码, GB/T 24356）、SLA 工作流引擎（7 个模板含 DLG/DOM/DEM/三维模型专属）、ArcGIS Pro 双引擎 MCP（基础 arcpy + DL 深度学习 arcgis.learn 2.4.2）、4 个独立子系统（CV 视觉检测 / CAD 解析 / ArcGIS MCP / 参考数据）、实时监控仪表盘、告警规则引擎、人工复核工作流。端到端验证：107,452 个建筑要素 8 秒完成全流程质检。
+**v15.8**：BCG 企业级平台能力 — 基于 BCG《Building Effective Enterprise Agents》框架，新增 6 大平台能力：Prompt Registry（环境隔离版本控制）、Model Gateway（任务感知路由 + 成本优化）、Context Manager（可插拔上下文提供者 + Token 预算）、Eval Scenario Framework（场景化评估 + 黄金数据集）、增强 Token 追踪（场景/项目归因）、增强评估历史（场景指标）。
+
+**v15.7**：测绘质检智能体系统 — 缺陷分类法（30 编码, GB/T 24356）、SLA 工作流引擎（7 个模板含 DLG/DOM/DEM/三维模型专属）、ArcGIS Pro 双引擎 MCP（基础 arcpy + DL 深度学习 arcgis.learn 2.4.2）、4 个独立子系统（CV 视觉检测 / CAD 解析 / ArcGIS MCP / 参考数据）、实时监控仪表盘、告警规则引擎、人工复核工作流。
 
 ## 项目思想起源
 
@@ -40,8 +42,11 @@
 | 测试覆盖 | 2712+ tests, 116 test files |
 | 工具集 | 40+ BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具), 5 SkillBundle, 230+ 工具 |
 | ADK Skills | 22 场景化领域技能 (含 surveying-qc 质检技能) |
-| REST API | 211+ endpoints (v15.8 新增 8 个 BCG 平台端点) |
-| DataPanel | 24 标签页 (4 分组: 数据/智能/运维/编排, 含质检仪表盘+告警管理) |
+| REST API | 215+ endpoints (v15.9 新增 4 个消息总线端点) |
+| DataPanel | 25 标签页 (4 分组: 数据/智能/运维/编排, 含消息总线监控) |
+| v15.9 UI 增强 | DRL 权重预设 (3 模式) + 字段映射拖拽 + 任务分解 UI + 记忆确认 + 消息总线监控 |
+| Skill SDK | gis-skill-sdk v1.0.0 — CLI (new/validate/list/test/package) + 验证器 + 13/13 测试 |
+| MCP 外部集成 | Claude Desktop + Cursor 完整配置指南 + stdio 传输层 |
 | BCG 平台能力 | 6 大模块: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token 追踪 + Eval 历史 |
 | 质检工作流 | 7 个预置模板 (3 通用 + DLG/DOM/DEM/三维模型专属), SLA 超时控制, DAG 并行 |
 | 缺陷分类 | 30 个缺陷编码, 5 大类别 (FMT/PRE/TOP/MIS/NRM), 3 级严重度 (A/B/C), GB/T 24356 |
@@ -66,6 +71,45 @@
 | 设计模式覆盖 | **21/21 (100%)** |
 
 ## 核心能力
+
+### UI 增强与工具完善 (v15.9)
+
+7 项用户体验优化与开发者工具完善，提升平台易用性和可扩展性：
+
+**1. DRL 权重预设与工具提示**
+- 3 种预设模式：平衡模式、坡度优先、连片优先
+- 每个权重参数的工具提示说明
+- 一键应用预设配置
+
+**2. 字段映射拖拽编辑器**
+- 原生 HTML5 拖放 API
+- 表格视图 + 拖拽视图双模式切换
+- 可视化映射连接显示
+
+**3. MCP 外部客户端集成验证**
+- Claude Desktop 完整配置指南
+- Cursor IDE 集成说明
+- stdio 传输层入口点（`mcp_server_stdio.py`）
+
+**4. 任务分解确认 UI**
+- 复杂查询自动分解为子任务
+- 交互式任务编辑（描述/启用/禁用）
+- 批准后执行 DAG 工作流
+
+**5. 记忆提取确认流程**
+- 管道执行后展示提取的记忆
+- 用户编辑/添加/删除记忆
+- 批量保存端点（`POST /api/memory/batch-save`）
+
+**6. 消息总线监控面板**
+- 统计卡片：总消息数、已送达、未送达、失败
+- 消息列表过滤（发送者/接收者/类型/状态）
+- 重放未送达消息、清理旧消息
+
+**7. Skill SDK 完整发布**
+- CLI 命令：new / validate / list / test / package
+- 验证器模块（结构和元数据校验）
+- 13/13 测试通过，可通过 PyPI 安装
 
 ### BCG 企业级平台能力 (v15.8)
 
@@ -677,6 +721,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v15.2 | **地理空间世界模型 + NL2SQL + 地图时间轴**：World Model Tech Preview (AlphaEarth JEPA, LatentDynamicsNet 459K params, 5 情景, L2 流形保持 + 空洞卷积 + 多步展开训练)；NL2SQLToolset (Schema 发现 + 参数化安全查询 + 行政区模糊匹配)；地图时间轴播放器 + 卫星底图；世界模型快捷路径 (1 API call)；意图路由优化 (确认语/世界模型关键词)；429 重试机制；会话历史修复 | 2550+ | ✅ 完成 |
 | v15.5 | **DRL-World Model Dreamer + 因果推断论文**：DreamerEnv (ParcelEmbeddingMapper + ActionToScenarioEncoder)；三角度因果推断论文 (~520 行 LaTeX)；平台成熟度 12 项 | 2650+ | ✅ 完成 |
 | v15.7 | **测绘质检智能体系统**：缺陷分类法 (30 编码, 5 类, GB/T 24356)；SLA 工作流引擎 (7 模板含 DLG/DOM/DEM/3D 专属)；GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具；报告排版引擎 (封面+目录+动态表格+图表)；ArcGIS Pro 双引擎 MCP (arcpy + arcgis.learn 2.4.2)；4 个独立子系统 (cv-service/cad-parser/arcgis-mcp/reference-data)；告警规则引擎；案例库；人工复核工作流；实时监控仪表盘；端到端验证 (107K 要素, 8 秒) | 2700+ | ✅ 完成 |
+| v15.8 | **BCG 企业级平台能力**：Prompt Registry (环境隔离版本控制) + Model Gateway (任务感知路由) + Context Manager (可插拔提供者) + Eval Scenario Framework (场景化评估) + 增强 Token 追踪 + 增强评估历史；8 个新 REST 端点，12/12 测试通过 | 2712+ | ✅ 完成 |
+| v15.9 | **UI 增强与工具完善**：DRL 权重预设 (3 模式 + 工具提示)；字段映射拖拽编辑器 (HTML5 拖放 + 双视图)；MCP 外部客户端验证 (Claude Desktop/Cursor 集成指南 + stdio 入口)；任务分解确认 UI (交互式子任务编辑)；记忆提取确认流程 (批量保存端点)；消息总线监控面板 (统计/重放/清理)；Skill SDK 完整发布 (CLI + 验证器 + 13/13 测试) | 2712+ | ✅ 完成 |
 
 ## 设计模式覆盖 (21/21 = 100%)
 
