@@ -148,7 +148,10 @@ async def execute_a2a_task(message_text: str, caller_id: str = "a2a_client") -> 
 # A2A Server Status
 # ---------------------------------------------------------------------------
 
+import threading
+
 _a2a_started_at: Optional[float] = None
+_a2a_lock = threading.Lock()
 
 
 def get_a2a_status() -> dict:
@@ -162,6 +165,100 @@ def get_a2a_status() -> dict:
 
 
 def mark_started():
-    """Mark the A2A server as started."""
+    """Mark the A2A server as started (thread-safe)."""
     global _a2a_started_at
-    _a2a_started_at = time.time()
+    with _a2a_lock:
+        _a2a_started_at = time.time()
+
+
+# ---------------------------------------------------------------------------
+# A2A Task Lifecycle (v14.3 — Google A2A spec)
+# ---------------------------------------------------------------------------
+
+import uuid as _uuid
+import asyncio as _asyncio
+
+_tasks: dict[str, dict] = {}  # task_id → task state
+_tasks_lock = _asyncio.Lock()
+
+
+def create_task(message_text: str, caller_id: str = "a2a_client") -> dict:
+    """Create a new A2A task (submitted state). Returns task handle."""
+    task_id = _uuid.uuid4().hex[:12]
+    _tasks[task_id] = {
+        "task_id": task_id,
+        "status": "submitted",
+        "caller_id": caller_id,
+        "message": message_text,
+        "result": None,
+        "created_at": time.time(),
+        "updated_at": time.time(),
+    }
+    return {"task_id": task_id, "status": "submitted"}
+
+
+async def execute_task(task_id: str) -> dict:
+    """Execute a submitted task (transitions: submitted → working → completed/failed)."""
+    async with _tasks_lock:
+        task = _tasks.get(task_id)
+        if not task:
+            return {"status": "error", "message": f"Task {task_id} not found"}
+        if task["status"] != "submitted":
+            return {"status": "error", "message": f"Task {task_id} is {task['status']}, not submitted"}
+        task["status"] = "working"
+        task["updated_at"] = time.time()
+
+    result = await execute_a2a_task(task["message"], task["caller_id"])
+
+    async with _tasks_lock:
+        task["status"] = result.get("status", "failed")
+        task["result"] = result
+        task["updated_at"] = time.time()
+
+        # Prune old tasks (keep last 100)
+        if len(_tasks) > 100:
+            oldest = sorted(_tasks.keys(), key=lambda k: _tasks[k]["created_at"])
+            for k in oldest[:len(_tasks) - 100]:
+                _tasks.pop(k, None)
+
+    return result
+
+
+def get_task_status(task_id: str) -> dict | None:
+    """Get current task status and result."""
+    return _tasks.get(task_id)
+
+
+def list_tasks(limit: int = 20) -> list[dict]:
+    """List recent tasks."""
+    sorted_tasks = sorted(_tasks.values(), key=lambda t: t["created_at"], reverse=True)
+    return [
+        {
+            "task_id": t["task_id"],
+            "status": t["status"],
+            "caller_id": t["caller_id"],
+            "message": t["message"][:100],
+            "created_at": t["created_at"],
+        }
+        for t in sorted_tasks[:limit]
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Federation Config (v14.3)
+# ---------------------------------------------------------------------------
+
+def get_federation_config() -> dict:
+    """Return federation configuration for multi-instance deployment."""
+    from .agent_registry import discover_agents
+    peers = discover_agents()
+    return {
+        "local_agent_id": os.environ.get("AGENT_ID", "gis-data-agent-local"),
+        "federation_enabled": os.environ.get("FEDERATION_ENABLED", "false").lower() == "true",
+        "peer_agents": peers,
+        "peer_count": len(peers),
+        "capabilities": [
+            "spatial-analysis", "data-governance", "land-optimization",
+            "visualization", "data-fusion", "virtual-sources",
+        ],
+    }

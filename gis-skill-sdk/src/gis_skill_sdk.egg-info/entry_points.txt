@@ -1,0 +1,2 @@
+[console_scripts]
+gis-skill = gis_skill_sdk.cli:main

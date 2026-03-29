@@ -771,3 +771,150 @@ def reset_mcp_hub():
     """Reset the singleton. Used for testing."""
     global _hub
     _hub = None
+
+
+# ---------------------------------------------------------------------------
+# Tool Selection Rule Engine (v15.6)
+# ---------------------------------------------------------------------------
+
+class ToolSelectionRule:
+    """A rule mapping task_type → tool + server + parameters."""
+
+    __slots__ = (
+        "id", "task_type", "tool_name", "server_name",
+        "parameters", "priority", "fallback_tool", "fallback_server",
+    )
+
+    def __init__(self, **kwargs):
+        for k in self.__slots__:
+            setattr(self, k, kwargs.get(k))
+
+    def to_dict(self) -> dict:
+        return {k: getattr(self, k) for k in self.__slots__}
+
+
+class ToolRuleEngine:
+    """Manages tool selection rules: CRUD + matching.
+
+    Rules are stored in agent_mcp_tool_rules table and cached in memory.
+    """
+
+    _TABLE = "agent_mcp_tool_rules"
+
+    @classmethod
+    def _ensure_table(cls):
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return
+        try:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text(f"""
+                    CREATE TABLE IF NOT EXISTS {cls._TABLE} (
+                        id SERIAL PRIMARY KEY,
+                        task_type VARCHAR(100) NOT NULL,
+                        tool_name VARCHAR(200) NOT NULL,
+                        server_name VARCHAR(100) NOT NULL,
+                        parameters JSONB DEFAULT '{{}}'::jsonb,
+                        priority INTEGER DEFAULT 0,
+                        fallback_tool VARCHAR(200),
+                        fallback_server VARCHAR(100),
+                        owner_username VARCHAR(100),
+                        is_shared BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        updated_at TIMESTAMP DEFAULT NOW()
+                    )
+                """))
+                conn.commit()
+        except Exception:
+            pass
+
+    @classmethod
+    def add_rule(cls, task_type: str, tool_name: str, server_name: str,
+                 parameters: dict = None, priority: int = 0,
+                 fallback_tool: str = None, fallback_server: str = None) -> Optional[int]:
+        """Add a tool selection rule. Returns rule ID."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return None
+        try:
+            import json
+            from sqlalchemy import text
+            from .user_context import current_user_id
+            username = current_user_id.get() or "system"
+            with engine.connect() as conn:
+                result = conn.execute(text(f"""
+                    INSERT INTO {cls._TABLE}
+                        (task_type, tool_name, server_name, parameters, priority,
+                         fallback_tool, fallback_server, owner_username)
+                    VALUES (:tt, :tn, :sn, :params::jsonb, :pri, :ft, :fs, :user)
+                    RETURNING id
+                """), {
+                    "tt": task_type, "tn": tool_name, "sn": server_name,
+                    "params": json.dumps(parameters or {}), "pri": priority,
+                    "ft": fallback_tool, "fs": fallback_server, "user": username,
+                })
+                row = result.fetchone()
+                conn.commit()
+                return row[0] if row else None
+        except Exception as e:
+            logger.error("Failed to add tool rule: %s", e)
+            return None
+
+    @classmethod
+    def list_rules(cls, task_type: str = None) -> list[dict]:
+        """List rules, optionally filtered by task_type."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return []
+        try:
+            from sqlalchemy import text
+            sql = f"SELECT * FROM {cls._TABLE}"
+            params = {}
+            if task_type:
+                sql += " WHERE task_type = :tt"
+                params["tt"] = task_type
+            sql += " ORDER BY priority DESC, id"
+            with engine.connect() as conn:
+                rows = conn.execute(text(sql), params).mappings().all()
+                return [dict(r) for r in rows]
+        except Exception:
+            return []
+
+    @classmethod
+    def match_tool(cls, task_type: str) -> Optional[dict]:
+        """Find the best matching tool for a task type.
+
+        Returns dict with tool_name, server_name, parameters, fallback info.
+        """
+        rules = cls.list_rules(task_type=task_type)
+        if not rules:
+            return None
+        # Return highest priority rule
+        best = rules[0]
+        return {
+            "tool_name": best["tool_name"],
+            "server_name": best["server_name"],
+            "parameters": best.get("parameters", {}),
+            "fallback_tool": best.get("fallback_tool"),
+            "fallback_server": best.get("fallback_server"),
+        }
+
+    @classmethod
+    def delete_rule(cls, rule_id: int) -> bool:
+        """Delete a rule by ID."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return False
+        try:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text(f"DELETE FROM {cls._TABLE} WHERE id = :id"), {"id": rule_id})
+                conn.commit()
+                return True
+        except Exception:
+            return False

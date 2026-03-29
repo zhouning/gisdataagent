@@ -77,8 +77,9 @@ def _add_basemap_layers(m):
 def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
     """
     Robustly loads spatial data from SHP, GeoJSON, CSV, Excel, KML, KMZ,
-    or directly from a PostGIS table name.
+    FGDB (.gdb), or directly from a PostGIS table name.
     For CSV/Excel, auto-detects geometry columns (lon/lat, x/y).
+    For FGDB, reads the first layer by default (use list_fgdb_layers for multi-layer).
     """
     import re as _re
     # --- PostGIS table name detection ---
@@ -188,6 +189,65 @@ def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
     # --- KML: read directly ---
     elif ext == '.kml':
         return gpd.read_file(path, driver='KML')
+
+    # --- FGDB: Esri File Geodatabase (directory format xxx.gdb/) ---
+    elif ext == '.gdb' or (os.path.isdir(path) and any(
+        f.endswith('.gdbtable') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))
+    )):
+        import fiona
+        layers = fiona.listlayers(path)
+        if not layers:
+            raise ValueError(f"FGDB 为空，无可读取图层: {path}")
+        layer_name = layers[0]
+        if len(layers) > 1:
+            logger.info("[FGDB] 多图层 GDB (%d 图层)，默认读取第一个: '%s'。可用图层: %s",
+                        len(layers), layer_name, layers)
+        gdf = gpd.read_file(path, layer=layer_name)
+        return gdf
+
+    # --- DXF/DWG: AutoCAD format (ezdxf for DXF; DWG needs ODA converter) ---
+    elif ext in ('.dxf', '.dwg'):
+        try:
+            import ezdxf
+            from shapely.geometry import Point as _Pt, LineString as _Ls, Polygon as _Pg
+        except ImportError:
+            raise ImportError("DXF/DWG 读取需要安装 ezdxf: pip install ezdxf")
+        if ext == '.dwg':
+            logger.warning("[DWG] ezdxf 原生不支持 DWG 格式，尝试读取（可能失败）。建议先用 ODA File Converter 转为 DXF。")
+        doc = ezdxf.readfile(str(path))
+        msp = doc.modelspace()
+        geometries = []
+        attrs = []
+        for entity in msp:
+            etype = entity.dxftype()
+            layer = entity.dxf.layer if hasattr(entity.dxf, 'layer') else ''
+            if etype == 'POINT':
+                geometries.append(_Pt(entity.dxf.location.x, entity.dxf.location.y))
+                attrs.append({"layer": layer, "entity_type": etype})
+            elif etype == 'LINE':
+                geometries.append(_Ls([
+                    (entity.dxf.start.x, entity.dxf.start.y),
+                    (entity.dxf.end.x, entity.dxf.end.y),
+                ]))
+                attrs.append({"layer": layer, "entity_type": etype})
+            elif etype in ('LWPOLYLINE', 'POLYLINE'):
+                try:
+                    pts = [(p.x, p.y) for p in entity.get_points(format='xy')]
+                    if len(pts) >= 2:
+                        if entity.closed:
+                            if len(pts) >= 3:
+                                geometries.append(_Pg(pts))
+                            else:
+                                geometries.append(_Ls(pts))
+                        else:
+                            geometries.append(_Ls(pts))
+                        attrs.append({"layer": layer, "entity_type": etype})
+                except Exception:
+                    pass
+        if not geometries:
+            raise ValueError(f"DXF 文件中未找到可解析的几何实体: {path}")
+        gdf = gpd.GeoDataFrame(attrs, geometry=geometries)
+        return gdf
 
     # --- All other spatial formats: SHP, GeoJSON, GPKG, etc. ---
     else:

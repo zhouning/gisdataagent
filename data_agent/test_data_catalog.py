@@ -109,6 +109,7 @@ class TestAutoRegister(unittest.TestCase):
         mock_extract.return_value = {
             "file_size_bytes": 1024, "crs": "EPSG:4326", "srid": 4326,
             "feature_count": 10, "spatial_extent": {"minx": 0, "miny": 0, "maxx": 1, "maxy": 1},
+            "column_schema": [{"name": "geometry", "type": "geometry"}, {"name": "id", "type": "int64"}],
         }
 
         mock_conn = MagicMock()
@@ -158,11 +159,16 @@ class TestListDataAssets(unittest.TestCase):
     def test_returns_assets(self, mock_engine, mock_inject):
         import datetime
         mock_conn = MagicMock()
-        mock_conn.execute.return_value.fetchall.return_value = [
+        # First call: COUNT query → fetchone; Second call: SELECT → fetchall
+        count_result = MagicMock()
+        count_result.fetchone.return_value = (1,)
+        select_result = MagicMock()
+        select_result.fetchall.return_value = [
             (1, "data.tif", "raster", "tif", "cloud", "EPSG:4326", 100,
              1024, '["遥感"]', "Land use data", "alice", False,
-             datetime.datetime(2025, 1, 1)),
+             datetime.datetime(2025, 1, 1), "public", 1),
         ]
+        mock_conn.execute.side_effect = [count_result, select_result]
 
         mock_eng = MagicMock()
         mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
@@ -173,13 +179,19 @@ class TestListDataAssets(unittest.TestCase):
         result = list_data_assets(asset_type="raster")
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["count"], 1)
+        self.assertEqual(result["total"], 1)
         self.assertEqual(result["assets"][0]["name"], "data.tif")
+        self.assertEqual(result["assets"][0]["sensitivity_level"], "public")
 
     @patch("data_agent.data_catalog._inject_user_context")
     @patch("data_agent.data_catalog.get_engine")
     def test_keyword_filter(self, mock_engine, mock_inject):
         mock_conn = MagicMock()
-        mock_conn.execute.return_value.fetchall.return_value = []
+        count_result = MagicMock()
+        count_result.fetchone.return_value = (0,)
+        select_result = MagicMock()
+        select_result.fetchall.return_value = []
+        mock_conn.execute.side_effect = [count_result, select_result]
 
         mock_eng = MagicMock()
         mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
@@ -544,7 +556,7 @@ class TestGetDataLineage(unittest.TestCase):
         target_row = (10, "buffer_result.shp", "vector", "create_buffer",
                       [{"id": 5, "name": "parcels.shp"}])
         # Second call: look up ancestor
-        ancestor_row = (5, "parcels.shp", "vector", "upload", [])
+        ancestor_row = (5, "parcels.shp", "vector", "upload", [], None)
 
         call_count = [0]
         def mock_execute(query, params=None):
@@ -581,8 +593,8 @@ class TestGetDataLineage(unittest.TestCase):
         target_row = (5, "parcels.shp", "vector", "upload", [])
         # Descendants
         desc_rows = [
-            (10, "buffer_result.shp", "vector", "create_buffer"),
-            (11, "clipped.shp", "vector", "pairwise_clip"),
+            (10, "buffer_result.shp", "vector", "create_buffer", None),
+            (11, "clipped.shp", "vector", "pairwise_clip", None),
         ]
 
         call_count = [0]
@@ -617,7 +629,7 @@ class TestGetDataLineage(unittest.TestCase):
         mock_conn = MagicMock()
         target_row = (10, "output.shp", "vector", "create_buffer",
                       [{"id": 5, "name": "input.shp"}])
-        ancestor_row = (5, "input.shp", "vector", "upload", [])
+        ancestor_row = (5, "input.shp", "vector", "upload", [], None)
 
         call_count = [0]
         def mock_execute(query, params=None):
@@ -679,7 +691,7 @@ class TestFindDescendants(unittest.TestCase):
     def test_with_descendants(self):
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = [
-            (20, "derived.shp", "vector", "create_buffer"),
+            (20, "derived.shp", "vector", "create_buffer", None),
         ]
         from data_agent.data_catalog import _find_descendants
         result = _find_descendants(mock_conn, 1, "test.shp")

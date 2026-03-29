@@ -1,10 +1,30 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v12.0
+# GIS Data Agent (ADK Edition) v15.9
 
-基于 **Google Agent Developer Kit (ADK)** 构建的 AI 驱动地理空间分析平台。通过自然语言语义路由，自动调度四大专业管道完成空间数据治理、用地优化、多源数据融合和商业智能分析。
+基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
-系统实现了《Agentic Design Patterns》21 种设计模式中的 **21 种 (100%)**，包括 SequentialAgent / LoopAgent / ParallelAgent 三种 ADK Agent 类型、4 个 Agent Plugins、4 个输入/输出 Guardrails、SSE 流式输出、A2A 智能体互操作、Pareto 多目标优化、动态 Agent 组合、主动探索建议、推理链与置信度评分以及自我改进。前端为 React 三面板 SPA（11 标签页），后端集成 85 个 REST API。
+系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
+
+**v15.9 新增**：7 项 UI 增强与工具完善 — DRL 权重预设（平衡/坡度/连片 3 模式 + 工具提示）、字段映射拖拽编辑器（原生 HTML5 拖放 + 双视图切换）、MCP 外部客户端验证（Claude Desktop/Cursor 集成指南）、任务分解确认 UI（交互式子任务编辑）、记忆提取确认流程（批量保存端点）、消息总线监控面板（统计/重放/清理）、Skill SDK 完整发布（CLI + 验证器 + 13/13 测试通过）。
+
+**v15.8**：BCG 企业级平台能力 — 基于 BCG《Building Effective Enterprise Agents》框架，新增 6 大平台能力：Prompt Registry（环境隔离版本控制）、Model Gateway（任务感知路由 + 成本优化）、Context Manager（可插拔上下文提供者 + Token 预算）、Eval Scenario Framework（场景化评估 + 黄金数据集）、增强 Token 追踪（场景/项目归因）、增强评估历史（场景指标）。
+
+**v15.7**：测绘质检智能体系统 — 缺陷分类法（30 编码, GB/T 24356）、SLA 工作流引擎（7 个模板含 DLG/DOM/DEM/三维模型专属）、ArcGIS Pro 双引擎 MCP（基础 arcpy + DL 深度学习 arcgis.learn 2.4.2）、4 个独立子系统（CV 视觉检测 / CAD 解析 / ArcGIS MCP / 参考数据）、实时监控仪表盘、告警规则引擎、人工复核工作流。
+
+## 项目思想起源
+
+> 本项目的核心思想始于 2023 年 9 月，当时构想了一个将时空数据中台、时空知识图谱、因果推断平台与 AI Agent 决策模拟相融合的体系架构。经过两年多的迭代开发，这一愿景已在 GIS Data Agent 中逐步实现。
+
+<p align="center">
+  <img src="docs/origin_vision.png" alt="GIS Data Agent 项目的思想起源" width="800" />
+</p>
+<p align="center"><em>GIS Data Agent 项目的思想起源（2023 年 9 月）— 时空数据中台 × 因果推断 × 知识图谱 × AI Agent 决策</em></p>
+
+<p align="center">
+  <img src="docs/thesis_topics.png" alt="毕业论文选题方向" width="800" />
+</p>
+<p align="center"><em>Data Agent 项目中集成的世界模型、时空因果推断、深度强化学习的内容包含了毕业论文选题时所罗列的方向</em></p>
 
 ## 📚 官方技术文档
 
@@ -19,17 +39,149 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2104 tests, 92 test files |
-| 工具集 | 22 BaseToolset, 5 SkillBundle, 122+ 工具 |
-| ADK Skills | 16 场景化领域技能 + DB 驱动自定义 Skills |
-| REST API | 85 endpoints |
-| Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
+| 测试覆盖 | 2712+ tests, 116 test files |
+| 工具集 | 40+ BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具), 5 SkillBundle, 230+ 工具 |
+| ADK Skills | 22 场景化领域技能 (含 surveying-qc 质检技能) |
+| REST API | 215+ endpoints (v15.9 新增 4 个消息总线端点) |
+| DataPanel | 25 标签页 (4 分组: 数据/智能/运维/编排, 含消息总线监控) |
+| v15.9 UI 增强 | DRL 权重预设 (3 模式) + 字段映射拖拽 + 任务分解 UI + 记忆确认 + 消息总线监控 |
+| Skill SDK | gis-skill-sdk v1.0.0 — CLI (new/validate/list/test/package) + 验证器 + 13/13 测试 |
+| MCP 外部集成 | Claude Desktop + Cursor 完整配置指南 + stdio 传输层 |
+| BCG 平台能力 | 6 大模块: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token 追踪 + Eval 历史 |
+| 质检工作流 | 7 个预置模板 (3 通用 + DLG/DOM/DEM/三维模型专属), SLA 超时控制, DAG 并行 |
+| 缺陷分类 | 30 个缺陷编码, 5 大类别 (FMT/PRE/TOP/MIS/NRM), 3 级严重度 (A/B/C), GB/T 24356 |
+| ArcGIS MCP | 双引擎: 4 基础 arcpy 工具 + 5 DL 工具 (arcgis.learn 2.4.2 + PyTorch 2.5.1) |
+| 独立子系统 | 4 个 (cv-service / cad-parser / arcgis-mcp / reference-data), Docker 部署, MCP 集成 |
+| 因果推断 | 三角度体系: A (GeoFM 统计 6 工具) + B (LLM 推理 4 工具) + C (因果世界模型 4 工具), 82 tests |
+| 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
+| DRL + World Model | Dreamer 式集成: ParcelEmbeddingMapper + ActionToScenarioEncoder + 辅助奖励前瞻 |
+| NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
+| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) + **缺陷分类法** |
+| 连接器 | 9 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage/ReferenceData) |
+| 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
+| 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + **告警规则引擎** + 实时监控仪表盘 + Grafana 模板 |
+| 成本管理 | USD 定价表 (10 模型) + Token/USD 双级预算熔断 + 成本预估 |
+| 数据安全 | PII 分类分级 (5 级) + 4 种脱敏策略 + 8 表 RLS 策略 + HITL 审批 (12 工具风险表) |
+| CI/CD | 3 阶段 (CI → Staging → Production) + Canary 部署 + Feature Flags + Terraform IaC |
+| 分布式计算 | SparkGateway 三层路由 (L1 本地 / L2 队列 / L3 Spark) |
+| MCP Server | v2.0 — 36+ 工具暴露 + 4 个子系统 MCP 集成 |
+| Agent Plugins | 4 (CostGuard + USD 熔断, GISToolRetry + 指数退避, Provenance, HITLApproval) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
-| ADK Agent 类型 | SequentialAgent + LoopAgent + ParallelAgent |
+| AgentOps 成熟度 | 3.9/5 (10 维度评估, 对标 Google Prototype-to-Production 白皮书 78%) |
 | 设计模式覆盖 | **21/21 (100%)** |
-| Streaming | 批量 + SSE 流式 |
 
 ## 核心能力
+
+### UI 增强与工具完善 (v15.9)
+
+7 项用户体验优化与开发者工具完善，提升平台易用性和可扩展性：
+
+**1. DRL 权重预设与工具提示**
+- 3 种预设模式：平衡模式、坡度优先、连片优先
+- 每个权重参数的工具提示说明
+- 一键应用预设配置
+
+**2. 字段映射拖拽编辑器**
+- 原生 HTML5 拖放 API
+- 表格视图 + 拖拽视图双模式切换
+- 可视化映射连接显示
+
+**3. MCP 外部客户端集成验证**
+- Claude Desktop 完整配置指南
+- Cursor IDE 集成说明
+- stdio 传输层入口点（`mcp_server_stdio.py`）
+
+**4. 任务分解确认 UI**
+- 复杂查询自动分解为子任务
+- 交互式任务编辑（描述/启用/禁用）
+- 批准后执行 DAG 工作流
+
+**5. 记忆提取确认流程**
+- 管道执行后展示提取的记忆
+- 用户编辑/添加/删除记忆
+- 批量保存端点（`POST /api/memory/batch-save`）
+
+**6. 消息总线监控面板**
+- 统计卡片：总消息数、已送达、未送达、失败
+- 消息列表过滤（发送者/接收者/类型/状态）
+- 重放未送达消息、清理旧消息
+
+**7. Skill SDK 完整发布**
+- CLI 命令：new / validate / list / test / package
+- 验证器模块（结构和元数据校验）
+- 13/13 测试通过，可通过 PyPI 安装
+
+### BCG 企业级平台能力 (v15.8)
+
+基于 BCG《Building Effective Enterprise Agents》框架的 6 大平台能力，支持多场景部署和企业级运维：
+
+**1. Prompt Registry（提示词注册表）**
+- 环境隔离版本控制（dev/staging/prod）
+- 数据库存储 + YAML 降级
+- 版本部署与回滚：`create_version()` / `deploy()` / `rollback()`
+
+**2. Model Gateway（模型网关）**
+- 任务感知路由：3 模型（gemini-2.0-flash / 2.5-flash / 2.5-pro）
+- 自动选择：基于 task_type、context_tokens、quality_requirement、budget
+- 成本追踪：场景/项目归因，支持 FinOps 分析
+
+**3. Context Manager（上下文管理器）**
+- 可插拔提供者（语义层、知识库等）
+- Token 预算强制执行
+- 相关性排序优先级
+
+**4. Eval Scenario Framework（场景化评估框架）**
+- 场景专属指标（如测绘质检：defect_precision/recall/F1/fix_success_rate）
+- 黄金数据集管理（`agent_eval_datasets` 表）
+- 评估历史追踪
+
+**5. 增强 Token 追踪**
+- 场景和项目归因：`record_usage(scenario, project_id)`
+- 多维度成本分析
+
+**6. 增强评估历史**
+- 场景、数据集、指标列：`record_eval_result(scenario, dataset_id, metrics)`
+
+**API 端点**：8 个新端点（/api/prompts/*, /api/gateway/*, /api/context/*, /api/eval/*）
+
+### 三角度时空因果推断体系 (v15.3)
+
+三个互补角度构建完整的地理空间因果推断能力，为论文提供多维度证据支撑：
+
+**Angle A — GeoFM 嵌入因果推断** (6 tools)
+- **倾向得分匹配 (PSM)**：估计平均处理效应 (ATE/ATT)，支持空间距离加权匹配
+- **暴露-响应函数 (ERF)**：连续暴露变量的因果剂量-响应关系
+- **双重差分 (DiD)**：面板数据前后对比，支持实体固定效应
+- **空间 Granger 因果**：VAR 模型逐对因果检验 + 热力图可视化
+- **地理收敛交叉映射 (GCCM)**：非线性动力系统因果检测
+- **因果森林**：异质性处理效应 (CATE) + 特征重要性
+- **GeoFM 嵌入增强**：所有工具支持 `use_geofm_embedding=True`，将 AlphaEarth 64 维嵌入作为空间混淆控制变量
+
+**Angle B — LLM 因果推理** (4 tools)
+- **因果 DAG 构建**：Gemini 2.5 Pro 从地理问题中识别变量、混淆因子、中介变量和碰撞因子，生成 Mermaid 图 + networkx 可视化
+- **反事实推理**：结构化推理链（"如果X没有发生，Y会怎样？"），含置信度和敏感性因子
+- **因果机制解释**：接收 Angle A 的统计结果 JSON，LLM 给出因果机制解读和替代解释
+- **What-If 情景生成**：生成结构化情景，自动映射到 Angle A 工具参数和 Angle C 世界模型情景
+
+**Angle C — 因果世界模型** (4 tools)
+- **空间干预预测**：对子区域施加干预情景，分析空间溢出效应（局部干预 → 全局影响）
+- **反事实对比**：平行运行两个情景，逐像素计算 LULC 差异和因果效应图
+- **嵌入空间处理效应**：用 cosine/euclidean/manhattan 距离度量两情景在嵌入空间的因果影响
+- **统计先验整合**：用 Angle A 的 ATT 估计校准世界模型预测偏移（二分搜索情景编码缩放）
+
+### 地理空间世界模型 (v15.2 Tech Preview)
+- **JEPA 架构**：冻结 AlphaEarth 编码器（480M 参数）+ 轻量 LatentDynamicsNet 预测器（459K 参数）
+- **嵌入空间预测**：在 64 维 L2 归一化超球面上学习土地利用变化动力学，无需像素级生成
+- **5 种情景模拟**：城市蔓延、生态修复、农业集约化、气候适应、基线趋势
+- **三大技术创新**：L2 流形保持 + 空洞卷积（170m 感受野）+ 多步展开训练损失
+- **地图时间轴**：多年份 LULC 预测图层动画播放 + 卫星影像底图叠加
+- **快捷路径**：世界模型请求跳过 LLM Planner 直接调用，仅 1 次 API 调用
+
+### NL2SQL 动态数据查询 (v15.2)
+- **Schema 发现**：`discover_database_schema()` 自动探索表结构、列类型、注释
+- **参数化安全查询**：`execute_spatial_query()` 自动构造 LIKE 模糊匹配，零 SQL 注入风险
+- **行政区划加载**：`load_admin_boundary()` 专用工具，自然语言地名 → 模糊匹配 → 自动 SQL → GeoJSON
+- **动态扩展**：新增表到数据库后无需改代码，LLM 先发现 schema 再构造查询
 
 ### 多源数据智能融合 (v5.5–v7.0)
 - **五阶段流水线**：画像 → 评估 → 对齐 → 融合 → 验证
@@ -54,6 +206,9 @@
 
 ### 空间优化
 - 深度强化学习引擎（MaskablePPO）用地布局优化
+- **5 个 DRL 场景**：耕地优化、城市绿地布局、设施选址、交通网络、综合规划
+- **NSGA-II 多目标 Pareto 优化**：快速非支配排序 + 拥挤距离，替代加权和方法
+- **DRL + World Model Dreamer 集成 (v15.5)**：世界模型作为环境模型提供前瞻辅助奖励，ParcelEmbeddingMapper 将地块映射到 AlphaEarth 64D 嵌入，ActionToScenarioEncoder 将动作历史转换为场景向量
 - 耕地/林地配对交换，严格面积平衡
 - 分类着色地图渲染（Categorized Layer）：按地类/变化类型自动着色，中文图例
 
@@ -85,6 +240,52 @@
 - **高级空间分析 Tier 2**：IDW 插值、Kriging、地理加权回归 (GWR)、多时相变化检测、DEM 可视域分析
 - **工作流模板市场**：5 个预置模板 + 发布/克隆/评分，一键复用工作流
 
+### 虚拟数据层 + 连接器插件化 (v13.0–v14.5)
+- **BaseConnector 插件架构 (v14.5)**：抽象基类 + ConnectorRegistry 注册表，6 个内置连接器
+- **6 种数据源连接器**：WFS / STAC / OGC API / Custom API / **WMS/WMTS** (v14.5) / **ArcGIS REST FeatureServer** (v14.5)
+- **Fernet 加密凭证存储**：连接器密钥安全持久化
+- **查询时 CRS 自动对齐**：连接器返回 GeoDataFrame 后自动 `to_crs(target_crs)`
+- **语义 Schema 映射**：text-embedding-004 向量嵌入 + 35 个规范地理空间词汇表自动字段匹配
+- **连接器健康监控 + 图层发现**：端点连通性检测 + GetCapabilities / 服务信息自动发现
+- **前端 WMS 图层渲染**：MapPanel 支持 `L.TileLayer.WMS` 直接渲染
+- **FGDB 格式支持 (v14.5)**：Esri File Geodatabase 目录格式读取 + 图层枚举
+
+### 数据标准与治理引擎 (v14.5)
+- **Data Standard Registry**：YAML 标准定义 + 预置 GB/T 21010 地类编码表 (73 值) + DLTB 字段规范 (30 字段 M/C/O 约束) + 4 个代码表
+- **标准驱动校验**：`check_field_standards` 通过标准 ID 自动加载，一键校验字段缺失/值域超限/类型不匹配
+- **DataCleaningToolset (7 工具)**：空值填充（5 种策略）/ 编码映射转换 / 字段重命名 / 类型转换 / 异常值裁剪 / CRS 统一 / 缺失字段补齐
+
+### MCP Server v2.0 (v13.1)
+- **36+ 工具暴露**：底层 GIS 工具 + 6 个高阶元数据工具（search_catalog / get_data_lineage / list_skills / list_toolsets / list_virtual_sources / run_analysis_pipeline）
+- 外部 Agent（Claude Desktop / Cursor）可通过 MCP 调用完整分析能力
+
+### 可扩展平台 (v12.0–v14.3)
+- **Custom Skills CRUD**：前端创建/编辑/删除自定义 LlmAgent，支持版本管理（最近 10 版回滚）、评分、克隆、审批发布
+- **User-Defined Tools**：声明式工具模板（http_call / sql_query / file_transform / chain）
+- **Marketplace 画廊**：聚合 Skills / Tools / Templates / Bundles，支持排序和热度排行
+- **Skill SDK 规范**：`gis-skill-sdk` Python 包规范，外部开发者可独立开发 Skill
+- **Plugin 插件系统**：动态注册自定义 DataPanel tab 插件
+- **Skill 依赖图**：Skill A 依赖 Skill B 的 DAG 编排
+- **Webhook 集成**：第三方平台 Skill 注册（GitHub Action / Zapier trigger）
+
+### 多 Agent 编排增强 (v14.0–v14.3)
+- **DAG 工作流**：拓扑排序 + 并行层 + 条件节点 + Custom Skill Agent 节点
+- **节点级重试**：DAG 失败节点可单独重试，不重跑整个 workflow
+- **A2A 双向 RPC**：Agent Card + Task lifecycle（submitted→working→completed）+ 主动调用远程 Agent
+- **Agent Registry**：PostgreSQL 服务发现 + 心跳 + 状态管理
+- **Circuit Breaker**：工具/Agent 连续失败时熔断，自动降级
+- **条件分析链**：用户定义触发条件，pipeline 完成后自动执行后续分析
+
+### 交互增强 (v14.0–v14.3)
+- **多语言意图检测**：中/英/日自动识别 + 路由
+- **意图消歧对话**：AMBIGUOUS 分类时弹出选择卡片
+- **热力图支持**：deck.gl HeatmapLayer 集成
+- **测量工具**：距离（Haversine）+ 面积（Shoelace）计算
+- **3D 图层控制**：show/hide/opacity 调节面板
+- **3D basemap 同步**：2D 底图选择自动同步到 3D 视图
+- **GeoJSON 编辑器**：DataPanel 内粘贴/编辑 GeoJSON + 地图预览
+- **标注导出**：GeoJSON / CSV 格式导出
+
 ### 多模态输入 (v5.2)
 - 图片理解：自动分类上传图片，Gemini 视觉分析
 - PDF 解析：文本提取 + 原生 PDF Blob 双策略
@@ -97,9 +298,28 @@
 
 ### 工作流编排 (v5.4)
 - 多步管道链式执行，参数化 Prompt 模板
-- React Flow 可视化拖拽编辑器（数据输入/管道/输出三种节点）
+- React Flow 可视化拖拽编辑器（数据输入/管道/技能 Agent/输出四种节点）
+- **DAG 执行引擎**：拓扑排序 + 并行层 + 条件节点 + 跨步骤参数引用
 - APScheduler Cron 定时执行
 - Webhook 结果推送
+
+### 用户自助扩展平台 (v12.0)
+- **Custom Skills 前端 CRUD**：在"能力"Tab 创建/编辑/删除自定义 Agent（指令+工具集+触发词+模型等级）
+- **User-Defined Tools**：声明式工具模板（HTTP 调用/SQL 查询/文件转换/链式组合），动态构建 ADK FunctionTool，通过 UserToolset 暴露给 Agent
+- **多 Agent Pipeline 编排**：WorkflowEditor 新增 Skill Agent 节点，可视化编排多个自定义 Agent 组成 DAG 工作流
+- **能力浏览 Tab**：聚合展示内置技能、自定义技能、工具集、自建工具，支持分类过滤和搜索
+- **知识库 Tab**：KB CRUD、文档管理、语义搜索，支持 GraphRAG 图增强检索
+- **面板拖拽调整**：三面板布局支持拖拽分隔条调整宽度（240-700px）
+
+### 数据血缘与行业模板 (v12.1)
+- **分析血缘自动追踪**：pipeline_run_id ContextVar 贯穿执行链，每次工具输出自动注册到 Data Catalog 并关联来源资产
+- **血缘 DAG 可视化**：DataPanel 资产详情中横向 DAG 布局（来源→当前→派生），SVG 箭头连接，类型徽章
+- **行业分析模板**：3 个首批行业模板（城市热岛效应分析、植被变化检测、土地利用优化），一键导入为工作流
+- **CapabilitiesView 行业分组**：能力浏览 Tab 新增"行业模板"过滤器，按行业分类展示
+- **API 模块化重构 (S-4)**：MCP Hub / Workflow / Skills 路由提取至独立模块，提取率 42%
+- **Cartographic Precision UI**：Space Grotesk 字体 + Teal/Amber 配色 + 暖白 Stone 背景 + 等高线登录页
+- **安全加固**：DB 降级后门移除 + 暴力破解防护（5 次失败锁定 15 分钟）
+- **架构重构**：app.py 拆分（intent_router.py + pipeline_helpers.py 提取）+ React Error Boundaries
 
 ## 核心架构：多智能体协作网络
 
@@ -167,15 +387,16 @@ chainlit run data_agent/app.py -w
 cd frontend && npm install && npm run dev
 ```
 
-默认账号：`admin` / `admin123`（首次运行自动创建）。登录页内置自助注册。
+默认账号：`admin` / `admin123`（首次运行自动创建种子用户，建议登录后修改密码）。登录页内置自助注册。注意：数据库必须可用才能登录。
 
 ## 功能矩阵
 
 | 类别 | 功能 | 描述 |
 |---|---|---|
 | **AI 核心** | 语义层 | YAML 目录（15 领域、7 区域、8 空间算子）+ 3 级层次 + DB 注解 |
-| | 技能包 | 16 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析等），三级增量加载 (v7.5) |
-| | 自定义 Skills | DB 驱动用户自建专家 Agent：自定义指令/工具集/触发词，@mention 调用，LLM 注入防护 (v8.0) |
+| | 技能包 | 18 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析等），三级增量加载 (v7.5) |
+| | 自定义 Skills | DB 驱动用户自建专家 Agent：自定义指令/工具集/触发词，@mention 调用，LLM 注入防护，**前端完整 CRUD** (v8.0/v12.0) |
+| | 自定义 Tools | 声明式工具模板 (HTTP/SQL/文件/链式)，动态 FunctionTool 构建，UserToolset (v12.0) |
 | | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
 | | MCP 工具市场 | 配置驱动的 MCP 服务器连接 + 工具聚合 + DB 持久化 + 管理 UI + per-User 隔离 (v7.1/v10.0) |
 | | 分析视角注入 | 用户自定义分析关注点，自动注入 Agent 提示词 (v7.1) |
@@ -215,21 +436,21 @@ cd frontend && npm install && npm run dev
 | **3D 可视化** | deck.gl 渲染 | 拉伸体、柱状图、弧线、散点图层 |
 | | 2D/3D 切换 | MapPanel 一键切换，自动检测 3D 图层 |
 | **工作流** | 引擎 | 多步管道链式执行 + 参数化模板 |
-| | 可视化编辑器 | React Flow 拖拽编辑，3 种自定义节点 (v7.1) |
+| | 可视化编辑器 | React Flow 拖拽编辑，4 种自定义节点（数据输入/管道/技能Agent/输出）(v7.1/v12.0) |
 | | 定时执行 | APScheduler Cron 调度 |
 | | Webhook 推送 | 执行完成后 HTTP POST 结果 |
 | **数据** | 数据湖 | 统一数据目录 + 血缘追踪 + 资产一键下载（本地/云/PostGIS） |
 | | RAG 知识库 | 用户上传文档 → 向量化存储 → 语义搜索，多租户隔离 (v8.0) |
 | | 实时流 | Redis Streams 地理围栏告警 + IoT 数据 |
 | | 遥感分析 | 栅格分析、NDVI、LULC/DEM 下载 |
-| **前端** | 三面板 UI | 对话 + 地图 + 数据；支持 HTML/CSV 伪影渲染；React 18 + Leaflet + deck.gl |
+| **前端** | 三面板 UI | 对话 + 地图 + 数据；13 个标签页；面板拖拽调整；React Error Boundary；React 18 + Leaflet + deck.gl |
 | | 分类着色图层 | `categorized` 图层类型：按属性字段自动着色多边形 + 中文图例（v7.5） |
 | | 文件管理 | 数据面板点击文件即可打开/下载（PDF/DOCX/HTML 等）(v7.5) |
 | | Action 按钮 | 导出 PDF 报告、分享结果等按钮通过 ChainlitAPI 调用后端回调 (v7.5) |
 | | Token 仪表盘 | 每用户日/月用量 + 管线分布可视化 |
 | | 地图标注 | 协作式点击标注 + 团队共享 |
 | | 底图切换 | 高德、天地图、CartoDB、OSM |
-| **安全** | 认证 | 密码 + OAuth2 (Google) + 应用内自注册 |
+| **安全** | 认证 | 密码 + OAuth2 (Google) + 应用内自注册 + 暴力破解防护 (v12.0) |
 | | MCP 安全加固 | per-User 工具隔离 + 安全沙箱 + 审计日志 (v7.5) |
 | | RBAC + RLS | admin/analyst/viewer 角色 + PostgreSQL 行级安全 |
 | | 账户管理 | 用户自助删除 + 级联清理 + 管理员保护 |
@@ -247,10 +468,10 @@ cd frontend && npm install && npm run dev
 
 | 层级 | 技术 |
 |---|---|
-| **框架** | Google ADK v1.26 (`google.adk.agents`, `google.adk.runners`) |
+| **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（85 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（178+ 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -264,17 +485,24 @@ cd frontend && npm install && npm run dev
 
 ```
 data_agent/
-├── app.py                       # Chainlit UI、语义路由、认证、RBAC
+├── app.py                       # Chainlit UI、RBAC、文件上传、管线调度 (3267 行)
 ├── agent.py                     # Agent 定义、管道组装、ParallelAgent
-├── frontend_api.py              # 76 个 REST API 端点
+├── intent_router.py             # 语义意图路由 (从 app.py 提取)
+├── pipeline_helpers.py          # 管线辅助：工具说明、进度渲染、错误分类
+├── frontend_api.py              # 124 个 REST API 端点
 ├── pipeline_runner.py           # 无头管道执行器 + SSE 流式输出
-├── workflow_engine.py           # 工作流引擎：CRUD、执行、Webhook、Cron 调度
+├── dreamer_env.py               # DRL-World Model Dreamer 环境 (v15.5)
+├── workflow_engine.py           # 工作流引擎：CRUD、顺序+DAG 执行、Webhook、Cron
 ├── multimodal.py                # 多模态输入：图片/PDF 分类、Gemini Part 构建
 ├── mcp_hub.py                   # MCP Hub Manager：配置驱动的 MCP 服务器管理
 ├── fusion_engine.py             # 多模态数据融合引擎（MMFE，~2100 行）
 ├── knowledge_graph.py           # 地理知识图谱引擎（networkx，~625 行）
 ├── custom_skills.py             # DB 驱动自定义 Skills：CRUD、验证、Agent 工厂
+├── user_tools.py                # 用户自定义工具：声明式模板 CRUD (v12.0)
+├── user_tool_engines.py         # 工具执行引擎：http_call/sql_query/file_transform/chain (v12.0)
+├── capabilities.py              # 能力发现：聚合内置技能+工具集元数据 (v12.0)
 ├── failure_learning.py          # 工具失败模式学习：记录、查询、标记已解决
+├── auth.py                      # 认证：密码/OAuth + 暴力破解防护 (v12.0 加固)
 ├── plugins.py                   # Agent Plugins：CostGuard、GISToolRetry、Provenance、HITL
 ├── guardrails.py                # Agent Guardrails：4 个输入/输出护栏（递归挂载）
 ├── conversation_memory.py       # PostgresMemoryService 跨会话记忆
@@ -287,26 +515,40 @@ data_agent/
 ├── workflow_templates.py        # 工作流模板市场：CRUD + 克隆 + 评分 (v10.0)
 ├── spatial_analysis_tier2.py    # 高级空间分析：IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 ├── conftest.py                  # 集中测试夹具 + 事件循环安全
-├── toolsets/                    # 22 个 BaseToolset 模块
-│   ├── visualization_tools.py   #   10 个工具：分级设色、热力图、3D、图层控制
+├── toolsets/                    # 38 个 BaseToolset 模块 (含 DreamerToolset)
+│   ├── visualization_tools.py   #   11 个工具：分级设色、热力图、3D、图层控制
 │   ├── analysis_tools.py        #   分析工具 + LongRunningFunctionTool (DRL)
+│   ├── dreamer_tools.py         #   DRL-World Model Dreamer 集成工具 (v15.5)
+│   ├── governance_tools.py      #   9 个工具：质量审计 + 标准校验
+│   ├── data_cleaning_tools.py   #   7 个工具：清洗/转换/补齐 (v14.5)
+│   ├── virtual_source_tools.py  #   7 个工具：数据源查询 + WMS 图层 + 图层发现
 │   ├── fusion_tools.py          #   数据融合工具集（4 个工具）
 │   ├── knowledge_graph_tools.py #   知识图谱工具集（3 个工具）
+│   ├── user_tools_toolset.py    #   用户自定义工具桥接 (v12.0)
 │   ├── mcp_hub_toolset.py       #   MCP 工具桥接
-│   ├── skill_bundles.py         #   16 个场景技能分组
+│   ├── skill_bundles.py         #   18 个场景技能分组
 │   ├── spatial_analysis_tier2_tools.py # IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 │   └── ...                      #   探查、地理处理、数据库、语义层等
-├── skills/                      # 16 个 ADK 场景技能（kebab-case 目录）
+├── connectors/                  # 插件式数据源连接器 (v14.5)
+│   ├── __init__.py              #   BaseConnector ABC + ConnectorRegistry
+│   ├── wfs.py / stac.py / ogc_api.py / custom_api.py
+│   ├── wms.py                   #   WMS/WMTS 图层配置连接器
+│   └── arcgis_rest.py           #   ArcGIS FeatureServer 分页查询连接器
+├── standard_registry.py         # 数据标准注册表 (v14.5)
+├── standards/                   # 预置行业标准 YAML (v14.5)
+│   ├── dltb_2023.yaml           #   DLTB 30 字段 + 4 代码表
+│   └── gb_t_21010_2017.yaml     #   GB/T 21010 地类编码 73 值
+├── skills/                      # 18 个 ADK 场景技能（kebab-case 目录）
 ├── prompts/                     # 3 个 YAML 提示词文件
 ├── evals/                       # Agent 评估框架（trajectory + rubric）
-├── migrations/                  # 29 个 SQL 迁移脚本
+├── migrations/                  # 38 个 SQL 迁移脚本
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
 ├── tool_filter.py               # 意图驱动动态工具过滤（ToolPredicate + ContextVar）
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 85 个测试文件 (1993 测试)
+├── test_*.py                    # 102 个测试文件 (2420+ 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -316,12 +558,12 @@ frontend/
 │   │   ├── ChatPanel.tsx        # 对话 + 语音输入 + NL 图层控制
 │   │   ├── MapPanel.tsx         # Leaflet 地图 + 2D/3D 切换 + 标注
 │   │   ├── Map3DView.tsx        # deck.gl 3D 渲染器
-│   │   ├── DataPanel.tsx        # 7 标签页：文件/表格/资产/历史/用量/工具/工作流
-│   │   ├── WorkflowEditor.tsx   # React Flow 工作流可视化编辑器
+│   │   ├── DataPanel.tsx        # 13 标签页：文件/表格/资产/历史/用量/工具/工作流/建议/任务/模板/分析/能力/知识库
+│   │   ├── WorkflowEditor.tsx   # React Flow 工作流可视化编辑器（含 Skill Agent 节点）
 │   │   ├── LoginPage.tsx        # 登录 + 应用内注册
 │   │   ├── AdminDashboard.tsx   # 管理仪表盘
 │   │   └── UserSettings.tsx     # 账户设置 + 自助删除
-│   └── styles/layout.css        # 全部样式 (~2100 行)
+│   └── styles/layout.css        # 全部样式 (~2400 行)
 └── package.json
 
 .github/workflows/ci.yml        # GitHub Actions CI 管道
@@ -335,9 +577,9 @@ docs/                            # 文档
 
 ```
 ┌───────────────────┬──────────────────────────┬──────────────────────┐
-│  对话面板 (320px)   │    地图面板 (flex-1)       │   数据面板 (360px)    │
+│  对话面板 (var)    │    地图面板 (flex-1)       │   数据面板 (var)     │
 │                    │                           │                      │
-│  消息流             │  Leaflet / deck.gl 地图    │  7 个标签页:           │
+│  消息流             │  Leaflet / deck.gl 地图    │  13 个标签页:         │
 │  流式输出           │  GeoJSON 图层              │  - 文件               │
 │  操作卡片           │  2D/3D 切换               │  - 表格预览            │
 │  语音输入           │  图层控制                  │  - 数据资产            │
@@ -345,10 +587,12 @@ docs/                            # 文档
 │                    │  底图切换                   │  - Token 用量         │
 │                    │  图例                      │  - MCP 工具           │
 │                    │                           │  - 工作流              │
+│                    │                           │  - 建议/任务/模板/分析 │
+│                    │                           │  - 能力/知识库         │
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API 端点（76 条路由）
+## REST API 端点（95 条路由）
 
 | 方法 | 路径 | 描述 |
 |---|---|---|
@@ -411,11 +655,21 @@ docs/                            # 文档
 | GET | `/api/kb/{id}/graph` | 实体关系图谱数据 (v10.0) |
 | POST | `/api/kb/{id}/graph-search` | 图增强语义搜索 (v10.0) |
 | GET | `/api/kb/{id}/entities` | 知识库实体列表 (v10.0) |
+| GET | `/api/capabilities` | 能力聚合（内置技能+自定义技能+工具集+用户工具）(v12.0) |
+| GET/POST | `/api/user-tools` | 用户自定义工具列表/创建 (v12.0) |
+| GET/PUT/DELETE | `/api/user-tools/{id}` | 用户工具详情/更新/删除 (v12.0) |
+| POST | `/api/user-tools/{id}/test` | 用户工具试运行 (v12.0) |
+| POST | `/api/tasks/submit` | 异步任务提交 |
+| GET | `/api/tasks` | 任务列表 |
+| GET/DELETE | `/api/tasks/{id}` | 任务详情/取消 |
+| GET | `/api/suggestions` | 主动探索建议 |
+| POST | `/api/suggestions/{id}/execute` | 执行建议 |
+| POST | `/api/suggestions/{id}/dismiss` | 忽略建议 |
 
 ## 运行测试
 
 ```bash
-# 全量测试 (1993 测试)
+# 全量测试 (2420+ 测试)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -451,8 +705,24 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v9.5 | conftest.py、Guardrails (4)、SSE Streaming、LongRunningFunctionTool、评估增强 | 1895 | ✅ 完成 |
 | v10.0 | GraphRAG、per-User MCP 隔离、自定义技能包、高级空间分析 Tier 2、工作流模板 | 1993 | ✅ 完成 |
 | v11.0 | 并发任务队列、推理链+置信度、主动探索建议、A2A 互操作、设计模式 19/21 | 2074 | ✅ 完成 |
-| v12.0 | Pareto 多目标优化、动态 Agent 组合、前端 11 标签页 | 2104 | ✅ 完成 |
+| v12.0 | 自助扩展平台：Custom Skills CRUD、User Tools、多 Agent Pipeline 编排、能力浏览 Tab、知识库 Tab、面板拖拽、安全加固（SEC-1/SEC-2）、app.py 拆分、ADK v1.27.2 | 2121 | ✅ 完成 |
+| v12.1 | 数据血缘自动追踪（pipeline_run_id + ContextVar）、血缘 DAG 可视化、行业分析模板（城市规划/环境监测/国土资源）、CapabilitiesView 行业分组、S-4 API 模块化 42%、Cartographic Precision UI 重设计 | 2123 | ✅ 完成 |
+| v12.2 | 语义数据发现：向量嵌入混合搜索（text-embedding-004 + n-gram）、数据资产入图（KG 域边 + 关联发现）、Planner 数据发现优先策略 v7.2.0、语义度量定义（5 个预置度量 + register/resolve/list） | 2123 | ✅ 完成 |
+| v13.0 | 虚拟数据层：4 种连接器（WFS/STAC/OGC API/Custom API）、Fernet 加密、CRS 自动对齐、语义 Schema 映射、连接器健康监控、VirtualSourceToolset、6 个 REST 端点 | 2150 | ✅ 完成 |
+| v13.1 | MCP Server v2.0：6 个高阶元数据工具（search_catalog / get_data_lineage / list_skills / list_toolsets / list_virtual_sources / run_analysis_pipeline），36+ 工具暴露 | 2150 | ✅ 完成 |
+| v14.0 | 交互增强 + 扩展市场：意图消歧、Marketplace 画廊、评分/克隆系统、DRL 场景模板（5 场景）、热力图、测量工具、3D 图层控制、DAG 断点续跑、节点级重试 | 2170 | ✅ 完成 |
+| v14.1 | 智能深化 + 协作基础：追问上下文链、版本管理、标签分类、多场景 DRL 引擎、3D basemap 同步、GeoJSON 编辑器、Agent Registry、A2A 双向 RPC | 2180 | ✅ 完成 |
+| v14.2 | 深度智能 + 生产就绪：条件分析链、NSGA-II 多目标 Pareto 优化、Circuit Breaker 熔断、标注导出、自适应布局 | 2190 | ✅ 完成 |
+| v14.3 | 联邦多 Agent + 生态开放：多语言检测（zh/en/ja）、Skill 依赖图、Webhook 集成、Skill SDK 规范、Plugin 插件系统、完整 A2A 协议、Agent 联邦 | 2193 | ✅ 完成 |
+| v14.4 | 治理深化 + 交互式可视化：GovernanceToolset (7 工具 + 6 维评分)、ChartToolset (9 ECharts 图表)、治理 Prompt 独立化、DataPanel 工作台重构 (4 分组 17 标签页) | 2193 | ✅ 完成 |
+| v14.5 | **全栈治理升级**：BaseConnector 插件架构 (6→8 连接器)、Data Standard Registry、DataCleaningToolset、标准感知质检、Skill 5 模式、可观测性 Phase 1、治理运营、参数重跑 + 断点续跑 + 记忆搜索 | 2340+ | ✅ 完成 |
+| v15.0 | **深度可观测 + 数据安全 + 分布式**：OTel 分布式追踪 + 决策追踪 + 9 Alert 规则；PII 分类分级 + 脱敏 + 8 表 RLS；分发审批 + 打包 + 评价 + 热度；8 连接器 (+Database +OBS)；版本管理 + 回滚 + 增量对比；19 Skills (Pipeline 融合 + data-quality-reviewer)；SparkGateway 三层路由 | 2420+ | ✅ 完成 |
 | | **设计模式 21/21 (100%) 全覆盖** | | |
+| v15.2 | **地理空间世界模型 + NL2SQL + 地图时间轴**：World Model Tech Preview (AlphaEarth JEPA, LatentDynamicsNet 459K params, 5 情景, L2 流形保持 + 空洞卷积 + 多步展开训练)；NL2SQLToolset (Schema 发现 + 参数化安全查询 + 行政区模糊匹配)；地图时间轴播放器 + 卫星底图；世界模型快捷路径 (1 API call)；意图路由优化 (确认语/世界模型关键词)；429 重试机制；会话历史修复 | 2550+ | ✅ 完成 |
+| v15.5 | **DRL-World Model Dreamer + 因果推断论文**：DreamerEnv (ParcelEmbeddingMapper + ActionToScenarioEncoder)；三角度因果推断论文 (~520 行 LaTeX)；平台成熟度 12 项 | 2650+ | ✅ 完成 |
+| v15.7 | **测绘质检智能体系统**：缺陷分类法 (30 编码, 5 类, GB/T 24356)；SLA 工作流引擎 (7 模板含 DLG/DOM/DEM/3D 专属)；GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具；报告排版引擎 (封面+目录+动态表格+图表)；ArcGIS Pro 双引擎 MCP (arcpy + arcgis.learn 2.4.2)；4 个独立子系统 (cv-service/cad-parser/arcgis-mcp/reference-data)；告警规则引擎；案例库；人工复核工作流；实时监控仪表盘；端到端验证 (107K 要素, 8 秒) | 2700+ | ✅ 完成 |
+| v15.8 | **BCG 企业级平台能力**：Prompt Registry (环境隔离版本控制) + Model Gateway (任务感知路由) + Context Manager (可插拔提供者) + Eval Scenario Framework (场景化评估) + 增强 Token 追踪 + 增强评估历史；8 个新 REST 端点，12/12 测试通过 | 2712+ | ✅ 完成 |
+| v15.9 | **UI 增强与工具完善**：DRL 权重预设 (3 模式 + 工具提示)；字段映射拖拽编辑器 (HTML5 拖放 + 双视图)；MCP 外部客户端验证 (Claude Desktop/Cursor 集成指南 + stdio 入口)；任务分解确认 UI (交互式子任务编辑)；记忆提取确认流程 (批量保存端点)；消息总线监控面板 (统计/重放/清理)；Skill SDK 完整发布 (CLI + 验证器 + 13/13 测试) | 2712+ | ✅ 完成 |
 
 ## 设计模式覆盖 (21/21 = 100%)
 
@@ -462,7 +732,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | 路由 (Ch2) | ✅ | Gemini 2.0 Flash 意图分类 |
 | 并行化 (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | 反思 (Ch4) | ✅ | LoopAgent 全部 3 管道 |
-| 工具使用 (Ch5) | ✅ | 21 工具集, 113+ 工具, 16 Skills |
+| 工具使用 (Ch5) | ✅ | 35 工具集, 210+ 工具, 21 Skills |
 | 规划 (Ch6) | ✅ | DAG 任务分解 + 波次并行 |
 | 多智能体 (Ch7) | ✅ | 层级 Planner + 7 子 Agent |
 | 记忆管理 (Ch8) | ✅ | Memory ETL + PostgresMemoryService |

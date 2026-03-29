@@ -21,7 +21,7 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("describe_geodataframe", names)
         self.assertIn("check_topology", names)
         self.assertIn("reproject_spatial_data", names)
-        self.assertEqual(len(tools), 6)
+        self.assertEqual(len(tools), 9)
 
     def test_geo_processing_toolset(self):
         from data_agent.toolsets.geo_processing_tools import GeoProcessingToolset
@@ -53,7 +53,7 @@ class TestToolsetCounts(unittest.TestCase):
         names = [t.name for t in tools]
         self.assertIn("ffi", names)
         self.assertIn("drl_model", names)
-        self.assertEqual(len(tools), 3)
+        self.assertEqual(len(tools), 4)
 
     def test_visualization_toolset(self):
         from data_agent.toolsets.visualization_tools import VisualizationToolset
@@ -66,7 +66,7 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("compose_map", names)
         self.assertIn("control_map_layer", names)
         self.assertIn("generate_3d_map", names)
-        self.assertEqual(len(tools), 10)
+        self.assertEqual(len(tools), 11)
 
     def test_database_toolset(self):
         from data_agent.toolsets.database_tools_set import DatabaseToolset

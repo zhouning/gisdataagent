@@ -36,7 +36,7 @@ class GISAgentApp(App):
     """Full-screen TUI for GIS Data Agent."""
 
     CSS_PATH = "tui.tcss"
-    TITLE = "GIS Data Agent TUI v8.5"
+    TITLE = "GIS Data Agent TUI v12.0"
 
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit", priority=True),
@@ -82,7 +82,7 @@ class GISAgentApp(App):
     def on_mount(self) -> None:
         # Welcome banner
         self._write_chat(
-            "[bold blue]GIS Data Agent TUI v8.5[/bold blue]\n"
+            "[bold blue]GIS Data Agent TUI v12.0[/bold blue]\n"
             f"User: [cyan]{self.user}[/cyan] | Role: [cyan]{self.role}[/cyan]\n"
             "Type a prompt to analyze, or /help for commands.\n"
             "Press [bold]Ctrl+Q[/bold] to quit."

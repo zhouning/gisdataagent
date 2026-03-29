@@ -40,9 +40,11 @@ ENTITY_TYPES = {
     "admin": ["行政区", "admin", "district", "区划", "xzq"],
     "vegetation": ["植被", "vegetation", "林地", "forest", "ld"],
     "poi": ["兴趣点", "poi", "point_of_interest", "设施"],
+    "data_asset": [],  # v12.1: data lineage nodes (not auto-detected from columns)
 }
 
-RELATIONSHIP_TYPES = ["contains", "within", "adjacent_to", "overlaps", "nearest_to"]
+RELATIONSHIP_TYPES = ["contains", "within", "adjacent_to", "overlaps", "nearest_to",
+                      "derives_from", "feeds_into"]  # v12.1: lineage edges
 
 T_KNOWLEDGE_GRAPHS = "agent_knowledge_graphs"
 
@@ -335,6 +337,84 @@ class GeoKnowledgeGraph:
             if "_geom_wkt" in g.nodes[nid]:
                 del g.nodes[nid]["_geom_wkt"]
         return nx.node_link_data(g)
+
+    # --- v12.1: Data lineage edges ---
+
+    def add_lineage_edge(self, source_id: str, target_id: str, tool_name: str = ""):
+        """Add derives_from/feeds_into edges between data assets for lineage tracking."""
+        for nid in (source_id, target_id):
+            if nid not in self.graph:
+                self.graph.add_node(nid, _entity_type="data_asset")
+        self.graph.add_edge(source_id, target_id, type="feeds_into", tool=tool_name)
+        self.graph.add_edge(target_id, source_id, type="derives_from", tool=tool_name)
+
+    # --- v12.2: Catalog asset registration + domain edges ---
+
+    _ASSET_TYPE_DOMAIN = {
+        "vector": "GIS", "raster": "遥感", "tabular": "统计",
+        "map": "可视化", "report": "报告", "script": "脚本",
+    }
+
+    def register_catalog_assets(self, assets: list[dict]):
+        """Register data catalog assets as nodes with domain edges.
+
+        Args:
+            assets: List of dicts with keys: id, asset_name, asset_type, description, tags.
+        """
+        for a in assets:
+            nid = f"asset:{a.get('id', '')}"
+            self.graph.add_node(nid,
+                _entity_type="data_asset",
+                name=a.get("asset_name", ""),
+                asset_type=a.get("asset_type", ""),
+                description=a.get("description", ""),
+            )
+            # Domain edge based on asset_type
+            domain = self._ASSET_TYPE_DOMAIN.get(a.get("asset_type", ""), "其他")
+            domain_nid = f"domain:{domain}"
+            if domain_nid not in self.graph:
+                self.graph.add_node(domain_nid, _entity_type="domain", name=domain)
+            self.graph.add_edge(nid, domain_nid, type="belongs_to_domain")
+
+    def discover_related_assets(self, asset_id: int = None, depth: int = 2) -> list[dict]:
+        """Find assets related to a given asset via lineage and domain edges.
+
+        Args:
+            asset_id: Catalog asset ID to find relations for.
+            depth: Max traversal depth.
+
+        Returns:
+            List of related asset dicts with relationship info.
+        """
+        nid = f"asset:{asset_id}"
+        if nid not in self.graph:
+            return []
+
+        related = []
+        visited = {nid}
+        queue = [(nid, 0)]
+
+        while queue:
+            current, d = queue.pop(0)
+            if d >= depth:
+                continue
+            for neighbor in self.graph.neighbors(current):
+                if neighbor in visited:
+                    continue
+                visited.add(neighbor)
+                edge_data = self.graph.edges[current, neighbor]
+                node_data = self.graph.nodes[neighbor]
+                if node_data.get("_entity_type") == "data_asset":
+                    related.append({
+                        "id": neighbor.replace("asset:", ""),
+                        "name": node_data.get("name", ""),
+                        "asset_type": node_data.get("asset_type", ""),
+                        "relationship": edge_data.get("type", ""),
+                        "depth": d + 1,
+                    })
+                queue.append((neighbor, d + 1))
+
+        return related
 
     def get_stats(self) -> GraphStats:
         """Compute summary statistics for the current graph state.

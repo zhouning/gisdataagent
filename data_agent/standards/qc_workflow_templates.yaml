@@ -1,0 +1,462 @@
+# 质检工作流预置模板 (QC Workflow Templates)
+# 可通过 POST /api/workflows/from-template 实例化
+
+templates:
+  - id: surveying_qc_standard
+    name: 标准质检流程
+    description: 数据接收→预处理→规则审查→精度核验→报告生成 (5步标准流程)
+    pipeline_type: governance
+    priority: normal
+    sla_total_seconds: 3600
+    parameters:
+      file_path:
+        type: string
+        default: ""
+        description: 数据文件路径
+      standard_id:
+        type: string
+        default: gb_t_24356
+        description: 质检标准ID
+      product_type:
+        type: string
+        default: DLG
+        description: 成果类型
+      tolerance_m:
+        type: number
+        default: 0.5
+        description: 精度容差(米)
+    steps:
+      - step_id: data_receive
+        label: 数据接收与格式校验
+        pipeline_type: governance
+        prompt: "请对数据文件 {file_path} 进行 {product_type} 类型格式校验，检查文件完整性、坐标系定义、编码格式，使用标准 {standard_id}。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: data_preprocess
+        label: 数据预处理与清洗
+        pipeline_type: governance
+        prompt: "对数据进行预处理：统一坐标系为 EPSG:4490，修复可自动修正的格式错误，去除重复要素，按 {standard_id} 标准补齐缺失字段。"
+        sla_seconds: 600
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: rule_audit
+        label: 规则审查
+        pipeline_type: governance
+        prompt: "按照 {standard_id} 标准对数据进行全面规则审查，包括：字段完整性、属性值域、逻辑一致性、命名规范、时效性检查。输出缺陷分类统计。"
+        sla_seconds: 900
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: precision_verify
+        label: 精度核验
+        pipeline_type: governance
+        prompt: "对数据进行几何精度核验，包括：坐标精度检查（容差 {tolerance_m} 米）、拓扑完整性检查、接边精度分析。输出精度评分。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: report_generate
+        label: 质检报告生成
+        pipeline_type: governance
+        prompt: "汇总前序步骤的审查结果和精度核验结果，生成标准质检报告，包含：数据概况、缺陷统计、精度评分、质量等级、整改建议。导出为 Word 格式。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+  - id: surveying_qc_quick
+    name: 快速质检
+    description: 快速审查→报告 (2步简化流程，适用于常规复查)
+    pipeline_type: governance
+    priority: low
+    sla_total_seconds: 900
+    parameters:
+      file_path:
+        type: string
+        default: ""
+        description: 数据文件路径
+      standard_id:
+        type: string
+        default: gb_t_24356
+        description: 质检标准ID
+    steps:
+      - step_id: quick_audit
+        label: 快速审查
+        pipeline_type: governance
+        prompt: "对数据文件 {file_path} 进行快速质检：检查字段完整性、坐标系一致性、拓扑有效性，按 {standard_id} 标准输出缺陷列表。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: quick_report
+        label: 快速报告
+        pipeline_type: governance
+        prompt: "根据快速审查结果生成简要质检报告，包含缺陷统计和质量评分。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+  - id: surveying_qc_full
+    name: 完整质检流程
+    description: 含人工复核节点的完整质检流程 (7步)
+    pipeline_type: governance
+    priority: high
+    sla_total_seconds: 7200
+    parameters:
+      file_path:
+        type: string
+        default: ""
+        description: 数据文件路径
+      standard_id:
+        type: string
+        default: gb_t_24356
+        description: 质检标准ID
+      product_type:
+        type: string
+        default: DLG
+        description: 成果类型
+      tolerance_m:
+        type: number
+        default: 0.5
+        description: 精度容差(米)
+    steps:
+      - step_id: data_receive
+        label: 数据接收与格式校验
+        pipeline_type: governance
+        prompt: "请对数据文件 {file_path} 进行 {product_type} 类型格式校验，检查文件完整性、坐标系定义、编码格式。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: data_preprocess
+        label: 数据预处理与清洗
+        pipeline_type: governance
+        prompt: "对数据进行预处理：统一坐标系，修复可自动修正的缺陷，去重，补齐缺失字段。"
+        sla_seconds: 600
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: rule_audit
+        label: 规则审查
+        pipeline_type: governance
+        prompt: "按照 {standard_id} 标准进行全面规则审查，输出缺陷分类统计。"
+        sla_seconds: 900
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: auto_fix
+        label: 自动修正
+        pipeline_type: governance
+        prompt: "对规则审查中发现的可自动修正缺陷执行自动修正，记录修正日志。"
+        sla_seconds: 600
+        retry_on_timeout: true
+        max_retries: 2
+
+      - step_id: precision_verify
+        label: 精度核验
+        pipeline_type: governance
+        prompt: "对修正后的数据进行几何精度核验，包括坐标精度、拓扑完整性、接边精度。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: human_review
+        label: 人工复核
+        pipeline_type: governance
+        prompt: "汇总自动审查和精度核验结果，标记需要人工复核的严重缺陷（A类），生成复核清单。"
+        sla_seconds: 1800
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: final_report
+        label: 最终报告生成
+        pipeline_type: governance
+        prompt: "综合所有审查、修正、核验和复核结果，生成最终质检报告，导出 Word 格式。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+  # =====================================================================
+  # 成果类型专属模板
+  # =====================================================================
+
+  - id: qc_dlg
+    name: DLG 数字线划图质检
+    description: 针对 DLG 成果的专属质检流程，覆盖要素分类、拓扑关系、属性编码、接边精度
+    pipeline_type: governance
+    priority: normal
+    sla_total_seconds: 5400
+    parameters:
+      file_path:
+        type: string
+        default: ""
+        description: 数据文件路径
+      standard_id:
+        type: string
+        default: gb_t_24356
+      scale:
+        type: string
+        default: "1:10000"
+        description: 比例尺
+      tolerance_m:
+        type: number
+        default: 0.5
+    steps:
+      - step_id: data_receive
+        label: 数据接收与格式校验
+        pipeline_type: governance
+        prompt: "接收 DLG 数据文件 {file_path}，校验文件格式（Shapefile/GDB/DWG）、坐标系（应为 CGCS2000）、比例尺标注。检查图幅编号和元数据完整性。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: feature_classification
+        label: 要素分类检查
+        pipeline_type: governance
+        prompt: "检查要素分类编码是否符合 GB/T 13923 基础地理信息要素分类与代码标准。验证图层命名规范、要素类型与图层对应关系。"
+        sla_seconds: 600
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: topology_check
+        label: 拓扑关系检查
+        pipeline_type: governance
+        prompt: "执行拓扑规则检查：面要素不重叠、面要素无缝隙、线要素无悬挂点、线要素无自相交、面线套合一致。使用 arcgis_topology_check 工具。"
+        sla_seconds: 900
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: attribute_check
+        label: 属性编码审查
+        pipeline_type: governance
+        prompt: "检查属性字段完整性、值域合规性、编码规范性。重点检查：地类编码(DLBM)、权属单位代码(QSDWDM)、名称字段非空。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: edge_matching
+        label: 接边精度检查
+        pipeline_type: governance
+        prompt: "检查相邻图幅接边精度：边界要素坐标偏差、属性一致性、拓扑连通性。使用 check_edge_matching 工具。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: positional_accuracy
+        label: 位置精度核验
+        pipeline_type: governance
+        prompt: "与控制点数据对比，计算平面坐标中误差。使用 compare_coordinates 和 overlay_precision_check 工具。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: report
+        label: DLG 质检报告
+        pipeline_type: governance
+        prompt: "汇总所有检查结果，按 GB/T 24356 六维质量元素评分，生成 DLG 质检报告。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+  - id: qc_dom
+    name: DOM 数字正射影像质检
+    description: 针对 DOM 成果的专属质检流程，覆盖影像质量、几何精度、接边质量、色彩一致性
+    pipeline_type: governance
+    priority: normal
+    sla_total_seconds: 3600
+    parameters:
+      file_path:
+        type: string
+        default: ""
+        description: 数据文件路径
+      standard_id:
+        type: string
+        default: gb_t_24356
+      resolution_m:
+        type: number
+        default: 0.5
+        description: 影像分辨率(米)
+    steps:
+      - step_id: data_receive
+        label: 影像接收与格式校验
+        pipeline_type: governance
+        prompt: "接收 DOM 影像文件 {file_path}，校验格式（GeoTIFF/IMG）、坐标系、分辨率、波段数、位深度。检查元数据和坐标参考文件。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: image_quality
+        label: 影像质量评估
+        pipeline_type: governance
+        prompt: "评估影像质量：NoData 区域占比、动态范围、信噪比、云覆盖率、模糊区域检测。使用 arcgis_assess_image_quality 工具。"
+        sla_seconds: 900
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: geometric_accuracy
+        label: 几何精度检查
+        pipeline_type: governance
+        prompt: "与控制点对比检查影像几何精度：选取均匀分布的检查点，计算平面坐标中误差，验证是否满足比例尺精度要求。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: seamline_check
+        label: 接边与镶嵌质量
+        pipeline_type: governance
+        prompt: "检查影像镶嵌质量：接缝线处色彩跳变、几何错位、重影现象。检查相邻影像重叠区域的一致性。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: color_consistency
+        label: 色彩一致性检查
+        pipeline_type: governance
+        prompt: "检查全幅影像色彩一致性：直方图均匀性、色彩偏差、亮度渐变。检测局部色彩异常区域。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: report
+        label: DOM 质检报告
+        pipeline_type: governance
+        prompt: "汇总影像质量、几何精度、接边质量、色致性检查结果，生成 DOM 质检报告。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+  - id: qc_dem
+    name: DEM 数字高程模型质检
+    description: 针对 DEM 成果的专属质检流程，覆盖高程精度、地形合理性、格网完整性
+    pipeline_type: governance
+    priority: normal
+    sla_total_seconds: 3600
+    parameters:
+      file_path:
+        type: string
+        default: ""
+        description: 数据文件路径
+      standard_id:
+        type: string
+        default: gb_t_24356
+      resolution_m:
+        type: number
+        default: 30
+        description: 格网分辨率(米)
+    steps:
+      - step_id: data_receive
+        label: DEM 接收与格式校验
+        pipeline_type: governance
+        prompt: "接收 DEM 数据文件 {file_path}，校验格式（GeoTIFF/GRID/ASC）、坐标系、分辨率、高程基准（1985国家高程基准）。检查 NoData 值设置。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: elevation_accuracy
+        label: 高程精度检查
+        pipeline_type: governance
+        prompt: "与控制点高程对比，计算高程中误差。检查高程值域合理性（排除异常高值/低值）。使用 compare_coordinates 工具。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: terrain_rationality
+        label: 地形合理性检查
+        pipeline_type: governance
+        prompt: "检查地形合理性：坡度突变检测、等高线合理性、水系与地形一致性（水应在低处）、山脊山谷线连续性。使用 arcpy.sa 坡度分析。"
+        sla_seconds: 900
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: grid_completeness
+        label: 格网完整性检查
+        pipeline_type: governance
+        prompt: "检查 DEM 格网完整性：NoData 区域占比和分布、格网边界完整性、与标称范围的覆盖度。使用 arcgis_assess_image_quality 工具。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: edge_matching
+        label: 接边检查
+        pipeline_type: governance
+        prompt: "检查相邻 DEM 图幅接边处高程连续性：计算接边高差统计量，检测高程跳变区域。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: report
+        label: DEM 质检报告
+        pipeline_type: governance
+        prompt: "汇总高程精度、地形合理性、格网完整性、接边质量检查结果，生成 DEM 质检报告。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0
+
+  - id: qc_3dmodel
+    name: 三维模型质检
+    description: 针对三维模型成果的专属质覆盖几何质量、纹理质量、定位精度、LOD 一致性
+    pipeline_type: governance
+    priority: normal
+    sla_total_seconds: 7200
+    parameters:
+      file_path:
+        type: string
+        default: ""
+        description: 数据文件路径
+      standard_id:
+        type: string
+        default: gb_t_24356
+      model_format:
+        type: string
+        default: "OSGB"
+        description: 模型格式 (OSGB/OBJ/FBX/3DTiles)
+    steps:
+      - step_id: data_receive
+        label: 模型接收与格式校验
+        pipeline_type: governance
+        prompt: "接收三维模型数据文件 {file_path}，校验格式（OSGB/OBJ/FBX/3DTiles）、坐标系、文件完整性。使用 cad-parser 子系统解析模型结构。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: geometry_quality
+        label: 几何质量检查
+        pipeline_type: governance
+        prompt: "检查模型几何质量：面片数量统计、退化三角形检测、法线一致性、模型闭合性、悬浮面片。使用 trimesh 引擎分析。"
+        sla_seconds: 900
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: texture_quality
+        label: 纹理质量检查
+        pipeline_type: governance
+        prompt: "检查纹理质量：纹理分辨率一致性、纹理拉伸变形、纹理缺失区域、UV 映射合理性。使用 cv-service 子系统做视觉检测。"
+        sla_seconds: 900
+        retry_on_timeout: true
+        max_retries: 1
+
+      - step_id: positional_accuracy
+        label: 定位精度检查
+        pipeline_type: governance
+        prompt: "检查模型定位精度：与控制点对比计算三维坐标偏差，检查模型与地形的贴合度，验证建筑物底面高程合理性。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: lod_consistency
+        label: LOD 层级一致性
+        pipeline_type: governance
+        prompt: "检查多层级 LOD 一致性：各层级模型范围一致、层级切换无跳变、纹理分辨率与 LOD 层级匹配。"
+        sla_seconds: 600
+        retry_on_timeout: false
+        max_retries: 0
+
+      - step_id: report
+        label: 质检报告生成
+        pipeline_type: governance
+        prompt: "汇总几何质量、纹理质量、定位精度、LOD 一致性检查结果，生成三维模型质检报告。"
+        sla_seconds: 300
+        retry_on_timeout: false
+        max_retries: 0

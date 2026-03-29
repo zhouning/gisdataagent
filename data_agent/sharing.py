@@ -224,8 +224,8 @@ def get_share_file_path(token: str, filename: str) -> Optional[str]:
 
             # Build and validate path
             full_path = os.path.join(_BASE_UPLOAD_DIR, owner, filename)
-            abs_path = os.path.abspath(full_path)
-            allowed_dir = os.path.abspath(os.path.join(_BASE_UPLOAD_DIR, owner))
+            abs_path = os.path.realpath(full_path)
+            allowed_dir = os.path.realpath(os.path.join(_BASE_UPLOAD_DIR, owner))
             if not abs_path.startswith(allowed_dir + os.sep) and abs_path != allowed_dir:
                 return None
 

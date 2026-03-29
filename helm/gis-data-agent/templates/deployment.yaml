@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gis-data-agent.fullname" . }}
+  labels:
+    {{- include "gis-data-agent.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gis-data-agent.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "gis-data-agent.selectorLabels" . | nindent 8 }}
+      {{- if .Values.prometheus.scrape }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.prometheus.port | quote }}
+        prometheus.io/path: {{ .Values.prometheus.path | quote }}
+      {{- end }}
+    spec:
+      containers:
+        - name: gis-data-agent
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ include "gis-data-agent.fullname" . }}-env
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthCheck.liveness.path }}
+              port: {{ .Values.healthCheck.liveness.port }}
+            initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthCheck.readiness.path }}
+              port: {{ .Values.healthCheck.readiness.port }}
+            initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/data_agent/uploads
+      volumes:
+        - name: uploads
+          emptyDir: {}

@@ -41,15 +41,44 @@ def _plot_land_use_result(gdf, land_use_types, title, output_path):
     plt.close()
 
 
-def drl_model(data_path: str) -> str:
-    """使用深度强化学习模型进行布局优化。"""
+def drl_model(data_path: str, scenario_id: str = "",
+              slope_weight: str = "", contiguity_weight: str = "",
+              balance_weight: str = "", pair_bonus: str = "") -> str:
+    """使用深度强化学习模型进行布局优化。
+
+    Args:
+        data_path: 输入数据路径 (Shapefile/GeoJSON)
+        scenario_id: 场景模板 ID (farmland_optimization/urban_green_space/facility_siting)
+        slope_weight: 坡度权重 (100-3000, 默认由场景决定)
+        contiguity_weight: 连片权重 (100-2000)
+        balance_weight: 平衡权重 (100-2000)
+        pair_bonus: 配对奖励 (0.1-10.0)
+    """
     try:
         res_data_path = _resolve_path(data_path)
+
+        # Build scenario with optional weight overrides
+        scenario = None
+        if scenario_id and scenario_id in drl_engine.SCENARIOS:
+            scenario = drl_engine.SCENARIOS[scenario_id]
+        # Apply user weight overrides (construct temporary scenario)
+        if any([slope_weight, contiguity_weight, balance_weight, pair_bonus]):
+            base = scenario or drl_engine.SCENARIOS.get("farmland_optimization")
+            scenario = drl_engine.DRLScenario(
+                name=base.name if base else "自定义",
+                description=base.description if base else "用户自定义权重",
+                source_types=base.source_types if base else {'旱地', '水田'},
+                target_types=base.target_types if base else {'果园', '有林地'},
+                slope_weight=float(slope_weight) if slope_weight else (base.slope_weight if base else 1000.0),
+                contiguity_weight=float(contiguity_weight) if contiguity_weight else (base.contiguity_weight if base else 500.0),
+                balance_weight=float(balance_weight) if balance_weight else (base.balance_weight if base else 500.0),
+                pair_bonus=float(pair_bonus) if pair_bonus else (base.pair_bonus if base else 1.0),
+            )
 
         # scorer_weights_v7.pt lives in data_agent/ (parent of toolsets/)
         weights_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scorer_weights_v7.pt')
 
-        env = drl_engine.LandUseOptEnv(res_data_path, max_conversions=200)
+        env = drl_engine.LandUseOptEnv(res_data_path, max_conversions=200, scenario=scenario)
         env_mon = Monitor(env)
 
         checkpoint = torch.load(weights_path, map_location='cpu')
@@ -98,9 +127,13 @@ def drl_model(data_path: str) -> str:
         return f"Error: {str(e)}"
 
 
-async def drl_model_long_running(data_path: str) -> str:
+async def drl_model_long_running(data_path: str, scenario_id: str = "",
+                                 slope_weight: str = "", contiguity_weight: str = "",
+                                 balance_weight: str = "", pair_bonus: str = "") -> str:
     """使用深度强化学习模型进行布局优化。"""
-    return await asyncio.to_thread(drl_model, data_path)
+    return await asyncio.to_thread(drl_model, data_path, scenario_id,
+                                   slope_weight, contiguity_weight,
+                                   balance_weight, pair_bonus)
 
 # Preserve tool name for ADK FunctionTool registration
 drl_model_long_running.__name__ = "drl_model"
@@ -165,11 +198,78 @@ def drl_multi_objective(data_path: str, objectives: str = "slope,contiguity,area
         return json.dumps({"status": "error", "message": str(e)})
 
 
+def train_drl_model(data_path: str, scenario: str = "farmland_optimization",
+                    epochs: str = "50") -> str:
+    """使用用户数据训练自定义 DRL 模型。训练完成后保存权重文件。
+
+    Args:
+        data_path: 训练数据的Shapefile路径。
+        scenario: 场景模板ID（farmland_optimization/urban_green_space/facility_siting）。
+        epochs: 训练轮数，默认50。
+
+    Returns:
+        训练结果摘要和模型权重路径。
+    """
+    try:
+        import torch
+        res_path = _resolve_path(data_path)
+        n_epochs = int(epochs)
+
+        from data_agent.drl_engine import LandUseOptEnv, SCENARIOS
+        sc = SCENARIOS.get(scenario)
+
+        env = LandUseOptEnv(res_path, scenario=sc)
+        env_mon = Monitor(env)
+
+        model = MaskablePPO(
+            ParcelScoringPolicy,
+            env_mon,
+            policy_kwargs=dict(
+                k_parcel=6, k_global=8,
+                scorer_hiddens=[128, 64], value_hiddens=[128, 64],
+            ),
+            n_steps=200,
+            device='cpu',
+            verbose=0,
+        )
+
+        model.learn(total_timesteps=200 * n_epochs)
+
+        # Save weights
+        out_path = _generate_output_path(f"trained_{scenario}", "pt")
+        torch.save({
+            "scorer_net": model.policy.scorer_net.state_dict(),
+            "value_net": model.policy.value_net.state_dict(),
+            "k_parcel": 6, "k_global": 8,
+            "scorer_hiddens": [128, 64], "value_hiddens": [128, 64],
+            "scenario": scenario, "epochs": n_epochs,
+        }, out_path)
+
+        return json.dumps({
+            "status": "success",
+            "message": f"训练完成：{n_epochs} 轮，场景 {scenario}",
+            "weights_path": out_path,
+            "parcels": env.n_parcels,
+        }, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def list_drl_scenarios() -> str:
+    """列出所有可用的 DRL 优化场景模板。
+
+    Returns:
+        JSON格式的场景列表，包含名称、描述、权重配置。
+    """
+    from data_agent.drl_engine import list_scenarios
+    return json.dumps({"scenarios": list_scenarios()}, ensure_ascii=False)
+
+
 # ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
 
-_SYNC_FUNCS = [ffi, drl_multi_objective]
+_SYNC_FUNCS = [ffi, drl_multi_objective, list_drl_scenarios]
 _LONG_RUNNING_FUNCS = [drl_model_long_running]
 
 

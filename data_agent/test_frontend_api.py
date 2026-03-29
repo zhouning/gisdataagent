@@ -81,6 +81,42 @@ class TestCatalogAPI(unittest.TestCase):
             _api_catalog_lineage(_make_request(path_params={"asset_id": "1"})))
         self.assertEqual(resp.status_code, 401)
 
+    # -- P0 catalog search endpoint tests --
+
+    @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
+    def test_catalog_search_unauthorized(self, _mock):
+        from data_agent.frontend_api import _api_catalog_search
+        resp = _run_async(
+            _api_catalog_search(_make_request()))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_catalog_search_missing_query(self, mock_user):
+        mock_user.return_value = _make_user()
+        from data_agent.frontend_api import _api_catalog_search
+        resp = _run_async(
+            _api_catalog_search(_make_request(query_params={})))
+        self.assertEqual(resp.status_code, 400)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_catalog_search_success(self, mock_user):
+        mock_user.return_value = _make_user()
+        from data_agent.frontend_api import _api_catalog_search
+        with patch("data_agent.data_catalog.get_engine", return_value=None):
+            resp = _run_async(
+                _api_catalog_search(_make_request(query_params={"q": "land use"})))
+        self.assertEqual(resp.status_code, 200)
+
+    @patch("data_agent.frontend_api.get_engine", return_value=None)
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_catalog_list_pagination(self, mock_user, mock_engine):
+        mock_user.return_value = _make_user()
+        from data_agent.frontend_api import _api_catalog_list
+        with patch("data_agent.data_catalog.get_engine", return_value=None):
+            resp = _run_async(
+                _api_catalog_list(_make_request(query_params={"offset": "10", "limit": "25"})))
+        self.assertEqual(resp.status_code, 200)
+
 
 class TestSemanticAPI(unittest.TestCase):
     """Tests for /api/semantic endpoints."""
@@ -359,13 +395,14 @@ class TestRouteMount(unittest.TestCase):
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 85)
+        self.assertEqual(len(routes), 202)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
         paths = [r.path for r in routes]
         self.assertIn("/api/catalog", paths)
+        self.assertIn("/api/catalog/search", paths)
         self.assertIn("/api/semantic/domains", paths)
         self.assertIn("/api/pipeline/history", paths)
         self.assertIn("/api/user/token-usage", paths)
@@ -383,7 +420,7 @@ class TestRouteMount(unittest.TestCase):
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
         # 36 routes inserted before the catch-all, catch-all is now at index 36
-        self.assertEqual(len(mock_app.router.routes), 86)
+        self.assertEqual(len(mock_app.router.routes), 203)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
 
 

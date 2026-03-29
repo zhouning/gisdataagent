@@ -90,7 +90,7 @@ class TestToolCategories(unittest.TestCase):
 
     def test_eight_categories_defined(self):
         """Should have exactly 8 categories."""
-        self.assertEqual(len(TOOL_CATEGORIES), 8)
+        self.assertEqual(len(TOOL_CATEGORIES), 10)
 
     def test_valid_categories_matches(self):
         """VALID_CATEGORIES should match TOOL_CATEGORIES keys."""
@@ -101,7 +101,8 @@ class TestToolCategories(unittest.TestCase):
         expected = {
             "spatial_processing", "poi_location", "remote_sensing",
             "database_management", "quality_audit", "streaming_iot",
-            "collaboration", "advanced_analysis",
+            "collaboration", "advanced_analysis", "causal_reasoning",
+            "world_model",
         }
         self.assertEqual(set(TOOL_CATEGORIES.keys()), expected)
 
@@ -132,7 +133,7 @@ class TestToolCategories(unittest.TestCase):
 class TestClassifyIntentToolCats(unittest.TestCase):
     """Test classify_intent extended return value parsing."""
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_parses_tools_field(self, mock_client):
         """classify_intent parses TOOLS: field from response."""
         mock_resp = MagicMock()
@@ -142,11 +143,11 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats = classify_intent("创建缓冲区")
+        intent, reason, tokens, cats, lang = classify_intent("创建缓冲区")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, {"spatial_processing"})
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_multiple_tools(self, mock_client):
         """classify_intent parses multiple tool categories."""
         mock_resp = MagicMock()
@@ -156,11 +157,11 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats = classify_intent("搜索POI并生成热力图")
+        intent, reason, tokens, cats, lang = classify_intent("搜索POI并生成热力图")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, {"poi_location", "spatial_processing"})
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_tools_all_returns_empty(self, mock_client):
         """TOOLS:all returns empty set (no filtering)."""
         mock_resp = MagicMock()
@@ -170,11 +171,11 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats = classify_intent("你好")
+        intent, reason, tokens, cats, lang = classify_intent("你好")
         self.assertEqual(intent, "AMBIGUOUS")
         self.assertEqual(cats, set())
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_no_tools_field_returns_empty(self, mock_client):
         """Old-format response without TOOLS: returns empty set."""
         mock_resp = MagicMock()
@@ -184,21 +185,21 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats = classify_intent("查看地图")
+        intent, reason, tokens, cats, lang = classify_intent("查看地图")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, set())
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_error_returns_empty_cats(self, mock_client):
         """API error returns 4-tuple with empty set."""
         mock_client.models.generate_content.side_effect = Exception("API down")
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats = classify_intent("test")
+        intent, reason, tokens, cats, lang = classify_intent("test")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, set())
 
-    @patch("data_agent.app._genai_router_client")
+    @patch("data_agent.intent_router._router_client")
     def test_governance_with_tools(self, mock_client):
         """GOVERNANCE intent with quality_audit tools."""
         mock_resp = MagicMock()
@@ -208,7 +209,7 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats = classify_intent("检查拓扑")
+        intent, reason, tokens, cats, lang = classify_intent("检查拓扑")
         self.assertEqual(intent, "GOVERNANCE")
         self.assertEqual(cats, {"quality_audit"})
 

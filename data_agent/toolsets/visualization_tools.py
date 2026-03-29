@@ -3,6 +3,110 @@ import os
 import json
 
 import numpy as np
+
+
+def load_admin_boundary(
+    province: str = "",
+    city: str = "",
+    county: str = "",
+    township: str = "",
+) -> str:
+    """加载中国行政区划边界到地图（从 PostGIS xiangzhen 表）。
+
+    自动构造 SQL 过滤条件，支持模糊匹配。比手动构造 sql_filter 更安全可靠。
+
+    Args:
+        province: 省份名称，如"上海市"、"重庆市"。可选。
+        city: 地级市名称，如"重庆市"（直辖市可省略）。可选。
+        county: 区县名称，如"松江区"、"璧山区"。必填（除非只查省级）。
+        township: 乡镇/街道名称，如"方松街道"、"青杠街道"。可选。
+
+    Returns:
+        JSON 字符串，包含 map_config（前端地图配置）和 geojson_path（保存的文件路径）。
+
+    Examples:
+        - 加载上海市松江区: load_admin_boundary(province="上海市", county="松江区")
+        - 加载重庆市璧山区: load_admin_boundary(city="重庆市", county="璧山区")
+        - 加载方松街道: load_admin_boundary(city="上海市", county="松江区", township="方松街道")
+    """
+    try:
+        from ..db_engine import get_engine
+        from ..database_tools import _inject_user_context
+        from sqlalchemy import text
+        import geopandas as gpd
+
+        # Build WHERE clause
+        conditions = []
+        if province:
+            conditions.append(f"province LIKE '%{province.strip()}%'")
+        if city:
+            conditions.append(f"city LIKE '%{city.strip()}%'")
+        if county:
+            conditions.append(f"county LIKE '%{county.strip()}%'")
+        if township:
+            conditions.append(f"township LIKE '%{township.strip()}%'")
+
+        if not conditions:
+            return json.dumps({"error": "至少需要提供 province, city, county 或 township 之一"}, ensure_ascii=False)
+
+        where_clause = " AND ".join(conditions)
+        sql = f'SELECT * FROM "xiangzhen" WHERE {where_clause}'
+
+        engine = get_engine()
+        if not engine:
+            return json.dumps({"error": "数据库连接不可用"}, ensure_ascii=False)
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            gdf = gpd.read_postgis(text(sql), conn, geom_col="geometry")
+
+        if gdf.empty:
+            return json.dumps({
+                "error": f"未找到匹配的行政区。查询条件: {where_clause}",
+                "suggestion": "请检查地名拼写，或尝试只提供上级行政区（如只传 county 不传 township）"
+            }, ensure_ascii=False)
+
+        # Save to GeoJSON
+        from ..user_context import current_user_id
+        import uuid
+        uid = current_user_id.get("admin")
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", uid)
+        os.makedirs(upload_dir, exist_ok=True)
+        fname = f"admin_boundary_{uuid.uuid4().hex[:8]}.geojson"
+        fpath = os.path.join(upload_dir, fname)
+        gdf.to_file(fpath, driver="GeoJSON")
+
+        # Build map config
+        bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
+        center_lat = (bounds[1] + bounds[3]) / 2
+        center_lng = (bounds[0] + bounds[2]) / 2
+
+        map_config = {
+            "layers": [{
+                "type": "geojson",
+                "geojson": fname,
+                "name": f"{province or ''}{city or ''}{county or ''}{township or ''}",
+                "style": {"color": "#3388ff", "weight": 2, "fillOpacity": 0.2},
+            }],
+            "center": [center_lat, center_lng],
+            "zoom": 12 if township else 11,
+        }
+
+        return json.dumps({
+            "status": "ok",
+            "message": f"已加载 {len(gdf)} 个行政区边界",
+            "geojson_path": fpath,
+            "map_config": map_config,
+        }, ensure_ascii=False)
+
+    except Exception as e:
+        import traceback
+        return json.dumps({
+            "error": str(e),
+            "traceback": traceback.format_exc()[-500:]
+        }, ensure_ascii=False)
+
+
+
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -31,6 +135,14 @@ def _load_spatial_data_with_filter(data_path: str, sql_filter: str = None) -> gp
     import re as _re
     stripped = data_path.strip().strip('"').strip("'")
     _, ext_check = os.path.splitext(stripped)
+
+    # Safety guard: large tables MUST have sql_filter to prevent full-table download
+    _LARGE_TABLES = {"xiangzhen", "admin_boundaries", "townships"}
+    if not ext_check and stripped.lower() in _LARGE_TABLES and not sql_filter:
+        raise ValueError(
+            f"表 '{stripped}' 数据量过大，必须提供 sql_filter 参数进行过滤。"
+            f"例如: sql_filter=\"city='上海市' AND county='松江区'\""
+        )
 
     # Only apply SQL filter for PostGIS table names (no file extension)
     if sql_filter and not ext_check and _re.match(r'^[a-zA-Z0-9_]+$', stripped):
@@ -1174,6 +1286,7 @@ def control_map_layer(action: str, layer_name: str = "", color: str = "",
 # ---------------------------------------------------------------------------
 
 _ALL_FUNCS = [
+    load_admin_boundary,
     visualize_optimization_comparison,
     visualize_interactive_map,
     generate_choropleth,

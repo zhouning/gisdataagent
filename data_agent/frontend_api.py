@@ -50,6 +50,23 @@ async def _api_analytics_tool_success(request: Request):
     from .pipeline_analytics import api_analytics_tool_success
     return await api_analytics_tool_success(request)
 
+# Message Bus handlers (v15.9)
+async def _api_messaging_stats(request: Request):
+    from .api.messaging_routes import messaging_stats
+    return await messaging_stats(request)
+
+async def _api_messaging_list(request: Request):
+    from .api.messaging_routes import list_messages
+    return await list_messages(request)
+
+async def _api_messaging_replay(request: Request):
+    from .api.messaging_routes import replay_message
+    return await replay_message(request)
+
+async def _api_messaging_cleanup(request: Request):
+    from .api.messaging_routes import cleanup_messages
+    return await cleanup_messages(request)
+
 async def _api_analytics_token_efficiency(request: Request):
     from .pipeline_analytics import api_analytics_token_efficiency
     return await api_analytics_token_efficiency(request)
@@ -127,8 +144,12 @@ async def _api_pipeline_stream(request: Request):
 # ---------------------------------------------------------------------------
 # Chainlit's React client does not deliver step-level metadata to the frontend.
 # This in-memory store + polling endpoint provides an alternative delivery path.
+import threading as _threading
+
 pending_map_updates: dict[str, dict] = {}   # user_id -> map config
 pending_data_updates: dict[str, dict] = {}  # user_id -> data config
+pending_chart_updates: dict[str, list] = {}  # user_id -> [chart configs]
+_pending_lock = _threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +215,8 @@ async def _api_catalog_list(request: Request):
         tags=params.get("tags", ""),
         keyword=params.get("keyword", ""),
         storage_backend=params.get("storage_backend", ""),
+        offset=int(params.get("offset", "0")),
+        limit=int(params.get("limit", "50")),
     )
     return JSONResponse(result)
 
@@ -208,6 +231,12 @@ async def _api_catalog_detail(request: Request):
     asset_id = request.path_params.get("asset_id", "")
     from .data_catalog import describe_data_asset
     result = describe_data_asset(asset_id)
+    if result.get("status") == "success":
+        try:
+            from .data_distribution import log_access
+            log_access(int(asset_id), user.identifier, "view")
+        except Exception:
+            pass
     return JSONResponse(result)
 
 
@@ -222,6 +251,22 @@ async def _api_catalog_lineage(request: Request):
     direction = request.query_params.get("direction", "both")
     from .data_catalog import get_data_lineage
     result = get_data_lineage(asset_id, direction)
+    return JSONResponse(result)
+
+
+async def _api_catalog_search(request: Request):
+    """GET /api/catalog/search — semantic hybrid search."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    q = request.query_params.get("q", "").strip()
+    if not q:
+        return JSONResponse({"error": "参数 q 必填"}, status_code=400)
+
+    from .data_catalog import search_data_assets
+    result = search_data_assets(q)
     return JSONResponse(result)
 
 
@@ -587,6 +632,29 @@ async def _api_user_delete_account(request: Request):
 
     from .auth import delete_user_account
     result = delete_user_account(username, password)
+    status_code = 200 if result.get("status") == "success" else 400
+    return JSONResponse(result, status_code=status_code)
+
+
+async def _api_user_change_password(request: Request):
+    """PUT /api/user/password — change current user's password."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    old_password = body.get("old_password", "")
+    new_password = body.get("new_password", "")
+    if not old_password or not new_password:
+        return JSONResponse({"error": "old_password and new_password required"}, status_code=400)
+
+    from .auth import change_password
+    result = change_password(username, old_password, new_password)
     status_code = 200 if result.get("status") == "success" else 400
     return JSONResponse(result, status_code=status_code)
 
@@ -960,6 +1028,7 @@ async def _api_mcp_server_share(request: Request):
     return JSONResponse({"status": "ok", "server": server_name, "is_shared": is_shared})
 
 
+
 # ---------------------------------------------------------------------------
 # Workflows API (v5.4)
 # ---------------------------------------------------------------------------
@@ -1131,18 +1200,41 @@ async def _api_workflow_run_status(request: Request):
 async def _api_map_pending(request: Request):
     """GET /api/map/pending — pop and return pending map/data updates for current user."""
     user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
+    
+    # Fallback for dev mode
+    if user:
+        _set_user_context(user)
+    else:
+        current_user_id.set("admin")
+
     uid = current_user_id.get("")
+    
+    logger.info(f"[/api/map/pending] user={uid}, pending_keys={list(pending_map_updates.keys())}")
+
     result = {}
-    map_cfg = pending_map_updates.pop(uid, None)
+    with _pending_lock:
+        map_cfg = pending_map_updates.pop(uid, None)
+        data_cfg = pending_data_updates.pop(uid, None)
     if map_cfg:
         result["map_update"] = map_cfg
-    data_cfg = pending_data_updates.pop(uid, None)
     if data_cfg:
         result["data_update"] = data_cfg
     return JSONResponse(result)
+
+
+async def _api_chart_pending(request: Request):
+    """GET /api/chart/pending — pop and return pending chart updates for current user."""
+    user = _get_user_from_request(request)
+    if user:
+        _set_user_context(user)
+    else:
+        current_user_id.set("admin")
+    uid = current_user_id.get("")
+    with _pending_lock:
+        charts = pending_chart_updates.pop(uid, None)
+    if charts:
+        return JSONResponse({"chart_updates": charts})
+    return JSONResponse({"chart_updates": []})
 
 
 # ---------------------------------------------------------------------------
@@ -1225,6 +1317,78 @@ async def _api_user_memories_delete(request: Request):
     result = delete_memory(str(memory_id))
     status_code = 200 if result.get("status") == "success" else 400
     return JSONResponse(result, status_code=status_code)
+
+
+async def _api_memory_search(request: Request):
+    """GET /api/memory/search — search user memories by keyword and type."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    keyword = request.query_params.get("keyword", "")
+    memory_type = request.query_params.get("type", "")
+    from .memory import recall_memories
+    result = recall_memories(memory_type=memory_type, keyword=keyword)
+    return JSONResponse(result)
+
+
+async def _api_user_drawn_features(request: Request):
+    """POST /api/user/drawn-features — save drawn GeoJSON features to user uploads."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        geojson = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    import json as _json, uuid as _uuid, os as _os
+    from data_agent.user_context import get_user_upload_dir
+    upload_dir = get_user_upload_dir()
+    _os.makedirs(upload_dir, exist_ok=True)
+    fname = f"drawn_{_uuid.uuid4().hex[:8]}.geojson"
+    fpath = _os.path.join(upload_dir, fname)
+    with open(fpath, 'w', encoding='utf-8') as f:
+        _json.dump(geojson, f, ensure_ascii=False)
+    return JSONResponse({"status": "ok", "file_path": fpath, "file_name": fname})
+
+
+async def _api_pipeline_trace(request: Request):
+    """GET /api/pipeline/trace/{trace_id} — get decision trace for a pipeline run."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    trace_id = request.path_params.get("trace_id", "")
+    # Look up trace from session or DB
+    import chainlit as cl
+    decision_trace = cl.user_session.get("decision_trace")
+    if decision_trace and decision_trace.trace_id == trace_id:
+        result = decision_trace.to_dict()
+        result["mermaid"] = decision_trace.to_mermaid_sequence()
+        return JSONResponse(result)
+    return JSONResponse({"error": "Trace not found"}, status_code=404)
+
+
+# ---------------------------------------------------------------------------
+# Capabilities (aggregated skills + toolsets listing)
+# ---------------------------------------------------------------------------
+
+
+async def _api_capabilities(request: Request):
+    """GET /api/capabilities — aggregated built-in skills, custom skills, toolsets."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from .capabilities import list_builtin_skills, list_toolsets
+    from .custom_skills import list_custom_skills
+    return JSONResponse({
+        "builtin_skills": list_builtin_skills(),
+        "custom_skills": list_custom_skills(include_shared=True),
+        "toolsets": list_toolsets(),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -1379,109 +1543,39 @@ async def _api_skills_delete(request: Request):
 
 
 async def _api_bundles_list(request: Request):
-    """GET /api/bundles — list user's bundles + shared."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    from .custom_skill_bundles import list_skill_bundles
-    bundles = list_skill_bundles()
-    return JSONResponse({"bundles": bundles, "count": len(bundles)})
+    """Delegate to api.bundle_routes (S-4 refactoring)."""
+    from .api.bundle_routes import bundles_list
+    return await bundles_list(request)
 
 
 async def _api_bundles_create(request: Request):
-    """POST /api/bundles — create a new skill bundle."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-
-    bundle_name = (body.get("bundle_name") or "").strip()
-    if not bundle_name:
-        return JSONResponse({"error": "bundle_name required"}, status_code=400)
-
-    from .custom_skill_bundles import create_skill_bundle, validate_bundle_name
-    err = validate_bundle_name(bundle_name)
-    if err:
-        return JSONResponse({"error": err}, status_code=400)
-
-    bundle_id = create_skill_bundle(
-        bundle_name=bundle_name,
-        description=body.get("description", ""),
-        toolset_names=body.get("toolset_names", []),
-        skill_names=body.get("skill_names", []),
-        intent_triggers=body.get("intent_triggers", []),
-        is_shared=body.get("is_shared", False),
-    )
-    if bundle_id is None:
-        return JSONResponse({"error": "Failed to create bundle"}, status_code=400)
-
-    return JSONResponse({"id": bundle_id, "bundle_name": bundle_name}, status_code=201)
+    """Delegate to api.bundle_routes (S-4 refactoring)."""
+    from .api.bundle_routes import bundles_create
+    return await bundles_create(request)
 
 
 async def _api_bundles_detail(request: Request):
-    """GET /api/bundles/{id} — get bundle detail."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    bundle_id = int(request.path_params.get("id", 0))
-    from .custom_skill_bundles import get_skill_bundle
-    bundle = get_skill_bundle(bundle_id)
-    if not bundle:
-        return JSONResponse({"error": "Bundle not found"}, status_code=404)
-    return JSONResponse(bundle)
+    """Delegate to api.bundle_routes (S-4 refactoring)."""
+    from .api.bundle_routes import bundles_detail
+    return await bundles_detail(request)
 
 
 async def _api_bundles_update(request: Request):
-    """PUT /api/bundles/{id} — update a bundle (owner only)."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    bundle_id = int(request.path_params.get("id", 0))
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-
-    from .custom_skill_bundles import update_skill_bundle
-    ok = update_skill_bundle(bundle_id, **body)
-    if not ok:
-        return JSONResponse({"error": "Failed to update bundle"}, status_code=400)
-    return JSONResponse({"status": "ok"})
+    """Delegate to api.bundle_routes (S-4 refactoring)."""
+    from .api.bundle_routes import bundles_update
+    return await bundles_update(request)
 
 
 async def _api_bundles_delete(request: Request):
-    """DELETE /api/bundles/{id} — delete a bundle (owner only)."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    bundle_id = int(request.path_params.get("id", 0))
-    from .custom_skill_bundles import delete_skill_bundle
-    ok = delete_skill_bundle(bundle_id)
-    if not ok:
-        return JSONResponse({"error": "Failed to delete bundle"}, status_code=404)
-    return JSONResponse({"status": "ok"})
+    """Delegate to api.bundle_routes (S-4 refactoring)."""
+    from .api.bundle_routes import bundles_delete
+    return await bundles_delete(request)
 
 
 async def _api_bundles_available_tools(request: Request):
-    """GET /api/bundles/available-tools — list toolset names + skill names for composition."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-
-    from .custom_skill_bundles import get_available_tools
-    return JSONResponse(get_available_tools())
+    """Delegate to api.bundle_routes (S-4 refactoring)."""
+    from .api.bundle_routes import bundles_available_tools
+    return await bundles_available_tools(request)
 
 
 # ---------------------------------------------------------------------------
@@ -1610,232 +1704,48 @@ async def _api_templates_clone(request: Request):
 
 
 async def _api_kb_list(request: Request):
-    """GET /api/kb — list user's knowledge bases."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    from .knowledge_base import list_knowledge_bases
-    kbs = list_knowledge_bases(include_shared=True)
-    return JSONResponse({"knowledge_bases": kbs})
-
+    from .api.kb_routes import kb_list
+    return await kb_list(request)
 
 async def _api_kb_create(request: Request):
-    """POST /api/kb — create a knowledge base."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-
-    name = (body.get("name") or "").strip()
-    if not name:
-        return JSONResponse({"error": "name is required"}, status_code=400)
-
-    from .knowledge_base import create_knowledge_base
-    kb_id = create_knowledge_base(
-        name=name,
-        description=(body.get("description") or "").strip(),
-        is_shared=body.get("is_shared", False),
-    )
-    if kb_id is None:
-        return JSONResponse({"error": "Failed to create (duplicate name or limit reached)"}, status_code=409)
-
-    try:
-        from .audit_logger import record_audit, ACTION_KB_CREATE
-        record_audit(ACTION_KB_CREATE, details={"kb_name": name, "id": kb_id})
-    except Exception:
-        pass
-
-    return JSONResponse({"id": kb_id, "name": name}, status_code=201)
-
+    from .api.kb_routes import kb_create
+    return await kb_create(request)
 
 async def _api_kb_detail(request: Request):
-    """GET /api/kb/{id} — knowledge base detail with documents."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    kb_id = int(request.path_params.get("id", 0))
-    from .knowledge_base import get_knowledge_base, list_documents
-    kb = get_knowledge_base(kb_id)
-    if not kb:
-        return JSONResponse({"error": "Knowledge base not found"}, status_code=404)
-    docs = list_documents(kb_id)
-    kb["documents"] = docs
-    return JSONResponse(kb)
-
+    from .api.kb_routes import kb_detail
+    return await kb_detail(request)
 
 async def _api_kb_delete(request: Request):
-    """DELETE /api/kb/{id} — delete a knowledge base."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    kb_id = int(request.path_params.get("id", 0))
-    from .knowledge_base import delete_knowledge_base
-    ok = delete_knowledge_base(kb_id)
-    if not ok:
-        return JSONResponse({"error": "Not found or not owned by you"}, status_code=404)
-
-    try:
-        from .audit_logger import record_audit, ACTION_KB_DELETE
-        record_audit(ACTION_KB_DELETE, details={"id": kb_id})
-    except Exception:
-        pass
-
-    return JSONResponse({"ok": True})
-
+    from .api.kb_routes import kb_delete
+    return await kb_delete(request)
 
 async def _api_kb_doc_upload(request: Request):
-    """POST /api/kb/{id}/documents — upload a document to knowledge base."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    kb_id = int(request.path_params.get("id", 0))
-
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-
-    text_content = (body.get("text") or "").strip()
-    filename = (body.get("filename") or "document.txt").strip()
-    if not text_content:
-        return JSONResponse({"error": "text is required"}, status_code=400)
-
-    from .knowledge_base import add_document
-    doc_id = add_document(kb_id, filename, text_content, content_type=body.get("content_type"))
-    if doc_id is None:
-        return JSONResponse({"error": "Failed to add document"}, status_code=400)
-
-    try:
-        from .audit_logger import record_audit, ACTION_KB_DOC_ADD
-        record_audit(ACTION_KB_DOC_ADD, details={"kb_id": kb_id, "filename": filename, "doc_id": doc_id})
-    except Exception:
-        pass
-
-    return JSONResponse({"doc_id": doc_id, "filename": filename}, status_code=201)
-
+    from .api.kb_routes import kb_doc_upload
+    return await kb_doc_upload(request)
 
 async def _api_kb_doc_delete(request: Request):
-    """DELETE /api/kb/{id}/documents/{doc_id} — delete a document."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    kb_id = int(request.path_params.get("id", 0))
-    doc_id = int(request.path_params.get("doc_id", 0))
-    from .knowledge_base import delete_document
-    ok = delete_document(doc_id, kb_id)
-    if not ok:
-        return JSONResponse({"error": "Not found or not owned by you"}, status_code=404)
-
-    try:
-        from .audit_logger import record_audit, ACTION_KB_DOC_DELETE
-        record_audit(ACTION_KB_DOC_DELETE, details={"kb_id": kb_id, "doc_id": doc_id})
-    except Exception:
-        pass
-
-    return JSONResponse({"ok": True})
-
+    from .api.kb_routes import kb_doc_delete
+    return await kb_doc_delete(request)
 
 async def _api_kb_search(request: Request):
-    """POST /api/kb/search — semantic search across knowledge bases."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-
-    query = (body.get("query") or "").strip()
-    if not query:
-        return JSONResponse({"error": "query is required"}, status_code=400)
-
-    from .knowledge_base import search_kb
-    results = search_kb(
-        query=query,
-        kb_id=body.get("kb_id"),
-        top_k=body.get("top_k", 5),
-    )
-    return JSONResponse({"results": results})
-
-
-# ---------------------------------------------------------------------------
-# GraphRAG API (v10.0.5)
-# ---------------------------------------------------------------------------
-
+    from .api.kb_routes import kb_search
+    return await kb_search(request)
 
 async def _api_kb_build_graph(request: Request):
-    """POST /api/kb/{id}/build-graph — build entity graph for a KB."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    kb_id = int(request.path_params.get("id", 0))
-    from .graph_rag import build_kb_graph
-    result = build_kb_graph(kb_id, use_llm=False)
-    status_code = 200 if result.get("status") == "ok" else 400
-    return JSONResponse(result, status_code=status_code)
-
+    from .api.kb_routes import kb_build_graph
+    return await kb_build_graph(request)
 
 async def _api_kb_graph(request: Request):
-    """GET /api/kb/{id}/graph — get entity graph data."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-
-    kb_id = int(request.path_params.get("id", 0))
-    from .graph_rag import get_entity_graph
-    graph = get_entity_graph(kb_id)
-    return JSONResponse(graph)
-
+    from .api.kb_routes import kb_graph
+    return await kb_graph(request)
 
 async def _api_kb_graph_search(request: Request):
-    """POST /api/kb/{id}/graph-search — graph-augmented search."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    kb_id = int(request.path_params.get("id", 0))
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-
-    query = body.get("query", "")
-    if not query:
-        return JSONResponse({"error": "query required"}, status_code=400)
-
-    from .graph_rag import graph_rag_search
-    results = graph_rag_search(query, kb_id=kb_id, top_k=body.get("top_k", 5))
-    return JSONResponse({"results": results, "count": len(results)})
-
+    from .api.kb_routes import kb_graph_search
+    return await kb_graph_search(request)
 
 async def _api_kb_entities(request: Request):
-    """GET /api/kb/{id}/entities — list entities for a KB."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-
-    kb_id = int(request.path_params.get("id", 0))
-    from .graph_rag import get_entity_graph
-    graph = get_entity_graph(kb_id)
-    return JSONResponse({
-        "entities": graph.get("nodes", []),
-        "count": graph.get("stats", {}).get("node_count", 0),
-        "type_distribution": graph.get("stats", {}).get("entity_types", {}),
-    })
+    from .api.kb_routes import kb_entities
+    return await kb_entities(request)
 
 
 # ---------------------------------------------------------------------------
@@ -1982,6 +1892,145 @@ async def _api_suggestions_dismiss(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# System Status API (v12.0)
+# ---------------------------------------------------------------------------
+
+
+async def _api_system_status(request: Request):
+    """GET /api/system/status — aggregated system health for admin dashboard."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .health import check_database, check_mcp_hub, _get_feature_flags
+
+    # Database
+    db = check_database()
+
+    # MCP Hub
+    mcp = check_mcp_hub()
+
+    # Feature flags (arcpy, cloud, streaming, planner)
+    flags = _get_feature_flags()
+
+    # Bots status
+    bots = {}
+    for bot_name, module_name, func_name, env_keys in [
+        ("wecom", "wecom_bot", "is_wecom_configured",
+         ["WECOM_CORP_ID", "WECOM_APP_SECRET", "WECOM_TOKEN", "WECOM_ENCODING_AES_KEY", "WECOM_AGENT_ID"]),
+        ("dingtalk", "dingtalk_bot", "is_dingtalk_configured",
+         ["DINGTALK_APP_KEY", "DINGTALK_APP_SECRET", "DINGTALK_ROBOT_CODE"]),
+        ("feishu", "feishu_bot", "is_feishu_configured",
+         ["FEISHU_APP_ID", "FEISHU_APP_SECRET"]),
+    ]:
+        import importlib
+        try:
+            mod = importlib.import_module(f".{module_name}", package="data_agent")
+            configured = getattr(mod, func_name)()
+        except Exception:
+            configured = False
+        missing = [k for k in env_keys if not os.environ.get(k)]
+        bots[bot_name] = {
+            "configured": configured,
+            "missing_env": missing,
+        }
+
+    # A2A status
+    try:
+        from .a2a_server import get_a2a_status, A2A_ENABLED
+        a2a = get_a2a_status()
+    except Exception:
+        a2a = {"enabled": False}
+
+    # Model config
+    import os as _os
+    model_config = {
+        "fast": _os.environ.get("MODEL_FAST", "gemini-2.0-flash"),
+        "standard": _os.environ.get("MODEL_STANDARD", "gemini-2.5-flash"),
+        "premium": _os.environ.get("MODEL_PREMIUM", "gemini-2.5-pro"),
+        "router": "gemini-2.0-flash",
+    }
+
+    return JSONResponse({
+        "database": db,
+        "mcp_hub": mcp,
+        "bots": bots,
+        "a2a": a2a,
+        "features": flags,
+        "models": model_config,
+    })
+
+
+async def _api_bots_status(request: Request):
+    """GET /api/bots/status — detailed bot status for each platform."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    result = {}
+    for bot_name, module_name, func_name, env_keys, label in [
+        ("wecom", "wecom_bot", "is_wecom_configured",
+         ["WECOM_CORP_ID", "WECOM_APP_SECRET", "WECOM_TOKEN", "WECOM_ENCODING_AES_KEY", "WECOM_AGENT_ID"],
+         "企业微信"),
+        ("dingtalk", "dingtalk_bot", "is_dingtalk_configured",
+         ["DINGTALK_APP_KEY", "DINGTALK_APP_SECRET", "DINGTALK_ROBOT_CODE"],
+         "钉钉"),
+        ("feishu", "feishu_bot", "is_feishu_configured",
+         ["FEISHU_APP_ID", "FEISHU_APP_SECRET"],
+         "飞书"),
+    ]:
+        import importlib
+        try:
+            mod = importlib.import_module(f".{module_name}", package="data_agent")
+            configured = getattr(mod, func_name)()
+        except Exception:
+            configured = False
+        configured_keys = [k for k in env_keys if os.environ.get(k)]
+        missing_keys = [k for k in env_keys if not os.environ.get(k)]
+        result[bot_name] = {
+            "label": label,
+            "configured": configured,
+            "total_env_keys": len(env_keys),
+            "configured_keys": len(configured_keys),
+            "missing_keys": missing_keys,
+        }
+
+    return JSONResponse({"bots": result})
+
+
+async def _api_config_models(request: Request):
+    """GET /api/config/models — current LLM model configuration."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .agent import get_model_config
+    config = get_model_config()
+
+    # Add provider detection
+    for tier_info in config["tiers"].values():
+        model = tier_info["model"]
+        if "gemini" in model.lower():
+            tier_info["provider"] = "Google Gemini"
+        elif "claude" in model.lower():
+            tier_info["provider"] = "Anthropic"
+        elif "gpt" in model.lower() or "o1" in model.lower() or "o3" in model.lower():
+            tier_info["provider"] = "OpenAI"
+        else:
+            tier_info["provider"] = "LiteLLM / Other"
+
+    router_model = config["router_model"]
+    if "gemini" in router_model.lower():
+        config["router_provider"] = "Google Gemini"
+    elif "claude" in router_model.lower():
+        config["router_provider"] = "Anthropic"
+    else:
+        config["router_provider"] = "Other"
+
+    return JSONResponse(config)
+
+
+# ---------------------------------------------------------------------------
 # A2A Server API (v11.0.4)
 # ---------------------------------------------------------------------------
 
@@ -2008,13 +2057,924 @@ async def _api_a2a_status(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# User-Defined Tools API (v12.0)
+# ---------------------------------------------------------------------------
+
+async def _api_user_tools_list(request: Request):
+    """GET /api/user-tools — list user's tools + shared."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from .user_tools import list_user_tools
+    tools = list_user_tools()
+    return JSONResponse({"tools": tools, "count": len(tools)})
+
+
+async def _api_user_tools_create(request: Request):
+    """POST /api/user-tools — create a new user tool."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .user_tools import (
+        create_user_tool, validate_tool_name,
+        validate_parameters, validate_template_config,
+    )
+
+    tool_name = (body.get("tool_name") or "").strip()
+    err = validate_tool_name(tool_name)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+
+    parameters = body.get("parameters", [])
+    err = validate_parameters(parameters)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+
+    template_type = (body.get("template_type") or "").strip()
+    template_config = body.get("template_config", {})
+    err = validate_template_config(template_type, template_config)
+    if err:
+        return JSONResponse({"error": err}, status_code=400)
+
+    # Python sandbox: validate code via AST
+    if template_type == "python_sandbox":
+        python_code = template_config.get("python_code", "")
+        if not python_code.strip():
+            return JSONResponse({"error": "python_sandbox requires python_code in template_config"}, status_code=400)
+        from .user_tools import validate_python_code
+        code_err = validate_python_code(python_code)
+        if code_err:
+            return JSONResponse({"error": code_err}, status_code=400)
+
+    tool_id = create_user_tool(
+        tool_name=tool_name,
+        description=body.get("description", ""),
+        parameters=parameters,
+        template_type=template_type,
+        template_config=template_config,
+        is_shared=body.get("is_shared", False),
+        timeout_seconds=body.get("timeout_seconds", 30),
+    )
+    if tool_id is None:
+        return JSONResponse({"error": "Failed to create tool (limit reached or duplicate name)"}, status_code=400)
+
+    return JSONResponse({"id": tool_id, "tool_name": tool_name}, status_code=201)
+
+
+async def _api_user_tools_detail(request: Request):
+    """GET /api/user-tools/{id} — get tool detail."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    from .user_tools import get_user_tool
+    tool = get_user_tool(tool_id)
+    if not tool:
+        return JSONResponse({"error": "Tool not found"}, status_code=404)
+    return JSONResponse(tool)
+
+
+async def _api_user_tools_update(request: Request):
+    """PUT /api/user-tools/{id} — update a tool (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    # Validate fields if provided
+    from .user_tools import (
+        update_user_tool, validate_tool_name,
+        validate_parameters, validate_template_config,
+    )
+
+    if "tool_name" in body:
+        err = validate_tool_name(body["tool_name"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+    if "parameters" in body:
+        err = validate_parameters(body["parameters"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+    if "template_type" in body and "template_config" in body:
+        err = validate_template_config(body["template_type"], body["template_config"])
+        if err:
+            return JSONResponse({"error": err}, status_code=400)
+        if body["template_type"] == "python_sandbox":
+            python_code = body["template_config"].get("python_code", "")
+            if not python_code.strip():
+                return JSONResponse({"error": "python_sandbox requires python_code"}, status_code=400)
+            from .user_tools import validate_python_code
+            code_err = validate_python_code(python_code)
+            if code_err:
+                return JSONResponse({"error": code_err}, status_code=400)
+
+    ok = update_user_tool(tool_id, **body)
+    if not ok:
+        return JSONResponse({"error": "Failed to update tool"}, status_code=400)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_user_tools_delete(request: Request):
+    """DELETE /api/user-tools/{id} — delete a tool (owner only)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    from .user_tools import delete_user_tool
+    ok = delete_user_tool(tool_id)
+    if not ok:
+        return JSONResponse({"error": "Failed to delete tool"}, status_code=404)
+    return JSONResponse({"status": "ok"})
+
+
+async def _api_user_tools_test(request: Request):
+    """POST /api/user-tools/{id}/test — dry-run a tool with sample params."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    tool_id = int(request.path_params.get("id", 0))
+    from .user_tools import get_user_tool
+    tool = get_user_tool(tool_id)
+    if not tool:
+        return JSONResponse({"error": "Tool not found"}, status_code=404)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    test_params = body.get("params", {})
+    from .user_tool_engines import _dispatch_engine
+    try:
+        result = _dispatch_engine(tool, test_params)
+        return JSONResponse({"status": "ok", "result": result})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+async def _api_user_tools_rate(request: Request):
+    """POST /api/user-tools/{id}/rate — rate a shared user tool (1-5)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    tool_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    score = body.get("score", 0)
+    if not isinstance(score, int) or score < 1 or score > 5:
+        return JSONResponse({"error": "score must be 1-5"}, status_code=400)
+    from .user_tools import rate_tool
+    if rate_tool(tool_id, score):
+        return JSONResponse({"ok": True})
+    return JSONResponse({"error": "Tool not found or not shared"}, status_code=404)
+
+
+async def _api_user_tools_clone(request: Request):
+    """POST /api/user-tools/{id}/clone — clone a shared user tool to current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    tool_id = int(request.path_params.get("id", 0))
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    from .user_tools import clone_tool
+    new_id = clone_tool(tool_id, username, new_name=body.get("tool_name"))
+    if new_id is None:
+        return JSONResponse({"error": "Clone failed (not found or not shared)"}, status_code=404)
+    return JSONResponse({"ok": True, "id": new_id}, status_code=201)
+
+
+async def _api_marketplace(request: Request):
+    """GET /api/marketplace — aggregated view of all shared skills/tools/templates/bundles."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    sort_by = request.query_params.get("sort", "rating")  # rating | usage | recent
+
+    items = []
+    # Shared custom skills
+    try:
+        from .custom_skills import list_custom_skills
+        for s in list_custom_skills(include_shared=True):
+            if s.get("is_shared"):
+                rating_count = s.get("rating_count", 0) or 0
+                rating_avg = round(s.get("rating_sum", 0) / rating_count, 1) if rating_count else 0
+                items.append({
+                    "id": s["id"], "name": s["skill_name"], "type": "skill",
+                    "description": s.get("description", ""),
+                    "owner": s["owner_username"],
+                    "rating": rating_avg, "rating_count": rating_count,
+                    "clone_count": s.get("clone_count", 0) or 0,
+                    "created_at": s.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Shared user tools
+    try:
+        from .user_tools import list_user_tools
+        for t in list_user_tools(include_shared=True):
+            if t.get("is_shared"):
+                rating_count = t.get("rating_count", 0) or 0
+                rating_avg = round(t.get("rating_sum", 0) / rating_count, 1) if rating_count else 0
+                items.append({
+                    "id": t["id"], "name": t["tool_name"], "type": "tool",
+                    "description": t.get("description", ""),
+                    "template_type": t.get("template_type", ""),
+                    "owner": t["owner_username"],
+                    "rating": rating_avg, "rating_count": rating_count,
+                    "clone_count": t.get("clone_count", 0) or 0,
+                    "created_at": t.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Published workflow templates
+    try:
+        from .workflow_templates import list_templates
+        for tmpl in list_templates():
+            if tmpl.get("is_published"):
+                rc = tmpl.get("rating_count", 0) or 0
+                items.append({
+                    "id": tmpl["id"], "name": tmpl["template_name"], "type": "template",
+                    "description": tmpl.get("description", ""),
+                    "category": tmpl.get("category", ""),
+                    "owner": tmpl.get("owner_username", ""),
+                    "rating": round(tmpl.get("rating_sum", 0) / rc, 1) if rc else 0,
+                    "rating_count": rc,
+                    "clone_count": tmpl.get("clone_count", 0) or 0,
+                    "created_at": tmpl.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Shared skill bundles
+    try:
+        from .custom_skill_bundles import list_skill_bundles
+        for b in list_skill_bundles():
+            if b.get("is_shared"):
+                items.append({
+                    "id": b["id"], "name": b["bundle_name"], "type": "bundle",
+                    "description": b.get("description", ""),
+                    "owner": b.get("owner_username", ""),
+                    "rating": 0, "rating_count": 0,
+                    "clone_count": b.get("use_count", 0) or 0,
+                    "created_at": b.get("created_at"),
+                })
+    except Exception:
+        pass
+
+    # Sort
+    if sort_by == "rating":
+        items.sort(key=lambda x: (x.get("rating", 0), x.get("clone_count", 0)), reverse=True)
+    elif sort_by == "usage":
+        items.sort(key=lambda x: x.get("clone_count", 0), reverse=True)
+    else:  # recent
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    return JSONResponse({"items": items, "count": len(items)})
+
+
+async def _api_drl_scenarios(request: Request):
+    """GET /api/drl/scenarios — list available DRL scenario templates."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .drl_engine import list_scenarios
+    return JSONResponse({"scenarios": list_scenarios()})
+
+
+async def _api_drl_run_custom(request: Request):
+    """POST /api/drl/run-custom — run DRL optimization with custom weights."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    body = await request.json()
+    scenario_id = body.get("scenario_id", "farmland_optimization")
+    data_path = body.get("data_path", "")
+    if not data_path:
+        return JSONResponse({"error": "data_path 必填"}, status_code=400)
+
+    # Validate weight ranges
+    weights = {}
+    for key, lo, hi in [
+        ("slope_weight", 100, 3000),
+        ("contiguity_weight", 100, 2000),
+        ("balance_weight", 100, 2000),
+        ("pair_bonus", 0.1, 10.0),
+    ]:
+        val = body.get(key)
+        if val is not None:
+            try:
+                fval = float(val)
+                if not (lo <= fval <= hi):
+                    return JSONResponse(
+                        {"error": f"{key} 须在 [{lo}, {hi}] 范围内，当前值: {fval}"},
+                        status_code=400,
+                    )
+                weights[key] = str(fval)
+            except (ValueError, TypeError):
+                return JSONResponse({"error": f"{key} 须为数值"}, status_code=400)
+
+    import asyncio
+    from .toolsets.analysis_tools import drl_model
+    try:
+        result = await asyncio.to_thread(
+            drl_model,
+            data_path,
+            scenario_id,
+            weights.get("slope_weight", ""),
+            weights.get("contiguity_weight", ""),
+            weights.get("balance_weight", ""),
+            weights.get("pair_bonus", ""),
+        )
+        if isinstance(result, dict):
+            return JSONResponse(result)
+        import json
+        return JSONResponse(json.loads(result) if result.startswith("{") else {"result": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_drl_explain(request: Request):
+    """POST /api/drl/explain — explain DRL decision feature importance."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    scenario_id = body.get("scenario_id", "farmland_optimization")
+
+    # Try to find model weights
+    import os
+    model_path = os.path.join(os.path.dirname(__file__), "weights", "scorer_weights_v7")
+
+    from data_agent.drl_interpretability import explain_drl_decision, get_scenario_feature_summary
+
+    # If no model available, return scenario-based summary
+    if not os.path.exists(model_path + ".zip"):
+        summary = get_scenario_feature_summary(scenario_id)
+        return JSONResponse({"status": "ok", "mode": "scenario_based", **summary})
+
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads", username)
+    os.makedirs(upload_dir, exist_ok=True)
+
+    result = explain_drl_decision(model_path, output_dir=upload_dir)
+    return JSONResponse(result)
+
+
+async def _api_drl_history(request: Request):
+    """GET /api/drl/history — list DRL optimization run history."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    from data_agent.drl_engine import list_run_history
+    runs = list_run_history(username)
+    return JSONResponse({"runs": runs})
+
+
+async def _api_drl_compare(request: Request):
+    """GET /api/drl/compare?a=ID&b=ID — compare two DRL runs."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    run_a_id = request.query_params.get("a")
+    run_b_id = request.query_params.get("b")
+    if not run_a_id or not run_b_id:
+        return JSONResponse({"error": "Both a and b run IDs required"}, status_code=400)
+
+    from data_agent.drl_engine import list_run_history, compare_runs
+    runs = list_run_history(username, limit=100)
+    run_a = next((r for r in runs if str(r["id"]) == str(run_a_id)), None)
+    run_b = next((r for r in runs if str(r["id"]) == str(run_b_id)), None)
+    if not run_a or not run_b:
+        return JSONResponse({"error": "Run not found"}, status_code=404)
+
+    result = compare_runs(run_a, run_b)
+    return JSONResponse(result)
+
+
+async def _api_memory_search(request: Request):
+    """GET /api/memory/search?q=keyword&type=region — search user spatial memories."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    query = request.query_params.get("q", "")
+    mem_type = request.query_params.get("type", "")
+    from .memory import recall_memories
+    result = recall_memories(memory_type=mem_type, keyword=query)
+    return JSONResponse(result)
+
+
+async def _api_memory_batch_save(request: Request):
+    """POST /api/memory/batch-save — save multiple facts as memories."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+        facts = body.get("facts", [])
+        from .memory import save_auto_extract_memories
+        result = save_auto_extract_memories(facts)
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+async def _api_chains_list(request: Request):
+    """GET /api/chains — list analysis chains for current user."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    from .analysis_chains import list_chains
+    return JSONResponse({"chains": list_chains(username)})
+
+
+async def _api_chains_create(request: Request):
+    """POST /api/chains — create an analysis chain."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    if not body.get("chain_name") or not body.get("trigger_condition") or not body.get("follow_up_prompt"):
+        return JSONResponse({"error": "chain_name, trigger_condition, follow_up_prompt required"}, status_code=400)
+    from .analysis_chains import create_chain
+    result = create_chain(
+        chain_name=body["chain_name"],
+        trigger_condition=body["trigger_condition"],
+        follow_up_prompt=body["follow_up_prompt"],
+        follow_up_pipeline=body.get("follow_up_pipeline", "general"),
+        description=body.get("description", ""),
+    )
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result, status_code=201)
+
+
+async def _api_chains_delete(request: Request):
+    """DELETE /api/chains/{id} — delete an analysis chain."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    chain_id = int(request.path_params.get("id", 0))
+    from .analysis_chains import delete_chain
+    if delete_chain(chain_id):
+        return JSONResponse({"ok": True})
+    return JSONResponse({"error": "Chain not found"}, status_code=404)
+
+
+async def _api_annotations_export(request: Request):
+    """GET /api/annotations/export?format=geojson — export annotations as GeoJSON or CSV."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    fmt = request.query_params.get("format", "geojson")
+
+    from .db_engine import get_engine
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not available"}, status_code=500)
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT id, lng, lat, title, comment, color, is_resolved, created_at "
+                "FROM agent_map_annotations WHERE user_id = :u ORDER BY created_at"
+            ), {"u": username}).fetchall()
+
+        if fmt == "geojson":
+            features = []
+            for r in rows:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [float(r[1]), float(r[2])]},
+                    "properties": {
+                        "id": r[0], "title": r[3], "comment": r[4],
+                        "color": r[5], "resolved": bool(r[6]),
+                        "created_at": str(r[7]),
+                    },
+                })
+            return JSONResponse({
+                "type": "FeatureCollection",
+                "features": features,
+            })
+        else:  # csv
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["id", "lng", "lat", "title", "comment", "color", "resolved", "created_at"])
+            for r in rows:
+                writer.writerow([r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]])
+            from starlette.responses import Response
+            return Response(
+                content=output.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=annotations.csv"},
+            )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_plugins_list(request: Request):
+    """GET /api/plugins — list installed plugins."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .plugin_registry import list_plugins
+    return JSONResponse({"plugins": list_plugins()})
+
+
+async def _api_plugins_install(request: Request):
+    """POST /api/plugins — install a plugin."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    from .plugin_registry import register_plugin
+    result = register_plugin(
+        plugin_id=body.get("plugin_id", ""),
+        plugin_name=body.get("plugin_name", ""),
+        tab_label=body.get("tab_label", ""),
+        description=body.get("description", ""),
+        entry_url=body.get("entry_url", ""),
+        owner_username=username,
+    )
+    if result["status"] == "error":
+        return JSONResponse({"error": result["message"]}, status_code=400)
+    return JSONResponse(result, status_code=201)
+
+
+async def _api_a2a_task_create(request: Request):
+    """POST /api/a2a/tasks — create a new A2A task (v14.3 lifecycle)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    from .a2a_server import create_task
+    result = create_task(body.get("message", ""), body.get("caller_id", "api"))
+    return JSONResponse(result, status_code=201)
+
+
+async def _api_a2a_task_execute(request: Request):
+    """POST /api/a2a/tasks/{task_id}/execute — execute a submitted task."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    task_id = request.path_params.get("task_id", "")
+    from .a2a_server import execute_task
+    result = await execute_task(task_id)
+    return JSONResponse(result)
+
+
+async def _api_a2a_task_status(request: Request):
+    """GET /api/a2a/tasks/{task_id} — get task status."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    task_id = request.path_params.get("task_id", "")
+    from .a2a_server import get_task_status
+    status = get_task_status(task_id)
+    if not status:
+        return JSONResponse({"error": "Task not found"}, status_code=404)
+    return JSONResponse(status)
+
+
+async def _api_a2a_federation(request: Request):
+    """GET /api/a2a/federation — get federation config and peer agents."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from .a2a_server import get_federation_config
+    return JSONResponse(get_federation_config())
+
+
+# ---------------------------------------------------------------------------
+# HITL Dashboard API
+# ---------------------------------------------------------------------------
+
+async def _api_hitl_stats(request: Request):
+    """GET /api/hitl/stats — HITL decision statistics."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    days = int(request.query_params.get("days", "30"))
+    from .hitl_approval import get_hitl_stats
+    return JSONResponse(get_hitl_stats(days))
+
+
+async def _api_hitl_risk_registry(request: Request):
+    """GET /api/hitl/risk-registry — current risk registry."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .hitl_approval import get_risk_registry
+    return JSONResponse({"tools": get_risk_registry()})
+
+
+async def _api_cost_estimate(request: Request):
+    """GET /api/cost/estimate?pipeline=general — pre-execution cost estimate."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    pipeline = request.query_params.get("pipeline", "general")
+    model = request.query_params.get("model", "gemini-2.5-flash")
+    from .token_tracker import estimate_pipeline_cost
+    return JSONResponse(estimate_pipeline_cost(pipeline, model))
+
+
+# ---------------------------------------------------------------------------
+# BCG Platform Enhancement APIs (v15.8)
+# ---------------------------------------------------------------------------
+
+async def _api_prompts_versions(request: Request):
+    """GET /api/prompts/versions?domain=general&env=prod — list prompt versions."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    domain = request.query_params.get("domain", "general")
+    env = request.query_params.get("env", "prod")
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"versions": []})
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT id, prompt_key, version, is_active, deployed_at, created_at
+            FROM agent_prompt_versions
+            WHERE domain = :domain AND environment = :env
+            ORDER BY prompt_key, version DESC
+        """), {"domain": domain, "env": env})
+        versions = [{"id": r[0], "prompt_key": r[1], "version": r[2], "is_active": r[3],
+                     "deployed_at": r[4].isoformat() if r[4] else None,
+                     "created_at": r[5].isoformat() if r[5] else None} for r in result]
+    return JSONResponse({"versions": versions})
+
+
+async def _api_prompts_deploy(request: Request):
+    """POST /api/prompts/deploy — deploy prompt version to target env."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    version_id = body.get("version_id")
+    target_env = body.get("target_env", "prod")
+    if not version_id:
+        return JSONResponse({"error": "version_id required"}, status_code=400)
+    from .prompt_registry import PromptRegistry
+    registry = PromptRegistry()
+    try:
+        result = registry.deploy(version_id, target_env)
+        return JSONResponse({"status": "success", "result": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_gateway_models(request: Request):
+    """GET /api/gateway/models — list available models with capabilities."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .model_gateway import ModelRegistry
+    registry = ModelRegistry()
+    models = [{"name": m.name, "context_window": m.context_window, "cost_per_1k_input": m.cost_per_1k_input,
+               "cost_per_1k_output": m.cost_per_1k_output, "capabilities": m.capabilities}
+              for m in registry.models.values()]
+    return JSONResponse({"models": models})
+
+
+async def _api_gateway_cost_summary(request: Request):
+    """GET /api/gateway/cost-summary?days=30 — cost breakdown by scenario/project."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    days = int(request.query_params.get("days", "30"))
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"summary": []})
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT scenario, project_id, SUM(cost_usd) as total_cost, COUNT(*) as call_count
+            FROM agent_token_usage
+            WHERE timestamp > NOW() - INTERVAL :days DAY
+            GROUP BY scenario, project_id
+            ORDER BY total_cost DESC
+        """), {"days": days})
+        summary = [{"scenario": r[0], "project_id": r[1], "total_cost": float(r[2] or 0),
+                    "call_count": r[3]} for r in result]
+    return JSONResponse({"summary": summary})
+
+
+async def _api_eval_history(request: Request):
+    """GET /api/eval/history?pipeline=general&limit=50 — evaluation history."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    pipeline = request.query_params.get("pipeline", "")
+    limit = int(request.query_params.get("limit", "50"))
+    from .eval_history import get_eval_history
+    return JSONResponse({"history": get_eval_history(pipeline or None, limit)})
+
+
+async def _api_eval_trend(request: Request):
+    """GET /api/eval/trend?pipeline=general&days=90 — score trend over time."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    pipeline = request.query_params.get("pipeline", "general")
+    days = int(request.query_params.get("days", "90"))
+    from .eval_history import get_eval_trend
+    return JSONResponse({"trend": get_eval_trend(pipeline, days)})
+
+
+async def _api_context_preview(request: Request):
+    """GET /api/context/preview?task_type=qc&step=detection — preview context blocks."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    task_type = request.query_params.get("task_type", "general")
+    step = request.query_params.get("step", "")
+    from .context_manager import ContextManager
+    manager = ContextManager()
+    blocks = manager.prepare(task_type, step, {"user_id": user})
+    return JSONResponse({"blocks": [{"source": b.source, "content": b.content[:200],
+                                     "relevance": b.relevance, "tokens": b.tokens} for b in blocks]})
+
+
+async def _api_eval_datasets_create(request: Request):
+    """POST /api/eval/datasets — create evaluation dataset."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    scenario = body.get("scenario", "")
+    name = body.get("name", "")
+    test_cases = body.get("test_cases", [])
+    if not scenario or not name or not test_cases:
+        return JSONResponse({"error": "scenario, name, test_cases required"}, status_code=400)
+    from .eval_scenario import EvalDatasetManager
+    manager = EvalDatasetManager()
+    try:
+        dataset_id = manager.create_dataset(scenario, name, test_cases,
+                                           version=body.get("version", "1.0"),
+                                           description=body.get("description", ""),
+                                           created_by=user)
+        return JSONResponse({"status": "success", "dataset_id": dataset_id})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_eval_run(request: Request):
+    """POST /api/eval/run — run evaluation against dataset."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    dataset_id = body.get("dataset_id")
+    scenario = body.get("scenario", "surveying_qc")
+    if not dataset_id:
+        return JSONResponse({"error": "dataset_id required"}, status_code=400)
+    from .eval_scenario import EvalDatasetManager, SurveyingQCScenario
+    manager = EvalDatasetManager()
+    try:
+        dataset = manager.get_dataset(dataset_id)
+        evaluator = SurveyingQCScenario()
+        results = []
+        for case in dataset["test_cases"]:
+            metrics = evaluator.evaluate(case.get("actual", ), case.get("expected", {}))
+            results.append({"case_id": case.get("id"), "metrics": metrics})
+        return JSONResponse({"status": "success", "results": results})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_eval_scenarios(request: Request):
+    """GET /api/eval/scenarios — list available evaluation scenarios."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    scenarios = [{"name": "surveying_qc", "description": "测绘质检评估场景",
+                  "metrics": ["defect_precision", "defect_recall", "defect_f1", "fix_success_rate"]}]
+    return JSONResponse({"scenarios": scenarios})
+
+
+# ---------------------------------------------------------------------------
+# Feature Flags API (admin only)
+# ---------------------------------------------------------------------------
+
+async def _api_flags_list(request: Request):
+    """GET /api/admin/flags — list all feature flags."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    from .feature_flags import get_all_flags
+    return JSONResponse({"flags": get_all_flags()})
+
+
+async def _api_flags_set(request: Request):
+    """PUT /api/admin/flags — set a feature flag."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    body = await request.json()
+    flag_name = body.get("name", "")
+    enabled = body.get("enabled", False)
+    if not flag_name:
+        return JSONResponse({"error": "name required"}, status_code=400)
+    from .feature_flags import set_flag
+    set_flag(flag_name, bool(enabled))
+    return JSONResponse({"status": "success", "flag": flag_name, "enabled": bool(enabled)})
+
+
+async def _api_flags_delete(request: Request):
+    """DELETE /api/admin/flags/{name} — delete a feature flag."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    name = request.path_params.get("name", "")
+    from .feature_flags import delete_flag
+    deleted = delete_flag(name)
+    if deleted:
+        return JSONResponse({"status": "success", "deleted": name})
+    return JSONResponse({"error": "Flag not found"}, status_code=404)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
 def get_frontend_api_routes():
     """Return list of Starlette routes for the frontend API."""
+    from .api.mcp_routes import get_mcp_routes
+    from .api.workflow_routes import get_workflow_routes
+    from .api.skills_routes import get_skills_routes
+    from .api.virtual_routes import get_virtual_source_routes
+    from .api.world_model_routes import get_world_model_routes
+    from .api.causal_routes import get_causal_routes
+    from .api.causal_world_model_routes import get_causal_world_model_routes
+    from .api.quality_routes import get_quality_routes
+    from .api.distribution_routes import get_distribution_routes
+    from .api.file_routes import get_file_routes
+    from .api.topology_routes import get_topology_routes
+    from .api.metadata_routes import get_metadata_routes
+
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
+        Route("/api/catalog/search", endpoint=_api_catalog_search, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}", endpoint=_api_catalog_detail, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}/lineage", endpoint=_api_catalog_lineage, methods=["GET"]),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
@@ -2031,39 +2991,85 @@ def get_frontend_api_routes():
         Route("/api/annotations/{id:int}", endpoint=_api_annotations_delete, methods=["DELETE"]),
         Route("/api/config/basemaps", endpoint=_api_config_basemaps, methods=["GET"]),
         Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
+        Route("/api/user/password", endpoint=_api_user_change_password, methods=["PUT"]),
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_get, methods=["GET"]),
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_put, methods=["PUT"]),
         Route("/api/user/memories", endpoint=_api_user_memories_list, methods=["GET"]),
         Route("/api/user/memories/{id:int}", endpoint=_api_user_memories_delete, methods=["DELETE"]),
+        Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
+        Route("/api/user/drawn-features", endpoint=_api_user_drawn_features, methods=["POST"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
-        Route("/api/mcp/servers", endpoint=_api_mcp_servers, methods=["GET"]),
-        Route("/api/mcp/servers", endpoint=_api_mcp_server_create, methods=["POST"]),
-        Route("/api/mcp/tools", endpoint=_api_mcp_tools, methods=["GET"]),
-        Route("/api/mcp/servers/mine", endpoint=_api_mcp_servers_mine, methods=["GET"]),
-        Route("/api/mcp/servers/test", endpoint=_api_mcp_test_connection, methods=["POST"]),
-        Route("/api/mcp/servers/{name}/toggle", endpoint=_api_mcp_toggle, methods=["POST"]),
-        Route("/api/mcp/servers/{name}/reconnect", endpoint=_api_mcp_reconnect, methods=["POST"]),
-        Route("/api/mcp/servers/{name}/share", endpoint=_api_mcp_server_share, methods=["POST"]),
-        Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_update, methods=["PUT"]),
-        Route("/api/mcp/servers/{name}", endpoint=_api_mcp_server_delete, methods=["DELETE"]),
+        # MCP Hub (S-4: delegated to api/mcp_routes.py)
+        *get_mcp_routes(),
         # Workflows (v5.4)
-        Route("/api/workflows", endpoint=_api_workflows_list, methods=["GET"]),
-        Route("/api/workflows", endpoint=_api_workflows_create, methods=["POST"]),
-        Route("/api/workflows/{id:int}", endpoint=_api_workflow_detail, methods=["GET"]),
-        Route("/api/workflows/{id:int}", endpoint=_api_workflow_update, methods=["PUT"]),
-        Route("/api/workflows/{id:int}", endpoint=_api_workflow_delete, methods=["DELETE"]),
-        Route("/api/workflows/{id:int}/execute", endpoint=_api_workflow_execute, methods=["POST"]),
-        Route("/api/workflows/{id:int}/runs", endpoint=_api_workflow_runs, methods=["GET"]),
-        Route("/api/workflows/{id:int}/runs/{run_id:int}/status", endpoint=_api_workflow_run_status, methods=["GET"]),
+        # Workflows (S-4: delegated to api/workflow_routes.py)
+        *get_workflow_routes(),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
+        Route("/api/chart/pending", endpoint=_api_chart_pending, methods=["GET"]),
+        # Capabilities (aggregated skills + toolsets)
+        Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
+        # Marketplace (v14.0)
+        Route("/api/marketplace", endpoint=_api_marketplace, methods=["GET"]),
+        # DRL Scenarios (v14.0) + Custom Weights (v15.3)
+        Route("/api/drl/scenarios", endpoint=_api_drl_scenarios, methods=["GET"]),
+        Route("/api/drl/run-custom", endpoint=_api_drl_run_custom, methods=["POST"]),
+        Route("/api/drl/explain", endpoint=_api_drl_explain, methods=["POST"]),
+        Route("/api/drl/history", endpoint=_api_drl_history, methods=["GET"]),
+        Route("/api/drl/compare", endpoint=_api_drl_compare, methods=["GET"]),
+        # Memory Search (v14.0)
+        Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
+        Route("/api/memory/batch-save", endpoint=_api_memory_batch_save, methods=["POST"]),
+        # Analysis Chains (v14.2)
+        Route("/api/chains", endpoint=_api_chains_list, methods=["GET"]),
+        Route("/api/chains", endpoint=_api_chains_create, methods=["POST"]),
+        Route("/api/chains/{id:int}", endpoint=_api_chains_delete, methods=["DELETE"]),
+        # Annotation Export (v14.2)
+        Route("/api/annotations/export", endpoint=_api_annotations_export, methods=["GET"]),
+        # Plugins (v14.3)
+        Route("/api/plugins", endpoint=_api_plugins_list, methods=["GET"]),
+        Route("/api/plugins", endpoint=_api_plugins_install, methods=["POST"]),
+        # A2A Task Lifecycle (v14.3)
+        Route("/api/a2a/tasks", endpoint=_api_a2a_task_create, methods=["POST"]),
+        Route("/api/a2a/tasks/{task_id}", endpoint=_api_a2a_task_status, methods=["GET"]),
+        Route("/api/a2a/tasks/{task_id}/execute", endpoint=_api_a2a_task_execute, methods=["POST"]),
+        Route("/api/a2a/federation", endpoint=_api_a2a_federation, methods=["GET"]),
+        # HITL Dashboard
+        Route("/api/hitl/stats", endpoint=_api_hitl_stats, methods=["GET"]),
+        Route("/api/hitl/risk-registry", endpoint=_api_hitl_risk_registry, methods=["GET"]),
+        # Cost Management
+        Route("/api/cost/estimate", endpoint=_api_cost_estimate, methods=["GET"]),
+        # BCG Platform Enhancement APIs (v15.8)
+        Route("/api/prompts/versions", endpoint=_api_prompts_versions, methods=["GET"]),
+        Route("/api/prompts/deploy", endpoint=_api_prompts_deploy, methods=["POST"]),
+        Route("/api/gateway/models", endpoint=_api_gateway_models, methods=["GET"]),
+        Route("/api/gateway/cost-summary", endpoint=_api_gateway_cost_summary, methods=["GET"]),
+        Route("/api/context/preview", endpoint=_api_context_preview, methods=["GET"]),
+        Route("/api/eval/datasets", endpoint=_api_eval_datasets_create, methods=["POST"]),
+        Route("/api/eval/run", endpoint=_api_eval_run, methods=["POST"]),
+        Route("/api/eval/scenarios", endpoint=_api_eval_scenarios, methods=["GET"]),
+        # Eval History
+        Route("/api/eval/history", endpoint=_api_eval_history, methods=["GET"]),
+        Route("/api/eval/trend", endpoint=_api_eval_trend, methods=["GET"]),
+        # Feature Flags (admin)
+        Route("/api/admin/flags", endpoint=_api_flags_list, methods=["GET"]),
+        Route("/api/admin/flags", endpoint=_api_flags_set, methods=["PUT"]),
+        Route("/api/admin/flags/{name}", endpoint=_api_flags_delete, methods=["DELETE"]),
         # Custom Skills (v8.0.1)
-        Route("/api/skills", endpoint=_api_skills_list, methods=["GET"]),
-        Route("/api/skills", endpoint=_api_skills_create, methods=["POST"]),
-        Route("/api/skills/{id:int}", endpoint=_api_skills_detail, methods=["GET"]),
-        Route("/api/skills/{id:int}", endpoint=_api_skills_update, methods=["PUT"]),
-        Route("/api/skills/{id:int}", endpoint=_api_skills_delete, methods=["DELETE"]),
+        # Custom Skills (S-4: delegated to api/skills_routes.py)
+        *get_skills_routes(),
+        # Virtual Data Sources (v13.0)
+        *get_virtual_source_routes(),
+        # World Model (Tech Preview)
+        *get_world_model_routes(),
+        # Causal Reasoning (Angle B) + Causal World Model (Angle C)
+        *get_causal_routes(),
+        *get_causal_world_model_routes(),
+        *get_quality_routes(),
+        *get_distribution_routes(),
+        # File Management (upload, browse, delete, local-data)
+        *get_file_routes(),
         # Knowledge Base (v8.0.2)
         # Bundles (v10.0.2)
         Route("/api/bundles", endpoint=_api_bundles_list, methods=["GET"]),
@@ -2103,6 +3109,7 @@ def get_frontend_api_routes():
         Route("/api/analytics/agent-breakdown", endpoint=_api_analytics_agent_breakdown, methods=["GET"]),
         # Pipeline SSE Streaming (v9.5.4)
         Route("/api/pipeline/stream", endpoint=_api_pipeline_stream, methods=["GET"]),
+        Route("/api/pipeline/trace/{trace_id}", endpoint=_api_pipeline_trace, methods=["GET"]),
         # Task Queue (v11.0.1)
         Route("/api/tasks/submit", endpoint=_api_tasks_submit, methods=["POST"]),
         Route("/api/tasks", endpoint=_api_tasks_list, methods=["GET"]),
@@ -2115,6 +3122,28 @@ def get_frontend_api_routes():
         # A2A Server (v11.0.4)
         Route("/api/a2a/card", endpoint=_api_a2a_card, methods=["GET"]),
         Route("/api/a2a/status", endpoint=_api_a2a_status, methods=["GET"]),
+        # System Status (v12.0)
+        Route("/api/system/status", endpoint=_api_system_status, methods=["GET"]),
+        Route("/api/bots/status", endpoint=_api_bots_status, methods=["GET"]),
+        Route("/api/config/models", endpoint=_api_config_models, methods=["GET"]),
+        # User-Defined Tools (v12.0)
+        Route("/api/user-tools", endpoint=_api_user_tools_list, methods=["GET"]),
+        Route("/api/user-tools", endpoint=_api_user_tools_create, methods=["POST"]),
+        Route("/api/user-tools/{id:int}/test", endpoint=_api_user_tools_test, methods=["POST"]),
+        Route("/api/user-tools/{id:int}/rate", endpoint=_api_user_tools_rate, methods=["POST"]),
+        Route("/api/user-tools/{id:int}/clone", endpoint=_api_user_tools_clone, methods=["POST"]),
+        Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_detail, methods=["GET"]),
+        Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_update, methods=["PUT"]),
+        Route("/api/user-tools/{id:int}", endpoint=_api_user_tools_delete, methods=["DELETE"]),
+        # Agent Topology (v15.8)
+        *get_topology_routes(),
+        # Metadata Management (v15.8)
+        *get_metadata_routes(),
+        # Message Bus Monitoring (v15.9)
+        Route("/api/messaging/stats", endpoint=_api_messaging_stats, methods=["GET"]),
+        Route("/api/messaging/messages", endpoint=_api_messaging_list, methods=["GET"]),
+        Route("/api/messaging/{id:int}/replay", endpoint=_api_messaging_replay, methods=["POST"]),
+        Route("/api/messaging/cleanup", endpoint=_api_messaging_cleanup, methods=["DELETE"]),
     ]
 
 

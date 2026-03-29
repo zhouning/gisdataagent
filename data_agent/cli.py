@@ -29,7 +29,7 @@ from rich.table import Table
 
 app = typer.Typer(
     name="gis-agent",
-    help="GIS Data Agent CLI v8.5 — AI-powered geospatial analysis",
+    help="GIS Data Agent CLI v12.0 — AI-powered geospatial analysis",
     no_args_is_help=True,
 )
 catalog_app = typer.Typer(help="Data catalog operations")
@@ -278,7 +278,7 @@ def chat(
 
     _load_env()
     console.print(Panel(
-        "[bold]GIS Data Agent CLI v8.5[/bold]\n"
+        "[bold]GIS Data Agent CLI v12.0[/bold]\n"
         "Type your analysis prompt. Commands: /quit, /verbose, /help\n"
         "Press Ctrl+D or type /quit to exit.",
         border_style="blue",
@@ -540,7 +540,7 @@ def status(
     _set_user_context(user, role)
 
     console.print(Panel(
-        f"[bold]GIS Data Agent[/bold] v8.5\n"
+        f"[bold]GIS Data Agent[/bold] v12.0\n"
         f"User: {user} | Role: {role}",
         border_style="blue",
     ))

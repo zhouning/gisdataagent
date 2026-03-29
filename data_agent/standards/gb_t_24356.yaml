@@ -1,0 +1,216 @@
+# GB/T 24356 测绘成果质量检查与验收 — 标准定义
+# 参考：GB/T 24356-2009 / GB/T 24356-2023
+
+id: gb_t_24356
+name: 测绘成果质量检查与验收
+version: "2023"
+category: surveying_quality_control
+description: |
+  规定了测绘成果质量检查与验收的基本要求、检查方法、
+  质量评定标准和验收程序。适用于各类测绘成果的质量检查与验收。
+
+# 质量元素与权重（6维评分体系）
+quality_elements:
+  - id: positional_accuracy
+    name: 位置精度
+    weight: 0.25
+    description: 坐标精度、定位精度
+    check_items:
+      - 平面坐标中误差
+      - 高程中误差
+      - 控制点精度
+  - id: attribute_accuracy
+    name: 属性精度
+    weight: 0.15
+    description: 要素属性正确性
+    check_items:
+      - 属性分类正确率
+      - 属性值域合规性
+      - 属性完整性
+  - id: completeness
+    name: 完整性
+    weight: 0.20
+    description: 数据完整程度
+    check_items:
+      - 要素完整性
+      - 属性完整性
+      - 图幅完整性
+  - id: logical_consistency
+    name: 逻辑一致性
+    weight: 0.15
+    description: 数据逻辑关系正确性
+    check_items:
+      - 拓扑一致性
+      - 格式一致性
+      - 概念一致性
+  - id: representation_quality
+    name: 表达质量
+    weight: 0.15
+    description: 符号化与注记规范性
+    check_items:
+      - 符号规范性
+      - 注记正确性
+      - 图面整饰
+  - id: temporal_quality
+    name: 时间质量
+    weight: 0.10
+    description: 数据现势性与时效性
+    check_items:
+      - 数据更新时间
+      - 时间标注准确性
+
+# 缺陷分类代码表
+defect_codes:
+  A:
+    name: 严重缺陷
+    description: 影响成果使用的严重错误
+    weight: 12
+    examples:
+      - 坐标系错误
+      - 大面积数据缺失
+      - 关键属性完全错误
+  B:
+    name: 重要缺陷
+    description: 影响成果质量但不影响基本使用
+    weight: 4
+    examples:
+      - 局部拓扑错误
+      - 个别属性缺失
+      - 精度超限但可修正
+  C:
+    name: 一般缺陷
+    description: 轻微瑕疵，不影响使用
+    weight: 1
+    examples:
+      - 注记位置偏移
+      - 符号大小不规范
+      - 图面整饰细微问题
+
+# 质量等级判定
+quality_grades:
+  excellent:
+    name: 优
+    min_score: 90
+    max_defect_A: 0
+    max_defect_B: 2
+  good:
+    name: 良
+    min_score: 75
+    max_defect_A: 0
+    max_defect_B: 5
+  qualified:
+    name: 合格
+    min_score: 60
+    max_defect_A: 1
+    max_defect_B: 10
+  unqualified:
+    name: 不合格
+    min_score: 0
+    description: 不满足合格条件
+
+# 成果类型检查要点
+product_types:
+  DLG:
+    name: 数字线划图
+    check_focus:
+      - 要素分类编码
+      - 拓扑关系
+      - 位置精度
+      - 属性完整性
+    precision_requirements:
+      "1:500": { planimetric_rmse_m: 0.25, height_rmse_m: 0.15 }
+      "1:1000": { planimetric_rmse_m: 0.50, height_rmse_m: 0.25 }
+      "1:2000": { planimetric_rmse_m: 1.00, height_rmse_m: 0.50 }
+      "1:5000": { planimetric_rmse_m: 2.50, height_rmse_m: 1.00 }
+      "1:10000": { planimetric_rmse_m: 5.00, height_rmse_m: 2.50 }
+  DEM:
+    name: 数字高程模型
+    check_focus:
+      - 格网间距
+      - 高程精度
+      - 边界匹配
+      - 异常值检测
+    precision_requirements:
+      "1:500": { height_rmse_m: 0.15 }
+      "1:1000": { height_rmse_m: 0.25 }
+      "1:2000": { height_rmse_m: 0.50 }
+  DOM:
+    name: 数字正射影像
+    check_focus:
+      - 影像分辨率
+      - 几何精度
+      - 色彩一致性
+      - 接缝处理
+    precision_requirements:
+      "1:500": { planimetric_rmse_m: 0.25 }
+      "1:1000": { planimetric_rmse_m: 0.50 }
+      "1:2000": { planimetric_rmse_m: 1.00 }
+  CAD:
+    name: CAD工程图
+    check_focus:
+      - 图层规范性
+      - 图元完整性
+      - 尺寸标注
+      - 坐标系一致性
+  3D_MODEL:
+    name: 三维模型
+    check_focus:
+      - 模型精度
+      - 纹理质量
+      - 拓扑结构
+      - 参数匹配
+
+# 检查方法
+check_methods:
+  - id: full_check
+    name: 全数检查
+    description: 对全部成果逐一检查
+    applicable: 小批量、高精度要求
+  - id: sampling_check
+    name: 抽样检查
+    description: 按比例随机抽取样本检查
+    applicable: 大批量成果
+    sampling_rules:
+      lot_size_50: { sample_size: 8, accept_number: 1 }
+      lot_size_100: { sample_size: 13, accept_number: 2 }
+      lot_size_200: { sample_size: 20, accept_number: 3 }
+      lot_size_500: { sample_size: 32, accept_number: 5 }
+
+# 质检SOP流程
+sop_workflow:
+  - step: 1
+    name: 任务接收
+    description: 接收质检任务，明确检查对象、标准和要求
+    tools: []
+  - step: 2
+    name: 数据接入
+    description: 接收待检数据，检查数据完整性和可读性
+    tools: [describe_geodataframe, list_user_files]
+  - step: 3
+    name: 格式审查
+    description: 检查数据格式、坐标系、编码规范
+    tools: [check_crs_consistency, check_completeness, validate_against_standard]
+  - step: 4
+    name: 属性审查
+    description: 检查属性字段完整性、值域合规性
+    tools: [check_attribute_range, check_completeness, gap_matrix]
+  - step: 5
+    name: 拓扑检查
+    description: 检查拓扑关系正确性
+    tools: [check_topology, check_gaps, check_duplicates]
+  - step: 6
+    name: 精度核验
+    description: 核验坐标精度、套合精度
+    tools: [compare_coordinates, precision_score]
+  - step: 7
+    name: 缺陷统计
+    description: 汇总各类缺陷，计算质量评分
+    tools: [governance_score, governance_summary]
+  - step: 8
+    name: 报告生成
+    description: 生成质检报告
+    tools: [generate_quality_report]
+  - step: 9
+    name: 审核归档
+    description: 报告审核、数据归档
+    tools: [export_analysis_report]

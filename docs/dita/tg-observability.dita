@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-observability" xml:lang="zh-CN">
+    <title>可观测性与运维体系</title>
+    <shortdesc>系统通过四层可观测性体系（结构化日志、Prometheus 指标、审计日志、Token 追踪）实现运行时监控，配合健康检查端点和 Grafana 仪表盘支撑生产运维。</shortdesc>
+    <prolog>
+        <author>技术写作课题组</author>
+    </prolog>
+    <conbody>
+        <section id="logging">
+            <title>结构化日志</title>
+            <p>系统使用 Python <codeph>logging</codeph> 模块，通过 <codeph>structlog</codeph> 风格的键值对输出结构化日志：</p>
+            <codeblock>logger.info("pipeline_dispatch",
+    user_id=current_user_id.get(),
+    intent=intent,
+    pipeline=pipeline_name,
+    trace_id=current_trace_id.get(),
+    router_tokens=router_tokens)</codeblock>
+            <p>日志级别策略：</p>
+            <ul>
+                <li><b>DEBUG：</b>工具函数入参/出参、SQL 查询文本</li>
+                <li><b>INFO：</b>管线调度、Agent 切换、工具调用成功</li>
+                <li><b>WARNING：</b>降级行为（路由器异常 fallback、嵌入 API 失败跳过）</li>
+                <li><b>ERROR：</b>工具执行失败、数据库连接异常</li>
+            </ul>
+            <p>日志输出到 <filepath>data_agent.log</filepath>，通过 <codeph>RotatingFileHandler</codeph> 按 10MB 轮转，保留 5 个备份。</p>
+        </section>
+
+        <section id="prometheus-metrics">
+            <title>Prometheus 指标</title>
+            <p><filepath>health.py</filepath> 暴露 <codeph>/metrics</codeph> 端点，提供以下指标：</p>
+            <table frame="all" rowsep="1" colsep="1" id="metrics-table">
+                <title>核心 Prometheus 指标</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="3*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1*"/>
+                    <colspec colname="c3" colnum="3" colwidth="3*"/>
+                    <thead>
+                        <row>
+                            <entry>指标名</entry>
+                            <entry>类型</entry>
+                            <entry>说明</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><codeph>data_agent_requests_total</codeph></entry>
+                            <entry>Counter</entry>
+                            <entry>请求总数（按管线、状态码分标签）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>data_agent_request_duration_seconds</codeph></entry>
+                            <entry>Histogram</entry>
+                            <entry>请求延迟分布</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>data_agent_tool_calls_total</codeph></entry>
+                            <entry>Counter</entry>
+                            <entry>工具调用次数（按工具名、成功/失败分标签）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>data_agent_active_sessions</codeph></entry>
+                            <entry>Gauge</entry>
+                            <entry>当前活跃会话数</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>data_agent_token_usage_total</codeph></entry>
+                            <entry>Counter</entry>
+                            <entry>Token 消耗总量（按模型、管线分标签）</entry>
+                        </row>
+                        <row>
+                            <entry><codeph>data_agent_db_pool_size</codeph></entry>
+                            <entry>Gauge</entry>
+                            <entry>数据库连接池使用情况</entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table>
+            <p>v7.5.6 修复了 Prometheus 客户端在热重载时的 <codeph>ValueError: Duplicated timeseries</codeph> 问题——通过 <codeph>CollectorRegistry</codeph> 单例和重载安全检查解决。</p>
+        </section>
+
+        <section id="audit-log">
+            <title>审计日志</title>
+            <p><codeph>agent_audit_log</codeph> 表记录 50+ 种事件类型，核心字段：</p>
+            <ul>
+                <li><codeph>event_type</codeph>：LOGIN_SUCCESS、PIPELINE_DISPATCH、TOOL_CALL、TOOL_FAILURE、FILE_UPLOAD、ADMIN_ACTION 等</li>
+                <li><codeph>user_id</codeph>：操作用户</li>
+                <li><codeph>details</codeph>：JSONB 格式的事件详情</li>
+                <li><codeph>ip_address</codeph>：客户端 IP</li>
+                <li><codeph>created_at</codeph>：UTC 时间戳</li>
+            </ul>
+            <p>管理员通过 <codeph>/api/admin/audit-log</codeph> 端点查询审计日志，支持按事件类型、用户、时间范围过滤。</p>
+        </section>
+
+        <section id="token-tracking">
+            <title>Token 消耗追踪</title>
+            <p><codeph>agent_token_usage</codeph> 表按请求粒度记录 Token 消耗：</p>
+            <ul>
+                <li><codeph>input_tokens</codeph> / <codeph>output_tokens</codeph>：输入/输出 Token 数</li>
+                <li><codeph>model_name</codeph>：使用的模型</li>
+                <li><codeph>pipeline_name</codeph>：所属管线</li>
+                <li><codeph>estimated_cost</codeph>：估算费用（基于模型定价表）</li>
+            </ul>
+            <p>前端 DataPanel 的 TokenUsage 组件通过 <codeph>/api/user/token-usage</codeph> 展示用户的日/周/月消耗趋势。</p>
+        </section>
+
+        <section id="health-check">
+            <title>健康检查</title>
+            <p><codeph>/health</codeph> 端点返回系统健康状态，检查项包括：</p>
+            <ul>
+                <li>数据库连接可用性</li>
+                <li>Gemini API 可达性</li>
+                <li>ArcPy Worker 进程状态（如已配置）</li>
+                <li>磁盘空间（上传目录）</li>
+            </ul>
+            <note type="attention">
+                <ul>
+                    <li>路由器 Token 消耗未纳入 <codeph>token_tracker</codeph>——存在计费盲区。</li>
+                    <li>审计日志无自动归档/清理策略——长期运行后表膨胀。</li>
+                    <li>缺少分布式追踪（如 OpenTelemetry）——跨 Agent 的调用链无法端到端追踪。</li>
+                    <li>Prometheus 指标在进程重启后归零——需要 Pushgateway 或持久化方案。</li>
+                </ul>
+            </note>
+        </section>
+    </conbody>
+</concept>

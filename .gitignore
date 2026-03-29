@@ -95,3 +95,33 @@ data_agent/eval_results/
 /enhanced_*
 /reprojected_*
 /features_enhanced_*
+
+# World model paper (private, not for sharing)
+docs/world_model_paper.tex
+docs/world_model_paper_en.docx
+docs/world_model_paper_cn.docx
+docs/fig_architecture.png
+docs/world-model-technical-report.md
+docs/world-model-technical-review*.md
+docs/reviewer_comments*.md
+scripts/generate_paper_docx.py
+scripts/generate_architecture_fig.py
+scripts/ablation_study.py
+scripts/ablation_results/
+
+# Benchmark generated data and results
+benchmarks/data/
+benchmarks/benchmark_results.json
+
+# Papers and client-facing documents — NEVER commit
+docs/*paper*.tex
+docs/*paper*.docx
+docs/*paper*.pdf
+docs/*paper*.md
+docs/*paper*_cn.*
+docs/*paper*_en.*
+docs/*paper*_response*
+docs/generate_*_paper*
+docs/technical_paper_*
+docs/surveying_qc_demo_script.*
+docs/surveying_qc_agent_design.*

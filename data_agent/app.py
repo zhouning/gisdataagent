@@ -3,10 +3,12 @@ import sys
 import os
 import re
 import asyncio
+import threading
 import time
 import json
 import zipfile
 import shutil
+from pathlib import Path
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
 from google import genai as genai_client
@@ -140,6 +142,27 @@ try:
     ensure_custom_skills_table()
     from data_agent.knowledge_base import ensure_kb_tables
     ensure_kb_tables()
+    from data_agent.user_tools import ensure_user_tools_table
+    ensure_user_tools_table()
+    from data_agent.workflow_templates import ensure_workflow_template_tables
+    ensure_workflow_template_tables()
+    from data_agent.custom_skill_bundles import ensure_skill_bundles_table
+    ensure_skill_bundles_table()
+    from data_agent.virtual_sources import ensure_virtual_sources_table
+    ensure_virtual_sources_table()
+    from data_agent.agent_registry import ensure_registry_table
+    ensure_registry_table()
+    from data_agent.analysis_chains import ensure_chains_table
+    ensure_chains_table()
+    from data_agent.workflow_engine import recover_incomplete_runs
+    recover_incomplete_runs()
+    from data_agent.plugin_registry import ensure_plugins_table
+    ensure_plugins_table()
+    from data_agent.proactive_explorer import ensure_observations_table
+    ensure_observations_table()
+    # Run pending SQL migrations after all ensure_*_table() calls
+    from data_agent.migration_runner import run_pending_migrations
+    run_pending_migrations()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -207,6 +230,7 @@ except Exception as _mcp_err:
     logger.warning("MCP Hub config loading failed: %s", _mcp_err)
     _mcp_hub_loaded = False
 _mcp_started = False
+_mcp_alock = asyncio.Lock()
 
 # --- Chainlit Data Layer: thread/message persistence in PostgreSQL ---
 try:
@@ -534,10 +558,11 @@ async def _api_serve_user_file(request: Request):
     """Serve a file from the authenticated user's upload directory."""
     filename = request.path_params.get("filename", "")
     user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+    
+    # Fallback for dev mode
+    user_id = user.identifier if user and hasattr(user, "identifier") else "admin"
 
-    user_dir = os.path.join(_UPLOADS_BASE, user.identifier)
+    user_dir = os.path.join(_UPLOADS_BASE, user_id)
     file_path = os.path.join(user_dir, filename)
 
     # Security: ensure resolved path is within the user directory
@@ -553,17 +578,82 @@ async def _api_serve_user_file(request: Request):
     return FileResponse(real_path, media_type=content_type or "application/octet-stream")
 
 
-# Insert file API routes BEFORE Chainlit's catch-all /{full_path:path}
+async def _api_upload_user_file(request: Request):
+    """POST /api/user/files — upload a file to user's directory (multipart/form-data).
+
+    Returns the resolved spatial file path (e.g. extracted .shp from .zip).
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+    user_id = user.identifier if hasattr(user, "identifier") else "admin"
+    user_dir = os.path.join(_UPLOADS_BASE, user_id)
+    os.makedirs(user_dir, exist_ok=True)
+
+    form = await request.form()
+    upload = form.get("file")
+    if not upload:
+        return JSONResponse(content={"error": "No file field in form data"}, status_code=400)
+
+    filename = getattr(upload, "filename", "upload")
+    contents = await upload.read()
+
+    dest_path = os.path.join(user_dir, filename)
+    with open(dest_path, "wb") as f:
+        f.write(contents)
+
+    ext = os.path.splitext(filename)[1].lower()
+    result_path = os.path.abspath(dest_path)
+    file_type = ext.lstrip(".")
+
+    # Handle zip: extract and find spatial file
+    if ext == ".zip":
+        extract_dir = os.path.join(user_dir, os.path.splitext(filename)[0])
+        os.makedirs(extract_dir, exist_ok=True)
+        try:
+            import zipfile as _zf
+            with _zf.ZipFile(dest_path, "r") as zr:
+                zr.extractall(extract_dir)
+            # Search for spatial files
+            for target_ext in (".shp", ".kml", ".geojson", ".json", ".gpkg"):
+                for root, _dirs, files in os.walk(extract_dir):
+                    for fname in files:
+                        if fname.lower().endswith(target_ext):
+                            result_path = os.path.abspath(os.path.join(root, fname))
+                            file_type = target_ext.lstrip(".")
+                            break
+                    if file_type != "zip":
+                        break
+                if file_type != "zip":
+                    break
+        except Exception as e:
+            logger.warning("Zip extraction failed during REST upload: %s", e)
+
+    return JSONResponse(content={
+        "name": os.path.basename(result_path),
+        "path": result_path,
+        "type": file_type,
+        "size": os.path.getsize(result_path) if os.path.exists(result_path) else 0,
+    })
+
+
+# Insert file list route BEFORE Chainlit's catch-all /{full_path:path}
+# NOTE: The greedy serve route (/api/user/files/{filename:path}) is registered
+# AFTER mount_frontend_api() so that specific routes like /api/user/files/browse
+# take priority. See line ~953 where mount_frontend_api is called, and ~959
+# where the serve route is appended.
 _file_list_route = Route("/api/user/files", endpoint=_api_list_user_files, methods=["GET"])
+_file_upload_route = Route("/api/user/files", endpoint=_api_upload_user_file, methods=["POST"])
 _file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
 for _i, _r in enumerate(chainlit_app.router.routes):
     if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
         chainlit_app.router.routes.insert(_i, _file_list_route)
-        chainlit_app.router.routes.insert(_i + 1, _file_serve_route)
+        chainlit_app.router.routes.insert(_i + 1, _file_upload_route)
         break
 else:
     chainlit_app.router.routes.append(_file_list_route)
-    chainlit_app.router.routes.append(_file_serve_route)
+    chainlit_app.router.routes.append(_file_upload_route)
 
 logger.info("User file API routes enabled at /api/user/files")
 
@@ -907,6 +997,21 @@ try:
 except Exception as _stream_mount_err:
     logger.warning("Stream route mount failed: %s", _stream_mount_err)
 
+# --- Mount Observability Middleware (before frontend API routes) ---
+try:
+    from data_agent.observability import ObservabilityMiddleware
+    chainlit_app.add_middleware(ObservabilityMiddleware)
+    logger.info("[Observability] HTTP metrics middleware installed")
+except Exception as _obs_err:
+    logger.warning("Observability middleware failed: %s", _obs_err)
+
+# --- Initialize OpenTelemetry tracing (v15.0) ---
+try:
+    from data_agent.otel_tracing import setup_otel_tracing
+    setup_otel_tracing()
+except Exception as _otel_err:
+    logger.warning("OTel tracing init failed: %s", _otel_err)
+
 # --- Mount Frontend API routes ---
 try:
     from data_agent.frontend_api import mount_frontend_api
@@ -914,12 +1019,22 @@ try:
 except Exception as _fe_err:
     logger.warning("Frontend API mount failed: %s", _fe_err)
 
+# Register the greedy file serve route AFTER frontend_api routes to avoid
+# /api/user/files/{filename:path} swallowing /api/user/files/browse etc.
+for _i, _r in enumerate(chainlit_app.router.routes):
+    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+        chainlit_app.router.routes.insert(_i, _file_serve_route)
+        break
+else:
+    chainlit_app.router.routes.append(_file_serve_route)
+
 # --- Workflow Scheduler (v5.4) ---
 _workflow_scheduler = None
+_workflow_scheduler_started = False
+_workflow_scheduler_lock = asyncio.Lock()
 try:
     from data_agent.workflow_engine import WorkflowScheduler
     _workflow_scheduler = WorkflowScheduler()
-    _workflow_scheduler.start()
 except Exception as _wf_sched_err:
     logger.warning("Workflow scheduler init failed: %s", _wf_sched_err)
 
@@ -1431,37 +1546,15 @@ TOOL_DESCRIPTIONS = {
 
 
 def _format_tool_explanation(tool_name: str, args: dict) -> str:
-    """Format tool args into human-readable Chinese explanation."""
-    desc = TOOL_DESCRIPTIONS.get(tool_name)
-    if not desc:
-        args_str = str(args)
-        return args_str[:500] + "..." if len(args_str) > 500 else args_str
-
-    lines = [f"**{desc['method']}**"]
-    param_labels = desc.get("params", {})
-    for key, value in (args or {}).items():
-        label = param_labels.get(key, key)
-        display_val = value
-        if isinstance(value, str) and (os.sep in value or '/' in value):
-            display_val = os.path.basename(value)
-        display_str = str(display_val)
-        if len(display_str) > 120:
-            display_str = display_str[:120] + "..."
-        lines.append(f"- {label}: `{display_str}`")
-    return "\n".join(lines)
+    """Delegate to pipeline_helpers (S-1 refactoring)."""
+    from data_agent.pipeline_helpers import format_tool_explanation
+    return format_tool_explanation(tool_name, args, TOOL_DESCRIPTIONS)
 
 
 def _build_step_summary(step: dict, step_idx: int) -> str:
-    """Build a one-line summary of a tool execution step for the step browser."""
-    tool_name = step.get("tool_name", "")
-    desc = TOOL_DESCRIPTIONS.get(tool_name, {})
-    method = desc.get("method", TOOL_LABELS.get(tool_name, tool_name))
-    status = t("steps.status_failed") if step.get("is_error") else t("steps.status_success")
-    duration = step.get("duration", 0)
-    out = step.get("output_path")
-    out_str = f" -> `{os.path.basename(out)}`" if out else ""
-    return t("steps.summary", idx=step_idx, method=method, status=status,
-             duration=f"{duration:.1f}", output=out_str)
+    """Delegate to pipeline_helpers (S-1 refactoring)."""
+    from data_agent.pipeline_helpers import build_step_summary
+    return build_step_summary(step, step_idx, TOOL_DESCRIPTIONS, TOOL_LABELS)
 
 
 NON_RERUNNABLE_TOOLS = {
@@ -1469,68 +1562,17 @@ NON_RERUNNABLE_TOOLS = {
     "get_usage_summary", "query_audit_log", "share_table",
 }
 
-# Keys in tool args that may contain source file paths for lineage tracking
-_SOURCE_PATH_KEYS = {
-    "file_path", "input_path", "shp_path", "raster_path", "polygon_path",
-    "csv_path", "table_name", "data_path", "input_file", "boundary_path",
-    "vector_path", "raster_file", "input_raster",
-}
-
 
 def _extract_source_paths(args: dict) -> list:
-    """Extract source file/table references from tool arguments for data lineage."""
-    sources = []
-    for key, val in args.items():
-        if not isinstance(val, str) or not val:
-            continue
-        if key in _SOURCE_PATH_KEYS:
-            sources.append(val)
-        elif key.endswith("_path") or key.endswith("_file"):
-            sources.append(val)
-    return sources
+    """Delegate to pipeline_helpers (S-1 refactoring)."""
+    from data_agent.pipeline_helpers import extract_source_paths
+    return extract_source_paths(args)
 
 
 def _sync_tool_output_to_obs(resp_data, tool_name: str = "", tool_args: dict = None) -> None:
-    """Detect file paths in tool response, sync to OBS, and register in data catalog."""
-    paths = []
-    if isinstance(resp_data, str) and os.path.exists(resp_data):
-        paths.append(resp_data)
-    elif isinstance(resp_data, dict):
-        for v in resp_data.values():
-            if isinstance(v, str) and os.path.exists(v):
-                paths.append(v)
-
-    uid = current_user_id.get()
-
-    # Extract source file paths from tool arguments for lineage tracking
-    source_paths = _extract_source_paths(tool_args or {})
-
-    # Register in data catalog (always, even without cloud)
-    try:
-        from data_agent.data_catalog import register_tool_output
-        for p in paths:
-            register_tool_output(p, tool_name or "unknown", source_paths=source_paths)
-    except Exception:
-        pass
-
-    # Sync to cloud storage
-    if not is_obs_configured():
-        return
-    for p in paths:
-        try:
-            keys = upload_file_smart(p, uid)
-            # Update catalog with cloud key
-            if keys:
-                try:
-                    from data_agent.data_catalog import auto_register_from_path
-                    auto_register_from_path(
-                        p, creation_tool=tool_name or "unknown",
-                        storage_backend="cloud", cloud_key=keys[0],
-                    )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+    """Delegate to pipeline_helpers (S-1 refactoring)."""
+    from data_agent.pipeline_helpers import sync_tool_output_to_obs
+    sync_tool_output_to_obs(resp_data, tool_name, tool_args)
 
 
 PIPELINE_STAGES = {
@@ -1542,15 +1584,10 @@ PIPELINE_STAGES = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Pipeline Progress — inline chat progress message helpers
-# ---------------------------------------------------------------------------
-
 def _render_bar(completed: int, total: int) -> str:
-    """Render a text progress bar, e.g. '▓▓░░ 2/4'."""
-    if total == 0:
-        return ""
-    return "▓" * completed + "░" * (total - completed) + f" {completed}/{total}"
+    """Delegate to pipeline_helpers (S-1 refactoring)."""
+    from data_agent.pipeline_helpers import render_bar
+    return render_bar(completed, total)
 
 
 def _build_progress_content(
@@ -1562,115 +1599,21 @@ def _build_progress_content(
     total_duration: float = 0.0,
     is_error: bool = False,
 ) -> str:
-    """Build Markdown content for the inline progress message.
+    """Delegate to pipeline_helpers (S-1 refactoring)."""
+    from data_agent.pipeline_helpers import build_progress_content
+    return build_progress_content(
+        pipeline_label, pipeline_type, stages, stage_timings, AGENT_LABELS,
+        is_complete, total_duration, is_error,
+    )
 
-    Pure function — no side effects, easily testable.
-    """
-    timing_map = {st["name"]: st for st in stage_timings}
-
-    if pipeline_type == "planner":
-        # Dynamic planner: no predefined stages, show only known steps
-        if is_complete:
-            header = t("progress.steps_complete", label=f"**{pipeline_label}**", count=len(stage_timings))
-        elif stage_timings:
-            header = t("progress.step_n", label=f"**{pipeline_label}**", n=len(stage_timings))
-        else:
-            header = t("progress.preparing", label=f"**{pipeline_label}**")
-        lines = [header, ""]
-        for st in stage_timings:
-            if is_error and st["end"] is None:
-                elapsed = (st.get("_error_time") or time.time()) - st["start"]
-                lines.append(f"✗ {st['label']}  {elapsed:.1f}s {t('progress.error_suffix')}")
-            elif st["end"] is not None:
-                dur = st["end"] - st["start"]
-                lines.append(f"✓ {st['label']}  {dur:.1f}s")
-            else:
-                elapsed = time.time() - st["start"]
-                lines.append(f"▶ {st['label']}  {elapsed:.1f}s...")
-    else:
-        # Fixed pipeline: show all stages including pending
-        completed_count = sum(1 for st in stage_timings if st["end"] is not None)
-        total = len(stages)
-        if is_complete:
-            header = t("progress.bar_complete", label=f"**{pipeline_label}**", bar=_render_bar(total, total))
-        else:
-            header = f"**{pipeline_label}** {_render_bar(completed_count, total)}"
-        lines = [header, ""]
-        for stage_name in stages:
-            label = AGENT_LABELS.get(stage_name, stage_name)
-            st = timing_map.get(stage_name)
-            if st is None:
-                lines.append(f"○ {label}")
-            elif is_error and st["end"] is None:
-                elapsed = (st.get("_error_time") or time.time()) - st["start"]
-                lines.append(f"✗ {label}  {elapsed:.1f}s {t('progress.error_suffix')}")
-            elif st["end"] is not None:
-                dur = st["end"] - st["start"]
-                lines.append(f"✓ {label}  {dur:.1f}s")
-            else:
-                elapsed = time.time() - st["start"]
-                lines.append(f"▶ {label}  {elapsed:.1f}s...")
-
-    if is_complete:
-        lines.append("")
-        if is_error:
-            lines.append(t("progress.total_time_error", duration=f"{total_duration:.1f}"))
-        else:
-            lines.append(t("progress.total_time", duration=f"{total_duration:.1f}"))
-
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Error classification for retry logic
-# ---------------------------------------------------------------------------
 
 MAX_PIPELINE_RETRIES = 2
 
-_RETRYABLE_PATTERNS = [
-    "timeout", "timed out", "rate limit", "rate_limit",
-    "503", "429", "temporarily unavailable", "service unavailable",
-    "resource exhausted", "deadline exceeded", "connection reset",
-    "connection refused", "network unreachable",
-]
-
-_NON_RETRYABLE_PATTERNS = [
-    "permission denied", "access denied", "unauthorized",
-    "invalid format", "invalid argument", "not found",
-    "no such file", "must contain", "must include",
-]
-
 
 def _classify_error(exc: Exception) -> tuple:
-    """Classify whether a pipeline error is retryable.
-
-    Returns (is_retryable, category) where category is one of:
-    "transient", "permission", "data_format", "config", "unknown".
-    """
-    if isinstance(exc, (TimeoutError, ConnectionError, ConnectionResetError,
-                        ConnectionAbortedError, BrokenPipeError, OSError)):
-        if isinstance(exc, (PermissionError, FileNotFoundError)):
-            return (False, "permission" if isinstance(exc, PermissionError) else "data_format")
-        if isinstance(exc, OSError) and not isinstance(exc, (ConnectionError, TimeoutError)):
-            # Generic OSError — check message
-            pass
-        else:
-            return (True, "transient")
-
-    if isinstance(exc, (ValueError, KeyError)):
-        return (False, "data_format")
-
-    msg = str(exc).lower()
-
-    for pattern in _NON_RETRYABLE_PATTERNS:
-        if pattern in msg:
-            return (False, "config")
-
-    for pattern in _RETRYABLE_PATTERNS:
-        if pattern in msg:
-            return (True, "transient")
-
-    return (True, "unknown")
+    """Delegate to pipeline_helpers (S-1 refactoring)."""
+    from data_agent.pipeline_helpers import classify_error
+    return classify_error(exc)
 
 
 async def _execute_pipeline(
@@ -1743,6 +1686,15 @@ async def _execute_pipeline(
         total_stages = len(stages)
     pipeline_start_time = time.time()
 
+    # v12.1: Set pipeline run context for lineage tracking
+    import uuid as _uuid
+    _pipeline_run_id = _uuid.uuid4().hex[:12]
+    try:
+        from data_agent.pipeline_helpers import current_pipeline_run_id
+        current_pipeline_run_id.set(_pipeline_run_id)
+    except Exception:
+        pass
+
     pipeline_step = cl.Step(name=pipeline_name, type="process")
     await pipeline_step.send()
 
@@ -1753,6 +1705,7 @@ async def _execute_pipeline(
     _pending_data_update = None # data update from tool responses
     _final_map_update = None    # accumulated map config (not cleared during flush, injected into final_msg)
     _final_data_update = None   # accumulated data update
+    _final_chart_updates = []   # accumulated chart configs
     current_agent_name = None
     current_agent_step = None
     current_tool_step = None
@@ -1924,6 +1877,32 @@ async def _execute_pipeline(
                                             _final_map_update = _pending_map_update
                         except Exception as _art_err:
                             logger.warning("[ArtifactDetect] Error: %s", _art_err)
+                        # Chart config detection (v14.4)
+                        try:
+                            if isinstance(_resp_val, dict) and "chart_type" in _resp_val and "option" in _resp_val:
+                                _final_chart_updates.append(_resp_val)
+                                logger.info("[ChartDetect] Found chart: type=%s", _resp_val.get("chart_type"))
+                        except Exception:
+                            pass
+                        # Direct map_update from tool response (v14.5 — WMS layers etc.)
+                        try:
+                            if isinstance(_resp_val, str):
+                                try:
+                                    _parsed = json.loads(_resp_val)
+                                except (json.JSONDecodeError, TypeError):
+                                    _parsed = None
+                            elif isinstance(_resp_val, dict):
+                                _parsed = _resp_val
+                            else:
+                                _parsed = None
+                            if isinstance(_parsed, dict) and "map_update" in _parsed:
+                                _direct_mu = _parsed["map_update"]
+                                if isinstance(_direct_mu, dict) and "layers" in _direct_mu:
+                                    _pending_map_update = _direct_mu
+                                    _final_map_update = _direct_mu
+                                    logger.info("[MapUpdateDirect] Injected map_update from tool: layers=%s", len(_direct_mu.get("layers", [])))
+                        except Exception:
+                            pass
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
                             _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
@@ -2080,21 +2059,32 @@ async def _execute_pipeline(
         # more reliable than sending a separate empty-content metadata message.
         logger.info(f"[MapPreInject] _final_map_update={_final_map_update is not None}, _final_data_update={_final_data_update is not None}, msg_sent={msg_sent}")
         if _final_map_update or _final_data_update:
-            if not final_msg.metadata:
-                final_msg.metadata = {}
+            meta = {}
             if _final_map_update:
-                final_msg.metadata["map_update"] = _final_map_update
-                logger.info(f"[MapInject] Injected map_update into final_msg: layers={len(_final_map_update.get('layers', []))}")
-                # Also store in REST API pending dict (Chainlit WS doesn't deliver step metadata)
-                from data_agent.frontend_api import pending_map_updates
-                pending_map_updates[user_id] = _final_map_update
+                meta["map_update"] = _final_map_update
+                logger.info(f"[MapInject] Injected map_update into meta message: layers={len(_final_map_update.get('layers', []))}")
+                # Also store in REST API pending dict
+                from data_agent.frontend_api import pending_map_updates, _pending_lock
+                with _pending_lock:
+                    pending_map_updates[user_id] = _final_map_update
             if _final_data_update:
-                final_msg.metadata["data_update"] = _final_data_update
-                from data_agent.frontend_api import pending_data_updates
-                pending_data_updates[user_id] = _final_data_update
+                meta["data_update"] = _final_data_update
+                from data_agent.frontend_api import pending_data_updates, _pending_lock
+                with _pending_lock:
+                    pending_data_updates[user_id] = _final_data_update
+            if _final_chart_updates:
+                meta["chart_updates"] = _final_chart_updates
+                from data_agent.frontend_api import pending_chart_updates, _pending_lock
+                with _pending_lock:
+                    pending_chart_updates.setdefault(user_id, []).extend(_final_chart_updates)
+                logger.info(f"[ChartInject] Injected {len(_final_chart_updates)} chart(s) into pending")
+                
+            # Send a dedicated message for metadata so the React frontend sees a new ID
+            # and doesn't skip it due to processedMetaRef.current.has(msg.id)
+            await cl.Message(content="", metadata=meta).send()
 
         if not msg_sent:
-            # Pipeline produced no text — send final_msg so metadata is delivered
+            # Pipeline produced no text — send final_msg so it completes
             await final_msg.send()
             msg_sent = True
         await final_msg.update()
@@ -2129,6 +2119,14 @@ async def _execute_pipeline(
         cl.user_session.set("tool_execution_log", tool_execution_log)
         cl.user_session.set("last_intent", intent)
 
+        # --- Store pipeline params for re-run (v14.5) ---
+        cl.user_session.set("last_pipeline_params", {
+            "prompt": user_text,
+            "intent": intent,
+            "pipeline": pipeline_type,
+            "files": generated_files[:10],
+        })
+
         # --- Auto-save analysis result as spatial memory ---
         try:
             from data_agent.memory import save_memory
@@ -2159,11 +2157,52 @@ async def _execute_pipeline(
                         if facts:
                             save_auto_extract_memories(facts)
                             logger.info("[MemoryETL] Extracted %d facts for user=%s", len(facts), _uid)
+                            # Notify frontend about extracted facts
+                            fact_lines = "\n".join(
+                                f"- **{f.get('category', '')}**: {f.get('key', '')} → {str(f.get('value', ''))[:80]}"
+                                for f in facts[:5]
+                            )
+                            await cl.Message(
+                                content=f"💡 已自动提取 {len(facts)} 条知识：\n{fact_lines}",
+                                metadata={"memory_extract": {"count": len(facts), "facts": facts[:5]}},
+                                author="system",
+                            ).send()
                     except Exception as ex:
                         logger.debug("[MemoryETL] Extraction failed: %s", ex)
 
                 asyncio.create_task(_do_extract())
                 cl.user_session.set("auto_extract_count", extract_count + 1)
+        except Exception:
+            pass  # non-fatal
+
+        # --- v14.1: Recommended follow-up questions ---
+        try:
+            from data_agent.pipeline_helpers import generate_followup_questions
+            followups = generate_followup_questions(report_text, user_text, pipeline_type)
+            if followups:
+                actions = [
+                    cl.Action(name=f"followup_{i}", payload={"value": q}, label=q)
+                    for i, q in enumerate(followups)
+                ]
+                await cl.Message(
+                    content="💡 **推荐后续分析：**",
+                    actions=actions,
+                ).send()
+        except Exception:
+            pass  # non-fatal
+
+        # --- v14.2: Evaluate analysis chains ---
+        try:
+            from data_agent.analysis_chains import evaluate_chains
+            triggered = evaluate_chains(report_text, pipeline_type, generated_files, user_id)
+            for chain in triggered[:2]:  # max 2 auto-triggered per turn
+                await cl.Message(
+                    content=f"🔗 **分析链触发**: {chain['chain_name']}\n执行: {chain['follow_up_prompt'][:100]}",
+                    actions=[
+                        cl.Action(name="chain_exec", payload={"value": chain["follow_up_prompt"]},
+                                  label=f"执行: {chain['follow_up_prompt'][:40]}..."),
+                    ],
+                ).send()
         except Exception:
             pass  # non-fatal
 
@@ -2239,6 +2278,13 @@ async def _execute_pipeline(
                 label=t("action.browse_steps"),
                 description=t("action.browse_steps_desc"),
                 payload={"action": "browse_steps"}
+            ),
+            cl.Action(
+                name="rerun_with_params",
+                value="rerun",
+                label="调整参数重跑",
+                description="查看上次分析参数，修改后重新执行",
+                payload={"action": "rerun"}
             ),
         ]
         await cl.Message(content=t("pipeline.complete"), actions=actions).send()
@@ -2371,139 +2417,15 @@ def handle_uploaded_file(element, upload_dir: str) -> tuple:
 
 def classify_intent(text: str, previous_pipeline: str = None,
                     image_paths: list = None, pdf_context: str = None) -> tuple:
-    """
-    Uses Gemini Flash to semantically classify user intent into one of the 3 pipelines,
-    plus tool subcategories for dynamic tool filtering (v7.5.6).
-    Supports multimodal input: images are embedded directly, PDF text is appended to prompt.
-    Returns: (intent, reason, router_tokens, tool_categories) where intent is 'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS'.
-    """
-    try:
-        prev_hint = ""
-        if previous_pipeline:
-            prev_hint = f"\n        - The previous turn used the {previous_pipeline.upper()} pipeline. If the user references prior results (上面, 刚才, 继续, 之前, 在此基础上), prefer routing to the SAME pipeline: {previous_pipeline.upper()}."
-
-        # Append PDF context summary if available
-        pdf_hint = ""
-        if pdf_context:
-            truncated = pdf_context[:2000]
-            pdf_hint = f"\n\n        [Attached PDF content summary]:\n        {truncated}"
-
-        prompt = f"""
-        You are the Intent Router for a GIS Data Agent. Classify the User Input into ONE of these categories:
-
-        1. **GOVERNANCE**: Data auditing, quality check, topology fix, standardization, consistency check. (Keywords: 治理, 审计, 质检, 核查, 拓扑, 标准)
-        2. **OPTIMIZATION**: Land use optimization, DRL, FFI calculation, spatial layout planning. (Keywords: 优化, 布局, 破碎化, 规划)
-        3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史)
-        4. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
-
-        Additionally, identify which tool subcategories are needed (comma-separated, minimum list):
-        - spatial_processing: buffer, clip, overlay, tessellation, clustering, zonal stats, geocoding, spatial join
-        - poi_location: POI search, population, driving distance, admin boundaries
-        - remote_sensing: raster/NDVI/DEM/LULC/watershed/hydrology/流域/水文/河网/汇水
-        - database_management: PostGIS import/export/describe table schema
-        - quality_audit: topology check, field standards, semantic layer, consistency
-        - streaming_iot: real-time/IoT data streams, geofence
-        - collaboration: team management, templates, asset management
-        - advanced_analysis: spatial statistics (Moran/hotspot), data fusion, knowledge graph
-
-        User Input: "{text}"{pdf_hint}
-
-        Rules:
-        - If input mentions "optimize" or "FFI", prioritize OPTIMIZATION.
-        - If input is asking "what data is there" or "show map", choose GENERAL.{prev_hint}
-        - If the input is a greeting (你好, hello, hi), casual chat, or contains no identifiable GIS task, output AMBIGUOUS.
-        - If the input could reasonably belong to two pipelines equally, output AMBIGUOUS.
-        - If images are attached, consider their visual content as additional context for classification.
-        - Output format: CATEGORY|REASON|TOOLS:cat1,cat2
-        - Examples: "GENERAL|用户请求缓冲区分析|TOOLS:spatial_processing" or "GOVERNANCE|数据质检|TOOLS:quality_audit"
-        - If unsure which tools are needed or for AMBIGUOUS inputs: "CATEGORY|REASON|TOOLS:all"
-        """
-
-        # Build multimodal content for Gemini: text + optional images
-        content_parts = [prompt]
-        if image_paths:
-            try:
-                from PIL import Image as PILImage
-                for img_path in image_paths[:3]:  # limit to 3 images for router
-                    img = PILImage.open(img_path)
-                    if img.mode in ("RGBA", "P", "LA"):
-                        img = img.convert("RGB")
-                    # Resize for router (smaller than pipeline images)
-                    w, h = img.size
-                    if max(w, h) > 512:
-                        ratio = 512 / max(w, h)
-                        img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)
-                    content_parts.append(img)
-            except Exception as img_err:
-                logger.debug("Could not load images for router: %s", img_err)
-
-        response = _genai_router_client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=content_parts,
-            config=types.GenerateContentConfig(
-                http_options=types.HttpOptions(timeout=30_000),  # 30s
-            ),
-        )
-        # Track router token consumption
-        router_input_tokens = 0
-        router_output_tokens = 0
-        if hasattr(response, 'usage_metadata') and response.usage_metadata:
-            router_input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
-            router_output_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
-        router_tokens = router_input_tokens + router_output_tokens
-
-        raw = response.text.strip()
-
-        # --- Parse tool categories (v7.5.6) ---
-        tool_cats = set()
-        if "TOOLS:" in raw:
-            tools_part = raw.split("TOOLS:", 1)[1].strip()
-            if tools_part and tools_part.lower() != "all":
-                tool_cats = {c.strip() for c in tools_part.split(",") if c.strip()}
-            # Strip unknown categories — only keep those defined in TOOL_CATEGORIES
-            from data_agent.tool_filter import VALID_CATEGORIES
-            unknown = tool_cats - VALID_CATEGORIES
-            if unknown:
-                logger.debug("Router returned unknown tool categories: %s (stripped)", unknown)
-                tool_cats = tool_cats & VALID_CATEGORIES
-            # Remove TOOLS: suffix from the raw text for intent/reason parsing
-            raw = raw.split("|TOOLS:", 1)[0] if "|TOOLS:" in raw else raw.split("TOOLS:", 1)[0]
-            raw = raw.strip()
-
-        if "|" in raw:
-            parts = raw.split("|", 1)
-            intent = parts[0].strip().upper()
-            reason = parts[1].strip()
-        else:
-            intent = raw.upper()
-            reason = ""
-        if "OPTIMIZATION" in intent: return ("OPTIMIZATION", reason, router_tokens, tool_cats)
-        if "GOVERNANCE" in intent: return ("GOVERNANCE", reason, router_tokens, tool_cats)
-        if "AMBIGUOUS" in intent: return ("AMBIGUOUS", reason, router_tokens, tool_cats)
-        if "GENERAL" in intent: return ("GENERAL", reason, router_tokens, tool_cats)
-        return ("GENERAL", reason, router_tokens, tool_cats)
-    except Exception as e:
-        logger.error("Router error: %s", e)
-        return ("GENERAL", "", 0, set())
+    """Delegate to intent_router module (extracted for S-1 refactoring)."""
+    from data_agent.intent_router import classify_intent as _classify
+    return _classify(text, previous_pipeline, image_paths, pdf_context)
 
 
 def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) -> str:
-    """Generate a lightweight analysis plan for user confirmation before expensive pipelines."""
-    try:
-        from data_agent.prompts import get_prompt
-
-        files_info = "\n".join(f"- {f}" for f in uploaded_files) if uploaded_files else "无上传文件"
-        prompt_template = get_prompt("planner", "plan_generation_prompt")
-        prompt = prompt_template.format(intent=intent, user_text=user_text, files_info=files_info)
-
-        response = _genai_router_client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt,
-        )
-        return response.text.strip()
-    except Exception as e:
-        logger.error("Plan generation error: %s", e)
-        return ""
+    """Delegate to intent_router module (extracted for S-1 refactoring)."""
+    from data_agent.intent_router import generate_analysis_plan as _plan
+    return _plan(user_text, intent, uploaded_files)
 
 
 @cl.on_chat_resume
@@ -2535,20 +2457,104 @@ async def on_resume(thread: dict):
         logger.warning("ADK session resume failed: %s", e)
 
 
+async def _execute_workflow_with_steps(workflow_id: int, file_path: str, template_name: str):
+    """Execute workflow directly with Chainlit Step progress updates."""
+    from data_agent.workflow_engine import execute_workflow
+
+    root_step = cl.Step(name=f"工作流: {template_name}", type="process")
+    await root_step.send()
+
+    step_map = {}
+
+    async def progress_cb(info: dict):
+        """Callback invoked by workflow_engine after each step."""
+        step_id = info.get("step_id", f"step_{info.get('step_idx', 0)}")
+        label = info.get("step_label", step_id)
+        status = info.get("status", "unknown")
+        duration = info.get("duration")
+        summary = info.get("summary", "")
+
+        if step_id not in step_map:
+            step = cl.Step(name=label, type="process", parent_id=root_step.id)
+            await step.send()
+            step_map[step_id] = step
+        else:
+            step = step_map[step_id]
+
+        status_icon = {"completed": "✅", "failed": "❌", "running": "⏳"}.get(status, "")
+        step.output = f"{status_icon} {status}"
+        if duration:
+            step.output += f" ({duration:.1f}s)"
+        if summary:
+            step.output += f"\n{summary[:300]}"
+        await step.update()
+
+    try:
+        result = await execute_workflow(
+            workflow_id,
+            param_overrides={"file_path": file_path},
+            progress_callback=progress_cb,
+        )
+
+        final_status = result.get("status", "unknown")
+        total_dur = result.get("duration", 0)
+        root_step.output = f"状态: {final_status} | 耗时: {total_dur:.1f}s"
+        await root_step.update()
+
+        if final_status == "completed":
+            # Extract report from last step summary
+            step_results = result.get("step_results", [])
+            report_text = ""
+            for sr in reversed(step_results):
+                summary = sr.get("summary", "")
+                if summary and len(summary) > 100:
+                    report_text = summary
+                    break
+
+            completion_msg = (
+                f"✅ 工作流执行完成\n"
+                f"- 模板: {template_name}\n"
+                f"- 总耗时: {total_dur:.1f}s\n"
+                f"- 步骤: {len(step_results)} 步完成"
+            )
+            if report_text:
+                completion_msg += f"\n\n---\n\n{report_text}"
+            await cl.Message(content=completion_msg).send()
+        else:
+            err = result.get("error", "未知错误")
+            await cl.Message(content=f"❌ 工作流执行失败: {err}").send()
+
+    except Exception as e:
+        logger.error("Workflow execution error: %s", e)
+        await cl.Message(content=f"⚠️ 工作流执行异常: {str(e)}").send()
+
+
 @cl.on_chat_start
 async def start():
     """Initialize session with authenticated user."""
     # Set i18n language from env (default: zh)
     set_language(os.environ.get("UI_LANGUAGE", "zh"))
 
-    # Start MCP Hub connections (once, on first chat start)
+    # Start MCP Hub connections (once, on first chat start — async-safe)
     global _mcp_started
     if not _mcp_started and _mcp_hub_loaded:
-        try:
-            await get_mcp_hub().startup()
-        except Exception as e:
-            logger.warning("MCP Hub startup failed: %s", e)
-        _mcp_started = True
+        async with _mcp_alock:
+            if not _mcp_started:  # double-check after acquiring lock
+                try:
+                    await asyncio.wait_for(get_mcp_hub().startup(), timeout=15)
+                except asyncio.TimeoutError:
+                    logger.warning("MCP Hub startup timed out after 15s — skipping")
+                except Exception as e:
+                    logger.warning("MCP Hub startup failed: %s", e)
+                _mcp_started = True
+
+    # Start Workflow Scheduler (deferred to async context — needs event loop)
+    global _workflow_scheduler_started
+    if not _workflow_scheduler_started and _workflow_scheduler is not None:
+        async with _workflow_scheduler_lock:
+            if not _workflow_scheduler_started:
+                _workflow_scheduler.start()
+                _workflow_scheduler_started = True
 
     # Get authenticated user from Chainlit (set by auth callbacks in auth.py)
     cl_user = cl.user_session.get("user")
@@ -2567,6 +2573,25 @@ async def start():
 
     # Set context variables for this session
     _set_user_context(user_id, session_id, role)
+
+    # --- Fix: Ensure Thread.userIdentifier is populated for session history ---
+    try:
+        thread_id = cl.context.session.thread_id if cl.context.session else None
+        if thread_id and user_id:
+            from data_agent.session_storage import get_db_connection_url
+            import asyncpg
+            _db_url = get_db_connection_url(async_driver=True)
+            if _db_url:
+                _conn = await asyncpg.connect(_db_url)
+                try:
+                    await _conn.execute(
+                        'UPDATE "Thread" SET "userIdentifier" = $1 WHERE "id" = $2 AND "userIdentifier" IS NULL',
+                        user_id, thread_id,
+                    )
+                finally:
+                    await _conn.close()
+    except Exception as e:
+        logger.debug("Thread userIdentifier update skipped: %s", e)
 
     # Create or resume ADK session (get-first for page refresh recovery)
     adk_session = None
@@ -2651,6 +2676,15 @@ async def main(message: cl.Message):
                 "file_name": os.path.basename(_uf),
                 "file_size": os.path.getsize(_uf) if os.path.exists(_uf) else 0,
             })
+        except Exception:
+            pass
+
+    # Register metadata for spatial uploads
+    for _uf in uploaded_files:
+        try:
+            from data_agent.data_catalog import auto_register_from_path
+            auto_register_from_path(_uf, creation_tool="user_upload",
+                                    storage_backend="local", owner=user_id)
         except Exception:
             pass
 
@@ -2782,6 +2816,14 @@ async def main(message: cl.Message):
     if ARCPY_AVAILABLE:
         full_prompt += "\n\n[系统环境] ArcPy 引擎可用。当用户需要修复几何、按字段融合统计、或对比ArcPy与开源工具结果时，可使用 arcpy_ 前缀的工具。"
 
+    # v14.3: Language hint injection
+    user_lang = None
+    if user_lang and user_lang != "zh":
+        from data_agent.intent_router import _LANG_HINTS
+        lang_hint = _LANG_HINTS.get(user_lang, "")
+        if lang_hint:
+            full_prompt += f"\n\n[Language] {lang_hint}"
+
     # --- Template Apply: skip intent classification if pending template ---
     pending_template = cl.user_session.get("pending_template")
     if pending_template:
@@ -2793,12 +2835,20 @@ async def main(message: cl.Message):
     else:
         # --- SEMANTIC ROUTING ---
         previous_pipeline = last_ctx.get("pipeline") if last_ctx else None
-        intent, intent_reason, router_tokens, tool_cats = classify_intent(
+        intent, intent_reason, router_tokens, tool_cats, user_lang = classify_intent(
             user_text, previous_pipeline=previous_pipeline,
             image_paths=image_files or None,
             pdf_context=pdf_context or None,
         )
-        logger.info("[Trace:%s] Router intent=%s reason=%s", trace_id, intent, intent_reason)
+        logger.info("[Trace:%s] Router intent=%s reason=%s lang=%s", trace_id, intent, intent_reason, user_lang)
+
+        # --- Track router token consumption separately (T-4 fix) ---
+        if router_tokens > 0:
+            try:
+                from data_agent.token_tracker import record_usage
+                record_usage(user_id, "router", router_tokens, 0, model_name="gemini-2.0-flash")
+            except Exception:
+                pass
 
         # --- Ambiguous Intent: Ask user to clarify ---
         if intent == "AMBIGUOUS":
@@ -2890,6 +2940,30 @@ async def main(message: cl.Message):
             except Exception as e:
                 logger.error("Plan confirmation error: %s", e)
 
+    # --- Task Decomposition Preview (Phase 2a) ---
+    try:
+        from data_agent.intent_router import should_decompose
+        if should_decompose(user_text):
+            from data_agent.task_decomposer import decompose_task, build_parallel_execution_plan
+            task_graph = await decompose_task(user_text)
+            waves = build_parallel_execution_plan(task_graph)
+            if task_graph.node_count > 1:
+                lines = ["\U0001f4cb **已识别多步骤任务：**\n"]
+                for node in task_graph.nodes.values():
+                    deps = f" (依赖: {', '.join(node.dependencies)})" if node.dependencies else ""
+                    lines.append(f"  {node.id}. {node.description}{deps}")
+                lines.append(f"\n共 {task_graph.node_count} 步，{len(waves)} 批次执行")
+                await cl.Message(
+                    content="\n".join(lines),
+                    author="system",
+                    metadata={"subtask_progress": {
+                        "total": task_graph.node_count,
+                        "waves": len(waves),
+                    }},
+                ).send()
+    except Exception as _decomp_err:
+        logger.debug("[TaskDecompose] Preview skipped: %s", _decomp_err)
+
     # --- Custom Skill trigger keyword check (v8.0.1) ---
     if not _custom_skill_agent:
         try:
@@ -2915,6 +2989,221 @@ async def main(message: cl.Message):
         selected_agent = data_pipeline
         pipeline_type = "optimization"
         pipeline_name = "Optimization Pipeline (空间优化)"
+    elif intent == "WORKFLOW":
+        # Async workflow execution via natural language
+        template_map = {
+            "标准质检": "surveying_qc_standard",
+            "快速质检": "surveying_qc_quick",
+            "完整质检": "surveying_qc_full",
+            "DLG质检": "qc_dlg",
+            "DOM质检": "qc_dom",
+            "DEM质检": "qc_dem",
+            "三维模型质检": "qc_3dmodel",
+        }
+        template_id = None
+        template_name = None
+        for name, tid in template_map.items():
+            if name in full_prompt:
+                template_id = tid
+                template_name = name
+                break
+
+        if not template_id:
+            await cl.Message(content="❌ 未识别到具体的质检模板。支持的模板：标准质检、快速质检、完整质检、DLG质检、DOM质检、DEM质检、三维模型质检").send()
+            return
+
+        # Get spatial file: prefer filename mentioned in user text, fallback to most recent
+        user_dir = Path(get_user_upload_dir())
+        file_path = None
+        spatial_exts = ['.shp', '.geojson', '.gpkg', '.kml']
+        if user_dir.exists():
+            # First: try to match filename from user text
+            all_spatial = [f for f in user_dir.rglob("*") if f.suffix.lower() in spatial_exts]
+            for f in all_spatial:
+                if f.stem in full_prompt or f.name in full_prompt:
+                    file_path = str(f)
+                    break
+            # Fallback: most recent spatial file
+            if not file_path and all_spatial:
+                all_spatial.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                file_path = str(all_spatial[0])
+
+        if not file_path:
+            await cl.Message(content="❌ 未找到可用的数据文件。请先上传 Shapefile、GeoJSON、GPKG 或 KML 文件。").send()
+            return
+
+        # Create workflow from template and execute directly (no HTTP roundtrip)
+        try:
+            from data_agent.workflow_engine import create_workflow_from_template, execute_workflow
+
+            workflow_id = create_workflow_from_template(
+                template_id, param_overrides={"file_path": file_path}
+            )
+            if not workflow_id:
+                await cl.Message(content=f"❌ 模板 {template_name} 创建工作流失败").send()
+                return
+
+            await cl.Message(content=(
+                f"✅ 工作流已启动\n"
+                f"- 模板: {template_name}\n"
+                f"- 文件: {Path(file_path).name}\n"
+                f"- 工作流ID: {workflow_id}\n\n"
+                f"正在执行，进度将实时更新..."
+            )).send()
+
+            # Execute in background with context propagation
+            from chainlit.context import context_var
+            ctx = context_var.get()
+
+            async def _run_with_context():
+                context_var.set(ctx)
+                await _execute_workflow_with_steps(
+                    workflow_id, file_path, template_name
+                )
+
+            asyncio.create_task(_run_with_context())
+            return
+        except Exception as e:
+            logger.error("Workflow execution error: %s", e)
+            await cl.Message(content=f"❌ 工作流执行失败: {str(e)}").send()
+            return
+
+    # --- World Model shortcut: skip LLM planner, call tool directly ---
+    elif 'world_model' in tool_cats:
+        pipeline_type = "world_model_direct"
+        pipeline_name = "World Model (直接调用)"
+        # Extract scenario/year/n_years from user text with simple parsing
+        import re
+        _scenario = "baseline"
+        for sc in ["urban_sprawl", "ecological_restoration", "agricultural_intensification", "climate_adaptation"]:
+            if sc in full_prompt or sc.replace("_", "") in full_prompt.lower():
+                _scenario = sc
+                break
+        if "城市蔓延" in full_prompt or "城市扩张" in full_prompt:
+            _scenario = "urban_sprawl"
+        elif "生态恢复" in full_prompt or "生态修复" in full_prompt:
+            _scenario = "ecological_restoration"
+        elif "农业" in full_prompt:
+            _scenario = "agricultural_intensification"
+
+        _year_match = re.search(r'(?:从|起始|start).*?(\d{4})', full_prompt)
+        _start_year = _year_match.group(1) if _year_match else "2023"
+        # Match "5年" or "5 years" but NOT "2023年" (4-digit year)
+        _nyears_match = re.search(r'(?<!\d)(\d{1,2})\s*(?:年|years)', full_prompt)
+        _n_years = _nyears_match.group(1) if _nyears_match else "5"
+
+        await cl.Message(
+            content=f"🌍 世界模型预测启动\n- 情景: {_scenario}\n- 起始年份: {_start_year}\n- 预测年数: {_n_years}\n- bbox: 自动从已加载数据提取",
+            metadata={"routing_info": {"intent": "WORLD_MODEL", "pipeline": "world_model_direct"}},
+        ).send()
+
+        try:
+            from data_agent.world_model import predict_sequence
+            from data_agent.user_context import current_user_id
+            _uid = current_user_id.get("admin")
+            _upload_dir = os.path.join(os.path.dirname(__file__), "uploads", _uid)
+
+            # Auto-discover bbox from most recent GeoJSON
+            import glob as _glob
+            _candidates = (
+                _glob.glob(os.path.join(_upload_dir, "*.geojson"))
+                + _glob.glob(os.path.join(_upload_dir, "*.shp"))
+            )
+            if not _candidates:
+                await cl.Message(content="❌ 未找到已加载的区域数据，请先加载行政区划").send()
+                return
+            _latest = max(_candidates, key=os.path.getmtime)
+            import geopandas as _gpd
+            _gdf = _gpd.read_file(_latest)
+            if _gdf.crs and _gdf.crs.to_epsg() != 4326:
+                _gdf = _gdf.to_crs(epsg=4326)
+            _bounds = _gdf.total_bounds
+            _bbox = [float(_bounds[0]), float(_bounds[1]), float(_bounds[2]), float(_bounds[3])]
+            logger.info("World model direct: bbox=%s from %s", _bbox, os.path.basename(_latest))
+
+            # Call predict_sequence directly (keeps geojson_layers)
+            result = await asyncio.to_thread(
+                predict_sequence, _bbox, _scenario, int(_start_year), int(_n_years)
+            )
+
+            if result.get("status") == "error":
+                await cl.Message(content=f"❌ 预测失败: {result.get('error', '未知错误')}").send()
+            else:
+                # Save GeoJSON layers and push to map
+                geojson_layers = result.get("geojson_layers", {})
+                map_layers = []
+                # LULC color mapping for categorized rendering
+                _lulc_colors = {
+                    "水体": "#4169E1", "Water": "#4169E1",
+                    "树木": "#228B22", "Trees": "#228B22",
+                    "灌木": "#DEB887", "Shrubland": "#DEB887",
+                    "耕地": "#FFD700", "Cropland": "#FFD700",
+                    "建设用地": "#FF4500", "Built Area": "#FF4500",
+                    "裸地": "#D2B48C", "Bare Ground": "#D2B48C",
+                    "冰雪": "#F0F8FF", "Snow/Ice": "#F0F8FF",
+                    "云": "#C0C0C0", "Clouds": "#C0C0C0",
+                    "湿地": "#20B2AA", "Flooded Vegetation": "#20B2AA",
+                    "草地": "#90EE90", "Rangeland": "#90EE90",
+                }
+                for yr, geojson in geojson_layers.items():
+                    fname = f"world_model_{_scenario}_{yr}.geojson"
+                    fpath = os.path.join(_upload_dir, fname)
+                    with open(fpath, "w", encoding="utf-8") as f:
+                        json.dump(geojson, f, ensure_ascii=False)
+                    map_layers.append({
+                        "type": "categorized",
+                        "geojson": fname,
+                        "name": f"LULC {yr} ({_scenario})",
+                        "year": int(yr),
+                        "category_column": "class_name",
+                        "category_colors": _lulc_colors,
+                        "style": {"weight": 0.3, "opacity": 0.8, "fillOpacity": 0.7},
+                    })
+
+                # Push to frontend map via pending_map_updates
+                if map_layers:
+                    _map_update = {
+                        "layers": map_layers,
+                        "center": [(_bbox[1]+_bbox[3])/2, (_bbox[0]+_bbox[2])/2],
+                        "zoom": 13,
+                        "timeline": True,
+                    }
+                    from data_agent.frontend_api import pending_map_updates, _pending_lock
+                    with _pending_lock:
+                        pending_map_updates[_uid] = _map_update
+                    logger.info("World model: pushed %d layers to map", len(map_layers))
+
+                # Format summary
+                summary_lines = [f"✅ 世界模型预测完成 ({_scenario}, {_start_year}-{int(_start_year)+int(_n_years)})"]
+                if "area_timeline" in result:
+                    summary_lines.append("\n📊 面积变化时间线:")
+                    for yr_data in result["area_timeline"]:
+                        yr = yr_data.get("year", "?")
+                        areas = yr_data.get("areas", {})
+                        top3 = sorted(areas.items(), key=lambda x: -x[1])[:3]
+                        top_str = ", ".join(f"{k}: {v:.1f}%" for k, v in top3)
+                        summary_lines.append(f"  {yr}: {top_str}")
+                if "transition_matrix" in result:
+                    summary_lines.append("\n🔄 主要转变:")
+                    tm = result.get("transition_matrix", {})
+                    if isinstance(tm, dict):
+                        changes = []
+                        for from_cls, to_dict in tm.items():
+                            for to_cls, count in to_dict.items():
+                                if from_cls != to_cls:
+                                    changes.append((from_cls, to_cls, count))
+                        changes.sort(key=lambda x: -x[2])
+                        for from_cls, to_cls, count in changes[:5]:
+                            summary_lines.append(f"  {from_cls} → {to_cls}: {count} pixels")
+                    elif isinstance(tm, list):
+                        for t_item in tm[:5]:
+                            summary_lines.append(f"  {t_item.get('from','')} → {t_item.get('to','')}: {t_item.get('percent', 0):.1f}%")
+                summary_lines.append(f"\n📁 已保存 {len(map_layers)} 个图层到地图，请查看时间轴滑块。")
+                await cl.Message(content="\n".join(summary_lines)).send()
+        except Exception as e:
+            logger.error("World model direct call failed: %s", e)
+            await cl.Message(content=f"❌ 世界模型调用异常: {e}").send()
+        return
     elif DYNAMIC_PLANNER:
         selected_agent = planner_agent
         pipeline_type = "planner"
@@ -3012,6 +3301,27 @@ async def on_retry_pipeline(action: cl.Action):
     )
 
 
+@cl.action_callback("rerun_with_params")
+async def on_rerun_with_params(action: cl.Action):
+    """Show last pipeline parameters so user can adjust and re-run (v14.5)."""
+    params = cl.user_session.get("last_pipeline_params", {})
+    if not params:
+        await cl.Message(content="没有可用的上次分析参数。").send()
+        return
+    prompt = params.get("prompt", "")
+    intent = params.get("intent", "")
+    pipeline = params.get("pipeline", "")
+    files = params.get("files", [])
+    files_str = "\n".join(f"  - {f}" for f in files[:5]) if files else "  无"
+    await cl.Message(content=(
+        f"**上次分析参数**\n\n"
+        f"- **意图**: {intent}\n"
+        f"- **管线**: {pipeline}\n"
+        f"- **文件**: \n{files_str}\n"
+        f"- **提示词**: {prompt}\n\n"
+        f"请修改提示词后直接发送，即可使用相同数据重新执行分析。"
+    )).send()
+
 @cl.action_callback("export_report")
 async def on_export_report(action: cl.Action):
     """Export analysis results as Word or PDF document."""
@@ -3042,20 +3352,43 @@ async def on_export_report(action: cl.Action):
         try:
             import glob
             import time as _time
-            recent_pngs = sorted(
-                glob.glob(os.path.join(user_dir, "*.png")),
-                key=os.path.getmtime, reverse=True
-            )
-            # Only include PNGs from the last 5 minutes (likely from current analysis)
-            cutoff = _time.time() - 300
-            recent_pngs = [p for p in recent_pngs if os.path.getmtime(p) > cutoff]
-            if recent_pngs and not any(p.replace("\\", "/") in text or p.replace("/", "\\") in text
-                                       for p in recent_pngs):
-                enriched_text += "\n\n## 分析可视化\n\n"
-                for png_path in recent_pngs[:3]:  # max 3 images
-                    enriched_text += f"{png_path}\n\n"
-        except Exception:
-            pass
+            
+            # Prefer PNGs that were explicitly generated in this session's context
+            last_ctx = cl.user_session.get("last_context", {})
+            session_files = last_ctx.get("files", [])
+            recent_pngs = [f for f in session_files if f.lower().endswith(".png") and os.path.exists(f)]
+            
+            # Fallback to scanning the directory for very recent PNGs (last 5 mins)
+            if not recent_pngs:
+                recent_pngs = sorted(
+                    glob.glob(os.path.join(user_dir, "*.png")),
+                    key=os.path.getmtime, reverse=True
+                )
+                cutoff = _time.time() - 300
+                recent_pngs = [p for p in recent_pngs if os.path.getmtime(p) > cutoff]
+
+            if recent_pngs:
+                # Deduplicate and normalize paths
+                unique_pngs = []
+                for p in recent_pngs:
+                    norm_p = os.path.abspath(p)
+                    if norm_p not in unique_pngs:
+                        unique_pngs.append(norm_p)
+                
+                # Only append if not already prominently featured in the text
+                images_to_add = []
+                for p in unique_pngs:
+                    p_unix = p.replace("\\", "/")
+                    p_win = p.replace("/", "\\")
+                    if p_unix not in text and p_win not in text:
+                        images_to_add.append(p)
+                
+                if images_to_add:
+                    enriched_text += "\n\n## 分析可视化成果\n\n"
+                    for png_path in images_to_add[:4]:  # max 4 images
+                        enriched_text += f"{png_path}\n\n"
+        except Exception as _enrich_err:
+            logger.warning("Report enrichment failed: %s", _enrich_err)
         if fmt == "pdf":
             from data_agent.report_generator import generate_pdf_report
             output_path = os.path.join(user_dir, "Analysis_Report.pdf")

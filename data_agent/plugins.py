@@ -36,23 +36,28 @@ logger = logging.getLogger("data_agent.plugins")
 # ---------------------------------------------------------------------------
 
 class CostGuardPlugin(BasePlugin):
-    """Token budget control plugin.
+    """Token budget control plugin with USD cost tracking.
 
     Tracks cumulative token usage across all LLM calls in a pipeline run.
     Emits a warning when ``warn_threshold`` is reached and aborts the
     pipeline (by returning a stop LlmResponse) when ``abort_threshold``
     is exceeded.
 
+    Also tracks USD cost using model pricing from token_tracker.py.
+
     Thresholds can be set via env vars ``COST_GUARD_WARN`` and
-    ``COST_GUARD_ABORT`` (integer token counts).
+    ``COST_GUARD_ABORT`` (integer token counts), or USD-based via
+    ``COST_GUARD_USD_ABORT`` (float, e.g., "0.50" for $0.50 per pipeline).
     """
 
     STATE_KEY = "__cost_guard_tokens__"
+    COST_KEY = "__cost_guard_usd__"
 
     def __init__(
         self,
         warn_threshold: int = 0,
         abort_threshold: int = 0,
+        usd_abort: float = 0.0,
     ):
         super().__init__(name="cost_guard")
         self.warn_threshold = warn_threshold or int(
@@ -61,11 +66,36 @@ class CostGuardPlugin(BasePlugin):
         self.abort_threshold = abort_threshold or int(
             os.environ.get("COST_GUARD_ABORT", "200000")
         )
+        self.usd_abort = usd_abort or float(
+            os.environ.get("COST_GUARD_USD_ABORT", "0")
+        )
         self._warned = False
 
     async def before_model_callback(self, *, callback_context, llm_request):
-        """Check accumulated tokens before each LLM call."""
+        """Check accumulated tokens/cost before each LLM call."""
         accumulated = callback_context.state.get(self.STATE_KEY, 0)
+        accumulated_usd = callback_context.state.get(self.COST_KEY, 0.0)
+
+        # USD-based abort (if configured)
+        if self.usd_abort > 0 and accumulated_usd >= self.usd_abort:
+            logger.warning(
+                "CostGuard: USD budget exceeded ($%.4f >= $%.4f), aborting",
+                accumulated_usd, self.usd_abort,
+            )
+            from google.adk.models.llm_response import LlmResponse
+            return LlmResponse(
+                content=types.Content(
+                    role="model",
+                    parts=[types.Part(text=(
+                        f"[CostGuard] Cost budget exceeded "
+                        f"(${accumulated_usd:.4f} >= ${self.usd_abort:.4f}). "
+                        f"Pipeline aborted to prevent excessive cost."
+                    ))],
+                ),
+                turn_complete=True,
+            )
+
+        # Token-based abort
         if accumulated >= self.abort_threshold:
             logger.warning(
                 "CostGuard: budget exceeded (%d >= %d), aborting pipeline",
@@ -86,7 +116,7 @@ class CostGuardPlugin(BasePlugin):
         return None
 
     async def after_model_callback(self, *, callback_context, llm_response):
-        """Accumulate token usage after each LLM response."""
+        """Accumulate token usage and USD cost after each LLM response."""
         usage = getattr(llm_response, "usage_metadata", None)
         if usage:
             prompt_tokens = getattr(usage, "prompt_token_count", 0) or 0
@@ -94,6 +124,25 @@ class CostGuardPlugin(BasePlugin):
             delta = prompt_tokens + output_tokens
             accumulated = callback_context.state.get(self.STATE_KEY, 0) + delta
             callback_context.state[self.STATE_KEY] = accumulated
+
+            # USD cost tracking
+            try:
+                from .token_tracker import calculate_cost_usd
+                model = getattr(llm_response, 'model', '') or 'gemini-2.5-flash'
+                cost_delta = calculate_cost_usd(prompt_tokens, output_tokens, model)
+                accumulated_usd = callback_context.state.get(self.COST_KEY, 0.0) + cost_delta
+                callback_context.state[self.COST_KEY] = accumulated_usd
+            except Exception:
+                pass
+
+            # Record LLM metrics for Prometheus (v14.5)
+            try:
+                from .observability import record_llm_call
+                agent_name = getattr(callback_context, 'agent_name', '') or 'unknown'
+                model = getattr(llm_response, 'model', '') or 'unknown'
+                record_llm_call(agent_name, model, prompt_tokens, output_tokens)
+            except Exception:
+                pass
 
             if not self._warned and accumulated >= self.warn_threshold:
                 self._warned = True
@@ -139,8 +188,19 @@ class GISToolRetryPlugin(ReflectAndRetryToolPlugin):
     async def on_tool_error_callback(
         self, *, tool, tool_args, tool_context, error
     ) -> Optional[dict[str, Any]]:
-        """Handle tool errors and record to failure_learning DB."""
+        """Handle tool errors with exponential backoff and failure recording."""
         self._record_failure(tool.name, str(error))
+
+        # Exponential backoff: 1s, 2s, 4s...
+        retry_count = getattr(tool_context, '_retry_count', 0)
+        if retry_count > 0:
+            import asyncio
+            delay = min(2 ** retry_count, 8)  # Cap at 8 seconds
+            logger.info("Retry backoff: %s, waiting %ds (attempt %d)",
+                        tool.name, delay, retry_count)
+            await asyncio.sleep(delay)
+        tool_context._retry_count = retry_count + 1
+
         return await super().on_tool_error_callback(
             tool=tool, tool_args=tool_args,
             tool_context=tool_context, error=error,

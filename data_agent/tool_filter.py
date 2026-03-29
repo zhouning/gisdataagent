@@ -28,6 +28,12 @@ CORE_TOOLS: frozenset[str] = frozenset({
     "filter_vector_data",
     "list_data_assets",
     "search_data_assets",
+    # Admin boundary loader — always available
+    "load_admin_boundary",
+    # World model tools — always available for LULC prediction
+    "world_model_predict",
+    "world_model_scenarios",
+    "world_model_status",
 })
 
 # ---------------------------------------------------------------------------
@@ -93,6 +99,17 @@ TOOL_CATEGORIES: dict[str, frozenset[str]] = {
         "profile_fusion_sources", "assess_fusion_compatibility",
         "fuse_datasets", "validate_fusion_quality",
         "build_knowledge_graph", "query_knowledge_graph", "export_knowledge_graph",
+    }),
+    # World model prediction + causal world model
+    "world_model": frozenset({
+        "world_model_predict", "world_model_scenarios", "world_model_status",
+        "intervention_predict", "counterfactual_comparison",
+        "embedding_treatment_effect", "integrate_statistical_prior",
+    }),
+    # LLM causal reasoning (Angle B)
+    "causal_reasoning": frozenset({
+        "construct_causal_dag", "counterfactual_reasoning",
+        "explain_causal_mechanism", "generate_what_if_scenarios",
     }),
 }
 

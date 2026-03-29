@@ -1,0 +1,19 @@
+# CLCD 遥感分类编码 → GB/T 21010-2017 土地利用分类编码
+# China Land Cover Dataset (CLCD) 基于 Landsat 遥感影像的 10 类分类
+id: clcd_to_gbt21010
+name: CLCD 遥感分类 → GB/T 21010
+source_standard: clcd_2020
+target_standard: gb_t_21010_2017
+description: 将 CLCD 遥感分类编码映射为 GB/T 21010 标准二级地类编码（默认映射，实际应用中可能需要根据地区特征调整）
+
+mapping:
+  "1":  "0103"    # 耕地 Cropland → 旱地
+  "2":  "0301"    # 林地 Forest → 乔木林地
+  "3":  "0305"    # 灌木 Shrub → 灌木林地
+  "4":  "0401"    # 草地 Grassland → 天然牧草地
+  "5":  "1101"    # 水体 Water → 河流水面
+  "6":  "1207"    # 裸地 Barren → 裸土地
+  "7":  "1109"    # 冰雪 Snow/Ice → 冰川及永久积雪
+  "8":  "0601"    # 不透水面 Impervious → 工业用地（城镇建设用地代表）
+  "9":  "1205"    # 湿地 Wetland → 沼泽地
+  "10": "1104"    # 水域 Water body → 坑塘水面

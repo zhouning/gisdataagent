@@ -9,6 +9,7 @@ Provides:
 """
 import os
 import json
+from collections import OrderedDict
 from difflib import SequenceMatcher
 from typing import Optional, List
 
@@ -22,6 +23,70 @@ from .observability import get_logger
 logger = get_logger("data_catalog")
 
 T_DATA_CATALOG = "agent_data_catalog"
+
+# ---------------------------------------------------------------------------
+# Embedding helpers (v12.2 — reuses fusion/matching infrastructure)
+# ---------------------------------------------------------------------------
+
+_embedding_cache: OrderedDict[str, list[float]] = OrderedDict()
+_EMBEDDING_CACHE_MAX = 1024
+
+
+def _cache_get(key: str) -> list[float] | None:
+    if key in _embedding_cache:
+        _embedding_cache.move_to_end(key)
+        return _embedding_cache[key]
+    return None
+
+
+def _cache_put(key: str, value: list[float]) -> None:
+    _embedding_cache[key] = value
+    _embedding_cache.move_to_end(key)
+    while len(_embedding_cache) > _EMBEDDING_CACHE_MAX:
+        _embedding_cache.popitem(last=False)
+
+
+def _generate_asset_embedding(asset_name: str, description: str = "",
+                              tags: str = "", asset_type: str = "") -> list[float]:
+    """Generate embedding vector for a data asset's textual metadata."""
+    text_parts = [asset_name]
+    if description:
+        text_parts.append(description)
+    if tags:
+        text_parts.append(tags)
+    if asset_type:
+        text_parts.append(asset_type)
+    combined = " | ".join(text_parts)
+
+    cached = _cache_get(combined)
+    if cached is not None:
+        return cached
+
+    try:
+        from google import genai
+        client = genai.Client()
+        response = client.models.embed_content(
+            model="text-embedding-004",
+            contents=[combined],
+        )
+        vec = response.embeddings[0].values
+        _cache_put(combined, vec)
+        return vec
+    except Exception as e:
+        logger.debug("[DataCatalog] Embedding generation failed: %s", e)
+        return []
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
 
 # Asset type detection by file extension
 _EXT_TYPE_MAP = {
@@ -40,7 +105,11 @@ _EXT_TYPE_MAP = {
 # =====================================================================
 
 def ensure_data_catalog_table():
-    """Create the data catalog table if not exists. Called at startup."""
+    """Ensure data asset tables exist. Called at startup.
+
+    Primary table is agent_data_assets (4-layer metadata).
+    agent_data_catalog is maintained as a compatibility VIEW (migration 048).
+    """
     engine = get_engine()
     if not engine:
         print("[DataCatalog] WARNING: Database not configured. Data catalog disabled.")
@@ -48,41 +117,33 @@ def ensure_data_catalog_table():
 
     try:
         with engine.connect() as conn:
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS {T_DATA_CATALOG} (
+            # Ensure primary table exists (migration 044 schema)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS agent_data_assets (
                     id SERIAL PRIMARY KEY,
-                    asset_name VARCHAR(500) NOT NULL,
-                    asset_type VARCHAR(50) NOT NULL,
-                    format VARCHAR(50) DEFAULT '',
-                    storage_backend VARCHAR(20) NOT NULL,
-                    cloud_key VARCHAR(1000) DEFAULT '',
-                    local_path VARCHAR(1000) DEFAULT '',
-                    postgis_table VARCHAR(255) DEFAULT '',
-                    spatial_extent JSONB DEFAULT NULL,
-                    crs VARCHAR(50) DEFAULT '',
-                    srid INTEGER DEFAULT 0,
-                    feature_count INTEGER DEFAULT 0,
-                    file_size_bytes BIGINT DEFAULT 0,
-                    creation_tool VARCHAR(200) DEFAULT '',
-                    creation_params JSONB DEFAULT '{{}}'::jsonb,
-                    source_assets JSONB DEFAULT '[]'::jsonb,
-                    tags JSONB DEFAULT '[]'::jsonb,
-                    description TEXT DEFAULT '',
+                    asset_uuid UUID DEFAULT gen_random_uuid() UNIQUE,
+                    asset_name VARCHAR(255) NOT NULL,
+                    display_name VARCHAR(255),
+                    technical_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    business_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    operational_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    lineage_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
                     owner_username VARCHAR(100) NOT NULL,
-                    is_shared BOOLEAN DEFAULT FALSE,
+                    is_shared BOOLEAN DEFAULT false,
+                    access_level VARCHAR(20) DEFAULT 'private',
                     created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP DEFAULT NOW(),
-                    CONSTRAINT uq_asset_per_user UNIQUE (asset_name, owner_username, storage_backend)
+                    updated_at TIMESTAMP DEFAULT NOW()
                 )
             """))
             conn.execute(text(
-                f"CREATE INDEX IF NOT EXISTS idx_data_catalog_owner ON {T_DATA_CATALOG} (owner_username)"
+                "CREATE INDEX IF NOT EXISTS idx_assets_owner ON agent_data_assets(owner_username)"
             ))
             conn.execute(text(
-                f"CREATE INDEX IF NOT EXISTS idx_data_catalog_type ON {T_DATA_CATALOG} (asset_type)"
+                "CREATE INDEX IF NOT EXISTS idx_assets_name ON agent_data_assets(asset_name)"
             ))
             conn.execute(text(
-                f"CREATE INDEX IF NOT EXISTS idx_data_catalog_backend ON {T_DATA_CATALOG} (storage_backend)"
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_name_owner "
+                "ON agent_data_assets(asset_name, owner_username)"
             ))
             conn.commit()
         print("[DataCatalog] Data catalog table ready.")
@@ -100,7 +161,7 @@ def _extract_spatial_metadata(path: str) -> dict:
     Non-fatal: returns partial metadata on errors.
     """
     meta = {"file_size_bytes": 0, "crs": "", "srid": 0,
-            "feature_count": 0, "spatial_extent": None}
+            "feature_count": 0, "spatial_extent": None, "column_schema": None}
 
     if not os.path.exists(path):
         return meta
@@ -127,6 +188,11 @@ def _extract_spatial_metadata(path: str) -> dict:
                     "maxx": round(float(bounds[2]), 6),
                     "maxy": round(float(bounds[3]), 6),
                 }
+            # Extract column schema
+            meta["column_schema"] = [
+                {"name": col, "type": str(gdf[col].dtype)}
+                for col in gdf.columns
+            ]
         elif ext in ('.tif', '.tiff', '.img'):
             import rasterio
             with rasterio.open(path) as src:
@@ -143,6 +209,10 @@ def _extract_spatial_metadata(path: str) -> dict:
                     "maxy": round(float(bounds.top), 6),
                 }
                 meta["feature_count"] = src.count  # band count for rasters
+                meta["column_schema"] = [
+                    {"name": f"band_{i+1}", "type": str(src.dtypes[i])}
+                    for i in range(src.count)
+                ]
         elif ext in ('.csv', '.xlsx', '.xls'):
             import pandas as pd
             if ext == '.csv':
@@ -150,6 +220,10 @@ def _extract_spatial_metadata(path: str) -> dict:
             else:
                 df = pd.read_excel(path, nrows=0)
             meta["feature_count"] = 0  # header only
+            meta["column_schema"] = [
+                {"name": col, "type": str(df[col].dtype)}
+                for col in df.columns
+            ]
     except Exception as e:
         logger.debug("[DataCatalog] Metadata extraction partial for %s: %s", path, e)
 
@@ -171,10 +245,11 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                             storage_backend: str = "local",
                             cloud_key: str = "",
                             owner: str = "",
-                            source_assets: list = None) -> Optional[int]:
+                            source_assets: list = None,
+                            pipeline_run_id: str = None) -> Optional[int]:
     """Register a data asset from a file path. Returns asset ID or None.
 
-    Extracts spatial metadata automatically. Upserts on (asset_name, owner, backend).
+    Writes to agent_data_assets with 4-layer metadata format.
     """
     engine = get_engine()
     if not engine:
@@ -187,52 +262,68 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
 
     meta = _extract_spatial_metadata(local_path)
 
+    # Build 4-layer metadata
+    technical = {
+        "storage": {
+            "backend": storage_backend,
+            "path": local_path,
+            "cloud_key": cloud_key or "",
+            "size_bytes": meta["file_size_bytes"],
+            "format": fmt,
+        },
+        "spatial": {
+            "extent": meta["spatial_extent"],
+            "crs": meta["crs"],
+            "srid": meta["srid"],
+        },
+        "structure": {
+            "feature_count": meta["feature_count"],
+            "columns": meta.get("column_schema", []),
+        },
+    }
+    business = {
+        "semantic": {"description": "", "keywords": []},
+        "classification": {"category": asset_type},
+    }
+    operational = {
+        "creation": {
+            "tool": creation_tool,
+            "params": creation_params or {},
+            "pipeline_run_id": pipeline_run_id or "",
+        },
+        "version": {"version": 1, "is_latest": True},
+    }
+    lineage = {
+        "upstream": {"asset_ids": source_assets or []},
+    }
+
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            result = conn.execute(text(f"""
-                INSERT INTO {T_DATA_CATALOG}
-                    (asset_name, asset_type, format, storage_backend, cloud_key,
-                     local_path, spatial_extent, crs, srid, feature_count,
-                     file_size_bytes, creation_tool, creation_params,
-                     source_assets, owner_username)
+            result = conn.execute(text("""
+                INSERT INTO agent_data_assets
+                    (asset_name, display_name, owner_username, is_shared,
+                     technical_metadata, business_metadata,
+                     operational_metadata, lineage_metadata)
                 VALUES
-                    (:name, :type, :fmt, :backend, :cloud_key,
-                     :local_path, CAST(:extent AS jsonb), :crs, :srid, :count,
-                     :size, :tool, CAST(:params AS jsonb),
-                     CAST(:sources AS jsonb), :owner)
-                ON CONFLICT (asset_name, owner_username, storage_backend)
+                    (:name, :display, :owner, false,
+                     CAST(:tech AS jsonb), CAST(:biz AS jsonb),
+                     CAST(:ops AS jsonb), CAST(:lineage AS jsonb))
+                ON CONFLICT (asset_name, owner_username)
                 DO UPDATE SET
-                    asset_type = EXCLUDED.asset_type,
-                    format = EXCLUDED.format,
-                    cloud_key = EXCLUDED.cloud_key,
-                    local_path = EXCLUDED.local_path,
-                    spatial_extent = EXCLUDED.spatial_extent,
-                    crs = EXCLUDED.crs,
-                    srid = EXCLUDED.srid,
-                    feature_count = EXCLUDED.feature_count,
-                    file_size_bytes = EXCLUDED.file_size_bytes,
-                    creation_tool = EXCLUDED.creation_tool,
-                    creation_params = EXCLUDED.creation_params,
-                    source_assets = EXCLUDED.source_assets,
+                    technical_metadata = EXCLUDED.technical_metadata,
+                    operational_metadata = EXCLUDED.operational_metadata,
+                    lineage_metadata = EXCLUDED.lineage_metadata,
                     updated_at = NOW()
                 RETURNING id
             """), {
                 "name": asset_name,
-                "type": asset_type,
-                "fmt": fmt,
-                "backend": storage_backend,
-                "cloud_key": cloud_key,
-                "local_path": local_path,
-                "extent": json.dumps(meta["spatial_extent"]) if meta["spatial_extent"] else None,
-                "crs": meta["crs"],
-                "srid": meta["srid"],
-                "count": meta["feature_count"],
-                "size": meta["file_size_bytes"],
-                "tool": creation_tool,
-                "params": json.dumps(creation_params or {}),
-                "sources": json.dumps(source_assets or []),
+                "display": asset_name,
                 "owner": owner,
+                "tech": json.dumps(technical),
+                "biz": json.dumps(business),
+                "ops": json.dumps(operational),
+                "lineage": json.dumps(lineage),
             })
             row = result.fetchone()
             conn.commit()
@@ -264,8 +355,8 @@ def _resolve_source_assets(paths: list) -> list:
             _inject_user_context(conn)
             for p in paths:
                 name = os.path.basename(p) if os.sep in p or '/' in p else p
-                row = conn.execute(text(f"""
-                    SELECT id, asset_name FROM {T_DATA_CATALOG}
+                row = conn.execute(text("""
+                    SELECT id, asset_name FROM agent_data_assets
                     WHERE asset_name = :name
                     ORDER BY updated_at DESC LIMIT 1
                 """), {"name": name}).fetchone()
@@ -281,7 +372,8 @@ def _resolve_source_assets(paths: list) -> list:
 
 def register_tool_output(local_path: str, tool_name: str,
                          tool_params: dict = None, cloud_key: str = "",
-                         source_paths: list = None) -> Optional[int]:
+                         source_paths: list = None,
+                         pipeline_run_id: str = None) -> Optional[int]:
     """Non-fatal wrapper for auto_register_from_path. Used by app.py after tool execution."""
     try:
         backend = "cloud" if cloud_key else "local"
@@ -291,6 +383,7 @@ def register_tool_output(local_path: str, tool_name: str,
             creation_params=tool_params,
             storage_backend=backend, cloud_key=cloud_key,
             source_assets=source_assets,
+            pipeline_run_id=pipeline_run_id,
         )
     except Exception as e:
         logger.debug("[DataCatalog] register_tool_output non-fatal error: %s", e)
@@ -349,31 +442,40 @@ def register_postgis_asset(table_name: str, owner: str = "",
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            result = conn.execute(text(f"""
-                INSERT INTO {T_DATA_CATALOG}
-                    (asset_name, asset_type, format, storage_backend, postgis_table,
-                     spatial_extent, crs, srid, feature_count, description, owner_username)
+            result = conn.execute(text("""
+                INSERT INTO agent_data_assets
+                    (asset_name, display_name, owner_username, is_shared,
+                     technical_metadata, business_metadata,
+                     operational_metadata, lineage_metadata)
                 VALUES
-                    (:name, 'vector', 'postgis', 'postgis', :tbl,
-                     CAST(:extent AS jsonb), :crs, :srid, :count, :desc, :owner)
-                ON CONFLICT (asset_name, owner_username, storage_backend)
+                    (:name, :name, :owner, false,
+                     CAST(:tech AS jsonb), CAST(:biz AS jsonb),
+                     '{}'::jsonb, '{}'::jsonb)
+                ON CONFLICT (asset_name, owner_username)
                 DO UPDATE SET
-                    spatial_extent = EXCLUDED.spatial_extent,
-                    crs = EXCLUDED.crs,
-                    srid = EXCLUDED.srid,
-                    feature_count = EXCLUDED.feature_count,
-                    description = EXCLUDED.description,
+                    technical_metadata = EXCLUDED.technical_metadata,
                     updated_at = NOW()
                 RETURNING id
             """), {
                 "name": table_name,
-                "tbl": table_name,
-                "extent": json.dumps(meta["spatial_extent"]) if meta["spatial_extent"] else None,
-                "crs": meta["crs"],
-                "srid": meta["srid"],
-                "count": meta["feature_count"],
-                "desc": description,
                 "owner": owner,
+                "tech": json.dumps({
+                    "storage": {
+                        "backend": "postgis",
+                        "postgis_table": table_name,
+                        "format": "postgis",
+                    },
+                    "spatial": {
+                        "extent": meta["spatial_extent"],
+                        "crs": meta["crs"],
+                        "srid": meta["srid"],
+                    },
+                    "structure": {"feature_count": meta["feature_count"]},
+                }),
+                "biz": json.dumps({
+                    "semantic": {"description": description or "", "keywords": []},
+                    "classification": {"category": "vector"},
+                }),
             })
             row = result.fetchone()
             conn.commit()
@@ -388,7 +490,8 @@ def register_postgis_asset(table_name: str, owner: str = "",
 # =====================================================================
 
 def list_data_assets(asset_type: str = "", tags: str = "",
-                     keyword: str = "", storage_backend: str = "") -> dict:
+                     keyword: str = "", storage_backend: str = "",
+                     offset: int = 0, limit: int = 50) -> dict:
     """
     [Data Lake Tool] Browse the data asset catalog.
 
@@ -400,6 +503,8 @@ def list_data_assets(asset_type: str = "", tags: str = "",
         tags: Comma-separated tags to filter by. Empty = all.
         keyword: Search keyword to match against asset_name and description.
         storage_backend: Filter by backend (local/cloud/postgis). Empty = all.
+        offset: Number of rows to skip (for pagination). Default 0.
+        limit: Max rows to return (1-200). Default 50.
 
     Returns:
         Dict with status and list of matching assets.
@@ -416,31 +521,52 @@ def list_data_assets(asset_type: str = "", tags: str = "",
             params = {}
 
             if asset_type:
-                conditions.append("asset_type = :atype")
+                conditions.append("business_metadata->'classification'->>'category' = :atype")
                 params["atype"] = asset_type
             if storage_backend:
-                conditions.append("storage_backend = :backend")
+                conditions.append("technical_metadata->'storage'->>'backend' = :backend")
                 params["backend"] = storage_backend
             if keyword:
                 conditions.append(
-                    "(asset_name ILIKE :kw OR description ILIKE :kw)")
+                    "(asset_name ILIKE :kw OR display_name ILIKE :kw"
+                    " OR business_metadata->'semantic'->>'description' ILIKE :kw)")
                 params["kw"] = f"%{keyword}%"
             if tags:
                 tag_list = [t.strip() for t in tags.split(",") if t.strip()]
                 for i, tag in enumerate(tag_list):
-                    conditions.append(f"tags @> CAST(:tag{i} AS jsonb)")
+                    conditions.append(f"business_metadata->'semantic'->'keywords' @> CAST(:tag{i} AS jsonb)")
                     params[f"tag{i}"] = json.dumps([tag])
 
             where = " AND ".join(conditions) if conditions else "TRUE"
 
+            limit = max(1, min(int(limit), 200))
+            offset = max(0, int(offset))
+
+            total_row = conn.execute(text(f"""
+                SELECT COUNT(*) FROM agent_data_assets WHERE {where}
+            """), params).fetchone()
+            total_count = total_row[0] if total_row else 0
+
+            params["_limit"] = limit
+            params["_offset"] = offset
+
             rows = conn.execute(text(f"""
-                SELECT id, asset_name, asset_type, format, storage_backend,
-                       crs, feature_count, file_size_bytes, tags, description,
-                       owner_username, is_shared, created_at
-                FROM {T_DATA_CATALOG}
+                SELECT id, asset_name,
+                       business_metadata->'classification'->>'category' as asset_type,
+                       technical_metadata->'storage'->>'format' as format,
+                       technical_metadata->'storage'->>'backend' as storage_backend,
+                       technical_metadata->'spatial'->>'crs' as crs,
+                       (technical_metadata->'structure'->>'feature_count')::int as feature_count,
+                       (technical_metadata->'storage'->>'size_bytes')::bigint as file_size_bytes,
+                       business_metadata->'semantic'->'keywords' as tags,
+                       business_metadata->'semantic'->>'description' as description,
+                       owner_username, is_shared, created_at,
+                       'public' as sensitivity_level,
+                       COALESCE((operational_metadata->'version'->>'version')::int, 1) as version
+                FROM agent_data_assets
                 WHERE {where}
                 ORDER BY updated_at DESC
-                LIMIT 100
+                LIMIT :_limit OFFSET :_offset
             """), params).fetchall()
 
             assets = []
@@ -453,11 +579,16 @@ def list_data_assets(asset_type: str = "", tags: str = "",
                     "description": r[9],
                     "owner": r[10], "shared": r[11],
                     "created": str(r[12]),
+                    "sensitivity_level": r[13] or "public",
+                    "version": r[14] or 1,
                 })
 
             return {
                 "status": "success",
                 "count": len(assets),
+                "total": total_count,
+                "offset": offset,
+                "limit": limit,
                 "assets": assets,
                 "message": f"Found {len(assets)} data assets"
                            + (f" matching '{keyword}'" if keyword else ""),
@@ -486,12 +617,20 @@ def describe_data_asset(asset_name_or_id: str) -> dict:
 
             # Try numeric ID first
             if asset_name_or_id.isdigit():
-                row = conn.execute(text(f"""
-                    SELECT * FROM {T_DATA_CATALOG} WHERE id = :id
+                row = conn.execute(text("""
+                    SELECT id, asset_name, display_name, owner_username, is_shared,
+                           technical_metadata, business_metadata,
+                           operational_metadata, lineage_metadata,
+                           created_at, updated_at
+                    FROM agent_data_assets WHERE id = :id
                 """), {"id": int(asset_name_or_id)}).fetchone()
             else:
-                row = conn.execute(text(f"""
-                    SELECT * FROM {T_DATA_CATALOG}
+                row = conn.execute(text("""
+                    SELECT id, asset_name, display_name, owner_username, is_shared,
+                           technical_metadata, business_metadata,
+                           operational_metadata, lineage_metadata,
+                           created_at, updated_at
+                    FROM agent_data_assets
                     WHERE asset_name ILIKE :name
                     ORDER BY updated_at DESC LIMIT 1
                 """), {"name": f"%{asset_name_or_id}%"}).fetchone()
@@ -500,8 +639,19 @@ def describe_data_asset(asset_name_or_id: str) -> dict:
                 return {"status": "error",
                         "message": f"Asset '{asset_name_or_id}' not found or access denied"}
 
-            keys = row._mapping.keys()
-            asset = {k: (str(v) if hasattr(v, 'isoformat') else v) for k, v in zip(keys, row)}
+            asset = {
+                "id": row[0],
+                "name": row[1],
+                "display_name": row[2],
+                "owner": row[3],
+                "shared": row[4],
+                "technical": row[5],
+                "business": row[6],
+                "operational": row[7],
+                "lineage": row[8],
+                "created": str(row[9]),
+                "updated": str(row[10]),
+            }
 
             return {"status": "success", "asset": asset}
     except Exception as e:
@@ -510,13 +660,13 @@ def describe_data_asset(asset_name_or_id: str) -> dict:
 
 def search_data_assets(query: str) -> dict:
     """
-    [Data Lake Tool] Semantic fuzzy search across data assets.
+    [Data Lake Tool] Semantic hybrid search across data assets.
 
-    Searches asset names, descriptions, and tags using fuzzy string matching.
-    More flexible than list_data_assets keyword filtering.
+    Combines fuzzy string matching with vector embedding similarity for
+    semantic understanding (e.g. "热岛效应" can find "地表温度" datasets).
 
     Args:
-        query: Search query (natural language, e.g. "土地利用" or "DEM 斑竹").
+        query: Search query (natural language, e.g. "土地利用" or "热岛效应分析").
 
     Returns:
         Dict with ranked list of matching assets.
@@ -529,11 +679,20 @@ def search_data_assets(query: str) -> dict:
         with engine.connect() as conn:
             _inject_user_context(conn)
 
-            rows = conn.execute(text(f"""
-                SELECT id, asset_name, asset_type, format, storage_backend,
-                       crs, feature_count, file_size_bytes, tags, description,
-                       owner_username, is_shared, postgis_table, local_path
-                FROM {T_DATA_CATALOG}
+            rows = conn.execute(text("""
+                SELECT id, asset_name,
+                       business_metadata->'classification'->>'category' as asset_type,
+                       technical_metadata->'storage'->>'format' as format,
+                       technical_metadata->'storage'->>'backend' as storage_backend,
+                       technical_metadata->'spatial'->>'crs' as crs,
+                       (technical_metadata->'structure'->>'feature_count')::int as feature_count,
+                       (technical_metadata->'storage'->>'size_bytes')::bigint as file_size_bytes,
+                       business_metadata->'semantic'->'keywords' as tags,
+                       business_metadata->'semantic'->>'description' as description,
+                       owner_username, is_shared,
+                       technical_metadata->'storage'->>'postgis_table' as postgis_table,
+                       technical_metadata->'storage'->>'path' as local_path
+                FROM agent_data_assets
                 ORDER BY updated_at DESC
             """)).fetchall()
 
@@ -622,6 +781,7 @@ def search_data_assets(query: str) -> dict:
                     scored.append((score, asset_info))
 
             scored.sort(key=lambda x: x[0], reverse=True)
+
             results = [s[1] for s in scored[:20]]
 
             return {
@@ -671,37 +831,47 @@ def register_data_asset(asset_name: str, asset_type: str,
                 "feature_count": 0, "spatial_extent": None,
             }
 
-            result = conn.execute(text(f"""
-                INSERT INTO {T_DATA_CATALOG}
-                    (asset_name, asset_type, format, storage_backend, cloud_key,
-                     local_path, postgis_table, spatial_extent, crs, srid,
-                     feature_count, file_size_bytes, tags, description, owner_username)
+            result = conn.execute(text("""
+                INSERT INTO agent_data_assets
+                    (asset_name, display_name, owner_username, is_shared,
+                     technical_metadata, business_metadata,
+                     operational_metadata, lineage_metadata)
                 VALUES
-                    (:name, :type, :fmt, :backend, :cloud_key,
-                     :local_path, :pg_table, CAST(:extent AS jsonb), :crs, :srid,
-                     :count, :size, CAST(:tags AS jsonb), :desc, :owner)
-                ON CONFLICT (asset_name, owner_username, storage_backend)
+                    (:name, :name, :owner, false,
+                     CAST(:tech AS jsonb), CAST(:biz AS jsonb),
+                     CAST(:ops AS jsonb), '{}'::jsonb)
+                ON CONFLICT (asset_name, owner_username)
                 DO UPDATE SET
-                    description = EXCLUDED.description,
-                    tags = EXCLUDED.tags,
+                    business_metadata = EXCLUDED.business_metadata,
                     updated_at = NOW()
                 RETURNING id
             """), {
                 "name": asset_name,
-                "type": asset_type,
-                "fmt": os.path.splitext(asset_name)[1].lstrip('.').lower(),
-                "backend": storage_backend,
-                "cloud_key": cloud_key,
-                "local_path": local_path,
-                "pg_table": postgis_table,
-                "extent": json.dumps(meta["spatial_extent"]) if meta["spatial_extent"] else None,
-                "crs": meta["crs"],
-                "srid": meta["srid"],
-                "count": meta["feature_count"],
-                "size": meta["file_size_bytes"],
-                "tags": json.dumps(tag_list),
-                "desc": description,
                 "owner": owner,
+                "tech": json.dumps({
+                    "storage": {
+                        "backend": storage_backend,
+                        "path": local_path,
+                        "cloud_key": cloud_key,
+                        "postgis_table": postgis_table,
+                        "size_bytes": meta["file_size_bytes"],
+                        "format": os.path.splitext(asset_name)[1].lstrip('.').lower(),
+                    },
+                    "spatial": {
+                        "extent": meta["spatial_extent"],
+                        "crs": meta["crs"],
+                        "srid": meta["srid"],
+                    },
+                    "structure": {"feature_count": meta["feature_count"]},
+                }),
+                "biz": json.dumps({
+                    "semantic": {"description": description, "keywords": tag_list},
+                    "classification": {"category": asset_type},
+                }),
+                "ops": json.dumps({
+                    "creation": {"tool": "manual_registration"},
+                    "version": {"version": 1, "is_latest": True},
+                }),
             })
             row = result.fetchone()
             conn.commit()
@@ -741,9 +911,11 @@ def tag_data_asset(asset_id: str, tags_json: str) -> dict:
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            result = conn.execute(text(f"""
-                UPDATE {T_DATA_CATALOG}
-                SET tags = CAST(:tags AS jsonb), updated_at = NOW()
+            result = conn.execute(text("""
+                UPDATE agent_data_assets
+                SET business_metadata = jsonb_set(
+                    business_metadata, '{semantic,keywords}', CAST(:tags AS jsonb)
+                ), updated_at = NOW()
                 WHERE id = :id
             """), {"tags": json.dumps(tag_list), "id": int(asset_id)})
             conn.commit()
@@ -773,8 +945,8 @@ def delete_data_asset(asset_id: str) -> dict:
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            result = conn.execute(text(f"""
-                DELETE FROM {T_DATA_CATALOG} WHERE id = :id
+            result = conn.execute(text("""
+                DELETE FROM agent_data_assets WHERE id = :id
             """), {"id": int(asset_id)})
             conn.commit()
             if result.rowcount == 0:
@@ -805,8 +977,8 @@ def share_data_asset(asset_id: str) -> dict:
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            result = conn.execute(text(f"""
-                UPDATE {T_DATA_CATALOG}
+            result = conn.execute(text("""
+                UPDATE agent_data_assets
                 SET is_shared = TRUE, updated_at = NOW()
                 WHERE id = :id
             """), {"id": int(asset_id)})
@@ -841,14 +1013,20 @@ def get_data_lineage(asset_name_or_id: str, direction: str = "both") -> dict:
 
             # Find the target asset
             if asset_name_or_id.isdigit():
-                target = conn.execute(text(f"""
-                    SELECT id, asset_name, asset_type, creation_tool, source_assets
-                    FROM {T_DATA_CATALOG} WHERE id = :id
+                target = conn.execute(text("""
+                    SELECT id, asset_name,
+                           business_metadata->'classification'->>'category' as asset_type,
+                           operational_metadata->'creation'->>'tool' as creation_tool,
+                           lineage_metadata->'upstream'->'asset_ids' as source_assets
+                    FROM agent_data_assets WHERE id = :id
                 """), {"id": int(asset_name_or_id)}).fetchone()
             else:
-                target = conn.execute(text(f"""
-                    SELECT id, asset_name, asset_type, creation_tool, source_assets
-                    FROM {T_DATA_CATALOG}
+                target = conn.execute(text("""
+                    SELECT id, asset_name,
+                           business_metadata->'classification'->>'category' as asset_type,
+                           operational_metadata->'creation'->>'tool' as creation_tool,
+                           lineage_metadata->'upstream'->'asset_ids' as source_assets
+                    FROM agent_data_assets
                     WHERE asset_name ILIKE :name
                     ORDER BY updated_at DESC LIMIT 1
                 """), {"name": f"%{asset_name_or_id}%"}).fetchone()
@@ -918,13 +1096,19 @@ def _walk_ancestors(conn, source_assets_raw, max_depth: int = 10) -> list:
             entry = {"name": asset_name, "depth": depth}
             if asset_id:
                 entry["id"] = asset_id
-                row = conn.execute(text(f"""
-                    SELECT id, asset_name, asset_type, creation_tool, source_assets
-                    FROM {T_DATA_CATALOG} WHERE id = :id
+                row = conn.execute(text("""
+                    SELECT id, asset_name,
+                           business_metadata->'classification'->>'category' as asset_type,
+                           operational_metadata->'creation'->>'tool' as creation_tool,
+                           lineage_metadata->'upstream'->'asset_ids' as source_assets,
+                           operational_metadata->'creation'->>'pipeline_run_id' as pipeline_run_id
+                    FROM agent_data_assets WHERE id = :id
                 """), {"id": asset_id}).fetchone()
                 if row:
                     entry["type"] = row[2]
                     entry["creation_tool"] = row[3]
+                    if row[5]:
+                        entry["pipeline_run_id"] = row[5]
                     parent_sources = row[4] if isinstance(row[4], list) else json.loads(
                         row[4] or "[]")
                     if parent_sources:
@@ -939,23 +1123,30 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
     """Find assets whose source_assets reference this asset."""
     descendants = []
     try:
-        rows = conn.execute(text(f"""
-            SELECT id, asset_name, asset_type, creation_tool
-            FROM {T_DATA_CATALOG}
-            WHERE source_assets::text LIKE :pattern_id
-               OR source_assets::text LIKE :pattern_name
+        # Use JSONB containment @> for precise matching instead of text LIKE
+        rows = conn.execute(text("""
+            SELECT id, asset_name,
+                   business_metadata->'classification'->>'category' as asset_type,
+                   operational_metadata->'creation'->>'tool' as creation_tool,
+                   operational_metadata->'creation'->>'pipeline_run_id' as pipeline_run_id
+            FROM agent_data_assets
+            WHERE lineage_metadata->'upstream'->'asset_ids' @> CAST(:pattern_id AS jsonb)
+               OR lineage_metadata->'upstream'->'asset_ids' @> CAST(:pattern_name AS jsonb)
             ORDER BY created_at
             LIMIT 50
         """), {
-            "pattern_id": f'%"id": {asset_id}%',
-            "pattern_name": f'%"name": "{asset_name}"%',
+            "pattern_id": json.dumps([{"id": asset_id}]),
+            "pattern_name": json.dumps([{"name": asset_name}]),
         }).fetchall()
 
         for r in rows:
-            descendants.append({
+            entry = {
                 "id": r[0], "name": r[1],
                 "type": r[2], "creation_tool": r[3],
-            })
+            }
+            if r[4]:
+                entry["pipeline_run_id"] = r[4]
+            descendants.append(entry)
     except Exception:
         pass
     return descendants
@@ -988,16 +1179,30 @@ def download_cloud_asset(asset_name_or_id: str) -> dict:
             _inject_user_context(conn)
 
             if asset_name_or_id.isdigit():
-                row = conn.execute(text(f"""
-                    SELECT id, asset_name, asset_type, format, storage_backend,
-                           cloud_key, local_path, postgis_table, crs, srid
-                    FROM {T_DATA_CATALOG} WHERE id = :id
+                row = conn.execute(text("""
+                    SELECT id, asset_name,
+                           business_metadata->'classification'->>'category' as asset_type,
+                           technical_metadata->'storage'->>'format' as format,
+                           technical_metadata->'storage'->>'backend' as storage_backend,
+                           technical_metadata->'storage'->>'cloud_key' as cloud_key,
+                           technical_metadata->'storage'->>'path' as local_path,
+                           technical_metadata->'storage'->>'postgis_table' as postgis_table,
+                           technical_metadata->'spatial'->>'crs' as crs,
+                           (technical_metadata->'spatial'->>'srid')::int as srid
+                    FROM agent_data_assets WHERE id = :id
                 """), {"id": int(asset_name_or_id)}).fetchone()
             else:
-                row = conn.execute(text(f"""
-                    SELECT id, asset_name, asset_type, format, storage_backend,
-                           cloud_key, local_path, postgis_table, crs, srid
-                    FROM {T_DATA_CATALOG}
+                row = conn.execute(text("""
+                    SELECT id, asset_name,
+                           business_metadata->'classification'->>'category' as asset_type,
+                           technical_metadata->'storage'->>'format' as format,
+                           technical_metadata->'storage'->>'backend' as storage_backend,
+                           technical_metadata->'storage'->>'cloud_key' as cloud_key,
+                           technical_metadata->'storage'->>'path' as local_path,
+                           technical_metadata->'storage'->>'postgis_table' as postgis_table,
+                           technical_metadata->'spatial'->>'crs' as crs,
+                           (technical_metadata->'spatial'->>'srid')::int as srid
+                    FROM agent_data_assets
                     WHERE asset_name ILIKE :name
                     ORDER BY updated_at DESC LIMIT 1
                 """), {"name": f"%{asset_name_or_id}%"}).fetchone()
@@ -1038,9 +1243,11 @@ def download_cloud_asset(asset_name_or_id: str) -> dict:
                 dl_path = download_file_smart(cloud_key, user_dir)
                 if dl_path and os.path.exists(dl_path):
                     # Update catalog with local_path for future access
-                    conn.execute(text(f"""
-                        UPDATE {T_DATA_CATALOG}
-                        SET local_path = :lp, updated_at = NOW()
+                    conn.execute(text("""
+                        UPDATE agent_data_assets
+                        SET technical_metadata = jsonb_set(
+                            technical_metadata, '{storage,path}', to_jsonb(:lp::text)
+                        ), updated_at = NOW()
                         WHERE id = :id
                     """), {"lp": dl_path, "id": asset_id})
                     conn.commit()

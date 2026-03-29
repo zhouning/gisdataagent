@@ -16,7 +16,11 @@ _BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 
 
 def _generate_output_path(prefix: str, extension: str = "shp") -> str:
-    """Generates a unique output file path in the current user's upload directory."""
+    """Generates a unique output file path in the current user's upload directory.
+
+    When DEFAULT_STORAGE_BACKEND=cloud, also schedules async upload after write.
+    The returned path is always local (tools write locally first).
+    """
     unique_id = uuid.uuid4().hex[:8]
     filename = f"{prefix}_{unique_id}.{extension}"
     user_dir = get_user_upload_dir()
@@ -24,19 +28,25 @@ def _generate_output_path(prefix: str, extension: str = "shp") -> str:
 
 
 def sync_to_obs(local_path: str) -> None:
-    """Synchronous upload to OBS and register in data catalog. Silent on failure."""
+    """Upload to cloud storage and register in data catalog. Silent on failure.
+
+    Uses StorageManager for consistent cloud I/O.
+    """
     try:
-        from .obs_storage import is_obs_configured, upload_file_smart
+        from .storage_manager import get_storage_manager
         from .user_context import current_user_id
         uid = current_user_id.get()
-        if is_obs_configured():
-            keys = upload_file_smart(local_path, uid)
-            # Register cloud asset
-            if keys:
+        sm = get_storage_manager()
+        if sm.cloud_available:
+            uri = sm.store(local_path, user_id=uid)
+            # Register cloud asset in catalog
+            if uri.startswith("s3://"):
                 try:
                     from .data_catalog import auto_register_from_path
+                    # Extract key from URI
+                    key = uri.split("://", 1)[1].split("/", 1)[1] if "/" in uri else ""
                     auto_register_from_path(
-                        local_path, storage_backend="cloud", cloud_key=keys[0],
+                        local_path, storage_backend="cloud", cloud_key=key,
                     )
                 except Exception:
                     pass
@@ -45,7 +55,17 @@ def sync_to_obs(local_path: str) -> None:
 
 
 def _resolve_path(file_path: str) -> str:
-    """Resolve file path, checking user sandbox first, then shared uploads."""
+    """Resolve file path, checking URI schemes → user sandbox → subdirs → LOCAL_DATA_DIRS → shared → cloud.
+
+    Supports s3://, obs://, postgis:// URIs via StorageManager.
+    """
+    # Handle URI schemes (s3://, obs://, postgis://, file://)
+    if "://" in file_path:
+        try:
+            from .storage_manager import get_storage_manager
+            return get_storage_manager().resolve(file_path)
+        except Exception:
+            pass
     if os.path.isabs(file_path):
         if os.path.exists(file_path):
             return file_path
@@ -56,6 +76,34 @@ def _resolve_path(file_path: str) -> str:
     user_path = os.path.join(user_dir, os.path.basename(file_path))
     if os.path.exists(user_path):
         return user_path
+    # Check subdirectories of user folder (recursive basename search)
+    basename = os.path.basename(file_path)
+    for root, dirs, files in os.walk(user_dir):
+        if basename in files:
+            return os.path.join(root, basename)
+        # Limit depth to avoid excessive scanning
+        depth = root[len(user_dir):].count(os.sep)
+        if depth >= 3:
+            dirs.clear()
+    # Check LOCAL_DATA_DIRS (read-only mounted directories)
+    local_data_dirs = os.environ.get("LOCAL_DATA_DIRS", "")
+    if local_data_dirs:
+        for entry in local_data_dirs.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            # Strip label if present (label:path format)
+            if ":" in entry and not (len(entry) > 1 and entry[1] == ":"):
+                _, entry = entry.split(":", 1)
+            entry = entry.strip()
+            # Try exact relative path under this dir
+            candidate = os.path.join(entry, file_path)
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
+            # Try basename match
+            candidate = os.path.join(entry, basename)
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
     # Fallback: check shared uploads folder (backward compat)
     upload_path = os.path.join(_BASE_UPLOAD_DIR, file_path)
     if os.path.exists(upload_path):
@@ -743,34 +791,176 @@ def check_topology(file_path: str) -> dict[str, any]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def check_field_standards(file_path: str, standard_schema: dict) -> dict[str, any]:
-    """
-    [Governance Tool] Validates attribute data against a standard schema (field names, types, and allowed values).
-    
+
+def list_fgdb_layers(file_path: str) -> dict:
+    """列出 Esri File Geodatabase (.gdb) 中的所有图层及其要素数、几何类型。
+
     Args:
-        file_path: Path to the data file.
-        standard_schema: Dict e.g. {"DLMC": {"type": "string", "allowed": ["水田", "旱地", "有林地"]}}
+        file_path: File Geodatabase 目录路径（xxx.gdb）。
+
+    Returns:
+        包含图层列表的字典，每个图层有 name、count、geometry_type 字段。
     """
     try:
-        gdf = gpd.read_file(_resolve_path(file_path))
-        results = {"missing_fields": [], "type_mismatches": [], "invalid_values": []}
-        
-        for field, rules in standard_schema.items():
-            if field not in gdf.columns:
-                results["missing_fields"].append(field)
-                continue
-            
-            # Check values if 'allowed' list exists
-            if "allowed" in rules:
-                invalid = gdf[~gdf[field].isin(rules["allowed"])]
-                if not invalid.empty:
-                    results["invalid_values"].append({
-                        "field": field, 
-                        "count": len(invalid), 
-                        "sample": invalid[field].unique().tolist()[:5]
+        import fiona
+        path = _resolve_path(file_path)
+        layers = fiona.listlayers(path)
+        if not layers:
+            return {"status": "ok", "layers": [], "message": "GDB 为空"}
+        result = []
+        for name in layers:
+            try:
+                with fiona.open(path, layer=name) as src:
+                    result.append({
+                        "name": name,
+                        "count": len(src),
+                        "geometry_type": src.schema.get("geometry", "Unknown"),
+                        "fields": list(src.schema.get("properties", {}).keys()),
                     })
-        
-        results["is_standard"] = not (results["missing_fields"] or results["invalid_values"])
+            except Exception as e:
+                result.append({"name": name, "error": str(e)[:100]})
+        return {"status": "ok", "layer_count": len(result), "layers": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def list_dxf_layers(file_path: str) -> dict:
+    """列出 DXF/DWG 文件中的图层及其实体类型和数量。
+
+    Args:
+        file_path: DXF 或 DWG 文件路径。
+
+    Returns:
+        包含图层列表的字典，每个图层有 name、entity_types、count 字段。
+    """
+    try:
+        import ezdxf
+        path = _resolve_path(file_path)
+        doc = ezdxf.readfile(str(path))
+        msp = doc.modelspace()
+        layer_stats: dict = {}
+        for entity in msp:
+            layer = entity.dxf.layer if hasattr(entity.dxf, 'layer') else '0'
+            etype = entity.dxftype()
+            if layer not in layer_stats:
+                layer_stats[layer] = {"name": layer, "entity_types": {}, "count": 0}
+            layer_stats[layer]["count"] += 1
+            layer_stats[layer]["entity_types"][etype] = layer_stats[layer]["entity_types"].get(etype, 0) + 1
+        layers = sorted(layer_stats.values(), key=lambda x: x["count"], reverse=True)
+        return {"status": "ok", "layer_count": len(layers), "layers": layers}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def check_field_standards(file_path: str, standard_schema: str = "") -> dict[str, any]:
+    """
+    [Governance Tool] 按数据标准校验属性字段：字段存在性、必填约束(M/C/O)、值域枚举、类型兼容、长度限制。
+
+    Args:
+        file_path: Path to the data file.
+        standard_schema: Either a standard ID (e.g. "dltb_2023") to auto-load from Standard Registry,
+                         or a JSON dict string e.g. '{"DLMC": {"type": "string", "allowed": ["水田", "旱地"]}}'
+    """
+    try:
+        standard_obj = None  # Full DataStandard for M/C/O + max_length checks
+
+        # Resolve schema: standard_id or inline JSON
+        if standard_schema and not standard_schema.strip().startswith("{"):
+            from .standard_registry import StandardRegistry
+            std_id = standard_schema.strip()
+            schema = StandardRegistry.get_field_schema(std_id)
+            standard_obj = StandardRegistry.get(std_id)
+            if not schema:
+                return {"status": "error", "message": f"未找到标准定义: {standard_schema}"}
+        elif standard_schema:
+            import json as _json
+            schema = _json.loads(standard_schema)
+        else:
+            return {"status": "error", "message": "请提供标准ID (如 'dltb_2023') 或 JSON schema"}
+
+        gdf = gpd.read_file(_resolve_path(file_path))
+        results = {
+            "missing_fields": [],
+            "missing_mandatory": [],
+            "mandatory_nulls": [],
+            "type_mismatches": [],
+            "length_violations": [],
+            "invalid_values": [],
+        }
+
+        # --- Enumeration / allowed-value checks (existing logic) ---
+        for field_name, rules in schema.items():
+            if field_name not in gdf.columns:
+                results["missing_fields"].append(field_name)
+                continue
+            if "allowed" in rules and rules["allowed"]:
+                non_null = gdf[field_name].dropna()
+                if not non_null.empty:
+                    invalid = non_null[~non_null.astype(str).isin([str(v) for v in rules["allowed"]])]
+                    if not invalid.empty:
+                        results["invalid_values"].append({
+                            "field": field_name,
+                            "count": len(invalid),
+                            "sample": invalid.unique().tolist()[:5],
+                        })
+
+        # --- Extended checks when full standard is available ---
+        TYPE_MAP = {
+            "string": ["object", "str", "string"],
+            "numeric": ["float64", "float32", "int64", "int32", "Float64", "Int64"],
+            "integer": ["int64", "int32", "Int64", "int16"],
+            "date": ["datetime64"],
+        }
+
+        if standard_obj:
+            for fspec in standard_obj.fields:
+                # M/C/O mandatory check
+                if fspec.required == "M":
+                    if fspec.name not in gdf.columns:
+                        if fspec.name not in results["missing_mandatory"]:
+                            results["missing_mandatory"].append(fspec.name)
+                    else:
+                        null_count = int(gdf[fspec.name].isna().sum())
+                        empty_count = 0
+                        if gdf[fspec.name].dtype == object:
+                            empty_count = int((gdf[fspec.name] == "").sum())
+                        total_missing = null_count + empty_count
+                        if total_missing > 0:
+                            results["mandatory_nulls"].append({
+                                "field": fspec.name, "null_count": total_missing,
+                            })
+
+                # Type compatibility check
+                if fspec.name in gdf.columns and fspec.type in TYPE_MAP:
+                    actual = str(gdf[fspec.name].dtype)
+                    if not any(t in actual for t in TYPE_MAP[fspec.type]):
+                        results["type_mismatches"].append({
+                            "field": fspec.name,
+                            "expected": fspec.type,
+                            "actual": actual,
+                        })
+
+                # max_length check (string fields)
+                if fspec.max_length and fspec.name in gdf.columns:
+                    try:
+                        str_col = gdf[fspec.name].dropna().astype(str)
+                        over = str_col[str_col.str.len() > fspec.max_length]
+                        if not over.empty:
+                            results["length_violations"].append({
+                                "field": fspec.name,
+                                "max_length": fspec.max_length,
+                                "violation_count": len(over),
+                                "sample": over.head(3).tolist(),
+                            })
+                    except Exception:
+                        pass
+
+        # --- Compliance rate ---
+        total_checks = len(schema)
+        issue_fields = set(results["missing_fields"]) | {v["field"] for v in results["invalid_values"]}
+        passed = total_checks - len(issue_fields)
+        results["compliance_rate"] = round(passed / total_checks * 100, 1) if total_checks else 100.0
+        results["is_standard"] = not (results["missing_mandatory"] or results["invalid_values"])
         return results
     except Exception as e:
         return {"status": "error", "message": str(e)}

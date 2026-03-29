@@ -798,3 +798,209 @@ def reindex_kb(kb_id: int) -> dict:
     except Exception as e:
         logger.warning("[KB] reindex_kb failed: %s", e)
         return {"reindexed": 0, "failed": 0, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Graph / Entity helpers (used by kb_routes)
+# ---------------------------------------------------------------------------
+
+def get_kb_graph(kb_id: int) -> dict:
+    """Return knowledge graph data for a KB. Delegates to knowledge_graph if available."""
+    try:
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        nodes = [{"id": n, **gkg.graph.nodes[n]} for n in gkg.graph.nodes]
+        edges = [{"source": u, "target": v, **d} for u, v, d in gkg.graph.edges(data=True)]
+        return {"nodes": nodes, "edges": edges}
+    except Exception as e:
+        logger.debug("[KB] get_kb_graph fallback: %s", e)
+        return {"nodes": [], "edges": []}
+
+
+def get_kb_entities(kb_id: int) -> list[dict]:
+    """Return entities extracted from KB documents."""
+    try:
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        return [{"id": n, **gkg.graph.nodes[n]} for n in gkg.graph.nodes]
+    except Exception as e:
+        logger.debug("[KB] get_kb_entities fallback: %s", e)
+        return []
+
+
+def build_kb_graph(kb_id: int) -> dict:
+    """Build/rebuild knowledge graph from KB documents."""
+    try:
+        docs = list_documents(kb_id)
+        if not docs:
+            return {"status": "no_documents", "entities": 0, "relations": 0}
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        entity_count = len(gkg.graph.nodes)
+        edge_count = len(gkg.graph.edges)
+        return {"status": "ok", "entities": entity_count, "relations": edge_count}
+    except Exception as e:
+        logger.warning("[KB] build_kb_graph failed: %s", e)
+        return {"status": "error", "error": str(e), "entities": 0, "relations": 0}
+
+
+def graph_rag_search(kb_id: int, query: str) -> list[dict]:
+    """Search KB using graph-augmented retrieval."""
+    try:
+        from .knowledge_graph import GeoKnowledgeGraph
+        gkg = GeoKnowledgeGraph()
+        # Try entity name matching first
+        results = []
+        for node_id, data in gkg.graph.nodes(data=True):
+            name = data.get("name", str(node_id))
+            if query.lower() in str(name).lower():
+                neighbors = list(gkg.graph.neighbors(node_id))
+                results.append({
+                    "entity": name,
+                    "type": data.get("type", "unknown"),
+                    "neighbors": neighbors[:10],
+                    "data": {k: v for k, v in data.items() if k != "embedding"},
+                })
+        # Also do vector search from KB chunks
+        kb_results = search_kb(query, kb_ids=[kb_id], top_k=5)
+        return {"graph_results": results[:20], "chunk_results": kb_results}
+    except Exception as e:
+        logger.debug("[KB] graph_rag_search fallback: %s", e)
+        # Fall back to pure vector search
+        try:
+            kb_results = search_kb(query, kb_ids=[kb_id], top_k=5)
+            return {"graph_results": [], "chunk_results": kb_results}
+        except Exception:
+            return {"graph_results": [], "chunk_results": []}
+
+
+# ---------------------------------------------------------------------------
+# Case Library Extension (v15.6 — 质检经验库)
+# ---------------------------------------------------------------------------
+
+def add_case(
+    kb_id: int,
+    title: str,
+    content: str,
+    defect_category: str = "",
+    product_type: str = "",
+    resolution: str = "",
+    tags: list[str] = None,
+) -> Optional[int]:
+    """Add a QC case (experience record) to a knowledge base.
+
+    Cases are documents with additional metadata for structured retrieval.
+    Returns doc_id or None.
+    """
+    # First add as a regular document
+    case_text = f"# {title}\n\n{content}"
+    if resolution:
+        case_text += f"\n\n## 处理方案\n{resolution}"
+
+    doc_id = add_document(kb_id, f"case_{title[:30]}.md", case_text, "text/markdown")
+    if not doc_id:
+        return None
+
+    # Update case-specific fields
+    engine = get_engine()
+    if not engine:
+        return doc_id
+    try:
+        import json as _json
+        with engine.connect() as conn:
+            conn.execute(text(f"""
+                UPDATE {T_KB_DOCUMENTS}
+                SET doc_type = 'case',
+                    defect_category = :dc,
+                    product_type = :pt,
+                    resolution = :res,
+                    tags = :tags::jsonb
+                WHERE id = :id
+            """), {
+                "id": doc_id,
+                "dc": defect_category or None,
+                "pt": product_type or None,
+                "res": resolution or None,
+                "tags": _json.dumps(tags or []),
+            })
+            conn.commit()
+    except Exception as e:
+        logger.warning("[KB] Failed to update case metadata for doc %d: %s", doc_id, e)
+
+    return doc_id
+
+
+def search_cases(
+    query: str = "",
+    kb_id: int = None,
+    defect_category: str = "",
+    product_type: str = "",
+    top_k: int = 10,
+) -> list[dict]:
+    """Search cases by defect category, product type, and/or semantic query.
+
+    Returns list of case dicts with metadata.
+    """
+    engine = get_engine()
+    if not engine:
+        return []
+
+    try:
+        conditions = [f"d.doc_type = 'case'"]
+        params: dict = {"lim": top_k}
+
+        if kb_id:
+            conditions.append("d.kb_id = :kb_id")
+            params["kb_id"] = kb_id
+        if defect_category:
+            conditions.append("d.defect_category = :dc")
+            params["dc"] = defect_category
+        if product_type:
+            conditions.append("d.product_type = :pt")
+            params["pt"] = product_type
+
+        where = " AND ".join(conditions)
+
+        with engine.connect() as conn:
+            rows = conn.execute(text(f"""
+                SELECT d.id, d.kb_id, d.filename, d.defect_category,
+                       d.product_type, d.resolution, d.tags,
+                       d.raw_text, d.created_at
+                FROM {T_KB_DOCUMENTS} d
+                WHERE {where}
+                ORDER BY d.created_at DESC
+                LIMIT :lim
+            """), params).mappings().all()
+
+            results = []
+            for r in rows:
+                results.append({
+                    "doc_id": r["id"],
+                    "kb_id": r["kb_id"],
+                    "filename": r["filename"],
+                    "defect_category": r["defect_category"],
+                    "product_type": r["product_type"],
+                    "resolution": r["resolution"],
+                    "tags": r["tags"] if r["tags"] else [],
+                    "preview": (r["raw_text"] or "")[:200],
+                    "created_at": str(r["created_at"]),
+                })
+
+        # If query provided, also do semantic search and merge
+        if query and kb_id:
+            semantic = search_kb(query, kb_ids=[kb_id], top_k=top_k)
+            # Merge: add semantic results not already in structured results
+            existing_ids = {r["doc_id"] for r in results}
+            for sr in semantic:
+                if sr.get("doc_id") not in existing_ids:
+                    results.append(sr)
+
+        return results[:top_k]
+    except Exception as e:
+        logger.warning("[KB] search_cases failed: %s", e)
+        return []
+
+
+def list_cases(kb_id: int = None) -> list[dict]:
+    """List all cases, optionally filtered by KB."""
+    return search_cases(kb_id=kb_id, top_k=100)
