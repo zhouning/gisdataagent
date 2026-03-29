@@ -1,0 +1,46 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f0f4f8', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#ffffff'}}}%%
+flowchart TD
+    classDef dataBox fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#01579b,font-weight:bold,rx:10px,ry:10px;
+    classDef uiBox fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#e65100,font-weight:bold,rx:10px,ry:10px;
+    classDef tokenBox fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c,font-weight:bold,rx:10px,ry:10px;
+    classDef coreBox fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20,font-weight:bold,rx:10px,ry:10px;
+    classDef timeLayer fill:#ffffff,stroke:#90a4ae,stroke-width:2px,color:#37474f,rx:5px,ry:5px;
+    classDef timeLayerNow fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17,font-weight:bold,rx:5px,ry:5px;
+    classDef timeLayerFuture fill:#ffe0b2,stroke:#f4511e,stroke-width:2px,color:#bf360c,stroke-dasharray: 5 5,rx:5px,ry:5px;
+
+    %% Top Inputs
+    subgraph DataInput ["数据入口 (Data Ingestion)"]
+        direction LR
+        D1["① 私有/专业领域数据<br/>(语义与知识)"]:::dataBox
+        D2["② AlphaEarth等公有数据<br/>(物理特征)"]:::dataBox
+    end
+
+    %% Middle Interface
+    GDA{"GIS Data Agent 界面<br/>(多智能体中枢系统)"}:::uiBox
+
+    %% Bottom Kernel
+    subgraph Kernel ["核心大脑 (The Geo-AGI Kernel)"]
+        direction LR
+        WM["世界模型 (WM)<br/>物理+语义模拟器"]:::coreBox
+        
+        subgraph SpaceTime ["时空特征演化流 (10m x 10m 潜空间)"]
+            direction BT
+            T1["2017-2025年 (历史观测)"]:::timeLayer
+            T2["2026年 (当前现实基准)"]:::timeLayerNow
+            T3["2027-2030+ (未来反事实推演)"]:::timeLayerFuture
+            T1 --> T2 --> T3
+        end
+        
+        DRL["深度强化学习 (DRL)<br/>全局空间决策优化器"]:::coreBox
+        
+        WM -- "自回归预测驱动" --> SpaceTime
+        SpaceTime -- "决策反馈与奖励" --> DRL
+    end
+
+    %% Outputs
+    Out["③ 空间算力单元<br/>(GeoSpatial Tokens / 推演API)"]:::tokenBox
+
+    %% Connections
+    D1 & D2 ==>|清洗/对齐/融合| GDA
+    GDA <==>|双向交互| Kernel
+    GDA ==>|能力出口| Out

@@ -1,0 +1,22 @@
+Failed to create workflow from template surveying_qc_standard: (psycopg2.errors.SyntaxError) syntax error at or near ":"
+LINE 6:                         :steps::jsonb, :params::jsonb, 3600,...
+                                ^
+
+[SQL: 
+                INSERT INTO agent_workflows
+                    (workflow_name, description, owner_username, pipeline_type,
+                     steps, parameters, sla_total_seconds, priority, template_source)
+                VALUES (%(name)s, %(desc)s, %(user)s, %(ptype)s,
+                        :steps::jsonb, :params::jsonb, %(sla)s, %(pri)s, %(src)s)
+                RETURNING id
+            ]
+[parameters: {'name': '׼ʼ_167840', 'desc': 'ݽաԤȺ (5׼)', 'user': 'anonymous', 'ptype': 'governance', 'sla': 3600, 'pri': 'normal', 'src': 'surveying_qc_standard'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+[Stream] API routes mounted: /api/streams, /ws/streams/{id}
+2026-03-27 17:34:35 [INFO] data_agent.frontend_api: Frontend API routes mounted (203 endpoints)
+2026-03-27 17:34:35 - INFO - data_agent.frontend_api - Frontend API routes mounted (203 endpoints)
+2026-03-27 17:34:38 - INFO - chainlit - Missing custom logo. Falling back to default logo.
+2026-03-27 17:34:39 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-27 17:34:39 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-27 17:34:41 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-27 17:34:41 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]

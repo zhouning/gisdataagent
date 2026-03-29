@@ -26,7 +26,7 @@ generated_by = "0.7.700"
 
 [features.spontaneous_file_upload]
 enabled = true
-accept = ["text/csv", "application/zip", ".shp", ".shx", ".dbf"]
+accept = ["text/csv", "application/zip", "application/x-zip-compressed", "application/octet-stream", ".zip", ".shp", ".shx", ".dbf", ".prj", ".cpg", ".geojson", ".gpkg", ".kml", ".kmz", ".tif", ".tiff", ".xlsx", ".xls", ".json", ".dwg", ".dxf", ".obj", ".stl"]
 max_size_mb = 500
 
 # Starters

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import FilePickerDialog from './FilePickerDialog';
 
 interface QcTemplate {
   id: string;
@@ -51,6 +52,8 @@ export default function QcMonitorTab() {
   const [section, setSection] = useState<'dashboard' | 'templates' | 'taxonomy' | 'reviews'>('dashboard');
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [showFilePicker, setShowFilePicker] = useState(false);
+  const [quickExecTemplate, setQuickExecTemplate] = useState<string | null>(null);
 
   const fetchDashboard = async () => {
     try {
@@ -98,6 +101,32 @@ export default function QcMonitorTab() {
       if (r.ok) { alert('工作流创建成功'); }
       else { const d = await r.json(); alert(d.error || '创建失败'); }
     } catch { alert('网络错误'); }
+  };
+
+  const handleQuickExecute = (templateId: string) => {
+    setQuickExecTemplate(templateId);
+    setShowFilePicker(true);
+  };
+
+  const handleFileSelected = async (filePath: string) => {
+    setShowFilePicker(false);
+    if (!quickExecTemplate) return;
+
+    try {
+      const r = await fetch('/api/workflows/from-template-and-execute', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_id: quickExecTemplate, parameters: { file_path: filePath } }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        alert(`工作流已创建并开始执行\nID: ${data.workflow_id}\n请前往"编排→工作流"查看进度`);
+      } else {
+        const d = await r.json();
+        alert(d.error || '执行失败');
+      }
+    } catch { alert('网络错误'); }
+    finally { setQuickExecTemplate(null); }
   };
 
   const toggleCat = (id: string) => {
@@ -279,10 +308,16 @@ export default function QcMonitorTab() {
                 <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#e0e0e0' }}>{t.name}</div>
                 <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>{t.description}</div>
                 <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>{t.step_count} 步骤</div>
-                <button onClick={() => createFromTemplate(t.id)} style={{
-                  padding: '4px 12px', borderRadius: 4, border: 'none',
-                  background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12,
-                }}>创建工作流</button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => createFromTemplate(t.id)} style={{
+                    padding: '4px 12px', borderRadius: 4, border: 'none',
+                    background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12,
+                  }}>创建工作流</button>
+                  <button onClick={() => handleQuickExecute(t.id)} style={{
+                    padding: '4px 12px', borderRadius: 4, border: 'none',
+                    background: '#16a34a', color: 'white', cursor: 'pointer', fontSize: 12,
+                  }}>上传并执行</button>
+                </div>
               </div>
             ))}
             {templates.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>暂无模板</div>}
@@ -390,6 +425,12 @@ export default function QcMonitorTab() {
           {reviews.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>暂无复核项</div>}
         </div>
       )}
+
+      <FilePickerDialog
+        open={showFilePicker}
+        onSelect={handleFileSelected}
+        onCancel={() => { setShowFilePicker(false); setQuickExecTemplate(null); }}
+      />
     </div>
   );
 }

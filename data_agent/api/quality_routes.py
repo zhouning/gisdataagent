@@ -277,6 +277,139 @@ async def qc_reviews_update(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+# ---------------------------------------------------------------------------
+# Alert Rules CRUD  (consumed by AlertsTab.tsx)
+# ---------------------------------------------------------------------------
+
+async def alert_rules_list(request: Request):
+    """GET /api/alert-rules — list alert rules."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..observability import AlertEngine
+    rules = AlertEngine.list_rules(enabled_only=False)
+    # datetime -> str for JSON serialisation
+    for r in rules:
+        for k in ("created_at", "updated_at"):
+            if k in r and r[k] is not None:
+                r[k] = str(r[k])
+        if "channel_config" in r and isinstance(r["channel_config"], str):
+            import json as _json
+            try:
+                r["channel_config"] = _json.loads(r["channel_config"])
+            except Exception:
+                pass
+    return JSONResponse({"rules": rules})
+
+
+async def alert_rules_create(request: Request):
+    """POST /api/alert-rules — create an alert rule."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    name = body.get("name", "")
+    metric_name = body.get("metric_name", "")
+    if not name or not metric_name:
+        return JSONResponse({"error": "name and metric_name required"}, status_code=400)
+    from ..observability import AlertEngine
+    rule_id = AlertEngine.add_rule(
+        name=name,
+        metric_name=metric_name,
+        condition=body.get("condition", "gt"),
+        threshold=float(body.get("threshold", 0)),
+        severity=body.get("severity", "warning"),
+        channel=body.get("channel", "webhook"),
+        channel_config=body.get("channel_config"),
+        cooldown_seconds=int(body.get("cooldown_seconds", 300)),
+    )
+    if rule_id is None:
+        return JSONResponse({"error": "Failed to create alert rule"}, status_code=500)
+    return JSONResponse({"id": rule_id}, status_code=201)
+
+
+async def alert_rules_update(request: Request):
+    """PUT /api/alert-rules/{id} — toggle enabled or update fields."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    rule_id = int(request.path_params["id"])
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    try:
+        from ..db_engine import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        if not engine:
+            return JSONResponse({"error": "DB unavailable"}, status_code=500)
+        sets = []
+        params = {"id": rule_id}
+        if "enabled" in body:
+            sets.append("enabled = :en")
+            params["en"] = bool(body["enabled"])
+        if "name" in body:
+            sets.append("name = :name")
+            params["name"] = body["name"]
+        if "threshold" in body:
+            sets.append("threshold = :thresh")
+            params["thresh"] = float(body["threshold"])
+        if "severity" in body:
+            sets.append("severity = :sev")
+            params["sev"] = body["severity"]
+        if not sets:
+            return JSONResponse({"error": "Nothing to update"}, status_code=400)
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"UPDATE agent_alert_rules SET {', '.join(sets)} WHERE id = :id"
+            ), params)
+            conn.commit()
+        return JSONResponse({"id": rule_id, "ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def alert_rules_delete(request: Request):
+    """DELETE /api/alert-rules/{id} — delete an alert rule."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    rule_id = int(request.path_params["id"])
+    from ..observability import AlertEngine
+    ok = AlertEngine.delete_rule(rule_id)
+    if not ok:
+        return JSONResponse({"error": "Failed to delete rule"}, status_code=500)
+    return JSONResponse({"ok": True})
+
+
+async def alert_history_list(request: Request):
+    """GET /api/alert-history — list alert events."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    limit = int(request.query_params.get("limit", "50"))
+    rule_id = request.query_params.get("rule_id")
+    from ..observability import AlertEngine
+    events = AlertEngine.get_history(
+        rule_id=int(rule_id) if rule_id else None,
+        limit=min(limit, 200),
+    )
+    for e in events:
+        for k in ("created_at",):
+            if k in e and e[k] is not None:
+                e[k] = str(e[k])
+    return JSONResponse({"events": events})
+
+
 async def qc_dashboard(request: Request):
     """QC dashboard statistics — aggregated overview for monitoring."""
     user = _get_user_from_request(request)
@@ -292,9 +425,9 @@ async def qc_dashboard(request: Request):
     recent_reviews = []
 
     try:
-        from ..database_tools import _get_engine
+        from ..db_engine import get_engine
         from sqlalchemy import text
-        engine = _get_engine()
+        engine = get_engine()
         with engine.connect() as conn:
             row = conn.execute(text(
                 "SELECT COUNT(*), "
@@ -336,9 +469,9 @@ async def qc_dashboard(request: Request):
 
     alert_stats = {"total_rules": 0, "enabled_rules": 0, "recent_alerts": 0}
     try:
-        from ..database_tools import _get_engine
+        from ..db_engine import get_engine
         from sqlalchemy import text
-        engine = _get_engine()
+        engine = get_engine()
         with engine.connect() as conn:
             r1 = conn.execute(text("SELECT COUNT(*), SUM(CASE WHEN enabled THEN 1 ELSE 0 END) FROM agent_alert_rules")).fetchone()
             alert_stats["total_rules"] = r1[0] or 0
@@ -373,4 +506,10 @@ def get_quality_routes() -> list:
         Route("/api/qc/reviews", qc_reviews_create, methods=["POST"]),
         Route("/api/qc/reviews/{id:int}", qc_reviews_update, methods=["PUT"]),
         Route("/api/qc/dashboard", qc_dashboard, methods=["GET"]),
+        # Alert rules CRUD (consumed by AlertsTab.tsx)
+        Route("/api/alert-rules", alert_rules_list, methods=["GET"]),
+        Route("/api/alert-rules", alert_rules_create, methods=["POST"]),
+        Route("/api/alert-rules/{id:int}", alert_rules_update, methods=["PUT"]),
+        Route("/api/alert-rules/{id:int}", alert_rules_delete, methods=["DELETE"]),
+        Route("/api/alert-history", alert_history_list, methods=["GET"]),
     ]
