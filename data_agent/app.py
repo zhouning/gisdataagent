@@ -160,6 +160,9 @@ try:
     ensure_plugins_table()
     from data_agent.proactive_explorer import ensure_observations_table
     ensure_observations_table()
+    # Run pending SQL migrations after all ensure_*_table() calls
+    from data_agent.migration_runner import run_pending_migrations
+    run_pending_migrations()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
@@ -3048,10 +3051,17 @@ async def main(message: cl.Message):
                 f"正在执行，进度将实时更新..."
             )).send()
 
-            # Execute in current context so Chainlit Steps work properly
-            await _execute_workflow_with_steps(
-                workflow_id, file_path, template_name
-            )
+            # Execute in background with context propagation
+            from chainlit.context import context_var
+            ctx = context_var.get()
+
+            async def _run_with_context():
+                context_var.set(ctx)
+                await _execute_workflow_with_steps(
+                    workflow_id, file_path, template_name
+                )
+
+            asyncio.create_task(_run_with_context())
             return
         except Exception as e:
             logger.error("Workflow execution error: %s", e)
