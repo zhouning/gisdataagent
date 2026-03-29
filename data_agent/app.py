@@ -2684,11 +2684,6 @@ async def main(message: cl.Message):
                                     storage_backend="local", owner=user_id)
         except Exception:
             pass
-        try:
-            from data_agent.metadata_integration import register_uploaded_file_metadata
-            register_uploaded_file_metadata(_uf)
-        except Exception:
-            pass
 
     # --- Build multimodal extra_parts for images and PDFs ---
     extra_parts = []
