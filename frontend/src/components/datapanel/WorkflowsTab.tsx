@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import WorkflowEditor from '../WorkflowEditor';
+import FilePickerDialog from './FilePickerDialog';
 import { getPipelineLabel, formatTime } from './utils';
 
 interface WorkflowSummary {
@@ -21,7 +22,17 @@ interface WorkflowRunSummary {
   total_input_tokens: number;
   total_output_tokens: number;
   started_at: string;
+  completed_at: string | null;
   error_message: string | null;
+  step_results: Array<{
+    node_id?: string;
+    label?: string;
+    status?: string;
+    duration?: number;
+    output?: string;
+    error?: string;
+    [key: string]: any;
+  }>;
 }
 
 export default function WorkflowsTab() {
@@ -31,9 +42,12 @@ export default function WorkflowsTab() {
   const [editWorkflow, setEditWorkflow] = useState<any>(null);
   const [runs, setRuns] = useState<WorkflowRunSummary[]>([]);
   const [viewRunsFor, setViewRunsFor] = useState<number | null>(null);
+  const [expandedRun, setExpandedRun] = useState<number | null>(null);
   const [executing, setExecuting] = useState<number | null>(null);
   const [liveRunId, setLiveRunId] = useState<number | null>(null);
   const [liveStatus, setLiveStatus] = useState<any>(null);
+  const [showFilePicker, setShowFilePicker] = useState(false);
+  const [executeTarget, setExecuteTarget] = useState<number | null>(null);
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -96,24 +110,31 @@ export default function WorkflowsTab() {
   };
 
   const handleExecute = async (id: number) => {
-    setExecuting(id);
+    setExecuteTarget(id);
+    setShowFilePicker(true);
+  };
+
+  const handleFileSelected = async (filePath: string) => {
+    setShowFilePicker(false);
+    if (!executeTarget) return;
+
+    setExecuting(executeTarget);
     setLiveStatus(null);
     try {
-      const resp = await fetch(`/api/workflows/${id}/execute`, {
+      const resp = await fetch(`/api/workflows/${executeTarget}/execute`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parameters: {} }),
+        body: JSON.stringify({ parameters: { file_path: filePath } }),
       });
       if (resp.ok) {
         const data = await resp.json();
         const runId = data.run_id;
         if (runId) {
           setLiveRunId(runId);
-          // Poll live status every 2s
           const pollId = setInterval(async () => {
             try {
-              const statusResp = await fetch(`/api/workflows/${id}/runs/${runId}/status`, { credentials: 'include' });
+              const statusResp = await fetch(`/api/workflows/${executeTarget}/runs/${runId}/status`, { credentials: 'include' });
               if (statusResp.ok) {
                 const statusData = await statusResp.json();
                 setLiveStatus(statusData);
@@ -124,7 +145,6 @@ export default function WorkflowsTab() {
                   fetchWorkflows();
                 }
               } else {
-                // Run finished (404 = already completed, removed from live cache)
                 clearInterval(pollId);
                 setExecuting(null);
                 setLiveRunId(null);
@@ -142,7 +162,6 @@ export default function WorkflowsTab() {
       }
     } catch { /* ignore */ }
     finally {
-      // Fallback: if no run_id returned, reset immediately
       if (!liveRunId) {
         setExecuting(null);
         fetchWorkflows();
@@ -175,7 +194,7 @@ export default function WorkflowsTab() {
     const wf = workflows.find((w) => w.id === viewRunsFor);
     return (
       <div className="workflow-runs-view">
-        <button className="asset-back-btn" onClick={() => { setViewRunsFor(null); setRuns([]); }}>
+        <button className="asset-back-btn" onClick={() => { setViewRunsFor(null); setRuns([]); setExpandedRun(null); }}>
           &larr; 返回列表
         </button>
         <h4>{wf?.workflow_name} — 执行历史</h4>
@@ -185,16 +204,69 @@ export default function WorkflowsTab() {
           <div className="workflow-runs-list">
             {runs.map((r) => (
               <div key={r.id} className={`workflow-run-item ${r.status}`}>
-                <div className="workflow-run-header">
+                <div
+                  className="workflow-run-header"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setExpandedRun(expandedRun === r.id ? null : r.id)}
+                >
                   <span className={`workflow-run-status ${r.status}`}>{r.status}</span>
                   <span className="workflow-run-time">{formatTime(r.started_at)}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>
+                    {expandedRun === r.id ? '▼' : '▶'} {r.step_results?.length || 0} 步
+                  </span>
                 </div>
                 <div className="workflow-run-detail">
                   <span>{r.total_duration?.toFixed(1)}s</span>
                   <span>{(r.total_input_tokens + r.total_output_tokens).toLocaleString()} tokens</span>
+                  {r.completed_at && <span>完成: {formatTime(r.completed_at)}</span>}
                 </div>
                 {r.error_message && (
                   <div className="workflow-run-error">{r.error_message}</div>
+                )}
+                {/* Expanded step details */}
+                {expandedRun === r.id && r.step_results && r.step_results.length > 0 && (
+                  <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6, color: '#374151' }}>步骤详情</div>
+                    {r.step_results.map((step, idx) => (
+                      <div key={idx} style={{
+                        display: 'flex', flexDirection: 'column', gap: 2,
+                        padding: '6px 8px', marginBottom: 4,
+                        background: step.status === 'completed' ? '#f0fdf4' : step.status === 'failed' ? '#fef2f2' : '#f9fafb',
+                        borderRadius: 4, fontSize: 11, borderLeft: `3px solid ${step.status === 'completed' ? '#22c55e' : step.status === 'failed' ? '#ef4444' : '#d1d5db'}`,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 600 }}>
+                            {idx + 1}. {step.label || step.node_id || `步骤 ${idx + 1}`}
+                          </span>
+                          <span style={{ color: step.status === 'completed' ? '#16a34a' : step.status === 'failed' ? '#dc2626' : '#6b7280' }}>
+                            {step.status || 'unknown'}
+                          </span>
+                          {step.duration != null && (
+                            <span style={{ color: '#6b7280' }}>{step.duration.toFixed(1)}s</span>
+                          )}
+                        </div>
+                        {step.output && (
+                          <div style={{
+                            marginTop: 4, padding: '4px 6px', background: '#fff', borderRadius: 3,
+                            maxHeight: 120, overflowY: 'auto', whiteSpace: 'pre-wrap', fontSize: 10,
+                            color: '#374151', border: '1px solid #e5e7eb',
+                          }}>
+                            {typeof step.output === 'string' ? step.output : JSON.stringify(step.output, null, 2)}
+                          </div>
+                        )}
+                        {step.error && (
+                          <div style={{ marginTop: 4, color: '#dc2626', fontSize: 10 }}>
+                            错误: {step.error}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {expandedRun === r.id && (!r.step_results || r.step_results.length === 0) && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>
+                    无步骤详情记录
+                  </div>
                 )}
               </div>
             ))}
@@ -271,6 +343,12 @@ export default function WorkflowsTab() {
           ))}
         </div>
       )}
+
+      <FilePickerDialog
+        open={showFilePicker}
+        onSelect={handleFileSelected}
+        onCancel={() => { setShowFilePicker(false); setExecuteTarget(null); }}
+      />
     </div>
   );
 }

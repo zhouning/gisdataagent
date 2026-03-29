@@ -25,13 +25,16 @@ import CausalReasoningTab from './datapanel/CausalReasoningTab';
 import OptimizationTab from './datapanel/OptimizationTab';
 import QcMonitorTab from './datapanel/QcMonitorTab';
 import AlertsTab from './datapanel/AlertsTab';
+import TopologyTab from './datapanel/TopologyTab';
+import MessageBusTab from './datapanel/MessageBusTab';
+import MetadataPanel from './datapanel/MetadataPanel';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus';
 
 type GroupKey = 'data' | 'intelligence' | 'ops' | 'orchestration';
 
@@ -48,6 +51,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
       { key: 'files', label: '文件', icon: '📁' },
       { key: 'table', label: '表格', icon: '📋' },
       { key: 'catalog', label: '资产', icon: '🗃️' },
+      { key: 'metadata', label: '元数据', icon: '🏷️' },
       { key: 'vsources', label: '数据源', icon: '🔗' },
       { key: 'geojson', label: 'GeoJSON', icon: '✏️' },
       { key: 'charts', label: '图表', icon: '📈' },
@@ -64,6 +68,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
       { key: 'market', label: '市场', icon: '🏪' },
       { key: 'worldmodel', label: '世界模型', icon: '🌍' },
       { key: 'causal', label: '因果推理', icon: '⚗️' },
+      { key: 'topology', label: '拓扑', icon: '🕸️' },
     ],
   },
   {
@@ -76,6 +81,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }
       { key: 'qcmonitor', label: '质检', icon: '📋' },
       { key: 'alerts', label: '告警', icon: '🔔' },
       { key: 'observability', label: '追踪', icon: '🔍' },
+      { key: 'messagebus', label: '消息总线', icon: '✉️' },
       { key: 'tasks', label: '任务', icon: '✅' },
     ],
   },
@@ -180,6 +186,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'files' && <FileManager onFileClick={(name) => { loadCsvData(name); setActiveTab('table'); }} />}
         {activeTab === 'table' && <DataTable columns={tableColumns} data={tableData} loading={loading} />}
         {activeTab === 'catalog' && <CatalogTab />}
+        {activeTab === 'metadata' && <MetadataPanel />}
         {activeTab === 'history' && <HistoryTab />}
         {activeTab === 'usage' && <UsageTab />}
         {activeTab === 'tools' && <ToolsTab userRole={userRole} />}
@@ -202,6 +209,8 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'optimization' && <OptimizationTab />}
         {activeTab === 'qcmonitor' && <QcMonitorTab />}
         {activeTab === 'alerts' && <AlertsTab />}
+        {activeTab === 'messagebus' && <MessageBusTab />}
+        {activeTab === 'topology' && <TopologyTab />}
       </div>
     </div>
   );

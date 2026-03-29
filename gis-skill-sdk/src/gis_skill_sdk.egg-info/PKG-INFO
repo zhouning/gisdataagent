@@ -1,0 +1,113 @@
+Metadata-Version: 2.4
+Name: gis-skill-sdk
+Version: 0.1.0
+Summary: SDK for building GIS Data Agent skills
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: pydantic>=2.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+
+# GIS Skill SDK
+
+Build custom skills for [GIS Data Agent](https://github.com/your-org/gis-data-agent).
+
+## Installation
+
+```bash
+pip install gis-skill-sdk
+```
+
+Or for development:
+
+```bash
+cd gis-skill-sdk
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### Create a new skill
+
+```bash
+gis-skill new my-analysis-skill
+```
+
+This creates:
+```
+my-analysis-skill/
+  SKILL.md          # Metadata + instructions
+  references/       # Reference documents
+  assets/           # Data files
+```
+
+### Edit SKILL.md
+
+The skill file uses YAML frontmatter for metadata and Markdown for instructions:
+
+```markdown
+---
+name: my-analysis-skill
+description: Performs custom spatial analysis
+pattern: command
+trigger_keywords:
+  - spatial analysis
+  - my analysis
+toolsets:
+  - ExplorationToolset
+  - GeoProcessingToolset
+model_tier: standard
+---
+
+# My Analysis Skill
+
+Detailed instructions for the LLM agent...
+```
+
+### Validate
+
+```bash
+gis-skill validate my-analysis-skill/
+```
+
+### List skills
+
+```bash
+gis-skill list /path/to/skills/
+```
+
+## Skill Patterns
+
+| Pattern | Description |
+|---------|-------------|
+| `command` | Direct execution of a specific task |
+| `inversion` | Interview-style data gathering before analysis |
+| `probe` | Exploratory analysis with hypothesis testing |
+| `suggestion` | Recommends approaches based on data characteristics |
+| `reactive` | Responds to events or triggers |
+
+## API Usage
+
+```python
+from gis_skill_sdk import BaseSkill, load_skill, load_skills_directory
+
+# Load a single skill
+skill = load_skill("path/to/my-skill/")
+print(skill.name, skill.metadata.pattern)
+
+# Load all skills from a directory
+skills = load_skills_directory("path/to/skills/")
+for s in skills:
+    print(f"{s.name}: {s.description}")
+
+# Validate
+issues = skill.validate()
+if issues:
+    print("Issues found:", issues)
+```
+
+## License
+
+MIT

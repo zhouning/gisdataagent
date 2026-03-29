@@ -233,6 +233,58 @@ async def qc_template_create(request: Request):
     return JSONResponse({"id": wf_id, "template_id": template_id}, status_code=201)
 
 
+async def qc_template_create_and_execute(request: Request):
+    """POST /api/workflows/from-template-and-execute — create from template + immediately execute."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    template_id = body.get("template_id", "").strip()
+    if not template_id:
+        return JSONResponse({"error": "template_id is required"}, status_code=400)
+
+    params = body.get("parameters") or {}
+
+    from ..workflow_engine import create_workflow_from_template, execute_workflow
+    wf_id = create_workflow_from_template(
+        template_id=template_id,
+        name_override=body.get("name", ""),
+        param_overrides=params,
+    )
+    if wf_id is None:
+        return JSONResponse({"error": f"Template '{template_id}' not found or creation failed"}, status_code=404)
+
+    # Execute immediately in background
+    import asyncio
+    result = {"workflow_id": wf_id, "run_id": None, "status": "started"}
+
+    async def _run():
+        try:
+            await execute_workflow(wf_id, param_overrides=params)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("from-template-and-execute failed: %s", e)
+
+    asyncio.create_task(_run())
+
+    # Return immediately — frontend can poll for status
+    from ..workflow_engine import get_workflow_runs
+    import time
+    # Small delay to let run record be created
+    await asyncio.sleep(0.3)
+    runs = get_workflow_runs(wf_id, limit=1)
+    if runs:
+        result["run_id"] = runs[0]["id"]
+
+    return JSONResponse(result, status_code=201)
+
+
 def get_workflow_routes() -> list:
     """Return Route objects for workflow endpoints."""
     return [
@@ -240,6 +292,7 @@ def get_workflow_routes() -> list:
         Route("/api/workflows", workflows_create, methods=["POST"]),
         Route("/api/workflows/qc-templates", qc_templates_list, methods=["GET"]),
         Route("/api/workflows/from-template", qc_template_create, methods=["POST"]),
+        Route("/api/workflows/from-template-and-execute", qc_template_create_and_execute, methods=["POST"]),
         Route("/api/workflows/{id:int}", workflow_detail, methods=["GET"]),
         Route("/api/workflows/{id:int}", workflow_update, methods=["PUT"]),
         Route("/api/workflows/{id:int}", workflow_delete, methods=["DELETE"]),

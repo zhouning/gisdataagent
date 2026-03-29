@@ -1,0 +1,184 @@
+2026-03-28 22:47:57 - WARNING - google_genai._api_client - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2026-03-28 22:47:59 [INFO] data_agent.knowledge_base: [KB] Knowledge base tables ensured.
+[Auth] Users table ready.
+[Memory] Memory table ready.
+[TokenTracker] Token usage table ready.
+[DB] Table ownership registry ready.
+[Sharing] Share links table ready.
+[Audit] Audit log table ready.
+[Templates] Analysis templates table ready.
+[Semantic] Registry ready.
+[Team] Teams tables ready.
+[DataCatalog] Data catalog table ready.
+[Session] Chainlit data layer tables ready.
+[Workflows] Tables ready.
+[FailureLearning] Tool failures table ready.
+2026-03-28 22:47:59 - INFO - data_agent.knowledge_base - [KB] Knowledge base tables ensured.
+2026-03-28 22:48:00 [INFO] data_agent.virtual_sources: Virtual sources table ensured
+2026-03-28 22:48:00 - INFO - data_agent.virtual_sources - Virtual sources table ensured
+2026-03-28 22:48:07 [INFO] data_agent.app: ArcPy engine available (retry succeeded)
+[Cloud] Connected to bucket 'gisdatalake' successfully.
+[ArcPyBridge] Worker ready. ArcPy 3.6.2, License: Advanced
+[ArcPy] Retry succeeded: 8 ArcPy tools registered.
+2026-03-28 22:48:07 - INFO - data_agent.app - ArcPy engine available (retry succeeded)
+2026-03-28 22:48:07 [INFO] data_agent.prompts: [Prompt] general=7.1.1, governance=1.0.0, optimization=7.1.2, planner=7.2.0
+2026-03-28 22:48:07 - INFO - data_agent.prompts - [Prompt] general=7.1.1, governance=1.0.0, optimization=7.1.2, planner=7.2.0
+2026-03-28 22:48:07 [INFO] data_agent.app: Dynamic Planner mode enabled
+[WeCom] Not configured. Bot disabled. Missing: WECOM_CORP_ID, WECOM_APP_SECRET, WECOM_TOKEN, WECOM_ENCODING_AES_KEY, WECOM_AGENT_ID
+[DingTalk] Not configured. Bot disabled. Missing: DINGTALK_APP_KEY, DINGTALK_APP_SECRET, DINGTALK_ROBOT_CODE
+[Feishu] Not configured. Bot disabled. Missing: FEISHU_APP_ID, FEISHU_APP_SECRET
+2026-03-28 22:48:07 - INFO - data_agent.app - Dynamic Planner mode enabled
+2026-03-28 22:48:07 [INFO] data_agent.mcp_hub: Loaded 5 MCP server config(s) (5 from DB, 5 from YAML seed)
+2026-03-28 22:48:07 - INFO - data_agent.mcp_hub - Loaded 5 MCP server config(s) (5 from DB, 5 from YAML seed)
+2026-03-28 22:48:07 [INFO] data_agent.app: Chainlit data layer initialized (PostgreSQL thread persistence)
+2026-03-28 22:48:07 - INFO - data_agent.app - Chainlit data layer initialized (PostgreSQL thread persistence)
+2026-03-28 22:48:07 [INFO] data_agent.app: Using DatabaseSessionService (PostgreSQL)
+2026-03-28 22:48:07 - INFO - data_agent.app - Using DatabaseSessionService (PostgreSQL)
+2026-03-28 22:48:07 [INFO] data_agent.app: Context caching enabled (TTL=1800s, min_tokens=4096)
+2026-03-28 22:48:07 - INFO - data_agent.app - Context caching enabled (TTL=1800s, min_tokens=4096)
+2026-03-28 22:48:07 [INFO] data_agent.app: Self-registration enabled at /register
+2026-03-28 22:48:07 - INFO - data_agent.app - Self-registration enabled at /register
+2026-03-28 22:48:07 [INFO] data_agent.app: Public share routes enabled at /s/{token}
+2026-03-28 22:48:07 - INFO - data_agent.app - Public share routes enabled at /s/{token}
+2026-03-28 22:48:07 [INFO] data_agent.app: User file API routes enabled at /api/user/files
+2026-03-28 22:48:07 - INFO - data_agent.app - User file API routes enabled at /api/user/files
+2026-03-28 22:48:07 [INFO] data_agent.app: Admin audit viewer enabled at /admin/audit
+2026-03-28 22:48:07 - INFO - data_agent.app - Admin audit viewer enabled at /admin/audit
+2026-03-28 22:48:07 [INFO] data_agent.app: [Observability] HTTP metrics middleware installed
+[Stream] API routes mounted: /api/streams, /ws/streams/{id}
+2026-03-28 22:48:07 - INFO - data_agent.app - [Observability] HTTP metrics middleware installed
+2026-03-28 22:48:07 [INFO] data_agent.otel_tracing: [OTel] No exporter configured (metrics-only mode)
+2026-03-28 22:48:07 - INFO - data_agent.otel_tracing - [OTel] No exporter configured (metrics-only mode)
+2026-03-28 22:48:07 [INFO] data_agent.otel_tracing: [OTel] TracerProvider initialized
+2026-03-28 22:48:07 - INFO - data_agent.otel_tracing - [OTel] TracerProvider initialized
+2026-03-28 22:48:07 [INFO] data_agent.frontend_api: Frontend API routes mounted (222 endpoints)
+2026-03-28 22:48:07 - INFO - data_agent.frontend_api - Frontend API routes mounted (222 endpoints)
+2026-03-28 22:48:07 [INFO] data_agent.app: 
+==================================================
+  GIS Data Agent — System Status
+==================================================
+  [OK] Database:       Connected (23.8ms)
+  [OK] Cloud Storage:  HuaweiOBS (gisdatalake)
+  [--] Redis:          Not configured
+  [OK] Session:        postgresql
+  [--] MCP Hub:        5 servers configured (all disabled)
+--------------------------------------------------
+  Dynamic Planner: Yes
+  ArcPy Engine:    Yes
+  Bots:            None configured
+==================================================
+2026-03-28 22:48:07 - INFO - data_agent.app - 
+==================================================
+  GIS Data Agent — System Status
+==================================================
+  [OK] Database:       Connected (23.8ms)
+  [OK] Cloud Storage:  HuaweiOBS (gisdatalake)
+  [--] Redis:          Not configured
+  [OK] Session:        postgresql
+  [--] MCP Hub:        5 servers configured (all disabled)
+--------------------------------------------------
+  Dynamic Planner: Yes
+  ArcPy Engine:    Yes
+  Bots:            None configured
+==================================================
+2026-03-28 22:48:07 - INFO - chainlit - Your app is available at http://localhost:8001
+2026-03-28 22:48:10 [INFO] data_agent.mcp_hub: MCP 工具市场启动完成：0/0 个服务器已连接
+2026-03-28 22:48:10 - INFO - data_agent.mcp_hub - MCP 工具市场启动完成：0/0 个服务器已连接
+2026-03-28 22:48:11 - INFO - apscheduler.scheduler - Scheduler started
+2026-03-28 22:48:11 [INFO] data_agent.app: Created new ADK session for admin
+[Workflows] Synced 0 cron jobs.
+[Workflows] Scheduler started.
+2026-03-28 22:48:11 - INFO - data_agent.app - Created new ADK session for admin
+2026-03-28 22:48:11 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:48:11 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:48:12 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:48:12 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:48:13 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:48:13 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:48:15 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:48:15 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:50:29 [INFO] data_agent.app: [Trace:aceb4779dc5c] Message received user=admin role=admin
+2026-03-28 22:50:29 - INFO - data_agent.app - [Trace:aceb4779dc5c] Message received user=admin role=admin
+2026-03-28 22:50:29 - WARNING - google_genai._api_client - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2026-03-28 22:50:30 - INFO - google_genai.models - AFC is enabled with max remote calls: 10.
+2026-03-28 22:50:31 - INFO - httpx - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-28 22:50:31 [INFO] data_agent.app: [Trace:aceb4779dc5c] Router intent=GENERAL reason=用户想知道有哪些数据 lang=zh
+2026-03-28 22:50:31 - INFO - data_agent.app - [Trace:aceb4779dc5c] Router intent=GENERAL reason=用户想知道有哪些数据 lang=zh
+2026-03-28 22:50:31 [INFO] data_agent.app: [Trace:aceb4779dc5c] Model tier=fast
+2026-03-28 22:50:31 - INFO - data_agent.app - [Trace:aceb4779dc5c] Model tier=fast
+2026-03-28 22:50:31 [INFO] data_agent.app: [Trace:aceb4779dc5c] ToolCategories={'database_management'} (filtering 1 categories)
+2026-03-28 22:50:31 - INFO - data_agent.app - [Trace:aceb4779dc5c] ToolCategories={'database_management'} (filtering 1 categories)
+2026-03-28 22:50:31 [INFO] data_agent.app: [Trace:d804e4178f80] Pipeline=Dynamic Planner (意图: GENERAL) Intent=GENERAL Started
+2026-03-28 22:50:31 - INFO - data_agent.app - [Trace:d804e4178f80] Pipeline=Dynamic Planner (意图: GENERAL) Intent=GENERAL Started
+2026-03-28 22:50:31 [INFO] data_agent.conversation_memory: Using PostgresMemoryService for conversation memory
+2026-03-28 22:50:31 - INFO - data_agent.conversation_memory - Using PostgresMemoryService for conversation memory
+2026-03-28 22:50:31 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'hitl_approval' registered.
+2026-03-28 22:50:31 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'cost_guard' registered.
+2026-03-28 22:50:31 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'gis_tool_retry' registered.
+2026-03-28 22:50:31 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'provenance' registered.
+2026-03-28 22:50:32 - WARNING - google_genai._api_client - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2026-03-28 22:50:33 - INFO - google_adk.google.adk.models.google_llm - Sending out request, model: gemini-2.5-flash, backend: GoogleLLMVariant.GEMINI_API, stream: False
+2026-03-28 22:50:35 - INFO - google_adk.google.adk.models.google_llm - Response received from the model.
+2026-03-28 22:50:35 - WARNING - google_genai.types - Warning: there are non-text parts in the response: ['function_call'], returning concatenated text result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-03-28 22:50:36 [INFO] data_agent.artifact_handler: [ArtifactDetect] resp_type=dict, str_len=3043, artifacts=0
+2026-03-28 22:50:36 - INFO - data_agent.artifact_handler - [ArtifactDetect] resp_type=dict, str_len=3043, artifacts=0
+2026-03-28 22:50:37 - INFO - google_adk.google.adk.models.gemini_context_cache_manager - Cache created successfully: cachedContents/qt89olgim1lzbmtscfxn4c4kbzad1vcckh2b9ff2
+2026-03-28 22:50:37 - INFO - google_adk.google.adk.models.google_llm - Sending out request, model: gemini-2.5-flash, backend: GoogleLLMVariant.GEMINI_API, stream: False
+2026-03-28 22:50:37 - INFO - google_genai.models - AFC is enabled with max remote calls: 10.
+2026-03-28 22:50:42 - INFO - google_adk.google.adk.models.google_llm - Response received from the model.
+2026-03-28 22:50:42 [INFO] data_agent.app: [Trace:d804e4178f80] Pipeline=Dynamic Planner (意图: GENERAL) Finished duration=11.0s
+2026-03-28 22:50:42 - INFO - data_agent.app - [Trace:d804e4178f80] Pipeline=Dynamic Planner (意图: GENERAL) Finished duration=11.0s
+2026-03-28 22:50:42 [INFO] data_agent.app: [MapPreInject] _final_map_update=False, _final_data_update=False, msg_sent=True
+2026-03-28 22:50:42 - INFO - data_agent.app - [MapPreInject] _final_map_update=False, _final_data_update=False, msg_sent=True
+2026-03-28 22:50:43 - WARNING - google_genai._api_client - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2026-03-28 22:50:43 - INFO - google_genai.models - AFC is enabled with max remote calls: 10.
+2026-03-28 22:50:45 - INFO - httpx - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-28 22:50:45 - WARNING - google_genai._api_client - Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+2026-03-28 22:50:46 - INFO - google_genai.models - AFC is enabled with max remote calls: 10.
+2026-03-28 22:50:48 - INFO - httpx - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-28 22:50:48 [INFO] data_agent.app: [MemoryETL] Extracted 3 facts for user=admin
+2026-03-28 22:50:48 - INFO - data_agent.app - [MemoryETL] Extracted 3 facts for user=admin
+2026-03-28 22:50:48 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:50:48 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:50:50 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:50:50 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:57:37 [INFO] data_agent.app: Created new ADK session for admin
+2026-03-28 22:57:37 - INFO - data_agent.app - Created new ADK session for admin
+2026-03-28 22:57:37 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:57:37 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:57:39 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:57:39 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:57:50 [INFO] data_agent.app: [Trace:a65887ff52b2] Message received user=admin role=admin
+2026-03-28 22:57:50 - INFO - data_agent.app - [Trace:a65887ff52b2] Message received user=admin role=admin
+2026-03-28 22:57:50 - INFO - google_genai.models - AFC is enabled with max remote calls: 10.
+2026-03-28 22:57:52 - INFO - httpx - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-28 22:57:52 [INFO] data_agent.app: [Trace:a65887ff52b2] Router intent=GENERAL reason=用户想要知道有哪些数据 lang=zh
+2026-03-28 22:57:52 - INFO - data_agent.app - [Trace:a65887ff52b2] Router intent=GENERAL reason=用户想要知道有哪些数据 lang=zh
+2026-03-28 22:57:52 [INFO] data_agent.app: [Trace:a65887ff52b2] Model tier=fast
+2026-03-28 22:57:52 - INFO - data_agent.app - [Trace:a65887ff52b2] Model tier=fast
+2026-03-28 22:57:52 [INFO] data_agent.app: [Trace:a65887ff52b2] ToolCategories={'database_management'} (filtering 1 categories)
+2026-03-28 22:57:52 - INFO - data_agent.app - [Trace:a65887ff52b2] ToolCategories={'database_management'} (filtering 1 categories)
+2026-03-28 22:57:52 [INFO] data_agent.app: [Trace:a43c3fa159c5] Pipeline=Dynamic Planner (意图: GENERAL) Intent=GENERAL Started
+2026-03-28 22:57:52 - INFO - data_agent.app - [Trace:a43c3fa159c5] Pipeline=Dynamic Planner (意图: GENERAL) Intent=GENERAL Started
+2026-03-28 22:57:52 [INFO] data_agent.conversation_memory: Using PostgresMemoryService for conversation memory
+2026-03-28 22:57:52 - INFO - data_agent.conversation_memory - Using PostgresMemoryService for conversation memory
+2026-03-28 22:57:52 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'hitl_approval' registered.
+2026-03-28 22:57:52 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'cost_guard' registered.
+2026-03-28 22:57:52 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'gis_tool_retry' registered.
+2026-03-28 22:57:52 - INFO - google_adk.google.adk.plugins.plugin_manager - Plugin 'provenance' registered.
+2026-03-28 22:57:52 - INFO - google_adk.google.adk.models.google_llm - Sending out request, model: gemini-2.5-flash, backend: GoogleLLMVariant.GEMINI_API, stream: False
+2026-03-28 22:57:55 - INFO - google_adk.google.adk.models.google_llm - Response received from the model.
+2026-03-28 22:57:55 [INFO] data_agent.artifact_handler: [ArtifactDetect] resp_type=dict, str_len=2997, artifacts=0
+2026-03-28 22:57:55 - INFO - data_agent.artifact_handler - [ArtifactDetect] resp_type=dict, str_len=2997, artifacts=0
+2026-03-28 22:57:56 - INFO - google_adk.google.adk.models.gemini_context_cache_manager - Cache created successfully: cachedContents/ywqn0ss5fwss91o8057i77kjy9c5ltoeqyz5v71e
+2026-03-28 22:57:56 - INFO - google_adk.google.adk.models.google_llm - Sending out request, model: gemini-2.5-flash, backend: GoogleLLMVariant.GEMINI_API, stream: False
+2026-03-28 22:57:56 - INFO - google_genai.models - AFC is enabled with max remote calls: 10.
+2026-03-28 22:58:00 - INFO - google_adk.google.adk.models.google_llm - Response received from the model.
+2026-03-28 22:58:00 [INFO] data_agent.app: [Trace:a43c3fa159c5] Pipeline=Dynamic Planner (意图: GENERAL) Finished duration=8.3s
+2026-03-28 22:58:00 - INFO - data_agent.app - [Trace:a43c3fa159c5] Pipeline=Dynamic Planner (意图: GENERAL) Finished duration=8.3s
+2026-03-28 22:58:00 [INFO] data_agent.app: [MapPreInject] _final_map_update=False, _final_data_update=False, msg_sent=True
+2026-03-28 22:58:00 - INFO - data_agent.app - [MapPreInject] _final_map_update=False, _final_data_update=False, msg_sent=True
+2026-03-28 22:58:00 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:58:00 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:58:02 [INFO] data_agent.frontend_api: [/api/map/pending] user=admin, pending_keys=[]
+2026-03-28 22:58:02 - INFO - data_agent.frontend_api - [/api/map/pending] user=admin, pending_keys=[]

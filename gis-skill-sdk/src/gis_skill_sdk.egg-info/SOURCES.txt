@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/gis_skill_sdk/__init__.py
+src/gis_skill_sdk/base_skill.py
+src/gis_skill_sdk/cli.py
+src/gis_skill_sdk/loader.py
+src/gis_skill_sdk/metadata.py
+src/gis_skill_sdk/validator.py
+src/gis_skill_sdk.egg-info/PKG-INFO
+src/gis_skill_sdk.egg-info/SOURCES.txt
+src/gis_skill_sdk.egg-info/dependency_links.txt
+src/gis_skill_sdk.egg-info/entry_points.txt
+src/gis_skill_sdk.egg-info/requires.txt
+src/gis_skill_sdk.egg-info/top_level.txt
+tests/test_base_skill.py

@@ -1,0 +1,51 @@
+{
+  "study": "Building density -> UHI in Chongqing",
+  "data": {
+    "buildings_total": 107035,
+    "sample_size": 5000,
+    "treatment_threshold": ">=10 floors"
+  },
+  "psm": {
+    "No RS features (3 covariates)": {
+      "ATT": -1.1398,
+      "CI_low": -1.2147,
+      "CI_high": -1.0539,
+      "SE": 0.0425,
+      "max_SMD": 1.3649,
+      "n_treated": 2500,
+      "n_control_matched": 2500
+    },
+    "With RS features (15 covariates)": {
+      "ATT": -1.0967,
+      "CI_low": -1.1664,
+      "CI_high": -1.0224,
+      "SE": 0.0371,
+      "max_SMD": 1.3408,
+      "n_treated": 2500,
+      "n_control_matched": 2500
+    },
+    "bias_change_pct": 3.8
+  },
+  "pca_ablation": {
+    "k": 3,
+    "ATT": 0.0654,
+    "CI_low": -0.011,
+    "CI_high": 0.1395
+  },
+  "causal_forest": {
+    "CATE_min": -3.4618,
+    "CATE_max": 4.7675,
+    "CATE_mean": 0.1097,
+    "CATE_std": 0.5812,
+    "CATE_east": 0.1134,
+    "CATE_west": 0.106,
+    "top_features": {
+      "centroid_y": 0.3607,
+      "centroid_x": 0.3026,
+      "rs_elevation": 0.2501,
+      "rs_slope": 0.0139,
+      "rs_NDVI": 0.0088
+    }
+  },
+  "elapsed_seconds": 192.9
+}

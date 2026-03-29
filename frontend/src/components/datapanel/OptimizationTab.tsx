@@ -27,6 +27,21 @@ interface RunResult {
 
 const DEFAULT_PAIR_BONUS = 1.0;
 
+// Weight presets
+const WEIGHT_PRESETS = {
+  balanced: { slope: 1000, contiguity: 1000, balance: 1000, label: '平衡模式' },
+  slopeFocused: { slope: 2000, contiguity: 500, balance: 500, label: '坡度优先' },
+  contiguityFocused: { slope: 500, contiguity: 2000, balance: 500, label: '连片优先' },
+};
+
+// Weight tooltips
+const WEIGHT_TOOLTIPS = {
+  slope: '控制地形坡度对优化的影响程度，值越大越倾向于选择平坦区域',
+  contiguity: '控制地块连片性的重要程度，值越大越倾向于形成连续区域',
+  balance: '控制转换前后面积平衡的约束强度，值越大越严格保持面积守恒',
+  pair: '配对转换的额外奖励系数，影响交换操作的优先级',
+};
+
 export default function OptimizationTab() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [scenarioId, setScenarioId] = useState('farmland_optimization');
@@ -76,6 +91,16 @@ export default function OptimizationTab() {
     const s = scenarios.find(sc => sc.id === scenarioId);
     if (s) applyDefaults(s);
   };
+
+  const applyPreset = (preset: keyof typeof WEIGHT_PRESETS) => {
+    const p = WEIGHT_PRESETS[preset];
+    setSlopeWeight(p.slope);
+    setContiguityWeight(p.contiguity);
+    setBalanceWeight(p.balance);
+  };
+
+  const totalWeight = slopeWeight + contiguityWeight + balanceWeight;
+  const isUnbalanced = totalWeight > 5000 || totalWeight < 1500;
 
   const currentDefaults = scenarios.find(s => s.id === scenarioId);
 
@@ -128,10 +153,18 @@ export default function OptimizationTab() {
   const sliderRow = (
     label: string, value: number, setter: (v: number) => void,
     min: number, max: number, step: number, defaultVal: number | undefined,
+    tooltip?: string,
   ) => (
     <div style={{ marginBottom: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-        <span style={{ color: 'var(--text)' }}>{label}</span>
+        <span style={{ color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {label}
+          {tooltip && (
+            <span title={tooltip} style={{ cursor: 'help', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+              ⓘ
+            </span>
+          )}
+        </span>
         <span>
           <strong>{value}</strong>
           {defaultVal !== undefined && (
@@ -195,14 +228,42 @@ export default function OptimizationTab() {
         />
       </div>
 
+      {/* Weight presets */}
+      <div style={{ marginBottom: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {Object.entries(WEIGHT_PRESETS).map(([key, preset]) => (
+          <button
+            key={key}
+            onClick={() => applyPreset(key as keyof typeof WEIGHT_PRESETS)}
+            style={{
+              padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)', background: 'var(--surface-elevated)',
+              cursor: 'pointer', color: 'var(--text-secondary)',
+            }}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
       {/* Weight sliders */}
       <div style={{
         background: 'var(--surface)', padding: '12px', borderRadius: 'var(--radius-md)', marginBottom: '12px',
       }}>
-        {sliderRow('坡度权重 (slope_weight)', slopeWeight, setSlopeWeight, 100, 3000, 50, currentDefaults?.weights.slope)}
-        {sliderRow('连片权重 (contiguity_weight)', contiguityWeight, setContiguityWeight, 100, 2000, 50, currentDefaults?.weights.contiguity)}
-        {sliderRow('平衡权重 (balance_weight)', balanceWeight, setBalanceWeight, 100, 2000, 50, currentDefaults?.weights.balance)}
-        {sliderRow('配对奖励 (pair_bonus)', pairBonus, setPairBonus, 0.1, 10.0, 0.1, DEFAULT_PAIR_BONUS)}
+        {sliderRow('坡度权重 (slope_weight)', slopeWeight, setSlopeWeight, 100, 3000, 50, currentDefaults?.weights.slope, WEIGHT_TOOLTIPS.slope)}
+        {sliderRow('连片权重 (contiguity_weight)', contiguityWeight, setContiguityWeight, 100, 2000, 50, currentDefaults?.weights.contiguity, WEIGHT_TOOLTIPS.contiguity)}
+        {sliderRow('平衡权重 (balance_weight)', balanceWeight, setBalanceWeight, 100, 2000, 50, currentDefaults?.weights.balance, WEIGHT_TOOLTIPS.balance)}
+        {sliderRow('配对奖励 (pair_bonus)', pairBonus, setPairBonus, 0.1, 10.0, 0.1, DEFAULT_PAIR_BONUS, WEIGHT_TOOLTIPS.pair)}
+
+        {/* Weight balance indicator */}
+        {isUnbalanced && (
+          <div style={{
+            marginTop: '8px', padding: '6px 8px', borderRadius: 'var(--radius-sm)',
+            background: '#fef3c7', color: '#92400e', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px',
+          }}>
+            <span>⚠️</span>
+            <span>权重总和 {totalWeight}，建议保持在 1500-5000 范围内以获得最佳效果</span>
+          </div>
+        )}
       </div>
 
       {/* Action buttons */}
