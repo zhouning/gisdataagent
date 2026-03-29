@@ -35,6 +35,8 @@ export default function FieldMappingEditor({
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState('');
   const [autoFilled, setAutoFilled] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'table' | 'dragdrop'>('table');
+  const [draggedField, setDraggedField] = useState<string | null>(null);
 
   useEffect(() => {
     fetchColumns();
@@ -126,6 +128,17 @@ export default function FieldMappingEditor({
     setAutoFilled(prev => { const n = new Set(prev); n.delete(remote); return n; });
   };
 
+  const handleDragStart = (field: string) => {
+    setDraggedField(field);
+  };
+
+  const handleDrop = (target: string) => {
+    if (draggedField) {
+      setField(draggedField, target);
+      setDraggedField(null);
+    }
+  };
+
   const truncate = (s: string, max = 20) => s.length > max ? s.slice(0, max) + '...' : s;
 
   // --- styles ---
@@ -213,6 +226,18 @@ export default function FieldMappingEditor({
           )}
 
           {!loading && columns.length > 0 && (
+            <>
+              {/* View toggle */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <button onClick={() => setViewMode('table')} style={{ padding: '4px 10px', fontSize: '11px', background: viewMode === 'table' ? '#2563eb' : 'transparent', border: '1px solid #444', borderRadius: 4, color: viewMode === 'table' ? '#fff' : '#aaa', cursor: 'pointer' }}>
+                  表格视图
+                </button>
+                <button onClick={() => setViewMode('dragdrop')} style={{ padding: '4px 10px', fontSize: '11px', background: viewMode === 'dragdrop' ? '#2563eb' : 'transparent', border: '1px solid #444', borderRadius: 4, color: viewMode === 'dragdrop' ? '#fff' : '#aaa', cursor: 'pointer' }}>
+                  拖拽视图
+                </button>
+              </div>
+
+              {viewMode === 'table' && (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -263,6 +288,34 @@ export default function FieldMappingEditor({
                 })}
               </tbody>
             </table>
+              )}
+
+              {viewMode === 'dragdrop' && (
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  {/* Left: Remote fields */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', color: '#888' }}>远程字段</div>
+                    {columns.map(col => (
+                      <div key={col.name} draggable onDragStart={() => handleDragStart(col.name)} style={{ padding: '8px', marginBottom: '4px', background: '#1a1a1a', border: '1px solid #333', borderRadius: 4, cursor: 'grab', fontSize: '12px' }}>
+                        {col.name} <span style={{ color: '#666', fontSize: '10px' }}>({col.dtype})</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Right: Canonical fields */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', color: '#888' }}>标准字段</div>
+                    {CANONICAL_FIELDS.map(field => {
+                      const mapped = Object.entries(mapping).find(([_, v]) => v === field)?.[0];
+                      return (
+                        <div key={field} onDragOver={e => e.preventDefault()} onDrop={() => handleDrop(field)} style={{ padding: '8px', marginBottom: '4px', background: mapped ? '#1e3a2e' : '#0d1117', border: `1px solid ${mapped ? '#10b981' : '#333'}`, borderRadius: 4, fontSize: '12px' }}>
+                          {field} {mapped && <span style={{ color: '#10b981', fontSize: '10px' }}>← {mapped}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {error && columns.length > 0 && (

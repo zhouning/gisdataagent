@@ -61,11 +61,12 @@ _LANG_HINTS = {
 def classify_intent(text: str, previous_pipeline: str = None,
                     image_paths: list = None, pdf_context: str = None) -> tuple:
     """
-    Uses Gemini Flash to semantically classify user intent into one of the 3 pipelines,
+    Uses Gemini Flash to semantically classify user intent into one of the pipelines,
     plus tool subcategories for dynamic tool filtering (v7.5.6).
     Supports multimodal input: images are embedded directly, PDF text is appended to prompt.
     Returns: (intent, reason, router_tokens, tool_categories, language) where intent is
-    'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', or 'AMBIGUOUS', and language is 'zh'/'en'/'ja'.
+    'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', 'WORKFLOW', or 'AMBIGUOUS',
+    and language is 'zh'/'en'/'ja'.
     """
     lang = detect_language(text)
     try:
@@ -85,7 +86,8 @@ def classify_intent(text: str, previous_pipeline: str = None,
         1. **GOVERNANCE**: Data auditing, quality check, topology fix, standardization, consistency check. (Keywords: 治理, 审计, 质检, 核查, 拓扑, 标准)
         2. **OPTIMIZATION**: Land use optimization, DRL, FFI calculation, spatial layout planning. (Keywords: 优化, 布局, 破碎化, 规划)
         3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences, world model prediction. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史, 世界模型, world model, LULC预测, 土地利用预测, 变化预测)
-        4. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
+        4. **WORKFLOW**: Execute a predefined multi-step workflow / quality control pipeline. The user explicitly wants to run a named workflow template (e.g. 标准质检, 快速质检, DLG质检, DOM质检, DEM质检, 三维模型质检, 完整质检). (Keywords: 执行质检流程, 运行质检, 执行工作流, 跑一下质检, 启动质检, 标准质检, 快速质检, DLG质检, DOM质检, DEM质检, 三维模型质检)
+        5. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
 
         Additionally, identify which tool subcategories are needed (comma-separated, minimum list):
         - spatial_processing: buffer, clip, overlay, tessellation, clustering, zonal stats, geocoding, spatial join
@@ -103,6 +105,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
 
         Rules:
         - CRITICAL: Short confirmations (确认, 确认无误, 好的, 是的, 对, OK, yes, 可以, 执行, 开始) are NOT new tasks. They continue the previous conversation. If a previous pipeline exists, route to the SAME pipeline. Otherwise, treat as AMBIGUOUS.
+        - If the user explicitly asks to "execute/run a QC workflow" (执行质检, 运行质检流程, 跑质检, 启动质检, 标准质检, 快速质检, DLG质检, DOM质检, DEM质检, 三维模型质检, 完整质检, 执行工作流), choose WORKFLOW. Note: WORKFLOW is different from GOVERNANCE — GOVERNANCE is ad-hoc analysis, WORKFLOW is running a predefined multi-step template.
         - If input mentions "世界模型" or "world model" or "LULC预测" or "土地利用预测", prioritize GENERAL (the world model tool is in the General pipeline).
         - If input mentions "optimize" or "FFI", prioritize OPTIMIZATION.
         - If input is asking "what data is there" or "show map", choose GENERAL.{prev_hint}
@@ -180,6 +183,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
             reason = ""
         if "OPTIMIZATION" in intent: result_intent = "OPTIMIZATION"
         elif "GOVERNANCE" in intent: result_intent = "GOVERNANCE"
+        elif "WORKFLOW" in intent: result_intent = "WORKFLOW"
         elif "AMBIGUOUS" in intent: result_intent = "AMBIGUOUS"
         elif "GENERAL" in intent: result_intent = "GENERAL"
         else: result_intent = "GENERAL"

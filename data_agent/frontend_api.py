@@ -50,6 +50,23 @@ async def _api_analytics_tool_success(request: Request):
     from .pipeline_analytics import api_analytics_tool_success
     return await api_analytics_tool_success(request)
 
+# Message Bus handlers (v15.9)
+async def _api_messaging_stats(request: Request):
+    from .api.messaging_routes import messaging_stats
+    return await messaging_stats(request)
+
+async def _api_messaging_list(request: Request):
+    from .api.messaging_routes import list_messages
+    return await list_messages(request)
+
+async def _api_messaging_replay(request: Request):
+    from .api.messaging_routes import replay_message
+    return await replay_message(request)
+
+async def _api_messaging_cleanup(request: Request):
+    from .api.messaging_routes import cleanup_messages
+    return await cleanup_messages(request)
+
 async def _api_analytics_token_efficiency(request: Request):
     from .pipeline_analytics import api_analytics_token_efficiency
     return await api_analytics_token_efficiency(request)
@@ -2485,6 +2502,22 @@ async def _api_memory_search(request: Request):
     return JSONResponse(result)
 
 
+async def _api_memory_batch_save(request: Request):
+    """POST /api/memory/batch-save — save multiple facts as memories."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+        facts = body.get("facts", [])
+        from .memory import save_auto_extract_memories
+        result = save_auto_extract_memories(facts)
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
 async def _api_chains_list(request: Request):
     """GET /api/chains — list analysis chains for current user."""
     user = _get_user_from_request(request)
@@ -2987,6 +3020,7 @@ def get_frontend_api_routes():
         Route("/api/drl/compare", endpoint=_api_drl_compare, methods=["GET"]),
         # Memory Search (v14.0)
         Route("/api/memory/search", endpoint=_api_memory_search, methods=["GET"]),
+        Route("/api/memory/batch-save", endpoint=_api_memory_batch_save, methods=["POST"]),
         # Analysis Chains (v14.2)
         Route("/api/chains", endpoint=_api_chains_list, methods=["GET"]),
         Route("/api/chains", endpoint=_api_chains_create, methods=["POST"]),
@@ -3105,6 +3139,11 @@ def get_frontend_api_routes():
         *get_topology_routes(),
         # Metadata Management (v15.8)
         *get_metadata_routes(),
+        # Message Bus Monitoring (v15.9)
+        Route("/api/messaging/stats", endpoint=_api_messaging_stats, methods=["GET"]),
+        Route("/api/messaging/messages", endpoint=_api_messaging_list, methods=["GET"]),
+        Route("/api/messaging/{id:int}/replay", endpoint=_api_messaging_replay, methods=["POST"]),
+        Route("/api/messaging/cleanup", endpoint=_api_messaging_cleanup, methods=["DELETE"]),
     ]
 
 

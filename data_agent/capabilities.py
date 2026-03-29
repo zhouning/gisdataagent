@@ -20,8 +20,16 @@ def list_builtin_skills() -> list[dict]:
 
     results: list[dict] = []
     try:
+        import logging as _logging
         from google.adk.skills import list_skills_in_dir
-        raw = list_skills_in_dir(str(_SKILLS_DIR))
+        # Suppress ADK warning for __pycache__ dirs (upstream bug)
+        _adk_logger = _logging.getLogger("google.adk.skills._utils")
+        _prev_level = _adk_logger.level
+        _adk_logger.setLevel(_logging.ERROR)
+        try:
+            raw = list_skills_in_dir(str(_SKILLS_DIR))
+        finally:
+            _adk_logger.setLevel(_prev_level)
         for skill_id, frontmatter in sorted(raw.items()):
             data = frontmatter.model_dump() if hasattr(frontmatter, "model_dump") else {}
             meta = data.get("metadata") or {}

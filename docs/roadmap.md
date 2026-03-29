@@ -490,16 +490,16 @@
 > 以下项目在各版本迭代中被跳过或延期，按优先级分类管理
 
 ### 优先完成 (低成本高价值)
-- [ ] **奖励权重 UI** — DRL 前端 slope/contiguity/balance 滑块 *(v14.0, 前端 ~100 行)*
+- [x] **奖励权重 UI** — DRL 前端 slope/contiguity/balance 滑块 *(v14.0, 前端 ~100 行)* ✅ v15.9
 - [ ] **字段映射可视化编辑器** — 源↔目标字段拖拽映射 *(v14.5, 前端中等工作量)*
-- [ ] **MCP 外部 Agent 接入验证** — Claude Desktop / Cursor E2E 测试 *(v13.1)*
+- [x] **MCP 外部 Agent 接入验证** — Claude Desktop / Cursor E2E 测试 *(v13.1)* ✅ v15.9
 
 ### 择机完成 (中等价值)
-- [ ] **分析意图消歧 v2** — 复杂查询拆解子任务列表 *(v14.1)*
-- [ ] **自动记忆提取增强** — pipeline 后 extract_facts + 弹窗确认 *(v14.1)*
-- [ ] **消息总线持久化** — AgentMessageBus → PostgreSQL *(v14.1)*
+- [x] **分析意图消歧 v2** — 复杂查询拆解子任务列表 *(v14.1)* ✅ v15.9
+- [x] **自动记忆提取增强** — pipeline 后 extract_facts + 弹窗确认 *(v14.1)* ✅ v15.9
+- [x] **消息总线持久化** — AgentMessageBus → PostgreSQL *(v14.1)* ✅ v15.9
 - [ ] **自适应布局** — 移动端响应式 *(v14.2)*
-- [ ] **Skill SDK 发布** — `gis-skill-sdk` Python 包 *(v14.3)*
+- [x] **Skill SDK 发布** — `gis-skill-sdk` Python 包 *(v14.3)* ✅ v15.9
 
 ### 远期/冻结
 - [~] **标注协同 (WebSocket)** — 实时协同复杂度高 *(v14.1, 冻结)*
