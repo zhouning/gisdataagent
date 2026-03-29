@@ -125,3 +125,11 @@ docs/generate_*_paper*
 docs/technical_paper_*
 docs/surveying_qc_demo_script.*
 docs/surveying_qc_agent_design.*
+
+# PDF and video files — NEVER commit (may contain sensitive data)
+*.pdf
+*.mp4
+*.avi
+*.mov
+*.wmv
+!docs/dita/out/pdf-css-html5/data-agent-user-guide.pdf
