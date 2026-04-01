@@ -647,17 +647,190 @@
 - [x] **经验池 (Experience Pool)** — 成功分析经验记录 + RAG 检索 + 经验进化 ✅ 2026-04-01
 - [x] **数据质量门控** — 云覆盖检测 + 自动降级 (光学→SAR 切换) ✅ 2026-04-01
 - [x] **卫星数据预置** — Sentinel-2/Landsat/SAR STAC 模板 + 5 预置源 ✅ 2026-04-01
-- [ ] **新增 Skills** — spectral-analysis + satellite-imagery
+- [x] **新增 Skills** — spectral-analysis + satellite-imagery ✅ 2026-04-02
 
 ### 质量保障
-- [ ] **test_semantic_operators.py** — 语义算子组合 + 自动工具选择
-- [ ] **test_multi_agent_collaboration.py** — 多 Agent 任务分解 + 协调 + 汇总
-- [ ] **test_plan_refinement.py** — 执行反馈 → 计划调整
-- [ ] **test_guardrails.py** — 策略引擎 + 三级策略验证
+- [x] **test_semantic_operators.py** — 语义算子组合 + 自动工具选择 ✅ 2026-04-02
+- [x] **test_multi_agent_collaboration.py** — 多 Agent 任务分解 + 协调 + 汇总 ✅ 2026-04-02
+- [x] **test_plan_refinement.py** — 执行反馈 → 计划调整 ✅ 2026-04-02
+- [x] **test_guardrails.py** — 策略引擎 + 三级策略验证 ✅ 2026-04-02
 
 ---
 
-## v17.0+ — L4 主动式探索 (远期愿景)
+## v17.0 — 多模态融合 v2.0 增强 (4-6周)
+
+> **主题**: 时序对齐 + 语义增强 + 冲突解决 + 可解释性
+>
+> **依据**: `docs/fusion_v2_enhancement_plan.md` — 从基础融合到智能语义融合
+>
+> **目标**: 提升多源数据融合质量，增强语义理解和冲突处理能力
+
+### 时序对齐模块
+
+- [ ] **TemporalAligner** — `fusion/temporal_alignment.py` 时序对齐引擎
+- [ ] **时间戳标准化** — 多时区/多格式统一到 UTC ISO8601
+- [ ] **时序插值** — 线性/样条/最近邻插值，填补时间间隙
+- [ ] **时间窗口对齐** — 滑动窗口匹配 + 容差配置
+- [ ] **事件序列对齐** — DTW (Dynamic Time Warping) 算法
+- [ ] **5 对齐工具** — standardize_timestamps / interpolate_temporal / align_time_windows / align_event_sequences / validate_temporal_consistency
+
+### 语义增强模块
+
+- [ ] **SemanticEnhancer** — `fusion/semantic_enhancement.py` 语义增强引擎
+- [ ] **本体推理** — OWL 本体加载 + RDFS 推理 + 关系传播
+- [ ] **LLM 语义理解** — Gemini 2.5 Pro 字段语义解析 + 关系抽取
+- [ ] **跨源实体链接** — 基于嵌入的实体消歧 + 同义词扩展
+- [ ] **语义相似度计算** — 字段级 + 记录级相似度评分
+- [ ] **6 语义工具** — load_ontology / infer_relationships / llm_semantic_parse / link_entities / compute_semantic_similarity / enrich_with_context
+
+### 冲突解决模块
+
+- [ ] **ConflictResolver** — `fusion/conflict_resolution.py` 冲突解决引擎
+- [ ] **冲突检测** — 值冲突 / 模式冲突 / 时序冲突 / 空间冲突
+- [ ] **解决策略** — 6 种策略 (source_priority / latest_wins / voting / llm_arbitration / spatial_proximity / user_defined)
+- [ ] **置信度评分** — 数据源可信度 + 时效性 + 空间精度综合评分
+- [ ] **冲突日志** — 记录所有冲突及解决决策，支持审计
+- [ ] **5 冲突工具** — detect_conflicts / resolve_value_conflict / resolve_schema_conflict / resolve_temporal_conflict / log_conflict_resolution
+
+### 可解释性模块
+
+- [ ] **ExplainabilityEngine** — `fusion/explainability.py` 可解释性引擎
+- [ ] **融合溯源** — 每个融合结果追溯到源数据集 + 转换步骤
+- [ ] **决策解释** — 为什么选择某个值/策略，生成自然语言解释
+- [ ] **影响分析** — 某个源数据变化对融合结果的影响评估
+- [ ] **可视化报告** — Sankey 图 (数据流) + 决策树 (策略选择)
+- [ ] **4 解释工具** — trace_fusion_lineage / explain_decision / analyze_impact / generate_fusion_report
+
+### 集成与测试
+
+- [ ] **FusionToolset 扩展** — 新增 20 个融合 v2.0 工具
+- [ ] **fusion_v2_routes.py** — 8 个 REST API 端点
+- [ ] **FusionV2Tab** — DataPanel 新增融合 v2.0 配置和监控 Tab
+- [ ] **80+ 测试** — 时序对齐/语义增强/冲突解决/可解释性全覆盖
+
+---
+
+## v18.0 — 数据库高可用与连接优化 (2-3周)
+
+> **主题**: 消除数据库单点故障，优化连接池
+>
+> **依据**: `docs/distributed_architecture_plan.md` Phase 1
+>
+> **目标**: PostgreSQL 主从复制 + PgBouncer + 异步驱动
+
+### PostgreSQL 主从复制
+
+- [ ] **1主2从架构** — 流复制 (Streaming Replication)
+- [ ] **自动故障转移** — Patroni 或云厂商托管 (PolarDB/RDS)
+- [ ] **读写分离** — 主库写入 + 从库查询
+- [ ] **db_engine.py 改造** — get_engine(readonly=True/False) 路由
+
+### PgBouncer 连接池代理
+
+- [ ] **PgBouncer 部署** — Transaction 模式，default_pool_size=25
+- [ ] **连接池优化** — 主库 pool_size=10→50，从库 pool_size=20→100
+- [ ] **pgbouncer-deployment.yaml** — K8s 部署配置 (2 副本)
+
+### 异步数据库驱动
+
+- [ ] **db_engine_async.py** — asyncpg 驱动，连接池 min_size=10 max_size=50
+- [ ] **向后兼容** — 保留同步接口，通过 asyncio.run 包装
+- [ ] **关键模块迁移** — semantic_layer / data_catalog / frontend_api 优先迁移
+
+### 数据库迁移
+
+- [ ] **Migration 059** — 创建只读用户 agent_reader + 权限配置
+- [ ] **物化视图** — mv_pipeline_analytics 减轻主库压力
+- [ ] **pg_cron 定时刷新** — 每 15 分钟刷新物化视图
+
+### 验证与监控
+
+- [ ] **故障转移测试** — 停止主库，观察 Patroni 自动提升从库 (<30s)
+- [ ] **读写分离验证** — 写入走主库，查询走从库
+- [ ] **主从延迟监控** — Prometheus 指标 pg_replication_lag_seconds <1s
+
+---
+
+## v19.0 — 分布式任务队列与缓存 (3-4周)
+
+> **主题**: Celery 分布式任务队列 + Redis Cluster
+>
+> **依据**: `docs/distributed_architecture_plan.md` Phase 2
+>
+> **目标**: 替换进程内任务队列，支持水平扩展
+
+### Celery 分布式任务队列
+
+- [ ] **celery_app.py** — Celery 应用配置，broker=Redis，backend=Redis
+- [ ] **tasks/ 包** — pipeline_tasks / workflow_tasks / fusion_tasks 任务定义
+- [ ] **TaskQueue 适配器** — 保持接口不变，底层切换到 Celery
+- [ ] **Worker 池部署** — 3-5 个 worker 进程，每个 4-8 并发
+- [ ] **celery-worker-deployment.yaml** — K8s 部署配置
+
+### Redis Cluster 部署
+
+- [ ] **3主3从架构** — 最小 HA 配置，分片 + 副本
+- [ ] **redis-cluster.yaml** — StatefulSet 部署 (6 节点)
+- [ ] **用途划分** — DB0=Celery broker, DB1=结果存储, DB2=应用缓存
+
+### 缓存层改造
+
+- [ ] **semantic_layer.py** — 从内存缓存迁移到 Redis，TTL=300s
+- [ ] **session 存储** — Chainlit session 迁移到 Redis (多 Pod 共享)
+- [ ] **分布式锁** — Redis SETNX 实现分布式锁 (替代进程内锁)
+
+### 任务监控
+
+- [ ] **Celery Flower** — Web UI 监控任务状态
+- [ ] **Prometheus 指标** — celery_task_total / celery_task_duration_seconds
+- [ ] **任务失败重试** — 自动重试 3 次，指数退避
+
+### 验证
+
+- [ ] **任务提交测试** — 提交 100 个任务，观察并发执行
+- [ ] **Worker 扩容** — 动态增加 worker 数量，任务自动分配
+- [ ] **Redis 故障转移** — 停止 1 个 Redis 节点，集群自动恢复
+
+---
+
+## v20.0 — 对象存储与文件共享 (2-3周)
+
+> **主题**: MinIO 对象存储 + 冷存储归档
+>
+> **依据**: `docs/distributed_architecture_plan.md` Phase 3
+>
+> **目标**: 解决多 Pod 文件共享，实现冷存储归档
+
+### MinIO 对象存储集群
+
+- [ ] **4 节点分布式部署** — minio-statefulset.yaml (纠删码 EC:2)
+- [ ] **storage/object_storage.py** — MinIO 客户端封装 (S3 兼容)
+- [ ] **文件存储迁移** — 从本地 uploads/{user_id}/ 迁移到 MinIO
+- [ ] **预签名 URL** — 前端直接下载，减轻后端压力
+
+### 文件路径重构
+
+- [ ] **user_context.py 改造** — get_user_upload_path 返回对象存储路径
+- [ ] **save_user_file** — 上传到 MinIO + 元数据记录
+- [ ] **本地缓存层** — LRU 缓存最近访问的文件 (减少 MinIO 请求)
+
+### 冷存储归档
+
+- [ ] **archival/cold_storage.py** — 冷存储归档器
+- [ ] **归档策略** — 30 天未访问 → 归档到 S3 Glacier / 阿里云归档存储
+- [ ] **Migration 060** — agent_data_assets 增加 archived / archive_backend / archive_path 字段
+- [ ] **agent_archival_jobs 表** — 归档任务记录
+- [ ] **Celery Beat 定时任务** — 每天凌晨 2 点执行归档
+
+### 验证
+
+- [ ] **多 Pod 文件共享** — Pod A 上传，Pod B 可下载
+- [ ] **归档恢复测试** — 归档文件 → 恢复到 MinIO → 下载验证
+- [ ] **存储成本优化** — 归档后 MinIO 存储减少 >50%
+
+---
+
+## v21.0+ — L4 主动式探索 (远期愿景)
 
 > **主题**: 从响应式 → 主动式，从有监督 → 无监督
 >
@@ -665,69 +838,101 @@
 >
 > **目标**: 持续监控 + 自主任务发现 + 内在动机驱动
 
-### SIGMOD 2026 论文借鉴 (L4 能力)
+### API 网关与服务网格 (v21.0)
 
-#### **S-8: 持续监控与任务发现 (远期)**
+- [ ] **Kong API 网关** — 统一入口，限流/熔断/认证前置
+- [ ] **kong-gateway.yaml** — K8s 部署 (2 副本 + LoadBalancer)
+- [ ] **限流插件** — 按用户/IP 限流 (100/min, 1000/hour)
+- [ ] **JWT 认证** — 认证前置到网关，后端信任 X-Consumer-Username
+- [ ] **熔断器** — 后端服务不可用时快速失败 (failure_threshold=5)
+- [ ] **kong-ingress.yaml** — Ingress 配置 + 插件绑定
+
+### 分布式追踪与可观测性 (v21.0)
+
+- [ ] **OpenTelemetry 全链路追踪** — HTTP/DB/Redis/Celery 自动注入
+- [ ] **Jaeger 追踪后端** — 存储 trace 数据 + UI 查询
+- [ ] **Loki 集中日志** — 替代 stdout，与 trace_id 关联
+- [ ] **Grafana 统一看板** — Prometheus + Jaeger + Loki 数据源
+- [ ] **observability.py 增强** — setup_tracing() + get_current_trace_id()
+- [ ] **LokiHandler** — 日志自动推送到 Loki
+
+### 跨系统血缘与数据治理 (v21.0)
+
+- [ ] **跨系统血缘追踪** — 支持外部系统资产 (external_system + external_id)
+- [ ] **Migration 061** — agent_asset_lineage 表 + 外部资产字段
+- [ ] **register_external_asset** — 注册外部系统资产
+- [ ] **link_external_lineage** — 关联内外部资产血缘
+- [ ] **血缘可视化 API** — 跨系统血缘图谱查询
+
+### SIGMOD 2026 论文借鉴 (L4 能力，v22.0+)
+
+#### **S-8: 持续监控与任务发现**
 - [ ] **DataLakeMonitor** — 7x24 监控守护进程
 - [ ] **数据漂移检测** — 自动发现数据分布变化 → 触发重训练任务
 - [ ] **性能退化检测** — 查询延迟监控 → 触发优化任务
 - [ ] **优化机会发现** — 缺失索引、有益物化视图、冗余计算 → 自主优化
 - [ ] **任务优先级** — 多任务自主排序 (紧急度 × 收益)
 
-#### **S-9: 内在动机引擎 (远期)**
+#### **S-9: 内在动机引擎**
 - [ ] **IntrinsicMotivation** — 内部奖励信号驱动探索
 - [ ] **奖励函数** — 发现新数据源 +10，提升数据质量 +5×improvement，减少延迟 +2×reduction
 - [ ] **探索 vs 利用** — ε-greedy 策略平衡已知优化和新机会探索
 - [ ] **持续自我改进** — 基于操作日志和遥测数据适应策略
 
-### 遥感智能体 Phase 2-4 (远期)
+### 遥感智能体 Phase 2-4 (v22.0+)
 
-#### **Phase 2: 时空分析 (v17.0)**
+#### **Phase 2: 时空分析**
 - [ ] **变化检测引擎** — 双时相差异 + 指数差异 + 分类后比较 + 语义描述
 - [ ] **时间序列分析** — Mann-Kendall 趋势 + 断点检测 + 物候提取
 - [ ] **证据充分性评估** — 数据覆盖度 × 方法多样性 × 结论支撑强度
 
-#### **Phase 3: 智能化可信度 (v18.0)**
+#### **Phase 3: 智能化可信度**
 - [ ] **代码生成执行** — Agent 动态生成 Python + 沙箱执行
 - [ ] **幻觉检测增强** — 空间约束 Fact-Checking + 多源交叉验证
 - [ ] **多 Agent Debate** — 主分析 + 独立验证 + 统计检验 + Judge 汇总
 - [ ] **RS 领域知识库** — 光谱特性 + 处理流程 + 分类体系 + 法规标准
 
-#### **Phase 4: 高级遥感 (v19.0+)**
+#### **Phase 4: 高级遥感**
 - [ ] **SAR/高光谱/LiDAR** 数据处理
 - [ ] **深度学习推理** — segment-anything-geo / SatMAE / Prithvi
 - [ ] **具身执行接口** — 卫星调度 / 无人机航线规划 (预留)
 
 ---
 
-## 标杆对标进度 (更新 2026-03-30)
+## 标杆对标进度 (更新 2026-04-01)
 
 > 新增标杆: DeerFlow (ByteDance 通用 Agent Harness) + SIGMOD 2026 Data Agent Levels 论文
 
-| 标杆能力 | 来源 | v15.8 ✅ | v15.9 🎯 | v16.0 🎯 |
-|----------|------|-----------|-----------|-----------|
-| 空间数据虚拟化 | SeerAI | 🟢🟢 统一资产表 | 🟢🟢 | 🟢🟢 |
-| 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢 |
-| 分析血缘自动追踪 | SeerAI | 🟢🟢 4 层元数据 | 🟢🟢 因果诊断 | 🟢🟢🟢 |
-| 行业预置模板 | SeerAI | 🟢🟢🟢 QC 工作流模板 | 🟢🟢🟢 | 🟢🟢🟢 |
-| Agent 对话交互 | OpenClaw | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 企业级治理 | Frontier | 🟢🟢🟢 QC+BCG 平台 | 🟢🟢🟢 Guardrails 增强 | 🟢🟢🟢🟢 |
-| Agent 可观测性 | — | 🟢🟢🟢 Eval+Token 归因 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 多 Agent 协作 | CoWork | 🟢🟢🟢 非阻塞+上下文 | 🟢🟢🟢 | 🟢🟢🟢🟢 专业分工 |
-| 时空预测 | — | 🟢🟢🟢 JEPA+因果 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 因果推断 | — | 🟢🟢🟢 三角度 14 工具 | 🟢🟢🟢 + 错误诊断 | 🟢🟢🟢 |
-| 测绘质检 | — | 🟢🟢🟢 GB/T 24356 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 企业平台 | BCG | 🟢🟢 6 模块 | 🟢🟢 | 🟢🟢 |
-| **Harness/App 分离** | DeerFlow | 🔴 app.py 3340行 | 🟢🟢 core/ 独立 | 🟢🟢 |
-| **中间件链** | DeerFlow | 🔴 横切关注点散布 | 🟢🟢 7 层中间件 | 🟢🟢 |
-| **上下文摘要** | DeerFlow | 🔴 无 | 🟢 自动摘要 | 🟢🟢 |
-| **Guardrails** | DeerFlow | 🟡 RBAC 仅 pipeline级 | 🟡 | 🟢🟢 工具级策略 |
-| **Skill Creator** | DeerFlow | 🟡 手工创建 | 🟡 | 🟢 AI 辅助 |
-| **Planner-Executor** | SIGMOD L3 | 🔴 硬编码三流水线 | 🟢🟢 动态计划 | 🟢🟢🟢 |
-| **语义算子** | SIGMOD L3 | 🔴 直接暴露底层工具 | 🟡 | 🟢🟢 高层抽象 |
-| **工具选择器** | SIGMOD L3 | 🔴 28 Toolset全暴露 | 🟢 智能推荐 | 🟢🟢 |
-| **因果错误诊断** | SIGMOD L3 | 🔴 无 | 🟢 管道根因分析 | 🟢🟢 |
-| **Data Agent Level** | SIGMOD | L2.5 | L2.8 (Proto-L3) | L3 (完整条件自主) |
+| 标杆能力 | 来源 | v15.8 ✅ | v15.9 ✅ | v16.0 ✅ | v17.0 🎯 | v18-20 🎯 | v21+ 🎯 |
+|----------|------|-----------|-----------|-----------|-----------|-----------|-----------|
+| 空间数据虚拟化 | SeerAI | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 跨系统 |
+| 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢 | 🟢🟢 本体推理 | 🟢🟢 | 🟢🟢 |
+| 分析血缘自动追踪 | SeerAI | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 跨系统 |
+| 行业预置模板 | SeerAI | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
+| Agent 对话交互 | OpenClaw | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 企业级治理 | Frontier | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 |
+| Agent 可观测性 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 全链路 |
+| 多 Agent 协作 | CoWork | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 |
+| 时空预测 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 因果推断 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 测绘质检 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 企业平台 | BCG | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **Harness/App 分离** | DeerFlow | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **中间件链** | DeerFlow | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **上下文摘要** | DeerFlow | 🔴 | 🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **Guardrails** | DeerFlow | 🟡 | 🟡 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **Skill Creator** | DeerFlow | 🟡 | 🟡 | 🟢 | 🟢 | 🟢 | 🟢 |
+| **Planner-Executor** | SIGMOD L3 | 🔴 | 🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
+| **语义算子** | SIGMOD L3 | 🔴 | 🟡 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **工具选择器** | SIGMOD L3 | 🔴 | 🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **因果错误诊断** | SIGMOD L3 | 🔴 | 🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
+| **多模态融合** | — | 🟢🟢 基础 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 v2.0 | 🟢🟢🟢 | 🟢🟢🟢 |
+| **数据库 HA** | — | 🔴 单点 | 🔴 | 🔴 | 🔴 | 🟢🟢🟢 主从 | 🟢🟢🟢 |
+| **分布式任务队列** | — | 🔴 进程内 | 🔴 | 🔴 | 🔴 | 🟢🟢🟢 Celery | 🟢🟢🟢 |
+| **对象存储** | — | 🔴 本地 | 🔴 | 🔴 | 🔴 | 🟢🟢🟢 MinIO | 🟢🟢🟢 |
+| **API 网关** | — | 🔴 无 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Kong |
+| **分布式追踪** | — | 🟡 OTel 基础 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 Jaeger |
+| **Data Agent Level** | SIGMOD | L2.5 | L2.8 | L3 | L3 | L3 | L3.5→L4 |
 
 ### Data Agent Level 演进路径
 
@@ -735,18 +940,146 @@
 v15.8: L2.5 — 完整 L2 + 部分 Proto-L3 (跨生命周期, 意图路由)
 v15.9: L2.8 — + Planner-Executor + 中间件链 + 工具选择 + 上下文摘要
 v16.0: L3   — + 语义算子 + 多 Agent 协作 + 计划精化 + Guardrails
-v17.0: L3.5 — + 持续监控 + 任务发现 (向 L4 探索)
-v18.0: L4-  — + 内在动机 + 自主探索 (L4 初步)
+v17.0: L3   — + 多模态融合 v2.0 (时序对齐 + 语义增强 + 冲突解决)
+v18.0: L3   — + 数据库 HA (主从复制 + PgBouncer + 异步驱动)
+v19.0: L3   — + 分布式任务队列 (Celery + Redis Cluster)
+v20.0: L3   — + 对象存储 (MinIO + 冷存储归档)
+v21.0: L3.5 — + API 网关 + 分布式追踪 + 跨系统血缘 (向 L4 探索)
+v22.0: L4-  — + 持续监控 + 任务发现 + 内在动机 (L4 初步)
 ```
 
 ### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
 
-| 领域 | v14.5 ✅ | v15.0 ✅ | v15.3 ✅ | v15.8 ✅ |
-|------|-----------|-----------|-----------|-----------|
-| 数据标准 | 70% | 80% | 80% | 85% *(GB/T 24356 质检标准)* |
-| 数据模型 | 20% | 35% | 40% *(因果 DAG 建模)* | 45% *(4 层元数据统一)* |
-| 数据质量 | 90% | 95% | 95% | 98% *(QC 智能体+工作流)* |
-| 数据安全 | 30% | 60% | 60% | 60% |
-| 元数据 | 80% | 85% | 88% *(语义搜索+嵌入缓存)* | 92% *(统一资产表+4 层)* |
-| 数据资源 | 80% | 85% | 88% *(世界模型+NL2SQL)* | 90% *(自动迁移+资产统一)* |
-| **综合** | **~62%** | **~73%** | **~75%** | **~78%** |
+| 领域 | v14.5 ✅ | v15.0 ✅ | v15.3 ✅ | v15.8 ✅ | v17.0 🎯 | v21.0 🎯 |
+|------|-----------|-----------|-----------|-----------|-----------|-----------|
+| 数据标准 | 70% | 80% | 80% | 85% | 88% | 90% |
+| 数据模型 | 20% | 35% | 40% | 45% | 50% 本体 | 55% |
+| 数据质量 | 90% | 95% | 95% | 98% | 98% | 98% |
+| 数据安全 | 30% | 60% | 60% | 60% | 60% | 65% |
+| 元数据 | 80% | 85% | 88% | 92% | 95% 语义 | 98% 跨系统 |
+| 数据资源 | 80% | 85% | 88% | 90% | 92% | 95% 分布式 |
+| **综合** | **~62%** | **~73%** | **~75%** | **~78%** | **~80%** | **~84%** |
+
+---
+
+## 架构演进对比
+
+### 当前架构 (v16.0)
+
+```
+单节点部署:
+- App (1 进程, Chainlit + ADK)
+- PostgreSQL (1 实例, 单点)
+- Redis (可选, 单实例)
+- 本地文件存储 (uploads/)
+
+适用场景: 开发环境、演示、<10 用户
+```
+
+### 目标架构 (v21.0)
+
+```
+分布式高可用部署:
+- App (3-5 Pod, HPA 自动扩缩容)
+- Celery Worker (3 Pod, 任务并行执行)
+- PostgreSQL (1主2从 + PgBouncer 连接池)
+- Redis Cluster (3主3从, 分片 + 副本)
+- MinIO (4 节点, 纠删码 EC:2)
+- Kong Gateway (2 Pod, 限流 + 熔断)
+- Observability Stack (Jaeger + Loki + Grafana)
+
+适用场景: 生产环境、>50 用户、高并发
+性能指标: 500+ 并发用户, <500ms P95 延迟, 99.9% 可用性
+```
+
+---
+
+## 性能指标演进
+
+| 指标 | v16.0 当前 | v18.0 目标 | v19.0 目标 | v21.0 目标 |
+|------|------------|------------|------------|------------|
+| 并发用户 | 10 | 50 | 200 | 500+ |
+| 请求延迟 P95 | 2s | 1s | 800ms | <500ms |
+| 数据库连接数 | 5 | 50 主 + 100 从 | 50 主 + 100 从 | 50 主 + 100 从 |
+| 任务并发数 | 3 | 3 | 50+ | 50+ |
+| 文件存储 | 本地 5GB | 本地 5GB | MinIO 10TB+ | MinIO 10TB+ |
+| 可用性 | 单点 | 99% | 99.5% | 99.9% |
+| RTO 恢复时间 | 手动 | <30 分钟 | <10 分钟 | <5 分钟 |
+| RPO 数据丢失 | 未知 | <5 分钟 | <1 分钟 | <1 分钟 |
+
+---
+
+## 成本估算 (云厂商部署)
+
+### 阿里云 (华东2 区域)
+
+| 资源 | v16.0 | v21.0 | 月成本 |
+|------|-------|-------|--------|
+| ECS 计算 | 1×4C8G | 5×4C8G | ¥3000 |
+| PolarDB MySQL | 无 | 2C4G 主从 | ¥1500 |
+| Redis 集群 | 单实例 | 4G×3 节点 | ¥1200 |
+| OSS 对象存储 | 无 | 10TB | ¥2000 |
+| SLB 负载均衡 | 无 | 标准版 | ¥300 |
+| **总计** | **~¥500** | **~¥8000** | **16x** |
+
+### 自建 K8s (本地机房)
+
+- 服务器 (32C64G × 3): 一次性 ¥60,000
+- 存储 (20TB): 一次性 ¥30,000
+- 网络设备: 一次性 ¥20,000
+- **总计**: ~¥110,000 (一次性) + 电费/运维
+
+---
+
+## 实施时间线
+
+| 版本 | 主题 | 工作量 | 开始时间 | 完成时间 |
+|------|------|--------|----------|----------|
+| v17.0 | 多模态融合 v2.0 | 4-6 周 | 2026-04-01 | 2026-05-15 |
+| v18.0 | 数据库 HA | 2-3 周 | 2026-05-16 | 2026-06-05 |
+| v19.0 | 分布式任务队列 | 3-4 周 | 2026-06-06 | 2026-07-03 |
+| v20.0 | 对象存储 | 2-3 周 | 2026-07-04 | 2026-07-24 |
+| v21.0 | 网关 + 追踪 + 血缘 | 4-5 周 | 2026-07-25 | 2026-08-28 |
+| v22.0+ | L4 主动式探索 | 待定 | 2026-09+ | 待定 |
+
+**总计**: v17.0 → v21.0 约 15-21 周 (4-5 个月)
+
+---
+
+## 关键文件清单 (v17.0-v21.0)
+
+### v17.0 多模态融合 v2.0 (新增 ~15 个文件)
+
+- `data_agent/fusion/temporal_alignment.py` (~350 行)
+- `data_agent/fusion/semantic_enhancement.py` (~400 行)
+- `data_agent/fusion/conflict_resolution.py` (~380 行)
+- `data_agent/fusion/explainability.py` (~320 行)
+- `data_agent/toolsets/fusion_v2_tools.py` (~200 行)
+- `data_agent/api/fusion_v2_routes.py` (~180 行)
+- `frontend/src/components/datapanel/FusionV2Tab.tsx` (~250 行)
+- 测试文件 4 个 (~800 行)
+
+### v18.0-v21.0 分布式架构 (新增 ~40 个文件)
+
+- `data_agent/db_engine_async.py` (~150 行)
+- `data_agent/celery_app.py` + tasks/ (~400 行)
+- `data_agent/storage/object_storage.py` (~180 行)
+- `data_agent/archival/cold_storage.py` (~200 行)
+- K8s 配置 15+ 个 YAML 文件
+- 数据库迁移 3 个 (059-061)
+
+---
+
+## 总结
+
+本次 roadmap 整合完成了两个重要规划文档的融入：
+
+**1. 融合 v2.0 增强 (v17.0)** — 时序对齐 + 语义增强 + 冲突解决 + 可解释性
+
+**2. 分布式架构升级 (v18.0-v21.0)** — 数据库 HA + Celery + MinIO + Kong + 追踪
+
+**3. 保留原有内容** — v15.8-v16.0 已完成内容全部保留，v17.0+ 原 L4 愿景移至 v22.0+
+
+**4. 关键指标** — 时间线 4-5 个月，并发用户 10→500+，延迟 2s→<500ms，可用性 99.9%
+
+**5. 演进逻辑** — v16.0 (L3) → v17.0 (融合智能化) → v18-20 (分布式基础) → v21.0 (生产级) → v22.0+ (L4)
