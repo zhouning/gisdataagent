@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v15.9
+# GIS Data Agent (ADK Edition) v16.0
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v15.9 新增**：7 项 UI 增强与工具完善 — DRL 权重预设（平衡/坡度/连片 3 模式 + 工具提示）、字段映射拖拽编辑器（原生 HTML5 拖放 + 双视图切换）、MCP 外部客户端验证（Claude Desktop/Cursor 集成指南）、任务分解确认 UI（交互式子任务编辑）、记忆提取确认流程（批量保存端点）、消息总线监控面板（统计/重放/清理）、Skill SDK 完整发布（CLI + 验证器 + 13/13 测试通过）。
+**v16.0 新增**：达成 SIGMOD 2026 L3（完整条件自主）Data Agent 能力 — 7 大方向全面升级：**语义算子层**（4 个高阶算子自动策略选择）、**多 Agent 协作**（4 专家 Agent + 2 复合工作流，Planner 扩展至 13 子 Agent）、**计划精化与错误恢复**（5 策略链 + 自动修复步骤插入）、**Guardrails 策略引擎**（YAML 驱动工具级访问控制）、**遥感智能体 Phase 1**（15+ 光谱指数 + 经验池 + 卫星预置源）、**工具演化**（统一元数据注册表 + 失败驱动发现 + 动态注册）、**AI 辅助 Skill 创建**（自然语言 → Skill 配置生成）。254 个新测试，~2600 行新代码。
 
 **v15.8**：BCG 企业级平台能力 — 基于 BCG《Building Effective Enterprise Agents》框架，新增 6 大平台能力：Prompt Registry（环境隔离版本控制）、Model Gateway（任务感知路由 + 成本优化）、Context Manager（可插拔上下文提供者 + Token 预算）、Eval Scenario Framework（场景化评估 + 黄金数据集）、增强 Token 追踪（场景/项目归因）、增强评估历史（场景指标）。
 
@@ -39,12 +39,12 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2712+ tests, 116 test files |
-| 工具集 | 40+ BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具), 5 SkillBundle, 230+ 工具 |
-| ADK Skills | 22 场景化领域技能 (含 surveying-qc 质检技能) |
-| REST API | 215+ endpoints (v15.9 新增 4 个消息总线端点) |
-| DataPanel | 25 标签页 (4 分组: 数据/智能/运维/编排, 含消息总线监控) |
-| v15.9 UI 增强 | DRL 权重预设 (3 模式) + 字段映射拖拽 + 任务分解 UI + 记忆确认 + 消息总线监控 |
+| 测试覆盖 | 2966+ tests, 122 test files |
+| 工具集 | 41+ BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
+| ADK Skills | 23 场景化领域技能 (含 skill-creator AI 辅助创建) |
+| REST API | 228+ endpoints (v16.0 新增 /api/skills/generate) |
+| DataPanel | 25 标签页 (4 分组: 数据/智能/运维/编排) |
+| v16.0 L3 自主 | 语义算子 (4) + 多 Agent (13 子 Agent) + 错误恢复 (5 策略) + Guardrails (YAML 策略) + 遥感 Phase 1 (15+ 指数) + 工具演化 + AI Skill 生成 |
 | Skill SDK | gis-skill-sdk v1.0.0 — CLI (new/validate/list/test/package) + 验证器 + 13/13 测试 |
 | MCP 外部集成 | Claude Desktop + Cursor 完整配置指南 + stdio 传输层 |
 | BCG 平台能力 | 6 大模块: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token 追踪 + Eval 历史 |
@@ -71,6 +71,52 @@
 | 设计模式覆盖 | **21/21 (100%)** |
 
 ## 核心能力
+
+### SIGMOD 2026 L3 条件自主能力 (v16.0)
+
+7 大方向全面升级，达成完整条件自主 Data Agent 能力：
+
+**1. 语义算子层 (S-4)**
+- 4 个高阶算子：Clean / Integrate / Analyze / Visualize
+- 自动策略选择：基于 DataProfile（行数/列数/几何类型/领域）智能路由
+- 10+ 内置策略：crs_standardize / spatial_stats / drl_optimize / choropleth / heatmap 等
+- OperatorToolset：5 个 ADK 工具暴露算子能力
+
+**2. 多 Agent 协作 (S-5)**
+- 4 个专家 Agent：DataEngineer / Analyst / Visualizer / RemoteSensing
+- 2 个复合工作流：FullAnalysis (3 步) / RSAnalysis (2 步)
+- Planner 扩展：7 → 13 子 Agent，支持专家委派
+- prompts/multi_agent.yaml：独立 Agent 指令定义
+
+**3. 计划精化与错误恢复 (S-6)**
+- 5 策略恢复链：Retry → AlternativeTool → Simplify → Skip → Escalate
+- PlanRefiner：自动插入修复步骤（CRS/拓扑/空值）
+- 工作流集成：DAG 执行中自动恢复，recovered 状态标记
+- TOOL_ALTERNATIVES 映射：20+ 工具降级路径
+
+**4. Guardrails 策略引擎 (D-4)**
+- YAML 驱动：standards/guardrail_policies.yaml
+- 3 种效果：deny (静默拒绝) / require_confirmation (暂停) / allow (放行)
+- 角色策略：viewer 禁用写操作 / analyst 确认导入 / admin 全放行
+- GuardrailsPlugin：before_tool_callback 拦截
+
+**5. 遥感智能体 Phase 1**
+- 15+ 光谱指数：NDVI/EVI/SAVI/GNDVI/ARVI/NDRE/NDWI/MNDWI/NDBI/BSI/NBR/NDSI/CI/LAI/NDMI
+- 经验池：6 个预置分析案例（农田/城市/水体/火灾/生态/积雪）
+- 卫星预置源：5 个 STAC 模板（Sentinel-2/Landsat/Sentinel-1/DEM/LULC）
+- 云覆盖评估：自动检测 + 降级建议
+
+**6. 工具演化 (S-7)**
+- 统一元数据注册表：50+ 工具描述/成本/可靠性/场景
+- 失败驱动发现：分析失败模式 → 推荐替代/修复工具
+- 动态注册/停用：运行时扩展工具库
+- ToolEvolutionToolset：8 个工具（元数据查询/推荐/分析/注册）
+
+**7. AI 辅助 Skill 创建 (D-5)**
+- 自然语言 → Skill 配置：关键词分析 → 工具集推荐 → 指令生成
+- skill-creator Skill：工作流定义（需求分析 → 推荐 → 生成 → 预览 → 保存）
+- POST /api/skills/generate：一键生成完整 Skill 配置
+- 支持中英文任务描述
 
 ### UI 增强与工具完善 (v15.9)
 
@@ -723,6 +769,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v15.7 | **测绘质检智能体系统**：缺陷分类法 (30 编码, 5 类, GB/T 24356)；SLA 工作流引擎 (7 模板含 DLG/DOM/DEM/3D 专属)；GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具；报告排版引擎 (封面+目录+动态表格+图表)；ArcGIS Pro 双引擎 MCP (arcpy + arcgis.learn 2.4.2)；4 个独立子系统 (cv-service/cad-parser/arcgis-mcp/reference-data)；告警规则引擎；案例库；人工复核工作流；实时监控仪表盘；端到端验证 (107K 要素, 8 秒) | 2700+ | ✅ 完成 |
 | v15.8 | **BCG 企业级平台能力**：Prompt Registry (环境隔离版本控制) + Model Gateway (任务感知路由) + Context Manager (可插拔提供者) + Eval Scenario Framework (场景化评估) + 增强 Token 追踪 + 增强评估历史；8 个新 REST 端点，12/12 测试通过 | 2712+ | ✅ 完成 |
 | v15.9 | **UI 增强与工具完善**：DRL 权重预设 (3 模式 + 工具提示)；字段映射拖拽编辑器 (HTML5 拖放 + 双视图)；MCP 外部客户端验证 (Claude Desktop/Cursor 集成指南 + stdio 入口)；任务分解确认 UI (交互式子任务编辑)；记忆提取确认流程 (批量保存端点)；消息总线监控面板 (统计/重放/清理)；Skill SDK 完整发布 (CLI + 验证器 + 13/13 测试) | 2712+ | ✅ 完成 |
+| v16.0 | **SIGMOD 2026 L3 条件自主**��语义算子层 (4 算子 + 自动策略选择)；多 Agent 协作 (4 专家 + 2 工作流 + Planner 13 子 Agent)；计划精化与错误恢复 (5 策略链 + 自动修复插入)；Guardrails 策略引擎 (YAML 驱动工具级控制)；遥感智能体 Phase 1 (15+ 光谱指数 + 经验池 + 卫星预置)；工具演化 (元数据注册表 + 失败驱动发现)；AI 辅助 Skill 创建 (NL → 配置生成)；254 新测试，~2600 行新代码 | 2966+ | ✅ 完成 |
 
 ## 设计模式覆盖 (21/21 = 100%)
 
