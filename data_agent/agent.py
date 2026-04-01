@@ -61,6 +61,11 @@ from .toolsets.causal_inference_tools import CausalInferenceToolset
 from .toolsets.llm_causal_tools import LLMCausalToolset
 from .toolsets.causal_world_model_tools import CausalWorldModelToolset
 from .toolsets.dreamer_tools import DreamerToolset
+from .toolsets.operator_tools import OperatorToolset
+from .toolsets.evolution_tools import ToolEvolutionToolset
+from .toolsets.data_cleaning_tools import DataCleaningToolset
+from .toolsets.precision_tools import PrecisionToolset
+from .toolsets.report_tools import ReportToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
@@ -671,6 +676,130 @@ analyze_viz_workflow = SequentialAgent(
     ],
 )
 
+# --- S-5: Specialized Agent factory functions (Multi-Agent Collaboration) ---
+
+
+def _make_data_engineer(name: str, **overrides) -> LlmAgent:
+    """Factory for DataEngineer agents — data cleaning, integration, standardization."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("multi_agent", "data_engineer_instruction"),
+        description="数据工程专家: 清洗/集成/标准化/质量保障。使用语义算子自动选择策略。",
+        model=get_model_for_tier("standard"),
+        output_key="prepared_data",
+        disallow_transfer_to_peers=True,
+        after_tool_callback=_self_correction_after_tool,
+        tools=[
+            OperatorToolset(tool_filter=["clean_data", "integrate_data", "list_operators"]),
+            DataCleaningToolset(),
+            GovernanceToolset(),
+            PrecisionToolset(),
+            ExplorationToolset(tool_filter=_AUDIT_TOOLS),
+            DatabaseToolset(tool_filter=_DB_READ_DESCRIBE),
+            FileToolset(),
+        ],
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+def _make_analyst(name: str, **overrides) -> LlmAgent:
+    """Factory for Analyst agents — spatial statistics, DRL, causal, world model."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("multi_agent", "analyst_instruction"),
+        description="空间分析专家: 空间统计/DRL优化/因果推断/地形/世界模型。",
+        model=get_model_for_tier("standard"),
+        output_key="analysis_result",
+        disallow_transfer_to_peers=True,
+        after_tool_callback=_self_correction_after_tool,
+        tools=[
+            OperatorToolset(tool_filter=["analyze_data", "list_operators"]),
+            AnalysisToolset(),
+            SpatialStatisticsToolset(),
+            AdvancedAnalysisToolset(),
+            CausalInferenceToolset(),
+            LLMCausalToolset(),
+            WorldModelToolset(),
+            CausalWorldModelToolset(),
+            DreamerToolset(),
+        ],
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+def _make_visualizer_agent(name: str, **overrides) -> LlmAgent:
+    """Factory for Visualizer agents — maps, charts, reports."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("multi_agent", "visualizer_instruction"),
+        description="可视化专家: 交互地图/统计图表/报告生成/PNG导出。",
+        model=get_model_for_tier("standard"),
+        output_key="visualization_output",
+        disallow_transfer_to_peers=True,
+        tools=[
+            OperatorToolset(tool_filter=["visualize_data", "list_operators"]),
+            VisualizationToolset(),
+            ChartToolset(),
+            ReportToolset(),
+            DataLakeToolset(tool_filter=_DATALAKE_READ),
+            ExplorationToolset(tool_filter=["describe_geodataframe"]),
+            FileToolset(),
+        ],
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+def _make_remote_sensing(name: str, **overrides) -> LlmAgent:
+    """Factory for RemoteSensing agents — spectral, DEM, watershed, LULC."""
+    defaults = dict(
+        name=name,
+        instruction=get_prompt("multi_agent", "remote_sensing_instruction"),
+        description="遥感分析专家: 光谱指数/DEM/流域/LULC/变化检测。",
+        model=get_model_for_tier("standard"),
+        output_key="rs_analysis",
+        disallow_transfer_to_peers=True,
+        after_tool_callback=_self_correction_after_tool,
+        tools=[
+            RemoteSensingToolset(),
+            WatershedToolset(),
+            SpatialStatisticsToolset(),
+            VisualizationToolset(tool_filter=["visualize_interactive_map", "export_map_png"]),
+            ExplorationToolset(tool_filter=["describe_geodataframe", "describe_raster"]),
+        ] + _arcpy_tools,
+    )
+    defaults.update(overrides)
+    return LlmAgent(**defaults)
+
+
+# --- S-5 Standalone specialized agents ---
+data_engineer_agent = _make_data_engineer("DataEngineerAgent")
+analyst_agent = _make_analyst("AnalystAgent")
+visualizer_agent = _make_visualizer_agent("VisualizerAgent")
+remote_sensing_agent = _make_remote_sensing("RemoteSensingAgent")
+
+# --- S-5 Multi-agent workflows ---
+full_analysis_workflow = SequentialAgent(
+    name="FullAnalysis",
+    description="数据准备→分析→可视化 端到端流程。适用于从原始数据到完整分析报告。",
+    sub_agents=[
+        _make_data_engineer("FADataEngineer"),
+        _make_analyst("FAAnalyst"),
+        _make_visualizer_agent("FAVisualizer"),
+    ],
+)
+
+rs_analysis_workflow = SequentialAgent(
+    name="RSAnalysis",
+    description="遥感分析→可视化 专业流程。适用于卫星影像和地形分析。",
+    sub_agents=[
+        _make_remote_sensing("RSRemoteSensing"),
+        _make_visualizer_agent("RSVisualizer"),
+    ],
+)
+
 planner_agent = LlmAgent(
     name="Planner",
     instruction=get_prompt("planner", "planner_instruction"),
@@ -691,12 +820,18 @@ planner_agent = LlmAgent(
         WorldModelToolset(),  # World model LULC prediction tools
         CausalWorldModelToolset(),  # Causal intervention + counterfactual on world model
         NL2SQLToolset(),  # Schema-aware NL2SQL for dynamic table queries
+        OperatorToolset(),  # Semantic operators: clean/integrate/analyze/visualize (L3)
+        ToolEvolutionToolset(),  # Tool evolution: metadata, failure-driven discovery, dynamic management (L3)
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,
         planner_visualizer, planner_reporter,
         explore_process_workflow,
         analyze_viz_workflow,
+        # S-5: Specialized agents for multi-agent collaboration
+        data_engineer_agent, analyst_agent, visualizer_agent,
+        remote_sensing_agent,
+        full_analysis_workflow, rs_analysis_workflow,
     ],
 )
 

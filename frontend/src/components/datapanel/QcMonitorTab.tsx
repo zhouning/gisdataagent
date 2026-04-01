@@ -120,7 +120,7 @@ export default function QcMonitorTab() {
       });
       if (r.ok) {
         const data = await r.json();
-        alert(`工作流已创建并开始执行\nID: ${data.workflow_id}\n请前往"编排→工作流"查看进度`);
+        alert(`工作流已创建并开始执行\nID: ${data.workflow_id}\nRun: ${data.run_id || 'N/A'}\n请前往"编排→工作流"查看实时进度`);
       } else {
         const d = await r.json();
         alert(d.error || '执行失败');

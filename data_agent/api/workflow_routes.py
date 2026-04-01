@@ -100,7 +100,7 @@ async def workflow_delete(request: Request):
 
 
 async def workflow_execute(request: Request):
-    """POST /api/workflows/{id}/execute — execute workflow."""
+    """POST /api/workflows/{id}/execute — execute workflow (non-blocking)."""
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
@@ -111,15 +111,47 @@ async def workflow_execute(request: Request):
     except Exception:
         body = {}
     param_overrides = body.get("parameters", {})
-    from ..workflow_engine import execute_workflow, execute_workflow_dag, get_workflow, _is_dag_workflow
+
+    from ..workflow_engine import (
+        execute_workflow, execute_workflow_dag, get_workflow,
+        _is_dag_workflow, pre_create_workflow_run,
+    )
+
     workflow = get_workflow(wf_id)
-    steps = workflow.get("steps", []) if workflow else []
-    if _is_dag_workflow(steps):
-        result = await execute_workflow_dag(workflow_id=wf_id, param_overrides=param_overrides, run_by=username)
-    else:
-        result = await execute_workflow(workflow_id=wf_id, param_overrides=param_overrides, run_by=username)
-    status_code = 200 if result.get("status") == "completed" else 500
-    return JSONResponse(result, status_code=status_code)
+    if not workflow:
+        return JSONResponse({"error": "Workflow not found"}, status_code=404)
+    steps = workflow.get("steps", [])
+
+    # Pre-create run record and initialize live status for real-time polling
+    pre = pre_create_workflow_run(wf_id, param_overrides=param_overrides, run_by=username)
+    if not pre:
+        return JSONResponse({"error": "Failed to create run record"}, status_code=500)
+
+    run_id = pre["run_id"]
+    print(f"[Workflows] Pre-created run #{run_id}, live status initialized with {len(workflow.get('steps', []))} steps")
+
+    # Start workflow execution as background task
+    import asyncio
+
+    async def _run_bg():
+        try:
+            if _is_dag_workflow(steps):
+                await execute_workflow_dag(
+                    workflow_id=wf_id, param_overrides=param_overrides,
+                    run_by=username, pre_created_run_id=run_id,
+                )
+            else:
+                await execute_workflow(
+                    workflow_id=wf_id, param_overrides=param_overrides,
+                    run_by=username, pre_created_run_id=run_id,
+                )
+        except Exception as e:
+            print(f"[Workflows] Background execution error: {e}")
+
+    asyncio.create_task(_run_bg())
+
+    # Return immediately with run_id so frontend can start polling
+    return JSONResponse({"run_id": run_id, "status": "running"})
 
 
 async def workflow_runs(request: Request):
@@ -238,7 +270,7 @@ async def qc_template_create_and_execute(request: Request):
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
+    username, role = _set_user_context(user)
 
     try:
         body = await request.json()
@@ -251,7 +283,10 @@ async def qc_template_create_and_execute(request: Request):
 
     params = body.get("parameters") or {}
 
-    from ..workflow_engine import create_workflow_from_template, execute_workflow
+    from ..workflow_engine import (
+        create_workflow_from_template, execute_workflow, execute_workflow_dag,
+        get_workflow, _is_dag_workflow, pre_create_workflow_run,
+    )
     wf_id = create_workflow_from_template(
         template_id=template_id,
         name_override=body.get("name", ""),
@@ -260,29 +295,33 @@ async def qc_template_create_and_execute(request: Request):
     if wf_id is None:
         return JSONResponse({"error": f"Template '{template_id}' not found or creation failed"}, status_code=404)
 
-    # Execute immediately in background
+    # Pre-create run record and initialize live status for real-time polling
+    pre = pre_create_workflow_run(wf_id, param_overrides=params, run_by=username)
+    run_id = pre["run_id"] if pre else None
+
+    # Execute in background
     import asyncio
-    result = {"workflow_id": wf_id, "run_id": None, "status": "started"}
 
     async def _run():
         try:
-            await execute_workflow(wf_id, param_overrides=params)
+            workflow = get_workflow(wf_id)
+            steps = workflow.get("steps", []) if workflow else []
+            if _is_dag_workflow(steps):
+                await execute_workflow_dag(wf_id, param_overrides=params, run_by=username,
+                                           pre_created_run_id=run_id)
+            else:
+                await execute_workflow(wf_id, param_overrides=params, run_by=username,
+                                       pre_created_run_id=run_id)
         except Exception as e:
             import logging
             logging.getLogger(__name__).error("from-template-and-execute failed: %s", e)
 
     asyncio.create_task(_run())
 
-    # Return immediately — frontend can poll for status
-    from ..workflow_engine import get_workflow_runs
-    import time
-    # Small delay to let run record be created
-    await asyncio.sleep(0.3)
-    runs = get_workflow_runs(wf_id, limit=1)
-    if runs:
-        result["run_id"] = runs[0]["id"]
-
-    return JSONResponse(result, status_code=201)
+    # Return immediately with run_id for real-time polling
+    return JSONResponse({
+        "workflow_id": wf_id, "run_id": run_id, "status": "started"
+    }, status_code=201)
 
 
 def get_workflow_routes() -> list:

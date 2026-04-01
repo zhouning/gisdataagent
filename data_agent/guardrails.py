@@ -250,3 +250,148 @@ def attach_guardrails(agent: Any) -> None:
 
     _walk_and_attach(agent)
     logger.info("Guardrails attached to agent tree")
+
+
+# ===========================================================================
+# D-4: Tool-Level Policy Engine (v16.0)
+# ===========================================================================
+
+import fnmatch
+from dataclasses import dataclass, field
+
+import yaml
+
+_POLICY_PATH = os.path.join(os.path.dirname(__file__), "standards", "guardrail_policies.yaml")
+
+
+@dataclass
+class GuardrailPolicy:
+    """A single guardrail policy rule."""
+    role: str  # "viewer" | "analyst" | "admin" | "*"
+    effect: str  # "deny" | "require_confirmation" | "allow"
+    tools: list = field(default_factory=list)  # glob patterns
+    reason: str = ""
+
+
+@dataclass
+class GuardrailDecision:
+    """Result of policy evaluation."""
+    effect: str  # "deny" | "require_confirmation" | "allow"
+    policy_role: str = ""
+    matched_pattern: str = ""
+    reason: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "effect": self.effect,
+            "policy_role": self.policy_role,
+            "matched_pattern": self.matched_pattern,
+            "reason": self.reason,
+        }
+
+
+class GuardrailEngine:
+    """Evaluates YAML-driven policies against (role, tool_name) pairs."""
+
+    def __init__(self, policy_path: str | None = None):
+        self.policies: list[GuardrailPolicy] = []
+        self._load(policy_path or _POLICY_PATH)
+
+    def _load(self, path: str) -> None:
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            for p in data.get("policies", []):
+                self.policies.append(GuardrailPolicy(
+                    role=p.get("role", "*"),
+                    effect=p.get("effect", "allow"),
+                    tools=p.get("tools", []),
+                    reason=p.get("reason", ""),
+                ))
+            logger.info("Loaded %d guardrail policies from %s", len(self.policies), path)
+        except FileNotFoundError:
+            logger.warning("Guardrail policy file not found: %s", path)
+        except Exception as e:
+            logger.warning("Failed to load guardrail policies: %s", e)
+
+    def evaluate(self, role: str, tool_name: str) -> GuardrailDecision:
+        """Evaluate policies. Admin explicit allow overrides. Deny > confirm > allow."""
+        # Admin bypass
+        for p in self.policies:
+            if p.role == "admin" and p.effect == "allow" and "*" in p.tools:
+                if role == "admin":
+                    return GuardrailDecision("allow", "admin", "*", "管理员完全权限")
+
+        best_decision = GuardrailDecision("allow")
+        best_weight = -1
+
+        for p in self.policies:
+            if p.role != "*" and p.role != role:
+                continue
+            for pattern in p.tools:
+                if fnmatch.fnmatch(tool_name, pattern):
+                    specificity = (10 if p.role != "*" else 0) + (5 if pattern == tool_name else 0)
+                    effect_priority = {"deny": 100, "require_confirmation": 50, "allow": 0}
+                    weight = specificity * 1000 + effect_priority.get(p.effect, 0)
+                    if weight > best_weight:
+                        best_weight = weight
+                        best_decision = GuardrailDecision(
+                            effect=p.effect, policy_role=p.role,
+                            matched_pattern=pattern, reason=p.reason,
+                        )
+
+        return best_decision
+
+    def reload(self, path: str | None = None) -> None:
+        self.policies.clear()
+        self._load(path or _POLICY_PATH)
+
+
+class GuardrailsPlugin:
+    """ADK plugin: enforces tool-level policies via before_tool_callback."""
+
+    def __init__(self, engine: GuardrailEngine | None = None):
+        self.engine = engine or GuardrailEngine()
+
+    async def before_tool_callback(self, *, tool, tool_args, tool_context, **kwargs):
+        from .user_context import current_user_role
+        role = current_user_role.get("anonymous")
+        tool_name = tool.name if hasattr(tool, "name") else str(tool)
+
+        decision = self.engine.evaluate(role, tool_name)
+
+        if decision.effect == "deny":
+            logger.warning("GUARDRAIL DENIED: role=%s tool=%s reason=%s",
+                           role, tool_name, decision.reason)
+            try:
+                from .audit_logger import record_audit
+                record_audit(
+                    username=role, action="guardrail_denied", status="denied",
+                    details={"tool": tool_name, "role": role,
+                             "reason": decision.reason,
+                             "matched_pattern": decision.matched_pattern},
+                )
+            except Exception:
+                pass
+            import json
+            return json.dumps({
+                "status": "blocked", "reason": decision.reason,
+                "tool": tool_name, "role": role,
+            }, ensure_ascii=False)
+
+        return None  # allow or require_confirmation (HITL handles confirmation)
+
+
+# Module-level singleton
+_policy_engine: GuardrailEngine | None = None
+
+
+def get_policy_engine() -> GuardrailEngine:
+    global _policy_engine
+    if _policy_engine is None:
+        _policy_engine = GuardrailEngine()
+    return _policy_engine
+
+
+def evaluate_policy(role: str, tool_name: str) -> GuardrailDecision:
+    return get_policy_engine().evaluate(role, tool_name)

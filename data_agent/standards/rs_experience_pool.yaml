@@ -1,0 +1,107 @@
+_version: "1.0.0"
+
+cases:
+  - title: "NDVI 农田植被监测"
+    scenario: "监测农田植被覆盖变化和作物生长状况"
+    recommended_indices: ["ndvi", "evi", "savi", "lai"]
+    data_source: "sentinel2_l2a"
+    parameters:
+      cloud_cover_max: 15
+      season: "生长季 (4-10月)"
+      resolution: "10m"
+    thresholds:
+      ndvi_bare: 0.1
+      ndvi_sparse: 0.3
+      ndvi_moderate: 0.5
+      ndvi_dense: 0.7
+    pitfalls:
+      - "冬季裸地 NDVI 接近 0，不代表退化"
+      - "水田 NDVI 受水面反射影响，EVI 更稳定"
+      - "云影区 NDVI 偏低，需先做云掩膜"
+    tags: ["农田", "植被", "作物", "ndvi"]
+
+  - title: "城市扩张建成区检测"
+    scenario: "检测城市建成区范围变化和不透水面扩展"
+    recommended_indices: ["ndbi", "bsi", "ndvi"]
+    data_source: "sentinel2_l2a"
+    parameters:
+      cloud_cover_max: 10
+      season: "全年 (秋冬更佳)"
+      resolution: "10-20m"
+    thresholds:
+      ndbi_built_up: 0.0
+      ndbi_high_density: 0.2
+    pitfalls:
+      - "NDBI 对裸土和建筑区分能力有限，需结合 NDVI"
+      - "建议使用 NDBI - NDVI > 0 作为建成区判据"
+      - "山区阴影面 NDBI 偏高，需地形校正"
+    tags: ["城市", "建筑", "扩张", "ndbi"]
+
+  - title: "水体变化检测"
+    scenario: "检测水体范围变化、洪涝监测、湿地动态"
+    recommended_indices: ["ndwi", "mndwi"]
+    data_source: "sentinel2_l2a"
+    parameters:
+      cloud_cover_max: 20
+      season: "汛期前后对比"
+      resolution: "10-20m"
+    thresholds:
+      ndwi_water: 0.0
+      ndwi_deep_water: 0.3
+      mndwi_water: 0.0
+    pitfalls:
+      - "NDWI 对建筑物误判较多，MNDWI 更适合城区水体"
+      - "冰面和雪面可能被误判为水体"
+    tags: ["水体", "洪涝", "湿地", "ndwi"]
+
+  - title: "火烧迹地评估"
+    scenario: "森林火灾后烧伤程度评估和恢复监测"
+    recommended_indices: ["nbr", "ndvi"]
+    data_source: "sentinel2_l2a"
+    parameters:
+      cloud_cover_max: 15
+      comparison: "火前 vs 火后双时相"
+      resolution: "20m"
+    thresholds:
+      dnbr_low_severity: 0.1
+      dnbr_moderate: 0.27
+      dnbr_high: 0.66
+    pitfalls:
+      - "需要火前和火后两期影像计算 dNBR"
+      - "火后云层/烟雾影响需要等待数周"
+      - "落叶季 NBR 自然降低，非火灾效应"
+    tags: ["火灾", "燃烧", "恢复", "nbr"]
+
+  - title: "综合生态评估"
+    scenario: "区域生态环境质量综合评估"
+    recommended_indices: ["ndvi", "ndwi", "ndbi", "lai", "ndmi"]
+    data_source: "sentinel2_l2a"
+    parameters:
+      cloud_cover_max: 10
+      season: "生长季"
+      multi_temporal: true
+    thresholds:
+      eco_good: "NDVI>0.6 & NDWI<0 & NDBI<0"
+      eco_moderate: "0.3<NDVI<0.6"
+      eco_poor: "NDVI<0.3 & NDBI>0"
+    pitfalls:
+      - "单一指数不足以全面评估生态质量"
+      - "需要多时相数据消除季节性变化"
+      - "高海拔区域 NDVI 自然偏低"
+    tags: ["生态", "综合", "评估", "多指数"]
+
+  - title: "积雪覆盖监测"
+    scenario: "山区积雪范围和融雪过程监测"
+    recommended_indices: ["ndsi", "ndwi"]
+    data_source: "sentinel2_l2a"
+    parameters:
+      cloud_cover_max: 20
+      season: "冬春季"
+      resolution: "20m"
+    thresholds:
+      ndsi_snow: 0.4
+      ndsi_dense_snow: 0.6
+    pitfalls:
+      - "云和雪光谱相似，NDSI 可区分但薄云仍有干扰"
+      - "湖冰和积雪需要结合地形数据区分"
+    tags: ["积雪", "冰川", "融雪", "ndsi"]

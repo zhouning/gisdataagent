@@ -73,6 +73,7 @@ _TOOLSET_DESCRIPTIONS: dict[str, str] = {
     "WatershedToolset": "流域提取与水文分析",
     "UserToolset": "用户自定义工具（HTTP/SQL/文件/链式）",
     "VirtualSourceToolset": "虚拟数据源连接（WFS/STAC/OGC API/自定义API）",
+    "ToolEvolutionToolset": "工具演化：动态工具库管理、失败驱动发现、元数据查询",
 }
 
 

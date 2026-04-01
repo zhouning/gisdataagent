@@ -313,4 +313,11 @@ def build_plugin_stack() -> list[BasePlugin]:
     if _is_enabled("PROVENANCE_ENABLED"):
         plugins.append(ProvenancePlugin())
 
+    if _is_enabled("GUARDRAILS_POLICY_ENABLED", default="true"):
+        try:
+            from .guardrails import GuardrailsPlugin
+            plugins.append(GuardrailsPlugin())
+        except Exception as e:
+            logger.warning("Failed to load GuardrailsPlugin: %s", e)
+
     return plugins

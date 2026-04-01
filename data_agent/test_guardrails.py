@@ -293,5 +293,192 @@ class TestAttachGuardrails(unittest.TestCase):
             importlib.reload(data_agent.guardrails)
 
 
+# ===========================================================================
+# D-4: Tool-Level Policy Engine Tests (v16.0)
+# ===========================================================================
+
+import json
+import tempfile
+from unittest.mock import patch, MagicMock
+
+from data_agent.guardrails import (
+    GuardrailPolicy,
+    GuardrailDecision,
+    GuardrailEngine,
+    GuardrailsPlugin,
+    evaluate_policy,
+)
+
+
+class TestGuardrailDecisionD4:
+    def test_to_dict(self):
+        d = GuardrailDecision("deny", "viewer", "delete_*", "不允许删除")
+        assert d.to_dict()["effect"] == "deny"
+        assert d.to_dict()["matched_pattern"] == "delete_*"
+
+
+class TestGuardrailEngineLoading:
+    def test_loads_default_policies(self):
+        engine = GuardrailEngine()
+        assert len(engine.policies) >= 3
+
+    def test_loads_from_custom_path(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False, encoding="utf-8") as f:
+            f.write("policies:\n  - role: tester\n    effect: deny\n    tools: ['foo']\n    reason: test\n")
+            path = f.name
+        try:
+            engine = GuardrailEngine(policy_path=path)
+            assert len(engine.policies) == 1
+            assert engine.policies[0].role == "tester"
+        finally:
+            os.unlink(path)
+
+    def test_missing_file_graceful(self):
+        engine = GuardrailEngine(policy_path="/nonexistent/path.yaml")
+        assert len(engine.policies) == 0
+
+    def test_reload(self):
+        engine = GuardrailEngine()
+        count_before = len(engine.policies)
+        engine.reload()
+        assert len(engine.policies) == count_before
+
+
+class TestGuardrailEngineEvaluation:
+    def setUp(self):
+        self.engine = GuardrailEngine()
+
+    def test_admin_bypass(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("admin", "delete_user_file").effect == "allow"
+
+    def test_admin_bypass_any(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("admin", "totally_destructive").effect == "allow"
+
+    def test_viewer_denied_delete(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("viewer", "delete_user_file").effect == "deny"
+
+    def test_viewer_denied_import(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("viewer", "import_to_postgis").effect == "deny"
+
+    def test_viewer_denied_share(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("viewer", "share_table").effect == "deny"
+
+    def test_viewer_allowed_read(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("viewer", "describe_geodataframe").effect == "allow"
+
+    def test_analyst_confirm_import(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("analyst", "import_to_postgis").effect == "require_confirmation"
+
+    def test_analyst_allowed_analysis(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("analyst", "spatial_autocorrelation").effect == "allow"
+
+    def test_global_deny_raw_sql(self):
+        engine = GuardrailEngine()
+        for role in ("viewer", "analyst"):
+            assert engine.evaluate(role, "execute_raw_sql").effect == "deny"
+
+    def test_admin_allowed_raw_sql(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("admin", "execute_raw_sql").effect == "allow"
+
+    def test_glob_pattern(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("viewer", "delete_data_asset").effect == "deny"
+        assert engine.evaluate("viewer", "delete_memory").effect == "deny"
+
+    def test_unknown_tool_allowed(self):
+        engine = GuardrailEngine()
+        assert engine.evaluate("analyst", "some_new_tool").effect == "allow"
+
+    def test_decision_has_reason(self):
+        engine = GuardrailEngine()
+        d = engine.evaluate("viewer", "delete_user_file")
+        assert len(d.reason) > 0
+
+
+class TestGuardrailsPluginD4:
+    def test_deny_blocks_tool(self):
+        import asyncio
+        engine = GuardrailEngine()
+        plugin = GuardrailsPlugin(engine=engine)
+        tool = MagicMock()
+        tool.name = "delete_user_file"
+
+        async def _run():
+            with patch("data_agent.user_context.current_user_role") as mock_role:
+                mock_role.get.return_value = "viewer"
+                return await plugin.before_tool_callback(
+                    tool=tool, tool_args={}, tool_context=MagicMock())
+
+        result = asyncio.get_event_loop().run_until_complete(_run())
+        assert result is not None
+        parsed = json.loads(result)
+        assert parsed["status"] == "blocked"
+
+    def test_allow_passes_through(self):
+        import asyncio
+        engine = GuardrailEngine()
+        plugin = GuardrailsPlugin(engine=engine)
+        tool = MagicMock()
+        tool.name = "describe_geodataframe"
+
+        async def _run():
+            with patch("data_agent.user_context.current_user_role") as mock_role:
+                mock_role.get.return_value = "viewer"
+                return await plugin.before_tool_callback(
+                    tool=tool, tool_args={}, tool_context=MagicMock())
+
+        result = asyncio.get_event_loop().run_until_complete(_run())
+        assert result is None
+
+    def test_admin_bypass_in_plugin(self):
+        import asyncio
+        engine = GuardrailEngine()
+        plugin = GuardrailsPlugin(engine=engine)
+        tool = MagicMock()
+        tool.name = "delete_user_file"
+
+        async def _run():
+            with patch("data_agent.user_context.current_user_role") as mock_role:
+                mock_role.get.return_value = "admin"
+                return await plugin.before_tool_callback(
+                    tool=tool, tool_args={}, tool_context=MagicMock())
+
+        result = asyncio.get_event_loop().run_until_complete(_run())
+        assert result is None
+
+
+class TestPluginStackD4:
+    @patch.dict(os.environ, {"GUARDRAILS_POLICY_ENABLED": "true"})
+    def test_in_stack(self):
+        from data_agent.plugins import build_plugin_stack
+        plugins = build_plugin_stack()
+        type_names = [type(p).__name__ for p in plugins]
+        assert "GuardrailsPlugin" in type_names
+
+    @patch.dict(os.environ, {"GUARDRAILS_POLICY_ENABLED": "false"})
+    def test_disabled(self):
+        from data_agent.plugins import build_plugin_stack
+        plugins = build_plugin_stack()
+        type_names = [type(p).__name__ for p in plugins]
+        assert "GuardrailsPlugin" not in type_names
+
+
+class TestConvenienceD4:
+    def test_evaluate_policy_viewer(self):
+        assert evaluate_policy("viewer", "delete_user_file").effect == "deny"
+
+    def test_evaluate_policy_admin(self):
+        assert evaluate_policy("admin", "delete_user_file").effect == "allow"
+
+
 if __name__ == "__main__":
     unittest.main()

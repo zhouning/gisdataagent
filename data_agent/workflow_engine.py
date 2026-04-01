@@ -337,17 +337,201 @@ def _substitute_params(text_val: str, params: dict) -> str:
     return text_val
 
 
+def _merge_and_resolve_params(workflow: dict, param_overrides: dict = None) -> dict:
+    """Merge workflow parameter defaults with overrides and auto-resolve file_path.
+
+    Returns merged parameters dict with file_path resolved to absolute path if present.
+    """
+    params = {}
+    for k, v in workflow.get("parameters", {}).items():
+        params[k] = v.get("default", "") if isinstance(v, dict) else v
+    if param_overrides:
+        params.update(param_overrides)
+
+    # Auto-resolve file_path parameter to absolute path (and extract ZIP if needed)
+    if "file_path" in params and params["file_path"]:
+        from .gis_processors import _resolve_and_extract_zip
+        try:
+            params["file_path"] = _resolve_and_extract_zip(params["file_path"])
+        except Exception:
+            pass  # Keep original if resolution fails
+
+    return params
+
+
+def _create_run_record(workflow_id: int, user: str, params: dict) -> int | None:
+    """Create workflow run record in database.
+
+    Returns run_id or None on failure.
+    """
+    engine = get_engine()
+    if not engine:
+        return None
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(f"""
+                INSERT INTO {T_WORKFLOW_RUNS}
+                    (workflow_id, run_by, status, parameters_used)
+                VALUES (:wf_id, :user, 'running', :params)
+                RETURNING id
+            """), {"wf_id": workflow_id, "user": user, "params": json.dumps(params)})
+            row = result.fetchone()
+            run_id = row[0] if row else None
+            conn.commit()
+            return run_id
+    except Exception as e:
+        print(f"[Workflows] Run record creation failed: {e}")
+        return None
+
+
+def _initialize_live_status(run_id: int, workflow_id: int, steps: list):
+    """Initialize live status dict with all steps as pending."""
+    _live_run_status[run_id] = {
+        "workflow_id": workflow_id,
+        "status": "running",
+        "nodes": {},
+        "started_at": time.time(),
+    }
+    for i, step in enumerate(steps):
+        sid = step.get("step_id", f"step_{i}")
+        _live_run_status[run_id]["nodes"][sid] = {
+            "status": "pending",
+            "label": step.get("label", sid),
+        }
+
+
+def _update_run_record(run_id: int, status: str, step_results: list, duration: float,
+                       total_input: int, total_output: int, error_msg: str = None,
+                       sla_data: dict = None):
+    """Update workflow run record with final results.
+
+    Args:
+        sla_data: Optional dict with 'sla_violated' (bool) and 'timeout_steps' (list)
+    """
+    engine = get_engine()
+    if not engine or not run_id:
+        return
+
+    try:
+        with engine.connect() as conn:
+            sql = f"""
+                UPDATE {T_WORKFLOW_RUNS}
+                SET status = :status, step_results = :results,
+                    total_duration = :dur, total_input_tokens = :inp,
+                    total_output_tokens = :out, error_message = :err,
+                    completed_at = NOW()
+            """
+            params = {
+                "id": run_id, "status": status, "results": json.dumps(step_results),
+                "dur": duration, "inp": total_input, "out": total_output, "err": error_msg,
+            }
+
+            if sla_data:
+                sql += ", sla_violated = :sla_v, timeout_steps = :ts"
+                params["sla_v"] = sla_data.get("sla_violated", False)
+                params["ts"] = json.dumps(sla_data.get("timeout_steps", []))
+
+            sql += " WHERE id = :id"
+            conn.execute(text(sql), params)
+            conn.commit()
+    except Exception as e:
+        print(f"[Workflows] Run record update failed: {e}")
+
+
+async def _send_workflow_webhook(workflow: dict, run_id: int, status: str, duration: float,
+                                  total_input: int, total_output: int, step_results: list,
+                                  error_msg: str = None) -> bool:
+    """Send webhook notification and update webhook_sent flag.
+
+    Returns True if webhook sent successfully, False otherwise.
+    """
+    webhook_url = workflow.get("webhook_url")
+    if not webhook_url:
+        return False
+
+    payload = {
+        "workflow_id": workflow["id"],
+        "workflow_name": workflow["workflow_name"],
+        "run_id": run_id,
+        "status": status,
+        "duration": round(duration, 2),
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "step_results": step_results,
+        "error": error_msg,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+    webhook_sent = await send_webhook(webhook_url, payload)
+
+    # Update webhook_sent flag in DB
+    engine = get_engine()
+    if engine and run_id:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"""
+                    UPDATE {T_WORKFLOW_RUNS}
+                    SET webhook_sent = :sent WHERE id = :id
+                """), {"sent": webhook_sent, "id": run_id})
+                conn.commit()
+        except Exception:
+            pass
+
+    return webhook_sent
+
+
+def _finalize_live_status(run_id: int, status: str, duration: float):
+    """Set final status, elapsed time, and schedule cleanup after 5 minutes."""
+    if run_id and run_id in _live_run_status:
+        _live_run_status[run_id]["status"] = status
+        _live_run_status[run_id]["elapsed"] = duration
+        try:
+            loop = asyncio.get_running_loop()
+            loop.call_later(300, lambda: _live_run_status.pop(run_id, None))
+        except Exception:
+            pass  # Keep status if no event loop
+
+
+def pre_create_workflow_run(workflow_id: int, param_overrides: dict = None, run_by: str = None) -> dict | None:
+    """Pre-create a workflow run record and initialize live status for real-time polling.
+
+    Returns dict with run_id, params, user, or None on failure.
+    """
+    workflow = get_workflow(workflow_id)
+    if not workflow:
+        return None
+
+    user = run_by or current_user_id.get() or workflow["owner_username"]
+    steps = workflow.get("steps", [])
+
+    # Use helper to merge and resolve parameters
+    params = _merge_and_resolve_params(workflow, param_overrides)
+
+    # Use helper to create DB run record
+    run_id = _create_run_record(workflow_id, user, params)
+    if not run_id:
+        return None
+
+    # Use helper to initialize live status
+    _initialize_live_status(run_id, workflow_id, steps)
+
+    return {"run_id": run_id, "params": params, "user": user}
+
+
 async def execute_workflow(
     workflow_id: int,
     param_overrides: dict = None,
     run_by: str = None,
     progress_callback=None,
+    pre_created_run_id: int = None,
 ) -> dict:
     """Execute a workflow: run each step sequentially via pipeline_runner.
 
     Args:
         progress_callback: Optional async callable(dict) invoked after each step
             with keys: step_idx, step_id, step_label, status, duration, summary, error.
+        pre_created_run_id: If provided, skip creating a new run record and use this ID.
 
     Returns dict with run_id, status, step_results, duration, tokens.
     """
@@ -363,34 +547,13 @@ async def execute_workflow(
     if not steps:
         return {"status": "failed", "error": "Workflow has no steps"}
 
-    # Merge parameters: defaults + overrides
-    params = {}
-    for k, v in workflow.get("parameters", {}).items():
-        params[k] = v.get("default", "") if isinstance(v, dict) else v
-    if param_overrides:
-        params.update(param_overrides)
+    # Use helper to merge and resolve parameters
+    params = _merge_and_resolve_params(workflow, param_overrides)
 
-    # Create run record
-    engine = get_engine()
-    run_id = None
-    if engine:
-        try:
-            with engine.connect() as conn:
-                result = conn.execute(text(f"""
-                    INSERT INTO {T_WORKFLOW_RUNS}
-                        (workflow_id, run_by, status, parameters_used)
-                    VALUES (:wf_id, :user, 'running', :params)
-                    RETURNING id
-                """), {
-                    "wf_id": workflow_id,
-                    "user": user,
-                    "params": json.dumps(params),
-                })
-                row = result.fetchone()
-                run_id = row[0] if row else None
-                conn.commit()
-        except Exception as e:
-            print(f"[Workflows] Run record creation failed: {e}")
+    # Use helper to create run record (skip if pre-created)
+    run_id = pre_created_run_id
+    if not run_id:
+        run_id = _create_run_record(workflow_id, user, params)
 
     # Import agents lazily to avoid circular imports
     from . import agent as agent_module
@@ -402,6 +565,10 @@ async def execute_workflow(
     current_user_id.set(user)
     current_session_id.set(session_id)
     current_user_role.set("analyst")
+
+    # Use helper to initialize live status for real-time UI updates
+    if run_id:
+        _initialize_live_status(run_id, workflow_id, steps)
 
     start_time = time.time()
     step_results = []
@@ -441,6 +608,10 @@ async def execute_workflow(
                 })
             except Exception:
                 pass
+
+        # Update live status: step starting
+        if run_id:
+            _update_live_status(run_id, step_id, "running", {"label": step.get("label", step_id)})
 
         # Select agent
         agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
@@ -508,6 +679,16 @@ async def execute_workflow(
                     except Exception as cb_err:
                         print(f"[Workflows] Progress callback error: {cb_err}")
 
+                # Update live status: step completed/failed
+                if run_id:
+                    _update_live_status(run_id, step_id, "failed" if result.error else "completed", {
+                        "label": step.get("label", step_id),
+                        "duration": result.duration_seconds,
+                        "error": result.error,
+                        "summary": (result.report_text or "")[:500],
+                        "files": result.generated_files or []
+                    })
+
                 if result.error:
                     error_msg = f"Step '{step_id}' failed: {result.error}"
                     status = "failed"
@@ -554,31 +735,17 @@ async def execute_workflow(
     # Check SLA violation
     sla_violated = bool(timeout_steps) or (sla_total and duration > sla_total)
 
-    # Update run record
-    webhook_sent = False
+    # Use helper to update run record with SLA data
+    _update_run_record(
+        run_id, status, step_results, duration, total_input, total_output, error_msg,
+        sla_data={"sla_violated": sla_violated, "timeout_steps": timeout_steps}
+    )
+
+    # Increment use_count
+    engine = get_engine()
     if engine and run_id:
         try:
             with engine.connect() as conn:
-                conn.execute(text(f"""
-                    UPDATE {T_WORKFLOW_RUNS}
-                    SET status = :status, step_results = :results,
-                        total_duration = :dur, total_input_tokens = :inp,
-                        total_output_tokens = :out, error_message = :err,
-                        sla_violated = :sla_v, timeout_steps = :ts,
-                        completed_at = NOW()
-                    WHERE id = :id
-                """), {
-                    "id": run_id,
-                    "status": status,
-                    "results": json.dumps(step_results),
-                    "dur": duration,
-                    "inp": total_input,
-                    "out": total_output,
-                    "err": error_msg,
-                    "sla_v": sla_violated,
-                    "ts": json.dumps(timeout_steps),
-                })
-                # Increment use_count
                 conn.execute(text(f"""
                     UPDATE {T_WORKFLOWS}
                     SET use_count = use_count + 1, updated_at = NOW()
@@ -588,31 +755,13 @@ async def execute_workflow(
         except Exception as e:
             print(f"[Workflows] Run record update failed: {e}")
 
-    # Send webhook if configured
-    if workflow.get("webhook_url"):
-        payload = {
-            "workflow_id": workflow_id,
-            "workflow_name": workflow["workflow_name"],
-            "run_id": run_id,
-            "status": status,
-            "duration": round(duration, 2),
-            "total_input_tokens": total_input,
-            "total_output_tokens": total_output,
-            "step_results": step_results,
-            "error": error_msg,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-        webhook_sent = await send_webhook(workflow["webhook_url"], payload)
-        if engine and run_id:
-            try:
-                with engine.connect() as conn:
-                    conn.execute(text(f"""
-                        UPDATE {T_WORKFLOW_RUNS}
-                        SET webhook_sent = :sent WHERE id = :id
-                    """), {"sent": webhook_sent, "id": run_id})
-                    conn.commit()
-            except Exception:
-                pass
+    # Use helper to send webhook if configured
+    webhook_sent = await _send_workflow_webhook(
+        workflow, run_id, status, duration, total_input, total_output, step_results, error_msg
+    )
+
+    # Use helper to finalize live status
+    _finalize_live_status(run_id, status, duration)
 
     return {
         "run_id": run_id,
@@ -972,7 +1121,7 @@ def _update_live_status(
 ):
     """Update in-memory per-node status for live polling."""
     if run_id not in _live_run_status:
-        _live_run_status[run_id] = {"nodes": {}, "status": "running"}
+        _live_run_status[run_id] = {"nodes": {}, "status": "running", "started_at": time.time()}
 
     node = _live_run_status[run_id]["nodes"].setdefault(step_id, {})
     node["status"] = status
@@ -986,9 +1135,13 @@ def _update_live_status(
     if result_data:
         node.update({
             k: result_data[k]
-            for k in ("duration", "error", "summary", "files")
+            for k in ("duration", "error", "summary", "files", "label")
             if k in result_data
         })
+
+    # Update elapsed time for the whole run
+    if "started_at" in _live_run_status[run_id]:
+        _live_run_status[run_id]["elapsed"] = time.time() - _live_run_status[run_id]["started_at"]
 
     # FIFO eviction if too many entries
     if len(_live_run_status) > _LIVE_STATUS_MAX:
@@ -1008,6 +1161,7 @@ async def execute_workflow_dag(
     workflow_id: int,
     param_overrides: dict = None,
     run_by: str = None,
+    pre_created_run_id: int = None,
 ) -> dict:
     """Execute a DAG workflow: honor depends_on, parallel layers, failure isolation.
 
@@ -1032,10 +1186,18 @@ async def execute_workflow_dag(
     if param_overrides:
         params.update(param_overrides)
 
-    # Create run record
+    # Auto-resolve file_path parameter to absolute path (and extract ZIP if needed)
+    if "file_path" in params and params["file_path"]:
+        from .gis_processors import _resolve_and_extract_zip
+        try:
+            params["file_path"] = _resolve_and_extract_zip(params["file_path"])
+        except Exception:
+            pass  # Keep original if resolution fails
+
+    # Create run record (skip if pre-created)
     engine = get_engine()
-    run_id = None
-    if engine:
+    run_id = pre_created_run_id
+    if not run_id and engine:
         try:
             with engine.connect() as conn:
                 result = conn.execute(text(f"""
@@ -1183,6 +1345,61 @@ async def execute_workflow_dag(
                     _update_live_status(run_id, step_id, node_status, result_data)
                 return (step_id, result_data)
             except Exception as e:
+                # S-6: Attempt automatic error recovery before marking as failed
+                try:
+                    from .error_recovery import attempt_recovery
+                    recovery = attempt_recovery(e, step, node_outputs,
+                                                step.get("_attempt_count", 0))
+                    if recovery.action == "retry" and step.get("_attempt_count", 0) < 2:
+                        import asyncio as _aio
+                        delay = recovery.modified_kwargs.get("_retry_delay", 2)
+                        await _aio.sleep(delay)
+                        step["_attempt_count"] = step.get("_attempt_count", 0) + 1
+                        logger.info("Recovery retry step=%s attempt=%d", step_id, step["_attempt_count"])
+                        # Re-run the node
+                        try:
+                            result = await run_pipeline_headless(
+                                agent=agent_obj,
+                                session_service=session_service,
+                                user_id=user,
+                                session_id=f"{session_id}_{step_id}_retry",
+                                prompt=prompt,
+                                pipeline_type=pipeline_type,
+                                intent=pipeline_type.upper(),
+                                role="analyst",
+                            )
+                            node_status = "failed" if result.error else "completed"
+                            result_data = {
+                                "step_id": step_id, "label": label,
+                                "status": "recovered" if node_status == "completed" else "failed",
+                                "duration": result.duration_seconds,
+                                "input_tokens": result.total_input_tokens,
+                                "output_tokens": result.total_output_tokens,
+                                "files": result.generated_files,
+                                "error": result.error,
+                                "summary": (result.report_text or "")[:500],
+                                "report_text": result.report_text,
+                                "depends_on": step.get("depends_on", []),
+                                "recovery_attempts": [recovery.to_dict()],
+                            }
+                            if run_id:
+                                _update_live_status(run_id, step_id, result_data["status"], result_data)
+                            return (step_id, result_data)
+                        except Exception:
+                            pass  # Fall through to original failure
+                    elif recovery.action == "skip":
+                        skip_data = {
+                            "step_id": step_id, "label": label,
+                            "status": "skipped", "error": str(e),
+                            "depends_on": step.get("depends_on", []),
+                            "recovery_attempts": [recovery.to_dict()],
+                        }
+                        if run_id:
+                            _update_live_status(run_id, step_id, "skipped", skip_data)
+                        return (step_id, skip_data)
+                except Exception:
+                    pass  # Recovery itself failed, fall through
+
                 err_data = {
                     "step_id": step_id, "label": label,
                     "status": "failed", "error": str(e),
@@ -1219,6 +1436,9 @@ async def execute_workflow_dag(
                 overall_status = "failed"
             elif result_data.get("status") == "skipped":
                 failed_or_skipped.add(step_id)
+            elif result_data.get("status") == "recovered":
+                # S-6: recovered nodes are treated as completed (not added to failed_or_skipped)
+                logger.info("Node '%s' recovered after error", step_id)
 
             # Condition node with False result → mark as skip-source for dependents
             if result_data.get("condition_result") is False:

@@ -126,6 +126,40 @@ def _resolve_path(file_path: str) -> str:
         pass
     return file_path
 
+
+def _resolve_and_extract_zip(file_path: str) -> str:
+    """Resolve path and auto-extract ZIP if needed, returning the spatial file inside.
+
+    If the resolved path is a .zip, extract it and search for spatial files
+    (.shp, .geojson, .gpkg, .kml, .json) inside. Returns the first spatial
+    file found, or the original zip path if none found.
+    """
+    resolved = _resolve_path(file_path)
+
+    if not resolved.lower().endswith(".zip") or not os.path.exists(resolved):
+        return resolved
+
+    # Extract ZIP
+    extract_dir = os.path.join(os.path.dirname(resolved), os.path.splitext(os.path.basename(resolved))[0])
+    os.makedirs(extract_dir, exist_ok=True)
+
+    try:
+        import zipfile as _zf
+        with _zf.ZipFile(resolved, "r") as zr:
+            zr.extractall(extract_dir)
+    except Exception:
+        return resolved  # Can't extract, return zip path
+
+    # Search for spatial files in priority order
+    for target_ext in (".shp", ".geojson", ".gpkg", ".kml", ".json"):
+        for root, _dirs, files in os.walk(extract_dir):
+            for fname in files:
+                if fname.lower().endswith(target_ext):
+                    return os.path.abspath(os.path.join(root, fname))
+
+    return resolved  # No spatial file found, return zip path
+
+
 def generate_tessellation(extent_file: str, shape_type: str = "SQUARE", size: float = 1000.0) -> str:
     """
     Generates a tessellation (grid) of polygons covering the extent of an input feature class.

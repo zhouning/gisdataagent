@@ -234,6 +234,26 @@ async def skills_review_publish(request: Request):
     return JSONResponse(result)
 
 
+async def skills_generate(request: Request):
+    """POST /api/skills/generate — AI-assisted skill generation from natural language."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    description = body.get("description", "").strip()
+    if not description:
+        return JSONResponse({"error": "description is required"}, status_code=400)
+
+    from ..skill_generator import generate_skill_config
+    result = generate_skill_config(description)
+    return JSONResponse(result)
+
+
 async def skill_schemas_list(request: Request):
     """GET /api/skills/schemas — list available output schemas."""
     user = _get_user_from_request(request)
@@ -309,6 +329,7 @@ def get_skills_routes() -> list:
     return [
         Route("/api/skills", skills_list, methods=["GET"]),
         Route("/api/skills", skills_create, methods=["POST"]),
+        Route("/api/skills/generate", skills_generate, methods=["POST"]),
         Route("/api/skills/schemas", skill_schemas_list, methods=["GET"]),
         Route("/api/skills/pending", skills_pending_list, methods=["GET"]),
         Route("/api/skills/dependency-graph", skill_dependency_graph, methods=["GET"]),

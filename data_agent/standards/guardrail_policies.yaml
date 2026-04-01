@@ -1,0 +1,57 @@
+_version: "1.0.0"
+
+policies:
+  # --- viewer 角色：禁止所有写入/删除操作 ---
+  - role: viewer
+    effect: deny
+    tools:
+      - "delete_*"
+      - "drop_*"
+      - "import_to_postgis"
+      - "share_*"
+      - "create_team"
+      - "invite_to_team"
+      - "register_data_asset"
+      - "tag_data_asset"
+      - "register_semantic_annotation"
+      - "register_source_metadata"
+      - "register_semantic_domain"
+      - "add_field"
+      - "calculate_field"
+      - "add_join"
+      - "auto_fix_defects"
+      - "standardize_crs"
+      - "fill_null_values"
+      - "rename_fields"
+      - "cast_field_type"
+      - "clip_outliers"
+      - "mask_sensitive_fields_tool"
+      - "batch_standardize_crs"
+      - "clean_data"
+      - "integrate_data"
+    reason: "查看者角色禁止执行写入/修改/删除操作"
+
+  # --- analyst 角色：高影响操作需确认 ---
+  - role: analyst
+    effect: require_confirmation
+    tools:
+      - "import_to_postgis"
+      - "delete_user_file"
+      - "delete_data_asset"
+      - "delete_team"
+      - "share_table"
+    reason: "分析师执行高影响操作需确认"
+
+  # --- 全局：危险操作默认禁止 ---
+  - role: "*"
+    effect: deny
+    tools:
+      - "execute_raw_sql"
+    reason: "原始 SQL 执行已禁用，请使用参数化查询工具"
+
+  # --- admin 角色：无限制 (显式声明) ---
+  - role: admin
+    effect: allow
+    tools:
+      - "*"
+    reason: "管理员拥有完全权限"
