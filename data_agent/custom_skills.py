@@ -36,6 +36,7 @@ TOOLSET_NAMES: set[str] = {
     "SparkToolset", "StorageToolset", "ReportToolset", "PrecisionToolset",
     "CausalInferenceToolset",
     "DreamerToolset",
+    "ToolEvolutionToolset",
 }
 
 _toolset_registry_cache: dict[str, type] | None = None

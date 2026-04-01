@@ -101,10 +101,10 @@ class TestSubWorkflows(unittest.TestCase):
         names = [a.name for a in analyze_viz_workflow.sub_agents]
         self.assertEqual(names, ["WFAnalyzer", "WFVisualizer"])
 
-    def test_planner_has_7_sub_agents(self):
-        """Planner should have 5 standalone + 2 workflow sub-agents."""
+    def test_planner_has_13_sub_agents(self):
+        """Planner should have 5 standalone + 2 workflows + 4 specialized + 2 multi-agent workflows."""
         from data_agent.agent import planner_agent
-        self.assertEqual(len(planner_agent.sub_agents), 7)
+        self.assertEqual(len(planner_agent.sub_agents), 13)
 
     def test_planner_includes_workflows(self):
         """Planner sub_agents should include the workflow agents."""

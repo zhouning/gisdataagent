@@ -26,11 +26,14 @@ interface WorkflowRunSummary {
   error_message: string | null;
   step_results: Array<{
     node_id?: string;
+    step_id?: string;
     label?: string;
     status?: string;
     duration?: number;
     output?: string;
+    summary?: string;
     error?: string;
+    files?: string[];
     [key: string]: any;
   }>;
 }
@@ -143,14 +146,11 @@ export default function WorkflowsTab() {
                   setExecuting(null);
                   setLiveRunId(null);
                   fetchWorkflows();
+                  // Keep liveStatus visible for 8 seconds after completion
+                  setTimeout(() => setLiveStatus(null), 8000);
                 }
-              } else {
-                clearInterval(pollId);
-                setExecuting(null);
-                setLiveRunId(null);
-                setLiveStatus(null);
-                fetchWorkflows();
               }
+              // On 404, run may not have started yet — keep polling
             } catch {
               clearInterval(pollId);
               setExecuting(null);
@@ -245,13 +245,18 @@ export default function WorkflowsTab() {
                             <span style={{ color: '#6b7280' }}>{step.duration.toFixed(1)}s</span>
                           )}
                         </div>
-                        {step.output && (
+                        {(step.summary || step.output) && (
                           <div style={{
                             marginTop: 4, padding: '4px 6px', background: '#fff', borderRadius: 3,
                             maxHeight: 120, overflowY: 'auto', whiteSpace: 'pre-wrap', fontSize: 10,
                             color: '#374151', border: '1px solid #e5e7eb',
                           }}>
-                            {typeof step.output === 'string' ? step.output : JSON.stringify(step.output, null, 2)}
+                            {typeof (step.summary || step.output) === 'string' ? (step.summary || step.output) : JSON.stringify((step.summary || step.output), null, 2)}
+                          </div>
+                        )}
+                        {step.files && step.files.length > 0 && (
+                          <div style={{ marginTop: 4, fontSize: 10, color: '#0d9488' }}>
+                            生成文件: {step.files.join(', ')}
                           </div>
                         )}
                         {step.error && (
@@ -288,27 +293,47 @@ export default function WorkflowsTab() {
       ) : (
         <div className="workflow-list">
           {/* Live execution status panel */}
-          {liveStatus && executing && (
+          {liveStatus && (
             <div className="workflow-live-status">
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-                ▶ 执行中... (Run #{liveRunId})
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>
+                  {liveStatus.status === 'completed' ? 'v 已完成' : liveStatus.status === 'failed' ? 'x 执行失败' : '>> 执行中...'} (Run #{liveRunId || ''})
+                </div>
+                <div style={{ fontSize: 11, color: '#6b7280' }}>
+                  {liveStatus.elapsed ? `${liveStatus.elapsed.toFixed(0)}s` : ''}
+                </div>
               </div>
+
+              {/* Progress bar */}
+              {liveStatus.nodes && (() => {
+                const nodes = Object.values(liveStatus.nodes);
+                const completed = nodes.filter((n: any) => n.status === 'completed').length;
+                const total = nodes.length;
+                const progress = total > 0 ? (completed / total) * 100 : 0;
+                return (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280', marginBottom: 4 }}>
+                      <span>进度: {completed}/{total} 步骤</span>
+                      <span>{progress.toFixed(0)}%</span>
+                    </div>
+                    <div style={{ height: 4, background: '#e5e7eb', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: 'linear-gradient(90deg, #0d9488, #14b8a6)', width: `${progress}%`, transition: 'width 0.3s ease' }} />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Step list */}
               {liveStatus.nodes && Object.entries(liveStatus.nodes).map(([nodeId, node]: [string, any]) => (
                 <div key={nodeId} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, padding: '3px 0' }}>
                   <span style={{
                     width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                     background: node.status === 'completed' ? '#22c55e' : node.status === 'running' ? '#0d9488' : node.status === 'failed' ? '#ef4444' : '#d1d5db',
                   }} />
-                  <span style={{ fontWeight: 500 }}>{node.label || nodeId}</span>
-                  <span style={{ color: '#9ca3af' }}>{node.status}</span>
+                  <span style={{ fontWeight: 500, flex: 1 }}>{node.label || nodeId}</span>
                   {node.duration && <span style={{ color: '#6b7280' }}>{node.duration.toFixed(1)}s</span>}
                 </div>
               ))}
-              {liveStatus.overall_status && (
-                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
-                  总状态: {liveStatus.overall_status} | 耗时: {liveStatus.elapsed?.toFixed(1) || '?'}s
-                </div>
-              )}
             </div>
           )}
 

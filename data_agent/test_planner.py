@@ -23,8 +23,8 @@ class TestPlannerHierarchy(unittest.TestCase):
         from data_agent.agent import planner_agent
         cls.planner = planner_agent
 
-    def test_planner_has_7_sub_agents(self):
-        self.assertEqual(len(self.planner.sub_agents), 7)
+    def test_planner_has_13_sub_agents(self):
+        self.assertEqual(len(self.planner.sub_agents), 13)
 
     def test_sub_agent_names(self):
         names = {a.name for a in self.planner.sub_agents}
@@ -32,6 +32,8 @@ class TestPlannerHierarchy(unittest.TestCase):
             "PlannerExplorer", "PlannerProcessor",
             "PlannerAnalyzer", "PlannerVisualizer", "PlannerReporter",
             "ExploreAndProcess", "AnalyzeAndVisualize",
+            "DataEngineerAgent", "AnalystAgent", "VisualizerAgent",
+            "RemoteSensingAgent", "FullAnalysis", "RSAnalysis",
         })
 
     def test_peers_transfer_disabled(self):

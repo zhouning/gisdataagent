@@ -34,3 +34,5 @@ from .causal_inference_tools import CausalInferenceToolset
 from .llm_causal_tools import LLMCausalToolset
 from .causal_world_model_tools import CausalWorldModelToolset
 from .dreamer_tools import DreamerToolset
+from .operator_tools import OperatorToolset
+from .evolution_tools import ToolEvolutionToolset

@@ -1,10 +1,12 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-03-29 &nbsp;|&nbsp; **Current version**: v15.8 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-03-30 &nbsp;|&nbsp; **Current version**: v15.8 &nbsp;|&nbsp; **ADK**: v1.27.2
 
-> 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）
+> 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）、**DeerFlow v2.0（ByteDance 通用 Agent Harness — 工程质量）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**
 >
 > 核心战略：**智能层 + 交互层保持领先，数据层向 SeerAI 看齐**——从"用户带数据来"转向"Agent 主动发现和连接数据"
+>
+> **Data Agent Level**: L2.5 → v15.9 目标 L2.8 (Proto-L3) → v16.0 目标 L3 (完整条件自主)
 
 ---
 
@@ -523,84 +525,219 @@
 
 ---
 
-## v16.0+ — 遥感智能体能力增强 (远期规划)
+---
 
-> **主题**: 从"通用 GIS 分析平台"升级为"遥感领域专业智能体平台"
->
-> **理论基础**: Tang et al. (2026) *Intelligent Remote Sensing Agents: A Survey*
->
-> **详细方案**: 见 `docs/roadmap_v6.0_rs_agents.md`
+## v15.9 — 向 L3 迈进：Planner-Executor + 中间件链 + DeerFlow 工程质量
 
-### Phase 1 — 遥感核心能力 (v16.0)
-- [ ] **光谱指数库** — 15+ 遥感指数 (EVI/SAVI/NDWI/NDBI/NBR 等) + 智能推荐
-- [ ] **经验池 (Experience Pool)** — 成功分析经验记录 + RAG 检索 + 经验进化
-- [ ] **数据质量门控** — 云覆盖检测 + 自动降级 (光学→SAR 切换)
-- [ ] **卫星数据预置** — Sentinel-2/Landsat STAC 模板 + 3-5 预置源
+> **主题**: 补齐 Proto-L3 短板 + 解决最大技术债 + 工程质量提升
+>
+> **依据**: SIGMOD 2026 "Data Agents: Levels, State of the Art, and Open Problems" (Luo et al.) + DeerFlow v2.0 架构借鉴
+>
+> **当前水平**: L2.5 (完整 L2 + 部分 Proto-L3) → **目标**: 完整 L3 条件自主
+
+### 核心升级：从 L2 执行者 → L3 编排者
+
+**关键演进跃迁 (SIGMOD 2026 论文):**
+- L2: 人类设计流程，Agent 执行任务特定过程
+- L3: Agent 设计流程，人类监督执行结果
+
+### DeerFlow 工程质量借鉴 (P0-P2)
+
+#### **D-1: App 分层重构 — Harness/App 分离 (P0)**
+- [x] **core/ 层提取** — agent_runtime.py (Agent 创建 + pipeline 组装) + tool_registry.py (Toolset 注册表) 从 agent.py 提取
+- [x] **app.py 瘦身** — 从 3340 行降到 <500 行，仅保留 Chainlit 回调 + 胶水代码
+- [x] **CI 边界测试** — test_harness_boundary.py 强制 core/ 永不 import chainlit
+- [x] **api/ 进一步拆分** — frontend_api.py 按 domain 拆分 (catalog/workflow/quality/skill 等)
+
+#### **D-2: 中间件链模式 (P1)**
+- [x] **PipelineMiddleware 协议** — before_run / after_run / on_error 三阶段钩子
+- [x] **7 层中间件提取** — RBAC → FileUpload → ContextSummarization → [Pipeline] → TokenTracking → LayerControl → ErrorClassification
+- [x] **中间件注册器** — 可组合、可启停、严格执行顺序
+
+#### **D-3: 上下文自动摘要 (P1)**
+- [x] **SummarizationMiddleware** — token 超 80% 阈值时自动压缩历史对话
+- [x] **摘要策略** — 保留最近 3 轮完整对话 + 关键数据路径 + 分析结论，丢弃中间推理
+- [x] **使用 Gemini 2.0 Flash** — 便宜快速的摘要模型
+
+### SIGMOD 2026 论文借鉴 (P1-P2)
+
+#### **S-1: Planner-Executor 分离 (P1, 向 L3 关键跃迁)**
+- [x] **PlannerAgent** — 根据用户意图动态生成 ExecutionPlan (DAG nodes + edges + dependencies)
+- [x] **ExecutorAgent** — 拓扑排序 + 并行执行计划
+- [x] **ExecutionPlan 数据结构** — 替代硬编码的三条流水线 (Optimization/Governance/General)
+- [x] **复用 workflow_engine.py** — DAG 执行逻辑已有，重构为 Planner 输出格式
+
+#### **S-2: 工具选择器 (P2)**
+- [x] **ToolSelector** — 根据 task_type + data_profile 推荐工具子集
+- [x] **选择规则** — 遥感任务 → RemoteSensingToolset，数据量 >1GB → SparkToolset，因果分析 → CausalInferenceToolset
+- [x] **降低 Agent 负担** — 从 28 个 Toolset 全暴露 → 智能推荐 5-8 个相关工具
+
+#### **S-3: 因果错误诊断 (P2)**
+- [x] **PipelineErrorDiagnoser** — 构建管道因果图 + 反向追踪错误传播路径
+- [x] **根因识别** — 定位哪一步引入错误 (而非仅报告哪一步失败)
+- [x] **修复建议** — 自动推荐修复策略 (插入工具调用、调整参数、替换工具)
+
+### 历史遗留完成 (低成本高价值)
+
+- [x] **奖励权重 UI** — DRL 前端 slope/contiguity/balance 滑块 *(v14.0 遗留)*
+- [x] **MCP 外部 Agent 接入验证** — Claude Desktop / Cursor E2E 测试 *(v13.1 遗留)*
+- [x] **分析意图消歧 v2** — 复杂查询拆解子任务列表 *(v14.1 遗留)*
+- [x] **自动记忆提取增强** — pipeline 后 extract_facts + 弹窗确认 *(v14.1 遗留)*
+- [x] **消息总线持久化** — AgentMessageBus → PostgreSQL *(v14.1 遗留)*
+- [x] **Skill SDK 发布** — `gis-skill-sdk` Python 包 *(v14.3 遗留)*
+
+### 质量保障
+- [x] **test_planner_executor.py** — Planner 生成计划 + Executor 执行验证
+- [x] **test_middleware_chain.py** — 7 层中间件执行顺序 + 钩子调用
+- [x] **test_tool_selector.py** — 任务特征 → 工具推荐准确性
+- [x] **test_error_diagnoser.py** — 管道错误根因识别
+
+---
+
+## v16.0 — 完整 L3：语义算子 + 多 Agent 协作 + 遥感智能体
+
+> **主题**: 达到完整 L3 条件自主 + 遥感领域专业化
+>
+> **依据**: SIGMOD 2026 论文 Proto-L3 设计模式 + Tang et al. (2026) 遥感智能体综述
+>
+> **目标**: 成为地理空间领域标杆 L3 系统
+
+### SIGMOD 2026 论文借鉴 (完整 L3)
+
+#### **S-4: 语义算子层 (P1)**
+- [x] **SemanticOperator 抽象** — Clean / Integrate / Analyze / Visualize 高层算子 ✅ 2026-04-01
+- [x] **CleanOperator** — 封装 DataCleaningToolset 11 工具，根据数据特征自动选择清洗策略 ✅ 2026-04-01
+- [x] **IntegrateOperator** — 封装连接器 + schema 映射 + 冲突解决 ✅ 2026-04-01
+- [x] **AnalyzeOperator** — 封装 GeoProcessing + Analysis + CausalInference ✅ 2026-04-01
+- [x] **算子组合** — Planner 组合语义算子而非直接调用底层工具 ✅ 2026-04-01
+
+#### **S-5: 多 Agent 协作 (P1)**
+- [x] **DataEngineerAgent** — 负责数据准备 (清洗、集成、标准化) ✅ 2026-04-01
+- [x] **AnalystAgent** — 负责分析 (GIS 分析、统计、因果推断) ✅ 2026-04-01
+- [x] **VisualizerAgent** — 负责可视化 (地图、图表、报告) ✅ 2026-04-01
+- [x] **RemoteSensingAgent** — 负责遥感分析 (光谱指数、变化检测、时序分析) ✅ 2026-04-01
+- [x] **CoordinatorAgent** — Planner 增强为协调器，管理 4 专业 Agent + 2 组合工作流 ✅ 2026-04-01
+
+#### **S-6: 计划精化与错误恢复 (P2)**
+- [x] **PlanRefiner** — 根据执行反馈调整计划 (插入修复步骤、跳过失败步骤、替换工具) ✅ 2026-04-01
+- [x] **ErrorRecoveryStrategy** — 多种恢复策略 (retry / alternative_tool / skip / simplify / escalate) ✅ 2026-04-01
+- [x] **局部调整** — 从"全有或全无"到"局部精化" ✅ 2026-04-01
+
+#### **S-7: 工具演化 (P2)**
+- [x] **ToolEvolution** — 动态工具库管理 (add_tool / remove_tool / suggest_new_tools) ✅ 2026-04-01
+- [x] **失败驱动的工具发现** — 分析失败任务，推荐缺失的工具 ✅ 2026-04-01
+- [x] **工具元数据** — 能力描述、成本、可靠性、适用场景 ✅ 2026-04-01
+
+### DeerFlow 工程质量借鉴 (v16.0)
+
+#### **D-4: 工具调用 Guardrails (P2)**
+- [x] **GuardrailMiddleware** — 可插拔的确定性策略引擎 (非 LLM 判断) ✅ 2026-04-01
+- [x] **三级策略** — Deny (静默拒绝) / Require Confirmation (暂停确认) / Allow (直接执行) ✅ 2026-04-01
+- [x] **YAML 策略配置** — viewer deny [delete_*, drop_*], analyst require_confirmation [execute_sql_write] ✅ 2026-04-01
+- [x] **与 RBAC 协同** — RBAC (pipeline 级) + Guardrails (工具级) = 两层安全 ✅ 2026-04-01
+
+#### **D-5: AI 辅助 Skill 创建 (P2)**
+- [x] **skill-creator Skill** — 用自然语言描述需求 → AI 生成 Skill 配置 ✅ 2026-04-01
+- [x] **工作流** — 需求分析 → 推荐 toolsets → 生成配置 → 用户预览确认 → 保存 DB ✅ 2026-04-01
+- [x] **复用现有 API** — `/api/skills/generate` 端点 + custom_skills.py CRUD ✅ 2026-04-01
+
+### 遥感智能体 Phase 1 (v16.0)
+
+- [x] **光谱指数库** — 15+ 遥感指数 (EVI/SAVI/NDWI/NDBI/NBR 等) + 智能推荐 ✅ 2026-04-01
+- [x] **经验池 (Experience Pool)** — 成功分析经验记录 + RAG 检索 + 经验进化 ✅ 2026-04-01
+- [x] **数据质量门控** — 云覆盖检测 + 自动降级 (光学→SAR 切换) ✅ 2026-04-01
+- [x] **卫星数据预置** — Sentinel-2/Landsat/SAR STAC 模板 + 5 预置源 ✅ 2026-04-01
 - [ ] **新增 Skills** — spectral-analysis + satellite-imagery
 
-### Phase 2 — 时空分析 (v17.0)
+### 质量保障
+- [ ] **test_semantic_operators.py** — 语义算子组合 + 自动工具选择
+- [ ] **test_multi_agent_collaboration.py** — 多 Agent 任务分解 + 协调 + 汇总
+- [ ] **test_plan_refinement.py** — 执行反馈 → 计划调整
+- [ ] **test_guardrails.py** — 策略引擎 + 三级策略验证
+
+---
+
+## v17.0+ — L4 主动式探索 (远期愿景)
+
+> **主题**: 从响应式 → 主动式，从有监督 → 无监督
+>
+> **依据**: SIGMOD 2026 论文 L4 愿景
+>
+> **目标**: 持续监控 + 自主任务发现 + 内在动机驱动
+
+### SIGMOD 2026 论文借鉴 (L4 能力)
+
+#### **S-8: 持续监控与任务发现 (远期)**
+- [ ] **DataLakeMonitor** — 7x24 监控守护进程
+- [ ] **数据漂移检测** — 自动发现数据分布变化 → 触发重训练任务
+- [ ] **性能退化检测** — 查询延迟监控 → 触发优化任务
+- [ ] **优化机会发现** — 缺失索引、有益物化视图、冗余计算 → 自主优化
+- [ ] **任务优先级** — 多任务自主排序 (紧急度 × 收益)
+
+#### **S-9: 内在动机引擎 (远期)**
+- [ ] **IntrinsicMotivation** — 内部奖励信号驱动探索
+- [ ] **奖励函数** — 发现新数据源 +10，提升数据质量 +5×improvement，减少延迟 +2×reduction
+- [ ] **探索 vs 利用** — ε-greedy 策略平衡已知优化和新机会探索
+- [ ] **持续自我改进** — 基于操作日志和遥测数据适应策略
+
+### 遥感智能体 Phase 2-4 (远期)
+
+#### **Phase 2: 时空分析 (v17.0)**
 - [ ] **变化检测引擎** — 双时相差异 + 指数差异 + 分类后比较 + 语义描述
 - [ ] **时间序列分析** — Mann-Kendall 趋势 + 断点检测 + 物候提取
 - [ ] **证据充分性评估** — 数据覆盖度 × 方法多样性 × 结论支撑强度
 
-### Phase 3 — 智能化可信度 (v18.0)
+#### **Phase 3: 智能化可信度 (v18.0)**
 - [ ] **代码生成执行** — Agent 动态生成 Python + 沙箱执行
 - [ ] **幻觉检测增强** — 空间约束 Fact-Checking + 多源交叉验证
 - [ ] **多 Agent Debate** — 主分析 + 独立验证 + 统计检验 + Judge 汇总
 - [ ] **RS 领域知识库** — 光谱特性 + 处理流程 + 分类体系 + 法规标准
 
-### Phase 4 — 高级遥感 (v19.0+)
+#### **Phase 4: 高级遥感 (v19.0+)**
 - [ ] **SAR/高光谱/LiDAR** 数据处理
 - [ ] **深度学习推理** — segment-anything-geo / SatMAE / Prithvi
 - [ ] **具身执行接口** — 卫星调度 / 无人机航线规划 (预留)
 
 ---
 
-## 持续强化 — 差异化优势
+## 标杆对标进度 (更新 2026-03-30)
 
-> 数据层补课的同时，继续拉大智能层和交互层的领先距离
+> 新增标杆: DeerFlow (ByteDance 通用 Agent Harness) + SIGMOD 2026 Data Agent Levels 论文
 
-| 方向 | 规划 | v15.8 状态 |
-|------|------|-----------|
-| **因果推断** | 三角度体系 (统计+LLM+世界模型) | ✅ 14 工具全部交付 |
-| **世界模型** | AlphaEarth JEPA + 因果干预/反事实 | ✅ 核心+因果扩展+Dreamer |
-| **测绘质检** | GB/T 24356 全流程 + 4 子系统 | ✅ v15.7 全量交付 |
-| **企业平台** | BCG 6 模块 (Prompt/Model/Context/Eval) | ✅ v15.8 全部交付 |
-| **自然语言交互** | Inversion 采访、意图消歧、NL2SQL | ✅ NL2SQL 已交付，消歧 v2 待做 |
-| **Skill 设计模式** | 5 模式覆盖 + 结构化输出校验 | ✅ 5 模式完成，Pydantic 校验待做 |
-| **标准驱动治理** | 标准注册表、Gap Matrix、标准感知质检 | ✅ 全部完成 + QC 工作流模板 |
-| **用户自扩展** | Marketplace 社区、Skill SDK | 🟡 基础完成，社区/SDK 冻结 |
-| **DRL 优化** | 多目标优化、更多场景 | 🟡 NSGA-II + Dreamer 完成，新场景冻结 |
-| **三面板 SPA** | 3D 增强、时间轴、因果推理 Tab | ✅ 时间轴+因果 Tab+QcMonitor+24 Tab |
-| **数据生态** | 分发审批、热度统计 | ✅ 全部完成 + 统一资产表 |
-| **多 Agent 编排** | 断点续跑、Spark 分布式 | ✅ 全部完成 + 非阻塞工作流 |
-| **技术债务** | 6 项登记 (2P1 + 4P2) | ✅ 6/6 全部清零 |
+| 标杆能力 | 来源 | v15.8 ✅ | v15.9 🎯 | v16.0 🎯 |
+|----------|------|-----------|-----------|-----------|
+| 空间数据虚拟化 | SeerAI | 🟢🟢 统一资产表 | 🟢🟢 | 🟢🟢 |
+| 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢 |
+| 分析血缘自动追踪 | SeerAI | 🟢🟢 4 层元数据 | 🟢🟢 因果诊断 | 🟢🟢🟢 |
+| 行业预置模板 | SeerAI | 🟢🟢🟢 QC 工作流模板 | 🟢🟢🟢 | 🟢🟢🟢 |
+| Agent 对话交互 | OpenClaw | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 企业级治理 | Frontier | 🟢🟢🟢 QC+BCG 平台 | 🟢🟢🟢 Guardrails 增强 | 🟢🟢🟢🟢 |
+| Agent 可观测性 | — | 🟢🟢🟢 Eval+Token 归因 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 多 Agent 协作 | CoWork | 🟢🟢🟢 非阻塞+上下文 | 🟢🟢🟢 | 🟢🟢🟢🟢 专业分工 |
+| 时空预测 | — | 🟢🟢🟢 JEPA+因果 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 因果推断 | — | 🟢🟢🟢 三角度 14 工具 | 🟢🟢🟢 + 错误诊断 | 🟢🟢🟢 |
+| 测绘质检 | — | 🟢🟢🟢 GB/T 24356 | 🟢🟢🟢 | 🟢🟢🟢 |
+| 企业平台 | BCG | 🟢🟢 6 模块 | 🟢🟢 | 🟢🟢 |
+| **Harness/App 分离** | DeerFlow | 🔴 app.py 3340行 | 🟢🟢 core/ 独立 | 🟢🟢 |
+| **中间件链** | DeerFlow | 🔴 横切关注点散布 | 🟢🟢 7 层中间件 | 🟢🟢 |
+| **上下文摘要** | DeerFlow | 🔴 无 | 🟢 自动摘要 | 🟢🟢 |
+| **Guardrails** | DeerFlow | 🟡 RBAC 仅 pipeline级 | 🟡 | 🟢🟢 工具级策略 |
+| **Skill Creator** | DeerFlow | 🟡 手工创建 | 🟡 | 🟢 AI 辅助 |
+| **Planner-Executor** | SIGMOD L3 | 🔴 硬编码三流水线 | 🟢🟢 动态计划 | 🟢🟢🟢 |
+| **语义算子** | SIGMOD L3 | 🔴 直接暴露底层工具 | 🟡 | 🟢🟢 高层抽象 |
+| **工具选择器** | SIGMOD L3 | 🔴 28 Toolset全暴露 | 🟢 智能推荐 | 🟢🟢 |
+| **因果错误诊断** | SIGMOD L3 | 🔴 无 | 🟢 管道根因分析 | 🟢🟢 |
+| **Data Agent Level** | SIGMOD | L2.5 | L2.8 (Proto-L3) | L3 (完整条件自主) |
 
----
+### Data Agent Level 演进路径
 
-## 标杆对标进度
-
-| 标杆能力 | 来源 | v14.5 ✅ | v15.0 ✅ | v15.3 ✅ | v15.8 ✅ |
-|----------|------|-----------|-----------|-----------|-----------|
-| 空间数据虚拟化 | SeerAI | 🟢🟢 插件化+WMS+ArcGIS | 🟢🟢 DB+OBS 连接器 | 🟢🟢 | 🟢🟢 统一资产表 |
-| 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢 | 🟢 |
-| 分析血缘自动追踪 | SeerAI | 🟢 批量探查+跨集关联 | 🟢🟢 列级血缘 | 🟢🟢 | 🟢🟢 4 层元数据 |
-| MCP Server 暴露 | SeerAI | 🟢 | 🟢 | 🟢 | 🟢 |
-| 行业预置模板 | SeerAI | 🟢🟢 标准注册表+DLTB | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 QC 工作流模板 |
-| Agent 对话交互 | OpenClaw | 🟢🟢🟢 Inversion 采访 | 🟢🟢🟢 | 🟢🟢🟢 + LLM 因果推理 | 🟢🟢🟢 |
-| 企业级治理 | Frontier | 🟢🟢🟢 标准驱动+清洗+Gap | 🟢🟢🟢 安全+脱敏 | 🟢🟢🟢 | 🟢🟢🟢 QC+BCG 平台 |
-| 数据可视化 | — | 🟢 趋势+总览仪表盘 | 🟢🟢 | 🟢🟢🟢 世界模型时间轴+因果效应图 | 🟢🟢🟢 |
-| **Agent 可观测性** | — | 🟢 25+指标+中间件 | 🟢🟢 OTel+决策追踪 | 🟢🟢 | 🟢🟢🟢 Eval+Token 归因 |
-| 多 Agent 协作 | CoWork | 🟢🟢 断点+重试 | 🟢🟢 Spark 分布式 | 🟢🟢 | 🟢🟢🟢 非阻塞+上下文连续 |
-| 用户生态 | — | 🟢 图层发现+类型表单 | 🟢🟢 分发+反馈 | 🟢🟢 | 🟢🟢 |
-| Skill 设计模式 | Skillmatic | 🟢 Inversion+Generator+Reviewer | 🟢🟢 Pipeline | 🟢🟢 | 🟢🟢 |
-| 数据分发/反馈 | Frontier | 🟡 | 🟢 审批+热度+API 网关 | 🟢 | 🟢 |
-| DRL 优化深度 | — | 🟢 | 🟢 | 🟢 | 🟢🟢 Dreamer 融合 |
-| **时空预测** | — | — | 🟢 世界模型 Tech Preview | 🟢🟢🟢 JEPA+因果干预+反事实 | 🟢🟢🟢 |
-| **因果推断** | — | — | — | 🟢🟢🟢 三角度 14 工具 + 82 测试 | 🟢🟢🟢 |
-| **NL2SQL** | — | — | — | 🟢🟢 Schema-aware 动态查询 | 🟢🟢 |
-| **测绘质检** | — | — | — | — | 🟢🟢🟢 GB/T 24356+4 子系统 |
-| **企业平台** | BCG | — | — | — | 🟢🟢 6 模块 |
+```
+v15.8: L2.5 — 完整 L2 + 部分 Proto-L3 (跨生命周期, 意图路由)
+v15.9: L2.8 — + Planner-Executor + 中间件链 + 工具选择 + 上下文摘要
+v16.0: L3   — + 语义算子 + 多 Agent 协作 + 计划精化 + Guardrails
+v17.0: L3.5 — + 持续监控 + 任务发现 (向 L4 探索)
+v18.0: L4-  — + 内在动机 + 自主探索 (L4 初步)
+```
 
 ### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
 
