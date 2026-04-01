@@ -368,7 +368,7 @@ governance_processing_agent = LlmAgent(
     output_key="processed_data",
     after_tool_callback=_self_correction_after_tool,
     tools=[
-        ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
+        ExplorationToolset(tool_filter=_TRANSFORM_TOOLS + ["describe_geodataframe"]),
         GeoProcessingToolset(tool_filter=[
             "polygon_neighbors", "add_field", "calculate_field",
         ]),

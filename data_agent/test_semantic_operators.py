@@ -414,3 +414,75 @@ class TestOperatorToolset:
         assert "visualize_data" in tool_names
         assert "list_operators" in tool_names
         assert len(tools) == 5
+
+
+# ---------------------------------------------------------------------------
+# Operator Composition (S-4: chaining operators)
+# ---------------------------------------------------------------------------
+
+class TestOperatorComposition:
+    """Verify operators can be chained: clean → integrate → analyze → visualize."""
+
+    def test_clean_then_analyze_plans_compatible(self, landuse_profile):
+        """Clean plan output can feed into Analyze plan."""
+        clean_op = CleanOperator()
+        analyze_op = AnalyzeOperator()
+
+        clean_plan = clean_op.plan(landuse_profile)
+        analyze_plan = analyze_op.plan(landuse_profile, task_description="空间分布分析")
+
+        # Both plans should be valid
+        assert len(clean_plan.tool_calls) > 0
+        assert len(analyze_plan.tool_calls) > 0
+        # They should target different tools
+        clean_tools = {tc.tool_name for tc in clean_plan.tool_calls}
+        analyze_tools = {tc.tool_name for tc in analyze_plan.tool_calls}
+        assert clean_tools != analyze_tools
+
+    def test_full_pipeline_all_operators_plan(self, landuse_profile):
+        """All four operators can independently plan for the same profile."""
+        operators = [CleanOperator(), IntegrateOperator(),
+                     AnalyzeOperator(), VisualizeOperator()]
+        plans = []
+        for op in operators:
+            plan = op.plan(landuse_profile, task_description="分析土地利用数据")
+            assert plan.operator_name in ("clean", "integrate", "analyze", "visualize")
+            plans.append(plan)
+        assert len(plans) == 4
+
+    def test_registry_orchestration(self, landuse_profile):
+        """OperatorRegistry.get() returns correct operators for chaining."""
+        sequence = ["clean", "analyze", "visualize"]
+        for name in sequence:
+            op = OperatorRegistry.get(name)
+            assert op is not None
+            plan = op.plan(landuse_profile)
+            assert plan.operator_name == name
+
+    def test_analyze_strategy_auto_select(self, landuse_profile):
+        """Analyze auto-selects strategy based on task description keywords."""
+        op = AnalyzeOperator()
+        cases = {
+            "空间聚类分析": "spatial_stats",
+            "优化土地利用": "drl_optimize",
+            "因果推断": "causal",
+            "DEM 地形分析": "terrain",
+            "质量评分": "governance",
+        }
+        for task, expected_strategy in cases.items():
+            plan = op.plan(landuse_profile, task_description=task)
+            assert plan.strategy == expected_strategy, \
+                f"Task '{task}' expected strategy '{expected_strategy}', got '{plan.strategy}'"
+
+    def test_visualize_strategy_auto_select(self, csv_profile):
+        """Visualize auto-selects strategy based on data characteristics."""
+        op = VisualizeOperator()
+        cases = {
+            "着色图": "choropleth",
+            "热力图": "heatmap",
+            "柱状图": "charts",
+        }
+        for task, expected_strategy in cases.items():
+            plan = op.plan(csv_profile, task_description=task)
+            assert plan.strategy == expected_strategy, \
+                f"Task '{task}' expected '{expected_strategy}', got '{plan.strategy}'"

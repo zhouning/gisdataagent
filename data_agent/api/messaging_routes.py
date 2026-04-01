@@ -3,15 +3,37 @@
 """
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from data_agent.auth import require_auth, require_admin
 from data_agent.db_engine import get_engine
 from data_agent.agent_messaging import get_message_bus
 from datetime import datetime, timedelta
 
 
+def _get_user_from_request(request: Request):
+    """Extract authenticated user from JWT in request cookies."""
+    try:
+        from chainlit.auth.cookie import get_token_from_cookies
+        from chainlit.auth.jwt import decode_jwt
+    except ImportError:
+        return None
+    token = get_token_from_cookies(dict(request.cookies))
+    if not token:
+        return None
+    try:
+        return decode_jwt(token)
+    except Exception:
+        return None
+
+
+def _is_admin(user) -> bool:
+    """Check if user has admin role."""
+    if hasattr(user, "metadata") and isinstance(user.metadata, dict):
+        return user.metadata.get("role") == "admin"
+    return False
+
+
 async def messaging_stats(request: Request) -> JSONResponse:
     """获取消息统计"""
-    user = await require_auth(request)
+    user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "未授权"}, status_code=401)
 
@@ -50,7 +72,7 @@ async def messaging_stats(request: Request) -> JSONResponse:
 
 async def list_messages(request: Request) -> JSONResponse:
     """列出消息（支持过滤）"""
-    user = await require_auth(request)
+    user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "未授权"}, status_code=401)
 
@@ -107,8 +129,8 @@ async def list_messages(request: Request) -> JSONResponse:
 
 async def replay_message(request: Request) -> JSONResponse:
     """重新发送未送达消息"""
-    user = await require_admin(request)
-    if not user:
+    user = _get_user_from_request(request)
+    if not user or not _is_admin(user):
         return JSONResponse({"error": "需要管理员权限"}, status_code=403)
 
     msg_id = request.path_params.get("id")
@@ -140,8 +162,8 @@ async def replay_message(request: Request) -> JSONResponse:
 
 async def cleanup_messages(request: Request) -> JSONResponse:
     """清理旧消息"""
-    user = await require_admin(request)
-    if not user:
+    user = _get_user_from_request(request)
+    if not user or not _is_admin(user):
         return JSONResponse({"error": "需要管理员权限"}, status_code=403)
 
     days = int(request.query_params.get("days", "30"))
