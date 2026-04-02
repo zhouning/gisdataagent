@@ -39,24 +39,26 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 2966+ tests, 122 test files |
-| 工具集 | 41+ BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
-| ADK Skills | 23 场景化领域技能 (含 skill-creator AI 辅助创建) |
-| REST API | 228+ endpoints (v16.0 新增 /api/skills/generate) |
-| DataPanel | 25 标签页 (4 分组: 数据/智能/运维/编排) |
+| 测试覆盖 | 2960+ tests, 137 test files |
+| 工具集 | 40 BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
+| ADK Skills | 24 场景化领域技能 (含 skill-creator AI 辅助创建) |
+| REST API | 237 endpoints |
+| DataPanel | 26 标签页 (4 分组: 数据/智能/运维/编排) |
 | v16.0 L3 自主 | 语义算子 (4) + 多 Agent (13 子 Agent) + 错误恢复 (5 策略) + Guardrails (YAML 策略) + 遥感 Phase 1 (15+ 指数) + 工具演化 + AI Skill 生成 |
 | Skill SDK | gis-skill-sdk v1.0.0 — CLI (new/validate/list/test/package) + 验证器 + 13/13 测试 |
 | MCP 外部集成 | Claude Desktop + Cursor 完整配置指南 + stdio 传输层 |
 | BCG 平台能力 | 6 大模块: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token 追踪 + Eval 历史 |
-| 质检工作流 | 7 个预置模板 (3 通用 + DLG/DOM/DEM/三维模型专属), SLA 超时控制, DAG 并行 |
+| 质检工作流 | 7 个预置模板 (3 通用 + DLG/DOM/DEM/三维模型专属), SLA 超时控制, DAG 并行, **前端一键生成质检报告 (4 模板 Word)** |
 | 缺陷分类 | 30 个缺陷编码, 5 大类别 (FMT/PRE/TOP/MIS/NRM), 3 级严重度 (A/B/C), GB/T 24356 |
+| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + GB/T 24356 + 缺陷分类法, **前端标准库浏览器** |
+| 工具规则 | ToolRuleEngine — task_type→tool 自动选择 + 降级链, **前端规则管理 + 匹配测试** |
 | ArcGIS MCP | 双引擎: 4 基础 arcpy 工具 + 5 DL 工具 (arcgis.learn 2.4.2 + PyTorch 2.5.1) |
 | 独立子系统 | 4 个 (cv-service / cad-parser / arcgis-mcp / reference-data), Docker 部署, MCP 集成 |
 | 因果推断 | 三角度体系: A (GeoFM 统计 6 工具) + B (LLM 推理 4 工具) + C (因果世界模型 4 工具), 82 tests |
 | 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
 | DRL + World Model | Dreamer 式集成: ParcelEmbeddingMapper + ActionToScenarioEncoder + 辅助奖励前瞻 |
 | NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
-| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) + **缺陷分类法** |
+| 数据标准 | Data Standard Registry — GB/T 21010 + DLTB + **GB/T 24356 测绘质检标准** (6 维评分 + SOP) + **缺陷分类法**, **前端标准库浏览器** |
 | 连接器 | 9 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage/ReferenceData) |
 | 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
 | 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + **告警规则引擎** + 实时监控仪表盘 + Grafana 模板 |
@@ -65,7 +67,7 @@
 | CI/CD | 3 阶段 (CI → Staging → Production) + Canary 部署 + Feature Flags + Terraform IaC |
 | 分布式计算 | SparkGateway 三层路由 (L1 本地 / L2 队列 / L3 Spark) |
 | MCP Server | v2.0 — 36+ 工具暴露 + 4 个子系统 MCP 集成 |
-| Agent Plugins | 4 (CostGuard + USD 熔断, GISToolRetry + 指数退避, Provenance, HITLApproval) |
+| Agent Plugins | 5 (CostGuard + USD 熔断, GISToolRetry + 指数退避, Provenance, HITLApproval, **GuardrailsPlugin** YAML 策略引擎) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | AgentOps 成熟度 | 3.9/5 (10 维度评估, 对标 Google Prototype-to-Production 白皮书 78%) |
 | 设计模式覆盖 | **21/21 (100%)** |
@@ -517,7 +519,7 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（178+ 个 REST API 端点 + SSE Streaming） |
+| **后端** | Chainlit + Starlette（237 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
@@ -535,7 +537,7 @@ data_agent/
 ├── agent.py                     # Agent 定义、管道组装、ParallelAgent
 ├── intent_router.py             # 语义意图路由 (从 app.py 提取)
 ├── pipeline_helpers.py          # 管线辅助：工具说明、进度渲染、错误分类
-├── frontend_api.py              # 124 个 REST API 端点
+├── frontend_api.py              # 237 个 REST API 端点
 ├── pipeline_runner.py           # 无头管道执行器 + SSE 流式输出
 ├── dreamer_env.py               # DRL-World Model Dreamer 环境 (v15.5)
 ├── workflow_engine.py           # 工作流引擎：CRUD、顺序+DAG 执行、Webhook、Cron
@@ -561,12 +563,12 @@ data_agent/
 ├── workflow_templates.py        # 工作流模板市场：CRUD + 克隆 + 评分 (v10.0)
 ├── spatial_analysis_tier2.py    # 高级空间分析：IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 ├── conftest.py                  # 集中测试夹具 + 事件循环安全
-├── toolsets/                    # 38 个 BaseToolset 模块 (含 DreamerToolset)
+├── toolsets/                    # 40 个 BaseToolset 模块 (含 DreamerToolset)
 │   ├── visualization_tools.py   #   11 个工具：分级设色、热力图、3D、图层控制
 │   ├── analysis_tools.py        #   分析工具 + LongRunningFunctionTool (DRL)
 │   ├── dreamer_tools.py         #   DRL-World Model Dreamer 集成工具 (v15.5)
-│   ├── governance_tools.py      #   9 个工具：质量审计 + 标准校验
-│   ├── data_cleaning_tools.py   #   7 个工具：清洗/转换/补齐 (v14.5)
+│   ├── governance_tools.py      #   18 个工具：质量审计 + 标准校验 + 缺陷分类 + 精度核验
+│   ├── data_cleaning_tools.py   #   11 个工具：清洗/转换/补齐/几何修复 (v14.5+v15.7)
 │   ├── virtual_source_tools.py  #   7 个工具：数据源查询 + WMS 图层 + 图层发现
 │   ├── fusion_tools.py          #   数据融合工具集（4 个工具）
 │   ├── knowledge_graph_tools.py #   知识图谱工具集（3 个工具）
