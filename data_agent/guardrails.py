@@ -23,6 +23,7 @@ import logging
 from typing import Any, Optional
 
 from google.genai import types
+from google.adk.plugins.base_plugin import BasePlugin
 
 logger = logging.getLogger("data_agent.guardrails")
 
@@ -347,10 +348,11 @@ class GuardrailEngine:
         self._load(path or _POLICY_PATH)
 
 
-class GuardrailsPlugin:
+class GuardrailsPlugin(BasePlugin):
     """ADK plugin: enforces tool-level policies via before_tool_callback."""
 
     def __init__(self, engine: GuardrailEngine | None = None):
+        super().__init__(name="guardrails")
         self.engine = engine or GuardrailEngine()
 
     async def before_tool_callback(self, *, tool, tool_args, tool_context, **kwargs):
@@ -373,11 +375,10 @@ class GuardrailsPlugin:
                 )
             except Exception:
                 pass
-            import json
-            return json.dumps({
+            return {
                 "status": "blocked", "reason": decision.reason,
                 "tool": tool_name, "role": role,
-            }, ensure_ascii=False)
+            }
 
         return None  # allow or require_confirmation (HITL handles confirmation)
 

@@ -356,7 +356,12 @@ governance_exploration_agent = LlmAgent(
     tools=[
         ExplorationToolset(tool_filter=_AUDIT_TOOLS),
         DatabaseToolset(tool_filter=_DB_READ),
-        GovernanceToolset(),
+        GovernanceToolset(tool_filter=[
+            "check_completeness", "check_attribute_range",
+            "check_crs_consistency", "check_topology_integrity",
+            "check_area_consistency", "check_building_height",
+            "check_coordinate_precision", "generate_governance_plan",
+        ]),
     ] + _arcpy_gov_explore_tools,
 )
 
@@ -368,7 +373,7 @@ governance_processing_agent = LlmAgent(
     output_key="processed_data",
     after_tool_callback=_self_correction_after_tool,
     tools=[
-        ExplorationToolset(tool_filter=_TRANSFORM_TOOLS + ["describe_geodataframe"]),
+        ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
         GeoProcessingToolset(tool_filter=[
             "polygon_neighbors", "add_field", "calculate_field",
         ]),
@@ -402,8 +407,6 @@ governance_report_agent = LlmAgent(
     model=_create_model_with_retry(MODEL_STANDARD),
     output_key="governance_report",
     tools=[
-        GovernanceToolset(tool_filter=["governance_score", "governance_summary"]),
-        PrecisionToolset(),
         ReportToolset(),
     ],
 )
@@ -565,9 +568,8 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
             GeoProcessingToolset(tool_filter=intent_tool_predicate),
             LocationToolset(tool_filter=intent_tool_predicate),
-            RemoteSensingToolset(tool_filter=["describe_raster", "download_lulc", "download_dem"]),
+            RemoteSensingToolset(tool_filter=["download_lulc", "download_dem"]),
             StreamingToolset(tool_filter=intent_tool_predicate),
-            DataLakeToolset(tool_filter=_DATALAKE_READ),
             DatabaseToolset(tool_filter=["import_to_postgis"]),
             McpHubToolset(pipeline="planner"),
             FusionToolset(tool_filter=intent_tool_predicate),
@@ -590,7 +592,7 @@ def _make_planner_analyzer(name: str, **overrides) -> LlmAgent:
         output_key="analysis_report",
         disallow_transfer_to_peers=True,
         after_tool_callback=_self_correction_after_tool,
-        tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset(), DreamerToolset()],
+        tools=[AnalysisToolset(), RemoteSensingToolset(tool_filter=["calculate_ndvi", "calculate_spectral_index", "assess_cloud_cover", "describe_raster"]), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset(), DreamerToolset()],
     )
     defaults.update(overrides)
     return LlmAgent(**defaults)
@@ -607,9 +609,7 @@ def _make_planner_visualizer(name: str, **overrides) -> LlmAgent:
         disallow_transfer_to_peers=True,
         tools=[
             VisualizationToolset(),
-            DataLakeToolset(tool_filter=_DATALAKE_READ),
-            ExplorationToolset(tool_filter=["describe_geodataframe"]),
-            FileToolset(),
+            ChartToolset(),
         ],
     )
     defaults.update(overrides)
@@ -823,15 +823,6 @@ planner_agent = LlmAgent(
     tools=[
         build_all_skills_toolset(),  # 5 domain skills, incremental loading
         MemoryToolset(),
-        AdminToolset(),
-        TeamToolset(),
-        DataLakeToolset(tool_filter=_DATALAKE_READ),
-        VisualizationToolset(tool_filter=["visualize_interactive_map", "load_admin_boundary"]),
-        RemoteSensingToolset(tool_filter=["download_dem"]),  # For DEM download in watershed workflow
-        WatershedToolset(),  # For watershed/catchment extraction (open-source)
-        GeoProcessingToolset(include_arcpy=True),  # ArcPy tools including arcpy_extract_watershed (dynamic loading)
-        WorldModelToolset(),  # World model LULC prediction tools
-        CausalWorldModelToolset(),  # Causal intervention + counterfactual on world model
         NL2SQLToolset(),  # Schema-aware NL2SQL for dynamic table queries
         OperatorToolset(),  # Semantic operators: clean/integrate/analyze/visualize (L3)
         ToolEvolutionToolset(),  # Tool evolution: metadata, failure-driven discovery, dynamic management (L3)
@@ -839,12 +830,6 @@ planner_agent = LlmAgent(
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,
         planner_visualizer, planner_reporter,
-        explore_process_workflow,
-        analyze_viz_workflow,
-        # S-5: Specialized agents for multi-agent collaboration
-        data_engineer_agent, analyst_agent, visualizer_agent,
-        remote_sensing_agent,
-        full_analysis_workflow, rs_analysis_workflow,
     ],
 )
 

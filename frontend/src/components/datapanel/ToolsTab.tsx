@@ -18,6 +18,16 @@ interface McpTool {
   server: string;
 }
 
+interface ToolRule {
+  id: number;
+  task_type: string;
+  tool_name: string;
+  server_name: string;
+  priority: number;
+  fallback_tool: string | null;
+  fallback_server: string | null;
+}
+
 export default function ToolsTab({ userRole }: { userRole?: string }) {
   const [servers, setServers] = useState<McpServer[]>([]);
   const [tools, setTools] = useState<McpTool[]>([]);
@@ -34,6 +44,13 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
     url: '', command: '', enabled: false, category: '', pipelines: 'general,planner',
   });
   const [addError, setAddError] = useState('');
+  // Tool rules state
+  const [viewMode, setViewMode] = useState<'servers' | 'rules'>('servers');
+  const [rules, setRules] = useState<ToolRule[]>([]);
+  const [showRuleForm, setShowRuleForm] = useState(false);
+  const [ruleForm, setRuleForm] = useState({ task_type: '', tool_name: '', server_name: '', priority: 0, fallback_tool: '', fallback_server: '' });
+  const [matchTest, setMatchTest] = useState('');
+  const [matchResult, setMatchResult] = useState<ToolRule | null | 'not_found'>(null);
 
   const fetchServers = async () => {
     try {
@@ -138,10 +155,56 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
     finally { setTesting(false); }
   };
 
+  const fetchRules = async () => {
+    try {
+      const r = await fetch('/api/mcp/rules', { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setRules(d.rules || []); }
+    } catch { /* ignore */ }
+  };
+
+  const handleAddRule = async () => {
+    if (!ruleForm.task_type || !ruleForm.tool_name || !ruleForm.server_name) return;
+    try {
+      const body: Record<string, unknown> = {
+        task_type: ruleForm.task_type, tool_name: ruleForm.tool_name,
+        server_name: ruleForm.server_name, priority: ruleForm.priority,
+      };
+      if (ruleForm.fallback_tool) body.fallback_tool = ruleForm.fallback_tool;
+      if (ruleForm.fallback_server) body.fallback_server = ruleForm.fallback_server;
+      const r = await fetch('/api/mcp/rules', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) {
+        setShowRuleForm(false);
+        setRuleForm({ task_type: '', tool_name: '', server_name: '', priority: 0, fallback_tool: '', fallback_server: '' });
+        await fetchRules();
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleDeleteRule = async (id: number) => {
+    try {
+      await fetch(`/api/mcp/rules/${id}`, { method: 'DELETE', credentials: 'include' });
+      await fetchRules();
+    } catch { /* ignore */ }
+  };
+
+  const handleMatchTest = async () => {
+    if (!matchTest.trim()) return;
+    try {
+      const r = await fetch(`/api/mcp/rules/match?task_type=${encodeURIComponent(matchTest)}`, { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setMatchResult(d.match || 'not_found'); }
+      else { setMatchResult('not_found'); }
+    } catch { setMatchResult('not_found'); }
+  };
+
   const isAdmin = userRole === 'admin';
 
   useEffect(() => {
     fetchServers();
+    fetchRules();
     const interval = setInterval(fetchServers, 15000);
     return () => clearInterval(interval);
   }, []);
@@ -159,15 +222,38 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
   return (
     <div className="tools-view">
       <div className="tools-summary">
-        <span>{servers.length} 服务器</span>
-        <span className="tools-summary-sep">/</span>
-        <span className={connectedCount > 0 ? 'tools-connected' : ''}>{connectedCount} 已连接</span>
-        {isAdmin && (
-          <button className="btn-add-server" onClick={() => setShowAddForm(!showAddForm)} title="添加 MCP 服务器">+</button>
+        <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
+          {(['servers', 'rules'] as const).map(m => (
+            <button key={m} onClick={() => setViewMode(m)}
+              style={{
+                padding: '2px 10px', fontSize: 11, borderRadius: 3, cursor: 'pointer',
+                background: viewMode === m ? '#1e3a5f' : 'transparent',
+                color: viewMode === m ? '#7dd3fc' : '#888',
+                border: `1px solid ${viewMode === m ? '#2563eb' : '#333'}`,
+              }}>
+              {m === 'servers' ? '服务器' : '工具规则'}
+            </button>
+          ))}
+        </div>
+        {viewMode === 'servers' && (
+          <>
+            <span>{servers.length} 服务器</span>
+            <span className="tools-summary-sep">/</span>
+            <span className={connectedCount > 0 ? 'tools-connected' : ''}>{connectedCount} 已连接</span>
+            {isAdmin && (
+              <button className="btn-add-server" onClick={() => setShowAddForm(!showAddForm)} title="添加 MCP 服务器">+</button>
+            )}
+          </>
+        )}
+        {viewMode === 'rules' && (
+          <>
+            <span>{rules.length} 条规则</span>
+            <button className="btn-add-server" onClick={() => setShowRuleForm(!showRuleForm)} title="添加规则">+</button>
+          </>
         )}
       </div>
 
-      {showAddForm && isAdmin && (
+      {viewMode === 'servers' && showAddForm && isAdmin && (
         <div className="mcp-add-form">
           <div className="mcp-add-form-title">添加 MCP 服务器</div>
           <input placeholder="名称 (唯一标识)" value={addForm.name}
@@ -206,6 +292,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
         </div>
       )}
 
+      {viewMode === 'servers' && (<>
       <div className="tools-server-list">
         {servers.map((s) => (
           <div
@@ -286,6 +373,116 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
 
       {loading && tools.length === 0 && connectedCount > 0 && (
         <div className="empty-state">加载工具中...</div>
+      )}
+      </>)}
+
+      {/* Tool Rules View */}
+      {viewMode === 'rules' && (
+        <div style={{ padding: '8px 0' }}>
+          {/* Add Rule Form */}
+          {showRuleForm && (
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0', marginBottom: 8 }}>添加工具规则</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>任务类型 *</div>
+                  <input value={ruleForm.task_type} onChange={e => setRuleForm({ ...ruleForm, task_type: e.target.value })}
+                    placeholder="如: spatial_analysis"
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>工具名称 *</div>
+                  <input value={ruleForm.tool_name} onChange={e => setRuleForm({ ...ruleForm, tool_name: e.target.value })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>服务器名称 *</div>
+                  <input value={ruleForm.server_name} onChange={e => setRuleForm({ ...ruleForm, server_name: e.target.value })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>优先级</div>
+                  <input type="number" value={ruleForm.priority} onChange={e => setRuleForm({ ...ruleForm, priority: parseInt(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>降级工具</div>
+                  <input value={ruleForm.fallback_tool} onChange={e => setRuleForm({ ...ruleForm, fallback_tool: e.target.value })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>降级服务器</div>
+                  <input value={ruleForm.fallback_server} onChange={e => setRuleForm({ ...ruleForm, fallback_server: e.target.value })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={handleAddRule} style={{ padding: '4px 12px', borderRadius: 4, border: 'none', background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12 }}>保存</button>
+                <button onClick={() => setShowRuleForm(false)} style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontSize: 12 }}>取消</button>
+              </div>
+            </div>
+          )}
+
+          {/* Rules Table */}
+          {rules.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead><tr style={{ background: '#1f2937' }}>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>任务类型</th>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>工具</th>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>服务器</th>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>优先级</th>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>降级</th>
+                <th style={{ padding: '6px 8px', textAlign: 'right', color: '#aaa' }}>操作</th>
+              </tr></thead>
+              <tbody>
+                {rules.map(r => (
+                  <tr key={r.id}>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#7dd3fc', fontFamily: 'monospace' }}>{r.task_type}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#ccc' }}>{r.tool_name}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#aaa' }}>{r.server_name}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#888' }}>{r.priority}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#666', fontSize: 11 }}>
+                      {r.fallback_tool ? `${r.fallback_tool} @ ${r.fallback_server || '-'}` : '-'}
+                    </td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', textAlign: 'right' }}>
+                      <button onClick={() => handleDeleteRule(r.id)}
+                        style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #333', background: 'transparent', color: '#e53935', cursor: 'pointer', fontSize: 11 }}>
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ color: '#888', textAlign: 'center', padding: 24, fontSize: 12 }}>暂无工具规则，点击 + 添加</div>
+          )}
+
+          {/* Test Match */}
+          <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, marginTop: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#e0e0e0', marginBottom: 6 }}>规则匹配测试</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={matchTest} onChange={e => { setMatchTest(e.target.value); setMatchResult(null); }}
+                placeholder="输入任务类型..."
+                style={{ flex: 1, padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+              <button onClick={handleMatchTest}
+                style={{ padding: '4px 12px', borderRadius: 4, border: 'none', background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12 }}>
+                匹配
+              </button>
+            </div>
+            {matchResult && matchResult !== 'not_found' && (
+              <div style={{ marginTop: 6, fontSize: 11, color: '#10b981' }}>
+                匹配成功: {(matchResult as ToolRule).tool_name} @ {(matchResult as ToolRule).server_name}
+                {(matchResult as ToolRule).fallback_tool && <span style={{ color: '#888' }}> (降级: {(matchResult as ToolRule).fallback_tool})</span>}
+              </div>
+            )}
+            {matchResult === 'not_found' && (
+              <div style={{ marginTop: 6, fontSize: 11, color: '#fb8c00' }}>未找到匹配规则</div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

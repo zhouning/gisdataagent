@@ -490,6 +490,57 @@ async def qc_dashboard(request: Request):
     })
 
 
+async def report_templates_list(request: Request):
+    """GET /api/reports/templates — list available report templates."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from ..report_generator import list_report_templates
+    templates = list_report_templates()
+    # Enrich with sections info for frontend form generation
+    from ..report_generator import REPORT_TEMPLATES
+    for t in templates:
+        full = REPORT_TEMPLATES.get(t["id"], {})
+        t["sections"] = full.get("sections", [])
+    return JSONResponse({"templates": templates})
+
+
+async def standards_list(request: Request):
+    """GET /api/standards — list all loaded data standards."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from ..standard_registry import StandardRegistry
+    return JSONResponse({"standards": StandardRegistry.list_standards()})
+
+
+async def standards_detail(request: Request):
+    """GET /api/standards/{id} — get full detail for a data standard."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    sid = request.path_params["id"]
+    from ..standard_registry import StandardRegistry
+    std = StandardRegistry.get(sid)
+    if not std:
+        return JSONResponse({"error": f"Standard '{sid}' not found"}, status_code=404)
+    return JSONResponse({
+        "id": std.id,
+        "name": std.name,
+        "version": std.version,
+        "source": std.source,
+        "description": std.description,
+        "fields": [
+            {"name": f.name, "type": f.type, "required": f.required,
+             "max_length": f.max_length, "description": f.description,
+             "allowed": f.allowed}
+            for f in std.fields
+        ],
+        "code_tables": {k: v for k, v in std.code_tables.items()},
+        "formulas": std.formulas,
+    })
+
+
 def get_quality_routes() -> list:
     return [
         Route("/api/quality-rules", qrule_list, methods=["GET"]),
@@ -501,6 +552,9 @@ def get_quality_routes() -> list:
         Route("/api/quality-trends", quality_trends, methods=["GET"]),
         Route("/api/resource-overview", resource_overview, methods=["GET"]),
         Route("/api/reports/generate", qc_report_generate, methods=["POST"]),
+        Route("/api/reports/templates", report_templates_list, methods=["GET"]),
+        Route("/api/standards", standards_list, methods=["GET"]),
+        Route("/api/standards/{id:str}", standards_detail, methods=["GET"]),
         Route("/api/defect-taxonomy", defect_taxonomy_list, methods=["GET"]),
         Route("/api/qc/reviews", qc_reviews_list, methods=["GET"]),
         Route("/api/qc/reviews", qc_reviews_create, methods=["POST"]),

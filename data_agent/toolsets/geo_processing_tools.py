@@ -89,7 +89,6 @@ _CORE_FUNCS = [
     create_buffer,
     summarize_within,
     overlay_difference,
-    generate_heatmap,
     find_within_distance,
     polygon_neighbors,
     add_field,

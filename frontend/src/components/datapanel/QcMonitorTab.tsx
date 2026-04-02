@@ -42,6 +42,13 @@ interface DashboardData {
   recent_reviews: Array<{ id: number; file_path: string; defect_code: string; severity: string; status: string; created_at: string }>;
 }
 
+interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  sections: string[];
+}
+
 export default function QcMonitorTab() {
   const [templates, setTemplates] = useState<QcTemplate[]>([]);
   const [categories, setCategories] = useState<DefectCategory[]>([]);
@@ -49,11 +56,17 @@ export default function QcMonitorTab() {
   const [reviews, setReviews] = useState<QcReview[]>([]);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [section, setSection] = useState<'dashboard' | 'templates' | 'taxonomy' | 'reviews'>('dashboard');
+  const [section, setSection] = useState<'dashboard' | 'templates' | 'taxonomy' | 'reviews' | 'report'>('dashboard');
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [showFilePicker, setShowFilePicker] = useState(false);
   const [quickExecTemplate, setQuickExecTemplate] = useState<string | null>(null);
+  // Report generation state
+  const [reportTemplates, setReportTemplates] = useState<ReportTemplate[]>([]);
+  const [selectedReportTpl, setSelectedReportTpl] = useState<string | null>(null);
+  const [reportMeta, setReportMeta] = useState({ project_name: '', check_date: '', checker: '', reviewer: '' });
+  const [generating, setGenerating] = useState(false);
+  const [reportPath, setReportPath] = useState<string | null>(null);
 
   const fetchDashboard = async () => {
     try {
@@ -87,8 +100,39 @@ export default function QcMonitorTab() {
     } catch { /* ignore */ }
   };
 
+  const fetchReportTemplates = async () => {
+    try {
+      const r = await fetch('/api/reports/templates', { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setReportTemplates(d.templates || []); }
+    } catch { /* ignore */ }
+  };
+
+  const generateReport = async () => {
+    const tpl = reportTemplates.find(t => t.id === selectedReportTpl);
+    if (!tpl) return;
+    setGenerating(true);
+    setReportPath(null);
+    try {
+      const sectionData: Record<string, string> = {};
+      for (const s of tpl.sections) { sectionData[s] = ''; }
+      const r = await fetch('/api/reports/generate', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section_data: sectionData, metadata: reportMeta }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setReportPath(d.path || null);
+      } else {
+        const d = await r.json();
+        alert(d.error || '报告生成失败');
+      }
+    } catch { alert('网络错误'); }
+    finally { setGenerating(false); }
+  };
+
   useEffect(() => {
-    Promise.all([fetchDashboard(), fetchTemplates(), fetchTaxonomy(), fetchReviews()]).finally(() => setLoading(false));
+    Promise.all([fetchDashboard(), fetchTemplates(), fetchTaxonomy(), fetchReviews(), fetchReportTemplates()]).finally(() => setLoading(false));
   }, []);
 
   const createFromTemplate = async (templateId: string) => {
@@ -181,7 +225,7 @@ export default function QcMonitorTab() {
 
       {/* Section switcher */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-        {(['dashboard', 'templates', 'taxonomy', 'reviews'] as const).map(s => (
+        {(['dashboard', 'templates', 'taxonomy', 'reviews', 'report'] as const).map(s => (
           <button key={s} onClick={() => setSection(s)}
             style={{
               padding: '4px 12px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
@@ -189,7 +233,7 @@ export default function QcMonitorTab() {
               color: section === s ? '#7dd3fc' : '#888',
               border: `1px solid ${section === s ? '#2563eb' : '#333'}`,
             }}>
-            {s === 'dashboard' ? '概览' : s === 'templates' ? '模板' : s === 'taxonomy' ? '缺陷分类' : '复核'}
+            {s === 'dashboard' ? '概览' : s === 'templates' ? '模板' : s === 'taxonomy' ? '缺陷分类' : s === 'reviews' ? '复核' : '报告'}
           </button>
         ))}
       </div>
@@ -423,6 +467,77 @@ export default function QcMonitorTab() {
             })}</tbody>
           </table>
           {reviews.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>暂无复核项</div>}
+        </div>
+      )}
+
+      {/* Report generation */}
+      {section === 'report' && (
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>质检报告生成</div>
+          {/* Template selection */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12 }}>
+            {reportTemplates.map(t => (
+              <div key={t.id} onClick={() => { setSelectedReportTpl(t.id); setReportPath(null); }}
+                style={{
+                  background: selectedReportTpl === t.id ? '#1e3a5f' : '#111827',
+                  border: `1px solid ${selectedReportTpl === t.id ? '#2563eb' : '#1f2937'}`,
+                  borderRadius: 6, padding: 12, cursor: 'pointer',
+                }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: selectedReportTpl === t.id ? '#7dd3fc' : '#e0e0e0', marginBottom: 4 }}>{t.name}</div>
+                <div style={{ fontSize: 11, color: '#888' }}>{t.description}</div>
+                <div style={{ fontSize: 10, color: '#666', marginTop: 4 }}>{t.sections.length} 个章节</div>
+              </div>
+            ))}
+            {reportTemplates.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>暂无报告模板</div>}
+          </div>
+
+          {/* Metadata form + generate */}
+          {selectedReportTpl && (
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0', marginBottom: 8 }}>报告元数据</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>项目名称</div>
+                  <input value={reportMeta.project_name} onChange={e => setReportMeta({ ...reportMeta, project_name: e.target.value })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>检查日期</div>
+                  <input value={reportMeta.check_date} onChange={e => setReportMeta({ ...reportMeta, check_date: e.target.value })}
+                    placeholder="2026年04月02日"
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>检查员</div>
+                  <input value={reportMeta.checker} onChange={e => setReportMeta({ ...reportMeta, checker: e.target.value })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>审核员</div>
+                  <input value={reportMeta.reviewer} onChange={e => setReportMeta({ ...reportMeta, reviewer: e.target.value })}
+                    style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>
+                章节: {reportTemplates.find(t => t.id === selectedReportTpl)?.sections.join(' / ')}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button onClick={generateReport} disabled={generating}
+                  style={{
+                    padding: '6px 16px', borderRadius: 4, border: 'none', fontSize: 12, cursor: generating ? 'not-allowed' : 'pointer',
+                    background: generating ? '#555' : '#1a73e8', color: 'white',
+                  }}>
+                  {generating ? '生成中...' : '生成报告'}
+                </button>
+                {reportPath && (
+                  <a href={`/api/files/download?path=${encodeURIComponent(reportPath)}`} target="_blank" rel="noreferrer"
+                    style={{ fontSize: 12, color: '#10b981', textDecoration: 'underline' }}>
+                    下载报告
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
