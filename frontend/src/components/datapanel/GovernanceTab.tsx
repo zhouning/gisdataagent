@@ -25,13 +25,42 @@ interface ResourceOverview {
   recent_scores: Array<{ asset: string; score: number; date: string }>;
 }
 
+interface StandardSummary {
+  id: string;
+  name: string;
+  version: string;
+  source: string;
+  field_count: number;
+  code_table_count: number;
+}
+
+interface FieldSpec {
+  name: string;
+  type: string;
+  required: string;
+  max_length: number | null;
+  description: string;
+  allowed: string[] | null;
+}
+
+interface StandardDetail {
+  id: string;
+  name: string;
+  version: string;
+  source: string;
+  description: string;
+  fields: FieldSpec[];
+  code_tables: Record<string, Array<{ code: string; name: string }>>;
+  formulas: Array<{ expr: string; tolerance?: number; description?: string }>;
+}
+
 const EMPTY_RULE = {
   rule_name: '', rule_type: 'field_check', standard_id: '',
   config: '{}', severity: 'HIGH', is_shared: false,
 };
 
 export default function GovernanceTab() {
-  const [section, setSection] = useState<'rules' | 'trends' | 'overview'>('overview');
+  const [section, setSection] = useState<'rules' | 'trends' | 'overview' | 'standards'>('overview');
   const [rules, setRules] = useState<QualityRule[]>([]);
   const [trends, setTrends] = useState<TrendPoint[]>([]);
   const [overview, setOverview] = useState<ResourceOverview | null>(null);
@@ -39,6 +68,11 @@ export default function GovernanceTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_RULE });
   const [formError, setFormError] = useState('');
+  // Standards state
+  const [standards, setStandards] = useState<StandardSummary[]>([]);
+  const [selectedStdId, setSelectedStdId] = useState<string | null>(null);
+  const [stdDetail, setStdDetail] = useState<StandardDetail | null>(null);
+  const [collapsedCodeTables, setCollapsedCodeTables] = useState<Set<string>>(new Set());
 
   const fetchRules = async () => {
     try {
@@ -61,9 +95,31 @@ export default function GovernanceTab() {
     } catch { /* ignore */ }
   };
 
+  const fetchStandards = async () => {
+    try {
+      const r = await fetch('/api/standards', { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setStandards(d.standards || []); }
+    } catch { /* ignore */ }
+  };
+
+  const fetchStdDetail = async (id: string) => {
+    try {
+      const r = await fetch(`/api/standards/${id}`, { credentials: 'include' });
+      if (r.ok) { const d = await r.json(); setStdDetail(d); setCollapsedCodeTables(new Set()); }
+    } catch { /* ignore */ }
+  };
+
+  const toggleCodeTable = (name: string) => {
+    setCollapsedCodeTables(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  };
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchRules(), fetchTrends(), fetchOverview()]).finally(() => setLoading(false));
+    Promise.all([fetchRules(), fetchTrends(), fetchOverview(), fetchStandards()]).finally(() => setLoading(false));
   }, []);
 
   const handleSaveRule = async () => {
@@ -108,7 +164,7 @@ export default function GovernanceTab() {
     <div style={{ padding: '8px 12px', fontSize: 13 }}>
       {/* Section switcher */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-        {(['overview', 'rules', 'trends'] as const).map(s => (
+        {(['overview', 'rules', 'standards', 'trends'] as const).map(s => (
           <button key={s} onClick={() => setSection(s)}
             style={{
               padding: '4px 12px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
@@ -116,7 +172,7 @@ export default function GovernanceTab() {
               color: section === s ? '#7dd3fc' : '#888',
               border: `1px solid ${section === s ? '#2563eb' : '#333'}`,
             }}>
-            {s === 'overview' ? '质量总览' : s === 'rules' ? '质量规则' : '质量趋势'}
+            {s === 'overview' ? '质量总览' : s === 'rules' ? '质量规则' : s === 'standards' ? '标准库' : '质量趋势'}
           </button>
         ))}
       </div>
@@ -227,6 +283,123 @@ export default function GovernanceTab() {
           {rules.length === 0 && !showForm && (
             <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>暂无质量规则</div>
           )}
+        </div>
+      )}
+
+      {/* Standards section */}
+      {section === 'standards' && (
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>数据标准库</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, minHeight: 200 }}>
+            {/* Standards list */}
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 10, overflow: 'auto', maxHeight: 450 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6, color: '#888' }}>可用标准 ({standards.length})</div>
+              {standards.map(s => (
+                <div key={s.id} onClick={() => { setSelectedStdId(s.id); fetchStdDetail(s.id); }}
+                  style={{
+                    padding: 8, marginBottom: 4, borderRadius: 4, cursor: 'pointer',
+                    background: selectedStdId === s.id ? '#1e3a5f' : '#0d1117',
+                    border: `1px solid ${selectedStdId === s.id ? '#2563eb' : '#333'}`,
+                  }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, color: selectedStdId === s.id ? '#7dd3fc' : '#e0e0e0' }}>{s.name}</div>
+                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+                    {s.id} v{s.version}
+                    <span style={{ marginLeft: 8, padding: '1px 4px', borderRadius: 3, background: '#1e3a5f', color: '#7dd3fc' }}>{s.field_count} 字段</span>
+                    {s.code_table_count > 0 && (
+                      <span style={{ marginLeft: 4, padding: '1px 4px', borderRadius: 3, background: '#1a2332', color: '#888' }}>{s.code_table_count} 代码表</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {standards.length === 0 && <div style={{ color: '#888', fontSize: 12, textAlign: 'center', padding: 12 }}>暂无标准数据</div>}
+            </div>
+
+            {/* Standard detail */}
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, overflow: 'auto', maxHeight: 450 }}>
+              {stdDetail ? (<>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#7dd3fc', marginBottom: 4 }}>{stdDetail.name}</div>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>
+                  版本: {stdDetail.version} | 来源: {stdDetail.source || '-'}
+                </div>
+                {stdDetail.description && (
+                  <div style={{ fontSize: 12, color: '#aaa', marginBottom: 10, lineHeight: 1.6, borderBottom: '1px solid #1f2937', paddingBottom: 8 }}>
+                    {stdDetail.description}
+                  </div>
+                )}
+
+                {/* Fields table */}
+                {stdDetail.fields.length > 0 && (<>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e0e0e0', marginBottom: 4 }}>字段定义 ({stdDetail.fields.length})</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 10 }}>
+                    <thead><tr style={{ background: '#1f2937' }}>
+                      <th style={{ padding: '4px 6px', textAlign: 'left', color: '#aaa' }}>字段名</th>
+                      <th style={{ padding: '4px 6px', textAlign: 'left', color: '#aaa' }}>类型</th>
+                      <th style={{ padding: '4px 6px', textAlign: 'center', color: '#aaa' }}>必填</th>
+                      <th style={{ padding: '4px 6px', textAlign: 'left', color: '#aaa' }}>说明</th>
+                    </tr></thead>
+                    <tbody>
+                      {stdDetail.fields.map(f => (
+                        <tr key={f.name}>
+                          <td style={{ padding: '3px 6px', borderBottom: '1px solid #1f2937', color: '#7dd3fc', fontFamily: 'monospace' }}>{f.name}</td>
+                          <td style={{ padding: '3px 6px', borderBottom: '1px solid #1f2937', color: '#888' }}>{f.type}{f.max_length ? `(${f.max_length})` : ''}</td>
+                          <td style={{ padding: '3px 6px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-block', padding: '1px 5px', borderRadius: 3, fontSize: 10,
+                              background: f.required === 'M' ? '#7f1d1d' : f.required === 'C' ? '#78350f' : '#1f2937',
+                              color: f.required === 'M' ? '#fca5a5' : f.required === 'C' ? '#fbbf24' : '#888',
+                            }}>{f.required}</span>
+                          </td>
+                          <td style={{ padding: '3px 6px', borderBottom: '1px solid #1f2937', color: '#aaa', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>)}
+
+                {/* Code tables */}
+                {Object.keys(stdDetail.code_tables).length > 0 && (<>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e0e0e0', marginBottom: 4 }}>代码表</div>
+                  {Object.entries(stdDetail.code_tables).map(([tableName, codes]) => {
+                    const collapsed = collapsedCodeTables.has(tableName);
+                    return (
+                      <div key={tableName} style={{ marginBottom: 4, border: '1px solid #1f2937', borderRadius: 4 }}>
+                        <div onClick={() => toggleCodeTable(tableName)}
+                          style={{ padding: '4px 8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                          <span style={{ color: '#7dd3fc', fontFamily: 'monospace' }}>{tableName}</span>
+                          <span style={{ color: '#888' }}>{collapsed ? '+' : '-'} ({codes.length})</span>
+                        </div>
+                        {!collapsed && codes.length > 0 && (
+                          <div style={{ padding: '0 8px 4px', maxHeight: 150, overflow: 'auto' }}>
+                            {codes.map((c, i) => (
+                              <div key={i} style={{ display: 'flex', gap: 8, padding: '1px 0', fontSize: 10, borderBottom: '1px solid #111827' }}>
+                                <span style={{ color: '#7dd3fc', fontFamily: 'monospace', minWidth: 40 }}>{c.code}</span>
+                                <span style={{ color: '#aaa' }}>{c.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>)}
+
+                {/* Formulas */}
+                {stdDetail.formulas.length > 0 && (<>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e0e0e0', marginTop: 8, marginBottom: 4 }}>计算公式</div>
+                  {stdDetail.formulas.map((f, i) => (
+                    <div key={i} style={{ fontSize: 11, padding: '2px 0', color: '#aaa' }}>
+                      <span style={{ fontFamily: 'monospace', color: '#7dd3fc' }}>{f.expr}</span>
+                      {f.tolerance !== undefined && <span style={{ color: '#888' }}> (容差: {f.tolerance})</span>}
+                    </div>
+                  ))}
+                </>)}
+              </>) : (
+                <div style={{ color: '#888', fontSize: 12, textAlign: 'center', padding: 40 }}>
+                  选择左侧标准查看详情
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
