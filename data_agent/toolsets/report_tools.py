@@ -153,7 +153,7 @@ class ReportToolset(BaseToolset):
     description = "报告生成工具：质检报告、分析报告的模板化生成与导出"
     category = "reporting"
 
-    def get_tools(self):
+    async def get_tools(self, readonly_context=None):
         return [
             FunctionTool(list_report_templates),
             FunctionTool(generate_quality_report),
