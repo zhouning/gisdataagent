@@ -1,10 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v15.8
+# GIS Data Agent (ADK Edition) v16.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 24 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 26 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 4 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **211+ REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **237 REST API endpoints**.
+
+**v16.0**: SIGMOD 2026 L3 Conditional Autonomy — Semantic operator layer (4 high-level operators), multi-agent collaboration (4 specialist agents + coordinator), plan refinement & error recovery (5-strategy chain), Guardrails policy engine (YAML-driven tool-level access control), remote sensing agent Phase 1 (15+ spectral indices + experience pool), tool evolution (unified metadata registry + failure-driven discovery), AI-assisted Skill creation (natural language → Skill config generation). Frontend additions: QC report generation UI (4 templates → Word), data standards browser, tool rule management panel.
 
 **v15.8**: BCG Enterprise Platform Capabilities — Based on BCG's "Building Effective Enterprise Agents" framework, adds 6 platform capabilities: Prompt Registry (environment-isolated versioning), Model Gateway (task-aware routing + cost optimization), Context Manager (pluggable providers + token budget), Eval Scenario Framework (scenario-specific metrics + golden datasets), enhanced token tracking (scenario/project attribution), enhanced eval history (scenario metrics). 8 new REST endpoints, 12/12 tests passing, zero breaking changes.
 
@@ -23,16 +25,16 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2712+ tests, 116 test files |
-| Toolsets | 40+ BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools), 5 SkillBundle, 230+ tools |
-| ADK Skills | 22 scenario skills (incl. surveying-qc) + DB-driven custom Skills + User Tools |
-| REST API | 211+ endpoints (v15.8 adds 8 BCG platform endpoints) |
+| Test Coverage | 2960+ tests, 137 test files |
+| Toolsets | 40 BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools), 5 SkillBundle, 240+ tools |
+| ADK Skills | 24 scenario skills (incl. surveying-qc, skill-creator) + DB-driven custom Skills + User Tools |
+| REST API | 237 endpoints |
 | BCG Platform | 6 modules: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token Tracking + Eval History |
 | Causal Inference | Three-angle system: A (GeoFM statistical 6 tools) + B (LLM reasoning 4 tools) + C (Causal world model 4 tools), 82 tests |
 | World Model | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 scenarios + timeline animation |
 | DRL + World Model | Dreamer-style integration: embedding look-ahead + scenario encoding + auxiliary reward |
 | MCP Server | v2.0 — 36+ tools exposed (GIS primitives + high-level metadata + pipeline execution) |
-| Agent Plugins | 4 (CostGuard, GISToolRetry, Provenance, HITLApproval) |
+| Agent Plugins | 5 (CostGuard, GISToolRetry, Provenance, HITLApproval, GuardrailsPlugin) |
 | Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
 | ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |
 | DRL Scenarios | 5 (Farmland / Urban Green / Facility Siting / Transport Network / Comprehensive) + NSGA-II Pareto |
