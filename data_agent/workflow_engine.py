@@ -351,10 +351,13 @@ def _merge_and_resolve_params(workflow: dict, param_overrides: dict = None) -> d
     # Auto-resolve file_path parameter to absolute path (and extract ZIP if needed)
     if "file_path" in params and params["file_path"]:
         from .gis_processors import _resolve_and_extract_zip
+        original = params["file_path"]
         try:
             params["file_path"] = _resolve_and_extract_zip(params["file_path"])
-        except Exception:
-            pass  # Keep original if resolution fails
+        except Exception as e:
+            logger.warning("file_path resolution failed for '%s': %s", original, e)
+        if params["file_path"] != original:
+            logger.info("file_path resolved: '%s' -> '%s'", original, params["file_path"])
 
     return params
 
@@ -547,6 +550,11 @@ async def execute_workflow(
     if not steps:
         return {"status": "failed", "error": "Workflow has no steps"}
 
+    # Set user context early — needed by _resolve_path inside _merge_and_resolve_params
+    current_user_id.set(user)
+    current_session_id.set(f"wf_{workflow_id}_pre")
+    current_user_role.set("analyst")
+
     # Use helper to merge and resolve parameters
     params = _merge_and_resolve_params(workflow, param_overrides)
 
@@ -561,7 +569,7 @@ async def execute_workflow(
     session_service = InMemorySessionService()
     session_id = f"wf_{workflow_id}_{uuid.uuid4().hex[:8]}"
 
-    # Set user context
+    # Set final user context with actual session_id
     current_user_id.set(user)
     current_session_id.set(session_id)
     current_user_role.set("analyst")
@@ -792,7 +800,7 @@ def _get_agent_for_pipeline(agent_module, pipeline_type: str, step: dict = None)
         return build_custom_agent(skill)
 
     mapping = {
-        "general": "general_pipeline",
+        "general": "general_processing_agent",
         "governance": "governance_pipeline",
         "optimization": "data_pipeline",
         "planner": "planner_agent",

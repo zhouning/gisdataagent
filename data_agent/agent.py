@@ -374,7 +374,11 @@ governance_processing_agent = LlmAgent(
         ]),
         LocationToolset(tool_filter=["batch_geocode", "reverse_geocode"]),
         FusionToolset(),
-        GovernanceToolset(tool_filter=["check_gaps", "check_duplicates"]),
+        GovernanceToolset(tool_filter=[
+            "check_gaps", "check_duplicates",
+            "governance_score", "governance_summary", "classify_defects",
+        ]),
+        PrecisionToolset(),
     ] + _arcpy_gov_process_tools,
 )
 
@@ -397,6 +401,11 @@ governance_report_agent = LlmAgent(
     instruction=get_prompt("governance", "governance_reporter_instruction"),
     model=_create_model_with_retry(MODEL_STANDARD),
     output_key="governance_report",
+    tools=[
+        GovernanceToolset(tool_filter=["governance_score", "governance_summary"]),
+        PrecisionToolset(),
+        ReportToolset(),
+    ],
 )
 
 # --- Governance Quality Checker + LoopAgent (v7.1.6) ---
@@ -432,7 +441,7 @@ general_processing_agent = LlmAgent(
     output_key="processed_data",
     after_tool_callback=_self_correction_after_tool,
     tools=[
-        ExplorationToolset(tool_filter=_TRANSFORM_TOOLS),
+        ExplorationToolset(tool_filter=_TRANSFORM_TOOLS + _AUDIT_TOOLS),
         GeoProcessingToolset(tool_filter=intent_tool_predicate),
         LocationToolset(tool_filter=intent_tool_predicate),
         DatabaseToolset(tool_filter=_DB_READ_DESCRIBE + ["share_table", "import_to_postgis"]),
@@ -454,6 +463,10 @@ general_processing_agent = LlmAgent(
         WorldModelToolset(tool_filter=intent_tool_predicate),
         CausalWorldModelToolset(tool_filter=intent_tool_predicate),
         LLMCausalToolset(tool_filter=intent_tool_predicate),
+        GovernanceToolset(),
+        DataCleaningToolset(),
+        PrecisionToolset(),
+        ReportToolset(),
     ] + _arcpy_tools,
 )
 

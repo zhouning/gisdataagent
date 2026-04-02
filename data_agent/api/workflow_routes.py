@@ -307,10 +307,10 @@ async def qc_template_create_and_execute(request: Request):
             workflow = get_workflow(wf_id)
             steps = workflow.get("steps", []) if workflow else []
             if _is_dag_workflow(steps):
-                await execute_workflow_dag(wf_id, param_overrides=params, run_by=username,
+                await execute_workflow_dag(wf_id, run_by=username,
                                            pre_created_run_id=run_id)
             else:
-                await execute_workflow(wf_id, param_overrides=params, run_by=username,
+                await execute_workflow(wf_id, run_by=username,
                                        pre_created_run_id=run_id)
         except Exception as e:
             import logging

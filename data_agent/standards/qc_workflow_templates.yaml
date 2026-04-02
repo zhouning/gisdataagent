@@ -28,40 +28,40 @@ templates:
     steps:
       - step_id: data_receive
         label: 数据接收与格式校验
-        pipeline_type: governance
-        prompt: "请对数据文件 {file_path} 进行 {product_type} 类型格式校验，检查文件完整性、坐标系定义、编码格式，使用标准 {standard_id}。"
+        pipeline_type: general
+        prompt: "请对数据文件 {file_path} 进行 {product_type} 类型格式校验：使用 describe_geodataframe 检查文件完整性、坐标系定义、字段结构，使用 classify_defects 按标准 {standard_id} 进行初始缺陷分类。输出数据概况摘要。"
         sla_seconds: 300
         retry_on_timeout: false
         max_retries: 0
 
       - step_id: data_preprocess
         label: 数据预处理与清洗
-        pipeline_type: governance
-        prompt: "对数据进行预处理：统一坐标系为 EPSG:4490，修复可自动修正的格式错误，去除重复要素，按 {standard_id} 标准补齐缺失字段。"
+        pipeline_type: general
+        prompt: "对数据进行预处理：使用 standardize_crs 统一坐标系为 EPSG:4490，使用 auto_fix_defects 修复可自动修正的缺陷，使用 check_duplicates 检测重复要素。按 {standard_id} 标准补齐缺失字段。"
         sla_seconds: 600
         retry_on_timeout: true
         max_retries: 1
 
       - step_id: rule_audit
         label: 规则审查
-        pipeline_type: governance
-        prompt: "按照 {standard_id} 标准对数据进行全面规则审查，包括：字段完整性、属性值域、逻辑一致性、命名规范、时效性检查。输出缺陷分类统计。"
+        pipeline_type: general
+        prompt: "按照 {standard_id} 标准对数据进行全面规则审查：使用 validate_against_standard 检查字段完整性和属性值域，使用 check_logic_consistency 检查逻辑一致性，使用 check_naming_convention 检查命名规范。调用 classify_defects 输出缺陷分类统计。"
         sla_seconds: 900
         retry_on_timeout: false
         max_retries: 0
 
       - step_id: precision_verify
         label: 精度核验
-        pipeline_type: governance
-        prompt: "对数据进行几何精度核验，包括：坐标精度检查（容差 {tolerance_m} 米）、拓扑完整性检查、接边精度分析。输出精度评分。"
+        pipeline_type: general
+        prompt: "对文件 {file_path} 进行几何精度核验：使用 check_topology_integrity 检查拓扑完整性，使用 precision_score 计算综合精度评分（容差 {tolerance_m} 米）。直接使用提供的文件路径，不要再询问。输出精度评分。"
         sla_seconds: 600
         retry_on_timeout: false
         max_retries: 0
 
       - step_id: report_generate
         label: 质检报告生成
-        pipeline_type: governance
-        prompt: "汇总前序步骤的审查结果和精度核验结果，生成标准质检报告，包含：数据概况、缺陷统计、精度评分、质量等级、整改建议。导出为 Word 格式。"
+        pipeline_type: general
+        prompt: "根据前序步骤对文件 {file_path} 的审查结果，调用 generate_quality_report 工具生成 Word 格式质检报告（template_id=surveying_qc, output_format=docx）。将前序步骤中的数据概况作为 data_description 参数，缺陷统计作为 defect_summary 参数，精度核验结果作为 precision_results 参数，整改建议作为 recommendations 参数。直接调用工具，不要询问额外信息。"
         sla_seconds: 300
         retry_on_timeout: false
         max_retries: 0

@@ -157,18 +157,23 @@ def check_topology_integrity(file_path: str) -> str:
     total = len(gdf)
     issues = {}
 
+    # Filter out None geometries first
+    null_geom = gdf.geometry.isna()
+    issues["空几何(None)"] = int(null_geom.sum())
+    gdf_valid = gdf[~null_geom]
+
     # 1. Invalid geometries
-    invalid = gdf[~gdf.geometry.is_valid]
+    invalid = gdf_valid[~gdf_valid.geometry.is_valid]
     issues["无效几何"] = len(invalid)
 
     # 2. Empty geometries
-    empty = gdf[gdf.geometry.is_empty]
+    empty = gdf_valid[gdf_valid.geometry.is_empty]
     issues["空几何"] = len(empty)
 
     # 3. Self-intersections (for polygons)
-    if gdf.geom_type.iloc[0] in ("Polygon", "MultiPolygon") if len(gdf) > 0 else False:
+    if gdf_valid.geom_type.iloc[0] in ("Polygon", "MultiPolygon") if len(gdf_valid) > 0 else False:
         self_intersect = 0
-        for geom in gdf.geometry:
+        for geom in gdf_valid.geometry:
             if not geom.is_empty and not geom.is_valid:
                 self_intersect += 1
         issues["自相交"] = self_intersect
@@ -504,7 +509,7 @@ class PrecisionToolset(BaseToolset):
     description = "精度核验工具：坐标对比、拓扑完整性、接边检查、综合精度评分、套合精度"
     category = "quality_control"
 
-    def get_tools(self):
+    async def get_tools(self, readonly_context=None):
         return [
             FunctionTool(compare_coordinates),
             FunctionTool(check_topology_integrity),
