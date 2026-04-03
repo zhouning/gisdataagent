@@ -115,3 +115,30 @@ from .db import ensure_fusion_tables, record_operation
 
 # --- Schema alignment (LLM-based, opt-in) ---
 from .schema_alignment import llm_align_schemas
+
+# --- Explainability (v2) ---
+from .explainability import (
+    add_explainability_fields,
+    generate_quality_heatmap,
+    generate_lineage_trace,
+    explain_decision,
+    COL_CONFIDENCE,
+    COL_SOURCES,
+    COL_CONFLICTS,
+    COL_METHOD,
+)
+
+# --- Temporal Alignment (v2) ---
+from .temporal import TemporalAligner
+
+# --- Ontology Reasoning (v2) ---
+from .ontology import OntologyReasoner
+
+# --- LLM Semantic Understanding (v2) ---
+from .semantic_llm import SemanticLLM
+
+# --- Knowledge Graph Integration (v2) ---
+from .kg_integration import KGIntegration
+
+# --- Conflict Resolution (v2) ---
+from .conflict_resolver import ConflictResolver

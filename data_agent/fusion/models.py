@@ -47,3 +47,7 @@ class FusionResult:
     alignment_log: list = field(default_factory=list)
     duration_s: float = 0.0
     provenance: dict = field(default_factory=dict)
+    # v2 explainability fields
+    explainability_path: str = ""
+    conflict_summary: dict = field(default_factory=dict)
+    temporal_log: list = field(default_factory=list)

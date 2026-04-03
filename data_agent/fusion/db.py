@@ -49,6 +49,10 @@ def record_operation(
     quality_warnings: list[str],
     duration_s: float,
     params: Optional[dict] = None,
+    temporal_log: Optional[str] = None,
+    semantic_log: Optional[str] = None,
+    conflict_log: Optional[str] = None,
+    explainability_metadata: Optional[dict] = None,
 ) -> None:
     """Record a fusion operation to the database."""
     engine = get_engine()
@@ -61,9 +65,13 @@ def record_operation(
             conn.execute(text(f"""
                 INSERT INTO {T_FUSION_OPS}
                 (username, source_files, strategy, parameters, output_file,
-                 quality_score, quality_report, duration_s)
+                 quality_score, quality_report, duration_s,
+                 temporal_alignment_log, semantic_enhancement_log,
+                 conflict_resolution_log, explainability_metadata)
                 VALUES (:username, :sources, :strategy, :params, :output,
-                        :quality, :report, :duration)
+                        :quality, :report, :duration,
+                        :temporal_log, :semantic_log,
+                        :conflict_log, :explain_meta)
             """), {
                 "username": username,
                 "sources": json.dumps([s.file_path for s in sources]),
@@ -73,6 +81,10 @@ def record_operation(
                 "quality": quality_score,
                 "report": json.dumps({"warnings": quality_warnings}),
                 "duration": duration_s,
+                "temporal_log": temporal_log,
+                "semantic_log": semantic_log,
+                "conflict_log": conflict_log,
+                "explain_meta": json.dumps(explainability_metadata) if explainability_metadata else None,
             })
             conn.commit()
     except Exception as e:

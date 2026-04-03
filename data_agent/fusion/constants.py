@@ -36,8 +36,9 @@ UNIT_PATTERNS = {
     "km": ["千米", "公里", "km", "kilometer"],
 }
 
-# Table name for DB recording
+# Table names for DB recording
 T_FUSION_OPS = "agent_fusion_operations"
+T_FUSION_ONTOLOGY_CACHE = "agent_fusion_ontology_cache"
 
 # Large dataset thresholds
 LARGE_ROW_THRESHOLD = 500_000

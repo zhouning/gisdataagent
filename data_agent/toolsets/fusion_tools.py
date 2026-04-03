@@ -234,12 +234,91 @@ async def validate_fusion_quality(file_path: str) -> str:
 # ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
+# v2.0: Temporal Alignment tools
+# ---------------------------------------------------------------------------
+
+
+async def standardize_timestamps(
+    file_path: str,
+    time_column: str,
+    target_tz: str = "UTC",
+) -> str:
+    """标准化时间戳格式。将异构时间格式统一为 UTC ISO8601。
+
+    Args:
+        file_path: 输入文件路径（GeoJSON/Shapefile/CSV）
+        time_column: 时间列名
+        target_tz: 目标时区（默认UTC）
+
+    Returns:
+        JSON 标准化报告，包含输出文件路径
+    """
+    def _run():
+        import geopandas as gpd
+        from data_agent.fusion.temporal import TemporalAligner
+        ta = TemporalAligner()
+        gdf = gpd.read_file(file_path)
+        result = ta.standardize_timestamps(gdf, time_column, target_tz)
+        report = ta.validate_temporal_consistency(result)
+        from data_agent.gis_processors import _generate_output_path
+        out = _generate_output_path("temporal_standardized", "geojson")
+        result.to_file(out, driver="GeoJSON")
+        return {"status": "ok", "output_path": out, "consistency": report}
+
+    try:
+        result = await asyncio.to_thread(_run)
+        return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)})
+
+
+async def validate_temporal_consistency(
+    file_path: str,
+    time_column: str = "",
+) -> str:
+    """验证数据集的时序一致性。检测空值、重复、间断和乱序。
+
+    Args:
+        file_path: 输入文件路径
+        time_column: 时间列名（为空则自动检测）
+
+    Returns:
+        JSON 时序一致性报告
+    """
+    def _run():
+        import geopandas as gpd
+        from data_agent.fusion.temporal import TemporalAligner
+        ta = TemporalAligner()
+        gdf = gpd.read_file(file_path)
+        if not time_column:
+            detected = ta.detect_temporal_columns(gdf)
+            if not detected:
+                return {"status": "error", "message": "未检测到时间列"}
+            col = detected[0]
+        else:
+            col = time_column
+        standardized = ta.standardize_timestamps(gdf, col)
+        report = ta.validate_temporal_consistency(standardized)
+        report["detected_column"] = col
+        report["status"] = "ok"
+        return report
+
+    try:
+        result = await asyncio.to_thread(_run)
+        return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)})
+
+
+# ---------------------------------------------------------------------------
 
 _ALL_FUNCS = [
     profile_fusion_sources,
     assess_fusion_compatibility,
     fuse_datasets,
     validate_fusion_quality,
+    standardize_timestamps,
+    validate_temporal_consistency,
 ]
 
 
