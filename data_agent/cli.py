@@ -191,7 +191,7 @@ async def _run_single(
 
     # Intent classification
     with console.status("[bold green]Classifying intent..."):
-        intent, reason, router_tokens, tool_cats = classify_intent(prompt, previous_pipeline)
+        intent, reason, router_tokens, tool_cats, _lang = classify_intent(prompt, previous_pipeline)
 
     if verbose:
         console.print(f"  Intent: [bold]{intent}[/bold] ({reason})")
