@@ -1,0 +1,153 @@
+# GIS Domain Ontology for Fusion v2.0 Semantic Enhancement
+# Used by OntologyReasoner for field matching, derivation, and inference.
+version: "1.0"
+
+# Equivalence groups — fields within a group are semantically equivalent
+equivalences:
+  - group_id: area
+    fields: ["area", "面积", "mj", "zmj", "shape_area", "tbmj", "TBMJ", "AREA"]
+  - group_id: perimeter
+    fields: ["perimeter", "周长", "shape_length", "shape_len", "PERIMETER"]
+  - group_id: land_use_code
+    fields: ["dlbm", "DLBM", "land_use_code", "地类编码", "land_code", "用地编码"]
+  - group_id: land_use_name
+    fields: ["dlmc", "DLMC", "land_use_name", "地类名称", "land_name", "用地名称"]
+  - group_id: elevation
+    fields: ["elevation", "高程", "dem", "height", "altitude", "海拔", "gc"]
+  - group_id: slope
+    fields: ["slope", "坡度", "gradient", "pd"]
+  - group_id: aspect
+    fields: ["aspect", "坡向", "px"]
+  - group_id: population
+    fields: ["population", "人口", "pop", "rk", "pop_count"]
+  - group_id: building_floors
+    fields: ["floors", "层数", "cs", "floor_count", "building_floors", "层高数"]
+  - group_id: building_height
+    fields: ["building_height", "建筑高度", "jzgd", "bldg_height", "height_m"]
+  - group_id: parcel_id
+    fields: ["parcel_id", "地块编号", "dkbh", "DKBH", "parcel_no", "lot_id"]
+  - group_id: name
+    fields: ["name", "名称", "mc", "MC", "feature_name"]
+  - group_id: address
+    fields: ["address", "地址", "dz", "addr", "location_text"]
+  - group_id: district
+    fields: ["district", "区县", "qx", "county", "行政区"]
+  - group_id: ndvi
+    fields: ["ndvi", "NDVI", "植被指数", "vegetation_index"]
+
+# Derivation rules — compute target from available fields
+derivations:
+  - target: building_height
+    formula: "floors * 3.0"
+    required_fields: ["floors"]
+    unit: "m"
+    description: "建筑高度 = 层数 × 层高(默认3m)"
+
+  - target: population_density
+    formula: "population / (area / 1000000)"
+    required_fields: ["population", "area"]
+    unit: "人/km²"
+    description: "人口密度 = 人口 / 面积(km²)"
+
+  - target: floor_area_ratio
+    formula: "building_area * floors / area"
+    required_fields: ["building_area", "floors", "area"]
+    unit: ""
+    description: "容积率 = 建筑面积 × 层数 / 用地面积"
+
+  - target: building_density
+    formula: "building_area / area"
+    required_fields: ["building_area", "area"]
+    unit: ""
+    description: "建筑密度 = 建筑占地面积 / 用地面积"
+
+  - target: green_ratio
+    formula: "green_area / area"
+    required_fields: ["green_area", "area"]
+    unit: ""
+    description: "绿化率 = 绿化面积 / 用地面积"
+
+  - target: perimeter_area_ratio
+    formula: "perimeter / (area ** 0.5)"
+    required_fields: ["perimeter", "area"]
+    unit: ""
+    description: "形状指数 = 周长 / 面积^0.5"
+
+  - target: compactness
+    formula: "(4 * 3.14159 * area) / (perimeter ** 2)"
+    required_fields: ["perimeter", "area"]
+    unit: ""
+    description: "紧凑度 = 4π×面积 / 周长²"
+
+  - target: area_mu
+    formula: "area / 666.67"
+    required_fields: ["area"]
+    unit: "亩"
+    description: "面积(亩) = 面积(m²) / 666.67"
+
+# Inference rules — classify features based on conditions
+inference_rules:
+  - rule_id: high_rise_residential
+    conditions:
+      - field: floors
+        operator: ">="
+        value: 18
+      - field: land_use_code
+        operator: "startswith"
+        value: "07"
+    conclusion:
+      field: building_type
+      value: "高层住宅"
+
+  - rule_id: commercial_building
+    conditions:
+      - field: land_use_code
+        operator: "startswith"
+        value: "05"
+    conclusion:
+      field: building_type
+      value: "商业建筑"
+
+  - rule_id: high_vegetation
+    conditions:
+      - field: ndvi
+        operator: ">="
+        value: 0.6
+    conclusion:
+      field: vegetation_level
+      value: "高植被覆盖"
+
+  - rule_id: steep_slope
+    conditions:
+      - field: slope
+        operator: ">="
+        value: 25
+    conclusion:
+      field: slope_class
+      value: "陡坡"
+
+  - rule_id: flat_terrain
+    conditions:
+      - field: slope
+        operator: "<"
+        value: 5
+    conclusion:
+      field: slope_class
+      value: "平地"
+
+# Unit conversions for the ontology
+unit_conversions:
+  area:
+    - from: m2
+      to: mu
+      factor: 0.0015
+    - from: m2
+      to: ha
+      factor: 0.0001
+    - from: mu
+      to: ha
+      factor: 0.0667
+  length:
+    - from: m
+      to: km
+      factor: 0.001

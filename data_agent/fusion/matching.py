@@ -229,6 +229,7 @@ def _find_field_matches(
     sources,
     use_embedding: bool = False,
     use_llm_schema: bool = False,
+    use_ontology: bool = False,
 ) -> list[dict]:
     """Find semantically matching fields across sources.
 
@@ -260,6 +261,24 @@ def _find_field_matches(
         if lk in right_cols:
             matches.append({"left": lv, "right": right_cols[lk], "confidence": 1.0})
             matched_right.add(lk)
+
+    # Tier 1.5: Ontology-based matching (opt-in) — confidence 0.85
+    if use_ontology:
+        try:
+            from .ontology import OntologyReasoner
+            reasoner = OntologyReasoner()
+            if reasoner.is_loaded:
+                unmatched_left = [c for c in sources[0].columns
+                                  if c["name"].lower() not in {m["left"].lower() for m in matches}]
+                unmatched_right = [c for c in sources[1].columns
+                                   if c["name"].lower() not in matched_right]
+                onto_matches = reasoner.find_field_matches_by_ontology(unmatched_left, unmatched_right)
+                for om in onto_matches:
+                    if om["right"].lower() not in matched_right:
+                        matches.append(om)
+                        matched_right.add(om["right"].lower())
+        except Exception as e:
+            logger.warning("Ontology matching failed: %s", e)
 
     # Tier 2 LLM shortcut: if use_llm_schema, send unmatched fields to LLM
     # and skip heuristic tiers 2-4

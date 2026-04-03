@@ -24,6 +24,11 @@ def execute_fusion(
     params: Optional[dict] = None,
     report: CompatibilityReport | None = None,
     user_hint: str = "",
+    # v2 parameters (all opt-in)
+    temporal_config: Optional[dict] = None,
+    conflict_config: Optional[dict] = None,
+    enable_explainability: bool = False,
+    enable_kg: bool = False,
 ) -> FusionResult:
     """Execute a fusion strategy on aligned data.
 
@@ -40,6 +45,13 @@ def execute_fusion(
     """
     params = params or {}
     start = time.time()
+
+    # v2: Temporal pre-alignment
+    temporal_log = []
+    if temporal_config:
+        from .temporal import TemporalAligner
+        ta = TemporalAligner()
+        aligned_data, temporal_log = ta.pre_align(aligned_data, sources, temporal_config)
 
     # v7.1: llm_auto deprecated — downgrade to rule-based auto
     if strategy == "llm_auto":
@@ -72,6 +84,13 @@ def execute_fusion(
     else:
         output_gdf, alignment_log = strategy_fn(aligned_data, params)
 
+    # v2: Conflict resolution (after strategy, before save)
+    conflict_summary = {}
+    if conflict_config:
+        from .conflict_resolver import ConflictResolver
+        cr = ConflictResolver(**conflict_config)
+        output_gdf, conflict_summary = cr.resolve_and_annotate(output_gdf, sources)
+
     # Save output
     output_path = _generate_output_path("fused", "geojson")
     output_gdf.to_file(output_path, driver="GeoJSON")
@@ -80,6 +99,21 @@ def execute_fusion(
 
     # Quality validation
     quality = validate_quality(output_gdf, sources)
+
+    # v2: Explainability metadata injection
+    explainability_path = ""
+    if enable_explainability:
+        from .explainability import add_explainability_fields, generate_quality_heatmap
+        fusion_meta = {
+            "strategy": strategy,
+            "sources": [s.file_path for s in sources],
+        }
+        output_gdf = add_explainability_fields(output_gdf, fusion_meta)
+        # Re-save with explainability columns
+        output_gdf.to_file(output_path, driver="GeoJSON")
+        explainability_path = generate_quality_heatmap(
+            output_gdf, os.path.dirname(output_path)
+        )
 
     return FusionResult(
         output_path=output_path,
@@ -95,6 +129,9 @@ def execute_fusion(
             "strategy": strategy,
             "params": params,
         },
+        explainability_path=explainability_path,
+        temporal_log=temporal_log,
+        conflict_summary=conflict_summary,
     )
 
 

@@ -563,7 +563,7 @@ class TestFusionToolset(unittest.TestCase):
         from data_agent.toolsets.fusion_tools import FusionToolset
         toolset = FusionToolset()
         tools = self._run_async(toolset.get_tools())
-        self.assertEqual(len(tools), 4)
+        self.assertEqual(len(tools), 6)
 
     def test_tool_names(self):
         from data_agent.toolsets.fusion_tools import FusionToolset
@@ -571,7 +571,8 @@ class TestFusionToolset(unittest.TestCase):
         tools = self._run_async(toolset.get_tools())
         names = {t.name for t in tools}
         expected = {"profile_fusion_sources", "assess_fusion_compatibility",
-                    "fuse_datasets", "validate_fusion_quality"}
+                    "fuse_datasets", "validate_fusion_quality",
+                    "standardize_timestamps", "validate_temporal_consistency"}
         self.assertEqual(names, expected)
 
     def test_tool_filter_works(self):
