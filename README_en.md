@@ -1,10 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v16.0
+# GIS Data Agent (ADK Edition) v17.0
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 26 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **237 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **242 REST API endpoints**.
+
+**v17.0**: Multimodal Fusion v2.0 Enhancement — 4 core modules upgrading the fusion engine: **Temporal Alignment** (multi-timezone standardization + linear/nearest/spline interpolation + trajectory fusion + multi-period change detection), **Semantic Enhancement** (GIS domain ontology reasoning with 15 equivalence groups + LLM field understanding + knowledge graph integration), **Conflict Resolution** (6 strategies: source_priority/latest_wins/voting/llm_arbitration/spatial_proximity/user_defined + confidence scoring + source annotation), **Explainability** (per-feature metadata injection + quality heatmap + fusion lineage tracing + decision explanation). 84 new tests, ~3700 lines of new code, 5 new REST APIs, FusionQualityTab frontend component.
 
 **v16.0**: SIGMOD 2026 L3 Conditional Autonomy — Semantic operator layer (4 high-level operators), multi-agent collaboration (4 specialist agents + coordinator), plan refinement & error recovery (5-strategy chain), Guardrails policy engine (YAML-driven tool-level access control), remote sensing agent Phase 1 (15+ spectral indices + experience pool), tool evolution (unified metadata registry + failure-driven discovery), AI-assisted Skill creation (natural language → Skill config generation). Frontend additions: QC report generation UI (4 templates → Word), data standards browser, tool rule management panel.
 
@@ -25,10 +27,10 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 2960+ tests, 137 test files |
+| Test Coverage | 3100+ tests, 142 test files |
 | Toolsets | 40 BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools), 5 SkillBundle, 240+ tools |
 | ADK Skills | 24 scenario skills (incl. surveying-qc, skill-creator) + DB-driven custom Skills + User Tools |
-| REST API | 237 endpoints |
+| REST API | 242 endpoints |
 | BCG Platform | 6 modules: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token Tracking + Eval History |
 | Causal Inference | Three-angle system: A (GeoFM statistical 6 tools) + B (LLM reasoning 4 tools) + C (Causal world model 4 tools), 82 tests |
 | World Model | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 scenarios + timeline animation |
@@ -61,10 +63,15 @@ Six platform capabilities based on BCG's "Building Effective Enterprise Agents" 
 
 **API Endpoints**: 8 new endpoints (/api/prompts/*, /api/gateway/*, /api/context/*, /api/eval/*)
 
-### Multi-Source Data Fusion (v5.5–v7.0)
+### Multi-Source Data Fusion (v5.5–v17.0)
 - **Five-stage pipeline**: Profile → Assess → Align → Fuse → Validate
 - **10 fusion strategies**: spatial join, attribute join, zonal statistics, point sampling, band stack, overlay, temporal fusion, point cloud height assignment, raster vectorize, nearest join
 - **5 data modalities**: vector, raster, tabular, point cloud (LAS/LAZ), real-time stream
+- **v17.0 Fusion v2.0 Enhancement**:
+  - **Temporal Alignment**: Multi-timezone standardization, 3 interpolation methods (linear/nearest/spline), trajectory fusion, multi-period change detection
+  - **Semantic Enhancement**: GIS domain ontology (15 equivalence groups, 8 derivation rules, 5 inference rules), LLM field understanding (Gemini 2.5 Flash), knowledge graph integration
+  - **Conflict Resolution**: 6 strategies (source_priority, latest_wins, voting, llm_arbitration, spatial_proximity, user_defined) + per-feature confidence scoring + source annotation
+  - **Explainability**: Per-feature metadata (_fusion_confidence, _fusion_sources, _fusion_method), quality heatmap GeoJSON, fusion lineage tracing, natural language decision explanation
 - **Intelligent semantic matching**:
   - Five-tier progressive matching: exact → equivalence groups → embedding similarity → unit-aware → fuzzy
   - **v7.0 Vector embedding matching**: Gemini text-embedding-004 cosine similarity (opt-in)
