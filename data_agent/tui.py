@@ -1,5 +1,5 @@
 """
-GIS Data Agent TUI (v8.5.3).
+GIS Data Agent TUI (v16.0).
 
 Full-screen terminal interface powered by Textual + Rich.
 Three-panel layout: Chat | Report | Status.
@@ -36,7 +36,7 @@ class GISAgentApp(App):
     """Full-screen TUI for GIS Data Agent."""
 
     CSS_PATH = "tui.tcss"
-    TITLE = "GIS Data Agent TUI v12.0"
+    TITLE = "GIS Data Agent TUI v16.0"
 
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit", priority=True),
@@ -82,7 +82,7 @@ class GISAgentApp(App):
     def on_mount(self) -> None:
         # Welcome banner
         self._write_chat(
-            "[bold blue]GIS Data Agent TUI v12.0[/bold blue]\n"
+            "[bold blue]GIS Data Agent TUI v16.0[/bold blue]\n"
             f"User: [cyan]{self.user}[/cyan] | Role: [cyan]{self.role}[/cyan]\n"
             "Type a prompt to analyze, or /help for commands.\n"
             "Press [bold]Ctrl+Q[/bold] to quit."
@@ -280,7 +280,7 @@ class GISAgentApp(App):
         app_mod = _get_app_module()
 
         # Intent classification
-        intent, reason, router_tokens, tool_cats = app_mod.classify_intent(
+        intent, reason, router_tokens, tool_cats, _lang = app_mod.classify_intent(
             prompt, self._previous_pipeline
         )
         self.call_from_thread(
