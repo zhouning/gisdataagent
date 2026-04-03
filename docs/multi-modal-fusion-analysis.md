@@ -91,6 +91,58 @@ v7.1 基于 `docs/technical-review-mmfe.md` 技术评审报告，完成了 4 阶
 - FusionSource 扩展：`postgis_table`、`postgis_srid` 字段
 - 质量验证扩展至 10 维（+CRS一致性、拓扑验证、KS分布偏移）
 
+## 6. v17.0 融合 v2.0 增强（2026-04-04）
+
+v17.0 在 v7.1 架构基础上新增 4 大模块（6 个新文件，~1700 行），模块总数从 22 扩展到 28，实现从「能融合」到「融合好、解释清、冲突明」的质变。所有新功能 opt-in，零破坏性变更。
+
+### 6.1 新增 4 大模块
+
+| 模块 | 文件 | 行数 | 核心能力 |
+|------|------|------|---------|
+| 时序对齐 | `fusion/temporal.py` | ~400 | 多时区标准化 + linear/nearest/spline 插值 + 轨迹融合 + 多期变化检测 + 时序一致性验证 |
+| 语义增强-本体 | `fusion/ontology.py` | ~300 | GIS 领域本体 (15 等价组 + 8 推导规则 + 5 推理规则) + Tier 1.5 匹配 |
+| 语义增强-LLM | `fusion/semantic_llm.py` | ~250 | Gemini 2.5 Flash 字段语义分类 + 可推导字段推断 + 深度语义匹配 |
+| 语义增强-KG | `fusion/kg_integration.py` | ~200 | 桥接 GeoKnowledgeGraph + 实体关系丰富 + KG 辅助冲突解决 |
+| 冲突消解 | `fusion/conflict_resolver.py` | ~350 | 6 策略 + 置信度评分 + 来源标注 + `_fusion_conflicts` 列 |
+| 可解释性 | `fusion/explainability.py` | ~200 | 逐要素元数据 + 质量热力图 + 融合溯源 + 模板化决策解释 |
+
+### 6.2 语义匹配升级（6 层 → 7 层）
+
+| 层级 | 名称 | 置信度 | 版本 |
+|------|------|--------|------|
+| Tier 1 | 精确匹配（大小写不敏感）| 1.0 | v5.6 |
+| **Tier 1.5** | **本体推理匹配** | **0.85** | **v17.0** |
+| Tier 2 | 等价组匹配 | 0.8 | v5.6 |
+| Tier 2.5a | LLM Schema 对齐 | LLM 输出 | v7.1 |
+| Tier 2.5b | 向量嵌入匹配 | 0.78 | v7.0 |
+| Tier 3 | 单位感知匹配 | 0.75 | v5.6 |
+| Tier 4 | 模糊序列匹配 | 0.5-0.7 | v5.6 |
+
+### 6.3 execute_fusion() 签名扩展
+
+```python
+def execute_fusion(
+    aligned_data, strategy, sources, params=None, report=None, user_hint="",
+    # v2 parameters (all opt-in, default off)
+    temporal_config: dict | None = None,      # 时序预对齐配置
+    conflict_config: dict | None = None,      # 冲突消解配置 (strategy + priorities)
+    enable_explainability: bool = False,       # 逐要素可解释性
+    enable_kg: bool = False,                   # 知识图谱增强
+) -> FusionResult  # 扩展: +explainability_path +conflict_summary +temporal_log
+```
+
+### 6.4 数据库与 API 扩展
+
+- **Migration 049**: `agent_fusion_operations` +4 列 (temporal_alignment_log, semantic_enhancement_log, conflict_resolution_log, explainability_metadata) + `agent_fusion_ontology_cache` 新表
+- **5 个新 REST API**: /api/fusion/{quality|lineage|conflicts}/{id}, /api/fusion/operations, /api/fusion/temporal-preview
+- **前端**: `FusionQualityTab.tsx` — 融合质量监控面板 (操作列表 + 质量徽章 + 详情展开)
+
+### 6.5 测试覆盖
+
+- 84 个新测试（5 个测试文件）
+- 214 个 fusion 测试全部通过 (130 existing + 84 new)
+- 3100+ 全平台测试零回归
+
 ---
-**文档版本**：v1.0 → v2.0 (2026-03-05 更新，标注 v7.0 实现状态) → v3.0 (2026-03-09 更新，标注 v7.1 重构状态)
-**生成日期**：2026-03-09
+**文档版本**：v1.0 → v2.0 (2026-03-05 更新，标注 v7.0 实现状态) → v3.0 (2026-03-09 更新，标注 v7.1 重构状态) → v4.0 (2026-04-04 更新，标注 v17.0 融合 v2.0 增强)
+**生成日期**：2026-04-04
