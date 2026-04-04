@@ -78,6 +78,8 @@ def query_database(sql_query: str) -> dict:
 
     Args:
         sql_query: The SQL statement to execute. SELECT statements return data.
+                   IMPORTANT: Do NOT add LIMIT unless the user explicitly requests a sample or preview.
+                   Always return full data by default.
 
     Returns:
         Dict with status, message, and path to results (CSV/SHP).
@@ -90,6 +92,22 @@ def query_database(sql_query: str) -> dict:
     sql_lower = sql_query.strip().lower()
     if not (sql_lower.startswith("select") or sql_lower.startswith("with")):
         return {"status": "error", "message": "Only SELECT or WITH queries are allowed for security reasons."}
+
+    # Guard: Strip LLM-injected LIMIT on simple full-table queries.
+    # LLMs (especially Gemini) tend to add "LIMIT 1000" even when the user
+    # wants all rows.  We remove LIMIT only for simple "SELECT ... FROM table"
+    # patterns that have no WHERE/GROUP BY/ORDER BY, i.e. the user clearly
+    # wants the full table.  More complex queries keep their LIMIT intact.
+    import re
+    _sql_stripped = re.sub(r'\s+', ' ', sql_lower).strip()
+    _limit_match = re.search(r'\blimit\s+(\d+)\s*$', _sql_stripped)
+    if _limit_match:
+        # Check if this is a simple full-table select (no WHERE, GROUP BY, HAVING)
+        _has_filter = any(kw in _sql_stripped for kw in ['where ', 'group by', 'having ', 'union '])
+        if not _has_filter:
+            # Remove the trailing LIMIT clause from the original SQL
+            sql_query = re.sub(r'\bLIMIT\s+\d+\s*$', '', sql_query, flags=re.IGNORECASE).strip()
+            logger.info("[query_database] Removed LLM-injected LIMIT from full-table query")
 
     try:
         with engine.connect() as conn:

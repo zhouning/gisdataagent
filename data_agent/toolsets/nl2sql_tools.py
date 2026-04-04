@@ -42,20 +42,23 @@ def discover_database_schema(table_pattern: str = "") -> str:
     try:
         from ..db_engine import get_engine
         from ..database_tools import _inject_user_context
+        from sqlalchemy import text
 
         engine = get_engine()
         with engine.connect() as conn:
             _inject_user_context(conn)
 
             # Query INFORMATION_SCHEMA for table and column metadata
+            # Use quote_ident() to properly handle reserved words (e.g. "User")
+            # and mixed-case table names from Chainlit's data layer.
             schema_query = """
                 SELECT
                     t.table_name,
-                    obj_description((t.table_schema || '.' || t.table_name)::regclass, 'pg_class') as table_description,
+                    obj_description((quote_ident(t.table_schema) || '.' || quote_ident(t.table_name))::regclass, 'pg_class') as table_description,
                     c.column_name,
                     c.data_type,
                     c.udt_name,
-                    col_description((t.table_schema || '.' || t.table_name)::regclass, c.ordinal_position) as column_description
+                    col_description((quote_ident(t.table_schema) || '.' || quote_ident(t.table_name))::regclass, c.ordinal_position) as column_description
                 FROM information_schema.tables t
                 JOIN information_schema.columns c
                     ON t.table_name = c.table_name
@@ -67,7 +70,7 @@ def discover_database_schema(table_pattern: str = "") -> str:
                 schema_query += f" AND t.table_name LIKE '{table_pattern}'"
             schema_query += " ORDER BY t.table_name, c.ordinal_position"
 
-            df = pd.read_sql(schema_query, conn)
+            df = pd.read_sql(text(schema_query), conn)
 
         if df.empty:
             return json.dumps(
