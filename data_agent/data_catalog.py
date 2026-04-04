@@ -328,6 +328,21 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
             row = result.fetchone()
             conn.commit()
             asset_id = row[0] if row else None
+
+            # Generate and persist asset_code (v17.1)
+            if asset_id:
+                from .asset_coder import generate_asset_code
+                code = generate_asset_code(
+                    asset_id=asset_id,
+                    data_type=asset_type,
+                    owner=owner,
+                )
+                conn.execute(text(
+                    "UPDATE agent_data_assets SET asset_code = :code "
+                    "WHERE id = :id AND asset_code IS NULL"
+                ), {"code": code, "id": asset_id})
+                conn.commit()
+
             logger.info("[DataCatalog] Registered: %s (id=%s, backend=%s)",
                         asset_name, asset_id, storage_backend)
             return asset_id
@@ -562,7 +577,8 @@ def list_data_assets(asset_type: str = "", tags: str = "",
                        business_metadata->'semantic'->>'description' as description,
                        owner_username, is_shared, created_at,
                        'public' as sensitivity_level,
-                       COALESCE((operational_metadata->'version'->>'version')::int, 1) as version
+                       COALESCE((operational_metadata->'version'->>'version')::int, 1) as version,
+                       asset_code
                 FROM agent_data_assets
                 WHERE {where}
                 ORDER BY updated_at DESC
@@ -581,6 +597,7 @@ def list_data_assets(asset_type: str = "", tags: str = "",
                     "created": str(r[12]),
                     "sensitivity_level": r[13] or "public",
                     "version": r[14] or 1,
+                    "asset_code": r[15],
                 })
 
             return {
@@ -621,7 +638,7 @@ def describe_data_asset(asset_name_or_id: str) -> dict:
                     SELECT id, asset_name, display_name, owner_username, is_shared,
                            technical_metadata, business_metadata,
                            operational_metadata, lineage_metadata,
-                           created_at, updated_at
+                           created_at, updated_at, asset_code
                     FROM agent_data_assets WHERE id = :id
                 """), {"id": int(asset_name_or_id)}).fetchone()
             else:
@@ -629,7 +646,7 @@ def describe_data_asset(asset_name_or_id: str) -> dict:
                     SELECT id, asset_name, display_name, owner_username, is_shared,
                            technical_metadata, business_metadata,
                            operational_metadata, lineage_metadata,
-                           created_at, updated_at
+                           created_at, updated_at, asset_code
                     FROM agent_data_assets
                     WHERE asset_name ILIKE :name
                     ORDER BY updated_at DESC LIMIT 1
@@ -651,6 +668,7 @@ def describe_data_asset(asset_name_or_id: str) -> dict:
                 "lineage": row[8],
                 "created": str(row[9]),
                 "updated": str(row[10]),
+                "asset_code": row[11],
             }
 
             return {"status": "success", "asset": asset}

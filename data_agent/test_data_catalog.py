@@ -125,7 +125,7 @@ class TestAutoRegister(unittest.TestCase):
         from data_agent.data_catalog import auto_register_from_path
         asset_id = auto_register_from_path("/tmp/data.shp", creation_tool="test_tool")
         self.assertEqual(asset_id, 42)
-        mock_conn.commit.assert_called_once()
+        mock_conn.commit.assert_called()
 
 
 class TestRegisterToolOutput(unittest.TestCase):
@@ -166,7 +166,7 @@ class TestListDataAssets(unittest.TestCase):
         select_result.fetchall.return_value = [
             (1, "data.tif", "raster", "tif", "cloud", "EPSG:4326", 100,
              1024, '["遥感"]', "Land use data", "alice", False,
-             datetime.datetime(2025, 1, 1), "public", 1),
+             datetime.datetime(2025, 1, 1), "public", 1, "DA-RAS-ALI-2025-0001"),
         ]
         mock_conn.execute.side_effect = [count_result, select_result]
 

@@ -18,6 +18,7 @@ interface CatalogAsset {
   created_at: string;
   sensitivity_level?: string;
   version?: number;
+  asset_code?: string;
   relevance?: number;
 }
 
@@ -129,6 +130,7 @@ export default function CatalogTab() {
                 </div>
                 <div className="file-info">
                   <div className="file-name" title={asset.asset_name}>{asset.asset_name}</div>
+                  {asset.asset_code && <div style={{fontSize: 11, color: '#6b7280', fontFamily: 'monospace'}}>{asset.asset_code}</div>}
                   <div className="file-meta">
                     <span className={`type-badge ${asset.asset_type}`}>{asset.asset_type}</span>
                     {asset.sensitivity_level && asset.sensitivity_level !== 'public' && (
@@ -269,6 +271,7 @@ function AssetDetail({ asset, onBack }: { asset: CatalogAsset; onBack: () => voi
       )}
 
       <div className="asset-detail-grid">
+        {asset.asset_code && <div className="asset-detail-item"><span>资产编码</span><span style={{fontFamily: 'monospace', fontWeight: 600}}>{asset.asset_code}</span></div>}
         <div className="asset-detail-item"><span>类型</span><span className={`type-badge ${asset.asset_type}`}>{asset.asset_type}</span></div>
         <div className="asset-detail-item"><span>格式</span><span>{asset.file_format || '-'}</span></div>
         <div className="asset-detail-item"><span>存储</span><span>{asset.storage_backend || '-'}</span></div>
