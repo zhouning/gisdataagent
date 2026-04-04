@@ -115,6 +115,27 @@ def execute_fusion(
             output_gdf, os.path.dirname(output_path)
         )
 
+    # v17.1: Register fusion output as a data asset with structured code
+    output_asset_id = None
+    output_asset_code = None
+    try:
+        from ..data_catalog import register_tool_output
+        output_asset_id = register_tool_output(
+            output_path, tool_name="fusion",
+            tool_params={"strategy": strategy},
+            source_paths=[s.file_path for s in sources],
+        )
+        if output_asset_id:
+            from ..asset_coder import generate_asset_code
+            from ..user_context import current_user_id
+            output_asset_code = generate_asset_code(
+                asset_id=output_asset_id,
+                data_type="fusion",
+                owner=current_user_id.get() or "UNK",
+            )
+    except Exception as e:
+        logger.debug("Fusion asset registration non-fatal: %s", e)
+
     return FusionResult(
         output_path=output_path,
         strategy_used=strategy,
@@ -132,6 +153,7 @@ def execute_fusion(
         explainability_path=explainability_path,
         temporal_log=temporal_log,
         conflict_summary=conflict_summary,
+        output_asset_code=output_asset_code or "",
     )
 
 

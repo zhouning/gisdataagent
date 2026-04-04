@@ -53,6 +53,8 @@ def record_operation(
     semantic_log: Optional[str] = None,
     conflict_log: Optional[str] = None,
     explainability_metadata: Optional[dict] = None,
+    output_asset_id: Optional[int] = None,
+    output_asset_code: Optional[str] = None,
 ) -> None:
     """Record a fusion operation to the database."""
     engine = get_engine()
@@ -67,11 +69,13 @@ def record_operation(
                 (username, source_files, strategy, parameters, output_file,
                  quality_score, quality_report, duration_s,
                  temporal_alignment_log, semantic_enhancement_log,
-                 conflict_resolution_log, explainability_metadata)
+                 conflict_resolution_log, explainability_metadata,
+                 output_asset_id, output_asset_code)
                 VALUES (:username, :sources, :strategy, :params, :output,
                         :quality, :report, :duration,
                         :temporal_log, :semantic_log,
-                        :conflict_log, :explain_meta)
+                        :conflict_log, :explain_meta,
+                        :out_asset_id, :out_asset_code)
             """), {
                 "username": username,
                 "sources": json.dumps([s.file_path for s in sources]),
@@ -85,6 +89,8 @@ def record_operation(
                 "semantic_log": semantic_log,
                 "conflict_log": conflict_log,
                 "explain_meta": json.dumps(explainability_metadata) if explainability_metadata else None,
+                "out_asset_id": output_asset_id,
+                "out_asset_code": output_asset_code,
             })
             conn.commit()
     except Exception as e:

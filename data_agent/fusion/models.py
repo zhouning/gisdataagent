@@ -51,3 +51,5 @@ class FusionResult:
     explainability_path: str = ""
     conflict_summary: dict = field(default_factory=dict)
     temporal_log: list = field(default_factory=list)
+    # v17.1 asset coding
+    output_asset_code: str = ""
