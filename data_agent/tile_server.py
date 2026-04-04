@@ -26,7 +26,7 @@ logger = get_logger("tile_server")
 
 # Feature count thresholds (configurable via env)
 MVT_FEATURE_THRESHOLD = int(os.environ.get("MVT_FEATURE_THRESHOLD", "50000"))
-FGB_FEATURE_THRESHOLD = int(os.environ.get("FGB_FEATURE_THRESHOLD", "5000"))
+FGB_FEATURE_THRESHOLD = int(os.environ.get("FGB_FEATURE_THRESHOLD", "10000"))
 
 # Maximum attribute columns to include in tiles
 _MAX_TILE_COLUMNS = 20
