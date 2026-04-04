@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: martin
+  namespace: gis-agent
+  labels:
+    app: martin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: martin
+  template:
+    metadata:
+      labels:
+        app: martin
+    spec:
+      containers:
+        - name: martin
+          image: ghcr.io/maplibre/martin:v0.15
+          args: ["--auto-bounds", "calc", "--listen-addresses", "0.0.0.0:3000"]
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-secret
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

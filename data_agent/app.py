@@ -163,6 +163,9 @@ try:
     # Run pending SQL migrations after all ensure_*_table() calls
     from data_agent.migration_runner import run_pending_migrations
     run_pending_migrations()
+    # Cleanup expired MVT tile layers from previous sessions
+    from data_agent.tile_server import cleanup_expired_layers
+    cleanup_expired_layers()
 except Exception as _startup_err:
     logger.warning("DB initialization partially failed: %s", _startup_err)
     # Ensure resolve_semantic_context/build_context_prompt are importable even on failure

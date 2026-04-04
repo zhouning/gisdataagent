@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import DeckGL from '@deck.gl/react';
 import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer } from '@deck.gl/layers';
+import { MVTLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -18,6 +19,14 @@ interface MapLayer {
   extruded?: boolean;
   pitch?: number;
   bearing?: number;
+  // MVT tile properties
+  tile_url?: string;
+  metadata_url?: string;
+  source_layer?: string;
+  layer_id?: string;
+  // FlatGeobuf properties
+  fgb?: string;
+  geom_type?: string;
 }
 
 interface Map3DViewProps {
@@ -89,13 +98,30 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
     maxZoom: 20,
   }), [center, zoom, pitch, bearing]);
 
-  // Fetch GeoJSON data for layers that need it
+  // Fetch GeoJSON / FlatGeobuf data for layers that need it
   useEffect(() => {
     const fetchLayers = async () => {
       const newData: Record<string, any> = {};
       for (const layer of layers) {
+        // MVT layers don't need pre-fetched data
+        if (layer.type === 'mvt') continue;
+
         if (layer.geojsonData) {
           newData[layer.name] = layer.geojsonData;
+        } else if (layer.type === 'fgb' && layer.fgb) {
+          // FlatGeobuf: fetch and convert to GeoJSON
+          try {
+            const { deserialize } = await import('flatgeobuf/lib/mjs/geojson.js');
+            const fgbUrl = `/api/user/files/${layer.fgb}`;
+            const iter = deserialize(fgbUrl);
+            const features: any[] = [];
+            for await (const feature of iter) {
+              features.push(feature);
+            }
+            newData[layer.name] = { type: 'FeatureCollection', features };
+          } catch (e) {
+            console.warn(`Failed to fetch FlatGeobuf for layer ${layer.name}:`, e);
+          }
         } else if (layer.geojson) {
           try {
             const resp = await fetch(`/api/user/files/${layer.geojson}`, { credentials: 'include' });
@@ -128,12 +154,27 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
   // Build deck.gl layers from MapLayer configs
   const deckLayers = useMemo(() => {
     return layers.map((layer, idx) => {
-      const data = layerData[layer.name];
-      if (!data) return null;
       if (layerVisibility[layer.name] === false) return null;
 
       const fillColor = hexToRgba(layer.style?.fillColor || '#4682B4', Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
       const lineColor = hexToRgba(layer.style?.color || '#333333', 200);
+
+      // MVT vector tile layer — no pre-fetched data needed
+      if (layer.type === 'mvt' && layer.tile_url) {
+        return new MVTLayer({
+          id: `layer-${idx}-${layer.name}`,
+          data: layer.tile_url,
+          getFillColor: fillColor,
+          getLineColor: lineColor,
+          lineWidthMinPixels: 1,
+          pickable: true,
+          onHover,
+        });
+      }
+
+      // FlatGeobuf layers render as GeoJSON once loaded
+      const data = layerData[layer.name];
+      if (!data) return null;
 
       // Extrusion layer (3D polygons)
       if (layer.type === 'extrusion' || (layer.extruded && (layer.type === 'polygon' || layer.type === 'choropleth'))) {
