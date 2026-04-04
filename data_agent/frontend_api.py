@@ -2972,6 +2972,7 @@ def get_frontend_api_routes():
     from .api.topology_routes import get_topology_routes
     from .api.metadata_routes import get_metadata_routes
     from .api.fusion_v2_routes import get_fusion_v2_routes
+    from .api.tile_routes import get_tile_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -3142,6 +3143,8 @@ def get_frontend_api_routes():
         *get_metadata_routes(),
         # Fusion v2.0 (v17.0)
         *get_fusion_v2_routes(),
+        # Vector Tile Serving (v17.1)
+        *get_tile_routes(),
         # Message Bus Monitoring (v15.9)
         Route("/api/messaging/stats", endpoint=_api_messaging_stats, methods=["GET"]),
         Route("/api/messaging/messages", endpoint=_api_messaging_list, methods=["GET"]),

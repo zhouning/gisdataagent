@@ -160,6 +160,30 @@ services:
       - qc
 
   # ---------------------------------------------------------------------------
+  # Martin Vector Tile Server (v17.1 — large dataset rendering)
+  # ---------------------------------------------------------------------------
+  martin:
+    image: ghcr.io/maplibre/martin:v0.15
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://agent_user:${POSTGRES_PASSWORD:-change_me_strong_password}@db:5432/gis_agent
+    command: ["--auto-bounds", "calc", "--listen-addresses", "0.0.0.0:3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - agent-net
+    profiles:
+      - tiles
+
+  # ---------------------------------------------------------------------------
   # Reference Data Service (Surveying QC — v15.7)
   # ---------------------------------------------------------------------------
   reference-data:

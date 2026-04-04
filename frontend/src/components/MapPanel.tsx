@@ -8,7 +8,7 @@ import Map3DView from './Map3DView';
 interface MapLayer {
   name: string;
   type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
-      | 'extrusion' | 'arc' | 'column' | 'categorized' | 'wms';
+      | 'extrusion' | 'arc' | 'column' | 'categorized' | 'wms' | 'mvt' | 'fgb';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
@@ -29,6 +29,14 @@ interface MapLayer {
   // WMS properties
   wms_url?: string;
   wms_params?: Record<string, any>;
+  // MVT tile properties
+  tile_url?: string;
+  metadata_url?: string;
+  source_layer?: string;
+  layer_id?: string;
+  // FlatGeobuf properties
+  fgb?: string;
+  geom_type?: string;
 }
 
 interface Annotation {
@@ -478,7 +486,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   useEffect(() => {
     const has3D = layers.some(l =>
       l.type === 'extrusion' || l.type === 'column' || l.type === 'arc' ||
-      l.extruded || l.elevation_column
+      l.type === 'mvt' || l.extruded || l.elevation_column
     );
     if (has3D) setViewMode('3d');
   }, [layers]);
