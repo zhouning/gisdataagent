@@ -1,4 +1,0 @@
-Usage: chainlit run [OPTIONS] TARGET
-Try 'chainlit run --help' for help.
-
-Error: Invalid value: File does not exist: data_agent/app.py
