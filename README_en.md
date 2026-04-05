@@ -25,6 +25,15 @@ This project provides industrial-grade technical documentation written in the **
 > **Note:** 
 > You can compile the latest DITA XML source files (located in the `docs/dita/` directory) by running `python preview_docs.py`, and explore deep dives into the Multi-Agent Architecture, Multi-Modal Fusion Engine (MMFE), and GraphRAG Knowledge Graph.
 
+## 📚 Official Technical Documentation
+
+This project provides industrial-grade technical documentation written in the **DITA XML** standard, covering the architecture whitepaper, API references, and multi-engine configuration guides.
+
+👉 **[Read the Full HTML Preview (Chinese)](docs/dita/preview.html)**
+
+> **Note:** 
+> You can compile the latest DITA XML source files (located in the `docs/dita/` directory) by running `python preview_docs.py`, and explore deep dives into the Multi-Agent Architecture, Multi-Modal Fusion Engine (MMFE), and GraphRAG Knowledge Graph.
+
 ## Key Metrics
 
 | Metric | Value |

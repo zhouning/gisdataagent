@@ -822,6 +822,13 @@ planner_agent = LlmAgent(
         NL2SQLToolset(),  # Schema-aware NL2SQL for dynamic table queries
         OperatorToolset(),  # Semantic operators: clean/integrate/analyze/visualize (L3)
         ToolEvolutionToolset(),  # Tool evolution: metadata, failure-driven discovery, dynamic management (L3)
+        AdminToolset(),
+        TeamToolset(),
+        DataLakeToolset(tool_filter=_DATALAKE_READ),
+        VisualizationToolset(tool_filter=["visualize_interactive_map"]),  # For direct admin boundary display
+        RemoteSensingToolset(tool_filter=["download_dem"]),  # For DEM download in watershed workflow
+        WatershedToolset(),  # For watershed/catchment extraction (open-source)
+        GeoProcessingToolset(include_arcpy=True),  # ArcPy tools including arcpy_extract_watershed (dynamic loading)
     ],
     sub_agents=[
         planner_explorer, planner_processor, planner_analyzer,

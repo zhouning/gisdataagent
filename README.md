@@ -33,6 +33,15 @@
 > **提示：** 
 > 您可以通过运行 `python preview_docs.py` 自行编译最新的 DITA XML 源文件（位于 `docs/dita/` 目录），并查阅《多智能体架构深度解析》、《多源多模态数据融合引擎(MMFE)》、《GraphRAG 知识图谱》等深度内容。
 
+## 📚 官方技术文档
+
+本项目提供基于 **DITA XML** 标准编写的工业级技术文档，内容涵盖架构白皮书、API 参考及多引擎配置指南等。
+
+👉 **[在线阅读完整的 HTML 预览版 (中文)](docs/dita/preview.html)**
+
+> **提示：** 
+> 您可以通过运行 `python preview_docs.py` 自行编译最新的 DITA XML 源文件（位于 `docs/dita/` 目录），并查阅《多智能体架构深度解析》、《多源多模态数据融合引擎(MMFE)》、《GraphRAG 知识图谱》等深度内容。
+
 ## 核心指标
 
 | 指标 | 数值 |
