@@ -257,7 +257,7 @@ class TestMigration052(unittest.TestCase):
     def test_migration_contains_materialized_view(self):
         import os
         path = os.path.join(os.path.dirname(__file__), "migrations", "052_db_performance_optimization.sql")
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             sql = f.read()
         self.assertIn("mv_pipeline_analytics", sql)
         self.assertIn("mv_token_usage_daily", sql)
