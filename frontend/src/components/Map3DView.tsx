@@ -19,6 +19,12 @@ interface MapLayer {
   extruded?: boolean;
   pitch?: number;
   bearing?: number;
+  // Categorized layer properties
+  category_column?: string;
+  category_colors?: Record<string, string>;
+  category_labels?: Record<string, string>;
+  style_map?: Record<string, Record<string, any>>;
+  visible?: boolean;
   // MVT tile properties
   tile_url?: string;
   metadata_url?: string;
@@ -75,6 +81,19 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+
+  // Initialize visibility from layer.visible property
+  useEffect(() => {
+    const init: Record<string, boolean> = {};
+    let changed = false;
+    for (const l of layers) {
+      if (l.visible === false && layerVisibility[l.name] === undefined) {
+        init[l.name] = false;
+        changed = true;
+      }
+    }
+    if (changed) setLayerVisibility(prev => ({ ...prev, ...init }));
+  }, [layers]);
   const [showLayerPanel, setShowLayerPanel] = useState(false);
 
   // Determine pitch/bearing from layer configs
@@ -324,6 +343,39 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
         });
       }
 
+      // Categorized layer (per-category color from category_colors/style_map)
+      if (layer.type === 'categorized') {
+        const catCol = layer.category_column || '';
+        const catColors = layer.category_colors || {};
+        const styleMap = layer.style_map || {};
+        return new GeoJsonLayer({
+          id: `layer-${idx}-${layer.name}`,
+          data,
+          pickable: true,
+          stroked: true,
+          filled: true,
+          extruded: false,
+          getFillColor: (f: any) => {
+            const raw = String(f.properties?.[catCol] ?? '');
+            const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+            const sm = styleMap[raw] || styleMap[intForm];
+            if (sm?.fillColor) return hexToRgba(sm.fillColor, Math.round((sm.fillOpacity ?? 0.7) * 255));
+            const cc = catColors[raw] || catColors[intForm];
+            if (cc) return hexToRgba(cc, Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
+            return hexToRgba('#999999', 140);
+          },
+          getLineColor: (f: any) => {
+            const raw = String(f.properties?.[catCol] ?? '');
+            const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+            const sm = styleMap[raw] || styleMap[intForm];
+            if (sm?.color) return hexToRgba(sm.color, 200);
+            return lineColor;
+          },
+          lineWidthMinPixels: 1,
+          onHover,
+        });
+      }
+
       // Default: flat GeoJSON rendering (polygon, line, choropleth)
       return new GeoJsonLayer({
         id: `layer-${idx}-${layer.name}`,
@@ -404,6 +456,43 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Legend for categorized layers */}
+      {layers.some(l => l.type === 'categorized' && (l.category_colors || l.style_map) && layerVisibility[l.name] !== false) && (
+        <div style={{
+          position: 'absolute', bottom: 24, left: 12, zIndex: 1000,
+          background: 'rgba(0,0,0,0.85)', border: '1px solid #333', borderRadius: 6,
+          padding: '8px 12px', maxWidth: 220, maxHeight: 300, overflowY: 'auto',
+        }}>
+          {layers
+            .filter(l => l.type === 'categorized' && (l.category_colors || l.style_map) && layerVisibility[l.name] !== false)
+            .map(layer => {
+              const labels = layer.category_labels || {};
+              const colors = layer.category_colors || {};
+              const smap = layer.style_map || {};
+              const entries = Object.keys(colors).length > 0
+                ? Object.entries(colors)
+                : Object.entries(smap).map(([val, s]) => [val, s.fillColor || '#999'] as [string, string]);
+              return (
+                <div key={layer.name} style={{ marginBottom: 6 }}>
+                  <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+                    {layer.name}
+                  </div>
+                  {entries.map(([val, color]) => (
+                    <div key={val} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>
+                      <span style={{
+                        display: 'inline-block', width: 14, height: 14, borderRadius: 2,
+                        background: color as string, border: '1px solid rgba(255,255,255,0.2)',
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ color: '#ccc', fontSize: 11 }}>{labels[val] || val}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
         </div>
       )}
     </div>
