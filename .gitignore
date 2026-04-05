@@ -133,3 +133,13 @@ docs/surveying_qc_agent_design.*
 *.mov
 *.wmv
 !docs/dita/out/pdf-css-html5/data-agent-user-guide.pdf
+
+# Log files — NEVER commit (runtime artifacts)
+*.log
+
+# Binary/archive artifacts
+*.pyz
+.files/
+
+# Local data samples — NEVER commit (sensitive/large)
+01*/
