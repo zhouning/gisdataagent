@@ -504,7 +504,7 @@ class TestRouteCount(unittest.TestCase):
     def test_route_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 123)
+        self.assertEqual(len(routes), 248)
 
     def test_kb_routes_present(self):
         from data_agent.frontend_api import get_frontend_api_routes

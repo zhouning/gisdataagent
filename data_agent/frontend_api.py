@@ -2784,16 +2784,104 @@ async def _api_prompts_deploy(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+# ---------------------------------------------------------------------------
+# Prompt Auto-Optimizer Endpoints (v17.2)
+# ---------------------------------------------------------------------------
+
+async def _api_prompts_collect_bad_cases(request: Request):
+    """POST /api/prompts/collect-bad-cases — collect bad cases from all sources."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    min_score = float(body.get("min_score", 0.5))
+    days = int(body.get("days", 7))
+    min_rating = int(body.get("min_rating", 2))
+    limit = min(int(body.get("limit", 50)), 200)
+    from .prompt_optimizer import BadCaseCollector
+    collector = BadCaseCollector()
+    cases = await collector.collect_all(
+        min_score=min_score, days=days, min_rating=min_rating, limit=limit,
+    )
+    return JSONResponse({"bad_cases": cases, "count": len(cases)})
+
+
+async def _api_prompts_analyze_failures(request: Request):
+    """POST /api/prompts/analyze-failures — analyze failure patterns from bad cases."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    bad_cases = body.get("bad_cases", [])
+    if not bad_cases:
+        return JSONResponse({"error": "bad_cases required"}, status_code=400)
+    from .prompt_optimizer import FailureAnalyzer
+    analyzer = FailureAnalyzer()
+    try:
+        analysis = await analyzer.analyze(bad_cases)
+        return JSONResponse({"analysis": analysis})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_prompts_optimize(request: Request):
+    """POST /api/prompts/optimize — generate improvement suggestion for a prompt."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    domain = body.get("domain")
+    prompt_key = body.get("prompt_key")
+    failure_analysis = body.get("failure_analysis", {})
+    if not domain or not prompt_key:
+        return JSONResponse({"error": "domain and prompt_key required"}, status_code=400)
+    from .prompt_optimizer import PromptOptimizer
+    optimizer = PromptOptimizer()
+    try:
+        suggestion = await optimizer.suggest_improvements(domain, prompt_key, failure_analysis)
+        return JSONResponse({"suggestion": suggestion})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_prompts_apply_suggestion(request: Request):
+    """POST /api/prompts/apply-suggestion — apply suggestion as new prompt version."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    domain = body.get("domain")
+    prompt_key = body.get("prompt_key")
+    suggested_prompt = body.get("suggested_prompt")
+    environment = body.get("environment", "dev")
+    if not domain or not prompt_key or not suggested_prompt:
+        return JSONResponse(
+            {"error": "domain, prompt_key, and suggested_prompt required"},
+            status_code=400,
+        )
+    from .prompt_optimizer import PromptOptimizer
+    optimizer = PromptOptimizer()
+    try:
+        result = await optimizer.apply_suggestion(domain, prompt_key, suggested_prompt, environment)
+        return JSONResponse({"result": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 async def _api_gateway_models(request: Request):
-    """GET /api/gateway/models — list available models with capabilities."""
+    """GET /api/gateway/models — list available models with capabilities.
+
+    Query params:
+    - online_only: filter to online models
+    - offline_only: filter to offline/local models
+    """
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     from .model_gateway import ModelRegistry
-    registry = ModelRegistry()
-    models = [{"name": m.name, "context_window": m.context_window, "cost_per_1k_input": m.cost_per_1k_input,
-               "cost_per_1k_output": m.cost_per_1k_output, "capabilities": m.capabilities}
-              for m in registry.models.values()]
+    online_only = request.query_params.get("online_only") == "true"
+    offline_only = request.query_params.get("offline_only") == "true"
+    models = ModelRegistry.list_models(online_only=online_only, offline_only=offline_only)
     return JSONResponse({"models": models})
 
 
@@ -2910,6 +2998,41 @@ async def _api_eval_scenarios(request: Request):
     scenarios = [{"name": "surveying_qc", "description": "测绘质检评估场景",
                   "metrics": ["defect_precision", "defect_recall", "defect_f1", "fix_success_rate"]}]
     return JSONResponse({"scenarios": scenarios})
+
+
+# ---------------------------------------------------------------------------
+# Evaluator Registry API
+# ---------------------------------------------------------------------------
+
+async def _api_eval_evaluators(request: Request):
+    """GET /api/eval/evaluators?category=quality — list available evaluators."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    category = request.query_params.get("category")
+    from .evaluator_registry import EvaluatorRegistry
+    evaluators = EvaluatorRegistry.list_evaluators(category=category or None)
+    return JSONResponse({"evaluators": evaluators})
+
+
+async def _api_eval_evaluate(request: Request):
+    """POST /api/eval/evaluate — run evaluators on test cases."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    body = await request.json()
+    evaluator_names = body.get("evaluators", [])
+    test_cases = body.get("test_cases", [])
+    if not evaluator_names or not test_cases:
+        return JSONResponse({"error": "evaluators and test_cases required"}, status_code=400)
+    from .evaluator_registry import EvaluatorRegistry
+    try:
+        results = EvaluatorRegistry.run_evaluation(evaluator_names, test_cases)
+        return JSONResponse({"status": "success", **results})
+    except KeyError as e:
+        return JSONResponse({"error": str(e)}, status_code=404)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # ---------------------------------------------------------------------------
@@ -3045,12 +3168,20 @@ def get_frontend_api_routes():
         # BCG Platform Enhancement APIs (v15.8)
         Route("/api/prompts/versions", endpoint=_api_prompts_versions, methods=["GET"]),
         Route("/api/prompts/deploy", endpoint=_api_prompts_deploy, methods=["POST"]),
+        # Prompt Auto-Optimizer (v17.2)
+        Route("/api/prompts/collect-bad-cases", endpoint=_api_prompts_collect_bad_cases, methods=["POST"]),
+        Route("/api/prompts/analyze-failures", endpoint=_api_prompts_analyze_failures, methods=["POST"]),
+        Route("/api/prompts/optimize", endpoint=_api_prompts_optimize, methods=["POST"]),
+        Route("/api/prompts/apply-suggestion", endpoint=_api_prompts_apply_suggestion, methods=["POST"]),
         Route("/api/gateway/models", endpoint=_api_gateway_models, methods=["GET"]),
         Route("/api/gateway/cost-summary", endpoint=_api_gateway_cost_summary, methods=["GET"]),
         Route("/api/context/preview", endpoint=_api_context_preview, methods=["GET"]),
         Route("/api/eval/datasets", endpoint=_api_eval_datasets_create, methods=["POST"]),
         Route("/api/eval/run", endpoint=_api_eval_run, methods=["POST"]),
         Route("/api/eval/scenarios", endpoint=_api_eval_scenarios, methods=["GET"]),
+        # Evaluator Registry
+        Route("/api/eval/evaluators", endpoint=_api_eval_evaluators, methods=["GET"]),
+        Route("/api/eval/evaluate", endpoint=_api_eval_evaluate, methods=["POST"]),
         # Eval History
         Route("/api/eval/history", endpoint=_api_eval_history, methods=["GET"]),
         Route("/api/eval/trend", endpoint=_api_eval_trend, methods=["GET"]),

@@ -8,6 +8,11 @@ import unittest
 from unittest.mock import patch
 
 
+def _model_name(model):
+    """Extract model name string from a Gemini object or pass through strings."""
+    return model.model if hasattr(model, 'model') else model
+
+
 class TestAssessComplexity(unittest.TestCase):
     def test_short_general_returns_fast(self):
         """Short general query with no files → fast."""
@@ -75,7 +80,7 @@ class TestGetModelForTier(unittest.TestCase):
         """Default tier is 'standard'."""
         from data_agent.agent import get_model_for_tier, MODEL_STANDARD
         model = get_model_for_tier("standard")
-        self.assertEqual(model, MODEL_STANDARD)
+        self.assertEqual(_model_name(model), MODEL_STANDARD)
 
     def test_contextvar_override_to_premium(self):
         """ContextVar override to premium."""
@@ -84,7 +89,7 @@ class TestGetModelForTier(unittest.TestCase):
         token = current_model_tier.set("premium")
         try:
             model = get_model_for_tier("standard")
-            self.assertEqual(model, MODEL_PREMIUM)
+            self.assertEqual(_model_name(model), MODEL_PREMIUM)
         finally:
             current_model_tier.reset(token)
 
@@ -95,7 +100,7 @@ class TestGetModelForTier(unittest.TestCase):
         token = current_model_tier.set("fast")
         try:
             model = get_model_for_tier("standard")
-            self.assertEqual(model, MODEL_FAST)
+            self.assertEqual(_model_name(model), MODEL_FAST)
         finally:
             current_model_tier.reset(token)
 
@@ -104,7 +109,7 @@ class TestGetModelForTier(unittest.TestCase):
         """When ContextVar is at default, base_tier='fast' returns MODEL_FAST."""
         from data_agent.agent import get_model_for_tier, MODEL_FAST
         model = get_model_for_tier("fast")
-        self.assertEqual(model, MODEL_FAST)
+        self.assertEqual(_model_name(model), MODEL_FAST)
 
 
 class TestModelTierContextVar(unittest.TestCase):

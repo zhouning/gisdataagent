@@ -1,5 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Papa from 'papaparse';
+import {
+  FolderOpen, Table2, Database, Tag, Link, MapPin, BarChart3,
+  Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
+  History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
+  GitBranch, FileText, Target,
+  LayoutGrid,
+} from 'lucide-react';
 
 import CatalogTab from './datapanel/CatalogTab';
 import HistoryTab from './datapanel/HistoryTab';
@@ -36,61 +43,58 @@ interface DataPanelProps {
 
 type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus';
 
-type GroupKey = 'data' | 'intelligence' | 'ops' | 'orchestration';
+type GroupKey = 'data' | 'intelligence' | 'ops';
 
 interface TabDef {
   key: TabKey;
   label: string;
-  icon: string;
+  icon: ReactNode;
 }
 
-const TAB_GROUPS: { key: GroupKey; label: string; icon: string; tabs: TabDef[] }[] = [
+const ICON_SIZE = 14;
+
+const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[] }[] = [
   {
-    key: 'data', label: '数据', icon: '📊',
+    key: 'data', label: '数据资源', icon: <Database size={16} />,
     tabs: [
-      { key: 'files', label: '文件', icon: '📁' },
-      { key: 'table', label: '表格', icon: '📋' },
-      { key: 'catalog', label: '资产', icon: '🗃️' },
-      { key: 'metadata', label: '元数据', icon: '🏷️' },
-      { key: 'vsources', label: '数据源', icon: '🔗' },
-      { key: 'geojson', label: 'GeoJSON', icon: '✏️' },
-      { key: 'charts', label: '图表', icon: '📈' },
+      { key: 'files', label: '文件', icon: <FolderOpen size={ICON_SIZE} /> },
+      { key: 'table', label: '表格', icon: <Table2 size={ICON_SIZE} /> },
+      { key: 'catalog', label: '资产', icon: <Database size={ICON_SIZE} /> },
+      { key: 'vsources', label: '数据源', icon: <Link size={ICON_SIZE} /> },
+      { key: 'metadata', label: '元数据', icon: <Tag size={ICON_SIZE} /> },
+      { key: 'geojson', label: 'GeoJSON', icon: <MapPin size={ICON_SIZE} /> },
+      { key: 'charts', label: '图表', icon: <BarChart3 size={ICON_SIZE} /> },
+      { key: 'topology', label: '拓扑', icon: <Network size={ICON_SIZE} /> },
     ],
   },
   {
-    key: 'intelligence', label: '智能', icon: '🤖',
+    key: 'intelligence', label: '智能分析', icon: <Brain size={16} />,
     tabs: [
-      { key: 'capabilities', label: '能力', icon: '⚡' },
-      { key: 'tools', label: '工具', icon: '🔧' },
-      { key: 'kb', label: '知识库', icon: '📚' },
-      { key: 'suggestions', label: '建议', icon: '💡' },
-      { key: 'memory', label: '记忆', icon: '🧠' },
-      { key: 'market', label: '市场', icon: '🏪' },
-      { key: 'worldmodel', label: '世界模型', icon: '🌍' },
-      { key: 'causal', label: '因果推理', icon: '⚗️' },
-      { key: 'topology', label: '拓扑', icon: '🕸️' },
+      { key: 'capabilities', label: '能力', icon: <Zap size={ICON_SIZE} /> },
+      { key: 'tools', label: '工具', icon: <Wrench size={ICON_SIZE} /> },
+      { key: 'kb', label: '知识库', icon: <BookOpen size={ICON_SIZE} /> },
+      { key: 'suggestions', label: '建议', icon: <Lightbulb size={ICON_SIZE} /> },
+      { key: 'memory', label: '记忆', icon: <Brain size={ICON_SIZE} /> },
+      { key: 'market', label: '市场', icon: <Store size={ICON_SIZE} /> },
+      { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
+      { key: 'causal', label: '因果推理', icon: <FlaskConical size={ICON_SIZE} /> },
+      { key: 'optimization', label: '优化', icon: <Target size={ICON_SIZE} /> },
     ],
   },
   {
-    key: 'ops', label: '运维', icon: '📈',
+    key: 'ops', label: '平台运营', icon: <Activity size={16} />,
     tabs: [
-      { key: 'history', label: '历史', icon: '🕐' },
-      { key: 'usage', label: '用量', icon: '📉' },
-      { key: 'analytics', label: '分析', icon: '📊' },
-      { key: 'governance', label: '治理', icon: '🛡️' },
-      { key: 'qcmonitor', label: '质检', icon: '📋' },
-      { key: 'alerts', label: '告警', icon: '🔔' },
-      { key: 'observability', label: '追踪', icon: '🔍' },
-      { key: 'messagebus', label: '消息总线', icon: '✉️' },
-      { key: 'tasks', label: '任务', icon: '✅' },
-    ],
-  },
-  {
-    key: 'orchestration', label: '编排', icon: '🔀',
-    tabs: [
-      { key: 'workflows', label: '工作流', icon: '⚙️' },
-      { key: 'templates', label: '模板', icon: '📄' },
-      { key: 'optimization', label: '优化', icon: '🎯' },
+      { key: 'history', label: '历史', icon: <History size={ICON_SIZE} /> },
+      { key: 'usage', label: '用量', icon: <Gauge size={ICON_SIZE} /> },
+      { key: 'analytics', label: '分析', icon: <PieChart size={ICON_SIZE} /> },
+      { key: 'governance', label: '治理', icon: <Shield size={ICON_SIZE} /> },
+      { key: 'qcmonitor', label: '质检', icon: <ClipboardCheck size={ICON_SIZE} /> },
+      { key: 'alerts', label: '告警', icon: <Bell size={ICON_SIZE} /> },
+      { key: 'observability', label: '追踪', icon: <Activity size={ICON_SIZE} /> },
+      { key: 'messagebus', label: '消息总线', icon: <Radio size={ICON_SIZE} /> },
+      { key: 'tasks', label: '任务', icon: <ListTodo size={ICON_SIZE} /> },
+      { key: 'workflows', label: '工作流', icon: <GitBranch size={ICON_SIZE} /> },
+      { key: 'templates', label: '模板', icon: <FileText size={ICON_SIZE} /> },
     ],
   },
 ];
@@ -135,7 +139,6 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
 
   const handleGroupClick = (groupKey: GroupKey) => {
     setActiveGroup(groupKey);
-    // Switch to first tab in group if current tab is not in this group
     const group = TAB_GROUPS.find(g => g.key === groupKey);
     if (group && !group.tabs.some(t => t.key === activeTab)) {
       setActiveTab(group.tabs[0].key);
@@ -147,13 +150,11 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
   return (
     <div className="data-panel">
       <div className="data-panel-header">
-        <svg className="data-panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-        </svg>
+        <LayoutGrid size={18} className="data-panel-header-icon" />
         <span>工作台</span>
       </div>
 
-      {/* Group selector */}
+      {/* Group selector — 3 segments */}
       <div className="data-panel-groups">
         {TAB_GROUPS.map(g => (
           <button

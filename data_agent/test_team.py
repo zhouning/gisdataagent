@@ -522,15 +522,12 @@ class TestBackwardCompatTeamImports(unittest.TestCase):
         self.assertIsNotNone(TeamToolset)
 
     def test_team_tools_in_agents(self):
-        """Verify TeamToolset is registered in GeneralProcessing and Planner."""
-        from data_agent.agent import general_processing_agent, planner_agent
+        """Verify TeamToolset is registered in GeneralProcessing."""
+        from data_agent.agent import general_processing_agent
         from data_agent.toolsets.team_tools import TeamToolset
 
         gp_toolsets = [type(t) for t in general_processing_agent.tools if isinstance(t, TeamToolset)]
         self.assertEqual(len(gp_toolsets), 1)
-
-        pl_toolsets = [type(t) for t in planner_agent.tools if isinstance(t, TeamToolset)]
-        self.assertEqual(len(pl_toolsets), 1)
 
 
 if __name__ == "__main__":

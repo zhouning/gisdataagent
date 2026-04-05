@@ -12,26 +12,26 @@ def test_topology_endpoint_structure():
     # Mock request
     request = Mock()
 
-    # Mock the agent imports
-    with patch('data_agent.api.topology_routes.data_pipeline') as mock_dp, \
-         patch('data_agent.api.topology_routes.governance_pipeline') as mock_gp, \
-         patch('data_agent.api.topology_routes.general_pipeline') as mock_gen:
+    # Mock the agent imports at the source they are imported from
+    with patch('data_agent.agent.data_pipeline') as mock_dp, \
+         patch('data_agent.agent.governance_pipeline') as mock_gp, \
+         patch('data_agent.agent.general_pipeline') as mock_gen:
 
         # Setup mock agents
         mock_dp.name = 'data_pipeline'
         mock_dp.__class__.__name__ = 'SequentialAgent'
         mock_dp.tools = []
-        mock_dp.agents = []
+        mock_dp.sub_agents = []
 
         mock_gp.name = 'governance_pipeline'
         mock_gp.__class__.__name__ = 'SequentialAgent'
         mock_gp.tools = []
-        mock_gp.agents = []
+        mock_gp.sub_agents = []
 
         mock_gen.name = 'general_pipeline'
         mock_gen.__class__.__name__ = 'SequentialAgent'
         mock_gen.tools = []
-        mock_gen.agents = []
+        mock_gen.sub_agents = []
 
         # Call endpoint
         import asyncio
@@ -53,11 +53,17 @@ def test_topology_extracts_tools():
     """Test that topology extracts toolset information."""
     from data_agent.api.topology_routes import _extract_toolset_info
 
-    # Mock toolset
+    # Mock toolset with public callable methods (not _tools list)
     class MockToolset:
         """Mock toolset for testing."""
-        def __init__(self):
-            self._tools = ['tool1', 'tool2', 'tool3']
+        def tool1(self):
+            pass
+
+        def tool2(self):
+            pass
+
+        def tool3(self):
+            pass
 
     toolset = MockToolset()
     info = _extract_toolset_info(toolset)

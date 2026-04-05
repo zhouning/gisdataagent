@@ -1,7 +1,16 @@
 -- Data Versioning: version field + snapshot history (v15.0)
+-- agent_data_catalog may be a VIEW (after migration 048), so target the underlying table.
 
-ALTER TABLE agent_data_catalog ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1;
-ALTER TABLE agent_data_catalog ADD COLUMN IF NOT EXISTS version_note TEXT DEFAULT '';
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='agent_data_catalog_deprecated') THEN
+        ALTER TABLE agent_data_catalog_deprecated ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1;
+        ALTER TABLE agent_data_catalog_deprecated ADD COLUMN IF NOT EXISTS version_note TEXT DEFAULT '';
+    ELSIF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='agent_data_catalog') THEN
+        ALTER TABLE agent_data_catalog ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1;
+        ALTER TABLE agent_data_catalog ADD COLUMN IF NOT EXISTS version_note TEXT DEFAULT '';
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS agent_asset_versions (
     id SERIAL PRIMARY KEY,

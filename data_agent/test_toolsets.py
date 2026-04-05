@@ -31,7 +31,7 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("create_buffer", names)
         self.assertIn("generate_tessellation", names)
         self.assertIn("polygon_neighbors", names)
-        self.assertEqual(len(tools), 18)
+        self.assertEqual(len(tools), 17)
 
     def test_location_toolset(self):
         from data_agent.toolsets.location_tools import LocationToolset
@@ -148,7 +148,7 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("calculate_ndvi", names)
         self.assertIn("download_lulc", names)
         self.assertIn("download_dem", names)
-        self.assertEqual(len(tools), 7)
+        self.assertEqual(len(tools), 13)
 
     def test_team_toolset(self):
         from data_agent.toolsets.team_tools import TeamToolset

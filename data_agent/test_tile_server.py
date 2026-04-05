@@ -71,7 +71,7 @@ class TestTileServerThresholds(unittest.TestCase):
     def test_default_thresholds(self):
         from data_agent.tile_server import MVT_FEATURE_THRESHOLD, FGB_FEATURE_THRESHOLD
         self.assertEqual(MVT_FEATURE_THRESHOLD, 50000)
-        self.assertEqual(FGB_FEATURE_THRESHOLD, 5000)
+        self.assertEqual(FGB_FEATURE_THRESHOLD, 10000)
 
     @patch.dict(os.environ, {"MVT_FEATURE_THRESHOLD": "10000", "FGB_FEATURE_THRESHOLD": "2000"})
     def test_custom_thresholds(self):

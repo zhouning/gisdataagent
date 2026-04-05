@@ -202,37 +202,37 @@ class TestRegistration(unittest.TestCase):
 # TestLifespan
 # ---------------------------------------------------------------------------
 
-class TestLifespan(unittest.TestCase):
+class TestLifespan(unittest.IsolatedAsyncioTestCase):
     """Test the MCP server lifespan context manager."""
 
-    def test_sets_context_vars(self):
+    async def test_sets_context_vars(self):
         from data_agent.mcp_server import gis_lifespan
         from data_agent.user_context import current_user_id, current_session_id, current_user_role
 
         with patch.dict(os.environ, {"MCP_USER": "test_user", "MCP_ROLE": "admin"}):
             mock_server = MagicMock()
-            with gis_lifespan(mock_server):
+            async with gis_lifespan(mock_server):
                 self.assertEqual(current_user_id.get(), "test_user")
                 self.assertEqual(current_session_id.get(), "mcp_test_user")
                 self.assertEqual(current_user_role.get(), "admin")
 
-    def test_default_values(self):
+    async def test_default_values(self):
         from data_agent.mcp_server import gis_lifespan
         from data_agent.user_context import current_user_id, current_user_role
 
         env = {k: v for k, v in os.environ.items() if k not in ("MCP_USER", "MCP_ROLE")}
         with patch.dict(os.environ, env, clear=True):
             mock_server = MagicMock()
-            with gis_lifespan(mock_server):
+            async with gis_lifespan(mock_server):
                 self.assertEqual(current_user_id.get(), "mcp_user")
                 self.assertEqual(current_user_role.get(), "analyst")
 
-    def test_creates_upload_dir(self):
+    async def test_creates_upload_dir(self):
         from data_agent.mcp_server import gis_lifespan
 
         with patch.dict(os.environ, {"MCP_USER": "test_mcp_dir"}):
             mock_server = MagicMock()
-            with gis_lifespan(mock_server):
+            async with gis_lifespan(mock_server):
                 upload_dir = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
                     "uploads", "test_mcp_dir"

@@ -1,13 +1,26 @@
 -- Row Level Security policies for multi-tenant isolation (v15.0)
 -- Prerequisite: app.current_user and app.current_user_role GUCs set per transaction
+-- Note: agent_data_catalog may be a VIEW; use agent_data_assets instead.
 
--- Data Catalog
-ALTER TABLE agent_data_catalog ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS catalog_isolation ON agent_data_catalog;
-CREATE POLICY catalog_isolation ON agent_data_catalog
-    USING (owner_username = current_setting('app.current_user', true)
-           OR is_shared = true
-           OR current_setting('app.current_user_role', true) = 'admin');
+-- Data Assets (backing table for agent_data_catalog view)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='agent_data_assets') THEN
+        ALTER TABLE agent_data_assets ENABLE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS assets_isolation ON agent_data_assets;
+        CREATE POLICY assets_isolation ON agent_data_assets
+            USING (owner_username = current_setting('app.current_user', true)
+                   OR is_shared = true
+                   OR current_setting('app.current_user_role', true) = 'admin');
+    ELSIF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='agent_data_catalog') THEN
+        ALTER TABLE agent_data_catalog ENABLE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS catalog_isolation ON agent_data_catalog;
+        CREATE POLICY catalog_isolation ON agent_data_catalog
+            USING (owner_username = current_setting('app.current_user', true)
+                   OR is_shared = true
+                   OR current_setting('app.current_user_role', true) = 'admin');
+    END IF;
+END $$;
 
 -- Custom Skills
 ALTER TABLE agent_custom_skills ENABLE ROW LEVEL SECURITY;

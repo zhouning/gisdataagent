@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS agent_data_assets (
 
     -- 所有权与权限
     owner_username VARCHAR(100) NOT NULL,
-    team_id INTEGER REFERENCES agent_teams(id),
+    team_id INTEGER,
     is_shared BOOLEAN DEFAULT false,
     access_level VARCHAR(20) DEFAULT 'private',
 
@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS agent_data_assets (
     CONSTRAINT valid_operational_metadata CHECK (jsonb_typeof(operational_metadata) = 'object'),
     CONSTRAINT valid_lineage_metadata CHECK (jsonb_typeof(lineage_metadata) = 'object')
 );
+
+-- Note: team_id FK to agent_teams intentionally omitted.
+-- Adding the FK triggers RLS policy recursion (agent_teams ↔ agent_team_members).
+-- Data integrity for team_id is enforced at the application layer.
 
 -- Step 2: 创建 GIN 索引支持 JSONB 查询
 CREATE INDEX IF NOT EXISTS idx_assets_technical_meta ON agent_data_assets USING GIN (technical_metadata);
@@ -51,77 +55,126 @@ CREATE TABLE IF NOT EXISTS agent_metadata_schemas (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Step 4: 数据迁移 (从 agent_data_catalog 迁移到 agent_data_assets)
-INSERT INTO agent_data_assets (
-    asset_name, display_name, owner_username, team_id, is_shared,
-    technical_metadata, business_metadata, operational_metadata, lineage_metadata,
-    created_at, updated_at
-)
-SELECT
-    asset_name,
-    asset_name as display_name,
-    owner_username,
-    team_id,
-    is_shared,
-    -- 技术元数据
-    jsonb_build_object(
-        'storage', jsonb_build_object(
-            'backend', COALESCE(storage_backend, 'local'),
-            'path', storage_path,
-            'size_bytes', file_size_bytes,
-            'format', format
-        ),
-        'spatial', jsonb_build_object(
-            'extent', spatial_extent,
-            'crs', crs,
-            'srid', srid,
-            'geometry_type', geometry_type
-        ),
-        'structure', jsonb_build_object(
-            'columns', COALESCE(column_schema, '[]'::jsonb),
-            'feature_count', feature_count
-        ),
-        'temporal', jsonb_build_object(
-            'extent', temporal_extent
+-- Step 4: 数据迁移 (从 agent_data_catalog_deprecated 或 agent_data_catalog 表迁移)
+-- Only migrate if source is a real table (not a view)
+DO $$
+BEGIN
+    -- Prefer deprecated table (post-048 state)
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='agent_data_catalog_deprecated') THEN
+        INSERT INTO agent_data_assets (
+            asset_name, display_name, owner_username, is_shared,
+            technical_metadata, business_metadata, operational_metadata, lineage_metadata,
+            created_at, updated_at
         )
-    ),
-    -- 业务元数据
-    jsonb_build_object(
-        'semantic', jsonb_build_object(
-            'description', description,
-            'keywords', COALESCE(tags, '[]'::jsonb)
-        ),
-        'classification', jsonb_build_object(
-            'domain', domain,
-            'theme', theme,
-            'category', asset_type
+        SELECT
+            asset_name,
+            asset_name as display_name,
+            owner_username,
+            is_shared,
+            jsonb_build_object(
+                'storage', jsonb_build_object(
+                    'backend', COALESCE(storage_backend, 'local'),
+                    'path', COALESCE(local_path, cloud_key, ''),
+                    'size_bytes', file_size_bytes,
+                    'format', format
+                ),
+                'spatial', jsonb_build_object(
+                    'extent', spatial_extent,
+                    'crs', crs,
+                    'srid', srid
+                ),
+                'structure', jsonb_build_object(
+                    'feature_count', feature_count
+                )
+            ),
+            jsonb_build_object(
+                'semantic', jsonb_build_object(
+                    'description', description,
+                    'keywords', COALESCE(tags, '[]'::jsonb)
+                ),
+                'classification', jsonb_build_object(
+                    'category', asset_type
+                )
+            ),
+            jsonb_build_object(
+                'creation', jsonb_build_object(
+                    'tool', creation_tool
+                ),
+                'version', jsonb_build_object(
+                    'version', COALESCE(version, 1),
+                    'is_latest', true
+                )
+            ),
+            jsonb_build_object(
+                'upstream', jsonb_build_object(
+                    'asset_ids', COALESCE(source_assets, '[]'::jsonb)
+                )
+            ),
+            created_at,
+            updated_at
+        FROM agent_data_catalog_deprecated
+        WHERE NOT EXISTS (
+            SELECT 1 FROM agent_data_assets WHERE agent_data_assets.asset_name = agent_data_catalog_deprecated.asset_name
+        );
+    -- Fallback: original table (pre-048 state)
+    ELSIF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='agent_data_catalog') THEN
+        INSERT INTO agent_data_assets (
+            asset_name, display_name, owner_username, is_shared,
+            technical_metadata, business_metadata, operational_metadata, lineage_metadata,
+            created_at, updated_at
         )
-    ),
-    -- 操作元数据
-    jsonb_build_object(
-        'source', jsonb_build_object(
-            'type', 'unknown'
-        ),
-        'creation', jsonb_build_object(
-            'tool', creation_tool
-        ),
-        'version', jsonb_build_object(
-            'version', version,
-            'is_latest', true
-        )
-    ),
-    -- 血缘元数据
-    jsonb_build_object(
-        'upstream', jsonb_build_object(
-            'asset_ids', COALESCE(source_assets, '[]'::jsonb)
-        )
-    ),
-    created_at,
-    updated_at
-FROM agent_data_catalog
-WHERE NOT EXISTS (
-    SELECT 1 FROM agent_data_assets WHERE agent_data_assets.asset_name = agent_data_catalog.asset_name
-);
+        SELECT
+            asset_name,
+            asset_name as display_name,
+            owner_username,
+            is_shared,
+            jsonb_build_object(
+                'storage', jsonb_build_object(
+                    'backend', COALESCE(storage_backend, 'local'),
+                    'path', COALESCE(local_path, cloud_key, ''),
+                    'size_bytes', file_size_bytes,
+                    'format', format
+                ),
+                'spatial', jsonb_build_object(
+                    'extent', spatial_extent,
+                    'crs', crs,
+                    'srid', srid
+                ),
+                'structure', jsonb_build_object(
+                    'feature_count', feature_count
+                )
+            ),
+            jsonb_build_object(
+                'semantic', jsonb_build_object(
+                    'description', description,
+                    'keywords', COALESCE(tags, '[]'::jsonb)
+                ),
+                'classification', jsonb_build_object(
+                    'category', asset_type
+                )
+            ),
+            jsonb_build_object(
+                'creation', jsonb_build_object(
+                    'tool', creation_tool
+                ),
+                'version', jsonb_build_object(
+                    'version', COALESCE(version, 1),
+                    'is_latest', true
+                )
+            ),
+            jsonb_build_object(
+                'upstream', jsonb_build_object(
+                    'asset_ids', COALESCE(source_assets, '[]'::jsonb)
+                )
+            ),
+            created_at,
+            updated_at
+        FROM agent_data_catalog
+        WHERE NOT EXISTS (
+            SELECT 1 FROM agent_data_assets WHERE agent_data_assets.asset_name = agent_data_catalog.asset_name
+        );
+    END IF;
+END $$;
 
 -- Step 5: 预置元数据模式
 INSERT INTO agent_metadata_schemas (domain, schema_definition) VALUES

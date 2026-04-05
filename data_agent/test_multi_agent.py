@@ -134,29 +134,27 @@ class TestPlannerIntegration:
     def test_planner_has_specialized_agents(self):
         from data_agent.agent import planner_agent
         sub_names = [a.name for a in planner_agent.sub_agents]
-        assert "DataEngineerAgent" in sub_names
-        assert "AnalystAgent" in sub_names
-        assert "VisualizerAgent" in sub_names
-        assert "RemoteSensingAgent" in sub_names
-
-    def test_planner_has_multi_agent_workflows(self):
-        from data_agent.agent import planner_agent
-        sub_names = [a.name for a in planner_agent.sub_agents]
-        assert "FullAnalysis" in sub_names
-        assert "RSAnalysis" in sub_names
-
-    def test_planner_retains_original_sub_agents(self):
-        from data_agent.agent import planner_agent
-        sub_names = [a.name for a in planner_agent.sub_agents]
-        # Original 5 + 2 workflows + 4 new + 2 new workflows = 13
         assert "PlannerExplorer" in sub_names
         assert "PlannerProcessor" in sub_names
         assert "PlannerAnalyzer" in sub_names
         assert "PlannerVisualizer" in sub_names
         assert "PlannerReporter" in sub_names
-        assert "ExploreAndProcess" in sub_names
-        assert "AnalyzeAndVisualize" in sub_names
-        assert len(sub_names) == 13
+
+    def test_planner_has_5_sub_agents(self):
+        from data_agent.agent import planner_agent
+        sub_names = [a.name for a in planner_agent.sub_agents]
+        assert len(sub_names) == 5
+
+    def test_planner_retains_original_sub_agents(self):
+        from data_agent.agent import planner_agent
+        sub_names = [a.name for a in planner_agent.sub_agents]
+        # Original 5 Planner* agents
+        assert "PlannerExplorer" in sub_names
+        assert "PlannerProcessor" in sub_names
+        assert "PlannerAnalyzer" in sub_names
+        assert "PlannerVisualizer" in sub_names
+        assert "PlannerReporter" in sub_names
+        assert len(sub_names) == 5
 
     def test_planner_has_operator_toolset(self):
         """Planner should have OperatorToolset for semantic operators."""

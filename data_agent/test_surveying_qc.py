@@ -1,4 +1,5 @@
 """Tests for surveying QC features — report generator, precision tools, standards."""
+import asyncio
 import os
 import tempfile
 import unittest
@@ -71,7 +72,7 @@ class TestReportToolset(unittest.TestCase):
     def test_tool_count(self):
         from data_agent.toolsets.report_tools import ReportToolset
         ts = ReportToolset()
-        tools = ts.get_tools()
+        tools = asyncio.run(ts.get_tools())
         self.assertEqual(len(tools), 3)
         names = [t.name for t in tools]
         self.assertIn("list_report_templates", names)
@@ -89,8 +90,8 @@ class TestPrecisionToolset(unittest.TestCase):
     def test_tool_count(self):
         from data_agent.toolsets.precision_tools import PrecisionToolset
         ts = PrecisionToolset()
-        tools = ts.get_tools()
-        self.assertEqual(len(tools), 4)
+        tools = asyncio.run(ts.get_tools())
+        self.assertEqual(len(tools), 5)
         names = [t.name for t in tools]
         self.assertIn("compare_coordinates", names)
         self.assertIn("check_topology_integrity", names)

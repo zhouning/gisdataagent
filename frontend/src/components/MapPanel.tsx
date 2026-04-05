@@ -82,11 +82,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const layerGroupsRef = useRef<Map<string, L.Layer>>(new Map());
   const baseTileRef = useRef<L.TileLayer | null>(null);
-  const [activeBasemap, setActiveBasemap] = useState('CartoDB Positron');
+  const [activeBasemap, setActiveBasemap] = useState('ESRI Satellite');
   const [loadedLayers, setLoadedLayers] = useState<MapLayer[]>([]);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
   const [showLayerControl, setShowLayerControl] = useState(false);
-  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
 
   // Annotation state
   const [annotationMode, setAnnotationMode] = useState(false);
@@ -140,8 +140,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       zoomControl: true,
     });
 
-    baseTileRef.current = L.tileLayer(BASEMAPS['CartoDB Positron'], {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    baseTileRef.current = L.tileLayer(BASEMAPS['ESRI Satellite'], {
+      attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community',
       maxZoom: 19,
     }).addTo(map);
 
@@ -448,6 +448,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
           if (!geojsonData) continue;
 
+          // Switch to 3D if too many features to avoid crashing Leaflet
+          if (geojsonData.features && geojsonData.features.length > 2000) {
+            layerConfig.geojsonData = geojsonData; // Cache it so Map3DView doesn't have to re-fetch
+            setViewMode('3d');
+            return; // Abort 2D rendering
+          }
+
           const leafletLayer = createLeafletLayer(layerConfig, geojsonData);
           if (leafletLayer) {
             const isVisible = layerConfig.visible !== false;
@@ -486,7 +493,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   useEffect(() => {
     const has3D = layers.some(l =>
       l.type === 'extrusion' || l.type === 'column' || l.type === 'arc' ||
-      l.type === 'mvt' || l.extruded || l.elevation_column
+      l.type === 'mvt' || l.extruded || l.elevation_column || 
+      (l.geojsonData && l.geojsonData.features && l.geojsonData.features.length > 2000)
     );
     if (has3D) setViewMode('3d');
   }, [layers]);
@@ -773,7 +781,6 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             if (newMode) {
               mapRef.current.addLayer(drawnItemsRef.current);
               if (!drawControlRef.current) {
-                const L_draw = require('leaflet-draw');
                 drawControlRef.current = new (L.Control as any).Draw({
                   edit: { featureGroup: drawnItemsRef.current },
                   draw: { marker: true, polyline: true, polygon: true, rectangle: true, circle: false, circlemarker: false },

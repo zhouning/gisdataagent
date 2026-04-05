@@ -743,9 +743,9 @@ class TestMcpRouteRegistration(unittest.TestCase):
 
         self.assertIn("/api/mcp/servers", paths)
         self.assertIn("/api/mcp/tools", paths)
-        self.assertIn("/api/mcp/servers/{name}/toggle", paths)
-        self.assertIn("/api/mcp/servers/{name}/reconnect", paths)
-        self.assertIn("/api/mcp/servers/{name}", paths)  # PUT + DELETE
+        self.assertIn("/api/mcp/servers/{name:path}/toggle", paths)
+        self.assertIn("/api/mcp/servers/{name:path}/reconnect", paths)
+        self.assertIn("/api/mcp/servers/{name:path}", paths)  # PUT + DELETE
 
 
 # ---------------------------------------------------------------------------
@@ -1044,7 +1044,7 @@ class TestMcpUserIsolation(unittest.TestCase):
         paths = [r.path for r in routes]
 
         self.assertIn("/api/mcp/servers/mine", paths)
-        self.assertIn("/api/mcp/servers/{name}/share", paths)
+        self.assertIn("/api/mcp/servers/{name:path}/share", paths)
 
     def test_add_server_sets_owner(self):
         """add_server persists owner_username."""

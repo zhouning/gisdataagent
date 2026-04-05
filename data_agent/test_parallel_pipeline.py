@@ -8,6 +8,11 @@ parallelization, and _make_semantic_prefetch factory.
 import unittest
 
 
+def _model_name(model):
+    """Extract model name string from a Gemini object or pass through strings."""
+    return model.model if hasattr(model, 'model') else model
+
+
 # ---------------------------------------------------------------------------
 # Optimization Pipeline — ParallelDataIngestion
 # ---------------------------------------------------------------------------
@@ -58,7 +63,7 @@ class TestSemanticPreFetchAgent(unittest.TestCase):
 
     def test_uses_fast_model(self):
         from data_agent.agent import semantic_prefetch_agent, MODEL_FAST
-        self.assertEqual(semantic_prefetch_agent.model, MODEL_FAST)
+        self.assertEqual(_model_name(semantic_prefetch_agent.model), MODEL_FAST)
 
     def test_output_key(self):
         from data_agent.agent import semantic_prefetch_agent

@@ -25,8 +25,11 @@ EXPECTED_SKILLS = [
     "land-fragmentation",
     "multi-source-fusion",
     "postgis-analysis",
+    "satellite-imagery",
     "site-selection",
+    "skill-creator",
     "spatial-clustering",
+    "spectral-analysis",
     "surveying-qc",
     "team-collaboration",
     "thematic-mapping",
@@ -70,10 +73,11 @@ class TestSkillDirectoryStructure(unittest.TestCase):
             self.assertTrue(ref_dir.is_dir(), f"Missing references/: {name}")
 
     def test_no_extra_skill_dirs(self):
-        """Only expected skill dirs (excluding __pycache__, __init__.py)."""
+        """Only expected skill dirs (excluding __pycache__, __init__.py, dirs without SKILL.md)."""
         actual = sorted(
             p.name for p in SKILLS_DIR.iterdir()
             if p.is_dir() and not p.name.startswith("__")
+            and (p / "SKILL.md").exists()
         )
         self.assertEqual(actual, EXPECTED_SKILLS)
 
@@ -151,7 +155,7 @@ class TestSkillLoading(unittest.TestCase):
     def test_load_all_skills_count(self):
         from data_agent.skills import load_all_skills
         skills = load_all_skills()
-        self.assertEqual(len(skills), 21)
+        self.assertEqual(len(skills), 24)
 
     def test_load_all_skills_names(self):
         from data_agent.skills import load_all_skills
@@ -214,7 +218,7 @@ class TestSkillToolsetIntegration(unittest.TestCase):
         from data_agent.toolsets.skill_bundles import build_all_skills_toolset
         ts = build_all_skills_toolset()
         # Access the skills list directly
-        self.assertEqual(len(ts._skills), 21)
+        self.assertEqual(len(ts._skills), 24)
 
     def test_single_skill_toolset_count(self):
         from data_agent.toolsets.skill_bundles import build_skill_toolset
@@ -238,18 +242,18 @@ class TestPlannerSkillIntegration(unittest.TestCase):
         from google.adk.tools.skill_toolset import SkillToolset
         for t in planner_agent.tools:
             if isinstance(t, SkillToolset):
-                self.assertEqual(len(t._skills), 21)
+                self.assertEqual(len(t._skills), 24)
                 return
         self.fail("No SkillToolset found in Planner tools")
 
     def test_planner_still_has_other_toolsets(self):
-        """Planner should retain Memory, Admin, Team, DataLake toolsets."""
+        """Planner should retain Memory, NL2SQL, Operator, ToolEvolution toolsets."""
         from data_agent.agent import planner_agent
         tool_types = [type(t).__name__ for t in planner_agent.tools]
         self.assertIn("MemoryToolset", tool_types)
-        self.assertIn("AdminToolset", tool_types)
-        self.assertIn("TeamToolset", tool_types)
-        self.assertIn("DataLakeToolset", tool_types)
+        self.assertIn("NL2SQLToolset", tool_types)
+        self.assertIn("OperatorToolset", tool_types)
+        self.assertIn("ToolEvolutionToolset", tool_types)
 
     def test_pipeline_agents_no_skill_toolset(self):
         """Pipeline agents (narrow experts) should NOT have SkillToolset."""

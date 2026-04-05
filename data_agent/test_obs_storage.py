@@ -203,15 +203,17 @@ class TestResolvePathFallback(unittest.TestCase):
 
 class TestSyncToObs(unittest.TestCase):
 
-    @patch('data_agent.obs_storage.upload_file_smart')
-    @patch('data_agent.obs_storage.is_obs_configured', return_value=True)
+    @patch('data_agent.storage_manager.get_storage_manager')
     @patch('data_agent.user_context.current_user_id')
-    def test_sync_calls_upload(self, mock_uid, mock_configured, mock_upload):
+    def test_sync_calls_upload(self, mock_uid, mock_get_sm):
         mock_uid.get.return_value = 'admin'
-        mock_upload.return_value = ['admin/test.csv']
+        mock_sm = MagicMock()
+        mock_sm.cloud_available = True
+        mock_sm.store.return_value = 's3://test-bucket/admin/test.csv'
+        mock_get_sm.return_value = mock_sm
         from data_agent.gis_processors import sync_to_obs
         sync_to_obs('/tmp/test.csv')
-        mock_upload.assert_called_once_with('/tmp/test.csv', 'admin')
+        mock_sm.store.assert_called_once_with('/tmp/test.csv', user_id='admin')
 
     @patch('data_agent.obs_storage.is_obs_configured', return_value=False)
     def test_sync_skips_when_not_configured(self, mock_configured):

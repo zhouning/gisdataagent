@@ -35,12 +35,13 @@ class TestToolsetRegistry(unittest.TestCase):
             "ChartToolset", "GovernanceToolset", "DataCleaningToolset",
             "SparkToolset", "StorageToolset", "ReportToolset",
             "PrecisionToolset", "CausalInferenceToolset", "DreamerToolset",
+            "ToolEvolutionToolset",
         }
         self.assertEqual(TOOLSET_NAMES, expected)
 
     def test_registry_count(self):
         from data_agent.custom_skills import TOOLSET_NAMES
-        self.assertEqual(len(TOOLSET_NAMES), 33)
+        self.assertEqual(len(TOOLSET_NAMES), 34)
 
     def test_registry_proxy_contains(self):
         from data_agent.custom_skills import TOOLSET_REGISTRY

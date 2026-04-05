@@ -179,11 +179,15 @@ class TestEndToEndQcWorkflow(unittest.TestCase):
         """QC workflow templates should load correctly."""
         from data_agent.workflow_engine import list_qc_templates
         templates = list_qc_templates()
-        self.assertEqual(len(templates), 3)
+        self.assertEqual(len(templates), 7)
         template_ids = {t["id"] for t in templates}
         self.assertIn("surveying_qc_standard", template_ids)
         self.assertIn("surveying_qc_quick", template_ids)
         self.assertIn("surveying_qc_full", template_ids)
+        self.assertIn("qc_dlg", template_ids)
+        self.assertIn("qc_dom", template_ids)
+        self.assertIn("qc_dem", template_ids)
+        self.assertIn("qc_3dmodel", template_ids)
 
     def test_qc_report_generation(self):
         """QC report should generate a valid Word document."""

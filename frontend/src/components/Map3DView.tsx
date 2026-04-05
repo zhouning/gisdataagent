@@ -43,6 +43,11 @@ interface TooltipInfo {
 }
 
 const BASEMAP_STYLES: Record<string, any> = {
+  'ESRI Satellite': {
+    version: 8, name: 'Esri',
+    sources: { esri: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } },
+    layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
+  },
   'CartoDB Positron': 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   'CartoDB Dark': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   'OpenStreetMap': 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
@@ -344,13 +349,14 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
   return (
     <div className="map-3d-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
       <DeckGL
+        key={`${center[0]}-${center[1]}-${zoom}`}
         initialViewState={initialViewState}
         controller={true}
         layers={deckLayers}
         style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
       >
         <Map
-          mapStyle={BASEMAP_STYLES[basemap || 'CartoDB Positron'] || BASEMAP_STYLES['CartoDB Positron']}
+          mapStyle={BASEMAP_STYLES[basemap || 'ESRI Satellite'] || BASEMAP_STYLES['ESRI Satellite']}
           style={{ width: '100%', height: '100%' }}
         />
       </DeckGL>

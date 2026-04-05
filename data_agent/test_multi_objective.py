@@ -116,7 +116,7 @@ class TestMultiObjectiveTool(unittest.TestCase):
 
     def test_tool_count(self):
         from data_agent.toolsets.analysis_tools import _SYNC_FUNCS
-        self.assertEqual(len(_SYNC_FUNCS), 2)  # ffi + drl_multi_objective
+        self.assertEqual(len(_SYNC_FUNCS), 3)  # ffi + drl_multi_objective + list_drl_scenarios
 
 
 if __name__ == "__main__":

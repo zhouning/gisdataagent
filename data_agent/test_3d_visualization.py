@@ -248,7 +248,7 @@ class TestVisualizationToolset3D(unittest.TestCase):
 
     def test_toolset_tool_count(self):
         from data_agent.toolsets.visualization_tools import _ALL_FUNCS
-        self.assertEqual(len(_ALL_FUNCS), 10)
+        self.assertEqual(len(_ALL_FUNCS), 11)
 
 
 # ---------------------------------------------------------------------------

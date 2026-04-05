@@ -1,20 +1,20 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v17.1
+# GIS Data Agent (ADK Edition) v18.5
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Workbench with 4 groups, 26 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 26 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **241 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **254 REST API endpoints**.
 
-**v17.1**: Vector tile rendering + DRL optimization E2E hardening — **3-tier adaptive data delivery** (GeoJSON ≤10K / FlatGeobuf 10K-50K / MVT >50K), Martin vector tile service integration, 5 tile REST endpoints; **3 critical bug fixes**: PostgreSQL reserved-word table names crashing schema discovery (`quote_ident` + SQLAlchemy `text()` wrapping), LLM-injected `LIMIT 1000` silently truncating full-table queries (code-level auto-stripping), FGB threshold too low causing blank maps for mid-size datasets; DRL optimization demo scripts (20-min full walkthrough + 15-min frontend tab operation guide).
+**v18.5**: **Platform Capability Enhancement** — NL2Workflow (natural language → executable workflow DAG, benchmarked against Huawei AgentArts), automatic prompt optimization (bad case collection → failure pattern analysis → prompt improvement → HITL confirmation), 15 built-in evaluators (quality/safety/performance/accuracy, pluggable registry); **Palantir-inspired UI Redesign** — Deep Intelligence dark theme (#0B0F19 base), Inter + JetBrains Mono fonts, Lucide SVG icon system, DataPanel 3-group restructure (Data Resources / Intelligent Analysis / Platform Operations), split-screen login page, 48px AppNav icon rail.
 
-**v17.0**: Multimodal Fusion v2.0 Enhancement — 4 core modules upgrading the fusion engine: **Temporal Alignment** (multi-timezone standardization + linear/nearest/spline interpolation + trajectory fusion + multi-period change detection), **Semantic Enhancement** (GIS domain ontology reasoning with 15 equivalence groups + LLM field understanding + knowledge graph integration), **Conflict Resolution** (6 strategies: source_priority/latest_wins/voting/llm_arbitration/spatial_proximity/user_defined + confidence scoring + source annotation), **Explainability** (per-feature metadata injection + quality heatmap + fusion lineage tracing + decision explanation). 84 new tests, ~3700 lines of new code, 5 new REST APIs, FusionQualityTab frontend component.
+**v18.0**: **Application-layer Database Optimization** — Connection pool 5→20 + asyncpg async engine (min=5, max=20) + read-write split interface ready (Huawei Cloud RDS read replica) + materialized views (mv_pipeline_analytics + mv_token_usage_daily) + connection pool Prometheus monitoring (4 Gauges + query latency Histogram).
 
-**v16.0**: SIGMOD 2026 L3 Conditional Autonomy — Semantic operator layer (4 high-level operators), multi-agent collaboration (4 specialist agents + coordinator), plan refinement & error recovery (5-strategy chain), Guardrails policy engine (YAML-driven tool-level access control), remote sensing agent Phase 1 (15+ spectral indices + experience pool), tool evolution (unified metadata registry + failure-driven discovery), AI-assisted Skill creation (natural language → Skill config generation). Frontend additions: QC report generation UI (4 templates → Word), data standards browser, tool rule management panel.
+**v17.1**: Vector tile rendering + DRL optimization E2E hardening — **3-tier adaptive data delivery** (GeoJSON ≤10K / FlatGeobuf 10K-50K / MVT >50K), Martin vector tile service integration, 5 tile REST endpoints.
 
-**v15.8**: BCG Enterprise Platform Capabilities — Based on BCG's "Building Effective Enterprise Agents" framework, adds 6 platform capabilities: Prompt Registry (environment-isolated versioning), Model Gateway (task-aware routing + cost optimization), Context Manager (pluggable providers + token budget), Eval Scenario Framework (scenario-specific metrics + golden datasets), enhanced token tracking (scenario/project attribution), enhanced eval history (scenario metrics). 8 new REST endpoints, 12/12 tests passing, zero breaking changes.
+**v17.0**: Multimodal Fusion v2.0 Enhancement — 4 core modules: **Temporal Alignment** + **Semantic Enhancement** (ontology 15 groups + LLM + KG) + **Conflict Resolution** (6 strategies) + **Explainability** (heatmap + lineage). 84 new tests.
 
-**v15.7**: Surveying QC Agent System — Defect taxonomy (30 codes, GB/T 24356), SLA workflow engine (7 templates for DLG/DOM/DEM/3D models), ArcGIS Pro dual-engine MCP (basic arcpy + DL arcgis.learn 2.4.2), 4 independent subsystems (CV detection / CAD parser / ArcGIS MCP / reference data), real-time monitoring dashboard, alert rule engine, human review workflow.
+**v16.0**: SIGMOD 2026 L3 Conditional Autonomy — Semantic operators (4), multi-agent collaboration (4 specialists + coordinator), plan refinement & error recovery (5 strategies), Guardrails policy engine, remote sensing Phase 1 (15+ spectral indices), tool evolution, AI-assisted Skill creation.
 
 ## 📚 Official Technical Documentation
 
@@ -29,21 +29,24 @@ This project provides industrial-grade technical documentation written in the **
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 4000+ tests, 144 test files |
+| Test Coverage | 3300+ tests, 148 test files |
 | Toolsets | 40 BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools), 5 SkillBundle, 240+ tools |
-| ADK Skills | 24 scenario skills (incl. surveying-qc, skill-creator) + DB-driven custom Skills + User Tools |
-| REST API | 241 endpoints |
+| ADK Skills | 26 scenario skills (incl. surveying-qc, skill-creator) + DB-driven custom Skills + User Tools |
+| REST API | 254 endpoints |
+| DB Migrations | 59 SQL migrations |
+| Data Agent Level | **SIGMOD 2026 L3** (Full Conditional Autonomy) |
+| NL2Workflow | Natural language → workflow DAG (Kahn topological sort + cycle detection + 23 Skill metadata matching) |
+| Evaluators | 15 built-in (Quality 5 + Safety 3 + Performance 3 + Accuracy 4), pluggable registry |
+| Prompt Optimization | 3-source bad case collection + LLM failure analysis + prompt improvement + HITL confirmation |
+| UI Theme | Palantir-inspired Deep Intelligence dark theme + Lucide SVG icons |
 | BCG Platform | 6 modules: Prompt Registry + Model Gateway + Context Manager + Eval Scenario + Token Tracking + Eval History |
+| DB Optimization | Pool 20+30 + asyncpg async + read-write split ready + materialized views + Prometheus monitoring |
+| Vector Tiles | 3-tier adaptive (GeoJSON/FlatGeobuf/MVT) + Martin + asset coding DA-{TYPE}-{SRC}-{YEAR}-{SEQ} |
 | Causal Inference | Three-angle system: A (GeoFM statistical 6 tools) + B (LLM reasoning 4 tools) + C (Causal world model 4 tools), 82 tests |
 | World Model | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 scenarios + timeline animation |
 | DRL + World Model | Dreamer-style integration: embedding look-ahead + scenario encoding + auxiliary reward |
 | MCP Server | v2.0 — 36+ tools exposed (GIS primitives + high-level metadata + pipeline execution) |
-| Agent Plugins | 5 (CostGuard, GISToolRetry, Provenance, HITLApproval, GuardrailsPlugin) |
-| Guardrails | 4 (InputLength, SQLInjection, OutputSanitizer, Hallucination) |
-| ADK Agent Types | SequentialAgent + LoopAgent + ParallelAgent |
-| DRL Scenarios | 5 (Farmland / Urban Green / Facility Siting / Transport Network / Comprehensive) + NSGA-II Pareto |
 | Design Pattern Coverage | **21/21 (100%)** |
-| Streaming | Batch + SSE streaming |
 
 ## Core Capabilities
 
