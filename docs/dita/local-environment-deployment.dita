@@ -56,7 +56,7 @@ npm install
 npm run dev</codeblock>
                 </stepxmp>
                 <stepresult>
-                    <p>前端启动后，默认在 <codeph>http://localhost:5173</codeph> 可访问系统。首次运行时使用默认管理员账号 <uicontrol>admin</uicontrol>（密码 <uicontrol>admin123</uicontrol>，系统首次启动时自动创建种子用户），建议登录后立即修改密码。注意：数据库必须可用才能登录，DB 不可用时认证将被拒绝。</p>
+                    <p>前端启动后，默认在 <codeph>http://localhost:5173</codeph> 可访问系统。登录使用默认账号 <uicontrol>admin</uicontrol> 和密码 <uicontrol>admin123</uicontrol>。</p>
                     <fig id="react-frontend-dashboard">
                         <title>React Frontend Dashboard</title>
                         <image href="images/react-frontend-dashboard.png" placement="break" scale="80"/>
