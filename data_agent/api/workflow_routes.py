@@ -324,11 +324,61 @@ async def qc_template_create_and_execute(request: Request):
     }, status_code=201)
 
 
+async def workflow_generate(request: Request):
+    """POST /api/workflows/generate — generate workflow DAG from natural language."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    description = (body.get("description") or "").strip()
+    if not description:
+        return JSONResponse({"error": "description is required"}, status_code=400)
+    auto_save = bool(body.get("auto_save", False))
+
+    from ..nl2workflow import generate_workflow, WorkflowValidationError
+
+    try:
+        workflow = await generate_workflow(description, user_id=username)
+    except WorkflowValidationError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    except Exception as e:
+        logger.error("NL2Workflow generation failed: %s", e)
+        return JSONResponse({"error": f"Generation failed: {e}"}, status_code=500)
+
+    explanation = workflow.pop("_explanation", "")
+
+    result = {"workflow": workflow, "explanation": explanation}
+
+    if auto_save:
+        from ..workflow_engine import create_workflow
+        wf_id = create_workflow(
+            name=workflow.get("workflow_name", "nl-generated"),
+            description=workflow.get("description", ""),
+            steps=workflow.get("steps", []),
+            parameters=workflow.get("parameters", {}),
+        )
+        if wf_id is None:
+            return JSONResponse(
+                {"error": "Workflow generated but failed to save"},
+                status_code=500,
+            )
+        result["saved_id"] = wf_id
+
+    return JSONResponse(result, status_code=201)
+
+
 def get_workflow_routes() -> list:
     """Return Route objects for workflow endpoints."""
     return [
         Route("/api/workflows", workflows_list, methods=["GET"]),
         Route("/api/workflows", workflows_create, methods=["POST"]),
+        Route("/api/workflows/generate", workflow_generate, methods=["POST"]),
         Route("/api/workflows/qc-templates", qc_templates_list, methods=["GET"]),
         Route("/api/workflows/from-template", qc_template_create, methods=["POST"]),
         Route("/api/workflows/from-template-and-execute", qc_template_create_and_execute, methods=["POST"]),

@@ -66,7 +66,7 @@ async def query_virtual_source_tool(
     source_name: str,
     bbox: str = "",
     filter_expr: str = "",
-    limit: str = "1000",
+    limit: str = "100000",
 ) -> str:
     """查询指定虚拟数据源，返回远程数据摘要。支持WFS/STAC/OGC API/WMS/ArcGIS REST/自定义API。
 
@@ -74,7 +74,7 @@ async def query_virtual_source_tool(
         source_name: 虚拟数据源名称。
         bbox: 空间范围过滤（逗号分隔：minx,miny,maxx,maxy），可选。
         filter_expr: CQL过滤条件（WFS）或时间范围（STAC），可选。
-        limit: 最大返回记录数，默认1000。
+        limit: 最大返回记录数，默认100000。
 
     Returns:
         JSON格式的查询结果摘要（记录数、列名、前5条预览）。WMS类型返回地图图层配置。
@@ -88,7 +88,7 @@ async def query_virtual_source_tool(
             return err
 
         bbox_list = [float(x) for x in bbox.split(",") if x.strip()] if bbox else None
-        max_features = int(limit) if limit else 1000
+        max_features = int(limit) if limit else 100000
 
         result = await query_virtual_source(
             source, bbox=bbox_list, filter_expr=filter_expr or None, limit=max_features,

@@ -193,7 +193,7 @@ planner_instruction: |
   5. **方案遵循**：如果 prompt 中包含 [分析方案] 段落，严格按照方案步骤执行，不要偏离。
 
   ## 决策规则
-  - "查表/查数据" → PlannerExplorer
+  - "查表/查数据/查询文件/我有哪些数据" → PlannerExplorer (让其调用 list_user_files 和 list_tables)
   - "分析数据质量" → PlannerExplorer
   - "缓冲区/裁剪/叠加" → 先 PlannerExplorer 确认数据 → PlannerProcessor
   - "治理/修复" → PlannerExplorer → PlannerProcessor → PlannerReporter

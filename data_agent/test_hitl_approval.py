@@ -97,16 +97,16 @@ class TestRiskRegistry:
 
     def test_all_entries_have_required_fields(self):
         registry = get_risk_registry()
-        for name, entry in registry.items():
-            assert "level" in entry, f"{name} missing 'level'"
-            assert "description" in entry, f"{name} missing 'description'"
-            assert isinstance(entry["level"], RiskLevel), f"{name} level not RiskLevel"
+        for entry in registry:
+            assert "tool_name" in entry, f"Entry missing 'tool_name': {entry}"
+            assert "level" in entry, f"{entry['tool_name']} missing 'level'"
+            assert "description" in entry, f"{entry['tool_name']} missing 'description'"
 
     def test_registry_returns_copy(self):
         r1 = get_risk_registry()
         r2 = get_risk_registry()
-        r1["fake_tool"] = {"level": RiskLevel.LOW}
-        assert "fake_tool" not in r2
+        r1.append({"tool_name": "fake_tool", "level": "LOW"})
+        assert len(r1) != len(r2)
 
 
 # ===================================================================

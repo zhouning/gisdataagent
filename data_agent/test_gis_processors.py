@@ -1,6 +1,7 @@
 import unittest
 import os
 import sys
+import json
 import shutil
 import geopandas as gpd
 from shapely.geometry import Point, Polygon, box
@@ -149,8 +150,8 @@ class TestGISProcessors(unittest.TestCase):
             "DLMC": {"type": "string", "allowed": ["水田", "旱地"]},
             "KSL": {"type": "float"}
         }
-        
-        result = check_field_standards(std_err_path, schema)
+
+        result = check_field_standards(std_err_path, json.dumps(schema, ensure_ascii=False))
         
         # Verify
         self.assertFalse(result["is_standard"])

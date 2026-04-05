@@ -951,6 +951,8 @@ async def _system_info_endpoint(request: Request):
 async def _metrics_endpoint(request: Request):
     """Prometheus metrics endpoint for scraping."""
     from starlette.responses import Response as StarletteResponse
+    from .observability import collect_db_pool_metrics
+    collect_db_pool_metrics()
     return StarletteResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

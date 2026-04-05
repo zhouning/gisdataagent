@@ -42,42 +42,42 @@ class TestRouterResponseParsing(unittest.TestCase):
     def test_governance_intent(self, mock_client):
         _setup_mock_client(mock_client, "GOVERNANCE", "用户请求数据治理")
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("请对数据进行质量审计")
+        intent, reason, tokens, _, _lang = classify_intent("请对数据进行质量审计")
         self.assertEqual(intent, "GOVERNANCE")
 
     @patch("data_agent.intent_router._router_client")
     def test_optimization_intent(self, mock_client):
         _setup_mock_client(mock_client, "OPTIMIZATION", "用户请求空间优化")
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("对地块进行布局优化")
+        intent, reason, tokens, _, _lang = classify_intent("对地块进行布局优化")
         self.assertEqual(intent, "OPTIMIZATION")
 
     @patch("data_agent.intent_router._router_client")
     def test_general_intent(self, mock_client):
         _setup_mock_client(mock_client, "GENERAL", "用户请求查看地图")
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("生成一张热力图")
+        intent, reason, tokens, _, _lang = classify_intent("生成一张热力图")
         self.assertEqual(intent, "GENERAL")
 
     @patch("data_agent.intent_router._router_client")
     def test_ambiguous_intent(self, mock_client):
         _setup_mock_client(mock_client, "AMBIGUOUS", "输入不明确")
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("你好")
+        intent, reason, tokens, _, _lang = classify_intent("你好")
         self.assertEqual(intent, "AMBIGUOUS")
 
     @patch("data_agent.intent_router._router_client")
     def test_returns_reason(self, mock_client):
         _setup_mock_client(mock_client, "GENERAL", "用户请求SQL查询")
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("查询数据库")
+        intent, reason, tokens, _, _lang = classify_intent("查询数据库")
         self.assertIn("SQL查询", reason)
 
     @patch("data_agent.intent_router._router_client")
     def test_returns_token_count(self, mock_client):
         _setup_mock_client(mock_client, "GENERAL", "test")
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("测试")
+        intent, reason, tokens, _, _lang = classify_intent("测试")
         self.assertIsInstance(tokens, (int, dict))
         if isinstance(tokens, int):
             self.assertGreaterEqual(tokens, 0)
@@ -96,7 +96,7 @@ class TestRouterEdgeCases(unittest.TestCase):
     def test_empty_input_returns_ambiguous(self, mock_client):
         _setup_mock_client(mock_client, "AMBIGUOUS", "空输入")
         from data_agent.app import classify_intent
-        intent, _, _, _ = classify_intent("")
+        intent, _, _, _, _lang = classify_intent("")
         self.assertEqual(intent, "AMBIGUOUS")
 
     @patch("data_agent.intent_router._router_client")
@@ -110,7 +110,7 @@ class TestRouterEdgeCases(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, _, _, _ = classify_intent("random text")
+        intent, _, _, _, _lang = classify_intent("random text")
         # Should fall back to GENERAL or AMBIGUOUS (implementation-dependent)
         self.assertIn(intent, ("GENERAL", "AMBIGUOUS"))
 
@@ -119,7 +119,7 @@ class TestRouterEdgeCases(unittest.TestCase):
         """Verify previous_pipeline is used in prompt construction."""
         _setup_mock_client(mock_client, "OPTIMIZATION", "延续上轮")
         from data_agent.app import classify_intent
-        intent, _, _, _ = classify_intent("继续分析", previous_pipeline="optimization")
+        intent, _, _, _, _lang = classify_intent("继续分析", previous_pipeline="optimization")
         self.assertEqual(intent, "OPTIMIZATION")
         # Verify the model was called (prompt includes previous pipeline hint)
         call_args = mock_client.models.generate_content.call_args
@@ -130,7 +130,7 @@ class TestRouterEdgeCases(unittest.TestCase):
         """Verify PDF context is included in router prompt."""
         _setup_mock_client(mock_client, "GOVERNANCE", "PDF审计")
         from data_agent.app import classify_intent
-        intent, _, _, _ = classify_intent("分析这份PDF", pdf_context="这是一份土地利用变更报告...")
+        intent, _, _, _, _lang = classify_intent("分析这份PDF", pdf_context="这是一份土地利用变更报告...")
         self.assertEqual(intent, "GOVERNANCE")
 
     @patch("data_agent.intent_router._router_client")
@@ -139,7 +139,7 @@ class TestRouterEdgeCases(unittest.TestCase):
         mock_client.models.generate_content.side_effect = Exception("API error")
 
         from data_agent.app import classify_intent
-        intent, _, _, _ = classify_intent("测试错误处理")
+        intent, _, _, _, _lang = classify_intent("测试错误处理")
         self.assertEqual(intent, "GENERAL")
 
 
@@ -193,7 +193,7 @@ class TestRoutingCoverage(unittest.TestCase):
                 with patch("data_agent.intent_router._router_client") as mock_client:
                     _setup_mock_client(mock_client, expected_intent, f"matched: {text}")
                     from data_agent.app import classify_intent
-                    intent, _, _, _ = classify_intent(text)
+                    intent, _, _, _, _lang = classify_intent(text)
                     self.assertEqual(intent, expected_intent,
                                      f"Input '{text}' expected {expected_intent} but got {intent}")
 

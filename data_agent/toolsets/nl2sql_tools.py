@@ -153,9 +153,14 @@ def execute_safe_sql(
                 ensure_ascii=False,
             )
 
-        # Inject LIMIT if not present
-        if "LIMIT" not in sql_upper:
-            sql = f"{sql.rstrip(';')} LIMIT {max_rows}"
+        import re
+        # 剥除 LLM 擅自注入的 LIMIT 限制（特别是针对地理空间全量渲染）
+        if output_format == "geojson":
+            sql = re.sub(r'(?i)\s+LIMIT\s+\d+\s*;?\s*$', '', sql)
+        else:
+            # For JSON, ensure we have a limit to avoid OOM
+            if "LIMIT" not in sql_upper:
+                sql = f"{sql.rstrip(';')} LIMIT {max_rows}"
 
         from ..db_engine import get_engine
         from ..database_tools import _inject_user_context
@@ -215,7 +220,7 @@ def execute_spatial_query(
     table_name: str,
     filters: str = "",
     geometry_column: str = "geometry",
-    limit: int = 1000,
+    limit: int = 100000,
 ) -> str:
     """执行空间数据查询并返回 GeoJSON（安全的参数化查询，无 SQL 注入风险）。
 
@@ -226,7 +231,7 @@ def execute_spatial_query(
         filters: 过滤条件 JSON 字符串，如 '{"city": "上海市", "county": "松江区"}'。
                  支持模糊匹配（自动加 LIKE '%value%'）。留空则返回前 limit 条。
         geometry_column: 几何列名，默认 "geometry"。
-        limit: 最大返回行数，默认 1000（防止数据过大）。
+        limit: 最大返回行数，默认 100000。
 
     Returns:
         JSON 字符串，包含 geojson_path（保存的文件路径）和 map_config（地图配置）。

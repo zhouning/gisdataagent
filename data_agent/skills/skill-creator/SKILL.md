@@ -4,6 +4,9 @@ description: AI-assisted custom skill creation from natural language requirement
 version: 1.0.0
 model_tier: standard
 trigger_keywords: ["创建技能", "生成技能", "新建skill", "create skill", "generate skill"]
+metadata:
+  domain: platform
+  intent_triggers: "创建技能 生成技能 新建skill create skill generate skill 自定义技能 custom skill 技能模板 skill template"
 ---
 
 # Skill Creator

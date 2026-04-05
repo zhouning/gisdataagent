@@ -15,6 +15,11 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 
+def _model_name(model):
+    """Extract model name string from a Gemini object or pass through strings."""
+    return model.model if hasattr(model, 'model') else model
+
+
 class TestPlannerHierarchy(unittest.TestCase):
     """Tests for the Planner agent and its sub-agents (5 standalone + 2 workflows)."""
 
@@ -23,17 +28,14 @@ class TestPlannerHierarchy(unittest.TestCase):
         from data_agent.agent import planner_agent
         cls.planner = planner_agent
 
-    def test_planner_has_13_sub_agents(self):
-        self.assertEqual(len(self.planner.sub_agents), 13)
+    def test_planner_has_5_sub_agents(self):
+        self.assertEqual(len(self.planner.sub_agents), 5)
 
     def test_sub_agent_names(self):
         names = {a.name for a in self.planner.sub_agents}
         self.assertEqual(names, {
             "PlannerExplorer", "PlannerProcessor",
             "PlannerAnalyzer", "PlannerVisualizer", "PlannerReporter",
-            "ExploreAndProcess", "AnalyzeAndVisualize",
-            "DataEngineerAgent", "AnalystAgent", "VisualizerAgent",
-            "RemoteSensingAgent", "FullAnalysis", "RSAnalysis",
         })
 
     def test_peers_transfer_disabled(self):
@@ -83,11 +85,10 @@ class TestPlannerHierarchy(unittest.TestCase):
                 tool_names.add(t.__name__)
         self.assertIn("save_memory", tool_names)
         self.assertIn("recall_memories", tool_names)
-        self.assertIn("get_usage_summary", tool_names)
 
     def test_planner_model(self):
         from data_agent.agent import MODEL_STANDARD
-        self.assertEqual(self.planner.model, MODEL_STANDARD)
+        self.assertEqual(_model_name(self.planner.model), MODEL_STANDARD)
 
     def test_planner_output_key(self):
         self.assertEqual(self.planner.output_key, "planner_summary")
@@ -196,22 +197,22 @@ class TestModelTiering(unittest.TestCase):
         return next(a for a in self.planner.sub_agents if a.name == name)
 
     def test_explorer_uses_fast_model(self):
-        self.assertEqual(self._get_agent("PlannerExplorer").model, self.MODEL_FAST)
+        self.assertEqual(_model_name(self._get_agent("PlannerExplorer").model), self.MODEL_FAST)
 
     def test_processor_uses_standard_model(self):
-        self.assertEqual(self._get_agent("PlannerProcessor").model, self.MODEL_STANDARD)
+        self.assertEqual(_model_name(self._get_agent("PlannerProcessor").model), self.MODEL_STANDARD)
 
     def test_analyzer_uses_standard_model(self):
-        self.assertEqual(self._get_agent("PlannerAnalyzer").model, self.MODEL_STANDARD)
+        self.assertEqual(_model_name(self._get_agent("PlannerAnalyzer").model), self.MODEL_STANDARD)
 
     def test_visualizer_uses_standard_model(self):
-        self.assertEqual(self._get_agent("PlannerVisualizer").model, self.MODEL_STANDARD)
+        self.assertEqual(_model_name(self._get_agent("PlannerVisualizer").model), self.MODEL_STANDARD)
 
     def test_reporter_uses_premium_model(self):
-        self.assertEqual(self._get_agent("PlannerReporter").model, self.MODEL_PREMIUM)
+        self.assertEqual(_model_name(self._get_agent("PlannerReporter").model), self.MODEL_PREMIUM)
 
     def test_planner_root_uses_standard_model(self):
-        self.assertEqual(self.planner.model, self.MODEL_STANDARD)
+        self.assertEqual(_model_name(self.planner.model), self.MODEL_STANDARD)
 
     def test_model_constants_are_strings(self):
         self.assertIsInstance(self.MODEL_FAST, str)

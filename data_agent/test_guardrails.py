@@ -420,8 +420,8 @@ class TestGuardrailsPluginD4:
 
         result = asyncio.get_event_loop().run_until_complete(_run())
         assert result is not None
-        parsed = json.loads(result)
-        assert parsed["status"] == "blocked"
+        assert isinstance(result, dict)
+        assert result["status"] == "blocked"
 
     def test_allow_passes_through(self):
         import asyncio

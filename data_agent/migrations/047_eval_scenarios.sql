@@ -16,12 +16,30 @@ CREATE TABLE IF NOT EXISTS agent_eval_datasets (
 CREATE INDEX IF NOT EXISTS idx_eval_datasets_scenario
 ON agent_eval_datasets(scenario);
 
--- Enhance existing eval_history table
+-- Ensure eval_history table exists (normally created lazily by eval_history.py)
+CREATE TABLE IF NOT EXISTS agent_eval_history (
+    id SERIAL PRIMARY KEY,
+    run_id VARCHAR(100) NOT NULL,
+    pipeline VARCHAR(50) NOT NULL,
+    model VARCHAR(100) DEFAULT '',
+    git_commit VARCHAR(50) DEFAULT '',
+    git_branch VARCHAR(100) DEFAULT '',
+    overall_score REAL DEFAULT 0,
+    pass_rate REAL DEFAULT 0,
+    verdict VARCHAR(20) DEFAULT 'UNKNOWN',
+    num_tests INTEGER DEFAULT 0,
+    num_passed INTEGER DEFAULT 0,
+    details JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_eval_history_pipeline
+ON agent_eval_history (pipeline, created_at DESC);
+
+-- Enhance existing eval_history table with scenario columns
 ALTER TABLE agent_eval_history
 ADD COLUMN IF NOT EXISTS scenario VARCHAR(100),
 ADD COLUMN IF NOT EXISTS dataset_id INTEGER REFERENCES agent_eval_datasets(id),
 ADD COLUMN IF NOT EXISTS metrics JSONB;
 
 COMMENT ON TABLE agent_eval_datasets IS 'Golden test datasets per scenario';
-COMMENT ON COLUMN agent_eval_history.scenario IS 'Scenario identifier for scenario-specific evaluation';
-COMMENT ON COLUMN agent_eval_history.metrics IS 'Scenario-specific metrics (e.g., defect_f1, fix_success_rate)';

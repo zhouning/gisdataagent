@@ -25,6 +25,7 @@
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
     "leaflet.heat": "^0.2.0",
+    "lucide-react": "^1.7.0",
     "maplibre-gl": "^5.19.0",
     "papaparse": "^5.5.2",
     "react": "^18.3.1",

@@ -346,7 +346,7 @@ class TestClassifyIntentMultimodal(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent(
+        intent, reason, tokens, _, _lang = classify_intent(
             "分析这个PDF文件",
             pdf_context="耕地面积 1500.5 平方米",
         )
@@ -369,7 +369,7 @@ class TestClassifyIntentMultimodal(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("优化土地布局")
+        intent, reason, tokens, _, _lang = classify_intent("优化土地布局")
         self.assertEqual(intent, "OPTIMIZATION")
 
     @patch("data_agent.intent_router._router_client")
@@ -382,7 +382,7 @@ class TestClassifyIntentMultimodal(unittest.TestCase):
 
         from data_agent.app import classify_intent
         # Non-existent images should be gracefully handled
-        intent, reason, tokens, _ = classify_intent(
+        intent, reason, tokens, _, _lang = classify_intent(
             "这张图片是什么",
             image_paths=["/nonexistent/img.png"],
         )

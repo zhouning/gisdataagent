@@ -159,6 +159,7 @@ class TestGISToolRetryPlugin(unittest.IsolatedAsyncioTestCase):
         p = GISToolRetryPlugin(max_retries=1)
         tool = _make_tool("query_database")
         ctx = _make_tool_context()
+        ctx._retry_count = 0  # Ensure retry_count is an int, not MagicMock
         error = Exception("timeout")
 
         result = await p.on_tool_error_callback(
@@ -271,6 +272,7 @@ class TestBuildPluginStack(unittest.TestCase):
         "COST_GUARD_ENABLED": "false",
         "TOOL_RETRY_ENABLED": "false",
         "PROVENANCE_ENABLED": "false",
+        "GUARDRAILS_POLICY_ENABLED": "false",
     })
     def test_all_disabled(self):
         from data_agent.plugins import build_plugin_stack

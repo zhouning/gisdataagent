@@ -240,6 +240,42 @@ http_duration = _safe_histogram(
     buckets=(0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5),
 )
 
+# --- Database Connection Pool Layer (v18.0) ---
+db_pool_size = _safe_gauge(
+    "agent_db_pool_size", "Configured connection pool size", ["engine"],
+)
+db_pool_checkedin = _safe_gauge(
+    "agent_db_pool_checkedin", "Idle connections in pool", ["engine"],
+)
+db_pool_checkedout = _safe_gauge(
+    "agent_db_pool_checkedout", "Active connections in use", ["engine"],
+)
+db_pool_overflow = _safe_gauge(
+    "agent_db_pool_overflow", "Overflow connections beyond pool_size", ["engine"],
+)
+db_query_duration = _safe_histogram(
+    "agent_db_query_duration_seconds", "Database query latency",
+    ["operation"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5),
+)
+
+
+def collect_db_pool_metrics():
+    """Scrape SQLAlchemy connection pool stats into Prometheus gauges.
+
+    Call this periodically (e.g. from /metrics endpoint or middleware).
+    """
+    try:
+        from .db_engine import get_pool_status
+        status = get_pool_status()
+        if status:
+            db_pool_size.labels(engine="primary").set(status["pool_size"])
+            db_pool_checkedin.labels(engine="primary").set(status["checkedin"])
+            db_pool_checkedout.labels(engine="primary").set(status["checkedout"])
+            db_pool_overflow.labels(engine="primary").set(status["overflow"])
+    except Exception:
+        pass
+
 
 # =====================================================================
 # Convenience Recording Functions

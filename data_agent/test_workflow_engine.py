@@ -165,7 +165,7 @@ class TestGetAgentForPipeline(unittest.TestCase):
     def test_known_types(self):
         from data_agent.workflow_engine import _get_agent_for_pipeline
         module = MagicMock()
-        module.general_pipeline = "gp"
+        module.general_processing_agent = "gp"
         module.governance_pipeline = "gov"
         module.data_pipeline = "dp"
         module.planner_agent = "pa"
@@ -309,7 +309,7 @@ class TestWorkflowAPI(unittest.TestCase):
         """Route count should reflect all registered endpoints."""
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 202)
+        self.assertEqual(len(routes), 248)
 
     def test_dag_status_route(self):
         """DAG live status route should be registered."""

@@ -82,7 +82,7 @@ class TestIntentClassification(unittest.TestCase):
 
     @patch("data_agent.intent_router._router_client")
     def test_classify_general(self, mock_client):
-        """Normal classification returns 3-tuple with GENERAL intent."""
+        """Normal classification returns 5-tuple with GENERAL intent."""
         mock_response = MagicMock()
         mock_response.text = "GENERAL|用户请求查看数据库表"
         mock_response.usage_metadata = MagicMock(
@@ -91,7 +91,7 @@ class TestIntentClassification(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("列出所有表")
+        intent, reason, tokens, _, _lang = classify_intent("列出所有表")
         self.assertEqual(intent, "GENERAL")
         self.assertIn("数据库", reason)
         self.assertGreaterEqual(tokens, 0)
@@ -107,7 +107,7 @@ class TestIntentClassification(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("对这个数据做拓扑检查")
+        intent, reason, tokens, _, _lang = classify_intent("对这个数据做拓扑检查")
         self.assertEqual(intent, "GOVERNANCE")
 
     @patch("data_agent.intent_router._router_client")
@@ -116,7 +116,7 @@ class TestIntentClassification(unittest.TestCase):
         mock_client.models.generate_content.side_effect = Exception("API timeout")
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("随便说点什么")
+        intent, reason, tokens, _, _lang = classify_intent("随便说点什么")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(tokens, 0)
 
@@ -131,10 +131,10 @@ class TestIntentClassification(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_response
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, _ = classify_intent("你好")
-        # Should still return a valid 4-tuple
+        intent, reason, tokens, _, _lang = classify_intent("你好")
+        # Should still return a valid 5-tuple
         self.assertIn(intent, ("GENERAL", "GOVERNANCE", "OPTIMIZATION", "AMBIGUOUS"))
-        self.assertEqual(len(classify_intent("test")), 4)
+        self.assertEqual(len(classify_intent("test")), 5)
 
 
 # ---------------------------------------------------------------------------

@@ -79,14 +79,60 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <div className="login-logo">
-          <img src="/public/logo_light.png" alt="Data Agent" className="login-logo-img" />
+      {/* Left: Brand showcase */}
+      <div className="login-brand">
+        <div className="login-brand-content">
+          <div className="login-brand-logo">
+            <img src="/public/logo_light.png" alt="Data Agent" className="login-logo-img" />
+          </div>
+          <h1 className="login-brand-title">GIS Data Agent</h1>
+          <p className="login-brand-subtitle">AI-Powered Geospatial Intelligence Platform</p>
+
+          <div className="login-brand-stats">
+            <div className="login-stat">
+              <span className="login-stat-value">3</span>
+              <span className="login-stat-label">AI Pipelines</span>
+            </div>
+            <div className="login-stat">
+              <span className="login-stat-value">40+</span>
+              <span className="login-stat-label">Toolsets</span>
+            </div>
+            <div className="login-stat">
+              <span className="login-stat-value">200+</span>
+              <span className="login-stat-label">REST APIs</span>
+            </div>
+          </div>
+
+          <div className="login-brand-features">
+            <div className="login-feature">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <span>Semantic Intent Routing</span>
+            </div>
+            <div className="login-feature">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span>Multi-Agent GIS Analysis</span>
+            </div>
+            <div className="login-feature">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              <span>DRL Land-Use Optimization</span>
+            </div>
+          </div>
+
+          <div className="login-brand-version">v18.0 &middot; Google ADK</div>
         </div>
-        <h1>GIS Data Agent</h1>
-        <p className="login-subtitle">
-          {mode === 'login' ? 'AI 空间数据分析平台' : '创建新账号'}
-        </p>
+
+        {/* Animated background elements */}
+        <div className="login-bg-grid"></div>
+        <div className="login-bg-glow"></div>
+      </div>
+
+      {/* Right: Login form */}
+      <div className="login-form-side">
+        <div className="login-card">
+          <h2>{mode === 'login' ? '欢迎回来' : '创建账号'}</h2>
+          <p className="login-subtitle">
+            {mode === 'login' ? '登录以访问您的工作区' : '注册以开始使用平台'}
+          </p>
 
         {mode === 'login' ? (
           <form onSubmit={handleLogin}>
@@ -203,6 +249,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           ) : (
             <>已有账号？<a href="#" onClick={(e) => { e.preventDefault(); switchMode('login'); }}>返回登录</a></>
           )}
+        </div>
         </div>
       </div>
     </div>

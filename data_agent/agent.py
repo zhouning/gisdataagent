@@ -118,16 +118,12 @@ MODEL_PREMIUM = os.environ.get("MODEL_PREMIUM", "gemini-2.5-pro")
 
 # --- Retry Configuration for 429 RESOURCE_EXHAUSTED ---
 def _create_model_with_retry(model_name: str):
-    """Create a Gemini model instance with retry configuration for 429 errors."""
-    from google.adk.models.google_llm import Gemini
-    from google.genai import types
-    return Gemini(
-        model_name=model_name,
-        retry_options=types.HttpRetryOptions(
-            initial_delay=2.0,  # 2 seconds initial backoff
-            attempts=3,         # retry up to 3 times
-        ),
-    )
+    """Create an ADK model instance — delegates to model_gateway.create_model().
+
+    Supports Gemini (online), LM Studio (offline), and any LiteLLM backend.
+    """
+    from .model_gateway import create_model
+    return create_model(model_name)
 
 # --- Dynamic Model Selection ---
 MODEL_TIER_MAP = {
