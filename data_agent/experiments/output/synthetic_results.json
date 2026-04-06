@@ -1,0 +1,200 @@
+[
+  {
+    "scenario": "PSM",
+    "meta": {
+      "true_ate": 15000,
+      "method": "PSM",
+      "scenario": "park_price"
+    },
+    "result": {
+      "method": "propensity_score_matching",
+      "ate": 37637.1057,
+      "att": 37637.1057,
+      "se": 626.6225,
+      "ci_lower": 36408.9257,
+      "ci_upper": 38865.2858,
+      "n_treated": 408,
+      "n_control": 1592,
+      "n_matched": 408,
+      "caliper_used": 0.25,
+      "spatial_distance_weight": 0.0,
+      "use_geofm_embedding": false,
+      "balance_table_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_balance_75407154.csv",
+      "diagnostic_plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_diagnostic_5888e0dc.png",
+      "matched_data_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_matched_5156929b.csv",
+      "summary": "PSM因果推断: ATT=37637.11 (95%CI: [36408.93, 38865.29]), 匹配408对, SE=626.62",
+      "_meta": {
+        "true_ate": 15000,
+        "method": "PSM",
+        "scenario": "park_price"
+      }
+    }
+  },
+  {
+    "scenario": "DiD",
+    "meta": {
+      "true_effect": -8.0,
+      "method": "DiD",
+      "scenario": "pm25_restriction"
+    },
+    "result": {
+      "method": "difference_in_differences",
+      "did_estimate": -7.618,
+      "se": 0.2675,
+      "p_value": 0.0,
+      "ci_lower": -8.1424,
+      "ci_upper": -7.0937,
+      "r_squared": 0.56,
+      "n_observations": 3000,
+      "parallel_trends_plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\did_parallel_trends_91b43653.png",
+      "use_geofm_embedding": false,
+      "regression_summary": "                            OLS Regression Results                            \n==============================================================================\nDep. Variable:                      y   R-squared:                       0.560\nModel:                            OLS   Adj. R-squared:                  0.472\nMethod:                 Least Squares   F-statistic:                     1614.\nDate:                Mon, 06 Apr 2026   Prob (F-statistic):               0.00\nTime:                     ",
+      "summary": "DiD因果推断: β3=-7.618 (p=0.0000), 95%CI=[-8.142, -7.094], R²=0.560",
+      "_meta": {
+        "true_effect": -8.0,
+        "method": "DiD",
+        "scenario": "pm25_restriction"
+      }
+    }
+  },
+  {
+    "scenario": "Granger",
+    "meta": {
+      "true_lag": 2,
+      "method": "Granger",
+      "scenario": "urban_farmland"
+    },
+    "result": {
+      "method": "spatial_granger_causality",
+      "variables": [
+        "urban_area",
+        "farmland_area"
+      ],
+      "max_lag": 4,
+      "significance": 0.05,
+      "causality_matrix": {
+        "urban_area": {
+          "urban_area": {
+            "f_stat": 0,
+            "p_value": 1.0,
+            "significant": false,
+            "best_lag": 0
+          },
+          "farmland_area": {
+            "f_stat": 494.9018,
+            "p_value": 0.0,
+            "significant": true,
+            "best_lag": 1
+          }
+        },
+        "farmland_area": {
+          "urban_area": {
+            "f_stat": 3.6893,
+            "p_value": 0.008014,
+            "significant": true,
+            "best_lag": 4
+          },
+          "farmland_area": {
+            "f_stat": 0,
+            "p_value": 1.0,
+            "significant": false,
+            "best_lag": 0
+          }
+        }
+      },
+      "significant_pairs": [
+        {
+          "cause": "urban_area",
+          "effect": "farmland_area",
+          "f_stat": 494.9018,
+          "p_value": 0.0,
+          "lag": 1
+        },
+        {
+          "cause": "farmland_area",
+          "effect": "urban_area",
+          "f_stat": 3.6893,
+          "p_value": 0.008014,
+          "lag": 4
+        }
+      ],
+      "n_significant": 2,
+      "plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\granger_heatmap_ccbc6212.png",
+      "summary": "Granger因果检验: 2个变量, 发现2对显著因果关系 (α=0.05)",
+      "_meta": {
+        "true_lag": 2,
+        "method": "Granger",
+        "scenario": "urban_farmland"
+      }
+    }
+  },
+  {
+    "scenario": "ERF",
+    "meta": {
+      "method": "ERF",
+      "scenario": "pollution_health",
+      "true_shape": "quadratic"
+    },
+    "result": {
+      "method": "exposure_response_function",
+      "bandwidth": 1.5279,
+      "trimmed_pct": 2.0,
+      "n_observations": 980,
+      "balance_mean_abs_smd": 0.0372,
+      "n_bootstrap": 0,
+      "erf_data_path": "D:\\adk\\data_agent\\uploads\\anonymous\\erf_data_204ce5cf.csv",
+      "erf_plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\erf_plot_e62d71e0.png",
+      "use_geofm_embedding": false,
+      "summary": "ERF分析: 带宽=1.528, 观测980个, 裁剪2.0%, 平衡|SMD|=0.037",
+      "_meta": {
+        "method": "ERF",
+        "scenario": "pollution_health",
+        "true_shape": "quadratic"
+      }
+    }
+  },
+  {
+    "scenario": "GCCM",
+    "meta": {
+      "method": "GCCM",
+      "scenario": "rain_ndvi",
+      "true_direction": "rain→ndvi"
+    },
+    "error": "geographic_causal_mapping() got an unexpected keyword argument 'variables'"
+  },
+  {
+    "scenario": "CausalForest",
+    "meta": {
+      "method": "CausalForest",
+      "scenario": "irrigation_yield",
+      "true_ate_arid": 200
+    },
+    "result": {
+      "method": "causal_forest_analysis",
+      "ate": 99.6785,
+      "ate_se": 1.9445,
+      "ci_lower": 95.8672,
+      "ci_upper": 103.4898,
+      "cate_mean": 99.6785,
+      "cate_std": 61.4913,
+      "cate_min": -55.4651,
+      "cate_max": 247.3956,
+      "heterogeneity_pvalue": 0.0,
+      "feature_importance": {
+        "aridity": 0.4725,
+        "soil_quality": 0.5275
+      },
+      "n_treated": 496,
+      "n_control": 504,
+      "cate_data_path": "D:\\adk\\data_agent\\uploads\\anonymous\\causal_forest_cate_ddfdc43c.csv",
+      "cate_map_path": "",
+      "diagnostic_plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\causal_forest_plot_a7f35b43.png",
+      "summary": "因果森林: ATE=99.68±1.94, CATE范围[-55.47, 247.40], 异质性检验p=0.0000",
+      "_meta": {
+        "method": "CausalForest",
+        "scenario": "irrigation_yield",
+        "true_ate_arid": 200
+      }
+    }
+  }
+]
