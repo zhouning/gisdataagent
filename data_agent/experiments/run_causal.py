@@ -26,7 +26,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from data_agent.experiments.common import (
-    OUTPUT_DIR, DATA_DIR, CHONGQING_BBOX,
+    OUTPUT_DIR, DATA_DIR, CHONGQING_BBOX, CHONGQING_FULL_BBOX,
     load_shapefile, load_raster, init_gee, fetch_modis_lst, fetch_ndvi,
 )
 
@@ -424,15 +424,18 @@ def run_chongqing_lulc_lst():
     print("  Loading DEM...")
     dem_data, dem_transform, _ = load_raster("dem")
 
-    # 3. Sample pixels — built-up (8) vs cropland (7)
+    # 3. Sample pixels — built-up (8) vs cropland/forest (7, 2, 3)
+    # CLCD classes: 1=cropland, 2=forest, 3=grassland, 4=shrub, 5=water, 7=tundra, 8=impervious, 15=snow
+    # In some CLCD versions: 1=cropland, 2=forest, 3=shrub, 4=grassland, 5=water, 7=tundra/barren, 8=built-up
     rng = np.random.default_rng(42)
     buildup_mask = (clcd_data == 8)
-    cropland_mask = (clcd_data == 7)
-    print(f"  Built-up pixels: {buildup_mask.sum()}, Cropland pixels: {cropland_mask.sum()}")
+    # Use multiple natural classes as control group
+    natural_mask = np.isin(clcd_data, [1, 2, 3, 4])  # cropland + forest + shrub + grassland
+    print(f"  Built-up pixels: {buildup_mask.sum()}, Natural pixels: {natural_mask.sum()}")
 
     n_sample = 3000
     rows_b, cols_b = np.where(buildup_mask)
-    rows_c, cols_c = np.where(cropland_mask)
+    rows_c, cols_c = np.where(natural_mask)
 
     idx_b = rng.choice(len(rows_b), min(n_sample, len(rows_b)), replace=False)
     idx_c = rng.choice(len(rows_c), min(n_sample, len(rows_c)), replace=False)
