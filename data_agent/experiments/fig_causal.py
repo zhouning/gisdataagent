@@ -50,7 +50,7 @@ def fig_synthetic_results_table(results_path=None):
             ("Causal Forest\n(Irrigation→Yield)", "+200\n(arid)", "+195", "2.5%", "Yes"),
         ]
     else:
-        with open(results_path) as f:
+        with open(results_path, encoding="utf-8") as f:
             data = json.load(f)
         rows = []
         for item in data:
