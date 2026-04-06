@@ -1,0 +1,18 @@
+{
+  "method": "propensity_score_matching",
+  "ate": 0.6275,
+  "att": 0.6275,
+  "se": 0.0498,
+  "ci_lower": 0.53,
+  "ci_upper": 0.7251,
+  "n_treated": 3000,
+  "n_control": 3000,
+  "n_matched": 3000,
+  "caliper_used": 0.25,
+  "spatial_distance_weight": 0.0,
+  "use_geofm_embedding": false,
+  "balance_table_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_balance_58039815.csv",
+  "diagnostic_plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_diagnostic_865e3948.png",
+  "matched_data_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_matched_b8e8a049.csv",
+  "summary": "PSM因果推断: ATT=0.63 (95%CI: [0.53, 0.73]), 匹配3000对, SE=0.05"
+}

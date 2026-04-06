@@ -1,0 +1,46 @@
+{
+  "n_buildings_total": 107452,
+  "n_sample": 5000,
+  "psm": {
+    "method": "propensity_score_matching",
+    "ate": 0.2646,
+    "att": 0.2646,
+    "se": 0.0395,
+    "ci_lower": 0.1872,
+    "ci_upper": 0.342,
+    "n_treated": 2500,
+    "n_control": 2500,
+    "n_matched": 2500,
+    "caliper_used": 0.25,
+    "spatial_distance_weight": 0.0,
+    "use_geofm_embedding": false,
+    "balance_table_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_balance_80bb5648.csv",
+    "diagnostic_plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_diagnostic_b416816a.png",
+    "matched_data_path": "D:\\adk\\data_agent\\uploads\\anonymous\\psm_matched_8457193c.csv",
+    "summary": "PSM因果推断: ATT=0.26 (95%CI: [0.19, 0.34]), 匹配2500对, SE=0.04"
+  },
+  "causal_forest": {
+    "method": "causal_forest_analysis",
+    "ate": 0.0601,
+    "ate_se": 0.0075,
+    "ci_lower": 0.0453,
+    "ci_upper": 0.0749,
+    "cate_mean": 0.0601,
+    "cate_std": 0.5325,
+    "cate_min": -3.8318,
+    "cate_max": 4.0409,
+    "heterogeneity_pvalue": 0.0,
+    "feature_importance": {
+      "elevation": 0.3568,
+      "area_sqm": 0.005,
+      "centroid_x": 0.3106,
+      "centroid_y": 0.3276
+    },
+    "n_treated": 2500,
+    "n_control": 2500,
+    "cate_data_path": "D:\\adk\\data_agent\\uploads\\anonymous\\causal_forest_cate_318b5c61.csv",
+    "cate_map_path": "",
+    "diagnostic_plot_path": "D:\\adk\\data_agent\\uploads\\anonymous\\causal_forest_plot_87b422c5.png",
+    "summary": "因果森林: ATE=0.06±0.01, CATE范围[-3.83, 4.04], 异质性检验p=0.0000"
+  }
+}

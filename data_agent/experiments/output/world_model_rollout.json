@@ -1,0 +1,30 @@
+[
+  {
+    "area": "Sanxia",
+    "split": "OOD",
+    "step": 1,
+    "year": 2018,
+    "cos_sim_persistence": 0.9818
+  },
+  {
+    "area": "Sanxia",
+    "split": "OOD",
+    "step": 2,
+    "year": 2019,
+    "cos_sim_persistence": 0.9819
+  },
+  {
+    "area": "Sanxia",
+    "split": "OOD",
+    "step": 3,
+    "year": 2020,
+    "cos_sim_persistence": 0.9696
+  },
+  {
+    "area": "Lhasa_Valley",
+    "split": "OOD",
+    "step": 1,
+    "year": 2018,
+    "cos_sim_persistence": 0.9852
+  }
+]

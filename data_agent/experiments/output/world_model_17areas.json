@@ -1,0 +1,263 @@
+[
+  {
+    "name": "Yangtze_Delta",
+    "bbox": [
+      120.8,
+      30.7,
+      121.8,
+      31.5
+    ],
+    "type": "Urban",
+    "split": "Train",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "Jing_Jin_Ji",
+    "bbox": [
+      116.0,
+      39.5,
+      117.0,
+      40.3
+    ],
+    "type": "Urban",
+    "split": "Train",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "Chengdu_Plain",
+    "bbox": [
+      103.8,
+      30.3,
+      104.5,
+      30.9
+    ],
+    "type": "Urban",
+    "split": "Train",
+    "status": "ok",
+    "n_samples": 460,
+    "cos_sim_baseline": 0.9812,
+    "n_change_pixels": 4,
+    "change_pct": 0.9,
+    "change_baseline": 0.886,
+    "stable_baseline": 0.9821
+  },
+  {
+    "name": "NE_Plain",
+    "bbox": [
+      125.0,
+      44.5,
+      126.0,
+      45.5
+    ],
+    "type": "Agriculture",
+    "split": "Train",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "N_China_Plain",
+    "bbox": [
+      114.5,
+      36.0,
+      115.5,
+      37.0
+    ],
+    "type": "Agriculture",
+    "split": "Train",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "Jianghan_Plain",
+    "bbox": [
+      113.5,
+      30.0,
+      114.5,
+      30.8
+    ],
+    "type": "Agriculture",
+    "split": "Train",
+    "status": "ok",
+    "n_samples": 246,
+    "cos_sim_baseline": 0.9553,
+    "n_change_pixels": 61,
+    "change_pct": 24.8,
+    "change_baseline": 0.9219,
+    "stable_baseline": 0.9663
+  },
+  {
+    "name": "Hetao",
+    "bbox": [
+      107.0,
+      40.5,
+      108.0,
+      41.2
+    ],
+    "type": "Agriculture",
+    "split": "Train",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "Yunnan_Eco",
+    "bbox": [
+      100.0,
+      25.5,
+      100.8,
+      26.2
+    ],
+    "type": "Ecology",
+    "split": "Train",
+    "status": "ok",
+    "n_samples": 410,
+    "cos_sim_baseline": 0.9639,
+    "n_change_pixels": 42,
+    "change_pct": 10.2,
+    "change_baseline": 0.9414,
+    "stable_baseline": 0.9665
+  },
+  {
+    "name": "Daxinganling",
+    "bbox": [
+      121.5,
+      50.0,
+      122.5,
+      50.8
+    ],
+    "type": "Forest",
+    "split": "Train",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "Qinghai_Edge",
+    "bbox": [
+      100.5,
+      36.0,
+      101.5,
+      36.8
+    ],
+    "type": "Plateau",
+    "split": "Train",
+    "status": "ok",
+    "n_samples": 155,
+    "cos_sim_baseline": 0.9841,
+    "n_change_pixels": 1,
+    "change_pct": 0.6,
+    "change_baseline": 0.9402,
+    "stable_baseline": 0.9843
+  },
+  {
+    "name": "Guanzhong",
+    "bbox": [
+      108.5,
+      34.0,
+      109.3,
+      34.7
+    ],
+    "type": "Mixed",
+    "split": "Train",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "Minnan_Coast",
+    "bbox": [
+      117.8,
+      24.3,
+      118.5,
+      25.0
+    ],
+    "type": "Mixed",
+    "split": "Train",
+    "status": "ok",
+    "n_samples": 486,
+    "cos_sim_baseline": 0.9558,
+    "n_change_pixels": 160,
+    "change_pct": 32.9,
+    "change_baseline": 0.929,
+    "stable_baseline": 0.969
+  },
+  {
+    "name": "Pearl_River",
+    "bbox": [
+      113.0,
+      22.8,
+      114.0,
+      23.5
+    ],
+    "type": "Urban",
+    "split": "Val",
+    "status": "ok",
+    "n_samples": 495,
+    "cos_sim_baseline": 0.9621,
+    "n_change_pixels": 86,
+    "change_pct": 17.4,
+    "change_baseline": 0.9408,
+    "stable_baseline": 0.9665
+  },
+  {
+    "name": "Poyang_Lake",
+    "bbox": [
+      115.8,
+      28.8,
+      116.5,
+      29.5
+    ],
+    "type": "Wetland",
+    "split": "Val",
+    "status": "ok",
+    "n_samples": 475,
+    "cos_sim_baseline": 0.9096,
+    "n_change_pixels": 340,
+    "change_pct": 71.6,
+    "change_baseline": 0.8895,
+    "stable_baseline": 0.9602
+  },
+  {
+    "name": "Wuyi_Mountain",
+    "bbox": [
+      117.5,
+      27.5,
+      118.2,
+      28.2
+    ],
+    "type": "Forest",
+    "split": "Test",
+    "status": "ok",
+    "n_samples": 48,
+    "cos_sim_baseline": 0.9541,
+    "n_change_pixels": 14,
+    "change_pct": 29.2,
+    "change_baseline": 0.9451,
+    "stable_baseline": 0.9579
+  },
+  {
+    "name": "Sanxia",
+    "bbox": [
+      110.0,
+      30.5,
+      111.0,
+      31.2
+    ],
+    "type": "Mixed",
+    "split": "OOD",
+    "status": "skip",
+    "cos_sim_baseline": null
+  },
+  {
+    "name": "Lhasa_Valley",
+    "bbox": [
+      91.0,
+      29.5,
+      91.8,
+      30.0
+    ],
+    "type": "Plateau",
+    "split": "OOD",
+    "status": "skip",
+    "cos_sim_baseline": null
+  }
+]
