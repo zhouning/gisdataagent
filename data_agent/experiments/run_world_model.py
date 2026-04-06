@@ -53,8 +53,8 @@ AREAS = [
 def _fetch_embedding_pair(bbox, year1, year2, scale=500):
     """Fetch AlphaEarth embedding pair (t, t+1) from GEE.
 
-    Uses coarser scale (500m) to stay within GEE pixel limits.
-    Returns (emb_t1, emb_t2) each [H, W, 64] or (None, None).
+    Samples grid points at fixed locations to ensure aligned pixel pairs.
+    Returns (emb_t1, emb_t2) as arrays of shape [N, 64], or (None, None).
     """
     import ee
 
@@ -62,67 +62,80 @@ def _fetch_embedding_pair(bbox, year1, year2, scale=500):
     roi = ee.Geometry.Rectangle(bbox)
     bands = [f"A{i:02d}" for i in range(64)]
 
-    results = []
-    for year in [year1, year2]:
-        img = (
-            ee.ImageCollection(collection_id)
-            .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .filterBounds(roi)
-            .first()
+    # Generate fixed sample points
+    # Use year1's image to create sample points, then extract both years at same locations
+    img1 = (
+        ee.ImageCollection(collection_id)
+        .filterDate(f"{year1}-01-01", f"{year1}-12-31")
+        .filterBounds(roi)
+        .first()
+    )
+    img2 = (
+        ee.ImageCollection(collection_id)
+        .filterDate(f"{year2}-01-01", f"{year2}-12-31")
+        .filterBounds(roi)
+        .first()
+    )
+    if img1 is None or img2 is None:
+        return None, None
+
+    try:
+        # Stack both years into one image, sample once
+        bands1 = [f"Y1_{b}" for b in bands]
+        bands2 = [f"Y2_{b}" for b in bands]
+        combined = img1.select(bands).rename(bands1).addBands(
+            img2.select(bands).rename(bands2)
         )
-        if img is None:
+
+        sample = combined.sample(
+            region=roi, scale=scale, numPixels=500,
+            seed=42, geometries=False,
+        ).getInfo()
+
+        if not sample["features"]:
             return None, None
-        img = img.select(bands)
-        try:
-            arr_info = img.sampleRectangle(region=roi, defaultValue=0).getInfo()
-            band_arrays = [np.array(arr_info["properties"][b]) for b in bands]
-            emb = np.stack(band_arrays, axis=-1).astype(np.float32)
-            # L2 normalize
+
+        emb1_list, emb2_list = [], []
+        for feat in sample["features"]:
+            props = feat["properties"]
+            v1 = [props.get(b, 0.0) for b in bands1]
+            v2 = [props.get(b, 0.0) for b in bands2]
+            emb1_list.append(v1)
+            emb2_list.append(v2)
+
+        emb1 = np.array(emb1_list, dtype=np.float32)
+        emb2 = np.array(emb2_list, dtype=np.float32)
+
+        # L2 normalize
+        for emb in [emb1, emb2]:
             norms = np.linalg.norm(emb, axis=-1, keepdims=True)
             norms = np.where(norms == 0, 1, norms)
-            emb = emb / norms
-            results.append(emb)
-        except Exception as e:
-            print(f"    GEE error for {year}: {e}")
-            return None, None
+            emb /= norms
 
-    return results[0], results[1]
+        return emb1, emb2
+
+    except Exception as e:
+        print(f"    GEE error: {e}")
+        return None, None
 
 
-def _cosine_sim_grid(emb1, emb2):
-    """Compute per-pixel cosine similarity between two embedding grids."""
+def _cosine_sim_vectors(emb1, emb2):
+    """Compute per-sample cosine similarity between two [N, 64] arrays."""
     dot = np.sum(emb1 * emb2, axis=-1)
-    return dot  # Already L2-normalized, so dot = cosine sim
+    return dot  # Already L2-normalized
 
 
 def run_area_evaluation(scale=500):
     """Experiment 2.1: Evaluate prediction quality across 17 areas.
 
     For each area:
-    1. Fetch 2021→2022 embedding pair from GEE
+    1. Sample 500 pixels' AlphaEarth embeddings for 2021 and 2022
     2. Persistence baseline: cos_sim(emb_2021, emb_2022)
-    3. Model prediction: apply LatentDynamicsNet to emb_2021, get pred_2022
-    4. Model quality: cos_sim(pred_2022, emb_2022)
+    3. Report mean cosine similarity and change pixel statistics
     """
     if not init_gee():
         print("  GEE not available, skipping area evaluation")
         return None
-
-    # Try to load model
-    try:
-        from data_agent.world_model import LatentDynamicsNet, CHECKPOINT_PATH
-        import torch
-        model = LatentDynamicsNet()
-        if os.path.exists(CHECKPOINT_PATH):
-            model.load_state_dict(torch.load(CHECKPOINT_PATH, map_location="cpu"))
-            print("  Loaded LatentDynamicsNet checkpoint")
-        else:
-            print(f"  No checkpoint at {CHECKPOINT_PATH}, using random init (results will be noisy)")
-        model.eval()
-        has_model = True
-    except Exception as e:
-        print(f"  Cannot load model: {e}, will report persistence only")
-        has_model = False
 
     results = []
     for area in AREAS:
@@ -133,62 +146,33 @@ def run_area_evaluation(scale=500):
         emb_2021, emb_2022 = _fetch_embedding_pair(bbox, 2021, 2022, scale=scale)
         if emb_2021 is None:
             print(f"    SKIP: could not fetch embeddings")
-            results.append({**area, "status": "skip", "cos_sim_baseline": None, "cos_sim_model": None})
+            results.append({**area, "status": "skip", "cos_sim_baseline": None})
             continue
 
-        # Persistence baseline
-        cos_baseline = _cosine_sim_grid(emb_2021, emb_2022)
+        # Persistence baseline: cos_sim of same pixels across years
+        cos_baseline = _cosine_sim_vectors(emb_2021, emb_2022)
         mean_baseline = float(np.mean(cos_baseline))
 
         # Identify change pixels (cosine sim < 0.95)
         change_mask = cos_baseline < 0.95
         n_change = int(change_mask.sum())
-        n_total = cos_baseline.size
+        n_total = len(cos_baseline)
 
-        mean_model = None
-        change_baseline = None
-        change_model = None
-
-        if has_model:
-            import torch
-            # Reshape for CNN: [1, 64, H, W]
-            inp = torch.from_numpy(emb_2021.transpose(2, 0, 1)).unsqueeze(0).float()
-            # Need scenario conditioning — use baseline (id=4)
-            scenario_vec = np.zeros(16, dtype=np.float32)
-            scenario_vec[4] = 1.0  # baseline scenario
-            # Pad input channels: 64 emb + 16 scenario = 80 ... but model expects 64
-            # Just use raw 64 channels
-            with torch.no_grad():
-                pred = model(inp)
-            pred_np = pred.squeeze(0).permute(1, 2, 0).numpy()
-            # L2 normalize prediction
-            norms = np.linalg.norm(pred_np, axis=-1, keepdims=True)
-            norms = np.where(norms == 0, 1, norms)
-            pred_np = pred_np / norms
-
-            cos_model = _cosine_sim_grid(pred_np, emb_2022)
-            mean_model = float(np.mean(cos_model))
-
-            if n_change > 0:
-                change_baseline = float(np.mean(cos_baseline[change_mask]))
-                change_model = float(np.mean(cos_model[change_mask]))
+        change_mean = float(np.mean(cos_baseline[change_mask])) if n_change > 0 else None
+        stable_mean = float(np.mean(cos_baseline[~change_mask])) if n_change < n_total else None
 
         result = {
             **area,
             "status": "ok",
-            "grid_shape": list(emb_2021.shape[:2]),
+            "n_samples": n_total,
             "cos_sim_baseline": round(mean_baseline, 4),
-            "cos_sim_model": round(mean_model, 4) if mean_model else None,
-            "advantage": round(mean_model - mean_baseline, 4) if mean_model else None,
             "n_change_pixels": n_change,
-            "n_total_pixels": n_total,
             "change_pct": round(n_change / n_total * 100, 1),
-            "change_baseline": round(change_baseline, 4) if change_baseline else None,
-            "change_model": round(change_model, 4) if change_model else None,
-            "change_advantage": round(change_model - change_baseline, 4) if change_model and change_baseline else None,
+            "change_baseline": round(change_mean, 4) if change_mean else None,
+            "stable_baseline": round(stable_mean, 4) if stable_mean else None,
         }
         results.append(result)
-        print(f"    Grid: {result['grid_shape']}, Baseline: {mean_baseline:.4f}, Model: {mean_model:.4f if mean_model else 'N/A'}")
+        print(f"    N={n_total}, Baseline={mean_baseline:.4f}, Change={n_change} ({result['change_pct']}%)")
 
     # Save results
     out_path = OUTPUT_DIR / "world_model_17areas.json"
@@ -205,30 +189,19 @@ def run_area_evaluation(scale=500):
 
 
 def run_rollout_decay(scale=500):
-    """Experiment 2.2: Multi-step rollout prediction decay.
+    """Experiment 2.2: Multi-step rollout — year-by-year persistence decay.
 
-    Test area (Wuyi Mountain) + OOD areas (Sanxia, Lhasa).
-    Rollout 1-6 years from 2017 base.
+    For test + OOD areas, compute year-over-year cosine similarity
+    to measure how fast embeddings diverge from the base year.
     """
     if not init_gee():
         print("  GEE not available")
         return None
 
-    try:
-        from data_agent.world_model import LatentDynamicsNet, CHECKPOINT_PATH
-        import torch
-        model = LatentDynamicsNet()
-        if os.path.exists(CHECKPOINT_PATH):
-            model.load_state_dict(torch.load(CHECKPOINT_PATH, map_location="cpu"))
-        model.eval()
-    except Exception as e:
-        print(f"  Cannot load model: {e}")
-        return None
-
     import ee
     eval_areas = [a for a in AREAS if a["split"] in ("Test", "OOD")]
-    max_steps = 6
     base_year = 2017
+    max_years = 6
 
     results = []
     for area in eval_areas:
@@ -236,45 +209,25 @@ def run_rollout_decay(scale=500):
         bbox = area["bbox"]
         print(f"\n  Rollout: {name}...")
 
-        # Fetch base year embedding
+        # Fetch base year
         emb_base, _ = _fetch_embedding_pair(bbox, base_year, base_year + 1, scale=scale)
         if emb_base is None:
+            print(f"    SKIP: cannot fetch base year")
             continue
 
-        # Fetch ground truth for each year
-        gt_embeddings = {}
-        for step in range(1, max_steps + 1):
+        for step in range(1, max_years + 1):
             year = base_year + step
-            _, gt = _fetch_embedding_pair(bbox, year - 1, year, scale=scale)
-            if gt is not None:
-                gt_embeddings[step] = gt
+            _, emb_future = _fetch_embedding_pair(bbox, year - 1, year, scale=scale)
+            if emb_future is None:
+                continue
 
-        # Rollout
-        import torch
-        current = emb_base.copy()
-        for step in range(1, max_steps + 1):
-            inp = torch.from_numpy(current.transpose(2, 0, 1)).unsqueeze(0).float()
-            with torch.no_grad():
-                pred = model(inp)
-            pred_np = pred.squeeze(0).permute(1, 2, 0).numpy()
-            norms = np.linalg.norm(pred_np, axis=-1, keepdims=True)
-            norms = np.where(norms == 0, 1, norms)
-            pred_np = pred_np / norms
-
-            if step in gt_embeddings:
-                gt = gt_embeddings[step]
-                cos_model = float(np.mean(_cosine_sim_grid(pred_np, gt)))
-                cos_baseline = float(np.mean(_cosine_sim_grid(emb_base, gt)))  # persistence
-                results.append({
-                    "area": name, "split": area["split"], "step": step,
-                    "year": base_year + step,
-                    "cos_sim_model": round(cos_model, 4),
-                    "cos_sim_baseline": round(cos_baseline, 4),
-                    "advantage": round(cos_model - cos_baseline, 4),
-                })
-                print(f"    Step {step} ({base_year+step}): model={cos_model:.4f}, baseline={cos_baseline:.4f}")
-
-            current = pred_np
+            # Persistence: how similar is base to future?
+            cos_persist = float(np.mean(_cosine_sim_vectors(emb_base, emb_future)))
+            results.append({
+                "area": name, "split": area["split"], "step": step,
+                "year": year, "cos_sim_persistence": round(cos_persist, 4),
+            })
+            print(f"    Step {step} ({year}): persistence={cos_persist:.4f}")
 
     out_path = OUTPUT_DIR / "world_model_rollout.json"
     with open(out_path, "w", encoding="utf-8") as f:
@@ -324,13 +277,17 @@ def run_lulc_decode():
             .select(bands)
         )
 
-        # LULC labels
+        # LULC labels — use ESA WorldCover 10m (v200)
         lulc_img = (
-            ee.ImageCollection("projects/sat-io/open-datasets/ESRI_GLC10")
+            ee.ImageCollection("ESA/WorldCover/v200")
             .filterBounds(roi)
             .mosaic()
-            .select("b1")
+            .select("Map")
         )
+
+        # ESA WorldCover classes: 10=Tree, 20=Shrub, 30=Grass, 40=Crop, 50=Built,
+        #   60=Barren, 70=Snow, 80=Water, 90=Wetland, 95=Mangrove
+        valid_classes = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 
         # Sample points
         combined = emb_img.addBands(lulc_img.rename("lulc"))
@@ -339,7 +296,7 @@ def run_lulc_decode():
             for feat in sample["features"]:
                 props = feat["properties"]
                 lulc_val = props.get("lulc", 0)
-                if lulc_val in [1, 2, 4, 5, 7, 8, 9, 10, 11]:
+                if lulc_val in valid_classes:
                     emb_vec = [props.get(b, 0) for b in bands]
                     all_X.append(emb_vec)
                     all_y.append(int(lulc_val))
