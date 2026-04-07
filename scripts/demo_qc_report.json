@@ -1,0 +1,189 @@
+{
+  "file": "D:\\adk\\01数据样例\\04重庆市中心城区建筑物轮廓数据2021年\\中心城区建筑数据带层高.shp",
+  "steps": {
+    "data_receive": {
+      "status": "ok",
+      "result": {
+        "status": "success",
+        "summary": {
+          "num_features": 107452,
+          "crs": "EPSG:4326",
+          "geometry_types": [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          "file_type": ".shp",
+          "columns": [
+            "Id",
+            "Floor",
+            "geometry"
+          ],
+          "null_values_per_column": "无",
+          "null_empty_geometries": 417,
+          "duplicate_geometries": 0,
+          "attribute_statistics": {
+            "Id": {
+              "min": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            },
+            "Floor": {
+              "min": 1.0,
+              "max": 66.0,
+              "mean": 6.5166
+            }
+          },
+          "data_health": {
+            "severity": "warning",
+            "warnings": [
+              "当前为地理坐标系 (EPSG:4326)，面积/距离计算将不准确",
+              "发现 417 个空几何要素 (null=417, empty=0)",
+              "数据包含混合几何类型: ['Polygon', 'MultiPolygon']"
+            ],
+            "recommendations": [
+              "建议重投影至投影坐标系",
+              "建议删除空几何要素",
+              "建议统一几何类型后再分析"
+            ],
+            "ready_for_analysis": false
+          },
+          "geocoding_confidence": null,
+          "file_path": "D:\\adk\\01数据样例\\04重庆市中心城区建筑物轮廓数据2021年\\中心城区建筑数据带层高.shp"
+        }
+      }
+    },
+    "crs_check": {
+      "status": "ok",
+      "result": {
+        "status": "fail",
+        "current_crs": "EPSG:4326",
+        "current_epsg": 4326,
+        "expected_epsg": 4490,
+        "is_compliant": false,
+        "recommendation": "当前 CRS (EPSG:4326) 不符合要求，建议重投影至 EPSG:4490。"
+      }
+    },
+    "defect_classification": {
+      "status": "ok",
+      "result": {
+        "status": "优秀",
+        "total_records": 107452,
+        "defect_count": 3,
+        "quality_score": 100.0,
+        "quality_grade": "优秀",
+        "severity_counts": {
+          "A": 1,
+          "B": 1,
+          "C": 1
+        },
+        "category_counts": {
+          "format_error": 1,
+          "topology_error": 2
+        },
+        "defects": [
+          {
+            "code": "FMT-001",
+            "name": "坐标系定义错误",
+            "category": "format_error",
+            "severity": "B",
+            "auto_fixable": true
+          },
+          {
+            "code": "TOP-005",
+            "name": "无效几何",
+            "category": "topology_error",
+            "severity": "A",
+            "auto_fixable": true
+          },
+          {
+            "code": "TOP-006",
+            "name": "重复要素",
+            "category": "topology_error",
+            "severity": "C",
+            "auto_fixable": true
+          }
+        ],
+        "auto_fixable_count": 3
+      }
+    },
+    "topology": {
+      "status": "ok",
+      "result": {
+        "raw": "拓扑完整性检查结果 (107452 个要素):\n  空几何(None): 417 处 ⚠️\n  无效几何: 0 ✓\n  空几何: 0 ✓\n  自相交: 0 ✓\n  重复几何: 416 处 ⚠️\n  重叠: 跳过 (数据量>1000)\n\n拓扑完整性评分: 98.4/100\n评定: 优"
+      }
+    },
+    "completeness": {
+      "status": "ok",
+      "result": {
+        "status": "pass",
+        "overall_pct": 99.87,
+        "fields": {
+          "Id": 100.0,
+          "Floor": 100.0
+        },
+        "geometry_completeness": 99.61
+      }
+    },
+    "governance_score": {
+      "status": "ok",
+      "result": {
+        "status": "success",
+        "total_score": 44.97,
+        "grade": "D",
+        "dimensions": {
+          "topology": {
+            "score": 0,
+            "weight": 0.25
+          },
+          "gaps": {
+            "score": 100,
+            "weight": 0.15
+          },
+          "completeness": {
+            "score": 99.87,
+            "weight": 0.2
+          },
+          "attribute_validity": {
+            "score": 0,
+            "weight": 0.15
+          },
+          "duplicates": {
+            "score": 100,
+            "weight": 0.1
+          },
+          "crs": {
+            "score": 0,
+            "weight": 0.15
+          }
+        },
+        "radar_data": [
+          {
+            "name": "拓扑",
+            "value": 0
+          },
+          {
+            "name": "间隙",
+            "value": 100
+          },
+          {
+            "name": "完整性",
+            "value": 99.87
+          },
+          {
+            "name": "属性有效性",
+            "value": 0
+          },
+          {
+            "name": "重复",
+            "value": 100
+          },
+          {
+            "name": "坐标系",
+            "value": 0
+          }
+        ]
+      }
+    }
+  },
+  "timestamp": "2026-04-07 09:09:01"
+}
