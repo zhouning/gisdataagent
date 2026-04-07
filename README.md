@@ -10,6 +10,8 @@
 
 **v18.0 新增**：**应用层数据库优化** — 连接池 5→20 + asyncpg 异步引擎（min=5, max=20）+ 读写分离接口预埋（华为云 RDS 只读副本就绪）+ 物化视图（mv_pipeline_analytics + mv_token_usage_daily）+ 连接池 Prometheus 监控（4 Gauge + 查询延迟 Histogram）。
 
+**产品化就绪**：Docker 一键部署（`docker compose up -d`）、[快速启动指南](QUICKSTART.md)、端到端质检 Demo（`scripts/demo_qc.py`，107K 建筑 69 秒完成 5 步标准质检）、SCI 论文实验框架（`data_agent/experiments/`，12 张 300 DPI 图表 + GEE 真实数据）。
+
 ## 项目思想起源
 
 > 本项目的核心思想始于 2023 年 9 月，当时构想了一个将时空数据中台、时空知识图谱、因果推断平台与 AI Agent 决策模拟相融合的体系架构。经过两年多的迭代开发，这一愿景已在 GIS Data Agent 中逐步实现。

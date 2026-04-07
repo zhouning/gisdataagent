@@ -16,6 +16,8 @@ The system implements **all 21 of 21 (100%)** agentic design patterns, including
 
 **v16.0**: SIGMOD 2026 L3 Conditional Autonomy — Semantic operators (4), multi-agent collaboration (4 specialists + coordinator), plan refinement & error recovery (5 strategies), Guardrails policy engine, remote sensing Phase 1 (15+ spectral indices), tool evolution, AI-assisted Skill creation.
 
+**Production-ready**: One-command Docker deployment (`docker compose up -d`), [Quick Start Guide](QUICKSTART.md), end-to-end QC demo (`scripts/demo_qc.py`, 107K buildings in 69s), SCI paper experiment framework (`data_agent/experiments/`, 12 figures at 300 DPI + real GEE data).
+
 ## 📚 Official Technical Documentation
 
 This project provides industrial-grade technical documentation written in the **DITA XML** standard, covering the architecture whitepaper, API references, and multi-engine configuration guides.
