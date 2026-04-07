@@ -3020,4 +3020,30 @@ body {
 .json-null { color: var(--text-tertiary); font-style: italic; }
 .json-kv { display: flex; flex-wrap: wrap; }
 .json-array-item { padding-left: 8px; }
+
+/* ── Product DataPanel (Governance) ── */
+.dp-group-bar {
+  display: flex; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.dp-group-btn {
+  padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;
+  font-size: 12px; color: var(--text-secondary); background: transparent;
+  transition: all .15s;
+}
+.dp-group-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.dp-group-btn.active { color: var(--accent); background: rgba(var(--accent-rgb), .12); font-weight: 600; }
+
+.tab-content-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 12px; color: var(--text-tertiary); text-align: center; padding: 40px 20px;
+}
+.tab-content-placeholder h3 { color: var(--text-secondary); margin: 0; font-size: 16px; }
+.tab-content-placeholder p { margin: 0; font-size: 13px; max-width: 260px; }
+.upload-btn {
+  margin-top: 8px; padding: 8px 20px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; color: #fff; background: var(--accent);
+  border: none; transition: opacity .15s;
+}
+.upload-btn:hover { opacity: .85; }
 .fm-preview-actions { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); }

@@ -1,49 +1,145 @@
-import { useState, useEffect, type ReactNode } from 'react';
-import Papa from 'papaparse';
+import { useState, type ReactNode } from 'react';
 import {
-  FolderOpen, Table2, Database, Tag, Link, MapPin, BarChart3,
-  Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
-  History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
-  GitBranch, FileText, Target,
-  LayoutGrid,
+  Upload, Table2, AlertTriangle, Wrench, Play, FileText,
+  BookOpen, Settings, Users, Activity, BarChart3,
 } from 'lucide-react';
 
-import CatalogTab from './datapanel/CatalogTab';
-import HistoryTab from './datapanel/HistoryTab';
-import UsageTab from './datapanel/UsageTab';
-import ToolsTab from './datapanel/ToolsTab';
-import CapabilitiesTab from './datapanel/CapabilitiesTab';
-import KnowledgeBaseTab from './datapanel/KnowledgeBaseTab';
-import WorkflowsTab from './datapanel/WorkflowsTab';
-import { FileManager, DataTable } from './datapanel/FileListTab';
-import SuggestionsTab from './datapanel/SuggestionsTab';
-import TasksTab from './datapanel/TasksTab';
-import TemplatesTab from './datapanel/TemplatesTab';
-import AnalyticsTab from './datapanel/AnalyticsTab';
-import ChartsTab from './datapanel/ChartsTab';
-import GovernanceTab from './datapanel/GovernanceTab';
-import MemorySearchTab from './datapanel/MemorySearchTab';
-import ObservabilityTab from './datapanel/ObservabilityTab';
-import VirtualSourcesTab from './datapanel/VirtualSourcesTab';
-import MarketplaceTab from './datapanel/MarketplaceTab';
-import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
-import WorldModelTab from './datapanel/WorldModelTab';
-import CausalReasoningTab from './datapanel/CausalReasoningTab';
-import OptimizationTab from './datapanel/OptimizationTab';
-import QcMonitorTab from './datapanel/QcMonitorTab';
-import AlertsTab from './datapanel/AlertsTab';
-import TopologyTab from './datapanel/TopologyTab';
-import MessageBusTab from './datapanel/MessageBusTab';
-import MetadataPanel from './datapanel/MetadataPanel';
+/* ---------- 治理场景 Tab 组件（待实现的用占位符）---------- */
 
-interface DataPanelProps {
-  dataFile: string | null;
-  userRole?: string;
+function DataUploadTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <Upload size={40} strokeWidth={1} />
+      <h3>数据接入</h3>
+      <p>上传 Shapefile / GeoJSON / GPKG 文件开始治理</p>
+      <label className="upload-btn">
+        <input type="file" accept=".shp,.shx,.dbf,.prj,.cpg,.geojson,.json,.gpkg" multiple style={{ display: 'none' }} />
+        选择文件
+      </label>
+    </div>
+  );
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus';
+function FieldMatchTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <Table2 size={40} strokeWidth={1} />
+      <h3>字段匹配</h3>
+      <p>上传数据后自动进行语义匹配分析</p>
+    </div>
+  );
+}
 
-type GroupKey = 'data' | 'intelligence' | 'ops';
+function GapReportTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <AlertTriangle size={40} strokeWidth={1} />
+      <h3>差距分析</h3>
+      <p>标准对照完成后展示差距报告</p>
+    </div>
+  );
+}
+
+function AdjustmentTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <Wrench size={40} strokeWidth={1} />
+      <h3>调整建议</h3>
+      <p>模型推荐完成后展示调整方案</p>
+    </div>
+  );
+}
+
+function GovernanceProgressTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <Play size={40} strokeWidth={1} />
+      <h3>治理进度</h3>
+      <p>治理执行时展示实时进度</p>
+    </div>
+  );
+}
+
+function ReportTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <FileText size={40} strokeWidth={1} />
+      <h3>治理报告</h3>
+      <p>治理完成后预览和下载报告</p>
+    </div>
+  );
+}
+
+function KnowledgeTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <BookOpen size={40} strokeWidth={1} />
+      <h3>知识库</h3>
+      <p>查看和管理语义等价库、标准规则库、数据模型库</p>
+    </div>
+  );
+}
+
+/* ---------- 管理端 Tab 组件 ---------- */
+
+function KnowledgeManageTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <BookOpen size={40} strokeWidth={1} />
+      <h3>知识管理</h3>
+      <p>语义等价库 CRUD / 标准文档上传解析 / 数据模型导入</p>
+    </div>
+  );
+}
+
+function SystemConfigTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <Settings size={40} strokeWidth={1} />
+      <h3>系统配置</h3>
+      <p>底座连接 / LLM 配置 / 存储配置</p>
+    </div>
+  );
+}
+
+function UserManageTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <Users size={40} strokeWidth={1} />
+      <h3>用户管理</h3>
+      <p>账号、角色、权限管理</p>
+    </div>
+  );
+}
+
+function OpsMonitorTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <Activity size={40} strokeWidth={1} />
+      <h3>运维监控</h3>
+      <p>Token 消耗 / 推荐采纳率 / 知识库命中率 / 操作日志</p>
+    </div>
+  );
+}
+
+function ProjectOverviewTab() {
+  return (
+    <div className="tab-content-placeholder">
+      <BarChart3 size={40} strokeWidth={1} />
+      <h3>项目总览</h3>
+      <p>所有数据集治理进度汇总</p>
+    </div>
+  );
+}
+
+/* ---------- Tab 定义 ---------- */
+
+const ICON_SIZE = 14;
+
+type TabKey = 'upload' | 'match' | 'gap' | 'adjust' | 'progress' | 'report' | 'knowledge'
+  | 'km' | 'config' | 'users' | 'ops' | 'overview';
+
+type GroupKey = 'operate' | 'manage';
 
 interface TabDef {
   key: TabKey;
@@ -51,167 +147,97 @@ interface TabDef {
   icon: ReactNode;
 }
 
-const ICON_SIZE = 14;
-
-const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[] }[] = [
+const TAB_GROUPS: { key: GroupKey; label: string; tabs: TabDef[] }[] = [
   {
-    key: 'data', label: '数据资源', icon: <Database size={16} />,
+    key: 'operate', label: '治理操作',
     tabs: [
-      { key: 'files', label: '文件', icon: <FolderOpen size={ICON_SIZE} /> },
-      { key: 'table', label: '表格', icon: <Table2 size={ICON_SIZE} /> },
-      { key: 'catalog', label: '资产', icon: <Database size={ICON_SIZE} /> },
-      { key: 'vsources', label: '数据源', icon: <Link size={ICON_SIZE} /> },
-      { key: 'metadata', label: '元数据', icon: <Tag size={ICON_SIZE} /> },
-      { key: 'geojson', label: 'GeoJSON', icon: <MapPin size={ICON_SIZE} /> },
-      { key: 'charts', label: '图表', icon: <BarChart3 size={ICON_SIZE} /> },
-      { key: 'topology', label: '拓扑', icon: <Network size={ICON_SIZE} /> },
+      { key: 'upload', label: '数据', icon: <Upload size={ICON_SIZE} /> },
+      { key: 'match', label: '匹配', icon: <Table2 size={ICON_SIZE} /> },
+      { key: 'gap', label: '差距', icon: <AlertTriangle size={ICON_SIZE} /> },
+      { key: 'adjust', label: '建议', icon: <Wrench size={ICON_SIZE} /> },
+      { key: 'progress', label: '进度', icon: <Play size={ICON_SIZE} /> },
+      { key: 'report', label: '报告', icon: <FileText size={ICON_SIZE} /> },
+      { key: 'knowledge', label: '知识库', icon: <BookOpen size={ICON_SIZE} /> },
     ],
   },
   {
-    key: 'intelligence', label: '智能分析', icon: <Brain size={16} />,
+    key: 'manage', label: '系统管理',
     tabs: [
-      { key: 'capabilities', label: '能力', icon: <Zap size={ICON_SIZE} /> },
-      { key: 'tools', label: '工具', icon: <Wrench size={ICON_SIZE} /> },
-      { key: 'kb', label: '知识库', icon: <BookOpen size={ICON_SIZE} /> },
-      { key: 'suggestions', label: '建议', icon: <Lightbulb size={ICON_SIZE} /> },
-      { key: 'memory', label: '记忆', icon: <Brain size={ICON_SIZE} /> },
-      { key: 'market', label: '市场', icon: <Store size={ICON_SIZE} /> },
-      { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
-      { key: 'causal', label: '因果推理', icon: <FlaskConical size={ICON_SIZE} /> },
-      { key: 'optimization', label: '优化', icon: <Target size={ICON_SIZE} /> },
-    ],
-  },
-  {
-    key: 'ops', label: '平台运营', icon: <Activity size={16} />,
-    tabs: [
-      { key: 'history', label: '历史', icon: <History size={ICON_SIZE} /> },
-      { key: 'usage', label: '用量', icon: <Gauge size={ICON_SIZE} /> },
-      { key: 'analytics', label: '分析', icon: <PieChart size={ICON_SIZE} /> },
-      { key: 'governance', label: '治理', icon: <Shield size={ICON_SIZE} /> },
-      { key: 'qcmonitor', label: '质检', icon: <ClipboardCheck size={ICON_SIZE} /> },
-      { key: 'alerts', label: '告警', icon: <Bell size={ICON_SIZE} /> },
-      { key: 'observability', label: '追踪', icon: <Activity size={ICON_SIZE} /> },
-      { key: 'messagebus', label: '消息总线', icon: <Radio size={ICON_SIZE} /> },
-      { key: 'tasks', label: '任务', icon: <ListTodo size={ICON_SIZE} /> },
-      { key: 'workflows', label: '工作流', icon: <GitBranch size={ICON_SIZE} /> },
-      { key: 'templates', label: '模板', icon: <FileText size={ICON_SIZE} /> },
+      { key: 'km', label: '知识管理', icon: <BookOpen size={ICON_SIZE} /> },
+      { key: 'config', label: '配置', icon: <Settings size={ICON_SIZE} /> },
+      { key: 'overview', label: '总览', icon: <BarChart3 size={ICON_SIZE} /> },
+      { key: 'users', label: '用户', icon: <Users size={ICON_SIZE} /> },
+      { key: 'ops', label: '运维', icon: <Activity size={ICON_SIZE} /> },
     ],
   },
 ];
 
-// Build a lookup: tabKey → groupKey
-const TAB_TO_GROUP: Record<TabKey, GroupKey> = {} as any;
-TAB_GROUPS.forEach(g => g.tabs.forEach(t => { TAB_TO_GROUP[t.key] = g.key; }));
+const TAB_CONTENT: Record<TabKey, () => ReactNode> = {
+  upload: () => <DataUploadTab />,
+  match: () => <FieldMatchTab />,
+  gap: () => <GapReportTab />,
+  adjust: () => <AdjustmentTab />,
+  progress: () => <GovernanceProgressTab />,
+  report: () => <ReportTab />,
+  knowledge: () => <KnowledgeTab />,
+  km: () => <KnowledgeManageTab />,
+  config: () => <SystemConfigTab />,
+  users: () => <UserManageTab />,
+  ops: () => <OpsMonitorTab />,
+  overview: () => <ProjectOverviewTab />,
+};
+
+/* ---------- DataPanel 主组件 ---------- */
+
+interface DataPanelProps {
+  dataFile: string | null;
+  userRole?: string;
+}
 
 export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('files');
-  const [activeGroup, setActiveGroup] = useState<GroupKey>('data');
-  const [tableData, setTableData] = useState<any[]>([]);
-  const [tableColumns, setTableColumns] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<GroupKey>('operate');
+  const [activeTab, setActiveTab] = useState<TabKey>('upload');
+  const isAdmin = userRole === 'admin';
 
-  useEffect(() => {
-    if (!dataFile) return;
-    loadCsvData(dataFile);
-    setActiveTab('table');
-    setActiveGroup('data');
-  }, [dataFile]);
-
-  const loadCsvData = async (filename: string) => {
-    setLoading(true);
-    try {
-      const resp = await fetch(`/api/user/files/${encodeURIComponent(filename)}`, { credentials: 'include' });
-      if (!resp.ok) return;
-      const text = await resp.text();
-      const result = Papa.parse(text, { header: true, skipEmptyLines: true });
-      if (result.data.length > 0) {
-        setTableColumns(result.meta.fields || []);
-        setTableData(result.data.slice(0, 500));
-      }
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  };
-
-  const handleTabClick = (tab: TabKey) => {
-    setActiveTab(tab);
-    setActiveGroup(TAB_TO_GROUP[tab]);
-  };
-
-  const handleGroupClick = (groupKey: GroupKey) => {
-    setActiveGroup(groupKey);
-    const group = TAB_GROUPS.find(g => g.key === groupKey);
-    if (group && !group.tabs.some(t => t.key === activeTab)) {
-      setActiveTab(group.tabs[0].key);
-    }
-  };
-
-  const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup) || TAB_GROUPS[0];
+  const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup);
+  const visibleGroups = isAdmin ? TAB_GROUPS : TAB_GROUPS.filter(g => g.key !== 'manage');
 
   return (
     <div className="data-panel">
-      <div className="data-panel-header">
-        <LayoutGrid size={18} className="data-panel-header-icon" />
-        <span>工作台</span>
-      </div>
-
-      {/* Group selector — 3 segments */}
-      <div className="data-panel-groups">
-        {TAB_GROUPS.map(g => (
+      {/* Group selector */}
+      <div className="dp-group-bar">
+        {visibleGroups.map(g => (
           <button
             key={g.key}
-            className={`data-panel-group ${activeGroup === g.key ? 'active' : ''}`}
-            onClick={() => handleGroupClick(g.key)}
-            title={g.label}
+            className={`dp-group-btn ${activeGroup === g.key ? 'active' : ''}`}
+            onClick={() => {
+              setActiveGroup(g.key);
+              setActiveTab(TAB_GROUPS.find(grp => grp.key === g.key)!.tabs[0].key);
+            }}
           >
-            <span className="group-icon">{g.icon}</span>
-            <span className="group-label">{g.label}</span>
+            {g.label}
           </button>
         ))}
       </div>
 
-      {/* Tabs within active group */}
-      <div className="data-panel-tabs">
-        {currentGroup.tabs.map(t => (
+      {/* Tab bar */}
+      <div className="dp-tab-bar">
+        {currentGroup?.tabs.map(tab => (
           <button
-            key={t.key}
-            className={`data-panel-tab ${activeTab === t.key ? 'active' : ''}`}
-            onClick={() => handleTabClick(t.key)}
+            key={tab.key}
+            className={`dp-tab ${activeTab === tab.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+            title={tab.label}
           >
-            <span className="tab-icon">{t.icon}</span>
-            {t.label}
+            {tab.icon}
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
-      <div className="data-panel-content">
-        {activeTab === 'files' && <FileManager onFileClick={(name) => { loadCsvData(name); setActiveTab('table'); }} />}
-        {activeTab === 'table' && <DataTable columns={tableColumns} data={tableData} loading={loading} />}
-        {activeTab === 'catalog' && <CatalogTab />}
-        {activeTab === 'metadata' && <MetadataPanel />}
-        {activeTab === 'history' && <HistoryTab />}
-        {activeTab === 'usage' && <UsageTab />}
-        {activeTab === 'tools' && <ToolsTab userRole={userRole} />}
-        {activeTab === 'workflows' && <WorkflowsTab />}
-        {activeTab === 'suggestions' && <SuggestionsTab />}
-        {activeTab === 'tasks' && <TasksTab />}
-        {activeTab === 'templates' && <TemplatesTab />}
-        {activeTab === 'analytics' && <AnalyticsTab />}
-        {activeTab === 'governance' && <GovernanceTab />}
-        {activeTab === 'memory' && <MemorySearchTab />}
-        {activeTab === 'observability' && <ObservabilityTab />}
-        {activeTab === 'capabilities' && <CapabilitiesTab userRole={userRole} />}
-        {activeTab === 'kb' && <KnowledgeBaseTab />}
-        {activeTab === 'vsources' && <VirtualSourcesTab />}
-        {activeTab === 'market' && <MarketplaceTab />}
-        {activeTab === 'geojson' && <GeoJsonEditorTab />}
-        {activeTab === 'charts' && <ChartsTab />}
-        {activeTab === 'worldmodel' && <WorldModelTab />}
-        {activeTab === 'causal' && <CausalReasoningTab />}
-        {activeTab === 'optimization' && <OptimizationTab />}
-        {activeTab === 'qcmonitor' && <QcMonitorTab />}
-        {activeTab === 'alerts' && <AlertsTab />}
-        {activeTab === 'messagebus' && <MessageBusTab />}
-        {activeTab === 'topology' && <TopologyTab />}
+      {/* Tab content */}
+      <div className="dp-content">
+        {TAB_CONTENT[activeTab]?.() ?? <div>未知 Tab</div>}
       </div>
     </div>
   );
