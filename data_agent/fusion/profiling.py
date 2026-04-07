@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def _detect_data_type(file_path: str) -> str:
     """Detect data type from file extension."""
     ext = os.path.splitext(file_path)[1].lower()
-    vector_exts = {".shp", ".geojson", ".gpkg", ".kml", ".kmz", ".json"}
+    vector_exts = {".shp", ".geojson", ".gpkg", ".kml", ".kmz", ".json", ".gdb"}
     raster_exts = {".tif", ".tiff", ".img", ".nc", ".hdf", ".jp2"}
     tabular_exts = {".csv", ".xlsx", ".xls", ".tsv"}
     point_cloud_exts = {".las", ".laz"}

@@ -76,9 +76,9 @@ servers:
     transport: stdio
     command: "D:\\adk\\.venv\\Scripts\\python.exe"
     args: ["-m", "subsystems.cad-parser.mcp_wrapper.server"]
-    enabled: false
+    enabled: true
     category: qc
-    pipelines: ["governance"]
+    pipelines: ["governance", "general"]
 
   - name: arcgis-pro-tools
     description: "ArcGIS Pro dual-engine: basic arcpy (topology/buffer/export) + DL (object detection/pixel classification/change detection/image quality/super-resolution)"

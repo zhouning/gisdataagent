@@ -189,7 +189,7 @@ def batch_profile_datasets(directory_path: str, standard_id: str = "") -> str:
     """
     import json as _json
 
-    SPATIAL_EXTS = {'.shp', '.geojson', '.gpkg', '.gdb', '.csv', '.xlsx', '.xls', '.kml', '.kmz'}
+    SPATIAL_EXTS = {'.shp', '.geojson', '.gpkg', '.gdb', '.csv', '.xlsx', '.xls', '.kml', '.kmz', '.dxf'}
 
     try:
         resolved = _resolve_path(directory_path)

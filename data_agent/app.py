@@ -619,7 +619,7 @@ async def _api_upload_user_file(request: Request):
             with _zf.ZipFile(dest_path, "r") as zr:
                 zr.extractall(extract_dir)
             # Search for spatial files
-            for target_ext in (".shp", ".kml", ".geojson", ".json", ".gpkg"):
+            for target_ext in (".shp", ".kml", ".geojson", ".json", ".gpkg", ".dxf"):
                 for root, _dirs, files in os.walk(extract_dir):
                     for fname in files:
                         if fname.lower().endswith(target_ext):
@@ -3020,7 +3020,7 @@ async def main(message: cl.Message):
         # Get spatial file: prefer filename mentioned in user text, fallback to most recent
         user_dir = Path(get_user_upload_dir())
         file_path = None
-        spatial_exts = ['.shp', '.geojson', '.gpkg', '.kml']
+        spatial_exts = ['.shp', '.geojson', '.gpkg', '.kml', '.dxf']
         if user_dir.exists():
             # First: try to match filename from user text
             all_spatial = [f for f in user_dir.rglob("*") if f.suffix.lower() in spatial_exts]

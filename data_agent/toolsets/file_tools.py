@@ -1,5 +1,8 @@
-"""File management toolset: list and delete user files (local + cloud)."""
+"""File management toolset: list, delete, and convert user files."""
+import asyncio
+import json
 import os
+import traceback
 
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
@@ -130,10 +133,109 @@ def delete_user_file(file_name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Format conversion tools
+# ---------------------------------------------------------------------------
+
+async def convert_format(
+    file_path: str,
+    output_format: str = "geojson",
+    layer_name: str = "",
+) -> str:
+    """将空间数据格式转换为 GeoJSON、Shapefile 或 GeoPackage。支持 GDB 多图层导出。
+
+    Args:
+        file_path: 输入文件路径。支持 .gdb（Esri File Geodatabase）、.shp、.geojson、.gpkg、.kml 等。
+        output_format: 输出格式 (geojson/shp/gpkg)，默认 geojson。
+        layer_name: GDB 指定图层名称。留空则导出所有图层（多图层时每层一个文件）。
+                   非 GDB 格式忽略此参数。
+
+    Returns:
+        转换结果 JSON，含输出路径、记录数和字段列表。多图层时返回文件列表。
+    """
+    def _run():
+        import geopandas as gpd
+        from ..gis_processors import _resolve_path, _generate_output_path
+
+        resolved = _resolve_path(file_path)
+        ext = os.path.splitext(resolved)[1].lower()
+        is_gdb = ext == ".gdb" or (
+            os.path.isdir(resolved)
+            and any(f.endswith(".gdbtable") for f in os.listdir(resolved) if os.path.isfile(os.path.join(resolved, f)))
+        )
+
+        driver_map = {"geojson": "GeoJSON", "shp": "ESRI Shapefile", "gpkg": "GPKG"}
+        driver = driver_map.get(output_format.lower(), "GeoJSON")
+        out_ext = {"geojson": "geojson", "shp": "shp", "gpkg": "gpkg"}.get(
+            output_format.lower(), "geojson"
+        )
+
+        if is_gdb:
+            import fiona
+            all_layers = fiona.listlayers(resolved)
+            if not all_layers:
+                return {"status": "error", "message": f"GDB 为空: {resolved}"}
+
+            if layer_name:
+                if layer_name not in all_layers:
+                    return {
+                        "status": "error",
+                        "message": f"图层 '{layer_name}' 不存在。可用图层: {all_layers}",
+                    }
+                layers_to_export = [layer_name]
+            else:
+                layers_to_export = all_layers
+
+            outputs = []
+            for lyr in layers_to_export:
+                gdf = gpd.read_file(resolved, layer=lyr)
+                safe_name = lyr.replace(" ", "_").replace("/", "_")[:50]
+                out_path = _generate_output_path(f"gdb_{safe_name}", out_ext)
+                gdf.to_file(out_path, driver=driver)
+                outputs.append({
+                    "layer": lyr,
+                    "output_path": out_path,
+                    "rows": len(gdf),
+                    "columns": [c for c in gdf.columns if c != "geometry"],
+                    "geometry_type": gdf.geom_type.iloc[0] if len(gdf) > 0 else None,
+                    "crs": str(gdf.crs) if gdf.crs else None,
+                })
+
+            return {
+                "status": "ok",
+                "source": os.path.basename(resolved),
+                "total_layers": len(all_layers),
+                "exported_layers": len(outputs),
+                "outputs": outputs,
+            }
+        else:
+            # Non-GDB: simple format conversion
+            gdf = gpd.read_file(resolved)
+            out_path = _generate_output_path("converted", out_ext)
+            gdf.to_file(out_path, driver=driver)
+            return {
+                "status": "ok",
+                "source": os.path.basename(resolved),
+                "output_path": out_path,
+                "rows": len(gdf),
+                "columns": [c for c in gdf.columns if c != "geometry"],
+                "geometry_type": gdf.geom_type.iloc[0] if len(gdf) > 0 else None,
+                "crs": str(gdf.crs) if gdf.crs else None,
+                "format": output_format,
+            }
+
+    try:
+        result = await asyncio.to_thread(_run)
+        return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)})
+
+
+# ---------------------------------------------------------------------------
 # Toolset class
 # ---------------------------------------------------------------------------
 
-_ALL_FUNCS = [list_user_files, delete_user_file]
+_ALL_FUNCS = [list_user_files, delete_user_file, convert_format]
 
 
 class FileToolset(BaseToolset):

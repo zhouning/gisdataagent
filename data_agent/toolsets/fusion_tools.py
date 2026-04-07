@@ -118,8 +118,12 @@ async def fuse_datasets(
     join_column: str = "",
     spatial_predicate: str = "intersects",
     user_hint: str = "",
+    enable_temporal: str = "auto",
+    conflict_strategy: str = "",
+    enable_explainability: str = "true",
+    use_llm_semantic: str = "false",
 ) -> str:
-    """融合多个数据源。支持空间连接、属性合并、分区统计等10种策略。
+    """融合多个数据源。支持空间连接、属性合并、分区统计等10种策略，含v2增强能力。
 
     Args:
         file_paths: 逗号分隔的文件路径列表
@@ -130,9 +134,18 @@ async def fuse_datasets(
         join_column: 属性连接的键字段 (attribute_join时需要)
         spatial_predicate: 空间谓词 (intersects/contains/within, 用于spatial_join)
         user_hint: 用户意图描述（如"按人口密度筛选"）
+        enable_temporal: 时序对齐 (auto/true/false)。auto=自动检测时间列并对齐，
+                        true=强制启用，false=关闭。
+        conflict_strategy: 冲突解决策略。留空=不启用。可选:
+                          source_priority(源优先级)/latest_wins(最新值优先)/
+                          voting(投票法)/llm_arbitration(LLM仲裁)。
+        enable_explainability: 可解释性注解 (true/false, 默认true)。启用后在融合结果中
+                              添加 _fusion_confidence、_fusion_sources 等字段，并生成质量热力图。
+        use_llm_semantic: LLM增强语义匹配 (true/false, 默认false)。启用后使用Gemini
+                         深度理解字段语义，提升跨源字段匹配准确度。
 
     Returns:
-        融合结果摘要，包含输出路径、行列数、质量评分和对齐日志。
+        融合结果摘要，包含输出路径、行列数、质量评分、对齐日志、时序日志、冲突摘要和可解释性路径。
     """
     paths = [p.strip() for p in file_paths.split(",") if p.strip()]
     if len(paths) < 2:
@@ -142,16 +155,48 @@ async def fuse_datasets(
     if join_column:
         params["join_column"] = join_column
 
+    explainability = enable_explainability.lower() == "true"
+    llm_semantic = use_llm_semantic.lower() == "true"
+
     def _run():
         sources = []
         for p in paths:
             resolved = _resolve_path(p)
             sources.append(fusion_engine.profile_source(resolved))
-        report = fusion_engine.assess_compatibility(sources)
+        report = fusion_engine.assess_compatibility(
+            sources, use_llm_schema=llm_semantic,
+        )
         aligned, align_log = fusion_engine.align_sources(sources, report)
+
+        # v2: Build temporal config
+        temporal_config = None
+        temporal_flag = enable_temporal.lower()
+        if temporal_flag == "true":
+            temporal_config = {"method": "linear"}
+        elif temporal_flag == "auto":
+            from data_agent.fusion.temporal import TemporalAligner
+            ta = TemporalAligner()
+            for _, data_obj in aligned:
+                if hasattr(data_obj, "columns"):
+                    detected = ta.detect_temporal_columns(data_obj)
+                    if detected:
+                        temporal_config = {
+                            "time_column": detected[0],
+                            "method": "linear",
+                        }
+                        break
+
+        # v2: Build conflict config
+        conflict_config = None
+        if conflict_strategy:
+            conflict_config = {"strategy": conflict_strategy}
+
         result = fusion_engine.execute_fusion(
             aligned, strategy, sources, params,
             report=report, user_hint=user_hint,
+            temporal_config=temporal_config,
+            conflict_config=conflict_config,
+            enable_explainability=explainability,
         )
         fusion_engine.record_operation(
             sources=sources,
@@ -161,6 +206,12 @@ async def fuse_datasets(
             quality_warnings=result.quality_warnings,
             duration_s=result.duration_s,
             params=params,
+            temporal_log="\n".join(result.temporal_log) if result.temporal_log else None,
+            conflict_log=json.dumps(result.conflict_summary) if result.conflict_summary else None,
+            explainability_metadata=(
+                {"explainability_path": result.explainability_path}
+                if result.explainability_path else None
+            ),
         )
         return result, align_log
 
@@ -176,6 +227,15 @@ async def fuse_datasets(
             "alignment_log": result.alignment_log + align_log,
             "duration_s": result.duration_s,
         }
+        # v2 fields
+        if result.temporal_log:
+            summary["temporal_log"] = result.temporal_log
+        if result.conflict_summary:
+            summary["conflict_summary"] = result.conflict_summary
+        if result.explainability_path:
+            summary["explainability_path"] = result.explainability_path
+        if result.output_asset_code:
+            summary["asset_code"] = result.output_asset_code
         return json.dumps(summary, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
@@ -311,6 +371,151 @@ async def validate_temporal_consistency(
 
 
 # ---------------------------------------------------------------------------
+# v2.0: Document context injection for fusion
+# ---------------------------------------------------------------------------
+
+
+async def inject_document_context(
+    document_paths: str,
+    fusion_task: str = "",
+) -> str:
+    """从 PDF/Word/Excel 文档中提取结构化元数据，作为融合的上下文信息。
+
+    可提取：数据来源说明、字段含义、时间范围、坐标系信息、数据质量声明等。
+    输出可直接用于融合时的冲突解决源优先级判定。
+
+    Args:
+        document_paths: 逗号分隔的文档路径列表 (如: "规划说明.pdf, 数据字典.docx, 统计表.xlsx")
+        fusion_task: 融合任务描述（如"城市规划多源数据融合"），帮助LLM聚焦提取相关信息。
+
+    Returns:
+        JSON 结构化元数据，包含每个文档的数据来源、时间范围、质量声明等信息。
+    """
+    paths = [p.strip() for p in document_paths.split(",") if p.strip()]
+    if not paths:
+        return json.dumps({"status": "error", "message": "请提供至少一个文档路径"})
+
+    async def _extract_and_analyze():
+        from ..gis_processors import _resolve_path
+
+        doc_summaries = []
+        for p in paths:
+            resolved = _resolve_path(p)
+            ext = os.path.splitext(resolved)[1].lower()
+            text = ""
+
+            try:
+                if ext == ".pdf":
+                    from ..multimodal import extract_pdf_text
+                    text = extract_pdf_text(resolved, max_pages=10)
+                elif ext in (".docx", ".doc"):
+                    try:
+                        import docx
+                        doc = docx.Document(resolved)
+                        text = "\n".join(para.text for para in doc.paragraphs if para.text.strip())
+                    except Exception:
+                        text = f"[无法解析Word文档: {os.path.basename(resolved)}]"
+                elif ext in (".xlsx", ".xls"):
+                    import pandas as pd
+                    df = pd.read_excel(resolved, nrows=20)
+                    text = f"列名: {list(df.columns)}\n前5行:\n{df.head().to_string()}"
+                elif ext == ".csv":
+                    import pandas as pd
+                    df = pd.read_csv(resolved, nrows=20)
+                    text = f"列名: {list(df.columns)}\n前5行:\n{df.head().to_string()}"
+                else:
+                    text = f"[不支持的文档格式: {ext}]"
+            except Exception as e:
+                text = f"[读取失败: {e}]"
+
+            # Truncate to 1500 chars per document
+            if len(text) > 1500:
+                text = text[:1500] + "..."
+
+            doc_summaries.append({
+                "file": os.path.basename(resolved),
+                "format": ext,
+                "text_preview": text[:200],
+                "full_text": text,
+            })
+
+        # Use Gemini Flash to extract structured metadata from documents
+        combined_text = ""
+        for ds in doc_summaries:
+            combined_text += f"\n--- 文档: {ds['file']} ({ds['format']}) ---\n{ds['full_text']}\n"
+
+        task_context = f"融合任务: {fusion_task}" if fusion_task else "通用数据融合"
+
+        prompt = f"""请从以下文档内容中提取与地理空间数据融合相关的结构化元数据。
+
+{task_context}
+
+{combined_text}
+
+请以JSON格式返回，每个文档一条记录，包含以下字段（如信息不存在则标记为null）：
+- file: 文件名
+- data_source: 数据来源机构/系统
+- description: 数据内容简述（50字以内）
+- time_range: 数据时间范围（如 "2020-2024"）
+- crs_info: 坐标系信息（如 "CGCS2000/EPSG:4490"）
+- field_definitions: 关键字段含义列表（最多10个）
+- quality_notes: 数据质量声明
+- timeliness: 时效性评分 0-1（越新越高）
+- precision: 精度评分 0-1
+- completeness: 完整性评分 0-1
+
+仅返回JSON数组，不要其他文字。"""
+
+        try:
+            import google.genai as genai
+            client = genai.Client()
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            raw = response.text.strip()
+            # Extract JSON from possible markdown code block
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+                raw = raw.strip()
+            metadata = json.loads(raw)
+        except Exception as e:
+            # Fallback: return basic file info without LLM analysis
+            metadata = []
+            for ds in doc_summaries:
+                metadata.append({
+                    "file": ds["file"],
+                    "data_source": None,
+                    "description": ds["text_preview"],
+                    "time_range": None,
+                    "crs_info": None,
+                    "field_definitions": [],
+                    "quality_notes": None,
+                    "timeliness": 0.5,
+                    "precision": 0.5,
+                    "completeness": 0.5,
+                    "llm_error": str(e),
+                })
+
+        return {
+            "status": "ok",
+            "document_count": len(paths),
+            "source_metadata": metadata,
+            "usage_hint": "将 source_metadata 中的 timeliness/precision/completeness "
+                         "用于融合时的冲突解决权重。",
+        }
+
+    try:
+        result = await _extract_and_analyze()
+        return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)})
+
+
+# ---------------------------------------------------------------------------
 
 _ALL_FUNCS = [
     profile_fusion_sources,
@@ -319,6 +524,7 @@ _ALL_FUNCS = [
     validate_fusion_quality,
     standardize_timestamps,
     validate_temporal_consistency,
+    inject_document_context,
 ]
 
 

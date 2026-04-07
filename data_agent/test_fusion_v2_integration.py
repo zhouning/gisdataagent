@@ -154,7 +154,7 @@ class TestToolsetRegistration(unittest.TestCase):
         # Original tools still present
         self.assertIn("profile_fusion_sources", func_names)
         self.assertIn("fuse_datasets", func_names)
-        self.assertEqual(len(_ALL_FUNCS), 6)
+        self.assertEqual(len(_ALL_FUNCS), 7)
 
 
 class TestAPIRoutes(unittest.TestCase):
@@ -197,6 +197,63 @@ class TestFusionResultModel(unittest.TestCase):
             temporal_log=["Standardized UTC"],
         )
         self.assertEqual(r.explainability_path, "/tmp/heatmap.geojson")
+
+
+# ---------------------------------------------------------------------------
+# v2 Agent tool layer integration tests (new)
+# ---------------------------------------------------------------------------
+
+class TestFuseDatasetsV2Params(unittest.TestCase):
+    """Test fuse_datasets passes v2 params to execute_fusion."""
+
+    def test_inject_document_context_registered(self):
+        """inject_document_context should be in _ALL_FUNCS."""
+        from data_agent.toolsets.fusion_tools import _ALL_FUNCS
+        func_names = [f.__name__ for f in _ALL_FUNCS]
+        self.assertIn("inject_document_context", func_names)
+
+    def test_convert_format_registered(self):
+        """convert_format should be in FileToolset._ALL_FUNCS."""
+        from data_agent.toolsets.file_tools import _ALL_FUNCS
+        func_names = [f.__name__ for f in _ALL_FUNCS]
+        self.assertIn("convert_format", func_names)
+
+    def test_fuse_datasets_has_v2_params(self):
+        """fuse_datasets should accept v2 keyword arguments."""
+        import inspect
+        from data_agent.toolsets.fusion_tools import fuse_datasets
+        sig = inspect.signature(fuse_datasets)
+        param_names = list(sig.parameters.keys())
+        self.assertIn("enable_temporal", param_names)
+        self.assertIn("conflict_strategy", param_names)
+        self.assertIn("enable_explainability", param_names)
+        self.assertIn("use_llm_semantic", param_names)
+
+    def test_fuse_datasets_v2_defaults(self):
+        """Check default values for v2 parameters."""
+        import inspect
+        from data_agent.toolsets.fusion_tools import fuse_datasets
+        sig = inspect.signature(fuse_datasets)
+        self.assertEqual(sig.parameters["enable_temporal"].default, "auto")
+        self.assertEqual(sig.parameters["conflict_strategy"].default, "")
+        self.assertEqual(sig.parameters["enable_explainability"].default, "true")
+        self.assertEqual(sig.parameters["use_llm_semantic"].default, "false")
+
+
+class TestProfilingGdbRecognition(unittest.TestCase):
+    """Test that profiling.py recognizes .gdb as vector format."""
+
+    def test_gdb_detected_as_vector(self):
+        from data_agent.fusion.profiling import _detect_data_type
+        self.assertEqual(_detect_data_type("poi_data.gdb"), "vector")
+
+    def test_shp_still_vector(self):
+        from data_agent.fusion.profiling import _detect_data_type
+        self.assertEqual(_detect_data_type("roads.shp"), "vector")
+
+    def test_tif_still_raster(self):
+        from data_agent.fusion.profiling import _detect_data_type
+        self.assertEqual(_detect_data_type("dem.tif"), "raster")
 
 
 if __name__ == "__main__":
