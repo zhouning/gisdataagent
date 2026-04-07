@@ -1,7 +1,17 @@
 # =============================================================================
 # GIS Data Agent — Dockerfile
-# Base: GDAL/OGR with Python on Ubuntu (PROJ + GEOS included)
+# Multi-stage: Node.js frontend build + GDAL/Python runtime
 # =============================================================================
+
+# ---- Stage 1: Build frontend ------------------------------------------------
+FROM node:20-slim AS frontend-builder
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit
+COPY frontend/ ./
+RUN npm run build
+
+# ---- Stage 2: Runtime -------------------------------------------------------
 FROM ghcr.io/osgeo/gdal:ubuntu-small-3.9.3
 
 LABEL maintainer="GIS Data Agent Team"
@@ -46,8 +56,10 @@ RUN apt-get purge -y build-essential python3-dev && \
 
 # ---- Copy application code --------------------------------------------------
 COPY data_agent/ /app/data_agent/
+COPY --from=frontend-builder /build/dist/ /app/frontend/dist/
 COPY .chainlit/ /app/.chainlit/
 COPY public/ /app/public/
+COPY scripts/ /app/scripts/
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
