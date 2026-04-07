@@ -122,6 +122,12 @@ docs/*paper*_cn.*
 docs/*paper*_en.*
 docs/*paper*_response*
 docs/generate_*_paper*
+docs/*reviewer*
+docs/*revision*
+docs/causal_inference_*.tex
+docs/causal_inference_*.md
+docs/world_model_*.tex
+docs/world_model_*.md
 docs/technical_paper_*
 docs/surveying_qc_demo_script.*
 docs/surveying_qc_agent_design.*
