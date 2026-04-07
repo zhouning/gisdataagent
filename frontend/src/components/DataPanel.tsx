@@ -4,55 +4,19 @@ import {
   BookOpen, Settings, Users, Activity, BarChart3,
 } from 'lucide-react';
 import DataUploadTab, { type DatasetInfo } from './datapanel/DataUploadTab';
+import FieldMatchTab from './datapanel/FieldMatchTab';
+import GapReportTab from './datapanel/GapReportTab';
+import AdjustmentTab from './datapanel/AdjustmentTab';
+import ReportTab from './datapanel/ReportTab';
 
-/* ---------- 治理场景 Tab 组件（除 DataUploadTab 外均为占位符）---------- */
-
-function FieldMatchTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <Table2 size={40} strokeWidth={1} />
-      <h3>字段匹配</h3>
-      <p>上传数据后自动进行语义匹配分析</p>
-    </div>
-  );
-}
-
-function GapReportTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <AlertTriangle size={40} strokeWidth={1} />
-      <h3>差距分析</h3>
-      <p>标准对照完成后展示差距报告</p>
-    </div>
-  );
-}
-
-function AdjustmentTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <Wrench size={40} strokeWidth={1} />
-      <h3>调整建议</h3>
-      <p>模型推荐完成后展示调整方案</p>
-    </div>
-  );
-}
+/* ---------- 治理场景 Tab 组件（剩余占位符）---------- */
 
 function GovernanceProgressTab() {
   return (
     <div className="tab-content-placeholder">
       <Play size={40} strokeWidth={1} />
       <h3>治理进度</h3>
-      <p>治理执行时展示实时进度</p>
-    </div>
-  );
-}
-
-function ReportTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <FileText size={40} strokeWidth={1} />
-      <h3>治理报告</h3>
-      <p>治理完成后预览和下载报告</p>
+      <p>治理执行时展示实时进度（待底座环境就绪）</p>
     </div>
   );
 }
@@ -172,8 +136,13 @@ export default function DataPanel({ dataFile, userRole, onMapUpdate }: DataPanel
   const [activeTab, setActiveTab] = useState<TabKey>('upload');
   const isAdmin = userRole === 'admin';
 
+  // 当前活跃的 dataset（上传后设置）
+  const [currentDatasetId, setCurrentDatasetId] = useState<string | null>(null);
+  // 标准对照结果（match 后设置，供 gap/report Tab 使用）
+  const [matchResult, setMatchResult] = useState<any>(null);
+
   const handleDatasetLoaded = useCallback((ds: DatasetInfo, geojson: any) => {
-    // 通知地图面板渲染 GeoJSON
+    setCurrentDatasetId(ds.dataset_id);
     if (onMapUpdate && geojson) {
       onMapUpdate({
         layers: [{
@@ -188,18 +157,30 @@ export default function DataPanel({ dataFile, userRole, onMapUpdate }: DataPanel
   }, [onMapUpdate]);
 
   const handleAnalyzeRequest = useCallback((ds: DatasetInfo) => {
-    // 切换到匹配 Tab 并触发分析
+    setCurrentDatasetId(ds.dataset_id);
     setActiveTab('match');
-    // TODO: 触发 AI 对话分析
   }, []);
+
+  const handleMatchComplete = useCallback((result: any) => {
+    setMatchResult(result);
+  }, []);
+
+  // 从 matchResult 中提取差距列表和统计
+  const gaps = matchResult?.差距清单 ?? [];
+  const matchRate = matchResult?.匹配率 ?? undefined;
+  const gapCount = matchResult ? {
+    high: gaps.filter((g: any) => g.严重程度 === 'high').length,
+    medium: gaps.filter((g: any) => g.严重程度 === 'medium').length,
+    low: gaps.filter((g: any) => g.严重程度 === 'low').length,
+  } : undefined;
 
   const tabContent: Record<TabKey, () => ReactNode> = {
     upload: () => <DataUploadTab onDatasetLoaded={handleDatasetLoaded} onAnalyzeRequest={handleAnalyzeRequest} />,
-    match: () => <FieldMatchTab />,
-    gap: () => <GapReportTab />,
-    adjust: () => <AdjustmentTab />,
+    match: () => <FieldMatchTab datasetId={currentDatasetId} onMatchComplete={handleMatchComplete} />,
+    gap: () => <GapReportTab gaps={gaps} matchRate={matchRate} />,
+    adjust: () => <AdjustmentTab datasetId={currentDatasetId} />,
     progress: () => <GovernanceProgressTab />,
-    report: () => <ReportTab />,
+    report: () => <ReportTab datasetId={currentDatasetId} matchRate={matchRate} gapCount={gapCount} />,
     knowledge: () => <KnowledgeTab />,
     km: () => <KnowledgeManageTab />,
     config: () => <SystemConfigTab />,
