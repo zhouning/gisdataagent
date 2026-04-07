@@ -9,9 +9,9 @@ equivalences:
   - group_id: perimeter
     fields: ["perimeter", "周长", "shape_length", "shape_len", "PERIMETER"]
   - group_id: land_use_code
-    fields: ["dlbm", "DLBM", "land_use_code", "地类编码", "land_code", "用地编码"]
+    fields: ["dlbm", "DLBM", "land_use_code", "地类编码", "land_code", "用地编码", "DLDM", "dldm", "地类代码", "XZDLDM", "xzdldm", "现状地类代码", "JQDLDM", "jqdldm"]
   - group_id: land_use_name
-    fields: ["dlmc", "DLMC", "land_use_name", "地类名称", "land_name", "用地名称"]
+    fields: ["dlmc", "DLMC", "land_use_name", "地类名称", "land_name", "用地名称", "XZDLMC", "xzdlmc", "现状地类名称", "JQDLMC", "jqdlmc"]
   - group_id: elevation
     fields: ["elevation", "高程", "dem", "height", "altitude", "海拔", "gc"]
   - group_id: slope

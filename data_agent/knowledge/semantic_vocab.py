@@ -68,11 +68,11 @@ _SURVEY_EXTENSIONS: list[dict] = [
     },
     {
         "group_id": "deduct_coefficient",
-        "fields": ["KCXS", "kcxs", "扣除地类系数"],
+        "fields": ["KCXS", "kcxs", "扣除地类系数", "TKXS", "tkxs", "田坎系数"],
     },
     {
         "group_id": "deduct_area",
-        "fields": ["KCMJ", "kcmj", "扣除地类面积"],
+        "fields": ["KCMJ", "kcmj", "扣除地类面积", "TKMJ", "tkmj", "田坎面积"],
     },
     {
         "group_id": "parcel_land_area",
@@ -84,7 +84,7 @@ _SURVEY_EXTENSIONS: list[dict] = [
     },
     {
         "group_id": "farmland_slope",
-        "fields": ["GDPDJB", "gdpdjb", "耕地坡度级别", "farmland_slope_level"],
+        "fields": ["GDPDJB", "gdpdjb", "耕地坡度级别", "farmland_slope_level", "PDJB", "pdjb", "坡度级别"],
     },
     {
         "group_id": "linear_feature_width",
@@ -124,7 +124,7 @@ _SURVEY_EXTENSIONS: list[dict] = [
     },
     {
         "group_id": "description",
-        "fields": ["MSSM", "mssm", "描述说明", "BZ", "bz", "备注", "remark", "note"],
+        "fields": ["MSSM", "mssm", "描述说明", "BZ", "bz", "备注", "remark", "note", "SM", "sm", "说明"],
     },
     # --- 通用 GIS 字段补充 ---
     {
