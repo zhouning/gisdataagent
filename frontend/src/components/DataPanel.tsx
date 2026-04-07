@@ -1,24 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import {
   Upload, Table2, AlertTriangle, Wrench, Play, FileText,
   BookOpen, Settings, Users, Activity, BarChart3,
 } from 'lucide-react';
+import DataUploadTab, { type DatasetInfo } from './datapanel/DataUploadTab';
 
-/* ---------- 治理场景 Tab 组件（待实现的用占位符）---------- */
-
-function DataUploadTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <Upload size={40} strokeWidth={1} />
-      <h3>数据接入</h3>
-      <p>上传 Shapefile / GeoJSON / GPKG 文件开始治理</p>
-      <label className="upload-btn">
-        <input type="file" accept=".shp,.shx,.dbf,.prj,.cpg,.geojson,.json,.gpkg" multiple style={{ display: 'none' }} />
-        选择文件
-      </label>
-    </div>
-  );
-}
+/* ---------- 治理场景 Tab 组件（除 DataUploadTab 外均为占位符）---------- */
 
 function FieldMatchTab() {
   return (
@@ -172,32 +159,54 @@ const TAB_GROUPS: { key: GroupKey; label: string; tabs: TabDef[] }[] = [
   },
 ];
 
-const TAB_CONTENT: Record<TabKey, () => ReactNode> = {
-  upload: () => <DataUploadTab />,
-  match: () => <FieldMatchTab />,
-  gap: () => <GapReportTab />,
-  adjust: () => <AdjustmentTab />,
-  progress: () => <GovernanceProgressTab />,
-  report: () => <ReportTab />,
-  knowledge: () => <KnowledgeTab />,
-  km: () => <KnowledgeManageTab />,
-  config: () => <SystemConfigTab />,
-  users: () => <UserManageTab />,
-  ops: () => <OpsMonitorTab />,
-  overview: () => <ProjectOverviewTab />,
-};
-
 /* ---------- DataPanel 主组件 ---------- */
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
+  onMapUpdate?: (config: any) => void;
 }
 
-export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
+export default function DataPanel({ dataFile, userRole, onMapUpdate }: DataPanelProps) {
   const [activeGroup, setActiveGroup] = useState<GroupKey>('operate');
   const [activeTab, setActiveTab] = useState<TabKey>('upload');
   const isAdmin = userRole === 'admin';
+
+  const handleDatasetLoaded = useCallback((ds: DatasetInfo, geojson: any) => {
+    // 通知地图面板渲染 GeoJSON
+    if (onMapUpdate && geojson) {
+      onMapUpdate({
+        layers: [{
+          type: 'geojson',
+          data: geojson,
+          name: ds.filename,
+          style: { color: '#22c55e', weight: 1, fillOpacity: 0.3 },
+        }],
+        bounds: ds.bounds,
+      });
+    }
+  }, [onMapUpdate]);
+
+  const handleAnalyzeRequest = useCallback((ds: DatasetInfo) => {
+    // 切换到匹配 Tab 并触发分析
+    setActiveTab('match');
+    // TODO: 触发 AI 对话分析
+  }, []);
+
+  const tabContent: Record<TabKey, () => ReactNode> = {
+    upload: () => <DataUploadTab onDatasetLoaded={handleDatasetLoaded} onAnalyzeRequest={handleAnalyzeRequest} />,
+    match: () => <FieldMatchTab />,
+    gap: () => <GapReportTab />,
+    adjust: () => <AdjustmentTab />,
+    progress: () => <GovernanceProgressTab />,
+    report: () => <ReportTab />,
+    knowledge: () => <KnowledgeTab />,
+    km: () => <KnowledgeManageTab />,
+    config: () => <SystemConfigTab />,
+    users: () => <UserManageTab />,
+    ops: () => <OpsMonitorTab />,
+    overview: () => <ProjectOverviewTab />,
+  };
 
   const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup);
   const visibleGroups = isAdmin ? TAB_GROUPS : TAB_GROUPS.filter(g => g.key !== 'manage');
@@ -237,7 +246,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
 
       {/* Tab content */}
       <div className="dp-content">
-        {TAB_CONTENT[activeTab]?.() ?? <div>未知 Tab</div>}
+        {tabContent[activeTab]?.() ?? <div>未知 Tab</div>}
       </div>
     </div>
   );
