@@ -1,14 +1,14 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v20.0
+# GIS Data Agent (ADK Edition) v21.0
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 29 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **266 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **271 REST API endpoints**.
 
-**v20.0**: **Distributed Task Queue + Redis Cache + Experience Improvements** — Unified Redis infrastructure (async/sync dual clients + SETNX distributed lock), TaskQueue Redis Sorted Set backend (cross-process shared queue + distributed semaphore, memory fallback), semantic layer + context engine dual-layer cache (Redis + memory), declarative multi-LLM YAML config (`conf/models.yaml` for Gemini/DeepSeek/Qwen/local models), Agentic/Workflow dual execution mode (keyword detection + intent routing), DuckDB Lite spatial adapter (offline/demo deployment without PostGIS). 41 new tests.
+**v21.0**: **Cross-System Lineage Tracking** — Dedicated `agent_asset_lineage` edge table supporting internal↔external any combination, external asset registration (Tableau/Airflow/PowerBI), BFS cross-system lineage graph traversal, 5 new REST endpoints. 13 new tests.
 
-**v19.0**: **Context Engineering + Feedback Flywheel** (Datus.ai benchmark) — Unified ContextEngine with 6 providers, structured feedback loop (frontend thumbs up/down → auto-ingest reference queries + batch FailureAnalyzer), reference query library (embedding search + NL2SQL few-shot), MetricFlow semantic model (GIS-extended YAML + PostGIS auto-generator). 68 new tests.
+**v20.0**: **Distributed Task Queue + Redis Cache + Experience Improvements** — Unified Redis infrastructure (async/sync dual clients + SETNX distributed lock), TaskQueue Redis Sorted Set backend, dual-layer cache (Redis + memory), declarative multi-LLM YAML config, Agentic/Workflow dual execution mode, DuckDB Lite spatial adapter. 41 new tests.
 
 ## 📚 Official Technical Documentation
 

@@ -1,10 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v20.0
+# GIS Data Agent (ADK Edition) v21.0
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
+
+**v21.0 新增**：**跨系统血缘追踪** — 独立血缘边表 `agent_asset_lineage`（支持内部↔外部任意组合）、外部资产注册（Tableau/Airflow/PowerBI 等）、BFS 跨系统血缘图谱查询、5 个 REST 端点（添加血缘边/跨系统血缘图/注册外部资产/列出外部系统/删除血缘边）。
 
 **v20.0 新增**：**分布式任务队列 + Redis 缓存 + 体验优化** — Redis 统一基础层（async/sync 双客户端 + SETNX 分布式锁）、TaskQueue Redis Sorted Set 后端（跨进程共享队列 + 分布式信号量，内存降级兼容）、语义层 + 上下文引擎双层缓存（Redis + 内存）、声明式多 LLM YAML 配置（`conf/models.yaml` 一键切换 Gemini/DeepSeek/Qwen/本地模型）、Agentic/Workflow 双模式执行（关键词检测 + 意图路由）、DuckDB Lite 轻量空间数据库（无 PostGIS 依赖的离线/Demo 部署）。
 
@@ -46,13 +48,14 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 3500+ tests, 159 test files |
+| 测试覆盖 | 3550+ tests, 160 test files |
 | 工具集 | 40 BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
 | ADK Skills | 26 场景化领域技能 (含 skill-creator AI 辅助创建) |
-| REST API | 266 endpoints |
-| DB 迁移 | 62 个 SQL 迁移 |
+| REST API | 271 endpoints |
+| DB 迁移 | 63 个 SQL 迁移 |
 | DataPanel | 29 标签页 (3 分组: 数据资源/智能分析/平台运营) |
-| Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程) |
+| Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程 + 跨系统血缘) |
+| 跨系统血缘 | agent_asset_lineage 边表 + 外部资产注册 + BFS 图谱查询 (Tableau/Airflow/PowerBI) |
 | 分布式任务队列 | Redis Sorted Set 后端 + 分布式信号量 + 内存降级 |
 | Redis 缓存 | 语义层 + 上下文引擎双层缓存 (Redis + 内存), 分布式锁 (SETNX + Lua) |
 | 多 LLM 配置 | conf/models.yaml 声明式 + load_from_yaml() 动态注册 (Gemini/DeepSeek/Qwen/本地) |
@@ -172,6 +175,27 @@
 - CLI 命令：new / validate / list / test / package
 - 验证器模块（结构和元数据校验）
 - 13/13 测试通过，可通过 PyPI 安装
+
+### 跨系统血缘追踪 (v21.0)
+
+从单系统血缘扩展到跨系统联邦血缘，支持追踪数据在 GIS Data Agent 与外部系统之间的流转关系。
+
+**1. 外部资产注册**
+- `register_external_asset(system, external_id, name, url)` — 注册 Tableau/Airflow/PowerBI 等外部系统资产
+- 资产名自动加 `{system}:` 前缀，与内部资产区分
+- `external_metadata` JSONB 存储系统特定元数据
+
+**2. 血缘边表 (agent_asset_lineage)**
+- 独立边表支持内部↔外部任意组合：内部→内部、内部→外部、外部→内部
+- 关系类型：`derives_from` / `feeds_into` / `references`
+- 记录 tool_name 和 pipeline_run_id 用于溯源
+
+**3. 跨系统血缘图谱**
+- `get_cross_system_lineage(asset_id, depth)` — BFS 递归查询，返回 nodes + edges 图结构
+- 节点区分 `internal` / `external` 类型
+- 外部节点携带 system 标签和可点击 URL
+
+**新增**：1 个 migration (056) + 1 个 API 路由模块 + 5 个 REST 端点 + 13 新测试
 
 ### 分布式任务队列 + Redis 缓存 + 体验优化 (v20.0)
 
