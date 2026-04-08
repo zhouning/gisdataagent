@@ -149,7 +149,7 @@
 ### DRL 优化
 - [x] **自定义训练 API** — train_drl_model 工具暴露 ✅
 - [x] **可解释性模块** — 特征重要性分析 ✅ *(SHAP 集成待 GPU 环境)*
-- [ ] **时序动画** — 优化过程 200 步回放动画（逐步地块转换 GIF/MP4）
+- [x] **时序动画** — DRL 优化过程 GIF 回放 + 前后对比 PNG ✅ 2026-04-08
 
 ### 三面板 SPA
 - [x] **要素绘制编辑** — Leaflet.Draw 点/线/面/矩形 + 导出 GeoJSON ✅ v14.5
@@ -983,19 +983,19 @@
 
 - [~] **Kong API 网关** — 统一入口，限流/熔断/认证前置 *(搁置)*
 - [ ] **kong-gateway.yaml** — K8s 部署 (2 副本 + LoadBalancer)
-- [ ] **限流插件** — 按用户/IP 限流 (100/min, 1000/hour)
-- [ ] **JWT 认证** — 认证前置到网关，后端信任 X-Consumer-Username
-- [ ] **熔断器** — 后端服务不可用时快速失败 (failure_threshold=5)
+- [x] **限流插件** — RateLimitMiddleware per-user/minute + per-IP/hour ✅ 2026-04-08
+- [x] **JWT 认证** — Starlette 中间件层 JWT cookie 认证 ✅
+- [x] **熔断器** — CircuitBreakerMiddleware CLOSED→OPEN→HALF_OPEN ✅ 2026-04-08
 - [ ] **kong-ingress.yaml** — Ingress 配置 + 插件绑定
 
 ### 分布式追踪与可观测性 ⏸️ (搁置: 等待 Jaeger/Loki 实例)
 
-- [ ] **OpenTelemetry 全链路追踪** — HTTP/DB/Redis/Celery 自动注入
-- [ ] **Jaeger 追踪后端** — 存储 trace 数据 + UI 查询
-- [ ] **Loki 集中日志** — 替代 stdout，与 trace_id 关联
-- [ ] **Grafana 统一看板** — Prometheus + Jaeger + Loki 数据源
-- [ ] **observability.py 增强** — setup_tracing() + get_current_trace_id()
-- [ ] **LokiHandler** — 日志自动推送到 Loki
+- [~] **OpenTelemetry 全链路追踪** — HTTP/DB/Redis 自动注入 *(搁置: 需 Jaeger)*
+- [~] **Jaeger 追踪后端** — 存储 trace 数据 + UI 查询 *(搁置: 需 Jaeger 实例)*
+- [~] **Loki 集中日志** — 替代 stdout，与 trace_id 关联 *(搁置: 需 Loki 实例)*
+- [~] **Grafana 统一看板** — Prometheus + Jaeger + Loki 数据源 *(搁置: 需 Grafana 实例)*
+- [x] **observability.py 增强** — setup_otel_tracing() + get_tracer() 已实现 ✅
+- [~] **LokiHandler** — 日志自动推送到 Loki *(搁置: 需 Loki 实例)*
 
 ### SIGMOD 2026 论文借鉴 (L4 能力，v22.0+)
 
@@ -1023,7 +1023,7 @@
 - [x] **代码生成执行** — validate_generated_code 安全沙箱验证 (rs_credibility.py) ✅ 2026-04-08
 - [x] **幻觉检测增强** — 空间约束 Fact-Checking + 多源交叉验证 (rs_credibility.py) ✅ 2026-04-08
 - [x] **多 Agent Debate** — 主分析 + 独立验证 + 证据评分 + 判定 (rs_credibility.py) ✅ 2026-04-08
-- [ ] **RS 领域知识库** — 光谱特性 + 处理流程 + 分类体系 + 法规标准
+- [x] **RS 领域知识库** — 光谱特性 (5 指数) + 处理流程 (3 模板) + 分类体系 (3 标准) ✅ 2026-04-08
 
 #### **Phase 4: 高级遥感**
 - [ ] **SAR/高光谱/LiDAR** 数据处理
