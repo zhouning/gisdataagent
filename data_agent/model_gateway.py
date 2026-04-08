@@ -140,6 +140,50 @@ class ModelRegistry:
         logger.info(f"Registered model: {name} (backend={backend}, tier={tier})")
 
     @classmethod
+    def load_from_yaml(cls, path: str = None) -> int:
+        """Load model definitions from YAML config file (v20.0).
+
+        Args:
+            path: Path to models.yaml. Defaults to conf/models.yaml next to this module.
+
+        Returns:
+            Number of models loaded from YAML.
+        """
+        import os
+        if path is None:
+            path = os.path.join(os.path.dirname(__file__), "conf", "models.yaml")
+        if not os.path.exists(path):
+            return 0
+        try:
+            import yaml
+            with open(path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            if not config or "models" not in config:
+                return 0
+            count = 0
+            for name, spec in config["models"].items():
+                if name in cls.models:
+                    continue  # don't overwrite built-in defaults
+                backend = spec.get("backend", "litellm")
+                cls.register_model(
+                    name,
+                    backend=backend,
+                    tier=spec.get("tier", "standard"),
+                    api_base=spec.get("base_url"),
+                    max_context_tokens=spec.get("context_tokens", 128_000),
+                    capabilities=spec.get("capabilities"),
+                    cost_per_1k_input=spec.get("cost_per_1k_input", 0.0),
+                    cost_per_1k_output=spec.get("cost_per_1k_output", 0.0),
+                )
+                count += 1
+            if count:
+                logger.info("Loaded %d model(s) from YAML: %s", count, path)
+            return count
+        except Exception as e:
+            logger.warning("Failed to load models YAML: %s", e)
+            return 0
+
+    @classmethod
     def unregister_model(cls, name: str):
         """Remove a model from the registry."""
         cls._ensure_initialized()

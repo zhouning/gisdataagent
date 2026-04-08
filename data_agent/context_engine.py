@@ -358,10 +358,10 @@ class ContextEngine:
 
         # --- Cache check ---
         cache_key = self._cache_key(query, task_type)
-        cached = self._cache.get(cache_key)
-        if cached and (time.time() - cached[0]) < self.cache_ttl:
-            logger.debug("Context cache hit for query hash %s", cache_key[:8])
-            return cached[1]
+        cached = self._get_from_cache(cache_key)
+        if cached is not None:
+            logger.debug("Context cache hit for key %s", cache_key[:8])
+            return cached
 
         # --- Embed query once (shared across providers) ---
         query_embedding = self._embed_query(query)
@@ -409,7 +409,7 @@ class ContextEngine:
         )
 
         # --- Cache ---
-        self._cache[cache_key] = (time.time(), selected)
+        self._put_to_cache(cache_key, selected)
         return selected
 
     def format_context(self, blocks: list[ContextBlock]) -> str:
@@ -434,11 +434,61 @@ class ContextEngine:
         ]
 
     def invalidate_cache(self) -> None:
-        """Clear all cached context. Called after feedback ingestion."""
+        """Clear all cached context (memory + Redis). Called after feedback ingestion."""
         self._cache.clear()
+        try:
+            from .redis_client import get_redis_sync
+            r = get_redis_sync()
+            if r:
+                for key in r.scan_iter("context:cache:*"):
+                    r.delete(key)
+        except Exception:
+            pass
         logger.info("Context cache invalidated")
 
     # --- Internal helpers ---
+
+    def _get_from_cache(self, cache_key: str):
+        """Check memory cache, then Redis. Returns list[ContextBlock] or None."""
+        # Memory first
+        cached = self._cache.get(cache_key)
+        if cached and (time.time() - cached[0]) < self.cache_ttl:
+            return cached[1]
+        # Redis
+        try:
+            from .redis_client import get_redis_sync
+            r = get_redis_sync()
+            if r:
+                data = r.get(f"context:cache:{cache_key}")
+                if data:
+                    blocks = [
+                        ContextBlock(**b) for b in json.loads(data)
+                    ]
+                    self._cache[cache_key] = (time.time(), blocks)
+                    return blocks
+        except Exception:
+            pass
+        return None
+
+    def _put_to_cache(self, cache_key: str, blocks: list[ContextBlock]) -> None:
+        """Write to memory cache and Redis."""
+        self._cache[cache_key] = (time.time(), blocks)
+        try:
+            from .redis_client import get_redis_sync
+            r = get_redis_sync()
+            if r:
+                data = json.dumps([
+                    {
+                        "provider": b.provider, "source": b.source,
+                        "content": b.content, "token_count": b.token_count,
+                        "relevance_score": b.relevance_score,
+                        "compressible": b.compressible, "metadata": b.metadata,
+                    }
+                    for b in blocks
+                ])
+                r.setex(f"context:cache:{cache_key}", int(self.cache_ttl), data)
+        except Exception:
+            pass
 
     @staticmethod
     def _cache_key(query: str, task_type: str) -> str:

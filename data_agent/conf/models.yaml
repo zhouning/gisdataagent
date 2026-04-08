@@ -1,0 +1,76 @@
+# GIS Data Agent — Model Configuration (v20.0)
+#
+# Declarative LLM provider configuration. Models defined here are loaded
+# into ModelRegistry at startup, complementing the built-in defaults.
+#
+# To add a new model: uncomment and fill in the relevant section below.
+# The model_gateway.py will merge YAML models with hardcoded defaults.
+
+models:
+  gemini-2.0-flash:
+    backend: google_genai
+    tier: fast
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    context_tokens: 1048576
+    capabilities: [text, code, vision]
+    tasks: [routing, exploration, visualization]
+    description: "Gemini 2.0 Flash — fast routing and lightweight tasks"
+
+  gemini-2.5-flash:
+    backend: google_genai
+    tier: standard
+    cost_per_1k_input: 0.15
+    cost_per_1k_output: 0.6
+    context_tokens: 1048576
+    capabilities: [text, code, vision, reasoning]
+    tasks: [processing, analysis, governance, qc]
+    description: "Gemini 2.5 Flash — balanced speed and quality"
+
+  gemini-2.5-pro:
+    backend: google_genai
+    tier: premium
+    cost_per_1k_input: 1.25
+    cost_per_1k_output: 10.0
+    context_tokens: 1048576
+    capabilities: [text, code, vision, reasoning, complex_analysis]
+    tasks: [reporting, complex_analysis, causal]
+    description: "Gemini 2.5 Pro — highest quality for complex tasks"
+
+  # --- Uncomment to add offline / third-party models ---
+
+  # lm-studio-local:
+  #   backend: litellm
+  #   base_url: http://localhost:1234/v1
+  #   api_key_env: LM_STUDIO_API_KEY    # or "none" for local
+  #   tier: local
+  #   cost_per_1k_input: 0.0
+  #   cost_per_1k_output: 0.0
+  #   context_tokens: 32768
+  #   capabilities: [text, code]
+  #   tasks: [processing, analysis]
+  #   description: "Local LM Studio model"
+
+  # deepseek-chat:
+  #   backend: litellm
+  #   base_url: https://api.deepseek.com/v1
+  #   api_key_env: DEEPSEEK_API_KEY
+  #   model_id: deepseek-chat
+  #   tier: standard
+  #   cost_per_1k_input: 0.14
+  #   cost_per_1k_output: 0.28
+  #   context_tokens: 65536
+  #   capabilities: [text, code, reasoning]
+  #   tasks: [processing, analysis]
+  #   description: "DeepSeek Chat — cost-effective reasoning"
+
+  # qwen-plus:
+  #   backend: litellm
+  #   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  #   api_key_env: DASHSCOPE_API_KEY
+  #   model_id: qwen-plus
+  #   tier: standard
+  #   context_tokens: 131072
+  #   capabilities: [text, code]
+  #   tasks: [processing, analysis]
+  #   description: "Qwen Plus via DashScope"

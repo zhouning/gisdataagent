@@ -71,8 +71,10 @@ _registry_cache: dict = {}  # table_name → (rows, timestamp)
 
 
 def _get_cached_sources(conn) -> list:
-    """Get all semantic sources with 5-minute TTL cache."""
+    """Get all semantic sources with 5-minute TTL cache (Redis → memory → DB)."""
     global _sources_cache, _sources_cache_time
+
+    # 1. Check memory cache
     if _sources_cache is not None and (time.time() - _sources_cache_time < _CACHE_TTL):
         try:
             from .observability import record_cache_op
@@ -81,12 +83,33 @@ def _get_cached_sources(conn) -> list:
             pass
         return _sources_cache
 
+    # 2. Check Redis cache
+    try:
+        from .redis_client import get_redis_sync
+        r = get_redis_sync()
+        if r:
+            cached = r.get("semantic:sources")
+            if cached:
+                import json as _json
+                rows = _json.loads(cached)
+                _sources_cache = [tuple(row) for row in rows]
+                _sources_cache_time = time.time()
+                try:
+                    from .observability import record_cache_op
+                    record_cache_op("semantic_sources", "hit_redis")
+                except Exception:
+                    pass
+                return _sources_cache
+    except Exception:
+        pass
+
     try:
         from .observability import record_cache_op
         record_cache_op("semantic_sources", "miss")
     except Exception:
         pass
 
+    # 3. Query DB
     has_sources = conn.execute(text(
         "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
         f"WHERE table_schema = 'public' AND table_name = '{T_SEMANTIC_SOURCES}')"
@@ -105,6 +128,17 @@ def _get_cached_sources(conn) -> list:
 
     _sources_cache = rows
     _sources_cache_time = time.time()
+
+    # 4. Write to Redis
+    try:
+        from .redis_client import get_redis_sync
+        r = get_redis_sync()
+        if r:
+            import json as _json
+            r.setex("semantic:sources", _CACHE_TTL, _json.dumps([list(row) for row in rows]))
+    except Exception:
+        pass
+
     return rows
 
 
@@ -144,7 +178,7 @@ def _get_cached_registry(conn, table_names: list) -> list:
 
 
 def invalidate_semantic_cache(table_name: str = None):
-    """Clear semantic query caches. Called after writes."""
+    """Clear semantic query caches (memory + Redis). Called after writes."""
     global _sources_cache, _sources_cache_time
     _sources_cache = None
     _sources_cache_time = 0
@@ -152,6 +186,20 @@ def invalidate_semantic_cache(table_name: str = None):
         _registry_cache.pop(table_name, None)
     else:
         _registry_cache.clear()
+    # Clear Redis cache
+    try:
+        from .redis_client import get_redis_sync
+        r = get_redis_sync()
+        if r:
+            r.delete("semantic:sources")
+            if table_name:
+                r.delete(f"semantic:registry:{table_name}")
+            else:
+                # Delete all registry keys
+                for key in r.scan_iter("semantic:registry:*"):
+                    r.delete(key)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------

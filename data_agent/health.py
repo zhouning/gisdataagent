@@ -57,14 +57,10 @@ def check_cloud_storage() -> dict:
 
 
 def check_redis() -> dict:
-    """Check Redis connectivity via stream engine."""
+    """Check Redis connectivity via redis_client (v20.0)."""
     try:
-        engine = get_stream_engine()
-        if engine is None:
-            return {"status": "unconfigured"}
-        if getattr(engine, "_use_redis", False) and engine._redis is not None:
-            return {"status": "ok"}
-        return {"status": "unconfigured"}
+        from .redis_client import check_redis_health
+        return check_redis_health()
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 

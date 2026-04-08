@@ -196,10 +196,39 @@ def classify_intent(text: str, previous_pipeline: str = None,
         except Exception:
             pass
 
-        return (result_intent, reason, router_tokens, tool_cats, lang)
+        # Detect execution mode (v20.0): agentic (default) vs workflow
+        execution_mode = _detect_execution_mode(text, result_intent)
+
+        return (result_intent, reason, router_tokens, tool_cats, lang, execution_mode)
     except Exception as e:
         logger.error("Router error: %s", e)
-        return ("GENERAL", "", 0, set(), detect_language(text))
+        return ("GENERAL", "", 0, set(), detect_language(text), "agentic")
+
+
+# ---------------------------------------------------------------------------
+# Execution mode detection (v20.0)
+# ---------------------------------------------------------------------------
+
+_WORKFLOW_KEYWORDS = {
+    "zh": ["执行工作流", "按模板运行", "运行模板", "工作流执行", "按流程", "批量处理", "按步骤执行"],
+    "en": ["run workflow", "execute workflow", "run template", "batch process", "follow template"],
+}
+
+
+def _detect_execution_mode(text: str, intent: str) -> str:
+    """Detect whether user wants agentic (ad-hoc) or workflow (deterministic) mode.
+
+    Returns 'workflow' if explicit workflow keywords detected or WORKFLOW intent,
+    otherwise 'agentic'.
+    """
+    if intent == "WORKFLOW":
+        return "workflow"
+    text_lower = text.lower()
+    for keywords in _WORKFLOW_KEYWORDS.values():
+        for kw in keywords:
+            if kw in text_lower:
+                return "workflow"
+    return "agentic"
 
 
 def should_decompose(text: str) -> bool:

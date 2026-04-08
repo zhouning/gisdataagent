@@ -2840,12 +2840,12 @@ async def main(message: cl.Message):
     else:
         # --- SEMANTIC ROUTING ---
         previous_pipeline = last_ctx.get("pipeline") if last_ctx else None
-        intent, intent_reason, router_tokens, tool_cats, user_lang = classify_intent(
+        intent, intent_reason, router_tokens, tool_cats, user_lang, execution_mode = classify_intent(
             user_text, previous_pipeline=previous_pipeline,
             image_paths=image_files or None,
             pdf_context=pdf_context or None,
         )
-        logger.info("[Trace:%s] Router intent=%s reason=%s lang=%s", trace_id, intent, intent_reason, user_lang)
+        logger.info("[Trace:%s] Router intent=%s reason=%s lang=%s mode=%s", trace_id, intent, intent_reason, user_lang, execution_mode)
 
         # --- Track router token consumption separately (T-4 fix) ---
         if router_tokens > 0:
