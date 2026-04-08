@@ -1,12 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v19.0
+# GIS Data Agent (ADK Edition) v20.0
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v19.0 新增**：**上下文工程 + 反馈飞轮**（Datus.ai 对标）— 统一 ContextEngine（6 个 Provider：语义层/知识库/知识图谱/参考查询/成功案例/指标定义，query embedding 混合排序 + token budget 截断 + 3 分钟 TTL 缓存）、结构化反馈闭环（前端 👍👎 → agent_feedback 表 → upvote 自动入库参考查询 + downvote 批量 FailureAnalyzer）、参考查询库（embedding 搜索 + NL2SQL few-shot 注入 + 自动/手动策展）、MetricFlow 语义模型（GIS 扩展 YAML 格式 + PostGIS 自动生成器 + MetricDefinitionProvider）。
+**v20.0 新增**：**分布式任务队列 + Redis 缓存 + 体验优化** — Redis 统一基础层（async/sync 双客户端 + SETNX 分布式锁）、TaskQueue Redis Sorted Set 后端（跨进程共享队列 + 分布式信号量，内存降级兼容）、语义层 + 上下文引擎双层缓存（Redis + 内存）、声明式多 LLM YAML 配置（`conf/models.yaml` 一键切换 Gemini/DeepSeek/Qwen/本地模型）、Agentic/Workflow 双模式执行（关键词检测 + 意图路由）、DuckDB Lite 轻量空间数据库（无 PostGIS 依赖的离线/Demo 部署）。
 
 **产品化就绪**：Docker 一键部署（`docker compose up -d`）、[快速启动指南](QUICKSTART.md)、端到端质检 Demo（`scripts/demo_qc.py`，107K 建筑 69 秒完成 5 步标准质检）、SCI 论文实验框架（`data_agent/experiments/`，12 张 300 DPI 图表 + GEE 真实数据）。
 
@@ -46,13 +46,18 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 3450+ tests, 153 test files |
+| 测试覆盖 | 3500+ tests, 159 test files |
 | 工具集 | 40 BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
 | ADK Skills | 26 场景化领域技能 (含 skill-creator AI 辅助创建) |
 | REST API | 266 endpoints |
 | DB 迁移 | 62 个 SQL 迁移 |
 | DataPanel | 29 标签页 (3 分组: 数据资源/智能分析/平台运营) |
 | Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程) |
+| 分布式任务队列 | Redis Sorted Set 后端 + 分布式信号量 + 内存降级 |
+| Redis 缓存 | 语义层 + 上下文引擎双层缓存 (Redis + 内存), 分布式锁 (SETNX + Lua) |
+| 多 LLM 配置 | conf/models.yaml 声明式 + load_from_yaml() 动态注册 (Gemini/DeepSeek/Qwen/本地) |
+| 双模式执行 | Agentic (LLM 自主决策) / Workflow (确定性模板执行) 模式检测与路由 |
+| DuckDB Lite | 轻量空间数据库适配器 (无 PostGIS 依赖, 离线/Demo 部署) |
 | 上下文引擎 | ContextEngine 6 Provider (语义层/知识库/知识图谱/参考查询/成功案例/指标定义) + 混合排序 + token budget + 3min 缓存 |
 | 反馈飞轮 | 前端 👍👎 → 参考查询自动入库 + FailureAnalyzer 批量优化 + 反馈看板 |
 | 参考查询库 | embedding 搜索 + NL2SQL few-shot 注入 + 自动/手动策展 |
@@ -167,6 +172,42 @@
 - CLI 命令：new / validate / list / test / package
 - 验证器模块（结构和元数据校验）
 - 13/13 测试通过，可通过 PyPI 安装
+
+### 分布式任务队列 + Redis 缓存 + 体验优化 (v20.0)
+
+从单机走向分布式，从工具走向平台。Redis 阻塞项解除后的全面基础设施升级。
+
+**1. Redis 统一基础层**
+- 共享 async/sync 双客户端（`redis_client.py`），所有模块复用
+- 分布式锁 `RedisLock`：SETNX + TTL + Lua 原子释放，单节点降级自动成功
+- 健康检查集成：System Status 显示 Redis 版本和连接状态
+
+**2. 分布式任务队列**
+- TaskQueue Redis Sorted Set 后端：优先级队列跨进程共享
+- 分布式信号量：max_concurrent 跨实例生效
+- Job 状态 Redis Hash：多实例可查询任意 job
+- 内存降级：Redis 不可用时自动回退到 asyncio.PriorityQueue
+
+**3. Redis 缓存迁移**
+- 语义层：`_sources_cache` 从内存迁移到 Redis（TTL=300s），三级查询（内存→Redis→DB）
+- 上下文引擎：`_cache` 从 dict 迁移到 Redis Hash（TTL=180s），`invalidate_cache()` 清理双层
+
+**4. 多 LLM 声明式配置**
+- `conf/models.yaml`：一个 YAML 文件声明所有 LLM provider（Gemini/DeepSeek/Qwen/本地模型）
+- `ModelRegistry.load_from_yaml()`：启动时自动加载，不覆盖内置默认
+- 用户自行添加模型：取消注释 YAML 即可，零代码改动
+
+**5. Agentic/Workflow 双模式**
+- 意图路由增加 `execution_mode` 检测（中英文关键词 + WORKFLOW 意图）
+- Agentic 模式：LLM Planner 自主决策（默认，现有行为）
+- Workflow 模式：跳过 LLM，直接匹配预定义工作流模板执行
+
+**6. DuckDB Lite 轻量部署**
+- `duckdb_adapter.py`：DuckDB + spatial 扩展，支持 GeoDataFrame 双向转换
+- 无 PostGIS 依赖，适合离线演示和轻量分析
+- `DB_BACKEND=duckdb` 环境变量切换
+
+**新增**：3 个核心模块 + 1 个 YAML 配置 + 6 个测试文件 + 41 新测试
 
 ### 上下文工程 + 反馈飞轮 (v19.0)
 

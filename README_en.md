@@ -1,14 +1,14 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v19.0
+# GIS Data Agent (ADK Edition) v20.0
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 29 tabs), and enterprise-grade security.
 
 The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **266 REST API endpoints**.
 
-**v19.0**: **Context Engineering + Feedback Flywheel** (Datus.ai benchmark) — Unified ContextEngine with 6 providers (semantic_layer / knowledge_base / knowledge_graph / reference_queries / success_stories / metric_definitions), query embedding hybrid ranking + token budget truncation + 3-min TTL cache; structured feedback loop (frontend 👍👎 → agent_feedback table → upvote auto-ingest as reference queries + downvote batch FailureAnalyzer); reference query library (embedding search + NL2SQL few-shot injection); MetricFlow semantic model (GIS-extended YAML + PostGIS auto-generator + MetricDefinitionProvider). 68 new tests, 3 migrations.
+**v20.0**: **Distributed Task Queue + Redis Cache + Experience Improvements** — Unified Redis infrastructure (async/sync dual clients + SETNX distributed lock), TaskQueue Redis Sorted Set backend (cross-process shared queue + distributed semaphore, memory fallback), semantic layer + context engine dual-layer cache (Redis + memory), declarative multi-LLM YAML config (`conf/models.yaml` for Gemini/DeepSeek/Qwen/local models), Agentic/Workflow dual execution mode (keyword detection + intent routing), DuckDB Lite spatial adapter (offline/demo deployment without PostGIS). 41 new tests.
 
-**v18.5**: **Platform Capability Enhancement** — NL2Workflow (natural language → executable workflow DAG, benchmarked against Huawei AgentArts), automatic prompt optimization (bad case collection → failure pattern analysis → prompt improvement → HITL confirmation), 15 built-in evaluators (quality/safety/performance/accuracy, pluggable registry); **Palantir-inspired UI Redesign** — Deep Intelligence dark theme (#0B0F19 base), Inter + JetBrains Mono fonts, Lucide SVG icon system, DataPanel 3-group restructure, split-screen login page, 48px AppNav icon rail.
+**v19.0**: **Context Engineering + Feedback Flywheel** (Datus.ai benchmark) — Unified ContextEngine with 6 providers, structured feedback loop (frontend thumbs up/down → auto-ingest reference queries + batch FailureAnalyzer), reference query library (embedding search + NL2SQL few-shot), MetricFlow semantic model (GIS-extended YAML + PostGIS auto-generator). 68 new tests.
 
 ## 📚 Official Technical Documentation
 
