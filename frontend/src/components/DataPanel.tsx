@@ -11,6 +11,9 @@ import ReportTab from './datapanel/ReportTab';
 import KnowledgeTab from './datapanel/KnowledgeTab';
 import KnowledgeManageTab from './datapanel/KnowledgeManageTab';
 import ProjectOverviewTab from './datapanel/ProjectOverviewTab';
+import UserManageTab from './datapanel/UserManageTab';
+import OpsMonitorTab from './datapanel/OpsMonitorTab';
+import SystemConfigTab from './datapanel/SystemConfigTab';
 
 /* ---------- 治理场景 Tab 组件（剩余占位符）---------- */
 
@@ -20,38 +23,6 @@ function GovernanceProgressTab() {
       <Play size={40} strokeWidth={1} />
       <h3>治理进度</h3>
       <p>治理执行时展示实时进度（待底座环境就绪）</p>
-    </div>
-  );
-}
-
-/* ---------- 管理端 Tab 组件 ---------- */
-
-function SystemConfigTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <Settings size={40} strokeWidth={1} />
-      <h3>系统配置</h3>
-      <p>底座连接 / LLM 配置 / 存储配置</p>
-    </div>
-  );
-}
-
-function UserManageTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <Users size={40} strokeWidth={1} />
-      <h3>用户管理</h3>
-      <p>账号、角色、权限管理</p>
-    </div>
-  );
-}
-
-function OpsMonitorTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <Activity size={40} strokeWidth={1} />
-      <h3>运维监控</h3>
-      <p>Token 消耗 / 推荐采纳率 / 知识库命中率 / 操作日志</p>
     </div>
   );
 }
