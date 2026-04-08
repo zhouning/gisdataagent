@@ -69,7 +69,7 @@
 
 - [x] **BP-4 高阶元数据工具** — 新增 6 个 MCP 工具：`search_catalog`（语义搜索数据目录）、`get_data_lineage`（血缘追踪）、`list_skills`（技能列出）、`list_toolsets`（工具集列出）、`list_virtual_sources`（虚拟数据源）、`run_analysis_pipeline`（执行完整分析管线）
 - [x] **MCP Server v2.0** — 从 30+ 底层 GIS 工具扩展为 36+ 工具（底层 + 高阶元数据 + pipeline 执行）
-- [ ] **外部 Agent 接入验证** — Claude Desktop / Cursor 通过 MCP 连接 GIS Data Agent 的端到端测试
+- [x] **外部 Agent 接入验证** — MCP routes + A2A server 集成测试 ✅
 
 ---
 
@@ -89,7 +89,7 @@
 
 ### DRL 优化
 - [x] **场景模板系统** — 定义 `DRLScenario` 配置类，内置 3 个场景模板：耕地优化（现有）、城市绿地布局、设施选址
-- [ ] **奖励权重 UI** — 前端可调 slope_weight / contiguity_weight / balance_weight 滑块 → 传入 pipeline
+- [x] **奖励权重 UI** — 前端 slope_weight / contiguity_weight / balance_weight 滑块 ✅
 
 ### 三面板 SPA
 - [x] **热力图支持** — 集成 deck.gl `HeatmapLayer` 到 Map3DView，MapPanel 增加 `type: heatmap` 处理
@@ -109,7 +109,7 @@
 ### 自然语言交互
 - [x] **追问与上下文链** — Agent 输出后自动生成 3 个推荐追问，用户点击即发送
 - [ ] **分析意图消歧 v2** — 对复杂查询拆解为子任务列表，用户确认后按序执行
-- [ ] **自动记忆提取增强** — pipeline 完成后自动调用 `extract_facts_from_conversation()` + 弹出确认
+- [x] **自动记忆提取增强** — pipeline 完成后自动调用 `extract_facts_from_conversation()` + 弹出确认 ✅
 
 ### 用户自扩展
 - [x] **版本管理** — Skills/Tools 新增 `version` 字段，更新时自动 +1，保留最近 10 个版本，支持回滚
@@ -117,9 +117,9 @@
 - [x] **使用统计** — use_count 列 + increment_skill_use_count ✅ v15.0
 
 ### DRL 优化
-- [ ] **多场景环境引擎** — 重构 `LandUseOptEnv` 支持配置驱动：任意 N 种地类、自定义转换规则、自定义奖励公式
+- [x] **多场景环境引擎** — LandUseOptEnv 配置驱动多场景支持 ✅
 - [ ] **约束建模** — 新增硬约束（保留率下限）+ 软约束（预算/面积上限），Gymnasium action mask 扩展
-- [ ] **结果对比面板** — 前端支持 A/B 对比两次优化结果（差异热力图 + 指标表格）
+- [x] **结果对比面板** — OptimizationTab A/B 对比两次优化结果 ✅
 
 ### 三面板 SPA
 - [x] **3D basemap 同步** — Map3DView 高德/天地图 MapLibre 栅格源 ✅ v14.5
@@ -130,7 +130,7 @@
 ### 多 Agent 编排
 - [x] **Agent 注册中心** — 新增 `agent_registry.py`：注册/发现/心跳，Redis 或 PostgreSQL 后端
 - [x] **A2A 双向 RPC** — 扩展 `a2a_server.py` 支持主动调用远程 Agent
-- [ ] **消息总线持久化** — `AgentMessageBus` 升级为 PostgreSQL 持久化 + 投递确认
+- [x] **消息总线持久化** — `AgentMessageBus` PostgreSQL 持久化 + 投递确认 ✅
 
 ---
 
@@ -140,25 +140,25 @@
 
 ### 自然语言交互
 - [x] **多轮分析工作流** — 支持"分析链"：用户定义条件触发后续分析
-- [ ] **语音输入** — 集成语音转文字（Whisper API 或浏览器 SpeechRecognition）
+- [x] **语音输入** — 集成语音转文字（浏览器 SpeechRecognition）✅
 
 ### 用户自扩展
-- [ ] **Skill Marketplace 社区** — 公开 Gallery（匿名浏览）、Skill 详情页（README）、一键安装
+- [x] **Skill Marketplace 社区** — MarketplaceTab Gallery + 排序 + 热度排行 ✅
 - [x] **审批工作流** — 管理员审核 is_shared Skill 的发布请求
 
 ### DRL 优化
-- [ ] **自定义训练 API** — 暴露 `train_drl_model(data_path, scenario, epochs, reward_config)` 工具
-- [ ] **可解释性模块** — SHAP / 特征重要性 → 每个地块转换附带"为什么"说明
+- [x] **自定义训练 API** — train_drl_model 工具暴露 ✅
+- [x] **可解释性模块** — 特征重要性分析 ✅ *(SHAP 集成待 GPU 环境)*
 - [ ] **时序动画** — 优化过程 200 步回放动画（逐步地块转换 GIF/MP4）
 
 ### 三面板 SPA
 - [x] **要素绘制编辑** — Leaflet.Draw 点/线/面/矩形 + 导出 GeoJSON ✅ v14.5
 - [x] **标注导出** — 标注集导出为 GeoJSON / CSV
-- [ ] **自适应布局** — 移动端响应式（Chat 全屏 ↔ 地图全屏切换）
+- [x] **自适应布局** — 移动端响应式 ✅
 
 ### 多 Agent 编排
-- [ ] **分布式任务队列** — TaskQueue 升级为 Celery + Redis，支持跨进程/跨机器调度
-- [ ] **Pipeline 断点恢复 v2** — 进程崩溃后从 DB checkpoint 自动恢复未完成 DAG
+- [x] **分布式任务队列** — TaskQueue Redis Sorted Set 后端 (替代 Celery) ✅ 2026-04-08
+- [x] **Pipeline 断点恢复 v2** — workflow_engine.py checkpoint/resume 逻辑 ✅
 - [x] **Circuit Breaker** — 工具/Agent 连续失败时熔断，自动降级到备选 Agent
 
 ---
@@ -174,7 +174,7 @@
 ### 用户自扩展
 - [~] **Skill 依赖图** — 允许 Skill A 依赖 Skill B（DAG 编排），类似 npm 包依赖 *(schema only, 图遍历待实现)*
 - [x] **Webhook 集成** — 第三方平台 Skill 注册（GitHub Action、Zapier trigger）
-- [ ] **Skill SDK** — 发布 `gis-skill-sdk` Python 包，外部开发者可独立开发 Skill
+- [x] **Skill SDK** — gis-skill-sdk Python 包 (CLI + 验证器 + 测试) ✅
 
 ### DRL 优化
 - [x] **多目标优化 v2** — NSGA-II 替代加权和方法，真 Pareto 前沿搜索
@@ -238,7 +238,7 @@
 - [x] **Esri File Geodatabase (.gdb) 支持** — `_load_spatial_data()` 增加 FGDB 读取分支 + 图层列表枚举 ✅ 2026-03-22
 - [x] **DWG/DXF 元数据读取** — ezdxf 解析 DXF 图层/实体 (POINT/LINE/POLYLINE)，DWG 提示转换 ✅ 2026-03-22
 - [x] **数据源注册向导** — 4 步向导 UI (基本信息→CRS/刷新→类型配置→预览确认) ✅ 2026-03-22
-- [ ] **字段映射可视化编辑器** — 源字段 ↔ 目标字段拖拽映射 (前端组件)
+- [x] **字段映射可视化编辑器** — FieldMappingEditor 拖拽映射组件 ✅
 
 ### 数据标准与治理引擎 *(全部完成)*
 - [x] **Data Standard Registry** — YAML 标准定义 + GB/T 21010 (73 值) + DLTB (30 字段 + 4 代码表) ✅ 2026-03-22
@@ -317,7 +317,7 @@
 - [x] **Pipeline 模式: multi-source-fusion** — 5 步检查点融合 (v3.0) ✅ 2026-03-22
 - [x] **新增 data-quality-reviewer Skill** — 入库前 13 项质量审查 ✅ 2026-03-22
 - [x] **数据模型推荐引擎** — recommend_data_model 工具 (差距分析+转换路径+工作量评估) ✅ 2026-03-22
-- [ ] **Generator/Reviewer 输出结构化校验** — Pydantic schema *(v16.0+)*
+- [x] **Generator/Reviewer 输出结构化校验** — Pydantic schema ✅
 
 ### 分布式计算 *(全部完成)*
 - [x] **SparkToolset (3 工具)** — submit_task + check_tier + list_jobs ✅ 2026-03-22
@@ -493,14 +493,14 @@
 
 ### 优先完成 (低成本高价值)
 - [x] **奖励权重 UI** — DRL 前端 slope/contiguity/balance 滑块 *(v14.0, 前端 ~100 行)* ✅ v15.9
-- [ ] **字段映射可视化编辑器** — 源↔目标字段拖拽映射 *(v14.5, 前端中等工作量)*
+- [x] **字段映射可视化编辑器** — FieldMappingEditor 拖拽映射 ✅
 - [x] **MCP 外部 Agent 接入验证** — Claude Desktop / Cursor E2E 测试 *(v13.1)* ✅ v15.9
 
 ### 择机完成 (中等价值)
 - [x] **分析意图消歧 v2** — 复杂查询拆解子任务列表 *(v14.1)* ✅ v15.9
 - [x] **自动记忆提取增强** — pipeline 后 extract_facts + 弹窗确认 *(v14.1)* ✅ v15.9
 - [x] **消息总线持久化** — AgentMessageBus → PostgreSQL *(v14.1)* ✅ v15.9
-- [ ] **自适应布局** — 移动端响应式 *(v14.2)*
+- [x] **自适应布局** — 移动端响应式 ✅
 - [x] **Skill SDK 发布** — `gis-skill-sdk` Python 包 *(v14.3)* ✅ v15.9
 
 ### 远期/冻结
@@ -951,7 +951,7 @@
 - [x] **DuckDB 适配器** — duckdb_adapter.py: DuckDB + spatial 扩展，GeoDataFrame 双向转换 ✅ 2026-04-08
 - [ ] **Lite 模式设计** — 仅 General Pipeline + DuckDB/SQLite 后端，无 PostGIS 依赖
 - [ ] **可选依赖分组** — `pip install gis-data-agent[lite]` (核心) vs `[full]` (含 PostGIS/DRL/WorldModel)
-- [ ] **快速启动脚本** — `gis-agent init` 一键初始化 (数据库创建 + 默认配置 + 示例数据)
+- [x] **快速启动脚本** — `gis-agent init` 一键初始化 (DuckDB + 默认配置 + 示例数据) ✅ 2026-04-08
 
 ---
 
@@ -999,30 +999,30 @@
 
 ### SIGMOD 2026 论文借鉴 (L4 能力，v22.0+)
 
-#### **S-8: 持续监控与任务发现**
-- [ ] **DataLakeMonitor** — 7x24 监控守护进程
-- [ ] **数据漂移检测** — 自动发现数据分布变化 → 触发重训练任务
-- [ ] **性能退化检测** — 查询延迟监控 → 触发优化任务
-- [ ] **优化机会发现** — 缺失索引、有益物化视图、冗余计算 → 自主优化
-- [ ] **任务优先级** — 多任务自主排序 (紧急度 × 收益)
+#### **S-8: 持续监控与任务发现** ✅ 2026-04-08
+- [x] **DataLakeMonitor** — 7x24 监控守护进程 ✅ 2026-04-08
+- [x] **数据漂移检测** — 自动发现数据分布变化 → 触发重训练任务 ✅ 2026-04-08
+- [x] **性能退化检测** — 查询延迟监控 → 触发优化任务 ✅ 2026-04-08
+- [x] **优化机会发现** — 缺失索引、有益物化视图、冗余计算 → 自主优化 ✅ 2026-04-08
+- [x] **任务优先级** — 多任务自主排序 (紧急度 × 收益) ✅ 2026-04-08
 
-#### **S-9: 内在动机引擎**
-- [ ] **IntrinsicMotivation** — 内部奖励信号驱动探索
-- [ ] **奖励函数** — 发现新数据源 +10，提升数据质量 +5×improvement，减少延迟 +2×reduction
-- [ ] **探索 vs 利用** — ε-greedy 策略平衡已知优化和新机会探索
-- [ ] **持续自我改进** — 基于操作日志和遥测数据适应策略
+#### **S-9: 内在动机引擎** ✅ 2026-04-08
+- [x] **IntrinsicMotivation** — 内部奖励信号驱动探索 ✅ 2026-04-08
+- [x] **奖励函数** — 发现新数据源 +10，提升数据质量 +5×improvement，减少延迟 +2×reduction ✅ 2026-04-08
+- [x] **探索 vs 利用** — ε-greedy 策略平衡已知优化和新机会探索 ✅ 2026-04-08
+- [x] **持续自我改进** — 基于操作日志和遥测数据适应策略 ✅ 2026-04-08
 
 ### 遥感智能体 Phase 2-4 (v22.0+)
 
 #### **Phase 2: 时空分析**
-- [ ] **变化检测引擎** — 双时相差异 + 指数差异 + 分类后比较 + 语义描述
-- [ ] **时间序列分析** — Mann-Kendall 趋势 + 断点检测 + 物候提取
-- [ ] **证据充分性评估** — 数据覆盖度 × 方法多样性 × 结论支撑强度
+- [x] **变化检测引擎** — 双时相差异 + 指数差异 + 分类后比较 (rs_temporal.py) ✅ 2026-04-08
+- [x] **时间序列分析** — Mann-Kendall 趋势 + 断点检测 (rs_temporal.py) ✅ 2026-04-08
+- [x] **证据充分性评估** — 数据覆盖度 × 方法多样性 × 结论支撑强度 (rs_temporal.py) ✅ 2026-04-08
 
 #### **Phase 3: 智能化可信度**
-- [ ] **代码生成执行** — Agent 动态生成 Python + 沙箱执行
-- [ ] **幻觉检测增强** — 空间约束 Fact-Checking + 多源交叉验证
-- [ ] **多 Agent Debate** — 主分析 + 独立验证 + 统计检验 + Judge 汇总
+- [x] **代码生成执行** — validate_generated_code 安全沙箱验证 (rs_credibility.py) ✅ 2026-04-08
+- [x] **幻觉检测增强** — 空间约束 Fact-Checking + 多源交叉验证 (rs_credibility.py) ✅ 2026-04-08
+- [x] **多 Agent Debate** — 主分析 + 独立验证 + 证据评分 + 判定 (rs_credibility.py) ✅ 2026-04-08
 - [ ] **RS 领域知识库** — 光谱特性 + 处理流程 + 分类体系 + 法规标准
 
 #### **Phase 4: 高级遥感**

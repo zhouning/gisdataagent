@@ -596,6 +596,42 @@ def tui(
     tui_app.run()
 
 
+@app.command()
+def init(
+    db_path: str = typer.Option(None, "--db", help="DuckDB database path (default: data_agent/local.duckdb)"),
+    force: bool = typer.Option(False, "--force", "-f", help="Reinitialize even if DB exists"),
+):
+    """Initialize a local Lite database (DuckDB) for offline/demo use.
+
+    Creates core tables, seeds default admin user and sample data.
+    Use with DB_BACKEND=duckdb to run without PostgreSQL.
+    """
+    from data_agent.lite_mode import init_lite_database, get_lite_status
+    import os
+
+    if db_path is None:
+        db_path = os.path.join(os.path.dirname(__file__), "local.duckdb")
+
+    if os.path.exists(db_path) and not force:
+        console.print(f"[yellow]数据库已存在: {db_path}[/yellow]")
+        console.print("使用 --force 重新初始化")
+        status = get_lite_status()
+        if status.get("tables"):
+            console.print(f"已有表: {', '.join(status['tables'])}")
+        return
+
+    result = init_lite_database(db_path)
+    if result["status"] == "ok":
+        console.print(f"[green]✓ Lite 数据库初始化完成[/green]")
+        console.print(f"  路径: {result['db_path']}")
+        console.print(f"  表: {', '.join(result['tables_created'])}")
+        console.print()
+        console.print("[dim]启动方式:[/dim]")
+        console.print("  DB_BACKEND=duckdb chainlit run data_agent/app.py -w")
+    else:
+        console.print(f"[red]✗ 初始化失败: {result.get('message', '')}[/red]")
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
