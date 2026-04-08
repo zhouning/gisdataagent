@@ -3096,6 +3096,7 @@ def get_frontend_api_routes():
     from .api.metadata_routes import get_metadata_routes
     from .api.fusion_v2_routes import get_fusion_v2_routes
     from .api.tile_routes import get_tile_routes
+    from .api.knowledge_routes import get_knowledge_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -3200,6 +3201,8 @@ def get_frontend_api_routes():
         *get_causal_routes(),
         *get_causal_world_model_routes(),
         *get_quality_routes(),
+        # Knowledge Layer (semantic vocab, standards, models)
+        *get_knowledge_routes(),
         *get_distribution_routes(),
         # File Management (upload, browse, delete, local-data)
         *get_file_routes(),

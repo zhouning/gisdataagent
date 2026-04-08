@@ -8,6 +8,9 @@ import FieldMatchTab from './datapanel/FieldMatchTab';
 import GapReportTab from './datapanel/GapReportTab';
 import AdjustmentTab from './datapanel/AdjustmentTab';
 import ReportTab from './datapanel/ReportTab';
+import KnowledgeTab from './datapanel/KnowledgeTab';
+import KnowledgeManageTab from './datapanel/KnowledgeManageTab';
+import ProjectOverviewTab from './datapanel/ProjectOverviewTab';
 
 /* ---------- 治理场景 Tab 组件（剩余占位符）---------- */
 
@@ -21,27 +24,7 @@ function GovernanceProgressTab() {
   );
 }
 
-function KnowledgeTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <BookOpen size={40} strokeWidth={1} />
-      <h3>知识库</h3>
-      <p>查看和管理语义等价库、标准规则库、数据模型库</p>
-    </div>
-  );
-}
-
 /* ---------- 管理端 Tab 组件 ---------- */
-
-function KnowledgeManageTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <BookOpen size={40} strokeWidth={1} />
-      <h3>知识管理</h3>
-      <p>语义等价库 CRUD / 标准文档上传解析 / 数据模型导入</p>
-    </div>
-  );
-}
 
 function SystemConfigTab() {
   return (
@@ -69,16 +52,6 @@ function OpsMonitorTab() {
       <Activity size={40} strokeWidth={1} />
       <h3>运维监控</h3>
       <p>Token 消耗 / 推荐采纳率 / 知识库命中率 / 操作日志</p>
-    </div>
-  );
-}
-
-function ProjectOverviewTab() {
-  return (
-    <div className="tab-content-placeholder">
-      <BarChart3 size={40} strokeWidth={1} />
-      <h3>项目总览</h3>
-      <p>所有数据集治理进度汇总</p>
     </div>
   );
 }
@@ -182,12 +155,10 @@ export default function DataPanel({ dataFile, userRole, onMapUpdate }: DataPanel
     progress: () => <GovernanceProgressTab />,
     report: () => <ReportTab datasetId={currentDatasetId} matchRate={matchRate} gapCount={gapCount} />,
     knowledge: () => <KnowledgeTab />,
-    km: () => <KnowledgeManageTab />,
-    config: () => <SystemConfigTab />,
+    km: () => <KnowledgeManageTab />,    config: () => <SystemConfigTab />,
     users: () => <UserManageTab />,
     ops: () => <OpsMonitorTab />,
-    overview: () => <ProjectOverviewTab />,
-  };
+    overview: () => <ProjectOverviewTab />,  };
 
   const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup);
   const visibleGroups = isAdmin ? TAB_GROUPS : TAB_GROUPS.filter(g => g.key !== 'manage');
