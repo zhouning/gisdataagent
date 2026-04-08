@@ -3100,6 +3100,7 @@ def get_frontend_api_routes():
     from .api.feedback_routes import get_feedback_routes
     from .api.reference_query_routes import get_reference_query_routes
     from .api.semantic_model_routes import get_semantic_model_routes
+    from .api.lineage_routes import get_lineage_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -3293,6 +3294,8 @@ def get_frontend_api_routes():
         *get_reference_query_routes(),
         # Semantic Models (v19.0)
         *get_semantic_model_routes(),
+        # Cross-System Lineage (v21.0)
+        *get_lineage_routes(),
     ]
 
 

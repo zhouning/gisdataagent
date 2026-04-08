@@ -1170,6 +1170,271 @@ def _find_descendants(conn, asset_id: int, asset_name: str) -> list:
     return descendants
 
 
+# =====================================================================
+# Cross-System Lineage (v21.0)
+# =====================================================================
+
+
+def register_external_asset(
+    system: str,
+    external_id: str,
+    name: str,
+    url: str = "",
+    description: str = "",
+    external_metadata: dict = None,
+    owner: str = "",
+) -> Optional[int]:
+    """Register an asset from an external system (Tableau, Airflow, etc.).
+
+    Creates an entry in agent_data_assets with external_system/external_id fields.
+    Returns asset ID or None.
+    """
+    engine = get_engine()
+    if not engine:
+        return None
+    owner = owner or current_user_id.get("system")
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("""
+                    INSERT INTO agent_data_assets
+                        (asset_name, display_name, owner_username,
+                         external_system, external_id, external_url, external_metadata,
+                         technical_metadata, business_metadata, operational_metadata, lineage_metadata)
+                    VALUES
+                        (:name, :name, :owner,
+                         :system, :ext_id, :url, :ext_meta::jsonb,
+                         '{}'::jsonb, :biz_meta::jsonb, '{}'::jsonb, '{}'::jsonb)
+                    ON CONFLICT (asset_name, owner_username) DO UPDATE SET
+                        external_system = EXCLUDED.external_system,
+                        external_id = EXCLUDED.external_id,
+                        external_url = EXCLUDED.external_url,
+                        external_metadata = EXCLUDED.external_metadata,
+                        updated_at = NOW()
+                    RETURNING id
+                """),
+                {
+                    "name": f"{system}:{name}",
+                    "owner": owner,
+                    "system": system,
+                    "ext_id": external_id,
+                    "url": url,
+                    "ext_meta": json.dumps(external_metadata or {}),
+                    "biz_meta": json.dumps({"description": description, "source_system": system}),
+                },
+            ).fetchone()
+            conn.commit()
+            return row[0] if row else None
+    except Exception as e:
+        logger.warning("Failed to register external asset: %s", e)
+        return None
+
+
+def add_lineage_edge(
+    source_asset_id: int = None,
+    target_asset_id: int = None,
+    source_external: tuple = None,
+    target_external: tuple = None,
+    relationship: str = "derives_from",
+    tool_name: str = "",
+    pipeline_run_id: str = "",
+    created_by: str = "",
+) -> Optional[int]:
+    """Add a lineage edge between any combination of internal/external assets.
+
+    Args:
+        source_asset_id: Internal source asset ID (or None for external source)
+        target_asset_id: Internal target asset ID (or None for external target)
+        source_external: (system, external_id) tuple for external source
+        target_external: (system, external_id) tuple for external target
+        relationship: derives_from / feeds_into / references
+
+    Returns edge ID or None.
+    """
+    engine = get_engine()
+    if not engine:
+        return None
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("""
+                    INSERT INTO agent_asset_lineage
+                        (source_asset_id, source_external_system, source_external_id,
+                         target_asset_id, target_external_system, target_external_id,
+                         relationship, tool_name, pipeline_run_id, created_by)
+                    VALUES
+                        (:src_id, :src_sys, :src_ext,
+                         :tgt_id, :tgt_sys, :tgt_ext,
+                         :rel, :tool, :run_id, :creator)
+                    RETURNING id
+                """),
+                {
+                    "src_id": source_asset_id,
+                    "src_sys": source_external[0] if source_external else None,
+                    "src_ext": source_external[1] if source_external else None,
+                    "tgt_id": target_asset_id,
+                    "tgt_sys": target_external[0] if target_external else None,
+                    "tgt_ext": target_external[1] if target_external else None,
+                    "rel": relationship,
+                    "tool": tool_name,
+                    "run_id": pipeline_run_id,
+                    "creator": created_by or current_user_id.get("system"),
+                },
+            ).fetchone()
+            conn.commit()
+            return row[0] if row else None
+    except Exception as e:
+        logger.warning("Failed to add lineage edge: %s", e)
+        return None
+
+
+def get_cross_system_lineage(asset_id: int, depth: int = 5) -> dict:
+    """Get cross-system lineage graph for an asset.
+
+    Returns a graph with internal and external nodes + edges.
+    """
+    engine = get_engine()
+    if not engine:
+        return {"nodes": [], "edges": [], "error": "no database"}
+    try:
+        with engine.connect() as conn:
+            # Get the asset itself
+            asset = conn.execute(
+                text("""
+                    SELECT id, asset_name, external_system, external_id, external_url
+                    FROM agent_data_assets WHERE id = :id
+                """),
+                {"id": asset_id},
+            ).fetchone()
+            if not asset:
+                return {"nodes": [], "edges": [], "error": "asset not found"}
+
+            nodes = [{
+                "id": f"internal:{asset[0]}",
+                "name": asset[1],
+                "type": "internal",
+                "asset_id": asset[0],
+                "external_system": asset[2],
+                "external_id": asset[3],
+                "external_url": asset[4],
+            }]
+            edges = []
+            visited = {f"internal:{asset[0]}"}
+
+            # BFS through lineage edges
+            queue = [(asset[0], 0)]
+            while queue:
+                current_id, d = queue.pop(0)
+                if d >= depth:
+                    continue
+
+                # Find edges where this asset is source or target
+                rows = conn.execute(
+                    text("""
+                        SELECT id, source_asset_id, source_external_system, source_external_id,
+                               target_asset_id, target_external_system, target_external_id,
+                               relationship, tool_name
+                        FROM agent_asset_lineage
+                        WHERE source_asset_id = :id OR target_asset_id = :id
+                    """),
+                    {"id": current_id},
+                ).fetchall()
+
+                for row in rows:
+                    edge_id, src_id, src_sys, src_ext, tgt_id, tgt_sys, tgt_ext, rel, tool = row
+
+                    # Build source node key
+                    if src_id:
+                        src_key = f"internal:{src_id}"
+                    else:
+                        src_key = f"external:{src_sys}:{src_ext}"
+
+                    # Build target node key
+                    if tgt_id:
+                        tgt_key = f"internal:{tgt_id}"
+                    else:
+                        tgt_key = f"external:{tgt_sys}:{tgt_ext}"
+
+                    edges.append({
+                        "id": edge_id,
+                        "source": src_key,
+                        "target": tgt_key,
+                        "relationship": rel,
+                        "tool_name": tool,
+                    })
+
+                    # Add new nodes
+                    for node_key, node_asset_id, node_sys, node_ext in [
+                        (src_key, src_id, src_sys, src_ext),
+                        (tgt_key, tgt_id, tgt_sys, tgt_ext),
+                    ]:
+                        if node_key not in visited:
+                            visited.add(node_key)
+                            if node_asset_id:
+                                # Fetch internal asset info
+                                a = conn.execute(
+                                    text("SELECT id, asset_name, external_system FROM agent_data_assets WHERE id = :id"),
+                                    {"id": node_asset_id},
+                                ).fetchone()
+                                if a:
+                                    nodes.append({
+                                        "id": node_key, "name": a[1], "type": "internal",
+                                        "asset_id": a[0], "external_system": a[2],
+                                    })
+                                    queue.append((node_asset_id, d + 1))
+                            else:
+                                nodes.append({
+                                    "id": node_key, "name": f"{node_sys}:{node_ext}",
+                                    "type": "external", "external_system": node_sys,
+                                    "external_id": node_ext,
+                                })
+
+            return {"nodes": nodes, "edges": edges}
+    except Exception as e:
+        logger.warning("Failed to get cross-system lineage: %s", e)
+        return {"nodes": [], "edges": [], "error": str(e)}
+
+
+def list_external_systems() -> list[dict]:
+    """List registered external systems with asset counts."""
+    engine = get_engine()
+    if not engine:
+        return []
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text("""
+                    SELECT external_system, COUNT(*) as cnt
+                    FROM agent_data_assets
+                    WHERE external_system IS NOT NULL
+                    GROUP BY external_system
+                    ORDER BY cnt DESC
+                """)
+            ).fetchall()
+            return [{"system": r[0], "asset_count": r[1]} for r in rows]
+    except Exception as e:
+        logger.warning("Failed to list external systems: %s", e)
+        return []
+
+
+def delete_lineage_edge(edge_id: int) -> bool:
+    """Delete a lineage edge by ID."""
+    engine = get_engine()
+    if not engine:
+        return False
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text("DELETE FROM agent_asset_lineage WHERE id = :id"),
+                {"id": edge_id},
+            )
+            conn.commit()
+            return True
+    except Exception as e:
+        logger.warning("Failed to delete lineage edge: %s", e)
+        return False
+
+
 def download_cloud_asset(asset_name_or_id: str) -> dict:
     """
     [Data Lake Tool] Download a cloud-stored data asset to local disk.

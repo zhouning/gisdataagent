@@ -309,7 +309,7 @@ class TestWorkflowAPI(unittest.TestCase):
         """Route count should reflect all registered endpoints."""
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 266)
+        self.assertEqual(len(routes), 271)
 
     def test_dag_status_route(self):
         """DAG live status route should be registered."""
