@@ -1,51 +1,62 @@
-"""Tests for context_manager module"""
+"""Tests for context_manager backward compatibility shim (v19.0)."""
 import pytest
+from unittest.mock import patch
+
 from data_agent.context_manager import ContextManager, ContextBlock, ContextProvider
+from data_agent.context_engine import reset_context_engine
 
 
-class MockProvider(ContextProvider):
-    def __init__(self, blocks):
-        self.blocks = blocks
+class MockLegacyProvider(ContextProvider):
+    """Legacy-style provider using old signature."""
+    name = "mock_legacy"
 
-    def get_context(self, task_type, step, user_context):
-        return self.blocks
-
-
-def test_context_manager_token_budget():
-    mgr = ContextManager(max_tokens=100)
-    mgr.register_provider("mock", MockProvider([
-        ContextBlock("source1", "a" * 200, 50, 1.0),
-        ContextBlock("source2", "b" * 200, 40, 0.9),
-        ContextBlock("source3", "c" * 200, 30, 0.8),
-    ]))
-
-    selected = mgr.prepare("test", "step1", {})
-    assert len(selected) == 2
-    assert selected[0].source == "source1"
-    assert selected[1].source == "source2"
+    def get_context(self, query, task_type, user_context, query_embedding=None):
+        return [
+            ContextBlock(
+                provider="mock_legacy",
+                source="src1",
+                content="legacy content",
+                token_count=20,
+                relevance_score=0.8,
+            )
+        ]
 
 
-def test_context_manager_relevance_sort():
-    mgr = ContextManager(max_tokens=1000)
-    mgr.register_provider("mock", MockProvider([
-        ContextBlock("low", "content", 10, 0.5),
-        ContextBlock("high", "content", 10, 0.9),
-        ContextBlock("medium", "content", 10, 0.7),
-    ]))
-
-    selected = mgr.prepare("test", "step1", {})
-    assert selected[0].source == "high"
-    assert selected[1].source == "medium"
-    assert selected[2].source == "low"
+@pytest.fixture(autouse=True)
+def _reset_engine():
+    reset_context_engine()
+    yield
+    reset_context_engine()
 
 
-def test_context_manager_format():
+@patch("data_agent.knowledge_base._get_embeddings", return_value=[])
+@patch("data_agent.semantic_layer.resolve_semantic_context", return_value={})
+def test_context_manager_legacy_prepare(_mock_sem, _mock_emb):
+    """Legacy (task_type, step, user_context) signature still works."""
+    mgr = ContextManager(max_tokens=100_000)
+    mgr.register_provider("mock_legacy", MockLegacyProvider())
+    selected = mgr.prepare("test", "step1", {"query": "hello"})
+    # Should get at least the mock block
+    mock_blocks = [b for b in selected if b.provider == "mock_legacy"]
+    assert len(mock_blocks) == 1
+    assert mock_blocks[0].source == "src1"
+
+
+@patch("data_agent.knowledge_base._get_embeddings", return_value=[])
+@patch("data_agent.semantic_layer.resolve_semantic_context", return_value={})
+def test_context_manager_format(_mock_sem, _mock_emb):
     mgr = ContextManager()
     blocks = [
-        ContextBlock("source1", "content1", 10, 1.0),
-        ContextBlock("source2", "content2", 10, 0.9),
+        ContextBlock(
+            provider="test", source="source1", content="content1",
+            token_count=10, relevance_score=1.0,
+        ),
+        ContextBlock(
+            provider="test", source="source2", content="content2",
+            token_count=10, relevance_score=0.9,
+        ),
     ]
     formatted = mgr.format_context(blocks)
-    assert "[source1]" in formatted
+    assert "source1" in formatted
     assert "content1" in formatted
-    assert "[source2]" in formatted
+    assert "source2" in formatted

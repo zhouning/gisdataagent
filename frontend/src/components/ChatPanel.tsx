@@ -4,6 +4,7 @@ import { useSetRecoilState } from 'recoil';
 import { threadIdToResumeState } from '@chainlit/react-client';
 import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
+import FeedbackBar from './FeedbackBar';
 
 interface ChatPanelProps {
   onMapUpdate: (config: any) => void;
@@ -362,6 +363,20 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                     {getFileIcon(el.name)} {el.name}
                   </span>
                 ))}
+                {!isUser && msg.output && (
+                  <FeedbackBar
+                    messageId={msg.id || ''}
+                    query={(() => {
+                      const idx = flatMessages.indexOf(msg);
+                      for (let i = idx - 1; i >= 0; i--) {
+                        if (flatMessages[i].type?.includes('user')) return flatMessages[i].output || '';
+                      }
+                      return '';
+                    })()}
+                    response={msg.output || ''}
+                    pipelineType={routingInfo?.pipeline}
+                  />
+                )}
               </div>
             </div>
           );

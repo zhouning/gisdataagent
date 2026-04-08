@@ -339,3 +339,27 @@ def generate_followup_questions(report_text: str, user_text: str, pipeline_type:
     except Exception as e:
         logger.debug("Follow-up generation failed: %s", e)
         return []
+
+
+# ---------------------------------------------------------------------------
+# Context Engine Integration (v19.0)
+# ---------------------------------------------------------------------------
+
+
+def inject_context(query: str, task_type: str, user_context: dict | None = None) -> str:
+    """Prepare and format context from the unified ContextEngine.
+
+    Convenience wrapper for agent middleware / pipeline hooks.
+    Returns formatted context string ready for prompt injection,
+    or empty string on failure.
+    """
+    try:
+        from .context_engine import get_context_engine
+
+        engine = get_context_engine()
+        blocks = engine.prepare(query, task_type, user_context or {})
+        return engine.format_context(blocks)
+    except Exception as e:
+        logger.debug("inject_context failed: %s", e)
+        return ""
+

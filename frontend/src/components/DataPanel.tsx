@@ -4,7 +4,7 @@ import {
   FolderOpen, Table2, Database, Tag, Link, MapPin, BarChart3,
   Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
   History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
-  GitBranch, FileText, Target,
+  GitBranch, FileText, Target, ThumbsUp,
   LayoutGrid,
 } from 'lucide-react';
 
@@ -35,13 +35,14 @@ import AlertsTab from './datapanel/AlertsTab';
 import TopologyTab from './datapanel/TopologyTab';
 import MessageBusTab from './datapanel/MessageBusTab';
 import MetadataPanel from './datapanel/MetadataPanel';
+import FeedbackTab from './datapanel/FeedbackTab';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -85,6 +86,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
     key: 'ops', label: '平台运营', icon: <Activity size={16} />,
     tabs: [
       { key: 'history', label: '历史', icon: <History size={ICON_SIZE} /> },
+      { key: 'feedback', label: '反馈', icon: <ThumbsUp size={ICON_SIZE} /> },
       { key: 'usage', label: '用量', icon: <Gauge size={ICON_SIZE} /> },
       { key: 'analytics', label: '分析', icon: <PieChart size={ICON_SIZE} /> },
       { key: 'governance', label: '治理', icon: <Shield size={ICON_SIZE} /> },
@@ -211,6 +213,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'qcmonitor' && <QcMonitorTab />}
         {activeTab === 'alerts' && <AlertsTab />}
         {activeTab === 'messagebus' && <MessageBusTab />}
+        {activeTab === 'feedback' && <FeedbackTab />}
         {activeTab === 'topology' && <TopologyTab />}
       </div>
     </div>

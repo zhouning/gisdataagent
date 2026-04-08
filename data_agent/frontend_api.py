@@ -3096,6 +3096,10 @@ def get_frontend_api_routes():
     from .api.metadata_routes import get_metadata_routes
     from .api.fusion_v2_routes import get_fusion_v2_routes
     from .api.tile_routes import get_tile_routes
+    from .api.context_routes import get_context_routes
+    from .api.feedback_routes import get_feedback_routes
+    from .api.reference_query_routes import get_reference_query_routes
+    from .api.semantic_model_routes import get_semantic_model_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -3281,6 +3285,14 @@ def get_frontend_api_routes():
         Route("/api/messaging/messages", endpoint=_api_messaging_list, methods=["GET"]),
         Route("/api/messaging/{id:int}/replay", endpoint=_api_messaging_replay, methods=["POST"]),
         Route("/api/messaging/cleanup", endpoint=_api_messaging_cleanup, methods=["DELETE"]),
+        # Context Engine v2 (v19.0)
+        *get_context_routes(),
+        # Feedback Loop (v19.0)
+        *get_feedback_routes(),
+        # Reference Query Library (v19.0)
+        *get_reference_query_routes(),
+        # Semantic Models (v19.0)
+        *get_semantic_model_routes(),
     ]
 
 

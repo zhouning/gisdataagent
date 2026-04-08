@@ -144,6 +144,50 @@ class BadCaseCollector:
             logger.warning("Failed to collect user feedback: %s", e)
             return []
 
+    async def collect_from_agent_feedback(
+        self, limit: int = 50
+    ) -> list[dict]:
+        """Get downvotes from agent_feedback table (v19.0).
+
+        Reads from the dedicated feedback table added in v19.0,
+        complementing the legacy audit_log source.
+        """
+        engine = get_engine()
+        if not engine:
+            return []
+        try:
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text("""
+                        SELECT id, username, query_text, response_text,
+                               pipeline_type, issue_description, created_at
+                        FROM agent_feedback
+                        WHERE vote = -1
+                          AND resolved_at IS NULL
+                        ORDER BY created_at DESC
+                        LIMIT :lim
+                    """),
+                    {"lim": limit},
+                ).fetchall()
+            return [
+                {
+                    "source": "agent_feedback",
+                    "id": r[0],
+                    "username": r[1],
+                    "pipeline": r[4] or "unknown",
+                    "details": {
+                        "query": r[2] or "",
+                        "response": (r[3] or "")[:500],
+                        "issue": r[5] or "",
+                    },
+                    "created_at": r[6].isoformat() if r[6] else None,
+                }
+                for r in rows
+            ]
+        except Exception as e:
+            logger.warning("Failed to collect from agent_feedback: %s", e)
+            return []
+
     async def collect_all(
         self,
         min_score: float = 0.5,
@@ -151,11 +195,12 @@ class BadCaseCollector:
         min_rating: int = 2,
         limit: int = 50,
     ) -> list[dict]:
-        """Collect bad cases from all sources."""
+        """Collect bad cases from all sources (including v19.0 agent_feedback)."""
         eval_cases = await self.collect_from_eval_history(min_score, limit)
         pipeline_cases = await self.collect_from_pipeline_failures(days, limit)
         feedback_cases = await self.collect_from_user_feedback(min_rating, limit)
-        return eval_cases + pipeline_cases + feedback_cases
+        agent_fb_cases = await self.collect_from_agent_feedback(limit)
+        return eval_cases + pipeline_cases + feedback_cases + agent_fb_cases
 
 
 class FailureAnalyzer:
