@@ -1,14 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v18.5
+# GIS Data Agent (ADK Edition) v19.0
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v18.5 新增**：**智能体平台能力增强** — NL2Workflow（自然语言一句话生成可执行工作流 DAG，对标华为云 AgentArts 核心卖点）、提示词自动优化（bad case 收集 → 失败模式分析 → prompt 改进建议 → Human-in-the-loop 确认）、15 内置评估器（质量/安全/性能/准确性 4 大类，可插拔注册表）；**Palantir-inspired UI 重设计** — Deep Intelligence 深色主题（#0B0F19 base）、Inter + JetBrains Mono 字体、Lucide SVG 图标系统、DataPanel 3 组重构（数据资源/智能分析/平台运营）、左右分屏登录页、48px AppNav 图标导航栏。
-
-**v18.0 新增**：**应用层数据库优化** — 连接池 5→20 + asyncpg 异步引擎（min=5, max=20）+ 读写分离接口预埋（华为云 RDS 只读副本就绪）+ 物化视图（mv_pipeline_analytics + mv_token_usage_daily）+ 连接池 Prometheus 监控（4 Gauge + 查询延迟 Histogram）。
+**v19.0 新增**：**上下文工程 + 反馈飞轮**（Datus.ai 对标）— 统一 ContextEngine（6 个 Provider：语义层/知识库/知识图谱/参考查询/成功案例/指标定义，query embedding 混合排序 + token budget 截断 + 3 分钟 TTL 缓存）、结构化反馈闭环（前端 👍👎 → agent_feedback 表 → upvote 自动入库参考查询 + downvote 批量 FailureAnalyzer）、参考查询库（embedding 搜索 + NL2SQL few-shot 注入 + 自动/手动策展）、MetricFlow 语义模型（GIS 扩展 YAML 格式 + PostGIS 自动生成器 + MetricDefinitionProvider）。
 
 **产品化就绪**：Docker 一键部署（`docker compose up -d`）、[快速启动指南](QUICKSTART.md)、端到端质检 Demo（`scripts/demo_qc.py`，107K 建筑 69 秒完成 5 步标准质检）、SCI 论文实验框架（`data_agent/experiments/`，12 张 300 DPI 图表 + GEE 真实数据）。
 
@@ -48,16 +46,20 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 3300+ tests, 148 test files |
+| 测试覆盖 | 3450+ tests, 153 test files |
 | 工具集 | 40 BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
 | ADK Skills | 26 场景化领域技能 (含 skill-creator AI 辅助创建) |
-| REST API | 254 endpoints |
-| DB 迁移 | 59 个 SQL 迁移 |
-| DataPanel | 26 标签页 (3 分组: 数据资源/智能分析/平台运营) |
-| Data Agent Level | **SIGMOD 2026 L3** (完整条件自主) |
+| REST API | 266 endpoints |
+| DB 迁移 | 62 个 SQL 迁移 |
+| DataPanel | 29 标签页 (3 分组: 数据资源/智能分析/平台运营) |
+| Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程) |
+| 上下文引擎 | ContextEngine 6 Provider (语义层/知识库/知识图谱/参考查询/成功案例/指标定义) + 混合排序 + token budget + 3min 缓存 |
+| 反馈飞轮 | 前端 👍👎 → 参考查询自动入库 + FailureAnalyzer 批量优化 + 反馈看板 |
+| 参考查询库 | embedding 搜索 + NL2SQL few-shot 注入 + 自动/手动策展 |
+| 语义模型 | MetricFlow GIS 扩展 YAML + PostGIS 自动生成 + MetricDefinitionProvider |
 | NL2Workflow | 自然语言 → 工作流 DAG (Kahn 拓扑排序 + 循环检测 + 23 Skill 元数据匹配) |
 | 评估器 | 15 内置 (质量 5 + 安全 3 + 性能 3 + 准确性 4), 可插拔注册表 |
-| 提示词优化 | bad case 三源收集 + LLM 失败分析 + prompt 改进 + HITL 确认 |
+| 提示词优化 | bad case 四源收集 (eval_history + pipeline + audit_log + agent_feedback) + LLM 失败分析 + prompt 改进 + HITL 确认 |
 | UI 主题 | Palantir-inspired Deep Intelligence 深色主题 + Lucide SVG 图标 |
 | 融合 v2.0 | 时序对齐 (3 插值 + 变化检测) + 语义增强 (本体 15 组 + LLM + KG) + 冲突解决 (6 策略) + 可解释性 (热力图 + 溯源), 84 新测试 |
 | v16.0 L3 自主 | 语义算子 (4) + 多 Agent (13 子 Agent) + 错误恢复 (5 策略) + Guardrails (YAML 策略) + 遥感 Phase 1 (15+ 指数) + 工具演化 + AI Skill 生成 |
@@ -165,6 +167,34 @@
 - CLI 命令：new / validate / list / test / package
 - 验证器模块（结构和元数据校验）
 - 13/13 测试通过，可通过 PyPI 安装
+
+### 上下文工程 + 反馈飞轮 (v19.0)
+
+基于 Datus.ai 对标分析，实现"越用越准"的上下文飞轮，核心洞察：**LLM 回答准确性 80% 取决于输入上下文质量**。
+
+**1. 统一上下文引擎 (ContextEngine)**
+- 6 个 ContextProvider：SemanticLayer / KnowledgeBase / KnowledgeGraph / ReferenceQuery / SuccessStory / MetricDefinition
+- Query embedding 混合排序：provider_relevance × 0.6 + cosine_boost × 0.4
+- Token budget 截断 + 3 分钟 TTL 缓存
+- 向后兼容：context_manager.py 作为 shim 层，零破坏迁移
+
+**2. 结构化反馈闭环 (FeedbackLoop)**
+- 前端每条 AI 回复增加 👍/👎 反馈按钮 + 可选 issue 描述
+- Upvote 自动入库为参考查询（embedding cosine > 0.92 去重）
+- Downvote 批量走 FailureAnalyzer → prompt 优化建议
+- 反馈看板：满意率趋势 / 管线分布 / 最近反馈列表
+
+**3. 参考查询库 (ReferenceQueryStore)**
+- Embedding 搜索（复用 Gemini text-embedding-004 + numpy cosine）
+- NL2SQL few-shot 注入：执行前检索相似参考查询作为示例
+- 自动入库（upvote）+ 手动策展（6 CRUD 端点）
+
+**4. MetricFlow 语义模型**
+- GIS 扩展 YAML 格式：`type: spatial` 维度 + `srid` + `geometry_type`
+- PostGIS 自动生成器：从 information_schema + geometry_columns 生成 draft YAML
+- MetricDefinitionProvider：从语义模型提取指标定义注入 ContextEngine
+
+**新增**：5 个 Python 模块 + 4 个 API 路由模块 + 3 个 DB 迁移 (053-055) + 2 个前端组件 + 68 新测试
 
 ### BCG 企业级平台能力 (v15.8)
 

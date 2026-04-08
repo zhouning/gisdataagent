@@ -1,22 +1,14 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v18.5
+# GIS Data Agent (ADK Edition) v19.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 26 tabs), and enterprise-grade security.
+An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 29 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **254 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **266 REST API endpoints**.
 
-**v18.5**: **Platform Capability Enhancement** — NL2Workflow (natural language → executable workflow DAG, benchmarked against Huawei AgentArts), automatic prompt optimization (bad case collection → failure pattern analysis → prompt improvement → HITL confirmation), 15 built-in evaluators (quality/safety/performance/accuracy, pluggable registry); **Palantir-inspired UI Redesign** — Deep Intelligence dark theme (#0B0F19 base), Inter + JetBrains Mono fonts, Lucide SVG icon system, DataPanel 3-group restructure (Data Resources / Intelligent Analysis / Platform Operations), split-screen login page, 48px AppNav icon rail.
+**v19.0**: **Context Engineering + Feedback Flywheel** (Datus.ai benchmark) — Unified ContextEngine with 6 providers (semantic_layer / knowledge_base / knowledge_graph / reference_queries / success_stories / metric_definitions), query embedding hybrid ranking + token budget truncation + 3-min TTL cache; structured feedback loop (frontend 👍👎 → agent_feedback table → upvote auto-ingest as reference queries + downvote batch FailureAnalyzer); reference query library (embedding search + NL2SQL few-shot injection); MetricFlow semantic model (GIS-extended YAML + PostGIS auto-generator + MetricDefinitionProvider). 68 new tests, 3 migrations.
 
-**v18.0**: **Application-layer Database Optimization** — Connection pool 5→20 + asyncpg async engine (min=5, max=20) + read-write split interface ready (Huawei Cloud RDS read replica) + materialized views (mv_pipeline_analytics + mv_token_usage_daily) + connection pool Prometheus monitoring (4 Gauges + query latency Histogram).
-
-**v17.1**: Vector tile rendering + DRL optimization E2E hardening — **3-tier adaptive data delivery** (GeoJSON ≤10K / FlatGeobuf 10K-50K / MVT >50K), Martin vector tile service integration, 5 tile REST endpoints.
-
-**v17.0**: Multimodal Fusion v2.0 Enhancement — 4 core modules: **Temporal Alignment** + **Semantic Enhancement** (ontology 15 groups + LLM + KG) + **Conflict Resolution** (6 strategies) + **Explainability** (heatmap + lineage). 84 new tests.
-
-**v16.0**: SIGMOD 2026 L3 Conditional Autonomy — Semantic operators (4), multi-agent collaboration (4 specialists + coordinator), plan refinement & error recovery (5 strategies), Guardrails policy engine, remote sensing Phase 1 (15+ spectral indices), tool evolution, AI-assisted Skill creation.
-
-**Production-ready**: One-command Docker deployment (`docker compose up -d`), [Quick Start Guide](QUICKSTART.md), end-to-end QC demo (`scripts/demo_qc.py`, 107K buildings in 69s), SCI paper experiment framework (`data_agent/experiments/`, 12 figures at 300 DPI + real GEE data).
+**v18.5**: **Platform Capability Enhancement** — NL2Workflow (natural language → executable workflow DAG, benchmarked against Huawei AgentArts), automatic prompt optimization (bad case collection → failure pattern analysis → prompt improvement → HITL confirmation), 15 built-in evaluators (quality/safety/performance/accuracy, pluggable registry); **Palantir-inspired UI Redesign** — Deep Intelligence dark theme (#0B0F19 base), Inter + JetBrains Mono fonts, Lucide SVG icon system, DataPanel 3-group restructure, split-screen login page, 48px AppNav icon rail.
 
 ## 📚 Official Technical Documentation
 
