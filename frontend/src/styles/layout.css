@@ -3034,6 +3034,30 @@ body {
 .dp-group-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
 .dp-group-btn.active { color: var(--accent); background: rgba(var(--accent-rgb), .12); font-weight: 600; }
 
+.dp-tab-bar {
+  display: flex; gap: 0; padding: 0 12px;
+  background: var(--surface-elevated); border-bottom: 1px solid var(--border);
+  overflow-x: auto; overflow-y: hidden; flex-shrink: 0;
+  scrollbar-width: thin; white-space: nowrap;
+}
+.dp-tab-bar::-webkit-scrollbar { height: 3px; }
+.dp-tab-bar::-webkit-scrollbar-track { background: transparent; }
+.dp-tab-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.dp-tab {
+  display: flex; align-items: center; gap: 5px;
+  padding: 9px 14px; border: none; background: transparent;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  color: var(--text-secondary); transition: color .2s;
+  white-space: nowrap; flex-shrink: 0; position: relative;
+}
+.dp-tab:hover { color: var(--text); }
+.dp-tab.active { color: var(--primary); font-weight: 600; }
+.dp-tab.active::after {
+  content: ''; position: absolute; bottom: -1px; left: 6px; right: 6px;
+  height: 2px; background: var(--primary); border-radius: 1px;
+}
+.dp-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
 .tab-content-placeholder {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   height: 100%; gap: 12px; color: var(--text-tertiary); text-align: center; padding: 40px 20px;
