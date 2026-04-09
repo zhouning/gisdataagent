@@ -52,6 +52,14 @@ export default function WorkflowsTab() {
   const [showFilePicker, setShowFilePicker] = useState(false);
   const [executeTarget, setExecuteTarget] = useState<number | null>(null);
 
+  // AI Workflow Generator state (v23.0)
+  const [showAiGen, setShowAiGen] = useState(false);
+  const [aiDesc, setAiDesc] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiPreview, setAiPreview] = useState<any>(null);
+  const [aiError, setAiError] = useState('');
+  const [aiSaving, setAiSaving] = useState(false);
+
   const fetchWorkflows = async () => {
     setLoading(true);
     try {
@@ -68,6 +76,54 @@ export default function WorkflowsTab() {
 
   const handleCreate = () => {
     setEditWorkflow(null);
+    setEditing(true);
+    setShowAiGen(false);
+  };
+
+  // --- AI Workflow Generator handlers (v23.0) ---
+  const handleAiGenerate = async () => {
+    if (!aiDesc.trim()) { setAiError('请描述你想创建的工作流'); return; }
+    setAiGenerating(true); setAiError(''); setAiPreview(null);
+    try {
+      const resp = await fetch('/api/workflows/generate', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: aiDesc.trim() }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.workflow) {
+        setAiPreview(data);
+      } else {
+        setAiError(data.error || data.message || 'AI 生成失败，请重试');
+      }
+    } catch { setAiError('网络错误'); }
+    finally { setAiGenerating(false); }
+  };
+
+  const handleAiSave = async () => {
+    if (!aiPreview?.workflow) return;
+    setAiSaving(true); setAiError('');
+    try {
+      const resp = await fetch('/api/workflows', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiPreview.workflow),
+      });
+      if (resp.ok) {
+        setShowAiGen(false); setAiPreview(null); setAiDesc('');
+        fetchWorkflows();
+      } else {
+        const data = await resp.json();
+        setAiError(data.error || '保存失败');
+      }
+    } catch { setAiError('网络错误'); }
+    finally { setAiSaving(false); }
+  };
+
+  const handleAiEdit = () => {
+    if (!aiPreview?.workflow) return;
+    setEditWorkflow(aiPreview.workflow);
+    setShowAiGen(false); setAiPreview(null);
     setEditing(true);
   };
 
@@ -285,7 +341,70 @@ export default function WorkflowsTab() {
     <div className="workflows-view">
       <div className="workflows-header">
         <button className="btn-primary btn-sm" onClick={handleCreate}>+ 新建工作流</button>
+        <button className="btn-primary btn-sm" onClick={() => { setShowAiGen(!showAiGen); setAiPreview(null); setAiError(''); }}
+          style={{ background: '#8b5cf6', marginLeft: 6 }}>✨ AI生成</button>
       </div>
+
+      {/* AI Workflow Generator Panel (v23.0) */}
+      {showAiGen && (
+        <div style={{ margin: '8px 0', padding: 12, background: '#faf5ff', borderRadius: 8, border: '1px solid #c4b5fd' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#8b5cf6', marginBottom: 8 }}>✨ AI 辅助创建工作流</div>
+          {!aiPreview ? (
+            <>
+              <textarea
+                placeholder={"用自然语言描述工作流，例如：\n• 先做数据画像，再检查拓扑，最后生成专题图\n• 并行执行生态评估和耕地合规检查，然后合并结果做用地优化\n• 加载遥感影像，计算NDVI，检测植被变化，生成报告"}
+                rows={4} maxLength={2000}
+                value={aiDesc} onChange={e => setAiDesc(e.target.value)}
+                style={{ width: '100%', fontSize: 12, lineHeight: 1.6, padding: 8, borderRadius: 6, border: '1px solid #d1d5db', resize: 'vertical' }}
+              />
+              {aiError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{aiError}</div>}
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button className="btn-secondary btn-sm" onClick={() => setShowAiGen(false)}>取消</button>
+                <button className="btn-primary btn-sm" disabled={aiGenerating || !aiDesc.trim()}
+                  onClick={handleAiGenerate} style={{ background: '#8b5cf6' }}>
+                  {aiGenerating ? '生成中...' : '生成工作流'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>AI 已生成以下工作流，请确认或编辑后保存：</div>
+              <div style={{ background: '#fff', borderRadius: 6, padding: 10, fontSize: 12, lineHeight: 1.7, border: '1px solid #e5e7eb' }}>
+                <div><b>名称:</b> {aiPreview.workflow?.workflow_name}</div>
+                <div><b>描述:</b> {aiPreview.workflow?.description}</div>
+                <div style={{ marginTop: 6 }}><b>步骤 ({aiPreview.workflow?.steps?.length || 0}):</b></div>
+                {(aiPreview.workflow?.steps || []).map((step: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 11 }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#8b5cf6', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0 }}>
+                      {i + 1}
+                    </span>
+                    <span style={{ fontWeight: 500 }}>{step.label || step.step_id}</span>
+                    <span style={{ color: '#6b7280' }}>({step.pipeline_type}{step.skill_name ? ` / ${step.skill_name}` : ''})</span>
+                    {step.depends_on?.length > 0 && (
+                      <span style={{ color: '#9ca3af', fontSize: 10 }}>← {step.depends_on.join(', ')}</span>
+                    )}
+                  </div>
+                ))}
+                {aiPreview.explanation && (
+                  <div style={{ marginTop: 8, padding: 6, background: '#f8fafc', borderRadius: 4, fontSize: 11, color: '#374151' }}>
+                    {aiPreview.explanation}
+                  </div>
+                )}
+              </div>
+              {aiError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{aiError}</div>}
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button className="btn-secondary btn-sm" onClick={() => { setAiPreview(null); setAiDesc(''); }}>重新生成</button>
+                <button className="btn-secondary btn-sm" onClick={handleAiEdit}>编辑后保存</button>
+                <button className="btn-primary btn-sm" disabled={aiSaving} onClick={handleAiSave}
+                  style={{ background: '#8b5cf6' }}>
+                  {aiSaving ? '保存中...' : '直接保存'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       {loading && workflows.length === 0 ? (
         <div className="empty-state">加载中...</div>
       ) : workflows.length === 0 ? (

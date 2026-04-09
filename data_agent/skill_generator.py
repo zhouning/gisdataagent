@@ -66,8 +66,8 @@ _TOOLSET_KEYWORDS: dict[str, list[tuple[str, str]]] = {
     # Advanced
     "因果": [("CausalInferenceToolset", "因果推断")],
     "causal": [("CausalInferenceToolset", "causal inference")],
-    "预测": [("WorldModelToolset", "时空预测")],
-    "world_model": [("WorldModelToolset", "world model prediction")],
+    "预测": [("AdvancedAnalysisToolset", "时空预测")],
+    "world_model": [("AdvancedAnalysisToolset", "world model prediction")],
     "优化": [("AnalysisToolset", "DRL优化")],
     "drl": [("AnalysisToolset", "DRL optimization")],
     # Fusion
@@ -84,8 +84,8 @@ _TOOLSET_KEYWORDS: dict[str, list[tuple[str, str]]] = {
     "质检": [("GovernanceToolset", "质量检查"), ("DataCleaningToolset", "数据清洗")],
     "quality": [("GovernanceToolset", "quality check")],
     # Operators
-    "分析": [("OperatorToolset", "语义分析算子")],
-    "analyze": [("OperatorToolset", "semantic analysis")],
+    "分析": [("AnalysisToolset", "数据分析")],
+    "analyze": [("AnalysisToolset", "data analysis")],
     # File
     "文件": [("FileToolset", "文件管理")],
     "file": [("FileToolset", "file management")],

@@ -243,8 +243,8 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
         body: JSON.stringify({ description: aiDesc.trim() }),
       });
       const data = await resp.json();
-      if (resp.ok && data.skill) {
-        setAiPreview(data.skill);
+      if (resp.ok && (data.config || data.skill)) {
+        setAiPreview(data.config || data.skill);
       } else {
         setAiError(data.error || 'AI 生成失败，请重试');
       }
