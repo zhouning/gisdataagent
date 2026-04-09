@@ -60,7 +60,12 @@ class DRLScenario:
                  contiguity_weight: float = 500.0,
                  balance_weight: float = 500.0,
                  pair_bonus: float = 1.0,
-                 max_conversions: int = 200):
+                 max_conversions: int = 200,
+                 # v23.0 — Constraint modeling
+                 min_retention_rate: float = 0.0,
+                 max_area_cap: float = float('inf'),
+                 budget_cap: float = float('inf'),
+                 budget_per_conversion: float = 1.0):
         self.name = name
         self.description = description
         self.source_types = source_types
@@ -70,6 +75,13 @@ class DRLScenario:
         self.balance_weight = balance_weight
         self.pair_bonus = pair_bonus
         self.max_conversions = max_conversions
+        # Hard constraint: minimum source type retention ratio (0.0 = no limit, 0.8 = keep >=80%)
+        self.min_retention_rate = min_retention_rate
+        # Soft constraint: max total converted area (sq meters)
+        self.max_area_cap = max_area_cap
+        # Soft constraint: budget cap (abstract units)
+        self.budget_cap = budget_cap
+        self.budget_per_conversion = budget_per_conversion
 
 
 # Built-in scenario templates
@@ -101,6 +113,33 @@ SCENARIOS: dict[str, DRLScenario] = {
         contiguity_weight=800.0,
         balance_weight=600.0,
         max_conversions=100,
+    ),
+    # v23.0 — New scenarios
+    "road_network": DRLScenario(
+        name="道路网络优化",
+        description="优化道路网络布局，最小化通行坡度、最大化路网连通性，保留主干道",
+        source_types={'公路用地', '农村道路', '城镇道路', '村道'},
+        target_types={'耕地', '林地', '草地'},
+        slope_weight=1200.0,
+        contiguity_weight=1000.0,
+        balance_weight=400.0,
+        pair_bonus=1.5,
+        max_conversions=150,
+        min_retention_rate=0.7,
+    ),
+    "public_facility_layout": DRLScenario(
+        name="公共设施布局优化",
+        description="优化学校/医院/公园等公共设施空间分布，最大化服务覆盖均匀性",
+        source_types={'教育用地', '医疗卫生用地', '文化设施用地', '体育用地', '公园'},
+        target_types={'居住用地', '商业用地', '工业用地'},
+        slope_weight=100.0,
+        contiguity_weight=300.0,
+        balance_weight=1000.0,
+        pair_bonus=2.0,
+        max_conversions=80,
+        min_retention_rate=0.85,
+        budget_cap=200.0,
+        budget_per_conversion=3.0,
     ),
 }
 
@@ -157,6 +196,11 @@ class LandUseOptEnv(gym.Env):
             self.balance_w = scenario.balance_weight
             self.pair_b = scenario.pair_bonus
             max_conversions = scenario.max_conversions
+            # v23.0 constraints
+            self.min_retention_rate = scenario.min_retention_rate
+            self.max_area_cap = scenario.max_area_cap
+            self.budget_cap = scenario.budget_cap
+            self.budget_per_conversion = scenario.budget_per_conversion
         else:
             self.source_types = FARMLAND_TYPES
             self.target_types = FOREST_TYPES
@@ -164,6 +208,11 @@ class LandUseOptEnv(gym.Env):
             self.cont_w = CONT_REWARD_WEIGHT
             self.balance_w = COUNT_PENALTY_WEIGHT
             self.pair_b = PAIR_BONUS
+            # v23.0 defaults — no constraints
+            self.min_retention_rate = 0.0
+            self.max_area_cap = float('inf')
+            self.budget_cap = float('inf')
+            self.budget_per_conversion = 1.0
 
         # Load shapefile
         print(f"Loading shapefile: {shp_path}")
@@ -391,10 +440,23 @@ class LandUseOptEnv(gym.Env):
         return np.concatenate([per_parcel.ravel(), global_f])
 
     def action_masks(self):
-        """Return boolean mask of valid actions (size = n_swappable)."""
+        """Return boolean mask of valid actions (size = n_swappable).
+
+        v23.0: Enforces hard constraints — masks out actions that would
+        violate min_retention_rate for source types.
+        """
         si = self.swappable_indices
         mask = (self.land_use[si] == FARMLAND) | (self.land_use[si] == FOREST)
         mask = mask & ~self._converted
+
+        # Hard constraint: min retention rate for source (farmland) type
+        if self.min_retention_rate > 0 and self.initial_n_farmland_count > 0:
+            min_farmland = int(self.initial_n_farmland_count * self.min_retention_rate)
+            if self.n_farmland <= min_farmland:
+                # Block all farmland→forest conversions (only allow forest→farmland)
+                farmland_mask = self.land_use[si] == FARMLAND
+                mask = mask & ~farmland_mask
+
         return mask
 
     def reset(self, seed=None, options=None):
@@ -412,6 +474,9 @@ class LandUseOptEnv(gym.Env):
         self.completed_conversions = 0
         self.completed_pairs = 0
         self._converted[:] = False
+        # v23.0 constraint tracking
+        self.total_converted_area = 0.0
+        self.total_budget_spent = 0.0
 
         # Record initial metrics for reward computation
         self.initial_avg_slope = self.avg_farmland_slope
@@ -446,6 +511,10 @@ class LandUseOptEnv(gym.Env):
         self.step_count += 1
         self.completed_conversions += 1
 
+        # v23.0: Track converted area and budget
+        self.total_converted_area += float(self.areas[parcel_idx])
+        self.total_budget_spent += self.budget_per_conversion
+
         # Compute reward
         avg_sl = self.avg_farmland_slope
         cont = self.contiguity
@@ -462,6 +531,14 @@ class LandUseOptEnv(gym.Env):
         if self.n_farmland == self.initial_n_farmland_count:
             reward += self.pair_b
             self.completed_pairs += 1
+
+        # v23.0: Soft constraint penalties
+        if self.total_converted_area > self.max_area_cap:
+            overshoot = (self.total_converted_area - self.max_area_cap) / self.max_area_cap
+            reward -= self.balance_w * overshoot
+        if self.total_budget_spent > self.budget_cap:
+            overshoot = (self.total_budget_spent - self.budget_cap) / self.budget_cap
+            reward -= self.balance_w * overshoot
 
         self.prev_avg_slope = avg_sl
         self.prev_contiguity = cont

@@ -108,7 +108,7 @@
 
 ### 自然语言交互
 - [x] **追问与上下文链** — Agent 输出后自动生成 3 个推荐追问，用户点击即发送
-- [ ] **分析意图消歧 v2** — 对复杂查询拆解为子任务列表，用户确认后按序执行
+- [x] **分析意图消歧 v2** — 对复杂查询拆解为子任务列表，用户确认后按序执行 ✅ v23.0
 - [x] **自动记忆提取增强** — pipeline 完成后自动调用 `extract_facts_from_conversation()` + 弹出确认 ✅
 
 ### 用户自扩展
@@ -118,14 +118,14 @@
 
 ### DRL 优化
 - [x] **多场景环境引擎** — LandUseOptEnv 配置驱动多场景支持 ✅
-- [ ] **约束建模** — 新增硬约束（保留率下限）+ 软约束（预算/面积上限），Gymnasium action mask 扩展
+- [x] **约束建模** — 新增硬约束（保留率下限）+ 软约束（预算/面积上限），Gymnasium action mask 扩展 ✅ v23.0
 - [x] **结果对比面板** — OptimizationTab A/B 对比两次优化结果 ✅
 
 ### 三面板 SPA
 - [x] **3D basemap 同步** — Map3DView 高德/天地图 MapLibre 栅格源 ✅ v14.5
-- [ ] **标注协同** — WebSocket 实时推送标注变更 + 在线用户光标显示
+- [x] **标注协同** — WebSocket 实时推送标注变更 (单实例版) ✅ v23.0
 - [x] **GeoJSON 编辑器** — DataPanel 新增 tab/modal，支持粘贴/编辑 GeoJSON + 预览到地图
-- [ ] **跨图层关联** — 选中 A 图层要素时高亮 B 图层空间关联要素
+- [x] **跨图层关联** — 选中 A 图层要素时高亮 B 图层空间关联要素 ✅ v23.0
 
 ### 多 Agent 编排
 - [x] **Agent 注册中心** — 新增 `agent_registry.py`：注册/发现/心跳，Redis 或 PostgreSQL 后端
@@ -172,19 +172,19 @@
 - [x] **多语言支持** — 英文/日文 prompt 自动检测 + 路由到对应语言 Agent
 
 ### 用户自扩展
-- [~] **Skill 依赖图** — 允许 Skill A 依赖 Skill B（DAG 编排），类似 npm 包依赖 *(schema only, 图遍历待实现)*
+- [x] **Skill 依赖图** — 允许 Skill A 依赖 Skill B（DAG 编排），拓扑排序 + 循环检测 + REST API ✅ v23.0
 - [x] **Webhook 集成** — 第三方平台 Skill 注册（GitHub Action、Zapier trigger）
 - [x] **Skill SDK** — gis-skill-sdk Python 包 (CLI + 验证器 + 测试) ✅
 
 ### DRL 优化
 - [x] **多目标优化 v2** — NSGA-II 替代加权和方法，真 Pareto 前沿搜索
-- [ ] **交通网络/设施布局场景** — 新增 2 个 Gymnasium 环境（路网优化、公共设施选址）
+- [x] **交通网络/设施布局场景** — 新增 2 个 Gymnasium 环境（路网优化、公共设施选址） ✅ v23.0
 - [ ] **联邦学习** — 多租户共享模型权重但不共享数据（隐私保护 DRL）
 
 ### 三面板 SPA
 - [ ] **协同工作空间** — 多用户同时编辑同一项目（CRDT 冲突解决）
 - [x] **插件系统** — 允许用户开发自定义 DataPanel tab 插件
-- [ ] **离线模式** — Service Worker 缓存基础地图 + 已下载数据集
+- [x] **离线模式** — Service Worker 缓存基础地图 + 已下载数据集 ✅ v23.0
 
 ### 多 Agent 编排
 - [x] **完整 A2A 协议** — 实现 Google A2A spec：Agent Card、Task lifecycle、Streaming、Push Notification
@@ -949,8 +949,8 @@
 ### P2 — 轻量化部署选项 ✅
 
 - [x] **DuckDB 适配器** — duckdb_adapter.py: DuckDB + spatial 扩展，GeoDataFrame 双向转换 ✅ 2026-04-08
-- [ ] **Lite 模式设计** — 仅 General Pipeline + DuckDB/SQLite 后端，无 PostGIS 依赖
-- [ ] **可选依赖分组** — `pip install gis-data-agent[lite]` (核心) vs `[full]` (含 PostGIS/DRL/WorldModel)
+- [x] **Lite 模式设计** — 仅 General Pipeline + DuckDB 后端，无 PostGIS 依赖 ✅ v23.0
+- [x] **可选依赖分组** — `pip install gis-data-agent[lite]` (核心) vs `[full]` (含 PostGIS/DRL/WorldModel) ✅ v23.0
 - [x] **快速启动脚本** — `gis-agent init` 一键初始化 (DuckDB + 默认配置 + 示例数据) ✅ 2026-04-08
 
 ---
@@ -990,7 +990,7 @@
 
 ### 分布式追踪与可观测性 ⏸️ (搁置: 等待 Jaeger/Loki 实例)
 
-- [~] **OpenTelemetry 全链路追踪** — HTTP/DB/Redis 自动注入 *(搁置: 需 Jaeger)*
+- [x] **OpenTelemetry 全链路追踪** — HTTP/DB/Pipeline/Tool/LLM 埋点就绪，graceful degradation ✅ v23.0 *(导出需 Jaeger)*
 - [~] **Jaeger 追踪后端** — 存储 trace 数据 + UI 查询 *(搁置: 需 Jaeger 实例)*
 - [~] **Loki 集中日志** — 替代 stdout，与 trace_id 关联 *(搁置: 需 Loki 实例)*
 - [~] **Grafana 统一看板** — Prometheus + Jaeger + Loki 数据源 *(搁置: 需 Grafana 实例)*
@@ -1028,7 +1028,8 @@
 #### **Phase 4: 高级遥感**
 - [ ] **SAR/高光谱/LiDAR** 数据处理
 - [ ] **深度学习推理** — segment-anything-geo / SatMAE / Prithvi
-- [ ] **具身执行接口** — 卫星调度 / 无人机航线规划 (预留)
+- [x] **具身执行接口** — BaseExecutor ABC + MockUAV/Satellite + 注册表 ✅ v23.0 *(对接实际硬件待定)*
+- [x] **Gemma 4 + 多模型管理** — Gemma 4 31B 注册 (Gemini API + vLLM) + DB 持久化管理员配置 + 前端交互式切换 + Intent Router 可配置化 ✅ v23.0
 
 ---
 

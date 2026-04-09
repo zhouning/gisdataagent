@@ -8,6 +8,15 @@ import './styles/layout.css';
 const CHAINLIT_SERVER = window.location.origin;
 const apiClient = new ChainlitAPI(CHAINLIT_SERVER, 'webapp');
 
+// v23.0: Register Service Worker for offline mode
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/public/sw.js').catch(() => {
+      // Non-fatal: SW registration may fail in dev mode
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ChainlitContext.Provider value={apiClient}>

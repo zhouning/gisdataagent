@@ -442,14 +442,21 @@ function A2ASection() {
 function ModelsSection() {
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [showCustom, setShowCustom] = useState(false);
+  const [customForm, setCustomForm] = useState({ name: '', backend: 'litellm', api_base: '', tier: 'standard' });
+  const [msg, setMsg] = useState('');
 
-  useEffect(() => {
-    fetch('/api/config/models', { credentials: 'include' })
+  const loadConfig = () => {
+    fetch('/api/admin/model-config', { credentials: 'include' })
       .then(r => r.json())
-      .then(setConfig)
+      .then(data => { setConfig(data); setEdits({}); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadConfig(); }, []);
 
   if (loading) return <div className="admin-loading">加载中...</div>;
   if (!config) return <div className="admin-loading">无法加载模型配置</div>;
@@ -460,75 +467,160 @@ function ModelsSection() {
     premium: 'Premium（复杂推理）',
   };
   const tierUsage: Record<string, string> = {
-    fast: '路由器、数据探查、质量检查、语义预取',
-    standard: '数据处理、分析、可视化、摘要、Planner 调度',
-    premium: '治理报告、Planner 报告撰写',
+    fast: '路由器、数据探查、质量检查',
+    standard: '数据处理、分析、可视化',
+    premium: '治理报告、复杂推理',
   };
+
+  const availableModels: string[] = (config.available_models || []).map((m: any) => m.name);
+
+  const handleTierChange = (tier: string, model: string) => {
+    setEdits(prev => ({ ...prev, [`tier_${tier}`]: model }));
+  };
+  const handleRouterChange = (model: string) => {
+    setEdits(prev => ({ ...prev, router_model: model }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg('');
+    try {
+      for (const [key, value] of Object.entries(edits)) {
+        if (key.startsWith('tier_')) {
+          const tier = key.replace('tier_', '');
+          await fetch('/api/admin/model-config', {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tier, model: value }),
+          });
+        } else if (key === 'router_model') {
+          await fetch('/api/admin/model-config', {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ router_model: value }),
+          });
+        }
+      }
+      setMsg('保存成功。Router 立即生效，Agent 层级需重启生效。');
+      loadConfig();
+    } catch { setMsg('保存失败'); }
+    setSaving(false);
+  };
+
+  const handleAddCustom = async () => {
+    if (!customForm.name) return;
+    const resp = await fetch('/api/admin/model-config/custom', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(customForm),
+    });
+    if (resp.ok) {
+      setMsg(`已注册自定义模型: ${customForm.name}`);
+      setCustomForm({ name: '', backend: 'litellm', api_base: '', tier: 'standard' });
+      setShowCustom(false);
+      loadConfig();
+    } else {
+      const err = await resp.json();
+      setMsg(`注册失败: ${err.error || '未知错误'}`);
+    }
+  };
+
+  const hasEdits = Object.keys(edits).length > 0;
 
   return (
     <div>
       <h3>LLM 模型配置</h3>
       <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
-        通过环境变量配置各层级使用的 LLM 模型。支持 Gemini、Anthropic Claude、OpenAI 及 LiteLLM 兼容模型。
+        配置各层级使用的 LLM 模型。支持 Gemini、Gemma、LiteLLM 兼容模型。
       </p>
 
       <div className="data-table-container">
         <table className="data-table admin-table">
           <thead>
-            <tr>
-              <th>层级</th>
-              <th>当前模型</th>
-              <th>提供商</th>
-              <th>环境变量</th>
-              <th>用途</th>
-            </tr>
+            <tr><th>层级</th><th>当前模型</th><th>用途</th></tr>
           </thead>
           <tbody>
             {Object.entries(config.tiers || {}).map(([tier, info]: [string, any]) => (
               <tr key={tier}>
                 <td style={{ fontWeight: 600 }}>{tierLabels[tier] || tier}</td>
-                <td><code style={{ fontSize: 12, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>{info.model}</code></td>
-                <td>{info.provider}</td>
-                <td><code style={{ fontSize: 11 }}>{info.env_var}</code></td>
+                <td>
+                  <select
+                    value={edits[`tier_${tier}`] || info.model}
+                    onChange={e => handleTierChange(tier, e.target.value)}
+                    style={{ fontSize: 12, padding: '4px 8px', borderRadius: 4, border: '1px solid #d1d5db', width: '100%' }}
+                  >
+                    {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </td>
                 <td style={{ fontSize: 11, color: '#6b7280' }}>{tierUsage[tier]}</td>
               </tr>
             ))}
             <tr>
               <td style={{ fontWeight: 600 }}>Router（意图路由）</td>
-              <td><code style={{ fontSize: 12, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>{config.router_model}</code></td>
-              <td>{config.router_provider}</td>
-              <td><code style={{ fontSize: 11 }}>ROUTER_MODEL</code></td>
-              <td style={{ fontSize: 11, color: '#6b7280' }}>语义意图分类（每次请求首先调用）</td>
+              <td>
+                <select
+                  value={edits.router_model || config.router_model}
+                  onChange={e => handleRouterChange(e.target.value)}
+                  style={{ fontSize: 12, padding: '4px 8px', borderRadius: 4, border: '1px solid #d1d5db', width: '100%' }}
+                >
+                  {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </td>
+              <td style={{ fontSize: 11, color: '#6b7280' }}>语义意图分类</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div className="metrics-chart-section" style={{ marginTop: 16 }}>
-        <h3>配置说明</h3>
-        <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.8 }}>
-          <p>在 <code>.env</code> 或环境变量中设置即可切换模型，重启后生效：</p>
-          <pre style={{ background: '#f8fafc', padding: 12, borderRadius: 6, fontSize: 11, overflow: 'auto' }}>
-{`# Gemini (默认)
-MODEL_FAST=gemini-2.0-flash
-MODEL_STANDARD=gemini-2.5-flash
-MODEL_PREMIUM=gemini-2.5-pro
-
-# Anthropic Claude
-MODEL_FAST=claude-haiku-4-5-20251001
-MODEL_STANDARD=claude-sonnet-4-6
-MODEL_PREMIUM=claude-opus-4-6
-
-# OpenAI (通过 LiteLLM)
-MODEL_FAST=openai/gpt-4o-mini
-MODEL_STANDARD=openai/gpt-4o
-MODEL_PREMIUM=openai/o3`}
-          </pre>
-          <p style={{ marginTop: 8 }}>
-            ADK v1.27.2 原生支持 Gemini 和 Anthropic。其他模型（OpenAI、Mistral、Llama 等）通过 LiteLLM 适配。
-          </p>
-        </div>
+      <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={handleSave} disabled={!hasEdits || saving}
+          style={{ padding: '6px 16px', borderRadius: 6, background: hasEdits ? '#3b82f6' : '#d1d5db',
+                   color: '#fff', border: 'none', cursor: hasEdits ? 'pointer' : 'default', fontSize: 13 }}>
+          {saving ? '保存中...' : '保存配置'}
+        </button>
+        <button onClick={() => setShowCustom(!showCustom)}
+          style={{ padding: '6px 16px', borderRadius: 6, background: '#f1f5f9',
+                   border: '1px solid #d1d5db', cursor: 'pointer', fontSize: 13 }}>
+          {showCustom ? '取消' : '添加自定义模型'}
+        </button>
+        {msg && <span style={{ fontSize: 12, color: msg.includes('失败') ? '#ef4444' : '#22c55e' }}>{msg}</span>}
       </div>
+
+      {showCustom && (
+        <div style={{ marginTop: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+            <label>模型名称
+              <input value={customForm.name} onChange={e => setCustomForm(p => ({ ...p, name: e.target.value }))}
+                placeholder="e.g. gemma-4-31b-it-vllm" style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }} />
+            </label>
+            <label>Backend
+              <select value={customForm.backend} onChange={e => setCustomForm(p => ({ ...p, backend: e.target.value }))}
+                style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }}>
+                <option value="gemini">Gemini API</option>
+                <option value="litellm">LiteLLM</option>
+                <option value="lm_studio">LM Studio</option>
+              </select>
+            </label>
+            <label>API Base URL (可选)
+              <input value={customForm.api_base} onChange={e => setCustomForm(p => ({ ...p, api_base: e.target.value }))}
+                placeholder="https://your-endpoint/v1" style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }} />
+            </label>
+            <label>层级
+              <select value={customForm.tier} onChange={e => setCustomForm(p => ({ ...p, tier: e.target.value }))}
+                style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }}>
+                <option value="fast">Fast</option>
+                <option value="standard">Standard</option>
+                <option value="premium">Premium</option>
+                <option value="local">Local</option>
+              </select>
+            </label>
+          </div>
+          <button onClick={handleAddCustom} style={{ marginTop: 8, padding: '4px 12px', borderRadius: 4,
+            background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12 }}>
+            注册模型
+          </button>
+        </div>
+      )}
     </div>
   );
 }

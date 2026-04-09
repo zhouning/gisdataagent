@@ -118,7 +118,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
           </div>
 
-          <div className="login-brand-version">v18.0 &middot; Google ADK</div>
+          <div className="login-brand-version">v23.0 &middot; Google ADK</div>
         </div>
 
         {/* Animated background elements */}

@@ -55,6 +55,12 @@ _genai_router_client = genai_client.Client()
 
 # Import agent and report generator
 try:
+    from data_agent.lite_mode import is_lite_mode
+    _LITE_MODE = is_lite_mode()
+except Exception:
+    _LITE_MODE = False
+
+try:
     from data_agent.agent import (
         root_agent,
         governance_pipeline,
@@ -65,6 +71,11 @@ try:
         _generate_upload_preview,
         ARCPY_AVAILABLE,
     )
+    # v23.0: In Lite mode, disable PostGIS-dependent pipelines
+    if _LITE_MODE:
+        governance_pipeline = None
+        data_pipeline = None
+        logger.info("[Lite] Running in Lite mode — only General Pipeline available")
     from data_agent.report_generator import generate_word_report
     from data_agent.user_context import (
         current_user_id, current_session_id, current_user_role,
@@ -2945,27 +2956,36 @@ async def main(message: cl.Message):
             except Exception as e:
                 logger.error("Plan confirmation error: %s", e)
 
-    # --- Task Decomposition Preview (Phase 2a) ---
+    # --- Task Decomposition with User Confirmation (v23.0 — Intent Disambiguation v2) ---
+    _decomposed_graph = None
     try:
         from data_agent.intent_router import should_decompose
         if should_decompose(user_text):
-            from data_agent.task_decomposer import decompose_task, build_parallel_execution_plan
+            from data_agent.task_decomposer import (
+                decompose_task, format_subtask_preview, execute_task_graph,
+            )
             task_graph = await decompose_task(user_text)
-            waves = build_parallel_execution_plan(task_graph)
             if task_graph.node_count > 1:
-                lines = ["\U0001f4cb **已识别多步骤任务：**\n"]
-                for node in task_graph.nodes.values():
-                    deps = f" (依赖: {', '.join(node.dependencies)})" if node.dependencies else ""
-                    lines.append(f"  {node.id}. {node.description}{deps}")
-                lines.append(f"\n共 {task_graph.node_count} 步，{len(waves)} 批次执行")
-                await cl.Message(
-                    content="\n".join(lines),
-                    author="system",
-                    metadata={"subtask_progress": {
-                        "total": task_graph.node_count,
-                        "waves": len(waves),
-                    }},
+                preview = format_subtask_preview(task_graph)
+                res = await cl.AskActionMessage(
+                    content=t("subtask.preview", preview=preview),
+                    actions=[
+                        cl.Action(name="confirm", payload={"value": "CONFIRM"},
+                                  label=t("action.confirm")),
+                        cl.Action(name="cancel", payload={"value": "CANCEL"},
+                                  label=t("action.cancel")),
+                    ],
+                    timeout=180,
                 ).send()
+
+                if res:
+                    choice = res.get("value", "CONFIRM")
+                    if choice == "CANCEL":
+                        await cl.Message(content=t("routing.cancelled")).send()
+                        return
+                    _decomposed_graph = task_graph
+                else:
+                    await cl.Message(content=t("routing.confirm_timeout")).send()
     except Exception as _decomp_err:
         logger.debug("[TaskDecompose] Preview skipped: %s", _decomp_err)
 
@@ -2987,11 +3007,21 @@ async def main(message: cl.Message):
         intent = "CUSTOM"
         intent_reason = f"自定义技能匹配: {_custom_skill_name}"
     elif intent == "GOVERNANCE":
-        selected_agent = governance_pipeline
-        pipeline_type = "governance"
-        pipeline_name = "Governance Pipeline (数据治理)"
+        if _LITE_MODE or governance_pipeline is None:
+            selected_agent = general_pipeline
+            pipeline_type = "general"
+            pipeline_name = "General Pipeline (Lite 模式 — 治理功能不可用)"
+        else:
+            selected_agent = governance_pipeline
+            pipeline_type = "governance"
+            pipeline_name = "Governance Pipeline (数据治理)"
     elif intent == "OPTIMIZATION":
-        selected_agent = data_pipeline
+        if _LITE_MODE or data_pipeline is None:
+            selected_agent = general_pipeline
+            pipeline_type = "general"
+            pipeline_name = "General Pipeline (Lite 模式 — 优化功能不可用)"
+        else:
+            selected_agent = data_pipeline
         pipeline_type = "optimization"
         pipeline_name = "Optimization Pipeline (空间优化)"
     elif intent == "WORKFLOW":
@@ -3246,6 +3276,52 @@ async def main(message: cl.Message):
     cl.user_session.set("retry_count", 0)
     cl.user_session.set("retry_extra_parts", extra_parts)
     cl.user_session.set("retry_tool_cats", tool_cats)
+
+    # --- Decomposed sequential execution (v23.0) ---
+    if _decomposed_graph and _decomposed_graph.node_count > 1:
+        from data_agent.task_decomposer import execute_task_graph
+
+        _progress_msg = cl.Message(content="", author="system")
+        _progress_lines: dict[str, str] = {}
+
+        async def _on_subtask_progress(node, status, result_text):
+            icon = {"running": "\u23f3", "completed": "\u2705", "failed": "\u274c"}.get(status, "\u2b1c")
+            short = (result_text[:80] + "...") if len(result_text) > 80 else result_text
+            _progress_lines[node.id] = f"{icon} {node.id}. {node.description}" + (
+                f" — {short}" if status != "running" else ""
+            )
+            _progress_msg.content = "\n".join(
+                _progress_lines.get(n.id, f"\u2b1c {n.id}. {n.description}")
+                for n in _decomposed_graph.nodes.values()
+            )
+            await _progress_msg.update()
+
+        async def _execute_subtask(node, context):
+            sub_prompt = node.description
+            if context:
+                prev = "\n".join(f"[{k}结果]: {v[:200]}" for k, v in context.items())
+                sub_prompt = f"{sub_prompt}\n\n前序任务结果:\n{prev}"
+            from data_agent.pipeline_runner import run_pipeline
+            result = await run_pipeline(
+                pipeline_type=pipeline_type,
+                user_text=sub_prompt,
+                user_id=user_id,
+                session_id=session_id,
+            )
+            return result.summary if hasattr(result, 'summary') else str(result)
+
+        await _progress_msg.send()
+        subtask_results = await execute_task_graph(
+            _decomposed_graph, _execute_subtask, _on_subtask_progress,
+        )
+
+        # Final summary
+        completed = sum(1 for r in subtask_results if r["status"] == "completed")
+        failed = sum(1 for r in subtask_results if r["status"] == "failed")
+        summary = t("subtask.summary", completed=completed, failed=failed,
+                     total=len(subtask_results))
+        await cl.Message(content=summary).send()
+        return
 
     await _execute_pipeline(
         user_id, session_id, role, full_prompt, uploaded_files,

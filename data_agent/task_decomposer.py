@@ -285,3 +285,75 @@ def build_parallel_execution_plan(graph: TaskGraph) -> list[list[TaskNode]]:
     """
     waves_ids = graph.get_execution_waves()
     return [[graph.nodes[nid] for nid in wave] for wave in waves_ids]
+
+
+# ---------------------------------------------------------------------------
+# Subtask preview & sequential execution (v23.0 — Intent Disambiguation v2)
+# ---------------------------------------------------------------------------
+
+def format_subtask_preview(graph: TaskGraph) -> str:
+    """Format a TaskGraph into a human-readable subtask list for user confirmation.
+
+    Returns markdown text showing numbered subtasks with dependencies.
+    """
+    waves = graph.get_execution_waves()
+    lines: list[str] = []
+    for node in graph.nodes.values():
+        deps = f" (依赖: {', '.join(node.dependencies)})" if node.dependencies else ""
+        hint = f" [{node.agent_hint}]" if node.agent_hint else ""
+        lines.append(f"  {node.id}. {node.description}{hint}{deps}")
+    lines.append(f"\n共 {graph.node_count} 步，{len(waves)} 批次执行")
+    return "\n".join(lines)
+
+
+async def execute_task_graph(
+    graph: TaskGraph,
+    execute_fn,
+    on_progress=None,
+) -> list[dict[str, Any]]:
+    """Execute subtasks wave-by-wave, calling *execute_fn* for each node.
+
+    Args:
+        graph: The decomposed TaskGraph.
+        execute_fn: ``async def(node: TaskNode, context: dict) -> str``
+            Runs a single subtask, returns the result text.
+        on_progress: Optional ``async def(node: TaskNode, status: str, result: str)``
+            Called when a subtask starts/completes/fails.
+
+    Returns:
+        List of dicts ``{"id", "description", "status", "result"}``.
+    """
+    import asyncio
+
+    waves = build_parallel_execution_plan(graph)
+    results: list[dict[str, Any]] = []
+    context: dict[str, Any] = {}  # shared context across subtasks
+
+    for wave_idx, wave in enumerate(waves):
+        async def _run_node(node: TaskNode):
+            node.status = "running"
+            if on_progress:
+                await on_progress(node, "running", "")
+            try:
+                result_text = await execute_fn(node, context)
+                node.status = "completed"
+                context[node.id] = result_text
+                if on_progress:
+                    await on_progress(node, "completed", result_text)
+                return {"id": node.id, "description": node.description,
+                        "status": "completed", "result": result_text}
+            except Exception as e:
+                node.status = "failed"
+                err = str(e)
+                if on_progress:
+                    await on_progress(node, "failed", err)
+                return {"id": node.id, "description": node.description,
+                        "status": "failed", "result": err}
+
+        if len(wave) == 1:
+            results.append(await _run_node(wave[0]))
+        else:
+            wave_results = await asyncio.gather(*[_run_node(n) for n in wave])
+            results.extend(wave_results)
+
+    return results

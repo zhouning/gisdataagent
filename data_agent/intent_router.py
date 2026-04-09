@@ -6,6 +6,7 @@ intent classification with multimodal support (text + images + PDF context).
 v14.3: Added multi-language detection (zh/en/ja).
 """
 import logging
+import os
 import re
 
 from google import genai as genai_client
@@ -56,6 +57,15 @@ _LANG_HINTS = {
     "en": "Please respond in English.",
     "ja": "日本語で回答してください。",
 }
+
+
+def _get_router_model() -> str:
+    """Get the configured router model name (v23.0)."""
+    try:
+        from data_agent.model_config import get_config_manager
+        return get_config_manager().get_router_model()
+    except Exception:
+        return os.environ.get("ROUTER_MODEL", "gemini-2.0-flash")
 
 
 def classify_intent(text: str, previous_pipeline: str = None,
@@ -136,7 +146,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
                 logger.debug("Could not load images for router: %s", img_err)
 
         response = _router_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model=_get_router_model(),
             contents=content_parts,
             config=types.GenerateContentConfig(
                 http_options=types.HttpOptions(
@@ -263,7 +273,7 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
         prompt = prompt_template.format(intent=intent, user_text=user_text, files_info=files_info)
 
         response = _router_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model=_get_router_model(),
             contents=prompt,
             config=types.GenerateContentConfig(
                 http_options=types.HttpOptions(

@@ -37,7 +37,34 @@ models:
     tasks: [reporting, complex_analysis, causal]
     description: "Gemini 2.5 Pro — highest quality for complex tasks"
 
+  # --- Gemma 4 via Gemini API (v23.0) ---
+  gemma-4-31b-it:
+    backend: google_genai
+    tier: standard
+    cost_per_1k_input: 0.0
+    cost_per_1k_output: 0.0
+    context_tokens: 256000
+    capabilities: [text, code, reasoning, tool_calling]
+    tasks: [processing, analysis, governance, qc]
+    description: "Gemma 4 31B IT — open model via Gemini API, tool calling supported"
+
   # --- Uncomment to add offline / third-party models ---
+
+  # gemma-4-31b-it-vllm:
+  #   backend: litellm
+  #   base_url: https://your-vllm-endpoint.run.app/v1
+  #   model_id: openai/google/gemma-4-31B-it
+  #   api_key_env: VLLM_API_KEY
+  #   tier: standard
+  #   cost_per_1k_input: 0.0
+  #   cost_per_1k_output: 0.0
+  #   context_tokens: 256000
+  #   capabilities: [text, code, reasoning, tool_calling]
+  #   extra_body:
+  #     enable_thinking: true
+  #     skip_special_tokens: false
+  #   tasks: [processing, analysis]
+  #   description: "Gemma 4 31B IT — self-hosted vLLM endpoint"
 
   # lm-studio-local:
   #   backend: litellm

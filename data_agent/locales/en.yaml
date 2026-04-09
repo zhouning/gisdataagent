@@ -126,6 +126,10 @@ plan.preview: "**Analysis Plan Preview**\n\n{plan}\n\nProceed with execution?"
 plan.modified: "**Modified Plan**\n\n{plan}"
 plan.modify_prompt: "Describe the changes you'd like:"
 
+# --- Subtask decomposition ---
+subtask.preview: "**Multi-step task detected:**\n\n{preview}\n\nProceed with this plan?"
+subtask.summary: "Multi-step task done: {completed}/{total} succeeded, {failed} failed"
+
 # --- Upload ---
 upload.oversized: "The following files exceed the 100 MB upload limit and were skipped:\n{files}"
 

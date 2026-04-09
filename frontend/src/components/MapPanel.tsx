@@ -82,6 +82,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const layerGroupsRef = useRef<Map<string, L.Layer>>(new Map());
   const baseTileRef = useRef<L.TileLayer | null>(null);
+  const highlightLayerRef = useRef<L.GeoJSON | null>(null);
   const [activeBasemap, setActiveBasemap] = useState('ESRI Satellite');
   const [loadedLayers, setLoadedLayers] = useState<MapLayer[]>([]);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
@@ -327,6 +328,20 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     return () => { map.off('click', handleClick); };
   }, [annotationMode]);
 
+  // v23.0: Clear cross-layer highlights on map background click
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    const clearHighlight = () => {
+      if (highlightLayerRef.current) {
+        map.removeLayer(highlightLayerRef.current);
+        highlightLayerRef.current = null;
+      }
+    };
+    map.on('click', clearHighlight);
+    return () => { map.off('click', clearHighlight); };
+  }, []);
+
   // Measurement click handler (v14.0)
   useEffect(() => {
     if (!mapRef.current) return;
@@ -464,6 +479,18 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             layerGroupsRef.current.set(layerConfig.name, leafletLayer);
             loaded.push({ ...layerConfig, geojsonData });
             visibility[layerConfig.name] = isVisible;
+
+            // v23.0: Cross-layer association highlighting on feature click
+            if ('eachLayer' in leafletLayer) {
+              (leafletLayer as L.LayerGroup).eachLayer((featureLayer: L.Layer) => {
+                featureLayer.on('click', () => {
+                  highlightAssociatedFeatures(
+                    featureLayer, layerGroupsRef, highlightLayerRef,
+                    mapRef.current!, layerConfig.name,
+                  );
+                });
+              });
+            }
           }
         } catch (err) {
           console.warn(`Failed to load layer ${layerConfig.name}:`, err);
@@ -1066,4 +1093,76 @@ function bindPopup(feature: any, layer: L.Layer) {
     .join('<br/>');
   layer.bindPopup(html, { maxWidth: 300 });
   layer.bindTooltip(String(entries[0]?.[1] ?? ''), { sticky: true });
+}
+
+/**
+ * Cross-layer association highlighting (v23.0).
+ * When a feature is clicked, find spatially overlapping features in other layers
+ * and highlight them with a pulsing yellow outline.
+ */
+function highlightAssociatedFeatures(
+  clickedLayer: L.Layer,
+  layerGroupsRef: React.MutableRefObject<Map<string, L.Layer>>,
+  highlightLayerRef: React.MutableRefObject<L.GeoJSON | null>,
+  map: L.Map,
+  sourceLayerName: string,
+) {
+  // Clear previous highlights
+  if (highlightLayerRef.current) {
+    map.removeLayer(highlightLayerRef.current);
+    highlightLayerRef.current = null;
+  }
+
+  // Get bounds of clicked feature
+  let clickedBounds: L.LatLngBounds | null = null;
+  if ('getBounds' in clickedLayer) {
+    clickedBounds = (clickedLayer as any).getBounds();
+  } else if ('getLatLng' in clickedLayer) {
+    const ll = (clickedLayer as L.Marker).getLatLng();
+    clickedBounds = L.latLngBounds(ll, ll).pad(0.01);
+  }
+  if (!clickedBounds) return;
+
+  // Collect intersecting features from other layers
+  const associatedFeatures: any[] = [];
+  for (const [name, lg] of layerGroupsRef.current) {
+    if (name === sourceLayerName) continue;
+    if ('eachLayer' in lg) {
+      (lg as L.LayerGroup).eachLayer((otherLayer: L.Layer) => {
+        let otherBounds: L.LatLngBounds | null = null;
+        if ('getBounds' in otherLayer) {
+          otherBounds = (otherLayer as any).getBounds();
+        } else if ('getLatLng' in otherLayer) {
+          const ll = (otherLayer as L.Marker).getLatLng();
+          otherBounds = L.latLngBounds(ll, ll);
+        }
+        if (otherBounds && clickedBounds!.intersects(otherBounds)) {
+          if ('feature' in otherLayer && (otherLayer as any).feature) {
+            associatedFeatures.push((otherLayer as any).feature);
+          }
+        }
+      });
+    }
+  }
+
+  if (associatedFeatures.length === 0) return;
+
+  // Create highlight layer
+  const fc = { type: 'FeatureCollection' as const, features: associatedFeatures };
+  highlightLayerRef.current = L.geoJSON(fc as any, {
+    style: {
+      color: '#FFD700',
+      weight: 4,
+      opacity: 0.9,
+      fillColor: '#FFD700',
+      fillOpacity: 0.25,
+      dashArray: '6 4',
+    },
+    pointToLayer: (_f, latlng) =>
+      L.circleMarker(latlng, {
+        radius: 10, color: '#FFD700', weight: 3,
+        fillColor: '#FFD700', fillOpacity: 0.3,
+      }),
+  });
+  highlightLayerRef.current.addTo(map);
 }

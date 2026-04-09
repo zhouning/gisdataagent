@@ -550,6 +550,17 @@ async def _api_annotations_create(request: Request):
         team_id=int(body["team_id"]) if body.get("team_id") else None,
     )
     status_code = 201 if result.get("status") == "success" else 400
+    # v23.0: Broadcast annotation event via WebSocket
+    if result.get("status") == "success":
+        try:
+            from .annotation_ws import broadcast_annotation_event
+            import asyncio
+            asyncio.ensure_future(broadcast_annotation_event({
+                "action": "create", "annotation": result.get("annotation", body),
+                "username": username,
+            }))
+        except Exception:
+            pass
     return JSONResponse(result, status_code=status_code)
 
 
@@ -588,11 +599,18 @@ async def _api_annotations_delete(request: Request):
     annotation_id = int(request.path_params.get("id", "0"))
     from .map_annotations import delete_annotation
     result = delete_annotation(annotation_id, username)
+    # v23.0: Broadcast delete event
+    if result.get("status") == "success":
+        try:
+            from .annotation_ws import broadcast_annotation_event
+            import asyncio
+            asyncio.ensure_future(broadcast_annotation_event({
+                "action": "delete", "annotation_id": annotation_id,
+                "username": username,
+            }))
+        except Exception:
+            pass
     return JSONResponse(result)
-
-
-# ---------------------------------------------------------------------------
-# Basemap Configuration API
 # ---------------------------------------------------------------------------
 
 async def _api_config_basemaps(request: Request):
@@ -3077,6 +3095,102 @@ async def _api_flags_delete(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Admin Model Configuration API (v23.0)
+# ---------------------------------------------------------------------------
+
+async def _api_admin_model_config_get(request: Request):
+    """GET /api/admin/model-config — current model tier assignments + available models."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .model_config import get_config_manager
+    config = get_config_manager().get_full_config()
+    return JSONResponse(config)
+
+
+async def _api_admin_model_config_put(request: Request):
+    """PUT /api/admin/model-config — update tier or router model assignment.
+
+    Body: {"tier": "fast", "model": "gemma-4-31b-it"}
+      or: {"router_model": "gemma-4-31b-it"}
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    from .model_gateway import ModelRegistry
+    from .model_config import get_config_manager
+    mgr = get_config_manager()
+
+    # Validate model exists in registry
+    model_name = body.get("model") or body.get("router_model")
+    if model_name:
+        ModelRegistry._ensure_initialized()
+        if not ModelRegistry.get_model_info(model_name):
+            return JSONResponse({"error": f"Model '{model_name}' not found in registry"}, status_code=400)
+
+    if "tier" in body and "model" in body:
+        tier = body["tier"]
+        if tier not in ("fast", "standard", "premium"):
+            return JSONResponse({"error": "tier must be fast/standard/premium"}, status_code=400)
+        mgr.set_tier_model(tier, body["model"], username)
+        return JSONResponse({"status": "ok", "tier": tier, "model": body["model"],
+                             "note": "Agent 实例需重启生效，Router 立即生效"})
+
+    if "router_model" in body:
+        mgr.set_router_model(body["router_model"], username)
+        return JSONResponse({"status": "ok", "router_model": body["router_model"],
+                             "note": "Router 模型已立即切换"})
+
+    return JSONResponse({"error": "Provide {tier, model} or {router_model}"}, status_code=400)
+
+
+async def _api_admin_model_config_custom(request: Request):
+    """POST /api/admin/model-config/custom — register a custom model endpoint."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    name = body.get("name")
+    backend = body.get("backend", "litellm")
+    if not name:
+        return JSONResponse({"error": "name is required"}, status_code=400)
+
+    from .model_gateway import ModelRegistry
+    ModelRegistry.register_model(
+        name,
+        backend=backend,
+        tier=body.get("tier", "standard"),
+        api_base=body.get("api_base"),
+        max_context_tokens=body.get("context_tokens", 128_000),
+        capabilities=body.get("capabilities"),
+        cost_per_1k_input=body.get("cost_per_1k_input", 0.0),
+        cost_per_1k_output=body.get("cost_per_1k_output", 0.0),
+        model_id=body.get("model_id"),
+        api_key_env=body.get("api_key_env"),
+        extra_headers=body.get("extra_headers"),
+        extra_body=body.get("extra_body"),
+    )
+    return JSONResponse({"status": "ok", "model": name, "backend": backend}, status_code=201)
+
+
+# ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
 
@@ -3101,6 +3215,7 @@ def get_frontend_api_routes():
     from .api.reference_query_routes import get_reference_query_routes
     from .api.semantic_model_routes import get_semantic_model_routes
     from .api.lineage_routes import get_lineage_routes
+    from .annotation_ws import annotation_ws_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -3194,6 +3309,10 @@ def get_frontend_api_routes():
         Route("/api/admin/flags", endpoint=_api_flags_list, methods=["GET"]),
         Route("/api/admin/flags", endpoint=_api_flags_set, methods=["PUT"]),
         Route("/api/admin/flags/{name}", endpoint=_api_flags_delete, methods=["DELETE"]),
+        # Admin Model Configuration (v23.0)
+        Route("/api/admin/model-config", endpoint=_api_admin_model_config_get, methods=["GET"]),
+        Route("/api/admin/model-config", endpoint=_api_admin_model_config_put, methods=["PUT"]),
+        Route("/api/admin/model-config/custom", endpoint=_api_admin_model_config_custom, methods=["POST"]),
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),
@@ -3296,6 +3415,8 @@ def get_frontend_api_routes():
         *get_semantic_model_routes(),
         # Cross-System Lineage (v21.0)
         *get_lineage_routes(),
+        # Annotation WebSocket (v23.0)
+        *annotation_ws_routes,
     ]
 
 

@@ -111,7 +111,7 @@ _DB_READ = ["query_database", "list_tables"]
 _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
 _DATALAKE_READ = ["list_data_assets", "describe_data_asset", "search_data_assets", "download_cloud_asset"]
 
-# --- Model Tiering (configurable via env vars) ---
+# --- Model Tiering (v23.0: DB-backed via ModelConfigManager, env var fallback) ---
 MODEL_FAST = os.environ.get("MODEL_FAST", "gemini-2.0-flash")
 MODEL_STANDARD = os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
 MODEL_PREMIUM = os.environ.get("MODEL_PREMIUM", "gemini-2.5-pro")
@@ -126,6 +126,20 @@ def _create_model_with_retry(model_name: str):
     return create_model(model_name)
 
 # --- Dynamic Model Selection ---
+def _get_tier_map() -> dict[str, str]:
+    """Get current tier→model mapping from ModelConfigManager (DB-backed)."""
+    try:
+        from .model_config import get_config_manager
+        mgr = get_config_manager()
+        return {
+            "fast": mgr.get_tier_model("fast"),
+            "standard": mgr.get_tier_model("standard"),
+            "premium": mgr.get_tier_model("premium"),
+        }
+    except Exception:
+        return {"fast": MODEL_FAST, "standard": MODEL_STANDARD, "premium": MODEL_PREMIUM}
+
+# Static fallback for module-level agent creation (before DB is ready)
 MODEL_TIER_MAP = {
     "fast": MODEL_FAST,
     "standard": MODEL_STANDARD,
@@ -135,38 +149,38 @@ MODEL_TIER_MAP = {
 
 def get_model_config() -> dict:
     """Return current model configuration for API exposure."""
-    return {
-        "tiers": {
-            "fast": {"model": MODEL_FAST, "env_var": "MODEL_FAST"},
-            "standard": {"model": MODEL_STANDARD, "env_var": "MODEL_STANDARD"},
-            "premium": {"model": MODEL_PREMIUM, "env_var": "MODEL_PREMIUM"},
-        },
-        "router_model": os.environ.get("ROUTER_MODEL", "gemini-2.0-flash"),
-    }
+    try:
+        from .model_config import get_config_manager
+        return get_config_manager().get_full_config()
+    except Exception:
+        return {
+            "tiers": {
+                "fast": {"model": MODEL_FAST},
+                "standard": {"model": MODEL_STANDARD},
+                "premium": {"model": MODEL_PREMIUM},
+            },
+            "router_model": os.environ.get("ROUTER_MODEL", "gemini-2.0-flash"),
+        }
 
 
 def get_model_for_tier(base_tier: str = "standard", task_type: str = None,
                        context_tokens: int = 0):
-    """Get Gemini model instance with retry config based on ContextVar override or base tier.
+    """Get model instance based on ContextVar override or base tier.
 
-    The current_model_tier ContextVar is set per-request by app.py
-    based on assess_complexity(). Factory functions call this to
-    select the appropriate model.
-
-    When the ContextVar is at its default ('standard'), ``base_tier``
-    takes precedence so that module-level agent creation honours the
-    intended tier (e.g. 'fast' for PlannerExplorer).
-
-    If task_type is provided, uses ModelRouter for task-aware selection.
+    v23.0: Reads tier mapping from ModelConfigManager (DB-backed) at runtime,
+    falls back to env vars if DB unavailable.
 
     Returns:
-        Gemini instance with retry configuration for 429 errors.
+        BaseLlm instance (Gemini, LiteLlm, etc.) with retry configuration.
     """
     from .user_context import current_model_tier
     tier = current_model_tier.get()
     # Use base_tier when ContextVar hasn't been explicitly overridden
     if tier == "standard":
         tier = base_tier
+
+    # Get current tier map (DB-backed)
+    tier_map = _get_tier_map()
 
     # Task-aware routing if task_type provided
     if task_type:
@@ -176,9 +190,9 @@ def get_model_for_tier(base_tier: str = "standard", task_type: str = None,
             model_name = router.route(task_type=task_type, context_tokens=context_tokens,
                                      quality_requirement=tier)
         except Exception:
-            model_name = MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+            model_name = tier_map.get(tier, MODEL_STANDARD)
     else:
-        model_name = MODEL_TIER_MAP.get(tier, MODEL_STANDARD)
+        model_name = tier_map.get(tier, MODEL_STANDARD)
 
     return _create_model_with_retry(model_name)
 

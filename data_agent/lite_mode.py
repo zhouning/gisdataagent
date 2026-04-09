@@ -161,3 +161,46 @@ def get_lite_status() -> dict:
             info["error"] = str(e)
 
     return info
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point (v23.0)
+# ---------------------------------------------------------------------------
+
+def _cli_main():
+    """Entry point for `gis-agent` CLI command.
+
+    Usage:
+        gis-agent init          Initialize local DuckDB database
+        gis-agent status        Show Lite mode status
+        gis-agent run           Start Chainlit server in Lite mode
+    """
+    import sys
+    args = sys.argv[1:]
+    cmd = args[0] if args else "help"
+
+    if cmd == "init":
+        os.environ.setdefault("DB_BACKEND", "duckdb")
+        result = init_lite_database()
+        print(f"[gis-agent] {result['message']}")
+        if result["status"] == "ok":
+            print(f"  Tables: {', '.join(result['tables_created'])}")
+            print(f"  DB path: {result['db_path']}")
+            print("\nRun with: DB_BACKEND=duckdb chainlit run data_agent/app.py -w")
+    elif cmd == "status":
+        status = get_lite_status()
+        for k, v in status.items():
+            print(f"  {k}: {v}")
+    elif cmd == "run":
+        os.environ.setdefault("DB_BACKEND", "duckdb")
+        # Auto-init if DB doesn't exist
+        db_path = os.path.join(os.path.dirname(__file__), "local.duckdb")
+        if not os.path.exists(db_path):
+            print("[gis-agent] First run — initializing database...")
+            init_lite_database(db_path)
+        os.execvp("chainlit", ["chainlit", "run", "data_agent/app.py", "-w"])
+    else:
+        print("Usage: gis-agent <command>")
+        print("  init     Initialize local DuckDB database")
+        print("  status   Show current mode status")
+        print("  run      Start server in Lite mode")

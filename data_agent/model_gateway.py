@@ -85,6 +85,18 @@ class ModelRegistry:
             "capabilities": ["classification", "extraction", "summarization",
                              "reasoning", "analysis", "generation"],
         },
+        # --- Online: Gemma 4 via Gemini API (v23.0) ---
+        "gemma-4-31b-it": {
+            "backend": "gemini",
+            "tier": "standard",
+            "online": True,
+            "cost_per_1k_input": 0.0,
+            "cost_per_1k_output": 0.0,
+            "latency_p50_ms": 1500,
+            "max_context_tokens": 256_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation", "coding"],
+        },
     }
 
     # Mutable registry: starts with builtins, can be extended at runtime
@@ -136,6 +148,10 @@ class ModelRegistry:
         }
         if api_base:
             entry["api_base"] = api_base
+        # v23.0: Store extra LiteLLM params (for vLLM endpoints)
+        for k in ("extra_headers", "extra_body", "api_key_env", "model_id"):
+            if k in extra:
+                entry[k] = extra[k]
         cls.models[name] = entry
         logger.info(f"Registered model: {name} (backend={backend}, tier={tier})")
 
@@ -174,6 +190,11 @@ class ModelRegistry:
                     capabilities=spec.get("capabilities"),
                     cost_per_1k_input=spec.get("cost_per_1k_input", 0.0),
                     cost_per_1k_output=spec.get("cost_per_1k_output", 0.0),
+                    # v23.0: Pass through extra LiteLLM params
+                    model_id=spec.get("model_id"),
+                    api_key_env=spec.get("api_key_env"),
+                    extra_headers=spec.get("extra_headers"),
+                    extra_body=spec.get("extra_body"),
                 )
                 count += 1
             if count:
@@ -271,6 +292,8 @@ def _detect_backend(model_name: str) -> str:
     """Infer backend from model name prefix when not in registry."""
     if model_name.startswith("gemini"):
         return "gemini"
+    if model_name.startswith("gemma-"):
+        return "gemini"  # Gemma models via Gemini API
     if "/" in model_name:
         # e.g. "openai/gpt-4o", "anthropic/claude-3", "ollama/llama3"
         return "litellm"
@@ -309,7 +332,11 @@ def _create_lm_studio_model(model_name: str, info: dict):
 
 
 def _create_litellm_model(model_name: str, info: dict):
-    """Create a generic LiteLLM model."""
+    """Create a generic LiteLLM model.
+
+    v23.0: Supports extra_headers and extra_body for vLLM endpoints
+    (e.g. Gemma 4 self-hosted with enable_thinking).
+    """
     from google.adk.models.lite_llm import LiteLlm
 
     api_base = info.get("api_base")
@@ -320,7 +347,17 @@ def _create_litellm_model(model_name: str, info: dict):
         elif model_name.startswith("ollama/"):
             os.environ["OLLAMA_API_BASE"] = api_base
 
-    return LiteLlm(model=model_name)
+    # Use model_id override if specified (e.g. "openai/google/gemma-4-31B-it")
+    effective_name = info.get("model_id", model_name)
+
+    # Set API key from env var name if specified
+    api_key_env = info.get("api_key_env")
+    if api_key_env:
+        api_key = os.environ.get(api_key_env, "")
+        if api_key and model_name.startswith("openai/"):
+            os.environ["OPENAI_API_KEY"] = api_key
+
+    return LiteLlm(model=effective_name)
 
 
 # =====================================================================
