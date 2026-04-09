@@ -1,12 +1,14 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v21.0
+# GIS Data Agent (ADK Edition) v23.0
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
-**v21.0 新增**：**跨系统血缘追踪** — 独立血缘边表 `agent_asset_lineage`（支持内部↔外部任意组合）、外部资产注册（Tableau/Airflow/PowerBI 等）、BFS 跨系统血缘图谱查询、5 个 REST 端点（添加血缘边/跨系统血缘图/注册外部资产/列出外部系统/删除血缘边）。
+**v23.0 新增**：**Gemma 4 多模型管理 + Roadmap 全面清零** — Gemma 4 31B 注册（Gemini API + vLLM 自托管双通道）、DB 持久化管理员模型配置（`ModelConfigManager`）、前端交互式模型切换（下拉选择 + 自定义模型注册）、Intent Router 可配置化；意图消歧 v2（子任务分解 + 用户确认 + wave 按序执行）、DRL 约束建模（硬约束 action mask + 软约束 reward penalty）、跨图层关联高亮、标注协同 WebSocket、具身执行接口（UAV/卫星 mock）、离线 Service Worker、`pyproject.toml` 依赖分组。
+
+**v21.0 新增**：**跨系统血缘追踪** — 独立血缘边表 `agent_asset_lineage`（支持内部↔外部任意组合）、外部资产注册（Tableau/Airflow/PowerBI 等）、BFS 跨系统血缘图谱查询、5 个 REST 端点。
 
 **v20.0 新增**：**分布式任务队列 + Redis 缓存 + 体验优化** — Redis 统一基础层（async/sync 双客户端 + SETNX 分布式锁）、TaskQueue Redis Sorted Set 后端（跨进程共享队列 + 分布式信号量，内存降级兼容）、语义层 + 上下文引擎双层缓存（Redis + 内存）、声明式多 LLM YAML 配置（`conf/models.yaml` 一键切换 Gemini/DeepSeek/Qwen/本地模型）、Agentic/Workflow 双模式执行（关键词检测 + 意图路由）、DuckDB Lite 轻量空间数据库（无 PostGIS 依赖的离线/Demo 部署）。
 
@@ -48,17 +50,17 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 3550+ tests, 160 test files |
+| 测试覆盖 | 3700+ tests, 176 test files |
 | 工具集 | 40 BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
 | ADK Skills | 26 场景化领域技能 (含 skill-creator AI 辅助创建) |
-| REST API | 271 endpoints |
-| DB 迁移 | 63 个 SQL 迁移 |
+| REST API | 276 endpoints |
+| DB 迁移 | 64 个 SQL 迁移 |
 | DataPanel | 29 标签页 (3 分组: 数据资源/智能分析/平台运营) |
 | Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程 + 跨系统血缘) |
 | 跨系统血缘 | agent_asset_lineage 边表 + 外部资产注册 + BFS 图谱查询 (Tableau/Airflow/PowerBI) |
 | 分布式任务队列 | Redis Sorted Set 后端 + 分布式信号量 + 内存降级 |
 | Redis 缓存 | 语义层 + 上下文引擎双层缓存 (Redis + 内存), 分布式锁 (SETNX + Lua) |
-| 多 LLM 配置 | conf/models.yaml 声明式 + load_from_yaml() 动态注册 (Gemini/DeepSeek/Qwen/本地) |
+| 多 LLM 配置 | conf/models.yaml 声明式 + DB 持久化管理员配置 + 前端交互式切换 (Gemini/Gemma 4/DeepSeek/Qwen/本地) |
 | 双模式执行 | Agentic (LLM 自主决策) / Workflow (确定性模板执行) 模式检测与路由 |
 | DuckDB Lite | 轻量空间数据库适配器 (无 PostGIS 依赖, 离线/Demo 部署) |
 | 上下文引擎 | ContextEngine 6 Provider (语义层/知识库/知识图谱/参考查询/成功案例/指标定义) + 混合排序 + token budget + 3min 缓存 |
@@ -619,7 +621,7 @@ cd frontend && npm install && npm run dev
 | 层级 | 技术 |
 |---|---|
 | **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
-| **LLM** | Gemini 2.5 Flash / 2.5 Pro（Agent），Gemini 2.0 Flash（路由） |
+| **LLM** | Gemini 2.5 Flash / 2.5 Pro / Gemma 4 31B（Agent），Gemini 2.0 Flash（路由），LiteLLM 兼容任意模型 |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
 | **后端** | Chainlit + Starlette（241 个 REST API 端点 + SSE Streaming） |
 | **数据库** | PostgreSQL 16 + PostGIS 3.4 |
@@ -875,6 +877,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v15.9 | **UI 增强与工具完善**：DRL 权重预设 (3 模式 + 工具提示)；字段映射拖拽编辑器 (HTML5 拖放 + 双视图)；MCP 外部客户端验证 (Claude Desktop/Cursor 集成指南 + stdio 入口)；任务分解确认 UI (交互式子任务编辑)；记忆提取确认流程 (批量保存端点)；消息总线监控面板 (统计/重放/清理)；Skill SDK 完整发布 (CLI + 验证器 + 13/13 测试) | 2712+ | ✅ 完成 |
 | v16.0 | **SIGMOD 2026 L3 条件自主**��语义算子层 (4 算子 + 自动策略选择)；多 Agent 协作 (4 专家 + 2 工作流 + Planner 13 子 Agent)；计划精化与错误恢复 (5 策略链 + 自动修复插入)；Guardrails 策略引擎 (YAML 驱动工具级控制)；遥感智能体 Phase 1 (15+ 光谱指数 + 经验池 + 卫星预置)；工具演化 (元数据注册表 + 失败驱动发现)；AI 辅助 Skill 创建 (NL → 配置生成)；254 新测试，~2600 行新代码 | 2966+ | ✅ 完成 |
 | v17.0 | **多模态融合 v2.0 增强**：时序对齐 (多时区标准化 + 3 种插值 + 轨迹融合 + 多期变化检测)；语义增强 (GIS 本体 15 等价组 + 8 推导规则 + LLM 语义理解 + KG 集成)；冲突解决 (6 策略 + 置信度评分 + 来源标注)；可解释性 (逐要素元数据 + 质量热力图 + 融合溯源)；5 新 API + FusionQualityTab；84 新测试，~3700 行 | 3100+ | ✅ 完成 |
+| v18.0–v22.0 | **应用层 DB 优化 + 矢量切片 + 上下文工程 + 反馈飞轮 + 分布式任务队列 + 跨系统血缘 + L4 自主监控 + 遥感 Phase 2-3 + API 安全中间件 + Lite 模式** | 3600+ | ✅ 完成 |
+| v23.0 | **Gemma 4 多模型管理 + 平台增强**：Gemma 4 31B 注册 (Gemini API + vLLM)；DB 持久化管理员模型配置 (ModelConfigManager)；前端交互式模型切换 UI；Intent Router 可配置化；意图消歧 v2 (子任务分解 + 波次执行)；DRL 约束建模 (硬/软约束)；跨图层关联高亮；标注 WebSocket；具身执行接口；离线 Service Worker；pyproject.toml 依赖分组 | 3700+ | ✅ 完成 |
 
 ## 设计模式覆盖 (21/21 = 100%)
 

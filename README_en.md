@@ -1,10 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v21.0
+# GIS Data Agent (ADK Edition) v23.0
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 29 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **271 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **276 REST API endpoints**.
+
+**v23.0**: **Gemma 4 Multi-Model Management + Platform Enhancements** — Gemma 4 31B registration (Gemini API + vLLM dual path), DB-persistent admin model config (ModelConfigManager), interactive frontend model switching UI, configurable Intent Router, LiteLLM extra_headers/extra_body support; intent disambiguation v2 (subtask decomposition + wave execution), DRL constraint modeling (hard/soft constraints), cross-layer association highlighting, offline Service Worker, embodied execution interface, annotation WebSocket real-time broadcast. 84 new tests.
 
 **v21.0**: **Cross-System Lineage Tracking** — Dedicated `agent_asset_lineage` edge table supporting internal↔external any combination, external asset registration (Tableau/Airflow/PowerBI), BFS cross-system lineage graph traversal, 5 new REST endpoints. 13 new tests.
 
