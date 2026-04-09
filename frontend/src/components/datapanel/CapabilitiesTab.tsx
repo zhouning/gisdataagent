@@ -76,6 +76,14 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
   const [toolError, setToolError] = useState('');
   const [savingTool, setSavingTool] = useState(false);
 
+  // AI Skill Generator state (v23.0)
+  const [showAiGen, setShowAiGen] = useState(false);
+  const [aiDesc, setAiDesc] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiPreview, setAiPreview] = useState<any>(null);
+  const [aiError, setAiError] = useState('');
+  const [aiSaving, setAiSaving] = useState(false);
+
   // Bundle state
   const [bundles, setBundles] = useState<any[]>([]);
   const [showBundleForm, setShowBundleForm] = useState(false);
@@ -216,7 +224,68 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
     setEditingTool(null);
     setToolForm({ tool_name: '', description: '', template_type: 'http_call', template_config: '{}', parameters: [], is_shared: false });
     setToolError(''); setTestResult(null);
-    setShowToolForm(true); setShowSkillForm(false);
+    setShowToolForm(true); setShowSkillForm(false); setShowAiGen(false);
+  };
+
+  // --- AI Skill Generator handlers (v23.0) ---
+  const handleOpenAiGen = () => {
+    setShowAiGen(true); setShowSkillForm(false); setShowToolForm(false);
+    setAiDesc(''); setAiPreview(null); setAiError(''); setAiSaving(false);
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiDesc.trim()) { setAiError('请描述你想创建的技能'); return; }
+    setAiGenerating(true); setAiError(''); setAiPreview(null);
+    try {
+      const resp = await fetch('/api/skills/generate', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: aiDesc.trim() }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.skill) {
+        setAiPreview(data.skill);
+      } else {
+        setAiError(data.error || 'AI 生成失败，请重试');
+      }
+    } catch { setAiError('网络错误'); }
+    finally { setAiGenerating(false); }
+  };
+
+  const handleAiSave = async () => {
+    if (!aiPreview) return;
+    setAiSaving(true); setAiError('');
+    try {
+      const resp = await fetch('/api/skills', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiPreview),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setShowAiGen(false); setAiPreview(null); setAiDesc('');
+        fetchCapabilities();
+      } else {
+        setAiError(data.error || '保存失败');
+      }
+    } catch { setAiError('网络错误'); }
+    finally { setAiSaving(false); }
+  };
+
+  const handleAiEdit = () => {
+    if (!aiPreview) return;
+    // Transfer AI preview to manual skill form for fine-tuning
+    setSkillForm({
+      skill_name: aiPreview.skill_name || '',
+      instruction: aiPreview.instruction || '',
+      description: aiPreview.description || '',
+      toolset_names: aiPreview.toolset_names || [],
+      trigger_keywords: (aiPreview.trigger_keywords || []).join(', '),
+      model_tier: aiPreview.model_tier || 'standard',
+      is_shared: false,
+    });
+    setShowAiGen(false); setAiPreview(null);
+    setEditingSkill(null); setShowSkillForm(true);
   };
 
   const handleEditTool = (item: any) => {
@@ -357,8 +426,60 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
         <span className="cap-sep">/</span>
         <span>{(counts as any).userTool || 0} 自建工具</span>
         <button className="btn-add-server" onClick={() => showSkillForm ? setShowSkillForm(false) : handleNewSkill()} title="新建自定义技能">+技能</button>
+        <button className="btn-add-server" onClick={handleOpenAiGen} title="AI 辅助生成技能" style={{ background: '#8b5cf6' }}>✨ AI生成</button>
         <button className="btn-add-server" onClick={() => showToolForm ? setShowToolForm(false) : handleNewTool()} title="新建自定义工具">+工具</button>
       </div>
+
+      {/* AI Skill Generator Panel (v23.0) */}
+      {showAiGen && (
+        <div className="skill-add-form" style={{ borderColor: '#8b5cf6' }}>
+          <div className="skill-add-form-title" style={{ color: '#8b5cf6' }}>✨ AI 辅助创建技能</div>
+          {!aiPreview ? (
+            <>
+              <textarea
+                placeholder="用自然语言描述你想创建的技能，例如：&#10;• 分析城市热岛效应，自动计算地表温度并生成热力图&#10;• 批量校验地块数据的拓扑关系和字段规范&#10;• 下载卫星影像并计算 NDVI 植被指数变化趋势"
+                rows={4} maxLength={2000}
+                value={aiDesc} onChange={e => setAiDesc(e.target.value)}
+                style={{ fontSize: 13, lineHeight: 1.6 }}
+              />
+              {aiError && <div className="skill-add-error">{aiError}</div>}
+              <div className="skill-add-actions">
+                <button className="btn-secondary btn-sm" onClick={() => setShowAiGen(false)}>取消</button>
+                <button className="btn-primary btn-sm" disabled={aiGenerating || !aiDesc.trim()}
+                  onClick={handleAiGenerate}
+                  style={{ background: '#8b5cf6' }}>
+                  {aiGenerating ? '生成中...' : '生成技能配置'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>AI 已生成以下技能配置，请确认或编辑后保存：</div>
+              <div style={{ background: '#f8fafc', borderRadius: 6, padding: 10, fontSize: 12, lineHeight: 1.7 }}>
+                <div><b>名称:</b> {aiPreview.skill_name}</div>
+                <div><b>描述:</b> {aiPreview.description}</div>
+                <div><b>模型层级:</b> {aiPreview.model_tier}</div>
+                <div><b>工具集:</b> {(aiPreview.toolset_names || []).join(', ') || '无'}</div>
+                <div><b>触发词:</b> {(aiPreview.trigger_keywords || []).join(', ') || '无'}</div>
+                <div style={{ marginTop: 6 }}><b>指令:</b></div>
+                <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, color: '#374151', maxHeight: 150, overflow: 'auto',
+                  background: '#fff', padding: 8, borderRadius: 4, border: '1px solid #e5e7eb' }}>
+                  {aiPreview.instruction}
+                </pre>
+              </div>
+              {aiError && <div className="skill-add-error">{aiError}</div>}
+              <div className="skill-add-actions">
+                <button className="btn-secondary btn-sm" onClick={() => { setAiPreview(null); setAiDesc(''); }}>重新生成</button>
+                <button className="btn-secondary btn-sm" onClick={handleAiEdit}>编辑后保存</button>
+                <button className="btn-primary btn-sm" disabled={aiSaving} onClick={handleAiSave}
+                  style={{ background: '#8b5cf6' }}>
+                  {aiSaving ? '保存中...' : '直接保存'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {showSkillForm && (
         <div className="skill-add-form">
