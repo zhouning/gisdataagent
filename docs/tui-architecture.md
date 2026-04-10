@@ -1,6 +1,6 @@
 # TUI 终端界面 — 使用场景与架构设计
 
-> Data Agent 的 TUI (Terminal User Interface) 形态分析：与 Web UI 的差异、核心使用场景、架构设计和实施状态。
+> Data Agent 的 TUI (Terminal User Interface) 形态分析：与 Web UI 的差异、核心使用场景、架构设计和实施状态。v23.0 新增 Lite 模式 (DuckDB)、`gis-agent init` 快速启动、多模型选择。
 
 ---
 
@@ -13,10 +13,12 @@
 | **网络依赖** | 必须在线，LLM 调用走网络 | LLM 走网络，但数据处理纯本地 |
 | **权限模型** | 多租户沙箱隔离（RBAC: admin/analyst/viewer） | 单用户，继承终端用户的 OS 权限 |
 | **集成方式** | 浏览器交互 | 可嵌入 shell 脚本、CI/CD、cron job |
-| **可视化** | 完整地图渲染（Leaflet 2D + deck.gl/MapLibre 3D） | 文本报告 + 文件路径输出（可打开浏览器查看地图） |
+| **可视化** | 完整地图渲染（Leaflet 2D + deck.gl/MapLibre 3D + MVT 矢量切片） | 文本报告 + 文件路径输出（可打开浏览器查看地图） |
 | **适用场景** | 交互式分析、团队协作、展示汇报 | 批量处理、自动化管线、远程服务器、无 GUI 环境 |
 | **启动速度** | 浏览器加载 + WebSocket 连接 | 直接启动 Python 进程，秒级就绪 |
 | **会话管理** | 持久化到 PostgreSQL，跨设备恢复 | InMemorySessionService，进程结束即清理 |
+| **模型选择** | 前端交互式切换 (ModelConfigManager) | `--model` 参数 (fast/standard/premium) |
+| **离线支持** | Service Worker 缓存 | Lite 模式 (DuckDB) — 无需 PostGIS |
 
 **核心区别**不仅仅是"本地文件 vs 上传文件"，而是**使用范式的根本不同**：
 
@@ -86,7 +88,21 @@ gis-agent run "审计数据质量" --file /data/classified/military_zones.shp
 
 数据太大无法上传，或含敏感信息不能离开本机网络。
 
-### 场景 6：交互式 TUI 全屏界面
+### 场景 6：Lite 模式快速启动（v22.0）
+
+```bash
+# 无 PostGIS 环境 — 用 DuckDB 快速启动
+gis-agent init                    # 创建本地 DuckDB + 示例数据
+DB_BACKEND=duckdb gis-agent chat  # 用 DuckDB 后端交互
+
+# 或在 pyproject.toml [lite] 依赖组下安装
+pip install gis-agent[lite]
+gis-agent init
+```
+
+笔记本电脑、离线环境、快速演示场景。Lite 模式仅启用 General Pipeline，治理/优化路由降级。
+
+### 场景 7：交互式 TUI 全屏界面
 
 ```bash
 # 启动三面板全屏 TUI — 类似 IDE 体验
@@ -122,7 +138,12 @@ TUI 提供三面板布局（Chat | Report | Status），适合需要持续交互
 │   run_pipeline_headless() → PipelineResult                  │
 ├─────────────────────────────────────────────────────────────┤
 │              Agent 编排层 + 工具执行层 (共享)                 │
-│   intent_router → Pipeline → Agent → 40 Toolsets            │
+│   intent_router → Pipeline → Agent → 41 Toolsets            │
+│   ContextEngine (6 providers) → FeedbackLoop                │
+├─────────────────────────────────────────────────────────────┤
+│              数据层 (可切换)                                  │
+│   PostgreSQL + PostGIS (完整模式)                             │
+│   DuckDB (Lite 模式 — gis-agent init)                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -132,7 +153,7 @@ TUI 提供三面板布局（Chat | Report | Status），适合需要持续交互
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  GIS Data Agent TUI v16.0                          Ctrl+Q  │
+│  GIS Data Agent TUI v23.0                          Ctrl+Q  │
 ├──────────────┬─────────────────────┬───────────────────────┤
 │  Chat (35%)  │   Report (40%)      │   Status (25%)        │
 │              │                     │                       │
@@ -171,7 +192,7 @@ TUI 提供三面板布局（Chat | Report | Status），适合需要持续交互
 
 快捷键：`Ctrl+Q` 退出、`Ctrl+L` 清屏、`F1` 帮助、`↑↓` 命令历史。
 
-### CLI 命令系统（cli.py — 609 行）
+### CLI 命令系统（cli.py — 645 行）
 
 ```
 gis-agent <command> [options]
@@ -180,6 +201,7 @@ gis-agent <command> [options]
   run <prompt>          单次执行（批量模式）
   chat                  交互式对话模式（多轮）
   tui                   启动全屏 TUI 界面
+  init                  初始化 Lite 模式 DuckDB 数据库 (v22.0)
   catalog list          列出数据目录
   catalog search <q>    搜索数据目录
   skills list           列出自定义 Skills
@@ -203,10 +225,11 @@ gis-agent <command> [options]
 # 1. 设置用户上下文 (ContextVar)
 session_id = _set_user_context(user, role)
 
-# 2. 意图分类 — 返回 5 元组（v16.0 新增 language 检测）
+# 2. 意图分类 — 返回 5 元组（含 language 检测 + 意图消歧 v2）
 intent, reason, router_tokens, tool_cats, lang = classify_intent(
     prompt, previous_pipeline
 )
+# v23.0: 复杂请求自动分解子任务 (should_decompose → decompose_task)
 
 # 3. RBAC 检查
 if role == "viewer" and intent in ("OPTIMIZATION", "GOVERNANCE"):
@@ -271,16 +294,19 @@ TUI 无法内嵌地图，采用分级降级：
 | 组件 | 状态 | 说明 |
 |------|------|------|
 | `pipeline_runner.py` | ✅ 已就绪 | 360 行，零 UI 依赖，`PipelineResult` 数据类 |
-| `intent_router.py` | ✅ 已就绪 | 251 行，5 元组返回（含 language 检测），零 Chainlit 依赖 |
-| `pipeline_helpers.py` | ✅ 已就绪 | 341 行，纯工具函数，零 UI 依赖 |
+| `intent_router.py` | ✅ 已就绪 | 290 行，5 元组返回（含 language 检测 + 意图消歧 v2），零 Chainlit 依赖 |
+| `pipeline_helpers.py` | ✅ 已就绪 | 365 行，纯工具函数，零 UI 依赖 |
 | `tui.py` | ✅ 已实现 | 601 行，Textual 全屏三面板，命令/历史/Worker/Verbose |
-| `cli.py` | ✅ 已实现 | 609 行，Typer + Rich，9 个命令，交互/批量双模式 |
-| `tui.tcss` | ✅ 已实现 | Textual CSS 样式表（三面板 35%/40%/25% 布局） |
-| Agent/Tools (40 Toolsets) | ✅ 共享 | 通过 ContextVar 自动适配用户身份 |
+| `cli.py` | ✅ 已实现 | 645 行，Typer + Rich，10 个命令（含 `init`），交互/批量双模式 |
+| `tui.tcss` | ✅ 已实现 | 78 行，Textual CSS 样式表（三面板 35%/40%/25% 布局） |
+| `lite_mode.py` | ✅ 已实现 | 206 行，DuckDB 后端 + 路由降级 + 示例数据初始化 (v22.0) |
+| Agent/Tools (41 Toolsets) | ✅ 共享 | 通过 ContextVar 自动适配用户身份 |
 | 认证 | ✅ 已实现 | TUI/CLI 通过 `--user`/`--role` 参数，继承 OS 用户身份 |
 | 文件路径解析 | ✅ 已适配 | TUI/CLI 模式下直接使用本地绝对路径 |
 | 终端输出格式化 | ✅ 已实现 | Rich Markdown + Table + Panel + Text markup |
 | 可视化降级 | 🔶 部分实现 | 文本报告 + 文件路径输出；HTML 自动打开待完善 |
+| 模型网关 | ✅ 已就绪 | `--model` 参数映射到 ModelGateway (Gemini/Gemma/LiteLLM) |
+| ContextEngine | ✅ 已就绪 | 583 行，6 Provider 统一上下文注入，TUI/CLI 共享 |
 
 ---
 
@@ -292,8 +318,10 @@ TUI 无法内嵌地图，采用分级降级：
 | 终端渲染 | Rich 14.2.0（Markdown、Table、Panel、Progress） |
 | CLI 框架 | Typer 0.24.0（命令解析、参数验证、帮助生成） |
 | Pipeline 引擎 | pipeline_runner.py（零 UI 依赖，InMemorySessionService） |
-| 意图路由 | intent_router.py（Gemini 2.0 Flash 语义分类） |
+| 意图路由 | intent_router.py（Gemini 2.0 Flash 语义分类 + 意图消歧 v2） |
 | Agent 框架 | Google ADK v1.27（LlmAgent、SequentialAgent） |
+| 模型网关 | model_gateway.py（Gemini + Gemma 4 + LiteLLM 统一路由） |
+| Lite 后端 | DuckDB（`gis-agent init` 快速启动，无需 PostGIS） |
 
 ---
 
@@ -307,9 +335,14 @@ python -m data_agent tui --user admin --role admin --verbose
 # CLI 单次执行
 python -m data_agent run "分析重庆地块数据质量"
 python -m data_agent run "审计数据" --file /data/parcels.shp --verbose
+python -m data_agent run "优化用地布局" --model premium  # 使用高级模型
 
 # CLI 交互式聊天
 python -m data_agent chat
+
+# Lite 模式快速启动 (v22.0 — 无需 PostGIS)
+python -m data_agent init                              # 初始化 DuckDB
+DB_BACKEND=duckdb python -m data_agent chat            # DuckDB 后端聊天
 
 # CLI 工具命令
 python -m data_agent catalog list
@@ -319,4 +352,4 @@ python -m data_agent status
 
 ---
 
-*本文档基于 GIS Data Agent v16.0 架构编写。TUI/CLI 已完整实现并可用。*
+*本文档基于 GIS Data Agent v23.0 架构编写。TUI/CLI 已完整实现并可用。v22.0 新增 Lite 模式 (DuckDB) + `gis-agent init`；v23.0 新增多模型网关 + 意图消歧 v2。*

@@ -1,6 +1,6 @@
 # Data Agent 记忆体系架构
 
-> GIS Data Agent 的五层记忆体系 + Context Manager 跨切面：从即时状态传递到永久知识库，实现跨请求、跨会话、跨用户的智能记忆。
+> GIS Data Agent 的五层记忆体系 + ContextEngine 统一上下文引擎 + FeedbackLoop 反馈飞轮：从即时状态传递到永久知识库，实现跨请求、跨会话、跨用户的智能记忆。
 
 ---
 
@@ -8,12 +8,18 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   Context Manager (v15.8 跨切面)                     │
-│     ContextProvider 插件 → token budget (100k) → 按相关性裁剪         │
-│     SemanticProvider | 自定义 Provider → prepare() → format_context() │
+│                   ContextEngine (v19.0 统一上下文引擎)                │
+│     6 ContextProvider → token budget → 按相关性裁剪 → TTL 缓存 (3min) │
+│     SemanticLayer | KnowledgeBase | KnowledgeGraph |                │
+│     ReferenceQuery | SuccessStory | MetricDefinition                │
+├─────────────────────────────────────────────────────────────────────┤
+│                   FeedbackLoop (v19.0 反馈飞轮)                      │
+│     FeedbackStore (👍👎) → Upvote→ReferenceQueryStore 自动入库       │
+│                          → Downvote→FailureAnalyzer→PromptOptimizer │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Layer 5: 永久知识 (Knowledge)                                       │
 │  Knowledge Base (RAG + GraphRAG) + 知识图谱 + 案例库(v15.7)           │
+│  ReferenceQueryStore (v19.0) + MetricFlow 语义模型 (v19.0)            │
 │  生命周期: 永久 | 存储: PostgreSQL + pgvector | 范围: per-user + 共享   │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Layer 4: 长期记忆 (Long-term Memory)                                │
@@ -44,7 +50,7 @@
 
 ### 1.1 Agent `output_key` — Pipeline 内状态传递
 
-**位置**: ADK Agent 配置，`agent.py` (848 行) 中定义
+**位置**: ADK Agent 配置，`agent.py` (853 行) 中定义
 
 **机制**: SequentialAgent 中的每个 LlmAgent 通过 `output_key` 将输出写入 session state，下游 Agent 自动继承。
 
@@ -455,22 +461,26 @@ export_knowledge_graph()
 
 ---
 
-## 跨切面: Context Manager (v15.8)
+## 跨切面: ContextEngine (v19.0 统一上下文引擎)
 
-**位置**: `data_agent/context_manager.py` (96 行)
+**位置**: `data_agent/context_engine.py` (583 行)
 
-**机制**: 可插拔的上下文提供者框架，将多种上下文源（语义层、KB、标准、案例库）统一编排，并通过 token budget 控制注入总量。
+> 替代 v15.8 的 `context_manager.py` (59 行)，从单一 SemanticProvider 扩展为 6 个内置 Provider + 查询 embedding 相关性排序 + TTL 缓存。
 
 **架构**:
 ```
 ContextProvider (ABC)
-├── SemanticProvider        — 包装 semantic_layer.py 的 resolve_semantic_context()
-├── [自定义 Provider]       — 用户可注册任意 ContextProvider
-└── [未来扩展]              — KB Provider, Standards Provider, ...
+├── SemanticLayerProvider     — 包装 semantic_layer.resolve_semantic_context()
+├── KnowledgeBaseProvider     — 包装 knowledge_base.search_knowledge_base()
+├── KnowledgeGraphProvider    — 包装 knowledge_graph.query_knowledge_graph()
+├── ReferenceQueryProvider    — 包装 reference_queries.ReferenceQueryStore.search()
+├── SuccessStoryProvider      — 包装 feedback.FeedbackStore.get_positive_examples()
+├── MetricDefinitionProvider  — 包装 semantic_model.SemanticModelStore.search()
+└── [自定义 Provider]         — 用户可注册任意 ContextProvider
 
-ContextManager
+ContextEngine (singleton via get_context_engine())
 ├── register_provider(name, provider)
-├── prepare(task_type, step, user_context) → list[ContextBlock]
+├── get_context(query, task_type, user_context) → list[ContextBlock]
 └── format_context(blocks) → str
 ```
 
@@ -478,25 +488,205 @@ ContextManager
 ```python
 @dataclass
 class ContextBlock:
-    source: str             # 来源标识（如 "semantic_layer"）
+    provider: str           # Provider 名称（如 "semantic_layer"）
+    source: str             # 来源标识
     content: str            # 上下文内容
     token_count: int        # 估算 token 数（len(content) // 4）
     relevance_score: float  # 相关性分数（0-1）
     compressible: bool      # 是否可压缩（True = 预算不足时可丢弃）
+    metadata: dict          # 附加元数据
 ```
 
 **执行流程**:
-1. 收集所有 Provider 的 ContextBlock
+1. 收集所有 Provider 的 ContextBlock（per-provider 错误隔离，单个 Provider 失败不影响其他）
 2. 按 `relevance_score` 降序排列
 3. 贪心填充直到 `max_tokens` (默认 100,000) 耗尽
-4. `format_context()` 输出为 `[source]\ncontent\n` 格式
+4. TTL 缓存 (3 分钟)：相同 query + task_type 组合命中缓存
+5. `format_context()` 输出为 `[provider:source]\ncontent\n` 格式
 
-**REST API** (v15.8):
+**REST API**:
 - `GET /api/context/preview` — 预览当前任务的上下文块
 
 **生命周期**: 单次请求
 
-**访问方式**: Pipeline 执行前由 `prepare()` 组装
+**访问方式**: Pipeline 执行前由 `get_context()` 组装
+
+---
+
+## 跨切面: FeedbackLoop (v19.0 反馈飞轮)
+
+**位置**: `data_agent/feedback.py` (368 行)
+
+**机制**: 结构化反馈闭环，将用户对 Agent 响应的评价转化为系统改进。
+
+**表结构**:
+```sql
+CREATE TABLE agent_feedback (
+    id SERIAL PRIMARY KEY,
+    username TEXT,
+    session_id TEXT,
+    message_id TEXT,
+    pipeline_type TEXT,
+    query_text TEXT,
+    response_text TEXT,
+    vote INTEGER,              -- +1 (upvote) / -1 (downvote)
+    issue_description TEXT,
+    issue_tags JSONB,
+    context_snapshot JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**反馈处理流程**:
+```
+用户点击 👍 (FeedbackBar.tsx)
+    ↓ POST /api/feedback
+    ↓ FeedbackStore.record(vote=+1)
+    ↓ FeedbackProcessor.process_upvote()
+    ↓ ReferenceQueryStore.add(query, source="feedback")
+    → 成功查询自动入库参考查询库 → 后续 NL2SQL few-shot 注入
+
+用户点击 👎 (FeedbackBar.tsx)
+    ↓ POST /api/feedback
+    ↓ FeedbackStore.record(vote=-1)
+    ↓ FeedbackProcessor.process_downvote()
+    ↓ FailureAnalyzer.analyze(query, response)
+    → 失败模式分析 → PromptOptimizer 改进建议
+```
+
+**前端组件**:
+- `FeedbackBar.tsx`: 每条 Agent 消息下方的 👍👎 按钮 + 可选文本反馈
+- `FeedbackTab.tsx` (DataPanel): 反馈看板 — 统计、趋势、详情列表
+
+**REST API** (`feedback_routes.py`, 5 端点):
+- `POST /api/feedback` — 提交反馈
+- `GET /api/feedback` — 查询反馈列表
+- `GET /api/feedback/stats` — 反馈统计
+- `GET /api/feedback/{id}` — 反馈详情
+- `DELETE /api/feedback/{id}` — 删除反馈
+
+**生命周期**: 永久
+
+**访问方式**: 前端 UI + REST API
+
+---
+
+## 跨切面: ReferenceQueryStore (v19.0 参考查询库)
+
+**位置**: `data_agent/reference_queries.py` (395 行)
+
+**机制**: 经过验证的成功查询库，为 NL2SQL 提供 few-shot 示例注入。支持 embedding 语义搜索 + 自动/手动策展。
+
+**表结构**:
+```sql
+CREATE TABLE agent_reference_queries (
+    id SERIAL PRIMARY KEY,
+    query_text TEXT NOT NULL,
+    description TEXT,
+    response_summary TEXT,
+    tags JSONB,
+    pipeline_type TEXT,
+    task_type TEXT,
+    source TEXT DEFAULT 'manual',    -- 'manual' | 'feedback' | 'auto'
+    feedback_id INTEGER,
+    embedding REAL[],                -- Gemini embedding (768 维)
+    created_by TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**API**:
+```python
+store = ReferenceQueryStore()
+store.add(query_text, description, tags, source="feedback")
+store.search(query, top_k=5)  # embedding cosine similarity
+store.list(pipeline_type=None, limit=50)
+store.delete(query_id)
+```
+
+**去重**: 新增时自动计算 embedding，cosine > 0.92 的相似查询跳过入库。
+
+**ContextEngine 集成**: `ReferenceQueryProvider` 将 top-K 参考查询注入到 Agent prompt，提供 few-shot 示例。
+
+**REST API** (`reference_query_routes.py`, 6 端点):
+- CRUD + 搜索 + 批量导入
+
+**生命周期**: 永久
+
+**访问方式**: ContextEngine 自动注入 + REST API 手动管理
+
+---
+
+## 跨切面: MetricFlow 语义模型 (v19.0)
+
+**位置**: `data_agent/semantic_model.py` (338 行)
+
+**机制**: GIS 扩展的 MetricFlow 兼容语义模型定义。支持 YAML 格式的指标定义、维度声明（含 `spatial` 维度类型）、计算公式。
+
+**表结构**:
+```sql
+CREATE TABLE agent_semantic_models (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    yaml_definition TEXT,
+    parsed_entities JSONB,
+    parsed_dimensions JSONB,
+    parsed_measures JSONB,
+    parsed_metrics JSONB,
+    created_by TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**YAML 格式** (GIS 扩展):
+```yaml
+name: land_use_analysis
+dimensions:
+  - name: district
+    type: categorical
+  - name: geometry
+    type: spatial          # GIS 扩展: 空间维度
+measures:
+  - name: total_area
+    agg: sum
+    expr: ST_Area(geometry)  # PostGIS 表达式
+metrics:
+  - name: avg_parcel_area
+    type: derived
+    expr: total_area / parcel_count
+```
+
+**PostGIS 自动生成**: 从 PostGIS 表结构自动推导语义模型定义。
+
+**ContextEngine 集成**: `MetricDefinitionProvider` 将指标定义注入到 Agent prompt，帮助 Agent 理解业务指标含义。
+
+**REST API** (`semantic_model_routes.py`, 5 端点):
+- CRUD + YAML 导入 + PostGIS 自动生成
+
+**生命周期**: 永久
+
+**访问方式**: ContextEngine 自动注入 + REST API 管理
+
+---
+
+## 跨切面: PromptOptimizer (v23.0)
+
+**位置**: `data_agent/prompt_optimizer.py` (436 行)
+
+**机制**: 基于反馈数据的提示词自动优化。从 `agent_feedback` 表收集负反馈，分析失败模式，生成 prompt 改进建议。
+
+**流程**:
+```
+agent_feedback (vote=-1) → 收集 bad cases
+    ↓ FailureAnalyzer.analyze()
+    ↓ 分类失败模式 (工具选择错误 / 参数错误 / 幻觉 / 格式错误)
+    ↓ PromptOptimizer.suggest_improvements()
+    → 生成 prompt 改进建议 (可人工审核后应用)
+```
+
+**生命周期**: 永久（改进建议持久化）
+
+**访问方式**: 管理员 API 调用
 
 ---
 
@@ -541,7 +731,7 @@ CREATE TABLE agent_eval_datasets (
 
 ---
 
-## 记忆注入流程（v16.0 完整示例）
+## 记忆注入流程（v23.0 完整示例）
 
 ```
 用户消息到达: "继续分析福禄镇的耕地，用上次的配色方案"
@@ -550,27 +740,31 @@ CREATE TABLE agent_eval_datasets (
     │     → "[多模态上下文] 用户附带了 N 张图片"
     │     → "[PDF文档内容摘要] ..."
     │
-    ├── 1. 注入上轮上下文 (Layer 2: last_context)      [app.py:2764]
+    ├── 1. 注入上轮上下文 (Layer 2: last_context)
     │     → "[上轮分析上下文]
     │        上一轮使用了 general 管线。
     │        上一轮生成的文件: - /uploads/user123/parcels.geojson
     │        分析摘要：分析了 5432 个地块，发现 23 处拓扑错误"
     │
-    ├── 2. 注入空间记忆 (Layer 4: memory.py)            [app.py:2777]
+    ├── 2. 注入空间记忆 (Layer 4: memory.py)
     │     → "[用户空间记忆]
     │        可视化偏好: choropleth_colors: YlOrRd, 5 bins
     │        近期分析记录: 福禄镇耕地分析 (文件: result.geojson)
     │        用户分析视角: 关注土地碎片化对生态连通性的影响"
     │
-    ├── 3. 注入语义上下文 (Layer 5: semantic_layer.py)  [app.py:2806]
-    │     → resolve_semantic_context(user_text)
-    │     → build_context_prompt(semantic)
-    │     → "字段名映射: 耕地面积 → GDMJ, 地块编号 → DKBH"
+    ├── 3. ContextEngine 统一上下文注入 (v19.0)
+    │     → get_context_engine().get_context("福禄镇 耕地", task_type="analysis")
+    │     → SemanticLayerProvider: "字段名映射: 耕地面积 → GDMJ, 地块编号 → DKBH"
+    │     → ReferenceQueryProvider: "参考查询: SELECT ... FROM dltb WHERE ..."
+    │     → MetricDefinitionProvider: "指标: 耕地破碎度 = 地块数/总面积"
+    │     → KnowledgeBaseProvider: "相关文档: 福禄镇土地利用现状..."
+    │     → SuccessStoryProvider: "历史成功案例: 类似分析的成功查询..."
+    │     → 按 relevance_score 排序 → token budget 裁剪 → 注入 prompt
     │
-    ├── 4. 注入 ArcPy 引擎上下文（如可用）              [app.py:2816]
+    ├── 4. 注入 ArcPy 引擎上下文（如可用）
     │     → "[系统环境] ArcPy 引擎可用..."
     │
-    ├── 5. 语言提示注入                                  [app.py:2819]
+    ├── 5. 语言提示注入
     │     → "[Language] Please respond in English."（非中文时）
     │
     ├── 6. ADK 自动检索对话记忆 (Layer 3: PostgresMemoryService)
@@ -588,16 +782,19 @@ CREATE TABLE agent_eval_datasets (
     ▼
     Pipeline 执行完成
     │
-    ├── 保存 last_context (Layer 2)                     [app.py:2114]
-    ├── Memory ETL 自动提取事实 (Layer 3→4)              [memory.py:274]
-    └── 工具成功 → mark_resolved (Layer 4)               [failure_learning.py]
+    ├── 保存 last_context (Layer 2)
+    ├── Memory ETL 自动提取事实 (Layer 3→4)
+    ├── 工具成功 → mark_resolved (Layer 4)
+    └── 用户反馈 → FeedbackLoop (v19.0)
+          ├── 👍 → ReferenceQueryStore 自动入库 (L5)
+          └── 👎 → FailureAnalyzer → PromptOptimizer
 ```
 
 ---
 
 ## 语义层缓存 (Layer 5 辅助)
 
-**位置**: `data_agent/semantic_layer.py` (1,799 行)
+**位置**: `data_agent/semantic_layer.py` (1,847 行)
 
 **机制**: 语义元数据 3 级层次结构（domain → table → column），5 分钟 TTL 缓存，写操作自动失效。
 
@@ -614,19 +811,24 @@ CREATE TABLE agent_eval_datasets (
 | 层 | 机制 | 存储 | 生命周期 | 范围 | 访问方式 | 代码位置 |
 |----|------|------|---------|------|---------|---------|
 | **L1 即时** | `output_key` | ADK session state | 单次请求 | 单 Pipeline | 隐式（ADK 自动） | `agent.py` |
-| | ContextVar (6 个) | 内存 | 单次请求 | 单请求 | 隐式（工具内部） | `user_context.py` (38 行) |
-| **L2 短期** | `last_context` | Chainlit user_session | 当前会话 | 单会话 | 显式注入 prompt | `app.py:2764` |
-| **L3 中期** | PostgresMemoryService | PostgreSQL `memories` | 永久 | per-user | ADK 自动检索 | `conversation_memory.py` (365 行) |
+| | ContextVar (6 个) | 内存 | 单次请求 | 单请求 | 隐式（工具内部） | `user_context.py` (37 行) |
+| **L2 短期** | `last_context` | Chainlit user_session | 当前会话 | 单会话 | 显式注入 prompt | `app.py` |
+| **L3 中期** | PostgresMemoryService | PostgreSQL `memories` | 永久 | per-user | ADK 自动检索 | `conversation_memory.py` (364 行) |
 | | Memory ETL | PostgreSQL `user_memories` | 永久 | per-user | 工具调用 | `memory.py:274` |
-| **L4 长期** | 空间记忆 (6 种类型) | PostgreSQL `user_memories` | 永久 | per-user | 工具调用 + 注入 | `memory.py` (410 行) |
+| **L4 长期** | 空间记忆 (6 种类型) | PostgreSQL `user_memories` | 永久 | per-user | 工具调用 + 注入 | `memory.py` (409 行) |
 | | 分析视角 | PostgreSQL `user_memories` | 永久 | per-user | 自动注入 prompt | `memory.py:247` |
-| | 失败学习 | PostgreSQL `tool_failures` | 永久（可标记已解决） | per-user | 回调自动注入 | `failure_learning.py` (159 行) |
-| **L5 知识** | Knowledge Base (RAG) | PostgreSQL + pgvector | 永久 | per-user + 共享 | 工具调用 | `knowledge_base.py` (1,007 行) |
-| | GraphRAG | PostgreSQL | 永久 | per-KB | 工具调用 | `knowledge_base.py:831` |
+| | 失败学习 | PostgreSQL `tool_failures` | 永久（可标记已解决） | per-user | 回调自动注入 | `failure_learning.py` (158 行) |
+| **L5 知识** | Knowledge Base (RAG) | PostgreSQL + pgvector | 永久 | per-user + 共享 | 工具调用 | `knowledge_base.py` (1,006 行) |
+| | GraphRAG | PostgreSQL | 永久 | per-KB | 工具调用 | `graph_rag.py` (507 行) |
 | | 案例库 (Case Library) | PostgreSQL `kb_documents` | 永久 | per-KB | 工具调用 | `knowledge_base.py:878` |
-| | Knowledge Graph | 内存 (NetworkX) + PostgreSQL | 会话/永久 | per-session | 工具调用 | `knowledge_graph.py` (706 行) |
-| | 语义层 | PostgreSQL + 内存缓存 | 永久 (5min TTL cache) | 全局 | 自动注入 prompt | `semantic_layer.py` (1,799 行) |
-| **跨切面** | Context Manager | 内存 | 单次请求 | per-task | prepare() 组装 | `context_manager.py` (96 行) |
+| | Knowledge Graph | 内存 (NetworkX) + PostgreSQL | 会话/永久 | per-session | 工具调用 | `knowledge_graph.py` (705 行) |
+| | 语义层 | PostgreSQL + 内存缓存 | 永久 (5min TTL cache) | 全局 | 自动注入 prompt | `semantic_layer.py` (1,847 行) |
+| | 参考查询库 | PostgreSQL + embedding | 永久 | 全局 | ContextEngine 自动注入 | `reference_queries.py` (395 行) |
+| | 语义模型 | PostgreSQL | 永久 | 全局 | ContextEngine 自动注入 | `semantic_model.py` (338 行) |
+| **跨切面** | ContextEngine | 内存 (3min TTL) | 单次请求 | per-task | get_context() 组装 | `context_engine.py` (583 行) |
+| | FeedbackLoop | PostgreSQL `agent_feedback` | 永久 | per-user | 前端 UI + API | `feedback.py` (368 行) |
+| | ReferenceQueryStore | PostgreSQL + embedding | 永久 | 全局 | ContextEngine + API | `reference_queries.py` (395 行) |
+| | PromptOptimizer | PostgreSQL | 永久 | 全局 | 管理员 API | `prompt_optimizer.py` (436 行) |
 | | Eval Scenario | PostgreSQL `agent_eval_datasets` | 永久 | per-scenario | API 调用 | `eval_scenario.py` (130 行) |
 
 ---
@@ -654,7 +856,7 @@ CREATE TABLE agent_eval_datasets (
 
 ---
 
-## v12.0 → v16.0 变更摘要
+## v12.0 → v23.0 变更摘要
 
 | 版本 | 变更 | 影响层 |
 |------|------|-------|
@@ -670,6 +872,14 @@ CREATE TABLE agent_eval_datasets (
 | v15.8 | `is_path_in_sandbox()` 安全函数 | L1 |
 | v15.8 | Context Manager — 可插拔 Provider + token budget (100k) | 跨切面 |
 | v15.8 | Eval Scenario Framework — `SurveyingQCScenario` + `EvalDatasetManager` | 跨切面 |
+| **v19.0** | **ContextEngine 统一上下文引擎** — 6 Provider + TTL 缓存 + 查询 embedding 排序 (替代 context_manager.py) | 跨切面 |
+| **v19.0** | **FeedbackLoop 反馈飞轮** — 👍👎 + FeedbackStore + FeedbackProcessor | 跨切面 |
+| **v19.0** | **ReferenceQueryStore 参考查询库** — embedding 搜索 + NL2SQL few-shot + 自动策展 | L5 + 跨切面 |
+| **v19.0** | **MetricFlow 语义模型** — GIS 扩展 YAML + PostGIS 自动生成 + MetricDefinitionProvider | L5 + 跨切面 |
+| **v19.0** | `agent_feedback` / `agent_reference_queries` / `agent_semantic_models` 3 张新表 | L5 |
+| **v19.0** | 前端 `FeedbackBar.tsx` + `FeedbackTab.tsx` | 跨切面 |
+| **v23.0** | **PromptOptimizer** — bad case 收集 + 失败分析 + prompt 自动改进 | 跨切面 |
+| **v23.0** | **EvaluatorRegistry** — 15 内置评估器 (质量/安全/性能/准确性) | 跨切面 |
 
 ---
 
@@ -677,13 +887,15 @@ CREATE TABLE agent_eval_datasets (
 
 1. **分层隔离**：不同生命周期的记忆使用不同机制，避免混淆
 2. **自动 + 手动**：L1-L3 自动注入（用户无感），L4-L5 工具调用（用户可控）
-3. **去重 + 配额**：Memory ETL 用 UPSERT 去重，auto_extract 限额 100 条/用户
+3. **去重 + 配额**：Memory ETL 用 UPSERT 去重，auto_extract 限额 100 条/用户；ReferenceQueryStore cosine > 0.92 去重
 4. **降级策略**：PostgresMemoryService 不可用时自动降级到 InMemoryMemoryService
 5. **隐私隔离**：所有记忆按 `username` 隔离，RLS 策略强制执行
-6. **Token 预算**：Context Manager 通过 relevance_score 排序 + 贪心填充控制 prompt 大小
-7. **可插拔扩展**：ContextProvider ABC 允许注册自定义上下文源
+6. **Token 预算**：ContextEngine 通过 relevance_score 排序 + 贪心填充控制 prompt 大小 (100k 上限)
+7. **可插拔扩展**：ContextProvider ABC 允许注册自定义上下文源（v19.0 已内置 6 个 Provider）
 8. **安全边界**：`is_path_in_sandbox()` 防止工具函数读取沙箱外文件
+9. **反馈闭环**：用户 👍→参考查询自动入库→NL2SQL 精度提升；👎→失败分析→prompt 优化（v19.0）
+10. **越用越准**：ContextEngine + FeedbackLoop + ReferenceQueryStore 构成"上下文飞轮"，使用越多、上下文越精准
 
 ---
 
-*本文档基于 GIS Data Agent v16.0 (ADK v1.27.2) 的源码精确同步，2026-04-02。*
+*本文档基于 GIS Data Agent v23.0 (ADK v1.27.2) 的源码精确同步，2026-04-10。*

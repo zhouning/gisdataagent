@@ -1,6 +1,6 @@
 # 测绘质检智能体 — 全量能力地图
 
-> GIS Data Agent v16.0 测绘质检子系统：Agent 调用路径、工具清单、工作流模板、REST API、数据库表、MCP 子系统。
+> GIS Data Agent v23.0 测绘质检子系统：Agent 调用路径、工具清单、工作流模板、REST API、数据库表、MCP 子系统、上下文工程与反馈飞轮。
 
 ---
 
@@ -32,7 +32,7 @@ governance_pipeline (SequentialAgent)
 
 ## 2. 辅助路径：Planner 动态编排
 
-复杂质检任务可由 Planner (`planner_agent`) 动态编排，自主选择调用子 Agent：
+复杂质检任务可由 Planner (`planner_agent`) 动态编排，自主选择调用子 Agent。v23.0 新增意图消歧 v2：复杂请求自动分解子任务 (`should_decompose` → `decompose_task` → wave 按序执行)。
 
 ```
 planner_agent (LlmAgent, Standard)
@@ -234,7 +234,10 @@ S-5 多 Agent 协作工作流中：
 | `agent_kb_documents` (case 扩展) | 042 | 案例库（defect_category / product_type / resolution / tags） |
 | `agent_qc_reviews` | 043 | 人工复核（pending→approved/rejected/fixed） |
 
-> 总迁移数 048（001-048）。044-048 为 v15.8/v16.0 新增（metadata_system, prompt_registry, model_gateway, eval_scenarios, unify_data_assets），与 QC 无直接关系但支撑 BCG 平台能力。
+> 总迁移数 064（001-064）。044-064 为 v15.8-v23.0 新增，其中与 QC 间接相关的包括:
+> - 053-055: 反馈表 (`agent_feedback`)、参考查询 (`agent_reference_queries`)、语义模型 (`agent_semantic_models`) — 支撑 ContextEngine 质检上下文注入
+> - 056-057: 跨系统血缘 (`agent_lineage_edges`, `agent_external_assets`) — 质检数据溯源
+> - 其余为 BCG 平台能力、模型网关、评估框架等通用增强
 
 ### 人工复核工作流状态机
 
@@ -276,6 +279,7 @@ S-5 多 Agent 协作工作流中：
 | `gb_t_24356.yaml` (216 行) | GB/T 24356-2009 测绘质检主标准 |
 | `gb_t_21010_2017.yaml` (98 行) | 土地分类标准 |
 | `dltb_2023.yaml` (91 行) | DLG 数据规范 |
+| `gis_ontology.yaml` (153 行) | GIS 领域本体（实体/关系/属性定义） |
 | `guardrail_policies.yaml` (57 行) | 安全合规护栏 |
 | `rs_experience_pool.yaml` (107 行) | 遥感最佳实践 |
 | `satellite_presets.yaml` (75 行) | 卫星数据预设 |
@@ -285,29 +289,92 @@ S-5 多 Agent 协作工作流中：
 
 `AlertEngine` (observability.py): 可配置阈值规则 → 多通道推送 (webhook/websocket)，含冷却时间（默认 300s）。25+ Prometheus 指标跨 6 层（LLM / Tool / Pipeline / Cache / HTTP / Circuit Breaker）。
 
+### OTel 分布式追踪 (v23.0)
+
+`otel_tracing.py` (167 行): 4 级 span (Pipeline → Agent → Tool → LLM)，质检工作流每步独立 span，优雅降级。
+
 ---
 
-## 10. 总结
+## 10. v19-v23 平台增强（质检相关）
+
+### ContextEngine 统一上下文引擎 (v19.0)
+
+`context_engine.py` (583 行) — 6 个 ContextProvider 自动注入质检上下文:
+
+| Provider | 质检场景用途 |
+|----------|------------|
+| `SemanticLayerProvider` | 字段语义映射（如 DKBH→地块编号） |
+| `KnowledgeBaseProvider` | 质检标准文档检索 |
+| `KnowledgeGraphProvider` | 缺陷-原因-修复关系查询 |
+| `ReferenceQueryProvider` | 历史成功质检查询 few-shot 注入 |
+| `SuccessStoryProvider` | 用户正反馈的质检案例 |
+| `MetricDefinitionProvider` | 质检指标定义（如缺陷率、合格率公式） |
+
+Token 预算编排 (100k 上限) + TTL 缓存 (3 分钟) + per-provider 错误隔离。
+
+### FeedbackLoop 反馈飞轮 (v19.0)
+
+`feedback.py` (368 行) — 质检结果的结构化反馈闭环:
 
 ```
-质检能力矩阵
+质检员 👍 → ReferenceQueryStore 自动入库 → 后续类似数据质检更准确
+质检员 👎 → FailureAnalyzer 分析误判 → PromptOptimizer 改进质检 prompt
+```
+
+- `agent_feedback` 表: 存储反馈记录
+- `reference_queries.py` (395 行): 参考查询库，embedding 搜索 + cosine > 0.92 去重
+- `prompt_optimizer.py` (436 行): bad case 收集 → 失败模式分类 → prompt 改进建议
+
+### 可插拔评估器 (v23.0)
+
+`evaluator_registry.py` (665 行) — 15 内置评估器，质检相关:
+- `defect_precision` / `defect_recall` / `defect_f1`: 缺陷检出精确率/召回率/F1
+- `fix_success_rate`: 自动修正成功率
+- `spatial_accuracy`: 空间精度评估
+
+### 统一模型网关 (v23.0)
+
+`model_gateway.py` (449 行) — 质检场景模型选择:
+- 路由分类: Gemini 2.0 Flash (低延迟)
+- 标准质检: Gemini 2.5 Flash (平衡)
+- 复杂分析: Gemini 2.5 Pro (高质量推理)
+- 离线部署: Gemma 4 31B (无需外网)
+
+### API 安全中间件 (v22.0)
+
+`api_middleware.py` (169 行):
+- `RateLimitMiddleware`: 滑动窗口请求频率限制
+- `CircuitBreakerMiddleware`: Starlette 层熔断保护
+
+---
+
+## 11. 总结
+
+```
+质检能力矩阵 (v23.0)
 ─────────────────────────────────────────────
 Agent:       Governance Pipeline 5 个 LlmAgent
              + Planner 可调度 5 个子 Agent（含 DataEngineerAgent）
              + S-5 FullAnalysis / RSAnalysis 多 Agent 工作流
+             + 意图消歧 v2 (复杂请求自动分解子任务)
 工具:        5 专用 Toolset = 42 工具函数
                GovernanceToolset (18) + PrecisionToolset (5)
                + DataCleaningToolset (11) + ReportToolset (3)
                + OperatorToolset (5, v16.0 语义算子)
 工作流模板:   7 个（标准/快速/全量 + DLG/DOM/DEM/3D 专项, 共 41 步）
 REST API:    22 端点（规则/趋势/复核/报告/标准/缺陷/告警/概览）
-数据库:       7 张 QC 相关表 + 3 张支撑表（总迁移 048）
+数据库:       7 张 QC 相关表 + 支撑表（总迁移 064）
 缺陷分类:     5 类 30 编码，A/B/C 三级，57% (17/30) 可自动修正
 MCP 子系统:   4 个（CV 检测 / CAD 解析 / 专业工具 / 参考数据）
-知识:         Vertex AI 标准检索 + 2 个 Skill + 案例库 + 8 标准文件
+知识:         Vertex AI 标准检索 + 2 个 Skill + 案例库 + 10 标准文件
+上下文工程:   ContextEngine 6 Provider + FeedbackLoop 反馈飞轮 (v19.0)
+评估:         15 内置评估器 (含 defect_precision/recall/f1) (v23.0)
+模型网关:     Gemini + Gemma 4 + LiteLLM 统一路由 (v23.0)
+可观测性:     25+ Prometheus 指标 + OTel 4 级 span (v23.0)
+API 安全:     RateLimitMiddleware + CircuitBreakerMiddleware (v22.0)
 ─────────────────────────────────────────────
 ```
 
 ---
 
-*基于 GIS Data Agent v16.0 (agent.py 836 行, quality_routes.py 22 路由, 48 迁移) 代码核验，2026-04-03。*
+*基于 GIS Data Agent v23.0 (agent.py 853 行, quality_routes.py 22 路由, 64 迁移) 代码核验，2026-04-10。*

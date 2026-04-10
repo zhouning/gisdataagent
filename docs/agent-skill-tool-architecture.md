@@ -1,6 +1,6 @@
 # Agent · Skill · Tool 架构关系
 
-> GIS Data Agent v16.0 多 Agent 架构中核心概念的定义、层次关系和协作方式。
+> GIS Data Agent v23.0 多 Agent 架构中核心概念的定义、层次关系和协作方式。
 
 ---
 
@@ -11,6 +11,8 @@ Platform (BCG Enterprise Agent Platform)
 │
 ├── Semantic Router (intent_router.py, Gemini 2.0 Flash)
 │     → OPTIMIZATION / GOVERNANCE / GENERAL / WORKFLOW / AMBIGUOUS
+│     → 多语言检测 (zh/en/ja) + 多模态 (text/image/PDF)
+│     → 分析意图消歧 v2: should_decompose + decompose_task + wave 按序执行
 │
 ├── Pipeline (SequentialAgent / ParallelAgent / LoopAgent)
 │     │
@@ -19,7 +21,7 @@ Platform (BCG Enterprise Agent Platform)
 │     │     ├── Instruction ─── 来源：Prompt Registry / ADK Skill / Custom Skill
 │     │     │
 │     │     ├── Tools ─── 双手：执行具体操作
-│     │     │     ├── 39 个 BaseToolset ────── 200+ 内置工具函数
+│     │     │     ├── 40 个 BaseToolset ────── 215+ 内置工具函数
 │     │     │     ├── UserToolset ──────────── 用户声明式自定义工具
 │     │     │     ├── McpHubToolset ────────── MCP 外部工具聚合
 │     │     │     └── OperatorToolset ──────── 语义算子（Clean/Integrate/Analyze/Visualize）
@@ -29,10 +31,12 @@ Platform (BCG Enterprise Agent Platform)
 │     ├── Agent B ...
 │     └── Agent C ...
 │
-├── Model Gateway ─── 任务感知模型路由（fast / standard / premium）
+├── Model Gateway ─── 在线/离线统一路由（Gemini + LM Studio + LiteLLM）
 ├── Context Manager ── 可插拔上下文提供器 + token 预算
 ├── Prompt Registry ── DB 版本化 Prompt 管理（dev / staging / prod）
-└── Eval Framework ─── 场景化评估 + Golden Dataset
+├── Feedback Loop ──── 结构化反馈闭环 + 参考查询自动入库
+├── Eval Framework ─── 场景化评估 + Golden Dataset
+└── Observability ──── OTel 4 级 span + Prometheus + Alert Engine
 ```
 
 ---
@@ -85,7 +89,7 @@ class ExplorationToolset(BaseToolset):
         return [t for t in all_tools if self._is_tool_selected(t, readonly_context)]
 ```
 
-系统共有 **39 个 Toolset**（200+ 工具函数），分布在 `toolsets/` 目录下的 41 个 Python 文件中：
+系统共有 **40 个 Toolset**（215+ 工具函数），分布在 `toolsets/` 目录下的 41 个 Python 文件中：
 
 | 类别 | Toolset | 说明 |
 |------|---------|------|
@@ -180,7 +184,7 @@ planner = LlmAgent(
 |------|------|------|---------|
 | **内置 ADK Skill** | 25 个 | `skills/` 目录（kebab-case） | `load_skill_from_dir()` → 三级增量加载 |
 | **Custom Skill** | 用户定义 | PostgreSQL `agent_custom_skills` 表 | `build_custom_agent()` → `LlmAgent` |
-| **Prompt YAML** | 3+ 个 | `prompts/` 目录 + DB `agent_prompt_versions` 表 | Prompt Registry 按环境加载 |
+| **Prompt YAML** | 5 个 | `prompts/` 目录 + DB `agent_prompt_versions` 表 | Prompt Registry 按环境加载 |
 
 ### 25 个内置 ADK Skill
 
@@ -230,7 +234,7 @@ planner = LlmAgent(
     "skill_name": "耕地变化监测",          # 2-100 字符
     "description": "监测耕地时序变化趋势",
     "instruction": "你是耕地变化监测专家...",  # 最大 10,000 字符
-    "toolsets": ["RemoteSensingToolset", "AnalysisToolset"],  # 从 39 个 Toolset 中选择
+    "toolsets": ["RemoteSensingToolset", "AnalysisToolset"],  # 从 40 个 Toolset 中选择
     "trigger_keywords": ["耕地变化", "时序监测"],
     "model_tier": "standard",              # fast | standard | premium
     "is_shared": true                       # 团队共享
@@ -282,7 +286,7 @@ class OperatorPlan:
 
 ## Agent — 推理与决策单元
 
-Agent 是绑定了模型、指令和工具的 LLM 推理实体。当前系统共有 **25+ 个 LlmAgent 实例**。
+Agent 是绑定了模型、指令和工具的 LLM 推理实体。当前系统共有 **30+ 个 Agent 实例**（19 个 LlmAgent + 11 个编排容器 + 工厂函数动态生成）。
 
 ```python
 data_exploration_agent = LlmAgent(
@@ -303,7 +307,7 @@ ADK 提供三种编排容器，系统当前使用：
 
 | 容器 | 实例数 | 行为 | 用途 |
 |------|--------|------|------|
-| `SequentialAgent` | 6 | 按顺序执行子 Agent | 主管线（Optimization/Governance/General） |
+| `SequentialAgent` | 7 | 按顺序执行子 Agent | 主管线 + 专业工作流 |
 | `ParallelAgent` | 2 | 并发执行子 Agent | 数据摄入（Exploration ‖ SemanticPreFetch） |
 | `LoopAgent` | 3 | Generator → Critic 循环（最多 3 轮） | 质量保证（Analysis → QualityChecker） |
 
@@ -323,9 +327,15 @@ _make_visualizer_agent(name, **overrides)   → LlmAgent
 _make_remote_sensing(name, **overrides)     → LlmAgent
 ```
 
-### 模型分层策略（Model Gateway）
+### 模型分层策略（Model Gateway — 在线/离线统一路由）
 
-不同角色的 Agent 使用不同级别的模型，由 `ModelRouter` 根据任务类型自动路由：
+不同角色的 Agent 使用不同级别的模型，由 `ModelRouter` 根据任务类型自动路由。支持三种后端：
+
+| 后端 | 说明 | 配置 |
+|------|------|------|
+| `gemini` | Google Vertex AI 在线模型 | 默认 |
+| `litellm` | 任意 LiteLLM 兼容模型 | `LITELLM_BASE_URL` |
+| `lm_studio` | 本地离线模型 | `LM_STUDIO_BASE_URL` (默认 localhost:1234) |
 
 | 模型 | Tier | 成本（1k tokens） | 上下文 | 用途 |
 |------|------|-------------------|--------|------|
@@ -333,7 +343,7 @@ _make_remote_sensing(name, **overrides)     → LlmAgent
 | gemini-2.5-flash | standard | $0.15 / $0.60 | 2M | 主 Agent（默认） |
 | gemini-2.5-pro | premium | $1.25 / $5.00 | 2M | Reporter、复杂推理、因果分析 |
 
-`ModelRouter` 考虑 `task_type`（classification/extraction/reasoning/generation）、`context_tokens`、`quality_requirement`、`budget_per_call_usd` 四个维度自动选模型。用户可通过 `ContextVar(current_model_tier)` 临时覆盖。
+`ModelRouter` 考虑 `task_type`（classification/extraction/reasoning/generation）、`context_tokens`、`quality_requirement`、`budget_per_call_usd` 四个维度自动选模型。用户可通过 `ContextVar(current_model_tier)` 临时覆盖。DB-backed `ModelConfigManager` 支持运行时动态调整 tier 映射。
 
 ### Agent 间状态传递
 
@@ -495,7 +505,7 @@ McpServerConfig
 
 ## BCG 企业 Agent 平台能力（v15.8+）
 
-基于 BCG《Building Effective Enterprise Agents》框架的五大能力：
+基于 BCG《Building Effective Enterprise Agents》框架的平台能力：
 
 ### 1. Prompt Registry
 
@@ -515,15 +525,27 @@ agent_prompt_versions 表
 
 ### 2. Model Gateway
 
-任务感知模型路由 + 成本追踪（`agent_token_usage` 表，支持 scenario/project_id 归因）。
+统一在线/离线模型路由 + 成本追踪（`agent_token_usage` 表，支持 scenario/project_id 归因）。三后端：Gemini / LiteLLM / LM Studio。
 
 ### 3. Context Manager
 
-可插拔上下文提供器（SemanticProvider, KBProvider, StandardsProvider, CaseLibraryProvider），按相关性排序，token 预算强制执行（默认 100k tokens）。
+可插拔上下文提供器（SemanticProvider, KBProvider, StandardsProvider, CaseLibraryProvider, ReferenceQueryProvider, MetricDefinitionProvider），按相关性排序，token 预算强制执行（默认 100k tokens）。
 
 ### 4. Eval Scenario Framework
 
-场景化评估 + Golden Dataset：`SurveyingQCScenario` 预设指标（defect_precision, defect_recall, defect_f1, fix_success_rate）。
+场景化评估 + Golden Dataset：`SurveyingQCScenario` 预设指标（defect_precision, defect_recall, defect_f1, fix_success_rate）。可插拔评估器注册表（15 内置评估器）。
+
+### 5. Context Engineering（v19.0）
+
+统一上下文引擎 `ContextEngine` — 6 个 provider 自动收集语义层、知识库、知识图谱、参考查询、成功案例、指标定义。
+
+### 6. Feedback Loop（v19.0）
+
+结构化反馈闭环 — 前端 👍👎 → `agent_feedback` 表 → upvote 自动入库参考查询 → downvote 触发 FailureAnalyzer。`ReferenceQueryStore` 支持 embedding 搜索 + NL2SQL few-shot 注入。
+
+### 7. Semantic Model（v19.0）
+
+MetricFlow 语义模型 — GIS 扩展 YAML 格式 + PostGIS 自动生成器 + MetricDefinitionProvider。
 
 ---
 
@@ -536,6 +558,28 @@ agent_prompt_versions 表
 ### Knowledge Base（`knowledge_base.py`）
 
 文档索引 + 语义检索 + 案例库（`add_case()` / `search_cases()`，结构化 QC 经验记录）。
+
+### Reference Query Store（`reference_queries.py`，v19.0）
+
+参考查询库 — embedding 搜索 + NL2SQL few-shot 注入 + 自动/手动策展。upvote 的查询自动入库。
+
+---
+
+## 可观测性与安全
+
+### OTel 埋点（v23.0）
+
+4 级 span 层次：pipeline → agent → tool → llm，graceful degradation（OTel 不可用时静默降级）。
+
+### Alert Engine（`observability.py`）
+
+可配置阈值告警规则 + webhook 推送。Prometheus 指标导出。
+
+### API 安全中间件（v22.0）
+
+- `RateLimitMiddleware`：Starlette 层速率限制
+- `CircuitBreakerMiddleware`：Starlette 层熔断器
+- 无需外部 API 网关（Kong）
 
 ---
 
@@ -586,6 +630,7 @@ Decoder: LULC 分类器（83.7% 准确率）
 - **检查点/恢复**：node_checkpoints 支持断点续跑（v14.0）
 - **优先级队列**：low / normal / high（v15.6）
 - **QC 模板**：标准质检(5步)、快速质检(2步)、DLG/DOM/DEM 专项质检
+- **NL2Workflow**：自然语言生成可执行工作流 DAG（`nl2workflow.py`）
 
 ---
 
@@ -663,7 +708,7 @@ Decoder: LULC 分类器（83.7% 准确率）
 ┌──────────────────────────────────────────┐
 │     ② 扩展 Skill 层                      │
 │  在"能力"Tab 创建自定义 Agent              │
-│  (指令 + 39 个 Toolset 可选 + 触发词)     │
+│  (指令 + 40 个 Toolset 可选 + 触发词)     │
 │  支持团队共享、评分、克隆、审批             │
 └──────────────┬───────────────────────────┘
                │ Agent 编排
@@ -720,31 +765,99 @@ execute_a2a_task(message, caller_id) → {status, result_text, files, tokens}
 
 ---
 
+## DRL 优化引擎（`drl_engine.py`）
+
+深度强化学习优化引擎，支持 7 种场景：
+
+| 场景 | 说明 |
+|------|------|
+| land_use | 土地利用优化（默认） |
+| farmland_forest | 耕地↔林地配对交换 |
+| ecological | 生态适宜性优化 |
+| urban_planning | 城市规划布局 |
+| road_network | 交通网络优化（v23.0） |
+| public_facility_layout | 公共设施布局（v23.0） |
+| custom | 用户自定义场景 |
+
+- `MaskablePPO` (sb3_contrib) + 自定义 `ParcelScoringPolicy`
+- 硬约束 `min_retention_rate`（action mask）+ 软约束 `budget_cap`/`max_area_cap`（reward penalty）
+- NSGA-II Pareto 多目标优化
+- DRL 动画：GIF 优化过程回放 + 前后对比 PNG
+
+---
+
+## 遥感智能体（Phase 1-3）
+
+### Phase 1（v16.0）
+空间约束 fact-check + 光谱指数计算 + LULC 分类
+
+### Phase 2（v22.0）
+变化检测（3 方法）+ Mann-Kendall 趋势 + 断点检测 + 证据评估
+
+### Phase 3（v22.0）
+空间约束 fact-check + 交叉验证 + 多 Agent Debate + 代码沙箱
+
+RS 知识库：5 光谱指数 + 3 分类体系 + 3 处理流程模板（`rs_experience_pool.yaml`）
+
+---
+
+## L4 自主监控（v22.0）
+
+- `DataLakeMonitor`：持续监控数据湖变化
+- `IntrinsicMotivation`：ε-greedy 内在动机驱动自主探索
+
+---
+
+## 具身执行接口（v23.0）
+
+`embodied.py` — `BaseExecutor` ABC + MockUAV/Satellite 执行器 + 注册表。为无人机/卫星等物理设备预留标准化接口。
+
+---
+
+## 离线模式（v23.0）
+
+- Service Worker (`sw.js`) 缓存地图瓦片/静态资源/用户数据
+- Lite 模式启动：`app.py _LITE_MODE` 标志 + 治理/优化路由降级到 General
+- DuckDB 本地数据库初始化
+- 可选依赖分组：`pyproject.toml [lite]/[full]/[dev]`
+
+---
+
+## 标注协同（v23.0）
+
+`annotation_ws.py` — WebSocket 单实例广播 + REST 集成，支持多用户实时标注协同。
+
+---
+
 ## 数量汇总
 
 | 维度 | 数量 |
 |------|------|
-| LlmAgent 实例 | 25+ |
-| SequentialAgent | 6 |
+| LlmAgent 实例 | 19（+ 工厂函数动态生成） |
+| SequentialAgent | 7 |
 | ParallelAgent | 2 |
 | LoopAgent | 3 |
 | 工厂函数 | 9 |
-| Toolset 类 | 39 |
-| 内置工具函数 | 200+ |
+| Toolset 类 | 40 |
+| 内置工具函数 | 215+ |
 | 内置 ADK Skill | 25 |
+| Prompt YAML | 5（general/governance/optimization/planner/multi_agent） |
 | 语义算子 | 4（Clean/Integrate/Analyze/Visualize） |
 | 用户工具模板类型 | 5 |
 | MCP 传输协议 | 3（stdio/sse/streamable_http） |
 | 子系统 | 4 |
 | 连接器 | 10 |
-| REST API 端点 | 234 |
+| REST API 端点 | 280 |
+| API 路由模块 | 23（`api/` 目录） |
 | 数据标准文件 | 9 |
-| DB 迁移 | 48 |
-| 测试文件 | 98 |
-| 测试用例 | 2966+ |
+| DB 迁移 | 64（001-057 + 补丁） |
+| 测试文件 | 171 |
+| 测试用例 | 3588+ |
 | 因果推断方法 | 14（3 角度） |
 | 融合策略 | 10 |
+| 内置评估器 | 15 |
+| DRL 优化场景 | 7（含 road_network + public_facility_layout） |
 
 ---
 
-*本文档基于 GIS Data Agent v16.0 (ADK v1.27.2, 2026-04-02) 架构刷新。*
+*本文档基于 GIS Data Agent v23.0 (ADK v1.27.2, 2026-04-10) 架构刷新。*

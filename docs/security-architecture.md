@@ -1,6 +1,7 @@
 # Data Agent 安全架构
 
-> 系统安全机制完整清单：120+ 个安全控制点，覆盖认证、授权、输入验证、执行隔离、输出安全、数据安全、审计监控、加密密钥 8 层防御体系。
+> 系统安全机制完整清单：130+ 个安全控制点，覆盖认证、授权、输入验证、执行隔离、输出安全、数据安全、审计监控、加密密钥、API 网关 9 层防御体系。
+> v23.0 (ADK v1.27.2, 2026-04-10)
 
 ---
 
@@ -8,9 +9,14 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
+│  Layer 9: API 网关安全 (v22.0)                                   │
+│  api_middleware.py — RateLimitMiddleware (100/min, 1000/hr)      │
+│                    + CircuitBreakerMiddleware (5 failures → open) │
+├─────────────────────────────────────────────────────────────────┤
 │  Layer 8: 审计与监控                                             │
 │  audit_logger.py — 35 审计事件, 90天保留, 管理仪表盘              │
 │  observability.py — Prometheus 指标 + JSON 结构化日志 + AlertEngine│
+│  OTel 4 级 span (pipeline/agent/tool/llm) + graceful degradation │
 ├─────────────────────────────────────────────────────────────────┤
 │  Layer 7: 加密与密钥管理                                         │
 │  Fernet(MCP凭据) + AES-256-CBC(企微/飞书) + PBKDF2(密码/密钥派生) │
@@ -62,7 +68,7 @@
 | **邮箱格式** | `^[^@\s]+@[^@\s]+\.[^@\s]+$` 正则验证 | `auth.py` |
 | **自助注册** | 前端 LoginPage.tsx 注册模式 → `POST /auth/register` → `register_user()` | `auth.py` |
 | **密码修改** | `change_password()` — 旧密码验证后方可变更 | `auth.py` |
-| **账号自删** | `delete_user_account()` — 级联清理 6 表 (token_usage, memories, share_links, team_members, audit_log, annotations), admin 不可自删 | `auth.py` |
+| **账号自删** | `delete_user_account()` — 级联清理 8 表 (token_usage, memories, share_links, team_members, audit_log, annotations, feedback, user_tools), admin 不可自删, 删除用户上传目录 | `auth.py` |
 
 ### 密码存储格式
 
@@ -469,6 +475,18 @@ CREATE TABLE agent_audit_log (
 | `llm_tokens` | Histogram | pipeline_type, model |
 | `tool_duration` | Histogram | tool_name |
 | `api_requests` | Counter | method, path, status_code |
+| `circuit_breaker_state` | Gauge | name, state |
+
+### OTel 分布式追踪 (v23.0)
+
+| 级别 | Span 名称 | 属性 |
+|------|----------|------|
+| Pipeline | `pipeline:{type}` | user_id, intent, language |
+| Agent | `agent:{name}` | model_tier, output_key |
+| Tool | `tool:{name}` | status, duration_ms |
+| LLM | `llm:{model}` | input_tokens, output_tokens |
+
+Graceful degradation: OTel 不可用时静默降级，不影响业务。
 
 ### 结构化日志
 
@@ -520,21 +538,16 @@ class JsonFormatter(logging.Formatter):
 
 | 配置 | 值 | 说明 |
 |------|-----|------|
-| `pool_size` | 5 | 最小连接数 |
-| `max_overflow` | 10 | 最大额外连接 |
+| `pool_size` | 20 | 最小连接数（华为云 RDS 调优） |
+| `max_overflow` | 30 | 最大额外连接 |
 | `pool_recycle` | 1800 | 30 分钟回收（防陈旧连接） |
 | `pool_pre_ping` | True | 使用前测试连接 |
+| 读写分离 | `DATABASE_READ_URL` | 可选只读副本路由 |
 | 密码编码 | `urllib.parse.quote_plus()` | 防特殊字符注入 |
-
-### 熔断器 (`circuit_breaker.py`)
-
-- 线程安全状态机: closed → open → half-open
-- 外部服务调用失败自动熔断
-- 自动恢复尝试 + `threading.Lock` 保护状态转换
 
 ---
 
-## BCG 企业平台安全特性 (v15.8)
+## BCG 企业平台安全特性 (v15.8+)
 
 ### Prompt 版本控制 (`prompt_registry.py`)
 
@@ -550,8 +563,10 @@ class JsonFormatter(logging.Formatter):
 | 特性 | 说明 |
 |------|------|
 | **任务路由** | 按 task_type / context_tokens / quality / budget 自动选择模型 |
+| **三后端** | Gemini (在线) + LiteLLM (兼容) + LM Studio (本地离线) |
 | **成本追踪** | scenario / project_id 归因到 `agent_token_usage` |
 | **预算控制** | 按场景和项目维度的用量分析 |
+| **DB 配置** | `ModelConfigManager` 运行时动态调整 tier 映射 |
 
 ### 评估框架安全 (`eval_scenario.py`)
 
@@ -560,6 +575,50 @@ class JsonFormatter(logging.Formatter):
 | **场景隔离** | 每个评估场景独立指标体系 |
 | **数据集管理** | `agent_eval_datasets` 表, 黄金测试数据存储 |
 | **质检指标** | defect_precision / recall / f1 / fix_success_rate |
+| **可插拔评估器** | 15 内置评估器 (质量/安全/性能/准确性) |
+
+---
+
+## API 网关安全 (v22.0, Layer 9)
+
+Starlette 中间件实现，无需外部 API 网关（Kong）。
+
+### RateLimitMiddleware (`api_middleware.py`)
+
+| 配置 | 值 | 说明 |
+|------|-----|------|
+| **Per-user 分钟限制** | 100 req/min | JWT Cookie 提取用户名 |
+| **Per-IP 小时限制** | 1000 req/hr | `request.client.host` |
+| **算法** | 滑动窗口 | 内存态 `defaultdict(list)` |
+| **路由过滤** | 仅 `/api/*` | 非 API 路由跳过 |
+| **响应** | 429 + `retry_after` | JSON 错误体 |
+
+### CircuitBreakerMiddleware (`api_middleware.py`)
+
+| 配置 | 值 | 说明 |
+|------|-----|------|
+| **失败阈值** | 5 次连续 5xx | 触发 OPEN |
+| **冷却时间** | 30 秒 | OPEN → HALF_OPEN |
+| **状态机** | CLOSED → OPEN → HALF_OPEN → CLOSED | 标准三态 |
+| **探测请求** | HALF_OPEN 允许 1 个请求 | 成功则恢复 CLOSED |
+| **快速失败** | OPEN 状态返回 503 | `{"circuit": "open"}` |
+
+### 熔断器 (`circuit_breaker.py`)
+
+- 线程安全状态机: closed → open → half-open
+- Per-tool/agent 粒度的失败率追踪
+- `threading.Lock` 保护状态转换
+- 指标上报到 Prometheus
+
+---
+
+## 反馈闭环安全 (v19.0)
+
+| 机制 | 实现 | 文件 |
+|------|------|------|
+| **反馈存储** | `agent_feedback` 表, per-user 隔离 | `feedback.py` |
+| **参考查询入库** | upvote 自动入库需 embedding 验证 | `reference_queries.py` |
+| **失败分析** | downvote 触发 FailureAnalyzer, 不暴露内部错误 | `feedback.py` |
 
 ---
 
@@ -568,10 +627,12 @@ class JsonFormatter(logging.Formatter):
 | 限制 | 说明 | 风险等级 |
 |------|------|---------|
 | SSRF 172.16.x 遗漏 | 未阻断 172.16.0.0/12 私有网段 | 低 |
-| REST API 无速率限制 | 仅 Bot 有限流, REST 端点无 | 中 |
 | CORS 未显式配置 | 依赖 Chainlit/Starlette 默认 | 低 |
 | 前端无 CSP | 缺少 Content-Security-Policy 头 | 低 |
 | Guardrails 可禁用 | `GUARDRAILS_DISABLED=1` 环境变量可关闭 | 低（仅测试用） |
+| 速率限制内存态 | RateLimitMiddleware 不跨重启持久化，无 Redis 后端 | 低（单实例部署） |
+| WebSocket 认证 | annotation_ws.py 依赖 Chainlit 会话层，无独立 token 校验 | 低 |
+| OAuth 自动创建 | 首次 OAuth 登录自动创建 analyst 用户，无管理员审批 | 低 |
 
 ---
 
@@ -593,7 +654,7 @@ class JsonFormatter(logging.Formatter):
 | 加密 | mcp_hub.py, auth.py, sharing.py | Fernet + PBKDF2 + AES-256-CBC | ★★★★★ |
 | 线程安全 | 14 个模块 | 17 个 threading.Lock / asyncio.Lock | ★★★★★ |
 | 工具级策略 | guardrail_policies.yaml | YAML 驱动 deny/confirm/allow + ADK 插件 | ★★★★★ |
-| 速率限制 | bot_base.py | 滑动窗口（仅 Bot） | ★★★☆☆ |
+| 速率限制 | api_middleware.py, bot_base.py | RateLimitMiddleware (100/min per-user, 1000/hr per-IP) + Bot 滑动窗口 | ★★★★☆ |
 
 ---
 
@@ -611,7 +672,10 @@ class JsonFormatter(logging.Formatter):
 | 041 | `041_alert_rules.sql` | 告警规则 + 历史表 |
 | 043 | `043_qc_reviews.sql` | 质检人工复核表 |
 | 045 | `045_prompt_registry.sql` | Prompt 版本控制 |
+| 053 | `053_agent_feedback.sql` | 反馈表 (per-user 隔离) |
+| 054 | `054_reference_queries.sql` | 参考查询库 |
+| 057 | `057_model_config.sql` | 模型配置 (运行时 tier 管理) |
 
 ---
 
-*本文档基于 GIS Data Agent v16.0 (ADK v1.27.2) 代码审查编写。共记录 120+ 个安全控制点，覆盖 8 层防御体系、20 个安全领域、48 个数据库迁移、228 个 REST API 端点。*
+*本文档基于 GIS Data Agent v23.0 (ADK v1.27.2) 代码审查编写。共记录 130+ 个安全控制点，覆盖 9 层防御体系、20 个安全领域、64 个数据库迁移、280 个 REST API 端点。*
