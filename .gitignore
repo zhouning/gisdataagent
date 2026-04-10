@@ -96,7 +96,8 @@ data_agent/eval_results/
 /reprojected_*
 /features_enhanced_*
 
-# World model paper (private, not for sharing)
+# Papers (private, not for sharing)
+docs/causal_inference_paper.tex
 docs/world_model_paper.tex
 docs/world_model_paper_en.docx
 docs/world_model_paper_cn.docx
@@ -125,6 +126,9 @@ docs/generate_*_paper*
 docs/technical_paper_*
 docs/surveying_qc_demo_script.*
 docs/surveying_qc_agent_design.*
+docs/causal_inference_reviewer_report.md
+docs/world-model-tech-preview-design.md
+docs/world-model-technical-report.docx
 
 # PDF and video files — NEVER commit (may contain sensitive data)
 *.pdf
