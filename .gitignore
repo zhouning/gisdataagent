@@ -102,6 +102,8 @@ docs/world_model_paper_en.docx
 docs/world_model_paper_cn.docx
 docs/fig_architecture.png
 docs/world-model-technical-report.md
+docs/world-model-technical-report.docx
+docs/world-model-tech-preview-design.md
 docs/world-model-technical-review*.md
 docs/reviewer_comments*.md
 scripts/generate_paper_docx.py
