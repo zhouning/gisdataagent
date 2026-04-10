@@ -106,6 +106,8 @@ docs/world-model-technical-report.docx
 docs/world-model-tech-preview-design.md
 docs/world-model-technical-review*.md
 docs/reviewer_comments*.md
+docs/GIS_Data_Agent_Pitch_Deck.md
+docs/GIS_Data_Agent_Pitch_Deck.docx
 scripts/generate_paper_docx.py
 scripts/generate_architecture_fig.py
 scripts/ablation_study.py
