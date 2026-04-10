@@ -1,6 +1,6 @@
 # Data Agent 工具清单
 
-> 系统中所有 Tools 的完整清单：39 个 Toolset 包含 260+ 工具函数，覆盖空间处理、治理质检、因果推断、世界模型、语义算子等全领域。
+> 系统中所有 Tools 的完整清单：40 个 Toolset 包含 270+ 工具函数，覆盖空间处理、治理质检、因果推断、世界模型、语义算子等全领域。
 
 ---
 
@@ -8,16 +8,16 @@
 
 | 类别 | 数量 |
 |------|------|
-| **Toolset（工具集）** | 39 个 BaseToolset 子类 |
-| **内置工具函数** | 260+（含 ArcPy 可选工具） |
+| **Toolset（工具集）** | 40 个 BaseToolset 子类 |
+| **内置工具函数** | 270+（含 ArcPy 可选工具） |
 | **用户自定义工具** | 无限（UserToolset 动态加载） |
 | **MCP 外部工具** | 按 MCP Server 动态发现 |
 
 ---
 
-## 全部 39 个 Toolset 及其工具
+## 全部 40 个 Toolset 及其工具
 
-### 1. GeoProcessingToolset — 空间处理（18 核心 + 8 ArcPy = 26）
+### 1. GeoProcessingToolset — 空间处理（17 核心 + 8 ArcPy = 25）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -31,23 +31,22 @@
 | 8 | `create_buffer` | 缓冲区创建 |
 | 9 | `summarize_within` | 区域内汇总统计 |
 | 10 | `overlay_difference` | 叠加差集分析 |
-| 11 | `generate_heatmap` | KDE 核密度热力图 |
-| 12 | `find_within_distance` | 距离范围内搜索 |
-| 13 | `polygon_neighbors` | 邻域多边形分析 |
-| 14 | `add_field` | 添加字段 |
-| 15 | `add_join` | 属性连接 |
-| 16 | `calculate_field` | 字段计算（表达式） |
-| 17 | `summary_statistics` | 汇总统计 |
-| 18 | `filter_vector_data` | 矢量数据过滤 |
+| 11 | `find_within_distance` | 距离范围内搜索 |
+| 12 | `polygon_neighbors` | 邻域多边形分析 |
+| 13 | `add_field` | 添加字段 |
+| 14 | `add_join` | 属性连接 |
+| 15 | `calculate_field` | 字段计算（表达式） |
+| 16 | `summary_statistics` | 汇总统计 |
+| 17 | `filter_vector_data` | 矢量数据过滤 |
 | | **ArcPy 可选工具（8）** | |
-| 19 | `arcpy_buffer` | ArcPy 缓冲区 |
-| 20 | `arcpy_clip` | ArcPy 裁剪 |
-| 21 | `arcpy_dissolve` | ArcPy 融合 |
-| 22 | `arcpy_project` | ArcPy 投影变换 |
-| 23 | `arcpy_repair_geometry` | ArcPy 几何修复 |
-| 24 | `arcpy_slope` | ArcPy 坡度分析 |
-| 25 | `arcpy_zonal_statistics` | ArcPy 分区统计 |
-| 26 | `arcpy_extract_watershed` | ArcPy 流域提取 |
+| 18 | `arcpy_buffer` | ArcPy 缓冲区 |
+| 19 | `arcpy_clip` | ArcPy 裁剪 |
+| 20 | `arcpy_dissolve` | ArcPy 融合 |
+| 21 | `arcpy_project` | ArcPy 投影变换 |
+| 22 | `arcpy_repair_geometry` | ArcPy 几何修复 |
+| 23 | `arcpy_slope` | ArcPy 坡度分析 |
+| 24 | `arcpy_zonal_statistics` | ArcPy 分区统计 |
+| 25 | `arcpy_extract_watershed` | ArcPy 流域提取 |
 
 ### 2. GovernanceToolset — 数据治理（18）
 
@@ -243,7 +242,19 @@
 | 6 | `community_detection` | 社区检测 |
 | 7 | `accessibility_analysis` | 可达性分析 |
 
-### 15. VirtualSourceToolset — 虚拟数据源（7）
+### 15. FusionToolset — 数据融合（7）
+
+| # | 工具名 | 功能 |
+|---|--------|------|
+| 1 | `profile_fusion_sources` | 融合源画像 |
+| 2 | `assess_fusion_compatibility` | 兼容性评估 |
+| 3 | `fuse_datasets` | 执行融合（10 种策略） |
+| 4 | `validate_fusion_quality` | 质量验证 |
+| 5 | `standardize_timestamps` | 时间戳标准化 |
+| 6 | `validate_temporal_consistency` | 时序一致性验证 |
+| 7 | `inject_document_context` | 文档元数据提取注入 |
+
+### 16. VirtualSourceToolset — 虚拟数据源（7）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -255,7 +266,7 @@
 | 6 | `discover_layers_tool` | 发现可用图层/集合 |
 | 7 | `add_wms_layer_tool` | 添加 WMS 图层到地图 |
 
-### 16. CausalInferenceToolset — 统计因果推断（6）
+### 17. CausalInferenceToolset — 统计因果推断（6）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -265,17 +276,6 @@
 | 4 | `spatial_granger_causality` | 空间 Granger 因果检验 |
 | 5 | `geographic_causal_mapping` | 地理趋同交叉映射（GCCM） |
 | 6 | `causal_forest_analysis` | 因果森林（异质处理效应） |
-
-### 17. DatabaseToolset — 数据库（6）
-
-| # | 工具名 | 功能 |
-|---|--------|------|
-| 1 | `query_database` | SQL 查询（参数化，RLS） |
-| 2 | `list_tables` | 表列表 |
-| 3 | `describe_table` | 表结构描述 |
-| 4 | `share_table` | 共享表 |
-| 5 | `import_to_postgis` | 导入到 PostGIS |
-| 6 | `register_table_ownership` | 注册表所有权 |
 
 ### 18. StreamingToolset — 实时流（5）
 
@@ -287,7 +287,17 @@
 | 4 | `get_stream_statistics` | 流统计 |
 | 5 | `set_geofence_alert` | 地理围栏告警 |
 
-### 19. SpatialAnalysisTier2Toolset — 高级空间分析（5）
+### 19. DatabaseToolset — 数据库（5）
+
+| # | 工具名 | 功能 |
+|---|--------|------|
+| 1 | `query_database` | SQL 查询（参数化，RLS） |
+| 2 | `list_tables` | 表列表 |
+| 3 | `describe_table` | 表结构描述 |
+| 4 | `share_table` | 共享表 |
+| 5 | `import_to_postgis` | 导入到 PostGIS |
+
+### 20. SpatialAnalysisTier2Toolset — 高级空间分析（5）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -297,7 +307,7 @@
 | 4 | `spatial_change_detection` | 多时相变化检测 |
 | 5 | `viewshed_analysis` | DEM 可视域分析 |
 
-### 20. AnalysisToolset — 核心分析（5）
+### 21. AnalysisToolset — 核心分析（5）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -307,7 +317,7 @@
 | 4 | `train_drl_model` | 训练自定义 DRL 模型 |
 | 5 | `list_drl_scenarios` | 列出 DRL 场景模板 |
 
-### 21. WorldModelToolset — 世界模型（5）
+### 22. WorldModelToolset — 世界模型（5）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -317,7 +327,7 @@
 | 4 | `world_model_embedding_coverage` | 查询 AlphaEarth 嵌入缓存覆盖 |
 | 5 | `world_model_find_similar` | 向量相似度搜索相似土地利用模式 |
 
-### 22. PrecisionToolset — 套合精度（5）
+### 23. PrecisionToolset — 套合精度（5）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -327,7 +337,7 @@
 | 4 | `precision_score` | 多维精度综合评分（0-100） |
 | 5 | `overlay_precision_check` | 套合精度检查 |
 
-### 23. OperatorToolset — 语义算子（5）
+### 24. OperatorToolset — 语义算子（5）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -337,7 +347,7 @@
 | 4 | `visualize_data` | 可视化语义算子（自动选图表类型） |
 | 5 | `list_operators` | 列出全部可用语义算子 |
 
-### 24. AdminToolset — 管理（5）
+### 25. AdminToolset — 管理（5）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
@@ -347,14 +357,7 @@
 | 4 | `delete_template` | 删除模板 |
 | 5 | `share_template` | 共享模板 |
 
-### 25. FusionToolset — 数据融合（4）
-
-| # | 工具名 | 功能 |
-|---|--------|------|
-| 1 | `profile_fusion_sources` | 融合源画像 |
-| 2 | `assess_fusion_compatibility` | 兼容性评估 |
-| 3 | `fuse_datasets` | 执行融合（10 种策略） |
-| 4 | `validate_fusion_quality` | 质量验证 |
+<!-- PLACEHOLDER_REST -->
 
 ### 26. MemoryToolset — 记忆（4）
 
@@ -440,19 +443,20 @@
 | 2 | `spark_check_tier` | 根据文件大小判断执行层级 |
 | 3 | `spark_list_jobs` | 列出近期分布式计算任务 |
 
-### 36. DreamerToolset — Dreamer 世界模型 DRL（2）
-
-| # | 工具名 | 功能 |
-|---|--------|------|
-| 1 | `dreamer_optimize` | Dreamer 风格 DRL + 世界模型前瞻辅助奖励 |
-| 2 | `dreamer_status` | Dreamer 集成状态和组件健康检查 |
-
-### 37. FileToolset — 文件（2）
+### 36. FileToolset — 文件（3）
 
 | # | 工具名 | 功能 |
 |---|--------|------|
 | 1 | `list_user_files` | 用户文件列表（本地+云） |
 | 2 | `delete_user_file` | 删除文件 |
+| 3 | `convert_format` | 格式转换（GeoJSON/SHP/GPKG） |
+
+### 37. DreamerToolset — Dreamer 世界模型 DRL（2）
+
+| # | 工具名 | 功能 |
+|---|--------|------|
+| 1 | `dreamer_optimize` | Dreamer 风格 DRL + 世界模型前瞻辅助奖励 |
+| 2 | `dreamer_status` | Dreamer 集成状态和组件健康检查 |
 
 ### 38. McpHubToolset — MCP 外部工具（动态）
 
@@ -467,7 +471,11 @@
 | tool-mcp-servers | stdio | ArcGIS/QGIS/Blender 专业工具 |
 | reference-data | REST | GB/T 24356 标准参考数据 |
 
-### 39. UserToolset — 用户自定义工具（动态）
+### 39. SkillBundlesToolset — 技能包（动态）
+
+`build_all_skills_toolset()` 从 `data_agent/skills/` 加载 26 个内置 ADK Skill，三级增量加载（L1 元数据 → L2 指令 → L3 资源），按触发关键词匹配后动态构建 LlmAgent。
+
+### 40. UserToolset — 用户自定义工具（动态）
 
 从 PostgreSQL 加载用户定义的声明式工具模板，动态构建为 `FunctionTool`。支持 5 种模板类型：
 
@@ -483,14 +491,23 @@
 
 ---
 
+## 独立工具函数（非 Toolset）
+
+| 工具名 | 位置 | 功能 |
+|--------|------|------|
+| `approve_quality` | `utils.py` | 质量门控函数，被 3 个 Checker Agent 使用 |
+| `knowledge_tool` | `agent.py` (AgentTool) | Vertex AI Search 企业文档搜索，包装 knowledge_agent |
+
+---
+
 ## 按领域统计
 
 ```
-空间处理 (GeoProcessing)       ██████████████████████████ 26 (10%)
+空间处理 (GeoProcessing)       █████████████████████████ 25 (9%)
 治理 (Governance)              ██████████████████ 18 (7%)
 遥感 (RemoteSensing)           █████████████ 13 (5%)
-清洗 (DataCleaning)            ███████████ 11 (4%)
 可视化 (Visualization)         ███████████ 11 (4%)
+清洗 (DataCleaning)            ███████████ 11 (4%)
 图表 (Chart)                   █████████ 9 (3%)
 数据湖 (DataLake)              █████████ 9 (3%)
 语义层 (SemanticLayer)         █████████ 9 (3%)
@@ -500,17 +517,17 @@
 协作 (Team)                    ████████ 8 (3%)
 工具演化 (ToolEvolution)       ████████ 8 (3%)
 高级分析 (AdvancedAnalysis)    ███████ 7 (3%)
+融合 (Fusion)                  ███████ 7 (3%)
 虚拟源 (VirtualSource)         ███████ 7 (3%)
 因果推断 (CausalInference)     ██████ 6 (2%)
-数据库 (Database)              ██████ 6 (2%)
 空间分析T2 (SpatialT2)        █████ 5 (2%)
 流式 (Streaming)               █████ 5 (2%)
+数据库 (Database)              █████ 5 (2%)
 分析 (Analysis)                █████ 5 (2%)
 世界模型 (WorldModel)          █████ 5 (2%)
 精度 (Precision)               █████ 5 (2%)
 语义算子 (Operator)            █████ 5 (2%)
 管理 (Admin)                   █████ 5 (2%)
-融合 (Fusion)                  ████ 4 (2%)
 记忆 (Memory)                  ████ 4 (2%)
 LLM因果 (LLMCausal)           ████ 4 (2%)
 世界因果 (CausalWorldModel)    ████ 4 (2%)
@@ -521,15 +538,16 @@ LLM因果 (LLMCausal)           ████ 4 (2%)
 NL2SQL                         ███ 3 (1%)
 报告 (Report)                  ███ 3 (1%)
 Spark                          ███ 3 (1%)
+文件 (File)                    ███ 3 (1%)
 Dreamer                        ██ 2 (1%)
-文件 (File)                    ██ 2 (1%)
 MCP 外部                       ▪▪▪ 动态
+技能包                          ▪▪▪ 动态
 用户自定义                      ▪▪▪ 动态
 ```
 
 ---
 
-## 新增 Toolset 变更摘要（v12.0 → v16.0）
+## Toolset 版本变更摘要（v12.0 → v23.0）
 
 | 版本 | 新增 Toolset | 工具数 |
 |------|-------------|--------|
@@ -542,8 +560,8 @@ MCP 外部                       ▪▪▪ 动态
 | v16.0 | OperatorToolset, ToolEvolutionToolset | 13 |
 | **合计** | **+16 Toolset** | **+97 工具** |
 
-已有 Toolset 也有扩展：ExplorationToolset 6→9、RemoteSensingToolset 7→13、AnalysisToolset 3→5、DatabaseToolset 5→6。
+已有 Toolset 扩展：ExplorationToolset 6→9、RemoteSensingToolset 7→13、AnalysisToolset 3→5、FusionToolset 4→7、FileToolset 2→3。
 
 ---
 
-*本文档基于 GIS Data Agent v16.0 (ADK v1.27.2) 的 39 个 Toolset 源码精确同步，2026-04-02。*
+*本文档基于 GIS Data Agent v23.0 (ADK v1.27.2) 的 40 个 Toolset 源码精确同步，2026-04-10。*
