@@ -145,5 +145,9 @@ docs/world-model-technical-report.docx
 *.pyz
 .files/
 
+# Pitch deck — confidential
+docs/GIS_Data_Agent_Pitch_Deck.docx
+docs/GIS_Data_Agent_Pitch_Deck.md
+
 # Local data samples — NEVER commit (sensitive/large)
 01*/
