@@ -28,32 +28,23 @@
 </p>
 <p align="center"><em>Data Agent 项目中集成的世界模型、时空因果推断、深度强化学习的内容包含了毕业论文选题时所罗列的方向</em></p>
 
-## 📚 官方技术文档
+## 官方技术文档
 
-本项目提供基于 **DITA XML** 标准编写的工业级技术文档，内容涵盖架构白皮书、API 参考及多引擎配置指南等。
+基于 **DITA XML** 标准编写的工业级技术文档，包含两套文档集：
 
-👉 **[在线阅读完整的 HTML 预览版 (中文)](docs/dita/preview.html)**
+- **[技术架构指南 (23 章)](docs/dita/preview-technical-guide.html)** — 系统架构总览、语义路由、多管线编排、40 个 Toolset 框架、融合引擎 v2.0、DRL 优化、知识图谱、因果推断、世界模型、遥感智能体、测绘质检、模型网关、上下文工程、自主能力层级、认证 RBAC、数据库架构、280 REST API、前端三面板、地图渲染、可观测性、评测 CI/CD、架构评估
+- **[用户指南 (12 章)](docs/dita/preview.html)** — 系统概述、本地部署、GIS 引擎配置、多模态融合、GraphRAG 知识增强、Agent 插件与护栏、高级空间分析、MCP Hub 与自定义技能、因果推断、测绘质检、API 参考、常见问题
 
-> **提示：** 
-> 您可以通过运行 `python preview_docs.py` 自行编译最新的 DITA XML 源文件（位于 `docs/dita/` 目录），并查阅《多智能体架构深度解析》、《多源多模态数据融合引擎(MMFE)》、《GraphRAG 知识图谱》等深度内容。
-
-## 📚 官方技术文档
-
-本项目提供基于 **DITA XML** 标准编写的工业级技术文档，内容涵盖架构白皮书、API 参考及多引擎配置指南等。
-
-👉 **[在线阅读完整的 HTML 预览版 (中文)](docs/dita/preview.html)**
-
-> **提示：** 
-> 您可以通过运行 `python preview_docs.py` 自行编译最新的 DITA XML 源文件（位于 `docs/dita/` 目录），并查阅《多智能体架构深度解析》、《多源多模态数据融合引擎(MMFE)》、《GraphRAG 知识图谱》等深度内容。
+> DITA XML 源文件位于 `docs/dita/` 目录（2 个 ditamap + 33 个 topic）。
 
 ## 核心指标
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 3700+ tests, 176 test files |
-| 工具集 | 40 BaseToolset (含 OperatorToolset 4 算子 + ToolEvolutionToolset 8 工具), 5 SkillBundle, 240+ 工具 |
-| ADK Skills | 26 场景化领域技能 (含 skill-creator AI 辅助创建) |
-| REST API | 276 endpoints |
+| 测试覆盖 | 3588 tests, 171 test files |
+| 工具集 | 40 BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具), 5 SkillBundle, 270+ 工具 |
+| ADK Skills | 25 场景化领域技能 (含 skill-creator, world-model, causal, surveying-qc) + DB 自定义 Skills + 用户工具 |
+| REST API | 280 endpoints (frontend_api 3438 行 + 24 拆分路由模块 4992 行 + app + stream + bots + WebSocket) |
 | DB 迁移 | 64 个 SQL 迁移 |
 | DataPanel | 29 标签页 (3 分组: 数据资源/智能分析/平台运营) |
 | Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程 + 跨系统血缘) |
@@ -84,7 +75,7 @@
 | 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
 | DRL + World Model | Dreamer 式集成: ParcelEmbeddingMapper + ActionToScenarioEncoder + 辅助奖励前瞻 |
 | NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
-| 连接器 | 9 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage/ReferenceData) |
+| 连接器 | 10 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage/ReferenceData/SaveMyself) |
 | 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
 | 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + **告警规则引擎** + 实时监控仪表盘 + Grafana 模板 |
 | 成本管理 | USD 定价表 (10 模型) + Token/USD 双级预算熔断 + 成本预估 |
@@ -546,7 +537,7 @@ cd frontend && npm install && npm run dev
 | 类别 | 功能 | 描述 |
 |---|---|---|
 | **AI 核心** | 语义层 | YAML 目录（15 领域、7 区域、8 空间算子）+ 3 级层次 + DB 注解 |
-| | 技能包 | 18 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析等），三级增量加载 (v7.5) |
+| | 技能包 | 25 个细粒度场景技能（耕地合规、坐标变换、空间聚类、PostGIS 分析、世界模型、因果推理、测绘质检等），三级增量加载 (v7.5) |
 | | 自定义 Skills | DB 驱动用户自建专家 Agent：自定义指令/工具集/触发词，@mention 调用，LLM 注入防护，**前端完整 CRUD** (v8.0/v12.0) |
 | | 自定义 Tools | 声明式工具模板 (HTTP/SQL/文件/链式)，动态 FunctionTool 构建，UserToolset (v12.0) |
 | | NL 图层控制 | 自然语言 显示/隐藏/样式/移除 地图图层 |
@@ -595,7 +586,7 @@ cd frontend && npm install && npm run dev
 | | RAG 知识库 | 用户上传文档 → 向量化存储 → 语义搜索，多租户隔离 (v8.0) |
 | | 实时流 | Redis Streams 地理围栏告警 + IoT 数据 |
 | | 遥感分析 | 栅格分析、NDVI、LULC/DEM 下载 |
-| **前端** | 三面板 UI | 对话 + 地图 + 数据；13 个标签页；面板拖拽调整；React Error Boundary；React 18 + Leaflet + deck.gl |
+| **前端** | 三面板 UI | 对话 + 地图 + 数据；29 标签页 (3 分组)；面板拖拽调整；React Error Boundary；React 18 + Leaflet + deck.gl |
 | | 分类着色图层 | `categorized` 图层类型：按属性字段自动着色多边形 + 中文图例（v7.5） |
 | | 文件管理 | 数据面板点击文件即可打开/下载（PDF/DOCX/HTML 等）(v7.5) |
 | | Action 按钮 | 导出 PDF 报告、分享结果等按钮通过 ChainlitAPI 调用后端回调 (v7.5) |
@@ -623,8 +614,9 @@ cd frontend && npm install && npm run dev
 | **框架** | Google ADK v1.27.2 (`google.adk.agents`, `google.adk.runners`) |
 | **LLM** | Gemini 2.5 Flash / 2.5 Pro / Gemma 4 31B（Agent），Gemini 2.0 Flash（路由），LiteLLM 兼容任意模型 |
 | **前端** | React 18 + TypeScript + Vite + Leaflet.js + deck.gl + React Flow |
-| **后端** | Chainlit + Starlette（241 个 REST API 端点 + SSE Streaming） |
-| **数据库** | PostgreSQL 16 + PostGIS 3.4 |
+| **后端** | Chainlit + Starlette（280 个 REST API 端点 + SSE Streaming） |
+| **数据库** | PostgreSQL 16 + PostGIS 3.4（64 个迁移），DuckDB（Lite 模式） |
+| **缓存** | Redis（分布式锁 + 任务队列 + 语义缓存），内存降级兼容 |
 | **GIS** | GeoPandas, Shapely, Rasterio, PySAL, Folium, mapclassify |
 | **ML** | PyTorch, Stable Baselines 3 (MaskablePPO), Gymnasium |
 | **云存储** | 华为 OBS（S3 兼容） |
@@ -637,11 +629,11 @@ cd frontend && npm install && npm run dev
 
 ```
 data_agent/
-├── app.py                       # Chainlit UI、RBAC、文件上传、管线调度 (3267 行)
+├── app.py                       # Chainlit UI、RBAC、文件上传、管线调度 (3948 行)
 ├── agent.py                     # Agent 定义、管道组装、ParallelAgent
 ├── intent_router.py             # 语义意图路由 (从 app.py 提取)
 ├── pipeline_helpers.py          # 管线辅助：工具说明、进度渲染、错误分类
-├── frontend_api.py              # 237 个 REST API 端点
+├── frontend_api.py              # 280 个 REST API 路由 (~3438 行)
 ├── pipeline_runner.py           # 无头管道执行器 + SSE 流式输出
 ├── dreamer_env.py               # DRL-World Model Dreamer 环境 (v15.5)
 ├── workflow_engine.py           # 工作流引擎：CRUD、顺序+DAG 执行、Webhook、Cron
@@ -667,7 +659,7 @@ data_agent/
 ├── workflow_templates.py        # 工作流模板市场：CRUD + 克隆 + 评分 (v10.0)
 ├── spatial_analysis_tier2.py    # 高级空间分析：IDW/Kriging/GWR/变化检测/可视域 (v10.0)
 ├── conftest.py                  # 集中测试夹具 + 事件循环安全
-├── toolsets/                    # 40 个 BaseToolset 模块 (含 DreamerToolset)
+├── toolsets/                    # 40 个 BaseToolset 模块
 │   ├── visualization_tools.py   #   11 个工具：分级设色、热力图、3D、图层控制
 │   ├── analysis_tools.py        #   分析工具 + LongRunningFunctionTool (DRL)
 │   ├── dreamer_tools.py         #   DRL-World Model Dreamer 集成工具 (v15.5)
@@ -690,17 +682,17 @@ data_agent/
 ├── standards/                   # 预置行业标准 YAML (v14.5)
 │   ├── dltb_2023.yaml           #   DLTB 30 字段 + 4 代码表
 │   └── gb_t_21010_2017.yaml     #   GB/T 21010 地类编码 73 值
-├── skills/                      # 18 个 ADK 场景技能（kebab-case 目录）
+├── skills/                      # 25 个 ADK 场景技能（kebab-case 目录）
 ├── prompts/                     # 3 个 YAML 提示词文件
 ├── evals/                       # Agent 评估框架（trajectory + rubric）
-├── migrations/                  # 38 个 SQL 迁移脚本
+├── migrations/                  # 64 个 SQL 迁移脚本
 ├── locales/                     # 国际化：zh.yaml + en.yaml
 ├── db_engine.py                 # 连接池单例
 ├── tool_filter.py               # 意图驱动动态工具过滤（ToolPredicate + ContextVar）
 ├── health.py                    # K8s 健康检查 API
 ├── observability.py             # 结构化日志 + Prometheus
 ├── i18n.py                      # 国际化：YAML + t() 函数
-├── test_*.py                    # 102 个测试文件 (2420+ 测试)
+├── test_*.py                    # 171 个测试文件 (3700+ 测试)
 └── run_evaluation.py            # Agent 评估运行器
 
 frontend/
@@ -710,7 +702,8 @@ frontend/
 │   │   ├── ChatPanel.tsx        # 对话 + 语音输入 + NL 图层控制
 │   │   ├── MapPanel.tsx         # Leaflet 地图 + 2D/3D 切换 + 标注
 │   │   ├── Map3DView.tsx        # deck.gl 3D 渲染器
-│   │   ├── DataPanel.tsx        # 13 标签页：文件/表格/资产/历史/用量/工具/工作流/建议/任务/模板/分析/能力/知识库
+│   │   ├── DataPanel.tsx        # 29 标签页 (3 分组: 数据资源/智能分析/平台运营)
+│   │   ├── datapanel/           # 31 个模块化标签页组件
 │   │   ├── WorkflowEditor.tsx   # React Flow 工作流可视化编辑器（含 Skill Agent 节点）
 │   │   ├── LoginPage.tsx        # 登录 + 应用内注册
 │   │   ├── AdminDashboard.tsx   # 管理仪表盘
@@ -725,103 +718,73 @@ docs/                            # 文档
 
 ## 前端架构
 
-自定义 React SPA 替代 Chainlit 默认 UI：
+自定义 React SPA（Palantir 深色主题）替代 Chainlit 默认 UI：
 
 ```
 ┌───────────────────┬──────────────────────────┬──────────────────────┐
 │  对话面板 (var)    │    地图面板 (flex-1)       │   数据面板 (var)     │
 │                    │                           │                      │
-│  消息流             │  Leaflet / deck.gl 地图    │  13 个标签页:         │
-│  流式输出           │  GeoJSON 图层              │  - 文件               │
-│  操作卡片           │  2D/3D 切换               │  - 表格预览            │
-│  语音输入           │  图层控制                  │  - 数据资产            │
-│  NL 图层控制        │  协作标注                  │  - 管线历史            │
-│                    │  底图切换                   │  - Token 用量         │
-│                    │  图例                      │  - MCP 工具           │
-│                    │                           │  - 工作流              │
-│                    │                           │  - 建议/任务/模板/分析 │
-│                    │                           │  - 能力/知识库         │
+│  消息流             │  Leaflet / deck.gl 地图    │  29 标签页 (3 分组):  │
+│  流式输出           │  GeoJSON 图层              │                      │
+│  操作卡片           │  2D/3D 切换               │  数据资源:            │
+│  语音输入           │  图层控制                  │   文件/表格/资产/数据源│
+│  NL 图层控制        │  协作标注                  │   元数据/GeoJSON/图表 │
+│  反馈按钮           │  跨图层关联高亮            │   拓扑               │
+│                    │  底图切换                   │                      │
+│                    │  图例                      │  智能分析:            │
+│                    │                           │   能力/工具/知识库/建议│
+│                    │                           │   记忆/市场/世界模型  │
+│                    │                           │   因果推理/优化/历史  │
+│                    │                           │   反馈               │
+│                    │                           │                      │
+│                    │                           │  平台运营:            │
+│                    │                           │   用量/分析/治理/质检 │
+│                    │                           │   告警/追踪/消息总线  │
+│                    │                           │   任务/工作流/模板    │
 └───────────────────┴──────────────────────────┴──────────────────────┘
 ```
 
-## REST API 端点（95 条路由）
+## REST API 端点（280 条路由）
 
-| 方法 | 路径 | 描述 |
+| 分组 | 数量 | 关键路径 |
 |---|---|---|
-| GET | `/api/catalog` | 数据资产列表（关键词/类型筛选） |
-| GET | `/api/catalog/{id}` | 资产详情 |
-| GET | `/api/catalog/{id}/lineage` | 数据血缘（上下游） |
-| GET | `/api/semantic/domains` | 语义领域列表 |
-| GET | `/api/semantic/hierarchy/{domain}` | 领域层次浏览 |
-| GET | `/api/pipeline/history` | 管线执行历史 |
-| GET | `/api/pipeline/stream` | SSE 流式管线输出 (v9.5) |
-| GET | `/api/user/token-usage` | Token 消耗 + 管线分布 |
-| DELETE | `/api/user/account` | 自助删除账户 |
-| GET/PUT | `/api/user/analysis-perspective` | 分析视角查看/设置 (v7.1) |
-| GET | `/api/user/memories` | 自动提取的智能记忆列表 (v7.5) |
-| DELETE | `/api/user/memories/{id}` | 删除指定智能记忆 (v7.5) |
-| GET | `/api/sessions` | 会话列表 |
-| DELETE | `/api/sessions/{id}` | 删除会话 |
-| GET/POST | `/api/annotations` | 标注列表/创建 |
-| PUT/DELETE | `/api/annotations/{id}` | 更新/删除标注 |
-| GET | `/api/config/basemaps` | 底图配置 |
-| GET | `/api/admin/users` | 用户列表（管理员） |
-| PUT | `/api/admin/users/{username}/role` | 修改角色（管理员） |
-| DELETE | `/api/admin/users/{username}` | 删除用户（管理员） |
-| GET | `/api/admin/metrics/summary` | 系统指标（管理员） |
-| GET | `/api/mcp/servers` | MCP 服务器状态 |
-| POST | `/api/mcp/servers` | 添加 MCP 服务器 (v7.1) |
-| GET | `/api/mcp/tools` | MCP 工具列表 |
-| POST | `/api/mcp/servers/test` | MCP 连接测试 |
-| POST | `/api/mcp/servers/{name}/toggle` | MCP 启停（管理员） |
-| POST | `/api/mcp/servers/{name}/reconnect` | MCP 重连（管理员） |
-| PUT | `/api/mcp/servers/{name}` | 更新 MCP 服务器配置 (v7.1) |
-| DELETE | `/api/mcp/servers/{name}` | 删除 MCP 服务器 (v7.1) |
-| GET/POST | `/api/workflows` | 工作流列表/创建 |
-| GET/PUT/DELETE | `/api/workflows/{id}` | 工作流详情/更新/删除 |
-| POST | `/api/workflows/{id}/execute` | 执行工作流 |
-| GET | `/api/workflows/{id}/runs` | 执行历史 |
-| GET | `/api/workflows/{id}/runs/{run_id}/status` | 执行状态查询 |
-| GET | `/api/map/pending` | 待处理地图更新（前端轮询） |
-| GET/POST | `/api/skills` | 自定义 Skills 列表/创建 (v8.0) |
-| GET/PUT/DELETE | `/api/skills/{id}` | Skill 详情/更新/删除 (v8.0) |
-| GET/POST | `/api/kb` | 知识库列表/创建 (v8.0) |
-| POST | `/api/kb/search` | 知识库语义搜索 (v8.0) |
-| GET/DELETE | `/api/kb/{id}` | 知识库详情/删除 (v8.0) |
-| POST | `/api/kb/{id}/documents` | 上传知识库文档 (v8.0) |
-| DELETE | `/api/kb/{id}/documents/{doc_id}` | 删除知识库文档 (v8.0) |
-| GET | `/api/analytics/latency` | 管线延迟分析 (v9.0) |
-| GET | `/api/analytics/tool-success` | 工具成功率分析 (v9.0) |
-| GET | `/api/analytics/token-efficiency` | Token 效率分析 (v9.0) |
-| GET | `/api/analytics/throughput` | 管线吞吐量分析 (v9.0) |
-| GET | `/api/analytics/agent-breakdown` | Agent 分布分析 (v9.0) |
-| GET | `/api/mcp/servers/mine` | 我的 MCP 服务器 (v10.0) |
-| POST | `/api/mcp/servers/{name}/share` | MCP 共享切换 (v10.0) |
-| GET/POST | `/api/bundles` | 技能包列表/创建 (v10.0) |
-| GET | `/api/bundles/available-tools` | 可用工具集+技能列表 (v10.0) |
-| GET/PUT/DELETE | `/api/bundles/{id}` | 技能包详情/更新/删除 (v10.0) |
-| GET/POST | `/api/templates` | 工作流模板列表/创建 (v10.0) |
-| GET/PUT/DELETE | `/api/templates/{id}` | 模板详情/更新/删除 (v10.0) |
-| POST | `/api/templates/{id}/clone` | 克隆模板为工作流 (v10.0) |
-| POST | `/api/kb/{id}/build-graph` | 构建知识库实体图谱 (v10.0) |
-| GET | `/api/kb/{id}/graph` | 实体关系图谱数据 (v10.0) |
-| POST | `/api/kb/{id}/graph-search` | 图增强语义搜索 (v10.0) |
-| GET | `/api/kb/{id}/entities` | 知识库实体列表 (v10.0) |
-| GET | `/api/capabilities` | 能力聚合（内置技能+自定义技能+工具集+用户工具）(v12.0) |
-| GET/POST | `/api/user-tools` | 用户自定义工具列表/创建 (v12.0) |
-| GET/PUT/DELETE | `/api/user-tools/{id}` | 用户工具详情/更新/删除 (v12.0) |
-| POST | `/api/user-tools/{id}/test` | 用户工具试运行 (v12.0) |
-| POST | `/api/tasks/submit` | 异步任务提交 |
-| GET | `/api/tasks` | 任务列表 |
-| GET/DELETE | `/api/tasks/{id}` | 任务详情/取消 |
-| GET | `/api/suggestions` | 主动探索建议 |
-| POST | `/api/suggestions/{id}/execute` | 执行建议 |
-| POST | `/api/suggestions/{id}/dismiss` | 忽略建议 |
+| 数据资产 + 血缘 | 6 | `/api/catalog`, `/api/catalog/{id}/lineage` |
+| 语义层 | 3 | `/api/semantic/domains`, `/api/semantic/hierarchy/{domain}` |
+| 管线 | 5 | `/api/pipeline/history`, `/api/pipeline/stream` (SSE) |
+| 用户管理 | 8 | `/api/user/token-usage`, `/api/user/memories`, `/api/user/account` |
+| 会话 | 2 | `/api/sessions`, `/api/sessions/{id}` |
+| 地图标注 | 4 | `/api/annotations` CRUD + WebSocket 广播 |
+| 管理员 | 5 | `/api/admin/users`, `/api/admin/metrics/summary` |
+| MCP Hub | 10 | `/api/mcp/servers` CRUD + toggle/reconnect/share |
+| 工作流 | 8 | `/api/workflows` CRUD + execute + run status |
+| 自定义 Skills | 5 | `/api/skills` CRUD |
+| 技能包 | 6 | `/api/bundles` CRUD + available-tools |
+| 用户工具 | 6 | `/api/user-tools` CRUD |
+| 知识库 + GraphRAG | 10 | `/api/kb` CRUD + graph-search + entities |
+| 模板 | 6 | `/api/templates` CRUD + clone |
+| 管线分析 | 5 | `/api/analytics/latency`, `tool-success`, `token-efficiency`, `throughput`, `agent-breakdown` |
+| 任务队列 | 4 | `/api/tasks` CRUD |
+| 能力发现 | 1 | `/api/capabilities` |
+| 地图更新 | 1 | `/api/map/pending` |
+| 虚拟数据源 | 6 | `/api/virtual-sources` CRUD |
+| 质检复核 | 4 | `/api/qc/reviews` 工作流 |
+| 上下文引擎 | 2 | `/api/context/preview` |
+| 模型网关 | 3 | `/api/gateway/models`, `/api/gateway/cost-summary` |
+| 提示词注册 | 3 | `/api/prompts/versions`, `/api/prompts/deploy` |
+| 评估框架 | 4 | `/api/eval/datasets`, `/api/eval/run`, `/api/eval/scenarios` |
+| 反馈 | 3 | `/api/feedback` CRUD + analytics |
+| 参考查询 | 3 | `/api/reference-queries` CRUD |
+| 跨系统血缘 | 5 | `/api/lineage/edges`, `/api/lineage/graph` |
+| 流式 API | 5 | SSE 流式端点 |
+| 配置 | 2 | `/api/config/basemaps`, `/api/config/models` |
+| 认证 | 2 | `/auth/register`, `/auth/login` |
+| Bot 适配器 | 4 | 企业微信/钉钉/飞书 webhooks |
+| 健康检查 | 2 | `/health`, `/ready` |
 
 ## 运行测试
 
 ```bash
-# 全量测试 (2420+ 测试)
+# 全量测试 (3700+ 测试, 171 测试文件)
 python -m pytest data_agent/ --ignore=data_agent/test_knowledge_agent.py -q
 
 # 单个模块
@@ -888,7 +851,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | 路由 (Ch2) | ✅ | Gemini 2.0 Flash 意图分类 |
 | 并行化 (Ch3) | ✅ | ParallelAgent + TaskDecomposer |
 | 反思 (Ch4) | ✅ | LoopAgent 全部 3 管道 |
-| 工具使用 (Ch5) | ✅ | 35 工具集, 210+ 工具, 21 Skills |
+| 工具使用 (Ch5) | ✅ | 40 工具集, 270+ 工具, 25 Skills |
 | 规划 (Ch6) | ✅ | DAG 任务分解 + 波次并行 |
 | 多智能体 (Ch7) | ✅ | 层级 Planner + 7 子 Agent |
 | 记忆管理 (Ch8) | ✅ | Memory ETL + PostgresMemoryService |
