@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-surveying-qc" xml:lang="zh-CN">
+    <title>测绘质检子系统</title>
+    <shortdesc>v15.7 实现基于 GB/T 24356 标准的测绘成果质量检查与验收智能体系统，包含缺陷分类法（30 编码 5 类别）、SLA 工作流模板、告警引擎、MCP 工具规则引擎、案例库、人工复核流程，以及 4 个独立子系统（CV 检测、CAD/3D 解析、专业工具 MCP、参考数据服务）。</shortdesc>
+    <prolog><author>技术写作课题组</author></prolog>
+    <conbody>
+        <section id="defect-taxonomy">
+            <title>缺陷分类法</title>
+            <p><filepath>standards/defect_taxonomy.yaml</filepath> 定义了 30 个缺陷编码，分为 5 个类别：</p>
+            <ul>
+                <li><b>FMT</b>（格式类）：文件格式、编码、元数据规范性</li>
+                <li><b>PRE</b>（精度类）：坐标精度、套合精度、高程精度</li>
+                <li><b>TOP</b>（拓扑类）：重叠、间隙、自相交、悬挂节点</li>
+                <li><b>MIS</b>（缺失类）：属性缺失、要素遗漏、图幅缺失</li>
+                <li><b>NRM</b>（规范类）：命名规范、分类编码、符号化标准</li>
+            </ul>
+            <p>每个缺陷按严重程度分为 A（严重）、B（较严重）、C（一般）三级。</p>
+        </section>
+        <section id="qc-workflow">
+            <title>QC 工作流模板</title>
+            <p><filepath>standards/qc_workflow_templates.yaml</filepath> 提供 3 种预设工作流：</p>
+            <ul>
+                <li><b>标准 5 步：</b>数据接收 → 格式检查 → 精度核验 → 拓扑检查 → 报告生成</li>
+                <li><b>快速 2 步：</b>自动检查 → 报告生成（适用于批量初筛）</li>
+                <li><b>完整 7 步：</b>含人工复核、交叉验证、专家评审（适用于最终验收）</li>
+            </ul>
+            <p>每步配置 SLA 超时和重试策略。</p>
+        </section>
+        <section id="subsystems">
+            <title>4 个独立子系统</title>
+            <table frame="all" rowsep="1" colsep="1">
+                <tgroup cols="4">
+                    <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                    <colspec colname="c2" colnum="2" colwidth="2*"/>
+                    <colspec colname="c3" colnum="3" colwidth="1*"/>
+                    <colspec colname="c4" colnum="4" colwidth="2*"/>
+                    <thead><row><entry>子系统</entry><entry>路径</entry><entry>集成方式</entry><entry>关键技术</entry></row></thead>
+                    <tbody>
+                        <row><entry>CV 检测</entry><entry><filepath>subsystems/cv-service/</filepath></entry><entry>MCP (stdio)</entry><entry>FastAPI + YOLO/ultralytics</entry></row>
+                        <row><entry>CAD/3D 解析</entry><entry><filepath>subsystems/cad-parser/</filepath></entry><entry>MCP (stdio)</entry><entry>FastAPI + ezdxf + trimesh</entry></row>
+                        <row><entry>专业工具 MCP</entry><entry><filepath>subsystems/tool-mcp-servers/</filepath></entry><entry>MCP (stdio)</entry><entry>arcgis-mcp (subprocess→arcpy), qgis-mcp, blender-mcp</entry></row>
+                        <row><entry>参考数据</entry><entry><filepath>subsystems/reference-data/</filepath></entry><entry>REST + BaseConnector</entry><entry>FastAPI + PostGIS</entry></row>
+                    </tbody>
+                </tgroup>
+            </table>
+        </section>
+        <section id="supporting-engines">
+            <title>配套引擎</title>
+            <ul>
+                <li><b>告警引擎：</b><codeph>AlertEngine</codeph>（observability.py）— 可配置阈值规则 + webhook 推送</li>
+                <li><b>MCP 工具规则：</b><codeph>ToolRuleEngine</codeph>（mcp_hub.py）— task_type → 工具选择 + fallback 链</li>
+                <li><b>案例库：</b><codeph>add_case()</codeph> / <codeph>search_cases()</codeph>（knowledge_base.py）— 结构化 QC 经验记录</li>
+                <li><b>人工复核：</b><codeph>agent_qc_reviews</codeph> 表 — review→mark→fix→approve 工作流（<codeph>/api/qc/reviews</codeph>）</li>
+            </ul>
+        </section>
+    </conbody>
+</concept>

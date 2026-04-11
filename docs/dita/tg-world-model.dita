@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-world-model" xml:lang="zh-CN">
+    <title>世界模型与 DRL 增强</title>
+    <shortdesc>系统集成 AlphaEarth + LatentDynamicsNet JEPA 世界模型（world_model.py 1122 行），DRL 引擎扩展至 7 场景（含 road_network/public_facility_layout），支持硬约束（min_retention_rate action mask）+ 软约束（budget_cap/max_area_cap reward penalty）建模，以及 DreamerEnv 世界模型驱动的 DRL 优化。</shortdesc>
+    <prolog><author>技术写作课题组</author></prolog>
+    <conbody>
+        <section id="world-model">
+            <title>AlphaEarth 世界模型</title>
+            <p><codeph>world_model.py</codeph>（1122 行）实现地理空间世界模型：</p>
+            <ul>
+                <li><b>LatentDynamicsNet：</b>JEPA 架构的潜在动力学网络，学习地理空间状态转移</li>
+                <li><b>WorldModelToolset：</b>5 个工具（状态预测、轨迹模拟、异常检测、嵌入提取、模型状态查询）</li>
+                <li><b>DreamerEnv：</b><codeph>dreamer_env.py</codeph>（757 行）— ParcelEmbeddingMapper + ActionToScenarioEncoder + DreamerEnv，24 个测试</li>
+                <li><b>DreamerToolset：</b>dreamer_optimize + dreamer_status 两个工具</li>
+            </ul>
+        </section>
+        <section id="drl-enhancements">
+            <title>DRL 引擎增强（v23.0）</title>
+            <p><codeph>drl_engine.py</codeph>（1017 行）从 5 场景扩展至 7 场景：</p>
+            <ul>
+                <li>原有：land_use_optimization、ecological_corridor、urban_expansion、farmland_consolidation、industrial_layout</li>
+                <li>新增：<b>road_network</b>（交通网络优化）、<b>public_facility_layout</b>（公共设施布局）</li>
+                <li><b>硬约束：</b>min_retention_rate 通过 action mask 强制执行（MaskablePPO）</li>
+                <li><b>软约束：</b>budget_cap / max_area_cap 通过 reward penalty 引导</li>
+                <li><b>DRL 动画：</b>GIF 优化过程回放 + 前后对比 PNG</li>
+            </ul>
+        </section>
+    </conbody>
+</concept>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-causal-inference" xml:lang="zh-CN">
+    <title>时空因果推断体系</title>
+    <shortdesc>系统实现了三角度因果推断体系：Angle A 统计因果（6 工具）、Angle B LLM 因果推理（4 工具）、Angle C 因果世界模型（4 工具），覆盖从经典统计方法到 LLM 驱动的因果发现与反事实推理全链路。</shortdesc>
+    <prolog><author>技术写作课题组</author></prolog>
+    <conbody>
+        <section id="angle-a">
+            <title>Angle A — 统计因果推断</title>
+            <p><codeph>causal_inference.py</codeph>（1247 行）实现 6 个经典因果推断工具：</p>
+            <ul>
+                <li><b>PSM</b>（倾向得分匹配）：处理效应估计</li>
+                <li><b>ERF</b>（暴露-响应函数）：连续处理变量的剂量-响应关系</li>
+                <li><b>DiD</b>（双重差分）：政策干预效果评估</li>
+                <li><b>Granger</b>（格兰杰因果检验）：时间序列因果方向判定</li>
+                <li><b>GCCM</b>（地理收敛交叉映射）：空间因果关系检测</li>
+                <li><b>Causal Forest</b>（因果森林）：异质性处理效应估计</li>
+            </ul>
+            <p>支持 GeoFM 嵌入接口，可与地理基础模型集成。</p>
+        </section>
+        <section id="angle-b">
+            <title>Angle B — LLM 因果推理</title>
+            <p><codeph>llm_causal.py</codeph>（949 行）利用 Gemini 2.5 Pro/Flash 实现 4 个 LLM 驱动的因果推理工具：</p>
+            <ul>
+                <li><b>DAG 构建：</b>从领域知识自动构建因果有向无环图</li>
+                <li><b>反事实推理：</b>"如果...会怎样"的反事实情景分析</li>
+                <li><b>机制解释：</b>因果路径的自然语言解释</li>
+                <li><b>情景生成：</b>基于因果模型的干预情景模拟</li>
+            </ul>
+        </section>
+        <section id="angle-c">
+            <title>Angle C — 因果世界模型</title>
+            <p><codeph>causal_world_model.py</codeph>（1049 行）结合 AlphaEarth 世界模型实现 4 个因果推断工具：干预预测、反事实对比、嵌入效应分析、统计先验提取。提供 8 个 REST API 端点和 CausalReasoningTab 前端组件。</p>
+        </section>
+    </conbody>
+</concept>

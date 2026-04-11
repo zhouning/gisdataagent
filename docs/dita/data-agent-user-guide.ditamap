@@ -24,6 +24,8 @@
     <topichead navtitle="高级分析与扩展">
         <topicref href="advanced-spatial-analysis.dita" format="dita" navtitle="高级空间分析模型 (Tier 2)"/>
         <topicref href="mcp-hub-and-custom-skills.dita" format="dita" navtitle="MCP Hub 工具市场与自定义技能包"/>
+        <topicref href="tg-causal-inference.dita" format="dita" navtitle="时空因果推断体系"/>
+        <topicref href="tg-surveying-qc.dita" format="dita" navtitle="测绘质检子系统"/>
     </topichead>
 
     <topichead navtitle="运维与支持">

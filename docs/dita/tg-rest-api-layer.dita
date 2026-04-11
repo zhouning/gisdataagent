@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
 <reference id="tg-rest-api-layer" xml:lang="zh-CN">
     <title>REST API 层</title>
-    <shortdesc>系统通过 Starlette 路由提供 92 个 REST API 端点，挂载于 Chainlit catch-all 路由之前，使用 JWT Cookie 认证，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析等功能域。</shortdesc>
+    <shortdesc>系统通过 Starlette 路由提供 280 个 REST API 端点（主路由 frontend_api.py 3438 行 + 24 个拆分路由模块 4992 行），挂载于 Chainlit catch-all 路由之前，使用 JWT Cookie 认证，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析、上下文工程、反馈飞轮、融合 v2、血缘追踪、语义模型、矢量切片等功能域。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>
@@ -19,7 +19,7 @@
         <section id="endpoint-categories">
             <title>端点分类</title>
             <table frame="all" rowsep="1" colsep="1" id="endpoints-table">
-                <title>92 个端点按功能域分类</title>
+                <title>280 个端点按功能域分类</title>
                 <tgroup cols="3">
                     <colspec colname="c1" colnum="1" colwidth="2*"/>
                     <colspec colname="c2" colnum="2" colwidth="1*"/>
@@ -102,7 +102,8 @@
             <p>所有端点使用 JWT Cookie 认证。<codeph>_get_user_from_request()</codeph> 从 Chainlit 签发的 <codeph>access_token</codeph> Cookie 中解码用户信息。管理端点通过 <codeph>_require_admin()</codeph> 守卫增强权限检查。</p>
             <note type="attention">
                 <ul>
-                    <li>92 个端点全部定义在单个 <filepath>frontend_api.py</filepath>（2330 行）中。v12.0 新增了自定义技能 CRUD（5 端点）、用户工具 CRUD（6 端点）、Skill Bundles（6 端点）、知识库（10 端点）等。建议按功能域拆分为独立路由模块。</li>
+                    <li>v23.0 已完成路由拆分：主路由 <filepath>frontend_api.py</filepath>（3438 行）+ 24 个独立路由模块 <filepath>data_agent/api/</filepath>（4992 行），覆盖 MCP、Skills、Workflow、KB、Virtual Sources、Context、Feedback、Fusion v2、Lineage、Messaging、Metadata、Reference Query、Semantic Model、Tile、Topology 等功能域。</li>
+                    <li>v22.0 新增 API 安全中间件：<codeph>RateLimitMiddleware</codeph>（速率限制）+ <codeph>CircuitBreakerMiddleware</codeph>（熔断器），Starlette 层实现，无需外部网关。</li>
                     <li>缺少统一的请求验证中间件（如 Pydantic models），输入参数验证分散在各处理函数中。</li>
                     <li>缺少 API 版本控制——所有端点均为 <codeph>/api/...</codeph>，未来 breaking changes 无法平滑迁移。</li>
                 </ul>

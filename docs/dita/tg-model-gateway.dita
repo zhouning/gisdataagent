@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-model-gateway" xml:lang="zh-CN">
+    <title>统一模型网关</title>
+    <shortdesc>model_gateway.py 实现在线（Gemini 2.0/2.5 Flash/Pro）+ 离线（LM Studio/Gemma）+ LiteLLM 统一模型网关，支持动态注册、任务感知路由、成本追踪和场景/项目归因。</shortdesc>
+    <prolog><author>技术写作课题组</author></prolog>
+    <conbody>
+        <section id="model-registry">
+            <title>模型注册表</title>
+            <p>支持 3 类模型源的统一注册：</p>
+            <ul>
+                <li><b>在线模型：</b>Gemini 2.0 Flash（路由）、2.5 Flash（Standard Agent）、2.5 Pro（高质量任务）</li>
+                <li><b>离线模型：</b>LM Studio 本地推理（Gemma 等开源模型）</li>
+                <li><b>LiteLLM 代理：</b>统一接口访问 100+ 模型提供商</li>
+            </ul>
+        </section>
+        <section id="task-routing">
+            <title>任务感知路由</title>
+            <p>根据 task_type、context_tokens、quality_requirement、budget 四维度自动选择最优模型。路由策略：</p>
+            <ul>
+                <li>简单查询 → Gemini 2.0 Flash（低成本、低延迟）</li>
+                <li>标准分析 → Gemini 2.5 Flash（平衡性能与成本）</li>
+                <li>复杂推理 → Gemini 2.5 Pro（最高质量）</li>
+                <li>离线/隐私场景 → LM Studio 本地模型</li>
+            </ul>
+        </section>
+        <section id="cost-tracking">
+            <title>成本追踪</title>
+            <p>增强的 <codeph>token_tracker.py</codeph> 支持 scenario 和 project_id 归因，成本数据写入 <codeph>agent_token_usage</codeph> 表，通过 <codeph>GET /api/gateway/cost-summary</codeph> 查询。</p>
+        </section>
+    </conbody>
+</concept>

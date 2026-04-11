@@ -2,7 +2,7 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="tg-semantic-intent-router" xml:lang="zh-CN">
     <title>语义意图路由层</title>
-    <shortdesc>语义意图路由是系统的入口决策点，使用 Gemini 2.0 Flash 对自然语言进行实时分类，将请求分发至对应的 Agent 管线，同时返回工具类别用于动态裁剪可用工具集。</shortdesc>
+    <shortdesc>语义意图路由是系统的入口决策点，使用 Gemini 2.0 Flash 对自然语言进行实时分类，将请求分发至对应的 Agent 管线，同时返回工具类别用于动态裁剪可用工具集。v23.0 新增分析意图消歧 v2（should_decompose + decompose_task + 用户确认 + wave 按序执行）和多语言检测（zh/en/ja）。路由支持 5 种意图：OPTIMIZATION、GOVERNANCE、GENERAL、WORKFLOW、AMBIGUOUS。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>

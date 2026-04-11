@@ -3,842 +3,2132 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Data Agent 技术架构指南</title>
+<title>Data Agent 技术架构指南 v23.0</title>
 <style>
-:root {
-  --primary: #1a56db;
-  --primary-light: #e8effd;
-  --accent: #0e7490;
-  --text: #1f2937;
-  --text-secondary: #6b7280;
-  --surface: #f8fafc;
-  --border: #e5e7eb;
-  --code-bg: #f1f5f9;
-  --warning-bg: #fef3c7;
-  --warning-border: #f59e0b;
-  --danger-bg: #fef2f2;
-  --danger-border: #ef4444;
-  --sidebar-w: 280px;
-}
+:root { --primary: #1a56db; --primary-light: #e8effd; --accent: #0e7490; --text: #1f2937; --text-secondary: #6b7280; --surface: #f8fafc; --border: #e5e7eb; --code-bg: #f1f5f9; --warning-bg: #fef3c7; --warning-border: #f59e0b; --danger-bg: #fef2f2; --danger-border: #ef4444; --sidebar-w: 280px; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--text); line-height: 1.7; background: #fff; }
-
-/* Sidebar */
-.sidebar {
-  position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh;
-  background: var(--surface); border-right: 1px solid var(--border);
-  overflow-y: auto; padding: 20px 0; z-index: 100;
-}
-.sidebar-title {
-  font-size: 15px; font-weight: 700; color: var(--primary); padding: 0 20px 16px;
-  border-bottom: 1px solid var(--border); margin-bottom: 8px;
-}
-.nav-group { margin-bottom: 4px; }
-.nav-group-title {
-  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-  color: var(--text-secondary); padding: 10px 20px 4px; user-select: none;
-}
-.nav-link {
-  display: block; padding: 5px 20px 5px 28px; font-size: 13px; color: var(--text);
-  text-decoration: none; border-left: 3px solid transparent; transition: all 0.15s;
-}
-.nav-link:hover { background: var(--primary-light); color: var(--primary); }
-.nav-link.active { border-left-color: var(--primary); color: var(--primary); font-weight: 600; background: var(--primary-light); }
-
-/* Main */
-.main { margin-left: var(--sidebar-w); padding: 40px 60px 80px; max-width: 960px; }
-.doc-header { border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 40px; }
-.doc-header h1 { font-size: 28px; color: var(--primary); margin-bottom: 6px; }
-.doc-header .meta { font-size: 13px; color: var(--text-secondary); }
-
-/* Topic */
-.topic { margin-bottom: 56px; scroll-margin-top: 24px; }
-.topic h2 { font-size: 22px; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 16px; }
-.topic h3 { font-size: 17px; color: var(--text); margin: 24px 0 10px; padding-left: 12px; border-left: 3px solid var(--primary); }
-.shortdesc { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; font-style: italic; }
-
-p { margin-bottom: 12px; font-size: 14.5px; }
-ul, ol { margin: 8px 0 14px 24px; font-size: 14.5px; }
-li { margin-bottom: 5px; }
-li b { color: var(--text); }
-code, .code { font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace; font-size: 13px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
-
-pre {
-  background: #1e293b; color: #e2e8f0; padding: 16px 20px; border-radius: 6px;
-  overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 12px 0 16px;
-  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-}
-
-/* Tables */
-table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13.5px; }
-table caption, .table-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: left; margin-bottom: 6px; }
-th { background: var(--surface); font-weight: 600; text-align: left; padding: 10px 12px; border: 1px solid var(--border); font-size: 13px; }
-td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; }
-tr:nth-child(even) td { background: #fafbfc; }
-
-/* Notes */
-.note { padding: 12px 16px; border-radius: 6px; margin: 14px 0; font-size: 13.5px; border-left: 4px solid; }
-.note-attention { background: var(--warning-bg); border-color: var(--warning-border); }
-.note-danger { background: var(--danger-bg); border-color: var(--danger-border); }
-.note-info { background: #eff6ff; border-color: #3b82f6; }
-.note-title { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
-
-/* DL */
-dl { margin: 10px 0 16px; }
-dt { font-weight: 700; margin-top: 10px; font-size: 14.5px; }
-dd { margin-left: 20px; margin-bottom: 6px; font-size: 14px; color: #374151; }
-
-/* Priority tags */
-.tag { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-right: 4px; }
-.tag-p0 { background: #fef2f2; color: #dc2626; }
-.tag-p1 { background: #fff7ed; color: #ea580c; }
-.tag-p2 { background: #fefce8; color: #ca8a04; }
-.tag-p3 { background: #f0fdf4; color: #16a34a; }
-
-/* Responsive */
-@media (max-width: 900px) {
-  .sidebar { width: 220px; }
-  .main { margin-left: 220px; padding: 24px 28px 60px; }
-}
-@media print {
-  .sidebar { display: none; }
-  .main { margin-left: 0; max-width: 100%; }
-}
+.sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 20px 0; z-index: 100; }
+.sidebar h1 { font-size: 1.1em; padding: 0 20px 15px; border-bottom: 1px solid var(--border); color: var(--primary); }
+.sidebar ul { list-style: none; padding: 0; margin: 0; }
+.sidebar li.nav-group { padding: 12px 20px 4px; }
+.sidebar li.nav-group > strong { font-size: 0.85em; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.sidebar li.nav-group ul { margin-top: 4px; }
+.sidebar li.nav-group ul li { padding: 3px 0; }
+.sidebar a { color: var(--text); text-decoration: none; font-size: 0.9em; display: block; padding: 2px 8px; border-radius: 4px; }
+.sidebar a:hover { background: var(--primary-light); color: var(--primary); }
+.main { margin-left: var(--sidebar-w); padding: 40px 60px; max-width: 960px; }
+article { margin-bottom: 60px; border-bottom: 1px solid var(--border); padding-bottom: 40px; }
+h2 { font-size: 1.6em; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--primary-light); }
+h3 { font-size: 1.2em; color: var(--accent); margin: 24px 0 10px; }
+p { margin: 10px 0; }
+p.shortdesc { color: var(--text-secondary); font-size: 1.05em; margin-bottom: 20px; padding: 12px 16px; background: var(--surface); border-left: 3px solid var(--primary); border-radius: 0 6px 6px 0; }
+code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+code.filepath { color: var(--accent); }
+pre { background: var(--code-bg); padding: 16px; border-radius: 6px; overflow-x: auto; margin: 12px 0; }
+pre code { background: none; padding: 0; }
+table.dita-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.92em; }
+table.dita-table caption { font-weight: bold; text-align: left; padding: 8px 0; color: var(--accent); }
+table.dita-table th, table.dita-table td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; }
+table.dita-table th { background: var(--surface); font-weight: 600; }
+table.dita-table tr:hover td { background: #f0f7ff; }
+ul, ol { margin: 8px 0 8px 24px; }
+li { margin: 4px 0; }
+.note { padding: 12px 16px; border-radius: 6px; margin: 12px 0; }
+.note-attention, .note-warning { background: var(--warning-bg); border-left: 4px solid var(--warning-border); }
+.note-danger { background: var(--danger-bg); border-left: 4px solid var(--danger-border); }
+kbd { background: #eee; padding: 2px 6px; border-radius: 3px; border: 1px solid #ccc; font-size: 0.9em; }
+.section { margin: 16px 0; }
+@media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; padding: 20px; } }
 </style>
 </head>
 <body>
-
 <nav class="sidebar">
-  <div class="sidebar-title">Data Agent 技术架构指南</div>
-  <div class="nav-group">
-    <div class="nav-group-title">总体架构</div>
-    <a class="nav-link" href="#tg-architecture-overview">系统架构总览</a>
-    <a class="nav-link" href="#tg-semantic-intent-router">语义意图路由层</a>
-    <a class="nav-link" href="#tg-multi-pipeline-orchestration">多管线 Agent 编排</a>
-  </div>
-  <div class="nav-group">
-    <div class="nav-group-title">核心子系统</div>
-    <a class="nav-link" href="#tg-toolset-framework">工具体系与 BaseToolset</a>
-    <a class="nav-link" href="#tg-fusion-engine">多模态数据融合引擎</a>
-    <a class="nav-link" href="#tg-drl-optimization">深度强化学习优化引擎</a>
-    <a class="nav-link" href="#tg-knowledge-graph">地理知识图谱</a>
-  </div>
-  <div class="nav-group">
-    <div class="nav-group-title">平台服务层</div>
-    <a class="nav-link" href="#tg-multi-tenancy">多租户隔离与用户上下文</a>
-    <a class="nav-link" href="#tg-auth-rbac">认证与 RBAC</a>
-    <a class="nav-link" href="#tg-database-architecture">数据库架构</a>
-    <a class="nav-link" href="#tg-rest-api-layer">REST API 层</a>
-  </div>
-  <div class="nav-group">
-    <div class="nav-group-title">前端与交互</div>
-    <a class="nav-link" href="#tg-frontend-architecture">前端三面板架构</a>
-    <a class="nav-link" href="#tg-map-rendering-pipeline">地图渲染管线</a>
-  </div>
-  <div class="nav-group">
-    <div class="nav-group-title">运维与质量保障</div>
-    <a class="nav-link" href="#tg-observability">可观测性与运维</a>
-    <a class="nav-link" href="#tg-evaluation-cicd">评测与 CI/CD</a>
-    <a class="nav-link" href="#tg-architecture-assessment">架构评估与改进建议</a>
-  </div>
+<h1>Data Agent 技术架构指南 v23.0</h1>
+<ul><li class="nav-group"><strong>总体架构</strong><ul><li><a href="#tg-architecture-overview">系统架构总览</a></li><li><a href="#tg-semantic-intent-router">语义意图路由层</a></li><li><a href="#tg-multi-pipeline-orchestration">多管线 Agent 编排</a></li></ul></li><li class="nav-group"><strong>核心子系统</strong><ul><li><a href="#tg-toolset-framework">工具体系与 BaseToolset 框架</a></li><li><a href="#tg-fusion-engine">多模态数据融合引擎架构</a></li><li><a href="#tg-drl-optimization">深度强化学习优化引擎</a></li><li><a href="#tg-knowledge-graph">地理知识图谱</a></li><li><a href="#tg-causal-inference">时空因果推断体系</a></li><li><a href="#tg-world-model">世界模型与 DRL 增强</a></li><li><a href="#tg-remote-sensing">遥感智能体</a></li><li><a href="#tg-surveying-qc">测绘质检子系统</a></li></ul></li><li class="nav-group"><strong>平台服务层</strong><ul><li><a href="#tg-multi-tenancy">多租户隔离与用户上下文</a></li><li><a href="#tg-auth-rbac">认证与 RBAC 权限模型</a></li><li><a href="#tg-database-architecture">数据库架构与连接管理</a></li><li><a href="#tg-rest-api-layer">REST API 层</a></li><li><a href="#tg-model-gateway">统一模型网关</a></li><li><a href="#tg-context-engine">上下文工程与反馈飞轮</a></li><li><a href="#tg-autonomy-levels">自主能力层级</a></li></ul></li><li class="nav-group"><strong>前端与交互</strong><ul><li><a href="#tg-frontend-architecture">前端三面板架构</a></li><li><a href="#tg-map-rendering-pipeline">地图渲染管线</a></li></ul></li><li class="nav-group"><strong>运维与质量保障</strong><ul><li><a href="#tg-observability">可观测性与运维体系</a></li><li><a href="#tg-evaluation-cicd">评测体系与 CI/CD 流水线</a></li><li><a href="#tg-architecture-assessment">架构评估与改进建议</a></li></ul></li></ul>
 </nav>
+<div class="main"><article id="tg-architecture-overview"><h2>系统架构总览</h2><p class="shortdesc">GIS Data Agent v23.0 基于 Google ADK v1.27.2 构建，采用语义意图路由驱动的多管线 Agent 架构，集成 270+ 工具、25 个 ADK Skills、40 个 Toolset 和 280 个 REST API 端点，支持用户自助扩展 Skills、Tools 和多 Agent 工作流，面向地理空间数据治理、用地优化与多源融合分析场景。v23.0 新增上下文工程、反馈飞轮、时空因果推断、遥感智能体、测绘质检子系统、DRL 约束建模、矢量切片渲染、Lite 模式等企业级能力。</p>
+        <div class="section" id="system-positioning">
+            <h3>系统定位</h3>
+            <p>GIS Data Agent 是一个基于大语言模型的地理空间智能分析平台。它接收用户的自然语言指令（文本、语音、图片、PDF），通过语义意图路由将请求分发到三条专业化 Agent 管线中执行，最终以交互式地图、数据表格、分析报告等形式返回结果。</p>
+        </div>
 
-<main class="main">
+        <div class="section" id="layered-architecture">
+            <h3>分层架构</h3>
+            <p>系统自上而下分为六个层级：</p>
+            <ol>
+                <li><strong>前端展示层：</strong>React 18 三面板 SPA（ChatPanel | MapPanel | DataPanel），面板宽度可拖拽调整，支持 Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎，DataPanel 包含 16 个功能 Tab（含 FeedbackTab、FusionV2Tab、CausalReasoningTab 等），支持 Service Worker 离线模式。</li>
+                <li><strong>REST API 层：</strong>280 个 Starlette 端点（主路由 + 24 个拆分路由模块），挂载于 Chainlit catch-all 路由之前，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析、上下文工程、反馈飞轮、融合 v2、血缘追踪、语义模型、矢量切片等功能域。含 RateLimitMiddleware + CircuitBreakerMiddleware 安全中间件。</li>
+                <li><strong>应用层：</strong>Chainlit 框架承载认证回调、会话管理、文件上传与管线调度（<code>app.py</code> 3948 行），语义路由已提取至 <code>intent_router.py</code>（含分析意图消歧 v2：should_decompose + decompose_task + wave 按序执行），管线辅助逻辑提取至 <code>pipeline_helpers.py</code>。支持 Lite 模式启动（_LITE_MODE 标志 + DuckDB 降级）。</li>
+                <li><strong>Agent 编排层：</strong>50 个运行时 Agent 实例（37 LlmAgent + 8 SequentialAgent + 2 ParallelAgent + 3 LoopAgent），四条管线（Optimization、Governance、General、Planner），基于 ADK <code>SequentialAgent</code> 与 <code>LlmAgent</code> 组合编排，内置 LoopAgent 质量保证循环。用户可通过 WorkflowEditor 可视化编排自定义 Agent Pipeline，支持 NL2Workflow 自然语言生成工作流。</li>
+                <li><strong>工具执行层：</strong>40 个 <code>BaseToolset</code> 子类（270+ 工具函数）、25 个 ADK Skills、MCP Hub 外部工具集成、UserToolset 用户自定义声明式工具。涵盖空间处理、治理质检、因果推断、世界模型、遥感分析、语义算子、数据清洗、精度评估等全领域。</li>
+                <li><strong>数据与基础设施层：</strong>PostgreSQL 16 + PostGIS 3.4（64 migrations）、融合引擎 v2.0（32 模块含 temporal/semantic_llm/conflict_resolver/explainability）、DRL 引擎（7 场景 + NSGA-II Pareto + DreamerEnv）、知识图谱、语义层、数据目录、ContextEngine 统一上下文引擎、FeedbackLoop 反馈闭环。</li>
+            </ol>
+        </div>
 
-<div class="doc-header">
-  <h1>Data Agent 技术架构指南</h1>
-  <div class="meta">版本 v12.0 &nbsp;|&nbsp; 框架 Google ADK v1.26.0 &nbsp;|&nbsp; 2026-03-18 &nbsp;|&nbsp; 技术写作课题组</div>
-</div>
+        <div class="section" id="tech-stack">
+            <h3>核心技术栈</h3>
+            <table class="dita-table">
+                <h3>技术栈矩阵</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>层级</th>
+                            <th>技术</th>
+                            <th>版本</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Agent 框架</td>
+                            <td>Google Agent Developer Kit (ADK)</td>
+                            <td>v1.27.2</td>
+                        </tr>
+                        <tr>
+                            <td>LLM（Agent）</td>
+                            <td>Gemini 2.5 Flash / 2.5 Pro</td>
+                            <td>Latest</td>
+                        </tr>
+                        <tr>
+                            <td>LLM（路由）</td>
+                            <td>Gemini 2.0 Flash</td>
+                            <td>Latest</td>
+                        </tr>
+                        <tr>
+                            <td>前端</td>
+                            <td>React + TypeScript + Vite</td>
+                            <td>18.3 / 5.7 / 6.3</td>
+                        </tr>
+                        <tr>
+                            <td>地图渲染</td>
+                            <td>Leaflet.js + deck.gl + MapLibre GL</td>
+                            <td>1.9 / 9.2 / 5.19</td>
+                        </tr>
+                        <tr>
+                            <td>后端</td>
+                            <td>Chainlit + Starlette</td>
+                            <td>Latest</td>
+                        </tr>
+                        <tr>
+                            <td>数据库</td>
+                            <td>PostgreSQL + PostGIS</td>
+                            <td>16 / 3.4</td>
+                        </tr>
+                        <tr>
+                            <td>GIS</td>
+                            <td>GeoPandas, Shapely, Rasterio, PySAL, Folium</td>
+                            <td>Latest</td>
+                        </tr>
+                        <tr>
+                            <td>机器学习</td>
+                            <td>PyTorch, Stable Baselines 3, Gymnasium</td>
+                            <td>Latest</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<!-- ======================== 1. 系统架构总览 ======================== -->
-<div class="topic" id="tg-architecture-overview">
-<h2>1. 系统架构总览</h2>
-<p class="shortdesc">GIS Data Agent v12.0 基于 Google ADK v1.26.0 构建，采用语义意图路由驱动的多管线 Agent 架构，集成 130+ 工具、18 个 ADK Skills、23 个 Toolset 和 92 个 REST API 端点，支持用户自助扩展 Skills、Tools 和多 Agent 工作流，面向地理空间数据治理、用地优化与多源融合分析场景。</p>
+        <div class="section" id="request-lifecycle">
+            <h3>请求生命周期</h3>
+            <p>一次完整的用户请求经历以下阶段：</p>
+            <ol>
+                <li><strong>文件处理：</strong>ZIP 自动解压，多模态分类（IMAGE / PDF / SPATIAL）。</li>
+                <li><strong>上下文注入：</strong>拼接上轮分析结果、空间记忆、语义层映射、用户分析视角、ArcPy 可用性标志。</li>
+                <li><strong>语义意图路由：</strong><code>classify_intent()</code> 调用 Gemini 2.0 Flash，返回意图分类（OPTIMIZATION / GOVERNANCE / GENERAL / AMBIGUOUS）、分类理由、工具类别集合。</li>
+                <li><strong>RBAC 鉴权：</strong>viewer 角色禁止访问 Governance 与 Optimization 管线。</li>
+                <li><strong>管线调度：</strong>根据意图分发至对应的 ADK SequentialAgent 或 Planner LlmAgent。</li>
+                <li><strong>Agent 执行：</strong>ADK Runner 驱动 Agent 链式调用工具，Token 消耗实时记录。</li>
+                <li><strong>结果聚合：</strong>检测 <code>layer_control</code> 元数据，注入地图更新配置至 <code>pending_map_updates</code> 缓存。</li>
+                <li><strong>前端渲染：</strong>ChatPanel 轮询 <code>GET /api/map/pending</code> 获取地图配置，MapPanel 渲染图层。</li>
+            </ol>
+        </div>
 
-<h3>系统定位</h3>
-<p>GIS Data Agent 是一个基于大语言模型的地理空间智能分析平台。它接收用户的自然语言指令（文本、语音、图片、PDF），通过语义意图路由将请求分发到三条专业化 Agent 管线中执行，最终以交互式地图、数据表格、分析报告等形式返回结果。</p>
+        <div class="section" id="codebase-organization">
+            <h3>代码组织</h3>
+            <p>核心代码位于 <code class="filepath">data_agent/</code> 目录，主要模块如下：</p>
+            <table class="dita-table">
+                <h3>核心模块清单</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>模块</th>
+                            <th>规模</th>
+                            <th>职责</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code class="filepath">app.py</code></td>
+                            <td>3948 行</td>
+                            <td>Chainlit 入口：RBAC、文件上传、会话管理、管线调度、Lite 模式（路由逻辑已提取）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">intent_router.py</code></td>
+                            <td>197 行</td>
+                            <td>语义意图分类 + 多语言检测（从 app.py 提取）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">pipeline_helpers.py</code></td>
+                            <td>284 行</td>
+                            <td>工具说明格式化、进度渲染、错误分类（从 app.py 提取）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">agent.py</code></td>
+                            <td>853 行</td>
+                            <td>Agent 定义、管线组装、工厂函数、模型分层</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">frontend_api.py</code></td>
+                            <td>3438 行</td>
+                            <td>280 个 REST API 端点（主路由）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">fusion/</code></td>
+                            <td>32 模块</td>
+                            <td>多模态数据融合引擎 v2.0（10 种策略 + temporal/semantic_llm/conflict_resolver/explainability）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">toolsets/</code></td>
+                            <td>41 文件</td>
+                            <td>40 个 BaseToolset 子类（270+ 工具函数，含 UserToolset）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">skills/</code></td>
+                            <td>25 目录</td>
+                            <td>ADK Skills（场景化技能，含测绘质检/遥感/因果推断等）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">semantic_layer.py</code></td>
+                            <td>1847 行</td>
+                            <td>语义目录、字段映射、缓存</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">workflow_engine.py</code></td>
+                            <td>1938 行</td>
+                            <td>工作流 CRUD、顺序 + DAG 执行、Custom Skill 步骤、Cron 调度、SLA</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">mcp_hub.py</code></td>
+                            <td>920 行</td>
+                            <td>MCP 服务器生命周期管理、加密、热重载</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
+    </article><article id="tg-semantic-intent-router"><h2>语义意图路由层</h2><p class="shortdesc">语义意图路由是系统的入口决策点，使用 Gemini 2.0 Flash 对自然语言进行实时分类，将请求分发至对应的 Agent 管线，同时返回工具类别用于动态裁剪可用工具集。v23.0 新增分析意图消歧 v2（should_decompose + decompose_task + 用户确认 + wave 按序执行）和多语言检测（zh/en/ja）。路由支持 5 种意图：OPTIMIZATION、GOVERNANCE、GENERAL、WORKFLOW、AMBIGUOUS。</p>
+        <div class="section" id="design-rationale">
+            <h3>设计目标</h3>
+            <p>传统 GIS 系统依赖菜单和表单驱动。本系统通过 LLM 语义分类实现"说什么做什么"的交互范式。路由层需同时满足三个约束：</p>
+            <ul>
+                <li><strong>低延迟：</strong>选用 Gemini 2.0 Flash（成本最低、延迟最低的模型），将昂贵的 Pro 模型留给需要深度推理的 Agent。</li>
+                <li><strong>多模态支持：</strong>文本、图片（缩放至 512px 后编码为 JPEG Blob）、PDF（pypdf 文本提取）三种模态可组合输入。</li>
+                <li><strong>可解释性：</strong>路由器返回分类理由（<code>reason</code>），前端展示路由信息卡片供用户理解系统决策。</li>
+            </ul>
+        </div>
 
-<h3>分层架构</h3>
-<ol>
-  <li><b>前端展示层：</b>React 18 三面板 SPA（ChatPanel 320px | MapPanel flex-1 | DataPanel 360px），支持 Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎。</li>
-  <li><b>REST API 层：</b>92 个 Starlette 端点，挂载于 Chainlit catch-all 路由之前，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析等功能域。</li>
-  <li><b>应用层：</b>Chainlit 框架承载认证回调、会话管理、文件上传与管线调度（<code>app.py</code> 3267 行），语义路由已提取至 <code>intent_router.py</code>。</li>
-  <li><b>Agent 编排层：</b>四条管线（Optimization、Governance、General、Planner），基于 ADK <code>SequentialAgent</code> 与 <code>LlmAgent</code> 组合编排，内置 LoopAgent 质量保证循环。</li>
-  <li><b>工具执行层：</b>23 个 <code>BaseToolset</code> 子类（130+ 工具函数）、18 个 ADK Skills、MCP Hub 外部工具集成、UserToolset 用户自定义工具。</li>
-  <li><b>数据与基础设施层：</b>PostgreSQL 16 + PostGIS 3.4、融合引擎（22 模块）、DRL 引擎、知识图谱、语义层、数据目录。</li>
-</ol>
+        <div class="section" id="router-implementation">
+            <h3>路由实现</h3>
+            <p>核心函数 <code>classify_intent()</code> 位于 <code class="filepath">app.py</code>，通过结构化 Prompt 要求 Gemini 返回 JSON 格式的分类结果：</p>
+            <table class="dita-table">
+                <h3>路由器输出字段</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>字段</th>
+                            <th>类型</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>intent</code></td>
+                            <td>枚举</td>
+                            <td>OPTIMIZATION | GOVERNANCE | GENERAL | AMBIGUOUS</td>
+                        </tr>
+                        <tr>
+                            <td><code>reason</code></td>
+                            <td>字符串</td>
+                            <td>分类理由，用于前端路由信息卡片展示</td>
+                        </tr>
+                        <tr>
+                            <td><code>router_tokens</code></td>
+                            <td>整数</td>
+                            <td>路由器本次调用消耗的 Token 数</td>
+                        </tr>
+                        <tr>
+                            <td><code>tool_categories</code></td>
+                            <td>集合</td>
+                            <td>工具类别（如 <code>spatial_processing</code>、<code>poi_location</code>、<code>remote_sensing</code>），用于 General 管线的动态工具过滤</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<h3>核心技术栈</h3>
-<p class="table-title">技术栈矩阵</p>
-<table>
-<thead><tr><th>层级</th><th>技术</th><th>版本</th></tr></thead>
-<tbody>
-<tr><td>Agent 框架</td><td>Google Agent Developer Kit (ADK)</td><td>v1.26.0</td></tr>
-<tr><td>LLM（Agent）</td><td>Gemini 2.5 Flash / 2.5 Pro</td><td>Latest</td></tr>
-<tr><td>LLM（路由）</td><td>Gemini 2.0 Flash</td><td>Latest</td></tr>
-<tr><td>前端</td><td>React + TypeScript + Vite</td><td>18.3 / 5.7 / 6.3</td></tr>
-<tr><td>地图渲染</td><td>Leaflet.js + deck.gl + MapLibre GL</td><td>1.9 / 9.2 / 5.19</td></tr>
-<tr><td>后端</td><td>Chainlit + Starlette</td><td>Latest</td></tr>
-<tr><td>数据库</td><td>PostgreSQL + PostGIS</td><td>16 / 3.4</td></tr>
-<tr><td>GIS</td><td>GeoPandas, Shapely, Rasterio, PySAL, Folium</td><td>Latest</td></tr>
-<tr><td>机器学习</td><td>PyTorch, Stable Baselines 3, Gymnasium</td><td>Latest</td></tr>
-</tbody>
-</table>
+        <div class="section" id="tool-category-filtering">
+            <h3>工具类别动态过滤（v7.5.6）</h3>
+            <p>路由器不仅返回意图，还返回工具类别集合。General 管线通过 <code>intent_tool_predicate</code> 根据这些类别动态裁剪可用工具，减少 Token 消耗并防止工具幻觉。预定义的工具子集包括：</p>
+            <ul>
+                <li><code>_AUDIT_TOOLS</code>：数据画像、拓扑审计、字段标准检查</li>
+                <li><code>_TRANSFORM_TOOLS</code>：坐标重投影、空间特征工程</li>
+                <li><code>_DB_READ</code>：数据库查询、表列表</li>
+                <li><code>_DATALAKE_READ</code>：数据湖资产搜索</li>
+            </ul>
+        </div>
 
-<h3>请求生命周期</h3>
-<ol>
-  <li><b>文件处理：</b>ZIP 自动解压，多模态分类（IMAGE / PDF / SPATIAL）。</li>
-  <li><b>上下文注入：</b>拼接上轮分析结果、空间记忆、语义层映射、用户分析视角、ArcPy 可用性标志。</li>
-  <li><b>语义意图路由：</b><code>classify_intent()</code> 调用 Gemini 2.0 Flash，返回意图分类、分类理由、工具类别集合。</li>
-  <li><b>RBAC 鉴权：</b>viewer 角色禁止访问 Governance 与 Optimization 管线。</li>
-  <li><b>管线调度：</b>根据意图分发至对应的 ADK SequentialAgent 或 Planner LlmAgent。</li>
-  <li><b>Agent 执行：</b>ADK Runner 驱动 Agent 链式调用工具，Token 消耗实时记录。</li>
-  <li><b>结果聚合：</b>检测 <code>layer_control</code> 元数据，注入地图更新配置至 <code>pending_map_updates</code> 缓存。</li>
-  <li><b>前端渲染：</b>ChatPanel 轮询 <code>GET /api/map/pending</code> 获取地图配置，MapPanel 渲染图层。</li>
-</ol>
+        <div class="section" id="context-injection">
+            <h3>多源上下文注入</h3>
+            <p>路由前，系统从 5 个来源拼接上下文到 Prompt 中：</p>
+            <ol>
+                <li>上轮分析结果（管线名称、生成文件、摘要）</li>
+                <li>空间记忆（用户偏好、近期分析结果）</li>
+                <li>语义层映射（列名→业务含义的预解析）</li>
+                <li>用户分析视角（2000 字以内的个人偏好描述）</li>
+                <li>ArcPy 可用性标志</li>
+            </ol>
+        </div>
 
-<h3>代码组织</h3>
-<p class="table-title">核心模块清单</p>
-<table>
-<thead><tr><th>模块</th><th>规模</th><th>职责</th></tr></thead>
-<tbody>
-<tr><td><code>app.py</code></td><td>3267 行</td><td>Chainlit 入口：RBAC、文件上传、会话管理、管线调度（路由逻辑已提取）</td></tr>
-<tr><td><code>agent.py</code></td><td>626 行</td><td>Agent 定义、管线组装、工厂函数、模型分层</td></tr>
-<tr><td><code>frontend_api.py</code></td><td>2330 行</td><td>92 个 REST API 端点</td></tr>
-<tr><td><code>fusion/</code></td><td>22 模块</td><td>多模态数据融合引擎（10 种策略）</td></tr>
-<tr><td><code>toolsets/</code></td><td>19 文件</td><td>BaseToolset 子类（130+ 工具函数）</td></tr>
-<tr><td><code>skills/</code></td><td>16 目录</td><td>ADK Skills（场景化技能）</td></tr>
-<tr><td><code>semantic_layer.py</code></td><td>1551 行</td><td>语义目录、字段映射、缓存</td></tr>
-<tr><td><code>workflow_engine.py</code></td><td>1152 行</td><td>工作流 CRUD、顺序执行、Cron 调度</td></tr>
-<tr><td><code>mcp_hub.py</code></td><td>773 行</td><td>MCP 服务器生命周期管理、加密、热重载</td></tr>
-</tbody>
-</table>
-</div>
+        <div class="section" id="router-error-handling">
+            <h3>错误处理与降级</h3>
+            <p>路由器异常时 fallback 到 GENERAL 管线。这是一个务实的设计选择——GENERAL 管线具有最广的工具覆盖范围，可以处理大多数请求。</p>
+            <div class="note note-attention">路由器 Token 消耗当前未持久化到 <code>token_tracker</code>，存在计费盲区。路由器 Prompt 与意图列表硬编码在 <code>app.py</code> 中，新增管线需修改路由器 Prompt，无法通过配置扩展。</div>
+        </div>
+    </article><article id="tg-multi-pipeline-orchestration"><h2>多管线 Agent 编排</h2><p class="shortdesc">系统定义了四条独立管线（Optimization、Governance、General、Planner），基于 ADK SequentialAgent 与 LlmAgent 组合编排，内置 LoopAgent 质量保证循环和工厂函数解决 ADK 单父约束。</p>
+        <div class="section" id="pipeline-overview">
+            <h3>管线架构总览</h3>
+            <table class="dita-table">
+                <h3>四条管线对比</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>管线</th>
+                            <th>ADK 类型</th>
+                            <th>默认模型</th>
+                            <th>用途</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>data_pipeline</code></td>
+                            <td>SequentialAgent</td>
+                            <td>Flash</td>
+                            <td>空间布局优化（DRL 深度强化学习）</td>
+                        </tr>
+                        <tr>
+                            <td><code>governance_pipeline</code></td>
+                            <td>SequentialAgent</td>
+                            <td>Flash / Pro</td>
+                            <td>数据质量治理审计</td>
+                        </tr>
+                        <tr>
+                            <td><code>general_pipeline</code></td>
+                            <td>SequentialAgent</td>
+                            <td>Flash</td>
+                            <td>通用空间分析</td>
+                        </tr>
+                        <tr>
+                            <td><code>planner_agent</code></td>
+                            <td>LlmAgent</td>
+                            <td>Flash</td>
+                            <td>动态编排（含子 Agent + 工作流）</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<!-- ======================== 2. 语义意图路由层 ======================== -->
-<div class="topic" id="tg-semantic-intent-router">
-<h2>2. 语义意图路由层</h2>
-<p class="shortdesc">语义意图路由是系统的入口决策点，使用 Gemini 2.0 Flash 对自然语言进行实时分类，将请求分发至对应的 Agent 管线，同时返回工具类别用于动态裁剪可用工具集。</p>
+        <div class="section" id="optimization-pipeline">
+            <h3>Optimization Pipeline</h3>
+            <p>该管线处理空间布局优化任务，执行顺序如下：</p>
+            <ol>
+                <li><strong>ParallelDataIngestion：</strong>数据探索（Exploration）与语义预取（SemanticPreFetch）并行执行，减少延迟。</li>
+                <li><strong>DataProcessing：</strong>特征工程、GIS 操作、数据融合。</li>
+                <li><strong>AnalysisQualityLoop：</strong>LoopAgent 模式——DataAnalysis 产出分析报告后，QualityChecker 验证结果完整性与 DRL 优化效果，最多循环 3 次。</li>
+                <li><strong>DataVisualization：</strong>专题图、气泡图、交互式地图生成。</li>
+                <li><strong>DataSummary：</strong>决策报告输出。</li>
+            </ol>
+        </div>
 
-<h3>设计目标</h3>
-<ul>
-  <li><b>低延迟：</b>选用 Gemini 2.0 Flash（成本最低、延迟最低的模型），将昂贵的 Pro 模型留给需要深度推理的 Agent。</li>
-  <li><b>多模态支持：</b>文本、图片（缩放至 512px 后编码为 JPEG Blob）、PDF（pypdf 文本提取）三种模态可组合输入。</li>
-  <li><b>可解释性：</b>路由器返回分类理由（<code>reason</code>），前端展示路由信息卡片供用户理解系统决策。</li>
-</ul>
+        <div class="section" id="governance-pipeline">
+            <h3>Governance Pipeline</h3>
+            <p>该管线专注于数据质量治理审计：</p>
+            <ol>
+                <li><strong>GovExploration：</strong>拓扑审计、字段标准检查、一致性验证。</li>
+                <li><strong>GovProcessing：</strong>数据修复、地理编码、融合。</li>
+                <li><strong>GovernanceReportLoop：</strong>Reporter（使用 Gemini 2.5 Pro）生成治理报告，Checker 验证后最多循环 3 次。</li>
+            </ol>
+            <div class="note">Reporter 使用 Premium 模型（Gemini 2.5 Pro），因为治理报告需要更强的综合推理能力来整合多维度审计结果。</div>
+        </div>
 
-<h3>路由器输出</h3>
-<table>
-<thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td><code>intent</code></td><td>枚举</td><td>OPTIMIZATION | GOVERNANCE | GENERAL | AMBIGUOUS</td></tr>
-<tr><td><code>reason</code></td><td>字符串</td><td>分类理由，用于前端路由信息卡片展示</td></tr>
-<tr><td><code>router_tokens</code></td><td>整数</td><td>路由器本次调用消耗的 Token 数</td></tr>
-<tr><td><code>tool_categories</code></td><td>集合</td><td>工具类别（如 <code>spatial_processing</code>、<code>poi_location</code>），用于 General 管线的动态工具过滤</td></tr>
-</tbody>
-</table>
+        <div class="section" id="general-pipeline">
+            <h3>General Pipeline</h3>
+            <p>通用管线具有最广的工具覆盖范围：</p>
+            <ol>
+                <li><strong>GeneralProcessing：</strong>全工具集，通过 <code>intent_tool_predicate</code> 根据路由器返回的 <code>tool_categories</code> 动态过滤。</li>
+                <li><strong>GeneralViz：</strong>热力图、专题图、气泡图、交互式地图。</li>
+                <li><strong>GeneralSummaryLoop：</strong>摘要生成 + 质量检查循环。</li>
+            </ol>
+        </div>
 
-<h3>工具类别动态过滤（v7.5.6）</h3>
-<p>路由器不仅返回意图，还返回工具类别集合。General 管线通过 <code>intent_tool_predicate</code> 根据这些类别动态裁剪可用工具，减少 Token 消耗并防止工具幻觉。预定义子集：</p>
-<ul>
-  <li><code>_AUDIT_TOOLS</code>：数据画像、拓扑审计、字段标准检查</li>
-  <li><code>_TRANSFORM_TOOLS</code>：坐标重投影、空间特征工程</li>
-  <li><code>_DB_READ</code>：数据库查询、表列表</li>
-  <li><code>_DATALAKE_READ</code>：数据湖资产搜索</li>
-</ul>
+        <div class="section" id="planner-agent">
+            <h3>Planner Agent（动态编排器）</h3>
+            <p>Planner 不走固定的 Sequential 顺序，而是由 LLM 根据任务需求动态选择调用哪个子 Agent 或工作流：</p>
+            <ul>
+                <li><strong>5 个子 Agent：</strong>PlannerExplorer、PlannerProcessor、PlannerAnalyzer、PlannerVisualizer、PlannerReporter</li>
+                <li><strong>2 个打包工作流：</strong><code>ExploreAndProcess</code>（并行摄入 + 处理，8 跳→3 跳）、<code>AnalyzeAndVisualize</code>（分析 + 可视化，2 跳）</li>
+                <li><strong>工具集：</strong>19 Toolsets + SkillBundles + MCP Hub + Fusion + KnowledgeGraph</li>
+            </ul>
+        </div>
 
-<h3>多源上下文注入</h3>
-<ol>
-  <li>上轮分析结果（管线名称、生成文件、摘要）</li>
-  <li>空间记忆（用户偏好、近期分析结果）</li>
-  <li>语义层映射（列名→业务含义的预解析）</li>
-  <li>用户分析视角（2000 字以内的个人偏好描述）</li>
-  <li>ArcPy 可用性标志</li>
-</ol>
+        <div class="section" id="factory-functions">
+            <h3>ADK 单父约束与工厂函数</h3>
+            <p>ADK 框架强制要求每个 Agent 实例只能有一个父级（<code>already has a parent</code> 约束）。当多条管线需要复用相同配置的 Agent 时，不能共享实例。</p>
+            <p>解决方案：4 个工厂函数（<code>_make_planner_explorer</code>、<code>_make_planner_processor</code>、<code>_make_planner_analyzer</code>、<code>_make_planner_visualizer</code>）创建配置相同但实例独立的 Agent。</p>
+            <div class="note note-attention">工厂函数增殖是已知的维护负担——每新增一种可复用 Agent 就要新增一个工厂函数，且所有工厂必须保持配置同步。</div>
+        </div>
 
-<div class="note note-attention">
-  <div class="note-title">架构注意</div>
-  路由器 Token 消耗当前未持久化到 <code>token_tracker</code>，存在计费盲区。路由器 Prompt 与意图列表硬编码在 <code>app.py</code> 中，新增管线需修改路由器 Prompt，无法通过配置扩展。多模态上下文注入（5+ 来源）拼接到路由 Prompt，缺乏总长度保护。
-</div>
-</div>
+        <div class="section" id="model-tiering">
+            <h3>模型分层策略</h3>
+            <table class="dita-table">
+                <h3>三级模型分层</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>层级</th>
+                            <th>模型</th>
+                            <th>使用场景</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Fast</td>
+                            <td>Gemini 2.0 Flash</td>
+                            <td>路由器、质量检查器、语义预取</td>
+                        </tr>
+                        <tr>
+                            <td>Standard</td>
+                            <td>Gemini 2.5 Flash</td>
+                            <td>主 Agent（默认）</td>
+                        </tr>
+                        <tr>
+                            <td>Premium</td>
+                            <td>Gemini 2.5 Pro</td>
+                            <td>Reporter（复杂综合推理）</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>通过 ContextVar <code>current_model_tier</code> 支持按请求粒度的模型覆盖，使管理员或高级用户可以在特定场景使用更强的模型。</p>
+        </div>
 
-<!-- ======================== 3. 多管线 Agent 编排 ======================== -->
-<div class="topic" id="tg-multi-pipeline-orchestration">
-<h2>3. 多管线 Agent 编排</h2>
-<p class="shortdesc">系统定义了四条独立管线，基于 ADK SequentialAgent 与 LlmAgent 组合编排，内置 LoopAgent 质量保证循环和工厂函数解决 ADK 单父约束。</p>
-
-<h3>管线架构总览</h3>
-<table>
-<thead><tr><th>管线</th><th>ADK 类型</th><th>默认模型</th><th>用途</th></tr></thead>
-<tbody>
-<tr><td><code>data_pipeline</code></td><td>SequentialAgent</td><td>Flash</td><td>空间布局优化（DRL 深度强化学习）</td></tr>
-<tr><td><code>governance_pipeline</code></td><td>SequentialAgent</td><td>Flash / Pro</td><td>数据质量治理审计</td></tr>
-<tr><td><code>general_pipeline</code></td><td>SequentialAgent</td><td>Flash</td><td>通用空间分析</td></tr>
-<tr><td><code>planner_agent</code></td><td>LlmAgent</td><td>Flash</td><td>动态编排（含子 Agent + 工作流）</td></tr>
-</tbody>
-</table>
-
-<h3>Optimization Pipeline</h3>
-<ol>
-  <li><b>ParallelDataIngestion：</b>数据探索（Exploration）与语义预取（SemanticPreFetch）并行执行，减少延迟。</li>
-  <li><b>DataProcessing：</b>特征工程、GIS 操作、数据融合。</li>
-  <li><b>AnalysisQualityLoop：</b>LoopAgent 模式——DataAnalysis 产出分析报告后，QualityChecker 验证结果完整性与 DRL 优化效果，最多循环 3 次。</li>
-  <li><b>DataVisualization：</b>专题图、气泡图、交互式地图生成。</li>
-  <li><b>DataSummary：</b>决策报告输出。</li>
-</ol>
-
-<h3>Governance Pipeline</h3>
-<ol>
-  <li><b>GovExploration：</b>拓扑审计、字段标准检查、一致性验证。</li>
-  <li><b>GovProcessing：</b>数据修复、地理编码、融合。</li>
-  <li><b>GovernanceReportLoop：</b>Reporter（使用 Gemini 2.5 Pro）生成治理报告，Checker 验证后最多循环 3 次。</li>
-</ol>
-<div class="note note-info"><div class="note-title">设计说明</div>Reporter 使用 Premium 模型（Gemini 2.5 Pro），因为治理报告需要更强的综合推理能力来整合多维度审计结果。</div>
-
-<h3>Planner Agent（动态编排器）</h3>
-<ul>
-  <li><b>5 个子 Agent：</b>PlannerExplorer、PlannerProcessor、PlannerAnalyzer、PlannerVisualizer、PlannerReporter</li>
-  <li><b>2 个打包工作流：</b><code>ExploreAndProcess</code>（并行摄入 + 处理，8 跳→3 跳）、<code>AnalyzeAndVisualize</code>（分析 + 可视化，2 跳）</li>
-  <li><b>工具集：</b>19 Toolsets + SkillBundles + MCP Hub + Fusion + KnowledgeGraph</li>
-</ul>
-
-<h3>模型分层策略</h3>
-<table>
-<thead><tr><th>层级</th><th>模型</th><th>使用场景</th></tr></thead>
-<tbody>
-<tr><td>Fast</td><td>Gemini 2.0 Flash</td><td>路由器、质量检查器、语义预取</td></tr>
-<tr><td>Standard</td><td>Gemini 2.5 Flash</td><td>主 Agent（默认）</td></tr>
-<tr><td>Premium</td><td>Gemini 2.5 Pro</td><td>Reporter（复杂综合推理）</td></tr>
-</tbody>
-</table>
-<p>通过 ContextVar <code>current_model_tier</code> 支持按请求粒度的模型覆盖。</p>
-
-<h3>质量保证循环</h3>
-<ol>
-  <li>Generator Agent（如 DataAnalysis）产出分析报告。</li>
-  <li>Critic Agent（QualityChecker）通过 <code>approve_quality</code> 工具评估输出。</li>
-  <li>若发现问题，输出修改意见，LoopAgent 驱动 Generator 重新执行（最多 3 次迭代）。</li>
-  <li>若通过，输出传递给下一个 Agent。</li>
-</ol>
-
-<div class="note note-attention">
-  <div class="note-title">架构注意</div>
-  工厂函数增殖——每新增一种可复用 Agent 就要新增一个工厂函数，且所有工厂必须保持配置同步。管线无熔断器（Circuit Breaker），极端情况下可能在错误路径上反复消耗 Token。Planner 的工具空间过大（19 Toolsets + 5 子 Agent + 2 工作流），存在路由混乱的风险。
-</div>
-</div>
-
-<!-- ======================== 4. 工具体系 ======================== -->
-<div class="topic" id="tg-toolset-framework">
-<h2>4. 工具体系与 BaseToolset 框架</h2>
-<p class="shortdesc">系统通过 23 个 BaseToolset 子类封装了 130+ 工具函数，配合懒加载注册表和工具过滤机制，实现模块化的工具发现、注册与裁剪。v12.0 新增 UserToolset 支持用户声明式自定义工具。</p>
-
-<h3>BaseToolset 模式</h3>
-<pre>class ExplorationToolset(BaseToolset):
+        <div class="section" id="quality-loop">
+            <h3>质量保证循环</h3>
+            <p>三条 Sequential 管线均内置了 LoopAgent 质量保证循环：</p>
+            <ol>
+                <li>Generator Agent（如 DataAnalysis）产出分析报告。</li>
+                <li>Critic Agent（QualityChecker）通过 <code>approve_quality</code> 工具评估输出。</li>
+                <li>若发现问题，输出修改意见，LoopAgent 驱动 Generator 重新执行（最多 3 次迭代）。</li>
+                <li>若通过，输出传递给下一个 Agent。</li>
+            </ol>
+            <p>质量检查器验证的维度包括：结果完整性、DRL 优化效果（是否产生了地块置换）、遥感/统计分析值域合理性（如 NDVI 取值范围 -1~1、Moran's I 取值范围 -1~1）。</p>
+        </div>
+    </article><article id="tg-toolset-framework"><h2>工具体系与 BaseToolset 框架</h2><p class="shortdesc">系统通过 40 个 BaseToolset 子类封装了 270+ 工具函数，配合懒加载注册表和工具过滤机制，实现了模块化的工具发现、注册与裁剪。v23.0 涵盖空间处理、治理质检、因果推断、世界模型、遥感分析、语义算子、数据清洗、精度评估等全领域工具集，并支持 UserToolset 用户声明式自定义工具。</p>
+        <div class="section" id="base-toolset-pattern">
+            <h3>BaseToolset 模式</h3>
+            <p>所有工具集继承自 <code>google.adk.tools.base_toolset.BaseToolset</code>，通过异步 <code>get_tools()</code> 方法返回 <code>FunctionTool</code> 实例列表：</p>
+            <pre><code>class ExplorationToolset(BaseToolset):
     async def get_tools(self, readonly_context=None):
         all_tools = [FunctionTool(f) for f in _ALL_FUNCS]
         if self.tool_filter is None:
             return all_tools
-        return [t for t in all_tools if self._is_tool_selected(t, readonly_context)]</pre>
-<p><code>tool_filter</code> 参数允许同一 Toolset 类在不同管线中暴露不同工具子集。</p>
+        return [t for t in all_tools if self._is_tool_selected(t, readonly_context)]</code></pre>
+            <p>关键设计点：<code>tool_filter</code> 参数允许同一 Toolset 类在不同管线中暴露不同工具子集，例如 <code>ExplorationToolset(tool_filter=AUDIT_TOOLS)</code> 仅暴露审计相关工具。</p>
+        </div>
 
-<h3>工具集清单</h3>
-<table>
-<thead><tr><th>类别</th><th>Toolset</th><th>工具数</th><th>核心能力</th></tr></thead>
-<tbody>
-<tr><td>数据探索</td><td>ExplorationToolset</td><td>6</td><td>数据画像、拓扑审计、字段标准检查</td></tr>
-<tr><td>GIS 处理</td><td>GeoProcessingToolset</td><td>18+8</td><td>镶嵌、裁剪、缓冲、叠加、聚类；可选 ArcPy</td></tr>
-<tr><td>可视化</td><td>VisualizationToolset</td><td>15</td><td>交互式地图、专题图、3D、PNG 导出、图层控制</td></tr>
-<tr><td>分析</td><td>AnalysisToolset</td><td>4</td><td>DRL 优化、FFI 计算、Pareto 分析</td></tr>
-<tr><td>数据库</td><td>DatabaseToolset</td><td>8</td><td>SQL 查询、表描述、导入/导出</td></tr>
-<tr><td>位置服务</td><td>LocationToolset</td><td>5</td><td>地理编码、POI 检索、行政区划</td></tr>
-<tr><td>遥感</td><td>RemoteSensingToolset</td><td>8</td><td>NDVI、栅格分类、DEM/LULC 下载</td></tr>
-<tr><td>空间统计</td><td>SpatialStatisticsToolset</td><td>3</td><td>Moran's I、LISA、Gi* 热点</td></tr>
-<tr><td>语义层</td><td>SemanticLayerToolset</td><td>9</td><td>域浏览、语义映射、列等价</td></tr>
-<tr><td>数据湖</td><td>DataLakeToolset</td><td>8</td><td>资产搜索、打标、血缘、云下载</td></tr>
-<tr><td>融合</td><td>FusionToolset</td><td>4</td><td>多源数据融合、兼容性评估</td></tr>
-<tr><td>知识图谱</td><td>KnowledgeGraphToolset</td><td>3</td><td>构建/查询/导出地理知识图谱</td></tr>
-<tr><td>知识库</td><td>KnowledgeBaseToolset</td><td>12</td><td>Vertex AI Search 集成</td></tr>
-<tr><td>文件</td><td>FileToolset</td><td>6</td><td>用户文件 CRUD</td></tr>
-<tr><td>记忆</td><td>MemoryToolset</td><td>4</td><td>空间记忆保存/检索/删除</td></tr>
-<tr><td>团队</td><td>TeamToolset</td><td>8</td><td>团队 CRUD、成员管理</td></tr>
-<tr><td>流处理</td><td>StreamingToolset</td><td>5</td><td>实时数据流、事件聚合</td></tr>
-<tr><td>管理</td><td>AdminToolset</td><td>3</td><td>用户管理、审计日志、诊断</td></tr>
-<tr><td>流域</td><td>WatershedToolset</td><td>3</td><td>流域提取、DEM 处理</td></tr>
-</tbody>
-</table>
+        <div class="section" id="toolset-inventory">
+            <h3>工具集清单</h3>
+            <table class="dita-table">
+                <h3>40 个 BaseToolset 子类</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>类别</th>
+                            <th>Toolset</th>
+                            <th>工具数</th>
+                            <th>核心能力</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>GIS 处理</td><td>GeoProcessingToolset</td><td>17+8</td><td>镶嵌、裁剪、缓冲、叠加、聚类；可选 ArcPy 工具</td></tr>
+                        <tr><td>数据治理</td><td>GovernanceToolset</td><td>18</td><td>空隙/重叠/完整性/属性/CRS/拓扑检查、治理评分、标准验证</td></tr>
+                        <tr><td>遥感</td><td>RemoteSensingToolset</td><td>13</td><td>NDVI/DEM/LULC、变化检测、Mann-Kendall、光谱分析</td></tr>
+                        <tr><td>可视化</td><td>VisualizationToolset</td><td>11</td><td>交互式地图、专题图、3D 拉伸、PNG 导出、图层控制</td></tr>
+                        <tr><td>数据清洗</td><td>DataCleaningToolset</td><td>11</td><td>去重、空值填充、坐标修正、编码转换、几何修复</td></tr>
+                        <tr><td>数据湖</td><td>DataLakeToolset</td><td>9</td><td>资产搜索、打标、血缘追踪、云下载</td></tr>
+                        <tr><td>语义层</td><td>SemanticLayerToolset</td><td>9</td><td>域浏览、语义映射、列等价发现</td></tr>
+                        <tr><td>知识库</td><td>KnowledgeBaseToolset</td><td>9</td><td>GraphRAG 检索、案例库、领域知识</td></tr>
+                        <tr><td>数据探索</td><td>ExplorationToolset</td><td>9</td><td>数据画像、拓扑审计、字段标准检查</td></tr>
+                        <tr><td>统计图表</td><td>ChartToolset</td><td>9</td><td>9 种 ECharts 交互图表</td></tr>
+                        <tr><td>位置服务</td><td>LocationToolset</td><td>8</td><td>地理编码、POI 检索、行政区划</td></tr>
+                        <tr><td>团队</td><td>TeamToolset</td><td>8</td><td>团队 CRUD、成员管理、资源共享</td></tr>
+                        <tr><td>工具演化</td><td>ToolEvolutionToolset</td><td>8</td><td>工具使用分析、推荐、自动优化</td></tr>
+                        <tr><td>高级分析</td><td>AdvancedAnalysisToolset</td><td>7</td><td>时间序列、情景模拟、网络分析</td></tr>
+                        <tr><td>融合</td><td>FusionToolset</td><td>7</td><td>多源数据融合 v2.0、兼容性评估</td></tr>
+                        <tr><td>虚拟数据源</td><td>VirtualSourceToolset</td><td>7</td><td>虚拟源 CRUD、Schema 映射、连接器调度</td></tr>
+                        <tr><td>统计因果</td><td>CausalInferenceToolset</td><td>6</td><td>PSM、ERF、DiD、Granger、GCCM、Causal Forest</td></tr>
+                        <tr><td>实时流</td><td>StreamingToolset</td><td>5</td><td>实时数据流、事件聚合</td></tr>
+                        <tr><td>数据库</td><td>DatabaseToolset</td><td>5</td><td>SQL 查询、表描述、导入/导出</td></tr>
+                        <tr><td>高级空间</td><td>SpatialAnalysisTier2Toolset</td><td>5</td><td>二级空间分析工具集</td></tr>
+                        <tr><td>核心分析</td><td>AnalysisToolset</td><td>5</td><td>DRL 优化、FFI 计算、Pareto 分析</td></tr>
+                        <tr><td>世界模型</td><td>WorldModelToolset</td><td>5</td><td>AlphaEarth + LatentDynamicsNet JEPA</td></tr>
+                        <tr><td>套合精度</td><td>PrecisionToolset</td><td>5</td><td>精度评估、套合检查（GB/T 24356）</td></tr>
+                        <tr><td>语义算子</td><td>OperatorToolset</td><td>5</td><td>语义算子执行引擎</td></tr>
+                        <tr><td>管理</td><td>AdminToolset</td><td>5</td><td>用户管理、审计日志、系统诊断</td></tr>
+                        <tr><td>记忆</td><td>MemoryToolset</td><td>4</td><td>空间记忆保存/检索/删除</td></tr>
+                        <tr><td>LLM 因果</td><td>LLMCausalToolset</td><td>4</td><td>DAG 构建、反事实推理、机制解释</td></tr>
+                        <tr><td>因果世界模型</td><td>CausalWorldModelToolset</td><td>4</td><td>干预预测、反事实对比、嵌入效应</td></tr>
+                        <tr><td>云存储</td><td>StorageToolset</td><td>4</td><td>OBS 云存储上传/下载</td></tr>
+                        <tr><td>空间统计</td><td>SpatialStatisticsToolset</td><td>3</td><td>Moran's I、LISA、Gi* 热点分析</td></tr>
+                        <tr><td>知识图谱</td><td>KnowledgeGraphToolset</td><td>3</td><td>构建/查询/导出地理知识图谱</td></tr>
+                        <tr><td>流域</td><td>WatershedToolset</td><td>3</td><td>流域提取、DEM 处理</td></tr>
+                        <tr><td>NL2SQL</td><td>NL2SQLToolset</td><td>3</td><td>自然语言转 SQL 查询</td></tr>
+                        <tr><td>报告</td><td>ReportToolset</td><td>3</td><td>报告生成引擎</td></tr>
+                        <tr><td>分布式</td><td>SparkToolset</td><td>3</td><td>Spark 分布式计算网关</td></tr>
+                        <tr><td>文件</td><td>FileToolset</td><td>3</td><td>用户文件 CRUD</td></tr>
+                        <tr><td>Dreamer</td><td>DreamerToolset</td><td>2</td><td>World Model Dreamer DRL 集成</td></tr>
+                        <tr><td>MCP 外部</td><td>McpHubToolset</td><td>动态</td><td>MCP 服务器动态发现与调用</td></tr>
+                        <tr><td>技能包</td><td>SkillBundlesToolset</td><td>动态</td><td>技能包组合工具集</td></tr>
+                        <tr><td>用户自定义</td><td>UserToolset</td><td>动态</td><td>用户声明式自定义工具（http_call/sql_query/file_transform/chain）</td></tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<h3>懒加载注册表</h3>
-<pre>class _RegistryProxy(dict):
+        <div class="section" id="lazy-loading">
+            <h3>懒加载注册表</h3>
+            <p><code class="filepath">custom_skills.py</code> 中的 <code>_RegistryProxy</code> 实现了延迟加载，避免在模块导入时加载 40 个依赖大量重型库（GeoPandas、Rasterio、PyTorch）的 Toolset 类：</p>
+            <pre><code>class _RegistryProxy(dict):
     """Dict proxy, 首次访问时才导入 Toolset 类"""
     def __getitem__(self, key):
-        return _get_toolset_registry()[key]</pre>
-<p>避免在模块导入时加载 23 个依赖重型库（GeoPandas、Rasterio、PyTorch）的 Toolset 类，显著优化冷启动性能。</p>
-</div>
+        return _get_toolset_registry()[key]</code></pre>
+            <p>对调用方透明（实现完整 dict 接口），加载结果缓存于 <code>_toolset_registry_cache</code>。</p>
+        </div>
 
-<!-- ======================== 5. 融合引擎 ======================== -->
-<div class="topic" id="tg-fusion-engine">
-<h2>5. 多模态数据融合引擎架构</h2>
-<p class="shortdesc">融合引擎由 22 个聚焦模块组成，实现五阶段融合流水线、四级语义字段匹配、10 种融合策略和 PostGIS 推算下沉。</p>
+        <div class="section" id="skill-bundles">
+            <h3>工具过滤与技能包</h3>
+            <p><code class="filepath">toolsets/skill_bundles.py</code> 定义了 5 个命名工具包，为不同场景预配置工具子集：</p>
+            <pre><code>AUDIT_TOOLS = ["describe_geodataframe", "check_topology",
+               "check_field_standards", "check_consistency"]
+TRANSFORM_TOOLS = ["reproject_spatial_data", "engineer_spatial_features"]
+DB_READ = ["query_database", "list_tables"]</code></pre>
+            <div class="note note-attention">无工具版本控制机制——工具通过直接 import 引入，无法在运行时切换实现（如 ArcPy 与开源替代方案之间的热切换）。工具间缺乏显式依赖声明，依赖关系仅通过 <code>output_key</code> 在 Agent 间隐式传递。</div>
+        </div>
+    </article><article id="tg-fusion-engine"><h2>多模态数据融合引擎架构</h2><p class="shortdesc">融合引擎是系统中最复杂的子系统之一，由 32 个聚焦模块组成（v2.0），实现五阶段融合流水线、四级语义字段匹配、10 种融合策略、PostGIS 推算下沉，以及 v2.0 新增的时序融合（temporal.py）、语义 LLM 融合（semantic_llm.py）、冲突解决（conflict_resolver.py）和可解释性（explainability.py）模块。</p>
+        <div class="section" id="package-structure">
+            <h3>包结构</h3>
+            <p>融合引擎从早期的单一 <code class="filepath">fusion_engine.py</code> 重构为职责清晰的包结构：</p>
+            <table class="dita-table">
+                <h3>核心模块清单</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>模块</th>
+                            <th>规模</th>
+                            <th>职责</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code class="filepath">models.py</code></td>
+                            <td>~50 行</td>
+                            <td>数据模型：<code>FusionSource</code>、<code>CompatibilityReport</code>、<code>FusionResult</code></td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">profiling.py</code></td>
+                            <td>~300 行</td>
+                            <td>数据源画像（vector/raster/tabular/point_cloud/PostGIS）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">matching.py</code></td>
+                            <td>~393 行</td>
+                            <td>四级语义字段匹配（精确→等价→嵌入→模糊）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">compatibility.py</code></td>
+                            <td>~150 行</td>
+                            <td>CRS 兼容性、空间重叠 IoU、时间对齐评估</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">alignment.py</code></td>
+                            <td>~200 行</td>
+                            <td>单位转换、列冲突解决、CRS 重投影</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">execution.py</code></td>
+                            <td>~363 行</td>
+                            <td>策略选择、多源编排、自动路由</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">validation.py</code></td>
+                            <td>~100 行</td>
+                            <td>10 维质量验证（完整性、精度、一致性等）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">strategies/</code></td>
+                            <td>12 文件</td>
+                            <td>10 种融合策略实现 + 注册表</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<h3>五阶段融合流水线</h3>
-<ol>
-  <li><b>数据画像（Profiling）：</b><code>profile_source()</code> 自动检测数据类型、CRS、边界、行数、列结构。</li>
-  <li><b>兼容性评估（Compatibility）：</b><code>assess_compatibility()</code> 计算 CRS 兼容性、空间重叠 IoU、时间对齐。</li>
-  <li><b>源对齐（Alignment）：</b><code>align_sources()</code> 执行 CRS 重投影、单位转换、列名冲突解决。</li>
-  <li><b>策略执行（Fusion）：</b><code>execute_fusion(strategy='auto')</code> 规则式评分选择最优策略执行。</li>
-  <li><b>质量验证（Validation）：</b><code>validate_quality()</code> 10 维质量评分。</li>
-</ol>
+        <div class="section" id="fusion-pipeline">
+            <h3>五阶段融合流水线</h3>
+            <ol>
+                <li><strong>数据画像（Profiling）：</strong><code>profile_source()</code> 自动检测数据类型、CRS、边界、行数、列结构、几何类型。对矢量/栅格/表格/点云/PostGIS 五种后端分别处理。</li>
+                <li><strong>兼容性评估（Compatibility）：</strong><code>assess_compatibility()</code> 计算 CRS 兼容性、空间重叠 IoU、时间对齐程度、字段匹配得分，输出 <code>CompatibilityReport</code> 并推荐可用策略。</li>
+                <li><strong>源对齐（Alignment）：</strong><code>align_sources()</code> 执行 CRS 重投影、单位转换（如 sqm→hectares）、列名冲突解决。</li>
+                <li><strong>策略执行（Fusion）：</strong><code>execute_fusion(strategy='auto')</code> 调用 <code>_auto_select_strategy()</code> 进行规则式评分（IoU、几何类型、行数比、用户提示），选择最高分策略执行。</li>
+                <li><strong>质量验证（Validation）：</strong><code>validate_quality()</code> 对融合结果执行 10 维质量评分。</li>
+            </ol>
+        </div>
 
-<h3>四级语义字段匹配</h3>
-<table>
-<thead><tr><th>级别</th><th>分数</th><th>机制</th></tr></thead>
-<tbody>
-<tr><td>L1 精确匹配</td><td>1.0</td><td>字段名完全相同（大小写不敏感）</td></tr>
-<tr><td>L2 等价组匹配</td><td>0.8</td><td>通过 <code>semantic_catalog.yaml</code> 注册的同义词组（如 [area, 面积, zmj]）</td></tr>
-<tr><td>L3 嵌入匹配</td><td>≥0.78</td><td>Gemini <code>text-embedding-004</code> 向量余弦相似度</td></tr>
-<tr><td>L4 模糊匹配</td><td>0.5-0.7</td><td><code>SequenceMatcher</code> 字符串相似度</td></tr>
-</tbody>
-</table>
+        <div class="section" id="semantic-matching">
+            <h3>四级语义字段匹配</h3>
+            <table class="dita-table">
+                <h3>渐进式匹配策略</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>级别</th>
+                            <th>分数</th>
+                            <th>机制</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>L1 精确匹配</td>
+                            <td>1.0</td>
+                            <td>字段名完全相同（大小写不敏感）</td>
+                        </tr>
+                        <tr>
+                            <td>L2 等价组匹配</td>
+                            <td>0.8</td>
+                            <td>通过 <code class="filepath">semantic_catalog.yaml</code> 注册的同义词组（如 [area, 面积, zmj]）</td>
+                        </tr>
+                        <tr>
+                            <td>L3 嵌入匹配</td>
+                            <td>≥0.78</td>
+                            <td>Gemini <code>text-embedding-004</code> 向量余弦相似度</td>
+                        </tr>
+                        <tr>
+                            <td>L4 模糊匹配</td>
+                            <td>0.5-0.7</td>
+                            <td><code>SequenceMatcher</code> 字符串相似度</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<h3>策略矩阵</h3>
-<ul>
-  <li><b>Vector + Vector：</b>spatial_join、overlay、nearest_join、attribute_join</li>
-  <li><b>Vector + Raster：</b>zonal_statistics、point_sampling、height_assign</li>
-  <li><b>Raster + Raster：</b>band_stack</li>
-  <li><b>Stream + Vector：</b>time_snapshot</li>
-</ul>
-<p>v7.1 将 LLM 策略路由替换为规则式评分，基于 IoU、几何类型组合、行数比和用户提示中的关键词。</p>
+        <div class="section" id="strategy-matrix">
+            <h3>策略矩阵</h3>
+            <p>策略矩阵将数据类型对映射到可用策略：</p>
+            <ul>
+                <li><strong>Vector + Vector：</strong>spatial_join、overlay、nearest_join、attribute_join</li>
+                <li><strong>Vector + Raster：</strong>zonal_statistics、point_sampling、height_assign</li>
+                <li><strong>Raster + Raster：</strong>band_stack</li>
+                <li><strong>Stream + Vector：</strong>time_snapshot</li>
+                <li><strong>Any + Raster：</strong>raster_vectorize</li>
+            </ul>
+            <p>v7.1 将 LLM 策略路由替换为规则式评分，基于 IoU、几何类型组合、行数比和用户提示中的关键词进行策略排序。</p>
+        </div>
 
-<h3>PostGIS 推算下沉</h3>
-<p>对于大数据集（双源均在 PostGIS 中），融合操作直接在数据库中以 SQL 执行，减少内存占用和数据传输开销。</p>
+        <div class="section" id="postgis-pushdown">
+            <h3>PostGIS 推算下沉</h3>
+            <p>对于大数据集（行数超过阈值且双源均在 PostGIS 中），融合操作可直接在数据库中以 SQL 执行，减少内存占用和数据传输开销。</p>
+            <div class="note note-attention">
+                <ul>
+                    <li>嵌入 API 依赖 Gemini <code>text-embedding-004</code>，模块级缓存无 TTL，故障时跳过嵌入匹配降级到 L4。</li>
+                    <li>空间对爆炸保护硬上限 <code>_MAX_SPATIAL_PAIRS = 1000</code>，超限后静默截断，对被截断数据无告知。</li>
+                    <li>多源融合按固定顺序（vector→raster→tabular）两两配对，非最优执行计划。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-drl-optimization"><h2>深度强化学习优化引擎</h2><p class="shortdesc">系统使用 MaskablePPO 算法和自定义 Gymnasium 环境，支持 7 个优化场景（land_use_optimization、ecological_corridor、urban_expansion、farmland_consolidation、industrial_layout、road_network、public_facility_layout），通过硬约束（min_retention_rate action mask）+ 软约束（budget_cap/max_area_cap reward penalty）建模实现空间布局优化。v23.0 新增 NSGA-II Pareto 多目标优化和 DRL 动画回放。</p>
+        <div class="section" id="gymnasium-environment">
+            <h3>Gymnasium 环境设计</h3>
+            <p><code class="filepath">drl_engine.py</code>（1017 行）实现了 <code>LandUseOptEnv</code> 环境：</p>
+            <table class="dita-table">
+                <h3>环境参数</h3>
+                
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>属性</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>状态空间</td>
+                            <td>每地块特征（坡度、面积、邻域均值坡度）+ 全局指标（耕地/林地数、破碎度）</td>
+                        </tr>
+                        <tr>
+                            <td>动作空间</td>
+                            <td>离散：选择可交换地块进行耕地↔林地转换</td>
+                        </tr>
+                        <tr>
+                            <td>动作掩码</td>
+                            <td>仅可交换地块（耕地/林地）可选，其他地块被掩码屏蔽</td>
+                        </tr>
+                        <tr>
+                            <td>回合长度</td>
+                            <td>200 步（转换操作）</td>
+                        </tr>
+                        <tr>
+                            <td>算法</td>
+                            <td>MaskablePPO（sb3_contrib）</td>
+                        </tr>
+                        <tr>
+                            <td>模型权重</td>
+                            <td><code class="filepath">scorer_weights_v7.pt</code></td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<div class="note note-attention">
-  <div class="note-title">已知限制</div>
-  <ul>
-    <li>嵌入 API 依赖 Gemini text-embedding-004，模块级缓存无 TTL，故障时跳过嵌入匹配降级到 L4。</li>
-    <li>空间对爆炸保护硬上限 <code>_MAX_SPATIAL_PAIRS = 1000</code>，超限后静默截断。</li>
-    <li>多源融合按固定顺序（vector→raster→tabular）两两配对，非最优执行计划。</li>
-  </ul>
-</div>
-</div>
+        <div class="section" id="reward-function">
+            <h3>奖励函数</h3>
+            <p>奖励由四个分量组成：</p>
+            <pre><code>reward = slope_reward + continuity_reward - count_penalty + pair_bonus</code></pre>
+            <dl>
+                <dlentry>
+                    <dt>slope_reward（权重 1000.0）</dt>
+                    <dd>激励将高坡度区域从耕地转为林地，符合"退耕还林"的地理学原则。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>continuity_reward（权重 500.0）</dt>
+                    <dd>奖励增加空间连续性的转换操作，惩罚产生新碎片的转换。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>count_penalty（权重 500.0）</dt>
+                    <dd>维持耕地与林地的面积平衡。v7 从 v6 的 100,000 大幅降低，因为原权重淹没了其他梯度信号。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>pair_bonus（权重 1.0）</dt>
+                    <dd>激励成对交换策略（一块耕地→林地 + 一块林地→耕地），从 v6 的 0.5 提高至 1.0。</dd>
+                </dlentry>
+            </dl>
+        </div>
 
-<!-- ======================== 6. DRL ======================== -->
-<div class="topic" id="tg-drl-optimization">
-<h2>6. 深度强化学习优化引擎</h2>
-<p class="shortdesc">系统使用 MaskablePPO 算法和自定义 Gymnasium 环境，通过成对耕地/林地交换策略最小化土地破碎度。</p>
+        <div class="section" id="adjacency-graph">
+            <h3>邻接图</h3>
+            <p>通过 <code>_build_adjacency()</code> 使用空间索引预计算地块邻接关系，为状态空间中的邻域特征提供快速查询。时间复杂度 O(n)，约 10,000 地块规模可行。</p>
+            <div class="note note-attention">
+                <ul>
+                    <li>无早停机制——无论是否收敛都执行完 200 步，浪费计算资源。</li>
+                    <li>奖励权重需要大量调优，v7 的权重调整说明 v6 的设计存在缺陷（梯度被 count_penalty 淹没）。</li>
+                    <li>超过约 10,000 地块规模的可扩展性未经验证。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-knowledge-graph"><h2>地理知识图谱</h2><p class="shortdesc">基于 NetworkX DiGraph 的内存图结构，通过 STRtree 空间索引自动检测地块间的邻接、包含、重叠关系，支持多图层合并与路径查询。</p>
+        <div class="section" id="graph-design">
+            <h3>图结构设计</h3>
+            <p><code class="filepath">knowledge_graph.py</code>（625 行）封装了 <code>GeoKnowledgeGraph</code> 类：</p>
+            <ul>
+                <li><strong>节点属性：</strong><code>_entity_type</code>、<code>_geometry_type</code>、<code>_geom_wkt</code> + 源 GeoDataFrame 的全部列。</li>
+                <li><strong>边属性：</strong><code>type</code>（adjacent_to、contains、within、overlaps、nearest_to）。</li>
+                <li><strong>持久化：</strong><code>agent_knowledge_graphs</code> 表（JSONB 存储 graph_data、entity_types、source_files）。</li>
+            </ul>
+        </div>
 
-<h3>Gymnasium 环境</h3>
-<table>
-<thead><tr><th>属性</th><th>描述</th></tr></thead>
-<tbody>
-<tr><td>状态空间</td><td>每地块特征（坡度、面积、邻域均值坡度）+ 全局指标（耕地/林地数、破碎度）</td></tr>
-<tr><td>动作空间</td><td>离散：选择可交换地块进行耕地↔林地转换</td></tr>
-<tr><td>动作掩码</td><td>仅可交换地块（耕地/林地）可选，其他被掩码屏蔽</td></tr>
-<tr><td>回合长度</td><td>200 步</td></tr>
-<tr><td>算法</td><td>MaskablePPO（sb3_contrib）</td></tr>
-<tr><td>模型权重</td><td><code>scorer_weights_v7.pt</code></td></tr>
-</tbody>
-</table>
+        <div class="section" id="spatial-relations">
+            <h3>空间关系检测</h3>
+            <table class="dita-table">
+                <h3>五种空间关系</h3>
+                
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>关系类型</th>
+                            <th>检测方法</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>adjacent_to</code></td>
+                            <td>STRtree 空间索引 + 边界 touch / 共边检测</td>
+                        </tr>
+                        <tr>
+                            <td><code>contains</code> / <code>within</code></td>
+                            <td><code>geom.contains()</code> 有向边（A contains B ⟹ B within A）</td>
+                        </tr>
+                        <tr>
+                            <td><code>overlaps</code></td>
+                            <td>几何相交判定</td>
+                        </tr>
+                        <tr>
+                            <td><code>nearest_to</code></td>
+                            <td>最近邻距离检测</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<h3>奖励函数</h3>
-<pre>reward = slope_reward + continuity_reward - count_penalty + pair_bonus</pre>
-<dl>
-  <dt>slope_reward（权重 1000.0）</dt>
-  <dd>激励将高坡度区域从耕地转为林地，符合"退耕还林"原则。</dd>
-  <dt>continuity_reward（权重 500.0）</dt>
-  <dd>奖励增加空间连续性的转换，惩罚新碎片。</dd>
-  <dt>count_penalty（权重 500.0）</dt>
-  <dd>维持面积平衡。v7 从 v6 的 100,000 大幅降低——原权重淹没了其他梯度信号。</dd>
-  <dt>pair_bonus（权重 1.0）</dt>
-  <dd>激励成对交换策略，v6→v7 从 0.5 提至 1.0。</dd>
-</dl>
-</div>
+        <div class="section" id="query-api">
+            <h3>查询接口</h3>
+            <dl>
+                <dlentry>
+                    <dt><code>query_neighbors(node_id, depth=1)</code></dt>
+                    <dd>自我图遍历至指定深度，返回 ego-graph 子图。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt><code>query_path(source_id, target_id)</code></dt>
+                    <dd>无向视图上的最短路径。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt><code>query_by_type(entity_type)</code></dt>
+                    <dd>按实体类型过滤节点。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt><code>merge_layer(gdf, entity_type)</code></dt>
+                    <dd>跨图层关系检测——新节点与已有节点建立空间关系。</dd>
+                </dlentry>
+            </dl>
+            <div class="note note-attention">
+                <ul>
+                    <li>纯内存图，无持久化到图数据库（如 Neo4j），大数据集受内存限制。</li>
+                    <li>O(n²) 空间对检测以 <code>_MAX_SPATIAL_PAIRS = 1000</code> 为硬上限截断。</li>
+                    <li>几何体以 WKT 字符串存储供 JSON 序列化，丧失了图内空间索引能力。</li>
+                    <li>无时序建模——关系是静态的，不支持土地利用变化序列。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-causal-inference"><h2>时空因果推断体系</h2><p class="shortdesc">系统实现了三角度因果推断体系：Angle A 统计因果（6 工具）、Angle B LLM 因果推理（4 工具）、Angle C 因果世界模型（4 工具），覆盖从经典统计方法到 LLM 驱动的因果发现与反事实推理全链路。</p>
+        <div class="section" id="angle-a">
+            <h3>Angle A — 统计因果推断</h3>
+            <p><code>causal_inference.py</code>（1247 行）实现 6 个经典因果推断工具：</p>
+            <ul>
+                <li><strong>PSM</strong>（倾向得分匹配）：处理效应估计</li>
+                <li><strong>ERF</strong>（暴露-响应函数）：连续处理变量的剂量-响应关系</li>
+                <li><strong>DiD</strong>（双重差分）：政策干预效果评估</li>
+                <li><strong>Granger</strong>（格兰杰因果检验）：时间序列因果方向判定</li>
+                <li><strong>GCCM</strong>（地理收敛交叉映射）：空间因果关系检测</li>
+                <li><strong>Causal Forest</strong>（因果森林）：异质性处理效应估计</li>
+            </ul>
+            <p>支持 GeoFM 嵌入接口，可与地理基础模型集成。</p>
+        </div>
+        <div class="section" id="angle-b">
+            <h3>Angle B — LLM 因果推理</h3>
+            <p><code>llm_causal.py</code>（949 行）利用 Gemini 2.5 Pro/Flash 实现 4 个 LLM 驱动的因果推理工具：</p>
+            <ul>
+                <li><strong>DAG 构建：</strong>从领域知识自动构建因果有向无环图</li>
+                <li><strong>反事实推理：</strong>"如果...会怎样"的反事实情景分析</li>
+                <li><strong>机制解释：</strong>因果路径的自然语言解释</li>
+                <li><strong>情景生成：</strong>基于因果模型的干预情景模拟</li>
+            </ul>
+        </div>
+        <div class="section" id="angle-c">
+            <h3>Angle C — 因果世界模型</h3>
+            <p><code>causal_world_model.py</code>（1049 行）结合 AlphaEarth 世界模型实现 4 个因果推断工具：干预预测、反事实对比、嵌入效应分析、统计先验提取。提供 8 个 REST API 端点和 CausalReasoningTab 前端组件。</p>
+        </div>
+    </article><article id="tg-world-model"><h2>世界模型与 DRL 增强</h2><p class="shortdesc">系统集成 AlphaEarth + LatentDynamicsNet JEPA 世界模型（world_model.py 1122 行），DRL 引擎扩展至 7 场景（含 road_network/public_facility_layout），支持硬约束（min_retention_rate action mask）+ 软约束（budget_cap/max_area_cap reward penalty）建模，以及 DreamerEnv 世界模型驱动的 DRL 优化。</p>
+        <div class="section" id="world-model">
+            <h3>AlphaEarth 世界模型</h3>
+            <p><code>world_model.py</code>（1122 行）实现地理空间世界模型：</p>
+            <ul>
+                <li><strong>LatentDynamicsNet：</strong>JEPA 架构的潜在动力学网络，学习地理空间状态转移</li>
+                <li><strong>WorldModelToolset：</strong>5 个工具（状态预测、轨迹模拟、异常检测、嵌入提取、模型状态查询）</li>
+                <li><strong>DreamerEnv：</strong><code>dreamer_env.py</code>（757 行）— ParcelEmbeddingMapper + ActionToScenarioEncoder + DreamerEnv，24 个测试</li>
+                <li><strong>DreamerToolset：</strong>dreamer_optimize + dreamer_status 两个工具</li>
+            </ul>
+        </div>
+        <div class="section" id="drl-enhancements">
+            <h3>DRL 引擎增强（v23.0）</h3>
+            <p><code>drl_engine.py</code>（1017 行）从 5 场景扩展至 7 场景：</p>
+            <ul>
+                <li>原有：land_use_optimization、ecological_corridor、urban_expansion、farmland_consolidation、industrial_layout</li>
+                <li>新增：<strong>road_network</strong>（交通网络优化）、<strong>public_facility_layout</strong>（公共设施布局）</li>
+                <li><strong>硬约束：</strong>min_retention_rate 通过 action mask 强制执行（MaskablePPO）</li>
+                <li><strong>软约束：</strong>budget_cap / max_area_cap 通过 reward penalty 引导</li>
+                <li><strong>DRL 动画：</strong>GIF 优化过程回放 + 前后对比 PNG</li>
+            </ul>
+        </div>
+    </article><article id="tg-remote-sensing"><h2>遥感智能体</h2><p class="shortdesc">遥感分析能力分三阶段实现：Phase 1（v16.0）基础遥感分析（NDVI/DEM/LULC/光谱），Phase 2（v22.0）变化检测与趋势分析（3 种方法 + Mann-Kendall + 断点检测），Phase 3（v22.0）空间约束 fact-check 与多 Agent Debate 验证。</p>
+        <div class="section" id="phase1">
+            <h3>Phase 1 — 基础遥感分析</h3>
+            <p><code>remote_sensing.py</code>（974 行）+ <code>RemoteSensingToolset</code>（13 工具）：</p>
+            <ul>
+                <li>15+ 光谱指数计算（NDVI/EVI/NDWI/NDBI/NBR 等）</li>
+                <li>DEM 地形分析（坡度/坡向/山体阴影）</li>
+                <li>LULC 土地利用分类</li>
+                <li>5 种预置数据源模板（Sentinel-2/Landsat/SAR/DEM/LULC）</li>
+                <li>RS 知识库：5 光谱指数 + 3 分类体系 + 3 处理流程模板</li>
+            </ul>
+        </div>
+        <div class="section" id="phase2">
+            <h3>Phase 2 — 变化检测与趋势分析</h3>
+            <ul>
+                <li>3 种变化检测方法（差值法/比值法/分类后比较）</li>
+                <li>Mann-Kendall 趋势检验</li>
+                <li>断点检测（BFAST 风格）</li>
+                <li>证据评估框架</li>
+            </ul>
+        </div>
+        <div class="section" id="phase3">
+            <h3>Phase 3 — 验证与质量保证</h3>
+            <ul>
+                <li>空间约束 fact-check（结果与地理常识交叉验证）</li>
+                <li>多 Agent Debate（多个 Agent 独立分析后辩论达成共识）</li>
+                <li>代码沙箱（安全执行用户自定义分析脚本）</li>
+            </ul>
+        </div>
+    </article><article id="tg-surveying-qc"><h2>测绘质检子系统</h2><p class="shortdesc">v15.7 实现基于 GB/T 24356 标准的测绘成果质量检查与验收智能体系统，包含缺陷分类法（30 编码 5 类别）、SLA 工作流模板、告警引擎、MCP 工具规则引擎、案例库、人工复核流程，以及 4 个独立子系统（CV 检测、CAD/3D 解析、专业工具 MCP、参考数据服务）。</p>
+        <div class="section" id="defect-taxonomy">
+            <h3>缺陷分类法</h3>
+            <p><code class="filepath">standards/defect_taxonomy.yaml</code> 定义了 30 个缺陷编码，分为 5 个类别：</p>
+            <ul>
+                <li><strong>FMT</strong>（格式类）：文件格式、编码、元数据规范性</li>
+                <li><strong>PRE</strong>（精度类）：坐标精度、套合精度、高程精度</li>
+                <li><strong>TOP</strong>（拓扑类）：重叠、间隙、自相交、悬挂节点</li>
+                <li><strong>MIS</strong>（缺失类）：属性缺失、要素遗漏、图幅缺失</li>
+                <li><strong>NRM</strong>（规范类）：命名规范、分类编码、符号化标准</li>
+            </ul>
+            <p>每个缺陷按严重程度分为 A（严重）、B（较严重）、C（一般）三级。</p>
+        </div>
+        <div class="section" id="qc-workflow">
+            <h3>QC 工作流模板</h3>
+            <p><code class="filepath">standards/qc_workflow_templates.yaml</code> 提供 3 种预设工作流：</p>
+            <ul>
+                <li><strong>标准 5 步：</strong>数据接收 → 格式检查 → 精度核验 → 拓扑检查 → 报告生成</li>
+                <li><strong>快速 2 步：</strong>自动检查 → 报告生成（适用于批量初筛）</li>
+                <li><strong>完整 7 步：</strong>含人工复核、交叉验证、专家评审（适用于最终验收）</li>
+            </ul>
+            <p>每步配置 SLA 超时和重试策略。</p>
+        </div>
+        <div class="section" id="subsystems">
+            <h3>4 个独立子系统</h3>
+            <table class="dita-table">
+                
+                    
+                    
+                    
+                    
+                    <thead><tr><th>子系统</th><th>路径</th><th>集成方式</th><th>关键技术</th></tr></thead>
+                    <tbody>
+                        <tr><td>CV 检测</td><td><code class="filepath">subsystems/cv-service/</code></td><td>MCP (stdio)</td><td>FastAPI + YOLO/ultralytics</td></tr>
+                        <tr><td>CAD/3D 解析</td><td><code class="filepath">subsystems/cad-parser/</code></td><td>MCP (stdio)</td><td>FastAPI + ezdxf + trimesh</td></tr>
+                        <tr><td>专业工具 MCP</td><td><code class="filepath">subsystems/tool-mcp-servers/</code></td><td>MCP (stdio)</td><td>arcgis-mcp (subprocess→arcpy), qgis-mcp, blender-mcp</td></tr>
+                        <tr><td>参考数据</td><td><code class="filepath">subsystems/reference-data/</code></td><td>REST + BaseConnector</td><td>FastAPI + PostGIS</td></tr>
+                    </tbody>
+                
+            </table>
+        </div>
+        <div class="section" id="supporting-engines">
+            <h3>配套引擎</h3>
+            <ul>
+                <li><strong>告警引擎：</strong><code>AlertEngine</code>（observability.py）— 可配置阈值规则 + webhook 推送</li>
+                <li><strong>MCP 工具规则：</strong><code>ToolRuleEngine</code>（mcp_hub.py）— task_type → 工具选择 + fallback 链</li>
+                <li><strong>案例库：</strong><code>add_case()</code> / <code>search_cases()</code>（knowledge_base.py）— 结构化 QC 经验记录</li>
+                <li><strong>人工复核：</strong><code>agent_qc_reviews</code> 表 — review→mark→fix→approve 工作流（<code>/api/qc/reviews</code>）</li>
+            </ul>
+        </div>
+    </article><article id="tg-multi-tenancy"><h2>多租户隔离与用户上下文</h2><p class="shortdesc">系统通过 Python ContextVar 实现异步安全的用户身份传播，配合文件沙箱和数据库 RLS 注入，在不修改任何工具函数签名的前提下实现多租户隔离。</p>
+        <div class="section" id="contextvar-design">
+            <h3>ContextVar 模式</h3>
+            <p><code class="filepath">user_context.py</code>（36 行）定义了六个上下文变量：</p>
+            <table class="dita-table">
+                <h3>上下文变量清单</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>变量</th>
+                            <th>默认值</th>
+                            <th>用途</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>current_user_id</code></td>
+                            <td>空字符串</td>
+                            <td>用户标识，用于文件沙箱、审计日志、Token 追踪</td>
+                        </tr>
+                        <tr>
+                            <td><code>current_session_id</code></td>
+                            <td>空字符串</td>
+                            <td>Chainlit 会话 ID</td>
+                        </tr>
+                        <tr>
+                            <td><code>current_user_role</code></td>
+                            <td>analyst</td>
+                            <td>RBAC 角色（admin / analyst / viewer）</td>
+                        </tr>
+                        <tr>
+                            <td><code>current_trace_id</code></td>
+                            <td>空字符串</td>
+                            <td>请求追踪 UUID</td>
+                        </tr>
+                        <tr>
+                            <td><code>current_tool_categories</code></td>
+                            <td>空集合</td>
+                            <td>路由器返回的工具类别，用于动态过滤</td>
+                        </tr>
+                        <tr>
+                            <td><code>current_model_tier</code></td>
+                            <td>空字符串</td>
+                            <td>模型层级覆盖（fast / standard / premium）</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>ContextVar 在每条用户消息到达时由 <code class="filepath">app.py</code> 的 <code>_set_user_context()</code> 设置，所有工具函数通过 <code>current_user_id.get()</code> 隐式读取，无需修改函数签名。</p>
+        </div>
 
-<!-- ======================== 7. 知识图谱 ======================== -->
-<div class="topic" id="tg-knowledge-graph">
-<h2>7. 地理知识图谱</h2>
-<p class="shortdesc">基于 NetworkX DiGraph 的内存图结构，通过 STRtree 空间索引自动检测地块间的邻接、包含、重叠关系。</p>
+        <div class="section" id="file-sandbox">
+            <h3>文件沙箱</h3>
+            <p>每个用户的文件隔离在 <code class="filepath">uploads/{user_id}/</code> 目录下：</p>
+            <ul>
+                <li><code>get_user_upload_dir()</code>：返回用户沙箱路径，不存在则自动创建。</li>
+                <li><code>_generate_output_path(prefix, ext)</code>：所有工具输出文件写入用户沙箱，文件名带 UUID 后缀防冲突。</li>
+                <li><code>_resolve_path(file_path)</code>：三级路径解析——用户沙箱 → 共享上传目录 → 云存储 OBS 下载。</li>
+                <li><code>is_path_in_sandbox(path)</code>：验证路径在用户沙箱或共享目录内，防止路径遍历攻击。</li>
+            </ul>
+        </div>
 
-<h3>空间关系检测</h3>
-<table>
-<thead><tr><th>关系类型</th><th>检测方法</th></tr></thead>
-<tbody>
-<tr><td><code>adjacent_to</code></td><td>STRtree 空间索引 + 边界 touch / 共边检测</td></tr>
-<tr><td><code>contains</code> / <code>within</code></td><td><code>geom.contains()</code> 有向边</td></tr>
-<tr><td><code>overlaps</code></td><td>几何相交判定</td></tr>
-<tr><td><code>nearest_to</code></td><td>最近邻距离检测</td></tr>
-</tbody>
-</table>
+        <div class="section" id="database-rls">
+            <h3>数据库级隔离</h3>
+            <p>在 SQL 查询执行前，<code class="filepath">database_tools.py</code> 注入用户上下文：</p>
+            <pre><code>SET app.current_user = :user_id</code></pre>
+            <p>该设置为 PostgreSQL 行级安全策略（RLS）提供运行时上下文，使数据库层面的多租户隔离成为可能。</p>
+        </div>
 
-<h3>查询接口</h3>
-<dl>
-  <dt><code>query_neighbors(node_id, depth=1)</code></dt><dd>自我图遍历至指定深度。</dd>
-  <dt><code>query_path(source_id, target_id)</code></dt><dd>无向视图上的最短路径。</dd>
-  <dt><code>query_by_type(entity_type)</code></dt><dd>按实体类型过滤节点。</dd>
-  <dt><code>merge_layer(gdf, entity_type)</code></dt><dd>跨图层关系检测。</dd>
-</dl>
+        <div class="section" id="tenancy-concerns">
+            <h3>架构评价</h3>
+            <div class="note note-attention">
+                <ul>
+                    <li><code>current_user_role</code> 默认值为 <code>analyst</code>——若 ContextVar 未设置（异常路径），工具将以 analyst 权限运行，存在权限提升风险。建议改为无权限默认。</li>
+                    <li>沙箱验证基于 <code>abs_path.startswith(user_dir)</code> 字符串前缀匹配，可能被符号链接绕过。</li>
+                    <li>ContextVar 无过期机制——正常情况下随异步任务结束自动清理，但事件循环异常时可能泄露上下文。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-auth-rbac"><h2>认证与 RBAC 权限模型</h2><p class="shortdesc">系统支持密码认证（PBKDF2-HMAC-SHA256）、OAuth2（Google/GitHub）和 Bot 平台（微信/钉钉/飞书）三种认证方式，配合三级 RBAC 角色模型实现细粒度访问控制。</p>
+        <div class="section" id="auth-methods">
+            <h3>认证方式</h3>
+            <table class="dita-table">
+                <h3>三种认证方式</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>方式</th>
+                            <th>实现</th>
+                            <th>用户创建</th>
+                            <th>条件</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>密码认证</td>
+                            <td>PBKDF2-HMAC-SHA256，100k 迭代，<code>secrets.compare_digest()</code> 常量时间比较</td>
+                            <td>手动注册</td>
+                            <td>始终可用</td>
+                        </tr>
+                        <tr>
+                            <td>OAuth2</td>
+                            <td>Google / GitHub，通过 Chainlit <code>@cl.oauth_callback</code></td>
+                            <td>首次登录自动创建</td>
+                            <td>需设置 <code>OAUTH_GOOGLE_CLIENT_ID</code> 等环境变量</td>
+                        </tr>
+                        <tr>
+                            <td>Bot 平台</td>
+                            <td>微信企业号 / 钉钉 / 飞书，用户名格式 <code>{prefix}_{platform_id}</code></td>
+                            <td>首次交互自动创建</td>
+                            <td>需配置对应平台 Webhook</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>密码存储格式为 <code>salt$hash</code>，注册时校验用户名（3-30 字符，字母数字下划线）和密码（8+ 字符，必须含字母和数字）。</p>
+        </div>
 
-<div class="note note-attention">
-  <div class="note-title">已知限制</div>
-  纯内存图，无持久化到图数据库。O(n&sup2;) 空间对检测以 1000 为硬上限截断。几何体以 WKT 字符串存储，丧失图内空间索引。无时序建模。
-</div>
-</div>
+        <div class="section" id="rbac-model">
+            <h3>RBAC 角色模型</h3>
+            <table class="dita-table">
+                <h3>三级角色权限</h3>
+                
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>角色</th>
+                            <th>权限范围</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>admin</code></td>
+                            <td>全部功能 + 用户管理 + 审计日志 + MCP 管理 + 无 Token 限制</td>
+                        </tr>
+                        <tr>
+                            <td><code>analyst</code></td>
+                            <td>三条管线 + 自定义技能 + 工作流 + 日限 20 次分析</td>
+                        </tr>
+                        <tr>
+                            <td><code>viewer</code></td>
+                            <td>仅 General 管线（只读查询）</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>RBAC 检查在语义路由调度前执行——viewer 角色的请求若被路由到 Governance 或 Optimization 管线，将被直接拒绝并返回权限不足提示。</p>
+        </div>
 
-<!-- ======================== 8. 多租户 ======================== -->
-<div class="topic" id="tg-multi-tenancy">
-<h2>8. 多租户隔离与用户上下文</h2>
-<p class="shortdesc">通过 Python ContextVar 实现异步安全的用户身份传播，配合文件沙箱和数据库 RLS 注入实现多租户隔离。</p>
+        <div class="section" id="account-lifecycle">
+            <h3>账户生命周期</h3>
+            <p>账户注销时执行级联删除，清理 8 张关联表：</p>
+            <ol>
+                <li><code>agent_token_usage</code>（Token 消耗记录）</li>
+                <li><code>agent_user_memories</code>（空间记忆）</li>
+                <li><code>agent_share_links</code>（共享链接）</li>
+                <li><code>agent_team_members</code>（团队成员）</li>
+                <li><code>agent_audit_log</code>（审计日志）</li>
+                <li><code>agent_map_annotations</code>（地图标注）</li>
+                <li><code>agent_knowledge_bases</code>（知识库）</li>
+                <li><code>app_users</code>（用户账户）</li>
+            </ol>
+            <p>同时物理删除用户上传目录 <code class="filepath">uploads/{username}/</code>。</p>
+            <div class="note note-attention">
+                <ul>
+                    <li>缺少密码重置功能——用户遗忘密码后只能由管理员介入。</li>
+                    <li>缺少暴力破解防护——审计日志记录了登录失败，但无账户锁定机制和 IP 级速率限制。</li>
+                    <li>✅ <strong>[已修复]</strong> 数据库不可用时不再接受硬编码凭据，直接拒绝认证（v12.0）。</li>
+                    <li>✅ <strong>[已修复]</strong> 新增暴力破解防护：per-username 连续 5 次失败锁定 15 分钟（v12.0）。</li>
+                    <li>级联删除列表需手动维护——新增关联表时容易遗漏。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-database-architecture"><h2>数据库架构与连接管理</h2><p class="shortdesc">系统使用单例 SQLAlchemy Engine 管理 PostgreSQL 连接池（pool_size=20），通过 64 个 SQL 迁移脚本管理 22+ 张业务表。v18.0 新增 asyncpg 异步引擎（<codeph>db_engine_async.py</codeph>）、读写分离预埋、物化视图和连接池 Prometheus 监控。数据库为华为云 RDS PostgreSQL 托管实例（内置 HA/故障转移）。</p>
+        <div class="section" id="connection-pool">
+            <h3>连接池配置</h3>
+            <p><code class="filepath">db_engine.py</code>（40 行）实现全局单例 Engine：</p>
+            <table class="dita-table">
+                <h3>连接池参数</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>参数</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>pool_size</code></td>
+                            <td>20</td>
+                            <td>基础持久连接数（v18.0 从 5 提升至 20）</td>
+                        </tr>
+                        <tr>
+                            <td><code>max_overflow</code></td>
+                            <td>10</td>
+                            <td>高峰期额外连接（总计最大 15）</td>
+                        </tr>
+                        <tr>
+                            <td><code>pool_recycle</code></td>
+                            <td>1800s</td>
+                            <td>30 分钟回收，防止 PostgreSQL 空闲超时</td>
+                        </tr>
+                        <tr>
+                            <td><code>pool_pre_ping</code></td>
+                            <td>True</td>
+                            <td>使用前测试连接，检测失效连接</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>所有模块通过 <code>from .db_engine import get_engine</code> 获取共享 Engine 实例，严禁直接调用 <code>create_engine()</code>。</p>
+        </div>
 
-<h3>ContextVar 清单</h3>
-<table>
-<thead><tr><th>变量</th><th>默认值</th><th>用途</th></tr></thead>
-<tbody>
-<tr><td><code>current_user_id</code></td><td>空字符串</td><td>文件沙箱、审计日志、Token 追踪</td></tr>
-<tr><td><code>current_session_id</code></td><td>空字符串</td><td>Chainlit 会话 ID</td></tr>
-<tr><td><code>current_user_role</code></td><td>analyst</td><td>RBAC 角色</td></tr>
-<tr><td><code>current_trace_id</code></td><td>空字符串</td><td>请求追踪 UUID</td></tr>
-<tr><td><code>current_tool_categories</code></td><td>空集合</td><td>路由器返回的工具类别</td></tr>
-<tr><td><code>current_model_tier</code></td><td>空字符串</td><td>模型层级覆盖</td></tr>
-</tbody>
-</table>
+        <div class="section" id="table-inventory">
+            <h3>业务表清单</h3>
+            <table class="dita-table">
+                <h3>13+ 张业务表</h3>
+                
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>表名</th>
+                            <th>用途</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>app_users</code></td><td>用户账户（密码哈希、角色、认证提供者）</td></tr>
+                        <tr><td><code>agent_token_usage</code></td><td>Token 消耗记录（按用户、管线、模型）</td></tr>
+                        <tr><td><code>agent_user_memories</code></td><td>空间记忆（6 种类型，JSONB 值）</td></tr>
+                        <tr><td><code>agent_audit_log</code></td><td>审计日志（50+ 事件类型）</td></tr>
+                        <tr><td><code>agent_data_catalog</code></td><td>数据资产目录（本地/云/PostGIS）</td></tr>
+                        <tr><td><code>agent_semantic_registry</code></td><td>语义注册表（列级语义注解）</td></tr>
+                        <tr><td><code>agent_semantic_sources</code></td><td>语义数据源</td></tr>
+                        <tr><td><code>agent_semantic_domains</code></td><td>自定义语义域</td></tr>
+                        <tr><td><code>agent_map_annotations</code></td><td>协作地图标注</td></tr>
+                        <tr><td><code>agent_mcp_servers</code></td><td>MCP 服务器配置（Fernet 加密敏感字段）</td></tr>
+                        <tr><td><code>agent_workflows</code></td><td>工作流定义</td></tr>
+                        <tr><td><code>agent_workflow_runs</code></td><td>工作流执行记录</td></tr>
+                        <tr><td><code>agent_custom_skills</code></td><td>自定义技能</td></tr>
+                        <tr><td><code>agent_knowledge_graphs</code></td><td>知识图谱（JSONB）</td></tr>
+                        <tr><td><code>tool_failures</code></td><td>工具失败记录（失败学习）</td></tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<h3>文件沙箱</h3>
-<ul>
-  <li><code>get_user_upload_dir()</code>：返回 <code>uploads/{user_id}/</code>，不存在则自动创建。</li>
-  <li><code>_generate_output_path(prefix, ext)</code>：所有输出写入用户沙箱，UUID 后缀防冲突。</li>
-  <li><code>_resolve_path()</code>：三级路径解析——用户沙箱 → 共享目录 → 云存储 OBS 下载。</li>
-  <li><code>is_path_in_sandbox()</code>：前缀匹配验证，防止路径遍历。</li>
-</ul>
-
-<h3>数据库级隔离</h3>
-<pre>SET app.current_user = :user_id  -- 在 SQL 查询前注入，为 RLS 提供运行时上下文</pre>
-
-<div class="note note-attention">
-  <div class="note-title">安全注意</div>
-  <code>current_user_role</code> 默认 <code>analyst</code>——若 ContextVar 未设置，工具以 analyst 权限运行。沙箱验证基于 <code>startswith()</code> 前缀匹配，可能被符号链接绕过。
-</div>
-</div>
-
-<!-- ======================== 9. 认证 RBAC ======================== -->
-<div class="topic" id="tg-auth-rbac">
-<h2>9. 认证与 RBAC 权限模型</h2>
-<p class="shortdesc">支持密码认证（PBKDF2-HMAC-SHA256）、OAuth2（Google/GitHub）和 Bot 平台三种认证方式，配合三级 RBAC 模型。</p>
-
-<h3>认证方式</h3>
-<table>
-<thead><tr><th>方式</th><th>实现</th><th>用户创建</th></tr></thead>
-<tbody>
-<tr><td>密码</td><td>PBKDF2-HMAC-SHA256, 100k 迭代, 常量时间比较</td><td>手动注册</td></tr>
-<tr><td>OAuth2</td><td>Google / GitHub（条件注册，需环境变量）</td><td>首次登录自动创建</td></tr>
-<tr><td>Bot 平台</td><td>微信/钉钉/飞书，用户名 <code>{prefix}_{id}</code></td><td>首次交互自动创建</td></tr>
-</tbody>
-</table>
-
-<h3>RBAC 角色</h3>
-<table>
-<thead><tr><th>角色</th><th>权限</th></tr></thead>
-<tbody>
-<tr><td><code>admin</code></td><td>全部功能 + 用户管理 + 审计 + MCP 管理 + 无 Token 限制</td></tr>
-<tr><td><code>analyst</code></td><td>三条管线 + 自定义技能 + 工作流 + 日限 20 次</td></tr>
-<tr><td><code>viewer</code></td><td>仅 General 管线（只读查询）</td></tr>
-</tbody>
-</table>
-
-<div class="note note-danger">
-  <div class="note-title">安全风险</div>
-  <ul>
-    <li>✅ <b>[已修复]</b> 数据库不可用时不再接受硬编码凭据，直接拒绝认证。</li>
-    <li>✅ <b>[已修复]</b> 新增暴力破解防护：per-username 连续 5 次失败锁定 15 分钟。</li>
-    <li>缺少暴力破解防护——无账户锁定、无 IP 速率限制。</li>
-    <li>缺少密码重置功能——用户遗忘密码只能由管理员介入。</li>
-  </ul>
-</div>
-</div>
-
-<!-- ======================== 10. 数据库 ======================== -->
-<div class="topic" id="tg-database-architecture">
-<h2>10. 数据库架构与连接管理</h2>
-<p class="shortdesc">单例 SQLAlchemy Engine 管理 PostgreSQL 连接池，<code>ensure_*_table()</code> 模式启动时自动建表，无迁移框架。</p>
-
-<h3>连接池配置</h3>
-<table>
-<thead><tr><th>参数</th><th>值</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td><code>pool_size</code></td><td>5</td><td>基础持久连接数</td></tr>
-<tr><td><code>max_overflow</code></td><td>10</td><td>高峰期额外连接（总计最大 15）</td></tr>
-<tr><td><code>pool_recycle</code></td><td>1800s</td><td>30 分钟回收，防止空闲超时</td></tr>
-<tr><td><code>pool_pre_ping</code></td><td>True</td><td>使用前测试连接</td></tr>
-</tbody>
-</table>
-
-<h3>业务表清单（15 张）</h3>
-<table>
-<thead><tr><th>表名</th><th>用途</th></tr></thead>
-<tbody>
-<tr><td><code>app_users</code></td><td>用户账户</td></tr>
-<tr><td><code>agent_token_usage</code></td><td>Token 消耗记录</td></tr>
-<tr><td><code>agent_user_memories</code></td><td>空间记忆（6 种类型）</td></tr>
-<tr><td><code>agent_audit_log</code></td><td>审计日志（50+ 事件）</td></tr>
-<tr><td><code>agent_data_catalog</code></td><td>数据资产目录</td></tr>
-<tr><td><code>agent_semantic_registry</code></td><td>语义注册表</td></tr>
-<tr><td><code>agent_semantic_sources</code></td><td>语义数据源</td></tr>
-<tr><td><code>agent_semantic_domains</code></td><td>自定义语义域</td></tr>
-<tr><td><code>agent_map_annotations</code></td><td>地图标注</td></tr>
-<tr><td><code>agent_mcp_servers</code></td><td>MCP 服务器配置</td></tr>
-<tr><td><code>agent_workflows</code></td><td>工作流定义</td></tr>
-<tr><td><code>agent_workflow_runs</code></td><td>工作流执行记录</td></tr>
-<tr><td><code>agent_custom_skills</code></td><td>自定义技能</td></tr>
-<tr><td><code>agent_knowledge_graphs</code></td><td>知识图谱（JSONB）</td></tr>
-<tr><td><code>tool_failures</code></td><td>工具失败记录</td></tr>
-</tbody>
-</table>
-
-<div class="note note-attention">
-  <div class="note-title">架构注意</div>
-  缺少 Alembic 迁移框架——Schema 变更无版本控制。连接池大小硬编码。<code>get_engine()</code> 在 DB 不可用时返回 <code>None</code>，部分调用方未处理。
-</div>
-</div>
-
-<!-- ======================== 11. REST API ======================== -->
-<div class="topic" id="tg-rest-api-layer">
-<h2>11. REST API 层</h2>
-<p class="shortdesc">系统通过 Starlette 路由提供 92 个 REST API 端点，挂载于 Chainlit catch-all 路由之前，JWT Cookie 认证，覆盖数据目录、MCP 管理、工作流、自定义技能/工具等功能域。</p>
-
-<h3>路由挂载策略</h3>
-<pre>def mount_frontend_api(app: Starlette):
+        <div class="section" id="schema-management">
+            <h3>Schema 管理方式</h3>
+            <p>所有表通过 <code>ensure_*_table()</code> 函数在应用启动时以 <code>CREATE TABLE IF NOT EXISTS</code> 创建。这意味着：</p>
+            <ul>
+                <li>新增表容易——添加一个 ensure 函数即可。</li>
+                <li>修改表结构（加列、改列类型）需要手动 <code>ALTER TABLE</code> 或重建。</li>
+                <li>无版本化的 schema 迁移历史。</li>
+            </ul>
+            <div class="note note-attention">
+                <ul>
+                    <li>连接池大小硬编码——<code>pool_size=5</code> 对高并发部署可能不足，建议改为环境变量配置。</li>
+                    <li>延迟初始化——Engine 在首次 <code>get_engine()</code> 调用时创建，首个用户请求承受建连延迟。</li>
+                    <li>缺少 Alembic 等迁移框架——多环境部署时 schema 一致性难以保证。</li>
+                    <li><code>get_engine()</code> 在 DB 连接 URL 不可用时返回 <code>None</code>，但并非所有调用方都处理了 None 情况。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-rest-api-layer"><h2>REST API 层</h2><p class="shortdesc">系统通过 Starlette 路由提供 280 个 REST API 端点（主路由 frontend_api.py 3438 行 + 24 个拆分路由模块 4992 行），挂载于 Chainlit catch-all 路由之前，使用 JWT Cookie 认证，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析、上下文工程、反馈飞轮、融合 v2、血缘追踪、语义模型、矢量切片等功能域。</p>
+        <div class="section" id="mount-strategy">
+            <h3>路由挂载策略</h3>
+            <p>Chainlit 框架挂载了 catch-all 路由 <code>/{'{'}full_path:path{'}'}</code> 来服务其前端资源。如果 REST 路由放在后面，所有 <code>/api/*</code> 请求都会被 Chainlit 拦截。</p>
+            <p>解决方案：<code>mount_frontend_api()</code> 将 REST 路由列表插入到 Chainlit 路由表的前面：</p>
+            <pre><code>def mount_frontend_api(app: Starlette):
     routes = [Route("/api/catalog", catalog_list, methods=["GET"]), ...]
-    app.routes = routes + app.routes  # 插入到 Chainlit 路由之前</pre>
+    app.routes = routes + app.routes  # 插入到 Chainlit 路由之前</code></pre>
+        </div>
 
-<h3>端点分类</h3>
-<table>
-<thead><tr><th>功能域</th><th>端点数</th><th>代表端点</th></tr></thead>
-<tbody>
-<tr><td>数据目录</td><td>3</td><td><code>/api/catalog</code>、<code>/api/catalog/{id}/lineage</code></td></tr>
-<tr><td>语义层</td><td>2</td><td><code>/api/semantic/domains</code></td></tr>
-<tr><td>用户</td><td>3</td><td><code>/api/user/token-usage</code>、<code>/api/user/account</code></td></tr>
-<tr><td>管理</td><td>4</td><td><code>/api/admin/users</code>、<code>/api/admin/metrics/summary</code></td></tr>
-<tr><td>标注</td><td>4</td><td><code>/api/annotations</code> CRUD</td></tr>
-<tr><td>MCP Hub</td><td>10</td><td><code>/api/mcp/servers</code> CRUD + toggle + reconnect</td></tr>
-<tr><td>工作流</td><td>8</td><td><code>/api/workflows</code> CRUD + execute</td></tr>
-<tr><td>分析</td><td>5</td><td><code>/api/analytics/latency</code></td></tr>
-<tr><td>会话</td><td>2</td><td><code>/api/sessions</code></td></tr>
-<tr><td>地图 / 配置 / 管线</td><td>3</td><td><code>/api/map/pending</code>、<code>/api/config/basemaps</code></td></tr>
-</tbody>
-</table>
+        <div class="section" id="endpoint-categories">
+            <h3>端点分类</h3>
+            <table class="dita-table">
+                <h3>280 个端点按功能域分类</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>功能域</th>
+                            <th>端点数</th>
+                            <th>代表端点</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>数据目录</td>
+                            <td>3</td>
+                            <td><code>/api/catalog</code>、<code>/api/catalog/{'{'}id{'}'}/lineage</code></td>
+                        </tr>
+                        <tr>
+                            <td>语义层</td>
+                            <td>2</td>
+                            <td><code>/api/semantic/domains</code>、<code>/api/semantic/hierarchy/{'{'}domain{'}'}</code></td>
+                        </tr>
+                        <tr>
+                            <td>用户</td>
+                            <td>3</td>
+                            <td><code>/api/user/token-usage</code>、<code>/api/user/account</code>、<code>/api/user/analysis-perspective</code></td>
+                        </tr>
+                        <tr>
+                            <td>管理</td>
+                            <td>4</td>
+                            <td><code>/api/admin/users</code>、<code>/api/admin/metrics/summary</code></td>
+                        </tr>
+                        <tr>
+                            <td>标注</td>
+                            <td>4</td>
+                            <td><code>/api/annotations</code> CRUD</td>
+                        </tr>
+                        <tr>
+                            <td>MCP Hub</td>
+                            <td>10</td>
+                            <td><code>/api/mcp/servers</code> CRUD + toggle + reconnect + test + share</td>
+                        </tr>
+                        <tr>
+                            <td>工作流</td>
+                            <td>8</td>
+                            <td><code>/api/workflows</code> CRUD + execute + history</td>
+                        </tr>
+                        <tr>
+                            <td>分析</td>
+                            <td>5</td>
+                            <td><code>/api/analytics/latency</code>、<code>/api/analytics/tool-success</code></td>
+                        </tr>
+                        <tr>
+                            <td>会话</td>
+                            <td>2</td>
+                            <td><code>/api/sessions</code> list + delete</td>
+                        </tr>
+                        <tr>
+                            <td>地图</td>
+                            <td>1</td>
+                            <td><code>/api/map/pending</code>（轮询地图更新）</td>
+                        </tr>
+                        <tr>
+                            <td>配置</td>
+                            <td>1</td>
+                            <td><code>/api/config/basemaps</code></td>
+                        </tr>
+                        <tr>
+                            <td>管线</td>
+                            <td>1</td>
+                            <td><code>/api/pipeline/history</code></td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
 
-<div class="note note-attention">
-  <div class="note-title">架构注意</div>
-  92 个端点定义在单个 <code>frontend_api.py</code>（2330 行）中。v12.0 新增了自定义技能、用户工具、知识库等端点组。建议按功能域拆分为独立路由模块。
+        <div class="section" id="auth-pattern">
+            <h3>认证模式</h3>
+            <p>所有端点使用 JWT Cookie 认证。<code>_get_user_from_request()</code> 从 Chainlit 签发的 <code>access_token</code> Cookie 中解码用户信息。管理端点通过 <code>_require_admin()</code> 守卫增强权限检查。</p>
+            <div class="note note-attention">
+                <ul>
+                    <li>v23.0 已完成路由拆分：主路由 <code class="filepath">frontend_api.py</code>（3438 行）+ 24 个独立路由模块 <code class="filepath">data_agent/api/</code>（4992 行），覆盖 MCP、Skills、Workflow、KB、Virtual Sources、Context、Feedback、Fusion v2、Lineage、Messaging、Metadata、Reference Query、Semantic Model、Tile、Topology 等功能域。</li>
+                    <li>v22.0 新增 API 安全中间件：<code>RateLimitMiddleware</code>（速率限制）+ <code>CircuitBreakerMiddleware</code>（熔断器），Starlette 层实现，无需外部网关。</li>
+                    <li>缺少统一的请求验证中间件（如 Pydantic models），输入参数验证分散在各处理函数中。</li>
+                    <li>缺少 API 版本控制——所有端点均为 <code>/api/...</code>，未来 breaking changes 无法平滑迁移。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-model-gateway"><h2>统一模型网关</h2><p class="shortdesc">model_gateway.py 实现在线（Gemini 2.0/2.5 Flash/Pro）+ 离线（LM Studio/Gemma）+ LiteLLM 统一模型网关，支持动态注册、任务感知路由、成本追踪和场景/项目归因。</p>
+        <div class="section" id="model-registry">
+            <h3>模型注册表</h3>
+            <p>支持 3 类模型源的统一注册：</p>
+            <ul>
+                <li><strong>在线模型：</strong>Gemini 2.0 Flash（路由）、2.5 Flash（Standard Agent）、2.5 Pro（高质量任务）</li>
+                <li><strong>离线模型：</strong>LM Studio 本地推理（Gemma 等开源模型）</li>
+                <li><strong>LiteLLM 代理：</strong>统一接口访问 100+ 模型提供商</li>
+            </ul>
+        </div>
+        <div class="section" id="task-routing">
+            <h3>任务感知路由</h3>
+            <p>根据 task_type、context_tokens、quality_requirement、budget 四维度自动选择最优模型。路由策略：</p>
+            <ul>
+                <li>简单查询 → Gemini 2.0 Flash（低成本、低延迟）</li>
+                <li>标准分析 → Gemini 2.5 Flash（平衡性能与成本）</li>
+                <li>复杂推理 → Gemini 2.5 Pro（最高质量）</li>
+                <li>离线/隐私场景 → LM Studio 本地模型</li>
+            </ul>
+        </div>
+        <div class="section" id="cost-tracking">
+            <h3>成本追踪</h3>
+            <p>增强的 <code>token_tracker.py</code> 支持 scenario 和 project_id 归因，成本数据写入 <code>agent_token_usage</code> 表，通过 <code>GET /api/gateway/cost-summary</code> 查询。</p>
+        </div>
+    </article><article id="tg-context-engine"><h2>上下文工程与反馈飞轮</h2><p class="shortdesc">v19.0 引入 ContextEngine 统一上下文引擎（6 provider）、FeedbackLoop 结构化反馈闭环、ReferenceQueryStore 参考查询库和 MetricFlow 语义模型，对标 Datus.ai 实现企业级上下文管理与持续改进能力。</p>
+        <div class="section" id="context-engine">
+            <h3>ContextEngine 统一上下文引擎</h3>
+            <p><code>context_manager.py</code> 实现了可插拔的上下文提供者架构，通过 token budget 控制和相关性优先级排序，为 Agent 执行提供精准上下文：</p>
+            <ul>
+                <li><strong>6 个 Provider：</strong>semantic_layer、knowledge_base、knowledge_graph、reference_queries、success_stories、metric_definitions</li>
+                <li><strong>Token Budget 控制：</strong><code>prepare()</code> 方法按相关性排序收集上下文块，确保不超出模型上下文窗口</li>
+                <li><strong>API：</strong><code>GET /api/context/preview</code> 预览上下文组装结果</li>
+            </ul>
+        </div>
+        <div class="section" id="feedback-loop">
+            <h3>FeedbackLoop 反馈闭环</h3>
+            <p><code>feedback.py</code> 实现结构化反馈收集与自动改进：</p>
+            <ul>
+                <li>前端 FeedbackBar 组件支持 👍👎 评价，存入 <code>agent_feedback</code> 表</li>
+                <li>Upvote 自动将查询入库为参考查询（ReferenceQueryStore）</li>
+                <li>Downvote 触发 FailureAnalyzer 自动分析失败原因</li>
+                <li>FeedbackTab 提供反馈看板，支持趋势分析</li>
+            </ul>
+        </div>
+        <div class="section" id="reference-queries">
+            <h3>ReferenceQueryStore 参考查询库</h3>
+            <p><code>reference_queries.py</code> 管理经过验证的高质量查询，通过 embedding 搜索为 NL2SQL 提供 few-shot 示例注入，支持自动策展和手动策展两种模式。</p>
+        </div>
+        <div class="section" id="metric-flow">
+            <h3>MetricFlow 语义模型</h3>
+            <p><code>semantic_model.py</code> 实现 GIS 扩展的 YAML 格式语义模型定义，包含 PostGIS 自动生成器和 MetricDefinitionProvider，为 Agent 提供标准化的指标定义上下文。</p>
+        </div>
+        <div class="section" id="db-migrations">
+            <h3>数据库迁移</h3>
+            <p>涉及 3 个迁移脚本：053（feedback 表）、054（reference_queries 表）、055（metric_definitions 表）。</p>
+        </div>
+    </article><article id="tg-autonomy-levels"><h2>自主能力层级</h2><p class="shortdesc">系统实现了 L1-L4 四级自主能力：L1 工具调用（基础）、L2 多步推理（LoopAgent 质量循环）、L3 完整条件自主（语义算子 + 多 Agent 协作 + NL2Workflow）、L4 自主监控（DataLakeMonitor 持续监控 + IntrinsicMotivation ε-greedy 内在动机）。</p>
+        <div class="section" id="l3-autonomy">
+            <h3>L3 — 完整条件自主（v16.0）</h3>
+            <ul>
+                <li><strong>语义算子：</strong>OperatorToolset（5 工具）— 将自然语言指令编译为可执行的语义算子链</li>
+                <li><strong>多 Agent 协作：</strong>Agent 间通过 output_key 共享状态，支持 ParallelAgent 并行执行</li>
+                <li><strong>NL2Workflow：</strong><code>nl2workflow.py</code> — 自然语言生成可执行工作流 DAG</li>
+                <li><strong>分析意图消歧 v2：</strong>should_decompose + decompose_task + 用户确认 + wave 按序执行</li>
+            </ul>
+        </div>
+        <div class="section" id="l4-autonomy">
+            <h3>L4 — 自主监控（v22.0）</h3>
+            <ul>
+                <li><strong>DataLakeMonitor：</strong>持续监控数据湖变更，自动触发分析管线</li>
+                <li><strong>IntrinsicMotivation：</strong>ε-greedy 内在动机机制，Agent 主动探索未覆盖的数据域</li>
+                <li><strong>标注协同 WebSocket：</strong><code>annotation_ws.py</code> 单实例广播 + REST 集成</li>
+                <li><strong>具身执行接口：</strong><code>embodied.py</code> BaseExecutor ABC + MockUAV/Satellite + 注册表</li>
+            </ul>
+        </div>
+        <div class="section" id="lite-mode">
+            <h3>Lite 模式（v22.0+）</h3>
+            <p><code>lite_mode.py</code> + <code>gis-agent init</code> CLI 入口，支持 DuckDB 替代 PostgreSQL 的轻量部署。<code>app.py</code> 中 <code>_LITE_MODE</code> 标志控制治理/优化路由降级到 General 管线。<code>pyproject.toml</code> 提供 [lite]/[full]/[dev] 可选依赖分组。</p>
+        </div>
+    </article><article id="tg-frontend-architecture"><h2>前端三面板架构</h2><p class="shortdesc">前端采用 React 18 + TypeScript + Vite 构建的三面板 SPA 布局，通过 CSS Grid + CSS 变量实现 ChatPanel | MapPanel | DataPanel 的自适应分栏，支持面板拖拽调整宽度（240-700px 范围）。DataPanel 包含 12 个功能 Tab（含能力浏览、工作流编辑器等）。</p>
+        <div class="section" id="layout-design">
+            <h3>布局设计</h3>
+            <p>三面板布局通过 CSS Grid 实现：</p>
+            <pre><code>.app-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr 360px;
+    height: 100vh;
+}</code></pre>
+            <table class="dita-table">
+                <h3>三面板职责</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>面板</th>
+                            <th>宽度</th>
+                            <th>可折叠</th>
+                            <th>职责</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ChatPanel（左）</td>
+                            <td>320px</td>
+                            <td>是</td>
+                            <td>Chainlit 对话界面嵌入（iframe），路由信息卡片，文件上传</td>
+                        </tr>
+                        <tr>
+                            <td>MapPanel（中）</td>
+                            <td>flex-1</td>
+                            <td>否</td>
+                            <td>Leaflet.js 2D 地图 + deck.gl/MapLibre GL 3D 渲染，图层控制，标注工具</td>
+                        </tr>
+                        <tr>
+                            <td>DataPanel（右）</td>
+                            <td>360px</td>
+                            <td>是</td>
+                            <td>数据表格（AG Grid）、属性面板、分析报告、Token 用量</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
+
+        <div class="section" id="component-tree">
+            <h3>组件树</h3>
+            <p>核心组件结构：</p>
+            <pre><code>&lt;App&gt;
+  ├── &lt;ChatPanel&gt;           // Chainlit iframe 嵌入
+  │     ├── &lt;RouterInfoCard/&gt;  // 路由信息展示
+  │     └── &lt;FileUpload/&gt;     // 多模态文件上传
+  ├── &lt;MapPanel&gt;            // 地图渲染容器
+  │     ├── &lt;LeafletMap/&gt;     // 2D 渲染引擎
+  │     ├── &lt;DeckGLOverlay/&gt;  // 3D 渲染引擎
+  │     ├── &lt;LayerControl/&gt;   // 图层管理
+  │     └── &lt;AnnotationTool/&gt; // 协作标注
+  └── &lt;DataPanel&gt;           // 数据展示容器
+        ├── &lt;DataTable/&gt;      // AG Grid 表格
+        ├── &lt;PropertyPanel/&gt;  // 要素属性
+        ├── &lt;ReportViewer/&gt;   // 分析报告
+        └── &lt;TokenUsage/&gt;     // Token 消耗仪表盘</code></pre>
+        </div>
+
+        <div class="section" id="map-update-polling">
+            <h3>地图更新轮询机制</h3>
+            <p>ChatPanel 通过定时轮询 <code>GET /api/map/pending</code> 获取后端 Agent 产出的地图更新配置：</p>
+            <ol>
+                <li>Agent 工具函数（如 <code>create_interactive_map()</code>）将 <code>layer_control</code> 元数据写入 <code>pending_map_updates</code> 字典。</li>
+                <li>前端每 2 秒轮询一次 <code>/api/map/pending</code>。</li>
+                <li>若有更新，MapPanel 解析配置并渲染新图层。</li>
+                <li>后端清空 <code>pending_map_updates</code>。</li>
+            </ol>
+            <div class="note">v7.5 引入了指数退避重试机制——连续 3 次空响应后轮询间隔从 2s 递增至 8s，减少空闲时的网络开销。</div>
+        </div>
+
+        <div class="section" id="state-management">
+            <h3>状态管理</h3>
+            <p>前端使用 React Context + useReducer 管理全局状态，主要状态域包括：</p>
+            <ul>
+                <li><strong>MapState：</strong>当前视口、图层列表、底图配置、标注数据</li>
+                <li><strong>DataState：</strong>当前数据集、选中行、过滤条件</li>
+                <li><strong>UserState：</strong>认证信息、角色、Token 用量</li>
+                <li><strong>UIState：</strong>面板折叠状态、主题、语言</li>
+            </ul>
+            <div class="note note-attention">
+                <ul>
+                    <li>轮询模式而非 WebSocket——每 2 秒一次 HTTP 请求，高并发时对服务器造成压力。</li>
+                    <li>Chainlit iframe 嵌入导致跨域通信复杂——需要 <code>postMessage</code> 桥接。</li>
+                    <li>无虚拟化——DataPanel 的 AG Grid 在超过 10,000 行时性能下降。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-map-rendering-pipeline"><h2>地图渲染管线</h2><p class="shortdesc">系统支持 Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎，通过 layer_control 元数据协议驱动前端图层渲染，支持 7 种图层类型和 4 种底图。</p>
+        <div class="section" id="dual-engine">
+            <h3>双渲染引擎</h3>
+            <table class="dita-table">
+                <h3>渲染引擎对比</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>引擎</th>
+                            <th>库</th>
+                            <th>维度</th>
+                            <th>适用场景</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2D 引擎</td>
+                            <td>Leaflet.js 1.9</td>
+                            <td>2D</td>
+                            <td>专题图、热力图、气泡图、矢量叠加</td>
+                        </tr>
+                        <tr>
+                            <td>3D 引擎</td>
+                            <td>deck.gl 9.2 + MapLibre GL 5.19</td>
+                            <td>2.5D / 3D</td>
+                            <td>建筑拉伸、地形渲染、点云可视化</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>默认使用 Leaflet.js 2D 引擎。当 <code>layer_control</code> 中包含 <code>render_3d: true</code> 或图层类型为 <code>extrusion</code>/<code>point_cloud</code> 时，自动切换到 deck.gl 3D 引擎。</p>
+        </div>
+
+        <div class="section" id="layer-control-protocol">
+            <h3>layer_control 元数据协议</h3>
+            <p>后端 Agent 工具函数通过 <code>layer_control</code> 字典描述图层渲染配置：</p>
+            <pre><code>{
+    "action": "add_layer",
+    "layer_type": "choropleth",
+    "data_url": "/api/files/{file_id}",
+    "style": {
+        "column": "population",
+        "scheme": "YlOrRd",
+        "classes": 5,
+        "opacity": 0.7
+    },
+    "bounds": [[lat1, lng1], [lat2, lng2]],
+    "tooltip_fields": ["name", "population", "area"],
+    "render_3d": false
+}</code></pre>
+        </div>
+
+        <div class="section" id="layer-types">
+            <h3>支持的图层类型</h3>
+            <table class="dita-table">
+                <h3>7 种图层类型</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>图层类型</th>
+                            <th>引擎</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>choropleth</code></td>
+                            <td>2D</td>
+                            <td>分级设色专题图（等间距/自然断点/分位数）</td>
+                        </tr>
+                        <tr>
+                            <td><code>heatmap</code></td>
+                            <td>2D</td>
+                            <td>核密度热力图</td>
+                        </tr>
+                        <tr>
+                            <td><code>bubble</code></td>
+                            <td>2D</td>
+                            <td>气泡图（面积映射数值）</td>
+                        </tr>
+                        <tr>
+                            <td><code>marker_cluster</code></td>
+                            <td>2D</td>
+                            <td>点聚合（MarkerCluster 插件）</td>
+                        </tr>
+                        <tr>
+                            <td><code>geojson</code></td>
+                            <td>2D</td>
+                            <td>通用 GeoJSON 矢量叠加</td>
+                        </tr>
+                        <tr>
+                            <td><code>extrusion</code></td>
+                            <td>3D</td>
+                            <td>建筑/地块拉伸（deck.gl PolygonLayer）</td>
+                        </tr>
+                        <tr>
+                            <td><code>point_cloud</code></td>
+                            <td>3D</td>
+                            <td>LiDAR 点云渲染（deck.gl PointCloudLayer）</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
+
+        <div class="section" id="basemaps">
+            <h3>底图配置</h3>
+            <p>通过 <code>/api/config/basemaps</code> 端点提供 4 种底图选项：</p>
+            <ul>
+                <li><strong>天地图矢量：</strong>中国官方地图服务（需 API Key）</li>
+                <li><strong>天地图影像：</strong>卫星影像底图</li>
+                <li><strong>OpenStreetMap：</strong>开源社区地图</li>
+                <li><strong>暗色底图：</strong>CartoDB Dark Matter（数据可视化场景）</li>
+            </ul>
+        </div>
+
+        <div class="section" id="zoom-and-bounds">
+            <h3>视口控制</h3>
+            <p>Agent 工具函数通过 <code>bounds</code> 字段指定图层边界，前端自动执行 <code>map.fitBounds()</code> 缩放到数据范围。v7.5.6 修复了流域分析场景下的缩放问题——当 <code>bounds</code> 为空时 fallback 到数据集质心。</p>
+            <div class="note note-attention">
+                <ul>
+                    <li>大数据集（10,000+ 要素）的 GeoJSON 直接传输到前端，无矢量切片（Vector Tiles）支持。</li>
+                    <li>2D/3D 引擎切换时地图状态（视口、图层）不保留。</li>
+                    <li>缺少图层缓存——每次轮询到新配置都重新加载数据。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-observability"><h2>可观测性与运维体系</h2><p class="shortdesc">系统通过六层可观测性体系（结构化日志、Prometheus 指标、审计日志、Token 追踪、OTel 分布式追踪、告警引擎）实现运行时监控，配合健康检查端点、Grafana 仪表盘和连接池 Prometheus 监控支撑生产运维。v22.0 新增 OTel 4 级 span（pipeline/agent/tool/llm）和 AlertEngine 可配置阈值告警。</p>
+        <div class="section" id="logging">
+            <h3>结构化日志</h3>
+            <p>系统使用 Python <code>logging</code> 模块，通过 <code>structlog</code> 风格的键值对输出结构化日志：</p>
+            <pre><code>logger.info("pipeline_dispatch",
+    user_id=current_user_id.get(),
+    intent=intent,
+    pipeline=pipeline_name,
+    trace_id=current_trace_id.get(),
+    router_tokens=router_tokens)</code></pre>
+            <p>日志级别策略：</p>
+            <ul>
+                <li><strong>DEBUG：</strong>工具函数入参/出参、SQL 查询文本</li>
+                <li><strong>INFO：</strong>管线调度、Agent 切换、工具调用成功</li>
+                <li><strong>WARNING：</strong>降级行为（路由器异常 fallback、嵌入 API 失败跳过）</li>
+                <li><strong>ERROR：</strong>工具执行失败、数据库连接异常</li>
+            </ul>
+            <p>日志输出到 <code class="filepath">data_agent.log</code>，通过 <code>RotatingFileHandler</code> 按 10MB 轮转，保留 5 个备份。</p>
+        </div>
+
+        <div class="section" id="prometheus-metrics">
+            <h3>Prometheus 指标</h3>
+            <p><code class="filepath">health.py</code> 暴露 <code>/metrics</code> 端点，提供以下指标：</p>
+            <table class="dita-table">
+                <h3>核心 Prometheus 指标</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>指标名</th>
+                            <th>类型</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>data_agent_requests_total</code></td>
+                            <td>Counter</td>
+                            <td>请求总数（按管线、状态码分标签）</td>
+                        </tr>
+                        <tr>
+                            <td><code>data_agent_request_duration_seconds</code></td>
+                            <td>Histogram</td>
+                            <td>请求延迟分布</td>
+                        </tr>
+                        <tr>
+                            <td><code>data_agent_tool_calls_total</code></td>
+                            <td>Counter</td>
+                            <td>工具调用次数（按工具名、成功/失败分标签）</td>
+                        </tr>
+                        <tr>
+                            <td><code>data_agent_active_sessions</code></td>
+                            <td>Gauge</td>
+                            <td>当前活跃会话数</td>
+                        </tr>
+                        <tr>
+                            <td><code>data_agent_token_usage_total</code></td>
+                            <td>Counter</td>
+                            <td>Token 消耗总量（按模型、管线分标签）</td>
+                        </tr>
+                        <tr>
+                            <td><code>data_agent_db_pool_size</code></td>
+                            <td>Gauge</td>
+                            <td>数据库连接池使用情况</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>v7.5.6 修复了 Prometheus 客户端在热重载时的 <code>ValueError: Duplicated timeseries</code> 问题——通过 <code>CollectorRegistry</code> 单例和重载安全检查解决。</p>
+        </div>
+
+        <div class="section" id="audit-log">
+            <h3>审计日志</h3>
+            <p><code>agent_audit_log</code> 表记录 50+ 种事件类型，核心字段：</p>
+            <ul>
+                <li><code>event_type</code>：LOGIN_SUCCESS、PIPELINE_DISPATCH、TOOL_CALL、TOOL_FAILURE、FILE_UPLOAD、ADMIN_ACTION 等</li>
+                <li><code>user_id</code>：操作用户</li>
+                <li><code>details</code>：JSONB 格式的事件详情</li>
+                <li><code>ip_address</code>：客户端 IP</li>
+                <li><code>created_at</code>：UTC 时间戳</li>
+            </ul>
+            <p>管理员通过 <code>/api/admin/audit-log</code> 端点查询审计日志，支持按事件类型、用户、时间范围过滤。</p>
+        </div>
+
+        <div class="section" id="token-tracking">
+            <h3>Token 消耗追踪</h3>
+            <p><code>agent_token_usage</code> 表按请求粒度记录 Token 消耗：</p>
+            <ul>
+                <li><code>input_tokens</code> / <code>output_tokens</code>：输入/输出 Token 数</li>
+                <li><code>model_name</code>：使用的模型</li>
+                <li><code>pipeline_name</code>：所属管线</li>
+                <li><code>estimated_cost</code>：估算费用（基于模型定价表）</li>
+            </ul>
+            <p>前端 DataPanel 的 TokenUsage 组件通过 <code>/api/user/token-usage</code> 展示用户的日/周/月消耗趋势。</p>
+        </div>
+
+        <div class="section" id="health-check">
+            <h3>健康检查</h3>
+            <p><code>/health</code> 端点返回系统健康状态，检查项包括：</p>
+            <ul>
+                <li>数据库连接可用性</li>
+                <li>Gemini API 可达性</li>
+                <li>ArcPy Worker 进程状态（如已配置）</li>
+                <li>磁盘空间（上传目录）</li>
+            </ul>
+            <div class="note note-attention">
+                <ul>
+                    <li>路由器 Token 消耗未纳入 <code>token_tracker</code>——存在计费盲区。</li>
+                    <li>审计日志无自动归档/清理策略——长期运行后表膨胀。</li>
+                    <li>缺少分布式追踪（如 OpenTelemetry）——跨 Agent 的调用链无法端到端追踪。</li>
+                    <li>Prometheus 指标在进程重启后归零——需要 Pushgateway 或持久化方案。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-evaluation-cicd"><h2>评测体系与 CI/CD 流水线</h2><p class="shortdesc">系统通过 3588 个测试用例（171 个测试文件）覆盖核心模块，配合 15 个可插拔评估器（evaluator_registry.py）、场景化评估框架（eval_scenario.py）、工具失败学习机制和管线历史分析，构建了面向 Agent 系统的质量保障体系。CI 流水线包含 test + frontend + evaluation + route-eval 四个 job。</p>
+        <div class="section" id="test-suite">
+            <h3>测试套件</h3>
+            <table class="dita-table">
+                <h3>测试模块清单</h3>
+                
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>测试文件</th>
+                            <th>用例数</th>
+                            <th>覆盖范围</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code class="filepath">test_frontend_api.py</code></td>
+                            <td>44</td>
+                            <td>全部 REST API 端点（HTTPX AsyncClient）</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">test_workflow_engine.py</code></td>
+                            <td>15</td>
+                            <td>工作流 CRUD、执行、Cron 调度</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">test_knowledge_agent.py</code></td>
+                            <td>12</td>
+                            <td>知识库 CRUD、搜索、Vertex AI 集成</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">test_knowledge_base.py</code></td>
+                            <td>10</td>
+                            <td>知识库底层存储与检索</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">test_pipeline_streaming.py</code></td>
+                            <td>8</td>
+                            <td>管线流式输出、Token 追踪</td>
+                        </tr>
+                        <tr>
+                            <td><code class="filepath">test_arcpy_bridge.py</code></td>
+                            <td>6</td>
+                            <td>ArcPy Worker 进程通信</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+            <p>测试使用 <code>pytest-asyncio</code> 驱动异步测试，通过 <code>unittest.mock.patch</code> 隔离外部依赖（数据库、Gemini API、文件系统）。</p>
+        </div>
+
+        <div class="section" id="tool-failure-learning">
+            <h3>工具失败学习</h3>
+            <p><code>tool_failures</code> 表记录每次工具调用失败的详细信息：</p>
+            <ul>
+                <li><code>tool_name</code>：失败的工具函数名</li>
+                <li><code>error_type</code>：异常类型</li>
+                <li><code>error_message</code>：错误信息</li>
+                <li><code>input_summary</code>：输入参数摘要（脱敏后）</li>
+                <li><code>stack_trace</code>：调用栈</li>
+                <li><code>resolution</code>：修复方案（人工标注）</li>
+            </ul>
+            <p>Agent 的 System Prompt 中注入近期高频失败工具的警告信息，引导 LLM 避免重复调用已知有问题的工具或调整参数。</p>
+        </div>
+
+        <div class="section" id="pipeline-analytics">
+            <h3>管线分析</h3>
+            <p><code>/api/analytics/*</code> 端点提供运行时质量指标：</p>
+            <dl>
+                <dlentry>
+                    <dt>延迟分析（<code>/api/analytics/latency</code>）</dt>
+                    <dd>按管线、Agent、工具三级粒度的 P50/P95/P99 延迟。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>工具成功率（<code>/api/analytics/tool-success</code>）</dt>
+                    <dd>按工具名统计成功/失败/超时比例。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>路由准确率（<code>/api/analytics/routing</code>）</dt>
+                    <dd>意图分类分布、AMBIGUOUS 比例趋势。</dd>
+                </dlentry>
+                <dlentry>
+                    <dt>质量循环统计（<code>/api/analytics/quality-loops</code>）</dt>
+                    <dd>LoopAgent 平均迭代次数、首次通过率。</dd>
+                </dlentry>
+            </dl>
+        </div>
+
+        <div class="section" id="cicd-considerations">
+            <h3>CI/CD 考量</h3>
+            <p>当前项目尚未配置自动化 CI/CD 流水线。建议的流水线设计：</p>
+            <ol>
+                <li><strong>Lint &amp; Type Check：</strong><code>ruff check</code> + <code>mypy --strict</code></li>
+                <li><strong>Unit Tests：</strong><code>pytest -x --timeout=60</code>（隔离模式，mock 外部依赖）</li>
+                <li><strong>Integration Tests：</strong>启动 PostgreSQL + PostGIS 容器，运行数据库相关测试</li>
+                <li><strong>Agent Evaluation：</strong>预定义 20 个标准查询，验证路由准确率 ≥ 90%、工具调用成功率 ≥ 95%</li>
+                <li><strong>Build &amp; Deploy：</strong>Docker 镜像构建 → 推送至 Artifact Registry → Cloud Run 部署</li>
+            </ol>
+            <div class="note note-attention">
+                <ul>
+                    <li>缺少端到端 Agent 评测——当前测试仅覆盖工具函数和 API 层，未验证 LLM 的路由准确率和工具选择质量。</li>
+                    <li>无回归测试基准——缺少"黄金数据集"来检测模型升级后的行为变化。</li>
+                    <li>测试覆盖率未量化——建议引入 <code>pytest-cov</code> 并设置最低覆盖率门槛。</li>
+                </ul>
+            </div>
+        </div>
+    </article><article id="tg-architecture-assessment"><h2>架构评估与改进建议</h2><p class="shortdesc">基于对系统全部源码的审查，本章从可维护性、可扩展性、安全性、性能四个维度总结 20 个具体的架构缺陷，并给出优先级排序的改进建议。</p>
+        <div class="section" id="severity-legend">
+            <h3>严重度说明</h3>
+            <table class="dita-table">
+                
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>级别</th>
+                            <th>含义</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>P0 — 阻断</td><td>生产环境安全风险或数据丢失风险，需立即修复</td></tr>
+                        <tr><td>P1 — 严重</td><td>影响可扩展性或可维护性，应在下一迭代修复</td></tr>
+                        <tr><td>P2 — 中等</td><td>技术债务，影响开发效率，可规划修复</td></tr>
+                        <tr><td>P3 — 建议</td><td>最佳实践改进，可在重构时顺带处理</td></tr>
+                    </tbody>
+                
+            </table>
+        </div>
+
+        <div class="section" id="security-issues">
+            <h3>安全性（4 项）</h3>
+            <table class="dita-table">
+                <h3>安全缺陷</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>优先级</th>
+                            <th>缺陷</th>
+                            <th>影响</th>
+                            <th>建议</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>P0 ✅</td>
+                            <td>数据库不可用时接受硬编码 <code>admin/admin123</code></td>
+                            <td>攻击者可在数据库故障期间以管理员身份登录</td>
+                            <td><strong>[v12.0 已修复]</strong> DB 不可用时直接拒绝认证</td>
+                        </tr>
+                        <tr>
+                            <td>P0</td>
+                            <td><code>current_user_role</code> 默认值为 <code>analyst</code></td>
+                            <td>ContextVar 未设置时工具以 analyst 权限运行，存在权限提升风险</td>
+                            <td>默认值改为无权限角色（如 <code>anonymous</code>），所有操作需显式鉴权</td>
+                        </tr>
+                        <tr>
+                            <td>P1 ✅</td>
+                            <td>缺少暴力破解防护</td>
+                            <td>无账户锁定、无 IP 速率限制，密码可被暴力枚举</td>
+                            <td><strong>[v12.0 已修复]</strong> per-username 连续 5 次失败锁定 15 分钟</td>
+                        </tr>
+                        <tr>
+                            <td>P1</td>
+                            <td>沙箱验证基于字符串前缀匹配</td>
+                            <td>符号链接可能绕过 <code>startswith()</code> 检查</td>
+                            <td>使用 <code>os.path.realpath()</code> 解析后再比较</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
+
+        <div class="section" id="maintainability-issues">
+            <h3>可维护性（7 项）</h3>
+            <table class="dita-table">
+                <h3>可维护性缺陷</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>优先级</th>
+                            <th>缺陷</th>
+                            <th>影响</th>
+                            <th>建议</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>P1</td>
+                            <td><code class="filepath">app.py</code> 3267 行（已从 3700+ 行重构，提取 intent_router.py + pipeline_helpers.py）</td>
+                            <td>认证、路由、RBAC、文件处理、管线调度全部耦合，修改任一功能需理解全部上下文</td>
+                            <td>按职责拆分为 <code class="filepath">auth.py</code>、<code class="filepath">router.py</code>、<code class="filepath">file_handler.py</code>、<code class="filepath">pipeline_dispatcher.py</code></td>
+                        </tr>
+                        <tr>
+                            <td>P1</td>
+                            <td><strong>[v16.0 已修复]</strong> <code class="filepath">frontend_api.py</code> 已拆分</td>
+                            <td>280 个端点已拆分为主路由（3438 行）+ 24 个独立路由模块（<code class="filepath">data_agent/api/</code> 4992 行），覆盖 MCP、Skills、Workflow、KB、Context、Feedback、Fusion v2、Lineage、Tile 等功能域</td>
+                            <td>✅ 已完成按功能域拆分</td>
+                        </tr>
+                        <tr>
+                            <td>P1</td>
+                            <td>缺少 Alembic 数据库迁移</td>
+                            <td>Schema 变更无版本控制，多环境部署一致性难以保证</td>
+                            <td>引入 Alembic，将现有 <code>ensure_*_table()</code> 转换为初始迁移</td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>工厂函数增殖</td>
+                            <td>每新增一种可复用 Agent 需新增工厂函数，且所有工厂必须保持配置同步</td>
+                            <td>引入 Agent 配置注册表，通过声明式配置（YAML/dataclass）生成 Agent 实例</td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>路由器 Prompt 硬编码</td>
+                            <td>新增管线需修改路由器 Prompt 源码，无法通过配置扩展</td>
+                            <td>将意图列表和路由规则外部化为 YAML 配置</td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>缺少 API 版本控制</td>
+                            <td>所有端点均为 <code>/api/...</code>，breaking changes 无法平滑迁移</td>
+                            <td>引入 <code>/api/v1/...</code> 前缀，支持多版本并行</td>
+                        </tr>
+                        <tr>
+                            <td>P3</td>
+                            <td>缺少统一请求验证</td>
+                            <td>输入参数验证分散在各处理函数中，容易遗漏</td>
+                            <td>引入 Pydantic models 作为请求/响应 schema</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
+
+        <div class="section" id="scalability-issues">
+            <h3>可扩展性（5 项）</h3>
+            <table class="dita-table">
+                <h3>可扩展性缺陷</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>优先级</th>
+                            <th>缺陷</th>
+                            <th>影响</th>
+                            <th>建议</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>P1</td>
+                            <td>知识图谱纯内存存储</td>
+                            <td>大数据集受内存限制，进程重启丢失</td>
+                            <td>引入 Neo4j 或 Apache AGE（PostgreSQL 图扩展）作为持久化后端</td>
+                        </tr>
+                        <tr>
+                            <td>P1</td>
+                            <td>连接池大小硬编码</td>
+                            <td><code>pool_size=5</code> 对高并发部署不足</td>
+                            <td>改为环境变量配置，支持按部署规模调整</td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>前端轮询而非 WebSocket</td>
+                            <td>每 2 秒一次 HTTP 请求，高并发时服务器压力大</td>
+                            <td>引入 WebSocket 或 SSE 推送地图更新</td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>GeoJSON 直接传输无矢量切片</td>
+                            <td>10,000+ 要素时前端渲染卡顿</td>
+                            <td>引入 Tippecanoe 生成 MVT 矢量切片，或使用 pg_tileserv</td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>DRL 引擎无早停机制</td>
+                            <td>无论是否收敛都执行完 200 步</td>
+                            <td>引入收敛检测（连续 N 步奖励变化 &lt; ε 时提前终止）</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
+
+        <div class="section" id="observability-issues">
+            <h3>可观测性（4 项）</h3>
+            <table class="dita-table">
+                <h3>可观测性缺陷</h3>
+                
+                    
+                    
+                    
+                    
+                    <thead>
+                        <tr>
+                            <th>优先级</th>
+                            <th>缺陷</th>
+                            <th>影响</th>
+                            <th>建议</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>P1</td>
+                            <td>路由器 Token 未纳入追踪</td>
+                            <td>计费盲区，无法准确核算成本</td>
+                            <td>在 <code>classify_intent()</code> 返回后将 <code>router_tokens</code> 写入 <code>token_tracker</code></td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>缺少分布式追踪</td>
+                            <td>跨 Agent 调用链无法端到端追踪</td>
+                            <td>引入 OpenTelemetry，通过 <code>trace_id</code> 串联路由→管线→工具全链路</td>
+                        </tr>
+                        <tr>
+                            <td>P2</td>
+                            <td>审计日志无自动归档</td>
+                            <td>长期运行后表膨胀</td>
+                            <td>引入 pg_partman 按月分区 + 自动归档策略</td>
+                        </tr>
+                        <tr>
+                            <td>P3</td>
+                            <td>缺少端到端 Agent 评测</td>
+                            <td>模型升级后行为变化无法检测</td>
+                            <td>建立"黄金数据集"（20+ 标准查询），CI 中自动验证路由准确率和工具选择质量</td>
+                        </tr>
+                    </tbody>
+                
+            </table>
+        </div>
+
+        <div class="section" id="recommended-roadmap">
+            <h3>建议修复路线图</h3>
+            <ol>
+                <li><strong>Sprint 1（1-2 周）：</strong>修复 P0 安全问题——移除硬编码凭据、修改默认角色、加固沙箱验证。</li>
+                <li><strong>Sprint 2（2-3 周）：</strong>拆分 <code class="filepath">app.py</code> 和 <code class="filepath">frontend_api.py</code>，引入 Alembic 迁移框架。</li>
+                <li><strong>Sprint 3（2-3 周）：</strong>引入暴力破解防护、连接池配置外部化、路由器 Token 追踪。</li>
+                <li><strong>Sprint 4（3-4 周）：</strong>WebSocket 替代轮询、矢量切片支持、DRL 早停机制。</li>
+                <li><strong>Sprint 5（持续）：</strong>OpenTelemetry 集成、Agent 评测框架、审计日志归档。</li>
+            </ol>
+        </div>
+    </article>
+<footer style="text-align:center;color:var(--text-secondary);padding:40px 0;font-size:0.9em;">
+Data Agent v23.0 | Google ADK v1.27.2 | Generated 2026-04-11
+</footer>
 </div>
-</div>
-
-<!-- ======================== 12. 前端 ======================== -->
-<div class="topic" id="tg-frontend-architecture">
-<h2>12. 前端三面板架构</h2>
-<p class="shortdesc">React 18 + TypeScript + Vite 构建的三面板 SPA，支持面板拖拽调整、2D/3D 双渲染引擎和协作标注。</p>
-
-<h3>面板职责</h3>
-<table>
-<thead><tr><th>面板</th><th>宽度</th><th>核心功能</th></tr></thead>
-<tbody>
-<tr><td>ChatPanel（左）</td><td>320px</td><td>消息流、文件上传、语音输入、路由信息卡片</td></tr>
-<tr><td>MapPanel（中）</td><td>flex-1</td><td>Leaflet.js 2D + deck.gl 3D、图层控制、标注、底图切换、图例</td></tr>
-<tr><td>DataPanel（右）</td><td>360px</td><td>7+ 标签页：文件、CSV 预览、数据目录、管线历史、Token 用量、MCP 工具、工作流</td></tr>
-</tbody>
-</table>
-
-<h3>地图更新传递</h3>
-<p>Chainlit <code>@chainlit/react-client</code> v0.3.1 不传递 step-level <code>metadata</code>。Workaround：REST 轮询模式。</p>
-<ol>
-  <li>Agent 产出 map_update → 存入 <code>pending_map_updates[user_id]</code>（内存字典）</li>
-  <li>ChatPanel 检测 loading=false → fetch <code>GET /api/map/pending</code></li>
-  <li>获取地图配置 → 调用 <code>onMapUpdate()</code> → MapPanel 渲染</li>
-</ol>
-
-<div class="note note-attention">
-  <div class="note-title">架构注意</div>
-  <ul>
-    <li>Props drilling 过深——所有状态从 App.tsx 向下传递，应考虑 Context API。</li>
-    <li>全局回调 <code>window.__resolveAnnotation()</code> 类型不安全。</li>
-    <li>2291 行单文件 CSS，无 CSS Modules，存在样式冲突风险。</li>
-    <li>缺少 React Error Boundaries。</li>
-  </ul>
-</div>
-</div>
-
-<!-- ======================== 13. 地图渲染 ======================== -->
-<div class="topic" id="tg-map-rendering-pipeline">
-<h2>13. 地图渲染管线</h2>
-<p class="shortdesc">Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎，支持 7 种图层类型和 4 种底图。</p>
-
-<h3>图层类型</h3>
-<table>
-<thead><tr><th>类型</th><th>引擎</th><th>说明</th></tr></thead>
-<tbody>
-<tr><td><code>choropleth</code></td><td>2D</td><td>分级设色专题图（breaks + color_scheme）</td></tr>
-<tr><td><code>bubble</code></td><td>2D</td><td>气泡图（面积映射数值）</td></tr>
-<tr><td><code>heatmap</code></td><td>2D</td><td>核密度热力图（降级为点图层）</td></tr>
-<tr><td><code>categorized</code></td><td>2D</td><td>分类设色</td></tr>
-<tr><td><code>point</code> / <code>line</code> / <code>polygon</code></td><td>2D</td><td>基础矢量图层</td></tr>
-<tr><td><code>extrusion</code></td><td>3D</td><td>GeoJsonLayer 3D 拉伸多边形</td></tr>
-<tr><td><code>column</code></td><td>3D</td><td>ColumnLayer 3D 柱状图</td></tr>
-<tr><td><code>arc</code></td><td>3D</td><td>ArcLayer 连线</td></tr>
-</tbody>
-</table>
-
-<h3>自动 3D 切换</h3>
-<p>当图层配置含 <code>type === 'extrusion'|'column'|'arc'</code> 或 <code>extruded</code>/<code>elevation_column</code> 属性时，自动切换到 deck.gl 3D 渲染。</p>
-
-<h3>底图</h3>
-<p>CartoDB (Light/Dark)、OpenStreetMap、高德、天地图（需 API Key）。</p>
-</div>
-
-<!-- ======================== 14. 可观测性 ======================== -->
-<div class="topic" id="tg-observability">
-<h2>14. 可观测性与运维体系</h2>
-<p class="shortdesc">四层可观测性体系：结构化日志、Prometheus 指标、审计日志、Token 追踪。</p>
-
-<h3>结构化日志</h3>
-<p><code>observability.py</code>（141 行）提供 JSON-lines 格式输出，包含 <code>trace_id</code>、<code>user_id</code>、异常上下文。通过环境变量 <code>LOG_LEVEL</code>、<code>LOG_FORMAT</code> (text|json) 配置。</p>
-
-<h3>Prometheus 指标</h3>
-<table>
-<thead><tr><th>指标名</th><th>类型</th><th>标签</th></tr></thead>
-<tbody>
-<tr><td><code>pipeline_runs</code></td><td>Counter</td><td>pipeline_type, status</td></tr>
-<tr><td><code>tool_calls</code></td><td>Counter</td><td>tool_name, status</td></tr>
-<tr><td><code>auth_events</code></td><td>Counter</td><td>event_type</td></tr>
-<tr><td><code>llm_tokens</code></td><td>Histogram</td><td>pipeline_type, model</td></tr>
-<tr><td><code>tool_duration</code></td><td>Histogram</td><td>tool_name</td></tr>
-</tbody>
-</table>
-
-<h3>审计日志</h3>
-<p><code>audit_logger.py</code>（365 行）记录 50+ 种事件类型，覆盖认证、数据操作、管线执行、管理操作、MCP 管理、团队协作。非致命设计——记录失败不影响业务流程。</p>
-
-<h3>失败学习</h3>
-<p><code>failure_learning.py</code>（158 行）记录工具执行失败模式，在重试时向 Agent 注入历史提示。<code>get_failure_hints(tool_name)</code> 获取近期未解决的失败提示（limit 3），工具成功后 <code>mark_resolved()</code> 标记历史失败为已解决。</p>
-
-<h3>健康检查</h3>
-<p><code>health.py</code>（282 行）提供 K8s liveness/readiness 探针。数据库为关键依赖——DB down = Not Ready；云存储、Redis 为可选依赖。启动时输出 ASCII Banner 显示所有子系统状态。</p>
-</div>
-
-<!-- ======================== 15. 评测与 CI/CD ======================== -->
-<div class="topic" id="tg-evaluation-cicd">
-<h2>15. 评测体系与 CI/CD 流水线</h2>
-<p class="shortdesc">基于 ADK AgentEvaluator 的多管线评测，配合 GitHub Actions 四阶段 CI 流水线。</p>
-
-<h3>评测框架</h3>
-<p><code>run_evaluation.py</code>（437 行）按管线独立评测：</p>
-<table>
-<thead><tr><th>管线</th><th>通过率阈值</th></tr></thead>
-<tbody>
-<tr><td>optimization</td><td>0.6 (60%)</td></tr>
-<tr><td>governance</td><td>0.6 (60%)</td></tr>
-<tr><td>general</td><td>0.7 (70%)</td></tr>
-<tr><td>planner</td><td>0.5 (50%)</td></tr>
-</tbody>
-</table>
-<p>评测能力：从 ADK 断言错误中提取指标、自动生成改进建议（工具轨迹不匹配/超时/API 错误/幻觉）、Matplotlib 柱状图输出。</p>
-
-<h3>CI/CD 流水线</h3>
-<table>
-<thead><tr><th>阶段</th><th>触发</th><th>环境</th><th>内容</th></tr></thead>
-<tbody>
-<tr><td>test</td><td>所有推送</td><td>Ubuntu + PostGIS 16-3.4</td><td>2100+ pytest 测试</td></tr>
-<tr><td>frontend</td><td>所有推送</td><td>Node.js 20</td><td>React 构建验证</td></tr>
-<tr><td>evaluate</td><td>main 推送</td><td>GOOGLE_API_KEY</td><td>全管线 ADK 评测</td></tr>
-<tr><td>route-eval</td><td>PR</td><td>GOOGLE_API_KEY</td><td>General 管线快速评测 (≥70%)</td></tr>
-</tbody>
-</table>
-</div>
-
-<!-- ======================== 16. 架构评估 ======================== -->
-<div class="topic" id="tg-architecture-assessment">
-<h2>16. 架构评估与改进建议</h2>
-<p class="shortdesc">基于全部源码审查，从安全、可维护性、可扩展性、可观测性四个维度总结 20 个缺陷，并给出优先级排序的改进路线图。</p>
-
-<h3>安全性（4 项）</h3>
-<table>
-<thead><tr><th style="width:60px">优先级</th><th>缺陷</th><th>建议</th></tr></thead>
-<tbody>
-<tr><td><span class="tag tag-p0">P0 ✅</span></td><td>DB 不可用时接受硬编码 <code>admin/admin123</code></td><td><b>[已修复]</b> DB 不可用时直接拒绝认证</td></tr>
-<tr><td><span class="tag tag-p0">P0</span></td><td><code>current_user_role</code> 默认 <code>analyst</code></td><td>默认值改为无权限角色，所有操作需显式鉴权</td></tr>
-<tr><td><span class="tag tag-p1">P1</span></td><td>缺少暴力破解防护</td><td>引入速率限制 + 5 次失败锁定 15 分钟</td></tr>
-<tr><td><span class="tag tag-p1">P1</span></td><td>沙箱验证基于 <code>startswith()</code></td><td>使用 <code>os.path.realpath()</code> 解析后再比较</td></tr>
-</tbody>
-</table>
-
-<h3>可维护性（7 项）</h3>
-<table>
-<thead><tr><th style="width:60px">优先级</th><th>缺陷</th><th>建议</th></tr></thead>
-<tbody>
-<tr><td><span class="tag tag-p1">P1 ✅</span></td><td><code>app.py</code> 3267 行（已从 3700+ 行重构）</td><td><b>[已修复]</b> 提取 intent_router.py + pipeline_helpers.py</td></tr>
-<tr><td><span class="tag tag-p1">P1</span></td><td><code>frontend_api.py</code> 2330 行单文件</td><td>按功能域拆分为独立路由模块</td></tr>
-<tr><td><span class="tag tag-p1">P1</span></td><td>缺少 Alembic 数据库迁移</td><td>引入 Alembic，现有 ensure 函数转为初始迁移</td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>工厂函数增殖</td><td>Agent 配置注册表 + 声明式 YAML 生成实例</td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>路由器 Prompt 硬编码</td><td>意图列表和路由规则外部化为 YAML</td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>缺少 API 版本控制</td><td>引入 <code>/api/v1/</code> 前缀</td></tr>
-<tr><td><span class="tag tag-p3">P3</span></td><td>缺少统一请求验证</td><td>Pydantic models 作为请求/响应 schema</td></tr>
-</tbody>
-</table>
-
-<h3>可扩展性（5 项）</h3>
-<table>
-<thead><tr><th style="width:60px">优先级</th><th>缺陷</th><th>建议</th></tr></thead>
-<tbody>
-<tr><td><span class="tag tag-p1">P1</span></td><td>知识图谱纯内存</td><td>引入 Neo4j 或 Apache AGE 作为持久化后端</td></tr>
-<tr><td><span class="tag tag-p1">P1</span></td><td>连接池大小硬编码</td><td>改为环境变量配置</td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>前端轮询而非 WebSocket</td><td>引入 WebSocket 或 SSE 推送</td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>GeoJSON 直传无矢量切片</td><td>引入 Tippecanoe 或 pg_tileserv</td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>DRL 无早停机制</td><td>连续 N 步奖励变化 &lt; &epsilon; 时提前终止</td></tr>
-</tbody>
-</table>
-
-<h3>可观测性（4 项）</h3>
-<table>
-<thead><tr><th style="width:60px">优先级</th><th>缺陷</th><th>建议</th></tr></thead>
-<tbody>
-<tr><td><span class="tag tag-p1">P1</span></td><td>路由器 Token 未纳入追踪</td><td>在 <code>classify_intent()</code> 后写入 <code>token_tracker</code></td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>缺少分布式追踪</td><td>引入 OpenTelemetry 串联全链路</td></tr>
-<tr><td><span class="tag tag-p2">P2</span></td><td>审计日志无自动归档</td><td>pg_partman 按月分区 + 自动归档</td></tr>
-<tr><td><span class="tag tag-p3">P3</span></td><td>缺少端到端 Agent 评测</td><td>建立黄金数据集，CI 自动验证</td></tr>
-</tbody>
-</table>
-
-<h3>建议修复路线图</h3>
-<ol>
-  <li><b>Sprint 1（1-2 周）：</b>修复 P0 安全问题——移除硬编码凭据、修改默认角色、加固沙箱验证。</li>
-  <li><b>Sprint 2（2-3 周）：</b>拆分 <code>app.py</code> 和 <code>frontend_api.py</code>，引入 Alembic 迁移框架。</li>
-  <li><b>Sprint 3（2-3 周）：</b>引入暴力破解防护、连接池配置外部化、路由器 Token 追踪。</li>
-  <li><b>Sprint 4（3-4 周）：</b>WebSocket 替代轮询、矢量切片支持、DRL 早停机制。</li>
-  <li><b>Sprint 5（持续）：</b>OpenTelemetry 集成、Agent 评测框架、审计日志归档。</li>
-</ol>
-</div>
-
-</main>
-
-<script>
-// Sidebar active state on scroll
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-      const link = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
-      if (link) link.classList.add('active');
-    }
-  });
-}, { rootMargin: '-80px 0px -70% 0px' });
-document.querySelectorAll('.topic').forEach(t => observer.observe(t));
-
-// Smooth scroll
-document.querySelectorAll('.nav-link').forEach(link => {
-  link.addEventListener('click', e => {
-    e.preventDefault();
-    const target = document.querySelector(link.getAttribute('href'));
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-});
-</script>
 </body>
 </html>

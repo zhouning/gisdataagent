@@ -2,7 +2,7 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="system-overview" xml:lang="zh-CN">
     <title>系统概述</title>
-    <shortdesc>GIS Data Agent (ADK Edition) 是一个基于 Google Agent Developer Kit 构建的地理空间分析平台，主要用于空间数据治理、用地优化和多源数据融合。</shortdesc>
+    <shortdesc>GIS Data Agent (ADK Edition) v23.0 是一个基于 Google Agent Developer Kit v1.27.2 构建的地理空间智能分析平台，集成 50 个运行时 Agent、40 个 Toolset（270+ 工具）、25 个 ADK Skills 和 280 个 REST API 端点，面向空间数据治理、用地优化、多源数据融合、时空因果推断和测绘质检等场景。</shortdesc>
     <prolog>
         <author>作者姓名</author>
         <metadata>
@@ -20,9 +20,11 @@
             <title>架构组件</title>
             <p>系统的核心处理逻辑分布在多个独立的智能体管道（Pipeline）中：</p>
             <ul>
-                <li><b>动态规划器 (Dynamic Planner)：</b> 负责接收自然语言输入，解析意图，并将任务路由至对应的处理管道。</li>
-                <li><b>数据管道 (Data Pipeline)：</b> 处理多源数据的空间连接、属性融合与分析。支持矢量、栅格、点云等多种数据模态。</li>
-                <li><b>治理管道 (Governance Pipeline)：</b> 专门用于拓扑审计和数据合规性检查（如 GB/T 21010 标准验证）。</li>
+                <li><b>语义意图路由器 (Semantic Intent Router)：</b> 使用 Gemini 2.0 Flash 对自然语言输入进行实时分类，支持 5 种意图（OPTIMIZATION/GOVERNANCE/GENERAL/WORKFLOW/AMBIGUOUS），含分析意图消歧和多语言检测。</li>
+                <li><b>优化管道 (Optimization Pipeline)：</b> 处理多源数据的空间连接、属性融合与分析，支持 DRL 用地优化（7 场景）、时空因果推断（3 角度）和世界模型预测。</li>
+                <li><b>治理管道 (Governance Pipeline)：</b> 专门用于拓扑审计、数据合规性检查（GB/T 21010）、测绘质检（GB/T 24356）和数据清洗。</li>
+                <li><b>通用管道 (General Pipeline)：</b> 处理一般性空间查询、可视化和知识检索。</li>
+                <li><b>规划器 (Planner Agent)：</b> 动态编排器，处理复杂多步任务的分解与调度。</li>
             </ul>
         </section>
 

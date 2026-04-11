@@ -102,9 +102,9 @@
                         </row>
                         <row>
                             <entry>P1</entry>
-                            <entry><filepath>frontend_api.py</filepath> 2330 行单文件</entry>
-                            <entry>92 个端点定义在同一文件（2330 行），功能完整但建议按域拆分</entry>
-                            <entry>按功能域拆分为独立路由模块（catalog_routes、mcp_routes、workflow_routes 等）</entry>
+                            <entry><b>[v16.0 已修复]</b> <filepath>frontend_api.py</filepath> 已拆分</entry>
+                            <entry>280 个端点已拆分为主路由（3438 行）+ 24 个独立路由模块（<filepath>data_agent/api/</filepath> 4992 行），覆盖 MCP、Skills、Workflow、KB、Context、Feedback、Fusion v2、Lineage、Tile 等功能域</entry>
+                            <entry>✅ 已完成按功能域拆分</entry>
                         </row>
                         <row>
                             <entry>P1</entry>

@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
 <reference id="tg-toolset-framework" xml:lang="zh-CN">
     <title>工具体系与 BaseToolset 框架</title>
-    <shortdesc>系统通过 23 个 BaseToolset 子类封装了 130+ 工具函数，配合懒加载注册表和工具过滤机制，实现了模块化的工具发现、注册与裁剪。v12.0 新增 UserToolset 支持用户声明式自定义工具。</shortdesc>
+    <shortdesc>系统通过 40 个 BaseToolset 子类封装了 270+ 工具函数，配合懒加载注册表和工具过滤机制，实现了模块化的工具发现、注册与裁剪。v23.0 涵盖空间处理、治理质检、因果推断、世界模型、遥感分析、语义算子、数据清洗、精度评估等全领域工具集，并支持 UserToolset 用户声明式自定义工具。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>
@@ -22,7 +22,7 @@
         <section id="toolset-inventory">
             <title>工具集清单</title>
             <table frame="all" rowsep="1" colsep="1" id="toolset-table">
-                <title>23 个 BaseToolset 子类</title>
+                <title>40 个 BaseToolset 子类</title>
                 <tgroup cols="4">
                     <colspec colname="c1" colnum="1" colwidth="1*"/>
                     <colspec colname="c2" colnum="2" colwidth="2*"/>
@@ -37,120 +37,46 @@
                         </row>
                     </thead>
                     <tbody>
-                        <row>
-                            <entry>数据探索</entry>
-                            <entry>ExplorationToolset</entry>
-                            <entry>6</entry>
-                            <entry>数据画像、拓扑审计、字段标准检查、一致性检查</entry>
-                        </row>
-                        <row>
-                            <entry>GIS 处理</entry>
-                            <entry>GeoProcessingToolset</entry>
-                            <entry>18+8</entry>
-                            <entry>镶嵌、裁剪、缓冲、叠加、聚类；可选 ArcPy 工具（<codeph>include_arcpy=True</codeph>）</entry>
-                        </row>
-                        <row>
-                            <entry>可视化</entry>
-                            <entry>VisualizationToolset</entry>
-                            <entry>15</entry>
-                            <entry>交互式地图、专题图、气泡图、3D 拉伸、PNG 导出、图层控制</entry>
-                        </row>
-                        <row>
-                            <entry>分析</entry>
-                            <entry>AnalysisToolset</entry>
-                            <entry>4</entry>
-                            <entry>DRL 优化、FFI 计算、Pareto 分析</entry>
-                        </row>
-                        <row>
-                            <entry>数据库</entry>
-                            <entry>DatabaseToolset</entry>
-                            <entry>8</entry>
-                            <entry>SQL 查询、表描述、导入/导出、语义上下文</entry>
-                        </row>
-                        <row>
-                            <entry>位置服务</entry>
-                            <entry>LocationToolset</entry>
-                            <entry>5</entry>
-                            <entry>地理编码、POI 检索、行政区划、逆地理编码</entry>
-                        </row>
-                        <row>
-                            <entry>遥感</entry>
-                            <entry>RemoteSensingToolset</entry>
-                            <entry>8</entry>
-                            <entry>NDVI 计算、栅格分类、DEM/LULC 下载</entry>
-                        </row>
-                        <row>
-                            <entry>空间统计</entry>
-                            <entry>SpatialStatisticsToolset</entry>
-                            <entry>3</entry>
-                            <entry>Moran's I 全局自相关、LISA 局部聚类、Gi* 热点分析</entry>
-                        </row>
-                        <row>
-                            <entry>语义层</entry>
-                            <entry>SemanticLayerToolset</entry>
-                            <entry>9</entry>
-                            <entry>域浏览、语义映射、列等价发现</entry>
-                        </row>
-                        <row>
-                            <entry>数据湖</entry>
-                            <entry>DataLakeToolset</entry>
-                            <entry>8</entry>
-                            <entry>资产搜索、打标、血缘追踪、云下载</entry>
-                        </row>
-                        <row>
-                            <entry>融合</entry>
-                            <entry>FusionToolset</entry>
-                            <entry>4</entry>
-                            <entry>多源数据融合、兼容性评估</entry>
-                        </row>
-                        <row>
-                            <entry>知识图谱</entry>
-                            <entry>KnowledgeGraphToolset</entry>
-                            <entry>3</entry>
-                            <entry>构建/查询/导出地理知识图谱</entry>
-                        </row>
-                        <row>
-                            <entry>知识库</entry>
-                            <entry>KnowledgeBaseToolset</entry>
-                            <entry>12</entry>
-                            <entry>Vertex AI Search 集成、领域知识检索</entry>
-                        </row>
-                        <row>
-                            <entry>文件</entry>
-                            <entry>FileToolset</entry>
-                            <entry>6</entry>
-                            <entry>用户文件 CRUD</entry>
-                        </row>
-                        <row>
-                            <entry>记忆</entry>
-                            <entry>MemoryToolset</entry>
-                            <entry>4</entry>
-                            <entry>空间记忆保存/检索/删除</entry>
-                        </row>
-                        <row>
-                            <entry>团队</entry>
-                            <entry>TeamToolset</entry>
-                            <entry>8</entry>
-                            <entry>团队 CRUD、成员管理、资源共享</entry>
-                        </row>
-                        <row>
-                            <entry>流处理</entry>
-                            <entry>StreamingToolset</entry>
-                            <entry>5</entry>
-                            <entry>实时数据流、事件聚合</entry>
-                        </row>
-                        <row>
-                            <entry>管理</entry>
-                            <entry>AdminToolset</entry>
-                            <entry>3</entry>
-                            <entry>用户管理、审计日志、系统诊断</entry>
-                        </row>
-                        <row>
-                            <entry>流域</entry>
-                            <entry>WatershedToolset</entry>
-                            <entry>3</entry>
-                            <entry>流域提取、DEM 处理</entry>
-                        </row>
+                        <row><entry>GIS 处理</entry><entry>GeoProcessingToolset</entry><entry>17+8</entry><entry>镶嵌、裁剪、缓冲、叠加、聚类；可选 ArcPy 工具</entry></row>
+                        <row><entry>数据治理</entry><entry>GovernanceToolset</entry><entry>18</entry><entry>空隙/重叠/完整性/属性/CRS/拓扑检查、治理评分、标准验证</entry></row>
+                        <row><entry>遥感</entry><entry>RemoteSensingToolset</entry><entry>13</entry><entry>NDVI/DEM/LULC、变化检测、Mann-Kendall、光谱分析</entry></row>
+                        <row><entry>可视化</entry><entry>VisualizationToolset</entry><entry>11</entry><entry>交互式地图、专题图、3D 拉伸、PNG 导出、图层控制</entry></row>
+                        <row><entry>数据清洗</entry><entry>DataCleaningToolset</entry><entry>11</entry><entry>去重、空值填充、坐标修正、编码转换、几何修复</entry></row>
+                        <row><entry>数据湖</entry><entry>DataLakeToolset</entry><entry>9</entry><entry>资产搜索、打标、血缘追踪、云下载</entry></row>
+                        <row><entry>语义层</entry><entry>SemanticLayerToolset</entry><entry>9</entry><entry>域浏览、语义映射、列等价发现</entry></row>
+                        <row><entry>知识库</entry><entry>KnowledgeBaseToolset</entry><entry>9</entry><entry>GraphRAG 检索、案例库、领域知识</entry></row>
+                        <row><entry>数据探索</entry><entry>ExplorationToolset</entry><entry>9</entry><entry>数据画像、拓扑审计、字段标准检查</entry></row>
+                        <row><entry>统计图表</entry><entry>ChartToolset</entry><entry>9</entry><entry>9 种 ECharts 交互图表</entry></row>
+                        <row><entry>位置服务</entry><entry>LocationToolset</entry><entry>8</entry><entry>地理编码、POI 检索、行政区划</entry></row>
+                        <row><entry>团队</entry><entry>TeamToolset</entry><entry>8</entry><entry>团队 CRUD、成员管理、资源共享</entry></row>
+                        <row><entry>工具演化</entry><entry>ToolEvolutionToolset</entry><entry>8</entry><entry>工具使用分析、推荐、自动优化</entry></row>
+                        <row><entry>高级分析</entry><entry>AdvancedAnalysisToolset</entry><entry>7</entry><entry>时间序列、情景模拟、网络分析</entry></row>
+                        <row><entry>融合</entry><entry>FusionToolset</entry><entry>7</entry><entry>多源数据融合 v2.0、兼容性评估</entry></row>
+                        <row><entry>虚拟数据源</entry><entry>VirtualSourceToolset</entry><entry>7</entry><entry>虚拟源 CRUD、Schema 映射、连接器调度</entry></row>
+                        <row><entry>统计因果</entry><entry>CausalInferenceToolset</entry><entry>6</entry><entry>PSM、ERF、DiD、Granger、GCCM、Causal Forest</entry></row>
+                        <row><entry>实时流</entry><entry>StreamingToolset</entry><entry>5</entry><entry>实时数据流、事件聚合</entry></row>
+                        <row><entry>数据库</entry><entry>DatabaseToolset</entry><entry>5</entry><entry>SQL 查询、表描述、导入/导出</entry></row>
+                        <row><entry>高级空间</entry><entry>SpatialAnalysisTier2Toolset</entry><entry>5</entry><entry>二级空间分析工具集</entry></row>
+                        <row><entry>核心分析</entry><entry>AnalysisToolset</entry><entry>5</entry><entry>DRL 优化、FFI 计算、Pareto 分析</entry></row>
+                        <row><entry>世界模型</entry><entry>WorldModelToolset</entry><entry>5</entry><entry>AlphaEarth + LatentDynamicsNet JEPA</entry></row>
+                        <row><entry>套合精度</entry><entry>PrecisionToolset</entry><entry>5</entry><entry>精度评估、套合检查（GB/T 24356）</entry></row>
+                        <row><entry>语义算子</entry><entry>OperatorToolset</entry><entry>5</entry><entry>语义算子执行引擎</entry></row>
+                        <row><entry>管理</entry><entry>AdminToolset</entry><entry>5</entry><entry>用户管理、审计日志、系统诊断</entry></row>
+                        <row><entry>记忆</entry><entry>MemoryToolset</entry><entry>4</entry><entry>空间记忆保存/检索/删除</entry></row>
+                        <row><entry>LLM 因果</entry><entry>LLMCausalToolset</entry><entry>4</entry><entry>DAG 构建、反事实推理、机制解释</entry></row>
+                        <row><entry>因果世界模型</entry><entry>CausalWorldModelToolset</entry><entry>4</entry><entry>干预预测、反事实对比、嵌入效应</entry></row>
+                        <row><entry>云存储</entry><entry>StorageToolset</entry><entry>4</entry><entry>OBS 云存储上传/下载</entry></row>
+                        <row><entry>空间统计</entry><entry>SpatialStatisticsToolset</entry><entry>3</entry><entry>Moran's I、LISA、Gi* 热点分析</entry></row>
+                        <row><entry>知识图谱</entry><entry>KnowledgeGraphToolset</entry><entry>3</entry><entry>构建/查询/导出地理知识图谱</entry></row>
+                        <row><entry>流域</entry><entry>WatershedToolset</entry><entry>3</entry><entry>流域提取、DEM 处理</entry></row>
+                        <row><entry>NL2SQL</entry><entry>NL2SQLToolset</entry><entry>3</entry><entry>自然语言转 SQL 查询</entry></row>
+                        <row><entry>报告</entry><entry>ReportToolset</entry><entry>3</entry><entry>报告生成引擎</entry></row>
+                        <row><entry>分布式</entry><entry>SparkToolset</entry><entry>3</entry><entry>Spark 分布式计算网关</entry></row>
+                        <row><entry>文件</entry><entry>FileToolset</entry><entry>3</entry><entry>用户文件 CRUD</entry></row>
+                        <row><entry>Dreamer</entry><entry>DreamerToolset</entry><entry>2</entry><entry>World Model Dreamer DRL 集成</entry></row>
+                        <row><entry>MCP 外部</entry><entry>McpHubToolset</entry><entry>动态</entry><entry>MCP 服务器动态发现与调用</entry></row>
+                        <row><entry>技能包</entry><entry>SkillBundlesToolset</entry><entry>动态</entry><entry>技能包组合工具集</entry></row>
+                        <row><entry>用户自定义</entry><entry>UserToolset</entry><entry>动态</entry><entry>用户声明式自定义工具（http_call/sql_query/file_transform/chain）</entry></row>
                     </tbody>
                 </tgroup>
             </table>
@@ -158,7 +84,7 @@
 
         <section id="lazy-loading">
             <title>懒加载注册表</title>
-            <p><filepath>custom_skills.py</filepath> 中的 <codeph>_RegistryProxy</codeph> 实现了延迟加载，避免在模块导入时加载 23 个依赖大量重型库（GeoPandas、Rasterio、PyTorch）的 Toolset 类：</p>
+            <p><filepath>custom_skills.py</filepath> 中的 <codeph>_RegistryProxy</codeph> 实现了延迟加载，避免在模块导入时加载 40 个依赖大量重型库（GeoPandas、Rasterio、PyTorch）的 Toolset 类：</p>
             <codeblock>class _RegistryProxy(dict):
     """Dict proxy, 首次访问时才导入 Toolset 类"""
     def __getitem__(self, key):

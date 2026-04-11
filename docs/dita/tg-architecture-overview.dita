@@ -2,7 +2,7 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="tg-architecture-overview" xml:lang="zh-CN">
     <title>系统架构总览</title>
-    <shortdesc>GIS Data Agent v12.0 基于 Google ADK v1.26.0 构建，采用语义意图路由驱动的多管线 Agent 架构，集成 130+ 工具、18 个 ADK Skills、23 个 Toolset 和 92 个 REST API 端点，支持用户自助扩展 Skills、Tools 和多 Agent 工作流，面向地理空间数据治理、用地优化与多源融合分析场景。</shortdesc>
+    <shortdesc>GIS Data Agent v23.0 基于 Google ADK v1.27.2 构建，采用语义意图路由驱动的多管线 Agent 架构，集成 270+ 工具、25 个 ADK Skills、40 个 Toolset 和 280 个 REST API 端点，支持用户自助扩展 Skills、Tools 和多 Agent 工作流，面向地理空间数据治理、用地优化与多源融合分析场景。v23.0 新增上下文工程、反馈飞轮、时空因果推断、遥感智能体、测绘质检子系统、DRL 约束建模、矢量切片渲染、Lite 模式等企业级能力。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
         <metadata>
@@ -24,12 +24,12 @@
             <title>分层架构</title>
             <p>系统自上而下分为六个层级：</p>
             <ol>
-                <li><b>前端展示层：</b>React 18 三面板 SPA（ChatPanel | MapPanel | DataPanel），面板宽度可拖拽调整，支持 Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎，DataPanel 包含 12 个功能 Tab。</li>
-                <li><b>REST API 层：</b>92 个 Starlette 端点，挂载于 Chainlit catch-all 路由之前，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析等功能域。</li>
-                <li><b>应用层：</b>Chainlit 框架承载认证回调、会话管理、文件上传与管线调度（<codeph>app.py</codeph> 3267 行），语义路由已提取至 <codeph>intent_router.py</codeph>，管线辅助逻辑提取至 <codeph>pipeline_helpers.py</codeph>。</li>
-                <li><b>Agent 编排层：</b>四条管线（Optimization、Governance、General、Planner），基于 ADK <codeph>SequentialAgent</codeph> 与 <codeph>LlmAgent</codeph> 组合编排，内置 LoopAgent 质量保证循环。用户可通过 WorkflowEditor 可视化编排自定义 Agent Pipeline。</li>
-                <li><b>工具执行层：</b>23 个 <codeph>BaseToolset</codeph> 子类（130+ 工具函数）、18 个 ADK Skills、MCP Hub 外部工具集成、UserToolset 用户自定义声明式工具。</li>
-                <li><b>数据与基础设施层：</b>PostgreSQL 16 + PostGIS 3.4、融合引擎（22 模块）、DRL 引擎、知识图谱、语义层、数据目录。</li>
+                <li><b>前端展示层：</b>React 18 三面板 SPA（ChatPanel | MapPanel | DataPanel），面板宽度可拖拽调整，支持 Leaflet.js 2D 与 deck.gl/MapLibre GL 3D 双渲染引擎，DataPanel 包含 16 个功能 Tab（含 FeedbackTab、FusionV2Tab、CausalReasoningTab 等），支持 Service Worker 离线模式。</li>
+                <li><b>REST API 层：</b>280 个 Starlette 端点（主路由 + 24 个拆分路由模块），挂载于 Chainlit catch-all 路由之前，覆盖数据目录、MCP 管理、工作流、自定义技能/工具、管线分析、上下文工程、反馈飞轮、融合 v2、血缘追踪、语义模型、矢量切片等功能域。含 RateLimitMiddleware + CircuitBreakerMiddleware 安全中间件。</li>
+                <li><b>应用层：</b>Chainlit 框架承载认证回调、会话管理、文件上传与管线调度（<codeph>app.py</codeph> 3948 行），语义路由已提取至 <codeph>intent_router.py</codeph>（含分析意图消歧 v2：should_decompose + decompose_task + wave 按序执行），管线辅助逻辑提取至 <codeph>pipeline_helpers.py</codeph>。支持 Lite 模式启动（_LITE_MODE 标志 + DuckDB 降级）。</li>
+                <li><b>Agent 编排层：</b>50 个运行时 Agent 实例（37 LlmAgent + 8 SequentialAgent + 2 ParallelAgent + 3 LoopAgent），四条管线（Optimization、Governance、General、Planner），基于 ADK <codeph>SequentialAgent</codeph> 与 <codeph>LlmAgent</codeph> 组合编排，内置 LoopAgent 质量保证循环。用户可通过 WorkflowEditor 可视化编排自定义 Agent Pipeline，支持 NL2Workflow 自然语言生成工作流。</li>
+                <li><b>工具执行层：</b>40 个 <codeph>BaseToolset</codeph> 子类（270+ 工具函数）、25 个 ADK Skills、MCP Hub 外部工具集成、UserToolset 用户自定义声明式工具。涵盖空间处理、治理质检、因果推断、世界模型、遥感分析、语义算子、数据清洗、精度评估等全领域。</li>
+                <li><b>数据与基础设施层：</b>PostgreSQL 16 + PostGIS 3.4（64 migrations）、融合引擎 v2.0（32 模块含 temporal/semantic_llm/conflict_resolver/explainability）、DRL 引擎（7 场景 + NSGA-II Pareto + DreamerEnv）、知识图谱、语义层、数据目录、ContextEngine 统一上下文引擎、FeedbackLoop 反馈闭环。</li>
             </ol>
         </section>
 
@@ -52,7 +52,7 @@
                         <row>
                             <entry>Agent 框架</entry>
                             <entry>Google Agent Developer Kit (ADK)</entry>
-                            <entry>v1.26.0</entry>
+                            <entry>v1.27.2</entry>
                         </row>
                         <row>
                             <entry>LLM（Agent）</entry>
@@ -133,13 +133,13 @@
                     <tbody>
                         <row>
                             <entry><filepath>app.py</filepath></entry>
-                            <entry>3267 行</entry>
-                            <entry>Chainlit 入口：RBAC、文件上传、会话管理、管线调度（路由逻辑已提取）</entry>
+                            <entry>3948 行</entry>
+                            <entry>Chainlit 入口：RBAC、文件上传、会话管理、管线调度、Lite 模式（路由逻辑已提取）</entry>
                         </row>
                         <row>
                             <entry><filepath>intent_router.py</filepath></entry>
-                            <entry>153 行</entry>
-                            <entry>语义意图分类（从 app.py 提取）</entry>
+                            <entry>197 行</entry>
+                            <entry>语义意图分类 + 多语言检测（从 app.py 提取）</entry>
                         </row>
                         <row>
                             <entry><filepath>pipeline_helpers.py</filepath></entry>
@@ -148,42 +148,42 @@
                         </row>
                         <row>
                             <entry><filepath>agent.py</filepath></entry>
-                            <entry>626 行</entry>
+                            <entry>853 行</entry>
                             <entry>Agent 定义、管线组装、工厂函数、模型分层</entry>
                         </row>
                         <row>
                             <entry><filepath>frontend_api.py</filepath></entry>
-                            <entry>2330 行</entry>
-                            <entry>92 个 REST API 端点</entry>
+                            <entry>3438 行</entry>
+                            <entry>280 个 REST API 端点（主路由）</entry>
                         </row>
                         <row>
                             <entry><filepath>fusion/</filepath></entry>
-                            <entry>22 模块</entry>
-                            <entry>多模态数据融合引擎（10 种策略）</entry>
+                            <entry>32 模块</entry>
+                            <entry>多模态数据融合引擎 v2.0（10 种策略 + temporal/semantic_llm/conflict_resolver/explainability）</entry>
                         </row>
                         <row>
                             <entry><filepath>toolsets/</filepath></entry>
-                            <entry>25 文件</entry>
-                            <entry>23 个 BaseToolset 子类（130+ 工具函数，含 UserToolset）</entry>
+                            <entry>41 文件</entry>
+                            <entry>40 个 BaseToolset 子类（270+ 工具函数，含 UserToolset）</entry>
                         </row>
                         <row>
                             <entry><filepath>skills/</filepath></entry>
-                            <entry>18 目录</entry>
-                            <entry>ADK Skills（场景化技能）</entry>
+                            <entry>25 目录</entry>
+                            <entry>ADK Skills（场景化技能，含测绘质检/遥感/因果推断等）</entry>
                         </row>
                         <row>
                             <entry><filepath>semantic_layer.py</filepath></entry>
-                            <entry>1551 行</entry>
+                            <entry>1847 行</entry>
                             <entry>语义目录、字段映射、缓存</entry>
                         </row>
                         <row>
                             <entry><filepath>workflow_engine.py</filepath></entry>
-                            <entry>1166 行</entry>
-                            <entry>工作流 CRUD、顺序 + DAG 执行、Custom Skill 步骤、Cron 调度</entry>
+                            <entry>1938 行</entry>
+                            <entry>工作流 CRUD、顺序 + DAG 执行、Custom Skill 步骤、Cron 调度、SLA</entry>
                         </row>
                         <row>
                             <entry><filepath>mcp_hub.py</filepath></entry>
-                            <entry>773 行</entry>
+                            <entry>920 行</entry>
                             <entry>MCP 服务器生命周期管理、加密、热重载</entry>
                         </row>
                     </tbody>

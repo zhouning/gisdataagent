@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-context-engine" xml:lang="zh-CN">
+    <title>上下文工程与反馈飞轮</title>
+    <shortdesc>v19.0 引入 ContextEngine 统一上下文引擎（6 provider）、FeedbackLoop 结构化反馈闭环、ReferenceQueryStore 参考查询库和 MetricFlow 语义模型，对标 Datus.ai 实现企业级上下文管理与持续改进能力。</shortdesc>
+    <prolog><author>技术写作课题组</author></prolog>
+    <conbody>
+        <section id="context-engine">
+            <title>ContextEngine 统一上下文引擎</title>
+            <p><codeph>context_manager.py</codeph> 实现了可插拔的上下文提供者架构，通过 token budget 控制和相关性优先级排序，为 Agent 执行提供精准上下文：</p>
+            <ul>
+                <li><b>6 个 Provider：</b>semantic_layer、knowledge_base、knowledge_graph、reference_queries、success_stories、metric_definitions</li>
+                <li><b>Token Budget 控制：</b><codeph>prepare()</codeph> 方法按相关性排序收集上下文块，确保不超出模型上下文窗口</li>
+                <li><b>API：</b><codeph>GET /api/context/preview</codeph> 预览上下文组装结果</li>
+            </ul>
+        </section>
+        <section id="feedback-loop">
+            <title>FeedbackLoop 反馈闭环</title>
+            <p><codeph>feedback.py</codeph> 实现结构化反馈收集与自动改进：</p>
+            <ul>
+                <li>前端 FeedbackBar 组件支持 👍👎 评价，存入 <codeph>agent_feedback</codeph> 表</li>
+                <li>Upvote 自动将查询入库为参考查询（ReferenceQueryStore）</li>
+                <li>Downvote 触发 FailureAnalyzer 自动分析失败原因</li>
+                <li>FeedbackTab 提供反馈看板，支持趋势分析</li>
+            </ul>
+        </section>
+        <section id="reference-queries">
+            <title>ReferenceQueryStore 参考查询库</title>
+            <p><codeph>reference_queries.py</codeph> 管理经过验证的高质量查询，通过 embedding 搜索为 NL2SQL 提供 few-shot 示例注入，支持自动策展和手动策展两种模式。</p>
+        </section>
+        <section id="metric-flow">
+            <title>MetricFlow 语义模型</title>
+            <p><codeph>semantic_model.py</codeph> 实现 GIS 扩展的 YAML 格式语义模型定义，包含 PostGIS 自动生成器和 MetricDefinitionProvider，为 Agent 提供标准化的指标定义上下文。</p>
+        </section>
+        <section id="db-migrations">
+            <title>数据库迁移</title>
+            <p>涉及 3 个迁移脚本：053（feedback 表）、054（reference_queries 表）、055（metric_definitions 表）。</p>
+        </section>
+    </conbody>
+</concept>

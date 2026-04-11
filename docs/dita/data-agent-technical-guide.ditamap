@@ -20,6 +20,10 @@
         <topicref href="tg-fusion-engine.dita" format="dita" navtitle="多模态数据融合引擎架构"/>
         <topicref href="tg-drl-optimization.dita" format="dita" navtitle="深度强化学习优化引擎"/>
         <topicref href="tg-knowledge-graph.dita" format="dita" navtitle="地理知识图谱"/>
+        <topicref href="tg-causal-inference.dita" format="dita" navtitle="时空因果推断体系"/>
+        <topicref href="tg-world-model.dita" format="dita" navtitle="世界模型与 DRL 增强"/>
+        <topicref href="tg-remote-sensing.dita" format="dita" navtitle="遥感智能体"/>
+        <topicref href="tg-surveying-qc.dita" format="dita" navtitle="测绘质检子系统"/>
     </topichead>
 
     <topichead navtitle="平台服务层">
@@ -27,6 +31,9 @@
         <topicref href="tg-auth-rbac.dita" format="dita" navtitle="认证与 RBAC 权限模型"/>
         <topicref href="tg-database-architecture.dita" format="dita" navtitle="数据库架构与连接管理"/>
         <topicref href="tg-rest-api-layer.dita" format="dita" navtitle="REST API 层"/>
+        <topicref href="tg-model-gateway.dita" format="dita" navtitle="统一模型网关"/>
+        <topicref href="tg-context-engine.dita" format="dita" navtitle="上下文工程与反馈飞轮"/>
+        <topicref href="tg-autonomy-levels.dita" format="dita" navtitle="自主能力层级"/>
     </topichead>
 
     <topichead navtitle="前端与交互">

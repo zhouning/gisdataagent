@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
 <reference id="tg-evaluation-cicd" xml:lang="zh-CN">
     <title>评测体系与 CI/CD 流水线</title>
-    <shortdesc>系统通过 pytest 测试套件覆盖核心模块，配合工具失败学习机制和管线历史分析，构建了面向 Agent 系统的质量保障体系。</shortdesc>
+    <shortdesc>系统通过 3588 个测试用例（171 个测试文件）覆盖核心模块，配合 15 个可插拔评估器（evaluator_registry.py）、场景化评估框架（eval_scenario.py）、工具失败学习机制和管线历史分析，构建了面向 Agent 系统的质量保障体系。CI 流水线包含 test + frontend + evaluation + route-eval 四个 job。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>

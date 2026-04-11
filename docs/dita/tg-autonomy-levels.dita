@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-autonomy-levels" xml:lang="zh-CN">
+    <title>自主能力层级</title>
+    <shortdesc>系统实现了 L1-L4 四级自主能力：L1 工具调用（基础）、L2 多步推理（LoopAgent 质量循环）、L3 完整条件自主（语义算子 + 多 Agent 协作 + NL2Workflow）、L4 自主监控（DataLakeMonitor 持续监控 + IntrinsicMotivation ε-greedy 内在动机）。</shortdesc>
+    <prolog><author>技术写作课题组</author></prolog>
+    <conbody>
+        <section id="l3-autonomy">
+            <title>L3 — 完整条件自主（v16.0）</title>
+            <ul>
+                <li><b>语义算子：</b>OperatorToolset（5 工具）— 将自然语言指令编译为可执行的语义算子链</li>
+                <li><b>多 Agent 协作：</b>Agent 间通过 output_key 共享状态，支持 ParallelAgent 并行执行</li>
+                <li><b>NL2Workflow：</b><codeph>nl2workflow.py</codeph> — 自然语言生成可执行工作流 DAG</li>
+                <li><b>分析意图消歧 v2：</b>should_decompose + decompose_task + 用户确认 + wave 按序执行</li>
+            </ul>
+        </section>
+        <section id="l4-autonomy">
+            <title>L4 — 自主监控（v22.0）</title>
+            <ul>
+                <li><b>DataLakeMonitor：</b>持续监控数据湖变更，自动触发分析管线</li>
+                <li><b>IntrinsicMotivation：</b>ε-greedy 内在动机机制，Agent 主动探索未覆盖的数据域</li>
+                <li><b>标注协同 WebSocket：</b><codeph>annotation_ws.py</codeph> 单实例广播 + REST 集成</li>
+                <li><b>具身执行接口：</b><codeph>embodied.py</codeph> BaseExecutor ABC + MockUAV/Satellite + 注册表</li>
+            </ul>
+        </section>
+        <section id="lite-mode">
+            <title>Lite 模式（v22.0+）</title>
+            <p><codeph>lite_mode.py</codeph> + <codeph>gis-agent init</codeph> CLI 入口，支持 DuckDB 替代 PostgreSQL 的轻量部署。<codeph>app.py</codeph> 中 <codeph>_LITE_MODE</codeph> 标志控制治理/优化路由降级到 General 管线。<codeph>pyproject.toml</codeph> 提供 [lite]/[full]/[dev] 可选依赖分组。</p>
+        </section>
+    </conbody>
+</concept>

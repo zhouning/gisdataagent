@@ -2,7 +2,7 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="tg-fusion-engine" xml:lang="zh-CN">
     <title>多模态数据融合引擎架构</title>
-    <shortdesc>融合引擎是系统中最复杂的子系统之一，由 22 个聚焦模块组成，实现五阶段融合流水线、四级语义字段匹配、10 种融合策略和 PostGIS 推算下沉。</shortdesc>
+    <shortdesc>融合引擎是系统中最复杂的子系统之一，由 32 个聚焦模块组成（v2.0），实现五阶段融合流水线、四级语义字段匹配、10 种融合策略、PostGIS 推算下沉，以及 v2.0 新增的时序融合（temporal.py）、语义 LLM 融合（semantic_llm.py）、冲突解决（conflict_resolver.py）和可解释性（explainability.py）模块。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>

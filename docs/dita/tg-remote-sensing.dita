@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="tg-remote-sensing" xml:lang="zh-CN">
+    <title>遥感智能体</title>
+    <shortdesc>遥感分析能力分三阶段实现：Phase 1（v16.0）基础遥感分析（NDVI/DEM/LULC/光谱），Phase 2（v22.0）变化检测与趋势分析（3 种方法 + Mann-Kendall + 断点检测），Phase 3（v22.0）空间约束 fact-check 与多 Agent Debate 验证。</shortdesc>
+    <prolog><author>技术写作课题组</author></prolog>
+    <conbody>
+        <section id="phase1">
+            <title>Phase 1 — 基础遥感分析</title>
+            <p><codeph>remote_sensing.py</codeph>（974 行）+ <codeph>RemoteSensingToolset</codeph>（13 工具）：</p>
+            <ul>
+                <li>15+ 光谱指数计算（NDVI/EVI/NDWI/NDBI/NBR 等）</li>
+                <li>DEM 地形分析（坡度/坡向/山体阴影）</li>
+                <li>LULC 土地利用分类</li>
+                <li>5 种预置数据源模板（Sentinel-2/Landsat/SAR/DEM/LULC）</li>
+                <li>RS 知识库：5 光谱指数 + 3 分类体系 + 3 处理流程模板</li>
+            </ul>
+        </section>
+        <section id="phase2">
+            <title>Phase 2 — 变化检测与趋势分析</title>
+            <ul>
+                <li>3 种变化检测方法（差值法/比值法/分类后比较）</li>
+                <li>Mann-Kendall 趋势检验</li>
+                <li>断点检测（BFAST 风格）</li>
+                <li>证据评估框架</li>
+            </ul>
+        </section>
+        <section id="phase3">
+            <title>Phase 3 — 验证与质量保证</title>
+            <ul>
+                <li>空间约束 fact-check（结果与地理常识交叉验证）</li>
+                <li>多 Agent Debate（多个 Agent 独立分析后辩论达成共识）</li>
+                <li>代码沙箱（安全执行用户自定义分析脚本）</li>
+            </ul>
+        </section>
+    </conbody>
+</concept>

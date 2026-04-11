@@ -2,7 +2,7 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="tg-observability" xml:lang="zh-CN">
     <title>可观测性与运维体系</title>
-    <shortdesc>系统通过四层可观测性体系（结构化日志、Prometheus 指标、审计日志、Token 追踪）实现运行时监控，配合健康检查端点和 Grafana 仪表盘支撑生产运维。</shortdesc>
+    <shortdesc>系统通过六层可观测性体系（结构化日志、Prometheus 指标、审计日志、Token 追踪、OTel 分布式追踪、告警引擎）实现运行时监控，配合健康检查端点、Grafana 仪表盘和连接池 Prometheus 监控支撑生产运维。v22.0 新增 OTel 4 级 span（pipeline/agent/tool/llm）和 AlertEngine 可配置阈值告警。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>

@@ -2,7 +2,7 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="multi-modal-data-fusion" xml:lang="zh-CN">
     <title>多源多模态数据融合引擎 (MMFE)</title>
-    <shortdesc>详细介绍了系统核心模块之一——多模态融合引擎 (Multi-Modal Fusion Engine) 的五阶段处理流水线、内置策略以及智能语义匹配算法。</shortdesc>
+    <shortdesc>详细介绍了系统核心模块之一——多模态融合引擎 v2.0 (Multi-Modal Fusion Engine) 的五阶段处理流水线、32 个模块、10 种内置策略、智能语义匹配算法，以及 v2.0 新增的时序融合、语义 LLM 融合、冲突解决和可解释性能力。</shortdesc>
     <prolog>
         <author>作者姓名</author>
     </prolog>

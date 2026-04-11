@@ -2,14 +2,14 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="tg-drl-optimization" xml:lang="zh-CN">
     <title>深度强化学习优化引擎</title>
-    <shortdesc>系统使用 MaskablePPO 算法和自定义 Gymnasium 环境，通过成对耕地/林地交换策略最小化土地破碎度，实现空间布局优化。</shortdesc>
+    <shortdesc>系统使用 MaskablePPO 算法和自定义 Gymnasium 环境，支持 7 个优化场景（land_use_optimization、ecological_corridor、urban_expansion、farmland_consolidation、industrial_layout、road_network、public_facility_layout），通过硬约束（min_retention_rate action mask）+ 软约束（budget_cap/max_area_cap reward penalty）建模实现空间布局优化。v23.0 新增 NSGA-II Pareto 多目标优化和 DRL 动画回放。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>
     <conbody>
         <section id="gymnasium-environment">
             <title>Gymnasium 环境设计</title>
-            <p><filepath>drl_engine.py</filepath>（557 行）实现了 <codeph>LandUseOptEnv</codeph> 环境：</p>
+            <p><filepath>drl_engine.py</filepath>（1017 行）实现了 <codeph>LandUseOptEnv</codeph> 环境：</p>
             <table frame="all" rowsep="1" colsep="1" id="env-table">
                 <title>环境参数</title>
                 <tgroup cols="2">

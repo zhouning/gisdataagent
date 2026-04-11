@@ -2,7 +2,7 @@
 <!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA Reference//EN" "reference.dtd">
 <reference id="tg-database-architecture" xml:lang="zh-CN">
     <title>数据库架构与连接管理</title>
-    <shortdesc>系统使用单例 SQLAlchemy Engine 管理 PostgreSQL 连接池，通过 <codeph>ensure_*_table()</codeph> 模式在启动时自动创建 13+ 张业务表，无迁移框架。</shortdesc>
+    <shortdesc>系统使用单例 SQLAlchemy Engine 管理 PostgreSQL 连接池（pool_size=20），通过 64 个 SQL 迁移脚本管理 22+ 张业务表。v18.0 新增 asyncpg 异步引擎（<codeph>db_engine_async.py</codeph>）、读写分离预埋、物化视图和连接池 Prometheus 监控。数据库为华为云 RDS PostgreSQL 托管实例（内置 HA/故障转移）。</shortdesc>
     <prolog>
         <author>技术写作课题组</author>
     </prolog>
@@ -26,8 +26,8 @@
                     <tbody>
                         <row>
                             <entry><codeph>pool_size</codeph></entry>
-                            <entry>5</entry>
-                            <entry>基础持久连接数</entry>
+                            <entry>20</entry>
+                            <entry>基础持久连接数（v18.0 从 5 提升至 20）</entry>
                         </row>
                         <row>
                             <entry><codeph>max_overflow</codeph></entry>
