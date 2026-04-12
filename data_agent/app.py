@@ -25,7 +25,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Load env
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
-    load_dotenv(env_path)
+    load_dotenv(env_path, override=True)
 
 # --- Observability: init structured logging early ---
 from data_agent.observability import (

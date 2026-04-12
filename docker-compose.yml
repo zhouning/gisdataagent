@@ -206,6 +206,45 @@ services:
     profiles:
       - qc
 
+  # ---------------------------------------------------------------------------
+  # AlphaEarth Backend
+  # ---------------------------------------------------------------------------
+  ae_backend:
+    build: ./ae_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8085:8000"
+    environment:
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: flights_dataset
+      HUAWEI_OBS_AK: ${HUAWEI_OBS_AK:-}
+      HUAWEI_OBS_SK: ${HUAWEI_OBS_SK:-}
+      HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-}
+      HUAWEI_OBS_BUCKET: ${HUAWEI_OBS_BUCKET:-}
+    volumes:
+      - ./data_agent/weights:/app/data_agent/weights
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # AlphaEarth Frontend
+  # ---------------------------------------------------------------------------
+  ae_frontend:
+    build: ./ae_frontend
+    restart: unless-stopped
+    depends_on:
+      - ae_backend
+    ports:
+      - "80:80"
+    networks:
+      - agent-net
+
 volumes:
   pgdata:
   uploads:

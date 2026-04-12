@@ -238,3 +238,18 @@ ArcPy environment: `D:/Users/zn198/AppData/Local/ESRI/conda/envs/arcgispro-py3-c
 - **Case Library**: `add_case()` / `search_cases()` in `knowledge_base.py` — structured QC experience records
 - **Human Review**: `agent_qc_reviews` table — review→mark→fix→approve workflow via `/api/qc/reviews`
 - **DB Migrations**: 039 (workflow SLA), 040 (MCP tool rules), 041 (alert rules), 042 (KB case library), 043 (QC reviews)
+
+### Wind Power / New Energy Adaptation (华能新能源演示)
+
+> **行动计划**: `docs/华能新能源_行动计划.md`（带 checkbox 的分步实施文档）
+> **客户分析**: `D:\test\华能新能源客户分析.md`
+> **演示方案**: `D:\test\华能新能源演示系统方案.md`
+
+目标：在现有平台上适配新能源发电领域（风电/光伏），面向华能新能源技术交流。核心增量：
+
+- **WindPowerToolset** (`toolsets/wind_power_tools.py`): SCADA解析、功率曲线分析、设备健康评分、故障模式匹配、风电场统计
+- **RL功率预测** (`rl/wind_power_env.py` + `rl/train_wind_power.py`): PPO自适应预测策略，对比ARIMA/LSTM/XGBoost基线
+- **MARL调度优化** (`rl/wind_dispatch_env.py` + `rl/train_wind_dispatch.py`): 复用Paper 4 MAPPO框架，多场站协调出力
+- **风电知识库**: 利用现有GraphRAG灌入风电运维规程/IEC标准/故障案例，本体定义在 `standards/wind_power_ontology.yaml`
+- **前端**: 新增 WindPowerMonitor DataPanel Tab，地图标注华能场站位置
+- **Intent Router**: 增加风电意图分类，新增 WindPowerEngineer Agent 角色

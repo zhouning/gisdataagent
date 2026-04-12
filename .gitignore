@@ -153,3 +153,50 @@ docs/surveying_qc_agent_design.*
 
 # Local data samples — NEVER commit (sensitive/large)
 01*/
+
+# AlphaEarth sub-projects and docs (separate repos)
+AlphaEarth-System/
+AlphaEarth_*.md
+ae_backend/
+ae_frontend/
+test_local_alphaearth.py
+train_local_alphaearth.py
+
+# Model weights and training data
+*.pt
+data_agent/weights/raw_data/
+
+# Local database files
+*.duckdb
+
+# EA modeling tool files
+*.eapx
+
+# Archives and JRE (binary artifacts)
+/*.zip
+jre8/
+orbitalpredictor-master/
+
+# One-off scripts and generated data
+compare_areas.py
+compare_output.json
+generate_sat_sql.py
+create_satellites.sql
+satellites.json
+pdf_text.txt
+
+# Client-facing architecture docs — NEVER commit (sensitive)
+上海测绘院*.md
+docs/华能新能源_行动计划.md
+docs/传统数据平台智能体化策略分析.docx
+docs/治理分析报告_*.docx
+docs/deerflow_*.docx
+docs/data_agent_sigmod2026_analysis.docx
+docs/harness_engineering_guide.docx
+docs/_wm_cn_check.md
+
+# Gemini CLI config (local)
+GEMINI.md
+
+# Node lockfile (root level, not frontend/)
+/package-lock.json
