@@ -48,6 +48,7 @@ data_agent/uploads/
 
 # Claude Code settings (local)
 .claude/
+.worktrees/
 
 # DRL model training artifacts
 v7/
