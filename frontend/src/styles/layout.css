@@ -480,6 +480,7 @@ body {
   border-radius: var(--radius-lg);
   padding: 6px 6px 6px 14px;
   transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 
 .chat-input-container:focus-within {
@@ -1240,8 +1241,61 @@ body {
 }
 .login-register a:hover { text-decoration: underline; }
 
+/* --- @Mention Autocomplete Dropdown --- */
+.mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-secondary, #1e1e2e);
+  border: 1px solid var(--border, #333);
+  border-radius: 8px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+  z-index: 100;
+  margin-bottom: 4px;
+}
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+.mention-item:hover, .mention-item-active {
+  background: var(--bg-hover, #2a2a3e);
+}
+.mention-handle {
+  font-weight: 600;
+  color: var(--primary, #7c6ef0);
+  min-width: 120px;
+}
+.mention-type {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  background: var(--bg-tertiary, #2a2a3e);
+  padding: 1px 6px;
+  border-radius: 4px;
+  min-width: 60px;
+  text-align: center;
+}
+.mention-desc {
+  color: var(--text-secondary, #aaa);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mention-empty {
+  color: var(--text-muted, #888);
+  font-style: italic;
+  cursor: default;
+}
+
 @media (max-width: 768px) {
-  .login-page { flex-direction: column; }
   .login-brand { flex: none; height: 200px; }
   .login-brand-stats { gap: 20px; }
   .login-brand-features { display: none; }

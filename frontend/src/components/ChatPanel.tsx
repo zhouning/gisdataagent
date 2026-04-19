@@ -49,6 +49,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
+  // Mention autocomplete state
+  const [mentionTargets, setMentionTargets] = useState<Array<{
+    handle: string; label: string; type: string;
+    description: string; allowed: boolean;
+  }>>([]);
+  const [showMention, setShowMention] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const mentionRef = useRef<HTMLDivElement>(null);
+
   // Check browser support for Web Speech API
   const speechSupported = typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
@@ -160,6 +170,33 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   }, [input, pendingFiles, sendMessage]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showMention) {
+      const filtered = mentionTargets.filter(t =>
+        t.handle.toLowerCase().includes(mentionFilter) && t.allowed
+      );
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(i => Math.min(i + 1, filtered.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(i => Math.max(i - 1, 0));
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === 'Tab') && filtered.length > 0) {
+        e.preventDefault();
+        const selected = filtered[mentionIndex];
+        setInput(`@${selected.handle} `);
+        setShowMention(false);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMention(false);
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
@@ -220,6 +257,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   const toggleVoiceLang = useCallback(() => {
     setVoiceLang((prev) => prev === 'zh-CN' ? 'en-US' : 'zh-CN');
+  }, []);
+
+  const fetchMentionTargets = useCallback(async () => {
+    try {
+      const resp = await fetch('/api/chat/mention-targets', { credentials: 'include' });
+      if (resp.ok) {
+        const data = await resp.json();
+        setMentionTargets(data.targets || []);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   // --- Session management ---
@@ -451,15 +498,39 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
               <span key={idx} className={`file-chip ${pf.error ? 'file-error' : ''}`}>
                 {pf.error ? '\u274C' : pf.progress < 100 ? `${Math.round(pf.progress)}%` : '\u2705'}{' '}
                 {pf.file.name}
-                <button className="file-chip-remove" onClick={() => removePendingFile(pf.file)}>\u00D7</button>
+                <button className="file-chip-remove" onClick={() => removePendingFile(pf.file)}>×</button>
               </span>
             ))}
           </div>
         )}
         <div className="chat-input-container">
+          {showMention && (
+            <div className="mention-dropdown" ref={mentionRef}>
+              {mentionTargets
+                .filter(t => t.handle.toLowerCase().includes(mentionFilter) && t.allowed)
+                .map((t, idx) => (
+                  <div
+                    key={t.handle}
+                    className={`mention-item ${idx === mentionIndex ? 'mention-item-active' : ''}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setInput(`@${t.handle} `);
+                      setShowMention(false);
+                      textareaRef.current?.focus();
+                    }}
+                  >
+                    <span className="mention-handle">@{t.handle}</span>
+                    <span className="mention-type">{t.type}</span>
+                    <span className="mention-desc">{t.description}</span>
+                  </div>
+                ))}
+              {mentionTargets.filter(t => t.handle.toLowerCase().includes(mentionFilter) && t.allowed).length === 0 && (
+                <div className="mention-item mention-empty">无匹配目标</div>
+              )}
+            </div>
+          )}
           <input
             ref={fileInputRef}
-            type="file"
             multiple
             accept=".csv,.xlsx,.xls,.shp,.zip,.geojson,.gpkg,.kml,.kmz,.png,.jpg,.docx,.pdf"
             onChange={handleFileSelect}
@@ -488,7 +559,21 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setInput(val);
+              const match = val.match(/^\s*@(\S*)$/);
+              if (match) {
+                if (mentionTargets.length === 0) fetchMentionTargets();
+                setMentionFilter(match[1].toLowerCase());
+                setShowMention(true);
+                setMentionIndex(0);
+              } else if (val.match(/^\s*@\S+\s/)) {
+                setShowMention(false);
+              } else if (!val.startsWith('@')) {
+                setShowMention(false);
+              }
+            }}
             onKeyDown={handleKeyDown}
             onInput={handleTextareaInput}
             placeholder="输入消息... (Enter 发送)"
