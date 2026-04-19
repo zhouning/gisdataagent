@@ -76,3 +76,58 @@ class TestMentionRegistry(unittest.TestCase):
         registry = build_registry(user_id="testuser", role="admin")
         handles = [t["handle"] for t in registry]
         self.assertEqual(len(handles), len(set(h.lower() for h in handles)))
+
+
+class TestMentionParser(unittest.TestCase):
+    """Tests for mention_parser.py leading @handle extraction."""
+
+    def test_leading_mention_extracted(self):
+        from data_agent.mention_parser import parse_mention
+        result = parse_mention("@DataVisualization 把刚才结果做热力图")
+        self.assertEqual(result["handle"], "DataVisualization")
+        self.assertEqual(result["remaining"], "把刚才结果做热力图")
+
+    def test_no_mention_returns_none(self):
+        from data_agent.mention_parser import parse_mention
+        result = parse_mention("请帮我分析这个数据")
+        self.assertIsNone(result)
+
+    def test_non_leading_mention_ignored(self):
+        from data_agent.mention_parser import parse_mention
+        result = parse_mention("请帮我 @DataVisualization 画图")
+        self.assertIsNone(result)
+
+    def test_mention_with_hyphen(self):
+        from data_agent.mention_parser import parse_mention
+        result = parse_mention("@thematic-mapping 生成专题图")
+        self.assertEqual(result["handle"], "thematic-mapping")
+        self.assertEqual(result["remaining"], "生成专题图")
+
+    def test_mention_only_no_text(self):
+        from data_agent.mention_parser import parse_mention
+        result = parse_mention("@General")
+        self.assertEqual(result["handle"], "General")
+        self.assertEqual(result["remaining"], "")
+
+    def test_mention_with_extra_spaces(self):
+        from data_agent.mention_parser import parse_mention
+        result = parse_mention("  @Governance  检查拓扑错误  ")
+        self.assertEqual(result["handle"], "Governance")
+        self.assertEqual(result["remaining"], "检查拓扑错误")
+
+    def test_resolve_valid_mention(self):
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        from data_agent.mention_registry import build_registry
+        registry = build_registry(user_id="testuser", role="admin")
+        parsed = parse_mention("@General 查询数据")
+        target = resolve_mention(parsed, registry)
+        self.assertIsNotNone(target)
+        self.assertEqual(target["type"], "pipeline")
+
+    def test_resolve_unknown_mention_returns_none(self):
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        from data_agent.mention_registry import build_registry
+        registry = build_registry(user_id="testuser", role="admin")
+        parsed = parse_mention("@UnknownAgent 做点什么")
+        target = resolve_mention(parsed, registry)
+        self.assertIsNone(target)
