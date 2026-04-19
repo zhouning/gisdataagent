@@ -1390,6 +1390,32 @@ async def _api_pipeline_trace(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Mention Targets (v24.0 — @SubAgent routing)
+# ---------------------------------------------------------------------------
+
+async def _api_mention_targets(request: Request):
+    """GET /api/chat/mention-targets — RBAC-filtered invocable targets for autocomplete."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    from .mention_registry import build_registry
+    registry = build_registry(user_id=username, role=role)
+    targets = []
+    for t in registry:
+        targets.append({
+            "handle": t["handle"],
+            "label": t.get("label", t["handle"]),
+            "type": t["type"],
+            "description": t.get("description", ""),
+            "allowed": role in t.get("allowed_roles", []),
+            "allowed_roles": t.get("allowed_roles", []),
+            "required_state_keys": t.get("required_state_keys", []),
+        })
+    return JSONResponse({"targets": targets})
+
+
+# ---------------------------------------------------------------------------
 # Capabilities (aggregated skills + toolsets listing)
 # ---------------------------------------------------------------------------
 
@@ -3204,6 +3230,7 @@ def get_frontend_api_routes():
     from .api.causal_routes import get_causal_routes
     from .api.causal_world_model_routes import get_causal_world_model_routes
     from .api.quality_routes import get_quality_routes
+    from .api.domain_standard_routes import get_domain_standard_routes
     from .api.distribution_routes import get_distribution_routes
     from .api.file_routes import get_file_routes
     from .api.topology_routes import get_topology_routes
@@ -3255,6 +3282,8 @@ def get_frontend_api_routes():
         Route("/api/chart/pending", endpoint=_api_chart_pending, methods=["GET"]),
         # Capabilities (aggregated skills + toolsets)
         Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
+        # Mention Targets (v24.0 — @SubAgent routing autocomplete)
+        Route("/api/chat/mention-targets", endpoint=_api_mention_targets, methods=["GET"]),
         # Marketplace (v14.0)
         Route("/api/marketplace", endpoint=_api_marketplace, methods=["GET"]),
         # DRL Scenarios (v14.0) + Custom Weights (v15.3)
@@ -3324,6 +3353,7 @@ def get_frontend_api_routes():
         *get_causal_routes(),
         *get_causal_world_model_routes(),
         *get_quality_routes(),
+        *get_domain_standard_routes(),
         *get_distribution_routes(),
         # File Management (upload, browse, delete, local-data)
         *get_file_routes(),

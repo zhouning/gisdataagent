@@ -259,6 +259,28 @@ db_query_duration = _safe_histogram(
     buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5),
 )
 
+# --- Mention Routing Layer (v24.0) ---
+mention_routes = _safe_counter(
+    "agent_mention_routes_total", "Mention routing events",
+    ["target_type", "handle", "status"],
+)
+
+
+def log_mention_event(logger, trace_id: str, *,
+                      mention_detected: bool,
+                      mention_target_type: str = "",
+                      mention_target_handle: str = "",
+                      mention_resolution_status: str = "",
+                      mention_fallback_to_semantic_router: bool = False):
+    """Structured log for mention routing observability."""
+    logger.info(
+        "[Trace:%s] mention_detected=%s target_type=%s handle=%s "
+        "resolution=%s fallback=%s",
+        trace_id, mention_detected, mention_target_type,
+        mention_target_handle, mention_resolution_status,
+        mention_fallback_to_semantic_router,
+    )
+
 
 def collect_db_pool_metrics():
     """Scrape SQLAlchemy connection pool stats into Prometheus gauges.

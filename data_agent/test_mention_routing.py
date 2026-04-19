@@ -170,3 +170,64 @@ class TestMentionDispatch(unittest.TestCase):
         parsed = parse_mention("@FakeAgent 做点什么")
         target = resolve_mention(parsed, registry)
         self.assertIsNone(target)
+
+
+class TestMentionTargetsAPI(unittest.TestCase):
+    """Tests for GET /api/chat/mention-targets endpoint."""
+
+    def _run_async(self, coro):
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                raise RuntimeError("closed")
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+
+    def _make_request(self):
+        req = MagicMock()
+        req.cookies = {}
+        req.query_params = {}
+        req.path_params = {}
+        req.method = "GET"
+        return req
+
+    def _make_user(self, identifier="testuser", role="analyst"):
+        user = MagicMock()
+        user.identifier = identifier
+        user.metadata = {"role": role}
+        return user
+
+    @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
+    def test_unauthorized(self, _mock):
+        from data_agent.frontend_api import _api_mention_targets
+        resp = self._run_async(_api_mention_targets(self._make_request()))
+        self.assertEqual(resp.status_code, 401)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_returns_targets(self, mock_user):
+        mock_user.return_value = self._make_user(role="admin")
+        from data_agent.frontend_api import _api_mention_targets
+        with patch("data_agent.mention_registry.list_custom_skills", return_value=[]):
+            resp = self._run_async(_api_mention_targets(self._make_request()))
+        self.assertEqual(resp.status_code, 200)
+        import json
+        body = json.loads(resp.body)
+        self.assertIn("targets", body)
+        handles = [t["handle"] for t in body["targets"]]
+        self.assertIn("General", handles)
+        self.assertIn("DataVisualization", handles)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_viewer_sees_allowed_flag(self, mock_user):
+        mock_user.return_value = self._make_user(role="viewer")
+        from data_agent.frontend_api import _api_mention_targets
+        with patch("data_agent.mention_registry.list_custom_skills", return_value=[]):
+            resp = self._run_async(_api_mention_targets(self._make_request()))
+        import json
+        body = json.loads(resp.body)
+        gov = next((t for t in body["targets"] if t["handle"] == "Governance"), None)
+        self.assertIsNotNone(gov)
+        self.assertFalse(gov["allowed"])
