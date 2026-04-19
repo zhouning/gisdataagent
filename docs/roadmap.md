@@ -1,12 +1,12 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-04-05 &nbsp;|&nbsp; **Current version**: v18.5 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-04-19 &nbsp;|&nbsp; **Current version**: v24.0 &nbsp;|&nbsp; **ADK**: v1.27.2
 
-> 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）、**DeerFlow v2.0（ByteDance 通用 Agent Harness — 工程质量）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台 — 平台能力）**、**Datus.ai（开源数据工程智能体 — 上下文工程 + 反馈飞轮）**
+> 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）、**DeerFlow v2.0（ByteDance 通用 Agent Harness — 工程质量）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台 — 平台能力）**、**Datus.ai（开源数据工程智能体 — 上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime — learning loop + 持久记忆 + 多入口网关）**
 >
-> 核心战略：**智能层 + 交互层保持领先，数据层向 SeerAI 看齐，上下文工程向 Datus 学习**——从"用户带数据来"转向"Agent 主动发现和连接数据"，从"一次性回答"转向"越用越准的上下文飞轮"
+> 核心战略：**智能层 + 交互层保持领先，数据层向 SeerAI 看齐，上下文工程向 Datus 学习，Agent 产品化能力参考 Hermes**——从"用户带数据来"转向"Agent 主动发现和连接数据"，从"一次性回答"转向"越用越准的上下文飞轮"，并在远期增强连续协作、经验沉淀与执行面治理能力。
 >
-> **Data Agent Level**: L3 (完整条件自主) → v18.0 L3 (DB 优化) ✅ → v18.5 L3 (平台能力 + UI 重设计) ✅ → 下一步: v19.0 上下文工程 + 反馈飞轮 (Datus 对标)
+> **Data Agent Level**: L3 (完整条件自主) → v23.0 路线清零 ✅ → 下一阶段以垂直场景落地与产品化交付为主；Hermes 对标能力先进入 roadmap 观察池，暂不作为当前版本承诺
 
 ---
 
@@ -955,6 +955,27 @@
 
 ---
 
+## 已完成 (v24.0) — @SubAgent 显式路由 + XMI 领域标准
+
+> **主题**: 专家用户直控 + 行业标准体系化
+>
+> **日期**: 2026-04-19
+
+### @SubAgent Mention Routing
+- [x] **mention_registry.py** — 4 类 target 聚合（pipeline / sub-agent / custom skill / ADK skill），handle 去重 + 大小写无关查找
+- [x] **mention_parser.py** — leading `@handle` 正则解析，非首位 `@` 忽略，未知 mention 回退语义路由
+- [x] **app.py 集成** — `classify_intent()` 前插入 mention 路由，4 种 dispatch 路径（pipeline 直设 intent / sub-agent 状态校验+直接执行 / custom skill DB 查找+build_custom_agent / ADK skill SkillToolset 包装）
+- [x] **agent.py `_make_agent_by_name`** — 10 个子代理工厂 lambda，ADK one-parent 约束下按需创建新实例
+- [x] **GET /api/chat/mention-targets** — RBAC 过滤的 autocomplete 数据源，返回 handle/type/description/allowed/required_state_keys
+- [x] **ChatPanel.tsx autocomplete** — `@` 触发 dropdown，ArrowUp/Down 导航，Enter/Tab 选中，Esc 关闭，onMouseDown 点选
+- [x] **observability.py** — `mention_routes` Prometheus counter (target_type/handle/status) + `log_mention_event` 结构化日志
+- [x] **24 单元/集成测试** — TestMentionRegistry (9) + TestMentionParser (8) + TestMentionDispatch (4) + TestMentionTargetsAPI (3)
+
+### XMI Domain Standard System
+- [x] **XMI 领域标准体系** — 解析器、编译器、工具集、上下文提供器、REST API、前端 Tab
+
+---
+
 ## v21.0+ — L4 主动式探索 (远期愿景)
 
 > **主题**: 从响应式 → 主动式，从有监督 → 无监督
@@ -1033,13 +1054,49 @@
 
 ---
 
-## 标杆对标进度 (更新 2026-04-05)
+## Hermes Agent 对标观察池 (暂不承诺版本)
 
-> 新增标杆: DeerFlow (ByteDance 通用 Agent Harness) + SIGMOD 2026 Data Agent Levels 论文 + **AgentArts (华为云企业级智能体平台)** + **Datus.ai (开源数据工程智能体 — 上下文工程 + 反馈飞轮)**
+> **定位**: 作为后续平台化增强候选项进入观察池，不纳入当前已承诺版本范围
+>
+> **依据**: `docs/hermes_agent_benchmark_analysis.md`
+>
+> **原则**: 以垂直场景落地优先，仅在有明确产品收益或客户牵引时择机迭代；优先做低成本、高复用、可独立验证的小步增强
+
+### 候选方向 (按建议优先级)
+
+#### P0 — 连续协作体验增强 (优先试点)
+- [ ] **USER Profile 轻量层** — 记录用户偏好输出粒度、常用场景、工作习惯，用于提升跨会话协作连续性
+- [ ] **历史会话召回** — 基于 SQLite/PostgreSQL FTS 检索历史对话并由 LLM 总结，用于"上次做到哪了"类问题
+
+#### P0 — 经验沉淀闭环 (小范围验证)
+- [ ] **Skill 建议沉淀** — 从成功任务、用户正反馈或高质量工作流中自动提炼 Skill / Prompt / Workflow 建议项
+- [ ] **结果卡片沉淀入口** — ChatPanel 增加"沉淀为能力"入口，人工确认后入库，避免全自动写入污染资产库
+
+#### P1 — Agent Runtime 平台化增强 (观察项)
+- [ ] **执行后端抽象** — 梳理 local / docker / remote worker / arcpy worker / gpu worker 等统一执行后端接口
+- [ ] **Agent 执行面安全栈** — 补齐 User Tool / MCP / Shell 级别的审批、分级权限、URL/SSRF 防护、上下文注入检测、隔离执行策略
+- [ ] **轻量多入口扩展** — 先考虑消息投递/任务回执类入口，不优先建设完整 TUI 或通用消息网关
+
+### 何时启动
+- 出现明确客户需求：需要连续协作、跨端触达、远程任务托管或更强 Agent 安全治理
+- 现有垂直场景（测绘质检 / 新能源 / 数据治理）交付稳定，主线需求阶段性收敛
+- 能以 1-2 周试点验证价值，而非大规模架构改造
+
+### 当前结论
+- **现在不立即启动 Hermes 方向的大规模建设**
+- 先保留为 roadmap 观察池，后续仅择机推进 1 个低成本 P0 试点
+
+---
+
+## 标杆对标进度 (更新 2026-04-18)
+
+> 新增标杆: DeerFlow (ByteDance 通用 Agent Harness) + **AgentArts (华为云企业级智能体平台)** + **Datus.ai (开源数据工程智能体 — 上下文工程 + 反馈飞轮)** + **Hermes Agent (通用 Agent Runtime — learning loop + 持久记忆 + 多入口网关)**
 >
 > AgentArts 对标详情见 `docs/agentarts-benchmark-analysis.md`
 >
 > Datus.ai 对标详情见 `docs/datus_ai_benchmark_analysis.md`
+>
+> Hermes Agent 对标详情见 `docs/hermes_agent_benchmark_analysis.md`
 
 | 标杆能力 | 来源 | v16.0 ✅ | v17.1 ✅ | v18.0 ✅ | v18.5 ✅ | v19.0 ✅ | v20.0 ✅ | v21.0 ✅ |
 |----------|------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
@@ -1078,8 +1135,13 @@
 | **双模式执行** | Datus | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Agentic/WF | 🟢🟢🟢 |
 | **CLI 终端入口** | Datus | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 gis-agent |
 | **轻量部署** | Datus | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 DuckDB Lite | 🟢🟢 |
-| **API 网关** | — | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Kong |
-| **分布式追踪** | — | 🟡 OTel | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 Jaeger |
+| **Learning Loop** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 反馈闭环基础 | 🟡 | 🟡 观察池 |
+| **持久用户画像** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 观察池 |
+| **历史会话召回** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 观察池 |
+| **执行后端抽象** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 观察池 |
+| **Agent 执行面安全栈** | Hermes | 🟡 Guardrails | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 观察池 |
+| **多入口 Agent Runtime** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 CLI | 🟡 观察池 |
+| **API 网关** | — | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Kong || **分布式追踪** | — | 🟡 OTel | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 Jaeger |
 | **Data Agent Level** | SIGMOD | L3 | L3 | L3 | L3 | L3+ | L3+ | L3.5→L4 |
 
 ### Data Agent Level 演进路径
@@ -1238,3 +1300,5 @@ v22.0: L4-  — + 持续监控 + 任务发现 + 内在动机 (L4 初步)
 **5. 演进逻辑** — v18.5 (平台能力) → v19.0 (上下文工程, **无外部依赖可立即启动**) → v20.0 (分布式+体验) → v21.0+ (生产级+CLI)
 
 **6. 核心策略调整** — 从"Agent 更聪明"到"Agent 看到的上下文更好"。学习 Datus 的上下文工程方法论和反馈飞轮设计，嫁接到已有的空间智能深度上。
+
+**7. Hermes 对标纳入观察池** — 将 learning loop、用户画像、历史会话召回、执行后端抽象、Agent 执行面安全栈列为后续平台化候选项，但不进入当前版本承诺，避免分散垂直场景交付主线。
