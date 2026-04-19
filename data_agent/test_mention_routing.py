@@ -131,3 +131,42 @@ class TestMentionParser(unittest.TestCase):
         parsed = parse_mention("@UnknownAgent 做点什么")
         target = resolve_mention(parsed, registry)
         self.assertIsNone(target)
+
+
+class TestMentionDispatch(unittest.TestCase):
+    """Tests for RBAC enforcement and state validation in mention dispatch."""
+
+    def test_viewer_blocked_from_governance_mention(self):
+        from data_agent.mention_registry import build_registry
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        registry = build_registry(user_id="viewer1", role="viewer")
+        parsed = parse_mention("@Governance 检查数据")
+        target = resolve_mention(parsed, registry)
+        self.assertIsNotNone(target)
+        self.assertNotIn("viewer", target["allowed_roles"])
+
+    def test_viewer_allowed_general_mention(self):
+        from data_agent.mention_registry import build_registry
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        registry = build_registry(user_id="viewer1", role="viewer")
+        parsed = parse_mention("@General 查询数据")
+        target = resolve_mention(parsed, registry)
+        self.assertIsNotNone(target)
+        self.assertIn("viewer", target["allowed_roles"])
+
+    def test_sub_agent_state_check_missing(self):
+        from data_agent.mention_registry import build_registry
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        registry = build_registry(user_id="testuser", role="admin")
+        parsed = parse_mention("@DataVisualization 画热力图")
+        target = resolve_mention(parsed, registry)
+        self.assertIsNotNone(target)
+        self.assertIn("processed_data", target["required_state_keys"])
+
+    def test_unknown_mention_fallback(self):
+        from data_agent.mention_registry import build_registry
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        registry = build_registry(user_id="testuser", role="admin")
+        parsed = parse_mention("@FakeAgent 做点什么")
+        target = resolve_mention(parsed, registry)
+        self.assertIsNone(target)

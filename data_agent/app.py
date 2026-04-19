@@ -2840,6 +2840,135 @@ async def main(message: cl.Message):
         if lang_hint:
             full_prompt += f"\n\n[Language] {lang_hint}"
 
+    # --- @SubAgent Mention Routing (v24.0) ---
+    _mention_target = None
+    _mention_remaining = None
+    try:
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        from data_agent.mention_registry import build_registry
+        _parsed = parse_mention(user_text)
+        if _parsed:
+            _registry = build_registry(user_id, role)
+            _mention_target = resolve_mention(_parsed, _registry)
+            if _mention_target:
+                _mention_remaining = _parsed["remaining"]
+                logger.info("[Trace:%s] Mention detected: @%s type=%s",
+                            trace_id, _mention_target["handle"], _mention_target["type"])
+            else:
+                logger.info("[Trace:%s] Mention @%s unresolved, falling back to semantic router",
+                            trace_id, _parsed["handle"])
+    except Exception as _mention_err:
+        logger.debug("[MentionRouting] Parse error: %s", _mention_err)
+
+    if _mention_target:
+        if role not in _mention_target["allowed_roles"]:
+            try:
+                record_audit(user_id, ACTION_RBAC_DENIED, status="denied", details={
+                    "role": role, "mention": _mention_target["handle"],
+                })
+            except Exception:
+                pass
+            await cl.Message(
+                content=t("rbac.denied", role=role, intent=_mention_target["handle"])
+            ).send()
+            return
+
+        _mt_type = _mention_target["type"]
+        if _mt_type == "pipeline":
+            intent = _mention_target["pipeline"]
+            intent_reason = f"@{_mention_target['handle']} 显式路由"
+            router_tokens = 0
+            if _mention_remaining:
+                full_prompt = _mention_remaining
+            # Fall through to existing pipeline selection code below
+        elif _mt_type == "sub_agent":
+            session = await session_service.get_session(
+                app_name="data_agent_ui", user_id=user_id, session_id=session_id)
+            state = session.state if session else {}
+            missing = [k for k in _mention_target.get("required_state_keys", [])
+                       if not state.get(k)]
+            if missing:
+                await cl.Message(
+                    content=f"@{_mention_target['handle']} 需要 `{'`, `'.join(missing)}`，"
+                            f"但当前会话中不存在。请先运行前置处理步骤。"
+                ).send()
+                return
+            from data_agent.agent import _make_agent_by_name
+            selected_agent = _make_agent_by_name(_mention_target["handle"])
+            if not selected_agent:
+                await cl.Message(content=f"无法实例化子代理 @{_mention_target['handle']}").send()
+                return
+            pipeline_type = _mention_target.get("pipeline", "general").lower()
+            pipeline_name = f"@{_mention_target['handle']} (直接调用)"
+            intent = _mention_target.get("pipeline", "GENERAL")
+            intent_reason = f"@{_mention_target['handle']} 显式路由"
+            router_tokens = 0
+            if _mention_remaining:
+                full_prompt = _mention_remaining
+            await cl.Message(
+                content=t("routing.intent_recognized", intent=intent, pipeline_name=pipeline_name),
+                metadata={"routing_info": {
+                    "intent": intent, "pipeline": pipeline_type,
+                    "pipeline_name": pipeline_name, "reason": intent_reason,
+                }},
+            ).send()
+            cl.user_session.set("pipeline_type", pipeline_type)
+            await _execute_pipeline(
+                user_id, session_id, role, full_prompt, uploaded_files,
+                pipeline_type, pipeline_name, intent, selected_agent,
+                router_tokens=0, extra_parts=extra_parts,
+            )
+            return
+        elif _mt_type == "custom_skill":
+            from data_agent.custom_skills import get_custom_skill, build_custom_agent
+            skill = get_custom_skill(_mention_target["skill_id"])
+            if skill:
+                _custom_skill_agent = build_custom_agent(skill)
+                _custom_skill_name = _mention_target["handle"]
+                pipeline_type = "custom"
+                pipeline_name = f"Custom Skill: {_mention_target['handle']}"
+                intent = "CUSTOM"
+                intent_reason = f"@{_mention_target['handle']} 显式路由"
+                router_tokens = 0
+                if _mention_remaining:
+                    full_prompt = _mention_remaining
+            else:
+                _mention_target = None
+        elif _mt_type == "adk_skill":
+            from data_agent.toolsets.skill_bundles import build_skill_toolset
+            from google.adk.agents import LlmAgent as _LlmAgent
+            from data_agent.agent import get_model_for_tier
+            _skill_ts = build_skill_toolset(_mention_target["handle"])
+            selected_agent = _LlmAgent(
+                name=f"SkillAgent_{_mention_target['handle'].replace('-', '_')}",
+                instruction=f"你是 {_mention_target['handle']} 技能专家。使用 load_skill 加载技能后按指令执行。",
+                model=get_model_for_tier("standard"),
+                tools=[_skill_ts],
+                output_key="skill_output",
+            )
+            pipeline_type = "general"
+            pipeline_name = f"ADK Skill: {_mention_target['handle']}"
+            intent = "GENERAL"
+            intent_reason = f"@{_mention_target['handle']} 显式路由"
+            router_tokens = 0
+            if _mention_remaining:
+                full_prompt = _mention_remaining
+            await cl.Message(
+                content=t("routing.intent_recognized", intent=intent, pipeline_name=pipeline_name),
+                metadata={"routing_info": {
+                    "intent": intent, "pipeline": pipeline_type,
+                    "pipeline_name": pipeline_name, "reason": intent_reason,
+                }},
+            ).send()
+            cl.user_session.set("pipeline_type", pipeline_type)
+            await _execute_pipeline(
+                user_id, session_id, role, full_prompt, uploaded_files,
+                pipeline_type, pipeline_name, intent, selected_agent,
+                router_tokens=0, extra_parts=extra_parts,
+            )
+            return
+    # --- End @SubAgent Mention Routing ---
+
     # --- Template Apply: skip intent classification if pending template ---
     pending_template = cl.user_session.get("pending_template")
     if pending_template:

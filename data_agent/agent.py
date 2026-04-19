@@ -65,6 +65,7 @@ from .toolsets.operator_tools import OperatorToolset
 from .toolsets.evolution_tools import ToolEvolutionToolset
 from .toolsets.data_cleaning_tools import DataCleaningToolset
 from .toolsets.precision_tools import PrecisionToolset
+from .toolsets.domain_standard_tools import DomainStandardToolset
 from .toolsets.report_tools import ReportToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 
@@ -372,6 +373,7 @@ governance_exploration_agent = LlmAgent(
             "check_area_consistency", "check_building_height",
             "check_coordinate_precision", "generate_governance_plan",
         ]),
+        DomainStandardToolset(tool_filter=["query_domain_modules", "query_domain_class"]),
     ] + _arcpy_gov_explore_tools,
 )
 
@@ -851,3 +853,39 @@ planner_agent = LlmAgent(
 )
 
 root_agent = data_pipeline
+
+# --- Direct sub-agent lookup for @mention routing (v24.0) ---
+_AGENT_MAP = {
+    "DataExploration": lambda: _make_planner_explorer("MentionExploration"),
+    "DataProcessing": lambda: _make_planner_processor("MentionProcessing"),
+    "DataAnalysis": lambda: _make_planner_analyzer("MentionAnalysis"),
+    "DataVisualization": lambda: _make_planner_visualizer("MentionVisualization"),
+    "DataSummary": lambda: LlmAgent(
+        name="MentionSummary",
+        instruction=get_prompt("optimization", "data_summary_agent_instruction"),
+        model=get_model_for_tier("standard"),
+        output_key="final_summary",
+        tools=[ExplorationToolset(), FileToolset()],
+    ),
+    "GovExploration": lambda: _make_planner_explorer("MentionGovExploration"),
+    "GovProcessing": lambda: _make_planner_processor("MentionGovProcessing"),
+    "GovernanceReporter": lambda: LlmAgent(
+        name="MentionGovReporter",
+        instruction=get_prompt("governance", "governance_reporter_instruction"),
+        model=get_model_for_tier("standard"),
+        output_key="governance_report",
+        tools=[ExplorationToolset(), FileToolset(), DatabaseToolset()],
+    ),
+    "GeneralProcessing": lambda: _make_planner_processor("MentionGeneralProcessing"),
+    "GeneralViz": lambda: _make_planner_visualizer("MentionGeneralViz"),
+}
+
+
+def _make_agent_by_name(name: str):
+    """Create a fresh agent instance for direct @mention invocation.
+
+    Returns None if the name is not a known sub-agent.
+    ADK requires separate instances (one-parent constraint).
+    """
+    factory = _AGENT_MAP.get(name)
+    return factory() if factory else None
