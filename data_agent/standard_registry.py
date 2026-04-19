@@ -207,6 +207,52 @@ class StandardRegistry:
         return None
 
     @classmethod
+    def list_xmi_modules(cls, compiled_dir: str = "") -> list[dict]:
+        """List XMI domain model modules from compiled index.
+
+        Reads ``indexes/xmi_global_index.yaml`` inside *compiled_dir*
+        (defaults to ``standards/compiled/``) and returns a list of module
+        dicts with keys: module_id, module_name, class_count, source_file.
+        Returns [] on any error or if the index is absent.
+        """
+        try:
+            import yaml
+        except ImportError:
+            logger.warning("PyYAML not installed — cannot read XMI index")
+            return []
+
+        base = compiled_dir or os.path.join(_STANDARDS_DIR, "compiled")
+        index_path = os.path.join(base, "indexes", "xmi_global_index.yaml")
+        if not os.path.isfile(index_path):
+            return []
+
+        try:
+            with open(index_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except Exception as e:
+            logger.warning("Failed to read XMI index %s: %s", index_path, e)
+            return []
+
+        if not data or not isinstance(data, dict):
+            return []
+
+        modules = data.get("modules", [])
+        if not isinstance(modules, list):
+            return []
+
+        result = []
+        for mod in modules:
+            if not isinstance(mod, dict):
+                continue
+            result.append({
+                "module_id": mod.get("module_id", ""),
+                "module_name": mod.get("module_name", ""),
+                "class_count": mod.get("class_count", 0),
+                "source_file": mod.get("source_file", ""),
+            })
+        return result
+
+    @classmethod
     def reset(cls):
         """Clear loaded standards (for testing)."""
         cls._standards.clear()

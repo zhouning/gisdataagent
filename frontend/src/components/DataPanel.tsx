@@ -36,13 +36,14 @@ import TopologyTab from './datapanel/TopologyTab';
 import MessageBusTab from './datapanel/MessageBusTab';
 import MetadataPanel from './datapanel/MetadataPanel';
 import FeedbackTab from './datapanel/FeedbackTab';
+import DomainStandardsTab from './datapanel/DomainStandardsTab';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -80,6 +81,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
       { key: 'causal', label: '因果推理', icon: <FlaskConical size={ICON_SIZE} /> },
       { key: 'optimization', label: '优化', icon: <Target size={ICON_SIZE} /> },
+      { key: 'standards', label: '领域标准', icon: <Database size={ICON_SIZE} /> },
     ],
   },
   {
@@ -215,6 +217,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'messagebus' && <MessageBusTab />}
         {activeTab === 'feedback' && <FeedbackTab />}
         {activeTab === 'topology' && <TopologyTab />}
+        {activeTab === 'standards' && <DomainStandardsTab />}
       </div>
     </div>
   );

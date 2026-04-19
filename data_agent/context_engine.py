@@ -306,6 +306,86 @@ class MetricDefinitionProvider(ContextProvider):
             return []
 
 
+class XmiDomainStandardProvider(ContextProvider):
+    """Provides XMI domain model context from compiled index."""
+
+    name = "xmi_domain_standard"
+    supports_task_types = {"governance", "general", "optimization"}
+
+    def __init__(self, compiled_dir: str = ""):
+        import os
+        self._compiled_dir = compiled_dir or os.path.join(
+            os.path.dirname(__file__), "standards", "compiled"
+        )
+
+    def get_context(self, query, task_type, user_context, query_embedding=None):
+        try:
+            import os
+            import yaml
+
+            index_path = os.path.join(self._compiled_dir, "indexes", "xmi_global_index.yaml")
+            if not os.path.isfile(index_path):
+                return []
+
+            with open(index_path, "r", encoding="utf-8") as f:
+                index_data = yaml.safe_load(f)
+
+            if not index_data or not isinstance(index_data, dict):
+                return []
+
+            keywords = [w for w in query.split() if len(w) >= 2]
+            if not keywords:
+                return []
+
+            keywords_lower = [k.lower() for k in keywords]
+            class_index = index_data.get("class_index", {})
+            modules = index_data.get("modules", [])
+
+            matched_classes = []
+            for class_name, entry in class_index.items():
+                cn_lower = class_name.lower()
+                mod_name = (entry.get("module_name", "") if isinstance(entry, dict) else "").lower()
+                if any(kw in cn_lower or kw in mod_name for kw in keywords_lower):
+                    matched_classes.append(
+                        entry if isinstance(entry, dict) else {"class_name": class_name}
+                    )
+
+            matched_modules = []
+            for mod in (modules if isinstance(modules, list) else []):
+                mod_name = (mod.get("module_name", "") if isinstance(mod, dict) else "").lower()
+                if any(kw in mod_name for kw in keywords_lower):
+                    matched_modules.append(mod)
+
+            total_matches = len(matched_classes) + len(matched_modules)
+            if total_matches == 0:
+                return []
+
+            parts = []
+            if matched_modules:
+                parts.append("匹配模块: " + ", ".join(
+                    m.get("module_name", str(m)) for m in matched_modules[:5]
+                ))
+            if matched_classes:
+                parts.append("匹配类: " + ", ".join(
+                    c.get("class_name", str(c)) for c in matched_classes[:10]
+                ))
+            content = "XMI领域标准 — " + "; ".join(parts)
+
+            score = min(0.9, 0.4 + total_matches * 0.05)
+            return [
+                ContextBlock(
+                    provider=self.name,
+                    source="xmi_global_index",
+                    content=content,
+                    token_count=len(content) // 3,
+                    relevance_score=score,
+                )
+            ]
+        except Exception as e:
+            logger.warning("XmiDomainStandardProvider failed: %s", e)
+            return []
+
+
 # ---------------------------------------------------------------------------
 # Context Engine
 # ---------------------------------------------------------------------------
@@ -571,6 +651,7 @@ def get_context_engine() -> ContextEngine:
     engine.register_provider(ReferenceQueryProvider())
     engine.register_provider(SuccessStoryProvider())
     engine.register_provider(MetricDefinitionProvider())
+    engine.register_provider(XmiDomainStandardProvider())
 
     _engine_instance = engine
     logger.info("ContextEngine initialized with %d providers", len(engine.providers))

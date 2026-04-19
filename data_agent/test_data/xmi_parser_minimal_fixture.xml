@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmlns:uml="http://www.omg.org/spec/UML/20161101" xmlns:xmi="http://www.omg.org/spec/XMI/20131001">
+  <uml:Model xmi:type="uml:Model" name="EA_Model">
+    <packagedElement xmi:type="uml:Class" xmi:id="MODEL_LEVEL_CLASS" name="ModelLevelEntity">
+      <ownedAttribute xmi:type="uml:Property" xmi:id="MODEL_ATTR_1" name="mysteryField" visibility="private">
+        <type xmi:idref="EAJava_uuid"/>
+      </ownedAttribute>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Package" xmi:id="PKG_1" name="Fixture&#27169;&#22359;">
+      <packagedElement xmi:type="uml:Class" xmi:id="CLASS_A" name="Base&#31867;">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="ATTR_A1" name="code" visibility="private">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="L1" value="1"/>
+          <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="U1" value="1"/>
+          <type xmi:idref="EAJava_String"/>
+        </ownedAttribute>
+      </packagedElement>
+      <packagedElement xmi:type="uml:Class" xmi:id="CLASS_B" name="Child&#31867;">
+        <generalization xmi:type="uml:Generalization" xmi:id="GEN_1" general="CLASS_A"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="ASSOC_END_CLASS_B" association="ASSOC_1">
+          <type xmi:idref="CLASS_A"/>
+        </ownedAttribute>
+      </packagedElement>
+      <packagedElement xmi:type="uml:Class" xmi:id="CLASS_C" name="AttrTypeDirect">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="ATTR_C1" name="parentRef" type="CLASS_A" visibility="private"/>
+      </packagedElement>
+      <packagedElement xmi:type="uml:Association" xmi:id="ASSOC_1" name="relatesTo">
+        <memberEnd xmi:idref="ASSOC_END_CLASS_B"/>
+        <memberEnd xmi:idref="MISSING_ASSOC_END"/>
+      </packagedElement>
+      <packagedElement xmi:type="uml:Association" xmi:id="ASSOC_2" name="connectsTo" memberEnd="ASSOC2_END_A ASSOC2_END_C">
+        <ownedEnd xmi:type="uml:Property" xmi:id="ASSOC2_END_A" association="ASSOC_2" type="CLASS_A"/>
+        <ownedEnd xmi:type="uml:Property" xmi:id="ASSOC2_END_C" association="ASSOC_2" type="CLASS_C"/>
+      </packagedElement>
+    </packagedElement>
+  </uml:Model>
+</xmi:XMI>

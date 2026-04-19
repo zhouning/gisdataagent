@@ -74,6 +74,7 @@ _TOOLSET_DESCRIPTIONS: dict[str, str] = {
     "UserToolset": "用户自定义工具（HTTP/SQL/文件/链式）",
     "VirtualSourceToolset": "虚拟数据源连接（WFS/STAC/OGC API/自定义API）",
     "ToolEvolutionToolset": "工具演化：动态工具库管理、失败驱动发现、元数据查询",
+    "DomainStandardToolset": "自然资源领域数据模型编译、模块查询与类关系检索",
 }
 
 
