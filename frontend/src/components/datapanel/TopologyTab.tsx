@@ -27,6 +27,8 @@ interface AgentInfo {
   children: string[];
   model?: string;
   instruction_snippet?: string;
+  mentionable?: boolean;
+  pipeline_label?: string;
 }
 
 interface ToolsetInfo {
@@ -80,37 +82,25 @@ function AgentNode({ data }: NodeProps) {
     <div style={{
       background: '#fff',
       border: `2px solid ${color}`,
-      borderRadius: 8,
-      padding: '8px 12px',
-      minWidth: 140,
+      borderRadius: 6,
+      padding: '6px 10px',
+      minWidth: 100,
       fontSize: 11,
-      boxShadow: '0 1px 4px rgba(0,0,0,.12)',
+      boxShadow: '0 1px 3px rgba(0,0,0,.1)',
     }}>
       <Handle type="target" position={Position.Top} style={{ background: color }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span style={{
-          background: color, color: '#fff', borderRadius: 4,
-          padding: '1px 5px', fontSize: 9, fontWeight: 600,
+          background: color, color: '#fff', borderRadius: 3,
+          padding: '0 4px', fontSize: 8, fontWeight: 600,
         }}>
           {getTypeLabel(d.agentType)}
         </span>
         <span style={{ fontWeight: 600, fontSize: 11 }}>{d.label}</span>
+        {d.mentionable && (
+          <span style={{ color: '#10b981', fontSize: 10, fontWeight: 700 }}>@</span>
+        )}
       </div>
-      {d.model && (
-        <div style={{ fontSize: 9, color: '#6b7280' }}>{d.model}</div>
-      )}
-      {d.tools && d.tools.length > 0 && (
-        <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-          {d.tools.map((t: string) => (
-            <span key={t} style={{
-              background: '#fef3c7', color: '#92400e', borderRadius: 3,
-              padding: '0 4px', fontSize: 8, border: '1px solid #fde68a',
-            }}>
-              {t.replace('Toolset', '')}
-            </span>
-          ))}
-        </div>
-      )}
       <Handle type="source" position={Position.Bottom} style={{ background: color }} />
     </div>
   );
@@ -167,8 +157,8 @@ function layoutHierarchy(agents: AgentInfo[], pipelines: PipelineInfo[]): { node
   const roots = agents.filter(a => !a.parent_id);
 
   // Lay out each pipeline as a column
-  const COL_WIDTH = 280;
-  const ROW_HEIGHT = 90;
+  const COL_WIDTH = 200;
+  const ROW_HEIGHT = 75;
   let globalColOffset = 0;
 
   function placeAgent(agent: AgentInfo, depth: number, colStart: number): number {
@@ -187,6 +177,8 @@ function layoutHierarchy(agents: AgentInfo[], pipelines: PipelineInfo[]): { node
           tools: agent.tools,
           model: agent.model,
           instruction_snippet: agent.instruction_snippet,
+          mentionable: agent.mentionable,
+          pipeline_label: agent.pipeline_label,
         },
       });
       return 1;
@@ -222,6 +214,8 @@ function layoutHierarchy(agents: AgentInfo[], pipelines: PipelineInfo[]): { node
         tools: agent.tools,
         model: agent.model,
         instruction_snippet: agent.instruction_snippet,
+        mentionable: agent.mentionable,
+        pipeline_label: agent.pipeline_label,
       },
     });
 
@@ -254,31 +248,37 @@ export default function TopologyTab() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [instrExpanded, setInstrExpanded] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const resp = await fetch('/api/agent-topology', { credentials: 'include' });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const json: TopologyData = await resp.json();
-        setData(json);
-        const layout = layoutHierarchy(json.agents, json.pipelines);
-        setNodes(layout.nodes);
-        setEdges(layout.edges);
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const loadTopology = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await fetch('/api/agent-topology', { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json: TopologyData = await resp.json();
+      setData(json);
+      const layout = layoutHierarchy(json.agents, json.pipelines);
+      setNodes(layout.nodes);
+      setEdges(layout.edges);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [setNodes, setEdges]);
+
+  useEffect(() => { loadTopology(); }, [loadTopology]);
 
   const handleNodeClick = useCallback((_: any, node: Node) => {
     if (data) {
       const agent = data.agents.find(a => a.id === node.id);
-      if (agent) setSelectedAgent(agent);
+      if (agent) {
+        setSelectedAgent(agent);
+        setInstrExpanded(false);
+      }
     }
   }, [data]);
 
@@ -323,6 +323,18 @@ export default function TopologyTab() {
           {data.agents.length} 个智能体 · {data.toolsets.length} 个工具集
         </span>
         <button
+          onClick={loadTopology}
+          disabled={loading}
+          style={{
+            background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb',
+            borderRadius: 4, padding: '2px 8px', fontSize: 11, cursor: 'pointer',
+            marginRight: 4,
+          }}
+          title="刷新拓扑"
+        >
+          {loading ? '刷新中...' : '刷新'}
+        </button>
+        <button
           onClick={() => setFullscreen(!fullscreen)}
           style={{
             background: fullscreen ? '#ef4444' : '#3b82f6', color: '#fff', border: 'none',
@@ -365,34 +377,88 @@ export default function TopologyTab() {
       {selectedAgent && (
         <div style={{
           borderTop: '1px solid #e5e7eb', padding: '10px 14px', background: '#f9fafb',
-          fontSize: 11, maxHeight: 160, overflowY: 'auto',
+          fontSize: 11, maxHeight: 200, overflowY: 'auto',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 13 }}>{selectedAgent.name}</span>
-            <button
-              onClick={() => setSelectedAgent(null)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 14 }}
-            >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>{selectedAgent.name}</span>
+              <span style={{
+                background: getTypeColor(selectedAgent.type), color: '#fff', fontSize: 9,
+                fontWeight: 600, padding: '1px 6px', borderRadius: 3,
+              }}>
+                {getTypeLabel(selectedAgent.type)}
+              </span>
+              {selectedAgent.pipeline_label && (
+                <span style={{
+                  background: '#eef2ff', color: '#4338ca', fontSize: 9,
+                  padding: '1px 6px', borderRadius: 3, border: '1px solid #c7d2fe',
+                }}>
+                  {selectedAgent.pipeline_label}
+                </span>
+              )}
+              {selectedAgent.mentionable && (
+                <span style={{
+                  background: '#d1fae5', color: '#065f46', fontSize: 9,
+                  padding: '1px 6px', borderRadius: 3, border: '1px solid #a7f3d0',
+                }}>
+                  可 @ 调用
+                </span>
+              )}
+            </div>
+            <button onClick={() => setSelectedAgent(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 14 }}>
               ✕
             </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px 8px' }}>
             <span style={{ color: '#6b7280' }}>类型</span>
-            <span style={{ color: getTypeColor(selectedAgent.type), fontWeight: 600 }}>
-              {selectedAgent.type} ({getTypeLabel(selectedAgent.type)})
-            </span>
+            <span>{selectedAgent.type}</span>
             {selectedAgent.model && <>
               <span style={{ color: '#6b7280' }}>模型</span>
               <span>{selectedAgent.model}</span>
             </>}
-            <span style={{ color: '#6b7280' }}>子节点</span>
-            <span>{selectedAgent.children.length > 0 ? selectedAgent.children.join(', ') : '无'}</span>
             <span style={{ color: '#6b7280' }}>工具集</span>
-            <span>{selectedAgent.tools.length > 0 ? selectedAgent.tools.join(', ') : '无'}</span>
+            <span>
+              {selectedAgent.tools.length > 0
+                ? selectedAgent.tools.map(t => t.replace('Toolset', '')).join(', ')
+                : '无'}
+            </span>
+            <span style={{ color: '#6b7280' }}>子节点</span>
+            <span>
+              {selectedAgent.children.length > 0
+                ? selectedAgent.children.map(cid => (
+                    <button key={cid}
+                      onClick={() => {
+                        const child = data?.agents.find(a => a.id === cid);
+                        if (child) { setSelectedAgent(child); setInstrExpanded(false); }
+                      }}
+                      style={{
+                        background: '#f3f4f6', border: '1px solid #e5e7eb',
+                        borderRadius: 3, padding: '1px 5px', margin: '0 3px 2px 0',
+                        fontSize: 10, cursor: 'pointer',
+                      }}>
+                      {cid}
+                    </button>
+                  ))
+                : '无'}
+            </span>
           </div>
           {selectedAgent.instruction_snippet && (
-            <div style={{ marginTop: 6, padding: '4px 8px', background: '#fff', borderRadius: 4, fontSize: 10, color: '#4b5563', border: '1px solid #e5e7eb' }}>
-              {selectedAgent.instruction_snippet}
+            <div style={{ marginTop: 6 }}>
+              <button onClick={() => setInstrExpanded(v => !v)}
+                style={{
+                  background: 'none', border: 'none', color: '#3b82f6',
+                  cursor: 'pointer', fontSize: 10, padding: 0,
+                }}>
+                {instrExpanded ? '▼ 收起指令' : '▶ 展开指令摘要'}
+              </button>
+              {instrExpanded && (
+                <div style={{ marginTop: 4, padding: '6px 8px', background: '#fff',
+                              borderRadius: 4, fontSize: 10, color: '#4b5563',
+                              border: '1px solid #e5e7eb', whiteSpace: 'pre-wrap' }}>
+                  {selectedAgent.instruction_snippet}
+                </div>
+              )}
             </div>
           )}
         </div>
