@@ -12,33 +12,15 @@ except Exception:
     list_custom_skills = None  # type: ignore[assignment]
 
 _PIPELINE_TARGETS = [
-    {
-        "handle": "General",
-        "label": "General",
-        "type": "pipeline",
-        "description": "通用分析与查询",
-        "allowed_roles": ["admin", "analyst", "viewer"],
-        "required_state_keys": [],
-        "pipeline": "GENERAL",
-    },
-    {
-        "handle": "Governance",
-        "label": "Governance",
-        "type": "pipeline",
-        "description": "数据治理与质量审计",
-        "allowed_roles": ["admin", "analyst"],
-        "required_state_keys": [],
-        "pipeline": "GOVERNANCE",
-    },
-    {
-        "handle": "Optimization",
-        "label": "Optimization",
-        "type": "pipeline",
-        "description": "空间优化与DRL布局",
-        "allowed_roles": ["admin", "analyst"],
-        "required_state_keys": [],
-        "pipeline": "OPTIMIZATION",
-    },
+    {"handle": "General", "label": "General", "type": "pipeline",
+     "description": "通用分析与查询", "allowed_roles": ["admin", "analyst", "viewer"],
+     "required_state_keys": [], "pipeline": "GENERAL"},
+    {"handle": "Governance", "label": "Governance", "type": "pipeline",
+     "description": "数据治理与质量审计", "allowed_roles": ["admin", "analyst"],
+     "required_state_keys": [], "pipeline": "GOVERNANCE"},
+    {"handle": "Optimization", "label": "Optimization", "type": "pipeline",
+     "description": "空间优化与DRL布局", "allowed_roles": ["admin", "analyst"],
+     "required_state_keys": [], "pipeline": "OPTIMIZATION"},
 ]
 
 _SUB_AGENT_TARGETS = [
@@ -73,6 +55,24 @@ _SUB_AGENT_TARGETS = [
      "description": "通用可视化", "allowed_roles": ["admin", "analyst", "viewer"],
      "required_state_keys": ["processed_data"], "pipeline": "GENERAL"},
 ]
+
+
+def _load_user_aliases(user_id: str) -> list[dict]:
+    """Load alias rows for a user from DB. Returns [] if DB unavailable."""
+    try:
+        from .api.agent_management_routes import list_aliases_for_user
+        return list_aliases_for_user(user_id)
+    except Exception:
+        return []
+
+
+def _apply_alias_defaults(target: dict) -> dict:
+    """Ensure every target has aliases/display_name/pinned/hidden fields."""
+    target.setdefault("aliases", [])
+    target.setdefault("display_name", "")
+    target.setdefault("pinned", False)
+    target.setdefault("hidden", False)
+    return target
 
 
 def build_registry(user_id: str, role: str) -> list[dict]:
@@ -113,19 +113,42 @@ def build_registry(user_id: str, role: str) -> list[dict]:
                     current_user_id.set(prev)
         except Exception:
             pass
+
+    # Deduplicate by handle (case-insensitive)
     seen = set()
     unique = []
     for t in targets:
         key = t["handle"].lower()
         if key not in seen:
             seen.add(key)
-            unique.append(t)
+            unique.append(_apply_alias_defaults(dict(t)))
+
+    # Merge DB-backed aliases/display_name/pinned/hidden
+    alias_map = {row["handle"]: row for row in _load_user_aliases(user_id)}
+    for t in unique:
+        row = alias_map.get(t["handle"])
+        if row:
+            t["aliases"] = list(row.get("aliases") or [])
+            t["display_name"] = row.get("display_name") or ""
+            t["pinned"] = bool(row.get("pinned"))
+            t["hidden"] = bool(row.get("hidden"))
     return unique
 
 
 def lookup(registry: list[dict], handle: str) -> Optional[dict]:
-    handle_lower = handle.lower()
+    """Match by handle > display_name > alias (case-insensitive)."""
+    q = handle.lower()
+    # Priority 1: exact handle
     for t in registry:
-        if t["handle"].lower() == handle_lower:
+        if t["handle"].lower() == q:
+            return t
+    # Priority 2: exact display_name
+    for t in registry:
+        if (t.get("display_name") or "").lower() == q:
+            return t
+    # Priority 3: alias match
+    for t in registry:
+        aliases = t.get("aliases") or []
+        if any(a.lower() == q for a in aliases):
             return t
     return None
