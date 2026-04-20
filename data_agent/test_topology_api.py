@@ -46,7 +46,7 @@ def test_topology_endpoint_structure():
         assert 'toolsets' in data
         assert 'pipelines' in data
         assert len(data['agents']) == 3
-        assert len(data['pipelines']) == 3
+        assert len(data['pipelines']) == 4  # 3 built-in + CustomSkills
 
 
 def test_topology_extracts_tools():

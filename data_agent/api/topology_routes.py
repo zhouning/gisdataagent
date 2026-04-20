@@ -11,14 +11,22 @@ from ..observability import get_logger
 
 logger = get_logger("topology_api")
 
+_MENTIONABLE_SUB_AGENTS = {
+    "DataExploration", "DataProcessing", "DataAnalysis", "DataVisualization",
+    "DataSummary", "GovExploration", "GovProcessing", "GovernanceReporter",
+    "GeneralProcessing", "GeneralViz",
+}
+
+_PIPELINE_META = {
+    "DataPipeline": ("OPTIMIZATION", "空间优化 (Optimization)"),
+    "GovernancePipeline": ("GOVERNANCE", "数据治理 (Governance)"),
+    "GeneralPipeline": ("GENERAL", "通用分析 (General)"),
+}
+
 
 def _extract_toolset_info(tool):
-    """Extract toolset metadata from an ADK tool/toolset object."""
     cls = tool.__class__
     name = cls.__name__
-
-    # BaseToolset subclasses: tools are registered as methods
-    # Count public methods that look like tool functions
     tool_count = 0
     for attr_name in dir(tool):
         if attr_name.startswith('_'):
@@ -26,17 +34,17 @@ def _extract_toolset_info(tool):
         attr = getattr(tool, attr_name, None)
         if callable(attr) and attr_name not in ('get_tools', 'close'):
             tool_count += 1
-
     doc = (cls.__doc__ or '').strip().split('\n')[0]
     return {'name': name, 'description': doc, 'tool_count': tool_count}
 
 
-def _extract_agents(agent, parent_id, agents_out, toolsets_out, seen_toolsets):
-    """Recursively extract agent hierarchy."""
+def _extract_agents(agent, parent_id, agents_out, toolsets_out, seen_toolsets, pipeline_label):
     agent_id = getattr(agent, 'name', str(id(agent)))
     agent_type = agent.__class__.__name__
 
-    # Collect tools/toolsets
+    if agent_id in _PIPELINE_META:
+        pipeline_label = _PIPELINE_META[agent_id][1]
+
     tools = []
     agent_tools = getattr(agent, 'tools', None)
     if agent_tools:
@@ -47,12 +55,10 @@ def _extract_agents(agent, parent_id, agents_out, toolsets_out, seen_toolsets):
                 seen_toolsets.add(ts_name)
                 toolsets_out.append(_extract_toolset_info(tool))
 
-    # Get model info for LlmAgents
     model = None
     if hasattr(agent, 'model') and agent.model:
         model = str(agent.model)
 
-    # Get instruction snippet
     instruction = None
     if hasattr(agent, 'instruction') and agent.instruction:
         inst = agent.instruction
@@ -62,13 +68,15 @@ def _extract_agents(agent, parent_id, agents_out, toolsets_out, seen_toolsets):
             inst = inst[:120] + '...'
         instruction = inst
 
-    # Recurse into children — ADK uses `sub_agents`
     children = []
     sub_agents = getattr(agent, 'sub_agents', None)
     if sub_agents:
         for child in sub_agents:
-            child_id = _extract_agents(child, agent_id, agents_out, toolsets_out, seen_toolsets)
+            child_id = _extract_agents(child, agent_id, agents_out, toolsets_out,
+                                       seen_toolsets, pipeline_label)
             children.append(child_id)
+
+    mentionable = agent_id in _MENTIONABLE_SUB_AGENTS or agent_id in _PIPELINE_META
 
     agents_out.append({
         'id': agent_id,
@@ -79,13 +87,41 @@ def _extract_agents(agent, parent_id, agents_out, toolsets_out, seen_toolsets):
         'children': children,
         'model': model,
         'instruction_snippet': instruction,
+        'mentionable': mentionable,
+        'pipeline_label': pipeline_label or "",
     })
 
     return agent_id
 
 
+def _list_custom_skills_safe():
+    try:
+        from ..custom_skills import list_custom_skills
+        return list_custom_skills(include_shared=True)
+    except Exception:
+        return []
+
+
+def _append_custom_skill_agents(agents_out):
+    for skill in _list_custom_skills_safe():
+        name = skill.get("skill_name") or f"custom_{skill.get('id', '?')}"
+        tools = list(skill.get("toolset_names") or [])
+        agents_out.append({
+            'id': f"custom_{skill.get('id')}",
+            'name': name,
+            'type': 'CustomSkill',
+            'parent_id': None,
+            'tools': tools,
+            'children': [],
+            'model': skill.get("model_tier"),
+            'instruction_snippet': (skill.get("description") or "")[:120],
+            'mentionable': True,
+            'pipeline_label': "自定义技能 (Custom Skills)",
+        })
+
+
 async def _api_agent_topology(request: Request):
-    """GET /api/agent-topology — return full agent hierarchy."""
+    """GET /api/agent-topology — return full agent hierarchy with Custom Skills."""
     try:
         from data_agent.agent import (
             data_pipeline, governance_pipeline, general_pipeline,
@@ -95,9 +131,10 @@ async def _api_agent_topology(request: Request):
         toolsets = []
         seen = set()
 
-        _extract_agents(data_pipeline, None, agents, toolsets, seen)
-        _extract_agents(governance_pipeline, None, agents, toolsets, seen)
-        _extract_agents(general_pipeline, None, agents, toolsets, seen)
+        _extract_agents(data_pipeline, None, agents, toolsets, seen, None)
+        _extract_agents(governance_pipeline, None, agents, toolsets, seen, None)
+        _extract_agents(general_pipeline, None, agents, toolsets, seen, None)
+        _append_custom_skill_agents(agents)
 
         return JSONResponse(content={
             'agents': agents,
@@ -106,6 +143,7 @@ async def _api_agent_topology(request: Request):
                 {'id': data_pipeline.name, 'label': 'Optimization Pipeline (空间优化)', 'color': '#3b82f6'},
                 {'id': governance_pipeline.name, 'label': 'Governance Pipeline (数据治理)', 'color': '#f59e0b'},
                 {'id': general_pipeline.name, 'label': 'General Pipeline (通用分析)', 'color': '#10b981'},
+                {'id': 'CustomSkills', 'label': '自定义技能', 'color': '#a855f7'},
             ],
         })
     except Exception as e:
@@ -114,7 +152,6 @@ async def _api_agent_topology(request: Request):
 
 
 def get_topology_routes():
-    """Return Starlette routes for agent topology."""
     return [
         Route("/api/agent-topology", endpoint=_api_agent_topology, methods=["GET"]),
     ]
