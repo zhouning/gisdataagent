@@ -53,6 +53,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const [mentionTargets, setMentionTargets] = useState<Array<{
     handle: string; label: string; type: string;
     description: string; allowed: boolean;
+    display_name: string; aliases: string[]; pinned: boolean; hidden: boolean;
   }>>([]);
   const [showMention, setShowMention] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
@@ -171,9 +172,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (showMention) {
-      const filtered = mentionTargets.filter(t =>
-        t.handle.toLowerCase().includes(mentionFilter) && t.allowed
-      );
+      const filtered = mentionTargets.filter(t => matchTarget(t, mentionFilter));
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setMentionIndex(i => Math.min(i + 1, filtered.length - 1));
@@ -259,9 +258,20 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     setVoiceLang((prev) => prev === 'zh-CN' ? 'en-US' : 'zh-CN');
   }, []);
 
+  const matchTarget = useCallback((t: {
+    handle: string; display_name: string; aliases: string[]; hidden: boolean; allowed: boolean;
+  }, q: string) => {
+    if (t.hidden || !t.allowed) return false;
+    if (!q) return true;
+    if (t.handle.toLowerCase().includes(q)) return true;
+    if (t.display_name && t.display_name.toLowerCase().includes(q)) return true;
+    if (t.aliases && t.aliases.some(a => a.toLowerCase().includes(q))) return true;
+    return false;
+  }, []);
+
   const fetchMentionTargets = useCallback(async () => {
     try {
-      const resp = await fetch('/api/chat/mention-targets', { credentials: 'include' });
+      const resp = await fetch('/api/agents/mention-targets', { credentials: 'include' });
       if (resp.ok) {
         const data = await resp.json();
         setMentionTargets(data.targets || []);
@@ -507,7 +517,8 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           {showMention && (
             <div className="mention-dropdown" ref={mentionRef}>
               {mentionTargets
-                .filter(t => t.handle.toLowerCase().includes(mentionFilter) && t.allowed)
+                .filter(t => matchTarget(t, mentionFilter))
+                .sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1))
                 .map((t, idx) => (
                   <div
                     key={t.handle}
@@ -519,12 +530,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                       textareaRef.current?.focus();
                     }}
                   >
-                    <span className="mention-handle">@{t.handle}</span>
+                    <span className="mention-handle">@{t.display_name || t.handle}</span>
                     <span className="mention-type">{t.type}</span>
-                    <span className="mention-desc">{t.description}</span>
+                    <span className="mention-desc">
+                      {t.aliases && t.aliases.length > 0
+                        ? `${t.description} · 别名: ${t.aliases.join(', ')}`
+                        : t.description}
+                    </span>
                   </div>
                 ))}
-              {mentionTargets.filter(t => t.handle.toLowerCase().includes(mentionFilter) && t.allowed).length === 0 && (
+              {mentionTargets.filter(t => matchTarget(t, mentionFilter)).length === 0 && (
                 <div className="mention-item mention-empty">无匹配目标</div>
               )}
             </div>
