@@ -18,6 +18,7 @@ Routes are mounted before the Chainlit catch-all via mount_frontend_api().
 import json
 import os
 import re
+from datetime import datetime
 from typing import Optional
 
 from starlette.requests import Request
@@ -302,6 +303,454 @@ async def _api_semantic_hierarchy(request: Request):
     from .semantic_layer import browse_hierarchy
     result = browse_hierarchy(domain)
     return JSONResponse(result)
+
+
+# ---------------------------------------------------------------------------
+# Semantic Layer Management API (v24.1) — CRUD for table/column annotations
+# Powers the frontend SemanticLayerTab (DataPanel → 智能分析 → 语义层)
+# ---------------------------------------------------------------------------
+
+
+def _require_editor(request: Request):
+    """Allow admin + analyst to edit, viewer read-only."""
+    user = _get_user_from_request(request)
+    if not user:
+        return None, None, None, JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    if role not in ("admin", "analyst"):
+        return user, username, role, JSONResponse({"error": "Editor role required"}, status_code=403)
+    return user, username, role, None
+
+
+async def _api_semantic_sources_list(request: Request):
+    """GET /api/semantic/sources — list all registered tables + column counts."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    from sqlalchemy import text as _sa_text
+    from .db_engine import get_engine
+    from .semantic_layer import list_semantic_sources, T_SEMANTIC_REGISTRY
+
+    base = list_semantic_sources()
+    sources = base.get("sources", []) if base.get("status") == "success" else []
+
+    engine = get_engine()
+    counts: dict[str, int] = {}
+    if engine:
+        try:
+            with engine.connect() as conn:
+                rows = conn.execute(_sa_text(
+                    f"SELECT table_name, COUNT(*) FROM {T_SEMANTIC_REGISTRY} GROUP BY table_name"
+                )).fetchall()
+                counts = {r[0]: int(r[1]) for r in rows}
+        except Exception:
+            pass
+
+    for s in sources:
+        s["annotation_count"] = counts.get(s["table_name"], 0)
+
+    return JSONResponse({"sources": sources, "count": len(sources)})
+
+
+async def _api_semantic_source_detail(request: Request):
+    """GET /api/semantic/sources/{table} — single table details (metadata + columns)."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    table = request.path_params.get("table", "")
+    if not table:
+        return JSONResponse({"error": "Missing table name"}, status_code=400)
+
+    from .semantic_layer import describe_table_semantic
+    result = describe_table_semantic(table)
+    if result.get("status") == "error":
+        return JSONResponse({"error": result.get("message", "Error")}, status_code=404)
+    return JSONResponse(result)
+
+
+async def _api_semantic_source_upsert(request: Request):
+    """PUT /api/semantic/sources/{table} — upsert table-level metadata."""
+    _u, _name, _role, err = _require_editor(request)
+    if err:
+        return err
+
+    table = request.path_params.get("table", "")
+    if not table:
+        return JSONResponse({"error": "Missing table name"}, status_code=400)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .semantic_layer import register_source_metadata
+    result = register_source_metadata(
+        table_name=table,
+        display_name=body.get("display_name", ""),
+        description=body.get("description", ""),
+        synonyms_json=json.dumps(body.get("synonyms", [])),
+        suggested_analyses_json=json.dumps(body.get("suggested_analyses", [])),
+    )
+    if result.get("status") == "error":
+        return JSONResponse({"error": result.get("message", "")}, status_code=400)
+    return JSONResponse(result)
+
+
+async def _api_semantic_source_delete(request: Request):
+    """DELETE /api/semantic/sources/{table} — delete table metadata + column annotations."""
+    _u, _name, _role, err = _require_editor(request)
+    if err:
+        return err
+
+    table = request.path_params.get("table", "")
+    if not table:
+        return JSONResponse({"error": "Missing table name"}, status_code=400)
+
+    from sqlalchemy import text as _sa_text
+    from .db_engine import get_engine
+    from .semantic_layer import (
+        T_SEMANTIC_REGISTRY, T_SEMANTIC_SOURCES, invalidate_semantic_cache,
+    )
+
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not configured"}, status_code=500)
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(_sa_text(
+                f"DELETE FROM {T_SEMANTIC_REGISTRY} WHERE table_name = :t"
+            ), {"t": table})
+            conn.execute(_sa_text(
+                f"DELETE FROM {T_SEMANTIC_SOURCES} WHERE table_name = :t"
+            ), {"t": table})
+            conn.commit()
+        invalidate_semantic_cache(table)
+        return JSONResponse({"status": "success", "message": f"Deleted {table}"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_semantic_annotation_upsert(request: Request):
+    """PUT /api/semantic/annotations/{table}/{column} — upsert column annotation."""
+    _u, _name, _role, err = _require_editor(request)
+    if err:
+        return err
+
+    table = request.path_params.get("table", "")
+    column = request.path_params.get("column", "")
+    if not (table and column):
+        return JSONResponse({"error": "Missing table or column"}, status_code=400)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .semantic_layer import register_semantic_annotation
+    result = register_semantic_annotation(
+        table_name=table,
+        column_name=column,
+        semantic_domain=body.get("semantic_domain", "") or "",
+        aliases_json=json.dumps(body.get("aliases", [])),
+        unit=body.get("unit", ""),
+        description=body.get("description", ""),
+    )
+    if result.get("status") == "error":
+        return JSONResponse({"error": result.get("message", "")}, status_code=400)
+    return JSONResponse(result)
+
+
+async def _api_semantic_annotation_delete(request: Request):
+    """DELETE /api/semantic/annotations/{table}/{column} — delete column annotation."""
+    _u, _name, _role, err = _require_editor(request)
+    if err:
+        return err
+
+    table = request.path_params.get("table", "")
+    column = request.path_params.get("column", "")
+    if not (table and column):
+        return JSONResponse({"error": "Missing table or column"}, status_code=400)
+
+    from sqlalchemy import text as _sa_text
+    from .db_engine import get_engine
+    from .semantic_layer import T_SEMANTIC_REGISTRY, invalidate_semantic_cache
+
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not configured"}, status_code=500)
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(_sa_text(
+                f"DELETE FROM {T_SEMANTIC_REGISTRY} "
+                f"WHERE table_name = :t AND column_name = :c"
+            ), {"t": table, "c": column})
+            conn.commit()
+        invalidate_semantic_cache(table)
+        return JSONResponse({"status": "success"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_semantic_unregistered(request: Request):
+    """GET /api/semantic/unregistered — list public-schema tables not yet in the registry.
+
+    Optional ?schema=xxx to scan a different schema (default public).
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    schema = request.query_params.get("schema", "public")
+
+    from sqlalchemy import text as _sa_text
+    from .db_engine import get_engine
+    from .semantic_layer import T_SEMANTIC_SOURCES
+
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not configured"}, status_code=500)
+
+    try:
+        with engine.connect() as conn:
+            all_tables = {r[0] for r in conn.execute(_sa_text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = :s AND table_type = 'BASE TABLE'"
+            ), {"s": schema}).fetchall()}
+            registered = {r[0] for r in conn.execute(_sa_text(
+                f"SELECT table_name FROM {T_SEMANTIC_SOURCES}"
+            )).fetchall()}
+        # Skip system/agent tables
+        skip_prefixes = ("agent_", "pg_", "spatial_ref_sys", "geography_columns",
+                         "geometry_columns", "raster_columns", "raster_overviews")
+        unregistered = sorted(
+            t for t in (all_tables - registered)
+            if not any(t.startswith(p) for p in skip_prefixes)
+        )
+        return JSONResponse({
+            "schema": schema,
+            "unregistered": unregistered,
+            "count": len(unregistered),
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_semantic_auto_register(request: Request):
+    """POST /api/semantic/auto-register — bulk auto-register tables.
+
+    Body: {"tables": ["table1", "table2"]} or {} to auto-register all unregistered
+    public-schema tables.
+    """
+    _u, username, _role, err = _require_editor(request)
+    if err:
+        return err
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    tables = body.get("tables") or []
+
+    if not tables:
+        # Default: auto-register all public unregistered tables
+        from sqlalchemy import text as _sa_text
+        from .db_engine import get_engine
+        from .semantic_layer import T_SEMANTIC_SOURCES
+        engine = get_engine()
+        if engine:
+            try:
+                with engine.connect() as conn:
+                    all_tables = {r[0] for r in conn.execute(_sa_text(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+                    )).fetchall()}
+                    registered = {r[0] for r in conn.execute(_sa_text(
+                        f"SELECT table_name FROM {T_SEMANTIC_SOURCES}"
+                    )).fetchall()}
+                skip = ("agent_", "pg_", "spatial_ref_sys", "geography_columns",
+                        "geometry_columns", "raster_columns", "raster_overviews")
+                tables = sorted(
+                    t for t in (all_tables - registered)
+                    if not any(t.startswith(p) for p in skip)
+                )
+            except Exception as e:
+                return JSONResponse({"error": str(e)}, status_code=500)
+
+    from .semantic_layer import auto_register_table
+    results = []
+    for t in tables:
+        r = auto_register_table(t, username or "system")
+        results.append({"table": t, **r})
+
+    ok = sum(1 for r in results if r.get("status") == "success")
+    skipped = sum(1 for r in results if r.get("status") == "skipped")
+    failed = sum(1 for r in results if r.get("status") == "error")
+    return JSONResponse({
+        "results": results,
+        "summary": {"total": len(results), "ok": ok, "skipped": skipped, "failed": failed},
+    })
+
+
+async def _api_semantic_resolve_preview(request: Request):
+    """POST /api/semantic/resolve-preview — run resolve_semantic_context for a question."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    question = (body.get("question") or "").strip()
+    if not question:
+        return JSONResponse({"error": "Missing 'question'"}, status_code=400)
+
+    from .semantic_layer import resolve_semantic_context
+    try:
+        result = resolve_semantic_context(question)
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_semantic_export(request: Request):
+    """GET /api/semantic/export — export all semantic annotations as JSON."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    from sqlalchemy import text as _sa_text
+    from .db_engine import get_engine
+    from .semantic_layer import T_SEMANTIC_REGISTRY, T_SEMANTIC_SOURCES
+
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not configured"}, status_code=500)
+
+    try:
+        with engine.connect() as conn:
+            src_rows = conn.execute(_sa_text(
+                f"SELECT table_name, display_name, description, geometry_type, srid, "
+                f"synonyms, suggested_analyses FROM {T_SEMANTIC_SOURCES} ORDER BY table_name"
+            )).fetchall()
+            reg_rows = conn.execute(_sa_text(
+                f"SELECT table_name, column_name, semantic_domain, aliases, unit, "
+                f"description, is_geometry FROM {T_SEMANTIC_REGISTRY} "
+                f"ORDER BY table_name, column_name"
+            )).fetchall()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+    def _parse_json(v, default):
+        if isinstance(v, (list, dict)):
+            return v
+        try:
+            return json.loads(v) if v else default
+        except Exception:
+            return default
+
+    sources = []
+    for r in src_rows:
+        sources.append({
+            "table_name": r[0], "display_name": r[1] or "", "description": r[2] or "",
+            "geometry_type": r[3], "srid": r[4],
+            "synonyms": _parse_json(r[5], []),
+            "suggested_analyses": _parse_json(r[6], []),
+        })
+    annotations = []
+    for r in reg_rows:
+        annotations.append({
+            "table_name": r[0], "column_name": r[1],
+            "semantic_domain": r[2], "aliases": _parse_json(r[3], []),
+            "unit": r[4] or "", "description": r[5] or "",
+            "is_geometry": bool(r[6]),
+        })
+
+    return JSONResponse({
+        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "version": 1,
+        "sources": sources,
+        "annotations": annotations,
+    })
+
+
+async def _api_semantic_import(request: Request):
+    """POST /api/semantic/import — bulk upsert from exported JSON.
+
+    Body: {"sources": [...], "annotations": [...]}
+    Returns counts of created/updated items.
+    """
+    _u, username, _role, err = _require_editor(request)
+    if err:
+        return err
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    sources = body.get("sources") or []
+    annotations = body.get("annotations") or []
+    if not isinstance(sources, list) or not isinstance(annotations, list):
+        return JSONResponse({"error": "sources and annotations must be arrays"}, status_code=400)
+
+    from .semantic_layer import (
+        register_source_metadata, register_semantic_annotation,
+    )
+
+    results = {"sources_ok": 0, "sources_failed": 0,
+               "annotations_ok": 0, "annotations_failed": 0, "errors": []}
+
+    for s in sources:
+        try:
+            r = register_source_metadata(
+                table_name=s.get("table_name", ""),
+                display_name=s.get("display_name", ""),
+                description=s.get("description", ""),
+                synonyms_json=json.dumps(s.get("synonyms", [])),
+                suggested_analyses_json=json.dumps(s.get("suggested_analyses", [])),
+            )
+            if r.get("status") == "success":
+                results["sources_ok"] += 1
+            else:
+                results["sources_failed"] += 1
+                results["errors"].append(f"source {s.get('table_name')}: {r.get('message')}")
+        except Exception as e:
+            results["sources_failed"] += 1
+            results["errors"].append(f"source {s.get('table_name')}: {e}")
+
+    for a in annotations:
+        try:
+            r = register_semantic_annotation(
+                table_name=a.get("table_name", ""),
+                column_name=a.get("column_name", ""),
+                semantic_domain=a.get("semantic_domain", "") or "",
+                aliases_json=json.dumps(a.get("aliases", [])),
+                unit=a.get("unit", ""),
+                description=a.get("description", ""),
+            )
+            if r.get("status") == "success":
+                results["annotations_ok"] += 1
+            else:
+                results["annotations_failed"] += 1
+                results["errors"].append(
+                    f"annotation {a.get('table_name')}.{a.get('column_name')}: {r.get('message')}")
+        except Exception as e:
+            results["annotations_failed"] += 1
+            results["errors"].append(
+                f"annotation {a.get('table_name')}.{a.get('column_name')}: {e}")
+
+    # Trim error list
+    results["errors"] = results["errors"][:50]
+    return JSONResponse(results)
 
 
 # ---------------------------------------------------------------------------
@@ -3242,6 +3691,7 @@ def get_frontend_api_routes():
     from .api.reference_query_routes import get_reference_query_routes
     from .api.semantic_model_routes import get_semantic_model_routes
     from .api.lineage_routes import get_lineage_routes
+    from .api.agent_management_routes import get_agent_management_routes
     from .annotation_ws import annotation_ws_routes
 
     return [
@@ -3251,6 +3701,17 @@ def get_frontend_api_routes():
         Route("/api/catalog/{asset_id:int}/lineage", endpoint=_api_catalog_lineage, methods=["GET"]),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
         Route("/api/semantic/hierarchy/{domain}", endpoint=_api_semantic_hierarchy, methods=["GET"]),
+        Route("/api/semantic/sources", endpoint=_api_semantic_sources_list, methods=["GET"]),
+        Route("/api/semantic/sources/{table}", endpoint=_api_semantic_source_detail, methods=["GET"]),
+        Route("/api/semantic/sources/{table}", endpoint=_api_semantic_source_upsert, methods=["PUT"]),
+        Route("/api/semantic/sources/{table}", endpoint=_api_semantic_source_delete, methods=["DELETE"]),
+        Route("/api/semantic/annotations/{table}/{column}", endpoint=_api_semantic_annotation_upsert, methods=["PUT"]),
+        Route("/api/semantic/annotations/{table}/{column}", endpoint=_api_semantic_annotation_delete, methods=["DELETE"]),
+        Route("/api/semantic/unregistered", endpoint=_api_semantic_unregistered, methods=["GET"]),
+        Route("/api/semantic/auto-register", endpoint=_api_semantic_auto_register, methods=["POST"]),
+        Route("/api/semantic/resolve-preview", endpoint=_api_semantic_resolve_preview, methods=["POST"]),
+        Route("/api/semantic/export", endpoint=_api_semantic_export, methods=["GET"]),
+        Route("/api/semantic/import", endpoint=_api_semantic_import, methods=["POST"]),
         Route("/api/pipeline/history", endpoint=_api_pipeline_history, methods=["GET"]),
         Route("/api/user/token-usage", endpoint=_api_user_token_usage, methods=["GET"]),
         Route("/api/admin/users", endpoint=_api_admin_users_list, methods=["GET"]),
@@ -3445,6 +3906,8 @@ def get_frontend_api_routes():
         *get_semantic_model_routes(),
         # Cross-System Lineage (v21.0)
         *get_lineage_routes(),
+        # Agent Management (v24.1)
+        *get_agent_management_routes(),
         # Annotation WebSocket (v23.0)
         *annotation_ws_routes,
     ]

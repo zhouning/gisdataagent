@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from starlette.requests import Request
 
 
 def _fake_engine_with_result(rows):
@@ -107,3 +108,99 @@ def test_lookup_handle_takes_priority_over_alias():
         {"handle": "shared", "aliases": [], "display_name": "", "pinned": False, "hidden": False, "type": "sub_agent"},
     ]
     assert mention_registry.lookup(registry, "shared")["handle"] == "shared"
+
+
+import asyncio
+from typing import Optional
+
+
+def _make_request(path: str, method: str = "GET", body=None, path_params=None):
+    """Build a minimal Starlette Request for handler unit tests."""
+    import json as _json
+    scope = {
+        "type": "http", "method": method, "path": path,
+        "headers": [], "query_string": b"", "path_params": path_params or {},
+    }
+    body_bytes = _json.dumps(body).encode() if body else b""
+    async def receive():
+        return {"type": "http.request", "body": body_bytes, "more_body": False}
+    return Request(scope, receive=receive)
+
+
+class _FakeUser:
+    def __init__(self, identifier="alice", role="analyst"):
+        self.identifier = identifier
+        self.metadata = {"role": role}
+
+
+def test_mention_targets_api_excludes_hidden():
+    from data_agent.api.agent_management_routes import _api_mention_targets
+    fake_registry = [
+        {"handle": "A", "label": "A", "type": "sub_agent", "description": "",
+         "aliases": [], "display_name": "", "pinned": False, "hidden": False,
+         "allowed_roles": ["analyst"], "required_state_keys": [], "pipeline": "GENERAL"},
+        {"handle": "B", "label": "B", "type": "sub_agent", "description": "",
+         "aliases": [], "display_name": "", "pinned": False, "hidden": True,
+         "allowed_roles": ["analyst"], "required_state_keys": [], "pipeline": "GENERAL"},
+    ]
+    with patch("data_agent.api.agent_management_routes._get_user_from_request", return_value=_FakeUser()), \
+         patch("data_agent.api.agent_management_routes.build_registry", return_value=fake_registry):
+        resp = asyncio.run(_api_mention_targets(_make_request("/api/agents/mention-targets")))
+    import json
+    data = json.loads(resp.body.decode())
+    handles = [t["handle"] for t in data["targets"]]
+    assert "A" in handles
+    assert "B" not in handles
+
+
+def test_mention_targets_api_include_hidden_flag():
+    from data_agent.api.agent_management_routes import _api_mention_targets
+    fake_registry = [
+        {"handle": "A", "label": "A", "type": "sub_agent", "description": "",
+         "aliases": [], "display_name": "", "pinned": False, "hidden": True,
+         "allowed_roles": ["analyst"], "required_state_keys": [], "pipeline": "GENERAL"},
+    ]
+    scope = {
+        "type": "http", "method": "GET", "path": "/api/agents/mention-targets",
+        "headers": [], "query_string": b"include_hidden=1", "path_params": {},
+    }
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+    req = Request(scope, receive=receive)
+    with patch("data_agent.api.agent_management_routes._get_user_from_request", return_value=_FakeUser()), \
+         patch("data_agent.api.agent_management_routes.build_registry", return_value=fake_registry):
+        resp = asyncio.run(_api_mention_targets(req))
+    import json
+    data = json.loads(resp.body.decode())
+    assert len(data["targets"]) == 1
+
+
+def test_set_alias_api_calls_upsert():
+    from data_agent.api.agent_management_routes import _api_set_alias
+    req = _make_request("/api/agents/DataExploration/alias", method="PUT",
+                        body={"aliases": ["探查"], "display_name": "数据探查"},
+                        path_params={"handle": "DataExploration"})
+    with patch("data_agent.api.agent_management_routes._get_user_from_request", return_value=_FakeUser()), \
+         patch("data_agent.api.agent_management_routes.upsert_alias") as mock_upsert:
+        resp = asyncio.run(_api_set_alias(req))
+    assert resp.status_code == 200
+    mock_upsert.assert_called_once_with("alice", "DataExploration", aliases=["探查"], display_name="数据探查")
+
+
+def test_set_pin_api_calls_set_flag():
+    from data_agent.api.agent_management_routes import _api_set_pin
+    req = _make_request("/api/agents/DataExploration/pin", method="PUT",
+                        body={"pinned": True}, path_params={"handle": "DataExploration"})
+    with patch("data_agent.api.agent_management_routes._get_user_from_request", return_value=_FakeUser()), \
+         patch("data_agent.api.agent_management_routes.set_flag") as mock_flag:
+        resp = asyncio.run(_api_set_pin(req))
+    assert resp.status_code == 200
+    mock_flag.assert_called_once_with("alice", "DataExploration", "pinned", True)
+
+
+def test_unauthorized_returns_401():
+    from data_agent.api.agent_management_routes import _api_mention_targets
+    req = _make_request("/api/agents/mention-targets")
+    with patch("data_agent.api.agent_management_routes._get_user_from_request", return_value=None):
+        resp = asyncio.run(_api_mention_targets(req))
+    assert resp.status_code == 401
