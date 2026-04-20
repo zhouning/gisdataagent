@@ -4,7 +4,7 @@ import {
   FolderOpen, Table2, Database, Tag, Link, MapPin, BarChart3,
   Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
   History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
-  GitBranch, FileText, Target, ThumbsUp,
+  GitBranch, FileText, Target, ThumbsUp, Tags,
   LayoutGrid,
 } from 'lucide-react';
 
@@ -33,17 +33,19 @@ import OptimizationTab from './datapanel/OptimizationTab';
 import QcMonitorTab from './datapanel/QcMonitorTab';
 import AlertsTab from './datapanel/AlertsTab';
 import TopologyTab from './datapanel/TopologyTab';
+import AgentsTab from './datapanel/AgentsTab';
 import MessageBusTab from './datapanel/MessageBusTab';
 import MetadataPanel from './datapanel/MetadataPanel';
 import FeedbackTab from './datapanel/FeedbackTab';
 import DomainStandardsTab from './datapanel/DomainStandardsTab';
+import SemanticLayerTab from './datapanel/SemanticLayerTab';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'semantic' | 'agents';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -82,6 +84,8 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'causal', label: '因果推理', icon: <FlaskConical size={ICON_SIZE} /> },
       { key: 'optimization', label: '优化', icon: <Target size={ICON_SIZE} /> },
       { key: 'standards', label: '领域标准', icon: <Database size={ICON_SIZE} /> },
+      { key: 'agents', label: '智能体', icon: <Network size={ICON_SIZE} /> },
+      { key: 'semantic', label: '语义层', icon: <Tags size={ICON_SIZE} /> },
     ],
   },
   {
@@ -217,7 +221,9 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'messagebus' && <MessageBusTab />}
         {activeTab === 'feedback' && <FeedbackTab />}
         {activeTab === 'topology' && <TopologyTab />}
+        {activeTab === 'agents' && <AgentsTab />}
         {activeTab === 'standards' && <DomainStandardsTab />}
+        {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
       </div>
     </div>
   );
