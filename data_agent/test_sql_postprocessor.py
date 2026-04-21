@@ -50,3 +50,98 @@ def test_insert_is_rejected():
         table_schemas={},
     )
     assert result.rejected is True
+
+
+# --- Identifier quoting fix tests (from benchmark CQ_GEO_EASY_01/03) ---
+
+_BUILDINGS_SCHEMA = {
+    "cq_buildings_2021": [
+        {"column_name": "Id", "needs_quoting": True},
+        {"column_name": "Floor", "needs_quoting": True},
+        {"column_name": "geometry", "needs_quoting": False},
+    ],
+}
+
+_DLTB_SCHEMA = {
+    "cq_land_use_dltb": [
+        {"column_name": "BSM", "needs_quoting": True},
+        {"column_name": "DLMC", "needs_quoting": True},
+        {"column_name": "DLBM", "needs_quoting": True},
+        {"column_name": "TBMJ", "needs_quoting": True},
+        {"column_name": "QSDWMC", "needs_quoting": True},
+        {"column_name": "geometry", "needs_quoting": False},
+    ],
+}
+
+_ROADS_SCHEMA = {
+    "cq_osm_roads_2021": [
+        {"column_name": "name", "needs_quoting": False},
+        {"column_name": "fclass", "needs_quoting": False},
+        {"column_name": "maxspeed", "needs_quoting": False},
+        {"column_name": "geometry", "needs_quoting": False},
+    ],
+}
+
+
+def test_fix_floor_lowercase():
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT count(*) FROM cq_buildings_2021 WHERE floor >= 40",
+        table_schemas=_BUILDINGS_SCHEMA,
+    )
+    assert result.rejected is False
+    assert '"Floor"' in result.sql
+    assert any('Floor' in c for c in result.corrections)
+
+
+def test_fix_id_lowercase():
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT count(id) FROM cq_buildings_2021 WHERE floor >= 40",
+        table_schemas=_BUILDINGS_SCHEMA,
+    )
+    assert '"Id"' in result.sql
+    assert '"Floor"' in result.sql
+
+
+def test_fix_dlmc_bsm_uppercase_unquoted():
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT BSM FROM cq_land_use_dltb WHERE DLMC = '水田' AND TBMJ > 50000",
+        table_schemas=_DLTB_SCHEMA,
+    )
+    assert '"BSM"' in result.sql
+    assert '"DLMC"' in result.sql
+    assert '"TBMJ"' in result.sql
+
+
+def test_lowercase_columns_not_quoted():
+    """Columns that are genuinely lowercase should NOT be quoted."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT name, fclass FROM cq_osm_roads_2021 WHERE maxspeed > 100",
+        table_schemas=_ROADS_SCHEMA,
+    )
+    assert '"name"' not in result.sql
+    assert '"fclass"' not in result.sql
+
+
+def test_already_quoted_columns_preserved():
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        'SELECT "Floor" FROM cq_buildings_2021 WHERE "Id" = 1',
+        table_schemas=_BUILDINGS_SCHEMA,
+    )
+    assert '"Floor"' in result.sql
+    assert '"Id"' in result.sql
+
+
+def test_qualified_alias_columns_fixed():
+    """b.Floor with table alias should still be fixed to b.\"Floor\"."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        'SELECT count(DISTINCT b.id) FROM cq_buildings_2021 b WHERE b.floor > 20',
+        table_schemas=_BUILDINGS_SCHEMA,
+    )
+    assert '"Floor"' in result.sql
+    assert '"Id"' in result.sql
