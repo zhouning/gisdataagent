@@ -123,17 +123,53 @@ def _inject_limit(parsed: exp.Expression, n: int) -> exp.Expression:
     return parsed
 
 
+def _regex_fallback_fix(sql: str, column_map: dict) -> tuple[str, list[str]]:
+    """Last-resort identifier fix using word-boundary regex.
+
+    Only used when sqlglot parsing fails but we still want to attempt a safe rewrite.
+    Skips identifiers already inside double quotes.
+    """
+    corrections: list[str] = []
+    for lower_name, (real, needs_q) in column_map.items():
+        if not needs_q:
+            continue
+        pattern = re.compile(rf'(?<!")\b{re.escape(lower_name)}\b(?!")', flags=re.IGNORECASE)
+        new_sql, n = pattern.subn(f'"{real}"', sql)
+        if n > 0:
+            sql = new_sql
+            corrections.append(f"Regex fallback fix: {lower_name} -> \"{real}\" ({n} occurrences)")
+    return sql, corrections
+
+
 def postprocess_sql(
     raw_sql: str,
     table_schemas: dict,
     large_tables: Optional[set] = None,
 ) -> PostprocessResult:
-    """Postprocess raw LLM-generated SQL: safety check, identifier fix, LIMIT injection."""
+    """Postprocess raw LLM-generated SQL: safety check, identifier fix, LIMIT injection.
+
+    Args:
+        raw_sql: SQL string from LLM.
+        table_schemas: dict mapping table_name -> list of column dicts
+            (each column dict has at least 'column_name' and 'needs_quoting').
+        large_tables: set of table names that should auto-receive LIMIT 1000.
+
+    Returns:
+        PostprocessResult with sql, corrections, rejected, reject_reason.
+    """
     result = PostprocessResult(sql=raw_sql)
 
     try:
         parsed = sqlglot.parse_one(raw_sql, dialect="postgres")
     except Exception as e:
+        # Try regex fallback only if the SQL at least looks like a SELECT
+        if raw_sql.strip().upper().startswith(("SELECT", "WITH")):
+            column_map = _build_column_map(table_schemas)
+            fixed_sql, fix_corrections = _regex_fallback_fix(raw_sql, column_map)
+            result.sql = fixed_sql
+            result.corrections.extend(fix_corrections)
+            result.corrections.append(f"sqlglot parse failed, applied regex fallback: {e}")
+            return result
         result.rejected = True
         result.reject_reason = f"SQL parse error: {e}"
         return result

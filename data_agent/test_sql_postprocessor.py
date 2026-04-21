@@ -201,3 +201,29 @@ def test_no_limit_on_aggregation_query():
         large_tables={"cq_amap_poi_2024"},
     )
     assert "LIMIT" not in result.sql.upper()
+
+
+# --- sqlglot parse failure fallback ---
+
+def test_unparseable_sql_falls_back_to_regex_fix():
+    """If sqlglot cannot parse, fall back to regex-based identifier fix."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    # Intentionally weird SQL that sqlglot may struggle with — use a SELECT-ish form
+    raw = "SELECT count(*) FROM cq_buildings_2021 WHERE floor >= 40 /* legit comment */"
+    result = postprocess_sql(
+        raw,
+        table_schemas=_BUILDINGS_SCHEMA,
+    )
+    # Either sqlglot succeeds (preferred) or regex fallback fires; both must produce quoted "Floor"
+    assert '"Floor"' in result.sql
+    assert result.rejected is False
+
+
+def test_truly_unparseable_sql_returns_rejected():
+    """Garbage that even regex fallback can't safely fix → rejected."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "this is not sql at all !!!@#$",
+        table_schemas={},
+    )
+    assert result.rejected is True
