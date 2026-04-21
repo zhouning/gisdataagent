@@ -3129,3 +3129,77 @@ body {
 .json-kv { display: flex; flex-wrap: wrap; }
 .json-array-item { padding-left: 8px; }
 .fm-preview-actions { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+
+/* ============================================================
+   Semantic Layer Tab (DataPanel → 智能分析 → 语义层)
+   ============================================================ */
+.semantic-layer-tab { display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; }
+
+.semantic-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.semantic-toolbar-info { font-size: 12px; color: var(--text-secondary); margin-right: 8px; }
+.semantic-search { flex: 1; min-width: 150px; font-size: 12px; padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 4px; }
+
+.semantic-alert { padding: 6px 10px; border-radius: 4px; font-size: 12px; }
+.semantic-alert.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+.semantic-alert.info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+
+.semantic-body { display: flex; gap: 10px; flex: 1; overflow: hidden; min-height: 0; }
+
+.semantic-sources-list { width: 280px; min-width: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 8px; background: var(--surface); }
+.semantic-list-section-title { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+.semantic-source-item { padding: 6px 8px; margin-bottom: 4px; border-radius: 4px; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; }
+.semantic-source-item:hover { background: var(--surface-hover); }
+.semantic-source-item.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); }
+.semantic-source-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.semantic-source-sub { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+.semantic-unreg-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 11px; color: var(--text-secondary); border-bottom: 1px dashed var(--border); }
+.semantic-loading { padding: 8px; color: var(--text-tertiary); font-size: 11px; font-style: italic; }
+
+.semantic-detail { flex: 1; overflow-y: auto; padding: 0 4px; }
+.semantic-empty { padding: 24px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+.semantic-hint { margin-top: 12px; padding: 12px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.15); border-radius: 4px; font-size: 11px; color: var(--text-tertiary); text-align: left; line-height: 1.6; }
+
+.semantic-section { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+.semantic-section-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-hover); }
+.semantic-section-header h4 { margin: 0; font-size: 13px; color: var(--text); }
+.semantic-section-header > div { display: flex; gap: 6px; }
+
+.semantic-meta { padding: 10px 12px; font-size: 12px; line-height: 1.8; }
+.semantic-meta > div { margin-bottom: 4px; }
+.semantic-meta i { color: var(--text-tertiary); }
+
+.semantic-form { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.semantic-form label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--text-secondary); }
+.semantic-form input, .semantic-form textarea, .semantic-form select { font-size: 12px; padding: 4px 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 3px; }
+.semantic-form > div:last-child { display: flex; gap: 6px; }
+
+.semantic-cols { width: 100%; font-size: 11px; border-collapse: collapse; }
+.semantic-cols th { text-align: left; padding: 6px 8px; background: var(--surface-hover); color: var(--text-secondary); font-weight: 500; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+.semantic-cols td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; }
+.semantic-cols tr:hover { background: var(--surface-hover); }
+.semantic-cols i { color: var(--text-tertiary); }
+.semantic-col-desc { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.semantic-col-desc:hover { overflow: visible; white-space: normal; }
+.semantic-col-editing { background: rgba(59,130,246,0.05) !important; }
+.semantic-geom-badge { display: inline-block; font-size: 9px; padding: 1px 4px; background: rgba(34,197,94,0.2); color: #86efac; border-radius: 2px; margin-left: 4px; }
+
+.semantic-inline-form { display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+.semantic-inline-form label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.semantic-inline-form > div:first-child { display: flex; gap: 10px; }
+.semantic-inline-form > div:first-child label { flex: 1; }
+.semantic-inline-form input, .semantic-inline-form textarea, .semantic-inline-form select { font-size: 11px; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 3px; }
+.semantic-inline-form > div:last-child { display: flex; gap: 6px; }
+
+.semantic-preview { padding: 10px 12px; }
+.semantic-preview > div:first-child { display: flex; gap: 6px; }
+.semantic-preview input { flex: 1; font-size: 12px; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 3px; }
+.semantic-preview-result { margin-top: 10px; font-size: 11px; line-height: 1.6; }
+.semantic-preview-result > div { margin-bottom: 6px; }
+.semantic-preview-result pre { background: var(--surface-hover); padding: 6px 8px; border-radius: 3px; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; margin: 4px 0; }
+.semantic-sql-filters { color: #86efac !important; font-family: 'Consolas', 'Monaco', monospace; }
+.semantic-preview-result details summary { cursor: pointer; color: var(--text-secondary); font-size: 11px; margin-top: 6px; }
+
+.btn-mini { font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 3px; cursor: pointer; margin-right: 4px; }
+.btn-mini:hover { background: var(--surface-hover); color: var(--text); }
+.btn-danger { background: transparent; border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; }
+.btn-danger:hover { background: rgba(239,68,68,0.1); }

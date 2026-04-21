@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "model": "gemma2:27b",
+    "url": "http://192.168.31.252:11434/api/generate",
+    "timestamp": "2026-04-20 16:47:26",
+    "total_questions": 20
+  },
+  "summary": {
+    "passed": 0,
+    "failed": 1,
+    "accuracy_percent": 0.0
+  },
+  "details": [
+    {
+      "id": "CQ_GEO_EASY_01",
+      "category": "Attribute Filtering",
+      "difficulty": "Easy",
+      "question": "统计中心城区建筑数据中，层高（Floor）大于等于 40 层的超高层建筑有多少栋？",
+      "golden_sql": "SELECT COUNT(*) FROM cq_buildings_2021 WHERE \"Floor\" >= 40;",
+      "generated_sql": "Error: timed out",
+      "target_metric": "Execution Accuracy",
+      "status": "FAIL",
+      "error_message": "Execution Error: Execution failed on sql 'Error: timed out': (psycopg2.errors.SyntaxError) syntax error at or near \"Error\"\nLINE 1: Error: timed out\n        ^\n\n[SQL: Error: timed out]\n(Background on this error at: https://sqlalche.me/e/20/f405)"
+    }
+  ]
+}

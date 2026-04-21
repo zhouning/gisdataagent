@@ -118,6 +118,13 @@ scripts/ablation_results/
 benchmarks/data/
 benchmarks/benchmark_results.json
 
+# NL2SQL benchmark data and eval results (large, generated)
+data/bird_mini_dev/
+data/floodsql/
+data_agent/nl2sql_eval_results/
+scripts/nl2sql_bench_bird/run_state.db
+scripts/nl2sql_bench_cq/run_state.db
+
 # Papers and client-facing documents — NEVER commit
 docs/*paper*.tex
 docs/*paper*.docx

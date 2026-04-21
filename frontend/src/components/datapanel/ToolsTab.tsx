@@ -340,7 +340,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                   onClick={(e) => { e.stopPropagation(); handleDeleteServer(s.name); }}
                   title="删除"
                 >
-                  {deleting === s.name ? '...' : '\u00D7'}
+                  {deleting === s.name ? '...' : '×'}
                 </button>
               </div>
             )}
