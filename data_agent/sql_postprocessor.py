@@ -81,6 +81,48 @@ def _fix_identifiers(parsed: exp.Expression, column_map: dict) -> tuple[exp.Expr
     return parsed, corrections
 
 
+def _references_large_table(parsed: exp.Expression, large_tables: set) -> bool:
+    if not large_tables:
+        return False
+    for table in parsed.find_all(exp.Table):
+        name = table.name
+        if name in large_tables:
+            return True
+    return False
+
+
+def _is_aggregation_only(parsed: exp.Expression) -> bool:
+    """True if SELECT contains only aggregation functions and no GROUP BY."""
+    select = parsed.find(exp.Select) if isinstance(parsed, exp.With) else (parsed if isinstance(parsed, exp.Select) else None)
+    if select is None:
+        return False
+    if select.args.get("group"):
+        return False
+    expressions = select.expressions or []
+    if not expressions:
+        return False
+    agg_types = (exp.Count, exp.Sum, exp.Avg, exp.Min, exp.Max)
+    for e in expressions:
+        target = e.this if isinstance(e, exp.Alias) else e
+        if not isinstance(target, agg_types):
+            return False
+    return True
+
+
+def _has_limit(parsed: exp.Expression) -> bool:
+    select = parsed.find(exp.Select) if isinstance(parsed, exp.With) else (parsed if isinstance(parsed, exp.Select) else None)
+    if select is None:
+        return False
+    return select.args.get("limit") is not None
+
+
+def _inject_limit(parsed: exp.Expression, n: int) -> exp.Expression:
+    select = parsed.find(exp.Select) if isinstance(parsed, exp.With) else parsed
+    if isinstance(select, exp.Select):
+        select.set("limit", exp.Limit(expression=exp.Literal.number(n)))
+    return parsed
+
+
 def postprocess_sql(
     raw_sql: str,
     table_schemas: dict,
@@ -110,6 +152,16 @@ def postprocess_sql(
     if column_map:
         parsed, fix_corrections = _fix_identifiers(parsed, column_map)
         result.corrections.extend(fix_corrections)
+
+    # LIMIT injection for large tables (skip aggregation-only queries)
+    if (
+        large_tables
+        and _references_large_table(parsed, large_tables)
+        and not _has_limit(parsed)
+        and not _is_aggregation_only(parsed)
+    ):
+        parsed = _inject_limit(parsed, 1000)
+        result.corrections.append("LIMIT 1000 injected (large table referenced)")
 
     result.sql = parsed.sql(dialect="postgres")
     return result

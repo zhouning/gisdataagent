@@ -145,3 +145,59 @@ def test_qualified_alias_columns_fixed():
     )
     assert '"Floor"' in result.sql
     assert '"Id"' in result.sql
+
+
+# --- LIMIT injection tests (from CQ_GEO_ROBUSTNESS_03) ---
+
+_POI_SCHEMA = {
+    "cq_amap_poi_2024": [
+        {"column_name": "名称", "needs_quoting": True},
+        {"column_name": "类型", "needs_quoting": True},
+        {"column_name": "geometry", "needs_quoting": False},
+    ],
+}
+
+
+def test_inject_limit_on_large_table_full_scan():
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT * FROM cq_amap_poi_2024",
+        table_schemas=_POI_SCHEMA,
+        large_tables={"cq_amap_poi_2024"},
+    )
+    assert "LIMIT" in result.sql.upper()
+    assert "1000" in result.sql
+
+
+def test_existing_limit_preserved():
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT * FROM cq_amap_poi_2024 LIMIT 50",
+        table_schemas=_POI_SCHEMA,
+        large_tables={"cq_amap_poi_2024"},
+    )
+    assert "LIMIT 50" in result.sql.upper().replace(" ", " ")
+    # No duplicate LIMIT clauses
+    assert result.sql.upper().count("LIMIT") == 1
+
+
+def test_no_limit_on_small_table():
+    """Small tables (not in large_tables set) should not get auto-LIMIT."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT count(*) FROM cq_buildings_2021 WHERE floor >= 40",
+        table_schemas=_BUILDINGS_SCHEMA,
+        large_tables=set(),
+    )
+    assert "LIMIT" not in result.sql.upper()
+
+
+def test_no_limit_on_aggregation_query():
+    """COUNT/SUM queries return one row — no need for LIMIT even on large tables."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT count(*) FROM cq_amap_poi_2024",
+        table_schemas=_POI_SCHEMA,
+        large_tables={"cq_amap_poi_2024"},
+    )
+    assert "LIMIT" not in result.sql.upper()
