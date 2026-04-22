@@ -98,22 +98,31 @@ def query_database(sql_query: str) -> dict:
     # wants all rows.  We remove LIMIT only for simple "SELECT ... FROM table"
     # patterns that have no WHERE/GROUP BY/ORDER BY, i.e. the user clearly
     # wants the full table.  More complex queries keep their LIMIT intact.
+    # SAFETY: Never allow unlimited queries — enforce hard cap of 100000 rows.
     import re
+    QUERY_HARD_CAP = 100000
     _sql_stripped = re.sub(r'\s+', ' ', sql_lower).strip()
     _limit_match = re.search(r'\blimit\s+(\d+)\s*$', _sql_stripped)
     if _limit_match:
+        limit_val = int(_limit_match.group(1))
         # Check if this is a simple full-table select (no WHERE, GROUP BY, HAVING)
         _has_filter = any(kw in _sql_stripped for kw in ['where ', 'group by', 'having ', 'union '])
-        if not _has_filter:
-            # Remove the trailing LIMIT clause from the original SQL
-            sql_query = re.sub(r'\bLIMIT\s+\d+\s*$', '', sql_query, flags=re.IGNORECASE).strip()
-            logger.info("[query_database] Removed LLM-injected LIMIT from full-table query")
+        if not _has_filter and limit_val <= 1000:
+            # Replace small LIMIT with hard cap instead of removing entirely
+            sql_query = re.sub(r'\bLIMIT\s+\d+\s*$', f'LIMIT {QUERY_HARD_CAP}', sql_query, flags=re.IGNORECASE).strip()
+            logger.info("[query_database] Replaced small LIMIT with hard cap %d", QUERY_HARD_CAP)
+    elif 'limit' not in _sql_stripped:
+        # No LIMIT at all — add hard cap
+        sql_query = f"{sql_query.rstrip(';')} LIMIT {QUERY_HARD_CAP}"
+        logger.info("[query_database] Injected LIMIT %d (no LIMIT in query)", QUERY_HARD_CAP)
 
     try:
         with engine.connect() as conn:
             # Enforce read-only transaction at the database level
             conn.execute(text("SET TRANSACTION READ ONLY"))
-            
+            # Safety: prevent runaway queries (60 second timeout)
+            conn.execute(text("SET statement_timeout = '60s'"))
+
             # Inject user context for RLS (Row-Level Security)
             _inject_user_context(conn)
 
