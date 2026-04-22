@@ -155,9 +155,18 @@ def execute_safe_sql(
             )
 
         import re
-        # 剥除 LLM 擅自注入的 LIMIT 限制（特别是针对地理空间全量渲染）
+        # GeoJSON mode: allow larger result sets but enforce a hard cap to prevent OOM
+        GEOJSON_HARD_CAP = 100000
         if output_format == "geojson":
-            sql = re.sub(r'(?i)\s+LIMIT\s+\d+\s*;?\s*$', '', sql)
+            # Strip LLM-injected small LIMITs (e.g. LIMIT 10) for spatial rendering
+            match = re.search(r'(?i)\bLIMIT\s+(\d+)\s*;?\s*$', sql)
+            if match:
+                limit_val = int(match.group(1))
+                if limit_val <= 1000:
+                    sql = re.sub(r'(?i)\s+LIMIT\s+\d+\s*;?\s*$', '', sql)
+            # Always enforce hard cap for geojson to prevent OOM
+            if "LIMIT" not in sql.upper():
+                sql = f"{sql.rstrip(';')} LIMIT {GEOJSON_HARD_CAP}"
         else:
             # For JSON, ensure we have a limit to avoid OOM
             if "LIMIT" not in sql_upper:
@@ -169,6 +178,8 @@ def execute_safe_sql(
         engine = get_engine()
         with engine.connect() as conn:
             _inject_user_context(conn)
+            # Set statement timeout to prevent runaway queries (60 seconds)
+            conn.execute(text("SET statement_timeout = '60s'"))
 
             # Try to read as GeoDataFrame first (if geometry column exists)
             if output_format == "geojson":
