@@ -95,6 +95,7 @@ def _format_grounding_prompt(payload: dict) -> str:
     lines.append("[NL2SQL 上下文 — 必须严格遵循以下 schema]")
     lines.append("")
     lines.append("## 候选数据源")
+    has_geometry_4326 = False
     for table in payload.get("candidate_tables", []):
         lines.append("")
         lines.append(f"### {table['table_name']} ({table.get('display_name') or table['table_name']})")
@@ -102,8 +103,21 @@ def _format_grounding_prompt(payload: dict) -> str:
         for col in table.get("columns", []):
             alias_str = ", ".join(col.get("aliases") or []) or "—"
             lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')} | 别名: {alias_str}")
+            if col.get("is_geometry") and "4326" in str(col.get("pg_type", "")):
+                has_geometry_4326 = True
         if any(c.get("needs_quoting") for c in table.get("columns", [])):
             lines.append('⚠ PostgreSQL 规则: 大小写混合列名必须使用双引号，例如 "Floor"、"Id"。')
+    if has_geometry_4326:
+        lines.append("")
+        lines.append("## ⚠ 空间几何字段规则 (SRID 4326)")
+        lines.append("- geometry 列是 EPSG:4326 经纬度坐标，单位是**度**，不是米")
+        lines.append("- 计算**真实长度/面积（米/平方米）**必须先转 geography:")
+        lines.append("  - 长度: `ST_Length(geometry::geography)` → 米")
+        lines.append("  - 面积: `ST_Area(geometry::geography)` → 平方米")
+        lines.append("  - 距离: `ST_Distance(a.geometry::geography, b.geometry::geography)` → 米")
+        lines.append("  - 缓冲/距离范围: `ST_DWithin(a.geometry::geography, b.geometry::geography, 500)` → 500米范围")
+        lines.append("- 空间关系（Intersects/Contains/Within）**不需要** geography 转换，直接用 geometry")
+        lines.append("- KNN 最近邻排序用 `ORDER BY a.geometry <-> b.geometry LIMIT N`（空间索引优化，不需要 geography）")
     lines.append("")
     lines.append("## 语义提示")
     hints = payload.get("semantic_hints", {})
