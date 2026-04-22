@@ -227,3 +227,25 @@ def test_truly_unparseable_sql_returns_rejected():
         table_schemas={},
     )
     assert result.rejected is True
+
+
+def test_union_query_is_accepted():
+    from data_agent.sql_postprocessor import postprocess_sql
+    result = postprocess_sql(
+        "SELECT name FROM cq_osm_roads_2021 UNION SELECT name FROM cq_osm_roads_2021",
+        table_schemas={},
+    )
+    assert result.rejected is False
+
+
+def test_regex_fallback_preserves_string_literals():
+    """Regex fallback must not corrupt column names inside string constants."""
+    from data_agent.sql_postprocessor import _regex_fallback_fix, _build_column_map
+    schema = {"t": [{"column_name": "Floor", "needs_quoting": True}]}
+    column_map = _build_column_map(schema)
+    fixed, corrections = _regex_fallback_fix(
+        "SELECT * FROM t WHERE name = 'floor is nice' AND floor > 10",
+        column_map,
+    )
+    assert "'floor is nice'" in fixed  # string literal preserved
+    assert '"Floor" > 10' in fixed  # column fixed

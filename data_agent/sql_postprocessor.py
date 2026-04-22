@@ -23,13 +23,26 @@ _WRITE_NODE_TYPES = (
     exp.Alter, exp.TruncateTable, exp.Create,
 )
 
+DEFAULT_LIMIT = 1000
+
+
+def _get_outermost_select(parsed: exp.Expression) -> Optional[exp.Select]:
+    if isinstance(parsed, exp.Select):
+        return parsed
+    if isinstance(parsed, exp.With):
+        inner = parsed.this
+        return inner if isinstance(inner, exp.Select) else None
+    if isinstance(parsed, (exp.Union, exp.Intersect, exp.Except)):
+        return parsed.this if isinstance(parsed.this, exp.Select) else None
+    return None
+
 
 def _is_safe_root(parsed: exp.Expression) -> bool:
-    """A safe root must be a Select or a With wrapping a Select."""
-    if isinstance(parsed, exp.Select):
+    """A safe root must be a Select, With, or set operation (Union/Intersect/Except)."""
+    if isinstance(parsed, (exp.Select, exp.Union, exp.Intersect, exp.Except)):
         return True
     if isinstance(parsed, exp.With):
-        return isinstance(parsed.this, exp.Select)
+        return isinstance(parsed.this, (exp.Select, exp.Union, exp.Intersect, exp.Except))
     return False
 
 
@@ -93,7 +106,7 @@ def _references_large_table(parsed: exp.Expression, large_tables: set) -> bool:
 
 def _is_aggregation_only(parsed: exp.Expression) -> bool:
     """True if SELECT contains only aggregation functions and no GROUP BY."""
-    select = parsed.find(exp.Select) if isinstance(parsed, exp.With) else (parsed if isinstance(parsed, exp.Select) else None)
+    select = _get_outermost_select(parsed)
     if select is None:
         return False
     if select.args.get("group"):
@@ -110,14 +123,14 @@ def _is_aggregation_only(parsed: exp.Expression) -> bool:
 
 
 def _has_limit(parsed: exp.Expression) -> bool:
-    select = parsed.find(exp.Select) if isinstance(parsed, exp.With) else (parsed if isinstance(parsed, exp.Select) else None)
+    select = _get_outermost_select(parsed)
     if select is None:
         return False
     return select.args.get("limit") is not None
 
 
 def _inject_limit(parsed: exp.Expression, n: int) -> exp.Expression:
-    select = parsed.find(exp.Select) if isinstance(parsed, exp.With) else parsed
+    select = _get_outermost_select(parsed)
     if isinstance(select, exp.Select):
         select.set("limit", exp.Limit(expression=exp.Literal.number(n)))
     return parsed
@@ -127,18 +140,23 @@ def _regex_fallback_fix(sql: str, column_map: dict) -> tuple[str, list[str]]:
     """Last-resort identifier fix using word-boundary regex.
 
     Only used when sqlglot parsing fails but we still want to attempt a safe rewrite.
-    Skips identifiers already inside double quotes.
+    Skips identifiers inside single-quoted or double-quoted strings.
     """
     corrections: list[str] = []
-    for lower_name, (real, needs_q) in column_map.items():
-        if not needs_q:
-            continue
-        pattern = re.compile(rf'(?<!")\b{re.escape(lower_name)}\b(?!")', flags=re.IGNORECASE)
-        new_sql, n = pattern.subn(f'"{real}"', sql)
-        if n > 0:
-            sql = new_sql
-            corrections.append(f"Regex fallback fix: {lower_name} -> \"{real}\" ({n} occurrences)")
-    return sql, corrections
+    # Split on single-quoted strings to avoid corrupting literals
+    parts = re.split(r"('(?:[^'\\]|\\.)*')", sql)
+    for i in range(0, len(parts), 2):  # only process non-literal segments
+        segment = parts[i]
+        for lower_name, (real, needs_q) in column_map.items():
+            if not needs_q:
+                continue
+            pattern = re.compile(rf'(?<!")\b{re.escape(lower_name)}\b(?!")', flags=re.IGNORECASE)
+            new_segment, n = pattern.subn(f'"{real}"', segment)
+            if n > 0:
+                segment = new_segment
+                corrections.append(f"Regex fallback fix: {lower_name} -> \"{real}\" ({n} occurrences)")
+        parts[i] = segment
+    return "".join(parts), corrections
 
 
 def postprocess_sql(
@@ -196,8 +214,8 @@ def postprocess_sql(
         and not _has_limit(parsed)
         and not _is_aggregation_only(parsed)
     ):
-        parsed = _inject_limit(parsed, 1000)
-        result.corrections.append("LIMIT 1000 injected (large table referenced)")
+        parsed = _inject_limit(parsed, DEFAULT_LIMIT)
+        result.corrections.append(f"LIMIT {DEFAULT_LIMIT} injected (large table referenced)")
 
     result.sql = parsed.sql(dialect="postgres")
     return result
