@@ -14,6 +14,11 @@ current_trace_id: ContextVar[str] = ContextVar('current_trace_id', default='')
 current_tool_categories: ContextVar[set] = ContextVar('current_tool_categories', default=set())
 current_model_tier: ContextVar[str] = ContextVar('current_model_tier', default='standard')
 
+# NL2SQL grounding cache (Phase 1)
+current_nl2sql_schemas: ContextVar[dict] = ContextVar('current_nl2sql_schemas', default={})
+current_nl2sql_large_tables: ContextVar[set] = ContextVar('current_nl2sql_large_tables', default=set())
+current_nl2sql_question: ContextVar[str] = ContextVar('current_nl2sql_question', default='')
+
 # Base uploads directory
 _BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 
