@@ -34,11 +34,24 @@ def _quoted_ref(column_name: str) -> str:
 
 
 def _estimate_table_size(table_name: str) -> int:
-    """Best-effort table size estimate for LIMIT heuristics.
+    """Best-effort table size estimate via pg_class.reltuples.
 
-    Phase 1 returns 0; Phase 2 will query pg_class.reltuples.
+    Returns approximate row count, or 0 if unavailable.
     """
-    return 0
+    try:
+        from .db_engine import get_engine
+        from sqlalchemy import text as sa_text
+        engine = get_engine()
+        if not engine:
+            return 0
+        with engine.connect() as conn:
+            r = conn.execute(sa_text(
+                "SELECT reltuples::bigint FROM pg_class WHERE relname = :t"
+            ), {"t": table_name})
+            row = r.fetchone()
+            return max(int(row[0]), 0) if row and row[0] else 0
+    except Exception:
+        return 0
 
 
 def _score_source(user_text: str, source: dict) -> float:
