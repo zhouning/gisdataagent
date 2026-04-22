@@ -108,20 +108,10 @@ def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
                                 f"Table '{stripped}' not found or access denied for current user."
                             )
                     # Read with user context active on this connection
-                    # Safety: enforce LIMIT to prevent OOM on large tables
-                    row_estimate = 0
-                    try:
-                        est = conn.execute(text(
-                            "SELECT reltuples::bigint FROM pg_class WHERE relname = :t"
-                        ), {"t": stripped}).scalar()
-                        row_estimate = int(est) if est else 0
-                    except Exception:
-                        pass
-                    load_limit = 100000 if row_estimate > 100000 else ""
-                    load_sql = f'SELECT * FROM "{stripped}"'
-                    if load_limit:
-                        load_sql += f" LIMIT {load_limit}"
-                    conn.execute(text("SET statement_timeout = '60s'"))
+                    # Safety: ALWAYS enforce LIMIT to prevent OOM — no table
+                    # should be fully loaded into memory via geopandas
+                    POSTGIS_LOAD_LIMIT = 100000
+                    load_sql = f'SELECT * FROM "{stripped}" LIMIT {POSTGIS_LOAD_LIMIT}'
                     gdf = gpd.read_postgis(
                         text(load_sql),
                         conn,
@@ -141,7 +131,7 @@ def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
                     for geom_name in ['geom', 'the_geom', 'shape']:
                         try:
                             gdf = gpd.read_postgis(
-                                f'SELECT * FROM "{stripped}"',
+                                text(f'SELECT * FROM "{stripped}" LIMIT {POSTGIS_LOAD_LIMIT}'),
                                 conn,
                                 geom_col=geom_name
                             )
