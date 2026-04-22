@@ -184,6 +184,37 @@ def evaluate_robustness(q: dict, generated_sql: str) -> tuple[bool, str]:
 
 
 # ============================================================================
+# Enhanced (grounding-aware)
+# ============================================================================
+
+PROMPT_ENHANCED = """你是 PostgreSQL/PostGIS NL2SQL 助手。请先阅读下面的 [NL2SQL 上下文]，然后生成 SQL。
+
+要求：
+1. 严格使用 schema 中给出的列引用（尤其是双引号字段）
+2. 只允许 SELECT
+3. 大表全表扫描必须加 LIMIT
+4. 直接输出 SQL，不要解释
+
+[NL2SQL 上下文]
+{grounding}
+
+用户问题: {question}
+"""
+
+
+def build_enhanced_prompt(question: str) -> str:
+    """Build grounding-aware benchmark prompt using the Phase 1 module."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+    payload = build_nl2sql_context(question)
+    return PROMPT_ENHANCED.format(
+        grounding=payload.get("grounding_prompt", ""),
+        question=question,
+    )
+
+
+# ============================================================================
 # Baseline
 # ============================================================================
 
@@ -301,6 +332,28 @@ async def run_one(q: dict, mode: str) -> dict:
 
     if mode == "baseline":
         gen = baseline_generate(q["question"])
+    elif mode == "enhanced":
+        schema = get_schema()
+        prompt = build_enhanced_prompt(q["question"])
+        try:
+            resp = _client.models.generate_content(
+                model=MODEL, contents=[prompt],
+                config=types.GenerateContentConfig(
+                    http_options=types.HttpOptions(
+                        timeout=60_000,
+                        retry_options=types.HttpRetryOptions(initial_delay=2.0, attempts=3)),
+                    temperature=0.0,
+                ),
+            )
+        except Exception as e:
+            gen = {"status": "error", "sql": "", "error": str(e), "tokens": 0}
+        else:
+            sql = _strip_fences(resp.text or "")
+            tokens = 0
+            if hasattr(resp, "usage_metadata") and resp.usage_metadata:
+                tokens = (getattr(resp.usage_metadata, "prompt_token_count", 0) or 0) + \
+                         (getattr(resp.usage_metadata, "candidates_token_count", 0) or 0)
+            gen = {"status": "ok", "sql": sql, "error": None, "tokens": tokens}
     else:
         gen = await full_generate(q["question"])
 
@@ -337,7 +390,7 @@ async def run_one(q: dict, mode: str) -> dict:
 
 async def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=["baseline", "full", "both"], default="both")
+    p.add_argument("--mode", choices=["baseline", "full", "enhanced", "both"], default="both")
     p.add_argument("--out-dir", default=None)
     args = p.parse_args()
 
