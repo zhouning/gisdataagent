@@ -66,8 +66,14 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
         column_name = col.get("column_name", "")
         aliases = col.get("aliases", []) or []
         pg_type = col.get("data_type") or col.get("udt_name") or ""
-        if col.get("is_geometry") and schema.get("geometry_type"):
-            pg_type = f"geometry({schema.get('geometry_type')},{schema.get('srid')})"
+        # Detect geometry column: explicit flag OR (USER-DEFINED type + geom-like name)
+        is_geom = bool(col.get("is_geometry", False))
+        if not is_geom and pg_type == "USER-DEFINED" and column_name.lower() in ("geometry", "geom", "the_geom", "shape"):
+            is_geom = True
+        if is_geom:
+            gt = schema.get("geometry_type") or source.get("geometry_type") or "Geometry"
+            srid = schema.get("srid") or source.get("srid") or 4326
+            pg_type = f"geometry({gt},{srid})"
         out_columns.append({
             "column_name": column_name,
             "pg_type": pg_type,
@@ -76,7 +82,7 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
             "semantic_domain": col.get("semantic_domain"),
             "unit": col.get("unit") or "",
             "description": col.get("description") or "",
-            "is_geometry": bool(col.get("is_geometry", False)),
+            "is_geometry": is_geom,
             "needs_quoting": _needs_quoting(column_name),
         })
     return {
@@ -103,7 +109,7 @@ def _format_grounding_prompt(payload: dict) -> str:
         for col in table.get("columns", []):
             alias_str = ", ".join(col.get("aliases") or []) or "—"
             lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')} | 别名: {alias_str}")
-            if col.get("is_geometry") and "4326" in str(col.get("pg_type", "")):
+            if col.get("is_geometry"):
                 has_geometry_4326 = True
         if any(c.get("needs_quoting") for c in table.get("columns", [])):
             lines.append('⚠ PostgreSQL 规则: 大小写混合列名必须使用双引号，例如 "Floor"、"Id"。')
