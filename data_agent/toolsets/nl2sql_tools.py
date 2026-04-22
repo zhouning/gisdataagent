@@ -6,6 +6,7 @@ from typing import Optional
 
 import geopandas as gpd
 import pandas as pd
+from sqlalchemy import text
 
 
 def discover_database_schema(table_pattern: str = "") -> str:
@@ -173,7 +174,7 @@ def execute_safe_sql(
             if output_format == "geojson":
                 for geom_col in ["geometry", "geom", "the_geom", "shape"]:
                     try:
-                        gdf = gpd.read_postgis(sql, conn, geom_col=geom_col)
+                        gdf = gpd.read_postgis(text(sql), conn, geom_col=geom_col)
                         if not gdf.empty:
                             # Save to file and return path
                             from ..user_context import current_user_id
@@ -202,7 +203,7 @@ def execute_safe_sql(
                         continue
 
             # Fallback to regular DataFrame
-            df = pd.read_sql(sql, conn)
+            df = pd.read_sql(text(sql), conn)
 
             return json.dumps({
                 "status": "ok",
