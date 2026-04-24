@@ -1,10 +1,12 @@
 [English](./README_en.md) | **中文**
 
-# GIS Data Agent (ADK Edition) v23.0
+# GIS Data Agent (ADK Edition) v24.0
 
 基于 **Google Agent Developer Kit (ADK) v1.27.2** 构建的 AI 驱动地理空间分析平台。通过多语言语义路由（中/英/日），自动调度三大专业管道完成空间数据治理、用地优化和通用空间智能分析。
 
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
+
+**v24.0 新增**：**@SubAgent Mention Routing + NL2SQL 增强 + PostGIS 直接可视化** — 聊天框 @mention 路由（`mention_registry.py` + `mention_parser.py` + 前端 autocomplete dropdown）；NL2SQL 多表召回修复（列名反查表 + fallback 补充模式 + synonym 扩展）、`execute_safe_sql` 默认上限从 1000 提到 100000；PostGIS 可视化权限三级兜底（ownership → semantic_sources → pg_class）+ 大表自适应采样（>100K 行自动 10K 随机采样）；XMI 领域标准系统（解析器 + 编译器 + Toolset + 6 REST API）；2026 Q2 技术四看 Roadmap 刷新。
 
 **v23.0 新增**：**Gemma 4 多模型管理 + Roadmap 全面清零** — Gemma 4 31B 注册（Gemini API + vLLM 自托管双通道）、DB 持久化管理员模型配置（`ModelConfigManager`）、前端交互式模型切换（下拉选择 + 自定义模型注册）、Intent Router 可配置化；意图消歧 v2（子任务分解 + 用户确认 + wave 按序执行）、DRL 约束建模（硬约束 action mask + 软约束 reward penalty）、跨图层关联高亮、标注协同 WebSocket、具身执行接口（UAV/卫星 mock）、离线 Service Worker、`pyproject.toml` 依赖分组。
 
@@ -41,11 +43,11 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试覆盖 | 3588 tests, 171 test files |
-| 工具集 | 40 BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具), 5 SkillBundle, 270+ 工具 |
-| ADK Skills | 25 场景化领域技能 (含 skill-creator, world-model, causal, surveying-qc) + DB 自定义 Skills + 用户工具 |
-| REST API | 280 endpoints (frontend_api 3438 行 + 24 拆分路由模块 4992 行 + app + stream + bots + WebSocket) |
-| DB 迁移 | 64 个 SQL 迁移 |
+| 测试覆盖 | 4700+ tests, 186 test files |
+| 工具集 | 42 BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具 + NL2SQLToolset), 5 SkillBundle, 270+ 工具 |
+| ADK Skills | 26 场景化领域技能 (含 skill-creator, world-model, causal, surveying-qc) + DB 自定义 Skills + 用户工具 |
+| REST API | 297 endpoints (frontend_api 3438 行 + 24 拆分路由模块 4992 行 + app + stream + bots + WebSocket) |
+| DB 迁移 | 65 个 SQL 迁移 |
 | DataPanel | 29 标签页 (3 分组: 数据资源/智能分析/平台运营) |
 | Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程 + 跨系统血缘) |
 | 跨系统血缘 | agent_asset_lineage 边表 + 外部资产注册 + BFS 图谱查询 (Tableau/Airflow/PowerBI) |
@@ -74,7 +76,7 @@
 | 因果推断 | 三角度体系: A (GeoFM 统计 6 工具) + B (LLM 推理 4 工具) + C (因果世界模型 4 工具), 82 tests |
 | 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
 | DRL + World Model | Dreamer 式集成: ParcelEmbeddingMapper + ActionToScenarioEncoder + 辅助奖励前瞻 |
-| NL2SQL | Schema-aware 动态查询 + 参数化安全 + 行政区模糊匹配 |
+| NL2SQL | Schema-aware 语义 grounding + 列名反查表召回 + 大表采样 + 参数化安全 + 12 题 benchmark 11.5/12 |
 | 连接器 | 10 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage/ReferenceData/SaveMyself) |
 | 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
 | 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + **告警规则引擎** + 实时监控仪表盘 + Grafana 模板 |

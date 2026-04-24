@@ -1,10 +1,12 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v23.0
+# GIS Data Agent (ADK Edition) v24.0
 
 An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 29 tabs), and enterprise-grade security.
 
-The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **276 REST API endpoints**.
+The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **297 REST API endpoints**.
+
+**v24.0**: **@SubAgent Mention Routing + NL2SQL Enhancement + PostGIS Direct Visualization** — Chat @mention routing (`mention_registry.py` + `mention_parser.py` + frontend autocomplete dropdown); NL2SQL multi-table recall fix (column-reverse-lookup + fallback supplement mode + synonym expansion), `execute_safe_sql` default limit raised from 1000 to 100000; PostGIS visualization 3-tier access fallback (ownership → semantic_sources → pg_class) + adaptive sampling for large tables (>100K rows auto-sample 10K); XMI domain standard system (parser + compiler + toolset + 6 REST APIs); 2026 Q2 technology four-lens roadmap refresh.
 
 **v23.0**: **Gemma 4 Multi-Model Management + Platform Enhancements** — Gemma 4 31B registration (Gemini API + vLLM dual path), DB-persistent admin model config (ModelConfigManager), interactive frontend model switching UI, configurable Intent Router, LiteLLM extra_headers/extra_body support; intent disambiguation v2 (subtask decomposition + wave execution), DRL constraint modeling (hard/soft constraints), cross-layer association highlighting, offline Service Worker, embodied execution interface, annotation WebSocket real-time broadcast. 84 new tests.
 
@@ -25,11 +27,11 @@ Industrial-grade **DITA XML** documentation with two document sets:
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 3588 tests, 171 test files |
-| Toolsets | 40 BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools), 5 SkillBundle, 270+ tools |
-| ADK Skills | 25 scenario skills (incl. surveying-qc, skill-creator, world-model, causal) + DB-driven custom Skills + User Tools |
-| REST API | 280 endpoints (frontend_api 3438 lines + 24 route modules 4992 lines + app + stream + bots + WebSocket) |
-| DB Migrations | 64 SQL migrations |
+| Test Coverage | 4700+ tests, 186 test files |
+| Toolsets | 42 BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools + NL2SQLToolset), 5 SkillBundle, 270+ tools |
+| ADK Skills | 26 scenario skills (incl. surveying-qc, skill-creator, world-model, causal) + DB-driven custom Skills + User Tools |
+| REST API | 297 endpoints (frontend_api 3438 lines + 24 route modules 4992 lines + app + stream + bots + WebSocket) |
+| DB Migrations | 65 SQL migrations |
 | DataPanel | 29 tabs in 3 groups (Data Resources / Intelligent Analysis / Platform Operations) |
 | Connectors | 10 built-in (WFS, STAC, OGC API, Custom API, WMS, ArcGIS REST, Database, OBS, Reference Data, SaveMyself) |
 | Data Agent Level | **SIGMOD 2026 L3+** (Full Conditional Autonomy + Context Engineering + Cross-System Lineage) |
