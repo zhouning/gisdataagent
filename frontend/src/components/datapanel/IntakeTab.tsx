@@ -13,6 +13,7 @@ interface IntakeJob {
 interface DatasetProfile {
   id: number;
   table_name: string;
+  schema_name: string;
   row_count: number;
   geometry_type: string | null;
   status: string;
@@ -47,7 +48,7 @@ export default function IntakeTab() {
   const fetchProfiles = async () => {
     setLoading(true);
     try {
-      const r = await fetch('/api/intake/profiles', { credentials: 'include' });
+      const r = await fetch('/api/intake/profiles?schema=public&latest=1', { credentials: 'include' });
       if (r.ok) { const d = await r.json(); setProfiles(d.profiles || []); }
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -182,6 +183,7 @@ export default function IntakeTab() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+              <th style={{ padding: '6px 4px' }}>Schema</th>
               <th style={{ padding: '6px 4px' }}>表名</th>
               <th style={{ padding: '6px 4px' }}>行数</th>
               <th style={{ padding: '6px 4px' }}>几何</th>
@@ -192,6 +194,7 @@ export default function IntakeTab() {
           <tbody>
             {profiles.map(p => (
               <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '6px 4px', fontFamily: 'monospace', color: '#64748b' }}>{p.schema_name}</td>
                 <td style={{ padding: '6px 4px', fontFamily: 'monospace' }}>{p.table_name}</td>
                 <td style={{ padding: '6px 4px' }}>{p.row_count?.toLocaleString()}</td>
                 <td style={{ padding: '6px 4px' }}>{p.geometry_type || '—'}</td>
@@ -225,6 +228,23 @@ export default function IntakeTab() {
                       {validating ? '验证中...' : '验证并激活'}
                     </button>
                   )}
+                  {p.status === 'validated' && (
+                    <button onClick={async () => {
+                              try {
+                                const dr = await fetch(`/api/intake/${p.id}/draft`, { credentials: 'include' });
+                                if (!dr.ok) { setMessage('获取草稿失败'); return; }
+                                const dd = await dr.json();
+                                const draftId = dd.id;
+                                const score = validationResult?.eval_score ?? 0.85;
+                                handleActivate(draftId, score);
+                              } catch (e: any) { setMessage(`激活异常：${e.message}`); }
+                            }}
+                            disabled={activating}
+                            style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
+                                     background: '#22c55e', color: '#fff', border: 'none', borderRadius: 3 }}>
+                      {activating ? '激活中...' : '激活'}
+                    </button>
+                  )}
                   {p.status === 'active' && (
                     <button onClick={() => handleRollback(p.id)}
                             style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
@@ -236,7 +256,7 @@ export default function IntakeTab() {
               </tr>
             ))}
             {profiles.length === 0 && (
-              <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: '#94a3b8' }}>
+              <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#94a3b8' }}>
                 暂无数据集。点击"扫描新表"开始接入。
               </td></tr>
             )}

@@ -267,8 +267,17 @@ def get_profile(table_name: str, job_id: Optional[int] = None) -> Optional[dict]
         return dict(zip(keys, row))
 
 
-def list_profiles(status: Optional[str] = None, job_id: Optional[int] = None) -> list[dict]:
-    """List dataset profiles, optionally filtered by status or job."""
+def list_profiles(
+    status: Optional[str] = None,
+    job_id: Optional[int] = None,
+    schema_name: Optional[str] = None,
+    latest_only: bool = True,
+) -> list[dict]:
+    """List dataset profiles, optionally filtered by status/job/schema.
+
+    By default returns only the latest profile for each (schema_name, table_name)
+    pair to avoid surfacing stale scan results.
+    """
     engine = get_engine()
     if not engine:
         return []
@@ -280,13 +289,32 @@ def list_profiles(status: Optional[str] = None, job_id: Optional[int] = None) ->
     if job_id:
         clauses.append("job_id = :j")
         params["j"] = job_id
+    if schema_name:
+        clauses.append("schema_name = :schema")
+        params["schema"] = schema_name
     where = "WHERE " + " AND ".join(clauses) if clauses else ""
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            f"SELECT id, table_name, row_count, geometry_type, status, created_at "
-            f"FROM agent_dataset_profiles {where} ORDER BY id"
-        ), params).fetchall()
-        return [dict(zip(["id", "table_name", "row_count", "geometry_type", "status", "created_at"], r))
+        if latest_only:
+            rows = conn.execute(text(
+                f"""
+                WITH ranked AS (
+                  SELECT id, table_name, schema_name, row_count, geometry_type, status, created_at,
+                         ROW_NUMBER() OVER (PARTITION BY schema_name, table_name ORDER BY id DESC) AS rn
+                  FROM agent_dataset_profiles
+                  {where}
+                )
+                SELECT id, table_name, schema_name, row_count, geometry_type, status, created_at
+                FROM ranked
+                WHERE rn = 1
+                ORDER BY schema_name, table_name
+                """
+            ), params).fetchall()
+        else:
+            rows = conn.execute(text(
+                f"SELECT id, table_name, schema_name, row_count, geometry_type, status, created_at "
+                f"FROM agent_dataset_profiles {where} ORDER BY schema_name, table_name, id DESC"
+            ), params).fetchall()
+        return [dict(zip(["id", "table_name", "schema_name", "row_count", "geometry_type", "status", "created_at"], r))
                 for r in rows]
 
 

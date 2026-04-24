@@ -59,10 +59,14 @@ async def _api_intake_profiles(request: Request):
     """GET /api/intake/profiles — list dataset profiles."""
     status = request.query_params.get("status")
     job_id = request.query_params.get("job_id")
+    schema_name = request.query_params.get("schema", "public")
+    latest_only = request.query_params.get("latest", "1") != "0"
     from ..dataset_intake import list_profiles
     profiles = list_profiles(
         status=status,
         job_id=int(job_id) if job_id else None,
+        schema_name=schema_name,
+        latest_only=latest_only,
     )
     return _json_response({"profiles": profiles})
 
