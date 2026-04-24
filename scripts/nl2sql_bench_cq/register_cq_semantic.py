@@ -25,7 +25,7 @@ TABLES = {
     "cq_land_use_dltb": {
         "display_name": "重庆市国土调查地类图斑 (DLTB)",
         "description": "第三次全国国土调查地类图斑数据，含土地利用分类编码(DLBM/DLMC)、权属单位、图斑面积。注意：TBMJ是投影面积(m²)，如需真实椭球面积应使用ST_Area(geometry::geography)。",
-        "synonyms": ["地类图斑", "DLTB", "土地利用", "国土调查", "三调", "land use"],
+        "synonyms": ["地类图斑", "DLTB", "土地利用", "国土调查", "三调", "land use", "图斑", "权属", "权属单位", "QSDWMC"],
         "suggested_analyses": ["land_use_statistics", "area_calculation", "spatial_join"],
     },
     "cq_amap_poi_2024": {

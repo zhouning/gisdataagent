@@ -165,18 +165,21 @@ def build_nl2sql_context(user_text: str) -> dict:
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
 
-    if not sources:
-        source_list = list_semantic_sources()
-        if source_list.get("status") == "success":
-            scored = []
-            for source in source_list.get("sources", []):
-                score = _score_source(user_text, source)
-                if score > 0:
-                    s = dict(source)
-                    s["confidence"] = score
-                    scored.append(s)
-            scored.sort(key=lambda s: s.get("confidence", 0), reverse=True)
-            sources = scored[:3]
+    # Supplement: fuzzy-match additional tables not already resolved by semantic layer
+    source_table_names = {s.get("table_name") for s in sources}
+    source_list = list_semantic_sources()
+    if source_list.get("status") == "success":
+        scored = []
+        for source in source_list.get("sources", []):
+            if source.get("table_name") in source_table_names:
+                continue
+            score = _score_source(user_text, source)
+            if score > 0.05:
+                s = dict(source)
+                s["confidence"] = score
+                scored.append(s)
+        scored.sort(key=lambda s: s.get("confidence", 0), reverse=True)
+        sources.extend(scored[:2])
 
     candidate_tables = []
     for source in sources[:3]:

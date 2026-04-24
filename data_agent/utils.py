@@ -86,32 +86,69 @@ def _load_spatial_data(file_path: str) -> gpd.GeoDataFrame:
     stripped = file_path.strip().strip('"').strip("'")
     _, ext_check = os.path.splitext(stripped)
     if not ext_check and _re.match(r'^[a-zA-Z0-9_]+$', stripped):
+        POSTGIS_LOAD_LIMIT = 100000
+        SAMPLE_LIMIT = 10000
         try:
             from data_agent.database_tools import get_db_connection_url, _inject_user_context, T_TABLE_OWNERSHIP
             from data_agent.db_engine import get_engine
             from sqlalchemy import text
             engine = get_engine()
             if engine:
+                # Access check: ownership → semantic_sources → pg_class
+                _access_ok = False
+                try:
+                    with engine.connect() as ck_conn:
+                        _inject_user_context(ck_conn)
+                        has_registry = ck_conn.execute(text(
+                            "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                            f"WHERE table_schema = 'public' AND table_name = '{T_TABLE_OWNERSHIP}')"
+                        )).scalar()
+                        if has_registry:
+                            access = ck_conn.execute(text(
+                                f"SELECT COUNT(*) FROM {T_TABLE_OWNERSHIP} WHERE table_name = :t"
+                            ), {"t": stripped}).scalar()
+                            _access_ok = access > 0
+                        else:
+                            _access_ok = True
+                except Exception:
+                    pass
+                if not _access_ok:
+                    try:
+                        with engine.connect() as ck_conn:
+                            sem = ck_conn.execute(text(
+                                "SELECT COUNT(*) FROM agent_semantic_sources WHERE table_name = :t"
+                            ), {"t": stripped}).scalar()
+                            _access_ok = sem > 0
+                    except Exception:
+                        pass
+                if not _access_ok:
+                    try:
+                        with engine.connect() as ck_conn:
+                            exists = ck_conn.execute(text(
+                                "SELECT EXISTS (SELECT 1 FROM pg_class WHERE relname = :t AND relkind = 'r')"
+                            ), {"t": stripped}).scalar()
+                            _access_ok = exists
+                    except Exception:
+                        pass
+                if not _access_ok:
+                    raise PermissionError(
+                        f"Table '{stripped}' not found or access denied for current user."
+                    )
+                # Load data with adaptive sizing
                 with engine.connect() as conn:
                     _inject_user_context(conn)
-                    # Ownership check via table_ownership (RLS auto-filters)
-                    has_registry = conn.execute(text(
-                        "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
-                        f"WHERE table_schema = 'public' AND table_name = '{T_TABLE_OWNERSHIP}')"
-                    )).scalar()
-                    if has_registry:
-                        access = conn.execute(text(
-                            f"SELECT COUNT(*) FROM {T_TABLE_OWNERSHIP} WHERE table_name = :t"
-                        ), {"t": stripped}).scalar()
-                        if access == 0:
-                            raise PermissionError(
-                                f"Table '{stripped}' not found or access denied for current user."
-                            )
-                    # Read with user context active on this connection
-                    # Safety: ALWAYS enforce LIMIT to prevent OOM — no table
-                    # should be fully loaded into memory via geopandas
-                    POSTGIS_LOAD_LIMIT = 100000
-                    load_sql = f'SELECT * FROM "{stripped}" LIMIT {POSTGIS_LOAD_LIMIT}'
+                    # Estimate table size for adaptive loading
+                    est_rows = 0
+                    try:
+                        est_rows = conn.execute(text(
+                            "SELECT reltuples::bigint FROM pg_class WHERE relname = :t"
+                        ), {"t": stripped}).scalar() or 0
+                    except Exception:
+                        pass
+                    if est_rows > POSTGIS_LOAD_LIMIT:
+                        load_sql = f'SELECT * FROM "{stripped}" ORDER BY random() LIMIT {SAMPLE_LIMIT}'
+                    else:
+                        load_sql = f'SELECT * FROM "{stripped}" LIMIT {POSTGIS_LOAD_LIMIT}'
                     gdf = gpd.read_postgis(
                         text(load_sql),
                         conn,

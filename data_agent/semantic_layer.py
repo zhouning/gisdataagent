@@ -412,27 +412,53 @@ def resolve_semantic_context(user_text: str) -> dict:
                             "confidence": score,
                         })
 
-                    # --- 2. Match column annotations from DB ---
-                    matched_tables = [s["table_name"] for s in result["sources"]]
-                    if matched_tables:
-                        col_rows = _get_cached_registry(conn, matched_tables)
+                # --- 1b. Column-reverse-lookup: recover tables missed by synonym matching ---
+                matched_table_names = {s["table_name"] for s in result["sources"]}
+                all_table_names = {r[0] for r in rows}
+                unmatched_tables = all_table_names - matched_table_names
+                if unmatched_tables:
+                    rev_col_rows = _get_cached_registry(conn, list(unmatched_tables))
+                    reverse_hits: dict = {}
+                    for crow in rev_col_rows:
+                        r_tbl, r_col, _, aliases_raw, _, _, _ = crow
+                        alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
+                        col_score = _match_aliases(user_text, alias_list + [r_col])
+                        if col_score > 0:
+                            reverse_hits[r_tbl] = max(reverse_hits.get(r_tbl, 0), col_score)
+                    for r_tbl, best_score in reverse_hits.items():
+                        row_match = next((r for r in rows if r[0] == r_tbl), None)
+                        if row_match:
+                            _, disp, desc, geom_type, srid, _ = row_match
+                            result["sources"].append({
+                                "table_name": r_tbl,
+                                "display_name": disp or r_tbl,
+                                "description": desc or "",
+                                "geometry_type": geom_type,
+                                "srid": srid,
+                                "confidence": best_score * 0.8,
+                            })
 
-                        for crow in col_rows:
-                            tbl, col, domain, aliases_raw, unit, cdesc, is_geom = crow
-                            alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
-                            col_score = _match_aliases(user_text, alias_list)
-                            if col_score > 0 or is_geom:
-                                if tbl not in result["matched_columns"]:
-                                    result["matched_columns"][tbl] = []
-                                result["matched_columns"][tbl].append({
-                                    "column_name": col,
-                                    "semantic_domain": domain,
-                                    "aliases": alias_list,
-                                    "unit": unit,
-                                    "description": cdesc or "",
-                                    "is_geometry": is_geom,
-                                    "confidence": col_score,
-                                })
+                # --- 2. Match column annotations from DB ---
+                matched_tables = [s["table_name"] for s in result["sources"]]
+                if matched_tables:
+                    col_rows = _get_cached_registry(conn, matched_tables)
+
+                    for crow in col_rows:
+                        tbl, col, domain, aliases_raw, unit, cdesc, is_geom = crow
+                        alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
+                        col_score = _match_aliases(user_text, alias_list)
+                        if col_score > 0 or is_geom:
+                            if tbl not in result["matched_columns"]:
+                                result["matched_columns"][tbl] = []
+                            result["matched_columns"][tbl].append({
+                                "column_name": col,
+                                "semantic_domain": domain,
+                                "aliases": alias_list,
+                                "unit": unit,
+                                "description": cdesc or "",
+                                "is_geometry": is_geom,
+                                "confidence": col_score,
+                            })
         except Exception:
             pass  # non-fatal, fall through to static catalog
 

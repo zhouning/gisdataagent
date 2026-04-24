@@ -115,7 +115,7 @@ def discover_database_schema(table_pattern: str = "") -> str:
 def execute_safe_sql(
     sql: str,
     output_format: str = "json",
-    max_rows: int = 1000,
+    max_rows: int = 100000,
 ) -> str:
     """执行只读 SQL 查询（带安全检查）。
 
@@ -125,7 +125,7 @@ def execute_safe_sql(
     Args:
         sql: SQL 查询语句（仅支持 SELECT）。
         output_format: 输出格式，可选 "json"（默认）或 "geojson"（如果有几何列）。
-        max_rows: 最大返回行数，默认 1000。
+        max_rows: 最大返回行数，默认 100000（硬上限，防 OOM）。
 
     Returns:
         JSON 字符串，包含查询结果或错误信息。
