@@ -194,6 +194,9 @@ PROMPT_ENHANCED = """你是 PostgreSQL/PostGIS NL2SQL 助手。请先阅读下�
 2. 只允许 SELECT
 3. 大表全表扫描必须加 LIMIT
 4. 直接输出 SQL，不要解释
+5. 如果用户请求 DELETE/UPDATE/DROP/INSERT/ALTER/TRUNCATE 等写操作，直接输出 SELECT 1 拒绝
+6. 如果用户问的数据在 schema 中不存在（如 GDP、人口等），直接输出 SELECT 1 拒绝
+7. PostgreSQL 的 ROUND(double precision, integer) 不存在，必须先 ::numeric 再 ROUND，如 ROUND((...) ::numeric, 2)
 
 [NL2SQL 上下文]
 {grounding}
@@ -353,6 +356,35 @@ async def run_one(q: dict, mode: str) -> dict:
             if hasattr(resp, "usage_metadata") and resp.usage_metadata:
                 tokens = (getattr(resp.usage_metadata, "prompt_token_count", 0) or 0) + \
                          (getattr(resp.usage_metadata, "candidates_token_count", 0) or 0)
+            # Phase 2: postprocess + self-correction loop
+            from data_agent.sql_postprocessor import postprocess_sql
+            from data_agent.nl2sql_grounding import build_nl2sql_context
+            ctx = build_nl2sql_context(q["question"])
+            table_schemas = {}
+            large_tables_set = set()
+            for t in ctx.get("candidate_tables", []):
+                table_schemas[t["table_name"]] = t.get("columns", [])
+                if int(t.get("row_count_hint", 0) or 0) >= 1_000_000:
+                    large_tables_set.add(t["table_name"])
+            pp = postprocess_sql(sql, table_schemas, large_tables_set)
+            if pp.rejected:
+                sql = ""
+            else:
+                sql = pp.sql
+                # Try execute and retry on failure
+                test_res = execute_pg(sql) if sql else {"status": "error", "error": "empty"}
+                for _retry in range(2):
+                    if test_res.get("status") == "ok":
+                        break
+                    from data_agent.nl2sql_executor import _retry_with_llm
+                    fixed = _retry_with_llm(q["question"], sql, str(test_res.get("error", "")), table_schemas)
+                    if not fixed:
+                        break
+                    pp2 = postprocess_sql(fixed, table_schemas, large_tables_set)
+                    if pp2.rejected:
+                        break
+                    sql = pp2.sql
+                    test_res = execute_pg(sql)
             gen = {"status": "ok", "sql": sql, "error": None, "tokens": tokens}
     else:
         gen = await full_generate(q["question"])

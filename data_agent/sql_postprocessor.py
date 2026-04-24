@@ -211,11 +211,23 @@ def postprocess_sql(
     if (
         large_tables
         and _references_large_table(parsed, large_tables)
-        and not _has_limit(parsed)
         and not _is_aggregation_only(parsed)
     ):
-        parsed = _inject_limit(parsed, DEFAULT_LIMIT)
-        result.corrections.append(f"LIMIT {DEFAULT_LIMIT} injected (large table referenced)")
+        if not _has_limit(parsed):
+            parsed = _inject_limit(parsed, DEFAULT_LIMIT)
+            result.corrections.append(f"LIMIT {DEFAULT_LIMIT} injected (large table referenced)")
+        else:
+            # Bump LLM-injected small LIMITs (<=100) to DEFAULT_LIMIT
+            outermost = _get_outermost_select(parsed)
+            if outermost:
+                limit_node = outermost.args.get("limit")
+                if limit_node:
+                    limit_expr = limit_node.expression
+                    if isinstance(limit_expr, exp.Literal) and limit_expr.is_int:
+                        val = int(limit_expr.this)
+                        if val <= 100:
+                            limit_node.set("expression", exp.Literal.number(DEFAULT_LIMIT))
+                            result.corrections.append(f"LIMIT {val} bumped to {DEFAULT_LIMIT} (large table)")
 
     result.sql = parsed.sql(dialect="postgres")
     return result
