@@ -247,11 +247,11 @@ class TestPlannerSkillIntegration(unittest.TestCase):
         self.fail("No SkillToolset found in Planner tools")
 
     def test_planner_still_has_other_toolsets(self):
-        """Planner should retain Memory, NL2SQL, Operator, ToolEvolution toolsets."""
+        """Planner should retain Memory, NL2SQL Enhanced, Operator, ToolEvolution toolsets."""
         from data_agent.agent import planner_agent
         tool_types = [type(t).__name__ for t in planner_agent.tools]
         self.assertIn("MemoryToolset", tool_types)
-        self.assertIn("NL2SQLToolset", tool_types)
+        self.assertIn("NL2SQLEnhancedToolset", tool_types)
         self.assertIn("OperatorToolset", tool_types)
         self.assertIn("ToolEvolutionToolset", tool_types)
 

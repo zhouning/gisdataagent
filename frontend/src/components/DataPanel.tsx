@@ -38,6 +38,7 @@ import MessageBusTab from './datapanel/MessageBusTab';
 import MetadataPanel from './datapanel/MetadataPanel';
 import FeedbackTab from './datapanel/FeedbackTab';
 import DomainStandardsTab from './datapanel/DomainStandardsTab';
+import IntakeTab from './datapanel/IntakeTab';
 import SemanticLayerTab from './datapanel/SemanticLayerTab';
 
 interface DataPanelProps {
@@ -45,7 +46,7 @@ interface DataPanelProps {
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'semantic' | 'agents';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'semantic' | 'agents' | 'intake';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -69,6 +70,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'geojson', label: 'GeoJSON', icon: <MapPin size={ICON_SIZE} /> },
       { key: 'charts', label: '图表', icon: <BarChart3 size={ICON_SIZE} /> },
       { key: 'topology', label: '拓扑', icon: <Network size={ICON_SIZE} /> },
+      { key: 'intake', label: '接入', icon: <LayoutGrid size={ICON_SIZE} /> },
     ],
   },
   {
@@ -222,6 +224,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'feedback' && <FeedbackTab />}
         {activeTab === 'topology' && <TopologyTab />}
         {activeTab === 'agents' && <AgentsTab />}
+        {activeTab === 'intake' && <IntakeTab />}
         {activeTab === 'standards' && <DomainStandardsTab />}
         {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
       </div>

@@ -57,6 +57,7 @@ from .toolsets.watershed_tools import WatershedToolset
 from .toolsets.virtual_source_tools import VirtualSourceToolset
 from .toolsets.world_model_tools import WorldModelToolset
 from .toolsets.nl2sql_tools import NL2SQLToolset
+from .toolsets.nl2sql_enhanced_tools import NL2SQLEnhancedToolset
 from .toolsets.causal_inference_tools import CausalInferenceToolset
 from .toolsets.llm_causal_tools import LLMCausalToolset
 from .toolsets.causal_world_model_tools import CausalWorldModelToolset
@@ -482,6 +483,7 @@ general_processing_agent = LlmAgent(
         DataCleaningToolset(),
         PrecisionToolset(),
         ReportToolset(),
+        NL2SQLEnhancedToolset(),
     ] + _arcpy_tools,
 )
 
@@ -835,7 +837,7 @@ planner_agent = LlmAgent(
     tools=[
         build_all_skills_toolset(),  # 5 domain skills, incremental loading
         MemoryToolset(),
-        NL2SQLToolset(),  # Schema-aware NL2SQL for dynamic table queries
+        NL2SQLEnhancedToolset(),  # Schema-aware NL2SQL with grounding + self-correction
         OperatorToolset(),  # Semantic operators: clean/integrate/analyze/visualize (L3)
         ToolEvolutionToolset(),  # Tool evolution: metadata, failure-driven discovery, dynamic management (L3)
         AdminToolset(),
