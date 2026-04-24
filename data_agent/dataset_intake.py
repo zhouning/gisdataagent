@@ -88,25 +88,27 @@ def scan_tables(
             ORDER BY c.table_name
         """), params).fetchall()
 
-        profiles = []
-        # Collect tables that already have a non-discovered profile (any job)
-        existing_statuses = {}
+        # Collect latest existing profile per table so scan acts like a sync.
+        existing_profiles = {}
         try:
             rows_existing = conn.execute(text("""
-                SELECT DISTINCT ON (table_name) table_name, status
+                SELECT DISTINCT ON (table_name) id, table_name, status
                 FROM agent_dataset_profiles
                 WHERE schema_name = :schema
                 ORDER BY table_name, id DESC
             """), {"schema": schema_name}).fetchall()
-            existing_statuses = {r[0]: r[1] for r in rows_existing}
+            existing_profiles = {r[1]: {"id": r[0], "status": r[2]} for r in rows_existing}
         except Exception:
             pass
 
+        profiles = []
         for tbl_name, tbl_comment in tables:
-            prev_status = existing_statuses.get(tbl_name)
-            if prev_status and prev_status != "discovered":
-                continue
-            profile = _scan_single_table(conn, schema_name, tbl_name, tbl_comment, job_id)
+            existing = existing_profiles.get(tbl_name)
+            profile = _scan_single_table(
+                conn, schema_name, tbl_name, tbl_comment, job_id,
+                existing_profile_id=existing["id"] if existing else None,
+                existing_status=existing["status"] if existing else None,
+            )
             if profile:
                 profiles.append(profile)
 
@@ -125,7 +127,9 @@ def scan_tables(
 
 
 def _scan_single_table(conn, schema_name: str, table_name: str,
-                        table_comment: Optional[str], job_id: int) -> Optional[dict]:
+                        table_comment: Optional[str], job_id: int,
+                        existing_profile_id: Optional[int] = None,
+                        existing_status: Optional[str] = None) -> Optional[dict]:
     """Scan a single table and insert its profile."""
     try:
         # Columns
@@ -207,30 +211,41 @@ def _scan_single_table(conn, schema_name: str, table_name: str,
         if not geometry_type:
             risk_tags.append({"type": "no_geometry"})
 
-        # Insert profile
-        conn.execute(text("""
-            INSERT INTO agent_dataset_profiles
-                (job_id, table_name, schema_name, row_count, geometry_type, srid,
-                 columns_json, sample_values, primary_key_candidates,
-                 risk_tags, table_comment, status)
-            VALUES (:jid, :tbl, :schema, :rows, :geom_type, :srid,
-                    CAST(:cols AS jsonb), CAST(:samples AS jsonb), CAST(:pks AS jsonb),
-                    CAST(:risks AS jsonb), :comment, 'discovered')
-            ON CONFLICT (job_id, table_name) DO UPDATE SET
-                row_count = EXCLUDED.row_count,
-                columns_json = EXCLUDED.columns_json,
-                sample_values = EXCLUDED.sample_values,
-                risk_tags = EXCLUDED.risk_tags,
-                updated_at = NOW()
-        """), {
-            "jid": job_id, "tbl": table_name, "schema": schema_name,
-            "rows": row_count, "geom_type": geometry_type, "srid": srid,
-            "cols": json.dumps(columns_json, ensure_ascii=False),
-            "samples": json.dumps(sample_values, ensure_ascii=False),
-            "pks": json.dumps(pk_candidates),
-            "risks": json.dumps(risk_tags, ensure_ascii=False),
-            "comment": table_comment,
-        })
+        # Upsert profile: update existing or insert new
+        if existing_profile_id:
+            conn.execute(text("""
+                UPDATE agent_dataset_profiles
+                SET job_id = :jid, row_count = :rows, geometry_type = :geom_type, srid = :srid,
+                    columns_json = CAST(:cols AS jsonb), sample_values = CAST(:samples AS jsonb),
+                    primary_key_candidates = CAST(:pks AS jsonb), risk_tags = CAST(:risks AS jsonb),
+                    table_comment = :comment, updated_at = NOW()
+                WHERE id = :pid
+            """), {
+                "jid": job_id, "rows": row_count, "geom_type": geometry_type, "srid": srid,
+                "cols": json.dumps(columns_json, ensure_ascii=False),
+                "samples": json.dumps(sample_values, ensure_ascii=False),
+                "pks": json.dumps(pk_candidates),
+                "risks": json.dumps(risk_tags, ensure_ascii=False),
+                "comment": table_comment, "pid": existing_profile_id,
+            })
+        else:
+            conn.execute(text("""
+                INSERT INTO agent_dataset_profiles
+                    (job_id, table_name, schema_name, row_count, geometry_type, srid,
+                     columns_json, sample_values, primary_key_candidates,
+                     risk_tags, table_comment, status)
+                VALUES (:jid, :tbl, :schema, :rows, :geom_type, :srid,
+                        CAST(:cols AS jsonb), CAST(:samples AS jsonb), CAST(:pks AS jsonb),
+                        CAST(:risks AS jsonb), :comment, 'discovered')
+            """), {
+                "jid": job_id, "tbl": table_name, "schema": schema_name,
+                "rows": row_count, "geom_type": geometry_type, "srid": srid,
+                "cols": json.dumps(columns_json, ensure_ascii=False),
+                "samples": json.dumps(sample_values, ensure_ascii=False),
+                "pks": json.dumps(pk_candidates),
+                "risks": json.dumps(risk_tags, ensure_ascii=False),
+                "comment": table_comment,
+            })
 
         return {
             "table_name": table_name,
@@ -239,6 +254,7 @@ def _scan_single_table(conn, schema_name: str, table_name: str,
             "srid": srid,
             "columns": len(columns_json),
             "risk_tags": [r["type"] for r in risk_tags],
+            "status": existing_status or "discovered",
         }
     except Exception as e:
         logger.warning("Failed to scan table %s: %s", table_name, e)
