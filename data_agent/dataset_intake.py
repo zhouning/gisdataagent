@@ -89,7 +89,23 @@ def scan_tables(
         """), params).fetchall()
 
         profiles = []
+        # Collect tables that already have a non-discovered profile (any job)
+        existing_statuses = {}
+        try:
+            rows_existing = conn.execute(text("""
+                SELECT DISTINCT ON (table_name) table_name, status
+                FROM agent_dataset_profiles
+                WHERE schema_name = :schema
+                ORDER BY table_name, id DESC
+            """), {"schema": schema_name}).fetchall()
+            existing_statuses = {r[0]: r[1] for r in rows_existing}
+        except Exception:
+            pass
+
         for tbl_name, tbl_comment in tables:
+            prev_status = existing_statuses.get(tbl_name)
+            if prev_status and prev_status != "discovered":
+                continue
             profile = _scan_single_table(conn, schema_name, tbl_name, tbl_comment, job_id)
             if profile:
                 profiles.append(profile)
