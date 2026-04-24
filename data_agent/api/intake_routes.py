@@ -15,8 +15,14 @@ from __future__ import annotations
 import json
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
+
+
+def _json_response(data, status_code=200):
+    """JSONResponse with default=str for datetime serialization."""
+    body = json.dumps(data, ensure_ascii=False, default=str)
+    return Response(content=body, status_code=status_code, media_type="application/json")
 
 
 async def _api_intake_scan(request: Request):
@@ -46,7 +52,7 @@ async def _api_intake_job(request: Request):
     job = get_job(job_id)
     if not job:
         return JSONResponse({"error": "job not found"}, status_code=404)
-    return JSONResponse(job, default=str)
+    return _json_response(job)
 
 
 async def _api_intake_profiles(request: Request):
@@ -58,7 +64,7 @@ async def _api_intake_profiles(request: Request):
         status=status,
         job_id=int(job_id) if job_id else None,
     )
-    return JSONResponse({"profiles": profiles}, default=str)
+    return _json_response({"profiles": profiles})
 
 
 async def _api_intake_get_draft(request: Request):
@@ -85,7 +91,7 @@ async def _api_intake_get_draft(request: Request):
     draft = get_draft(tbl)
     if not draft:
         return JSONResponse({"error": "no draft found"}, status_code=404)
-    return JSONResponse(draft, default=str)
+    return _json_response(draft)
 
 
 async def _api_intake_generate_draft(request: Request):
@@ -101,7 +107,7 @@ async def _api_intake_generate_draft(request: Request):
     result = generate_draft(profile_id=dataset_id, use_llm=use_llm)
     if not result:
         return JSONResponse({"error": "profile not found"}, status_code=404)
-    return JSONResponse(result, default=str)
+    return _json_response(result)
 
 
 async def _api_intake_review(request: Request):
@@ -155,7 +161,7 @@ async def _api_intake_activate(request: Request):
         activated_by=user,
     )
     code = 200 if result.get("status") == "ok" else 400
-    return JSONResponse(result, default=str)
+    return _json_response(result)
 
 
 async def _api_intake_validate(request: Request):
@@ -164,7 +170,7 @@ async def _api_intake_validate(request: Request):
     from ..intake_validation import validate_dataset
     result = validate_dataset(profile_id=dataset_id)
     code = 200 if result.get("status") == "ok" else 400
-    return JSONResponse(result, default=str)
+    return _json_response(result)
 
 
 async def _api_intake_rollback(request: Request):
@@ -173,7 +179,7 @@ async def _api_intake_rollback(request: Request):
     from ..intake_registry import rollback_activation
     result = rollback_activation(dataset_id=dataset_id)
     code = 200 if result.get("status") == "ok" else 400
-    return JSONResponse(result, default=str)
+    return _json_response(result)
 
 
 def get_intake_routes() -> list[Route]:
