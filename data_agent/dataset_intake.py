@@ -198,8 +198,8 @@ def _scan_single_table(conn, schema_name: str, table_name: str,
                  columns_json, sample_values, primary_key_candidates,
                  risk_tags, table_comment, status)
             VALUES (:jid, :tbl, :schema, :rows, :geom_type, :srid,
-                    :cols::jsonb, :samples::jsonb, :pks::jsonb,
-                    :risks::jsonb, :comment, 'discovered')
+                    CAST(:cols AS jsonb), CAST(:samples AS jsonb), CAST(:pks AS jsonb),
+                    CAST(:risks AS jsonb), :comment, 'discovered')
             ON CONFLICT (job_id, table_name) DO UPDATE SET
                 row_count = EXCLUDED.row_count,
                 columns_json = EXCLUDED.columns_json,

@@ -66,8 +66,8 @@ def review_draft(
 
         conn.execute(text("""
             UPDATE agent_semantic_drafts
-            SET columns_draft = :cols::jsonb,
-                join_candidates = :joins::jsonb,
+            SET columns_draft = CAST(:cols AS jsonb),
+                join_candidates = CAST(:joins AS jsonb),
                 review_notes = :notes,
                 reviewed_by = :reviewer,
                 reviewed_at = NOW(),
@@ -136,7 +136,7 @@ def activate_draft(
             INSERT INTO agent_semantic_sources
                 (table_name, display_name, description, geometry_type, srid,
                  synonyms, owner_username)
-            VALUES (:tbl, :dn, :desc, :gt, :srid, :syns::jsonb, :owner)
+            VALUES (:tbl, :dn, :desc, :gt, :srid, CAST(:syns AS jsonb), :owner)
             ON CONFLICT (table_name) DO UPDATE SET
                 display_name = EXCLUDED.display_name,
                 description = EXCLUDED.description,
@@ -160,7 +160,7 @@ def activate_draft(
                 INSERT INTO agent_semantic_registry
                     (table_name, column_name, semantic_domain, aliases,
                      unit, description, is_geometry, owner_username)
-                VALUES (:tbl, :col, :domain, :aliases::jsonb,
+                VALUES (:tbl, :col, :domain, CAST(:aliases AS jsonb),
                         :unit, :desc, :is_geom, :owner)
                 ON CONFLICT (table_name, column_name) DO UPDATE SET
                     semantic_domain = EXCLUDED.semantic_domain,
@@ -184,7 +184,7 @@ def activate_draft(
             INSERT INTO agent_semantic_activations
                 (dataset_id, draft_id, draft_version, eval_score, eval_details,
                  activated_by, is_current)
-            VALUES (:pid, :did, :ver, :score, :details::jsonb, :user, TRUE)
+            VALUES (:pid, :did, :ver, :score, CAST(:details AS jsonb), :user, TRUE)
         """), {
             "pid": profile_id, "did": draft_id, "ver": version,
             "score": eval_score, "details": json.dumps(eval_details or {}),

@@ -163,7 +163,7 @@ def generate_draft(profile_id: int, use_llm: bool = True) -> Optional[dict]:
                  aliases_json, columns_draft, join_candidates, risk_flags,
                  confidence, status)
             VALUES (:pid, :tbl, :ver, :dn, :desc,
-                    :aliases::jsonb, :cols::jsonb, :joins::jsonb, :risks::jsonb,
+                    CAST(:aliases AS jsonb), CAST(:cols AS jsonb), CAST(:joins AS jsonb), CAST(:risks AS jsonb),
                     :conf, 'drafted')
         """), {
             "pid": profile_id, "tbl": table_name, "ver": new_version,
