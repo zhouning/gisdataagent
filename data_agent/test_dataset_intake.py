@@ -36,6 +36,35 @@ class TestDatasetIntake(unittest.TestCase):
         self.assertNotIn("active", VALID_TRANSITIONS["discovered"])
         self.assertNotIn("drafted", VALID_TRANSITIONS["active"])
 
+    @patch("data_agent.dataset_intake.get_engine")
+    def test_scan_tables_does_not_commit_inside_begin_context(self, mock_engine):
+        """Regression: _ensure_tables must not close the outer engine.begin() transaction."""
+        mock_conn = MagicMock()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__.return_value = mock_conn
+        mock_ctx.__exit__.return_value = False
+        mock_engine.return_value.begin.return_value = mock_ctx
+
+        # Minimal successful path
+        def fake_execute(*args, **kwargs):
+            sql_text = str(args[0])
+            m = MagicMock()
+            if "RETURNING id" in sql_text:
+                m.fetchone.return_value = (1,)
+            elif "FROM information_schema.tables c" in sql_text:
+                m.fetchall.return_value = []
+            else:
+                m.fetchone.return_value = None
+                m.fetchall.return_value = []
+                m.scalar.return_value = 0
+            return m
+        mock_conn.execute.side_effect = fake_execute
+        mock_conn.commit = MagicMock()
+
+        from data_agent.dataset_intake import scan_tables
+        result = scan_tables(table_filter=["test_table"])
+        self.assertEqual(result["status"], "ok")
+        mock_conn.commit.assert_not_called()
 
 class TestSemanticDrafting(unittest.TestCase):
     """Tests for semantic_drafting.py — draft generation."""

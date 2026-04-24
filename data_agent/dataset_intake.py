@@ -43,7 +43,6 @@ def _ensure_tables(conn):
                     conn.execute(text(stmt))
                 except Exception:
                     pass
-        conn.commit()
 
 
 def scan_tables(
