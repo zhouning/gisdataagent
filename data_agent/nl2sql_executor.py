@@ -61,23 +61,9 @@ def _retry_with_llm(
         "注意：大小写混合的列名必须双引号（如 \"DLMC\"、\"Floor\"）。"
     )
     try:
-        from google import genai
-        client = genai.Client()
-        resp = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[prompt],
-            config=genai.types.GenerateContentConfig(
-                http_options=genai.types.HttpOptions(
-                    timeout=20_000,
-                    retry_options=genai.types.HttpRetryOptions(
-                        initial_delay=1.0,
-                        attempts=2,
-                    ),
-                ),
-                temperature=0.0,
-            ),
-        )
-        fixed = _strip_fences(resp.text or "")
+        from .llm_client import generate_text, strip_fences
+        raw = generate_text(prompt, tier="fast", timeout_ms=20_000)
+        fixed = strip_fences(raw)
         return fixed if fixed else None
     except Exception:
         return None

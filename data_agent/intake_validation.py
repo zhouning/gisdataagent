@@ -117,20 +117,9 @@ def _generate_sql_for_question(question: str, grounding_prompt: str) -> str | No
         f"用户问题: {question}\n"
     )
     try:
-        from google import genai
-        import re
-        client = genai.Client()
-        resp = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[prompt],
-            config=genai.types.GenerateContentConfig(
-                http_options=genai.types.HttpOptions(timeout=20_000),
-                temperature=0.0,
-            ),
-        )
-        raw = (resp.text or "").strip()
-        m = re.match(r"^```(?:sql)?\s*(.*?)\s*```$", raw, re.DOTALL | re.IGNORECASE)
-        return m.group(1).strip() if m else raw
+        from .llm_client import generate_text, strip_fences
+        raw = generate_text(prompt, tier="fast", timeout_ms=20_000)
+        return strip_fences(raw)
     except Exception as e:
         logger.debug("SQL generation failed: %s", e)
         return None

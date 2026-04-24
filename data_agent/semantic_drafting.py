@@ -254,19 +254,9 @@ def _enhance_with_llm(table_name: str, display_name: str,
         "只输出 JSON，不要解释。"
     )
     try:
-        from google import genai
-        client = genai.Client()
-        resp = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[prompt],
-            config=genai.types.GenerateContentConfig(
-                http_options=genai.types.HttpOptions(timeout=20_000),
-                temperature=0.0,
-            ),
-        )
-        raw = (resp.text or "").strip()
-        raw = re.sub(r'^```(?:json)?\s*', '', raw)
-        raw = re.sub(r'\s*```$', '', raw)
+        from .llm_client import generate_text, strip_fences
+        raw = generate_text(prompt, tier="fast", timeout_ms=20_000)
+        raw = strip_fences(raw)
         return json.loads(raw)
     except Exception as e:
         logger.debug("LLM enhancement failed: %s", e)

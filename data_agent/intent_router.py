@@ -145,28 +145,43 @@ def classify_intent(text: str, previous_pipeline: str = None,
             except Exception as img_err:
                 logger.debug("Could not load images for router: %s", img_err)
 
-        response = _router_client.models.generate_content(
-            model=_get_router_model(),
-            contents=content_parts,
-            config=types.GenerateContentConfig(
-                http_options=types.HttpOptions(
-                    timeout=30_000,  # 30s
-                    retry_options=types.HttpRetryOptions(
-                        initial_delay=2.0,
-                        attempts=3,
+        try:
+            response = _router_client.models.generate_content(
+                model=_get_router_model(),
+                contents=content_parts,
+                config=types.GenerateContentConfig(
+                    http_options=types.HttpOptions(
+                        timeout=30_000,  # 30s
+                        retry_options=types.HttpRetryOptions(
+                            initial_delay=2.0,
+                            attempts=3,
+                        ),
                     ),
                 ),
-            ),
-        )
+            )
+            raw = response.text.strip()
+        except Exception as _gemini_err:
+            _err_str = str(_gemini_err)
+            if "429" not in _err_str and "RESOURCE_EXHAUSTED" not in _err_str:
+                raise
+            logger.info("[Router] Gemini 429, falling back to DeepSeek")
+            try:
+                from .llm_client import generate_text
+                _text_prompt = content_parts[0] if isinstance(content_parts[0], str) else str(content_parts[0])
+                raw = generate_text(_text_prompt, tier="fast", timeout_ms=20_000)
+            except Exception as _ds_err:
+                logger.error("[Router] DeepSeek fallback failed: %s", _ds_err)
+                raise _gemini_err
         # Track router token consumption
         router_input_tokens = 0
         router_output_tokens = 0
-        if hasattr(response, 'usage_metadata') and response.usage_metadata:
-            router_input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
-            router_output_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
+        try:
+            if response and hasattr(response, 'usage_metadata') and response.usage_metadata:
+                router_input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
+                router_output_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
+        except NameError:
+            pass  # DeepSeek fallback path — no response object
         router_tokens = router_input_tokens + router_output_tokens
-
-        raw = response.text.strip()
 
         # --- Parse tool categories (v7.5.6) ---
         tool_cats = set()
