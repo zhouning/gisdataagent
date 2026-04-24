@@ -134,6 +134,23 @@ class TestIntakeRegistry(unittest.TestCase):
 class TestIntakeValidation(unittest.TestCase):
     """Tests for intake_validation.py — cold-start evaluation."""
 
+    def test_build_grounding_from_draft_uses_table_name_not_semantic_layer(self):
+        from data_agent.intake_validation import _build_grounding_from_draft
+        draft = {
+            "display_name": "历史保护区范围成果表",
+            "description": "Historic districts polygons",
+            "columns_draft": json.dumps([
+                {"column_name": "jqmc", "data_type": "varchar", "aliases": ["街区名称"], "needs_quoting": False},
+                {"column_name": "fwlx", "data_type": "varchar", "aliases": ["范围类型"], "needs_quoting": False},
+                {"column_name": "geometry", "udt_name": "geometry", "aliases": [], "needs_quoting": False},
+            ]),
+        }
+        profile = {"row_count": 20}
+        text = _build_grounding_from_draft("cq_historic_districts", draft, profile)
+        self.assertIn("cq_historic_districts", text)
+        self.assertIn("历史保护区范围成果表", text)
+        self.assertIn("如果用户要求全部/所有结果，不要擅自添加 LIMIT", text)
+
     def test_build_validation_questions_covers_required_types(self):
         from data_agent.intake_validation import _build_validation_questions
         draft = {

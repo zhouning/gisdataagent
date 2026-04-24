@@ -68,6 +68,41 @@ def _build_validation_questions(table_name: str, draft: dict, profile: dict) -> 
     return questions
 
 
+def _build_grounding_from_draft(table_name: str, draft: dict, profile: dict) -> str:
+    """Build a strict grounding prompt directly from the draft metadata.
+
+    Unlike build_nl2sql_context(), this does NOT rely on production semantic layer,
+    because validation happens before activation.
+    """
+    cols_raw = draft.get("columns_draft") or []
+    cols = json.loads(cols_raw) if isinstance(cols_raw, str) else cols_raw
+    row_count = profile.get("row_count", 0)
+    display_name = draft.get("display_name") or table_name
+    description = draft.get("description") or f"Table {table_name}"
+
+    lines = ["[NL2SQL 上下文 — 必须严格遵循以下 schema]", "", "## 候选数据源", ""]
+    lines.append(f"### {table_name} ({display_name})")
+    lines.append(f"估计行数: {row_count}")
+    lines.append(description)
+    for col in cols:
+        ref = f'"{col["column_name"]}"' if col.get("needs_quoting") else col["column_name"]
+        alias_str = ", ".join(col.get("aliases") or []) or "—"
+        pg_type = col.get("data_type") or col.get("udt_name") or ""
+        lines.append(f"- {ref} :: {pg_type} | 别名: {alias_str}")
+    if any(c.get("needs_quoting") for c in cols):
+        lines.append('⚠ PostgreSQL 规则: 大小写混合列名必须使用双引号，例如 "Floor"、"DLMC"。')
+    lines.append("")
+    lines.append("## 安全规则")
+    lines.append("- 只允许 SELECT 查询")
+    lines.append("- 写操作（DELETE/UPDATE/DROP/INSERT）必须拒绝，输出 SELECT 1")
+    lines.append("- 如果问题引用了 schema 中不存在的字段，必须拒绝，输出 SELECT 1")
+    if row_count >= 100000:
+        lines.append("- 这是大表，全表扫描必须有 LIMIT")
+    else:
+        lines.append("- 这不是大表。如果用户要求全部/所有结果，不要擅自添加 LIMIT")
+    return "\n".join(lines)
+
+
 def _generate_sql_for_question(question: str, grounding_prompt: str) -> str | None:
     """Use Gemini Flash to generate SQL for a validation question."""
     prompt = (
@@ -199,10 +234,8 @@ def validate_dataset(profile_id: int) -> dict:
         draft_id, cols_draft, display_name, description, aliases_raw = draft_row
         draft = {"columns_draft": cols_draft, "display_name": display_name, "description": description}
 
-    # Build grounding prompt from draft
-    from .nl2sql_grounding import build_nl2sql_context
-    grounding = build_nl2sql_context(f"查询 {table_name} 的数据")
-    grounding_prompt = grounding.get("grounding_prompt", "")
+    # Build grounding prompt directly from draft (not production semantic layer)
+    grounding_prompt = _build_grounding_from_draft(table_name, draft, profile)
 
     # Generate and evaluate questions
     questions = _build_validation_questions(table_name, draft, profile)
