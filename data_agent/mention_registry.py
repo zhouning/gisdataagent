@@ -54,6 +54,9 @@ _SUB_AGENT_TARGETS = [
     {"handle": "GeneralViz", "label": "GeneralViz", "type": "sub_agent",
      "description": "通用可视化", "allowed_roles": ["admin", "analyst", "viewer"],
      "required_state_keys": ["processed_data"], "pipeline": "GENERAL"},
+    {"handle": "NL2SQL", "label": "NL2SQL", "type": "sub_agent",
+     "description": "自然语言直达数据库查询（跳过意图路由，更快）", "allowed_roles": ["admin", "analyst"],
+     "required_state_keys": [], "pipeline": "GENERAL"},
 ]
 
 

@@ -880,6 +880,20 @@ _AGENT_MAP = {
     ),
     "GeneralProcessing": lambda: _make_planner_processor("MentionGeneralProcessing"),
     "GeneralViz": lambda: _make_planner_visualizer("MentionGeneralViz"),
+    "NL2SQL": lambda: LlmAgent(
+        name="MentionNL2SQL",
+        instruction=(
+            "你是 NL2SQL 专家。用户会用自然语言描述数据查询需求，你需要：\n"
+            "1. 先调用 prepare_nl2sql_context 获取 schema grounding\n"
+            "2. 根据 grounding 生成 SQL\n"
+            "3. 调用 execute_nl2sql 执行并返回结果\n"
+            "如果用户请求 DELETE/UPDATE/DROP 等写操作，直接拒绝。\n"
+            "如果用户问的数据在 schema 中不存在，如实告知。"
+        ),
+        model=get_model_for_tier("standard"),
+        output_key="nl2sql_result",
+        tools=[NL2SQLEnhancedToolset(), SemanticLayerToolset(), DatabaseToolset(tool_filter=["query_database", "describe_table"])],
+    ),
 }
 
 
