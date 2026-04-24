@@ -34,6 +34,7 @@ class ReferenceQueryStore:
         source: str = "manual",
         feedback_id: Optional[int] = None,
         created_by: Optional[str] = None,
+        domain_id: Optional[str] = None,
     ) -> Optional[int]:
         """Add a reference query with auto-computed embedding. Returns id."""
         engine = get_engine()
@@ -57,11 +58,11 @@ class ReferenceQueryStore:
                         INSERT INTO agent_reference_queries
                             (query_text, description, response_summary, tags,
                              pipeline_type, task_type, source, feedback_id,
-                             embedding, created_by)
+                             embedding, created_by, domain_id)
                         VALUES
                             (:query, :desc, :resp, :tags::jsonb,
                              :pipe, :task, :source, :fb_id,
-                             :emb, :creator)
+                             :emb, :creator, :domain_id)
                         RETURNING id
                     """),
                     {
@@ -75,6 +76,7 @@ class ReferenceQueryStore:
                         "fb_id": feedback_id,
                         "emb": embedding,
                         "creator": created_by or current_user_id.get("system"),
+                        "domain_id": domain_id,
                     },
                 ).fetchone()
                 conn.commit()
@@ -375,14 +377,29 @@ class ReferenceQueryStore:
 # ---------------------------------------------------------------------------
 
 
-def fetch_nl2sql_few_shots(query: str, top_k: int = 3) -> str:
+def fetch_nl2sql_few_shots(query: str, top_k: int = 3, domain_id: Optional[str] = None) -> str:
     """Fetch reference queries as NL2SQL few-shot examples.
 
+    Domain-priority search: same domain first, then global fallback.
     Returns formatted prompt section or empty string.
     """
     try:
         store = ReferenceQueryStore()
-        hits = store.search(query, top_k=top_k, task_type="nl2sql")
+        hits = []
+        # Priority 1: same domain
+        if domain_id:
+            domain_hits = store.search(query, top_k=top_k, task_type="nl2sql")
+            hits = [h for h in domain_hits if h.get("domain_id") == domain_id]
+        # Priority 2: global fallback
+        if len(hits) < top_k:
+            remaining = top_k - len(hits)
+            all_hits = store.search(query, top_k=top_k + 5, task_type="nl2sql")
+            seen_ids = {h["id"] for h in hits}
+            for h in all_hits:
+                if h["id"] not in seen_ids:
+                    hits.append(h)
+                    if len(hits) >= top_k:
+                        break
         if not hits:
             return ""
         lines = ["参考查询示例:"]

@@ -3693,6 +3693,7 @@ def get_frontend_api_routes():
     from .api.lineage_routes import get_lineage_routes
     from .api.agent_management_routes import get_agent_management_routes
     from .annotation_ws import annotation_ws_routes
+    from .api.intake_routes import get_intake_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -3908,6 +3909,8 @@ def get_frontend_api_routes():
         *get_lineage_routes(),
         # Agent Management (v24.1)
         *get_agent_management_routes(),
+        # Dataset Intake (v24.1)
+        *get_intake_routes(),
         # Annotation WebSocket (v23.0)
         *annotation_ws_routes,
     ]

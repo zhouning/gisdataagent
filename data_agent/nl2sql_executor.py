@@ -87,11 +87,19 @@ def _auto_curate(question: str, sql: str) -> None:
     """Auto-curate successful (question, SQL) pairs into reference_queries.
 
     Uses dedup (cosine > 0.92) built into ReferenceQueryStore.add().
+    Infers domain_id from table names in the SQL for domain isolation.
     Non-fatal: silently ignores any errors.
     """
     if not question or not sql:
         return
     try:
+        # Infer domain from table names in SQL
+        import re
+        domain_id = None
+        table_match = re.findall(r'\bFROM\s+"?(\w+)"?', sql, re.IGNORECASE)
+        if table_match:
+            domain_id = table_match[0]
+
         from .reference_queries import ReferenceQueryStore
         store = ReferenceQueryStore()
         store.add(
@@ -99,6 +107,7 @@ def _auto_curate(question: str, sql: str) -> None:
             response_summary=sql,
             task_type="nl2sql",
             source="auto_curate",
+            domain_id=domain_id,
         )
     except Exception:
         pass
