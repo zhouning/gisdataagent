@@ -26,6 +26,10 @@ _ENV_DEFAULTS = {
     "tier_standard": ("MODEL_STANDARD", "gemini-2.5-flash"),
     "tier_premium": ("MODEL_PREMIUM", "gemini-2.5-pro"),
     "router_model": ("ROUTER_MODEL", "gemini-2.0-flash"),
+    "embedding_model": ("EMBEDDING_MODEL", "text-embedding-004"),
+    "cost_guard_warn": ("COST_GUARD_WARN", "50000"),
+    "cost_guard_abort": ("COST_GUARD_ABORT", "200000"),
+    "cost_guard_usd_abort": ("COST_GUARD_USD_ABORT", "0"),
 }
 
 
@@ -108,6 +112,39 @@ class ModelConfigManager:
         self._cache["router_model"] = model_name
         return self._persist("router_model", model_name, updated_by)
 
+    def get(self, key: str) -> Optional[str]:
+        """Generic config getter."""
+        self._ensure_loaded()
+        return self._cache.get(key)
+
+    def get_embedding_model(self) -> str:
+        """Get the active embedding model name."""
+        self._ensure_loaded()
+        return self._cache.get("embedding_model", "text-embedding-004")
+
+    def set_embedding_model(self, model_name: str, updated_by: str) -> bool:
+        """Set the embedding model. Persists to DB + updates cache."""
+        self._cache["embedding_model"] = model_name
+        return self._persist("embedding_model", model_name, updated_by)
+
+    def get_cost_guard_config(self) -> dict:
+        """Return CostGuard thresholds as typed values."""
+        self._ensure_loaded()
+        return {
+            "warn_threshold": int(self._cache.get("cost_guard_warn", "50000")),
+            "abort_threshold": int(self._cache.get("cost_guard_abort", "200000")),
+            "usd_abort": float(self._cache.get("cost_guard_usd_abort", "0")),
+        }
+
+    def set_cost_guard(self, key: str, value: str, updated_by: str) -> bool:
+        """Set a CostGuard config value. key must be one of warn/abort/usd_abort."""
+        valid = {"warn": "cost_guard_warn", "abort": "cost_guard_abort", "usd_abort": "cost_guard_usd_abort"}
+        config_key = valid.get(key)
+        if not config_key:
+            return False
+        self._cache[config_key] = value
+        return self._persist(config_key, value, updated_by)
+
     def _persist(self, key: str, value: str, updated_by: str) -> bool:
         engine = self._get_engine()
         if not engine:
@@ -132,8 +169,10 @@ class ModelConfigManager:
         """Return full config for API exposure."""
         self._ensure_loaded()
         from .model_gateway import ModelRegistry
+        from .embedding_gateway import EmbeddingRegistry
         ModelRegistry._ensure_initialized()
         available = ModelRegistry.list_models()
+        available_embeddings = EmbeddingRegistry.list_models()
         return {
             "tiers": {
                 "fast": {"model": self.get_tier_model("fast")},
@@ -141,7 +180,9 @@ class ModelConfigManager:
                 "premium": {"model": self.get_tier_model("premium")},
             },
             "router_model": self.get_router_model(),
+            "embedding_model": self.get_embedding_model(),
             "available_models": available,
+            "available_embedding_models": available_embeddings,
         }
 
 

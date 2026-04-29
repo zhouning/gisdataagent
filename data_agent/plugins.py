@@ -60,16 +60,26 @@ class CostGuardPlugin(BasePlugin):
         usd_abort: float = 0.0,
     ):
         super().__init__(name="cost_guard")
-        self.warn_threshold = warn_threshold or int(
+        # Try DB config first, then env vars, then defaults
+        db_config = self._load_db_config()
+        self.warn_threshold = warn_threshold or db_config.get("warn_threshold") or int(
             os.environ.get("COST_GUARD_WARN", "50000")
         )
-        self.abort_threshold = abort_threshold or int(
+        self.abort_threshold = abort_threshold or db_config.get("abort_threshold") or int(
             os.environ.get("COST_GUARD_ABORT", "200000")
         )
-        self.usd_abort = usd_abort or float(
+        self.usd_abort = usd_abort or db_config.get("usd_abort") or float(
             os.environ.get("COST_GUARD_USD_ABORT", "0")
         )
         self._warned = False
+
+    @staticmethod
+    def _load_db_config() -> dict:
+        try:
+            from .model_config import get_config_manager
+            return get_config_manager().get_cost_guard_config()
+        except Exception:
+            return {}
 
     async def before_model_callback(self, *, callback_context, llm_request):
         """Check accumulated tokens/cost before each LLM call."""

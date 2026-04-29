@@ -3665,6 +3665,111 @@ async def _api_admin_model_config_custom(request: Request):
     return JSONResponse({"status": "ok", "model": name, "backend": backend}, status_code=201)
 
 
+async def _api_admin_embedding_config_get(request: Request):
+    """GET /api/admin/embedding-config — current embedding model and available options."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _username, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+
+    from .model_config import get_config_manager
+    from .embedding_gateway import EmbeddingRegistry
+    mgr = get_config_manager()
+    EmbeddingRegistry._ensure_initialized()
+    return JSONResponse({
+        "embedding_model": mgr.get_embedding_model(),
+        "available_embedding_models": EmbeddingRegistry.list_models(),
+    })
+
+
+async def _api_admin_embedding_config_put(request: Request):
+    """PUT /api/admin/embedding-config — switch active embedding model."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    model_name = body.get("embedding_model")
+    if not model_name:
+        return JSONResponse({"error": "embedding_model is required"}, status_code=400)
+
+    from .embedding_gateway import EmbeddingRegistry
+    from .model_config import get_config_manager
+    EmbeddingRegistry._ensure_initialized()
+    if not EmbeddingRegistry.get_model_info(model_name):
+        return JSONResponse({"error": f"Embedding model '{model_name}' not found in registry"}, status_code=400)
+
+    mgr = get_config_manager()
+    mgr.set_embedding_model(model_name, username)
+    return JSONResponse({
+        "status": "ok",
+        "embedding_model": model_name,
+        "note": "Embedding 模型已切换；建议对知识库和参考查询执行 reindex 以保证向量维度/语义一致性",
+    })
+
+
+async def _api_admin_cost_guard_get(request: Request):
+    """GET /api/admin/cost-guard-config — current CostGuard thresholds."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    from .model_config import get_config_manager
+    config = get_config_manager().get_cost_guard_config()
+    return JSONResponse(config)
+
+
+async def _api_admin_cost_guard_put(request: Request):
+    """PUT /api/admin/cost-guard-config — update CostGuard thresholds (admin only).
+
+    Body: {"warn_threshold": 50000, "abort_threshold": 200000, "usd_abort": 0.5}
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, role = _set_user_context(user)
+    if role != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    from .model_config import get_config_manager
+    mgr = get_config_manager()
+    updated = []
+    key_map = {
+        "warn_threshold": "warn",
+        "abort_threshold": "abort",
+        "usd_abort": "usd_abort",
+    }
+    for field, short_key in key_map.items():
+        if field in body:
+            val = body[field]
+            if not isinstance(val, (int, float)) or val < 0:
+                return JSONResponse({"error": f"{field} must be a non-negative number"}, status_code=400)
+            mgr.set_cost_guard(short_key, str(val), username)
+            updated.append(field)
+
+    if not updated:
+        return JSONResponse({"error": "No valid fields provided"}, status_code=400)
+
+    return JSONResponse({
+        "status": "ok",
+        "updated": updated,
+        "note": "新阈值将在下次 pipeline 执行时生效",
+    })
+
+
 # ---------------------------------------------------------------------------
 # Route Mounting
 # ---------------------------------------------------------------------------
@@ -3804,6 +3909,11 @@ def get_frontend_api_routes():
         Route("/api/admin/model-config", endpoint=_api_admin_model_config_get, methods=["GET"]),
         Route("/api/admin/model-config", endpoint=_api_admin_model_config_put, methods=["PUT"]),
         Route("/api/admin/model-config/custom", endpoint=_api_admin_model_config_custom, methods=["POST"]),
+        Route("/api/admin/embedding-config", endpoint=_api_admin_embedding_config_get, methods=["GET"]),
+        Route("/api/admin/embedding-config", endpoint=_api_admin_embedding_config_put, methods=["PUT"]),
+        # Admin CostGuard Configuration
+        Route("/api/admin/cost-guard-config", endpoint=_api_admin_cost_guard_get, methods=["GET"]),
+        Route("/api/admin/cost-guard-config", endpoint=_api_admin_cost_guard_put, methods=["PUT"]),
         # Custom Skills (v8.0.1)
         # Custom Skills (S-4: delegated to api/skills_routes.py)
         *get_skills_routes(),

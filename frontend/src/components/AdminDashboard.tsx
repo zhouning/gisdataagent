@@ -34,7 +34,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'bots' | 'a2a' | 'models'>('metrics');
+  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'bots' | 'a2a' | 'models' | 'costguard'>('metrics');
 
   return (
     <div className="admin-dashboard">
@@ -52,6 +52,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
             onClick={() => setActiveSection('a2a')}>A2A</button>
           <button className={activeSection === 'models' ? 'active' : ''}
             onClick={() => setActiveSection('models')}>模型配置</button>
+          <button className={activeSection === 'costguard' ? 'active' : ''}
+            onClick={() => setActiveSection('costguard')}>成本控制</button>
           <button className={activeSection === 'users' ? 'active' : ''}
             onClick={() => setActiveSection('users')}>用户管理</button>
           <button className={activeSection === 'audit' ? 'active' : ''}
@@ -64,6 +66,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         {activeSection === 'bots' && <BotsSection />}
         {activeSection === 'a2a' && <A2ASection />}
         {activeSection === 'models' && <ModelsSection />}
+        {activeSection === 'costguard' && <CostGuardSection />}
         {activeSection === 'users' && <UsersSection />}
         {activeSection === 'audit' && <AuditSection />}
       </div>
@@ -473,12 +476,16 @@ function ModelsSection() {
   };
 
   const availableModels: string[] = (config.available_models || []).map((m: any) => m.name);
+  const availableEmbeddingModels: string[] = Object.keys(config.available_embedding_models || {});
 
   const handleTierChange = (tier: string, model: string) => {
     setEdits(prev => ({ ...prev, [`tier_${tier}`]: model }));
   };
   const handleRouterChange = (model: string) => {
     setEdits(prev => ({ ...prev, router_model: model }));
+  };
+  const handleEmbeddingChange = (model: string) => {
+    setEdits(prev => ({ ...prev, embedding_model: model }));
   };
 
   const handleSave = async () => {
@@ -499,9 +506,15 @@ function ModelsSection() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ router_model: value }),
           });
+        } else if (key === 'embedding_model') {
+          await fetch('/api/admin/embedding-config', {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embedding_model: value }),
+          });
         }
       }
-      setMsg('保存成功。Router 立即生效，Agent 层级需重启生效。');
+      setMsg('保存成功。Router 立即生效，Agent 层级需重启生效；Embedding 切换后建议执行 reindex。');
       loadConfig();
     } catch { setMsg('保存失败'); }
     setSaving(false);
@@ -555,6 +568,19 @@ function ModelsSection() {
                 <td style={{ fontSize: 11, color: '#6b7280' }}>{tierUsage[tier]}</td>
               </tr>
             ))}
+            <tr>
+              <td style={{ fontWeight: 600 }}>Embedding（向量模型）</td>
+              <td>
+                <select
+                  value={edits.embedding_model || config.embedding_model || 'text-embedding-004'}
+                  onChange={e => handleEmbeddingChange(e.target.value)}
+                  style={{ fontSize: 12, padding: '4px 8px', borderRadius: 4, border: '1px solid #d1d5db', width: '100%' }}
+                >
+                  {availableEmbeddingModels.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </td>
+              <td style={{ fontSize: 11, color: '#6b7280' }}>知识库检索、NL2SQL few-shot、字段语义匹配</td>
+            </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>Router（意图路由）</td>
               <td>
@@ -621,6 +647,89 @@ function ModelsSection() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function CostGuardSection() {
+  const [config, setConfig] = useState<{ warn_threshold: number; abort_threshold: number; usd_abort: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [edits, setEdits] = useState<Record<string, number>>({});
+  const [msg, setMsg] = useState('');
+
+  const loadConfig = () => {
+    fetch('/api/admin/cost-guard-config', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { setConfig(data); setEdits({}); setMsg(''); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadConfig(); }, []);
+
+  if (loading) return <div className="admin-loading">加载中...</div>;
+  if (!config) return <div className="admin-loading">无法加载成本控制配置</div>;
+
+  const fields: { key: string; label: string; desc: string; unit: string }[] = [
+    { key: 'warn_threshold', label: '警告阈值', desc: '累计 token 达到此值时发出警告', unit: 'tokens' },
+    { key: 'abort_threshold', label: '中止阈值', desc: '累计 token 达到此值时强制中止 pipeline', unit: 'tokens' },
+    { key: 'usd_abort', label: 'USD 上限', desc: '单次 pipeline 费用达到此值时中止（0=不限）', unit: 'USD' },
+  ];
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const resp = await fetch('/api/admin/cost-guard-config', {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(edits),
+      });
+      const data = await resp.json();
+      if (resp.ok) { setMsg('保存成功，下次 pipeline 执行时生效'); loadConfig(); }
+      else setMsg(data.error || '保存失败');
+    } catch { setMsg('网络错误'); }
+    finally { setSaving(false); }
+  };
+
+  const hasEdits = Object.keys(edits).length > 0;
+
+  return (
+    <div className="admin-section">
+      <h3>CostGuard 成本控制</h3>
+      <p style={{ color: '#888', fontSize: 13, marginBottom: 16 }}>
+        控制单次 pipeline 执行的 token 消耗上限，防止异常查询导致过高费用。
+      </p>
+      <table className="admin-table">
+        <thead><tr><th>参数</th><th>当前值</th><th>新值</th><th>说明</th></tr></thead>
+        <tbody>
+          {fields.map(f => (
+            <tr key={f.key}>
+              <td><strong>{f.label}</strong></td>
+              <td>{(config as any)[f.key]} {f.unit}</td>
+              <td>
+                <input type="number" min={0} step={f.key === 'usd_abort' ? 0.01 : 10000}
+                  style={{ width: 120 }}
+                  placeholder={(config as any)[f.key]}
+                  value={edits[f.key] ?? ''}
+                  onChange={e => {
+                    const v = parseFloat(e.target.value);
+                    if (!isNaN(v)) setEdits(prev => ({ ...prev, [f.key]: v }));
+                    else setEdits(prev => { const n = { ...prev }; delete n[f.key]; return n; });
+                  }}
+                />
+              </td>
+              <td style={{ color: '#888', fontSize: 12 }}>{f.desc}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button disabled={!hasEdits || saving} onClick={handleSave}>
+          {saving ? '保存中...' : '保存'}
+        </button>
+        {msg && <span style={{ color: msg.includes('成功') ? '#4caf50' : '#f44336', fontSize: 13 }}>{msg}</span>}
+      </div>
     </div>
   );
 }
