@@ -4,6 +4,23 @@ from __future__ import annotations
 from difflib import SequenceMatcher
 
 from .reference_queries import fetch_nl2sql_few_shots
+
+_COMPLEX_FEWSHOT_HINTS = (
+    "面积", "距离", "交集", "相交", "缓冲", "占比", "最近", "前10", "前5", "排序", "联合", "周边"
+)
+
+
+def _should_fetch_few_shots(user_text: str, candidate_tables: list, semantic: dict) -> bool:
+    """Only fetch expensive embedding-based few-shots for genuinely complex queries."""
+    high_conf_tables = [t for t in candidate_tables if t.get("confidence", 0) >= 0.6]
+    if len(high_conf_tables) > 1:
+        return True
+    if any(h in user_text for h in _COMPLEX_FEWSHOT_HINTS):
+        return True
+    # Spatial signal alone is too broad; require an additional metric/filter hint
+    if semantic.get("spatial_ops") and (semantic.get("metric_hints") or semantic.get("sql_filters")):
+        return True
+    return False
 from .semantic_layer import (
     describe_table_semantic,
     list_semantic_sources,
@@ -37,6 +54,7 @@ def _estimate_table_size(table_name: str) -> int:
     """Best-effort table size estimate via pg_class.reltuples.
 
     Returns approximate row count, or 0 if unavailable.
+    Falls back to COUNT(*) when reltuples is -1 (table not yet ANALYZEd).
     """
     try:
         from .db_engine import get_engine
@@ -49,7 +67,13 @@ def _estimate_table_size(table_name: str) -> int:
                 "SELECT reltuples::bigint FROM pg_class WHERE relname = :t"
             ), {"t": table_name})
             row = r.fetchone()
-            return max(int(row[0]), 0) if row and row[0] else 0
+            val = int(row[0]) if row and row[0] is not None else -1
+            if val >= 0:
+                return val
+            r2 = conn.execute(sa_text(
+                f'SELECT COUNT(*) FROM "{table_name}"'
+            ))
+            return int(r2.scalar() or 0)
     except Exception:
         return 0
 
@@ -85,7 +109,7 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
             is_geom = True
         if is_geom:
             gt = schema.get("geometry_type") or source.get("geometry_type") or "Geometry"
-            srid = schema.get("srid") or source.get("srid") or 4326
+            srid = schema.get("srid") or source.get("srid") or 0
             pg_type = f"geometry({gt},{srid})"
         out_columns.append({
             "column_name": column_name,
@@ -114,29 +138,63 @@ def _format_grounding_prompt(payload: dict) -> str:
     lines.append("[NL2SQL 上下文 — 必须严格遵循以下 schema]")
     lines.append("")
     lines.append("## 候选数据源")
-    has_geometry_4326 = False
+    geom_srids: dict[str, int] = {}  # table.column -> srid
     for table in payload.get("candidate_tables", []):
         lines.append("")
         lines.append(f"### {table['table_name']} ({table.get('display_name') or table['table_name']})")
         lines.append(f"置信度: {table.get('confidence', 0.0):.2f}; 估计行数: {table.get('row_count_hint', 0)}")
         for col in table.get("columns", []):
             alias_str = ", ".join(col.get("aliases") or []) or "—"
-            lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')} | 别名: {alias_str}")
+            unit_str = f" [单位: {col['unit']}]" if col.get("unit") else ""
+            lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')}{unit_str} | 别名: {alias_str}")
             if col.get("is_geometry"):
-                has_geometry_4326 = True
+                pg_type = col.get("pg_type", "")
+                srid = 0
+                if "," in pg_type:
+                    try:
+                        srid = int(pg_type.rsplit(",", 1)[1].rstrip(")"))
+                    except (ValueError, IndexError):
+                        pass
+                geom_srids[f"{table['table_name']}.{col['column_name']}"] = srid
         if any(c.get("needs_quoting") for c in table.get("columns", [])):
             lines.append('⚠ PostgreSQL 规则: 大小写混合列名必须使用双引号，例如 "Floor"、"Id"。')
-    if has_geometry_4326:
-        lines.append("")
-        lines.append("## ⚠ 空间几何字段规则 (SRID 4326)")
-        lines.append("- geometry 列是 EPSG:4326 经纬度坐标，单位是**度**，不是米")
-        lines.append("- 计算**真实长度/面积（米/平方米）**必须先转 geography:")
-        lines.append("  - 长度: `ST_Length(geometry::geography)` → 米")
-        lines.append("  - 面积: `ST_Area(geometry::geography)` → 平方米")
-        lines.append("  - 距离: `ST_Distance(a.geometry::geography, b.geometry::geography)` → 米")
-        lines.append("  - 缓冲/距离范围: `ST_DWithin(a.geometry::geography, b.geometry::geography, 500)` → 500米范围")
-        lines.append("- 空间关系（Intersects/Contains/Within）**不需要** geography 转换，直接用 geometry")
-        lines.append("- KNN 最近邻排序用 `ORDER BY a.geometry <-> b.geometry LIMIT N`（空间索引优化，不需要 geography）")
+
+    if geom_srids:
+        geographic_cols = {k: v for k, v in geom_srids.items() if v in (4326, 4490, 4610)}
+        projected_cols = {k: v for k, v in geom_srids.items() if v not in (4326, 4490, 4610)}
+        distinct_srids = set(geom_srids.values())
+
+        if len(distinct_srids) > 1:
+            lines.append("")
+            lines.append("## ⚠ SRID 不一致警告")
+            lines.append("- 候选表的几何列使用了不同的 SRID，跨表空间操作前**必须**用 ST_Transform 对齐:")
+            for col_key, srid in geom_srids.items():
+                lines.append(f"  - {col_key}: SRID={srid}")
+            target_srid = max(geom_srids.values())
+            if projected_cols:
+                target_srid = next(iter(projected_cols.values()))
+            lines.append(f"- 建议: 将其他列 ST_Transform 到 SRID={target_srid} 后再做空间运算")
+
+        if geographic_cols:
+            lines.append("")
+            lines.append("## 空间几何字段规则 (地理坐标)")
+            cols_list = ", ".join(geographic_cols.keys())
+            lines.append(f"- 适用于: {cols_list}")
+            lines.append("- 这些列是经纬度坐标（度），计算真实长度/面积必须先转 geography:")
+            lines.append("  - 面积: `ST_Area(geom::geography)` → 平方米")
+            lines.append("  - 距离: `ST_Distance(a::geography, b::geography)` → 米")
+            lines.append("  - 范围: `ST_DWithin(a::geography, b::geography, 500)` → 500米")
+            lines.append("- 空间关系（Intersects/Contains/Within）直接用 geometry，不需要 geography")
+
+        if projected_cols:
+            lines.append("")
+            lines.append("## 空间几何字段规则 (投影坐标)")
+            cols_list = ", ".join(projected_cols.keys())
+            lines.append(f"- 适用于: {cols_list}")
+            lines.append("- 这些列已经是投影坐标（米），ST_Area/ST_Length **直接返回平方米/米**")
+            lines.append("- **禁止**对这些列使用 `::geography` 转换（会报错）")
+            lines.append("- 面积: `ST_Area(geom)` → 平方米（直接使用）")
+            lines.append("- 空间关系: `ST_Intersects(a, b)` 直接使用")
     lines.append("")
     lines.append("## 语义提示")
     hints = payload.get("semantic_hints", {})
@@ -191,7 +249,9 @@ def build_nl2sql_context(user_text: str) -> dict:
             continue
         candidate_tables.append(_build_candidate_table(source, schema))
 
-    few_shot_text = fetch_nl2sql_few_shots(user_text, top_k=3)
+    few_shot_text = ""
+    if _should_fetch_few_shots(user_text, candidate_tables, semantic):
+        few_shot_text = fetch_nl2sql_few_shots(user_text, top_k=3)
     few_shots = []
     if few_shot_text:
         few_shots.append({"question": "参考查询示例", "sql": few_shot_text})

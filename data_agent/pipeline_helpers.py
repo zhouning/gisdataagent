@@ -188,7 +188,7 @@ def build_progress_content(
     from data_agent.i18n import t
     timing_map = {st["name"]: st for st in stage_timings}
 
-    if pipeline_type == "planner":
+    if pipeline_type in ("planner", "sub_agent_direct"):
         if is_complete:
             header = t("progress.steps_complete", label=f"**{pipeline_label}**", count=len(stage_timings))
         elif stage_timings:
@@ -362,4 +362,37 @@ def inject_context(query: str, task_type: str, user_context: dict | None = None)
     except Exception as e:
         logger.debug("inject_context failed: %s", e)
         return ""
+
+
+import re as _re
+
+_COT_PATTERNS = _re.compile(
+    r"(?:^|\n)"
+    r"(?:"
+    r"(?:让我|我来|我需要|我应该|我查看|我先|根据规则|根据返回|根据 grounding|不过根据|"
+    r"所以我|实际上|用户想要|用户要求|用户想|用户问|用户明确|"
+    r"不过，安全|不过，|现在我来|这涉及到)"
+    r"[^\n]{0,200}\n?"
+    r")+",
+    _re.MULTILINE,
+)
+
+_COT_PREFIXES = _re.compile(
+    r"^(?:好的，|好，|OK，|首先，|接下来，|然后，|最后，)"
+    r"(?:让我|我来|我需要|我先)",
+)
+
+
+def clean_cot_leakage(text: str) -> str:
+    """Remove chain-of-thought reasoning leaked into model output."""
+    if not text or len(text) < 20:
+        return text
+    cleaned = _COT_PATTERNS.sub("\n", text)
+    cleaned = _COT_PREFIXES.sub("", cleaned)
+    lines = [ln for ln in cleaned.split("\n") if ln.strip()]
+    result = "\n".join(lines)
+    if len(result.strip()) < 10 and len(text.strip()) > 10:
+        return text
+    return result
+
 

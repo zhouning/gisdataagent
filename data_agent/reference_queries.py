@@ -60,7 +60,7 @@ class ReferenceQueryStore:
                              pipeline_type, task_type, source, feedback_id,
                              embedding, created_by, domain_id)
                         VALUES
-                            (:query, :desc, :resp, :tags::jsonb,
+                            (:query, :desc, :resp, CAST(:tags AS jsonb),
                              :pipe, :task, :source, :fb_id,
                              :emb, :creator, :domain_id)
                         RETURNING id

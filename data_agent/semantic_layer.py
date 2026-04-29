@@ -247,7 +247,7 @@ def ensure_semantic_tables():
 def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
     """Match user text against a list of aliases. Returns confidence 0-1.
 
-    Supports exact, substring, and fuzzy (SequenceMatcher) matching.
+    Supports exact, substring (bidirectional), and fuzzy (SequenceMatcher) matching.
     """
     user_lower = user_text.lower()
     best_score = 0.0
@@ -260,6 +260,18 @@ def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
         if len(alias_lower) >= 2 and alias_lower in user_lower:
             best_score = max(best_score, 0.7)
             continue
+        # Reverse substring (alias contains a significant segment of user text)
+        if len(alias_lower) >= 4:
+            for seg_len in range(min(len(user_lower), len(alias_lower)), 2, -1):
+                for start in range(len(user_lower) - seg_len + 1):
+                    seg = user_lower[start:start + seg_len]
+                    if len(seg) >= 3 and seg in alias_lower:
+                        coverage = len(seg) / max(len(alias_lower), 1)
+                        if coverage >= 0.5:
+                            best_score = max(best_score, min(0.65, coverage))
+                            break
+                if best_score >= 0.6:
+                    break
         # Fuzzy match via SequenceMatcher (for typos / partial matches)
         if fuzzy and len(alias_lower) >= 3:
             ratio = SequenceMatcher(None, alias_lower, user_lower).ratio()

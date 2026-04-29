@@ -222,3 +222,39 @@ def test_increment_use_count(mock_get_engine):
     store.increment_use_count(1, success=True)
     conn.execute.assert_called_once()
     conn.commit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# NL2SQL pattern seeding
+# ---------------------------------------------------------------------------
+
+
+@patch("data_agent.reference_queries.ReferenceQueryStore.add")
+def test_seed_nl2sql_patterns_calls_add_twice(mock_add):
+    mock_add.return_value = 99
+    from data_agent.seed_nl2sql_patterns import seed_nl2sql_patterns
+    result = seed_nl2sql_patterns(created_by="tester")
+    assert mock_add.call_count == 2
+    assert result == [99, 99]
+    for call in mock_add.call_args_list:
+        assert call.kwargs["task_type"] == "nl2sql"
+        assert call.kwargs["source"] == "benchmark_pattern"
+
+
+@patch("data_agent.reference_queries.ReferenceQueryStore.add")
+def test_seed_nl2sql_patterns_sql_shapes(mock_add):
+    mock_add.return_value = 1
+    from data_agent.seed_nl2sql_patterns import seed_nl2sql_patterns
+    seed_nl2sql_patterns(created_by="tester")
+    sqls = [call.kwargs["response_summary"] for call in mock_add.call_args_list]
+    assert any("ST_DWithin" in sql and '"Floor" > 30' in sql for sql in sqls)
+    assert any("SUM(ST_Area(ST_Intersection" in sql and "/ 10000.0" in sql for sql in sqls)
+
+
+@patch("data_agent.reference_queries.ReferenceQueryStore.add", side_effect=[1, 2, 1, 2])
+def test_seed_nl2sql_patterns_is_idempotent_via_store(mock_add):
+    from data_agent.seed_nl2sql_patterns import seed_nl2sql_patterns
+    first = seed_nl2sql_patterns(created_by="tester")
+    second = seed_nl2sql_patterns(created_by="tester")
+    assert first == [1, 2]
+    assert second == [1, 2]

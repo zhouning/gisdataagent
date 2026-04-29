@@ -6,6 +6,38 @@ import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
 import FeedbackBar from './FeedbackBar';
 
+function cleanCotLeakage(text: string): string {
+  if (!text || text.length < 20) return text;
+
+  if (text.length < 120 && (text.includes('DELETE/UPDATE/DROP') || text.includes('修改、删除或新增数据') || text.includes('我不能执行'))) {
+    return '我不能执行修改、删除或新增数据的操作。我只能帮助查询。';
+  }
+  if (text.length < 120 && text.startsWith('当前数据库中不存在')) {
+    return '当前数据库中不存在与该问题对应的数据字段或数据表，因此无法查询。';
+  }
+
+  const finalMarkers = ['已成功', '我无法', '查询成功', '经过查询', '结果如下', '以下是结果', '数据来源表'];
+  let trimmed = text;
+  for (const marker of finalMarkers) {
+    const idx = trimmed.indexOf(marker);
+    if (idx > 0) {
+      trimmed = trimmed.slice(idx);
+      break;
+    }
+  }
+
+  const patterns = [
+    /(?:^|\n)(?:用户(?:想要|要求|想|问|明确)[^\n]{0,200}\n?)+/gm,
+    /(?:^|\n)(?:步骤\d+[:：][^\n]{0,200}\n?)+/gm,
+    /(?:^|\n)(?:(?:让我|我来|我需要|我应该|我查看|我先|根据规则|根据返回|根据 grounding|不过根据|所以我|实际上|不过，安全|不过，|现在我来|这涉及到|安全规则要求)[^\n]{0,220}\n?)+/gm,
+  ];
+  let cleaned = trimmed;
+  for (const p of patterns) cleaned = cleaned.replace(p, '\n');
+  const lines = cleaned.split('\n').map(s => s.trim()).filter(Boolean);
+  const result = lines.join('\n');
+  return result.length >= 10 ? result : text;
+}
+
 interface ChatPanelProps {
   onMapUpdate: (config: any) => void;
   onDataUpdate: (file: string) => void;
@@ -389,6 +421,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           const isUser = msg.type?.includes('user');
           const meta = msg.metadata as any;
           const routingInfo = meta?.routing_info;
+          const displayOutput = isUser ? (msg.output || '') : cleanCotLeakage(msg.output || '');
           return (
             <div key={msg.id} className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
               {!isUser && <div className="assistant-avatar">AI</div>}
@@ -411,16 +444,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                     )}
                   </div>
                 ) : isUser ? (
-                  <span>{msg.output}</span>
+                  <span>{displayOutput}</span>
                 ) : (
-                  <ReactMarkdown>{msg.output || ''}</ReactMarkdown>
+                  <ReactMarkdown>{displayOutput}</ReactMarkdown>
                 )}
                 {msg.elements?.map((el: any) => (
                   <span key={el.id} className="file-chip" title={el.name}>
                     {getFileIcon(el.name)} {el.name}
                   </span>
                 ))}
-                {!isUser && msg.output && (
+                {!isUser && displayOutput && (
                   <FeedbackBar
                     messageId={msg.id || ''}
                     query={(() => {
@@ -430,7 +463,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                       }
                       return '';
                     })()}
-                    response={msg.output || ''}
+                    response={displayOutput}
                     pipelineType={routingInfo?.pipeline}
                   />
                 )}

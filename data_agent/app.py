@@ -1693,7 +1693,7 @@ async def _execute_pipeline(
     content = types.Content(role='user', parts=[types.Part(text=full_prompt)] + (extra_parts or []))
 
     # --- Progress Feedback Setup ---
-    if DYNAMIC_PLANNER and pipeline_type == "planner":
+    if (DYNAMIC_PLANNER and pipeline_type == "planner") or pipeline_type == "sub_agent_direct":
         stages = []
         total_stages = 0
         agent_visit_count = 0
@@ -1962,11 +1962,14 @@ async def _execute_pipeline(
                     pipeline_step.name = f"{pipeline_name} ({elapsed:.1f}s)"
                     await pipeline_step.update()
 
-                    if not msg_sent:
-                        msg_sent = True
-                        await final_msg.send()
+                    # For sub_agent_direct: buffer text instead of streaming
+                    # to allow CoT cleanup before user sees it
+                    if pipeline_type != "sub_agent_direct":
+                        if not msg_sent:
+                            msg_sent = True
+                            await final_msg.send()
+                        await final_msg.stream_token(part.text)
 
-                    await final_msg.stream_token(part.text)
                     full_response_text += part.text
 
                     found = extract_file_paths(part.text)
@@ -2099,10 +2102,29 @@ async def _execute_pipeline(
             # and doesn't skip it due to processedMetaRef.current.has(msg.id)
             await cl.Message(content="", metadata=meta).send()
 
+        # --- CoT leakage cleanup (DeepSeek etc.) ---
+        if full_response_text and pipeline_type in ("sub_agent_direct", "general"):
+            try:
+                from data_agent.pipeline_helpers import clean_cot_leakage
+                cleaned = clean_cot_leakage(full_response_text)
+                if cleaned != full_response_text:
+                    full_response_text = cleaned
+            except Exception as _cot_err:
+                logger.debug("CoT cleanup skipped: %s", _cot_err)
+
+        # For sub_agent_direct: send the buffered (and cleaned) text now
+        if pipeline_type == "sub_agent_direct" and full_response_text:
+            final_msg.content = full_response_text
+            if not msg_sent:
+                await final_msg.send()
+                msg_sent = True
+        elif full_response_text:
+            final_msg.content = full_response_text
+
         if not msg_sent:
-            # Pipeline produced no text — send final_msg so it completes
             await final_msg.send()
             msg_sent = True
+
         await final_msg.update()
 
         # --- Report Extraction ---
@@ -2898,7 +2920,7 @@ async def main(message: cl.Message):
             if not selected_agent:
                 await cl.Message(content=f"无法实例化子代理 @{_mention_target['handle']}").send()
                 return
-            pipeline_type = _mention_target.get("pipeline", "general").lower()
+            pipeline_type = "sub_agent_direct"
             pipeline_name = f"@{_mention_target['handle']} (直接调用)"
             intent = _mention_target.get("pipeline", "GENERAL")
             intent_reason = f"@{_mention_target['handle']} 显式路由"
