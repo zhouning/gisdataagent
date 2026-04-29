@@ -1,12 +1,43 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-04-19 &nbsp;|&nbsp; **Current version**: v24.0 &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-04-30 &nbsp;|&nbsp; **Current version**: v24.1 &nbsp;|&nbsp; **ADK**: v1.27.2
 
-> 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）、**DeerFlow v2.0（ByteDance 通用 Agent Harness — 工程质量）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台 — 平台能力）**、**Datus.ai（开源数据工程智能体 — 上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime — learning loop + 持久记忆 + 多入口网关）**
+> 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）、**DeerFlow v2.0（ByteDance 通用 Agent Harness — 工程质量）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台 — 平台能力）**、**Datus.ai（开源数据工程智能体 — 上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime — learning loop + 持久记忆 + 多入口网关）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
-> 核心战略：**智能层 + 交互层保持领先，数据层向 SeerAI 看齐，上下文工程向 Datus 学习，Agent 产品化能力参考 Hermes**——从"用户带数据来"转向"Agent 主动发现和连接数据"，从"一次性回答"转向"越用越准的上下文飞轮"，并在远期增强连续协作、经验沉淀与执行面治理能力。
+> 核心战略：**从 Data Agent 自主性演进，升级为 Agentic Spatial Data Governance Platform（智能体驱动的时空数据治理平台）**——保持智能层 + 交互层领先，把空间数据治理、活跃元数据、声明式治理、数据产品化和多模态治理做成面向行业客户的产品能力；从"用户带数据来"转向"Agent 主动发现、治理、编排和运营数据"，从"一次性回答"转向"越用越准、越用越能沉淀的数据治理飞轮"。
 >
-> **Data Agent Level**: L3 (完整条件自主) → v23.0 路线清零 ✅ → 下一阶段以垂直场景落地与产品化交付为主；Hermes 对标能力先进入 roadmap 观察池，暂不作为当前版本承诺
+> **Data Agent Level**: v24.1 = L3.5（垂直场景 + 显式路由 + 域标准 + NL2SQL 16/16）→ v25.0 起进入 **Agentic Governance** 阶段；下一阶段以数据治理产品化交付为主，Hermes 对标能力仍保留在观察池，仅择机落地低成本试点
+
+---
+
+## 已完成 (v24.1) — NL2SQL Benchmark 16/16 + DeepSeek 兼容 + CostGuard 前端配置
+
+> **主题**: NL2SQL 从"需要英文表名"到"纯自然语言查询"，benchmark 全量通过
+
+### NL2SQL 增强
+- [x] **Benchmark v2 去英文表名** — 16 题 question 全部改为纯中文自然语言，不再包含英文表名
+- [x] **双向子串匹配** — `_match_aliases()` 支持 alias→text 和 text→alias 双向匹配
+- [x] **中文同义词补齐** — 12 张 cq_* 表的 `agent_semantic_sources.synonyms` 全部补充短别名
+- [x] **可复用空间 few-shot** — 2 条 canonical pattern (AOI 距离 + 面面相交聚合) 入库 `agent_reference_queries`
+- [x] **智能 few-shot 跳过** — 简单单表查询不再触发 embedding 检索，grounding 提速 5-8x
+- [x] **SRID 修复** — `cq_ghfw` 和 `cq_jsydgzq` 从 SRID=0 更新为 4523，同步 `agent_semantic_sources`
+- [x] **Golden SQL 优化** — MEDIUM_02 空间 join 从 219s→0.5s（转换小表 + GiST 索引命中）
+- [x] **Grounding 单位标注** — 列 unit 字段显示在 grounding prompt 中（如"万人"）
+- [x] **Grounding SRID 建议** — SRID 不一致时给出具体 Transform 目标 SRID
+- [x] **Benchmark 题目修正** — EASY_01 去歧义、EASY_03 改措辞、HARD_03 重写 golden SQL
+- [x] **SQL 语法修复** — `reference_queries.py` 的 `:tags::jsonb` 改为 `CAST(:tags AS jsonb)`
+
+### DeepSeek 兼容
+- [x] **CoT 泄露清理** — 后端缓冲 sub_agent_direct 输出 + `clean_cot_leakage()` 正则清理
+- [x] **前端显示层兜底** — `ChatPanel.tsx` 的 `cleanCotLeakage()` 对 assistant 消息做最终清理
+- [x] **标准拒绝格式** — 写操作拒绝和不存在字段拒绝统一为一句标准文案
+- [x] **LIMIT 硬规则** — NL2SQL prompt 强制所有 SELECT 必须包含 LIMIT
+
+### CostGuard 前端配置
+- [x] **AdminDashboard 成本控制 tab** — 3 个输入框（警告阈值/中止阈值/USD 上限）+ 保存
+- [x] **REST API** — `GET/PUT /api/admin/cost-guard-config`（admin only）
+- [x] **DB 持久化** — 复用 `agent_model_config` 表，`ModelConfigManager` 扩展 3 个 cost_guard key
+- [x] **CostGuardPlugin 读 DB** — 优先从 DB 读取阈值，DB 不可用时降级到 env var
 
 ---
 
@@ -976,7 +1007,184 @@
 
 ---
 
-## v21.0+ — L4 主动式探索 (远期愿景)
+## 四看驱动的战略刷新 (2026-04-21)
+
+> **背景**: 基于 2026 Q2 技术四看分析（技术趋势 / 宏观 PEST / 竞争格局 / 自我评估），行业已从"AI 辅助数据治理"全面进入 **Agentic Data Governance** 阶段。GIS Data Agent 原型阶段已完成，下一阶段以"智能体驱动的时空数据治理平台"为叙事，分三个版本产品化落地。
+>
+> **四看核心结论**:
+> - **趋势**: Gartner 2026 MQ for D&A Governance 把 agentic AI + 活跃元数据作为核心评估维度；数据产品化 + AI-Ready Data 成为新范式；MCP/A2A 协议栈重塑 Agent↔数据集成
+> - **宏观**: 国务院"AI+"意见、国家数据局数据产权三权分置登记、网安法修订罚款 5-10 倍提升、EU AI Act 2026.8 全面执行
+> - **竞争**: 北京数慧（数据编织 + 智能体）、土豆数据（Data for AI 闭环）、阿里 DataWorks（Agent + 语义 ETL）、袋鼠云（多模态数据中台）、Atlan / Alation / Ataccama（agentic governance + metadata lakehouse）
+> - **自己**: 空间数据一等公民是核心优势；智能化治理从"缺失"升级为"原型验证"；多模态治理、数据产品化、合规审计、声明式治理仍为缺失项
+
+---
+
+## v25.0 — Agentic Governance Foundation (2026 H2, 计划)
+
+> **主题**: 把 GIS Data Agent 的智能化治理原型产品化，补齐 agentic data governance 基础设施
+>
+> **Data Agent Level**: L3.5 → **L4**（治理 Agent 自主执行 + 声明式策略 + 持续监控）
+>
+> **工作量估算**: 4-5 个月 | **依赖**: 无外部基础设施硬依赖（Kong / Jaeger 等保持搁置）
+
+### P0 — 活跃元数据引擎 (Atlan / Gartner 对标)
+
+- [ ] **active_metadata.py** — 统一活跃元数据层，封装 `semantic_layer.py` + `data_catalog.py` 现有能力 + 新增变更事件流
+- [ ] **自动采集扩展** — DB schema / 文件 / API 源 / MCP 工具四类来源的元数据自动采集
+- [ ] **元数据 CDC 事件流** — 元数据变更 → Redis Stream → 下游 Agent 订阅响应（血缘重建、质量门禁触发）
+- [ ] **活跃血缘** — 当前 BFS 血缘 → 增量血缘 + 影响分析（upstream change → downstream impact 告警）
+- [ ] **策略联动** — 元数据变更触发治理策略自动执行（质量门禁、分类分级、合规检查）
+
+### P0 — 治理 Agent 体系 (Alation / Ataccama 对标)
+
+- [ ] **ClassificationAgent** — `skills/classification-agent/` + Skill L1/L2/L3，智能分类分级 + 规则库持续学习
+- [ ] **QualityAgent** — `skills/quality-agent/`，智能质检 + 自动修复 + 质量趋势预测
+- [ ] **LineageAgent** — `skills/lineage-agent/`，血缘自动发现 + 影响分析 + 血缘差异报告
+- [ ] **ComplianceAgent** — `skills/compliance-agent/`，合规审计检查 + 审计报告生成 + 整改追踪
+- [ ] **CurationAgent** — `skills/curation-agent/`，元数据策展 + 质量门禁 + 自然语言治理意图翻译
+- [ ] **GovernanceTeamPipeline** — 5 个 Agent 组成的治理协作管线，复用现有 `TeamToolset` + A2A 协议
+
+### P0 — 声明式治理引擎 Policy as Code (Alation Curation Automation 对标)
+
+- [ ] **policy_engine.py** — 治理策略 DSL（YAML / JSON），类型: quality / classification / compliance / lineage
+- [ ] **LLM 策略翻译层** — 自然语言治理意图（如"所有含身份证号的字段必须脱敏"）→ 可执行策略定义
+- [ ] **持续监控** — 策略周期性检查（cron / 事件驱动）+ 违规告警 + Agent 自动修复
+- [ ] **策略版本管理** — 复用现有 `prompt_registry.py` 模式，支持 dev/staging/prod 环境隔离 + 回滚
+- [ ] **workflow_engine.py 扩展** — 新增 `policy_execution` 步骤类型，让策略执行纳入工作流编排
+
+### P0 — 数据产品化框架 (Gartner MQ 2026 "数据产品策展")
+
+- [ ] **data_products.py** — DataProduct 实体：数据契约 + 质量 SLA + 版本 + 消费统计 + 生命周期
+- [ ] **数据契约 DSL** — 面向消费者的数据契约定义（schema / freshness / completeness / uniqueness）
+- [ ] **质量门禁** — 数据产品发布前自动执行质检，未达标不允许发布
+- [ ] **数据产品目录** — 扩展现有 Marketplace，支持数据产品的发布、订阅、消费审计
+- [ ] **DB migration 064** — `agent_data_products` + `agent_data_product_contracts` + `agent_data_product_subscriptions`
+
+### P1 — 统一治理仪表盘
+
+- [ ] **GovernanceDashboard.tsx** — 治理覆盖率 / 质量趋势 / 合规状态 / Agent 执行统计四象限视图
+- [ ] **治理 KPI API** — `/api/governance/kpi` 聚合治理运营指标
+- [ ] **告警中心** — 治理异常的集中告警视图（复用现有 `AlertEngine`）
+
+### P2 — 面向空间数据的治理深化
+
+- [ ] **空间数据契约** — 数据产品契约扩展空间维度（CRS / 空间范围 / 几何有效性 / 拓扑一致性）
+- [ ] **空间质检 Agent 化** — 现有 PrecisionToolset + DataCleaningToolset 包装为 QualityAgent 的子能力
+- [ ] **空间血缘可视化增强** — 血缘图谱在 MapPanel 上叠加展示（数据流经过的空间范围）
+
+---
+
+## v26.0 — Multi-Modal & Data Economy (2027 H1, 计划)
+
+> **主题**: 多模态数据治理 + 数据要素流通与资产化支撑
+>
+> **Data Agent Level**: L4 → **L4+**（多模态治理 + 数据资产化 + 合规自动化）
+>
+> **工作量估算**: 5-6 个月 | **驱动政策**: 国家数据局数据产权登记、数据资产入表、网安法修订合规审计
+
+### P0 — 多模态数据治理 (袋鼠云多模态中台对标)
+
+- [ ] **unstructured_governance.py** — 文档 / 图像 / 视频 / 音频的元数据采集、解析、治理
+- [ ] **PDF / Word 解析器** — 结构化抽取（章节、表格、图片）+ 元数据提取 + 向量化
+- [ ] **图像 / 视频元数据提取** — EXIF / 帧采样 / OCR + 场景分类
+- [ ] **非结构化数据质检** — 完整性 / 格式合规 / 内容分类 / 敏感信息识别
+- [ ] **统一元数据模型** — 覆盖结构化 + 空间（矢量 / 栅格 / 三维）+ 非结构化的统一 schema
+- [ ] **multimodal.py 扩展** — 与 active_metadata 集成，非结构化数据自动纳入元数据管理
+
+### P0 — 数据资产化支撑 (响应数据资产入表政策)
+
+- [ ] **data_asset_valuation.py** — 数据资产价值评估模型（成本法 / 收益法 / 市场法）
+- [ ] **资产编码体系增强** — 扩展现有 `DA-{TYPE}-{SRC}-{YEAR}-{SEQ}` 编码，对接数据产权登记
+- [ ] **数据资产盘点** — 自动化数据资产清单生成（数量 / 质量 / 使用频次 / 衍生关系）
+- [ ] **入表辅助报告** — 按财政部《企业数据资源相关会计处理暂行规定》生成辅助资料
+- [ ] **数据产权三权分置支持** — 持有权 / 使用权 / 经营权元数据字段 + 登记信息导出
+
+### P0 — 合规审计自动化 (响应网安法修订 + 个保法合规审计制度)
+
+- [ ] **compliance_audit.py** — 合规检查规则库 + 自动化审计引擎
+- [ ] **GB/T 45574（敏感个人信息）规则适配** — 2025.11 生效
+- [ ] **GB/T 46068（跨境处理）规则适配** — 2026.3 生效
+- [ ] **个人信息合规审计** — 处理 1000 万+ 个人信息的企业每两年审计（自动生成审计底稿）
+- [ ] **跨境数据传输 PIP 认证辅助** — 非 CIIO 年传输 10 万-100 万人数据的合规检查
+- [ ] **整改追踪工作流** — 审计发现 → 整改任务 → Agent 自动修复 → 复查
+
+### P1 — 可信流通接口层 (预留数据空间 / 隐私计算集成位)
+
+- [ ] **trusted_exchange.py** — 数据契约签署 + 使用权授权 + 审计日志的统一抽象
+- [ ] **IDSA 连接器骨架** — 为可信数据空间预留连接器位置，实现需外部基础设施
+- [ ] **隐私计算集成接口** — 对接华为等厂商的隐私计算基础设施（联邦学习 / 多方安全计算）
+- [ ] **数据产权登记导出** — 生成符合国家数据局登记指南格式的 XML / JSON
+
+### P1 — 湖仓一体适配 (航天云际 / 星环科技对标)
+
+- [ ] **connectors/doris.py** — Doris 连接器 + 元数据采集
+- [ ] **connectors/starrocks.py** — StarRocks 连接器
+- [ ] **connectors/clickhouse.py** — ClickHouse 连接器
+- [ ] **connectors/iceberg.py** — Iceberg 表格式元数据采集
+- [ ] **空间数据湖仓统一查询** — PostGIS 空间能力 + 湖仓表数据的联邦查询
+
+### P2 — 数据要素交易试点支撑
+
+- [ ] **数据产品定价模型** — 基于使用频次 / 稀缺性 / 衍生价值的自动定价建议
+- [ ] **数据产品交易记录** — 审计级别的交易日志 + 区块链存证预留接口
+
+---
+
+## v27.0 — Platform & Ecosystem (2027 H2 – 2028 H1, 计划)
+
+> **主题**: 平台化 + 规模化 + 生态化 + 搁置项清零
+>
+> **Data Agent Level**: L4+ → **L4.5**（分布式治理 + Agent 互操作 + 经验沉淀 + 行业知识库深化）
+>
+> **工作量估算**: 6-12 个月 | **依赖**: 外部基础设施就位（K8s 集群 / Kong / Jaeger / Loki / 隐私计算底座）
+
+### P0 — Agent 互操作协议标准化 (MCP / A2A 对标)
+
+- [ ] **治理 Agent MCP 暴露** — v25.0 的 5 个治理 Agent 通过 MCP 向外部工具链暴露
+- [ ] **跨组织 A2A 协作** — 数据空间场景下的跨组织 Agent 协作（需可信身份 + 权限协商）
+- [ ] **MCP 工具目录联邦** — 多实例 MCP Hub 的工具目录联邦查询
+- [ ] **Agent 服务注册中心** — 基于现有 `agent_registry.py` 扩展，支持跨实例 Agent 发现
+
+### P0 — 分布式治理架构
+
+- [ ] **治理任务分布式调度** — 基于现有 Celery 扩展，大规模数据治理任务拆分 + 并行执行
+- [ ] **metadata_federation.py** — 多实例元数据联邦同步（最终一致性）
+- [ ] **水平扩展** — 治理 Agent 无状态化 + 水平扩缩容（HPA）
+
+### P1 — Hermes 观察池择机落地
+
+- [ ] **USER Profile 轻量层** — 用户偏好记录（输出粒度 / 常用场景 / 工作习惯）
+- [ ] **历史会话召回** — PG FTS 检索 + LLM 总结，支持"上次做到哪了"
+- [ ] **Skill 建议沉淀** — 从成功任务 / 高质量工作流中提炼 Skill / Prompt 建议
+- [ ] **结果卡片沉淀入口** — ChatPanel "沉淀为能力"按钮，人工确认后入库
+
+### P1 — 行业知识库深化
+
+- [ ] **行业数据标准自动匹配** — 数据进入时自动匹配 DLTB / GB/T 21010 / CityGML 等标准
+- [ ] **行业质检规则模板库** — 自然资源 / 住建 / 水利 / 测绘 / 新能源的质检规则预置
+- [ ] **行业治理最佳实践案例库** — 扩展现有 `knowledge_base.py` 的 case 能力
+- [ ] **行业本体库** — 基于 v15.7 XMI 领域标准 + v16.0 本体论技术，持续沉淀行业本体
+
+### P2 — 外部基础设施落地 (搁置项清零)
+
+- [ ] **Kong API 网关** — kong-gateway.yaml + Ingress + 插件绑定
+- [ ] **Jaeger 追踪后端** — 与 OTel 现有埋点对接
+- [ ] **Loki 集中日志** — LokiHandler 日志推送 + 与 trace_id 关联
+- [ ] **Grafana 统一看板** — Prometheus + Jaeger + Loki 三数据源聚合
+
+### P2 — 面向客户的产品化交付
+
+- [ ] **治理交付模板** — 面向自然资源 / 住建 / 水利的"开箱即用"治理方案（Skill + Workflow + Policy 三件套）
+- [ ] **治理成熟度评估工具** — 对标 DAMA / 《智能化数据治理能力要求》，自动生成客户治理成熟度报告
+- [ ] **迁移助手** — 从传统数据治理平台（睿治 / 普元 / 国网等）的资产迁移工具
+
+---
+
+## v21.0+ — L4 主动式探索 (已完成项归档)
+
+> 本节内容为 v21.0-v23.0 已完成项归档；v24.0 之后的新规划请参见上方 v25.0 / v26.0 / v27.0 段落
+
+
 
 > **主题**: 从响应式 → 主动式，从有监督 → 无监督
 >
@@ -1144,6 +1352,23 @@
 | **API 网关** | — | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Kong || **分布式追踪** | — | 🟡 OTel | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 Jaeger |
 | **Data Agent Level** | SIGMOD | L3 | L3 | L3 | L3 | L3+ | L3+ | L3.5→L4 |
 
+### 四看驱动的新增对标维度 (2026-04-21)
+
+| 标杆能力 | 来源 | v24.0 ✅ | v25.0 🎯 | v26.0 🎯 | v27.0 🎯 |
+|----------|------|----------|----------|----------|----------|
+| **活跃元数据 (Active Metadata)** | Atlan / Gartner 2026 | 🟡 语义层 + 基础目录 | 🟢🟢🟢 CDC 事件流 + 策略联动 | 🟢🟢🟢🟢 全模态 | 🟢🟢🟢🟢 联邦 |
+| **Agentic Governance** | Alation / Ataccama | 🟡 Agent 原型 | 🟢🟢🟢 5 治理 Agent | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 MCP 标准化 |
+| **声明式治理 (Policy as Code)** | Alation Curation Automation | 🔴 | 🟢🟢 LLM 策略翻译 + 规则库 | 🟢🟢🟢 合规策略 | 🟢🟢🟢🟢 |
+| **数据产品化** | Gartner MQ 2026 "数据产品策展" | 🔴 | 🟢🟢 契约 + 目录 | 🟢🟢🟢 市场化 | 🟢🟢🟢🟢 |
+| **多模态数据治理** | 袋鼠云多模态中台 | 🟡 `multimodal.py` 基础 | 🟡 | 🟢🟢🟢 非结构化治理 | 🟢🟢🟢🟢 |
+| **数据资产化 / 入表** | 国家数据局三权分置 | 🔴 | 🟡 编码体系扩展 | 🟢🟢🟢 评估 + 辅助报告 | 🟢🟢🟢 |
+| **合规审计自动化** | 网安法修订 / 个保法 | 🔴 | 🟡 合规 Agent 骨架 | 🟢🟢🟢 审计自动化 | 🟢🟢🟢🟢 |
+| **MCP / A2A 互操作** | Anthropic / Google | 🟢🟢 MCP Hub | 🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 标准化暴露 |
+| **湖仓一体适配** | 航天云际 / 星环 | 🔴 | 🟡 | 🟢🟢 Doris/StarRocks/ICE | 🟢🟢🟢 统一查询 |
+| **可信数据空间** | 国家数据局行动计划 | 🔴 | 🔴 | 🟡 接口骨架 | 🟢🟢 集成华为等底座 |
+| **行业知识库深化** | — | 🟢 XMI + 本体 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢🟢 自然资源/住建/水利 |
+
+
 ### Data Agent Level 演进路径
 
 ```
@@ -1157,20 +1382,25 @@ v19.0: L3+  — + 上下文工程 (统一引擎 + 反馈飞轮 + 语义模型标
 v20.0: L3+  — + 分布式任务队列 (Redis) + 多 LLM 切换 + 双模式执行 + DuckDB Lite ✅ 2026-04-08
 v21.0: L3.5 — + 跨系统血缘追踪 (外部资产 + 血缘边表 + BFS 图谱) ✅ 2026-04-08
 v21.0: L3.5 — + API 网关 + 分布式追踪 + 跨系统血缘 + CLI 终端入口 (向 L4 探索)
-v22.0: L4-  — + 持续监控 + 任务发现 + 内在动机 (L4 初步)
+v22.0: L4-  — + 持续监控 + 任务发现 + 内在动机 (L4 初步) ✅ 2026-04-08
+v23.0: L3.5 — + Roadmap 清零 (意图消歧 v2 + DRL 约束 + 交通/设施场景 + 离线模式) ✅ 2026-04-09
+v24.0: L3.5 — + @SubAgent 显式路由 + XMI 领域标准 ✅ 2026-04-19
+v25.0: L4   — + Agentic Governance (5 治理 Agent + 活跃元数据 + 声明式策略 + 数据产品化) 🎯
+v26.0: L4+  — + 多模态治理 + 数据资产化 + 合规自动化 + 湖仓一体 + 可信流通接口 🎯
+v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知识库深化 + 搁置项清零 🎯
 ```
 
 ### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
 
-| 领域 | v14.5 ✅ | v15.0 ✅ | v15.3 ✅ | v15.8 ✅ | v18.5 ✅ | v21.0 🎯 |
-|------|-----------|-----------|-----------|-----------|-----------|-----------|
-| 数据标准 | 70% | 80% | 80% | 85% | 88% | 90% |
-| 数据模型 | 20% | 35% | 40% | 45% | 50% 本体 | 55% |
-| 数据质量 | 90% | 95% | 95% | 98% | 98% | 98% |
-| 数据安全 | 30% | 60% | 60% | 60% | 60% | 65% |
-| 元数据 | 80% | 85% | 88% | 92% | 95% 语义 | 98% 跨系统 |
-| 数据资源 | 80% | 85% | 88% | 90% | 92% | 95% 分布式 |
-| **综合** | **~62%** | **~73%** | **~75%** | **~78%** | **~80%** | **~84%** |
+| 领域 | v14.5 ✅ | v18.5 ✅ | v21.0 ✅ | v24.0 ✅ | v25.0 🎯 | v26.0 🎯 | v27.0 🎯 |
+|------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
+| 数据标准 | 70% | 88% | 90% | 90% | 93% | 95% 多模态 | 98% |
+| 数据模型 | 20% | 50% 本体 | 55% | 55% | 65% 语义+策略 | 75% 多模态 | 85% |
+| 数据质量 | 90% | 98% | 98% | 98% | 98% | 98% | 98% |
+| 数据安全 | 30% | 60% | 65% | 65% | 75% 合规 Agent | 85% 审计自动化 | 92% |
+| 元数据 | 80% | 95% 语义 | 98% 跨系统 | 98% | 98% 活跃元数据 | 98% | 98% 联邦 |
+| 数据资源 | 80% | 92% | 95% 分布式 | 95% | 95% | 98% 多模态+湖仓 | 98% |
+| **综合** | **~62%** | **~80%** | **~84%** | **~84%** | **~87%** | **~92%** | **~95%** |
 
 ---
 
@@ -1254,10 +1484,15 @@ v22.0: L4-  — + 持续监控 + 任务发现 + 内在动机 (L4 初步)
 | v18.5 | 平台能力 + UI | 2-3 周 | 2026-04-04 | ✅ 2026-04-05 |
 | v19.0 | 上下文工程 + 反馈飞轮 (Datus) | 3-4 周 | 2026-04-08 | ✅ 2026-04-08 |
 | v20.0 | 分布式队列 + 体验优化 | 3-4 周 | 2026-04-08 | ✅ 2026-04-08 |
-| v21.0 | 跨系统血缘 + CLI (已有) | 4-5 周 | 2026-04-08 | ✅ 2026-04-08 |
-| v22.0+ | L4 主动式探索 | 待定 | 待定 | 待定 |
+| v21.0 | 跨系统血缘 + CLI | 4-5 周 | 2026-04-08 | ✅ 2026-04-08 |
+| v22.0 | L4 持续监控 + 遥感 Phase 2-3 | 1-2 周 | 2026-04-08 | ✅ 2026-04-08 |
+| v23.0 | Roadmap 清零 + DRL 约束 | 1-2 周 | 2026-04-09 | ✅ 2026-04-09 |
+| v24.0 | @SubAgent 路由 + XMI 域标准 | 2-3 周 | 2026-04-18 | ✅ 2026-04-19 |
+| **v25.0** | **Agentic Governance Foundation** | **4-5 个月** | **2026-05** | **🎯 2026 H2** |
+| **v26.0** | **多模态治理 + 数据要素流通** | **5-6 个月** | **2026-12** | **🎯 2027 H1** |
+| **v27.0** | **平台化 + 生态化 + 搁置项清零** | **6-12 个月** | **2027-07** | **🎯 2028 H1** |
 
-**总计**: v12.0 → v21.0 全部完成。v22.0+ (L4 主动式探索 + 遥感 Phase 2-4) 为远期愿景。
+**总计**: v12.0 → v24.0 全部完成。v25.0-v27.0 是基于 2026 Q2 技术四看刷新后的中长期规划，主线叙事从"Data Agent 自主性演进"升级为"Agentic Spatial Data Governance Platform"。
 
 ---
 

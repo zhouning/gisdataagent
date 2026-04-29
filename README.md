@@ -8,6 +8,8 @@
 
 **v24.0 新增**：**@SubAgent Mention Routing + NL2SQL 增强 + PostGIS 直接可视化** — 聊天框 @mention 路由（`mention_registry.py` + `mention_parser.py` + 前端 autocomplete dropdown）；NL2SQL 多表召回修复（列名反查表 + fallback 补充模式 + synonym 扩展）、`execute_safe_sql` 默认上限从 1000 提到 100000；PostGIS 可视化权限三级兜底（ownership → semantic_sources → pg_class）+ 大表自适应采样（>100K 行自动 10K 随机采样）；XMI 领域标准系统（解析器 + 编译器 + Toolset + 6 REST API）；2026 Q2 技术四看 Roadmap 刷新。
 
+**v24.1 新增**：**NL2SQL Benchmark 16/16 + DeepSeek 兼容 + CostGuard 前端配置** — NL2SQL benchmark v2 全部 16 题通过（去英文表名、双向子串匹配、中文同义词、可复用空间 few-shot、SRID 修复、golden SQL 优化）；DeepSeek CoT 泄露清理（后端缓冲 + 前端显示层清理 + 标准拒绝格式）；CostGuard 阈值前端可配（AdminDashboard 成本控制 tab + 2 REST API + DB 持久化）；简单查询 grounding 提速 5-8x（智能跳过 embedding few-shot 检索）；MEDIUM_02 空间 join 优化 219s→0.5s（转换小表不转换大表 + GiST 索引命中）。
+
 **v23.0 新增**：**Gemma 4 多模型管理 + Roadmap 全面清零** — Gemma 4 31B 注册（Gemini API + vLLM 自托管双通道）、DB 持久化管理员模型配置（`ModelConfigManager`）、前端交互式模型切换（下拉选择 + 自定义模型注册）、Intent Router 可配置化；意图消歧 v2（子任务分解 + 用户确认 + wave 按序执行）、DRL 约束建模（硬约束 action mask + 软约束 reward penalty）、跨图层关联高亮、标注协同 WebSocket、具身执行接口（UAV/卫星 mock）、离线 Service Worker、`pyproject.toml` 依赖分组。
 
 **v21.0 新增**：**跨系统血缘追踪** — 独立血缘边表 `agent_asset_lineage`（支持内部↔外部任意组合）、外部资产注册（Tableau/Airflow/PowerBI 等）、BFS 跨系统血缘图谱查询、5 个 REST 端点。
@@ -76,7 +78,7 @@
 | 因果推断 | 三角度体系: A (GeoFM 统计 6 工具) + B (LLM 推理 4 工具) + C (因果世界模型 4 工具), 82 tests |
 | 世界模型 | AlphaEarth 64-dim + LatentDynamicsNet 459K params + 5 情景 + 时间轴动画 + 因果干预/反事实 |
 | DRL + World Model | Dreamer 式集成: ParcelEmbeddingMapper + ActionToScenarioEncoder + 辅助奖励前瞻 |
-| NL2SQL | Schema-aware 语义 grounding + 列名反查表召回 + 大表采样 + 参数化安全 + 12 题 benchmark 11.5/12 |
+| NL2SQL | Schema-aware 语义 grounding + 双向子串匹配 + 中文同义词 + 可复用空间 few-shot + 列名反查表召回 + 大表采样 + 参数化安全 + 16 题 benchmark 16/16 |
 | 连接器 | 10 个插件式连接器 (WFS/STAC/OGC API/Custom API/WMS/ArcGIS REST/Database/ObjectStorage/ReferenceData/SaveMyself) |
 | 数据湖 | StorageManager 抽象层 (s3:// + file:// + postgis:// URI 路由 + 透明缓存) |
 | 可观测性 | 25+ Prometheus 指标 + OTel 分布式追踪 + **告警规则引擎** + 实时监控仪表盘 + Grafana 模板 |
@@ -844,6 +846,8 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）在 push 到 `main`/`dev
 | v17.0 | **多模态融合 v2.0 增强**：时序对齐 (多时区标准化 + 3 种插值 + 轨迹融合 + 多期变化检测)；语义增强 (GIS 本体 15 等价组 + 8 推导规则 + LLM 语义理解 + KG 集成)；冲突解决 (6 策略 + 置信度评分 + 来源标注)；可解释性 (逐要素元数据 + 质量热力图 + 融合溯源)；5 新 API + FusionQualityTab；84 新测试，~3700 行 | 3100+ | ✅ 完成 |
 | v18.0–v22.0 | **应用层 DB 优化 + 矢量切片 + 上下文工程 + 反馈飞轮 + 分布式任务队列 + 跨系统血缘 + L4 自主监控 + 遥感 Phase 2-3 + API 安全中间件 + Lite 模式** | 3600+ | ✅ 完成 |
 | v23.0 | **Gemma 4 多模型管理 + 平台增强**：Gemma 4 31B 注册 (Gemini API + vLLM)；DB 持久化管理员模型配置 (ModelConfigManager)；前端交互式模型切换 UI；Intent Router 可配置化；意图消歧 v2 (子任务分解 + 波次执行)；DRL 约束建模 (硬/软约束)；跨图层关联高亮；标注 WebSocket；具身执行接口；离线 Service Worker；pyproject.toml 依赖分组 | 3700+ | ✅ 完成 |
+| v24.0 | **@SubAgent Mention Routing + NL2SQL 增强 + PostGIS 直接可视化**：@mention 路由 + NL2SQL 多表召回修复 + PostGIS 可视化权限三级兜底 + XMI 领域标准系统 + 2026 Q2 Roadmap 刷新 | 3700+ | ✅ 完成 |
+| v24.1 | **NL2SQL Benchmark 16/16 + DeepSeek 兼容 + CostGuard 前端配置**：NL2SQL benchmark v2 全 16 题通过 (去英文表名 + 双向子串匹配 + 中文同义词 + 可复用空间 few-shot + SRID 修复 + golden SQL 优化 219s→0.5s)；DeepSeek CoT 泄露清理 (后端缓冲 + 前端清理 + 标准拒绝)；CostGuard 阈值前端可配 (AdminDashboard + 2 REST API + DB 持久化)；简单查询 grounding 提速 5-8x | 3700+ | ✅ 完成 |
 
 ## 设计模式覆盖 (21/21 = 100%)
 
