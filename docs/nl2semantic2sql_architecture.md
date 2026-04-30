@@ -705,3 +705,36 @@ PYTHONPATH="D:\adk" chainlit run data_agent/app.py -w
 | DeepSeek CoT 泄露 | 整屏推理 | 干净结果 | 后端缓冲 + 正则清理 + 前端兜底 |
 | 无表名查询匹配 | 0% | 100% | 双向子串匹配 + 中文同义词补齐 |
 | 单位换算错误 | 100万→1000000 | 100万→100 | 列 unit 字段嵌入 grounding prompt |
+
+## 7. Benchmark Strategy — 双轨评估
+
+系统采用双轨评估体系，分别验证通用数据仓库 NL2SQL 能力和 GIS 空间 NL2SQL 能力：
+
+### 7.1 BIRD mini_dev Track（通用仓库）
+
+- **目标**：验证常规企业/数据仓库 NL2SQL 能力，对标业界 SOTA
+- **数据集**：[BIRD mini_dev V2](https://github.com/bird-bench/mini_dev)（780 题，11+ 数据库，3 难度级别）
+- **SQL 方言**：SQLite baseline + PostgreSQL A/B
+- **评估重点**：joins, aggregation, nested query, warehouse-style schema grounding
+- **脚本目录**：`scripts/nl2sql_bench_bird/`
+- **指标**：Execution Accuracy (EX), Valid Rate, by-difficulty breakdown
+
+### 7.2 FloodSQL / GIS Track（空间查询）
+
+- **目标**：验证 PostGIS 空间 NL2SQL 差异化能力
+- **数据集**：FloodSQL-Bench（443 题，10 PostGIS 表，L0-L5 难度）+ 重庆 GIS 自建 Benchmark（16 题）
+- **SQL 方言**：PostgreSQL/PostGIS
+- **评估重点**：ST_Intersects, ST_Buffer, ST_Area, SRID 推断, geometry reasoning
+- **脚本目录**：`scripts/nl2sql_bench/`（FloodSQL）、`scripts/nl2sql_bench_cq/`（重庆 GIS）
+- **指标**：Execution Accuracy (EX), 空间函数覆盖率
+
+### 7.3 A/B 消融实验设计
+
+两个 Track 均支持 baseline vs full pipeline 对比：
+
+| 模式 | 描述 | 目的 |
+|------|------|------|
+| baseline | 裸 LLM + schema dump | 测 LLM 原始 SQL 生成能力 |
+| full | semantic layer + grounding + few-shot + ContextEngine | 测完整 NL2Semantic2SQL 链路增益 |
+
+通过 `delta = full_EX - baseline_EX` 量化 semantic layer 各组件的贡献。

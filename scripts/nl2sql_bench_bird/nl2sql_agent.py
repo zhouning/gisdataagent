@@ -1,69 +1,49 @@
 """Focused NL2SQL evaluation agent for benchmark.
 
-Builds a minimal LlmAgent that has ONLY:
-  - DatabaseToolset (for query_database)
-  - SemanticLayerToolset (for resolve_semantic_context)
-  - ExplorationToolset (for describe_table)
+Builds a minimal LlmAgent that mirrors the production MentionNL2SQL agent
+(agent.py:885-904) with the full NL2Semantic2SQL pipeline:
+  - NL2SQLEnhancedToolset (prepare_nl2sql_context + execute_nl2sql)
+  - SemanticLayerToolset (resolve_semantic_context)
+  - DatabaseToolset (query_database, describe_table)
 
-This bypasses the multi-agent General Pipeline (intent router → processing →
-viz → summary loop) which:
-  - Has 22+ unrelated toolsets that dilute LLM attention
-  - Is biased toward "exploration → analysis → visualization → report" not pure NL2SQL
-  - Routes through summary-loop that often discards the SQL step
-
-By keeping only the three NL2SQL-relevant toolsets, we measure the true
-"NL → Semantic Layer → SQL" capability that the user explicitly cares about,
-WITHOUT noise from product-level orchestration.
-
-Note: This agent still uses the existing semantic layer + ContextEngine,
-so the A/B comparison vs the pure-LLM baseline still validates the
-semantic-layer increment.
+This ensures the benchmark evaluates the ACTUAL NL2SQL capability of the
+GIS Data Agent, including grounding, SQL postprocessing, self-correction,
+and few-shot retrieval — not a simplified proxy.
 """
 from __future__ import annotations
 
-from google.adk.agents import LlmAgent
 
-# Import these only when called — they pull in the world.
 def build_nl2sql_agent():
-    """Construct a focused NL2SQL agent for benchmark evaluation."""
-    # Lazy imports to avoid heavy startup if module is loaded but not used
+    """Construct the production-equivalent NL2SQL agent for benchmark."""
     from data_agent.toolsets import (
-        DatabaseToolset, SemanticLayerToolset, ExplorationToolset,
+        DatabaseToolset, SemanticLayerToolset,
     )
-
-    instruction = """You are a PostgreSQL SQL expert. Your ONLY job is to answer the user's question by generating and executing a single SELECT query.
-
-Workflow:
-1. If you don't know the schema, call `describe_table` for the relevant table(s).
-2. Optionally call `resolve_semantic_context` to disambiguate column names against the semantic layer.
-3. Generate a SINGLE PostgreSQL SELECT query and execute it via `query_database`.
-4. After `query_database` returns, output a brief one-line summary including the answer.
-
-CRITICAL rules:
-- You MUST call `query_database` exactly once with a complete SELECT query that fully answers the question.
-- Do NOT generate exploratory queries like `SELECT * FROM t LIMIT 1` first — write the final SQL directly.
-- Use bare table names (search_path is set per-question) OR fully-qualified `schema.table`.
-- Use PostgreSQL syntax: CASE WHEN (not IIF), NULLIF, ::numeric, SUBSTRING (not SUBSTR cast tricks).
-- Do not add LIMIT unless the question explicitly asks for top-K.
-- Do not visualize, summarize, or transform — just produce the SQL answer.
-"""
+    from data_agent.toolsets.nl2sql_enhanced_tools import NL2SQLEnhancedToolset
+    from data_agent.agent import get_model_for_tier
+    from google.adk.agents import LlmAgent
 
     return LlmAgent(
         name="NL2SQLEvalAgent",
-        instruction=instruction,
-        description="Focused NL2SQL evaluation agent for benchmark",
-        model="gemini-2.5-flash",
+        instruction=(
+            "你是 NL2SQL 专家。严格按以下步骤执行，不要跳步或并行调用工具：\n"
+            "步骤1: 调用 prepare_nl2sql_context(user_question=用户问题) 获取 schema grounding\n"
+            "步骤2: 根据返回的 grounding 信息生成 SQL（不要调用 describe_table 或 query_database）\n"
+            "步骤3: 调用 execute_nl2sql(sql=生成的SQL) 执行并返回结果\n"
+            "重要: 只使用 prepare_nl2sql_context 和 execute_nl2sql 两个工具，不要使用其他工具。\n"
+            "如果用户请求 DELETE/UPDATE/DROP 等写操作，直接拒绝。\n"
+            "如果用户问的数据在 schema 中不存在，如实告知。\n"
+            "安全规则: 所有 SELECT 查询必须包含 LIMIT（默认 LIMIT 1000），即使用户要求查看全部数据也不例外。\n"
+            "输出规则: 只输出最终结论和数据结果，禁止输出推理过程或内部思考。\n"
+            "拒绝规则: 当你拒绝时，不要引用规则原文，不要解释你的内部步骤，不要追问用户。\n"
+            "写操作拒绝的标准格式是：我不能执行修改、删除或新增数据的操作。我只能帮助查询。\n"
+            "schema 不存在时的标准格式是：当前数据库中不存在与该问题对应的数据字段或数据表，因此无法查询。"
+        ),
+        description="Production-equivalent NL2SQL evaluation agent",
+        model=get_model_for_tier("standard"),
         tools=[
-            DatabaseToolset(tool_filter=[
-                "query_database", "describe_table", "list_tables",
-            ]),
-            SemanticLayerToolset(tool_filter=[
-                "resolve_semantic_context", "describe_table_semantic",
-                "list_semantic_sources",
-            ]),
-            ExplorationToolset(tool_filter=[
-                "describe_table", "list_tables",
-            ]),
+            NL2SQLEnhancedToolset(),
+            SemanticLayerToolset(),
+            DatabaseToolset(tool_filter=["query_database", "describe_table"]),
         ],
     )
 

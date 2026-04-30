@@ -266,6 +266,10 @@ def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
                 for start in range(len(user_lower) - seg_len + 1):
                     seg = user_lower[start:start + seg_len]
                     if len(seg) >= 3 and seg in alias_lower:
+                        # ASCII-only segments need ≥5 chars to avoid English
+                        # stop words ("the", "for", "and") matching CJK aliases
+                        if seg.isascii() and len(seg) < 5:
+                            continue
                         coverage = len(seg) / max(len(alias_lower), 1)
                         if coverage >= 0.5:
                             best_score = max(best_score, min(0.65, coverage))
@@ -989,11 +993,18 @@ def describe_table_semantic(table_name: str) -> dict:
         with engine.connect() as conn:
             _inject_user_context(conn)
 
-            # Get raw columns
-            columns = conn.execute(text(
-                "SELECT column_name, data_type FROM information_schema.columns "
-                "WHERE table_name = :t ORDER BY ordinal_position"
-            ), {"t": table_name}).fetchall()
+            # Support schema-qualified names (e.g. "bird_debit_card.gasstations")
+            if "." in table_name:
+                schema_part, bare_name = table_name.rsplit(".", 1)
+                columns = conn.execute(text(
+                    "SELECT column_name, data_type FROM information_schema.columns "
+                    "WHERE table_schema = :s AND table_name = :t ORDER BY ordinal_position"
+                ), {"s": schema_part, "t": bare_name}).fetchall()
+            else:
+                columns = conn.execute(text(
+                    "SELECT column_name, data_type FROM information_schema.columns "
+                    "WHERE table_name = :t ORDER BY ordinal_position"
+                ), {"t": table_name}).fetchall()
 
             if not columns:
                 return {"status": "error", "message": f"Table '{table_name}' not found"}

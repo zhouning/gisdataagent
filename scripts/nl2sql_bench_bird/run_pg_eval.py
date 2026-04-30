@@ -18,6 +18,19 @@ Usage:
 from __future__ import annotations
 
 import argparse
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser()
+    p.add_argument("--bird-root", default=None)
+    p.add_argument("--mode", choices=["baseline", "full", "both"], default="both")
+    p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--difficulty", default=None)
+    p.add_argument("--db-id", default=None, help="filter by single db_id")
+    p.add_argument("--out-dir", default=None)
+    return p
+
+
 import asyncio
 import json
 import os
@@ -28,45 +41,64 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from bird_paths import resolve_bird_layout
 from dotenv import load_dotenv
 load_dotenv(str(Path(__file__).resolve().parents[2] / "data_agent" / ".env"), override=True)
 
-# Disable ArcPy tools BEFORE any data_agent import — works around a duplicate
-# function-declaration error that surfaces when the same arcpy_* tool ends up
-# in multiple ADK agents within general_pipeline. Benchmark questions never
-# need ArcPy, so this is safe.
-import data_agent.toolsets.geo_processing_tools as _geo_proc  # noqa: E402
-_geo_proc._arcpy_funcs.clear()
-_geo_proc._arcpy_gov_explore_funcs.clear()
-_geo_proc._arcpy_gov_process_funcs.clear()
-_geo_proc.ARCPY_AVAILABLE = False
-print("[bird-pg] ArcPy tools disabled for benchmark run.")
-
-from sqlalchemy import text  # noqa: E402
-from google import genai as genai_client  # noqa: E402
-from google.genai import types  # noqa: E402
-
-from data_agent.db_engine import get_engine  # noqa: E402
-from data_agent.eval_history import ensure_eval_table, record_eval_result  # noqa: E402
-
-BIRD_ROOT = Path(__file__).resolve().parents[2] / "data" / "bird_mini_dev"
-PG_QUESTIONS = BIRD_ROOT / "llm" / "mini_dev_data" / "minidev" / "MINIDEV" / "mini_dev_postgresql.json"
-RESULTS_ROOT = Path(__file__).resolve().parents[2] / "data_agent" / "nl2sql_eval_results"
-
+text = None
+get_engine = None
+ensure_eval_table = None
+record_eval_result = None
+types = None
 MODEL = os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
-_client = genai_client.Client()
+_client = None
+
+
+def _init_runtime() -> None:
+    global text, get_engine, ensure_eval_table, record_eval_result, types, _client
+    if _client is not None:
+        return
+
+    # Disable ArcPy tools BEFORE any data_agent import — works around a duplicate
+    # function-declaration error that surfaces when the same arcpy_* tool ends up
+    # in multiple ADK agents within general_pipeline. Benchmark questions never
+    # need ArcPy, so this is safe.
+    import data_agent.toolsets.geo_processing_tools as _geo_proc  # noqa: E402
+
+    _geo_proc._arcpy_funcs.clear()
+    _geo_proc._arcpy_gov_explore_funcs.clear()
+    _geo_proc._arcpy_gov_process_funcs.clear()
+    _geo_proc.ARCPY_AVAILABLE = False
+    print("[bird-pg] ArcPy tools disabled for benchmark run.")
+
+    from sqlalchemy import text as _text  # noqa: E402
+    from google import genai as genai_client  # noqa: E402
+    from google.genai import types as _types  # noqa: E402
+    from data_agent.db_engine import get_engine as _get_engine  # noqa: E402
+    from data_agent.eval_history import ensure_eval_table as _ensure_eval_table, record_eval_result as _record_eval_result  # noqa: E402
+
+    text = _text
+    types = _types
+    get_engine = _get_engine
+    ensure_eval_table = _ensure_eval_table
+    record_eval_result = _record_eval_result
+    _client = genai_client.Client()
 
 
 # ============================================================================
 # Question loading
 # ============================================================================
 
-def load_questions(limit: int | None = None,
+def load_questions(questions_path: Path,
+                   limit: int | None = None,
                    difficulties: set[str] | None = None,
                    db_ids: set[str] | None = None) -> list[dict]:
     out: list[dict] = []
-    with PG_QUESTIONS.open(encoding="utf-8") as f:
+    with questions_path.open(encoding="utf-8") as f:
         data = json.load(f)
     for rec in data:
         if difficulties and rec.get("difficulty") not in difficulties:
@@ -87,6 +119,7 @@ _SCHEMA_CACHE: dict[str, str] = {}
 
 
 def dump_schema(db_id: str) -> str:
+    _init_runtime()
     if db_id in _SCHEMA_CACHE:
         return _SCHEMA_CACHE[db_id]
     schema_pg = f"bird_{db_id}"
@@ -121,6 +154,7 @@ def _strip_fences(s: str) -> str:
 
 def execute_pg(sql: str, db_id: str, timeout_ms: int = 30_000) -> dict:
     """Run SQL with search_path set to bird_<db_id>, public."""
+    _init_runtime()
     engine = get_engine()
     if not engine:
         return {"status": "error", "rows": None, "error": "no engine"}
@@ -186,6 +220,7 @@ Rules:
 
 
 def baseline_generate(question: str, db_id: str, evidence: str = "") -> dict:
+    _init_runtime()
     schema = dump_schema(db_id)
     prompt = (
         BASELINE_PROMPT
@@ -235,7 +270,7 @@ def _lazy_init_full():
 
 
 async def full_generate(question: str, db_id: str, evidence: str = "") -> dict:
-    """Run full pipeline; pre-set search_path so query_database works on bare names."""
+    """Run full NL2Semantic2SQL pipeline (grounding + postprocess + self-correction)."""
     from data_agent.pipeline_runner import run_pipeline_headless
 
     agent, session_service = _lazy_init_full()
@@ -250,10 +285,9 @@ async def full_generate(question: str, db_id: str, evidence: str = "") -> dict:
         f"SCHEMA:\n{schema_dump}\n"
         + (f"{evidence}\n\n" if evidence else "\n")
         + f"Question: {question}\n\n"
-        + f"Generate ONE complete PostgreSQL SELECT query that answers this. "
-        + f"Schema-qualify tables (e.g. `{schema_pg}.customers`). "
-        + f"Call query_database with the SQL — do not call describe_table "
-        + f"(the schema above is complete)."
+        + f"请按标准流程执行：先调用 prepare_nl2sql_context 获取 grounding，"
+        + f"然后生成 SQL，最后调用 execute_nl2sql 执行。"
+        + f"表名需要 schema 限定（如 `{schema_pg}.customers`）。"
     )
 
     sid = f"bird_{db_id}_{int(time.time() * 1000)}"
@@ -266,10 +300,15 @@ async def full_generate(question: str, db_id: str, evidence: str = "") -> dict:
     except Exception as e:
         return {"status": "exception", "sql": "", "error": str(e), "tokens": 0}
 
-    # Extract last query_database call's SQL
+    # Extract SQL from execute_nl2sql or query_database tool calls
     pred_sql = ""
     for entry in (result.tool_execution_log or [])[::-1]:
-        if entry.get("tool_name") == "query_database":
+        tool = entry.get("tool_name", "")
+        if tool == "execute_nl2sql":
+            pred_sql = entry.get("args", {}).get("sql", "") or ""
+            if pred_sql:
+                break
+        elif tool == "query_database":
             pred_sql = entry.get("args", {}).get("sql_query", "") or ""
             if pred_sql:
                 break
@@ -340,22 +379,22 @@ async def run_one(q: dict, mode: str) -> dict:
 
 
 async def main() -> int:
-    p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=["baseline", "full", "both"], default="both")
-    p.add_argument("--limit", type=int, default=None)
-    p.add_argument("--difficulty", default=None)
-    p.add_argument("--db-id", default=None, help="filter by single db_id")
-    p.add_argument("--out-dir", default=None)
+    _init_runtime()
+    p = build_arg_parser()
     args = p.parse_args()
+
+    layout = resolve_bird_layout(args.bird_root)
+    pg_questions = layout["pg_questions"]
+    results_root = layout["results_root"]
 
     diffs = set(args.difficulty.split(",")) if args.difficulty else None
     dbs = set(args.db_id.split(",")) if args.db_id else None
 
-    questions = load_questions(limit=args.limit, difficulties=diffs, db_ids=dbs)
+    questions = load_questions(questions_path=pg_questions, limit=args.limit, difficulties=diffs, db_ids=dbs)
     print(f"[bird-pg] Loaded {len(questions)} questions, mode={args.mode}")
 
     out_dir = Path(args.out_dir) if args.out_dir else (
-        RESULTS_ROOT / f"bird_pg_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
+        results_root / f"bird_pg_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
     cache = open_cache(out_dir / "run_state.db")

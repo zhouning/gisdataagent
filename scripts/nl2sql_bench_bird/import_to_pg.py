@@ -11,6 +11,7 @@ Usage:
 """
 from __future__ import annotations
 
+import argparse
 import sqlite3
 import sys
 from pathlib import Path
@@ -18,14 +19,21 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import text
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from bird_paths import resolve_bird_layout
 from dotenv import load_dotenv
 load_dotenv(str(Path(__file__).resolve().parents[2] / "data_agent" / ".env"), override=True)
 
 from data_agent.db_engine import get_engine  # noqa: E402
 
-BIRD_DBS_ROOT = Path(__file__).resolve().parents[2] / "data" / "bird_mini_dev" / \
-    "llm" / "mini_dev_data" / "minidev" / "MINIDEV" / "dev_databases"
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser()
+    p.add_argument("--bird-root", default=None)
+    return p
 
 
 def list_tables(conn: sqlite3.Connection) -> list[str]:
@@ -71,16 +79,22 @@ def import_sqlite_db(sqlite_path: Path, schema: str, engine, chunksize: int = 50
 
 
 def main() -> int:
+    p = build_arg_parser()
+    args = p.parse_args()
+
+    layout = resolve_bird_layout(args.bird_root)
+    bird_dbs_root = layout["dev_databases"]
+
     engine = get_engine()
     if engine is None:
         print("ERROR: get_engine() returned None.", file=sys.stderr)
         return 2
 
-    if not BIRD_DBS_ROOT.exists():
-        print(f"ERROR: {BIRD_DBS_ROOT} not found", file=sys.stderr)
+    if not bird_dbs_root.exists():
+        print(f"ERROR: {bird_dbs_root} not found", file=sys.stderr)
         return 2
 
-    sqlite_dirs = [p for p in BIRD_DBS_ROOT.iterdir() if p.is_dir()]
+    sqlite_dirs = [p for p in bird_dbs_root.iterdir() if p.is_dir()]
     print(f"[bird-import] Found {len(sqlite_dirs)} SQLite databases")
 
     summary: list[dict] = []

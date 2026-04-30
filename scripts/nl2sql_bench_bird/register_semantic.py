@@ -37,6 +37,9 @@ def main() -> int:
             "WHERE schema_name LIKE 'bird_%' ORDER BY schema_name"
         )).fetchall()]
         print(f"[register] Found {len(schemas)} BIRD schemas")
+        if not schemas:
+            print("ERROR: No bird_* schemas found. Run scripts/nl2sql_bench_bird/import_to_pg.py first.", file=sys.stderr)
+            return 2
 
         total_tables = 0
         total_cols = 0

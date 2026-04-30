@@ -21,18 +21,16 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from dotenv import load_dotenv
-load_dotenv(str(Path(__file__).resolve().parents[2] / "data_agent" / ".env"), override=True)
 
+from bird_paths import resolve_bird_layout
+from dotenv import load_dotenv
 from google import genai as genai_client  # noqa: E402
 from google.genai import types  # noqa: E402
 
-# Paths
-BIRD_ROOT = Path(__file__).resolve().parents[2] / "data" / "bird_mini_dev"
-QUESTIONS_PATH = BIRD_ROOT / "finetuning" / "inference" / "mini_dev_prompt.jsonl"
-DB_ROOT = BIRD_ROOT / "llm" / "mini_dev_data" / "minidev" / "MINIDEV" / "dev_databases"
-RESULTS_ROOT = Path(__file__).resolve().parents[2] / "data_agent" / "nl2sql_eval_results"
+load_dotenv(str(Path(__file__).resolve().parents[2] / "data_agent" / ".env"), override=True)
 
 MODEL = os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
 _client = genai_client.Client()
@@ -48,9 +46,18 @@ Rules:
 """
 
 
-def load_questions(limit: int | None = None, difficulties: set[str] | None = None) -> list[dict]:
+def build_arg_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser()
+    p.add_argument("--bird-root", default=None)
+    p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--difficulty", default=None, help="simple,moderate,challenging")
+    p.add_argument("--out-dir", default=None)
+    return p
+
+
+def load_questions(questions_path: Path, limit: int | None = None, difficulties: set[str] | None = None) -> list[dict]:
     out: list[dict] = []
-    with QUESTIONS_PATH.open("r", encoding="utf-8") as f:
+    with questions_path.open("r", encoding="utf-8") as f:
         for line in f:
             rec = json.loads(line.strip())
             if difficulties and rec.get("difficulty") not in difficulties:
@@ -61,21 +68,20 @@ def load_questions(limit: int | None = None, difficulties: set[str] | None = Non
     return out
 
 
-def find_db_path(db_id: str, db_root: Path = None) -> Path | None:
+def find_db_path(db_id: str, db_root: Path, bird_root: Path) -> Path | None:
     """Locate the SQLite file for a given db_id."""
-    root = db_root or DB_ROOT
     candidates = [
-        root / db_id / f"{db_id}.sqlite",
-        root / db_id / f"{db_id}.db",
+        db_root / db_id / f"{db_id}.sqlite",
+        db_root / db_id / f"{db_id}.db",
     ]
     for c in candidates:
         if c.exists():
             return c
     # Fallback: search
-    matches = list(BIRD_ROOT.rglob(f"{db_id}/{db_id}.sqlite"))
+    matches = list(bird_root.rglob(f"{db_id}/{db_id}.sqlite"))
     if matches:
         return matches[0]
-    matches = list(BIRD_ROOT.rglob(f"{db_id}.sqlite"))
+    matches = list(bird_root.rglob(f"{db_id}.sqlite"))
     return matches[0] if matches else None
 
 
@@ -173,31 +179,34 @@ def cache_put(conn, qid: int, payload: dict) -> None:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser()
-    p.add_argument("--limit", type=int, default=None)
-    p.add_argument("--difficulty", default=None, help="simple,moderate,challenging")
-    p.add_argument("--out-dir", default=None)
+    p = build_arg_parser()
     args = p.parse_args()
 
+    layout = resolve_bird_layout(args.bird_root)
+    bird_root = layout["bird_root"]
+    questions_path = layout["sqlite_questions"]
+    db_root = layout["dev_databases"]
+    results_root = layout["results_root"]
+
     diffs = set(args.difficulty.split(",")) if args.difficulty else None
-    questions = load_questions(limit=args.limit, difficulties=diffs)
+    questions = load_questions(questions_path=questions_path, limit=args.limit, difficulties=diffs)
     print(f"[bird] Loaded {len(questions)} questions")
 
-    if not DB_ROOT.exists():
+    if not db_root.exists():
         # Try alternate paths
-        alt = list(BIRD_ROOT.rglob("dev_databases"))
+        alt = list(bird_root.rglob("dev_databases"))
         if alt:
             _db_root = alt[0]
             print(f"[bird] Using DB root: {_db_root}")
         else:
-            print(f"ERROR: DB root not found. Expected: {DB_ROOT}", file=sys.stderr)
+            print(f"ERROR: DB root not found. Expected: {db_root}", file=sys.stderr)
             print("Run: unzip minidev.zip first", file=sys.stderr)
             return 2
     else:
-        _db_root = DB_ROOT
+        _db_root = db_root
 
     out_dir = Path(args.out_dir) if args.out_dir else (
-        RESULTS_ROOT / f"bird_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
+        results_root / f"bird_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
     cache = open_resume_cache(out_dir / "run_state.db")
@@ -224,7 +233,7 @@ def main() -> int:
             print(f"  [{i}/{len(questions)}] {mark} {qid} ({difficulty}) db={db_id} (cached)")
             continue
 
-        db_path = find_db_path(db_id, _db_root)
+        db_path = find_db_path(db_id, _db_root, bird_root)
         if db_path is None:
             rec = {"qid": qid, "db_id": db_id, "difficulty": difficulty,
                    "question": q["question"], "gold_sql": q["SQL"],
