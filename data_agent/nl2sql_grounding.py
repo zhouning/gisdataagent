@@ -1,6 +1,7 @@
 """NL2SQL grounding: semantic resolution + schema assembly + few-shot formatting."""
 from __future__ import annotations
 
+import re
 from difflib import SequenceMatcher
 
 from .reference_queries import fetch_nl2sql_few_shots
@@ -11,15 +12,19 @@ _COMPLEX_FEWSHOT_HINTS = (
 
 
 def _should_fetch_few_shots(user_text: str, candidate_tables: list, semantic: dict) -> bool:
-    """Only fetch expensive embedding-based few-shots for genuinely complex queries."""
-    if _is_ascii_heavy(user_text) and not (semantic.get("spatial_ops") or semantic.get("region_filter")):
+    """Only fetch expensive embedding-based few-shots for genuinely complex queries.
+
+    GIS few-shots are not useful for non-spatial queries; they pollute
+    warehouse-style prompts with irrelevant ST_* examples.
+    """
+    spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    if not spatial_query and not any(h in user_text for h in _COMPLEX_FEWSHOT_HINTS):
         return False
     high_conf_tables = [t for t in candidate_tables if t.get("confidence", 0) >= 0.6]
     if len(high_conf_tables) > 1:
         return True
     if any(h in user_text for h in _COMPLEX_FEWSHOT_HINTS):
         return True
-    # Spatial signal alone is too broad; require an additional metric/filter hint
     if semantic.get("spatial_ops") and (semantic.get("metric_hints") or semantic.get("sql_filters")):
         return True
     return False
@@ -106,15 +111,26 @@ def _is_ascii_heavy(text: str) -> bool:
     return alpha_chars > 0 and ascii_chars / max(alpha_chars, 1) >= 0.6
 
 
+def _extract_schema_hint(user_text: str) -> str | None:
+    m = re.search(r"schema\s+`([^`]+)`", user_text, flags=re.IGNORECASE)
+    if m:
+        return m.group(1)
+    m = re.search(r"schema\s+([A-Za-z0-9_]+)", user_text, flags=re.IGNORECASE)
+    return m.group(1) if m else None
+
+
 def _rank_sources(user_text: str, sources: list[dict], semantic: dict) -> list[dict]:
     """Rank candidate sources to support both GIS and non-GIS queries.
 
-    For non-spatial English/warehouse queries, prefer non-geometry tables and
-    tables with matched columns. For GIS queries, preserve existing confidence-
-    driven behavior.
+    For non-spatial queries (any language), prefer non-geometry tables and
+    tables with matched columns. For GIS queries with spatial signals, preserve
+    existing confidence-driven behavior. The ASCII-heavy penalty for geometry
+    tables is stronger because such queries are virtually never about spatial
+    GIS data.
     """
     spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
     ascii_heavy = _is_ascii_heavy(user_text)
+    schema_hint = _extract_schema_hint(user_text)
     matched_columns = semantic.get("matched_columns") or {}
 
     ranked = []
@@ -124,13 +140,16 @@ def _rank_sources(user_text: str, sources: list[dict], semantic: dict) -> list[d
         has_geom = bool(source.get("geometry_type"))
         col_hits = len(matched_columns.get(table_name, []))
 
-        if ascii_heavy and not spatial_query:
+        if schema_hint and table_name.startswith(f"{schema_hint}."):
+            score += 0.5
+        if not spatial_query:
             if col_hits:
                 score += min(0.3, 0.1 * col_hits)
             if not has_geom:
-                score += 0.15
+                score += 0.1
             else:
-                score -= 0.15
+                # Stronger penalty for ASCII-heavy queries (GIS very unlikely)
+                score -= 0.25 if ascii_heavy else 0.12
 
         ranked.append((score, source))
 
@@ -170,6 +189,41 @@ def _sample_distinct_values(table_name: str, column_name: str, limit: int = 5) -
         return values
     except Exception:
         return []
+
+
+def _rank_candidate_tables(user_text: str, candidate_tables: list[dict], semantic: dict) -> list[dict]:
+    """Re-rank candidate tables after schema + sample values are available."""
+    spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    ascii_heavy = _is_ascii_heavy(user_text)
+    text_lower = user_text.lower()
+    matched_columns = semantic.get("matched_columns") or {}
+
+    ranked = []
+    for table in candidate_tables:
+        table_name = table.get("table_name", "")
+        score = float(table.get("confidence", 0.0))
+        has_geom = any(col.get("is_geometry") for col in table.get("columns", []))
+        col_hits = len(matched_columns.get(table_name, []))
+        if not spatial_query:
+            if col_hits:
+                score += min(0.3, 0.1 * col_hits)
+            if not has_geom:
+                score += 0.1
+            else:
+                score -= 0.25 if ascii_heavy else 0.12
+
+            value_hits = 0
+            for col in table.get("columns", []):
+                for v in col.get("sample_values") or []:
+                    if isinstance(v, str) and v and v.lower() in text_lower:
+                        value_hits += 1
+            if value_hits:
+                score += min(0.6, 0.25 * value_hits)
+
+        ranked.append((score, table))
+
+    ranked.sort(key=lambda x: x[0], reverse=True)
+    return [t for _, t in ranked]
 
 
 def _build_candidate_table(source: dict, schema: dict) -> dict:
@@ -308,21 +362,28 @@ def build_nl2sql_context(user_text: str) -> dict:
     # Supplement: fuzzy-match additional tables not already resolved by semantic layer
     source_table_names = {s.get("table_name") for s in sources}
     source_list = list_semantic_sources()
+    schema_hint = _extract_schema_hint(user_text)
     if source_list.get("status") == "success":
         scored = []
         for source in source_list.get("sources", []):
             if source.get("table_name") in source_table_names:
                 continue
             score = _score_source(user_text, source)
+            if schema_hint and str(source.get("table_name", "")).startswith(f"{schema_hint}."):
+                score += 0.5
             if score > 0.05:
                 s = dict(source)
                 s["confidence"] = score
                 scored.append(s)
         scored.sort(key=lambda s: s.get("confidence", 0), reverse=True)
         sources.extend(scored[:2])
+        sources = _rank_sources(user_text, sources, semantic)
 
     candidate_tables = []
-    for source in sources[:3]:
+    ascii_heavy = _is_ascii_heavy(user_text)
+    spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    source_limit = 5 if not spatial_query else 3
+    for source in sources[:source_limit]:
         table_name = source.get("table_name")
         if not table_name:
             continue
@@ -332,8 +393,6 @@ def build_nl2sql_context(user_text: str) -> dict:
         candidate_tables.append(_build_candidate_table(source, schema))
 
     # Enrich non-geometry text columns with sample values for warehouse queries
-    ascii_heavy = _is_ascii_heavy(user_text)
-    spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
     if ascii_heavy and not spatial_query:
         _TEXT_TYPES = {"text", "character varying", "varchar"}
         for table in candidate_tables:
@@ -346,6 +405,8 @@ def build_nl2sql_context(user_text: str) -> dict:
                     vals = _sample_distinct_values(tname, col["column_name"], limit=8)
                     if vals and len(vals) <= 20:
                         col["sample_values"] = vals
+
+    candidate_tables = _rank_candidate_tables(user_text, candidate_tables, semantic)[:3]
 
     few_shot_text = ""
     if _should_fetch_few_shots(user_text, candidate_tables, semantic):

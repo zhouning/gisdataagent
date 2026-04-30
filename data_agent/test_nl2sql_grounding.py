@@ -199,8 +199,172 @@ def test_build_context_prioritizes_non_gis_tables_for_english_warehouse_query():
         "bird_debit_card_specializing.yearmonth",
     ]
     assert "cq_jsydgzq" not in names[:2]
-def test_build_context_adds_value_hints_and_skips_gis_few_shots_for_ascii_query():
+def test_build_context_prefers_relevant_tables_within_schema_hint():
     from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "bird_debit_card_specializing.yearmonth",
+                "display_name": "debit_card_specializing.yearmonth",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "confidence": 0.56,
+            },
+            {
+                "table_name": "bird_debit_card_specializing.gasstations",
+                "display_name": "debit_card_specializing.gasstations",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "confidence": 0.56,
+            },
+            {
+                "table_name": "bird_debit_card_specializing.products",
+                "display_name": "debit_card_specializing.products",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "confidence": 0.56,
+            },
+        ],
+        "matched_columns": {
+            "bird_debit_card_specializing.yearmonth": [
+                {"column_name": "date", "aliases": [], "semantic_domain": None, "is_geometry": False},
+                {"column_name": "consumption", "aliases": [], "semantic_domain": None, "is_geometry": False},
+            ],
+        },
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+
+    source_list = {
+        "status": "success",
+        "sources": [
+            {
+                "table_name": "bird_debit_card_specializing.customers",
+                "display_name": "debit_card_specializing.customers",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "synonyms": ["customers"],
+                "suggested_analyses": [],
+            },
+            {
+                "table_name": "bird_debit_card_specializing.transactions_1k",
+                "display_name": "debit_card_specializing.transactions_1k",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "synonyms": ["transactions_1k"],
+                "suggested_analyses": [],
+            },
+            {
+                "table_name": "bird_thrombosis_prediction.examination",
+                "display_name": "thrombosis_prediction.examination",
+                "description": "BIRD mini_dev: thrombosis_prediction",
+                "geometry_type": None,
+                "synonyms": ["examination"],
+                "suggested_analyses": [],
+            },
+        ],
+    }
+
+    schemas = {
+        "bird_debit_card_specializing.yearmonth": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.yearmonth",
+            "display_name": "debit_card_specializing.yearmonth",
+            "columns": [
+                {"column_name": "customerid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "date", "data_type": "text", "semantic_domain": None, "aliases": []},
+                {"column_name": "consumption", "data_type": "double precision", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_debit_card_specializing.customers": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.customers",
+            "display_name": "debit_card_specializing.customers",
+            "columns": [
+                {"column_name": "customerid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "segment", "data_type": "text", "semantic_domain": None, "aliases": []},
+                {"column_name": "currency", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_debit_card_specializing.gasstations": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.gasstations",
+            "display_name": "debit_card_specializing.gasstations",
+            "columns": [
+                {"column_name": "gasstationid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "country", "data_type": "text", "semantic_domain": None, "aliases": []},
+                {"column_name": "segment", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_debit_card_specializing.products": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.products",
+            "display_name": "debit_card_specializing.products",
+            "columns": [
+                {"column_name": "productid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "description", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_debit_card_specializing.transactions_1k": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.transactions_1k",
+            "display_name": "debit_card_specializing.transactions_1k",
+            "columns": [
+                {"column_name": "customerid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "amount", "data_type": "double precision", "semantic_domain": None, "aliases": []},
+                {"column_name": "price", "data_type": "double precision", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_thrombosis_prediction.examination": {
+            "status": "success",
+            "table_name": "bird_thrombosis_prediction.examination",
+            "display_name": "thrombosis_prediction.examination",
+            "columns": [
+                {"column_name": "id", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+            ],
+        },
+    }
+
+    def _describe(table_name: str):
+        return schemas[table_name]
+
+    def _values(table_name: str, column_name: str, limit: int = 8):
+        mapping = {
+            ("bird_debit_card_specializing.customers", "segment"): ["SME", "LAM", "KAM"],
+            ("bird_debit_card_specializing.customers", "currency"): ["CZK", "EUR"],
+            ("bird_debit_card_specializing.gasstations", "segment"): ["Discount", "Premium"],
+            ("bird_debit_card_specializing.gasstations", "country"): ["CZE", "SVK"],
+        }
+        return mapping.get((table_name, column_name), [])
+
+    user_text = (
+        "Database: PostgreSQL schema `bird_debit_card_specializing`. "
+        "In 2012, who had the least consumption in LAM?"
+    )
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.list_semantic_sources", return_value=source_list), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_describe), \
+         patch("data_agent.nl2sql_grounding._sample_distinct_values", side_effect=_values), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context(user_text)
+
+    names = [t["table_name"] for t in result["candidate_tables"]]
+    assert set(names[:2]) == {
+        "bird_debit_card_specializing.yearmonth",
+        "bird_debit_card_specializing.customers",
+    }
+    assert "bird_debit_card_specializing.gasstations" not in names[:2]
+    assert "bird_debit_card_specializing.products" not in names[:2]
+    assert "bird_thrombosis_prediction.examination" not in names[:2]
+
+
 
     semantic = {
         "sources": [
