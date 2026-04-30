@@ -69,6 +69,7 @@ from .toolsets.precision_tools import PrecisionToolset
 from .toolsets.domain_standard_tools import DomainStandardToolset
 from .toolsets.report_tools import ReportToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
+from .toolsets.world_model_v2_tools import WorldModelV2Toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
 from .toolsets.geo_processing_tools import (
@@ -479,6 +480,7 @@ general_processing_agent = LlmAgent(
         WorldModelToolset(tool_filter=intent_tool_predicate),
         CausalWorldModelToolset(tool_filter=intent_tool_predicate),
         LLMCausalToolset(tool_filter=intent_tool_predicate),
+        WorldModelV2Toolset(tool_filter=intent_tool_predicate),
         GovernanceToolset(),
         DataCleaningToolset(),
         PrecisionToolset(),
@@ -891,6 +893,8 @@ _AGENT_MAP = {
             "如果用户请求 DELETE/UPDATE/DROP 等写操作，直接拒绝。\n"
             "如果用户问的数据在 schema 中不存在，如实告知。\n"
             "安全规则: 所有 SELECT 查询必须包含 LIMIT（默认 LIMIT 1000），即使用户要求查看全部数据也不例外。\n"
+            "投影规则: 只 SELECT 问题明确要求的字段。不要添加额外的聚合列、计算列或辅助列。"
+            "例如问'哪一年消费最多'只返回年份列，不要额外返回消费总额列。\n"
             "输出规则: 只输出最终结论和数据结果，禁止输出推理过程或内部思考。\n"
             "拒绝规则: 当你拒绝时，不要引用规则原文，不要解释你的内部步骤，不要追问用户。\n"
             "写操作拒绝的标准格式是：我不能执行修改、删除或新增数据的操作。我只能帮助查询。\n"
