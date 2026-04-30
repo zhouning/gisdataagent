@@ -12,6 +12,8 @@ _COMPLEX_FEWSHOT_HINTS = (
 
 def _should_fetch_few_shots(user_text: str, candidate_tables: list, semantic: dict) -> bool:
     """Only fetch expensive embedding-based few-shots for genuinely complex queries."""
+    if _is_ascii_heavy(user_text) and not (semantic.get("spatial_ops") or semantic.get("region_filter")):
+        return False
     high_conf_tables = [t for t in candidate_tables if t.get("confidence", 0) >= 0.6]
     if len(high_conf_tables) > 1:
         return True
@@ -96,6 +98,80 @@ def _score_source(user_text: str, source: dict) -> float:
     return best
 
 
+def _is_ascii_heavy(text: str) -> bool:
+    if not text:
+        return False
+    ascii_chars = sum(1 for ch in text if ch.isascii() and ch.isalpha())
+    alpha_chars = sum(1 for ch in text if ch.isalpha())
+    return alpha_chars > 0 and ascii_chars / max(alpha_chars, 1) >= 0.6
+
+
+def _rank_sources(user_text: str, sources: list[dict], semantic: dict) -> list[dict]:
+    """Rank candidate sources to support both GIS and non-GIS queries.
+
+    For non-spatial English/warehouse queries, prefer non-geometry tables and
+    tables with matched columns. For GIS queries, preserve existing confidence-
+    driven behavior.
+    """
+    spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    ascii_heavy = _is_ascii_heavy(user_text)
+    matched_columns = semantic.get("matched_columns") or {}
+
+    ranked = []
+    for source in sources:
+        table_name = source.get("table_name", "")
+        score = float(source.get("confidence", 0.0))
+        has_geom = bool(source.get("geometry_type"))
+        col_hits = len(matched_columns.get(table_name, []))
+
+        if ascii_heavy and not spatial_query:
+            if col_hits:
+                score += min(0.3, 0.1 * col_hits)
+            if not has_geom:
+                score += 0.15
+            else:
+                score -= 0.15
+
+        ranked.append((score, source))
+
+    ranked.sort(key=lambda x: x[0], reverse=True)
+    return [s for _, s in ranked]
+
+
+def _sample_distinct_values(table_name: str, column_name: str, limit: int = 5) -> list[str]:
+    """Fetch a few distinct values for low-cardinality text columns.
+
+    Supports dotted schema-qualified table names. Best-effort only.
+    """
+    try:
+        from .db_engine import get_engine
+        from sqlalchemy import text as sa_text
+        engine = get_engine()
+        if not engine:
+            return []
+
+        if "." in table_name:
+            schema_name, bare_table = table_name.rsplit(".", 1)
+            from_clause = f'"{schema_name}"."{bare_table}"'
+        else:
+            from_clause = f'"{table_name}"'
+
+        sql = (
+            f'SELECT DISTINCT "{column_name}" FROM {from_clause} '
+            f'WHERE "{column_name}" IS NOT NULL ORDER BY 1 LIMIT {int(limit)}'
+        )
+        with engine.connect() as conn:
+            rows = conn.execute(sa_text(sql)).fetchall()
+        values = []
+        for row in rows:
+            v = row[0]
+            if isinstance(v, str) and v:
+                values.append(v)
+        return values
+    except Exception:
+        return []
+
+
 def _build_candidate_table(source: dict, schema: dict) -> dict:
     """Merge semantic source hit + describe_table_semantic() result."""
     out_columns = []
@@ -121,6 +197,7 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
             "description": col.get("description") or "",
             "is_geometry": is_geom,
             "needs_quoting": _needs_quoting(column_name),
+            "sample_values": [],
         })
     return {
         "table_name": source.get("table_name") or schema.get("table_name"),
@@ -146,7 +223,11 @@ def _format_grounding_prompt(payload: dict) -> str:
         for col in table.get("columns", []):
             alias_str = ", ".join(col.get("aliases") or []) or "—"
             unit_str = f" [单位: {col['unit']}]" if col.get("unit") else ""
-            lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')}{unit_str} | 别名: {alias_str}")
+            sample_str = ""
+            sv = col.get("sample_values")
+            if sv:
+                sample_str = f" | 示例值: {', '.join(str(v) for v in sv[:8])}"
+            lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')}{unit_str} | 别名: {alias_str}{sample_str}")
             if col.get("is_geometry"):
                 pg_type = col.get("pg_type", "")
                 srid = 0
@@ -222,6 +303,7 @@ def build_nl2sql_context(user_text: str) -> dict:
     """Build semantic + schema grounding payload for NL2SQL generation."""
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
+    sources = _rank_sources(user_text, sources, semantic)
 
     # Supplement: fuzzy-match additional tables not already resolved by semantic layer
     source_table_names = {s.get("table_name") for s in sources}
@@ -248,6 +330,22 @@ def build_nl2sql_context(user_text: str) -> dict:
         if schema.get("status") != "success":
             continue
         candidate_tables.append(_build_candidate_table(source, schema))
+
+    # Enrich non-geometry text columns with sample values for warehouse queries
+    ascii_heavy = _is_ascii_heavy(user_text)
+    spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    if ascii_heavy and not spatial_query:
+        _TEXT_TYPES = {"text", "character varying", "varchar"}
+        for table in candidate_tables:
+            tname = table.get("table_name", "")
+            for col in table.get("columns", []):
+                if col.get("is_geometry"):
+                    continue
+                pg_type = (col.get("pg_type") or "").lower()
+                if any(t in pg_type for t in _TEXT_TYPES):
+                    vals = _sample_distinct_values(tname, col["column_name"], limit=8)
+                    if vals and len(vals) <= 20:
+                        col["sample_values"] = vals
 
     few_shot_text = ""
     if _should_fetch_few_shots(user_text, candidate_tables, semantic):

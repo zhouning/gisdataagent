@@ -261,7 +261,7 @@ def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
             best_score = max(best_score, 0.7)
             continue
         # Reverse substring (alias contains a significant segment of user text)
-        if len(alias_lower) >= 4:
+        if fuzzy and len(alias_lower) >= 4:
             for seg_len in range(min(len(user_lower), len(alias_lower)), 2, -1):
                 for start in range(len(user_lower) - seg_len + 1):
                     seg = user_lower[start:start + seg_len]
@@ -507,14 +507,19 @@ def resolve_semantic_context(user_text: str) -> dict:
 
     # --- 5. Match region groups ---
     region_groups = catalog.get("region_groups", {})
+    best_region = None
+    best_region_score = 0.0
     for region_name, region_info in region_groups.items():
         aliases = region_info.get("aliases", [])
-        if _match_aliases(user_text, aliases) > 0:
-            result["region_filter"] = {
+        score = _match_aliases(user_text, aliases)
+        if score > best_region_score:
+            best_region_score = score
+            best_region = {
                 "name": region_name,
                 "provinces": region_info.get("provinces", []),
             }
-            break
+    if best_region is not None:
+        result["region_filter"] = best_region
 
     # --- 6. Match spatial operations ---
     spatial_ops = catalog.get("spatial_operations", {})

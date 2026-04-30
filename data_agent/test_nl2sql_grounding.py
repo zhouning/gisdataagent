@@ -92,6 +92,193 @@ def test_build_context_fallbacks_to_list_sources_when_semantic_has_no_sources():
     assert result["candidate_tables"][0]["table_name"] == "cq_buildings_2021"
 
 
+def test_build_context_prioritizes_non_gis_tables_for_english_warehouse_query():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "cq_jsydgzq",
+                "display_name": "重庆市建设用地管制区",
+                "description": "GIS polygon layer",
+                "geometry_type": "POLYGON",
+                "confidence": 0.56,
+            },
+            {
+                "table_name": "bird_debit_card_specializing.customers",
+                "display_name": "debit_card_specializing.customers",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "confidence": 0.70,
+            },
+            {
+                "table_name": "bird_debit_card_specializing.yearmonth",
+                "display_name": "debit_card_specializing.yearmonth",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "confidence": 0.56,
+            },
+            {
+                "table_name": "bird_card_games.legalities",
+                "display_name": "card_games.legalities",
+                "description": "BIRD mini_dev: card_games",
+                "geometry_type": None,
+                "confidence": 0.56,
+            },
+        ],
+        "matched_columns": {
+            "bird_debit_card_specializing.customers": [
+                {"column_name": "segment", "aliases": [], "semantic_domain": None, "is_geometry": False},
+                {"column_name": "currency", "aliases": [], "semantic_domain": None, "is_geometry": False},
+            ],
+            "bird_debit_card_specializing.yearmonth": [
+                {"column_name": "date", "aliases": [], "semantic_domain": None, "is_geometry": False},
+                {"column_name": "consumption", "aliases": [], "semantic_domain": None, "is_geometry": False},
+            ],
+        },
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+
+    schemas = {
+        "cq_jsydgzq": {
+            "status": "success",
+            "table_name": "cq_jsydgzq",
+            "display_name": "重庆市建设用地管制区",
+            "columns": [{"column_name": "shape", "data_type": "USER-DEFINED", "semantic_domain": None, "aliases": [], "is_geometry": True}],
+            "geometry_type": "POLYGON",
+            "srid": 4523,
+        },
+        "bird_debit_card_specializing.customers": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.customers",
+            "display_name": "debit_card_specializing.customers",
+            "columns": [
+                {"column_name": "customerid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "segment", "data_type": "text", "semantic_domain": None, "aliases": []},
+                {"column_name": "currency", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_debit_card_specializing.yearmonth": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.yearmonth",
+            "display_name": "debit_card_specializing.yearmonth",
+            "columns": [
+                {"column_name": "customerid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "date", "data_type": "text", "semantic_domain": None, "aliases": []},
+                {"column_name": "consumption", "data_type": "double precision", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_card_games.legalities": {
+            "status": "success",
+            "table_name": "bird_card_games.legalities",
+            "display_name": "card_games.legalities",
+            "columns": [
+                {"column_name": "format", "data_type": "text", "semantic_domain": None, "aliases": []},
+                {"column_name": "status", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+    }
+
+    def _describe(table_name: str):
+        return schemas[table_name]
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_describe), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context("What was the average monthly consumption of customers in SME for the year 2013?")
+
+    names = [t["table_name"] for t in result["candidate_tables"]]
+    assert names[:2] == [
+        "bird_debit_card_specializing.customers",
+        "bird_debit_card_specializing.yearmonth",
+    ]
+    assert "cq_jsydgzq" not in names[:2]
+def test_build_context_adds_value_hints_and_skips_gis_few_shots_for_ascii_query():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "bird_debit_card_specializing.gasstations",
+                "display_name": "debit_card_specializing.gasstations",
+                "description": "BIRD mini_dev: debit_card_specializing",
+                "geometry_type": None,
+                "confidence": 0.65,
+            },
+            {
+                "table_name": "bird_european_football_2.country",
+                "display_name": "european_football_2.country",
+                "description": "BIRD mini_dev: european_football_2",
+                "geometry_type": None,
+                "confidence": 0.65,
+            },
+        ],
+        "matched_columns": {
+            "bird_debit_card_specializing.gasstations": [
+                {"column_name": "country", "aliases": [], "semantic_domain": None, "is_geometry": False},
+                {"column_name": "segment", "aliases": [], "semantic_domain": None, "is_geometry": False},
+            ],
+        },
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+
+    schemas = {
+        "bird_debit_card_specializing.gasstations": {
+            "status": "success",
+            "table_name": "bird_debit_card_specializing.gasstations",
+            "display_name": "debit_card_specializing.gasstations",
+            "columns": [
+                {"column_name": "gasstationid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "country", "data_type": "text", "semantic_domain": None, "aliases": []},
+                {"column_name": "segment", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_european_football_2.country": {
+            "status": "success",
+            "table_name": "bird_european_football_2.country",
+            "display_name": "european_football_2.country",
+            "columns": [
+                {"column_name": "id", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "name", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+    }
+
+    def _describe(table_name: str):
+        return schemas[table_name]
+
+    def _values(table_name: str, column_name: str, limit: int = 5):
+        mapping = {
+            ("bird_debit_card_specializing.gasstations", "country"): ["CZE", "SVK"],
+            ("bird_debit_card_specializing.gasstations", "segment"): ["Discount", "Premium"],
+        }
+        return mapping.get((table_name, column_name), [])
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_describe), \
+         patch("data_agent.nl2sql_grounding._sample_distinct_values", side_effect=_values), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots") as mock_few_shots, \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context("How many more \"discount\" gas stations does the Czech Republic have compared to Slovakia?")
+
+    text = result["grounding_prompt"]
+    assert "示例值" in text
+    assert "CZE" in text and "SVK" in text
+    assert "Discount" in text
+    mock_few_shots.assert_not_called()
+
+
 def test_grounding_prompt_contains_postgres_quote_warning():
     from data_agent.nl2sql_grounding import _format_grounding_prompt
 
