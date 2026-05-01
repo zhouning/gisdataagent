@@ -71,3 +71,14 @@ def test_classify_intent_returns_unknown_on_llm_failure():
         result = classify_intent("干啥")
         assert result.primary is IntentLabel.UNKNOWN
         assert result.source == "fallback"
+
+
+def test_user_context_exposes_current_nl2sql_intent():
+    from data_agent.user_context import current_nl2sql_intent
+    from data_agent.nl2sql_intent import IntentLabel
+    assert current_nl2sql_intent.get() == IntentLabel.UNKNOWN
+    token = current_nl2sql_intent.set(IntentLabel.KNN)
+    try:
+        assert current_nl2sql_intent.get() is IntentLabel.KNN
+    finally:
+        current_nl2sql_intent.reset(token)

@@ -19,6 +19,12 @@ current_nl2sql_schemas: ContextVar[dict] = ContextVar('current_nl2sql_schemas', 
 current_nl2sql_large_tables: ContextVar[set] = ContextVar('current_nl2sql_large_tables', default=set())
 current_nl2sql_question: ContextVar[str] = ContextVar('current_nl2sql_question', default='')
 
+from data_agent.nl2sql_intent import IntentLabel  # noqa: E402
+
+current_nl2sql_intent: ContextVar[IntentLabel] = ContextVar(
+    'current_nl2sql_intent', default=IntentLabel.UNKNOWN,
+)
+
 # Base uploads directory
 _BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 
