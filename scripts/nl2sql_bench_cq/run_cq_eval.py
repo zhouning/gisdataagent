@@ -29,24 +29,43 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from dotenv import load_dotenv
 load_dotenv(str(Path(__file__).resolve().parents[2] / "data_agent" / ".env"), override=True)
 
-import data_agent.toolsets.geo_processing_tools as _geo_proc
-_geo_proc._arcpy_funcs.clear()
-_geo_proc._arcpy_gov_explore_funcs.clear()
-_geo_proc._arcpy_gov_process_funcs.clear()
-_geo_proc.ARCPY_AVAILABLE = False
-
-from sqlalchemy import text
-from google import genai as genai_client
-from google.genai import types
-
-from data_agent.db_engine import get_engine
-from data_agent.eval_history import ensure_eval_table, record_eval_result
+text = None
+get_engine = None
+ensure_eval_table = None
+record_eval_result = None
+types = None
+_client = None
 
 BENCHMARK_PATH = Path(__file__).resolve().parents[2] / "benchmarks" / "chongqing_geo_nl2sql_full_benchmark.json"
 RESULTS_ROOT = Path(__file__).resolve().parents[2] / "data_agent" / "nl2sql_eval_results"
 
 MODEL = os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
-_client = genai_client.Client()
+
+
+def _init_runtime() -> None:
+    global text, get_engine, ensure_eval_table, record_eval_result, types, _client
+    if _client is not None:
+        return
+
+    import data_agent.toolsets.geo_processing_tools as _geo_proc
+
+    _geo_proc._arcpy_funcs.clear()
+    _geo_proc._arcpy_gov_explore_funcs.clear()
+    _geo_proc._arcpy_gov_process_funcs.clear()
+    _geo_proc.ARCPY_AVAILABLE = False
+
+    from sqlalchemy import text as _text
+    from google import genai as genai_client
+    from google.genai import types as _types
+    from data_agent.db_engine import get_engine as _get_engine
+    from data_agent.eval_history import ensure_eval_table as _ensure_eval_table, record_eval_result as _record_eval_result
+
+    text = _text
+    types = _types
+    get_engine = _get_engine
+    ensure_eval_table = _ensure_eval_table
+    record_eval_result = _record_eval_result
+    _client = genai_client.Client()
 
 
 def load_questions() -> list[dict]:
@@ -55,6 +74,7 @@ def load_questions() -> list[dict]:
 
 
 def dump_schema() -> str:
+    _init_runtime()
     engine = get_engine()
     lines: list[str] = []
     tables = ["cq_amap_poi_2024", "cq_buildings_2021", "cq_land_use_dltb", "cq_osm_roads_2021"]
@@ -87,6 +107,7 @@ def get_schema() -> str:
 
 
 def execute_pg(sql: str, timeout_ms: int = 60_000) -> dict:
+    _init_runtime()
     engine = get_engine()
     if not sql or not sql.strip():
         return {"status": "error", "rows": None, "error": "empty SQL"}
@@ -241,6 +262,7 @@ def _strip_fences(s: str) -> str:
 
 
 def baseline_generate(question: str) -> dict:
+    _init_runtime()
     schema = get_schema()
     prompt = BASELINE_PROMPT + f"\n\nSCHEMA:\n{schema}\n\nQUESTION: {question}\n\nSQL:"
     try:
@@ -421,6 +443,7 @@ async def run_one(q: dict, mode: str) -> dict:
 
 
 async def main() -> int:
+    _init_runtime()
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=["baseline", "full", "enhanced", "both"], default="both")
     p.add_argument("--out-dir", default=None)
