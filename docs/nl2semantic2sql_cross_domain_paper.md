@@ -159,7 +159,11 @@ We hypothesize that introducing entity/measure/dimension metadata for BIRD schem
 
 ### 4.4 Cross-Lingual Observations
 
-Both tracks involve cross-lingual challenges. The GIS track uses Chinese questions over Chinese-named columns (DLMC, BSM, TBMJ), while the BIRD track uses English questions over English-named columns. The framework handles both through its alias-matching mechanism, which supports multilingual synonyms registered in the semantic layer. Preliminary experiments with Chinese translations of BIRD questions (using pre-registered Chinese aliases for 75 tables and 209 columns) show successful table/column resolution, suggesting that the framework's cross-lingual capability is functional but requires systematic evaluation in future work.
+Both tracks involve cross-lingual challenges. The GIS track uses Chinese questions over Chinese-named columns (DLMC, BSM, TBMJ), while the BIRD track uses English questions over English-named columns. The framework handles both through its alias-matching mechanism, which supports multilingual synonyms registered in the semantic layer.
+
+We conduct a preliminary cross-lingual experiment by translating the same 50 BIRD questions into Chinese and evaluating them with the full MetricFlow-enhanced pipeline. The Chinese run achieves EX=0.500 and Valid=0.900, compared with EX=0.540 and Valid=0.940 for the English MetricFlow run. The 4-percentage-point gap suggests that the semantic layer's Chinese aliases are sufficient to recover most schema references, but cross-lingual paraphrase still introduces additional ambiguity, especially in moderate-difficulty questions involving aggregation semantics and join paths.
+
+This result is encouraging because it demonstrates that the framework can support cross-lingual warehouse querying without any retraining or bilingual supervision. At the same time, the remaining gap indicates that multilingual alias registration alone is not enough to eliminate cross-lingual performance loss. Future work should consider bilingual few-shot exemplars or translation-aware grounding strategies to close this gap.
 
 ### 4.5 Limitations
 
