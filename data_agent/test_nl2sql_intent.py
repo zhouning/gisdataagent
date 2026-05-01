@@ -45,3 +45,29 @@ def test_classify_rule_returns_expected_intent(question, expected):
     result = classify_rule(question)
     assert result.primary is expected
     assert result.source == "rule"
+
+
+from unittest.mock import patch
+from data_agent.nl2sql_intent import classify_intent
+
+
+def test_classify_intent_uses_rule_when_confident():
+    result = classify_intent("找出离 POI '重庆北站' 最近的 5 条道路")
+    assert result.primary is IntentLabel.KNN
+    assert result.source == "rule"
+
+
+def test_classify_intent_falls_back_to_llm_when_rule_uncertain():
+    fake = IntentResult(primary=IntentLabel.AGGREGATION, confidence=0.78, source="llm")
+    with patch("data_agent.nl2sql_intent._llm_judge", return_value=fake) as m:
+        result = classify_intent("帮我看看大家都在干什么")
+        assert m.called
+        assert result.primary is IntentLabel.AGGREGATION
+        assert result.source == "llm"
+
+
+def test_classify_intent_returns_unknown_on_llm_failure():
+    with patch("data_agent.nl2sql_intent._llm_judge", side_effect=RuntimeError("boom")):
+        result = classify_intent("干啥")
+        assert result.primary is IntentLabel.UNKNOWN
+        assert result.source == "fallback"

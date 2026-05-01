@@ -2,6 +2,8 @@
 """Intent classification for NL2SQL grounding routing (Phase A)."""
 from __future__ import annotations
 
+import json
+import os
 import re
 from dataclasses import dataclass, field
 from enum import Enum
@@ -121,3 +123,47 @@ def classify_rule(question: str) -> IntentResult:
     secondary = [lbl for lbl, _ in matches[1:3] if lbl != primary]
     confidence = 0.95 if len(matches) == 1 else 0.85
     return IntentResult(primary=primary, secondary=secondary, confidence=confidence, source="rule")
+
+
+# ---------------------------------------------------------------------------
+# Stage-2 LLM judge
+# ---------------------------------------------------------------------------
+
+_JUDGE_MODEL = os.environ.get("MODEL_ROUTER", "gemini-2.0-flash")
+
+_JUDGE_PROMPT = (
+    "Classify the following database question into ONE of these intents and "
+    "return strict JSON {{\"intent\": <label>, \"confidence\": <0..1>}}. "
+    "Labels: attribute_filter, category_filter, spatial_measurement, "
+    "spatial_join, knn, aggregation, preview_listing, refusal_intent, unknown.\n\n"
+    "Question: {question}\nJSON:"
+)
+
+
+def _llm_judge(question: str) -> IntentResult:
+    """Stage-2 LLM judge. May raise on transport / parse error."""
+    from google import genai
+    client = genai.Client()
+    resp = client.models.generate_content(
+        model=_JUDGE_MODEL,
+        contents=_JUDGE_PROMPT.format(question=question),
+    )
+    text = (resp.text or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.startswith("json"):
+            text = text[4:].strip()
+    payload = json.loads(text)
+    label = IntentLabel(payload["intent"])
+    return IntentResult(primary=label, confidence=float(payload.get("confidence", 0.7)), source="llm")
+
+
+def classify_intent(question: str) -> IntentResult:
+    """Public entrypoint: rule stage, then LLM judge if rule is uncertain."""
+    rule = classify_rule(question)
+    if rule.primary is not IntentLabel.UNKNOWN and rule.confidence >= 0.7:
+        return rule
+    try:
+        return _llm_judge(question)
+    except Exception:
+        return IntentResult(primary=IntentLabel.UNKNOWN, confidence=0.0, source="fallback")
