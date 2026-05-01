@@ -372,8 +372,24 @@ def _format_grounding_prompt(payload: dict) -> str:
     lines.append("")
     lines.append("## 安全规则")
     lines.append("- 只允许 SELECT 查询")
-    lines.append("- 大表全表扫描必须有 LIMIT")
     lines.append("- 不允许 DELETE / UPDATE / INSERT / DROP / ALTER")
+
+    from .nl2sql_intent import IntentLabel
+    intent = payload.get("intent", IntentLabel.UNKNOWN)
+    if not isinstance(intent, IntentLabel):
+        try:
+            intent = IntentLabel(intent)
+        except (ValueError, KeyError):
+            intent = IntentLabel.UNKNOWN
+
+    if intent in (IntentLabel.PREVIEW_LISTING, IntentLabel.UNKNOWN):
+        lines.append("- 大表全表扫描必须有 LIMIT")
+
+    if intent in (IntentLabel.KNN, IntentLabel.UNKNOWN):
+        lines.append("")
+        lines.append("## KNN 排序规则")
+        lines.append("- 最近邻必须使用 PostGIS 索引算子: ORDER BY a.geometry <-> b.geometry LIMIT K")
+        lines.append("- 不允许使用 ORDER BY ST_Distance(...) 进行排序；ST_Distance 只在 SELECT 中报告距离值")
     return "\n".join(lines)
 
 

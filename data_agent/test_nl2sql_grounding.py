@@ -608,3 +608,27 @@ def test_build_context_injects_warehouse_hints_from_semantic_model():
     assert "bird_debit_card_specializing.customers" in hints["table_roles"]
     assert hints["table_roles"]["bird_debit_card_specializing.customers"]["role"] == "dimension"
     assert "Join 路径提示" in result["grounding_prompt"]
+
+
+def test_format_grounding_prompt_attribute_filter_omits_limit_rule():
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+    from data_agent.nl2sql_intent import IntentLabel
+    payload = {"candidate_tables": [], "semantic_hints": {}, "intent": IntentLabel.ATTRIBUTE_FILTER}
+    out = _format_grounding_prompt(payload)
+    assert "大表全表扫描必须有 LIMIT" not in out
+
+
+def test_format_grounding_prompt_preview_listing_keeps_limit_rule():
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+    from data_agent.nl2sql_intent import IntentLabel
+    payload = {"candidate_tables": [], "semantic_hints": {}, "intent": IntentLabel.PREVIEW_LISTING}
+    out = _format_grounding_prompt(payload)
+    assert "大表全表扫描必须有 LIMIT" in out
+
+
+def test_format_grounding_prompt_knn_emphasizes_arrow_operator():
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+    from data_agent.nl2sql_intent import IntentLabel
+    payload = {"candidate_tables": [], "semantic_hints": {}, "intent": IntentLabel.KNN}
+    out = _format_grounding_prompt(payload)
+    assert "<->" in out
