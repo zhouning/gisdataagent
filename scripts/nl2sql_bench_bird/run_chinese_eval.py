@@ -149,7 +149,16 @@ async def main() -> int:
             print(f"  [{i}/{len(zh_questions)}] {m} {q['question_id']} (cached)")
             continue
         try:
-            rec = await _eval.run_one(q, "full")
+            rec = await asyncio.wait_for(_eval.run_one(q, "full"), timeout=120)
+        except asyncio.TimeoutError:
+            rec = {
+                "qid": q["question_id"], "db_id": q["db_id"],
+                "difficulty": q.get("difficulty", "?"), "question": q["question"],
+                "question_en": q.get("question_en", ""),
+                "gold_sql": q.get("SQL", ""), "pred_sql": "",
+                "ex": 0, "valid": 0, "gen_status": "timeout", "gen_error": "120s timeout",
+                "pred_error": "", "gold_status": "?", "tokens": 0,
+            }
         except Exception as e:
             rec = {
                 "qid": q["question_id"], "db_id": q["db_id"],
