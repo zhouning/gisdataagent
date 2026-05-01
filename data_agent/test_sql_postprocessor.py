@@ -259,3 +259,32 @@ def test_regex_fallback_preserves_string_literals():
     )
     assert "'floor is nice'" in fixed  # string literal preserved
     assert '"Floor" > 10' in fixed  # column fixed
+
+
+def test_postprocess_attribute_filter_does_not_inject_limit_on_large_table():
+    from data_agent.sql_postprocessor import postprocess_sql
+    from data_agent.nl2sql_intent import IntentLabel
+
+    schemas = {"cq_amap_poi_2024": [{"column_name": "geometry", "needs_quoting": False}]}
+    res = postprocess_sql(
+        "SELECT * FROM cq_amap_poi_2024 WHERE name = 'A'",
+        table_schemas=schemas,
+        large_tables={"cq_amap_poi_2024"},
+        intent=IntentLabel.ATTRIBUTE_FILTER,
+    )
+    assert "LIMIT" not in res.sql.upper()
+
+
+def test_postprocess_preview_listing_does_inject_limit_on_large_table():
+    from data_agent.sql_postprocessor import postprocess_sql
+    from data_agent.nl2sql_intent import IntentLabel
+
+    schemas = {"cq_amap_poi_2024": [{"column_name": "geometry", "needs_quoting": False}]}
+    res = postprocess_sql(
+        "SELECT * FROM cq_amap_poi_2024",
+        table_schemas=schemas,
+        large_tables={"cq_amap_poi_2024"},
+        intent=IntentLabel.PREVIEW_LISTING,
+    )
+    assert "LIMIT 1000" in res.sql.upper()
+

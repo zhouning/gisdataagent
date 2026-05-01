@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import sqlglot
 import sqlglot.expressions as exp
+
+if TYPE_CHECKING:
+    from .nl2sql_intent import IntentLabel
 
 
 @dataclass
@@ -163,6 +166,7 @@ def postprocess_sql(
     raw_sql: str,
     table_schemas: dict,
     large_tables: Optional[set] = None,
+    intent: Optional["IntentLabel"] = None,
 ) -> PostprocessResult:
     """Postprocess raw LLM-generated SQL: safety check, identifier fix, LIMIT injection.
 
@@ -171,6 +175,8 @@ def postprocess_sql(
         table_schemas: dict mapping table_name -> list of column dicts
             (each column dict has at least 'column_name' and 'needs_quoting').
         large_tables: set of table names that should auto-receive LIMIT 1000.
+        intent: classified query intent; when ATTRIBUTE_FILTER (or other non-listing
+            intents), LIMIT injection is suppressed even for large tables.
 
     Returns:
         PostprocessResult with sql, corrections, rejected, reject_reason.
@@ -208,8 +214,11 @@ def postprocess_sql(
         result.corrections.extend(fix_corrections)
 
     # LIMIT injection for large tables (skip aggregation-only queries)
+    from .nl2sql_intent import IntentLabel as _IL
+    _allow_limit = intent in (None, _IL.PREVIEW_LISTING, _IL.UNKNOWN)
     if (
-        large_tables
+        _allow_limit
+        and large_tables
         and _references_large_table(parsed, large_tables)
         and not _is_aggregation_only(parsed)
     ):
