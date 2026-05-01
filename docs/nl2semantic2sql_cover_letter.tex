@@ -1,0 +1,51 @@
+% =============================================================================
+% Cover Letter for the NL2Semantic2SQL submission.
+% Generic single-page format suitable for IJGIS / GeoInformatica /
+% Transactions in GIS / ISPRS IJGI; please replace journal name, editor name,
+% and submission date as appropriate.
+% =============================================================================
+\documentclass[11pt]{letter}
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\signature{Anonymous Author(s) \\ \textit{Affiliation withheld for review}}
+\address{Anonymous Author(s) \\ \textit{Affiliation withheld for review} \\ \texttt{anonymous@example.com}}
+
+\begin{document}
+
+\begin{letter}{The Editor-in-Chief \\ \emph{[Journal Name]}}
+
+\opening{Dear Editor,}
+
+We are pleased to submit our manuscript, ``\textbf{NL2Semantic2SQL: A Cross-Domain Framework for Natural Language to SQL over Geospatial and Enterprise Data Warehouses},'' for consideration as a regular research article in \emph{[Journal Name]}.
+
+The work addresses a gap in the natural-language-to-SQL literature: existing systems and benchmarks (Spider, BIRD, Spider~2.0, BEAVER) almost exclusively target conventional relational databases, and there is no execution-based benchmark for spatial SQL generation, no systematic study of cross-domain transfer between GIS and warehouse query semantics, and no treatment of cross-lingual querying that combines language and operator heterogeneity. Our manuscript closes these three gaps in one study.
+
+Specifically, the manuscript makes the following contributions:
+
+\begin{enumerate}
+\item We propose a unified semantic-to-SQL pipeline that decomposes the task into semantic-layer grounding, schema-aware context construction, and execution-time self-correction. The same pipeline serves both a GIS database (with PostGIS) and a warehouse database derived from BIRD mini\_dev, with domain-specific evidence injected at the grounding stage rather than encoded into the model.
+\item We construct a 20-question GIS-oriented benchmark with execution-based evaluation, structured spatial-operator coverage, and a Robustness category that probes safety/refusal behavior. Combined with a 50-question BIRD subset, this gives a dual-track protocol that has not previously been reported.
+\item Through three pipeline configurations (baseline LLM, full pipeline with prompt refinements, and full pipeline with MetricFlow-style fact/dimension modeling) we identify the bottleneck on the warehouse side and show that warehouse-specific structural metadata alone closes the gap to baseline parity. A preliminary cross-lingual experiment in which BIRD questions are translated into Chinese further shows that multilingual alias registration is sufficient to support cross-lingual querying with only a four-percentage-point loss.
+\end{enumerate}
+
+We believe the paper is a good fit for \emph{[Journal Name]}: it spans GIS-centric methods (geometry-aware grounding, spatial operators, coordinate-system rules), GIS-relevant evaluation (PostGIS, KNN, ST\_Intersection, ST\_Distance), and the broader text-to-SQL methodological discussion.
+
+\medskip
+\noindent\textbf{Status of experimental data.} The current draft reports execution accuracy on a 20-question GIS benchmark and a 50-question subset of BIRD mini\_dev. To strengthen statistical robustness, we are currently running the full 500-question version of BIRD mini\_dev on the same pipeline configurations; partial baseline results from this large-scale run are already available, and the complete 500-question numbers will be incorporated into the manuscript before the first round of review concludes. The conclusions of the paper do not depend on the exact 50-vs-500 sample size, only on the relative ordering of the three configurations, which is consistent in our partial results.
+
+\medskip
+\noindent\textbf{Reproducibility.} All benchmark questions, gold SQL, prompt templates, semantic-model registrations (including the MetricFlow warehouse models), and per-question execution logs are released with the submission. Each table in the manuscript corresponds to a specific run directory under \texttt{nl2sql\_eval\_results/} that contains the gold SQL, the predicted SQL, the execution comparison, and the per-question token usage.
+
+\medskip
+\noindent\textbf{Originality and conflicts of interest.} The manuscript is original work and has not been published or submitted elsewhere. No portion has appeared in any conference or workshop. The authors declare no competing interests.
+
+We thank you for considering our submission and look forward to the reviewers' feedback.
+
+\closing{Sincerely,}
+
+\end{letter}
+
+\end{document}
