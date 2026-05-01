@@ -23,3 +23,25 @@ def test_intent_result_dataclass_carries_primary_secondary_confidence():
     assert r.secondary == [IntentLabel.PREVIEW_LISTING]
     assert r.confidence == 0.91
     assert r.source == "rule"
+
+
+import pytest
+from data_agent.nl2sql_intent import classify_rule, IntentLabel
+
+
+@pytest.mark.parametrize("question, expected", [
+    ("列出所有 fclass = 'primary' 的道路名称", IntentLabel.ATTRIBUTE_FILTER),
+    ("找出 DLMC = '水田' 的图斑面积", IntentLabel.ATTRIBUTE_FILTER),
+    ("统计耕地的总面积", IntentLabel.CATEGORY_FILTER),
+    ("分析林地分布", IntentLabel.CATEGORY_FILTER),
+    ("计算所有水田的真实空间面积", IntentLabel.SPATIAL_MEASUREMENT),
+    ("名称包含 '建设路' 的道路与水田的重叠总长度", IntentLabel.SPATIAL_JOIN),
+    ("找出离 POI '重庆北站' 最近的 5 条道路", IntentLabel.KNN),
+    ("按 fclass 分组统计道路总数", IntentLabel.AGGREGATION),
+    ("显示所有 POI 的位置", IntentLabel.PREVIEW_LISTING),
+    ("把 DLMC 等于 '其他林地' 的统一改成 '林地'", IntentLabel.REFUSAL_INTENT),
+])
+def test_classify_rule_returns_expected_intent(question, expected):
+    result = classify_rule(question)
+    assert result.primary is expected
+    assert result.source == "rule"
