@@ -470,3 +470,141 @@ def test_grounding_prompt_contains_postgres_quote_warning():
     assert '"Floor"' in text
     assert '"Id"' in text
     assert "参考 SQL" in text or "参考查询示例" in text
+
+
+def test_format_grounding_prompt_includes_warehouse_join_hints():
+    """When warehouse_join_hints is present and spatial_query=False, inject join-path section."""
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+
+    payload = {
+        "candidate_tables": [
+            {
+                "table_name": "bird_debit_card_specializing.customers",
+                "display_name": "customers",
+                "confidence": 0.8,
+                "row_count_hint": 100,
+                "columns": [
+                    {"column_name": "customerid", "pg_type": "bigint", "quoted_ref": "customerid",
+                     "aliases": [], "needs_quoting": False},
+                    {"column_name": "segment", "pg_type": "text", "quoted_ref": "segment",
+                     "aliases": [], "needs_quoting": False},
+                ],
+            },
+            {
+                "table_name": "bird_debit_card_specializing.yearmonth",
+                "display_name": "yearmonth",
+                "confidence": 0.7,
+                "row_count_hint": 500,
+                "columns": [
+                    {"column_name": "customerid", "pg_type": "bigint", "quoted_ref": "customerid",
+                     "aliases": [], "needs_quoting": False},
+                    {"column_name": "consumption", "pg_type": "double precision",
+                     "quoted_ref": "consumption", "aliases": [], "needs_quoting": False},
+                ],
+            },
+        ],
+        "semantic_hints": {
+            "spatial_ops": [], "region_filter": None,
+            "metric_hints": [], "hierarchy_matches": [], "sql_filters": [],
+        },
+        "few_shots": [],
+        "warehouse_join_hints": {
+            "table_roles": {
+                "bird_debit_card_specializing.customers": {"role": "dimension", "entities": ["CustomerID"]},
+                "bird_debit_card_specializing.yearmonth": {"role": "fact", "entities": ["CustomerID"], "measures": ["Consumption"]},
+            },
+            "join_paths": [
+                "yearmonth.CustomerID -> customers.CustomerID",
+            ],
+        },
+    }
+    text = _format_grounding_prompt(payload)
+    assert "Join 路径提示" in text
+    assert "CustomerID" in text
+    assert "dimension" in text or "维度" in text
+    assert "fact" in text or "事实" in text
+
+
+def test_format_grounding_prompt_no_warehouse_hints_for_spatial():
+    """When spatial_ops are present, warehouse join hints should NOT appear."""
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+
+    payload = {
+        "candidate_tables": [],
+        "semantic_hints": {
+            "spatial_ops": ["ST_Intersects"], "region_filter": "重庆",
+            "metric_hints": [], "hierarchy_matches": [], "sql_filters": [],
+        },
+        "few_shots": [],
+        "warehouse_join_hints": {
+            "table_roles": {"t1": {"role": "fact", "entities": ["id"], "measures": ["val"]}},
+            "join_paths": ["t1.id -> t2.id"],
+        },
+    }
+    text = _format_grounding_prompt(payload)
+    assert "Join 路径提示" not in text
+
+
+def test_build_context_injects_warehouse_hints_from_semantic_model():
+    """build_nl2sql_context should look up SemanticModelStore and inject warehouse hints."""
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {"table_name": "bird_debit_card_specializing.customers",
+             "display_name": "customers", "description": "", "geometry_type": None, "confidence": 0.8},
+            {"table_name": "bird_debit_card_specializing.yearmonth",
+             "display_name": "yearmonth", "description": "", "geometry_type": None, "confidence": 0.7},
+        ],
+        "matched_columns": {},
+        "spatial_ops": [], "region_filter": None,
+        "metric_hints": [], "hierarchy_matches": [], "sql_filters": [], "equivalences": [],
+    }
+    schemas = {
+        "bird_debit_card_specializing.customers": {
+            "status": "success", "table_name": "bird_debit_card_specializing.customers",
+            "columns": [
+                {"column_name": "customerid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "segment", "data_type": "text", "semantic_domain": None, "aliases": []},
+            ],
+        },
+        "bird_debit_card_specializing.yearmonth": {
+            "status": "success", "table_name": "bird_debit_card_specializing.yearmonth",
+            "columns": [
+                {"column_name": "customerid", "data_type": "bigint", "semantic_domain": None, "aliases": []},
+                {"column_name": "consumption", "data_type": "double precision", "semantic_domain": None, "aliases": []},
+            ],
+        },
+    }
+
+    # Fake semantic models from SemanticModelStore
+    model_customers = {
+        "name": "bird_debit_card_specializing.customers",
+        "entities": [{"name": "CustomerID", "column": "customerid"}],
+        "measures": [],
+        "dimensions": [{"name": "segment", "type": "categorical"}],
+    }
+    model_yearmonth = {
+        "name": "bird_debit_card_specializing.yearmonth",
+        "entities": [{"name": "CustomerID", "column": "customerid"}],
+        "measures": [{"name": "Consumption", "agg": "sum", "column": "consumption"}],
+        "dimensions": [],
+    }
+
+    def _store_get(name):
+        return {"bird_debit_card_specializing.customers": model_customers,
+                "bird_debit_card_specializing.yearmonth": model_yearmonth}.get(name)
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=lambda t: schemas[t]), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=500), \
+         patch("data_agent.nl2sql_grounding.SemanticModelStore") as MockStore:
+        MockStore.return_value.get.side_effect = _store_get
+        result = build_nl2sql_context("What is the average consumption of SME customers?")
+
+    assert "warehouse_join_hints" in result
+    hints = result["warehouse_join_hints"]
+    assert "bird_debit_card_specializing.customers" in hints["table_roles"]
+    assert hints["table_roles"]["bird_debit_card_specializing.customers"]["role"] == "dimension"
+    assert "Join 路径提示" in result["grounding_prompt"]

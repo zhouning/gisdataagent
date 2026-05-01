@@ -5,6 +5,7 @@ import re
 from difflib import SequenceMatcher
 
 from .reference_queries import fetch_nl2sql_few_shots
+from .semantic_model import SemanticModelStore
 
 _COMPLEX_FEWSHOT_HINTS = (
     "面积", "距离", "交集", "相交", "缓冲", "占比", "最近", "前10", "前5", "排序", "联合", "周边"
@@ -338,6 +339,29 @@ def _format_grounding_prompt(payload: dict) -> str:
     lines.append(f"- 层次匹配: {hints.get('hierarchy_matches') or []}")
     lines.append(f"- 指标提示: {hints.get('metric_hints') or []}")
     lines.append(f"- 推荐 SQL 过滤: {hints.get('sql_filters') or []}")
+    # Warehouse join-path hints (non-spatial only)
+    wh = payload.get("warehouse_join_hints")
+    spatial_query = bool(
+        (payload.get("semantic_hints") or {}).get("spatial_ops")
+        or (payload.get("semantic_hints") or {}).get("region_filter")
+    )
+    if wh and not spatial_query:
+        lines.append("")
+        lines.append("## 数据仓库 Join 路径提示")
+        for tbl, info in (wh.get("table_roles") or {}).items():
+            role = info.get("role", "unknown")
+            role_cn = "事实表(fact)" if role == "fact" else "维度表(dimension)"
+            entities = ", ".join(info.get("entities") or [])
+            measures = ", ".join(info.get("measures") or [])
+            parts = [f"{tbl}: {role_cn}"]
+            if entities:
+                parts.append(f"实体键: {entities}")
+            if measures:
+                parts.append(f"度量: {measures}")
+            lines.append(f"- {'; '.join(parts)}")
+        for jp in wh.get("join_paths") or []:
+            lines.append(f"- JOIN: {jp}")
+
     few_shots = payload.get("few_shots") or []
     if few_shots:
         lines.append("")
@@ -351,6 +375,55 @@ def _format_grounding_prompt(payload: dict) -> str:
     lines.append("- 大表全表扫描必须有 LIMIT")
     lines.append("- 不允许 DELETE / UPDATE / INSERT / DROP / ALTER")
     return "\n".join(lines)
+
+
+def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
+    """Look up SemanticModelStore for candidate tables and build join-path hints.
+
+    Returns a dict with table_roles and join_paths, or None if no models found.
+    """
+    store = SemanticModelStore()
+    table_roles: dict[str, dict] = {}
+    entity_map: dict[str, list[str]] = {}  # entity_name -> [table_names]
+
+    for table in candidate_tables:
+        tname = table.get("table_name", "")
+        model = store.get(tname)
+        if not model:
+            continue
+        entities = [e.get("name", "") for e in (model.get("entities") or [])]
+        measures = [m.get("name", "") for m in (model.get("measures") or [])]
+        role = "fact" if measures else "dimension"
+        info: dict = {"role": role, "entities": entities}
+        if measures:
+            info["measures"] = measures
+        table_roles[tname] = info
+        for ent in entities:
+            entity_map.setdefault(ent, []).append(tname)
+
+    if not table_roles:
+        return None
+
+    # Build join paths by matching shared entities across tables
+    join_paths: list[str] = []
+    for ent, tables in entity_map.items():
+        if len(tables) < 2:
+            continue
+        facts = [t for t in tables if table_roles[t]["role"] == "fact"]
+        dims = [t for t in tables if table_roles[t]["role"] == "dimension"]
+        for f in facts:
+            for d in dims:
+                short_f = f.rsplit(".", 1)[-1] if "." in f else f
+                short_d = d.rsplit(".", 1)[-1] if "." in d else d
+                join_paths.append(f"{short_f}.{ent} -> {short_d}.{ent}")
+        # fact-to-fact joins on shared entity
+        for i, f1 in enumerate(facts):
+            for f2 in facts[i + 1:]:
+                short1 = f1.rsplit(".", 1)[-1] if "." in f1 else f1
+                short2 = f2.rsplit(".", 1)[-1] if "." in f2 else f2
+                join_paths.append(f"{short1}.{ent} -> {short2}.{ent}")
+
+    return {"table_roles": table_roles, "join_paths": join_paths}
 
 
 def build_nl2sql_context(user_text: str) -> dict:
@@ -408,6 +481,11 @@ def build_nl2sql_context(user_text: str) -> dict:
 
     candidate_tables = _rank_candidate_tables(user_text, candidate_tables, semantic)[:3]
 
+    # Build warehouse join hints from SemanticModelStore (non-spatial only)
+    warehouse_join_hints = None
+    if not spatial_query:
+        warehouse_join_hints = _build_warehouse_join_hints(candidate_tables)
+
     few_shot_text = ""
     if _should_fetch_few_shots(user_text, candidate_tables, semantic):
         few_shot_text = fetch_nl2sql_few_shots(user_text, top_k=3)
@@ -426,5 +504,7 @@ def build_nl2sql_context(user_text: str) -> dict:
         },
         "few_shots": few_shots,
     }
+    if warehouse_join_hints:
+        payload["warehouse_join_hints"] = warehouse_join_hints
     payload["grounding_prompt"] = _format_grounding_prompt(payload)
     return payload

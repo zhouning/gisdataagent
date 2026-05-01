@@ -110,9 +110,9 @@ class SemanticModelStore:
                              source_table, srid, geometry_type,
                              entities, dimensions, measures, metrics, created_by)
                         VALUES
-                            (:name, :desc, :yaml, :parsed::jsonb,
+                            (:name, :desc, :yaml, CAST(:parsed AS jsonb),
                              :src, :srid, :geom,
-                             :ent::jsonb, :dim::jsonb, :meas::jsonb, :met::jsonb, :creator)
+                             CAST(:ent AS jsonb), CAST(:dim AS jsonb), CAST(:meas AS jsonb), CAST(:met AS jsonb), :creator)
                         ON CONFLICT (name) DO UPDATE SET
                             description = EXCLUDED.description,
                             yaml_content = EXCLUDED.yaml_content,
