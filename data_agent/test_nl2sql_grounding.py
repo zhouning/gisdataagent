@@ -40,7 +40,7 @@ def test_build_context_returns_expected_keys():
          patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=107035):
         result = build_nl2sql_context("统计层高>=40的建筑数量")
 
-    assert set(result.keys()) == {"candidate_tables", "semantic_hints", "few_shots", "grounding_prompt"}
+    assert {"candidate_tables", "semantic_hints", "few_shots", "grounding_prompt"}.issubset(result.keys())
     assert len(result["candidate_tables"]) == 1
     table = result["candidate_tables"][0]
     assert table["table_name"] == "cq_buildings_2021"
@@ -632,3 +632,19 @@ def test_format_grounding_prompt_knn_emphasizes_arrow_operator():
     payload = {"candidate_tables": [], "semantic_hints": {}, "intent": IntentLabel.KNN}
     out = _format_grounding_prompt(payload)
     assert "<->" in out
+
+
+def test_build_nl2sql_context_attaches_intent_to_payload():
+    from unittest.mock import patch
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+    from data_agent.nl2sql_intent import IntentLabel, IntentResult
+
+    fake = IntentResult(primary=IntentLabel.ATTRIBUTE_FILTER, confidence=0.95, source="rule")
+    with patch("data_agent.nl2sql_grounding.classify_intent", return_value=fake), \
+         patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value={
+             "sources": [], "matched_columns": {}, "spatial_ops": [], "region_filter": None,
+             "metric_hints": [], "hierarchy_matches": [], "equivalences": [], "sql_filters": [],
+         }):
+        payload = build_nl2sql_context("列出 fclass = 'primary' 的道路")
+    assert payload["intent"] is IntentLabel.ATTRIBUTE_FILTER
+    assert "intent_source" in payload

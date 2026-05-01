@@ -6,6 +6,7 @@ from difflib import SequenceMatcher
 
 from .reference_queries import fetch_nl2sql_few_shots
 from .semantic_model import SemanticModelStore
+from .nl2sql_intent import classify_intent, IntentLabel
 
 _COMPLEX_FEWSHOT_HINTS = (
     "面积", "距离", "交集", "相交", "缓冲", "占比", "最近", "前10", "前5", "排序", "联合", "周边"
@@ -444,6 +445,7 @@ def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
 
 def build_nl2sql_context(user_text: str) -> dict:
     """Build semantic + schema grounding payload for NL2SQL generation."""
+    intent_result = classify_intent(user_text)
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
     sources = _rank_sources(user_text, sources, semantic)
@@ -519,6 +521,10 @@ def build_nl2sql_context(user_text: str) -> dict:
             "sql_filters": semantic.get("sql_filters") or [],
         },
         "few_shots": few_shots,
+        "intent": intent_result.primary,
+        "intent_secondary": [lbl.value for lbl in intent_result.secondary],
+        "intent_confidence": intent_result.confidence,
+        "intent_source": intent_result.source,
     }
     if warehouse_join_hints:
         payload["warehouse_join_hints"] = warehouse_join_hints
