@@ -120,14 +120,14 @@ These patterns are consistent with the hypothesis that the current semantic laye
 
 ### 3.5 Cross-Domain Comparison
 
-Figure 1 (to be rendered) summarizes the cross-domain comparison:
+Figure~\ref{fig:cross-domain} (Section~\ref{sec:figures}) summarizes the cross-domain comparison after applying both prompt refinement and MetricFlow warehouse modeling:
 
 ```
-GIS Track:   Baseline 0.650 → Full 0.800  (+0.150, +23.1%)
-BIRD Track:  Baseline 0.540 → Full 0.520  (-0.020, -3.7%)
+GIS Track:   Baseline 0.650 → Full 0.800  (+0.150, +23.1% relative)
+BIRD Track:  Baseline 0.540 → Full 0.540  ( 0.000, on par)
 ```
 
-The asymmetry is striking. On the GIS track, semantic grounding provides a substantial and consistent advantage. On the warehouse track, the same grounding architecture provides marginal improvement on simple queries but introduces slight degradation on moderate queries. This suggests that the framework's grounding mechanisms are well-calibrated for GIS-specific challenges (geometry types, spatial operators, coordinate systems) but insufficiently adapted for warehouse-specific challenges (entity-relationship navigation, temporal reasoning, multi-table aggregation patterns).
+The asymmetry is informative. On the GIS track, semantic grounding provides a substantial and consistent advantage. On the warehouse track, after introducing MetricFlow-style fact/dimension modeling, the full pipeline reaches parity with the baseline overall while remaining ahead on simple queries (0.680 vs.\ 0.640) and improving challenging queries (0.500 vs.\ 0.333). This pattern suggests that the framework's grounding mechanisms are well-calibrated for GIS-specific challenges (geometry types, spatial operators, coordinate systems) and, with explicit warehouse metadata, can also serve non-spatial workloads without regressions in execution validity.
 
 ## 4. Discussion
 
@@ -151,11 +151,11 @@ The warehouse track reveals that the same grounding architecture can introduce s
 
 **Factor 3: Few-shot suppression for non-spatial queries.** The framework intentionally suppresses GIS-oriented few-shot examples for non-spatial queries (to avoid polluting warehouse prompts with irrelevant ST_* patterns). However, this means warehouse queries receive no few-shot guidance at all, whereas the baseline benefits from its own implicit pattern matching over the schema dump.
 
-### 4.3 The Case for MetricFlow-Style Modeling
+### 4.3 The Effect of MetricFlow-Style Modeling
 
 The error analysis suggests that the primary bottleneck for warehouse performance is not SQL syntax generation but semantic schema navigation. The model can generate syntactically correct PostgreSQL but frequently selects wrong join paths or applies incorrect aggregation granularity. This is precisely the problem that MetricFlow-style semantic modeling addresses: by explicitly declaring entities (join keys), measures (aggregatable facts), and dimensions (descriptive attributes), the system can provide the LLM with pre-computed join paths and aggregation rules rather than requiring it to infer them from raw DDL.
 
-We hypothesize that introducing entity/measure/dimension metadata for BIRD schemas would primarily improve moderate-difficulty questions, where the failure mode is join-path confusion rather than SQL syntax errors. This represents a natural next step for the framework's cross-domain generalization.
+We validate this hypothesis by registering MetricFlow-style metadata for the most error-prone BIRD schema (\texttt{debit\_card\_specializing}, covering five tables: \texttt{customers}, \texttt{yearmonth}, \texttt{transactions\_1k}, \texttt{gasstations}, \texttt{products}) and injecting derived join-path hints into the grounding prompt. As shown in Section~\ref{sec:bird-results}, this single intervention raises overall execution accuracy from 0.520 to 0.540, with moderate questions recovering from 0.316 to 0.368 and challenging questions improving from 0.333 to 0.500. The number of execution-time SQL errors drops from two to zero, indicating that join-path hints not only repair join confusion but also make the generated SQL structurally more reliable. We interpret this as direct evidence that warehouse-side performance is bottlenecked by missing structural metadata rather than by surface-form generation, and that targeted semantic modeling closes most of the gap without changing the underlying language model.
 
 ### 4.4 Cross-Lingual Observations
 
