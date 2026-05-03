@@ -110,3 +110,17 @@ def test_cq_prompt_uses_knn_operator_for_nearest_neighbor():
         "not for ORDER BY ranking."
     )
 
+
+def test_run_cq_eval_record_includes_intent_field():
+    """run_one() in run_cq_eval.py should populate `intent` and `intent_source`."""
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "nl2sql_bench_cq" / "run_cq_eval.py").read_text(encoding="utf-8")
+    assert 'rec["intent"]' in src or "rec['intent']" in src
+    assert 'rec["intent_source"]' in src or "rec['intent_source']" in src
+
+
+def test_run_bird_eval_record_includes_intent_field():
+    """run_one() in run_pg_eval.py should populate `intent` and `intent_source`."""
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "nl2sql_bench_bird" / "run_pg_eval.py").read_text(encoding="utf-8")
+    assert 'rec["intent"]' in src or "rec['intent']" in src
+    assert 'rec["intent_source"]' in src or "rec['intent_source']" in src
+

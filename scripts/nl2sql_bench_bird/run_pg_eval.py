@@ -354,6 +354,11 @@ async def run_one(q: dict, mode: str) -> dict:
     evidence = q.get("evidence", "")
     gold_sql = q.get("SQL", "")
 
+    from data_agent.nl2sql_intent import classify_intent
+    _intent_result = classify_intent(q["question"])
+    intent_value = _intent_result.primary.value
+    intent_source = _intent_result.source
+
     # Generate
     if mode == "baseline":
         gen = baseline_generate(q["question"], db_id, evidence)
@@ -368,7 +373,7 @@ async def run_one(q: dict, mode: str) -> dict:
     is_correct = is_valid and gold_res["status"] == "ok" and \
                  compare_results(gold_res["rows"], pred_res["rows"])
 
-    return {
+    rec = {
         "qid": qid, "db_id": db_id, "difficulty": q.get("difficulty", "?"),
         "question": q["question"], "gold_sql": gold_sql, "pred_sql": pred_sql,
         "ex": 1 if is_correct else 0, "valid": 1 if is_valid else 0,
@@ -376,6 +381,9 @@ async def run_one(q: dict, mode: str) -> dict:
         "pred_error": pred_res.get("error"), "gold_status": gold_res["status"],
         "tokens": gen.get("tokens", 0),
     }
+    rec["intent"] = intent_value
+    rec["intent_source"] = intent_source
+    return rec
 
 
 async def main() -> int:
@@ -423,6 +431,7 @@ async def main() -> int:
                     "gold_sql": q.get("SQL", ""), "pred_sql": "",
                     "ex": 0, "valid": 0, "gen_status": "timeout", "gen_error": "180s timeout",
                     "pred_error": "", "gold_status": "?", "tokens": 0,
+                    "intent": "unknown", "intent_source": "fallback",
                 }
             except Exception as e:
                 rec = {
@@ -431,6 +440,7 @@ async def main() -> int:
                     "gold_sql": q.get("SQL", ""), "pred_sql": "",
                     "ex": 0, "valid": 0, "gen_status": "exception", "gen_error": str(e),
                     "pred_error": "", "gold_status": "?", "tokens": 0,
+                    "intent": "unknown", "intent_source": "fallback",
                 }
             recs.append(rec)
             cache_put(cache, q["question_id"], mode, rec)

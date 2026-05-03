@@ -355,6 +355,11 @@ async def run_one(q: dict, mode: str) -> dict:
     target_metric = q.get("target_metric", "Execution Accuracy")
     golden_sql = q.get("golden_sql")
 
+    from data_agent.nl2sql_intent import classify_intent
+    _intent_result = classify_intent(q["question"])
+    intent_value = _intent_result.primary.value
+    intent_source = _intent_result.source
+
     if mode == "baseline":
         gen = baseline_generate(q["question"])
     elif mode == "enhanced":
@@ -418,12 +423,15 @@ async def run_one(q: dict, mode: str) -> dict:
         "Security Rejection", "Refusal Rate", "AST Validation (Must contain LIMIT)")
     if is_robustness:
         passed, reason = evaluate_robustness(q, pred_sql)
-        return {
+        rec = {
             "qid": qid, "category": category, "difficulty": difficulty,
             "question": q["question"], "gold_sql": golden_sql or "N/A",
             "pred_sql": pred_sql, "ex": 1 if passed else 0, "valid": 1,
             "reason": reason, "tokens": gen.get("tokens", 0),
         }
+        rec["intent"] = intent_value
+        rec["intent_source"] = intent_source
+        return rec
 
     # Normal EX evaluation
     pred_res = execute_pg(pred_sql) if pred_sql else {"status": "error", "rows": None, "error": "empty"}
@@ -432,7 +440,7 @@ async def run_one(q: dict, mode: str) -> dict:
     is_valid = pred_res["status"] == "ok"
     passed, reason = compare_results(gold_res, pred_res) if is_valid else (False, pred_res.get("error", ""))
 
-    return {
+    rec = {
         "qid": qid, "category": category, "difficulty": difficulty,
         "question": q["question"], "gold_sql": golden_sql or "",
         "pred_sql": pred_sql, "ex": 1 if passed else 0,
@@ -440,6 +448,9 @@ async def run_one(q: dict, mode: str) -> dict:
         "tokens": gen.get("tokens", 0),
         "pred_error": pred_res.get("error", ""),
     }
+    rec["intent"] = intent_value
+    rec["intent_source"] = intent_source
+    return rec
 
 
 async def main() -> int:
@@ -473,6 +484,7 @@ async def main() -> int:
                     "difficulty": q["difficulty"], "question": q["question"],
                     "gold_sql": q.get("golden_sql", ""), "pred_sql": "",
                     "ex": 0, "valid": 0, "reason": str(e), "tokens": 0,
+                    "intent": "unknown", "intent_source": "fallback",
                 }
             recs.append(rec)
             m = "OK" if rec["ex"] else "ERR"
