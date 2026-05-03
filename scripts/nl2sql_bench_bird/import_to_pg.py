@@ -59,19 +59,22 @@ def extract_sqlite_fks(conn: sqlite3.Connection, table: str) -> list[dict]:
 
 
 def restore_fks(engine, schema: str, table: str, fks: list[dict]) -> int:
-    """Create FK constraints in PostgreSQL. Returns count of FKs created."""
+    """Create FK constraints in PostgreSQL. Returns count of FKs created.
+
+    Each FK is wrapped in its own transaction so a single failure (e.g. type
+    mismatch with a parent column) does not abort the entire batch.
+    """
     created = 0
-    with engine.begin() as conn:
-        for fk in fks:
-            constraint_name = f"fk_{table}_{fk['from_col']}_{fk['ref_table']}"
-            # Check if constraint already exists (idempotent)
-            exists = conn.execute(text(
-                "SELECT 1 FROM information_schema.table_constraints "
-                "WHERE constraint_schema = :schema AND constraint_name = :name"
-            ), {"schema": schema, "name": constraint_name}).fetchone()
-            if exists:
-                continue
-            try:
+    for fk in fks:
+        constraint_name = f"fk_{table}_{fk['from_col']}_{fk['ref_table']}"
+        try:
+            with engine.begin() as conn:
+                exists = conn.execute(text(
+                    "SELECT 1 FROM information_schema.table_constraints "
+                    "WHERE constraint_schema = :schema AND constraint_name = :name"
+                ), {"schema": schema, "name": constraint_name}).fetchone()
+                if exists:
+                    continue
                 conn.execute(text(
                     f'ALTER TABLE "{schema}"."{table}" '
                     f'ADD CONSTRAINT "{constraint_name}" '
@@ -79,8 +82,8 @@ def restore_fks(engine, schema: str, table: str, fks: list[dict]) -> int:
                     f'REFERENCES "{schema}"."{fk["ref_table"]}" ("{fk["ref_col"]}")'
                 ))
                 created += 1
-            except Exception:
-                pass  # Skip on type mismatch or missing ref table
+        except Exception:
+            pass  # Skip on type mismatch, missing ref table, or other constraint errors
     return created
 
 
