@@ -1,6 +1,7 @@
 """Tests for semantic_model module (v19.0)."""
 import json
 import pytest
+import yaml
 from unittest.mock import patch, MagicMock
 
 from data_agent.semantic_model import (
@@ -202,7 +203,6 @@ def test_generate_from_table(mock_get_engine):
     engine, conn = _mock_engine()
     mock_get_engine.return_value = engine
 
-    # Mock column info
     col_result = MagicMock()
     col_result.fetchall.return_value = [
         ("id", "integer", "NO"),
@@ -211,12 +211,14 @@ def test_generate_from_table(mock_get_engine):
         ("geom", "USER-DEFINED", "YES"),
         ("created_at", "timestamp without time zone", "YES"),
     ]
-
-    # Mock geometry info
     geom_result = MagicMock()
     geom_result.fetchone.return_value = ("geom", 4326, "Polygon")
+    rc_result = MagicMock()
+    rc_result.fetchone.return_value = (1000,)
+    fk_result = MagicMock()
+    fk_result.fetchall.return_value = []
 
-    conn.execute.side_effect = [col_result, geom_result]
+    conn.execute.side_effect = [col_result, geom_result, rc_result, fk_result]
 
     gen = SemanticModelGenerator()
     yaml_text = gen.generate_from_table("agent_dltb")
@@ -245,3 +247,63 @@ def test_generate_no_db(mock_get_engine):
     gen = SemanticModelGenerator()
     with pytest.raises(RuntimeError, match="No database"):
         gen.generate_from_table("test")
+
+
+# ---------------------------------------------------------------------------
+# B1: FK-aware generation + table role classification
+# ---------------------------------------------------------------------------
+
+
+def test_classify_table_role_fact_with_multiple_fks():
+    cols = [("id", "integer", "NO"), ("customer_id", "integer", "NO"),
+            ("product_id", "integer", "NO"), ("amount", "numeric", "YES")]
+    fks = [{"column": "customer_id", "ref_table": "customers", "ref_column": "id"},
+           {"column": "product_id", "ref_table": "products", "ref_column": "id"}]
+    assert SemanticModelGenerator.classify_table_role(cols, fks) == "fact"
+
+
+def test_classify_table_role_dimension_no_fks():
+    cols = [("id", "integer", "NO"), ("name", "text", "YES"), ("code", "text", "YES")]
+    assert SemanticModelGenerator.classify_table_role(cols, []) == "dimension"
+
+
+def test_classify_table_role_bridge():
+    cols = [("student_id", "integer", "NO"), ("club_id", "integer", "NO")]
+    fks = [{"column": "student_id", "ref_table": "students", "ref_column": "id"},
+           {"column": "club_id", "ref_table": "clubs", "ref_column": "id"}]
+    assert SemanticModelGenerator.classify_table_role(cols, fks) == "bridge"
+
+
+def test_classify_table_role_fact_with_one_fk_and_time():
+    cols = [("id", "integer", "NO"), ("customer_id", "integer", "NO"),
+            ("amount", "numeric", "YES"), ("created_at", "date", "YES")]
+    fks = [{"column": "customer_id", "ref_table": "customers", "ref_column": "id"}]
+    assert SemanticModelGenerator.classify_table_role(cols, fks) == "fact"
+
+
+@patch("data_agent.semantic_model.get_engine")
+def test_generate_fact_table_with_fks(mock_get_engine):
+    engine, conn = _mock_engine()
+    mock_get_engine.return_value = engine
+
+    col_result = MagicMock()
+    col_result.fetchall.return_value = [
+        ("id", "integer", "NO"), ("customer_id", "integer", "NO"),
+        ("amount", "numeric", "YES"), ("date", "date", "YES"),
+    ]
+    geom_result = MagicMock()
+    geom_result.fetchone.return_value = None
+    rc_result = MagicMock()
+    rc_result.fetchone.return_value = (50000,)
+
+    conn.execute.side_effect = [col_result, geom_result, rc_result]
+
+    gen = SemanticModelGenerator()
+    fks = [{"column": "customer_id", "ref_table": "customers", "ref_column": "id"}]
+    yaml_text = gen.generate_from_table("transactions", schema="bird_test", fks=fks)
+    parsed = yaml.safe_load(yaml_text)
+    model = parsed["semantic_models"][0]
+    assert model["name"] == "bird_test.transactions"
+    assert any(e["type"] == "foreign" for e in model["entities"])
+    assert any(m["name"] == "amount" for m in model["measures"])
+    assert any(d["type"] == "time" for d in model["dimensions"])

@@ -240,46 +240,107 @@ class SemanticModelStore:
 class SemanticModelGenerator:
     """Auto-generate semantic model YAML from PostGIS table structure."""
 
-    def generate_from_table(self, table_name: str) -> str:
+    NUMERIC_TYPES = {"integer", "bigint", "numeric", "real", "double precision", "smallint"}
+
+    @staticmethod
+    def query_pg_foreign_keys(schema: str, table: str, engine=None) -> list[dict]:
+        """Query FK relationships for a table from information_schema."""
+        eng = engine or get_engine()
+        if not eng:
+            return []
+        with eng.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT kcu.column_name, ccu.table_name AS ref_table, ccu.column_name AS ref_column
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                JOIN information_schema.constraint_column_usage ccu
+                  ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY'
+                  AND tc.table_schema = :schema AND tc.table_name = :tbl
+            """), {"schema": schema, "tbl": table}).fetchall()
+        return [{"column": r[0], "ref_table": r[1], "ref_column": r[2]} for r in rows]
+
+    @staticmethod
+    def classify_table_role(columns: list[tuple], fks: list[dict], row_count: int = 0) -> str:
+        """Classify table as 'fact', 'dimension', or 'bridge'.
+
+        Heuristics:
+        - fact: >=2 FKs OR (>=1 FK AND has numeric measure AND has time column)
+        - bridge: >=2 FKs AND <=1 non-FK column
+        - dimension: otherwise
+        """
+        numeric_types = SemanticModelGenerator.NUMERIC_TYPES
+        fk_cols = {fk["column"] for fk in fks}
+        non_fk_cols = [c for c in columns if c[0] not in fk_cols]
+        has_numeric = any(c[1] in numeric_types for c in non_fk_cols)
+        has_time = any("timestamp" in c[1] or c[1] == "date" for c in columns)
+
+        if len(fks) >= 2 and len(non_fk_cols) <= 1:
+            return "bridge"
+        if len(fks) >= 2:
+            return "fact"
+        if len(fks) >= 1 and has_numeric and has_time:
+            return "fact"
+        return "dimension"
+
+    def generate_from_table(self, table_name: str, schema: str = "public",
+                            fks: list[dict] | None = None,
+                            row_count: int | None = None) -> str:
         """Query table structure and generate a draft YAML model.
 
         Uses information_schema + geometry_columns for spatial metadata.
-        Optionally calls LLM to suggest dimension/measure classification.
+        If fks is None, queries FK constraints from PG. If schema is provided,
+        uses schema-qualified queries for multi-schema setups (e.g. BIRD).
         """
         engine = get_engine()
         if not engine:
             raise RuntimeError("No database connection")
 
+        qualified = f"{schema}.{table_name}" if schema != "public" else table_name
+
         with engine.connect() as conn:
-            # Get columns
             cols = conn.execute(
                 text("""
                     SELECT column_name, data_type, is_nullable
                     FROM information_schema.columns
-                    WHERE table_name = :tbl
+                    WHERE table_schema = :schema AND table_name = :tbl
                     ORDER BY ordinal_position
                 """),
-                {"tbl": table_name},
+                {"schema": schema, "tbl": table_name},
             ).fetchall()
 
             if not cols:
-                raise ValueError(f"Table '{table_name}' not found or has no columns")
+                raise ValueError(f"Table '{qualified}' not found or has no columns")
 
-            # Get geometry info
             geom_info = conn.execute(
                 text("""
                     SELECT f_geometry_column, srid, type
                     FROM geometry_columns
-                    WHERE f_table_name = :tbl
+                    WHERE f_table_schema = :schema AND f_table_name = :tbl
                     LIMIT 1
                 """),
-                {"tbl": table_name},
+                {"schema": schema, "tbl": table_name},
             ).fetchone()
 
-        # Build model
+            if row_count is None:
+                rc = conn.execute(text(
+                    f'SELECT reltuples::bigint FROM pg_class '
+                    f'WHERE relname = :tbl AND relnamespace = '
+                    f'(SELECT oid FROM pg_namespace WHERE nspname = :schema)'
+                ), {"schema": schema, "tbl": table_name}).fetchone()
+                row_count = int(rc[0]) if rc and rc[0] > 0 else 0
+
+        if fks is None:
+            fks = self.query_pg_foreign_keys(schema, table_name, engine)
+
+        role = self.classify_table_role(cols, fks, row_count)
+        fk_cols = {fk["column"] for fk in fks}
+
         model = {
-            "name": table_name,
-            "source_table": table_name,
+            "name": qualified,
+            "description": f"Auto-generated {role} table model",
+            "source_table": qualified,
             "entities": [],
             "dimensions": [],
             "measures": [],
@@ -290,45 +351,35 @@ class SemanticModelGenerator:
             model["srid"] = geom_info[1]
             model["geometry_type"] = geom_info[2]
 
-        numeric_types = {"integer", "bigint", "numeric", "real", "double precision", "smallint"}
+        # Entities: PK + FKs
+        pk_candidates = [c[0] for c in cols if c[0] == "id" or c[0].endswith("id")]
+        if pk_candidates and role == "dimension":
+            model["entities"].append({"name": pk_candidates[0], "type": "primary", "column": pk_candidates[0]})
+        for fk in fks:
+            model["entities"].append({"name": fk["column"], "type": "foreign", "column": fk["column"]})
 
         for col_name, data_type, _ in cols:
-            if col_name == "id":
-                model["entities"].append({"name": col_name, "type": "primary", "column": col_name})
-            elif geom_info and col_name == geom_info[0]:
+            if col_name in fk_cols:
+                continue
+            if col_name in [e["column"] for e in model["entities"]]:
+                continue
+            if geom_info and col_name == geom_info[0]:
                 model["dimensions"].append({
-                    "name": col_name,
-                    "type": "spatial",
-                    "column": col_name,
-                    "srid": geom_info[1],
-                    "geometry_type": geom_info[2],
+                    "name": col_name, "type": "spatial", "column": col_name,
+                    "srid": geom_info[1], "geometry_type": geom_info[2],
                 })
-            elif data_type in numeric_types:
-                model["measures"].append({
-                    "name": col_name,
-                    "agg": "sum",
-                    "column": col_name,
-                })
+            elif data_type in self.NUMERIC_TYPES:
+                if role == "fact":
+                    model["measures"].append({"name": col_name, "agg": "sum", "column": col_name})
+                else:
+                    model["dimensions"].append({"name": col_name, "type": "categorical", "column": col_name})
             elif data_type in ("character varying", "text"):
-                model["dimensions"].append({
-                    "name": col_name,
-                    "type": "categorical",
-                    "column": col_name,
-                })
+                model["dimensions"].append({"name": col_name, "type": "categorical", "column": col_name})
             elif "timestamp" in data_type or data_type == "date":
-                model["dimensions"].append({
-                    "name": col_name,
-                    "type": "time",
-                    "column": col_name,
-                })
+                model["dimensions"].append({"name": col_name, "type": "time", "column": col_name})
 
-        # Generate simple metrics from measures
         for meas in model["measures"]:
-            model["metrics"].append({
-                "name": f"total_{meas['name']}",
-                "type": "simple",
-                "measure": meas["name"],
-            })
+            model["metrics"].append({"name": f"total_{meas['name']}", "type": "simple", "measure": meas["name"]})
 
         return yaml.dump(
             {"semantic_models": [model]},
