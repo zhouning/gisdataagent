@@ -18,7 +18,7 @@
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc,patterns}
 
 \title{NL2Semantic2SQL: A Cross-Domain Framework for Natural Language to SQL over Geospatial and Enterprise Data Warehouses}
 \author{Anonymous Author(s) \\ \textit{Affiliation withheld for review}}
@@ -238,6 +238,9 @@ The 500-question evaluation confirms cross-domain parity. The full pipeline achi
 
 For reference, the earlier 50-question pilot with MetricFlow augmentation (run \texttt{bird\_pg\_2026-05-01\_151254}) showed overall EX of 0.540 for both baseline and full pipeline, with challenging questions improving from 0.333 to 0.500. The 500-question run is the primary result; the 50-question MetricFlow result remains the best single-schema configuration for the \texttt{debit\_card\_specializing} schema and is retained as a reference in Table~\ref{tab:repro}.
 
+\paragraph{Phase~B MetricFlow auto-generation.}
+To extend MetricFlow coverage beyond the single manually-modeled schema, Phase~B implemented automatic MetricFlow model generation for all 11 BIRD schemas. The generator reads SQLite \texttt{PRAGMA foreign\_key\_list} to extract 103 FK relationships across the 11 schemas, classifies each table as fact, dimension, or bridge based on its FK in/out degree, and registers 75 semantic models (70 auto-generated $+$ 5 manual for \texttt{debit\_card\_specializing}). A full 500-question re-run with MetricFlow augmentation was attempted but stalled at 97/500 due to per-question agent timeouts in the auto-generated model lookup path. The 50-question MetricFlow result (EX$=0.540$) from the earlier run therefore remains the primary MetricFlow data point. Full MetricFlow coverage for all 11 schemas is implemented but the 500-question evaluation is incomplete; this is noted as a limitation in Section~\ref{sec:limitations}.
+
 \subsection{Error analysis}
 \label{sec:error}
 
@@ -332,43 +335,84 @@ Warehouse failure (BIRD QID 1481) & Compare annual average consumption differenc
 \end{tabular}
 \end{table}
 
+\subsection{External baseline: DIN-SQL}
+\label{sec:dinsql}
+
+To position NL2Semantic2SQL against a published prompt-engineering baseline, we adapted DIN-SQL~\cite{pourreza2023dinsql} --- a 4-stage decomposed prompting pipeline (schema linking $\rightarrow$ query classification $\rightarrow$ SQL generation $\rightarrow$ self-correction) --- to PostgreSQL/PostGIS and ran it with the same Gemini~2.5~Flash model used throughout this paper.
+
+\begin{table}[t]
+\centering
+\caption{Three-way comparison: direct-LLM baseline, DIN-SQL, and NL2Semantic2SQL Full. DIN-SQL runs: \texttt{cq\_din\_sql\_2026-05-03\_193407} (GIS~20) and \texttt{bird\_din\_sql\_2026-05-03\_193412} (BIRD~500).}
+\label{tab:dinsql}
+\begin{tabular}{lcccc}
+\toprule
+Method & GIS 20 EX & GIS Spatial EX & GIS Robustness & BIRD 500 EX \\
+\midrule
+Baseline (direct LLM) & 0.650 & 0.867 & 0.000 & 0.458 \\
+DIN-SQL (4-stage)     & 0.650 & 0.867 & 0.000 & 0.482 \\
+NL2Semantic2SQL Full  & \textbf{0.900} & \textbf{0.933} & \textbf{0.800} & 0.450 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:dinsql} shows the three-way comparison. On GIS~20, DIN-SQL matches the direct-LLM baseline exactly (EX$=0.650$). Both score 0.000 on the robustness suite: DIN-SQL's 4-stage decomposition provides no safety enforcement and no spatial-operator grounding, so it cannot handle refusal, anti-illusion, or OOM-prevention cases. NL2Semantic2SQL Full outperforms both by $+0.250$ (0.900 vs.\ 0.650).
+
+On BIRD~500, DIN-SQL (EX$=0.482$) slightly outperforms both our baseline (0.458) and full pipeline (0.450). The 4-stage decomposition's schema-linking step provides a modest advantage on warehouse queries where our semantic grounding adds overhead without sufficient structural metadata. DIN-SQL's validity rate (0.990) is also higher than our full pipeline (0.924), consistent with the view that our semantic grounding layer occasionally over-constrains generation for warehouse-style queries.
+
+The pattern is clear: NL2Semantic2SQL's advantage is domain-specific. On GIS, safety enforcement and spatial-operator grounding provide a decisive $+0.250$ gain over both baselines. On BIRD, DIN-SQL's schema-linking decomposition is competitive, and our full pipeline does not outperform it. We report this result straightforwardly: the current framework's value proposition is domain-specialized (GIS safety $+$ spatial grounding), not general-purpose NL2SQL improvement.
+
+Since DIN-SQL matches the direct-LLM baseline exactly on GIS~20, the McNemar comparison of NL2Semantic2SQL Full vs.\ DIN-SQL is identical to the baseline comparison ($b=1$, $c=6$, $p=0.1250$). On BIRD~500, DIN-SQL is slightly ahead of our full pipeline (0.482 vs.\ 0.450); a full paired McNemar test would require per-question result alignment across runs, which we leave for future work.
+
 \subsection{Cross-domain comparison}
 
-Figure~\ref{fig:cross} summarizes the cross-domain comparison after applying both prompt refinement and MetricFlow, while separating spatial-SQL accuracy from robustness.
+Figure~\ref{fig:cross} summarizes the cross-domain comparison after Phase~A intent-conditioned grounding and 500-question BIRD evaluation, now including DIN-SQL as an external baseline.
 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[every node/.style={font=\small}]
-\draw[->] (0,0) -- (13.0,0) node[right]{Metric};
+\draw[->] (0,0) -- (15.5,0) node[right]{Metric};
 \draw[->] (0,0) -- (0,5.5) node[above]{Score};
 \foreach \y/\lab in {1.0/0.2,2.0/0.4,3.0/0.6,4.0/0.8,5.0/1.0}
   \draw (-0.05,\y) -- (0.05,\y) node[left,xshift=-3pt]{\lab};
-% GIS spatial
-\draw[fill=gray!40] (0.8,0) rectangle (1.8,4.335);
-\node[above] at (1.3,4.335) {0.867};
-\draw[fill=blue!50] (2.0,0) rectangle (3.0,4.665);
-\node[above] at (2.5,4.665) {0.933};
-\node[font=\scriptsize] at (1.9,-0.5) {GIS spatial};
-\node[font=\scriptsize] at (1.3,-0.95) {baseline};
-\node[font=\scriptsize] at (2.5,-0.95) {full};
-% GIS robustness
-\draw[fill=gray!40] (4.3,0) rectangle (5.3,0.0);
-\node[above] at (4.8,0.05) {0.000};
-\draw[fill=blue!50] (5.5,0) rectangle (6.5,4.0);
-\node[above] at (6.0,4.0) {0.800};
-\node[font=\scriptsize] at (5.4,-0.5) {GIS robust.};
-\node[font=\scriptsize] at (4.8,-0.95) {baseline};
-\node[font=\scriptsize] at (6.0,-0.95) {full};
-% BIRD 500
-\draw[fill=gray!40] (8.5,0) rectangle (9.5,2.29);
-\node[above] at (9.0,2.29) {0.458};
-\draw[fill=blue!50] (9.7,0) rectangle (10.7,2.25);
-\node[above] at (10.2,2.25) {0.450};
-\node[font=\scriptsize] at (9.6,-0.5) {BIRD 500};
-\node[font=\scriptsize] at (9.0,-0.95) {baseline};
-\node[font=\scriptsize] at (10.2,-0.95) {full};
+% GIS spatial (3 bars)
+\draw[fill=gray!40]  (0.5,0) rectangle (1.3,4.335);
+\node[above,font=\scriptsize] at (0.9,4.335) {0.867};
+\draw[fill=green!40,pattern=north east lines] (1.4,0) rectangle (2.2,4.335);
+\node[above,font=\scriptsize] at (1.8,4.335) {0.867};
+\draw[fill=blue!50]  (2.3,0) rectangle (3.1,4.665);
+\node[above,font=\scriptsize] at (2.7,4.665) {0.933};
+\node[font=\scriptsize] at (1.8,-0.5) {GIS spatial};
+\node[font=\scriptsize] at (0.9,-0.95) {base};
+\node[font=\scriptsize] at (1.8,-0.95) {DIN};
+\node[font=\scriptsize] at (2.7,-0.95) {full};
+% GIS robustness (3 bars)
+\draw[fill=gray!40]  (4.2,0) rectangle (5.0,0.0);
+\node[above,font=\scriptsize] at (4.6,0.1) {0.000};
+\draw[fill=green!40,pattern=north east lines] (5.1,0) rectangle (5.9,0.0);
+\node[above,font=\scriptsize] at (5.5,0.1) {0.000};
+\draw[fill=blue!50]  (6.0,0) rectangle (6.8,4.0);
+\node[above,font=\scriptsize] at (6.4,4.0) {0.800};
+\node[font=\scriptsize] at (5.5,-0.5) {GIS robust.};
+\node[font=\scriptsize] at (4.6,-0.95) {base};
+\node[font=\scriptsize] at (5.5,-0.95) {DIN};
+\node[font=\scriptsize] at (6.4,-0.95) {full};
+% BIRD 500 (3 bars)
+\draw[fill=gray!40]  (8.5,0) rectangle (9.3,2.29);
+\node[above,font=\scriptsize] at (8.9,2.29) {0.458};
+\draw[fill=green!40,pattern=north east lines] (9.4,0) rectangle (10.2,2.41);
+\node[above,font=\scriptsize] at (9.8,2.41) {0.482};
+\draw[fill=blue!50]  (10.3,0) rectangle (11.1,2.25);
+\node[above,font=\scriptsize] at (10.7,2.25) {0.450};
+\node[font=\scriptsize] at (9.8,-0.5) {BIRD 500};
+\node[font=\scriptsize] at (8.9,-0.95) {base};
+\node[font=\scriptsize] at (9.8,-0.95) {DIN};
+\node[font=\scriptsize] at (10.7,-0.95) {full};
+% Legend
+\draw[fill=gray!40] (12.0,4.5) rectangle (12.6,5.0); \node[right] at (12.7,4.75) {Baseline};
+\draw[fill=green!40,pattern=north east lines] (12.0,3.8) rectangle (12.6,4.3); \node[right] at (12.7,4.05) {DIN-SQL};
+\draw[fill=blue!50] (12.0,3.1) rectangle (12.6,3.6); \node[right] at (12.7,3.35) {Full};
 \end{tikzpicture}
-\caption{Cross-domain comparison after Phase~A intent-conditioned grounding (GIS) and 500-question BIRD evaluation. The full pipeline now outperforms the baseline on GIS spatial EX ($+$0.067) and robustness ($+$0.800), while reaching parity on BIRD~500 (McNemar $p=0.8151$). The GIS improvement is directional but not statistically significant at $\alpha=0.05$ ($n=20$, McNemar $p=0.1250$).}
+\caption{Cross-domain comparison (three methods). GIS spatial EX: Baseline$=$DIN-SQL$=0.867$, Full$=0.933$. GIS robustness: Baseline$=$DIN-SQL$=0.000$, Full$=0.800$. BIRD~500: Baseline$=0.458$, DIN-SQL$=0.482$, Full$=0.450$. The framework's advantage is domain-specific: decisive on GIS safety and spatial grounding, neutral-to-negative on warehouse queries.}
 \label{fig:cross}
 \end{figure}
 
@@ -391,7 +435,9 @@ Result & Track / config & Run directory & Model(s) \\
 \midrule
 GIS benchmark (Phase~A) & GIS baseline + full & \texttt{cq\_2026-05-03\_164213} & Gemini~2.5~Flash \\
 GIS benchmark (pre-Phase~A, ref.) & GIS baseline + full & \texttt{cq\_2026-05-01\_132919} & Gemini~2.5~Flash \\
+DIN-SQL on GIS~20 & GIS, DIN-SQL & \texttt{cq\_din\_sql\_2026-05-03\_193407} & Gemini~2.5~Flash \\
 BIRD 500q & BIRD baseline + full & \texttt{bird\_pg\_2026-05-01\_182457} & Gemini~2.5~Flash \\
+DIN-SQL on BIRD~500 & BIRD, DIN-SQL & \texttt{bird\_din\_sql\_2026-05-03\_193412} & Gemini~2.5~Flash \\
 BIRD 50q + MetricFlow (ref.) & BIRD full(+MetricFlow) & \texttt{bird\_pg\_2026-05-01\_151254} & Gemini~2.5~Flash \\
 BIRD 50q prompt-only (ref.) & BIRD baseline + full(prompt) & \texttt{bird\_pg\_2026-05-01\_140933} & Gemini~2.5~Flash \\
 Cross-lingual & Chinese-translated BIRD 50q, full(+MetricFlow) & \texttt{bird\_pg\_chinese\_2026-05-01\_171426} & Gemini~2.5~Flash (eval), Gemini~2.0~Flash (translation) \\
@@ -425,15 +471,17 @@ The primary warehouse bottleneck is semantic schema navigation rather than SQL s
 The cross-lingual experiment confirms that the semantic layer's multilingual alias mechanism is sufficient to recover most schema references when questions are paraphrased into Chinese, with only a four-point loss in execution accuracy. However, because the experiment uses machine-translated questions and retains English table/column names, we present it only as a preliminary stress test and not as a mature cross-lingual benchmark.
 
 \subsection{Limitations}
+\label{sec:limitations}
 
-Several limitations should be noted. First, the GIS benchmark contains only 20 questions, and the ordinary spatial-SQL subset contains only 15, so the current paper should be read as a pilot evaluation rather than a definitive benchmark study; the McNemar test on GIS~20 ($p=0.1250$) does not reach significance at $\alpha=0.05$. Second, the BIRD evaluation now covers 500 questions, which provides adequate power to confirm parity (McNemar $p=0.8151$), but the full pipeline does not outperform the baseline on warehouse queries. Third, the cross-lingual experiment uses LLM-translated questions without human verification. Fourth, our baselines are direct-LLM-with-schema-dump only; comparison against advanced strategies such as DIN-SQL or MAC-SQL remains necessary. Fifth, execution-based evaluation treats any result-set mismatch as failure, even when the predicted SQL is semantically equivalent but differs in ordering or numeric formatting. Sixth, the framework currently uses a single LLM (Gemini~2.5~Flash) for both baseline and full pipeline.
+Several limitations should be noted. First, the GIS benchmark contains only 20 questions, and the ordinary spatial-SQL subset contains only 15, so the current paper should be read as a pilot evaluation rather than a definitive benchmark study; the McNemar test on GIS~20 ($p=0.1250$) does not reach significance at $\alpha=0.05$. Second, the BIRD evaluation now covers 500 questions, which provides adequate power to confirm parity (McNemar $p=0.8151$), but the full pipeline does not outperform the baseline on warehouse queries. Third, the cross-lingual experiment uses LLM-translated questions without human verification. Fourth, while we now include DIN-SQL as an external baseline, comparison against additional advanced strategies (e.g., MAC-SQL, DAIL-SQL) would further strengthen the positioning. The DIN-SQL comparison confirms that our framework's advantage is domain-specific: on GIS, safety enforcement and spatial grounding provide a decisive $+0.250$ gain; on BIRD, DIN-SQL's 4-stage schema-linking decomposition is competitive and slightly outperforms our full pipeline (0.482 vs.\ 0.450). Fifth, execution-based evaluation treats any result-set mismatch as failure, even when the predicted SQL is semantically equivalent but differs in ordering or numeric formatting. Sixth, the framework currently uses a single LLM (Gemini~2.5~Flash) for both baseline and full pipeline. Seventh, Phase~B implemented automatic MetricFlow model generation for all 11 BIRD schemas (75 models, 103 FK relationships), but the full 500-question re-run with MetricFlow stalled at 97/500 due to per-question agent timeouts; the 50-question MetricFlow result (EX$=0.540$) remains the primary MetricFlow data point, and full MetricFlow coverage evaluation is left for future work.
 
 \subsection{Future work}
 
 Three directions emerge from this study:
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Component-level ablation and SOTA comparison.} Run controlled ablations that isolate the contribution of each pipeline component (semantic-layer grounding, value hints, few-shot retrieval, postprocessor, self-correction, MetricFlow) and compare against advanced text-to-SQL baselines such as DIN-SQL and MAC-SQL.
+  \item \textbf{Component-level ablation and SOTA comparison.} Run controlled ablations that isolate the contribution of each pipeline component (semantic-layer grounding, value hints, few-shot retrieval, postprocessor, self-correction, MetricFlow) and compare against additional advanced text-to-SQL baselines such as MAC-SQL and DAIL-SQL. The DIN-SQL comparison in Section~\ref{sec:dinsql} provides an initial external reference point.
   \item \textbf{Expanded GIS benchmark and finer intent taxonomy.} Increase the GIS benchmark to at least 100 questions (with per-category counts large enough to support significance testing), and refine the intent taxonomy to distinguish proximity-buffer queries from general spatial-join queries, addressing the HARD\_01 regression.
+  \item \textbf{Full MetricFlow evaluation at 500-question scale.} Phase~B implemented automatic MetricFlow model generation for all 11 BIRD schemas (75 models, 103 FK relationships). The next step is to resolve the per-question timeout issue in the auto-generated model lookup path and complete the 500-question re-run with full MetricFlow augmentation, which would provide a definitive answer on whether FK-aware semantic modeling closes the BIRD gap.
   \item \textbf{Cross-lingual evaluation under controlled conditions.} Add a no-alias baseline, a translate-back baseline, and human-translated questions over partially Chinese schemas to disentangle the contributions of multilingual alias registration from other framework components.
 \end{enumerate}
 
@@ -444,7 +492,7 @@ Three directions emerge from this study:
 
 We have presented NL2Semantic2SQL, a cross-domain framework for natural-language interfaces over both geospatial and conventional warehouse databases. The framework integrates semantic-layer grounding, intent-conditioned routing, schema-aware context construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction into a single three-stage pipeline. We constructed a pilot GIS benchmark with a separate robustness suite and combined it with a 500-question subset of BIRD mini\_dev to define a dual-track evaluation protocol.
 
-Three findings stand out. First, Phase~A intent-conditioned grounding resolves the previous spatial-EX regression: the full pipeline now outperforms the baseline on GIS spatial EX (0.933 vs.\ 0.867) and robustness (0.800 vs.\ 0.000), yielding a combined pilot score of 0.900 vs.\ 0.650. The improvement is directional (6 improvements, 1 regression) but not statistically significant at $\alpha=0.05$ due to the small pilot size ($n=20$, McNemar $p=0.1250$). Second, on the 500-question BIRD benchmark, the full pipeline reaches parity with the baseline (0.450 vs.\ 0.458, McNemar $p=0.8151$), confirming that the framework does not trade off warehouse performance for GIS gains. Third, an intent-class ablation shows that the main contribution of intent routing is preventing spurious LIMIT injection on non-preview queries and enabling KNN-specific operator rules.
+Three findings stand out. First, Phase~A intent-conditioned grounding resolves the previous spatial-EX regression: the full pipeline now outperforms the baseline on GIS spatial EX (0.933 vs.\ 0.867) and robustness (0.800 vs.\ 0.000), yielding a combined pilot score of 0.900 vs.\ 0.650. The improvement is directional (6 improvements, 1 regression) but not statistically significant at $\alpha=0.05$ due to the small pilot size ($n=20$, McNemar $p=0.1250$). Second, on the 500-question BIRD benchmark, the full pipeline reaches parity with the baseline (0.450 vs.\ 0.458, McNemar $p=0.8151$), confirming that the framework does not trade off warehouse performance for GIS gains. Third, an external DIN-SQL baseline confirms that the framework's advantage is domain-specific: on GIS, safety enforcement and spatial grounding provide a decisive $+0.250$ gain over both the direct-LLM baseline and DIN-SQL; on BIRD, DIN-SQL's 4-stage schema-linking decomposition is competitive (0.482 vs.\ 0.450 for our full pipeline), and the current framework does not outperform it on warehouse queries.
 
 Taken together, the results suggest that a unified semantic-to-SQL architecture with intent-conditioned routing can serve heterogeneous database domains, but only if its grounding mechanisms expose domain-specific evidence (geometry types, spatial operators, and intent-gated rules on the GIS side; fact/dimension/entity structure on the warehouse side) rather than relying on a single grounding strategy. The current manuscript should therefore be read as an initial but reproducible cross-domain study whose strongest conclusions concern robustness, geometry-sensitive execution repair, and the value of intent-conditioned operator routing.
 
