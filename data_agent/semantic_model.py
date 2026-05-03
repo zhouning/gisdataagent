@@ -265,22 +265,20 @@ class SemanticModelGenerator:
     def classify_table_role(columns: list[tuple], fks: list[dict], row_count: int = 0) -> str:
         """Classify table as 'fact', 'dimension', or 'bridge'.
 
-        Heuristics:
-        - fact: >=2 FKs OR (>=1 FK AND has numeric measure AND has time column)
-        - bridge: >=2 FKs AND <=1 non-FK column
-        - dimension: otherwise
+        Heuristics (driven primarily by FK count, since BIRD stores dates as TEXT
+        and naive time-column detection misses them):
+        - bridge: >=2 FKs AND <=1 non-FK column (pure many-to-many table)
+        - fact: >=1 FK AND has any numeric non-FK column (transactional / measurement)
+        - dimension: otherwise (descriptive lookup or root entity)
         """
         numeric_types = SemanticModelGenerator.NUMERIC_TYPES
         fk_cols = {fk["column"] for fk in fks}
         non_fk_cols = [c for c in columns if c[0] not in fk_cols]
-        has_numeric = any(c[1] in numeric_types for c in non_fk_cols)
-        has_time = any("timestamp" in c[1] or c[1] == "date" for c in columns)
+        has_numeric_non_fk = any(c[1] in numeric_types for c in non_fk_cols)
 
         if len(fks) >= 2 and len(non_fk_cols) <= 1:
             return "bridge"
-        if len(fks) >= 2:
-            return "fact"
-        if len(fks) >= 1 and has_numeric and has_time:
+        if len(fks) >= 1 and has_numeric_non_fk:
             return "fact"
         return "dimension"
 
