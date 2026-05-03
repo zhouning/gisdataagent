@@ -124,3 +124,8 @@ def test_run_bird_eval_record_includes_intent_field():
     assert 'rec["intent"]' in src or "rec['intent']" in src
     assert 'rec["intent_source"]' in src or "rec['intent_source']" in src
 
+
+
+def test_production_nl2sql_prompt_mentions_intent_routing():
+    src = (Path(__file__).resolve().parents[1] / "data_agent" / "agent.py").read_text(encoding="utf-8")
+    assert "意图" in src and "LIMIT 仅用于" in src
