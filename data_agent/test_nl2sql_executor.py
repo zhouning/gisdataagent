@@ -68,7 +68,7 @@ def test_execute_nl2sql_retries_on_failure():
             self.sql = sql
 
     call_count = [0]
-    def fake_postprocess(sql, schemas, large_tables):
+    def fake_postprocess(sql, schemas, large_tables, **kwargs):
         return FakeResult(sql)
 
     def fake_execute(sql):
@@ -102,7 +102,7 @@ def test_execute_nl2sql_max_retries_exceeded():
 
     error_json = json.dumps({"status": "error", "error": "persistent error"})
 
-    with patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda s, *a: FakeResult(s)), \
+    with patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda s, *a, **kw: FakeResult(s)), \
          patch("data_agent.nl2sql_executor.execute_safe_sql", return_value=error_json), \
          patch("data_agent.nl2sql_executor._retry_with_llm", return_value="SELECT 1"):
         result = execute_nl2sql("SELECT bad_sql")
@@ -184,10 +184,27 @@ def test_execute_nl2sql_no_retry_when_llm_returns_none():
         exec_calls[0] += 1
         return error_json
 
-    with patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda s, *a: FakeResult(s)), \
+    with patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda s, *a, **kw: FakeResult(s)), \
          patch("data_agent.nl2sql_executor.execute_safe_sql", side_effect=fake_exec), \
          patch("data_agent.nl2sql_executor._retry_with_llm", return_value=None):
         result = execute_nl2sql("SELECT bad")
 
     assert exec_calls[0] == 1
+
+
+def test_prepare_nl2sql_context_caches_intent():
+    from unittest.mock import patch
+    from data_agent.nl2sql_intent import IntentLabel
+    from data_agent import nl2sql_executor
+    from data_agent.user_context import current_nl2sql_intent
+
+    payload = {
+        "candidate_tables": [],
+        "intent": IntentLabel.KNN,
+        "intent_source": "rule",
+        "grounding_prompt": "...",
+    }
+    with patch("data_agent.nl2sql_executor.build_nl2sql_context", return_value=payload):
+        nl2sql_executor.prepare_nl2sql_context("问题")
+    assert current_nl2sql_intent.get() is IntentLabel.KNN
 

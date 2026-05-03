@@ -8,6 +8,7 @@ from .nl2sql_grounding import build_nl2sql_context
 from .sql_postprocessor import postprocess_sql
 from .toolsets.nl2sql_tools import execute_safe_sql
 from .user_context import (
+    current_nl2sql_intent,
     current_nl2sql_large_tables,
     current_nl2sql_question,
     current_nl2sql_schemas,
@@ -119,6 +120,10 @@ def prepare_nl2sql_context(user_question: str) -> str:
     current_nl2sql_schemas.set(schemas)
     current_nl2sql_large_tables.set(large_tables)
 
+    intent = payload.get("intent")
+    if intent is not None:
+        current_nl2sql_intent.set(intent)
+
     return payload.get("grounding_prompt", "")
 
 
@@ -136,7 +141,7 @@ def execute_nl2sql(sql: str) -> str:
     last_sql = sql
 
     for attempt in range(MAX_RETRIES + 1):
-        pp_result = postprocess_sql(last_sql, schemas, large_tables)
+        pp_result = postprocess_sql(last_sql, schemas, large_tables, intent=current_nl2sql_intent.get())
         if pp_result.rejected:
             return f"安全拒绝: {pp_result.reject_reason}"
 
