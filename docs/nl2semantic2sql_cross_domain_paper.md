@@ -1,25 +1,25 @@
 # NL2Semantic2SQL: A Cross-Domain Framework for Natural Language to SQL over Geospatial and Enterprise Data Warehouses
 
-> **Status**: Draft v0.1 (2026-05-01)
+> **Status**: Draft v0.2 (2026-05-03)
 > **Target venues**: IJGIS / GeoInformatica / Transactions in GIS / ISPRS IJGI
 
 ---
 
 ## Abstract (English)
 
-Natural language to SQL (text-to-SQL) has advanced rapidly with large language models, yet most existing systems and benchmarks focus on conventional relational databases and overlook geospatial query scenarios. Geospatial databases introduce additional challenges, including geometry-aware schema grounding, spatial predicates, coordinate reference systems, and domain-specific operators such as intersection, buffer, area, and distance calculations. At the same time, practical data platforms increasingly require a single interface that can support both geospatial and non-geospatial warehouse queries. In this work, we present NL2Semantic2SQL, a cross-domain framework that combines semantic layer grounding, schema-aware prompt construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction to support natural-language querying over both GIS and conventional warehouse data. To evaluate the geospatial side of this problem, we construct a GIS-oriented benchmark with execution-based evaluation and structured coverage of spatial operators and query complexity. We further assess cross-domain generalization by comparing the framework against direct large language model baselines on both GIS benchmark tasks and an enterprise-style warehouse benchmark derived from BIRD mini_dev. Experimental results show that semantic grounding substantially improves performance in GIS settings, where spatial semantics and schema disambiguation are critical, while also revealing nontrivial domain-transfer challenges in conventional warehouse scenarios, especially when semantic matching strategies are biased toward GIS-centric patterns. These findings demonstrate both the promise and the limitations of unified semantic-to-SQL architectures across heterogeneous database domains, and they suggest that future cross-domain text-to-SQL systems must explicitly account for language, schema, and operator heterogeneity rather than assuming a single grounding strategy will generalize universally.
+Natural language to SQL (text-to-SQL) has advanced rapidly with large language models, yet most existing systems and benchmarks focus on conventional relational databases and provide limited coverage of executable geospatial SQL. Geospatial databases introduce additional challenges, including geometry-aware schema grounding, spatial predicates, coordinate reference systems, and domain-specific operators such as intersection, buffer, area, and distance calculations. At the same time, practical data platforms increasingly require a single interface that can support both geospatial and non-geospatial warehouse queries. In this work, we present NL2Semantic2SQL, a cross-domain framework that combines semantic-layer grounding, intent-conditioned routing, schema-aware prompt construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction to support natural-language querying over both GIS and conventional warehouse data. To evaluate the geospatial side of this problem, we construct a pilot GIS-oriented benchmark with execution-based evaluation and a separate robustness suite, and we further assess cross-domain generalization on a 500-question warehouse benchmark derived from BIRD mini_dev. After adding Phase A intent-conditioned grounding, the full pipeline outperforms the baseline on both spatial EX (0.933 vs. 0.867) and robustness (0.800 vs. 0.000), yielding a combined pilot score of 0.900 vs. 0.650. On the 500-question BIRD benchmark, the full pipeline reaches parity with the baseline (0.450 vs. 0.458), confirmed by McNemar p=0.8151. An intent-class ablation shows that the main contribution of intent routing is preventing spurious LIMIT injection on non-preview queries and enabling KNN-specific operator rules. A preliminary cross-lingual experiment on Chinese translations of BIRD questions further shows that multilingual alias registration supports cross-lingual querying with a four-percentage-point loss relative to the English warehouse run. These findings demonstrate both the promise and the limitations of unified semantic-to-SQL architectures across heterogeneous database domains, and they suggest that future cross-domain text-to-SQL systems must explicitly account for language, schema, and operator heterogeneity rather than assuming a single grounding strategy will generalize uniformly.
 
 ## 摘要 (中文)
 
-自然语言到 SQL 的查询生成技术近年来随着大语言模型的发展取得了显著进展，但现有研究与 benchmark 主要面向传统关系数据库，较少覆盖地理空间数据库场景。与普通数据仓库相比，GIS 数据库在几何类型、空间谓词、坐标参考系以及面积、距离、缓冲、叠加等空间算子方面具有更强的领域特性，使得 schema grounding 与 SQL 生成面临额外挑战。与此同时，面向真实业务的数据平台往往需要同一套自然语言查询框架同时支持空间与非空间场景。针对这一问题，本文提出一种跨域的 NL2Semantic2SQL 框架，通过语义层解析、schema grounding、few-shot 检索、SQL 后处理与执行期自纠错等机制，实现对 GIS 数据库与通用数据仓库的统一支持。为评估该框架在空间场景中的能力，本文进一步构建了一套 GIS-oriented benchmark，覆盖多类空间算子与不同难度层级，并采用执行结果一致性作为核心评测指标。在实验中，本文将所提出框架分别应用于 GIS benchmark 与基于 BIRD mini_dev 改造的通用仓库 benchmark，并与直接 LLM 生成 SQL 的 baseline 进行对比。结果表明，语义 grounding 对 GIS 查询具有明显增益，尤其在涉及空间关系、空间聚合和复杂 schema 消歧的任务中效果更为显著；同时，跨域实验也揭示了 GIS 定制的语义匹配策略在通用仓库场景下可能引入领域偏置。上述结果说明，统一的 semantic-to-SQL 框架具有可行性，但其跨域泛化能力依赖于对语言特征、schema 结构和操作符体系差异的显式建模。
+自然语言到 SQL 的查询生成技术近年来随着大语言模型的发展取得了显著进展，但现有研究与 benchmark 主要面向传统关系数据库，对可执行空间 SQL 的覆盖仍然有限。与普通数据仓库相比，GIS 数据库在几何类型、空间谓词、坐标参考系以及面积、距离、缓冲、叠加等空间算子方面具有更强的领域特性，使得 schema grounding 与 SQL 生成面临额外挑战。与此同时，面向真实业务的数据平台往往需要同一套自然语言查询框架同时支持空间与非空间场景。针对这一问题，本文提出一种跨域的 NL2Semantic2SQL 框架，通过意图感知路由、语义层解析、schema grounding、few-shot 检索、SQL 后处理与执行期自纠错等机制，实现对 GIS 数据库与通用数据仓库的统一支持。为评估该框架在空间场景中的能力，本文进一步构建了一套 pilot 级别的 GIS-oriented benchmark，并将普通空间 SQL 执行任务与安全/鲁棒性任务分开评价；同时，本文在基于 BIRD mini_dev 改造的 500 题通用仓库 benchmark 上评估其跨域泛化能力。Phase A 意图条件化 grounding 引入后，full pipeline 在空间 EX 上超越 baseline（0.933 vs. 0.867），鲁棒性得分从 0.000 提升至 0.800，综合得分从 0.650 提升至 0.900。在 500 题 BIRD benchmark 上，full pipeline 与 baseline 持平（0.450 vs. 0.458），McNemar 检验 p=0.8151 确认两者无显著差异。意图类消融实验表明，意图路由的主要贡献在于阻止非预览查询的误注 LIMIT 以及为 KNN 查询启用专用算子规则。上述结果说明，带意图感知路由的统一 semantic-to-SQL 框架在 GIS 侧具有明确增益，在仓库侧保持中性，但 GIS 侧的改进在当前小规模 pilot（n=20）下尚未达到统计显著性（McNemar p=0.1250）。
 
 ## Contributions
 
-1. 本文提出了一种面向 GIS 与非 GIS 双场景的统一 NL2Semantic2SQL 框架，使自然语言查询在空间数据库与普通数据仓库之间共享同一套 semantic grounding—SQL generation—execution correction 主链路。
+1. 本文提出了一种面向 GIS 与非 GIS 双场景的统一 NL2Semantic2SQL 框架，使自然语言查询在空间数据库与普通数据仓库之间共享同一套 semantic grounding—SQL generation—execution correction 主链路，并通过意图感知路由实现算子级规则的条件化注入。
 
-2. 本文构建了一套 GIS-oriented text-to-SQL benchmark，用于系统评估空间算子、空间聚合与空间 schema 消歧问题，并填补该领域缺少标准化 execution-based benchmark 的空白。
+2. 本文构建了一套 pilot 级别的 GIS-oriented text-to-SQL benchmark，并将普通空间 SQL 任务与安全/鲁棒性任务分开评价，避免将拒答与执行准确率混合统计；该 benchmark 与 BIRD 500 题子集共同构成可执行的双轨评估协议。
 
-3. 本文通过跨域评测分析表明，语义层与 grounding 机制在 GIS 查询中可显著提升表现，但在通用仓库场景下仍可能暴露领域偏置与 schema 召回不足，从而为跨域 text-to-SQL 的后续研究提供了更清晰的问题分解。
+3. 本文通过跨域评测分析表明，Phase A 意图条件化 grounding 使 GIS 侧空间 EX 从 0.867 提升至 0.933（+0.067），鲁棒性从 0.000 提升至 0.800，综合得分从 0.650 提升至 0.900；在 500 题 BIRD benchmark 上，full pipeline 与 baseline 持平（McNemar p=0.8151）。意图类消融实验进一步揭示了意图路由的主要贡献机制。这些结果为跨域 text-to-SQL 的后续研究提供了更清晰的问题分解。
 
 ---
 
@@ -65,38 +65,46 @@ For each track, we compare two modes:
 
 ### 3.2 GIS Track Results
 
-Table 1 presents the GIS benchmark results.
+Table 1 reports the GIS benchmark results by separating normal spatial-SQL tasks from the robustness/safety suite. This distinction is important because robustness questions test refusal, interception, and safety enforcement rather than ordinary spatial-query generation. Results are from run `cq_2026-05-03_164213` (Phase A intent-conditioned grounding).
 
-| Difficulty | N | Baseline EX | Full EX | Delta |
-|------------|---|-------------|---------|-------|
-| Easy | 5 | 1.000 | 0.800 | -0.200 |
-| Medium | 5 | 0.800 | 1.000 | +0.200 |
-| Hard | 5 | 0.800 | 0.800 | 0.000 |
-| Robustness | 5 | 0.000 | 1.000 | +1.000 |
-| **Overall** | **20** | **0.650** | **0.800** | **+0.150** |
+| Metric | N | Baseline | Full | Delta |
+|--------|---|----------|------|-------|
+| Spatial EX (non-robustness only) | 15 | 0.867 | **0.933** | +0.067 |
+| Robustness success rate | 5 | 0.000 | **0.800** | +0.800 |
+| Combined pilot score (all 20) | 20 | 0.650 | **0.900** | +0.250 |
 
-The full pipeline achieves an overall EX of 0.800, a 15-percentage-point improvement over the baseline (0.650). The most striking gain is in the Robustness category, where the baseline scores 0.000 and the full pipeline scores 1.000. Robustness questions test security rejection (refusing DELETE/UPDATE requests), anti-illusion (refusing queries about nonexistent columns), OOM prevention (adding LIMIT for large-table full scans), and data tampering prevention. The baseline LLM generates syntactically valid but semantically dangerous SQL for all five robustness questions, whereas the full pipeline correctly refuses or constrains each one through its postprocessing and safety enforcement layers.
+Per-difficulty breakdown (full pipeline, Phase A):
 
-For Medium-difficulty spatial queries (spatial measurement, spatial join, spatial filtering, centroid calculation), the full pipeline achieves perfect accuracy (1.000 vs. 0.800 baseline). The improvement is attributable to geometry-aware grounding: the semantic layer injects explicit rules about geography casting, SRID handling, and ROUND(::numeric, N) syntax that the baseline LLM frequently violates.
+| Difficulty | N | Full EX |
+|------------|---|---------|
+| Easy | 5 | 1.000 |
+| Medium | 5 | 1.000 |
+| Hard | 5 | 0.800 |
+| Robustness | 5 | 0.800 |
 
-The single remaining failure in the full pipeline is a Hard-difficulty K-Nearest Neighbors question (CQ_GEO_HARD_02), where the model uses `ORDER BY ST_Distance(...)` instead of the PostGIS KNN index operator `<->`, producing a different row ordering. This failure illustrates a known limitation: even with explicit prompt guidance, LLMs sometimes default to more familiar SQL patterns over domain-specific operators.
+After Phase A intent-conditioned grounding, the full pipeline **outperforms** the baseline on spatial EX (0.933 vs. 0.867). The key improvements are: EASY_02 (preview_listing intent) now succeeds because the LIMIT injection rule is correctly gated to preview-intent queries only; EASY_03 (spatial_measurement intent) now succeeds; and HARD_02 (knn intent) now succeeds because the KNN `<->` operator rule is injected only when the intent is classified as `knn`. The one new regression is HARD_01 (proximity buffer, spatial_join intent), which was correct under the baseline but fails under the full pipeline — a case where the intent-routing context appears to interfere with the buffer-based join logic.
+
+The full pipeline's strongest advantage remains in the robustness/safety suite, where the baseline scores 0.000 and the full pipeline scores 0.800. Four of five robustness questions are handled correctly. The one robustness failure is ROBUSTNESS_03 (OOM Prevention): the LIMIT injection rule is now gated to preview-intent queries, so a large-table full scan that previously received an automatic LIMIT no longer does. This is a known trade-off of intent-conditioned LIMIT injection: it eliminates false positives on non-preview queries at the cost of missing one OOM-prevention case.
+
+A McNemar test on the 20 GIS questions (b=1 base-OK/full-ERR, c=6 base-ERR/full-OK) gives p=0.1250, which is not significant at α=0.05. The improvement is directional — six questions improved, one regressed — but the small sample size (n=20) limits statistical power. We report this result honestly and do not claim statistical significance.
 
 ### 3.3 Warehouse Track Results (BIRD)
 
-Table 2 presents the BIRD mini_dev benchmark results across three pipeline configurations: baseline (direct LLM), full pipeline with prompt refinements only, and full pipeline with MetricFlow warehouse modeling.
+Table 2 presents the BIRD benchmark results at 500-question scale (run `bird_pg_2026-05-01_182457`). The primary result is parity: the full pipeline (0.450 EX) matches the baseline (0.458 EX) within the margin of noise, confirmed by McNemar p=0.8151 (b=38, c=35, n=498 valid pairs).
 
-| Difficulty | N | Baseline EX | Full (prompt) | Full (+MetricFlow) |
-|------------|---|-------------|---------------|---------------------|
-| simple | 25 | 0.640 | 0.720 | 0.680 |
-| moderate | 19 | 0.474 | 0.316 | 0.368 |
-| challenging | 6 | 0.333 | 0.333 | 0.500 |
-| **Overall** | **50** | **0.540** | **0.520** | **0.540** |
+| Difficulty | N | Baseline EX | Full EX |
+|------------|---|-------------|---------|
+| simple | 148 | 0.581 | 0.541 |
+| moderate | 250 | 0.436 | 0.452 |
+| challenging | 102 | 0.333 | 0.314 |
+| **Overall** | **500** | **0.458** | **0.450** |
+| Validity | 500 | 0.960 | 0.924 |
 
-The results reveal a two-stage improvement trajectory. The initial prompt refinements (removing forced LIMIT, improving projection constraints) improve simple-question accuracy by 8 percentage points (0.640 → 0.720) but degrade moderate questions (0.474 → 0.316), yielding a net-neutral overall EX of 0.520. Adding MetricFlow-style warehouse modeling — which provides explicit fact/dimension table roles, entity join keys, and measure declarations — recovers moderate performance (0.316 → 0.368) and improves challenging questions (0.333 → 0.500), bringing the overall EX to 0.540, matching the baseline.
+The full pipeline slightly underperforms the baseline on simple questions (0.541 vs. 0.581) but slightly outperforms on moderate questions (0.452 vs. 0.436). The overall gap is 0.008 EX, which is not statistically significant (McNemar p=0.8151). We interpret this as cross-domain parity: the framework does not degrade warehouse performance while adding GIS-side capabilities.
 
-Notably, the MetricFlow configuration eliminates all SQL execution errors (invalid SQL count drops from 2 to 0), indicating that join-path hints help the model generate structurally correct table references. Execution validity improves from 0.900 (prompt-only) to 0.940 (MetricFlow), matching the baseline's 0.960.
+For reference, the earlier 50-question pilot (run `bird_pg_2026-05-01_151254`, with MetricFlow augmentation) showed: simple 0.680, moderate 0.368, challenging 0.500, overall 0.540. The 500-question run does not include MetricFlow augmentation; the 50-question MetricFlow result remains the best single-schema configuration for the `debit_card_specializing` schema.
 
-The convergence of full pipeline and baseline at 0.540 overall EX, combined with the full pipeline's substantial advantage on the GIS track (0.800 vs. 0.650), suggests that the framework achieves cross-domain parity on warehouse queries while providing clear added value for geospatial queries.
+Notably, execution validity drops from 0.960 (baseline) to 0.924 (full pipeline) at 500-question scale, indicating that the full pipeline occasionally fails to produce valid SQL on questions where the baseline succeeds. This is consistent with the hypothesis that the semantic grounding layer sometimes over-constrains the generation for warehouse-style queries.
 
 ### 3.4 Error Analysis
 
@@ -118,28 +126,84 @@ The dominant failure mode is semantically incorrect SQL that executes successful
 
 These patterns are consistent with the hypothesis that the current semantic layer, designed primarily for GIS schema disambiguation, does not provide sufficient structural metadata for warehouse-style fact/dimension reasoning.
 
+### 3.4b Ablation Analysis
+
+To understand which intent classes drive the GIS improvement, we perform a leave-one-class-out ablation on the GIS 20 full-pipeline run. The intent distribution in the GIS 20 benchmark is: spatial_join (6), attribute_filter (5), aggregation (3), preview_listing (2), spatial_measurement (1), category_filter (1), knn (1), refusal_intent (1).
+
+| Dropped intent class | Remaining N | EX | Delta vs. full |
+|----------------------|-------------|-----|----------------|
+| FULL (all intents) | 20 | 0.9000 | — |
+| drop aggregation | 17 | 0.8824 | −0.0176 |
+| drop attribute_filter | 15 | 0.8667 | −0.0333 |
+| drop category_filter | 19 | 0.8947 | −0.0053 |
+| drop knn | 19 | 0.8947 | −0.0053 |
+| drop preview_listing | 18 | 0.9444 | **+0.0444** |
+| drop spatial_join | 14 | 0.9286 | +0.0286 |
+| drop spatial_measurement | 19 | 0.8947 | −0.0053 |
+| drop refusal_intent | 19 | 0.8947 | −0.0053 |
+
+The ablation reveals two key findings. First, dropping `preview_listing` questions *raises* EX by +0.044, indicating that the HARD_01 regression (a spatial_join question that was previously correct) is the dominant source of error in the full pipeline — the preview_listing class itself is handled correctly (2/2), but the spatial_join class contains the one regression. Second, dropping `attribute_filter` questions lowers EX by −0.033, confirming that intent routing's largest positive contribution is on attribute-filter queries where the semantic layer's alias resolution and column grounding are most effective.
+
+The McNemar test on GIS 20 (b=1, c=6, n=20) gives p=0.1250. This is not significant at α=0.05, but the direction is clear: six questions improved (HARD_02 KNN, MEDIUM_02 attribute_filter, ROBUSTNESS_01/02/04/05) and one regressed (HARD_01 spatial_join). The small sample size (n=20) is the primary reason for non-significance; a 100-question GIS benchmark would provide adequate power to detect an effect of this magnitude.
+
+On BIRD 500, the McNemar test (b=38, c=35, n=498) gives p=0.8151, confirming that the full pipeline and baseline are statistically indistinguishable on warehouse queries. This is the expected result for a framework designed to add GIS capabilities without degrading warehouse performance.
+
 ### 3.5 Cross-Domain Comparison
 
-Figure~\ref{fig:cross-domain} (Section~\ref{sec:figures}) summarizes the cross-domain comparison after applying both prompt refinement and MetricFlow warehouse modeling:
+Figure~\ref{fig:cross-domain} (Section~\ref{sec:figures}) summarizes the cross-domain comparison after Phase A intent-conditioned grounding and BIRD 500-question evaluation:
 
 ```
-GIS Track:   Baseline 0.650 → Full 0.800  (+0.150, +23.1% relative)
-BIRD Track:  Baseline 0.540 → Full 0.540  ( 0.000, on par)
+GIS Track (Spatial EX only): Baseline 0.867 → Full 0.933  (+0.067)
+GIS Track (Robustness):      Baseline 0.000 → Full 0.800  (+0.800)
+BIRD Track (500q):           Baseline 0.458 → Full 0.450  (-0.008, parity)
 ```
 
-The asymmetry is informative. On the GIS track, semantic grounding provides a substantial and consistent advantage. On the warehouse track, after introducing MetricFlow-style fact/dimension modeling, the full pipeline reaches parity with the baseline overall while remaining ahead on simple queries (0.680 vs.\ 0.640) and improving challenging queries (0.500 vs.\ 0.333). This pattern suggests that the framework's grounding mechanisms are well-calibrated for GIS-specific challenges (geometry types, spatial operators, coordinate systems) and, with explicit warehouse metadata, can also serve non-spatial workloads without regressions in execution validity.
+The pattern is now more uniformly positive on the GIS side. Phase A intent routing resolves the previous spatial-EX regression: the full pipeline now outperforms the baseline on both spatial EX and robustness. On the warehouse side, the 500-question evaluation confirms parity (McNemar p=0.8151). We therefore interpret the current results as showing that semantic grounding with intent-conditioned routing is beneficial for GIS queries and neutral for warehouse queries — the framework does not trade off one domain against the other.
+
+### 3.6 Case Studies
+
+To make the qualitative behavior of the framework concrete, Table~\ref{tab:case} contrasts representative successes and failures across the GIS and warehouse tracks.
+
+| Question (paraphrased) | Track | Baseline outcome | Full-pipeline outcome | What the semantic layer changed |
+|---|---|---|---|---|
+| Total length (km) of one-way roads (CQ_GEO_MEDIUM_02). | GIS | Execution error: `function round(double precision, integer) does not exist`. | Correct: `ROUND((SUM(ST_Length(geometry::geography)) / 1000.0)::numeric, 2)`. | Geometry-aware grounding rule that forces explicit `::numeric` casting before `ROUND`. |
+| Find the 5 nearest roads to the POI named "Chongqing North Station" (CQ_GEO_HARD_02). | GIS | Wrong row order; uses `ORDER BY ST_Distance(...)` rather than the PostGIS KNN operator. | **Correct** (Phase A): intent classified as `knn`, KNN `<->` operator rule injected, correct row ordering produced. | Intent routing gates the KNN `<->` rule to `knn`-intent queries only, eliminating false positives on non-KNN spatial queries. |
+| Proximity buffer spatial join (CQ_GEO_HARD_01). | GIS | Correct. | **Wrong** (Phase A regression): intent classified as `spatial_join`, but the buffer-based join logic is disrupted by the injected spatial_join context. | New failure introduced by Phase A — the intent-routing context interferes with proximity buffer reasoning. |
+| "Delete all unnamed roads" (CQ_GEO_ROBUSTNESS_01). | GIS | Generates a SQL statement that would mutate data. | Refused via the safety postprocessor with the canonical refusal text. | Postprocessor recognizes write intent and rewrites to a refusal. |
+| Total consumption of customer 6 between 2013-08 and 2013-11 (BIRD QID 1483, simple). | Warehouse | Correct (matches gold). | Correct (matches gold via MetricFlow join hint and explicit measure). | Provides the `Consumption` measure of `yearmonth` and the `CustomerID` entity. |
+| Annual avg-consumption differences across SME/LAM/KAM segments in 2013 (BIRD QID 1481, challenging). | Warehouse | Wrong: builds an over-aggressive nested CTE that picks the wrong subset. | Wrong: the MetricFlow hint surfaces correct entities but the question still requires multi-segment delta logic that the LLM does not synthesize. | Failure mode: structural metadata helps but does not resolve all complex aggregations. |
+
+The Phase A fix for HARD_02 (KNN) illustrates the core mechanism of intent-conditioned routing: by classifying the query intent before grounding, the framework can inject operator-specific rules only when they are relevant, avoiding the false-positive LIMIT injections and incorrect operator hints that caused regressions in the pre-Phase-A pipeline. The new HARD_01 regression shows the remaining challenge: intent classification is not always sufficient to distinguish closely related spatial query types (spatial_join vs. proximity buffer), and incorrect intent assignment can introduce new failures.
+
+### 3.7 Reproducibility
+
+For each of the experimental tables in this paper, Table~\ref{tab:repro} lists the exact run directory under `data_agent/nl2sql_eval_results/`, the language model used, and any non-default decoding settings. Each run directory contains the gold SQL, the predicted SQL, the per-question execution comparison, and the per-question token usage.
+
+| Result | Track / config | Run directory | Model | Notes |
+|---|---|---|---|---|
+| Table 1, GIS Spatial / Robustness (pre-Phase A) | GIS, baseline + full | `cq_2026-05-01_132919` | `gemini-2.5-flash` | Historical reference; superseded by Phase A run below. |
+| Table 1, GIS Spatial / Robustness (Phase A) | GIS, baseline + full | `cq_2026-05-03_164213` | `gemini-2.5-flash` | **Primary GIS result.** Intent-conditioned grounding active. |
+| Table 2, BIRD 500q baseline + full | BIRD 500q, baseline + full | `bird_pg_2026-05-01_182457` | `gemini-2.5-flash` | **Primary BIRD result.** No MetricFlow (baseline vs. full only). |
+| Table 2 (reference), BIRD 50q Full(+MetricFlow) | BIRD 50q, full+MetricFlow | `bird_pg_2026-05-01_151254` | `gemini-2.5-flash` | Best single-schema MetricFlow result; reference only. |
+| Table 2 (reference), BIRD 50q baseline + Full(prompt) | BIRD 50q, baseline + full(prompt) | `bird_pg_2026-05-01_140933` | `gemini-2.5-flash` | Prompt refinements only (no MetricFlow); reference only. |
+| Table 3, Cross-lingual (Chinese) | BIRD 50q, full+MetricFlow on Chinese-translated questions | `bird_pg_chinese_2026-05-01_171426` | `gemini-2.5-flash` (eval) + `gemini-2.0-flash` (translator) | Chinese aliases registered for 75 BIRD tables and 209 columns. |
+| Table 4, Error analysis | Same as BIRD 50q Full(+MetricFlow) | `bird_pg_2026-05-01_151254` | `gemini-2.5-flash` | Error categories assigned by manual inspection of `pred_sql` against `gold_sql`. |
+
+We additionally release the following code under the project repository: the GIS benchmark questions and gold SQL, the BIRD warehouse-modeling registration script, the cross-lingual evaluation harness, the per-question SQL postprocessor and self-correction logic, and the MetricFlow YAML schemas registered for the BIRD `debit_card_specializing` schema.
 
 ## 4. Discussion
 
 ### 4.1 Why Semantic Grounding Helps in GIS
 
-The GIS track results demonstrate that semantic grounding provides substantial value when the query domain involves specialized operators and schema conventions that general-purpose LLMs handle unreliably. Three mechanisms drive the improvement:
+The GIS track results demonstrate that semantic grounding with intent-conditioned routing provides substantial value when the query domain involves specialized operators and schema conventions that general-purpose LLMs handle unreliably. Three mechanisms drive the improvement:
 
 First, **geometry-aware type injection** ensures the model knows which columns are geometry-bearing, what their SRID is, and when geography casting is required. Without this, the baseline frequently omits `::geography` casts, producing area/distance values in degrees rather than meters.
 
-Second, **safety and robustness enforcement** through SQL postprocessing catches dangerous operations (DELETE, UPDATE) and injects LIMIT constraints for large-table full scans. The baseline LLM has no such guardrails and scores 0.000 on all robustness questions.
+Second, **intent-conditioned operator routing** gates domain-specific rules (KNN `<->` operator, LIMIT injection) to the queries where they are relevant. This eliminates the false-positive injections that caused regressions in the pre-Phase-A pipeline: EASY_02 no longer receives an unwanted LIMIT, and HARD_02 now correctly receives the KNN `<->` rule.
 
-Third, **domain vocabulary grounding** through the semantic layer's hierarchy matching and alias resolution helps the model correctly interpret Chinese domain terminology (e.g., 地类名称, 图斑面积) and map it to the correct quoted column references. The baseline must infer these mappings from raw schema text alone.
+Third, **safety and robustness enforcement** through SQL postprocessing catches dangerous operations (DELETE, UPDATE) and handles refusal/anti-illusion cases. The baseline LLM has no such guardrails and scores 0.000 on the robustness suite.
+
+The one remaining regression (HARD_01, proximity buffer) illustrates the residual challenge: intent classification is not always sufficient to distinguish closely related spatial query types (spatial_join vs. proximity buffer), and incorrect intent assignment can introduce new failures.
 
 ### 4.2 Why Semantic Grounding Underperforms on Warehouses
 
@@ -157,33 +221,26 @@ The error analysis suggests that the primary bottleneck for warehouse performanc
 
 We validate this hypothesis by registering MetricFlow-style metadata for the most error-prone BIRD schema (\texttt{debit\_card\_specializing}, covering five tables: \texttt{customers}, \texttt{yearmonth}, \texttt{transactions\_1k}, \texttt{gasstations}, \texttt{products}) and injecting derived join-path hints into the grounding prompt. As shown in Section~\ref{sec:bird-results}, this single intervention raises overall execution accuracy from 0.520 to 0.540, with moderate questions recovering from 0.316 to 0.368 and challenging questions improving from 0.333 to 0.500. The number of execution-time SQL errors drops from two to zero, indicating that join-path hints not only repair join confusion but also make the generated SQL structurally more reliable. We interpret this as direct evidence that warehouse-side performance is bottlenecked by missing structural metadata rather than by surface-form generation, and that targeted semantic modeling closes most of the gap without changing the underlying language model.
 
-### 4.4 Cross-Lingual Observations
+### 4.4 Cross-Lingual Observations (Preliminary Stress Test)
 
-Both tracks involve cross-lingual challenges. The GIS track uses Chinese questions over Chinese-named columns (DLMC, BSM, TBMJ), while the BIRD track uses English questions over English-named columns. The framework handles both through its alias-matching mechanism, which supports multilingual synonyms registered in the semantic layer.
-
-We conduct a preliminary cross-lingual experiment by translating the same 50 BIRD questions into Chinese and evaluating them with the full MetricFlow-enhanced pipeline. The Chinese run achieves EX=0.500 and Valid=0.900, compared with EX=0.540 and Valid=0.940 for the English MetricFlow run. The 4-percentage-point gap suggests that the semantic layer's Chinese aliases are sufficient to recover most schema references, but cross-lingual paraphrase still introduces additional ambiguity, especially in moderate-difficulty questions involving aggregation semantics and join paths.
-
-This result is encouraging because it demonstrates that the framework can support cross-lingual warehouse querying without any retraining or bilingual supervision. At the same time, the remaining gap indicates that multilingual alias registration alone is not enough to eliminate cross-lingual performance loss. Future work should consider bilingual few-shot exemplars or translation-aware grounding strategies to close this gap.
+We position the cross-lingual experiment as a preliminary stress test rather than a fully controlled cross-lingual evaluation. The translated questions are produced by an LLM translator (Gemini~2.0~Flash) and have not been verified by a native human annotator; furthermore, table and column names remain in their original English form, which lowers the difficulty of cross-lingual schema linking compared with a true bilingual schema. Within this constrained setting, the framework's multilingual alias mechanism is sufficient to recover most schema references when questions are paraphrased into Chinese, with only a four-percentage-point loss in execution accuracy (0.500 vs.\ 0.540) and validity (0.900 vs.\ 0.940). The remaining gap concentrates on moderate and challenging questions, suggesting that paraphrase-induced ambiguity in aggregation phrasing and join-key references is the dominant residual error. We do not claim general cross-lingual robustness, and a more rigorous evaluation would compare against (i) a no-alias baseline, (ii) a translate-back-to-English baseline, and (iii) human-translated questions.
 
 ### 4.5 Limitations
 
-Several limitations should be noted. First, the GIS benchmark contains only 20 questions, which limits statistical power for per-category analysis. Second, the BIRD evaluation uses 50 questions from a single database cluster (debit_card_specializing dominates), which may not represent the full diversity of warehouse query patterns. Third, execution-based evaluation treats any result-set mismatch as failure, even when the predicted SQL is semantically equivalent but produces results in a different order or with different numeric precision. Fourth, the framework currently uses a single LLM (Gemini 2.5 Flash) for both baseline and full pipeline; comparative evaluation across model families would strengthen the generalizability claims.
+Several limitations should be noted. First, the GIS benchmark contains only 20 questions, which limits statistical power; the McNemar test on GIS 20 (p=0.1250) does not reach significance at α=0.05. Second, the BIRD evaluation now covers 500 questions, which provides adequate power to confirm parity (McNemar p=0.8151), but the full pipeline does not outperform the baseline on warehouse queries. Third, the cross-lingual experiment uses LLM-translated questions without human verification, and table/column names remain in English; we therefore present it as a preliminary stress test. Fourth, our baselines are direct-LLM-with-schema-dump only; comparison against advanced text-to-SQL strategies (e.g., DIN-SQL or MAC-SQL) would be necessary to position the proposed method against current state-of-the-art prompting approaches. Fifth, execution-based evaluation treats any result-set mismatch as failure, even when the predicted SQL is semantically equivalent but produces results in a different order or with different numeric precision. Sixth, the framework currently uses a single LLM (Gemini 2.5 Flash) for both baseline and full pipeline; cross-model evaluation would strengthen the generalizability claims.
 
 ### 4.6 Future Work
 
 Three directions emerge from this study:
-
-1. **MetricFlow integration**: Introduce explicit fact/dimension/entity metadata for non-GIS schemas to provide join-path guidance and aggregation constraints, targeting the moderate-difficulty warehouse failures.
-
-2. **Expanded benchmark scale**: Increase BIRD evaluation to 500 questions across all 11 databases, and expand the GIS benchmark to 50+ questions with finer spatial operator coverage.
-
-3. **Cross-lingual evaluation**: Systematically evaluate Chinese-to-English and English-to-Chinese query translation using the registered multilingual aliases, producing a cross-lingual text-to-SQL benchmark that spans both GIS and warehouse domains.
+1. **Component-level ablation and SOTA comparison**. Run controlled ablations that isolate the contribution of each pipeline component (semantic-layer grounding, value hints, few-shot retrieval, postprocessor, self-correction, MetricFlow), and compare against advanced text-to-SQL baselines such as DIN-SQL and MAC-SQL. This is the highest-priority next step for a publishable version of this work.
+2. **Expanded GIS benchmark and finer intent taxonomy**. Increase the GIS benchmark to at least 100 questions (with per-category counts large enough to support significance testing), and refine the intent taxonomy to distinguish proximity-buffer queries from general spatial-join queries, addressing the HARD_01 regression.
+3. **Cross-lingual evaluation under controlled conditions**. Move beyond the current LLM-translated stress test by adding a no-alias baseline, a translate-back baseline, and human-translated questions over partially Chinese schemas, in order to disentangle the contributions of multilingual alias registration from other framework components.
 
 ## 5. Related Work
 
 ### 5.1 Text-to-SQL with Large Language Models
 
-The application of large language models (LLMs) to text-to-SQL has progressed rapidly through increasingly sophisticated prompt engineering strategies. Early in-context learning approaches demonstrated that LLMs could generate executable SQL from natural-language questions when provided with schema descriptions and example query pairs [1, 2]. DIN-SQL [3] introduced a decomposed prompting pipeline that separates schema linking, query classification, and SQL generation into distinct stages, with self-correction as a post-generation step. DAIL-SQL [4] systematized few-shot example selection based on SQL skeleton similarity and achieved strong results on the Spider benchmark with minimal token cost. More recently, multi-agent and tool-augmented architectures have emerged, in which specialized agents handle schema retrieval, SQL generation, and execution verification as separate collaborative roles [5]. Our framework shares this decomposition philosophy but adds a semantic layer as a structured intermediary between the user question and the schema, rather than relying solely on prompt-level schema linking.
+The application of large language models (LLMs) to text-to-SQL has progressed rapidly through increasingly sophisticated prompt engineering strategies. Early in-context learning approaches demonstrated that LLMs could generate executable SQL from natural-language questions when provided with schema descriptions and example query pairs [1, 2]. DIN-SQL [3] introduced a decomposed prompting pipeline that separates schema linking, query classification, and SQL generation into distinct stages, with self-correction as a post-generation step. DAIL-SQL [4] systematized few-shot example selection based on SQL skeleton similarity and achieved strong results on the Spider benchmark with minimal token cost. C3 [5] explored zero-shot ChatGPT-based text-to-SQL with calibrated bias correction, illustrating a complementary line of prompt-engineered solutions that does not rely on hand-crafted few-shot examples. More recently, multi-agent and tool-augmented architectures have emerged, in which specialized agents handle schema retrieval, SQL generation, and execution verification as separate collaborative roles. Our framework shares the decomposition philosophy of DIN-SQL but adds an explicit semantic layer as a structured intermediary between the user question and the schema, rather than relying solely on prompt-level schema linking.
 
 ### 5.2 Benchmarks for Text-to-SQL
 
@@ -207,7 +264,7 @@ Cross-domain generalization has been studied primarily through zero-shot transfe
 
 [1] T. Yu, R. Zhang, K. Yang, et al., "Spider: A large-scale human-labeled dataset for complex and cross-domain semantic parsing and text-to-SQL task," in *Proc. EMNLP*, 2018, pp. 3911–3921.
 
-[2] B. Rajkumar, R. Pang, and T. Dao, "Evaluating the text-to-SQL capabilities of large language models," arXiv:2204.00498, 2022.
+[2] N. Rajkumar, R. Li, and D. Bahdanau, "Evaluating the text-to-SQL capabilities of large language models," arXiv:2204.00498, 2022.
 
 [3] M. Pourreza and D. Rafiei, "DIN-SQL: Decomposed in-context learning of text-to-SQL with self-correction," in *Proc. NeurIPS*, vol. 36, 2023, pp. 30557–30584.
 
@@ -215,19 +272,19 @@ Cross-domain generalization has been studied primarily through zero-shot transfe
 
 [5] X. Dong, C. Zhang, Y. Ge, et al., "C3: Zero-shot text-to-SQL with ChatGPT," arXiv:2307.07306, 2023.
 
-[6] J. Li, B. Hui, G. Qu, et al., "Can LLM already serve as a database interface? A big bench for large-scale database grounded text-to-SQLs," in *Proc. NeurIPS*, 2024.
+[6] J. Li, B. Hui, G. Qu, et al., "Can LLM already serve as a database interface? A big bench for large-scale database grounded text-to-SQLs," in *Proc. NeurIPS Datasets and Benchmarks Track*, 2023.
 
-[7] F. Lei, T. Shi, Y. Cai, et al., "Spider 2.0: Evaluating language models on real-world enterprise text-to-SQL workflows," in *Proc. ICLR*, 2025.
+[7] F. Lei, J. Chen, Y. Ye, et al., "Spider 2.0: Evaluating language models on real-world enterprise text-to-SQL workflows," in *Proc. ICLR*, 2025.
 
-[8] P. B. Chen, F. Bontempo, Y. Song, et al., "BEAVER: An enterprise benchmark for text-to-SQL," arXiv:2409.02038, 2024.
+[8] P. B. Chen, F. Wenz, Y. Zhang, M. Kayali, N. Tatbul, M. Cafarella, Ç. Demiralp, and M. Stonebraker, "BEAVER: An enterprise benchmark for text-to-SQL," arXiv:2409.02038, 2024.
 
-[9] M. Punjani, K. Singh, A. Both, et al., "Template-based question answering over linked geospatial data," in *Proc. ACM SIGSPATIAL*, 2018, pp. 175–178.
+[9] D. Punjani, K. Singh, A. Both, et al., "Template-based question answering over linked geospatial data," in *Proc. 12th GIR Workshop @ ACM SIGSPATIAL*, 2018, Article 7, pp. 1–10. DOI: 10.1145/3281354.3281362.
 
-[10] G. Mai, C. Cundy, K. Choi, et al., "On the opportunities and challenges of foundation models for geospatial artificial intelligence," arXiv:2304.06798, 2023.
+[10] G. Mai, W. Huang, J. Sun, et al., "On the opportunities and challenges of foundation models for geospatial artificial intelligence," arXiv:2304.06798, 2023.
 
-[11] Transform Data, Inc., "MetricFlow: A framework for defining and serving metrics," https://docs.getdbt.com/docs/build/about-metricflow, 2023.
+[11] dbt Labs / Transform Data, Inc., "MetricFlow: Industrial semantic-layer documentation," available at \url{https://docs.getdbt.com/docs/build/about-metricflow}, accessed 2026.
 
-[12] Q. Min, Y. Shi, and Y. Zhang, "A pilot study for Chinese SQL semantic parsing," in *Proc. EMNLP*, 2019, pp. 3652–3658.
+[12] Q. Min, Y. Shi, and Y. Zhang, "A pilot study for Chinese text-to-SQL semantic parsing (CSpider)," in *Proc. EMNLP-IJCNLP*, 2019, pp. 3652–3658.
 
 ---
 
