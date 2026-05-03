@@ -41,6 +41,49 @@ def list_tables(conn: sqlite3.Connection) -> list[str]:
     return [r[0] for r in cur.fetchall()]
 
 
+def extract_sqlite_fks(conn: sqlite3.Connection, table: str) -> list[dict]:
+    """Extract foreign key relationships from a SQLite table.
+
+    Returns list of dicts: [{from_col, ref_table, ref_col}, ...]
+    """
+    cur = conn.execute(f'PRAGMA foreign_key_list("{table}")')
+    fks = []
+    for row in cur.fetchall():
+        # PRAGMA foreign_key_list returns: (id, seq, table, from, to, on_update, on_delete, match)
+        fks.append({
+            "from_col": row[3].lower(),
+            "ref_table": row[2].lower(),
+            "ref_col": row[4].lower() if row[4] else "id",
+        })
+    return fks
+
+
+def restore_fks(engine, schema: str, table: str, fks: list[dict]) -> int:
+    """Create FK constraints in PostgreSQL. Returns count of FKs created."""
+    created = 0
+    with engine.begin() as conn:
+        for fk in fks:
+            constraint_name = f"fk_{table}_{fk['from_col']}_{fk['ref_table']}"
+            # Check if constraint already exists (idempotent)
+            exists = conn.execute(text(
+                "SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_schema = :schema AND constraint_name = :name"
+            ), {"schema": schema, "name": constraint_name}).fetchone()
+            if exists:
+                continue
+            try:
+                conn.execute(text(
+                    f'ALTER TABLE "{schema}"."{table}" '
+                    f'ADD CONSTRAINT "{constraint_name}" '
+                    f'FOREIGN KEY ("{fk["from_col"]}") '
+                    f'REFERENCES "{schema}"."{fk["ref_table"]}" ("{fk["ref_col"]}")'
+                ))
+                created += 1
+            except Exception:
+                pass  # Skip on type mismatch or missing ref table
+    return created
+
+
 def import_sqlite_db(sqlite_path: Path, schema: str, engine, chunksize: int = 5000) -> dict:
     """Copy all tables from one SQLite file into a PG schema."""
     out = {"schema": schema, "tables": [], "total_rows": 0, "errors": []}
@@ -66,6 +109,12 @@ def import_sqlite_db(sqlite_path: Path, schema: str, engine, chunksize: int = 50
                     table.lower(), engine, schema=schema,
                     if_exists="replace", index=False, chunksize=chunksize,
                 )
+                # Extract and restore foreign keys
+                fks = extract_sqlite_fks(sqlite_conn, table)
+                if fks:
+                    n_fk = restore_fks(engine, schema, table.lower(), fks)
+                    if n_fk:
+                        print(f"    + {n_fk} FK constraints restored")
                 out["tables"].append({"name": table, "rows": len(df)})
                 out["total_rows"] += len(df)
                 print(f"  {schema}.{table:30s} {len(df):>8,} rows")
