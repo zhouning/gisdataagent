@@ -82,3 +82,45 @@ def test_user_context_exposes_current_nl2sql_intent():
         assert current_nl2sql_intent.get() is IntentLabel.KNN
     finally:
         current_nl2sql_intent.reset(token)
+
+
+# --- English BIRD-style patterns (added in P0a) ---
+
+
+@pytest.mark.parametrize("question, expected", [
+    # Aggregation: "what is/was the X" + "how many" + "calculate" + "the average/total"
+    ("What is the average monthly consumption of customers in SME?", IntentLabel.AGGREGATION),
+    ("How many customers paid in EUR?", IntentLabel.AGGREGATION),
+    ("What was the highest monthly consumption in 2012?", IntentLabel.AGGREGATION),
+    ("Calculate the total amount spent in all events.", IntentLabel.AGGREGATION),
+    ("What is the percentage of premium against the overall segment?", IntentLabel.AGGREGATION),
+    ("Are there more in-patient or outpatient who were male?", IntentLabel.AGGREGATION),
+    ("Which year recorded the most consumption of gas?", IntentLabel.AGGREGATION),
+    ("What is the deviation in percentage between the two groups?", IntentLabel.AGGREGATION),
+    # Preview listing: "Please list", "List all", bare "List the X"
+    ("Please list the product description of the products consumed in September.", IntentLabel.PREVIEW_LISTING),
+    ("List all the names of events that had attendance over 20.", IntentLabel.PREVIEW_LISTING),
+    ("List out the full name and total cost.", IntentLabel.PREVIEW_LISTING),
+    # Specific-entity attribute lookup
+    ("State the date Connor Hilton paid his dues.", IntentLabel.ATTRIBUTE_FILTER),
+    ("Tell the phone number of Carlo Jacobs.", IntentLabel.ATTRIBUTE_FILTER),
+    ("What's Angela Sanders's major?", IntentLabel.ATTRIBUTE_FILTER),
+])
+def test_classify_rule_english_bird_patterns(question, expected):
+    result = classify_rule(question)
+    assert result.primary is expected, f"got {result.primary} for {question!r}"
+    assert result.source == "rule"
+
+
+def test_english_aggregation_does_not_collide_with_attribute_filter():
+    """A question with both English aggregation lexicon and = 'value' should
+    classify as AGGREGATION (the dominant intent)."""
+    q = 'What is the percentage of "premium" against the overall segment in Country = "SVK"?'
+    result = classify_rule(q)
+    assert result.primary is IntentLabel.AGGREGATION
+
+
+def test_chinese_attribute_filter_with_listing_verb_still_attribute():
+    """Existing GIS test case must remain ATTRIBUTE_FILTER (regression guard)."""
+    result = classify_rule("列出所有 fclass = 'primary' 的道路名称")
+    assert result.primary is IntentLabel.ATTRIBUTE_FILTER
