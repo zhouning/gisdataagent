@@ -24,7 +24,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dotenv import load_dotenv
 load_dotenv(str(Path(__file__).resolve().parents[1] / "data_agent" / ".env"), override=True)
 
-# Reuse helpers from run_cq_eval
+# Disable ArcPy before importing anything from data_agent
+import data_agent.toolsets.geo_processing_tools as _geo_proc
+_geo_proc._arcpy_funcs.clear()
+_geo_proc._arcpy_gov_explore_funcs.clear()
+_geo_proc._arcpy_gov_process_funcs.clear()
+_geo_proc.ARCPY_AVAILABLE = False
+
+# Now safe to import run_cq_eval helpers
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "nl2sql_bench_cq"))
 from run_cq_eval import (
     _init_runtime,
