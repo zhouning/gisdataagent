@@ -105,18 +105,18 @@ We design NL2Semantic2SQL as a three-stage pipeline (Figure~\ref{fig:arch}). In 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-  node distance=10mm and 12mm,
+  node distance=8mm and 8mm,
   every node/.style={font=\small},
-  stage/.style={draw, rounded corners=2pt, minimum width=33mm, minimum height=10mm, align=center, fill=gray!10},
-  block/.style={draw, rounded corners=2pt, minimum width=33mm, minimum height=8mm, align=center, fill=blue!7},
-  io/.style={draw, rounded corners=2pt, minimum width=22mm, minimum height=8mm, align=center, fill=orange!12},
+  stage/.style={draw, rounded corners=2pt, minimum width=26mm, minimum height=10mm, align=center, fill=gray!10, font=\scriptsize},
+  block/.style={draw, rounded corners=2pt, minimum width=26mm, minimum height=8mm, align=center, fill=blue!7, font=\scriptsize},
+  io/.style={draw, rounded corners=2pt, minimum width=18mm, minimum height=8mm, align=center, fill=orange!12, font=\scriptsize},
   arrow/.style={-{Stealth[length=2mm]}, thick}
 ]
 \node[io]    (q)    {NL question $q$};
-\node[stage] (s1) [right=of q]   {Stage 1: \\ Semantic resolution};
-\node[stage] (s2) [right=of s1]  {Stage 2: \\ Grounded context};
-\node[stage] (s3) [right=of s2]  {Stage 3: \\ SQL synth.\ + correction};
-\node[io]    (sql) [right=of s3] {Executable SQL};
+\node[stage] (s1) [right=of q]   {S1: Semantic \\ resolution};
+\node[stage] (s2) [right=of s1]  {S2: Grounded \\ context};
+\node[stage] (s3) [right=of s2]  {S3: SQL synth.\ \\ + correction};
+\node[io]    (sql) [right=of s3] {Exec.\ SQL};
 
 \node[block] (b1) [below=of s1] {Aliases / hierarchy / \\ MetricFlow models};
 \node[block] (b2) [below=of s2] {Schema dump + sampled values \\ + optional few-shot};
@@ -174,19 +174,19 @@ For each track, we compare two pipeline configurations:
   \item \textbf{Full pipeline}: full NL2Semantic2SQL with semantic-layer resolution, geometry-aware grounding, value-aware hints, postprocessing, and execution-time self-correction (single-pass mode on BIRD).
 \end{itemize}
 
-We additionally compare against \textbf{DIN-SQL}~\cite{pourreza2023dinsql} as an external prompting baseline on both tracks. All configurations share the same underlying language model (Gemini~2.5~Flash), the same database backend (PostgreSQL with PostGIS), and the same execution-comparison harness. The official run directories are listed in Table~\ref{tab:repro}.
+We additionally compare against \textbf{DIN-SQL}~\cite{pourreza2023dinsql} as an external prompting baseline on both tracks. All configurations share the same underlying language model (Gemini~2.5~Flash), the same database backend (PostgreSQL with PostGIS), and the same execution-comparison harness. Experimental configurations are summarized in Table~\ref{tab:repro}.
 
 \subsection{GIS track results}
 \label{sec:gis-results}
 
-Table~\ref{tab:gis-spatial} reports the GIS Spatial EX results (85 normal spatial-SQL questions) and Table~\ref{tab:gis-robust} reports the Robustness Success Rate (15 safety/refusal questions) for the expanded 100-question benchmark (run \texttt{cq\_2026-05-04\_122349}). We report these separately because they measure fundamentally different capabilities: Spatial EX measures SQL generation accuracy, while Robustness Success Rate measures safety enforcement and refusal behavior. Combining them into a single ``Overall EX'' metric is non-standard and would conflate two distinct evaluation dimensions; we retain an overall figure only as a secondary reference.
+Table~\ref{tab:gis-spatial} reports the GIS Spatial EX results (85 normal spatial-SQL questions) and Table~\ref{tab:gis-robust} reports the Robustness Success Rate (15 safety/refusal questions) for the expanded 100-question benchmark. We report these separately because they measure fundamentally different capabilities: Spatial EX measures SQL generation accuracy, while Robustness Success Rate measures safety enforcement and refusal behavior. Combining them into a single ``Overall EX'' metric is non-standard and would conflate two distinct evaluation dimensions; we retain an overall figure only as a secondary reference.
 
 \paragraph{Benchmark construction.}
 The 100-question GIS benchmark was constructed as follows: (1)~20 seed questions were manually authored by a domain expert covering 16 spatial query categories across 4 difficulty levels; (2)~80 additional questions were generated using Gemini~2.5~Flash with the actual CQ database schema as context, then validated by executing each gold SQL against the live PostgreSQL/PostGIS database; (3)~6 robustness questions have null gold SQL (testing refusal behavior); (4)~all 94 executable gold SQL statements were verified to return non-empty, correct results. The benchmark and gold SQL are released as \texttt{benchmarks/chongqing\_geo\_nl2sql\_100\_benchmark.json}.
 
 \begin{table}[t]
 \centering
-\caption{GIS Spatial EX: 85 normal spatial-SQL questions (run \texttt{cq\_2026-05-04\_122349}). 95\% Wilson CIs in brackets. McNemar test: $b=4$ (base-OK/full-ERR), $c=17$ (base-ERR/full-OK).}
+\caption{GIS Spatial EX: 85 normal spatial-SQL questions. 95\% Wilson CIs in brackets. McNemar test: $b=4$ (base-OK/full-ERR), $c=17$ (base-ERR/full-OK).}
 \label{tab:gis-spatial}
 \begin{tabular}{lcccc}
 \toprule
@@ -205,7 +205,7 @@ Mean tokens  & 85  & 753 & 10{,}261 & $13.6\times$ \\
 
 \begin{table}[t]
 \centering
-\caption{GIS Robustness Success Rate: 15 safety/refusal questions (run \texttt{cq\_2026-05-04\_122349}). 95\% Wilson CIs in brackets. McNemar test: $b=0$ (base-OK/full-ERR), $c=7$ (base-ERR/full-OK).}
+\caption{GIS Robustness Success Rate: 15 safety/refusal questions. 95\% Wilson CIs in brackets. McNemar test: $b=0$ (base-OK/full-ERR), $c=7$ (base-ERR/full-OK).}
 \label{tab:gis-robust}
 \begin{tabular}{lcccc}
 \toprule
@@ -231,13 +231,13 @@ Token cost on the GIS track is $13.6\times$ relative to baseline (10{,}261 vs.\ 
 \subsection{Warehouse (BIRD) track results}
 \label{sec:bird-results}
 
-Table~\ref{tab:bird} reports BIRD execution accuracy at $\sim$495-question scale using single-pass mode (P2, run \texttt{bird\_pg\_2026-05-04\_093040}).
+Table~\ref{tab:bird} reports BIRD execution accuracy at $\sim$495-question scale using single-pass mode (P2).
 
 The baseline completed 498 of 500 questions (2 execution errors); the full pipeline completed 495 of 500 (5 timed out in the initial multi-pass run, later resolved by P2 single-pass mode). For paired McNemar testing, we use the intersection of 495 questions where both modes produced results. The 5 missing full-mode questions are conservatively treated as failures (EX$=0$) in the overall EX calculation but excluded from the paired test to avoid inflating the discordant count.
 
 \begin{table}[t]
 \centering
-\caption{BIRD $\sim$495-question benchmark results (single-pass P2 mode, run \texttt{bird\_pg\_2026-05-04\_093040}). 95\% Wilson CIs shown for overall EX. McNemar test: $b=26$, $c=39$, $n=495$.}
+\caption{BIRD $\sim$495-question benchmark results (single-pass P2 mode). 95\% Wilson CIs shown for overall EX. McNemar test: $b=26$, $c=39$, $n=495$.}
 \label{tab:bird}
 \begin{tabular}{lcccc}
 \toprule
@@ -260,7 +260,7 @@ The full pipeline improves EX across all three difficulty levels ($+0.034$ simpl
 
 The P2 single-pass mode reduced token cost from $\sim$32$\times$ (multi-pass agent runner) to $7.9\times$ while also improving EX, by eliminating agent runner hangs and routing each question through the grounding pipeline exactly once.
 
-For reference, the earlier 500-question multi-pass run (\texttt{bird\_pg\_2026-05-01\_182457}) showed: baseline $0.458$, full $0.450$ ($-0.008$, McNemar $p=0.8151$). The single-pass P2 mode not only reduces cost but also eliminates the small multi-pass degradation: full now exceeds baseline on the BIRD track as well.
+For reference, the earlier 500-question multi-pass run showed: baseline $0.458$, full $0.450$ ($-0.008$, McNemar $p=0.8151$). The single-pass P2 mode not only reduces cost but also eliminates the small multi-pass degradation: full now exceeds baseline on the BIRD track as well.
 
 \subsection{DIN-SQL external baseline comparison}
 \label{sec:dinsql}
@@ -269,7 +269,7 @@ Table~\ref{tab:dinsql} compares NL2Semantic2SQL against DIN-SQL~\cite{pourreza20
 
 \begin{table}[t]
 \centering
-\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full pipeline. DIN-SQL on GIS is evaluated on the same 100-question benchmark (run \texttt{cq\_din\_sql\_2026-05-04\_151650}). DIN-SQL on BIRD uses our $\sim$495-question evaluation set.}
+\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full pipeline. DIN-SQL on GIS is evaluated on the same 100-question benchmark. DIN-SQL on BIRD uses our $\sim$495-question evaluation set.}
 \label{tab:dinsql}
 \begin{tabular}{lccccc}
 \toprule
@@ -370,9 +370,10 @@ Table~\ref{tab:mcnemar} reports paired McNemar tests comparing baseline and full
 
 \begin{table}[t]
 \centering
+\footnotesize
 \caption{McNemar significance tests (baseline vs.\ full pipeline). $b$ = base-OK/full-ERR; $c$ = base-ERR/full-OK. GIS Spatial and Robustness are reported separately.}
 \label{tab:mcnemar}
-\begin{tabular}{lccccl}
+\begin{tabular}{lccccp{4.5cm}}
 \toprule
 Track & $n$ & $b$ & $c$ & $p$-value & Interpretation \\
 \midrule
@@ -391,21 +392,22 @@ Table~\ref{tab:case} contrasts representative successes and failures across the 
 
 \begin{table}[p]
 \centering
+\scriptsize
 \caption{Representative case studies from the benchmark runs. ``Base'' denotes the direct-LLM baseline and ``Full'' denotes the full pipeline (Phase~A).}
 \label{tab:case}
-\begin{tabular}{p{2.2cm} p{3.6cm} p{4.4cm} p{4.4cm}}
+\begin{tabular}{p{1.8cm} p{2.8cm} p{4.2cm} p{4.2cm}}
 \toprule
 Track / case & Gold query intent & Baseline outcome & Full-pipeline outcome \\
 \midrule
-GIS success (CQ\_GEO\_MEDIUM\_02) & Compute total length (km) of one-way roads. & Fails with \texttt{ROUND(double precision, integer)} because \texttt{::numeric} cast is missing. & Succeeds with \texttt{ROUND((SUM(ST\_Length(geometry::geography))/1000.0)::numeric,2)}, showing the geometry-aware rule resolves a real execution error. \\
+GIS success (CQ\_GEO\_ MEDIUM\_02) & Compute total length (km) of one-way roads. & Fails: \texttt{ROUND(double precision, integer)} — \texttt{::numeric} cast missing. & Succeeds: \texttt{ROUND((SUM(ST\_Length( geom::geography)) /1000.0)::numeric,2)}, geometry-aware rule resolves the error. \\
 \midrule
-GIS success (CQ\_GEO\_HARD\_02) & Retrieve the five nearest roads to the POI ``Chongqing North Station.'' & Uses \texttt{ORDER BY ST\_Distance(...)} instead of PostGIS KNN ranking. & \textbf{Correct (Phase~A):} intent classified as \texttt{knn}, KNN \texttt{<-}\texttt{>} operator rule injected, correct row ordering produced. \\
+GIS success (CQ\_GEO\_ HARD\_02) & Retrieve the five nearest roads to ``Chongqing North Station.'' & Uses \texttt{ORDER BY ST\_Distance(...)} instead of KNN ranking. & \textbf{Correct:} intent$=$\texttt{knn}, KNN \texttt{<->} operator injected, correct ordering produced. \\
 \midrule
-GIS regression (CQ\_GEO\_HARD\_01) & Proximity buffer spatial join. & Correct. & \textbf{Wrong (Phase~A regression):} intent classified as \texttt{spatial\_join}, but the buffer-based join logic is disrupted by the injected spatial\_join context. \\
+GIS regression (CQ\_GEO\_ HARD\_01) & Proximity buffer spatial join. & Correct. & \textbf{Wrong (regression):} intent$=$\texttt{spatial\_join}, buffer-based join logic disrupted by injected context. \\
 \midrule
-Warehouse success (BIRD QID 1483) & Sum customer~6's consumption between 2013-08 and 2013-11. & Succeeds. & Also succeeds; MetricFlow provides the correct \texttt{Consumption} measure and \texttt{CustomerID} entity without altering the semantics. \\
+Warehouse success (BIRD 1483) & Sum customer~6's consumption 2013-08 to 2013-11. & Succeeds. & Also succeeds; MetricFlow provides correct measure and entity. \\
 \midrule
-Warehouse failure (BIRD QID 1481) & Compare annual average consumption differences across SME/LAM/KAM segments in 2013. & Builds an over-nested CTE with the wrong subset semantics. & Still fails despite correct join-path hints, showing that multi-segment aggregation logic remains a generation bottleneck. \\
+Warehouse failure (BIRD 1481) & Compare annual avg.\ consumption across SME/LAM/KAM in 2013. & Over-nested CTE, wrong subset semantics. & Still fails; multi-segment aggregation remains a bottleneck. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -417,7 +419,7 @@ Figure~\ref{fig:cross} summarizes the three-way cross-domain comparison (Baselin
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[every node/.style={font=\small}]
-\draw[->] (0,0) -- (15.5,0) node[right]{Metric};
+\draw[->] (0,0) -- (13.5,0) node[right]{Metric};
 \draw[->] (0,0) -- (0,5.5) node[above]{Score};
 \foreach \y/\lab in {1.0/0.2,2.0/0.4,3.0/0.6,4.0/0.8,5.0/1.0}
   \draw (-0.05,\y) -- (0.05,\y) node[left,xshift=-3pt]{\lab};
@@ -438,17 +440,17 @@ Figure~\ref{fig:cross} summarizes the three-way cross-domain comparison (Baselin
 \node[font=\scriptsize] at (5.5,-0.95) {DIN};
 \node[font=\scriptsize] at (6.4,-0.95) {full};
 % BIRD ~495q EX
-\draw[fill=gray!40]  (8.0,0) rectangle (8.8,2.37); \node[above,font=\scriptsize] at (8.4,2.37) {0.474};
-\draw[fill=orange!50](8.9,0) rectangle (9.7,2.41); \node[above,font=\scriptsize] at (9.3,2.41) {0.482};
-\draw[fill=blue!50]  (9.8,0) rectangle (10.6,2.505);\node[above,font=\scriptsize] at (10.2,2.505) {0.501};
-\node[font=\scriptsize,align=center] at (9.3,-0.55) {BIRD $\sim$495q EX};
-\node[font=\scriptsize] at (8.4,-0.95) {base};
-\node[font=\scriptsize] at (9.3,-0.95) {DIN};
-\node[font=\scriptsize] at (10.2,-0.95) {full};
+\draw[fill=gray!40]  (7.0,0) rectangle (7.8,2.37); \node[above,font=\scriptsize] at (7.4,2.37) {0.474};
+\draw[fill=orange!50](7.9,0) rectangle (8.7,2.41); \node[above,font=\scriptsize] at (8.3,2.41) {0.482};
+\draw[fill=blue!50]  (8.8,0) rectangle (9.6,2.505);\node[above,font=\scriptsize] at (9.2,2.505) {0.501};
+\node[font=\scriptsize,align=center] at (8.3,-0.55) {BIRD $\sim$495q EX};
+\node[font=\scriptsize] at (7.4,-0.95) {base};
+\node[font=\scriptsize] at (8.3,-0.95) {DIN};
+\node[font=\scriptsize] at (9.2,-0.95) {full};
 % legend
-\draw[fill=gray!40]  (12.0,4.5) rectangle (12.5,5.0); \node[right,font=\scriptsize] at (12.6,4.75) {Baseline};
-\draw[fill=orange!50](12.0,3.8) rectangle (12.5,4.3); \node[right,font=\scriptsize] at (12.6,4.05) {DIN-SQL};
-\draw[fill=blue!50]  (12.0,3.1) rectangle (12.5,3.6); \node[right,font=\scriptsize] at (12.6,3.35) {Full};
+\draw[fill=gray!40]  (10.5,4.5) rectangle (11.0,5.0); \node[right,font=\scriptsize] at (11.1,4.75) {Baseline};
+\draw[fill=orange!50](10.5,3.8) rectangle (11.0,4.3); \node[right,font=\scriptsize] at (11.1,4.05) {DIN-SQL};
+\draw[fill=blue!50]  (10.5,3.1) rectangle (11.0,3.6); \node[right,font=\scriptsize] at (11.1,3.35) {Full};
 \end{tikzpicture}
 \caption{Three-way cross-domain comparison on the same 100-question GIS benchmark and $\sim$495-question BIRD evaluation set. GIS Spatial 85q: full pipeline $0.682$ vs.\ DIN-SQL $0.565$ vs.\ baseline $0.529$; full vs.\ DIN-SQL McNemar $p=0.0213$ (significant), full vs.\ baseline $p=0.0072$ (significant). GIS Robustness 15q: full pipeline $0.800$ vs.\ DIN-SQL $0.267$ vs.\ baseline $0.333$; full vs.\ DIN-SQL $p=0.0078$, full vs.\ baseline $p=0.0156$ (both significant). BIRD $\sim$495q: full pipeline $0.501$ vs.\ DIN-SQL $0.482$ vs.\ baseline $0.474$; all three statistically comparable (full vs.\ DIN-SQL $p=0.382$).}
 \label{fig:cross}
@@ -461,35 +463,28 @@ We position the cross-lingual experiment as a preliminary stress test rather tha
 
 \subsection{Reproducibility}
 
-Table~\ref{tab:repro} lists the exact run directories used to populate the experimental tables in this paper.
+Table~\ref{tab:repro} summarizes the experimental configurations used to produce all reported results.
 
 \begin{table}[t]
 \centering
-\caption{Reproducibility map for all reported experiments.}
+\caption{Experimental configurations and released artifacts.}
 \label{tab:repro}
-\begin{tabular}{p{2.8cm} p{3.0cm} p{4.4cm} p{2.3cm}}
+\begin{tabular}{lll}
 \toprule
-Result & Track / config & Run directory & Model(s) \\
+Experiment & Model & Key parameters \\
 \midrule
-GIS 100q (primary) & GIS baseline + full & \texttt{cq\_2026-05-04\_122349} & Gemini~2.5~Flash \\
-GIS 20q Phase~A (ref.) & GIS baseline + full & \texttt{cq\_2026-05-03\_164213} & Gemini~2.5~Flash \\
-GIS 20q pre-Phase~A (ref.) & GIS baseline + full & \texttt{cq\_2026-05-01\_132919} & Gemini~2.5~Flash \\
-DIN-SQL GIS 100q (primary) & GIS DIN-SQL & \texttt{cq\_din\_sql\_2026-05-04\_151650} & Gemini~2.5~Flash \\
-DIN-SQL GIS 20q (ref.) & GIS DIN-SQL & \texttt{cq\_din\_sql\_2026-05-03\_193407} & Gemini~2.5~Flash \\
-BIRD $\sim$495q P2 (primary) & BIRD baseline + full & \texttt{bird\_pg\_2026-05-04\_093040} & Gemini~2.5~Flash \\
-BIRD 500q multi-pass (ref.) & BIRD baseline + full & \texttt{bird\_pg\_2026-05-01\_182457} & Gemini~2.5~Flash \\
-BIRD 50q + MetricFlow (ref.) & BIRD full(+MetricFlow) & \texttt{bird\_pg\_2026-05-01\_151254} & Gemini~2.5~Flash \\
-DIN-SQL BIRD 500q & BIRD DIN-SQL & \texttt{bird\_din\_sql\_2026-05-03\_193412} & Gemini~2.5~Flash \\
-Cross-lingual & Chinese-translated BIRD 50q & \texttt{bird\_pg\_chinese\_2026-05-01\_171426} & Gemini~2.5~Flash (eval), Gemini~2.0~Flash (translation) \\
+GIS 100q (baseline + full) & Gemini 2.5 Flash & temp=0.0, 60s timeout \\
+GIS 100q (DIN-SQL) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
+BIRD $\sim$495q (baseline + full) & Gemini 2.5 Flash & temp=0.0, single-pass P2 \\
+BIRD $\sim$495q (DIN-SQL) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
+Cross-lingual (Chinese BIRD 50q) & Gemini 2.5 Flash & LLM-translated questions \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent\textbf{Model parameters.} All runs use Gemini~2.5~Flash with temperature$=0.0$, default top\_p, and default maximum output tokens. The BIRD evaluation uses the full \texttt{mini\_dev\_postgresql.json} (500 questions, no sampling); 495 questions completed (5 errors/timeouts). DIN-SQL runs use \texttt{results.json} (not \texttt{baseline\_results.json} or \texttt{full\_results.json}).
+\noindent\textbf{Released artifacts.} We release the 100-question GIS benchmark with gold SQL (see project repository, \texttt{benchmarks/} directory), the DIN-SQL runner adapted for PostgreSQL/PostGIS, the evaluation harness with McNemar and Wilson CI tools, and the SQL postprocessor and self-correction logic. Per-question predicted SQL and execution results are available in the project repository.
 
-\noindent\textbf{Error handling.} Each question has a 60-second execution timeout. On \texttt{429 RESOURCE\_EXHAUSTED}, the runner uses the \texttt{genai} SDK's built-in retry (3 attempts with 2-second initial delay). On no-SQL output, the question is recorded as \texttt{gen\_status=no\_sql} and EX$=0$. BIRD baseline ran 498/500 (2 errors); full ran 495/500 (3 stalled in agent runner before P2 fix; with single-pass P2 they completed). Paired McNemar uses the $n=495$ intersection.
-
-Each run directory contains the gold SQL, the predicted SQL, per-question execution comparisons, difficulty labels, and token usage. We also release the GIS benchmark questions and gold SQL, the BIRD warehouse-modeling registration script, the cross-lingual evaluation harness, the per-question SQL postprocessor and self-correction logic, and the MetricFlow YAML schemas registered for the BIRD \texttt{debit\_card\_specializing} schema.
+\noindent All runs use Gemini~2.5~Flash with temperature$=0.0$, default top\_p, and default maximum output tokens. Each question has a 60-second execution timeout; on \texttt{429 RESOURCE\_EXHAUSTED}, the runner retries up to 3 times with 2-second initial delay. On no-SQL output, the question is recorded as \texttt{gen\_status=no\_sql} and EX$=0$. The BIRD evaluation uses the full \texttt{mini\_dev\_postgresql.json} (500 questions); 495 questions completed (5 errors/timeouts). Paired McNemar uses the $n=495$ intersection.
 
 % =============================================================================
 \section{Discussion}
@@ -557,7 +552,7 @@ Taken together, the results establish that a unified semantic-to-SQL architectur
 % =============================================================================
 \section*{Reproducibility}
 % =============================================================================
-The GIS benchmark, the warehouse-modeling registration scripts, the cross-lingual evaluation harness, and the experiment configurations used to produce all tables in this paper are released in the project repository. Each result reported in Tables~\ref{tab:gis-spatial}--\ref{tab:repro} corresponds to a specific run directory under \texttt{nl2sql\_eval\_results/} that contains the gold SQL, the predicted SQL, the execution comparison, the difficulty stratification, and the per-question token usage. The primary GIS result uses run \texttt{cq\_2026-05-04\_122349} (100-question benchmark, split into 85 Spatial + 15 Robustness); the primary BIRD result uses run \texttt{bird\_pg\_2026-05-04\_093040} ($\sim$495 questions, single-pass P2 mode). DIN-SQL GIS 20q reference uses \texttt{cq\_din\_sql\_2026-05-03\_193407}; DIN-SQL BIRD uses \texttt{bird\_din\_sql\_2026-05-03\_193412}. All runs use Gemini~2.5~Flash, temperature$=0.0$, default top\_p and max output tokens.
+The GIS benchmark, the warehouse-modeling registration scripts, the cross-lingual evaluation harness, and the experiment configurations used to produce all tables in this paper are released in the project repository. The primary GIS result covers the 100-question benchmark (split into 85 Spatial + 15 Robustness); the primary BIRD result covers $\sim$495 questions in single-pass P2 mode. All runs use Gemini~2.5~Flash, temperature$=0.0$, default top\_p and max output tokens.
 
 % =============================================================================
 \begin{thebibliography}{99}
