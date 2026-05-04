@@ -249,77 +249,96 @@ def baseline_generate(question: str, db_id: str, evidence: str = "") -> dict:
 
 
 # ============================================================================
-# Mode B: Full pipeline (lazy import — heavy)
+# Mode B: Single-pass NL2Semantic2SQL (grounding + LLM + postprocess)
 # ============================================================================
-
-_full_agent = None
-_full_session = None
-
-
-def _lazy_init_full():
-    global _full_agent, _full_session
-    if _full_agent is None:
-        # Use the focused NL2SQL agent (DatabaseToolset + SemanticLayerToolset only),
-        # NOT the full general_pipeline. This isolates the NL→Semantic→SQL step
-        # from the multi-agent product orchestration (intent router, viz, summary loop).
-        from nl2sql_agent import get_nl2sql_agent
-        from google.adk.sessions import InMemorySessionService
-        _full_agent = get_nl2sql_agent()
-        _full_session = InMemorySessionService()
-    return _full_agent, _full_session
 
 
 async def full_generate(question: str, db_id: str, evidence: str = "") -> dict:
-    """Run full NL2Semantic2SQL pipeline (grounding + postprocess + self-correction)."""
-    from data_agent.pipeline_runner import run_pipeline_headless
+    """Single-pass NL2Semantic2SQL: grounding + LLM generation + postprocess + self-correction.
 
-    agent, session_service = _lazy_init_full()
+    Replaces the ADK agent loop (which hangs on some questions due to unbounded
+    tool-call cycles) with a deterministic 3-step pipeline:
+    1. build_nl2sql_context → grounding prompt with intent-routed rules
+    2. Single LLM call (same model) to generate SQL
+    3. postprocess_sql + execute + retry on failure (up to 2 retries)
+    """
+    _init_runtime()
     schema_pg = f"bird_{db_id}"
-
-    # Inject FULL schema (tables + columns) into the prompt, same as baseline gets.
-    # This gives Agent information parity — baseline already sees the full DDL.
     schema_dump = dump_schema(db_id)
 
+    # Step 1: Build grounding context (intent classification + semantic layer)
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+    from data_agent.sql_postprocessor import postprocess_sql
+    from data_agent.nl2sql_executor import _retry_with_llm
+
+    ctx = build_nl2sql_context(question)
+    grounding = ctx.get("grounding_prompt", "")
+
+    # Build table schemas + large tables for postprocessor
+    table_schemas = {}
+    large_tables_set = set()
+    for t in ctx.get("candidate_tables", []):
+        table_schemas[t["table_name"]] = t.get("columns", [])
+        if int(t.get("row_count_hint", 0) or 0) >= 1_000_000:
+            large_tables_set.add(t["table_name"])
+
+    intent = ctx.get("intent")
+
+    # Step 2: Single LLM call with grounding
     prompt = (
-        f"Database: PostgreSQL schema `{schema_pg}`.\n\n"
+        f"You are a PostgreSQL SQL expert. Convert the user question into a single SELECT query.\n\n"
+        f"Database: PostgreSQL schema `{schema_pg}`.\n"
         f"SCHEMA:\n{schema_dump}\n"
-        + (f"{evidence}\n\n" if evidence else "\n")
-        + f"Question: {question}\n\n"
-        + f"请按标准流程执行：先调用 prepare_nl2sql_context 获取 grounding，"
-        + f"然后生成 SQL，最后调用 execute_nl2sql 执行。"
-        + f"表名需要 schema 限定（如 `{schema_pg}.customers`）。"
+        + (f"EVIDENCE/HINTS:\n{evidence}\n\n" if evidence else "\n")
+        + f"[NL2SQL Grounding Context]\n{grounding}\n\n"
+        + f"Rules:\n"
+        + f"- Output ONLY the SQL, no commentary, no markdown fences.\n"
+        + f"- Use bare table names (search_path is preset to the correct schema).\n"
+        + f"- Use PostgreSQL syntax (CASE WHEN, NULLIF, ::numeric, etc.).\n"
+        + f"- Do not add LIMIT unless the question explicitly asks for top-K or preview.\n"
+        + f"- Use the evidence/hints when provided.\n\n"
+        + f"QUESTION: {question}\n\nSQL:"
     )
 
-    sid = f"bird_{db_id}_{int(time.time() * 1000)}"
     try:
-        result = await run_pipeline_headless(
-            agent=agent, session_service=session_service,
-            user_id="bird_benchmark", session_id=sid,
-            prompt=prompt, pipeline_type="general", intent="GENERAL", role="analyst",
+        resp = _client.models.generate_content(
+            model=MODEL, contents=[prompt],
+            config=types.GenerateContentConfig(
+                http_options=types.HttpOptions(
+                    timeout=60_000,
+                    retry_options=types.HttpRetryOptions(initial_delay=2.0, attempts=3)),
+                temperature=0.0,
+            ),
         )
     except Exception as e:
-        return {"status": "exception", "sql": "", "error": str(e), "tokens": 0}
+        return {"status": "error", "sql": "", "error": str(e), "tokens": 0}
 
-    # Extract SQL from execute_nl2sql or query_database tool calls
-    pred_sql = ""
-    for entry in (result.tool_execution_log or [])[::-1]:
-        tool = entry.get("tool_name", "")
-        if tool == "execute_nl2sql":
-            pred_sql = entry.get("args", {}).get("sql", "") or ""
-            if pred_sql:
-                break
-        elif tool == "query_database":
-            pred_sql = entry.get("args", {}).get("sql_query", "") or ""
-            if pred_sql:
-                break
+    sql = _strip_fences(resp.text or "")
+    tokens = 0
+    if hasattr(resp, "usage_metadata") and resp.usage_metadata:
+        tokens = (getattr(resp.usage_metadata, "prompt_token_count", 0) or 0) + \
+                 (getattr(resp.usage_metadata, "candidates_token_count", 0) or 0)
 
-    return {
-        "status": "ok" if pred_sql else "no_sql",
-        "sql": pred_sql,
-        "error": result.error,
-        "tokens": (result.total_input_tokens + result.total_output_tokens),
-        "duration": result.duration_seconds,
-    }
+    # Step 3: Postprocess + self-correction loop
+    pp = postprocess_sql(sql, table_schemas, large_tables_set, intent=intent)
+    if pp.rejected:
+        sql = ""
+    else:
+        sql = pp.sql
+        test_res = execute_pg(sql, db_id) if sql else {"status": "error", "error": "empty"}
+        for _retry in range(2):
+            if test_res.get("status") == "ok":
+                break
+            fixed = _retry_with_llm(question, sql, str(test_res.get("error", "")), table_schemas)
+            if not fixed:
+                break
+            pp2 = postprocess_sql(fixed, table_schemas, large_tables_set, intent=intent)
+            if pp2.rejected:
+                break
+            sql = pp2.sql
+            test_res = execute_pg(sql, db_id)
+
+    return {"status": "ok" if sql else "no_sql", "sql": sql, "error": None, "tokens": tokens}
 
 
 # ============================================================================
