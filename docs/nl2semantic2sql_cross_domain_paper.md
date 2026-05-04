@@ -2,9 +2,9 @@
 
 **Author**: Ning Zhou
 **Affiliation**: Beijing SuperMap Software Co., Ltd., Beijing, China
-**Email**: zhouning@supermap.com
+**Email**: zhouning1@supermap.com
 
-> **Status**: Draft v0.5 (2026-05-01) — Major revision per SCI reviewer feedback: split GIS Spatial/Robustness, DIN-SQL 20q ref, BIRD directional only, bilingual framing, limitations expanded
+> **Status**: Draft v0.6 (2026-05-04) — DIN-SQL on GIS 100q complete (Full vs DIN p=0.0213/p=0.0078, both significant); split GIS Spatial/Robustness; BIRD directional only; bilingual framing
 > **Target venues**: IJGIS / GeoInformatica / Transactions in GIS / ISPRS IJGI
 
 ---
@@ -125,21 +125,23 @@ For reference, the earlier 500-question multi-pass run (run `bird_pg_2026-05-01_
 
 ### 3.4 DIN-SQL External Baseline Comparison
 
-We compare against DIN-SQL [3] as an external prompting baseline on both tracks. DIN-SQL uses decomposed in-context learning with self-correction; we report published numbers for BIRD and run DIN-SQL on our GIS benchmark separately.
+We compare against DIN-SQL [3] as an external prompting baseline on both tracks. DIN-SQL uses decomposed in-context learning with self-correction. The DIN-SQL evaluation on GIS now covers the same 100-question benchmark as Baseline and Full, enabling a fair head-to-head comparison.
 
-**Table 3: DIN-SQL external baseline comparison**
+**Table 3: DIN-SQL external baseline comparison (100q for GIS, ~495q for BIRD)**
 
 | Track | N | Baseline EX | DIN-SQL EX | Full EX | Full vs. DIN-SQL |
 |-------|---|-------------|------------|---------|-----------------|
-| GIS Spatial 85q | 85 | 0.529 | 0.650* | **0.682** | +0.032 |
-| GIS Robust. 15q | 15 | 0.333 | 0.000* | **0.800** | +0.800 |
+| GIS Spatial 85q | 85 | 0.529 | 0.565 | **0.682** | +0.118 |
+| GIS Robust. 15q | 15 | 0.333 | 0.267 | **0.800** | +0.533 |
 | BIRD ~495q | ~495 | 0.474 | 0.482 | **0.501** | +0.019 |
 
-*DIN-SQL was originally evaluated on a 20-question subset; a 100-question re-run is in progress. The 20-question result is shown as a reference and should not be directly compared to the Full pipeline's 85-question Spatial EX result. On the same 100-question benchmark, DIN-SQL achieves [TBD-100q] (results pending re-run); on the original 20-question subset, DIN-SQL matches the baseline at EX=0.650.
+**On the GIS Spatial track (85 questions)**: DIN-SQL achieves EX=0.565, only marginally above the direct-LLM baseline (0.529, McNemar DIN-SQL vs. baseline p=0.508, not significant). This confirms that decomposed prompting *without* spatial grounding does not provide a meaningful improvement over direct generation for geospatial SQL. The full NL2Semantic2SQL pipeline reaches Spatial EX=0.682, a statistically significant improvement of **+0.118 over DIN-SQL** (paired McNemar b=3, c=13, **p=0.0213**, significant at α=0.05).
 
-On the GIS track, DIN-SQL exactly matches the baseline (EX=0.650 on the 20-question subset, Robustness=0.000), confirming that decomposed prompting without spatial grounding does not improve over direct LLM generation for geospatial SQL. The full NL2Semantic2SQL pipeline shows directional improvement over DIN-SQL on GIS Spatial EX (+0.032); a fair 100-question comparison is pending the DIN-SQL re-run.
+**On the GIS Robustness track (15 questions)**: DIN-SQL achieves only 0.267 Success Rate, slightly below baseline (0.333), because DIN-SQL has no built-in safety/refusal handling for DELETE/UPDATE/DROP requests, anti-illusion checks, OOM prevention, or schema enforcement. The full pipeline achieves 0.800, a statistically significant improvement of **+0.533 over DIN-SQL** (paired McNemar b=0, c=8, **p=0.0078**, significant).
 
-On BIRD, DIN-SQL achieves EX=0.482 (Validity=0.990) on our ~495-question evaluation set. Full pipeline EX=0.501 is numerically higher than DIN-SQL EX=0.482 (+0.019), but the difference is not statistically significant (McNemar p=0.382). The three systems — baseline (0.474), DIN-SQL (0.482), and Full (0.501) — are statistically comparable on the BIRD track.
+**On the BIRD warehouse track**: DIN-SQL achieves EX=0.482 (Validity=0.990). Full pipeline EX=0.501 is numerically higher than DIN-SQL EX=0.482 (+0.019), but the difference is **not statistically significant** (McNemar p=0.382). The three systems — baseline (0.474), DIN-SQL (0.482), and Full (0.501) — are statistically comparable on the BIRD track.
+
+In summary, the full pipeline obtains statistically significant gains over both the baseline and DIN-SQL on the GIS track (both Spatial and Robustness), while on BIRD all three systems are statistically comparable. This pattern reinforces the paper's central thesis: semantic grounding with intent-conditioned routing yields domain-specific gains for geospatial SQL where geometry-aware schema linking, SRID/coordinate handling, and safety enforcement matter, while pure prompt-engineering baselines such as DIN-SQL remain competitive on conventional warehouse SQL.
 
 ### 3.5 Token Cost Analysis
 
@@ -160,19 +162,19 @@ For the BIRD track, P2 single-pass mode reduced the token ratio from ~32× (mult
 
 ### 3.6 Cross-Domain Comparison
 
-Figure 1 summarizes the three-way cross-domain comparison (Baseline / DIN-SQL / Full) after all optimizations:
+Figure 1 summarizes the three-way cross-domain comparison (Baseline / DIN-SQL / Full) on the same evaluation sets:
 
 ```
-Track                   | Baseline | DIN-SQL  | Full    | Full vs. Baseline | Full vs. DIN-SQL
-GIS Spatial 85q (EX)    | 0.529    | 0.650*   | 0.682   | +0.153 (p=0.0072**) | +0.032
-GIS Robustness 15q      | 0.333    | 0.000*   | 0.800   | +0.467 (p=0.0156*)  | +0.800
-BIRD ~495q (EX)         | 0.474    | 0.482    | 0.501   | +0.027 (p=0.136)    | +0.019 (p=0.382)
+Track                   | Baseline | DIN-SQL  | Full    | Full vs. Baseline       | Full vs. DIN-SQL
+GIS Spatial 85q (EX)    | 0.529    | 0.565    | 0.682   | +0.153 (p=0.0072 **)    | +0.118 (p=0.0213 *)
+GIS Robustness 15q      | 0.333    | 0.267    | 0.800   | +0.467 (p=0.0156 *)     | +0.533 (p=0.0078 **)
+BIRD ~495q (EX)         | 0.474    | 0.482    | 0.501   | +0.027 (p=0.136 NS)     | +0.019 (p=0.382 NS)
 
-** p=0.0072, * p=0.0156 (both statistically significant at α=0.05)
-*DIN-SQL evaluated on GIS 20-question reference subset; 100q re-run pending
+** strongly significant (p<0.01), * significant (p<0.05), NS = not significant
+DIN-SQL on GIS evaluated on the same 100-question benchmark (run cq_din_sql_2026-05-04_151650).
 ```
 
-Both GIS metrics are statistically significant. On the BIRD track, all three systems are statistically comparable. The BIRD result should be interpreted as directional evidence, not a confirmed advantage.
+Both GIS metrics show **Full pipeline statistically significantly outperforming both baseline and DIN-SQL**. On the BIRD track, all three systems are statistically comparable; the BIRD result should be interpreted as directional evidence, not a confirmed advantage.
 
 ### 3.7 Error Analysis
 
@@ -223,8 +225,8 @@ For each experimental table, Table 5 lists the exact run directory, model, and n
 | Table 1a/1b, GIS 100q baseline + full | GIS, baseline + full | `cq_2026-05-04_122349` | `gemini-2.5-flash` | **Primary GIS result.** 100-question benchmark (85 Spatial + 15 Robustness). |
 | Table 1 (ref), GIS 20q Phase A | GIS, baseline + full | `cq_2026-05-03_164213` | `gemini-2.5-flash` | Historical reference (20q pilot). |
 | Table 1 (ref), GIS 20q pre-Phase A | GIS, baseline + full | `cq_2026-05-01_132919` | `gemini-2.5-flash` | Historical reference (pre-Phase A). |
-| Table 3, DIN-SQL GIS 20q (ref.) | GIS, DIN-SQL | `cq_din_sql_2026-05-03_193407` | `gemini-2.5-flash` | DIN-SQL 20-question reference subset. |
-| Table 3, DIN-SQL GIS 100q (pending) | GIS, DIN-SQL | `cq_din_sql_2026-05-04_*` | `gemini-2.5-flash` | **Pending.** 100-question re-run in progress. |
+| Table 3, DIN-SQL GIS 100q | GIS, DIN-SQL | `cq_din_sql_2026-05-04_151650` | `gemini-2.5-flash` | **Primary DIN-SQL GIS result.** Same 100-question benchmark as Baseline/Full; max_retries=1, temperature=0.0. |
+| Table 3 (ref), DIN-SQL GIS 20q | GIS, DIN-SQL | `cq_din_sql_2026-05-03_193407` | `gemini-2.5-flash` | Historical reference (20-question pilot). |
 | Table 2, BIRD ~495q single-pass | BIRD, baseline + full | `bird_pg_2026-05-04_093040` | `gemini-2.5-flash` | **Primary BIRD result.** P2 single-pass mode. |
 | Table 2 (ref), BIRD 500q multi-pass | BIRD, baseline + full | `bird_pg_2026-05-01_182457` | `gemini-2.5-flash` | Historical reference (multi-pass, now superseded). |
 | Table 2 (ref), BIRD 50q Full(+MetricFlow) | BIRD full+MetricFlow | `bird_pg_2026-05-01_151254` | `gemini-2.5-flash` | Best single-schema MetricFlow result; reference only. |
