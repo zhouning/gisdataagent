@@ -228,6 +228,8 @@ Q: ... / SQL: ...
 
 **单次 LLM 调用** (P2 模式):
 
+> **P2 命名说明**: P2 = "Pass-2 单次生成模式"，是相对于早期 P1（"Pass-1 多轮 ADK Agent Loop 模式"）的优化。P1 走 ADK agent 循环（5-15 轮 tool call），token 成本约 32× baseline 且某些题会无限循环。P2 是确定性单次推理：本地构建 grounding（无 LLM 调用）→ 1 次主生成 LLM 调用 → 后处理 + 执行 → 失败时最多 2 次纠错 LLM 调用。每道题固定 1-3 次 LLM 调用，token 降至约 8× baseline，且消除卡死。生产环境推荐使用 P2 直接调用模式。
+
 ```python
 prompt = (
     "You are a PostgreSQL SQL expert. Convert the user question into a single SELECT query.\n"

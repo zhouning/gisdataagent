@@ -55,7 +55,9 @@
 
 ### 3.1 实验设置
 
-本文在双轨 benchmark 协议下评估 NL2Semantic2SQL。GIS 轨道使用 100 题 benchmark（从 20 题试点扩展而来），涵盖四个难度级别：Easy（24 题）、Medium（36 题）、Hard（25 题）和 Robustness（15 题）。仓库轨道使用 BIRD mini_dev V2 中约 495 题（单轮模式 P2），跨越导入 PostgreSQL 的 11 个数据库 schema 的三个难度级别（simple、moderate、challenging）。两个轨道均使用执行准确率（EX）作为主要指标：当且仅当预测 SQL 的执行结果集与黄金 SQL 结果集在集合相等（含数值容差）下匹配时，预测被视为正确。本文报告所有 EX 值的 95% Wilson 置信区间和 McNemar 配对显著性检验。
+**单轮模式（P2）说明**。在早期实验中，完整流水线通过 ADK agent 循环执行，由语言模型迭代调用工具（grounding、执行、重试）多个回合。这种多轮方法的 token 成本是基线的约 32 倍，并偶尔在某些题目上进入无界的 tool 调用循环。因此本文将 agent 循环替换为确定性的**单轮**流水线，内部命名为 **P2**：（1）本地构建 grounding 上下文（意图分类 + 语义解析 + prompt 拼装——无 LLM 调用）；（2）使用拼装好的 prompt 进行**单次** LLM 调用生成 SQL；（3）后处理 SQL（安全检查、标识符引用、意图门控的 LIMIT 注入）并执行；若执行失败，使用快速纠错 LLM 调用重试（最多 T=2 次）。P2 模式将 BIRD token 成本从约 32× 降至 7.9×，同时将执行准确率从 0.450 提升至 0.501，因为它消除了 agent 循环的随机性，确保每道题恰好通过同一套 grounding 流水线一次。本文中 BIRD 的所有结果均使用 P2 模式；GIS 的完整流水线结果使用 ADK agent 循环（受益于多工具空间分析能力），但同样的 P2 架构作为可选方案存在。
+
+本文在双轨 benchmark 协议下评估 NL2Semantic2SQL。GIS 轨道使用 100 题 benchmark（从 20 题试点扩展而来），涵盖四个难度级别：Easy（24 题）、Medium（36 题）、Hard（25 题）和 Robustness（15 题）。仓库轨道使用 BIRD mini_dev V2 中约 495 题（单轮 P2 模式），跨越导入 PostgreSQL 的 11 个数据库 schema 的三个难度级别（simple、moderate、challenging）。两个轨道均使用执行准确率（EX）作为主要指标：当且仅当预测 SQL 的执行结果集与黄金 SQL 结果集在集合相等（含数值容差）下匹配时，预测被视为正确。本文报告所有 EX 值的 95% Wilson 置信区间和 McNemar 配对显著性检验。
 
 对于每个轨道，比较两种模式：
 - **基线（Baseline）**：直接 LLM 生成（Gemini 2.5 Flash），仅使用 schema dump，无语义 grounding。
