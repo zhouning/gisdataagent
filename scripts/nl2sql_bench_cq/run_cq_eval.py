@@ -68,8 +68,9 @@ def _init_runtime() -> None:
     _client = genai_client.Client()
 
 
-def load_questions() -> list[dict]:
-    with BENCHMARK_PATH.open(encoding="utf-8") as f:
+def load_questions(benchmark_path: Path | None = None) -> list[dict]:
+    path = benchmark_path or BENCHMARK_PATH
+    with Path(path).open(encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -458,10 +459,12 @@ async def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=["baseline", "full", "enhanced", "both"], default="both")
     p.add_argument("--out-dir", default=None)
+    p.add_argument("--benchmark", default=None, help="Path to benchmark JSON (default: 20-question benchmark)")
     args = p.parse_args()
 
-    questions = load_questions()
-    print(f"[cq] Loaded {len(questions)} questions, mode={args.mode}")
+    bench_path = Path(args.benchmark) if args.benchmark else BENCHMARK_PATH
+    questions = load_questions(bench_path)
+    print(f"[cq] Loaded {len(questions)} questions from {bench_path.name}, mode={args.mode}")
 
     out_dir = Path(args.out_dir) if args.out_dir else (
         RESULTS_ROOT / f"cq_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
