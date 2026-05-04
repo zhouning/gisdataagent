@@ -1,6 +1,10 @@
 # NL2Semantic2SQL: A Cross-Domain Framework for Natural Language to SQL over Geospatial and Enterprise Data Warehouses
 
-> **Status**: Draft v0.3 (2026-05-04) — Final update: GIS 100q, BIRD 495q, DIN-SQL, token cost
+**Author**: Ning Zhou
+**Affiliation**: Beijing SuperMap Software Co., Ltd., Beijing, China
+**Email**: zhouning@supermap.com
+
+> **Status**: Draft v0.4 (2026-05-04) — Final update: GIS 100q (split Spatial/Robustness), BIRD 495q, DIN-SQL on 100q, ablation, token cost
 > **Target venues**: IJGIS / GeoInformatica / Transactions in GIS / ISPRS IJGI
 
 ---
