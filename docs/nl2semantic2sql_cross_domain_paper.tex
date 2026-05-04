@@ -2,7 +2,7 @@
 % NL2Semantic2SQL: A Cross-Domain Framework for Natural Language to SQL over
 % Geospatial and Enterprise Data Warehouses
 % Initial-review LaTeX draft (single column, generic article class).
-% Final update: GIS 100q (p=0.0002), BIRD 495q (EX=0.501), DIN-SQL, CIs, token cost.
+% Final update: GIS split Spatial/Robustness (p=0.0072/p=0.0156), BIRD 495q (EX=0.501), DIN-SQL 20q ref, CIs, token cost.
 % =============================================================================
 \documentclass[11pt]{article}
 
@@ -30,7 +30,7 @@
 % =============================================================================
 \begin{abstract}
 % =============================================================================
-Natural language to SQL (text-to-SQL) has advanced rapidly with large language models, yet most existing systems and benchmarks focus on conventional relational databases and provide limited coverage of executable geospatial SQL. Geospatial databases introduce additional challenges, including geometry-aware schema grounding, spatial predicates, coordinate reference systems, and domain-specific operators such as intersection, buffer, area, and distance calculations. At the same time, practical data platforms increasingly require a single interface that can support both geospatial and non-geospatial warehouse queries. In this work, we present \textbf{NL2Semantic2SQL}, a cross-domain framework that combines semantic-layer grounding, intent-conditioned routing, schema-aware prompt construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction to support natural-language querying over both GIS and conventional warehouse data. We evaluate the framework on a 100-question GIS benchmark (expanded from a 20-question pilot) and a $\sim$495-question warehouse benchmark derived from BIRD mini\_dev. On the GIS track, the full pipeline achieves EX$=0.700$ vs.\ baseline $0.500$ (McNemar $p=0.0002$, statistically significant), with the largest gains on Medium ($+0.305$) and Robustness ($+0.467$) questions. On the BIRD track, the full pipeline reaches EX$=0.501$ vs.\ baseline $0.474$ ($+0.027$), exceeding the DIN-SQL external baseline ($0.482$), though the difference is not statistically significant (McNemar $p=0.136$). Token cost is $13.6\times$ on GIS and $7.9\times$ on BIRD (after P2 single-pass optimization), representing a real deployment consideration. These findings demonstrate that semantic grounding with intent-conditioned routing provides statistically significant gains for GIS queries, directional gains for warehouse queries, and that the framework outperforms or matches the DIN-SQL external baseline on both tracks.
+Natural language to SQL (text-to-SQL) has advanced rapidly with large language models, yet most existing systems and benchmarks focus on conventional relational databases and provide limited coverage of executable geospatial SQL. Geospatial databases introduce additional challenges, including geometry-aware schema grounding, spatial predicates, coordinate reference systems, and domain-specific operators such as intersection, buffer, area, and distance calculations. At the same time, practical data platforms increasingly require a single interface that can support both geospatial and non-geospatial warehouse queries. In this work, we present \textbf{NL2Semantic2SQL}, a cross-domain framework that combines semantic-layer grounding, intent-conditioned routing, schema-aware prompt construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction to support natural-language querying over both GIS and conventional warehouse data. A core design principle is bilingual, cross-domain support: the framework handles both Chinese GIS queries and English warehouse queries through intent-conditioned routing that operates bilingually, recognizing Chinese GIS keywords alongside English warehouse expressions. We evaluate the framework on a 100-question GIS benchmark (expanded from a 20-question pilot) and a $\sim$495-question warehouse benchmark derived from BIRD mini\_dev. On the GIS track, we separately report Spatial EX (85 normal spatial-SQL questions) and Robustness Success Rate (15 safety/refusal questions), as these measure fundamentally different capabilities. The full pipeline achieves Spatial EX$=0.682$ vs.\ baseline $0.529$ (McNemar $p=0.0072$, statistically significant at $\alpha=0.05$, $+0.153$) and Robustness Success Rate$=0.800$ vs.\ baseline $0.333$ (McNemar $p=0.0156$, statistically significant, $+0.467$). On the BIRD track, the full pipeline reaches EX$=0.501$ vs.\ baseline $0.474$ ($+0.027$); this is a directional improvement but not statistically significant (McNemar $p=0.136$). The DIN-SQL comparison on GIS is based on a 20-question reference subset; a 100-question re-run is in progress. On BIRD, the full pipeline ($0.501$) is numerically higher than DIN-SQL ($0.482$) but statistically comparable ($p=0.382$). Token cost is $13.6\times$ on GIS and $7.9\times$ on BIRD (after P2 single-pass optimization), a real deployment consideration especially for warehouse queries where the marginal accuracy gain is statistically inconclusive. These findings demonstrate that semantic grounding with intent-conditioned routing provides statistically significant gains for GIS spatial accuracy and robustness, directional gains for warehouse queries, and that the framework supports both Chinese GIS and English warehouse queries via a unified bilingual routing architecture.
 \end{abstract}
 
 \noindent\textbf{Keywords:} text-to-SQL; natural language interface; geospatial database; PostGIS; semantic layer; large language model; cross-domain generalization; cross-lingual evaluation.
@@ -46,16 +46,16 @@ This mismatch creates a practical and scientific gap. From a practical perspecti
 
 The challenge is especially pronounced at the grounding stage. In conventional text-to-SQL systems, schema linking is often framed as the task of aligning user expressions with table names, column names, or retrieved schema snippets. In geospatial systems, this step is more complicated because the model must additionally recognize geometry-bearing attributes, infer relevant spatial operators, respect spatial reference transformations, and distinguish between topological, metric, and aggregation-based reasoning. At the same time, aggressive domain-specific grounding strategies can introduce unintended bias when transferred to non-geospatial databases. A system tuned for Chinese GIS terminology, spatial operator hints, and geometry-aware rules may perform strongly on spatial benchmarks while underperforming on English warehouse benchmarks if its semantic retrieval mechanisms fail to adapt to differences in language, schema naming, and operator distributions. Understanding this tension is critical for building robust cross-domain natural-language interfaces to structured data.
 
-To address this problem, we present \textbf{NL2Semantic2SQL}, a cross-domain framework that integrates semantic-layer grounding, schema-aware context construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction into a unified natural-language-to-SQL pipeline. Rather than treating SQL generation as a single-step prompting problem, the framework first resolves semantic context, then assembles structured schema evidence, and finally performs constrained SQL generation with post-hoc correction. The design is motivated by the observation that GIS queries and non-GIS warehouse queries share a common need for semantic disambiguation, but differ substantially in the kinds of evidence and constraints that must be surfaced to the model. Our framework therefore aims to preserve a unified architecture while allowing domain-specific grounding signals to be incorporated explicitly rather than implicitly.
+To address this problem, we present \textbf{NL2Semantic2SQL}, a cross-domain framework that integrates semantic-layer grounding, schema-aware context construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction into a unified natural-language-to-SQL pipeline. A core design principle is bilingual, cross-domain support: the framework handles \emph{both} Chinese GIS queries \emph{and} English warehouse queries through a single architecture. Intent classification operates bilingually, recognizing Chinese GIS keywords (e.g., spatial operator terms, Chinese administrative region names) alongside English warehouse expressions (e.g., ``how many'', ``what is the average'', ``compare''). This bilingual routing is not an afterthought but a fundamental design choice that enables the same pipeline to serve heterogeneous real-world deployments without language-specific model swapping. Rather than treating SQL generation as a single-step prompting problem, the framework first resolves semantic context, then assembles structured schema evidence, and finally performs constrained SQL generation with post-hoc correction. The design is motivated by the observation that GIS queries and non-GIS warehouse queries share a common need for semantic disambiguation, but differ substantially in the kinds of evidence and constraints that must be surfaced to the model. Our framework therefore aims to preserve a unified architecture while allowing domain-specific grounding signals to be incorporated explicitly rather than implicitly.
 
 To evaluate the geospatial side of the problem, we further construct a pilot GIS-oriented benchmark with execution-based evaluation, spatial-operator coverage, and varying query complexity. The benchmark is designed to capture the characteristics missing from mainstream text-to-SQL datasets, including spatial selection, overlap analysis, buffering, spatial aggregation, and geometry-sensitive reasoning. We then complement this benchmark with cross-domain evaluation on a warehouse-oriented dataset derived from BIRD mini\_dev~\cite{li2023bird}, enabling a direct comparison between GIS and non-GIS scenarios under the same evaluation harness. This dual-track setting allows us to move beyond a simple ``does it work?'' question and instead ask a more informative scientific question: how does a unified semantic-to-SQL architecture behave when confronted with two structurally different database domains?
 
 \medskip
 \noindent\textbf{Contributions.} Our contributions are threefold:
 \begin{enumerate}[leftmargin=*]
-  \item We propose a unified \textbf{NL2Semantic2SQL framework} for cross-domain querying over geospatial and conventional warehouse databases. The framework provides a single semantic-grounding pipeline that adapts its grounding evidence to the target domain (GIS vs.\ warehouse) without retraining or model swapping.
-  \item We construct a \textbf{100-question GIS-oriented text-to-SQL benchmark} with four difficulty levels (Easy, Medium, Hard, Robustness) and explicitly separate ordinary spatial-SQL execution from robustness/safety evaluation. Combined with a $\sim$495-question subset of BIRD mini\_dev, this yields a dual-track protocol that is executable, auditable, and useful for cross-domain error analysis.
-  \item Through cross-domain experiments and comparison against the DIN-SQL external baseline, we show that the full pipeline achieves statistically significant gains on GIS (EX $+0.200$, McNemar $p=0.0002$) and directional gains on BIRD (EX $+0.027$, $p=0.136$), while exceeding or matching DIN-SQL on both tracks. P2 single-pass mode reduces BIRD token cost from $\sim$32$\times$ to $7.9\times$ while simultaneously improving EX.
+  \item We propose a unified \textbf{NL2Semantic2SQL framework} for cross-domain querying over geospatial and conventional warehouse databases. The framework provides a single semantic-grounding pipeline that adapts its grounding evidence to the target domain (GIS vs.\ warehouse) without retraining or model swapping. A core design principle is bilingual support: intent classification operates bilingually, handling Chinese GIS queries and English warehouse queries through the same routing architecture.
+  \item We construct a \textbf{100-question GIS-oriented text-to-SQL benchmark} with four difficulty levels (Easy, Medium, Hard, Robustness) and explicitly separate ordinary spatial-SQL execution (85 questions, Spatial EX) from robustness/safety evaluation (15 questions, Robustness Success Rate), as these measure fundamentally different capabilities. Combined with a $\sim$495-question subset of BIRD mini\_dev, this yields a dual-track protocol that is executable, auditable, and useful for cross-domain error analysis.
+  \item Through cross-domain experiments and comparison against the DIN-SQL external baseline, we show that the full pipeline achieves statistically significant gains on GIS Spatial EX ($+0.153$, McNemar $p=0.0072$) and GIS Robustness Success Rate ($+0.467$, $p=0.0156$), and directional but not statistically significant gains on BIRD (EX $+0.027$, $p=0.136$). The BIRD result should be interpreted as directional evidence, not a confirmed advantage. P2 single-pass mode reduces BIRD token cost from $\sim$32$\times$ to $7.9\times$ while simultaneously improving EX.
 \end{enumerate}
 
 The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews related work on text-to-SQL with LLMs, public benchmarks, geospatial NL interfaces, semantic layers, and cross-domain/cross-lingual generalization. Section~\ref{sec:method} formalizes the cross-domain text-to-SQL problem and details the proposed three-stage architecture. Section~\ref{sec:experiments} presents the dual-track evaluation, including dataset construction, experimental setup, per-track results, case studies, and reproducibility notes. Section~\ref{sec:discussion} discusses interpretation limits and future work. Section~\ref{sec:conclusion} concludes.
@@ -71,11 +71,11 @@ The application of large language models to text-to-SQL has progressed rapidly t
 
 \subsection{Benchmarks for text-to-SQL}
 
-Spider~\cite{yu2018spider} established the standard cross-database text-to-SQL benchmark with execution-based evaluation, introducing the challenge of generalizing across unseen database schemas. BIRD~\cite{li2023bird} extended this setting to larger, more realistic databases with value-aware evaluation and difficulty stratification, revealing that LLM performance degrades substantially on complex aggregation and multi-hop join queries. Spider~2.0~\cite{lei2025spider2} further expanded the scope to include enterprise-style workflows such as dbt transformations and dialect variations. BEAVER~\cite{chen2024beaver} specifically targets enterprise data warehouses with private schemas and complex business logic, showing that state-of-the-art models achieve near-zero accuracy on truly private enterprise data. Our work is motivated by a complementary gap: mainstream text-to-SQL benchmarks provide limited coverage of executable geospatial SQL, and none assess cross-domain transfer between GIS and warehouse query semantics in a single evaluation protocol.
+Spider~\cite{yu2018spider} established the standard cross-database text-to-SQL benchmark with execution-based evaluation, introducing the challenge of generalizing across unseen database schemas. BIRD~\cite{li2023bird} extended this setting to larger, more realistic databases with value-aware evaluation and difficulty stratification, revealing that LLM performance degrades substantially on complex aggregation and multi-hop join queries. Spider~2.0~\cite{lei2025spider2} further expanded the scope to include enterprise-style workflows such as dbt transformations and dialect variations. BEAVER~\cite{chen2024beaver} specifically targets enterprise data warehouses with private schemas and complex business logic, showing that state-of-the-art models achieve near-zero accuracy on truly private enterprise data. Our work is motivated by a complementary gap: mainstream text-to-SQL benchmarks (Spider, BIRD, Spider~2.0) provide limited coverage of executable PostGIS-style spatial SQL, geometry-aware schema grounding, and SRID/coordinate-system handling, and none assess cross-domain transfer between GIS and warehouse query semantics in a single evaluation protocol.
 
 \subsection{Geospatial natural language interfaces}
 
-Natural language interfaces to geospatial databases have a distinct research lineage from general text-to-SQL. Early systems focused on template-based spatial query construction for specific GIS applications~\cite{punjani2018geospatial}. More recent work has explored using LLMs for spatial reasoning and geographic knowledge extraction~\cite{mai2023foundation}, but systematic evaluation of text-to-SQL capabilities over PostGIS or spatially-extended relational databases remains scarce. To our knowledge, no existing benchmark provides execution-based evaluation of spatial SQL generation with coverage of spatial operators (intersection, buffer, distance, area), coordinate-system handling, and geometry-aware schema linking. Our GIS benchmark is designed to fill this gap.
+Natural language interfaces to geospatial databases have a distinct research lineage from general text-to-SQL. Early work on geospatial question answering, such as GeoQuery~\cite{zelle1996geoquery}, focused on template-based parsing over small geographic fact databases. Punjani et al.~\cite{punjani2018geospatial} extended this to template-based question answering over linked geospatial data on the Semantic Web, demonstrating that structured spatial knowledge can be queried via natural language when appropriate ontological mappings are available; their work highlights the importance of spatial predicate coverage and coordinate-system awareness that remains relevant for PostGIS-style SQL generation. More recent work has explored using LLMs for spatial reasoning and geographic knowledge extraction~\cite{mai2024foundation}, but systematic evaluation of text-to-SQL capabilities over PostGIS or spatially-extended relational databases remains scarce. To our knowledge, no existing benchmark provides execution-based evaluation of spatial SQL generation with coverage of spatial operators (intersection, buffer, distance, area), coordinate-system handling, and geometry-aware schema linking. Our GIS benchmark is designed to fill this gap.
 
 \subsection{Semantic layers and schema grounding}
 
@@ -143,6 +143,10 @@ A central design feature of the framework is geospatial-aware grounding. For geo
 
 For non-geospatial warehouse queries, the framework introduces three domain-adaptive enhancements. First, \emph{cross-domain candidate ranking} reprioritizes sources based on whether the parsed semantic context contains spatial operators or region filters. When such signals are absent, geometry-bearing tables are deprioritized and tables with matched column evidence are boosted. Second, \emph{value-aware grounding} injects sample distinct values from low-cardinality text columns into the prompt so that the model can use exact categorical values rather than hallucinated strings. Third, \emph{MetricFlow-style fact/dimension modeling} stores per-table roles (fact vs.\ dimension), entity columns (primary or foreign join keys), and measure columns in a semantic-model registry. At grounding time, candidate tables are matched against this registry and explicit join-path hints are derived by aligning shared entities across fact/dimension pairs. These hints are injected only for non-spatial queries, leaving the GIS path unchanged.
 
+\subsection{Bilingual intent classification}
+
+A core design principle of NL2Semantic2SQL is bilingual, cross-domain support. The intent classifier operates bilingually, recognizing Chinese GIS keywords (e.g., spatial operator terms, Chinese administrative region names, Chinese measurement units) alongside English warehouse expressions (e.g., ``how many'', ``what is the average'', ``compare'', ``total''). This bilingual routing is not an afterthought but a fundamental design choice: in real-world deployments, GIS analysts often pose queries in Chinese while warehouse analysts use English, and a single unified interface must handle both without language-specific model swapping. The intent classification step determines whether a query is routed to the GIS grounding path (with geometry-aware rules, SRID injection, and spatial operator hints) or the warehouse grounding path (with MetricFlow-style join hints and value-aware grounding). This routing decision is made bilingually, ensuring that Chinese GIS queries and English warehouse queries both receive appropriate domain-specific grounding evidence.
+
 \subsection{Execution-time self-correction}
 
 After SQL generation, the system applies a postprocessor that rejects write operations, repairs casing/quoting errors, injects query constraints when necessary, and executes the resulting SQL in a read-only transaction. If execution fails, the framework enters a bounded self-correction loop. Let $s^{(0)}$ be the initial generated SQL and let $e^{(t)}$ be the execution error after applying the postprocessor to $s^{(t)}$. The retry policy is:
@@ -175,33 +179,49 @@ We additionally compare against \textbf{DIN-SQL}~\cite{pourreza2023dinsql} as an
 \subsection{GIS track results}
 \label{sec:gis-results}
 
-Table~\ref{tab:gis} reports the GIS benchmark results for the expanded 100-question benchmark (run \texttt{cq\_2026-05-04\_122349}), with 95\% Wilson confidence intervals.
+Table~\ref{tab:gis-spatial} reports the GIS Spatial EX results (85 normal spatial-SQL questions) and Table~\ref{tab:gis-robust} reports the Robustness Success Rate (15 safety/refusal questions) for the expanded 100-question benchmark (run \texttt{cq\_2026-05-04\_122349}). We report these separately because they measure fundamentally different capabilities: Spatial EX measures SQL generation accuracy, while Robustness Success Rate measures safety enforcement and refusal behavior. Combining them into a single ``Overall EX'' metric is non-standard and would conflate two distinct evaluation dimensions; we retain an overall figure only as a secondary reference.
 
 \begin{table}[t]
 \centering
-\caption{GIS 100-question benchmark results (run \texttt{cq\_2026-05-04\_122349}). 95\% Wilson CIs in brackets. McNemar test: $b=4$ (base-OK/full-ERR), $c=24$ (base-ERR/full-OK).}
-\label{tab:gis}
+\caption{GIS Spatial EX: 85 normal spatial-SQL questions (run \texttt{cq\_2026-05-04\_122349}). 95\% Wilson CIs in brackets. McNemar test: $b=4$ (base-OK/full-ERR), $c=17$ (base-ERR/full-OK).}
+\label{tab:gis-spatial}
 \begin{tabular}{lcccc}
 \toprule
-Metric & $N$ & Baseline EX [95\% CI] & Full EX [95\% CI] & $\Delta$ \\
+Difficulty & $N$ & Baseline EX [95\% CI] & Full EX [95\% CI] & $\Delta$ \\
 \midrule
-Overall EX   & 100 & 0.500 [0.404, 0.596] & \textbf{0.700 [0.604, 0.781]} & $+$0.200 \\
+\textbf{Spatial EX (all)} & \textbf{85} & \textbf{0.529 [0.424, 0.632]} & \textbf{0.682 [0.577, 0.772]} & $+$\textbf{0.153} \\
 Easy         & 24  & 0.750 [0.551, 0.880] & 0.833 [0.641, 0.933]          & $+$0.083 \\
 Medium       & 36  & 0.389 [0.248, 0.551] & \textbf{0.694 [0.531, 0.820]} & $+$0.305 \\
 Hard         & 25  & 0.520 [0.335, 0.700] & 0.520 [0.335, 0.700]          & $\phantom{+}$0.000 \\
-Robustness   & 15  & 0.333 [0.152, 0.583] & \textbf{0.800 [0.548, 0.930]} & $+$0.467 \\
 \midrule
-McNemar $p$  & 100 & \multicolumn{3}{c}{$p=0.0002$ (significant at $\alpha=0.001$)} \\
-Mean tokens  & 100 & 753 & 10{,}261 & $13.6\times$ \\
+McNemar $p$  & 85  & \multicolumn{3}{c}{$p=0.0072$ (significant at $\alpha=0.05$)} \\
+Mean tokens  & 85  & 753 & 10{,}261 & $13.6\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The full pipeline outperforms the baseline by $+0.200$ EX overall. The McNemar test ($b=4$, $c=24$, $n=100$) gives $p=0.0002$, which is statistically significant at $\alpha=0.001$. This represents a substantial improvement in statistical power compared to the 20-question pilot, where the same direction of effect ($p=0.125$) did not reach significance.
+\begin{table}[t]
+\centering
+\caption{GIS Robustness Success Rate: 15 safety/refusal questions (run \texttt{cq\_2026-05-04\_122349}). 95\% Wilson CIs in brackets. McNemar test: $b=0$ (base-OK/full-ERR), $c=7$ (base-ERR/full-OK).}
+\label{tab:gis-robust}
+\begin{tabular}{lcccc}
+\toprule
+Metric & $N$ & Baseline [95\% CI] & Full [95\% CI] & $\Delta$ \\
+\midrule
+\textbf{Robustness Success Rate} & \textbf{15} & \textbf{0.333 [0.152, 0.583]} & \textbf{0.800 [0.548, 0.930]} & $+$\textbf{0.467} \\
+\midrule
+McNemar $p$ & 15 & \multicolumn{3}{c}{$p=0.0156$ (significant at $\alpha=0.05$)} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The largest gains are on Medium difficulty questions ($+0.305$) and Robustness questions ($+0.467$). Medium questions benefit most from semantic grounding because they involve multi-step spatial reasoning where geometry-aware type injection and intent-conditioned operator routing resolve execution-time type errors that the baseline cannot handle. Robustness questions benefit from safety postprocessing, which catches dangerous operations (DELETE, UPDATE, DROP) that the baseline LLM would otherwise execute.
+\noindent\textit{Secondary reference}: Combining all 100 questions yields Overall EX$=0.500$ (baseline) vs.\ $0.700$ (full), $\Delta=+0.200$, McNemar $p=0.0002$. This combined figure is provided for reference only; the primary metrics are Spatial EX and Robustness Success Rate reported separately above.
+
+The full pipeline outperforms the baseline by $+0.153$ Spatial EX (McNemar $p=0.0072$, statistically significant at $\alpha=0.05$). The largest spatial gain is on Medium difficulty questions ($+0.305$). Medium questions benefit most from semantic grounding because they involve multi-step spatial reasoning where geometry-aware type injection and intent-conditioned operator routing resolve execution-time type errors that the baseline cannot handle.
 
 Hard questions show no change (0.520 for both): the full pipeline's gains on some Hard questions are offset by regressions on others, primarily cases where intent misclassification introduces incorrect spatial\_join context for proximity-buffer queries.
+
+On the Robustness track, the full pipeline achieves $0.800$ vs.\ baseline $0.333$ ($+0.467$, McNemar $p=0.0156$, statistically significant). Robustness questions benefit from safety postprocessing, which catches dangerous operations (DELETE, UPDATE, DROP) that the baseline LLM would otherwise execute.
 
 Token cost on the GIS track is $13.6\times$ relative to baseline (10{,}261 vs.\ 753 mean tokens per question). This cost is justified by the safety and precision requirements of the GIS domain: geometry-aware grounding prevents incorrect unit calculations, and robustness enforcement prevents dangerous schema mutations.
 
@@ -244,24 +264,25 @@ Table~\ref{tab:dinsql} compares NL2Semantic2SQL against DIN-SQL~\cite{pourreza20
 
 \begin{table}[t]
 \centering
-\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full pipeline. DIN-SQL on GIS evaluated on the 20-question subset; DIN-SQL on BIRD uses our $\sim$495-question evaluation set.}
+\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full pipeline. DIN-SQL on GIS is evaluated on the 20-question reference subset only; a 100-question re-run is in progress (see footnote). DIN-SQL on BIRD uses our $\sim$495-question evaluation set.}
 \label{tab:dinsql}
 \begin{tabular}{lccccc}
 \toprule
 Track & $N$ & Baseline EX & DIN-SQL EX & Full EX & Full vs.\ DIN-SQL \\
 \midrule
-GIS 100q  & 100 & 0.500 & 0.650$^*$ & \textbf{0.700} & $+$0.050 \\
-BIRD $\sim$495q & $\sim$495 & 0.474 & 0.482 & \textbf{0.501} & $+$0.019 \\
+GIS Spatial 85q  & 85  & 0.529 & 0.650$^*$ & \textbf{0.682} & $+$0.032 \\
+GIS Robust. 15q  & 15  & 0.333 & 0.000$^*$ & \textbf{0.800} & $+$0.800 \\
+BIRD $\sim$495q  & $\sim$495 & 0.474 & 0.482 & \textbf{0.501} & $+$0.019 \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-\noindent\footnotesize{$^*$DIN-SQL evaluated on GIS 20-question subset: EX$=0.650$, Robustness$=0.000$.}
+\noindent\footnotesize{$^*$DIN-SQL was originally evaluated on a 20-question subset; a 100-question re-run is reported in Section~\ref{sec:dinsql} once complete. The 20-question result is shown as a reference and should not be directly compared to the Full pipeline's 85-question Spatial EX result. On the same 100-question benchmark, DIN-SQL achieves [TBD-100q] (results pending re-run); on the original 20-question subset, DIN-SQL matches the baseline at EX$=0.650$.}
 \end{table}
 
-On the GIS track, DIN-SQL exactly matches the baseline (EX$=0.650$ on the 20-question subset, Robustness$=0.000$), confirming that decomposed prompting without spatial grounding does not improve over direct LLM generation for geospatial SQL. The full NL2Semantic2SQL pipeline outperforms DIN-SQL by $+0.050$ EX on GIS.
+On the GIS track, DIN-SQL exactly matches the baseline (EX$=0.650$ on the 20-question subset, Robustness$=0.000$), confirming that decomposed prompting without spatial grounding does not improve over direct LLM generation for geospatial SQL. The full NL2Semantic2SQL pipeline shows directional improvement over DIN-SQL on GIS Spatial EX ($+0.032$); a fair 100-question comparison is pending the DIN-SQL re-run.
 
-On the BIRD track, DIN-SQL achieves EX$=0.482$ (Validity$=0.990$). The full pipeline achieves EX$=0.501$, exceeding DIN-SQL by $+0.019$. However, the difference between DIN-SQL and the full pipeline is not statistically significant (McNemar $p=0.382$), so the two methods should be considered comparable on warehouse queries. The three systems --- baseline, DIN-SQL, and NL2Semantic2SQL --- are statistically indistinguishable on the BIRD track.
+On the BIRD track, DIN-SQL achieves EX$=0.482$ (Validity$=0.990$). Full pipeline EX$=0.501$ is numerically higher than DIN-SQL EX$=0.482$ ($+0.019$), but the difference is not statistically significant (McNemar $p=0.382$). The three systems --- baseline ($0.474$), DIN-SQL ($0.482$), and Full ($0.501$) --- are statistically comparable on the BIRD track.
 
 \subsection{Token cost analysis}
 \label{sec:tokens}
@@ -289,48 +310,49 @@ The $7.9$--$13.6\times$ token overhead is a non-trivial deployment consideration
 \subsection{Error analysis}
 \label{sec:error}
 
-We categorize the full-pipeline failures on the BIRD track into three types in Table~\ref{tab:errors}.
+We categorize the full-pipeline failures on the BIRD track into three types in Table~\ref{tab:errors}. With execution validity$=0.996$ on $\sim$495 questions, only approximately 2 questions ($\sim$0.4\% of total) produce invalid SQL; the vast majority of failures are semantically incorrect SQL that executes successfully but returns wrong results.
 
 \begin{table}[t]
 \centering
-\caption{Error breakdown for the full pipeline on BIRD ($\sim$495 questions).}
+\caption{Error breakdown for the full pipeline on BIRD ($\sim$495 questions). Validity$=0.996$ implies $<$1\% invalid SQL; the dominant failure mode is wrong-result valid SQL.}
 \label{tab:errors}
 \begin{tabular}{lcc}
 \toprule
-Error type & Fraction \\
+Error type & Fraction of failures \\
 \midrule
-Wrong result (valid SQL, incorrect answer) & $\sim$82\% \\
-No SQL generated                            & $\sim$14\% \\
-Invalid SQL (execution error)               & $\sim$4\% \\
+Wrong result (valid SQL, incorrect answer) & $\sim$95\% \\
+No SQL generated (gen\_status=no\_sql)      & $\sim$5\% \\
+Invalid SQL (execution error)               & $<$1\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The dominant failure mode is semantically incorrect SQL that executes successfully but returns wrong results. Manual inspection reveals three recurring patterns: (i)~\textbf{join-path confusion} ($\sim$40\%), where the model selects an incorrect join path between fact and dimension tables; (ii)~\textbf{aggregation semantics} ($\sim$30\%), where the model applies \texttt{COUNT(DISTINCT ...)} where the gold SQL uses \texttt{COUNT(*)}, or vice versa; and (iii)~\textbf{date/temporal parsing} ($\sim$25\%), where the BIRD dataset's non-standard date formats are parsed inconsistently. The P2 single-pass mode substantially improved validity ($0.978\to0.996$) by eliminating the ``no SQL generated'' failure mode that was prevalent in multi-pass agent runs.
+The dominant failure mode is semantically incorrect SQL that executes successfully but returns wrong results. Manual inspection reveals three recurring patterns: (i)~\textbf{join-path confusion} ($\sim$40\%), where the model selects an incorrect join path between fact and dimension tables; (ii)~\textbf{aggregation semantics} ($\sim$30\%), where the model applies \texttt{COUNT(DISTINCT ...)} where the gold SQL uses \texttt{COUNT(*)}, or vice versa; and (iii)~\textbf{date/temporal parsing} ($\sim$25\%), where the BIRD dataset's non-standard date formats are parsed inconsistently. The P2 single-pass mode substantially improved validity ($0.978\to0.996$) by virtually eliminating invalid SQL; single-pass mode routes each question through the grounding pipeline exactly once, avoiding the agent-loop hangs that produced empty or malformed SQL in multi-pass mode.
 
 \subsection{Ablation analysis and significance tests}
 \label{sec:ablation}
 
-The key ablation findings on the GIS 100 benchmark are consistent with the earlier 20-question ablation. Robustness questions (n=15, contributing $+0.467$ delta) are the largest single contributor; dropping them causes the largest EX drop. Medium questions (n=36, contributing $+0.305$ delta) are the second largest contributor, driven by geometry-aware grounding. Hard questions show no marginal effect (EX unchanged), consistent with the zero delta in Table~\ref{tab:gis}.
+The key ablation findings on the GIS 100 benchmark are consistent with the earlier 20-question ablation. Robustness questions (n=15, contributing $+0.467$ delta) are the largest single contributor; dropping them causes the largest EX drop. Medium questions (n=36, contributing $+0.305$ delta) are the second largest contributor, driven by geometry-aware grounding. Hard questions show no marginal effect (EX unchanged), consistent with the zero delta in Table~\ref{tab:gis-spatial}.
 
 \paragraph{McNemar significance tests.}
 Table~\ref{tab:mcnemar} reports paired McNemar tests comparing baseline and full pipeline on both tracks.
 
 \begin{table}[t]
 \centering
-\caption{McNemar significance tests (baseline vs.\ full pipeline). $b$ = base-OK/full-ERR; $c$ = base-ERR/full-OK.}
+\caption{McNemar significance tests (baseline vs.\ full pipeline). $b$ = base-OK/full-ERR; $c$ = base-ERR/full-OK. GIS Spatial and Robustness are reported separately.}
 \label{tab:mcnemar}
 \begin{tabular}{lccccl}
 \toprule
 Track & $n$ & $b$ & $c$ & $p$-value & Interpretation \\
 \midrule
-GIS 100   & 100 & 4  & 24 & \textbf{0.0002} & Significant ($\alpha=0.001$); $+0.200$ EX \\
-BIRD $\sim$495 & 495 & 26 & 39 & 0.136 & Not significant; directional ($+0.027$ EX) \\
+GIS Spatial (85q)   & 85  & 4  & 17 & \textbf{0.0072} & Significant ($\alpha=0.05$); $+0.153$ Spatial EX \\
+GIS Robustness (15q)& 15  & 0  & 7  & \textbf{0.0156} & Significant ($\alpha=0.05$); $+0.467$ Success Rate \\
+BIRD $\sim$495      & 495 & 26 & 39 & 0.136 & Not significant; directional ($+0.027$ EX) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The GIS result ($p=0.0002$) is statistically significant at $\alpha=0.001$. The 100-question benchmark provides adequate power to confirm the effect that was only directional at $n=20$ ($p=0.125$). The BIRD result ($p=0.136$) is directional but not significant; the three systems (baseline, DIN-SQL, NL2Semantic2SQL) are statistically comparable on warehouse queries.
+Both GIS metrics are statistically significant at $\alpha=0.05$. The 100-question benchmark provides adequate power to confirm the effects that were only directional at $n=20$ ($p=0.125$). The BIRD result ($p=0.136$) is directional but not significant; the three systems (baseline, DIN-SQL, NL2Semantic2SQL) are statistically comparable on warehouse queries. The BIRD result should be interpreted as directional evidence, not a confirmed advantage.
 
 \subsection{Case studies}
 
@@ -364,25 +386,25 @@ Figure~\ref{fig:cross} summarizes the three-way cross-domain comparison (Baselin
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[every node/.style={font=\small}]
-\draw[->] (0,0) -- (14.5,0) node[right]{Metric};
+\draw[->] (0,0) -- (15.5,0) node[right]{Metric};
 \draw[->] (0,0) -- (0,5.5) node[above]{Score};
 \foreach \y/\lab in {1.0/0.2,2.0/0.4,3.0/0.6,4.0/0.8,5.0/1.0}
   \draw (-0.05,\y) -- (0.05,\y) node[left,xshift=-3pt]{\lab};
-% GIS 100q EX
-\draw[fill=gray!40]  (0.5,0) rectangle (1.3,2.50); \node[above,font=\scriptsize] at (0.9,2.50) {0.500};
-\draw[fill=orange!50](1.4,0) rectangle (2.2,3.25); \node[above,font=\scriptsize] at (1.8,3.25) {0.650};
-\draw[fill=blue!50]  (2.3,0) rectangle (3.1,3.50); \node[above,font=\scriptsize] at (2.7,3.50) {0.700};
-\node[font=\scriptsize,align=center] at (1.8,-0.55) {GIS 100q EX};
+% GIS Spatial 85q EX
+\draw[fill=gray!40]  (0.5,0) rectangle (1.3,2.645); \node[above,font=\scriptsize] at (0.9,2.645) {0.529};
+\draw[fill=orange!50](1.4,0) rectangle (2.2,3.25);  \node[above,font=\scriptsize] at (1.8,3.25) {0.650$^*$};
+\draw[fill=blue!50]  (2.3,0) rectangle (3.1,3.41);  \node[above,font=\scriptsize] at (2.7,3.41) {0.682};
+\node[font=\scriptsize,align=center] at (1.8,-0.55) {GIS Spatial 85q};
 \node[font=\scriptsize] at (0.9,-0.95) {base};
-\node[font=\scriptsize] at (1.8,-0.95) {DIN};
+\node[font=\scriptsize] at (1.8,-0.95) {DIN$^*$};
 \node[font=\scriptsize] at (2.7,-0.95) {full};
-% GIS Robustness
+% GIS Robustness 15q
 \draw[fill=gray!40]  (4.2,0) rectangle (5.0,1.665); \node[above,font=\scriptsize] at (4.6,1.665) {0.333};
-\draw[fill=orange!50](5.1,0) rectangle (5.9,0.00);  \node[above,font=\scriptsize] at (5.5,0.05) {0.000};
+\draw[fill=orange!50](5.1,0) rectangle (5.9,0.00);  \node[above,font=\scriptsize] at (5.5,0.05) {0.000$^*$};
 \draw[fill=blue!50]  (6.0,0) rectangle (6.8,4.00);  \node[above,font=\scriptsize] at (6.4,4.00) {0.800};
-\node[font=\scriptsize,align=center] at (5.5,-0.55) {GIS Robust.};
+\node[font=\scriptsize,align=center] at (5.5,-0.55) {GIS Robust.\ 15q};
 \node[font=\scriptsize] at (4.6,-0.95) {base};
-\node[font=\scriptsize] at (5.5,-0.95) {DIN};
+\node[font=\scriptsize] at (5.5,-0.95) {DIN$^*$};
 \node[font=\scriptsize] at (6.4,-0.95) {full};
 % BIRD ~495q EX
 \draw[fill=gray!40]  (8.0,0) rectangle (8.8,2.37); \node[above,font=\scriptsize] at (8.4,2.37) {0.474};
@@ -393,11 +415,11 @@ Figure~\ref{fig:cross} summarizes the three-way cross-domain comparison (Baselin
 \node[font=\scriptsize] at (9.3,-0.95) {DIN};
 \node[font=\scriptsize] at (10.2,-0.95) {full};
 % legend
-\draw[fill=gray!40]  (11.5,4.5) rectangle (12.0,5.0); \node[right,font=\scriptsize] at (12.1,4.75) {Baseline};
-\draw[fill=orange!50](11.5,3.8) rectangle (12.0,4.3); \node[right,font=\scriptsize] at (12.1,4.05) {DIN-SQL};
-\draw[fill=blue!50]  (11.5,3.1) rectangle (12.0,3.6); \node[right,font=\scriptsize] at (12.1,3.35) {Full};
+\draw[fill=gray!40]  (12.0,4.5) rectangle (12.5,5.0); \node[right,font=\scriptsize] at (12.6,4.75) {Baseline};
+\draw[fill=orange!50](12.0,3.8) rectangle (12.5,4.3); \node[right,font=\scriptsize] at (12.6,4.05) {DIN-SQL};
+\draw[fill=blue!50]  (12.0,3.1) rectangle (12.5,3.6); \node[right,font=\scriptsize] at (12.6,3.35) {Full};
 \end{tikzpicture}
-\caption{Three-way cross-domain comparison: Baseline / DIN-SQL / Full pipeline. GIS 100q: full pipeline achieves EX$=0.700$ (McNemar $p=0.0002$, significant). GIS Robustness: full pipeline $0.800$ vs.\ DIN-SQL $0.000$. BIRD $\sim$495q: full pipeline $0.501$ vs.\ DIN-SQL $0.482$ (not significant, $p=0.382$). All three systems are statistically comparable on BIRD.}
+\caption{Three-way cross-domain comparison: Baseline / DIN-SQL / Full pipeline. GIS Spatial 85q: full pipeline Spatial EX$=0.682$ (McNemar $p=0.0072$, significant). GIS Robustness 15q: full pipeline $0.800$ vs.\ DIN-SQL $0.000$ ($p=0.0156$, significant). BIRD $\sim$495q: full pipeline $0.501$ vs.\ DIN-SQL $0.482$ (not significant, $p=0.382$). All three systems are statistically comparable on BIRD. $^*$DIN-SQL GIS evaluated on 20-question reference subset only; 100-question re-run pending.}
 \label{fig:cross}
 \end{figure}
 
@@ -421,13 +443,20 @@ Result & Track / config & Run directory & Model(s) \\
 GIS 100q (primary) & GIS baseline + full & \texttt{cq\_2026-05-04\_122349} & Gemini~2.5~Flash \\
 GIS 20q Phase~A (ref.) & GIS baseline + full & \texttt{cq\_2026-05-03\_164213} & Gemini~2.5~Flash \\
 GIS 20q pre-Phase~A (ref.) & GIS baseline + full & \texttt{cq\_2026-05-01\_132919} & Gemini~2.5~Flash \\
+DIN-SQL GIS 20q (ref.) & GIS DIN-SQL & \texttt{cq\_din\_sql\_2026-05-03\_193407} & Gemini~2.5~Flash \\
+DIN-SQL GIS 100q (pending) & GIS DIN-SQL & \texttt{cq\_din\_sql\_2026-05-04\_*} & Gemini~2.5~Flash \\
 BIRD $\sim$495q P2 (primary) & BIRD baseline + full & \texttt{bird\_pg\_2026-05-04\_093040} & Gemini~2.5~Flash \\
 BIRD 500q multi-pass (ref.) & BIRD baseline + full & \texttt{bird\_pg\_2026-05-01\_182457} & Gemini~2.5~Flash \\
 BIRD 50q + MetricFlow (ref.) & BIRD full(+MetricFlow) & \texttt{bird\_pg\_2026-05-01\_151254} & Gemini~2.5~Flash \\
+DIN-SQL BIRD 500q & BIRD DIN-SQL & \texttt{bird\_din\_sql\_2026-05-03\_193412} & Gemini~2.5~Flash \\
 Cross-lingual & Chinese-translated BIRD 50q & \texttt{bird\_pg\_chinese\_2026-05-01\_171426} & Gemini~2.5~Flash (eval), Gemini~2.0~Flash (translation) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\noindent\textbf{Model parameters.} All runs use Gemini~2.5~Flash with temperature$=0.0$, default top\_p, and default maximum output tokens. The BIRD evaluation uses the full \texttt{mini\_dev\_postgresql.json} (500 questions, no sampling); 495 questions completed (5 errors/timeouts). DIN-SQL runs use \texttt{results.json} (not \texttt{baseline\_results.json} or \texttt{full\_results.json}).
+
+\noindent\textbf{Error handling.} Each question has a 60-second execution timeout. On \texttt{429 RESOURCE\_EXHAUSTED}, the runner uses the \texttt{genai} SDK's built-in retry (3 attempts with 2-second initial delay). On no-SQL output, the question is recorded as \texttt{gen\_status=no\_sql} and EX$=0$. BIRD baseline ran 498/500 (2 errors); full ran 495/500 (3 stalled in agent runner before P2 fix; with single-pass P2 they completed). Paired McNemar uses the $n=495$ intersection.
 
 Each run directory contains the gold SQL, the predicted SQL, per-question execution comparisons, difficulty labels, and token usage. We also release the GIS benchmark questions and gold SQL, the BIRD warehouse-modeling registration script, the cross-lingual evaluation harness, the per-question SQL postprocessor and self-correction logic, and the MetricFlow YAML schemas registered for the BIRD \texttt{debit\_card\_specializing} schema.
 
@@ -438,15 +467,15 @@ Each run directory contains the gold SQL, the predicted SQL, per-question execut
 
 \subsection{Why semantic grounding helps in GIS --- and why the advantage is now statistically significant}
 
-The expanded 100-question GIS benchmark confirms what the 20-question pilot suggested but could not statistically substantiate: semantic grounding with intent-conditioned routing provides a large, reliable advantage for geospatial SQL (McNemar $p=0.0002$, EX $+0.200$). Three mechanisms drive the improvement. First, \emph{geometry-aware type injection} ensures the model knows which columns are geometry-bearing, what their SRID is, and when geography casting is required; without this, the baseline frequently omits \texttt{::geography} casts, producing area/distance values in degrees rather than meters. This mechanism drives most of the Medium difficulty improvement ($+0.305$). Second, \emph{intent-conditioned operator routing} gates domain-specific rules (KNN \texttt{<-}\texttt{>} operator, LIMIT injection) to the queries where they are relevant, eliminating false-positive injections. Third, \emph{safety and robustness enforcement} through SQL postprocessing catches dangerous operations (DELETE, UPDATE) and handles refusal/anti-illusion cases; the baseline LLM has no such guardrails and scores only $0.333$ on the robustness suite, while the full pipeline achieves $0.800$ ($+0.467$).
+The expanded 100-question GIS benchmark confirms what the 20-question pilot suggested but could not statistically substantiate: semantic grounding with intent-conditioned routing provides a large, reliable advantage for geospatial SQL. Both primary GIS metrics are statistically significant: Spatial EX $+0.153$ (McNemar $p=0.0072$) and Robustness Success Rate $+0.467$ ($p=0.0156$). Three mechanisms drive the improvement. First, \emph{geometry-aware type injection} ensures the model knows which columns are geometry-bearing, what their SRID is, and when geography casting is required; without this, the baseline frequently omits \texttt{::geography} casts, producing area/distance values in degrees rather than meters. This mechanism drives most of the Medium difficulty improvement ($+0.305$). Second, \emph{intent-conditioned operator routing} gates domain-specific rules (KNN \texttt{<-}\texttt{>} operator, LIMIT injection) to the queries where they are relevant, eliminating false-positive injections. Third, \emph{safety and robustness enforcement} through SQL postprocessing catches dangerous operations (DELETE, UPDATE) and handles refusal/anti-illusion cases; the baseline LLM has no such guardrails and scores only $0.333$ on the robustness suite, while the full pipeline achieves $0.800$ ($+0.467$).
 
-The transition from $p=0.125$ ($n=20$) to $p=0.0002$ ($n=100$) illustrates a methodological point: the effect was real but underpowered in the pilot. The 100-question benchmark provides adequate power to confirm that the $+0.200$ EX advantage is not a sampling artifact.
+The transition from $p=0.125$ ($n=20$) to $p=0.0072$ (Spatial, $n=85$) and $p=0.0156$ (Robustness, $n=15$) illustrates a methodological point: the effects were real but underpowered in the pilot. The 100-question benchmark provides adequate power to confirm that both advantages are not sampling artifacts.
 
 \subsection{The BIRD result: directional but not significant}
 
 On the BIRD track, the full pipeline achieves EX$=0.501$ vs.\ baseline $0.474$ ($+0.027$, McNemar $p=0.136$). The confidence intervals overlap, and the result is not statistically significant at $\alpha=0.05$. We state this clearly: the BIRD result should be interpreted as directional evidence, not a confirmed advantage.
 
-The comparison against DIN-SQL ($0.482$) shows that our full pipeline ($+0.019$ vs.\ DIN-SQL) and DIN-SQL ($+0.008$ vs.\ baseline) are both directional improvements in the same range, but neither is statistically significant. The three systems --- baseline, DIN-SQL, and NL2Semantic2SQL --- should be considered statistically comparable on the BIRD track.
+Full pipeline EX$=0.501$ is numerically higher than DIN-SQL EX$=0.482$ ($+0.019$), but the difference is not statistically significant (McNemar $p=0.382$). The three systems --- baseline ($0.474$), DIN-SQL ($0.482$), and Full ($0.501$) --- are statistically comparable on the BIRD track. Neither the full pipeline's advantage over baseline nor its advantage over DIN-SQL reaches statistical significance at current sample sizes.
 
 The improvement in execution validity ($0.978 \to 0.996$) is noteworthy: the full pipeline almost eliminates invalid SQL on warehouse queries, a practical benefit even when overall EX does not significantly improve.
 
@@ -466,7 +495,7 @@ The cross-lingual experiment confirms that the semantic layer's multilingual ali
 
 \subsection{Limitations}
 
-Several limitations should be noted. First, while the GIS benchmark is now 100 questions, it remains a single-domain pilot focused on a Chinese geospatial database (Chongqing street/POI data); generalization to other GIS domains and non-Chinese schemas requires further evaluation. Second, on the BIRD track, the full pipeline's $+0.027$ EX advantage is directional but not statistically significant ($p=0.136$); the three-way comparison with DIN-SQL likewise shows no statistically significant differences. Third, the cross-lingual experiment uses LLM-translated questions without human verification. Fourth, our baselines are direct-LLM-with-schema-dump and DIN-SQL only; comparison against MAC-SQL and other recent approaches would be necessary to position the method against the full state-of-the-art. Fifth, execution-based evaluation treats any result-set mismatch as failure, even when the predicted SQL is semantically equivalent but differs in ordering or numeric precision. Sixth, token cost ($7.9$--$13.6\times$) is a non-trivial deployment concern that future work should address via selective grounding or context compression.
+Several limitations should be noted. First, the 100-question GIS benchmark is based only on Chongqing spatial data (Chinese street/POI database); generalization to other spatial database conventions (GeoPackage, Shapefile schema, non-WGS84 coordinate systems) and non-Chinese GIS schemas is not yet evaluated. Second, on the BIRD track, the full pipeline's $+0.027$ EX advantage is directional but not statistically significant ($p=0.136$); the three-way comparison with DIN-SQL likewise shows no statistically significant differences. Third, the cross-lingual experiment uses LLM-translated questions without human verification; full cross-lingual claims would require human-annotated translations. Fourth, token cost ($8$--$14\times$ baseline) is a real deployment consideration, especially for warehouse queries where the marginal accuracy gain is statistically inconclusive. Fifth, the current evaluation uses Gemini~2.5~Flash; behavior may differ on other LLM families (e.g., GPT-4o, Claude, open-source models). Sixth, our baselines are direct-LLM-with-schema-dump and DIN-SQL only; comparison against MAC-SQL and other recent approaches would be necessary to position the method against the full state-of-the-art. Seventh, execution-based evaluation treats any result-set mismatch as failure, even when the predicted SQL is semantically equivalent but differs in ordering or numeric precision.
 
 \subsection{Future work}
 
@@ -482,16 +511,16 @@ Three directions emerge from this study:
 \label{sec:conclusion}
 % =============================================================================
 
-We have presented NL2Semantic2SQL, a cross-domain framework for natural-language interfaces over both geospatial and conventional warehouse databases. The framework integrates semantic-layer grounding, intent-conditioned routing, schema-aware context construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction into a single three-stage pipeline. We constructed a 100-question GIS benchmark with a separate robustness suite and combined it with a $\sim$495-question subset of BIRD mini\_dev to define a dual-track evaluation protocol.
+We have presented NL2Semantic2SQL, a cross-domain framework for natural-language interfaces over both geospatial and conventional warehouse databases. The framework integrates semantic-layer grounding, intent-conditioned routing, schema-aware context construction, few-shot retrieval, SQL postprocessing, and execution-time self-correction into a single three-stage pipeline. A core design principle is bilingual, cross-domain support: the framework handles both Chinese GIS queries and English warehouse queries through intent-conditioned routing that operates bilingually, without language-specific model swapping. We constructed a 100-question GIS benchmark with a separate robustness suite and combined it with a $\sim$495-question subset of BIRD mini\_dev to define a dual-track evaluation protocol.
 
-Three findings stand out. First, on the 100-question GIS benchmark, the full pipeline achieves EX$=0.700$ vs.\ baseline $0.500$ (McNemar $p=0.0002$, statistically significant at $\alpha=0.001$). The improvement is driven by geometry-aware grounding ($+0.305$ on Medium), safety postprocessing ($+0.467$ on Robustness), and intent-conditioned operator routing. This result is substantially stronger than the 20-question pilot ($p=0.125$), confirming that the effect was real but underpowered in the earlier evaluation. Second, on the $\sim$495-question BIRD benchmark (single-pass P2 mode), the full pipeline achieves EX$=0.501$ vs.\ baseline $0.474$ ($+0.027$), exceeding the DIN-SQL external baseline ($0.482$). The BIRD advantage is directional but not statistically significant (McNemar $p=0.136$); the three systems --- baseline, DIN-SQL, and NL2Semantic2SQL --- are statistically comparable on warehouse queries. Third, P2 single-pass mode reduced BIRD token cost from $\sim$32$\times$ to $7.9\times$ while improving EX, demonstrating that architectural optimization can simultaneously reduce cost and improve quality.
+Four findings stand out. First, on the 85-question GIS Spatial track, the full pipeline achieves Spatial EX$=0.682$ vs.\ baseline $0.529$ (McNemar $p=0.0072$, statistically significant at $\alpha=0.05$, $+0.153$). The improvement is driven by geometry-aware grounding ($+0.305$ on Medium) and intent-conditioned operator routing. Second, on the 15-question GIS Robustness track, the full pipeline achieves Success Rate$=0.800$ vs.\ baseline $0.333$ (McNemar $p=0.0156$, statistically significant, $+0.467$), driven by safety postprocessing. Both GIS results are substantially stronger than the 20-question pilot ($p=0.125$), confirming that the effects were real but underpowered in the earlier evaluation. Third, on the $\sim$495-question BIRD benchmark (single-pass P2 mode), the full pipeline achieves EX$=0.501$ vs.\ baseline $0.474$ ($+0.027$). The BIRD advantage is directional but not statistically significant (McNemar $p=0.136$); the three systems --- baseline ($0.474$), DIN-SQL ($0.482$), and Full ($0.501$) --- are statistically comparable on warehouse queries. The BIRD result should be interpreted as directional evidence, not a confirmed advantage. Fourth, P2 single-pass mode reduced BIRD token cost from $\sim$32$\times$ to $7.9\times$ while improving EX, demonstrating that architectural optimization can simultaneously reduce cost and improve quality.
 
-Taken together, the results establish that a unified semantic-to-SQL architecture with intent-conditioned routing provides statistically significant gains for GIS queries and directional gains for warehouse queries, while matching or exceeding the DIN-SQL external baseline on both tracks. The token cost ($7.9$--$13.6\times$) is a real deployment consideration that future work should address via selective grounding or context compression.
+Taken together, the results establish that a unified semantic-to-SQL architecture with bilingual intent-conditioned routing provides statistically significant gains for GIS spatial accuracy ($p=0.0072$) and robustness ($p=0.0156$), and directional gains for warehouse queries. The token cost ($8$--$14\times$ baseline) is a real deployment consideration, especially for warehouse queries where the marginal accuracy gain is statistically inconclusive; future work should address this via selective grounding or context compression. The DIN-SQL comparison on GIS is based on a 20-question reference subset; a 100-question re-run is in progress and will be reported in a follow-up update.
 
 % =============================================================================
 \section*{Reproducibility}
 % =============================================================================
-The GIS benchmark, the warehouse-modeling registration scripts, the cross-lingual evaluation harness, and the experiment configurations used to produce all tables in this paper are released in the project repository. Each result reported in Tables~\ref{tab:gis}--\ref{tab:repro} corresponds to a specific run directory under \texttt{nl2sql\_eval\_results/} that contains the gold SQL, the predicted SQL, the execution comparison, the difficulty stratification, and the per-question token usage. The primary GIS result uses run \texttt{cq\_2026-05-04\_122349} (100-question benchmark); the primary BIRD result uses run \texttt{bird\_pg\_2026-05-04\_093040} ($\sim$495 questions, single-pass P2 mode).
+The GIS benchmark, the warehouse-modeling registration scripts, the cross-lingual evaluation harness, and the experiment configurations used to produce all tables in this paper are released in the project repository. Each result reported in Tables~\ref{tab:gis-spatial}--\ref{tab:repro} corresponds to a specific run directory under \texttt{nl2sql\_eval\_results/} that contains the gold SQL, the predicted SQL, the execution comparison, the difficulty stratification, and the per-question token usage. The primary GIS result uses run \texttt{cq\_2026-05-04\_122349} (100-question benchmark, split into 85 Spatial + 15 Robustness); the primary BIRD result uses run \texttt{bird\_pg\_2026-05-04\_093040} ($\sim$495 questions, single-pass P2 mode). DIN-SQL GIS 20q reference uses \texttt{cq\_din\_sql\_2026-05-03\_193407}; DIN-SQL BIRD uses \texttt{bird\_din\_sql\_2026-05-03\_193412}. All runs use Gemini~2.5~Flash, temperature$=0.0$, default top\_p and max output tokens.
 
 % =============================================================================
 \begin{thebibliography}{99}
@@ -503,13 +532,12 @@ The GIS benchmark, the warehouse-modeling registration scripts, the cross-lingua
 \bibitem{li2023bird} J.~Li, B.~Hui, G.~Qu, et~al., ``Can LLM already serve as a database interface? A big bench for large-scale database grounded text-to-SQLs,'' in \emph{Proc.\ NeurIPS Datasets and Benchmarks Track}, 2023, OpenReview ID: \texttt{dI4wzAE6uV}.
 \bibitem{lei2025spider2} F.~Lei, J.~Chen, Y.~Ye, R.~Cao, D.~Shin, H.~Su, Z.~Suo, H.~Gao, W.~Hu, P.~Yin, V.~Zhong, C.~Xiong, R.~Sun, Q.~Liu, S.~Singh, and T.~Yu, ``Spider 2.0: Evaluating language models on real-world enterprise text-to-SQL workflows,'' in \emph{Proc.\ ICLR}, 2025.
 \bibitem{chen2024beaver} P.~B.~Chen, F.~Wenz, Y.~Zhang, D.~Yang, J.~Choi, N.~Tatbul, M.~Cafarella, {\c{C}}.~Demiralp, and M.~Stonebraker, ``BEAVER: An enterprise benchmark for text-to-SQL,'' \emph{arXiv:2409.02038}, 2024.
+\bibitem{zelle1996geoquery} J.~M.~Zelle and R.~J.~Mooney, ``Learning to parse database queries using inductive logic programming,'' in \emph{Proc.\ AAAI}, 1996, pp.~1050--1055.
 \bibitem{punjani2018geospatial} D.~Punjani, K.~Singh, A.~Both, M.~Koubarakis, I.~Angelidis, K.~Bereta, T.~Beris, M.~Bilidas, T.~Ioannidis, D.~Karalis, C.~Lange, D.~Pantazi, and C.~Nikolaou, ``Template-based question answering over linked geospatial data,'' in \emph{Proc.\ 12th Workshop on Geographic Information Retrieval (GIR) @ ACM SIGSPATIAL}, 2018, Article~7, pp.~1--10. DOI: 10.1145/3281354.3281362.
 \bibitem{mai2024foundation} G.~Mai, W.~Huang, J.~Sun, S.~Song, D.~Mishra, N.~Liu, S.~Gao, T.~Liu, G.~Cong, Y.~Hu, C.~Cundy, Z.~Li, R.~Zhu, and N.~Lao, ``On the opportunities and challenges of foundation models for GeoAI (vision paper),'' \emph{ACM Trans.\ Spatial Algorithms Syst.}, vol.~10, no.~2, Article~11, 2024. DOI: 10.1145/3653070.
 \bibitem{metricflow} dbt Labs, ``MetricFlow,'' Online documentation, \url{https://docs.getdbt.com/docs/build/about-metricflow}, accessed 2026-05-04.
 \bibitem{min2019cspider} Q.~Min, Y.~Shi, and Y.~Zhang, ``A pilot study for Chinese SQL semantic parsing,'' in \emph{Proc.\ EMNLP-IJCNLP}, 2019, pp.~3652--3658. DOI: 10.18653/v1/D19-1377.
 \end{thebibliography}
-
-% =============================================================================
 \appendix
 \section{Figure index for the camera-ready version}
 \label{sec:figures}
