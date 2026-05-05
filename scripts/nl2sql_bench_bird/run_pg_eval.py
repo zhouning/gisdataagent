@@ -271,7 +271,7 @@ async def full_generate(question: str, db_id: str, evidence: str = "") -> dict:
     from data_agent.sql_postprocessor import postprocess_sql
     from data_agent.nl2sql_executor import _retry_with_llm
 
-    ctx = build_nl2sql_context(question)
+    ctx = build_nl2sql_context(question, schema_filter=schema_pg)
     grounding = ctx.get("grounding_prompt", "")
 
     # Build table schemas + large tables for postprocessor

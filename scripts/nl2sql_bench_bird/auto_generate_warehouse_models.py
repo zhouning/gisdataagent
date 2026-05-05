@@ -36,6 +36,7 @@ BIRD_SCHEMAS = [
     "bird_california_schools",
     "bird_card_games",
     "bird_codebase_community",
+    "bird_debit_card_specializing",
     "bird_european_football_2",
     "bird_financial",
     "bird_formula_1",

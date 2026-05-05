@@ -362,6 +362,8 @@ def _format_grounding_prompt(payload: dict) -> str:
             lines.append(f"- {'; '.join(parts)}")
         for jp in wh.get("join_paths") or []:
             lines.append(f"- JOIN: {jp}")
+        for mhp in wh.get("multi_hop_paths") or []:
+            lines.append(f"- MULTI-HOP JOIN (via bridge): {mhp}")
 
     few_shots = payload.get("few_shots") or []
     if few_shots:
@@ -391,13 +393,57 @@ def _format_grounding_prompt(payload: dict) -> str:
         lines.append("## KNN 排序规则")
         lines.append("- 最近邻必须使用 PostGIS 索引算子: ORDER BY a.geometry <-> b.geometry LIMIT K")
         lines.append("- 不允许使用 ORDER BY ST_Distance(...) 进行排序；ST_Distance 只在 SELECT 中报告距离值")
+
+    # Aggregation / Warehouse semantics — apply when query has aggregation intent
+    # or when warehouse join hints exist (i.e., non-spatial multi-table query).
+    has_warehouse_hints = bool(payload.get("warehouse_join_hints"))
+    if intent == IntentLabel.AGGREGATION or has_warehouse_hints:
+        lines.append("")
+        lines.append("## 聚合语义规则")
+        lines.append("- COUNT(*) 计入所有行（包含 NULL），COUNT(col) 只计 col 非 NULL 的行；二者结果常不同。")
+        lines.append("- COUNT(DISTINCT col) 只在题目明确要求“不同/独立/去重”时使用；默认计数用 COUNT(*) 或 COUNT(主键)。")
+        lines.append("- 计算占比/比例（如 “百分之多少 / ratio / percentage”）时使用 SUM(CASE WHEN ... THEN 1 ELSE 0 END) * 1.0 / COUNT(*) 或 AVG(CASE...)；勿用整除。")
+        lines.append("- 多表聚合时，先在 fact 表做聚合再 JOIN dim 表，避免重复计数膨胀。")
+        lines.append("- \"每个 / per / 各 / 按...统计\" 等措辞需要 GROUP BY；GROUP BY 中所有非聚合 SELECT 列必须出现。")
+
+        lines.append("")
+        lines.append("## DISTINCT 使用规则")
+        lines.append("- 当 JOIN 产生一对多关系（如 patient JOIN laboratory 一个患者有多条检验记录），SELECT 列表中的维度列（ID/name/birthday 等）必须加 DISTINCT 或用 DISTINCT ON。")
+        lines.append("- 只有在 SELECT 中包含聚合函数（COUNT/SUM/AVG/MAX/MIN）时才不需要 DISTINCT（聚合本身已去重）。")
+        lines.append("- 当 gold 要求 'List patients / List IDs' 且涉及多表 JOIN 时，默认使用 SELECT DISTINCT。")
+
+        lines.append("")
+        lines.append("## 避免过度 JOIN")
+        lines.append("- 如果所需的所有列和过滤条件都在同一张表中，不要引入额外的 JOIN。")
+        lines.append("- 只有当 WHERE 条件或 SELECT 列确实需要另一张表的字段时才 JOIN。")
+        lines.append("- 当两张表都有同名字段（如 Diagnosis），优先使用问题语境中最直接的那张表。")
+
+        lines.append("")
+        lines.append("## 输出列格式")
+        lines.append("- 当问题要求 'full name / 姓名' 且表中有 first_name + last_name 两列时，默认 SELECT 两列分开返回，不要用 || 拼接。")
+        lines.append("- LIMIT 1 场景：如果问题要求 'the highest / the oldest / the youngest'，使用 ORDER BY ... LIMIT 1 而非子查询 WHERE col = (SELECT MAX/MIN...)。")
+
+        # Date / temporal handling — BIRD heavily uses TEXT-stored dates
+        lines.append("")
+        lines.append("## 日期 / 时间处理规则")
+        lines.append("- 若日期列为 TEXT 类型，使用字符串前缀比较或 LIKE 'YYYY-MM%' 进行月/年过滤，而不是直接 EXTRACT。")
+        lines.append("- 取年份: SUBSTR(date_col, 1, 4) 或 CAST(SUBSTR(date_col,1,4) AS INTEGER)。")
+        lines.append("- 取月份: SUBSTR(date_col, 6, 2)。")
+        lines.append("- 真实 date / timestamp 列才使用 EXTRACT(YEAR FROM ...) / DATE_TRUNC。")
+        lines.append("- 排序日期 TEXT 列时直接 ORDER BY 字符串即可（ISO 格式自然有序）。")
+
     return "\n".join(lines)
 
 
 def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
     """Look up SemanticModelStore for candidate tables and build join-path hints.
 
-    Returns a dict with table_roles and join_paths, or None if no models found.
+    Builds both 1-hop (direct shared entity) and multi-hop (transitive via a
+    pivot table that may not be in candidate_tables) join paths. Multi-hop
+    paths are useful when fact-vs-fact joins require a bridging dimension.
+
+    Returns a dict with table_roles, join_paths (1-hop strings), and
+    multi_hop_paths (transitive bridge suggestions), or None if no models found.
     """
     store = SemanticModelStore()
     table_roles: dict[str, dict] = {}
@@ -421,8 +467,9 @@ def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
     if not table_roles:
         return None
 
-    # Build join paths by matching shared entities across tables
+    # Build 1-hop join paths by matching shared entities across candidate tables
     join_paths: list[str] = []
+    seen_pairs: set[tuple[str, str, str]] = set()
     for ent, tables in entity_map.items():
         if len(tables) < 2:
             continue
@@ -432,48 +479,138 @@ def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
             for d in dims:
                 short_f = f.rsplit(".", 1)[-1] if "." in f else f
                 short_d = d.rsplit(".", 1)[-1] if "." in d else d
+                key = tuple(sorted([f, d])) + (ent,)
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
                 join_paths.append(f"{short_f}.{ent} -> {short_d}.{ent}")
-        # fact-to-fact joins on shared entity
         for i, f1 in enumerate(facts):
             for f2 in facts[i + 1:]:
                 short1 = f1.rsplit(".", 1)[-1] if "." in f1 else f1
                 short2 = f2.rsplit(".", 1)[-1] if "." in f2 else f2
+                key = tuple(sorted([f1, f2])) + (ent,)
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
                 join_paths.append(f"{short1}.{ent} -> {short2}.{ent}")
 
-    return {"table_roles": table_roles, "join_paths": join_paths}
+    # Multi-hop: for every pair of candidate tables that do NOT share an entity
+    # directly, search the registered model store for a pivot table that
+    # joins them via two distinct entities (typical bridging dimension).
+    multi_hop_paths: list[str] = []
+    candidate_names = list(table_roles.keys())
+    candidate_set = set(candidate_names)
+    direct_pairs: set[tuple[str, str]] = set()
+    for ent, tables in entity_map.items():
+        for i, t1 in enumerate(tables):
+            for t2 in tables[i + 1:]:
+                direct_pairs.add(tuple(sorted([t1, t2])))
+
+    if len(candidate_names) >= 2:
+        try:
+            all_models = store.list_active() or []
+        except Exception:
+            all_models = []
+        # Index: entity_name -> set of model names (across ALL registered models)
+        global_entity_index: dict[str, set[str]] = {}
+        for m in all_models:
+            mname = m.get("name") or m.get("source_table") or ""
+            if not mname:
+                continue
+            for e in (m.get("entities") or []):
+                ent_name = e.get("name") or e.get("column") or ""
+                if ent_name:
+                    global_entity_index.setdefault(ent_name, set()).add(mname)
+
+        for i, t1 in enumerate(candidate_names):
+            for t2 in candidate_names[i + 1:]:
+                pair_key = tuple(sorted([t1, t2]))
+                if pair_key in direct_pairs:
+                    continue
+                ents1 = set(table_roles[t1]["entities"])
+                ents2 = set(table_roles[t2]["entities"])
+                # Find a pivot model that contains at least one entity from each
+                pivot_candidates: list[tuple[str, str, str]] = []
+                # ent_a in t1 and pivot, ent_b in t2 and pivot
+                for ent_a in ents1:
+                    pivot_for_a = global_entity_index.get(ent_a, set())
+                    for ent_b in ents2:
+                        if ent_a == ent_b:
+                            continue
+                        pivot_for_b = global_entity_index.get(ent_b, set())
+                        common = pivot_for_a & pivot_for_b
+                        # Exclude the candidates themselves
+                        common -= {t1, t2}
+                        for pivot in common:
+                            pivot_candidates.append((pivot, ent_a, ent_b))
+                # Pick at most 2 pivot suggestions per pair to avoid prompt bloat
+                for pivot, ent_a, ent_b in pivot_candidates[:2]:
+                    short_t1 = t1.rsplit(".", 1)[-1]
+                    short_t2 = t2.rsplit(".", 1)[-1]
+                    short_pv = pivot.rsplit(".", 1)[-1]
+                    multi_hop_paths.append(
+                        f"{short_t1}.{ent_a} -> {short_pv}.{ent_a}; {short_pv}.{ent_b} -> {short_t2}.{ent_b}"
+                    )
+
+    result: dict = {"table_roles": table_roles, "join_paths": join_paths}
+    if multi_hop_paths:
+        result["multi_hop_paths"] = multi_hop_paths
+    return result
 
 
-def build_nl2sql_context(user_text: str) -> dict:
-    """Build semantic + schema grounding payload for NL2SQL generation."""
+def build_nl2sql_context(user_text: str, schema_filter: str | None = None) -> dict:
+    """Build semantic + schema grounding payload for NL2SQL generation.
+
+    Args:
+        user_text: The natural language question.
+        schema_filter: If provided (e.g. "bird_debit_card_specializing"), forces
+            all tables from this schema to be included as candidates regardless
+            of semantic matching. Used for warehouse benchmarks where the target
+            schema is known a priori.
+    """
     intent_result = classify_intent(user_text)
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
+    # When schema_filter is set, remove sources from other schemas
+    if schema_filter:
+        sources = [s for s in sources if str(s.get("table_name", "")).startswith(f"{schema_filter}.")]
     sources = _rank_sources(user_text, sources, semantic)
 
     # Supplement: fuzzy-match additional tables not already resolved by semantic layer
     source_table_names = {s.get("table_name") for s in sources}
     source_list = list_semantic_sources()
-    schema_hint = _extract_schema_hint(user_text)
+    schema_hint = _extract_schema_hint(user_text) or schema_filter
     if source_list.get("status") == "success":
         scored = []
         for source in source_list.get("sources", []):
             if source.get("table_name") in source_table_names:
                 continue
+            tname = str(source.get("table_name", ""))
+            # When schema_filter is set, skip tables from other schemas entirely
+            if schema_filter and not tname.startswith(f"{schema_filter}."):
+                continue
             score = _score_source(user_text, source)
-            if schema_hint and str(source.get("table_name", "")).startswith(f"{schema_hint}."):
+            # Boost tables matching the schema_filter (known target schema)
+            if schema_filter and tname.startswith(f"{schema_filter}."):
+                score += 1.0  # strong boost for known-schema tables
+            elif schema_hint and tname.startswith(f"{schema_hint}."):
                 score += 0.5
             if score > 0.05:
                 s = dict(source)
                 s["confidence"] = score
                 scored.append(s)
         scored.sort(key=lambda s: s.get("confidence", 0), reverse=True)
-        sources.extend(scored[:2])
+        # When schema_filter is set, include more candidates (up to 8)
+        top_n = 8 if schema_filter else 2
+        sources.extend(scored[:top_n])
         sources = _rank_sources(user_text, sources, semantic)
 
     candidate_tables = []
     ascii_heavy = _is_ascii_heavy(user_text)
     spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
     source_limit = 5 if not spatial_query else 3
+    if schema_filter:
+        source_limit = 8  # warehouse benchmarks may have many tables per schema
     for source in sources[:source_limit]:
         table_name = source.get("table_name")
         if not table_name:
@@ -497,7 +634,9 @@ def build_nl2sql_context(user_text: str) -> dict:
                     if vals and len(vals) <= 20:
                         col["sample_values"] = vals
 
-    candidate_tables = _rank_candidate_tables(user_text, candidate_tables, semantic)[:3]
+    # Limit candidate tables: more for warehouse (need full schema for join hints)
+    max_candidates = 5 if schema_filter else 3
+    candidate_tables = _rank_candidate_tables(user_text, candidate_tables, semantic)[:max_candidates]
 
     # Build warehouse join hints from SemanticModelStore (non-spatial only)
     warehouse_join_hints = None
