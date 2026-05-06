@@ -213,18 +213,31 @@ def postprocess_sql(
         parsed, fix_corrections = _fix_identifiers(parsed, column_map)
         result.corrections.extend(fix_corrections)
 
-    # LIMIT injection for large tables (skip aggregation-only queries)
+    # LIMIT injection for large tables.
+    #
+    # Large-table guard is an intent-independent safety mechanism: when a SELECT
+    # references a known large table and has no LIMIT (and is not aggregation-
+    # only), we inject LIMIT regardless of intent classification. This closes
+    # the OOM Prevention gap where naturally phrased "show me all X" queries
+    # classify as ATTRIBUTE_FILTER and bypass the original intent-gated guard.
+    #
+    # We keep the original intent-gated path (for non-large-table preview
+    # queries) by checking intent only when large_tables is empty / does not
+    # match the referenced tables.
     from .nl2sql_intent import IntentLabel as _IL
-    _allow_limit = intent in (None, _IL.PREVIEW_LISTING, _IL.UNKNOWN)
+    refs_large_table = bool(large_tables) and _references_large_table(parsed, large_tables)
+    _allow_limit = refs_large_table or (intent in (None, _IL.PREVIEW_LISTING, _IL.UNKNOWN))
     if (
         _allow_limit
         and large_tables
-        and _references_large_table(parsed, large_tables)
+        and refs_large_table
         and not _is_aggregation_only(parsed)
     ):
         if not _has_limit(parsed):
             parsed = _inject_limit(parsed, DEFAULT_LIMIT)
-            result.corrections.append(f"LIMIT {DEFAULT_LIMIT} injected (large table referenced)")
+            result.corrections.append(
+                f"LIMIT {DEFAULT_LIMIT} injected (large-table guard: intent={intent})"
+            )
         else:
             # Bump LLM-injected small LIMITs (<=100) to DEFAULT_LIMIT
             outermost = _get_outermost_select(parsed)

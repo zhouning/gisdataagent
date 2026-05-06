@@ -1,6 +1,20 @@
 """Component-level ablation runner for GIS 100 benchmark.
 
-Runs 6 ablation configurations (single-pass mode, no ADK agent loop):
+IMPORTANT: This ablation runs on the SINGLE-PASS ENHANCED pipeline
+(PROMPT_ENHANCED template + deterministic postprocessor + bounded retry),
+which corresponds to the `enhanced` mode in run_cq_eval.py --- NOT the
+`full` mode (which uses an ADK agent loop with multi-turn tool calls).
+
+The GIS main table in the paper reports `full` (agent-loop) EX. The
+`enhanced` single-pass EX is systematically lower because the agent loop
+can iterate on tool feedback and call multiple tools per question.
+
+The ablation is therefore INTERNAL TO THE ENHANCED PIPELINE and measures
+component contributions within a controlled, deterministic baseline. This
+is stated explicitly in the paper to avoid confusing ablation deltas with
+main-table EX.
+
+Runs 6 ablation configurations (all on enhanced single-pass):
   ablate_none:             full enhanced pipeline (grounding + postprocess + self-correct + intent routing + R2 rules)
   ablate_no_intent:        intent routing disabled (always UNKNOWN -> all rules injected)
   ablate_no_postprocess:   skip postprocess_sql (no LIMIT injection, no quoting fixes)

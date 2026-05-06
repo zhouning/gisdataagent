@@ -261,18 +261,40 @@ def test_regex_fallback_preserves_string_literals():
     assert '"Floor" > 10' in fixed  # column fixed
 
 
-def test_postprocess_attribute_filter_does_not_inject_limit_on_large_table():
+def test_postprocess_large_table_guard_injects_limit_regardless_of_intent():
+    """Large-table guard is intent-independent: naturally phrased "show me all X"
+    queries classify as ATTRIBUTE_FILTER, bypassing the old intent-gated LIMIT
+    injection. The guard now fires whenever a known large table is referenced
+    in a non-aggregation SELECT (OOM Prevention requirement).
+    """
     from data_agent.sql_postprocessor import postprocess_sql
     from data_agent.nl2sql_intent import IntentLabel
 
     schemas = {"cq_amap_poi_2024": [{"column_name": "geometry", "needs_quoting": False}]}
+    # ATTRIBUTE_FILTER with WHERE: still receives LIMIT as a safety guard
     res = postprocess_sql(
         "SELECT * FROM cq_amap_poi_2024 WHERE name = 'A'",
         table_schemas=schemas,
         large_tables={"cq_amap_poi_2024"},
         intent=IntentLabel.ATTRIBUTE_FILTER,
     )
-    assert "LIMIT" not in res.sql.upper()
+    assert "LIMIT" in res.sql.upper()
+    # Bare SELECT * — also gets LIMIT
+    res2 = postprocess_sql(
+        "SELECT * FROM cq_amap_poi_2024",
+        table_schemas=schemas,
+        large_tables={"cq_amap_poi_2024"},
+        intent=IntentLabel.ATTRIBUTE_FILTER,
+    )
+    assert "LIMIT" in res2.sql.upper()
+    # Aggregation: still NOT injected (correct behavior)
+    res3 = postprocess_sql(
+        "SELECT COUNT(*) FROM cq_amap_poi_2024",
+        table_schemas=schemas,
+        large_tables={"cq_amap_poi_2024"},
+        intent=IntentLabel.AGGREGATION,
+    )
+    assert "LIMIT" not in res3.sql.upper()
 
 
 def test_postprocess_preview_listing_does_inject_limit_on_large_table():

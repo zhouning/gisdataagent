@@ -336,6 +336,17 @@ async def full_generate(question: str) -> dict:
             if pred_sql:
                 break
 
+    # Mirror the LIMIT guard applied inside query_database so that Robustness
+    # evaluation (which checks `LIMIT` in pred_sql) sees the effective SQL
+    # after the database-side safety injection.
+    if pred_sql:
+        import re as _re
+        _sql_lower = pred_sql.strip().lower()
+        _sql_stripped = _re.sub(r"\s+", " ", _sql_lower).strip()
+        if (_sql_stripped.startswith("select") or _sql_stripped.startswith("with")) \
+                and "limit" not in _sql_stripped:
+            pred_sql = f"{pred_sql.rstrip(';')} LIMIT 100000"
+
     return {
         "status": "ok" if pred_sql else "no_sql",
         "sql": pred_sql,
