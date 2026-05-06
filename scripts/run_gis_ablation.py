@@ -1,10 +1,12 @@
 """Component-level ablation runner for GIS 100 benchmark.
 
-Runs 4 ablation configurations (single-pass mode, no ADK agent loop):
-  ablate_none:          full enhanced pipeline (grounding + postprocess + self-correct + intent routing)
-  ablate_no_intent:     intent routing disabled (always UNKNOWN -> all rules injected)
-  ablate_no_postprocess: skip postprocess_sql (no LIMIT injection, no quoting fixes)
-  ablate_no_selfcorrect: skip the LLM-based retry on execution failure
+Runs 6 ablation configurations (single-pass mode, no ADK agent loop):
+  ablate_none:             full enhanced pipeline (grounding + postprocess + self-correct + intent routing + R2 rules)
+  ablate_no_intent:        intent routing disabled (always UNKNOWN -> all rules injected)
+  ablate_no_postprocess:   skip postprocess_sql (no LIMIT injection, no quoting fixes)
+  ablate_no_selfcorrect:   skip the LLM-based retry on execution failure
+  ablate_no_r2_rules:      strip R2 rule sections (DISTINCT / avoid-over-JOIN / output format)
+  ablate_no_join_hints:    strip multi-hop warehouse join hints from grounding
 
 Output: data_agent/nl2sql_eval_results/gis_ablation_<timestamp>/
 """
@@ -48,7 +50,40 @@ from run_cq_eval import (
     MODEL,
 )
 
-ABLATIONS = ["none", "no_intent", "no_postprocess", "no_selfcorrect"]
+ABLATIONS = ["none", "no_intent", "no_postprocess", "no_selfcorrect", "no_r2_rules", "no_join_hints"]
+
+
+# Headers of R2-added rule sections (commit c03ece9). When ablating, we strip
+# the section starting at the header up to the next `##` or end of string.
+R2_RULE_HEADERS = (
+    "## DISTINCT 使用规则",
+    "## 避免过度 JOIN",
+    "## 输出列格式",
+)
+JOIN_HINT_HEADER = "## 数据仓库 Join 路径提示"
+
+
+def _strip_rule_sections(grounding: str, headers: tuple[str, ...]) -> str:
+    """Remove lines from `## <header>` until the next `## ` or EOF."""
+    if not grounding:
+        return grounding
+    out_lines: list[str] = []
+    skip = False
+    for line in grounding.splitlines():
+        stripped = line.strip()
+        if skip:
+            if stripped.startswith("## "):
+                # New section begins — stop skipping unless it's also a target
+                skip = any(stripped == h.strip() for h in headers)
+                if not skip:
+                    out_lines.append(line)
+            # else: still inside the section being stripped — drop the line
+        else:
+            if any(stripped == h.strip() for h in headers):
+                skip = True
+            else:
+                out_lines.append(line)
+    return "\n".join(out_lines)
 
 
 def single_pass_generate(question: str, ablation: str) -> dict:
@@ -74,9 +109,16 @@ def single_pass_generate(question: str, ablation: str) -> dict:
     else:
         ctx = build_nl2sql_context(question)
 
+    # Ablate R2 rule sections or join hints by stripping from grounding_prompt
+    grounding_text = ctx.get("grounding_prompt", "")
+    if ablation == "no_r2_rules":
+        grounding_text = _strip_rule_sections(grounding_text, R2_RULE_HEADERS)
+    elif ablation == "no_join_hints":
+        grounding_text = _strip_rule_sections(grounding_text, (JOIN_HINT_HEADER,))
+
     # LLM generation with grounding prompt
     prompt = PROMPT_ENHANCED.format(
-        grounding=ctx.get("grounding_prompt", ""),
+        grounding=grounding_text,
         question=question,
     )
     try:
@@ -185,11 +227,15 @@ def main() -> int:
     p.add_argument("--ablations", default=",".join(ABLATIONS),
                    help="Comma-separated list of ablations to run")
     p.add_argument("--out-dir", default=None)
+    p.add_argument("--limit", type=int, default=None,
+                   help="Limit number of questions (for smoke tests)")
     args = p.parse_args()
 
     _init_runtime()
 
     questions = load_questions(Path(args.benchmark))
+    if args.limit:
+        questions = questions[:args.limit]
     print(f"[ablate] Loaded {len(questions)} questions from {Path(args.benchmark).name}")
 
     out_dir = Path(args.out_dir) if args.out_dir else (
