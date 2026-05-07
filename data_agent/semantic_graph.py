@@ -91,8 +91,64 @@ class SemanticGraph:
 
 
 def build_semantic_graph(schema: str = "public", table_prefix: Optional[str] = None) -> SemanticGraph:
-    """Build a SemanticGraph from live PostGIS metadata.
+    """Materialize G=(V,E) from live PostGIS catalog + static OGC vocab.
 
-    Stub returning an empty graph; live materialisation lands in Task 2.
+    Vertices: geo_entities from geometry_columns; intents and predicates
+    from _register_ogc_vocab(); constraints synthesized from SRID/cast rules.
+    Edges: has_geometry, topological/metric/knn (predicate classes),
+    intent_routes (static), unit_rule (SRID range→cast).
+
+    Zero-SRID rows are skipped (grid tables have no CRS). FK edges and
+    D/M dimension/measure vertices are left for a later task — this body
+    only implements the GIS subset used by paper §3.1.
     """
-    return SemanticGraph()
+    from sqlalchemy import text
+    from data_agent.db_engine import get_engine
+
+    g = SemanticGraph()
+    _register_ogc_vocab(g)
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        q = text(
+            """
+            SELECT f_table_name, f_geometry_column, srid, type
+            FROM geometry_columns
+            WHERE f_table_schema = :schema
+            ORDER BY f_table_name
+            """
+        )
+        rows = conn.execute(q, {"schema": schema}).fetchall()
+
+    for table, geom_col, srid, geom_type in rows:
+        if table_prefix and not table.startswith(table_prefix):
+            continue
+        if srid == 0:
+            continue
+        g.add_geo_entity(table, geom_col, int(srid), geom_type)
+
+    return g
+
+
+def _register_ogc_vocab(g: SemanticGraph) -> None:
+    """Static registry of OGC SFA predicates + intent routing + unit rules."""
+    topo = ["ST_Intersects", "ST_Contains", "ST_Within",
+            "ST_Touches", "ST_Crosses", "ST_Overlaps", "ST_Equals"]
+    metric = ["ST_Distance", "ST_Length", "ST_Area", "ST_DWithin"]
+    knn = ["<->"]
+    for p in topo:
+        g.add_predicate(p, "topological")
+    for p in metric:
+        g.add_predicate(p, "metric")
+    for p in knn:
+        g.add_predicate(p, "knn")
+    for i in ["attribute_filter", "aggregation", "spatial_join",
+              "spatial_measurement", "knn", "preview_listing"]:
+        g.add_intent(i)
+    for p in topo:
+        g.add_intent_route("spatial_join", p)
+    for p in metric:
+        g.add_intent_route("spatial_measurement", p)
+    g.add_intent_route("knn", "<->")
+    for p in metric:
+        g.add_unit_rule(p, (4326, 4326), "geography", "metre")

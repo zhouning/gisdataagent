@@ -1,6 +1,12 @@
 """Tests for the metadata graph G=(V,E) abstraction."""
+import os
+
 import pytest
 import networkx as nx
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
 from data_agent.semantic_graph import (
     SemanticGraph,
     NodeKind,
@@ -72,3 +78,15 @@ def test_graph_to_mermaid_is_deterministic():
     assert "cq_osm_roads_2021" in m1
     assert ("spatial_measurement --> ST_Length" in m1
             or "spatial_measurement-->ST_Length" in m1)
+
+
+def test_build_from_live_pg_covers_all_cq_tables():
+    g = build_semantic_graph(schema="public", table_prefix="cq_")
+    geo_nodes = [n for n, d in g.graph.nodes(data=True)
+                 if d.get("kind") == NodeKind.GEO_ENTITY]
+    # 18 cq_* rows in geometry_columns (verified 2026-05-07); 7 are
+    # zero-SRID grid tables that are correctly skipped, leaving 11.
+    assert len(geo_nodes) >= 11
+    assert g.graph.nodes["cq_osm_roads_2021"]["srid"] == 4326
+    assert g.graph.nodes["cq_land_use_dltb"]["srid"] == 4326
+    assert g.graph.nodes["cq_dltb"]["srid"] == 4610
