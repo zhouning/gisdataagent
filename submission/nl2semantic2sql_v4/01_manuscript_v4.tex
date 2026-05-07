@@ -21,7 +21,7 @@
 \usepackage{algorithm}
 \usepackage{algorithmic}
 
-\title{NL2Semantic2SQL: Semantic Grounding and Safe Execution for PostGIS-based NL2GeoSQL, with a Cross-Domain Stress Test on Warehouse Queries}
+\title{Semantic Grounding and Safe Execution for PostGIS Natural-Language-to-SQL}
 \author{Anonymous Author(s)\\ \textit{Affiliation withheld for double-anonymised review}}
 \date{}
 
@@ -294,6 +294,27 @@ Evaluation is performed on three benchmark tracks. The geospatial track uses the
 \noindent\textbf{Benchmarks.} We evaluate under three tracks. The \emph{GIS track} has 125 questions (85 Spatial with three difficulty levels covering selection, overlap, buffering, spatial aggregation, topology, and KNN; plus 40 Robustness covering six categories: Security Rejection, Anti-Illusion, Schema Hallucination, Schema Enforcement, Data Tampering Prevention, OOM Prevention). The \emph{BIRD track} uses BIRD mini\_dev~\cite{li2023bird} with a 108-question \emph{design set} (used to derive grounding rules by error attribution) and a disjoint 150-question \emph{held-out set} sampled from the remaining BIRD mini\_dev PostgreSQL items with proportional difficulty stratification. The \emph{cross-lingual track} has 50 Chinese-translated BIRD questions (drawn from the 108 design) plus 50 native Chinese GIS questions.
 
 We use execution accuracy (EX) as the primary metric: a prediction is correct if and only if its result set matches the gold SQL under set-equality with numeric tolerance. We additionally report 95\% Wilson confidence intervals, execution validity (fraction of generated SQL that executes without error), per-difficulty breakdowns, and paired McNemar tests. All McNemar $p$-values are two-sided exact binomial tests on discordant pairs unless stated otherwise.
+
+\paragraph{Execution accuracy evaluator.}
+EX compares the result set of predicted SQL against gold SQL under the
+following rules:
+(i)~\emph{row order} is ignored via set comparison of normalised tuples;
+(ii)~\emph{column order} follows the SELECT-list positional order and is
+significant --- permuted columns are counted as errors;
+(iii)~\emph{numeric tolerance}: two values match when
+$|a-b| \le 10^{-3}$ (absolute) or $|a-b| / \max(|a|,|b|) \le 10^{-3}$
+(relative);
+(iv)~\emph{NULL comparison}: NULL equals NULL, and NULL differs from any
+other value;
+(v)~\emph{floats} are rounded to three decimal places before set
+comparison, to damp SQL-engine-specific rounding;
+(vi)~\emph{LIMIT}: if the gold specifies \texttt{LIMIT}~$N$, the predicted
+result is treated as-is and the comparison is applied over at most $N$ rows;
+(vii)~\emph{duplicate rows} (multiplicity) are preserved --- set-equality
+is multiset-equality, not distinct-row equality.
+The evaluator is a single Python function (\texttt{compare\_results()}) in
+the companion repository; all 85 Spatial questions produced by gold SQL
+return at most 10\,000 rows, keeping evaluator cost bounded.
 
 For each track, we compare two pipeline configurations:
 \begin{itemize}[leftmargin=*]
