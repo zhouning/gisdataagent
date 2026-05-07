@@ -33,9 +33,6 @@ Natural language interfaces to geospatial databases must handle challenges that 
 \end{abstract}
 
 \noindent\textbf{Keywords:} NL2GeoSQL; PostGIS; natural language interface; geospatial database; semantic layer; spatial predicates; coordinate reference systems; safe execution; large language model.
-\end{abstract}
-
-\noindent\textbf{Keywords:} NL2GeoSQL; PostGIS; natural language interface; geospatial database; semantic layer; spatial predicates; coordinate reference systems; safe execution; large language model.
 
 % =============================================================================
 \section{Introduction}
@@ -67,11 +64,11 @@ The paper proceeds as follows. Section~\ref{sec:related} reviews GIScience found
 
 \subsection{GIScience foundations for NL-to-spatial-database}
 
-Natural language access to spatial databases sits within the GIScience programme articulated by Goodchild~\cite{goodchild1992gis}: formalising geographic concepts so that they can be computed rigorously. The relational spatial semantics we ground against have roots in the $4$-intersection and $9$-intersection formalisms of Egenhofer and Franzosa~\cite{egenhofer1991topological} and the simplified end-user topological relations of Clementini et al.~\cite{clementini1993small}. Their set --- equals, disjoint, touches, contains, overlaps, within, crosses, intersects --- is what the OGC Simple Feature Access standard codifies for relational spatial SQL (\cite{ogcsfs}; corresponding to the now-withdrawn ISO~19125-2:2004) and what GeoSPARQL~\cite{ogcgeosparql} extends to RDF. In PostgreSQL these predicates are operationalised by PostGIS~\cite{postgis}, whose manual also defines the \texttt{geometry}/\texttt{geography} type distinction, the \texttt{::geography} cast, \texttt{ST\_DWithin}, \texttt{ST\_Transform}, and the \texttt{<->} KNN operator that any PostGIS-generating system must respect. Our grounding rules encode exactly these formalisms as prompt-side evidence.
+Natural language access to spatial databases sits within the GIScience programme articulated by Goodchild~\cite{goodchild1992gis}: formalising geographic concepts so that they can be computed rigorously. The relational spatial semantics we ground against have roots in the $4$-intersection and $9$-intersection formalisms of Egenhofer and Franzosa~\cite{egenhofer1991topological} and the simplified end-user topological relations of Clementini et al.~\cite{clementini1993small}. Their set --- equals, disjoint, touches, contains, overlaps, within, crosses, intersects --- is what the OGC Simple Feature Access standard codifies for relational spatial SQL (\cite{ogcsfs}; part of the ISO~19125 Simple Feature Access SQL standard lineage) and what GeoSPARQL~\cite{ogcgeosparql} extends to RDF. In PostgreSQL these predicates are operationalised by PostGIS~\cite{postgis}, whose manual also defines the \texttt{geometry}/\texttt{geography} type distinction, the \texttt{::geography} cast, \texttt{ST\_DWithin}, \texttt{ST\_Transform}, and the \texttt{<->} KNN operator that any PostGIS-generating system must respect. Our grounding rules encode exactly these formalisms as prompt-side evidence.
 
 \subsection{Natural language interfaces to spatial databases}
 
-Early geospatial question answering focused on small fact databases: Zelle and Mooney~\cite{zelle1996geoquery} used inductive logic programming for GeoQuery, and Punjani et al.~\cite{punjani2018geospatial} extended this to template-based question answering over linked geospatial data on the Semantic Web, highlighting the importance of spatial predicate coverage and coordinate-system awareness. More recent LLM-era work falls into two groups. The first targets end-to-end NL-to-executable-spatial-SQL directly. NALSpatial~\cite{liu2025nalspatial} proposes a natural language interface for spatial databases that translates user queries into spatial SQL over PostGIS-style backends. Monkuu~\cite{yu2025monkuu} is an IJGIS-published LLM-powered natural-language interface with dynamic schema mapping for geospatial databases. GeoSQL-Eval~\cite{hou2026geosql} contributes the first large-scale evaluation of LLMs on PostGIS-based NL2GeoSQL queries, covering 14{,}178 tasks across 340 PostGIS functions at function level. The second group targets higher-level GeoAI agents that orchestrate GIS services or code: GeoCogent~\cite{houcoding2025} is an LLM-based agent for geospatial code generation, and GeoAgent~\cite{lin2026geoagent} is a hierarchical multi-agent architecture for autonomous spatial analysis. Our focus is narrower than the GeoAI-agent line and complementary to GeoSQL-Eval: we study end-to-end, execution-graded NL-to-PostGIS-SQL with a semantic-layer grounding that explicitly encodes OGC predicates, SRIDs, geography casts, and KNN operators, together with a postprocessor that enforces read-only safety and bounded-output semantics. Compared with NALSpatial and Monkuu, we contribute an execution-based 125-question benchmark with an explicit Robustness suite, paired McNemar significance testing, and a design/held-out split on a non-spatial warehouse benchmark as a second evaluation track of the same bilingual framework.
+Early geospatial question answering focused on small fact databases: Zelle and Mooney~\cite{zelle1996geoquery} used inductive logic programming for GeoQuery, and Punjani et al.~\cite{punjani2018geospatial} extended this to template-based question answering over linked geospatial data on the Semantic Web, highlighting the importance of spatial predicate coverage and coordinate-system awareness. More recent LLM-era work falls into two groups. The first targets end-to-end NL-to-executable-spatial-SQL directly. NALSpatial~\cite{liu2025nalspatial} proposes a natural language interface for spatial databases that translates user queries into spatial SQL over PostGIS-style backends. Monkuu~\cite{yu2025monkuu} is an IJGIS-published LLM-powered natural-language interface with dynamic schema mapping for geospatial databases. GeoSQL-Eval~\cite{hou2026geosql} contributes the first large-scale evaluation of LLMs on PostGIS-based NL2GeoSQL queries, covering 14{,}178 tasks across 340 PostGIS functions at function level. The second group targets higher-level GeoAI agents that orchestrate GIS services or code: GeoCogent~\cite{houcoding2025} is an LLM-based agent for geospatial code generation, and GeoAgent~\cite{lin2026geoagent} is a hierarchical multi-agent architecture for autonomous spatial analysis. Existing surveys map the opportunities and challenges of foundation models for GeoAI~\cite{mai2024foundation}; our contribution lies at the narrower interface between spatial-database semantics and executable SQL. Our focus is narrower than the GeoAI-agent line and complementary to GeoSQL-Eval: we study end-to-end, execution-graded NL-to-PostGIS-SQL with a semantic-layer grounding that explicitly encodes OGC predicates, SRIDs, geography casts, and KNN operators, together with a postprocessor that enforces read-only safety and bounded-output semantics. Compared with NALSpatial and Monkuu, we contribute an execution-based 125-question benchmark with an explicit Robustness suite, paired McNemar significance testing, and a design/held-out split on a non-spatial warehouse benchmark as a second evaluation track of the same bilingual framework.
 
 \subsection{Text-to-SQL with LLMs and semantic layers}
 
@@ -160,7 +157,7 @@ NL question ($q$) & \emph{Chinese original, transliterated:} \textit{t\v{o}ngj\`
 Intent classifier & \texttt{intent = spatial\_measurement}, \texttt{metric = length}, \texttt{unit = km}, \texttt{language = zh}. \\
 \midrule
 Semantic resolution (Stage~1) &
-Matches \texttt{cq\_osm\_roads\_2021} as the roads table; resolves the Chinese alias for ``one-way road'' to the filter \texttt{oneway = `yes'}; identifies \texttt{geometry} column (MultiLineString, SRID $3857$). \\
+Matches \texttt{cq\_osm\_roads\_2021} as the roads table; resolves the Chinese alias for ``one-way road'' to the filter \texttt{oneway = `yes'}; identifies \texttt{geometry} column (MultiLineString, SRID $4326$, WGS~84 lat/lon). \\
 \midrule
 Grounded context (Stage~2) &
 Schema dump for \texttt{cq\_osm\_roads\_2021}; two injected rules: (i)~\emph{metric operators on lat/lon data require \texttt{::geography} cast so that \texttt{ST\_Length} returns metres}; (ii)~\emph{unit conversion to km is a divide by $1\,000$ performed after \texttt{SUM}}. One spatial-measurement few-shot example with geography cast. \\
@@ -622,11 +619,14 @@ The GIS benchmark, the semantic-layer YAML, the intent-rule set, the prompt temp
 
 \bibitem{clementini1993small} Clementini, E., Di~Felice, P., and van~Oosterom, P. (1993). ``A small set of formal topological relationships suitable for end-user interaction.'' In \emph{Advances in Spatial Databases (SSD'93)}, Lecture Notes in Computer Science, vol.~692, pp.~277--295. Springer. DOI: 10.1007/3-540-56869-7\_16.
 
-\bibitem{ogcsfs} Open Geospatial Consortium (2010). \emph{OpenGIS Implementation Standard for Geographic Information --- Simple Feature Access --- Part 2: SQL Option}. OGC Document 06-104r4, Version~1.2.1. Corresponding to the now-withdrawn ISO~19125-2:2004 edition; we cite the OGC 1.2.1 revision as the current normative reference. Available at: \url{https://www.ogc.org/standards/sfs}.
+\bibitem{ogcsfs} Open Geospatial Consortium (2010). \emph{OpenGIS Implementation Standard for Geographic Information --- Simple Feature Access --- Part 2: SQL Option}. OGC Document 06-104r4, Version~1.2.1. Part of the ISO~19125 Simple Feature Access SQL standard lineage; we cite the OGC 1.2.1 revision as the current normative reference. Available at: \url{https://www.ogc.org/standards/sfs}.
 
 \bibitem{ogcgeosparql} Open Geospatial Consortium (2012). \emph{OGC GeoSPARQL --- A Geographic Query Language for RDF Data}. OGC Document 11-052r4, Version~1.0. We cite the 1.0 edition because our topological predicates (Section~\ref{sec:related}) are normatively defined there; a GeoSPARQL 1.1 revision (OGC 22-047r1) also exists. Available at: \url{https://www.ogc.org/publications/standard/geosparql/}.
 
-\bibitem{postgis} PostGIS Development Team (2026). \emph{PostGIS 3.5 Manual}. Stable release documentation. We rely specifically on the \texttt{geometry}/\texttt{geography} type system, \texttt{::geography} cast semantics, \texttt{ST\_DWithin}, \texttt{ST\_Transform}, and the \texttt{<->} KNN operator. Available at: \url{https://postgis.net/documentation/manual-3.5/} (accessed 7 May 2026).
+\bibitem{postgis}
+PostGIS Development Team. (2026). \emph{PostGIS 3.5 documentation}
+[online manual, 3.5 branch]. Accessed 2026-05-07.
+\url{https://postgis.net/docs/manual-3.5/}.
 
 \bibitem{zelle1996geoquery} Zelle, J.~M., and Mooney, R.~J. (1996). ``Learning to parse database queries using inductive logic programming.'' In \emph{Proc.\ 13th AAAI Conference on Artificial Intelligence}, pp.~1050--1055. AAAI Press.
 
@@ -640,7 +640,12 @@ The GIS benchmark, the semantic-layer YAML, the intent-rule set, the prompt temp
 
 \bibitem{lin2026geoagent} Lin, Q., Xu, L., Wu, S., Mao, R., Wang, C., Feng, H., Huang, B., and Du, Z. (2026). ``GeoAgent: a hierarchical LLM-based multi-agent architecture for autonomous spatial analysis.'' \emph{International Journal of Geographical Information Science}. Published online 16 February 2026. DOI: 10.1080/13658816.2026.2624784.
 
-\bibitem{yu2025monkuu} Yu, C., Liu, Y., Wang, S., Liu, H., Liu, H., Zhao, X., Guo, S., Wang, Z., and Wu, H. (2025). ``Monkuu: a LLM-powered natural language interface for geospatial databases with dynamic schema mapping.'' \emph{International Journal of Geographical Information Science}. Published online 2025. DOI: 10.1080/13658816.2025.2533322.
+\bibitem{yu2025monkuu}
+Yu, C., Yao, Y., Shibasaki, M., Hu, Z., Dai, L., Guan, Q., and Shibasaki, R.
+(2025). ``Monkuu: an LLM-powered natural language interface with dynamic
+schema mapping for geospatial databases.'' \emph{International Journal of
+Geographical Information Science}, 40(2), 588--609.
+DOI: 10.1080/13658816.2025.2533322.
 
 \bibitem{liu2025nalspatial} Liu, M., Wang, X., Xu, J., Lu, H., and Tong, Y. (2025). ``NALSpatial: a natural language interface for spatial databases.'' \emph{IEEE Transactions on Knowledge and Data Engineering}, 37(4), 2056--2070. DOI: 10.1109/TKDE.2025.3525587.
 
