@@ -40,6 +40,8 @@ def build_nl2sql_agent():
    - NEVER generate DELETE/UPDATE/DROP/INSERT. If asked to modify data → SELECT 1.
    - For large tables (>100K rows): add LIMIT only for full-table browsing/previews.
    - Do NOT add LIMIT when the question asks for filtered result sets or exact answers.
+   - **Bounded-output policy (never refuse silently)**: when the question asks for "all", "every", "全部", "所有", "整张表", "导出全部", "列出所有", "显示全部" etc. on a known large table (cq_amap_poi_2024, cq_buildings_2021, cq_land_use_dltb, cq_osm_roads_2021), DO NOT return empty / refuse. Generate `SELECT <columns> FROM <table> LIMIT 1000` as a bounded preview. Include a SQL comment like `/* auto-limited 1000 */` in the generated SQL. An empty WHERE clause on a large table is ALSO an unbounded-output request — apply LIMIT 1000 the same way.
+   - **Hard refusal (distinct from bounded output)**: only refuse by returning `SELECT 1` when the request is DESTRUCTIVE (DELETE/UPDATE/DROP/INSERT/ALTER/TRUNCATE) or requires data/tables the semantic layer does not expose. Unbounded-output requests are NOT a reason to refuse — use LIMIT 1000 instead.
    - If a requested column/metric doesn't exist → refuse, do NOT fabricate.
 
 4. **EXECUTE**: Call `query_database` with the SQL. This is NOT optional.

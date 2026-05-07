@@ -398,6 +398,7 @@ async def run_one(q: dict, mode: str) -> dict:
             # Phase 2: postprocess + self-correction loop
             from data_agent.sql_postprocessor import postprocess_sql
             from data_agent.nl2sql_grounding import build_nl2sql_context
+            _explain_threshold = int(os.environ.get("EXPLAIN_LIMIT_THRESHOLD", "10000"))
             ctx = build_nl2sql_context(q["question"])
             table_schemas = {}
             large_tables_set = set()
@@ -405,7 +406,10 @@ async def run_one(q: dict, mode: str) -> dict:
                 table_schemas[t["table_name"]] = t.get("columns", [])
                 if int(t.get("row_count_hint", 0) or 0) >= 1_000_000:
                     large_tables_set.add(t["table_name"])
-            pp = postprocess_sql(sql, table_schemas, large_tables_set)
+            pp = postprocess_sql(
+                sql, table_schemas, large_tables_set,
+                explain_limit_threshold=_explain_threshold,
+            )
             if pp.rejected:
                 sql = ""
             else:
@@ -419,7 +423,10 @@ async def run_one(q: dict, mode: str) -> dict:
                     fixed = _retry_with_llm(q["question"], sql, str(test_res.get("error", "")), table_schemas)
                     if not fixed:
                         break
-                    pp2 = postprocess_sql(fixed, table_schemas, large_tables_set)
+                    pp2 = postprocess_sql(
+                        fixed, table_schemas, large_tables_set,
+                        explain_limit_threshold=_explain_threshold,
+                    )
                     if pp2.rejected:
                         break
                     sql = pp2.sql
