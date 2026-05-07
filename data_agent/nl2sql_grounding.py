@@ -1,12 +1,15 @@
 """NL2SQL grounding: semantic resolution + schema assembly + few-shot formatting."""
 from __future__ import annotations
 
+import logging
 import re
 from difflib import SequenceMatcher
 
 from .reference_queries import fetch_nl2sql_few_shots
 from .semantic_model import SemanticModelStore
 from .nl2sql_intent import classify_intent, IntentLabel
+
+logger = logging.getLogger(__name__)
 
 _COMPLEX_FEWSHOT_HINTS = (
     "面积", "距离", "交集", "相交", "缓冲", "占比", "最近", "前10", "前5", "排序", "联合", "周边"
@@ -40,6 +43,62 @@ from .semantic_layer import (
 PG_RESERVED_WORDS = {
     "user", "select", "group", "order", "where", "table", "from",
 }
+
+# ---------------------------------------------------------------------------
+# Sensitivity-based access control for NL2SQL table selection
+# ---------------------------------------------------------------------------
+
+# Role → max sensitivity level allowed (ordered from most to least restrictive)
+_SENSITIVITY_ORDER = ("public", "internal", "confidential", "restricted", "secret")
+_ROLE_MAX_SENSITIVITY = {
+    "viewer": "public",
+    "analyst": "internal",
+    "admin": "secret",
+}
+
+_sensitivity_cache: dict[str, str] = {}
+_sensitivity_cache_ts: float = 0.0
+
+
+def _load_sensitivity_map() -> dict[str, str]:
+    """Load table_name → sensitivity mapping from agent_data_assets. Cached 60s."""
+    import time
+    global _sensitivity_cache, _sensitivity_cache_ts
+    now = time.time()
+    if _sensitivity_cache and (now - _sensitivity_cache_ts) < 60:
+        return _sensitivity_cache
+    try:
+        from .db_engine import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        if not engine:
+            return _sensitivity_cache
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT asset_name,
+                       business_metadata->'classification'->>'sensitivity'
+                FROM agent_data_assets
+                WHERE business_metadata->'classification'->>'sensitivity' IS NOT NULL
+            """)).fetchall()
+            _sensitivity_cache = {r[0]: r[1] for r in rows}
+            _sensitivity_cache_ts = now
+    except Exception:
+        pass
+    return _sensitivity_cache
+
+
+def _table_accessible(table_name: str, user_role: str) -> bool:
+    """Check if a table's sensitivity level is accessible to the given role."""
+    sens_map = _load_sensitivity_map()
+    # Extract bare table name (strip schema prefix like "public.")
+    bare = table_name.split(".")[-1] if "." in table_name else table_name
+    table_sens = sens_map.get(bare)
+    if not table_sens:
+        return True  # unclassified tables are accessible to all
+    max_allowed = _ROLE_MAX_SENSITIVITY.get(user_role, "public")
+    max_idx = _SENSITIVITY_ORDER.index(max_allowed) if max_allowed in _SENSITIVITY_ORDER else 0
+    table_idx = _SENSITIVITY_ORDER.index(table_sens) if table_sens in _SENSITIVITY_ORDER else 0
+    return table_idx <= max_idx
 
 
 def _needs_quoting(column_name: str) -> bool:
@@ -568,6 +627,11 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None) -> di
             of semantic matching. Used for warehouse benchmarks where the target
             schema is known a priori.
     """
+    import os as _ablation_os
+    if _ablation_os.environ.get("NL2SQL_DISABLE_SEMANTIC") == "1":
+        return {"grounding_prompt": "", "candidate_tables": [], "semantic": {},
+                "intent": "unknown", "intent_source": "disabled",
+                "few_shots": [], "sql_filters": []}
     intent_result = classify_intent(user_text)
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
@@ -638,13 +702,31 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None) -> di
     max_candidates = 5 if schema_filter else 3
     candidate_tables = _rank_candidate_tables(user_text, candidate_tables, semantic)[:max_candidates]
 
+    # --- Sensitivity-based access control ---
+    # Filter tables by user role. Admin sees all; analyst sees up to internal;
+    # viewer sees only public. Anonymous/test contexts skip filtering.
+    from .user_context import current_user_role
+    role = current_user_role.get() or "anonymous"
+    if role in _ROLE_MAX_SENSITIVITY and role != "admin":
+        pre_filter_count = len(candidate_tables)
+        candidate_tables = [
+            t for t in candidate_tables
+            if _table_accessible(t.get("table_name", ""), role)
+        ]
+        if len(candidate_tables) < pre_filter_count:
+            logger.info(
+                "[NL2SQL] Sensitivity filter: %d/%d tables accessible for role=%s",
+                len(candidate_tables), pre_filter_count, role,
+            )
+
     # Build warehouse join hints from SemanticModelStore (non-spatial only)
     warehouse_join_hints = None
     if not spatial_query:
         warehouse_join_hints = _build_warehouse_join_hints(candidate_tables)
 
     few_shot_text = ""
-    if _should_fetch_few_shots(user_text, candidate_tables, semantic):
+    import os as _abl_os
+    if _abl_os.environ.get("NL2SQL_DISABLE_FEWSHOT") != "1" and _should_fetch_few_shots(user_text, candidate_tables, semantic):
         few_shot_text = fetch_nl2sql_few_shots(user_text, top_k=3)
     few_shots = []
     if few_shot_text:

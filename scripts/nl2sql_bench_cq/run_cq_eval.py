@@ -399,6 +399,8 @@ async def run_one(q: dict, mode: str) -> dict:
             from data_agent.sql_postprocessor import postprocess_sql
             from data_agent.nl2sql_grounding import build_nl2sql_context
             _explain_threshold = int(os.environ.get("EXPLAIN_LIMIT_THRESHOLD", "10000"))
+            _disable_pp = os.environ.get("NL2SQL_DISABLE_POSTPROCESSOR") == "1"
+            _disable_retry = os.environ.get("NL2SQL_DISABLE_RETRY") == "1"
             ctx = build_nl2sql_context(q["question"])
             table_schemas = {}
             large_tables_set = set()
@@ -406,31 +408,35 @@ async def run_one(q: dict, mode: str) -> dict:
                 table_schemas[t["table_name"]] = t.get("columns", [])
                 if int(t.get("row_count_hint", 0) or 0) >= 1_000_000:
                     large_tables_set.add(t["table_name"])
-            pp = postprocess_sql(
-                sql, table_schemas, large_tables_set,
-                explain_limit_threshold=_explain_threshold,
-            )
-            if pp.rejected:
-                sql = ""
+            if _disable_pp:
+                pass  # Keep raw `sql` as-is; skip postprocess entirely
             else:
-                sql = pp.sql
-                # Try execute and retry on failure
-                test_res = execute_pg(sql) if sql else {"status": "error", "error": "empty"}
-                for _retry in range(2):
-                    if test_res.get("status") == "ok":
-                        break
-                    from data_agent.nl2sql_executor import _retry_with_llm
-                    fixed = _retry_with_llm(q["question"], sql, str(test_res.get("error", "")), table_schemas)
-                    if not fixed:
-                        break
-                    pp2 = postprocess_sql(
-                        fixed, table_schemas, large_tables_set,
-                        explain_limit_threshold=_explain_threshold,
-                    )
-                    if pp2.rejected:
-                        break
-                    sql = pp2.sql
-                    test_res = execute_pg(sql)
+                pp = postprocess_sql(
+                    sql, table_schemas, large_tables_set,
+                    explain_limit_threshold=_explain_threshold,
+                )
+                if pp.rejected:
+                    sql = ""
+                else:
+                    sql = pp.sql
+                    if not _disable_retry:
+                        # Try execute and retry on failure
+                        test_res = execute_pg(sql) if sql else {"status": "error", "error": "empty"}
+                        for _retry in range(2):
+                            if test_res.get("status") == "ok":
+                                break
+                            from data_agent.nl2sql_executor import _retry_with_llm
+                            fixed = _retry_with_llm(q["question"], sql, str(test_res.get("error", "")), table_schemas)
+                            if not fixed:
+                                break
+                            pp2 = postprocess_sql(
+                                fixed, table_schemas, large_tables_set,
+                                explain_limit_threshold=_explain_threshold,
+                            )
+                            if pp2.rejected:
+                                break
+                            sql = pp2.sql
+                            test_res = execute_pg(sql)
             gen = {"status": "ok", "sql": sql, "error": None, "tokens": tokens}
     else:
         gen = await full_generate(q["question"])

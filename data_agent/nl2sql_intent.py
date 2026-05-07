@@ -200,6 +200,8 @@ def _llm_judge(question: str) -> IntentResult:
 
 def classify_intent(question: str) -> IntentResult:
     """Public entrypoint: rule stage, then LLM judge if rule is uncertain."""
+    if os.environ.get("NL2SQL_DISABLE_INTENT") == "1":
+        return IntentResult(primary=IntentLabel.UNKNOWN, confidence=0.0, source="disabled")
     rule = classify_rule(question)
     if rule.primary is not IntentLabel.UNKNOWN and rule.confidence >= 0.7:
         return rule
