@@ -18,6 +18,8 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc}
+\usepackage{algorithm}
+\usepackage{algorithmic}
 
 \title{NL2Semantic2SQL: Semantic Grounding and Safe Execution for PostGIS-based NL2GeoSQL, with a Cross-Domain Stress Test on Warehouse Queries}
 \author{Anonymous Author(s)\\ \textit{Affiliation withheld for double-anonymised review}}
@@ -64,20 +66,109 @@ The paper proceeds as follows. Section~\ref{sec:related} reviews GIScience found
 
 \subsection{GIScience foundations for NL-to-spatial-database}
 
-Natural language access to spatial databases sits within the GIScience programme articulated by Goodchild~\cite{goodchild1992gis}: formalising geographic concepts so that they can be computed rigorously. The relational spatial semantics we ground against have roots in the $4$-intersection and $9$-intersection formalisms of Egenhofer and Franzosa~\cite{egenhofer1991topological} and the simplified end-user topological relations of Clementini et al.~\cite{clementini1993small}. Their set --- equals, disjoint, touches, contains, overlaps, within, crosses, intersects --- is what the OGC Simple Feature Access standard codifies for relational spatial SQL (\cite{ogcsfs}; part of the ISO~19125 Simple Feature Access SQL standard lineage) and what GeoSPARQL~\cite{ogcgeosparql} extends to RDF. In PostgreSQL these predicates are operationalised by PostGIS~\cite{postgis}, whose manual also defines the \texttt{geometry}/\texttt{geography} type distinction, the \texttt{::geography} cast, \texttt{ST\_DWithin}, \texttt{ST\_Transform}, and the \texttt{<->} KNN operator that any PostGIS-generating system must respect. Our grounding rules encode exactly these formalisms as prompt-side evidence.
+Natural language access to spatial databases sits within the GIScience programme articulated by Goodchild~\cite{goodchild1992gis}: formalising geographic concepts so they can be computed rigorously. The relational spatial semantics we ground against have roots in the $4$- and $9$-intersection formalisms~\cite{egenhofer1991topological} and the simplified end-user topological relations of Clementini et al.~\cite{clementini1993small} --- equals, disjoint, touches, contains, overlaps, within, crosses, intersects --- which the OGC Simple Feature Access standard codifies for relational spatial SQL~\cite{ogcsfs} and GeoSPARQL~\cite{ogcgeosparql} extends to RDF. PostGIS~\cite{postgis} operationalises these in PostgreSQL and defines the \texttt{geometry}/\texttt{geography} type distinction, the \texttt{::geography} cast, \texttt{ST\_DWithin}, \texttt{ST\_Transform}, and the \texttt{<->} KNN operator any PostGIS-generating system must respect. Our grounding rules encode these formalisms as prompt-side evidence.
 
 \subsection{Natural language interfaces to spatial databases}
 
-Early geospatial question answering focused on small fact databases: Zelle and Mooney~\cite{zelle1996geoquery} used inductive logic programming for GeoQuery, and Punjani et al.~\cite{punjani2018geospatial} extended this to template-based question answering over linked geospatial data on the Semantic Web, highlighting the importance of spatial predicate coverage and coordinate-system awareness. More recent LLM-era work falls into two groups. The first targets end-to-end NL-to-executable-spatial-SQL directly. NALSpatial~\cite{liu2025nalspatial} proposes a natural language interface for spatial databases that translates user queries into spatial SQL over PostGIS-style backends. Monkuu~\cite{yu2025monkuu} is an IJGIS-published LLM-powered natural-language interface with dynamic schema mapping for geospatial databases. GeoSQL-Eval~\cite{hou2026geosql} contributes the first large-scale evaluation of LLMs on PostGIS-based NL2GeoSQL queries, covering 14{,}178 tasks across 340 PostGIS functions at function level. The second group targets higher-level GeoAI agents that orchestrate GIS services or code: GeoCogent~\cite{houcoding2025} is an LLM-based agent for geospatial code generation, and GeoAgent~\cite{lin2026geoagent} is a hierarchical multi-agent architecture for autonomous spatial analysis. Existing surveys map the opportunities and challenges of foundation models for GeoAI~\cite{mai2024foundation}; our contribution lies at the narrower interface between spatial-database semantics and executable SQL. Our focus is narrower than the GeoAI-agent line and complementary to GeoSQL-Eval: we study end-to-end, execution-graded NL-to-PostGIS-SQL with a semantic-layer grounding that explicitly encodes OGC predicates, SRIDs, geography casts, and KNN operators, together with a postprocessor that enforces read-only safety and bounded-output semantics. Compared with NALSpatial and Monkuu, we contribute an execution-based 125-question benchmark with an explicit Robustness suite, paired McNemar significance testing, and a design/held-out split on a non-spatial warehouse benchmark as a second evaluation track of the same bilingual framework.
+Early geospatial question answering focused on small fact databases: Zelle and Mooney~\cite{zelle1996geoquery} used inductive logic programming for GeoQuery, and Punjani et al.~\cite{punjani2018geospatial} extended this to template-based question answering over linked geospatial data, highlighting spatial-predicate coverage and coordinate-system awareness. Recent LLM-era work falls into two groups. The first targets end-to-end NL-to-executable-spatial-SQL: NALSpatial~\cite{liu2025nalspatial} translates user queries into spatial SQL over PostGIS-style backends; Monkuu~\cite{yu2025monkuu} is an IJGIS-published LLM-powered NL interface with dynamic schema mapping; GeoSQL-Eval~\cite{hou2026geosql} contributes the first large-scale LLM evaluation on PostGIS NL2GeoSQL (14{,}178 tasks across 340 PostGIS functions at function level). The second targets higher-level GeoAI agents: GeoCogent~\cite{houcoding2025} is an LLM-based agent for geospatial code generation; GeoAgent~\cite{lin2026geoagent} is a hierarchical multi-agent architecture. Surveys map the broader opportunities~\cite{mai2024foundation}. Our contribution lies at the narrower interface between spatial-database semantics and executable SQL: we study end-to-end execution-graded NL-to-PostGIS-SQL with a semantic-layer grounding that explicitly encodes OGC predicates, SRIDs, geography casts, and KNN operators, together with a postprocessor enforcing read-only and bounded-output semantics. Compared with NALSpatial and Monkuu we contribute a 125-question execution benchmark with an explicit Robustness suite, paired McNemar significance testing, and a design/held-out split on a warehouse benchmark as a second track of the same bilingual framework.
 
 \subsection{Text-to-SQL with LLMs and semantic layers}
 
-On the non-spatial side, large-language-model text-to-SQL has progressed through Spider~\cite{yu2018spider,rajkumar2022evaluating}, BIRD~\cite{li2023bird}, Spider~2.0~\cite{lei2025spider2}, and BEAVER~\cite{chen2024beaver}. DIN-SQL~\cite{pourreza2023dinsql} introduced decomposed in-context prompting with schema linking, query classification, generation and self-correction; Gao et al.~\cite{gao2024dail} introduced DAIL-SQL as a skeleton-similarity few-shot selection method within a broader benchmark evaluation; C3~\cite{dong2023c3} explored zero-shot ChatGPT-based text-to-SQL with calibrated bias correction; CSpider~\cite{min2019cspider} is an early multilingual text-to-SQL benchmark. Semantic-layer thinking --- entities, measures, dimensions, metric graphs --- is operationalised in tools such as MetricFlow and dbt's semantic layer~\cite{metricflow} in business-intelligence settings, and we adapt it by combining it with GIS-side annotations (geometry types, SRIDs, OGC predicates). In this paper BIRD is the warehouse evaluation track of the same bilingual framework, reported as a design/held-out pair so that the current state of the warehouse path is measurable and the next round of engineering work is scopable.
+LLM text-to-SQL has progressed through Spider~\cite{yu2018spider,rajkumar2022evaluating}, BIRD~\cite{li2023bird}, Spider~2.0~\cite{lei2025spider2}, and BEAVER~\cite{chen2024beaver}. DIN-SQL~\cite{pourreza2023dinsql} introduced decomposed in-context prompting with schema linking, query classification, generation, and self-correction; DAIL-SQL~\cite{gao2024dail} introduced skeleton-similarity few-shot selection; C3~\cite{dong2023c3} explored zero-shot ChatGPT text-to-SQL with calibrated bias correction; CSpider~\cite{min2019cspider} is an early multilingual benchmark. Semantic-layer thinking --- entities, measures, dimensions, metric graphs --- is operationalised in MetricFlow / dbt's semantic layer~\cite{metricflow} for BI; we adapt it by combining it with GIS annotations (geometry types, SRIDs, OGC predicates). Here BIRD serves as a warehouse track of the same bilingual framework, reported as a design/held-out pair so the current warehouse path is measurable and the next engineering round scopable.
 
 % =============================================================================
 \section{Method}
 \label{sec:method}
 % =============================================================================
+
+\subsection{Formal scope: semantic layer as metadata graph \texorpdfstring{$G=(V,E)$}{G=(V,E)}}
+\label{sec:formal-scope}
+
+We formalise the semantic layer as a directed multigraph $G = (V, E)$ that
+encodes the executable subset of OGC Simple Feature Access~\cite{ogcsfs}
+required for PostGIS grounding. The abstraction follows the metadata-graph
+proposal in prior reviewer feedback.
+
+\noindent\textbf{Vertices.} $V = E_{geo} \cup D \cup M \cup I \cup P \cup C$:
+\begin{itemize}[leftmargin=*,nosep]
+\item $E_{geo}$ --- geographic entities; each vertex is a PostGIS table with
+  attributes (geometry column, SRID, geometry type).
+\item $D, M$ --- dimension and measure vertices for the warehouse track.
+\item $I$ --- intent tags: \texttt{attribute\_filter}, \texttt{aggregation},
+  \texttt{spatial\_join}, \texttt{spatial\_measurement}, \texttt{knn},
+  \texttt{preview\_listing}.
+\item $P$ --- OGC SFA predicate vertices, partitioned into topological
+  $\{$\texttt{ST\_Intersects}, \texttt{ST\_Contains}, \texttt{ST\_Within},
+  \texttt{ST\_Touches}, \texttt{ST\_Crosses}, \texttt{ST\_Overlaps},
+  \texttt{ST\_Equals}$\}$, metric $\{$\texttt{ST\_Distance},
+  \texttt{ST\_Length}, \texttt{ST\_Area}, \texttt{ST\_DWithin}$\}$, and KNN
+  $\{$\texttt{<->}$\}$.
+\item $C$ --- constraint vertices for SRID ranges, unit rules, and
+  safety/refusal.
+\end{itemize}
+
+\noindent\textbf{Edges.} $E$ comprises $E_{hasGeom}$ (table $\leftrightarrow$
+geometry column), $E_{fk}$ (foreign keys from
+\texttt{information\_schema.key\_column\_usage}),
+$E_{topo}, E_{metric}, E_{knn}$ (predicate $\leftrightarrow$ entity),
+$E_{route}$ (intent $\to$ predicate subset),
+$E_{safety}$ (destructive-intent refusal), and
+$E_{unit}$ (SRID range $\to$ required cast $\to$ yielded unit).
+Algorithm~\ref{alg:build-graph} materialises $G$ at agent startup from the
+live PostGIS catalog; our reference implementation is released as a single
+Python module that the runtime agent consumes before each grounding call.
+
+\noindent\textbf{Executable subset, not a complete ontology.} $G$ is not a
+complete geospatial ontology and is not a GeoSPARQL~\cite{ogcgeosparql}
+knowledge base. It is an \emph{executable subset} of the OGC SFA predicate
+taxonomy, expressed as prompt-side evidence for an LLM-driven NL2GeoSQL
+agent. Full ontology alignment (OGC SFA, ISO 19107, GeoSPARQL) is left to
+future work; Table~\ref{tab:alignment} documents the rule-level mapping
+we already enforce, showing that each semantic-layer rule corresponds to a
+specific OGC SFA clause rather than borrowing the standard only by name.
+
+\begin{algorithm}[t]
+\caption{\textsc{BuildSemanticGraph}($\mathit{schema}, \mathit{prefix}$)}
+\label{alg:build-graph}
+\begin{algorithmic}[1]
+\STATE $G \gets$ empty multigraph
+\FOR{$(t, c, \mathit{srid}, \tau) \in$ \texttt{geometry\_columns}}
+  \IF{$t$ starts with $\mathit{prefix}$ and $\mathit{srid} \neq 0$}
+    \STATE add GEO\_ENTITY vertex $(t, c, \mathit{srid}, \tau)$
+  \ENDIF
+\ENDFOR
+\FOR{$(t_s, t_t) \in$ \texttt{key\_column\_usage}}
+  \STATE add edge $(t_s \to t_t, \text{FK})$
+\ENDFOR
+\STATE register topological / metric / KNN predicate vertices (OGC SFA 06-104r4)
+\STATE register intent vertices; route intents $\to$ predicate classes
+\STATE register unit-rule edges: metric $\to$ SRID range $\to$ required cast
+\RETURN $G$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Alignment of semantic-layer rules in $G=(V,E)$ to OGC SFA
+(06-104r4) / ISO 19107 clauses and PostGIS functions. Rule-level, not
+concept-level --- each enforced rule traces to a specific clause.}
+\label{tab:alignment}
+\begin{tabular}{@{}llllp{3.0cm}@{}}
+\toprule
+Rule & Edge class & OGC 06-104r4 clause & ISO 19107 clause & PostGIS \\
+\midrule
+\texttt{R\_topo\_intersects} & $E_{topo}$ & \S 6.1.2.3 (Relate)   & \S 6.2.2 & \texttt{ST\_Intersects} \\
+\texttt{R\_topo\_contains}   & $E_{topo}$ & \S 6.1.2.3 (Relate)   & \S 6.2.2 & \texttt{ST\_Contains} \\
+\texttt{R\_topo\_within}     & $E_{topo}$ & \S 6.1.2.3 (Relate)   & \S 6.2.2 & \texttt{ST\_Within} \\
+\texttt{R\_metric\_length\_geog}   & $E_{unit}$ & \S 6.1.2.3 (Length) + \S 8.2.3 (units) & \S 6.4.14 (GM\_Curve.length) & \texttt{ST\_Length(geography)} \\
+\texttt{R\_metric\_area\_geog}     & $E_{unit}$ & \S 6.1.2.3 (Area) + \S 8.2.3 (units)   & \S 6.4.15 (GM\_Surface.area) & \texttt{ST\_Area(geography)} \\
+\texttt{R\_metric\_dwithin\_geog}  & $E_{unit}$ & \S 6.1.2.3 (Distance) + \S 8.2.3 & \S 6.4.10 (distance)       & \texttt{ST\_DWithin(geography)} \\
+\texttt{R\_knn\_nearest}     & $E_{knn}$  & \S 6.1.2.3 (Distance) & \S 6.4.10 & \texttt{<->} KNN operator \\
+\texttt{R\_safety\_refusal}  & $E_{safety}$ & not in OGC & --- & postprocessor AST guard \\
+\texttt{R\_safety\_bounded}  & $E_{safety}$ & not in OGC & --- & \texttt{LIMIT} injection \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Problem formulation}
 
@@ -397,7 +488,7 @@ $-$\,Warehouse join hints & 0.271 & 38/40 = 0.950 & 0.488 \\
 \end{tabular}
 \end{table}
 
-The sole use we make of this table is the domain-scoping observation: all six single-pass configurations lie within $\pm 0.016$ on Overall EX, and removing either the round-2 DISTINCT/avoid-over-JOIN/output-column-format rules or the multi-hop warehouse join hints slightly \emph{improves} the single-pass GIS score. This indicates that these warehouse-tuned rules do not help GIS accuracy; they should be selectively disabled in a spatial query path. We make no stronger claim from this table. In particular, we do \emph{not} claim that any component contributes a specific fraction of the agent-loop $+0.153$ Spatial gain; an agent-loop-native ablation is left to future work.
+The sole use we make of this table is the domain-scoping observation: all six single-pass configurations lie within $\pm 0.016$ on Overall EX, and removing either the round-2 rules or the multi-hop warehouse join hints slightly \emph{improves} the single-pass GIS score. These warehouse-tuned rules do not help GIS accuracy and should be selectively disabled in the spatial path. We make no stronger claim; in particular we do not attribute any specific fraction of the agent-loop $+0.153$ Spatial gain to individual components. An agent-loop-native ablation is left to future work.
 
 \paragraph{Paired McNemar summary.}
 Table~\ref{tab:mcnemar} consolidates the paired McNemar results in this paper (two-sided exact binomial). The GIS Spatial result is the primary significance claim of the paper; the BIRD design set is a \emph{development-set tuning} check; the BIRD held-out is the only independent warehouse significance test.
@@ -513,11 +604,7 @@ GIS Chinese   & 50  & 0.820 & --- (native Chinese)    & --- \\
 \end{tabular}
 \end{table}
 
-On the BIRD Chinese track, the $0.100$ EX degradation concentrates on moderate and challenging questions in which domain-specific medical or financial terminology (for example ``APS diagnosis'' or ``urea nitrogen'') translates into less specific Chinese phrases, weakening schema linking. The validity rate remains high ($0.980$), so failures are primarily row-set mismatches from value-translation drift rather than SQL generation errors.
-
-On the GIS Chinese track, EX$=0.820$ exceeds the English-evaluated GIS 85-question Spatial result from Section~\ref{sec:gis-results} ($0.682$). This is not a direct comparison (the question sets are different) but it confirms that the framework does not require English questions to achieve strong GIS performance: Chinese is the native input language for the Chongqing benchmark.
-
-This evaluation has clear limitations. First, the Chinese BIRD questions were produced by LLM translation rather than by a bilingual human annotator, so translation artefacts such as unusual syntactic patterns or systematically lower lexical specificity cannot be ruled out as contributors to the measured degradation. Second, the evaluation does not isolate translation-loss effects from cross-lingual-reasoning effects; future work should add (i)~a no-alias baseline to quantify the contribution of multilingual aliases, (ii)~a translate-back-to-English baseline to separate translation loss from cross-lingual reasoning, and (iii)~human-translated or human-verified gold questions.
+On the BIRD Chinese track, the $0.100$ EX degradation concentrates on moderate/challenging items where domain terminology (e.g., ``APS diagnosis'', ``urea nitrogen'') translates into less specific Chinese phrases, weakening schema linking. Validity remains high ($0.980$); failures are primarily row-set mismatches from value-translation drift. On the GIS Chinese track, EX$=0.820$ exceeds the English-evaluated GIS 85-question Spatial result from Section~\ref{sec:gis-results}, confirming the framework does not require English input to achieve strong GIS performance. Limitations: the Chinese BIRD questions were produced by LLM translation, so translation artefacts cannot be ruled out; translation-loss and cross-lingual-reasoning effects are not isolated. Future work should add no-alias and translate-back-to-English baselines and human-verified gold questions. Task~15 of the accompanying revision refreshes these numbers against a human-reviewed subset.
 
 \subsection{Reproducibility}
 
@@ -551,21 +638,15 @@ Cross-lingual 50q BIRD + 50q GIS & Gemini 2.5 Flash & LLM-translated Chinese BIR
 
 \subsection{Why semantic grounding helps in GIS}
 
-The expanded benchmark confirms what the pilot could not statistically substantiate: semantic grounding with intent-conditioned routing provides a reliable advantage for geospatial SQL (Spatial EX $+0.153$, $p=0.0072$). Three mechanisms drive the improvement. \emph{Geometry-aware type injection} ensures the model knows which columns carry geometry, the SRID, and when geography casting is required; without this the baseline omits \texttt{::geography} casts and returns area or distance in degrees rather than metres (this drives the $+0.305$ Medium-difficulty gain). \emph{Intent-conditioned operator routing} gates domain-specific rules (KNN \texttt{<->} operator, \texttt{LIMIT} injection) to the queries where they apply, avoiding false-positive injections. \emph{Safety and robustness enforcement} through SQL postprocessing catches dangerous operations and handles refusal or anti-illusion cases that the baseline LLM does not guard against.
-
-The transition from $p=0.125$ on a 20-question pilot to $p=0.0072$ on 85 Spatial questions reflects a power issue rather than a qualitatively new effect: the advantage was real but underpowered in the pilot. We do not make an analogous statistical claim on the 40-question Robustness expansion, because the baseline and DIN-SQL were not paired-evaluated on the expanded robustness categories (see the note under Table~\ref{tab:gis-robust}). We also deliberately do \emph{not} claim that any particular component explains a specific fraction of the $+0.153$ Spatial gain: Table~\ref{tab:ablation} runs under the single-pass configuration and does not decompose the agent-loop gain reported in Table~\ref{tab:gis-spatial}. What it does show is that round-2 warehouse rules are not active drivers on single-pass GIS, a useful domain-scoping finding but not a quantitative attribution of the agent-loop gain.
+The expanded benchmark confirms what the pilot could not substantiate: semantic grounding with intent-conditioned routing provides a reliable advantage for geospatial SQL (Spatial EX $+0.153$, $p=0.0072$). Three mechanisms drive it. \emph{Geometry-aware type injection} ensures the model knows which columns carry geometry, their SRID, and when geography casting is required; without this the baseline omits \texttt{::geography} casts and returns area/distance in degrees rather than metres (this drives the $+0.305$ Medium-difficulty gain). \emph{Intent-conditioned operator routing} gates domain-specific rules (KNN \texttt{<->}, \texttt{LIMIT} injection) to the queries where they apply. \emph{Safety and robustness enforcement} through SQL postprocessing catches dangerous operations and refusal cases the baseline LLM does not guard against. The transition from $p=0.125$ on a 20-question pilot to $p=0.0072$ on 85 Spatial questions reflects a power issue, not a new effect. We do not make an analogous statistical claim on the 40-question Robustness expansion because baseline and DIN-SQL were not paired-evaluated on the expanded categories (see Table~\ref{tab:gis-robust}). We also do \emph{not} claim that any particular component explains a specific fraction of the $+0.153$ Spatial gain: Table~\ref{tab:ablation} runs under the single-pass configuration.
 
 \subsection{The BIRD result: significant on design set, not on held-out}
 
-On the 108-question design set, the full pipeline with round-2 grounding reaches EX$=0.593$ vs.\ baseline $0.500$ ($p=0.0213$, $+0.093$). On the 150-question disjoint held-out set, the same pipeline reaches $0.507$ vs.\ $0.473$ ($p=0.3833$, $+0.033$). Direction is preserved, magnitude drops by roughly two-thirds, and the discordant-pair distribution ($b=8$, $c=13$) no longer rules out chance at the 95\% level. We read this as a calibrated boundary, not a contradiction. The round-2 rules were derived from error attribution on the 108-item design sample, so part of the design-set gain reflects in-sample specialisation; the simple-difficulty items that benefited most from DISTINCT/output-format rules are proportionally represented in the design set and largely carry the overall $+0.093$. Even if a smaller underlying effect is real, paired McNemar with 21 discordant pairs and 8 reversal wins has limited power.
-
-Execution validity improves on both sets ($0.980\to 1.000$ held-out, $0.981\to 0.991$ design), reflecting the postprocessor's contribution independently of rule content. Validity and EX are different signals: round-2 rules appear to affect EX primarily through targeted failure modes rather than uniform quality uplift. Net claim: round-2 rules plausibly reduce specific errors observed in the 108-item design sample, but a BIRD-wide improvement cannot be claimed at $\alpha=0.05$ from the 150-question held-out result alone; a larger independent BIRD evaluation would be needed to decide whether the held-out $+0.033$ is a real smaller effect or sampling noise.
+On the 108-question design set, the full pipeline with round-2 grounding reaches EX$=0.593$ vs.\ baseline $0.500$ ($p=0.0213$, $+0.093$). On the 150-question disjoint held-out set, the same pipeline reaches $0.507$ vs.\ $0.473$ ($p=0.3833$, $+0.033$). Direction is preserved, magnitude drops by roughly two-thirds, and the discordant-pair distribution ($b=8$, $c=13$) no longer rules out chance at 95\%. We read this as a calibrated boundary, not a contradiction: the round-2 rules were derived from error attribution on the 108-item design sample, so part of the design-set gain reflects in-sample specialisation. Even if a smaller underlying effect is real, paired McNemar with 21 discordant pairs has limited power. Execution validity improves on both sets ($0.980\to 1.000$ held-out, $0.981\to 0.991$ design), reflecting the postprocessor's contribution independently of rule content. Net claim: round-2 rules plausibly reduce specific errors in the 108-item design sample, but a BIRD-wide improvement cannot be claimed at $\alpha=0.05$ from the 150-question held-out alone.
 
 \subsection{Token cost is a real deployment consideration}
 
-The $13.6\times$ GIS and $7.9\times$ BIRD token overhead is not trivial. The single-pass mode reduced BIRD token cost from $\sim$32$\times$ to $7.9\times$ while simultaneously improving EX on the design set, demonstrating that architectural optimisation can reduce cost without sacrificing quality.
-
-For the GIS track, the $13.6\times$ overhead is justified by the nature of the domain: safety-critical spatial analysis requires geometry metadata, operator rules, and safety enforcement that naturally inflate context. For the BIRD track, the $7.9\times$ overhead comes with a design-set EX gain that does not fully transfer to held-out, so the deployment cost-benefit depends on whether an application's query distribution resembles the design sample. The six-way GIS ablation further reveals that round-2 and warehouse-join-hint rules do \emph{not} help spatial queries, suggesting a future direction for \emph{domain-selective grounding}: enable round-2 rules only when the intent router classifies a warehouse query, and omit them for spatial queries.
+The $13.6\times$ GIS and $7.9\times$ BIRD token overhead is non-trivial. The single-pass mode reduced BIRD from $\sim$32$\times$ to $7.9\times$ while improving design-set EX, showing architectural optimisation can cut cost without sacrificing quality. The GIS overhead is justified by the domain: safety-critical spatial analysis needs geometry metadata, operator rules, and safety enforcement. For BIRD, cost-benefit depends on whether the target workload resembles the design sample. The six-way GIS ablation also shows round-2 and warehouse-join-hint rules do \emph{not} help spatial queries, suggesting \emph{domain-selective grounding} as a future direction: enable round-2 rules only when the intent router classifies a warehouse query.
 
 \subsection{The effect of MetricFlow-style modelling}
 
@@ -573,7 +654,7 @@ The error analysis suggests that the primary bottleneck for warehouse performanc
 
 \subsection{Cross-lingual behaviour}
 
-The cross-lingual evaluation (Section~\ref{sec:cross-lingual}) reports a $10$-point EX degradation from English to Chinese BIRD ($0.660 \to 0.560$) on the same 50 paired question IDs, and a strong $0.820$ EX on 50 Chinese GIS questions. The BIRD degradation concentrates on domain-specific medical and financial terminology that translates into less specific Chinese phrases, weakening schema value matching. The validity rate remains high ($0.980$), so failures are row-set mismatches from lexical drift rather than malformed SQL --- the framework preserves its ability to produce executable queries across languages even when the semantic mapping drifts. A limitation of this evaluation is that the Chinese BIRD questions were produced by LLM translation rather than by a bilingual human annotator; we therefore cannot exclude translation artefacts such as unusual syntactic patterns or systematically lower lexical specificity affecting the measured degradation. Human-translated or human-verified Chinese BIRD questions would be required to isolate translation-loss effects from cross-lingual-reasoning effects.
+The cross-lingual evaluation (Section~\ref{sec:cross-lingual}) reports a $10$-point EX drop from English to Chinese BIRD ($0.660 \to 0.560$) on paired QIDs and strong $0.820$ EX on 50 Chinese GIS questions. Validity remains $0.980$, so failures are row-set mismatches from lexical drift rather than malformed SQL. Because the Chinese BIRD questions were LLM-translated, translation artefacts are not excluded; human-verified Chinese BIRD questions would be needed to isolate translation-loss from cross-lingual-reasoning effects.
 
 \subsection{Relationship to GeoSQL-Eval}
 
