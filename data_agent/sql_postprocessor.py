@@ -162,6 +162,34 @@ def _regex_fallback_fix(sql: str, column_map: dict) -> tuple[str, list[str]]:
     return "".join(parts), corrections
 
 
+def explain_row_estimate(sql: str, timeout_ms: int = 2000) -> Optional[int]:
+    """Ask the PostgreSQL planner for estimated row count via EXPLAIN (FORMAT JSON).
+
+    Returns None on parse, timeout, connection, or any other error. EXPLAIN
+    itself does not execute the query -- safe to call on untrusted SQL as long
+    as the SQL is syntactically parseable by PostgreSQL.
+
+    The returned value is the planner's estimate for the ROOT plan node's
+    output row count (a.k.a. "Plan Rows"), which represents how many rows
+    the query would return to the client (not intermediate row counts).
+    """
+    try:
+        from data_agent.db_engine import get_engine
+        from sqlalchemy import text
+        engine = get_engine()
+        if engine is None:
+            return None
+        with engine.connect() as conn:
+            conn.execute(text(f"SET LOCAL statement_timeout = {int(timeout_ms)}"))
+            res = conn.execute(text(f"EXPLAIN (FORMAT JSON) {sql}")).fetchone()
+        if not res or not res[0]:
+            return None
+        plan = res[0][0]["Plan"]
+        return int(plan.get("Plan Rows", 0))
+    except Exception:
+        return None
+
+
 def postprocess_sql(
     raw_sql: str,
     table_schemas: dict,

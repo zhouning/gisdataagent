@@ -1,5 +1,10 @@
 """Tests for sql_postprocessor.postprocess_sql."""
+import os
+
 import pytest
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 
 def test_select_is_accepted():
@@ -309,4 +314,28 @@ def test_postprocess_preview_listing_does_inject_limit_on_large_table():
         intent=IntentLabel.PREVIEW_LISTING,
     )
     assert "LIMIT 1000" in res.sql.upper()
+
+
+# --- explain_row_estimate tests (Task 4) ---
+from data_agent.sql_postprocessor import explain_row_estimate
+
+
+def test_explain_row_estimate_small_table():
+    # Aggregation -- planner estimate should be 1 row
+    est = explain_row_estimate("SELECT COUNT(*) FROM cq_osm_roads_2021")
+    assert est is not None
+    assert est <= 2
+
+
+def test_explain_row_estimate_large_preview():
+    # SELECT * on a large cq table -- planner estimate > 100k
+    est = explain_row_estimate("SELECT * FROM cq_amap_poi_2024")
+    assert est is not None
+    assert est > 100_000
+
+
+def test_explain_row_estimate_returns_none_on_failure():
+    # Nonexistent table should return None, not raise
+    est = explain_row_estimate("SELECT * FROM no_such_table_xyz_42")
+    assert est is None
 
