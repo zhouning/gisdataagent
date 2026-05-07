@@ -72,6 +72,28 @@ Natural language access to spatial databases sits within the GIScience programme
 
 Early geospatial question answering focused on small fact databases: Zelle and Mooney~\cite{zelle1996geoquery} used inductive logic programming for GeoQuery, and Punjani et al.~\cite{punjani2018geospatial} extended this to template-based question answering over linked geospatial data, highlighting spatial-predicate coverage and coordinate-system awareness. Recent LLM-era work falls into two groups. The first targets end-to-end NL-to-executable-spatial-SQL: NALSpatial~\cite{liu2025nalspatial} translates user queries into spatial SQL over PostGIS-style backends; Monkuu~\cite{yu2025monkuu} is an IJGIS-published LLM-powered NL interface with dynamic schema mapping; GeoSQL-Eval~\cite{hou2026geosql} contributes the first large-scale LLM evaluation on PostGIS NL2GeoSQL (14{,}178 tasks across 340 PostGIS functions at function level). The second targets higher-level GeoAI agents: GeoCogent~\cite{houcoding2025} is an LLM-based agent for geospatial code generation; GeoAgent~\cite{lin2026geoagent} is a hierarchical multi-agent architecture. Surveys map the broader opportunities~\cite{mai2024foundation}. Our contribution lies at the narrower interface between spatial-database semantics and executable SQL: we study end-to-end execution-graded NL-to-PostGIS-SQL with a semantic-layer grounding that explicitly encodes OGC predicates, SRIDs, geography casts, and KNN operators, together with a postprocessor enforcing read-only and bounded-output semantics. Compared with NALSpatial and Monkuu we contribute a 125-question execution benchmark with an explicit Robustness suite, paired McNemar significance testing, and a design/held-out split on a warehouse benchmark as a second track of the same bilingual framework.
 
+The comparison in Table~\ref{tab:related-comp} summarises capability and
+evaluation practice across recent NL-to-spatial-database systems.
+
+\begin{table}[t]\centering\footnotesize
+\caption{Direct comparison to recent NL-to-spatial-database systems.
+$\checkmark$: supported / reported; partial: some support; $-$: not reported.}
+\label{tab:related-comp}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+System & Executable & Execution- & CRS / geog. & Safety / & Released & Paired \\
+       & PostGIS    & based eval & / KNN       & refusal  & eval set & signif. \\
+\midrule
+NALSpatial~\cite{liu2025nalspatial}    & $\checkmark$ & $\checkmark$ & partial      & $-$           & $\checkmark$ & $-$           \\
+Monkuu~\cite{yu2025monkuu}             & $\checkmark$ & $\checkmark$ & partial      & $-$           & $-$           & $-$           \\
+GeoSQL-Eval~\cite{hou2026geosql}       & $-$           & $\checkmark$ & $\checkmark$ & $-$           & $\checkmark$ & $-$           \\
+GeoCogent~\cite{houcoding2025}         & $-$           & $-$           & $-$           & $-$           & $-$           & $-$           \\
+GeoAgent~\cite{lin2026geoagent}        & $-$           & partial      & partial      & $-$           & $-$           & $-$           \\
+\textbf{Ours}                          & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Text-to-SQL with LLMs and semantic layers}
 
 LLM text-to-SQL has progressed through Spider~\cite{yu2018spider,rajkumar2022evaluating}, BIRD~\cite{li2023bird}, Spider~2.0~\cite{lei2025spider2}, and BEAVER~\cite{chen2024beaver}. DIN-SQL~\cite{pourreza2023dinsql} introduced decomposed in-context prompting with schema linking, query classification, generation, and self-correction; DAIL-SQL~\cite{gao2024dail} introduced skeleton-similarity few-shot selection; C3~\cite{dong2023c3} explored zero-shot ChatGPT text-to-SQL with calibrated bias correction; CSpider~\cite{min2019cspider} is an early multilingual benchmark. Semantic-layer thinking --- entities, measures, dimensions, metric graphs --- is operationalised in MetricFlow / dbt's semantic layer~\cite{metricflow} for BI; we adapt it by combining it with GIS annotations (geometry types, SRIDs, OGC predicates). Here BIRD serves as a warehouse track of the same bilingual framework, reported as a design/held-out pair so the current warehouse path is measurable and the next engineering round scopable.
