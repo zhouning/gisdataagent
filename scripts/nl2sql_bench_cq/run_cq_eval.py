@@ -321,11 +321,20 @@ async def full_generate(question: str) -> dict:
 
     sid = f"cq_{int(time.time() * 1000)}"
     try:
-        result = await run_pipeline_headless(
-            agent=agent, session_service=session_service,
-            user_id="cq_benchmark", session_id=sid,
-            prompt=prompt, pipeline_type="general", intent="GENERAL", role="analyst",
+        # Per-question wall-clock timeout to prevent the ADK agent from hanging
+        # in an unbounded tool-call loop. 120s covers the p99 of successful runs
+        # (typical 20-45s) with margin. Controlled by CQ_EVAL_QUESTION_TIMEOUT.
+        _qto = float(os.environ.get("CQ_EVAL_QUESTION_TIMEOUT", "120"))
+        result = await asyncio.wait_for(
+            run_pipeline_headless(
+                agent=agent, session_service=session_service,
+                user_id="cq_benchmark", session_id=sid,
+                prompt=prompt, pipeline_type="general", intent="GENERAL", role="analyst",
+            ),
+            timeout=_qto,
         )
+    except asyncio.TimeoutError:
+        return {"status": "timeout", "sql": "", "error": f"question-level timeout", "tokens": 0}
     except Exception as e:
         return {"status": "exception", "sql": "", "error": str(e), "tokens": 0}
 
