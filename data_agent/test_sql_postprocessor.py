@@ -339,3 +339,47 @@ def test_explain_row_estimate_returns_none_on_failure():
     est = explain_row_estimate("SELECT * FROM no_such_table_xyz_42")
     assert est is None
 
+
+# --- EXPLAIN guard tests (Task 5) ---
+
+def test_explain_guard_injects_limit_for_unknown_large_table():
+    """Table is NOT in static large_tables set (passed empty), but planner
+    estimates > threshold -- LIMIT must still be injected."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    raw = "SELECT * FROM cq_amap_poi_2024"
+    result = postprocess_sql(
+        raw,
+        table_schemas={"cq_amap_poi_2024": [{"column_name": "ID", "needs_quoting": True}]},
+        large_tables=set(),
+        explain_limit_threshold=10_000,
+    )
+    assert "LIMIT" in result.sql.upper(), f"Got: {result.sql}"
+    assert not result.rejected
+    assert any("EXPLAIN" in c for c in result.corrections), result.corrections
+
+
+def test_explain_guard_skipped_for_small_result():
+    """Aggregation query -> planner estimate = 1 row -> no LIMIT needed."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    raw = "SELECT COUNT(*) FROM cq_amap_poi_2024"
+    result = postprocess_sql(
+        raw,
+        table_schemas={"cq_amap_poi_2024": [{"column_name": "ID", "needs_quoting": True}]},
+        large_tables=set(),
+        explain_limit_threshold=10_000,
+    )
+    assert "LIMIT" not in result.sql.upper(), f"Got: {result.sql}"
+
+
+def test_explain_guard_off_by_default():
+    """When explain_limit_threshold is not passed, behaviour is identical to pre-Task-5."""
+    from data_agent.sql_postprocessor import postprocess_sql
+    raw = "SELECT * FROM cq_amap_poi_2024"
+    result = postprocess_sql(
+        raw,
+        table_schemas={"cq_amap_poi_2024": [{"column_name": "ID", "needs_quoting": True}]},
+        large_tables=set(),
+    )
+    # No EXPLAIN correction when threshold is None
+    assert not any("EXPLAIN" in c for c in result.corrections)
+

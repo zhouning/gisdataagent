@@ -195,6 +195,7 @@ def postprocess_sql(
     table_schemas: dict,
     large_tables: Optional[set] = None,
     intent: Optional["IntentLabel"] = None,
+    explain_limit_threshold: Optional[int] = None,
 ) -> PostprocessResult:
     """Postprocess raw LLM-generated SQL: safety check, identifier fix, LIMIT injection.
 
@@ -205,6 +206,12 @@ def postprocess_sql(
         large_tables: set of table names that should auto-receive LIMIT 1000.
         intent: classified query intent; when ATTRIBUTE_FILTER (or other non-listing
             intents), LIMIT injection is suppressed even for large tables.
+        explain_limit_threshold: when set and the SQL has no LIMIT and is not
+            pure aggregation, consult PostgreSQL's planner via
+            ``explain_row_estimate()``; if the estimated row count exceeds the
+            threshold, inject ``LIMIT DEFAULT_LIMIT``. This is an additional
+            safety net on top of the static ``large_tables`` guard and is off
+            by default (``None`` -- behaviour unchanged).
 
     Returns:
         PostprocessResult with sql, corrections, rejected, reject_reason.
@@ -278,6 +285,33 @@ def postprocess_sql(
                         if val <= 100:
                             limit_node.set("expression", exp.Literal.number(DEFAULT_LIMIT))
                             result.corrections.append(f"LIMIT {val} bumped to {DEFAULT_LIMIT} (large table)")
+
+    # EXPLAIN-based OOM pre-check (Task 5).
+    #
+    # Additional safety net for tables NOT in the static `large_tables` set
+    # (e.g., dynamically-discovered or cross-schema tables). When opted in via
+    # `explain_limit_threshold`, ask the PostgreSQL planner for the estimated
+    # row count of the current SQL; if it exceeds the threshold, inject
+    # LIMIT DEFAULT_LIMIT. Pure aggregation queries and already-LIMITed queries
+    # are skipped. Off by default (threshold=None) -- behaviour unchanged.
+    if (
+        explain_limit_threshold is not None
+        and not result.rejected
+        and not _has_limit(parsed)
+        and not _is_aggregation_only(parsed)
+    ):
+        try:
+            sql_for_explain = parsed.sql(dialect="postgres")
+        except Exception:
+            sql_for_explain = None
+        if sql_for_explain:
+            est = explain_row_estimate(sql_for_explain)
+            if est is not None and est > explain_limit_threshold:
+                parsed = _inject_limit(parsed, DEFAULT_LIMIT)
+                result.corrections.append(
+                    f"LIMIT {DEFAULT_LIMIT} injected (EXPLAIN row estimate "
+                    f"{est} > threshold {explain_limit_threshold})"
+                )
 
     result.sql = parsed.sql(dialect="postgres")
     return result
