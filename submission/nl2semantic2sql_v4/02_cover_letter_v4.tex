@@ -1,0 +1,54 @@
+% =============================================================================
+% Cover Letter for the NL2Semantic2SQL v4 submission to IJGIS.
+% Anonymised for double-anonymised review: no authors, no affiliations,
+% no signature line. Corresponding author is identified via the editorial
+% submission system.
+% =============================================================================
+\documentclass[11pt]{letter}
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\address{Anonymous corresponding author\\ \textit{(Identity provided to editors through the submission system; withheld for double-anonymised review)}}
+
+\begin{document}
+
+\begin{letter}{The Editor-in-Chief \\ \emph{International Journal of Geographical Information Science}}
+
+\opening{Dear Editor,}
+
+We submit for your consideration the manuscript ``\textbf{NL2Semantic2SQL: Semantic Grounding and Safe Execution for PostGIS-based NL2GeoSQL, with a Cross-Domain Stress Test on Warehouse Queries},'' a regular research article for \emph{IJGIS}. This version (v4) is anonymised for double-anonymised peer review; author identity is provided through the editorial system.
+
+\medskip
+\noindent\textbf{Fit to IJGIS.} The manuscript addresses a GIScience question: how to ground natural-language queries so that a large language model can produce executable PostGIS SQL that respects Simple Feature semantics, CRS transformations, the geometry/geography distinction, KNN operators, and safety constraints. Its primary contribution is on the spatial-database side; BIRD is used as a second evaluation track for the warehouse path of the same bilingual framework. The grounding formalisms we encode trace to the $4$- and $9$-intersection topological relations (Egenhofer and Franzosa, 1991; Clementini et al., 1993), the OGC Simple Feature Access standard (\emph{not} a generic LLM benchmark), and the executable semantics of PostGIS.
+
+\medskip
+\noindent\textbf{What the paper claims, and at what confidence level.}
+
+\begin{enumerate}
+\item \textbf{Primary GIS result (statistically significant).} On an 85-question PostGIS Spatial evaluation over live Chongqing spatial data, the full pipeline reaches execution accuracy EX$=0.682$ vs.\ a direct-LLM baseline of $0.529$ (paired McNemar two-sided exact $p=0.0072$, $+0.153$), and improves over DIN-SQL on the same split by $+0.118$ Spatial EX ($p=0.0213$). This is the primary significance claim of the paper.
+
+\item \textbf{Robustness reported as two orthogonal metrics.} The 40-question Robustness suite, covering six safety categories, is reported Full-only because we do not yet have paired baseline or DIN-SQL runs on this expanded set. We separate \emph{safe-refusal rate} (did the pipeline avoid executing a destructive or unbounded query?) from \emph{bounded-answer compliance} (did it return a bounded SELECT satisfying the ``must contain \texttt{LIMIT}'' criterion?). The pipeline attains safe-refusal $= 1.000$ and bounded-answer $= 33/40 = 0.825$; the gap between the two is concentrated in the OOM Prevention category (bounded-answer $1/8$), which we explain and describe a targeted \texttt{EXPLAIN}-based mitigation for in the Discussion.
+
+\item \textbf{BIRD as the second evaluation track of the same bilingual framework, not as a second primary domain.} We report BIRD mini\_dev in two explicitly separated parts: a 108-question \emph{design set} used to derive grounding rules by error attribution on round-1 failures, and a disjoint 150-question \emph{held-out set} sampled from the remaining BIRD mini\_dev PostgreSQL items. The design set improves by $+0.093$ with $p=0.0213$, which we report as a development-set tuning effect rather than a generalisation claim. On the independent held-out set, the same rules produce only $+0.033$ with 95\% CI $[-0.03, 0.09]$ and $p=0.3833$; we do not claim a BIRD-wide improvement. This is a current-state snapshot of the warehouse path and is what scopes our next round of warehouse-side grounding work; the calibrated reporting is a deliberate response to external peer review on the earlier version.
+
+\item \textbf{Cross-lingual reported as exploratory.} A 50-question Chinese BIRD probe uses LLM-translated questions and is therefore reported as exploratory, with translation-artefact caveats made in the abstract and methodology. We do not treat it as a generalisation claim and recommend bilingual human verification as follow-up work.
+\end{enumerate}
+
+\medskip
+\noindent\textbf{Changes relative to any earlier version.} An earlier version of this work received external review. The current version (v4) responds substantively to that review and to two additional reviews received on v3: (i)~the title is narrowed to focus on PostGIS NL2GeoSQL; (ii)~the semantic layer is formalised as a metadata graph $G=(V,E)$ with a rule-to-OGC-SFA alignment table, addressing the theoretical-depth feedback from the v2 peer-review report; (iii)~an agent-loop-native ablation and a schema-only middle baseline are added to isolate the contribution of semantic grounding; (iv)~an EXPLAIN-based OOM pre-check is implemented and the Robustness OOM bounded-answer compliance is updated accordingly; (v)~a bilingual reviewer corrected the 50-question cross-lingual BIRD translations so that the cross-lingual claim isolates reasoning from translation artifacts; (vi)~a benchmark representativeness profile (predicate family and PostGIS function distribution) is added; (vii)~a direct comparison table to recent NL-to-spatial-database systems (NALSpatial, Monkuu, GeoSQL-Eval, GeoCogent, GeoAgent) is added; (viii)~the execution-accuracy evaluator is documented with numeric tolerance, NULL handling, and LIMIT semantics; (ix)~all previously cited references with metadata issues are corrected (notably Monkuu, PostGIS manual, OGC SFA/ISO). A separate response-to-reviewers document accompanies this submission.
+
+\medskip
+\noindent\textbf{Reproducibility and anonymisation.} The 125-question Chongqing PostGIS benchmark with gold SQL, the semantic-layer YAML, the intent-rule set, the prompt templates, the SQL postprocessor, the DIN-SQL runner adapted for PostgreSQL/PostGIS, the six-way single-pass diagnostic runner, and the per-question predictions backing every table in the paper are released in an anonymised companion repository. An anonymised reviewer-accessible link is provided through the editorial system. All runs use a single LLM (Gemini~2.5~Flash) at temperature $=0.0$; the paper is explicit about this and lists it as a limitation.
+
+\medskip
+\noindent\textbf{Originality, conflicts of interest, and double-anonymised compliance.} The manuscript is original work and has not been published or submitted elsewhere. No portion has appeared in any conference or workshop. The author(s) declare no competing interests. In accordance with IJGIS's double-anonymised policy, all author names, affiliations, acknowledgements, and self-citations that would identify the authors have been removed; commit hashes and institutional URLs have been replaced with anonymised equivalents.
+
+We thank you for considering this submission and look forward to the reviewers' feedback.
+
+\closing{Sincerely,}
+
+\end{letter}
+
+\end{document}
