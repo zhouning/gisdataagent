@@ -90,3 +90,14 @@ def test_build_from_live_pg_covers_all_cq_tables():
     assert g.graph.nodes["cq_osm_roads_2021"]["srid"] == 4326
     assert g.graph.nodes["cq_land_use_dltb"]["srid"] == 4326
     assert g.graph.nodes["cq_dltb"]["srid"] == 4610
+
+
+def test_grounding_injects_unit_rule_from_graph():
+    """After Task 3, build_nl2sql_context() must ensure a geography/metre
+    rule is present in the grounding prompt for a metric query on a
+    SRID-4326 cq_* table."""
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+    ctx = build_nl2sql_context("统计所有单行道的总长度（公里）")
+    prompt = ctx.get("grounding_prompt", "")
+    assert "::geography" in prompt or "geography cast" in prompt or "geography 转换" in prompt
+    assert "metre" in prompt or "米" in prompt or "meter" in prompt.lower()
