@@ -394,6 +394,13 @@ def resolve_semantic_context(user_text: str) -> dict:
         Dict with matched sources, columns, spatial_ops, region_filter,
         metric_hints, hierarchy_matches, equivalences, and sql_filters.
     """
+    import os as _abl_os
+    if _abl_os.environ.get("NL2SQL_DISABLE_SEMANTIC") == "1":
+        return {
+            "sources": [], "matched_columns": {}, "spatial_ops": [],
+            "region_filter": None, "metric_hints": [],
+            "hierarchy_matches": [], "equivalences": [], "sql_filters": [],
+        }
     catalog = _load_catalog()
     result = {
         "sources": [],

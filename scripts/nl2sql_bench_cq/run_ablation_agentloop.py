@@ -84,7 +84,7 @@ async def main() -> None:
         for i, q in enumerate(spatial, 1):
             t0 = time.time()
             try:
-                rec = await run_one(q, mode="enhanced")
+                rec = await run_one(q, mode="full")
             except Exception as e:
                 rec = {"qid": q["id"], "ex": 0,
                        "reason": f"exc:{type(e).__name__}:{e}"[:200]}
