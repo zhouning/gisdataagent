@@ -31,7 +31,7 @@
 % =============================================================================
 \begin{abstract}
 % =============================================================================
-Natural language interfaces to geospatial databases must handle challenges that mainstream text-to-SQL benchmarks rarely exercise: geometry-aware schema grounding, OGC/PostGIS topological and metric predicates, coordinate reference systems, \texttt{::geography} casting, KNN operators, and safety-critical refusal of destructive or unbounded queries. We present \textbf{NL2Semantic2SQL}, a semantic-grounding and safe-execution framework for executable PostGIS NL2GeoSQL. It couples a semantic layer (aliases, geometry types, SRIDs, spatial operator rules) with an intent-conditioned router, schema-aware prompting, few-shot retrieval, a SQL postprocessor that enforces read-only safety and injects \texttt{LIMIT} on large-table preview queries, and an execution-time self-correction loop. The same bilingual architecture serves Chinese GIS and English warehouse queries from a single pipeline; we evaluate both sides so that the current state of each is measurable. We evaluate on a 125-question Chongqing PostGIS benchmark (85 Spatial + 40 Robustness across six safety categories) and on a warehouse evaluation track on BIRD mini\_dev, reported as a 108-question design set and a disjoint 150-question held-out set. On GIS Spatial we pool three independent Full-mode runs (each 85 questions) and report mean~$\pm$~SD EX$=0.663 \pm 0.048$ (range $[0.612, 0.706]$) vs.\ baseline $0.529$; the majority-vote Full result is $0.659$, with paired McNemar $p=0.052$ (marginal). Two of three individual samples reach significance ($p=0.003$, $p=0.029$); one does not. The 40-question Robustness suite is the strongest primary claim: Full reaches $39/40 = 0.975$ vs.\ baseline $0.450$ (paired McNemar $b=0$, $c=21$, $p<10^{-4}$), with OOM Prevention bounded-answer compliance improving from $1/8$ to $7/8$ after the \texttt{EXPLAIN}-based pre-check and a revised bounded-output agent prompt. On BIRD, the pipeline improves the design set by $+0.093$ ($p=0.0213$) but only $+0.033$ on the held-out set ($p=0.3833$, 95\% CI $[-0.03, 0.09]$); this current-state snapshot motivates a planned second round of warehouse-side grounding. A 50-question Chinese BIRD probe is additionally reported alongside a bilingual human re-audit (18~\textsc{ok}, 32~\textsc{fix}, 0~\textsc{drop}; post-review EX $0.540$ vs.\ pre-review $0.560$, paired $p=1.00$) that rules out translation artefacts as the cause of the English$\to$Chinese gap.
+Natural language interfaces to PostGIS must handle challenges that mainstream text-to-SQL benchmarks rarely exercise: geometry-aware schema grounding, OGC topological and metric predicates, coordinate reference systems, \texttt{::geography} casting, KNN operators, and safe refusal of destructive or unbounded queries. We present \textbf{NL2Semantic2SQL}, a bilingual semantic-grounding and safe-execution framework that couples a semantic layer (aliases, geometry types, SRIDs, spatial operator rules) with an intent-conditioned router, schema-aware prompting, a SQL postprocessor enforcing read-only safety and \texttt{LIMIT} injection on large-table previews, and an execution-time self-correction loop. We evaluate on a 125-question Chongqing PostGIS benchmark (85 Spatial + 40 Robustness across six safety categories). The 40-question Robustness suite is the headline primary result: Full reaches $0.975$ vs.\ baseline $0.450$ (paired McNemar $b=0$, $c=21$, $p<10^{-4}$), with bounded-answer compliance on OOM Prevention rising from $1/8$ to $7/8$. On Spatial we pool three independent Full runs, mean~$\pm$~SD EX$=0.663 \pm 0.048$ vs.\ baseline $0.529$; majority-vote $p=0.052$ (marginal). A secondary BIRD warehouse track shows design-set $+0.093$ ($p=0.0213$, in-sample tuning) but held-out $+0.033$ (n.s., $p=0.3833$); we report this conservatively. A bilingual human re-audit of a 50-question Chinese BIRD probe yields paired $p=1.00$, ruling out translation artefacts as the cause of the cross-lingual gap.
 \end{abstract}
 
 \noindent\textbf{Keywords:} NL2GeoSQL; PostGIS; natural language interface; geospatial database; semantic layer; spatial predicates; coordinate reference systems; safe execution; large language model.
@@ -75,8 +75,7 @@ Early geospatial question answering focused on small fact databases: Zelle and M
 Table~\ref{tab:related-comp} summarises four discriminating axes across recent NL-to-spatial-database systems: end-to-end NL-to-PostGIS execution, function-level PostGIS evaluation, safety/refusal evaluation, and release of a machine-readable evaluation set.
 
 \begin{table}[t]\centering\footnotesize
-\caption{Direct comparison with recent NL-to-spatial-database systems on four discriminating axes: end-to-end NL-to-PostGIS SQL execution; function-level PostGIS evaluation; safety and refusal evaluation; and release of a machine-readable evaluation set. The NALSpatial row reflects its SECONDO implementation rather than PostGIS.
-$\checkmark$: supported / reported; $-$: not reported.}
+\caption{Direct comparison with recent NL-to-spatial-database systems on four axes. NALSpatial is implemented over SECONDO, not PostGIS. $\checkmark$: supported / reported; $-$: not reported.}
 \label{tab:related-comp}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
@@ -94,7 +93,7 @@ GeoAgent~\cite{lin2026geoagent}        & $-$           & $-$           & $-$    
 
 \subsection{Text-to-SQL with LLMs and semantic layers}
 
-LLM text-to-SQL has progressed through Spider~\cite{yu2018spider,rajkumar2022evaluating}, BIRD~\cite{li2023bird}, Spider~2.0~\cite{lei2025spider2}, and BEAVER~\cite{chen2024beaver}. DIN-SQL~\cite{pourreza2023dinsql} introduced decomposed in-context prompting with schema linking, query classification, generation, and self-correction; DAIL-SQL~\cite{gao2024dail} introduced skeleton-similarity few-shot selection; C3~\cite{dong2023c3} explored zero-shot ChatGPT text-to-SQL with calibrated bias correction; CSpider~\cite{min2019cspider} is an early multilingual benchmark. Semantic-layer thinking --- entities, measures, dimensions, metric graphs --- is operationalised in MetricFlow / dbt's semantic layer~\cite{metricflow} for BI; we adapt it by combining it with GIS annotations (geometry types, SRIDs, OGC predicates). Here BIRD serves as a warehouse track of the same bilingual framework, reported as a design/held-out pair so the current warehouse path is measurable and the next engineering round scopable.
+LLM text-to-SQL has progressed through Spider~\cite{yu2018spider,rajkumar2022evaluating}, BIRD~\cite{li2023bird}, Spider~2.0~\cite{lei2025spider2}, and BEAVER~\cite{chen2024beaver}. DIN-SQL~\cite{pourreza2023dinsql} introduced decomposed in-context prompting with schema linking, query classification, generation, and self-correction; DAIL-SQL~\cite{gao2024dail} introduced skeleton-similarity few-shot selection; C3~\cite{dong2023c3} explored zero-shot ChatGPT text-to-SQL with calibrated bias correction; CSpider~\cite{min2019cspider} is an early multilingual benchmark. Semantic-layer thinking --- entities, measures, dimensions, metric graphs --- is operationalised in tools such as MetricFlow~\cite{metricflow}, which encodes metric definitions in dbt-based analytical warehouses; we adapt the same entity/measure/dimension vocabulary by combining it with GIS annotations (geometry types, SRIDs, OGC predicates). Here BIRD serves as a warehouse track of the same bilingual framework, reported as a design/held-out pair so the warehouse path is measurable and the next engineering round scopable.
 
 % =============================================================================
 \section{Method}
@@ -169,9 +168,7 @@ specific OGC SFA clause rather than borrowing the standard only by name.
 
 \begin{table}[t]
 \centering\footnotesize
-\caption{Alignment of semantic-layer rules in $G=(V,E)$ to OGC SFA
-(06-104r4) / ISO 19107 clauses and PostGIS functions. Rule-level, not
-concept-level --- each enforced rule traces to a specific clause.}
+\caption{Alignment of semantic-layer rules to OGC SFA (06-104r4), ISO 19107 clauses, and PostGIS functions. Rule-level mapping; each enforced rule traces to a specific clause.}
 \label{tab:alignment}
 \begin{tabular}{@{}llllp{3.0cm}@{}}
 \toprule
@@ -231,7 +228,7 @@ We design NL2Semantic2SQL as a three-stage pipeline (Figure~\ref{fig:arch}). In 
 \draw[arrow] (b3) -- (s3);
 \draw[arrow, dashed] (sql.south) .. controls +(0,-9mm) and +(0,-9mm) .. node[below, font=\scriptsize]{execution feedback (self-correction)} (b3.south);
 \end{tikzpicture}
-\caption{Architecture of NL2Semantic2SQL. The semantic layer (Stage~1) supplies aliases, hierarchies, and warehouse models; the grounded-context builder (Stage~2) assembles schema, sampled values, and optional few-shot evidence; the synthesis step (Stage~3) postprocesses, executes, and self-corrects the generated SQL.}
+\caption{Architecture of NL2Semantic2SQL: Stage~1 semantic resolution, Stage~2 grounded-context assembly, Stage~3 SQL synthesis with postprocessor and self-correction.}
 \label{fig:arch}
 \end{figure}
 
@@ -291,7 +288,7 @@ Gold SQL &
 Outcome & Execution-based match (EX = 1); the postprocessor additionally adds the numeric cast required by PostgreSQL's \texttt{ROUND(double precision, integer)} resolution. \\
 \bottomrule
 \end{tabular}
-\caption{Worked example tracing a single Chongqing benchmark question through the full pipeline. The baseline LLM (not shown) omits the \texttt{::geography} cast and returns a value in degrees; our Stage~2 rule ``metric operators on lat/lon data require \texttt{::geography}'' is what closes the gap.}
+\caption{Worked example: a Chongqing benchmark question traced through the full pipeline. The baseline omits the \texttt{::geography} cast; Stage~2 rule injection closes the gap.}
 \label{fig:worked-example}
 \end{figure}
 
@@ -342,7 +339,7 @@ For each track, we compare two pipeline configurations:
   \item \textbf{Full pipeline}: full NL2Semantic2SQL with semantic-layer resolution, geometry-aware grounding, value-aware hints, postprocessing, and execution-time self-correction (single-pass on BIRD, agent-loop on GIS).
 \end{itemize}
 
-We additionally compare against \textbf{DIN-SQL}~\cite{pourreza2023dinsql} as an external prompting baseline on both tracks. All configurations share the same underlying language model (Gemini~2.5~Flash), the same database backend (PostgreSQL with PostGIS), and the same execution-comparison harness. Experimental configurations are summarised in Table~\ref{tab:repro}.
+We additionally compare against \textbf{DIN-SQL}~\cite{pourreza2023dinsql} as an external prompting baseline on both tracks. All configurations share the same underlying language model (Gemini~2.5~Flash), the same database backend (PostgreSQL with PostGIS), and the same execution-comparison harness. Experimental configurations are detailed in Supplement~S5.
 
 \subsection{GIS track results}
 \label{sec:gis-results}
@@ -362,7 +359,7 @@ The 125-question GIS benchmark was constructed in two stages. Stage~1: 20 seed q
 
 \begin{table}[t]
 \centering
-\caption{GIS Spatial EX: 85 normal spatial-SQL questions. Full pipeline is reported as three independent Full-mode runs on the same 85 questions, together with the pooled mean~$\pm$~SD and the majority-vote result across the three runs. Paired McNemar is against baseline on the same 85 questions (two-sided exact binomial on discordant pairs). The ``Schema-only + postprocessor + retry'' row is an intermediate configuration that enables the generic safety/retry scaffold but not the GIS-specific semantic grounding. 95\% Wilson CIs in brackets.}
+\caption{GIS Spatial EX on 85 questions. Three independent Full runs, pooled mean~$\pm$~SD, and majority vote. Paired McNemar vs.\ baseline (two-sided exact binomial). ``Schema-only + pp + retry'' enables the generic scaffold without GIS-specific grounding. 95\% Wilson CIs in brackets.}
 \label{tab:gis-spatial}
 \begin{tabular}{lcccc}
 \toprule
@@ -382,7 +379,7 @@ Full --- Sample 3                       & 0.671 & $[0.564, 0.762]$ & $+0.142$ & 
 
 \begin{table}[t]
 \centering
-\caption{GIS Robustness evaluation on 40 safety/refusal questions, six categories. Full pipeline is a single 40q run paired with baseline on the same 40 questions (paired McNemar two-sided exact $b=0$, $c=21$, $p<10^{-4}$). OOM Prevention is the bounded-answer compliance metric (did the pipeline return a bounded query that satisfies the benchmark's ``must contain \texttt{LIMIT}'' criterion?); for the other five categories bounded-answer and safe-refusal coincide.}
+\caption{GIS Robustness on 40 safety/refusal questions, six categories. Paired McNemar $b=0$, $c=21$, $p<10^{-4}$. OOM Prevention reports bounded-answer compliance (``must contain \texttt{LIMIT}'').}
 \label{tab:gis-robust}
 \begin{tabular}{lcccc}
 \toprule
@@ -409,38 +406,7 @@ The full pipeline outperforms the baseline on GIS Spatial by a pooled mean of $+
 \subsection{Warehouse (BIRD) track results}
 \label{sec:bird-results}
 
-We report the BIRD evaluation in two parts: a \emph{design set} of 108 paired questions on which grounding rules were derived by error attribution, and a disjoint \emph{held-out set} of 150 paired questions on which the same rules are tested without further tuning.
-
-\paragraph{Round-1 grounding (design set).} Round-1 adds three rule sections to the prompt: (i)~multi-hop join-path discovery bridging fact-to-fact tables through pivot dimensions; (ii)~aggregation semantics clarifying \texttt{COUNT(*)} vs.\ \texttt{COUNT(col)} vs.\ \texttt{COUNT(DISTINCT col)}; (iii)~temporal handling for TEXT-typed date columns (prefix comparison, \texttt{SUBSTR} extraction). On 101 paired questions it gave EX$=0.564$ vs.\ baseline $0.515$ ($+0.050$, paired McNemar two-sided $p=0.2266$, $b=3$, $c=8$).
-
-\paragraph{Round-2 grounding (design set).} Error attribution on round-1 failures identified three patterns: 16 of 46 both-fails differed from the gold SQL only in \texttt{DISTINCT} placement (SELECT list dimensions duplicated through one-to-many JOINs); 4 regressions were caused by over-JOINing when a single table sufficed; multiple \texttt{student\_club} questions used \texttt{||} concatenation where the gold returned first/last name as separate columns. Round-2 adds three targeted rules: DISTINCT-after-one-to-many-JOIN, avoid-over-JOIN, and output-column format (full name as separate columns; \texttt{LIMIT 1} via \texttt{ORDER BY} rather than subquery with \texttt{MAX}/\texttt{MIN}).
-
-Table~\ref{tab:bird} reports the round-2 result on 108 paired design questions and on the 150-question held-out set. Significance on the design set alone does not establish generalisation because the rules were derived from the same 108 items.
-
-\begin{table}[t]
-\centering
-\caption{BIRD warehouse results. The 108-question design set was used to derive the round-2 grounding rules; the observed significance on this set is reported as a \emph{development-set tuning} effect, not a generalisation claim. The 150-question held-out set is disjoint from the 108 design questions and is the only independent BIRD significance test in this paper. All McNemar $p$-values are two-sided exact binomial tests on discordant pairs. EX rows include 95\% Wilson confidence intervals; $\Delta$ rows include a 95\% CI for the paired proportion difference (Newcombe-style Wald on $(c-b)/n$).}
-\label{tab:bird}
-\begin{tabular}{lcccc}
-\toprule
-Set & $N$ & Baseline EX [95\% CI] & Full EX [95\% CI] & $\Delta$ [95\% CI] (McNemar) \\
-\midrule
-Round-1 grounding (design, subset) & 101 & 0.515 & 0.564 & $+$0.050 ($p=0.2266$, NS) \\
-\textbf{Round-2 design set (tuning)} & \textbf{108} & \textbf{0.500 [0.41, 0.59]} & \textbf{0.593 [0.50, 0.68]} & $+$\textbf{0.093} [0.02, 0.16] ($p=0.0213$) \\
-\textbf{Round-2 held-out (primary)}  & \textbf{150} & \textbf{0.473 [0.40, 0.55]} & \textbf{0.507 [0.43, 0.59]} & $+$\textbf{0.033} [$-$0.03, 0.09] ($p=0.3833$, NS) \\
-\midrule
-Validity (R2 design) & 108 & 0.981 & 0.991 & $+$0.010 \\
-Validity (R2 held-out) & 150 & 0.980 & 1.000 & $+$0.020 \\
-Mean tokens (R2 design) & 108 & 1{,}010 & 7{,}975 & $7.9\times$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\paragraph{Interpretation.} The round-2 design-set gain of $+0.093$ with $p=0.0213$ should be read as a \emph{development-set tuning effect}: the rules were derived by error attribution on this same 108-item sample, so significance on this set documents that the rules address the specific failure modes observed there. The primary warehouse-side significance test in this paper is therefore the held-out evaluation, where the same rules yield only $+0.033$ with 95\% paired-proportion CI $[-0.03, 0.09]$ and $p=0.3833$ on 21 discordant pairs ($b=8$, $c=13$); direction is preserved, magnitude drops by about two-thirds, and the CI comfortably covers zero. Two readings are consistent with this pattern: (a)~part of the design-set gain is in-sample specialisation to the 108-item mix; (b)~at $n=150$ the effect-size-to-variance ratio remains low even if a small true effect exists. We therefore do not claim a BIRD-wide improvement from round-2 grounding. Validity improves on both sets ($0.981\to 0.991$ design, $0.980\to 1.000$ held-out), which we attribute to the postprocessor's safety checks rather than to rule content. Token cost on the design set is $7.9\times$ baseline, down from $\sim$32$\times$ in the earlier agent-loop configuration.
-
-Representative design-set wins: Q1155 (``\emph{List patient ID, sex and birthday with LDH beyond normal range}'') --- round-1 omitted \texttt{DISTINCT}, round-2 added it; Q1334 (``\emph{full names of members from Illinois}'') --- round-1 used string concatenation, round-2 returned separate columns; Q1506 --- round-1 missed \texttt{DISTINCT}, round-2 added it.
-
-\paragraph{Relation to the earlier multi-pass evaluation.} A multi-pass agent-loop run on a 500-question BIRD subset (without round-2 rules) previously reported baseline $0.474$, full $0.501$, $\Delta=+0.027$ with $p=0.136$. We retain this only as context for the token-cost comparison; the 150-question held-out evaluation is the appropriate independent test of the single-pass grounded pipeline.
+Our BIRD evaluation is a secondary, generalisation-oriented track. Round-1 grounding rules (multi-hop join path, aggregation semantics, TEXT-date handling) yielded a statistically non-significant design-set improvement ($+0.050$, paired McNemar $p=0.2266$). Round-2 grounding rules derived by error attribution on the design set improved design-set EX by $+0.093$ ($p=0.0213$, in-sample tuning), while the held-out 150q improvement is $+0.033$ (95\% CI $[-0.03, 0.09]$, $p=0.3833$, not significant); full per-round breakdowns appear in Supplement~S1. The primary contribution of this paper is the PostGIS evaluation (Section~\ref{sec:gis-results}), not BIRD.
 
 \subsection{DIN-SQL external baseline comparison}
 \label{sec:dinsql}
@@ -449,7 +415,7 @@ Table~\ref{tab:dinsql} compares NL2Semantic2SQL against DIN-SQL~\cite{pourreza20
 
 \begin{table}[t]
 \centering
-\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full pipeline. DIN-SQL on GIS was re-implemented for PostgreSQL/PostGIS and evaluated on the same 85q Spatial and 15q Robustness splits. The BIRD row reports the older 495-question single-pass comparison only and is not directly comparable to the 108q design / 150q held-out results in Section~\ref{sec:bird-results}.}
+\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full. DIN-SQL on GIS re-implemented for PostgreSQL/PostGIS. The BIRD row is the older 495q comparison only; not directly comparable to the 108q/150q results.}
 \label{tab:dinsql}
 \begin{tabular}{lccccc}
 \toprule
@@ -500,7 +466,7 @@ We categorise the full-pipeline failures on the BIRD track in Table~\ref{tab:err
 
 \begin{table}[t]
 \centering
-\caption{Error breakdown for the full pipeline on BIRD, aggregated across the 108-question design set and the 150-question held-out set. Validity $\geq 0.99$ on both sets implies that the dominant failure mode is wrong-result valid SQL rather than parse or execution errors.}
+\caption{Error breakdown for the full pipeline on BIRD (108q design + 150q held-out). Validity $\geq 0.99$ on both sets; dominant failure mode is wrong-result valid SQL.}
 \label{tab:errors}
 \begin{tabular}{lcc}
 \toprule
@@ -522,7 +488,7 @@ The dominant failure mode is semantically incorrect SQL that executes successful
 
 \begin{table}[t]
 \centering
-\caption{Agent-loop-native ablation on GIS Spatial 85q. Each row disables one component of Full Sample~1 (EX~$=0.706$, the ablation baseline). Paired McNemar is against Full Sample~1 on the same 85 questions (two-sided exact binomial).}
+\caption{Agent-loop-native ablation on GIS Spatial 85q. Each row disables one component of Full Sample~1 (EX~$=0.706$). Paired McNemar vs.\ Full Sample~1 (two-sided exact binomial).}
 \label{tab:ablation}
 \begin{tabular}{lccccc}
 \toprule
@@ -546,7 +512,7 @@ Table~\ref{tab:mcnemar} consolidates the paired McNemar results in this paper (t
 \begin{table}[t]
 \centering
 \footnotesize
-\caption{Paired McNemar significance tests (two-sided exact binomial). $b$ = base-OK/full-ERR, $c$ = base-ERR/full-OK. The Primary column marks whether the test carries a primary significance claim (P) or is development-set tuning or exploratory (D/E).}
+\caption{Paired McNemar tests (two-sided exact binomial). $b$ = base-OK/full-ERR, $c$ = base-ERR/full-OK. P = primary claim; D = development-set tuning; E = exploratory.}
 \label{tab:mcnemar}
 \begin{tabular}{lcccccp{3.5cm}}
 \toprule
@@ -631,7 +597,7 @@ Figure~\ref{fig:cross} summarises the headline EX numbers for the four tracks re
 \draw[fill=orange!50](11.5,3.8) rectangle (12.0,4.3); \node[right,font=\scriptsize] at (12.1,4.05) {DIN-SQL};
 \draw[fill=blue!50]  (11.5,3.1) rectangle (12.0,3.6); \node[right,font=\scriptsize] at (12.1,3.35) {Full};
 \end{tikzpicture}
-\caption{Cross-track EX summary. GIS Spatial 85q: full $0.682$ vs.\ DIN-SQL $0.565$ vs.\ baseline $0.529$ (full vs.\ baseline paired McNemar two-sided $p=0.0072$, full vs.\ DIN-SQL $p=0.0213$). BIRD design set (108q): full $0.593$ vs.\ baseline $0.500$ ($p=0.0213$). BIRD held-out set (150q): full $0.507$ vs.\ baseline $0.473$ ($p=0.3833$, not significant). The design-to-held-out contrast is the principal BIRD-side result: the round-2 grounding rules reach significance on the sample used to derive them but do not reach significance on an independent sample of comparable size.}
+\caption{Cross-track EX summary. GIS Spatial 85q: full $0.682$ vs.\ DIN-SQL $0.565$ vs.\ baseline $0.529$ ($p=0.0072$ full vs.\ baseline; $p=0.0213$ full vs.\ DIN-SQL). BIRD design (108q): $0.593$ vs.\ $0.500$ ($p=0.0213$). BIRD held-out (150q): $0.507$ vs.\ $0.473$ ($p=0.3833$, NS).}
 \label{fig:cross}
 \end{figure}
 
@@ -642,7 +608,7 @@ We evaluate cross-lingual behaviour on two 50-question tracks for a total of 100
 
 \begin{table}[t]
 \centering
-\caption{Cross-lingual evaluation. The BIRD Chinese track uses 50 question IDs drawn from the 108-question design set so that the degradation is measured on paired items. The GIS Chinese track contains native Chinese questions.}
+\caption{Cross-lingual evaluation. BIRD Chinese: 50 QIDs from the 108-question design set, translated to Chinese. GIS Chinese: native Chinese questions.}
 \label{tab:crosslingual}
 \begin{tabular}{lcccc}
 \toprule
@@ -658,11 +624,11 @@ GIS Chinese   & 50  & 0.820 & --- (native Chinese)    & --- \\
 
 On the BIRD Chinese track, the $0.100$ EX degradation concentrates on moderate/challenging items where domain terminology (e.g., ``APS diagnosis'', ``urea nitrogen'') translates into less specific Chinese phrases, weakening schema linking. Validity remains high ($0.980$); failures are primarily row-set mismatches from value-translation drift. On the GIS Chinese track, EX$=0.820$ exceeds the English-evaluated GIS 85-question Spatial result from Section~\ref{sec:gis-results}, confirming the framework does not require English input to achieve strong GIS performance.
 
-\paragraph{Human-verified re-evaluation.} To isolate translation artefacts from genuine cross-lingual capability, a bilingual reviewer audited all $50$ LLM-translated BIRD Chinese questions. The reviewer assigned each item one of three labels: \textsc{ok} (the LLM translation preserved meaning and surface phrasing well enough to keep unchanged), \textsc{fix} (preserved the answer but drifted in phrasing or left untranslated English terms, and therefore was rewritten by hand), or \textsc{drop} (mistranslated the gold answer). The audit resulted in $18$~\textsc{ok}, $32$~\textsc{fix}, and $0$~\textsc{drop}, so the full $50$-question paired comparison is preserved. We then re-ran the identical full pipeline on the reviewed set, holding the agent fixed and varying only the Chinese text. Table~\ref{tab:crosslingual-rereview} reports the paired result: post-review Chinese EX is $0.540$ versus pre-review $0.560$ (paired McNemar discordant pairs $b=2$, $c=1$; two-sided exact $p=1.00$). The \textsc{fix} subgroup changes by $-0.031$ ($17/32 \to 16/32$) and the \textsc{ok} subgroup is unchanged ($11/18 \to 11/18$). We interpret this null result as evidence that the $0.100$ English$\to$Chinese degradation reported in Table~\ref{tab:crosslingual} is \emph{not} explained by LLM-translation artefacts: correcting $32$ of $50$ translations by hand leaves the paired EX statistically indistinguishable. The cross-lingual gap therefore reflects genuine cross-lingual reasoning and schema-linking difficulty rather than translation noise, which tightens the scope of the remaining future work to bilingual schema alignment rather than translation pipeline improvement.
+\paragraph{Human-verified re-evaluation.} To isolate translation artefacts from genuine cross-lingual capability, a bilingual reviewer audited all $50$ LLM-translated BIRD Chinese questions. The reviewer assigned each item one of three labels: \textsc{ok} (the LLM translation preserved meaning and surface phrasing well enough to keep unchanged), \textsc{fix} (preserved the answer but drifted in phrasing or left untranslated English terms, and therefore was rewritten by hand), or \textsc{drop} (mistranslated the gold answer). The audit resulted in $18$~\textsc{ok}, $32$~\textsc{fix}, and $0$~\textsc{drop}, so the full $50$-question paired comparison is preserved. We then re-ran the identical full pipeline on the reviewed set, holding the agent fixed and varying only the Chinese text. Table~\ref{tab:crosslingual-rereview} reports the paired result: post-review Chinese EX is $0.540$ versus pre-review $0.560$ (paired McNemar discordant pairs $b=2$, $c=1$; two-sided exact $p=1.00$). The \textsc{fix} subgroup changes by $-0.031$ ($17/32 \to 16/32$) and the \textsc{ok} subgroup is unchanged ($11/18 \to 11/18$). We interpret this null result as evidence that the $0.100$ English$\to$Chinese degradation reported in Table~\ref{tab:crosslingual} is \emph{not} explained by LLM-translation artefacts: correcting $32$ of $50$ translations by hand leaves the paired EX statistically indistinguishable. The cross-lingual gap therefore reflects genuine cross-lingual reasoning and schema-linking difficulty rather than translation noise, which tightens the scope of the remaining future work to bilingual schema alignment rather than translation pipeline improvement. Per-question reviewer labels and pre/post EX are listed in Supplement~S2.
 
 \begin{table}[t]
 \centering
-\caption{Paired re-evaluation of the BIRD Chinese 50-question track on human-reviewed translations. The agent is held fixed at Full mode; only the Chinese text varies between the two rows. Overall and by reviewer-assigned translation-quality label.}
+\caption{Paired re-evaluation on human-reviewed BIRD Chinese translations (50q). Agent held fixed; only Chinese text varies. Results by reviewer label.}
 \label{tab:crosslingual-rereview}
 \begin{tabular}{lccccc}
 \toprule
@@ -678,29 +644,8 @@ All          & 50 & 0.560 & 0.540 & $-0.020$ & $1.00$ \\
 Future work should still add no-alias and translate-back-to-English baselines and extend the human-verified set beyond $50$ questions, but translation noise is no longer a plausible explanation of the observed cross-lingual degradation.
 
 \subsection{Reproducibility}
-
-Table~\ref{tab:repro} lists the experimental configurations used to produce all reported results.
-
-\begin{table}[t]
-\centering
-\caption{Experimental configurations and released artifacts.}
-\label{tab:repro}
-\begin{tabular}{lll}
-\toprule
-Experiment & Model & Key parameters \\
-\midrule
-GIS 125q (baseline + full) & Gemini 2.5 Flash & temp=0.0, 60s timeout \\
-GIS 125q (DIN-SQL) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
-BIRD 108q design + 150q held-out (baseline + full) & Gemini 2.5 Flash & temp=0.0, single-pass \\
-BIRD (DIN-SQL, older 495q comparison) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
-Cross-lingual 50q BIRD + 50q GIS & Gemini 2.5 Flash & LLM-translated Chinese BIRD \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\noindent\textbf{Released artefacts.} The anonymised companion repository includes the 125-question GIS benchmark with gold SQL (85 Spatial + 40 Robustness), the 108-question BIRD design set and 150-question held-out qid lists with full baseline and full-pipeline predictions, the 100-question cross-lingual pairs (50 Chinese BIRD + 50 Chinese GIS), the DIN-SQL runner adapted for PostgreSQL/PostGIS, the evaluation harness with McNemar and Wilson CI tools, the six-way ablation runner, and the SQL postprocessor and self-correction logic. Per-question predicted SQL and execution results are included.
-
-\noindent All runs use Gemini~2.5~Flash with temperature$=0.0$, default top\_p, and default maximum output tokens. Each question has a 60-second execution timeout; on \texttt{429 RESOURCE\_EXHAUSTED}, the runner retries up to 3 times with 2-second initial delay. On no-SQL output, the question is recorded with \texttt{gen\_status = no\_sql} and EX$=0$. All McNemar results in this paper are reported as two-sided exact binomial tests on discordant pairs; the one-sided variant is not used because we do not have a pre-registered directional hypothesis on BIRD.
+\label{sec:repro}
+All runs use Gemini~2.5~Flash at temperature~$0.0$ with default top-$p$ and default output limits; each question has a 60-second execution timeout. Detailed per-track configurations, the released artefact inventory, and the companion-repository anonymous URL appear in Supplement~S5. Paired McNemar tests throughout are two-sided exact binomial on discordant pairs.
 
 % =============================================================================
 \section{Discussion}
@@ -759,7 +704,7 @@ The pattern is a calibrated one: semantic grounding yields statistically signifi
 % =============================================================================
 \section*{Reproducibility}
 % =============================================================================
-The GIS benchmark, the semantic-layer YAML, the intent-rule set, the prompt templates, the SQL postprocessor, the DIN-SQL runner adapted for PostgreSQL/PostGIS, the six-way ablation runner, and the per-question predictions backing every table in this paper are released in an anonymised companion repository. A reviewer-accessible link is provided through the editorial system for double-anonymised review. The primary GIS result covers the 125-question benchmark (85 Spatial + 40 Robustness); the BIRD evaluation is split into a 108-question design set (rule derivation) and a 150-question held-out set (independent significance). All runs use Gemini~2.5~Flash at temperature $=0.0$ with default top\_p and maximum output tokens.
+The 125-question GIS benchmark (85 Spatial + 40 Robustness), the 108q BIRD design set and 150q held-out qid lists, the cross-lingual 100q pairs, the semantic-layer YAML, the SQL postprocessor, the DIN-SQL runner, the evaluation harness, and per-question predictions are released in an anonymised companion repository (Supplement~S5).
 
 % =============================================================================
 \begin{thebibliography}{99}

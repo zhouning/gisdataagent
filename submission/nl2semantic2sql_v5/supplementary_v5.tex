@@ -7,6 +7,7 @@
 \usepackage{multirow}
 \usepackage{caption}
 \usepackage{enumitem}
+\usepackage{longtable}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 
@@ -24,18 +25,162 @@ cross-family ablation record. Cross-references from the main text are prefixed w
 corresponding section number.
 
 \section*{S1. BIRD mini\_dev design-set and held-out details}
-% Filled in Task 5.
+
+This section expands the three-sentence summary in Section~4.4 (Warehouse track) of the
+main text. We report the BIRD evaluation in two parts: a \emph{design set} of 108 paired
+questions on which grounding rules were derived by error attribution, and a disjoint
+\emph{held-out set} of 150 paired questions on which the same rules are tested without
+further tuning.
+
+\paragraph{Round-1 grounding (design set).} Round-1 adds three rule sections to the
+prompt: (i)~multi-hop join-path discovery bridging fact-to-fact tables through pivot
+dimensions; (ii)~aggregation semantics clarifying \texttt{COUNT(*)} vs.\ \texttt{COUNT(col)}
+vs.\ \texttt{COUNT(DISTINCT col)}; (iii)~temporal handling for TEXT-typed date columns
+(prefix comparison, \texttt{SUBSTR} extraction). On 101 paired questions it gave
+EX$=0.564$ vs.\ baseline $0.515$ ($+0.050$, paired McNemar two-sided $p=0.2266$,
+$b=3$, $c=8$).
+
+\paragraph{Round-2 grounding (design set).} Error attribution on round-1 failures
+identified three patterns: 16 of 46 both-fails differed from the gold SQL only in
+\texttt{DISTINCT} placement (SELECT list dimensions duplicated through one-to-many
+JOINs); 4 regressions were caused by over-JOINing when a single table sufficed;
+multiple \texttt{student\_club} questions used \texttt{||} concatenation where the
+gold returned first/last name as separate columns. Round-2 adds three targeted rules:
+DISTINCT-after-one-to-many-JOIN, avoid-over-JOIN, and output-column format (full name
+as separate columns; \texttt{LIMIT 1} via \texttt{ORDER BY} rather than subquery with
+\texttt{MAX}/\texttt{MIN}).
+
+Table~\ref{tab:bird-supp} reports the round-2 result on 108 paired design questions and
+on the 150-question held-out set. Significance on the design set alone does not
+establish generalisation because the rules were derived from the same 108 items.
+
+\begin{table}[h]
+\centering
+\caption{BIRD warehouse results across rounds and splits.}
+\label{tab:bird-supp}
+\begin{tabular}{lcccc}
+\toprule
+Set & $N$ & Baseline EX [95\% CI] & Full EX [95\% CI] & $\Delta$ [95\% CI] (McNemar) \\
+\midrule
+Round-1 grounding (design, subset) & 101 & 0.515 & 0.564 & $+$0.050 ($p=0.2266$, NS) \\
+\textbf{Round-2 design set (tuning)} & \textbf{108} & \textbf{0.500 [0.41, 0.59]} & \textbf{0.593 [0.50, 0.68]} & $+$\textbf{0.093} [0.02, 0.16] ($p=0.0213$) \\
+\textbf{Round-2 held-out (primary)}  & \textbf{150} & \textbf{0.473 [0.40, 0.55]} & \textbf{0.507 [0.43, 0.59]} & $+$\textbf{0.033} [$-$0.03, 0.09] ($p=0.3833$, NS) \\
+\midrule
+Validity (R2 design) & 108 & 0.981 & 0.991 & $+$0.010 \\
+Validity (R2 held-out) & 150 & 0.980 & 1.000 & $+$0.020 \\
+Mean tokens (R2 design) & 108 & 1{,}010 & 7{,}975 & $7.9\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Interpretation.} The round-2 design-set gain of $+0.093$ with $p=0.0213$
+should be read as a \emph{development-set tuning effect}: the rules were derived by
+error attribution on this same 108-item sample, so significance on this set documents
+that the rules address the specific failure modes observed there. The primary
+warehouse-side significance test is therefore the held-out evaluation, where the
+same rules yield only $+0.033$ with 95\% paired-proportion CI $[-0.03, 0.09]$ and
+$p=0.3833$ on 21 discordant pairs ($b=8$, $c=13$); direction is preserved, magnitude
+drops by about two-thirds, and the CI comfortably covers zero. Two readings are
+consistent with this pattern: (a)~part of the design-set gain is in-sample
+specialisation to the 108-item mix; (b)~at $n=150$ the effect-size-to-variance ratio
+remains low even if a small true effect exists. We therefore do not claim a
+BIRD-wide improvement from round-2 grounding. Validity improves on both sets
+($0.981\to 0.991$ design, $0.980\to 1.000$ held-out), which we attribute to the
+postprocessor's safety checks rather than to rule content. Token cost on the design
+set is $7.9\times$ baseline, down from $\sim$32$\times$ in the earlier agent-loop
+configuration.
+
+Representative design-set wins: Q1155 (``\emph{List patient ID, sex and birthday with
+LDH beyond normal range}'') --- round-1 omitted \texttt{DISTINCT}, round-2 added it;
+Q1334 (``\emph{full names of members from Illinois}'') --- round-1 used string
+concatenation, round-2 returned separate columns; Q1506 --- round-1 missed
+\texttt{DISTINCT}, round-2 added it.
+
+\paragraph{Relation to the earlier multi-pass evaluation.} A multi-pass agent-loop
+run on a 500-question BIRD subset (without round-2 rules) previously reported
+baseline $0.474$, full $0.501$, $\Delta=+0.027$ with $p=0.136$. We retain this only
+as context for the token-cost comparison; the 150-question held-out evaluation is
+the appropriate independent test of the single-pass grounded pipeline.
+
+\paragraph{DIN-SQL older 495q comparison.} For the BIRD track, DIN-SQL was
+previously evaluated on a 495-question single-pass run; we have not re-run DIN-SQL
+on the round-2 108-question design set or the 150-question held-out set, so the
+DIN-SQL row in Table~6 of the main text reports only the older 495-question
+comparison. On that older sample, all three methods (Baseline $0.474$, DIN-SQL
+$0.482$, Full $0.501$) cluster between $0.47$ and $0.51$ and the full-vs-DIN-SQL
+difference is $+0.019$ ($p=0.382$, NS). Comparing a round-2 full pipeline against
+a non-round-2 DIN-SQL baseline would be unfair to DIN-SQL, so we leave that paired
+run to future work.
 
 \section*{S2. Cross-lingual re-audit: per-question detail}
-% Filled in Task 5.
 
-\section*{S3. Open-source model cross-family ablation (Gemini vs. open-weight)}
+Table~\ref{tab:crosslingual-per-question} lists the $50$ BIRD Chinese items, their
+reviewer label (ok / fix / drop), the pre-review prediction correctness (0/1), and
+the post-review prediction correctness (0/1). This table is machine-generated from
+the v5 re-evaluation report.
+
+% [Rows filled from the per-question re-evaluation report; see scripts/render_crosslingual_supplement.py]
+\begin{table}[h]
+\centering
+\caption{Per-question reviewer label and pre/post EX on the BIRD Chinese 50-question re-audit.}
+\label{tab:crosslingual-per-question}
+% Rendered by scripts/nl2sql_bench_cq/render_crosslingual_supplement.py
+\begin{tabular}{lllccc}
+\toprule
+qid & db\_id & difficulty & review & pre EX & post EX \\
+\midrule
+% rendered rows go here
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{S3. Open-source model cross-family ablation (Gemini vs.\ open-weight)}
 % Filled in Task 12 (Phase 2).
 
 \section*{S4. DIN-SQL held-out run (150q) and Robustness paired comparison}
 % Filled in Task 16 (Phase 3).
 
 \section*{S5. Full reproducibility inventory}
-% Filled in Task 5.
+
+\begin{table}[h]
+\centering
+\caption{Experimental configurations and released artefacts.}
+\label{tab:repro-supp}
+\begin{tabular}{lll}
+\toprule
+Experiment & Model & Key parameters \\
+\midrule
+GIS 125q (baseline + full) & Gemini 2.5 Flash & temp=0.0, 60s timeout \\
+GIS 125q (DIN-SQL) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
+BIRD 108q design + 150q held-out (baseline + full) & Gemini 2.5 Flash & temp=0.0, single-pass \\
+BIRD (DIN-SQL, older 495q comparison) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
+Cross-lingual 50q BIRD + 50q GIS & Gemini 2.5 Flash & LLM-translated Chinese BIRD \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Released artefacts.} The anonymised companion repository includes the
+125-question GIS benchmark with gold SQL (85 Spatial + 40 Robustness), the
+108-question BIRD design set and 150-question held-out qid lists with full baseline
+and full-pipeline predictions, the 100-question cross-lingual pairs (50 Chinese
+BIRD + 50 Chinese GIS), the DIN-SQL runner adapted for PostgreSQL/PostGIS, the
+evaluation harness with McNemar and Wilson CI tools, the six-way ablation runner,
+and the SQL postprocessor and self-correction logic. Per-question predicted SQL
+and execution results are included.
+
+\paragraph{Run-time configuration.} All runs use Gemini~2.5~Flash with
+temperature$=0.0$, default top\_p, and default maximum output tokens. Each question
+has a 60-second execution timeout; on \texttt{429 RESOURCE\_EXHAUSTED}, the runner
+retries up to 3 times with 2-second initial delay. On no-SQL output, the question
+is recorded with \texttt{gen\_status = no\_sql} and EX$=0$. All McNemar results
+in this paper are reported as two-sided exact binomial tests on discordant pairs;
+the one-sided variant is not used because we do not have a pre-registered
+directional hypothesis on BIRD.
+
+\paragraph{Reviewer access.} A reviewer-accessible companion-repository link is
+provided through the editorial system for double-anonymised review. The primary
+GIS result covers the 125-question benchmark (85 Spatial + 40 Robustness); the
+BIRD evaluation is split into a 108-question design set (rule derivation) and a
+150-question held-out set (independent significance).
 
 \end{document}
