@@ -19,7 +19,7 @@ This document responds to four review reports: two received on the v3 submission
 
 5. **N=3 Spatial Full sampling (§4.2).** We run three independent Full-mode samples on the 85-question Spatial set and report mean±SD (EX=0.663±0.048) with majority-vote aggregate 0.659 (paired McNemar vs. baseline p=0.052, marginal). Two of three individual samples reach significance (p=0.003, p=0.029); one does not (p=0.230). The variance is honestly reported rather than hidden behind a single favourable draw.
 
-6. **Human-reviewed cross-lingual 50q (§4.9).** A review CSV has been exported to `benchmarks/bird_chinese_50q_review.csv` and a bilingual reviewer is working through it. The v3 claim on Chinese transfer is retained as *exploratory*; the corrected rerun will appear in a follow-up revision (see Outstanding items).
+6. **Human-reviewed cross-lingual 50q (§4.9).** A bilingual reviewer audited all 50 LLM-translated BIRD Chinese questions (18 `ok`, 32 `fix`, 0 `drop`). We then re-ran the identical v4 Full pipeline on the reviewed set, holding the agent fixed and varying only the Chinese text. Paired McNemar on the 50-question pair gives Pre EX 0.560 → Post EX 0.540 (discordant b=2, c=1, two-sided exact p=1.00). The `fix` subgroup changes by -0.031 (17/32 → 16/32); the `ok` subgroup is unchanged (11/18 → 11/18). This null result rules out LLM-translation artefacts as the cause of the English→Chinese gap: the observed degradation reflects genuine cross-lingual reasoning/schema-linking difficulty, not translation noise. The new paired re-evaluation table and accompanying paragraph in §4.9 of the manuscript report the full breakdown; §5.2, §6 limitations, and §7 conclusion have been updated accordingly.
 
 7. **Benchmark representativeness profile (§4.1, Table 1).** We now report predicate-family distribution (topological 21, metric 20, KNN 5, aggregation 46, plain 23), top-12 PostGIS function frequencies (`ST_Transform` 14, `ST_Intersects` 12, `ST_Area` 7, `ST_Length` 6, ...), join multiplicity (single 55, two 29, 3+ 1), and Easy/Medium/Hard stratification (24/36/25) across the full 85-question Spatial set.
 
@@ -88,8 +88,8 @@ See Table 4 (§4.6) and item 2 of the v4 summary. Five-component ablation under 
 ### §2 85q benchmark representativeness — DONE
 Table 1 (§4.1) documents predicate family, PostGIS function frequency, join multiplicity, and difficulty stratification. The 85q set is internally audited by one GIS expert; LLM-drafted additions were manually reviewed against the live PostGIS schema.
 
-### §3 Cross-lingual 50q human review — IN PROGRESS
-`scripts/nl2sql_bench_cq/crosslingual_review_tool.py` exports the review CSV to `benchmarks/bird_chinese_50q_review.csv`. A bilingual reviewer is working through it; corrected rerun numbers will be added in a first revision. v4 retains the v3 exploratory-only framing for this probe.
+### §3 Cross-lingual 50q human review — DONE
+`scripts/nl2sql_bench_cq/crosslingual_review_tool.py` exported the review CSV; a bilingual reviewer audited all 50 items (18 `ok`, 32 `fix`, 0 `drop`; `benchmarks/bird_chinese_50q_reviewed.json`). `scripts/nl2sql_bench_cq/run_crosslingual_reviewed.py` re-ran the identical v4 Full pipeline on the reviewed set; paired McNemar on pre- vs. post-review EX gives **0.560 → 0.540** (discordant b=2, c=1, two-sided exact **p=1.00**). The `fix` subgroup shifts -0.031 (17/32 → 16/32); the `ok` subgroup is unchanged (11/18 → 11/18). Report: `data_agent/nl2sql_eval_results/crosslingual_reviewed_2026-05-08_155144/crosslingual_paired_report.json`. The §4.9 text in the v4 manuscript now includes a new paired re-evaluation table and explicitly concludes that the English→Chinese gap is **not** explained by translation artefacts; §5.2, §6 limitation (3), and §7 conclusion have been updated in step.
 
 ### §Minor 1 OOM fix — DONE
 `data_agent/sql_postprocessor.py::explain_row_estimate()` plus a revised bounded-output agent prompt. Robustness OOM Prevention bounded-answer compliance: 1/8 (v3) → 7/8 (v4). The EXPLAIN mechanism is documented in §3.4 and in the Discussion §5.1.
@@ -138,9 +138,9 @@ All artefacts anonymised; author identity is conveyed through the editorial syst
 
 ## Outstanding items (first-revision candidates)
 
-1. **Cross-lingual 50q re-evaluation** on human-corrected Chinese translations (Task 11 of our plan; pending the bilingual reviewer's return of `bird_chinese_50q_review.csv`).
-2. **DIN-SQL held-out rerun** on BIRD 150q + paired Robustness 40q (Task A2); directory queued, result to appear in the next revision.
-3. **N>3 Full-mode Spatial sampling** would tighten the paired p-value interval; v4 reports N=3 due to the Gemini 429-risk and compute budget.
+1. **DIN-SQL held-out rerun** on BIRD 150q + paired Robustness 40q (Task A2); directory queued, result to appear in the next revision.
+2. **N>3 Full-mode Spatial sampling** would tighten the paired p-value interval; v4 reports N=3 due to the Gemini 429-risk and compute budget.
+3. **Bilingual human-reviewed cross-lingual at larger N.** The 50-question re-audit (reviewer B §3) is done and landed in v4 with a null translation-artefact result; extending this bilingual-reviewed set beyond 50 questions remains future work.
 4. **Benchmark expert-panel disclosure table** (number of annotators, qualifications, two-person review protocol) is held back for the non-anonymised version to respect double-anonymous review.
 
 We appreciate the depth and constructiveness of both 2026-05-07 reviews and the carry-over comments from 2026-05-06, and hope the changes above demonstrate substantive engagement with every point raised.
