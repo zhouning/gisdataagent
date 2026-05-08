@@ -1,80 +1,64 @@
-# NL2Semantic2SQL — IJGIS Submission Package (v3)
+# NL2Semantic2SQL v4 submission bundle
 
-**Manuscript title:** *NL2Semantic2SQL: Semantic Grounding and Safe Execution for PostGIS-based NL2GeoSQL, with a Cross-Domain Stress Test on Warehouse Queries*
+**Manuscript**: Semantic Grounding and Safe Execution for PostGIS Natural-Language-to-SQL
+**Target venue**: *International Journal of Geographical Information Science* (IJGIS)
+**Submission type**: Regular research article, double-anonymised peer review
+**Version**: v4 (2026-05-08)
 
-**Submission status:** Double-anonymised for IJGIS peer review. Author identity and affiliation are provided only through the editorial submission system, not in any of the files below.
+## Files
 
-## Files in this package
+- `01_manuscript_v4.tex` / `01_manuscript_v4.pdf` — main manuscript (~22 pages incl. bib)
+- `02_cover_letter_v4.tex` / `02_cover_letter_v4.pdf` — cover letter (1 page)
+- `03_response_to_reviewers_v4.md` / `03_response_to_reviewers_v4.pdf` — point-by-point response to four review reports (5 pages)
+- `table_benchmark_profile.tex` — auto-generated 85q benchmark composition table (consumed by §4.1 via `\input{}`)
+- `fig_semantic_graph.mmd` — Mermaid source for the G=(V,E) figure (§3.1)
 
-| File | What it is |
-|---|---|
-| `01_manuscript_v3.tex` | Final LaTeX source, 21 pages, 7,981 words total (incl. references). |
-| `01_manuscript_v3.pdf` | Compiled manuscript PDF. |
-| `02_cover_letter_v3.tex` | Cover letter to the Editor-in-Chief, anonymised. |
-| `02_cover_letter_v3.pdf` | Compiled cover letter PDF. |
-| `03_response_to_reviewers_v3.md` | Item-by-item response to the two external reviews on the previous version. |
-| `03_response_to_reviewers_v3.pdf` | Compiled response PDF. |
-| `README.md` | This file. |
+## Primary claims
 
-## How v3 differs from v2
+- **Robustness (strongest)**: 40-question Robustness suite reaches 0.975 vs. baseline 0.450 (paired McNemar p<10^-4). OOM Prevention bounded-answer compliance improves from v3 1/8 to v4 7/8.
+- **Spatial (N=3 pooled)**: mean+/-SD 0.663+/-0.048 (range [0.612, 0.706]); majority-vote 0.659, p=0.052 (marginal). Two of three individual samples significant (p=0.003, p=0.029).
+- **Ablation**: semantic grounding -0.118 (p=0.006) and self-correction -0.106 (p=0.023) are statistically significant on Spatial EX; intent routing, postprocessor, and few-shot are not (p=0.774 each).
+- **Middle baseline**: schema-only + pp + retry reaches 0.565 (+0.036 over baseline, n.s.); Full's additional +0.098 over middle (p=0.004) attributes gain to semantic grounding, not generic scaffold.
 
-v2 was a "cross-domain text-to-SQL" paper with GIS and BIRD both treated as primary domains; v3 positions **PostGIS-based NL2GeoSQL** as the primary GIScience contribution, with BIRD reported on a second evaluation track that measures the warehouse path of the same bilingual framework. The structural changes:
+## Companion code artifacts (released with v4)
 
-- **Title and contributions**: narrowed to PostGIS-side. BIRD is a second evaluation track of the same bilingual framework, reported as a current-state snapshot that scopes the next warehouse-side engineering round.
-- **Ablation**: the single-pass ablation is now labelled and framed as a *diagnostic*, explicitly **not** used to attribute the agent-loop 0.682 Spatial EX. An agent-loop-native ablation is listed as future work.
-- **Robustness**: the 40-question table now reports two orthogonal metrics — *safe-refusal rate* and *bounded-answer compliance* — instead of a single success rate. The OOM Prevention category (bounded-answer 1/8) is explained as an engineering gap with a targeted `EXPLAIN`-based mitigation path.
-- **BIRD**: 95% Wilson CIs on EX and a Newcombe-style CI on the paired-proportion difference added to Table 5. The 108-question design set is described as a *development-set tuning effect* and the 150-question held-out set is the primary BIRD significance test. The McNemar-summary table gains a Role column marking Primary / Development / Exploratory.
-- **Cross-lingual**: LLM-translated Chinese BIRD probe is caveated as *exploratory* in the abstract and methodology, not only in Limitations.
-- **Related Work**: rewritten to foreground IJGIS-published NL-to-spatial-database work (GeoCogent, GeoAgent, Monkuu, GeoSQL-Eval) and the IEEE TKDE NALSpatial paper as the directly related prior art, with Spider/BIRD/DIN-SQL as non-spatial backdrop. GIScience foundations (Goodchild; Egenhofer & Franzosa; Clementini et al.) are cited.
-- **Worked example** added (§3.8, Figure 2): traces a single Chongqing benchmark question through every stage — NL → intent → SRID/geometry → injected PostGIS rules → initial SQL → execution error → self-corrected SQL → gold — so that the grounding behaviour is concretely auditable.
-- **References**: 22 entries (up from 19 in v2). GeoCogent / GeoAgent / GeoSQL-Eval metadata corrected. Goodchild 1992, Egenhofer & Franzosa 1991, Clementini et al. 1993, Monkuu 2025, NALSpatial 2025 added. `et al.` expanded to full author lists per Taylor & Francis style. URL access dates updated to 7 May 2026. ISO 19125-2:2004 noted as withdrawn; PostGIS pinned to 3.5; MetricFlow re-described as "operationalising" rather than "formalizing" the semantic layer.
-- **Anonymisation**: author name, affiliation, and email removed; commit hashes previously visible in the Reproducibility section removed; reviewer-accessible repository link is provided through the editorial system only.
-- **Language polish**: "honestly", "camera-ready", "available on request", and process-language ("previous version", "Phase A", "v1/v2") removed. KNN operator is written as a single `\texttt{<->}`. Abstract compressed from ~290 words to 252.
+- `data_agent/semantic_graph.py` — metadata graph G=(V,E) reference implementation (Section 3.1 Algorithm 1 mirrors this 1:1)
+- `data_agent/sql_postprocessor.py::explain_row_estimate()` — EXPLAIN-based OOM pre-check
+- `scripts/nl2sql_bench_cq/run_ablation_agentloop.py` + `run_single_ablation_config.py` — agent-loop-native ablation harness
+- `scripts/nl2sql_bench_cq/run_schema_only_baseline.py` — schema-only middle baseline driver
+- `scripts/nl2sql_bench_cq/benchmark_profile.py` — auto-generates Table 1b
+- `scripts/nl2sql_bench_cq/crosslingual_review_tool.py` — CSV exporter for the bilingual cross-lingual review
 
-## Key numbers at a glance
+## Eval artifacts
 
-| Metric | Result |
-|---|---|
-| Total word count (incl. references) | 7,981 (within IJGIS ~8,000 limit) |
-| Abstract word count | 252 |
-| Page count | 21 |
-| Primary GIS Spatial EX (85q) | 0.682 vs. baseline 0.529; paired McNemar two-sided exact *p* = 0.0072; +0.153 |
-| GIS Spatial vs. DIN-SQL | +0.118; *p* = 0.0213 |
-| Robustness 40q safe-refusal | 40/40 = 1.000 |
-| Robustness 40q bounded-answer | 33/40 = 0.825 (OOM category bounded-answer 1/8) |
-| BIRD 108q design set | 0.593 vs. 0.500; *p* = 0.0213 (development-set tuning) |
-| BIRD 150q held-out (primary) | 0.507 vs. 0.473; *p* = 0.3833, **not significant**; 95% CI on Δ: [−0.03, 0.09] |
+All raw JSON records (per-question execution accuracy, prompts, generated SQL, timings) are available in `data_agent/nl2sql_eval_results/`:
 
-## Compiling the LaTeX sources
+- `cq_2026-05-08_090919/` — v4 final 125q both-mode run (baseline + full)
+- `ablation_agentloop_2026-05-07_233516/` — 6-config ablation
+- `schema_only_baseline_2026-05-08_083521/` — middle baseline
+- `full_resample_2026-05-08_1040/` — third Full sample for N=3 pooling
+- `cq_2026-05-06_133518/` — pre-v4 baseline snapshot (SHA for integrity verification)
+
+## Reproduction
 
 ```bash
-# Manuscript (pdflatex, 2 passes)
-pdflatex 01_manuscript_v3.tex
-pdflatex 01_manuscript_v3.tex
-
-# Cover letter
-pdflatex 02_cover_letter_v3.tex
-
-# Response to reviewers (needs XeLaTeX for CJK in a few reviewer quotes)
-pandoc 03_response_to_reviewers_v3.md \
-  -o 03_response_to_reviewers_v3.pdf \
-  --pdf-engine=xelatex \
-  -V geometry:margin=1in -V fontsize=11pt \
-  -V CJKmainfont="Microsoft YaHei" -V mainfont="Times New Roman"
+# Setup
+export PYTHONPATH=D:/adk
+source .venv/Scripts/activate
+# Main eval (baseline + full)
+python scripts/nl2sql_bench_cq/run_cq_eval.py --mode both --benchmark benchmarks/chongqing_geo_nl2sql_100_benchmark.json
+# Ablation
+bash scripts/nl2sql_bench_cq/run_ablation_orchestrator.sh
+# Middle baseline
+python scripts/nl2sql_bench_cq/run_schema_only_baseline.py
+# Pooling stats
+python scripts/nl2sql_bench_cq/pool_full_samples.py
 ```
 
-## Pre-submission checklist
+Each driver is resume-safe (partial files preserved on SIGTERM/SIGKILL) and respects a per-question `CQ_EVAL_QUESTION_TIMEOUT` env var (default 90s) to bound agent-loop hangs.
 
-- [x] Word count within the 8,000-word IJGIS limit (7,981).
-- [x] Abstract within 250 ± a few words (252).
-- [x] Double-anonymised: no author name, affiliation, email, or commit hash in any PDF.
-- [x] All reference metadata externally verified (GeoCogent, GeoAgent, GeoSQL-Eval, Monkuu, NALSpatial, Egenhofer, Clementini, Goodchild).
-- [x] `et al.` expanded to full author lists throughout the bibliography.
-- [x] Single primary LLM (Gemini 2.5 Flash) disclosed as a limitation.
-- [x] Two-metric Robustness reporting (no conflation of safe-refusal with bounded-answer).
-- [x] BIRD held-out is the primary warehouse test; design-set significance is framed as tuning effect.
-- [x] Worked example (Figure 2) present.
-- [x] Anonymised reviewer link to be provided through the editorial submission form.
-- [ ] Submit via Taylor & Francis IJGIS portal.
-- [ ] Paste cover-letter body into the portal's cover-letter field; upload the PDF version as a supplementary file.
-- [ ] Upload response-to-reviewers PDF as a supplementary file.
+## Outstanding (first-revision candidates)
+
+- Cross-lingual 50q rerun after bilingual human review (CSV at `benchmarks/bird_chinese_50q_review.csv`)
+- DIN-SQL rerun on BIRD 150q held-out + GIS Robustness 40q paired evaluation
+- Additional Full-mode samples beyond N=3 for tighter significance
