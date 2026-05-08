@@ -1,0 +1,50 @@
+graph LR
+    <->
+    ST_Area
+    ST_Contains
+    ST_Crosses
+    ST_DWithin
+    ST_Distance
+    ST_Equals
+    ST_Intersects
+    ST_Length
+    ST_Overlaps
+    ST_Touches
+    ST_Within
+    aggregation
+    attribute_filter
+    cq_amap_poi_2024
+    cq_baidu_aoi_2024
+    cq_baidu_search_index_2023
+    cq_buildings_2021
+    cq_dltb
+    cq_ghfw
+    cq_historic_districts
+    cq_jsydgzq
+    cq_land_use_dltb
+    cq_osm_roads
+    cq_osm_roads_2021
+    knn
+    preview_listing
+    spatial_join
+    spatial_measurement
+    unit::ST_Area::4326-4326
+    unit::ST_DWithin::4326-4326
+    unit::ST_Distance::4326-4326
+    unit::ST_Length::4326-4326
+    ST_Area --> unit::ST_Area::4326-4326
+    ST_DWithin --> unit::ST_DWithin::4326-4326
+    ST_Distance --> unit::ST_Distance::4326-4326
+    ST_Length --> unit::ST_Length::4326-4326
+    knn --> <->
+    spatial_join --> ST_Contains
+    spatial_join --> ST_Crosses
+    spatial_join --> ST_Equals
+    spatial_join --> ST_Intersects
+    spatial_join --> ST_Overlaps
+    spatial_join --> ST_Touches
+    spatial_join --> ST_Within
+    spatial_measurement --> ST_Area
+    spatial_measurement --> ST_DWithin
+    spatial_measurement --> ST_Distance
+    spatial_measurement --> ST_Length
