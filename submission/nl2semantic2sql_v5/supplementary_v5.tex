@@ -195,82 +195,96 @@ qid & db\_id & difficulty & review & pre EX & post EX \\
 1533 & debit\_card\_specializing & moderate & fix & 0 & 0 \\
 \end{longtable}
 
-\section*{S3. Open-source model cross-family ablation (Gemini vs.\ open-weight)}
+\section*{S3. Cross-model-family full factorial (Gemini vs.\ DeepSeek, $4$ cells $\times$ N$=$3)}
 
 The primary evaluation uses Gemini~2.5~Flash. To test whether the observed gain
 from semantic grounding and intent-conditioned routing is specific to one LLM
-family, we re-ran the schema-only baseline and the full pipeline on a stratified
-$n=30$ subset of the 85-question GIS Spatial benchmark using both
-Gemini~2.5~Flash and the open-weight DeepSeek-V4-Flash. The cross-family scope
-is intentionally \emph{baseline-only}: the full pipeline depends on ADK's
-\texttt{LlmAgent} agent loop, which is currently coupled to the Gemini provider
-and cannot be redirected to DeepSeek without a DeepSeek-native agent-loop
-refactor. The open-weight ablation therefore lands in two parts.
-Table~\ref{tab:open-source-within} reports the within-family Gemini grounding
-gain on the 30-question subset, isolating the effect of grounding and
-intent-conditioned routing against the Gemini schema-only baseline.
-Table~\ref{tab:open-source-cross-family} reports a cross-family baseline
-parity check that pairs the Gemini schema-only baseline against the DeepSeek
-schema-only baseline on the same 30 questions and the same gold SQL, holding
-everything constant except the underlying LLM.
+family, we ran a $2{\times}2$ factorial on the full 85-question GIS Spatial
+benchmark with model family $\in\{$Gemini~2.5~Flash, DeepSeek-V3$\}$ and
+pipeline $\in\{$schema-only baseline, full$\}$. The full pipeline is routed
+through a unified model gateway so that the same ADK \texttt{LlmAgent} agent
+loop runs on either family without branch-specific code; DeepSeek is reached
+via the OpenAI-compatible LiteLLM adapter. Following the main-text Spatial
+protocol (Section~3.4 of the manuscript), the full cell is sampled $N{=}3$
+times per family and aggregated by majority vote to absorb decoding
+stochasticity; each family uses its own provider-default temperature, which
+is deployment-realistic. DeepSeek baseline is also run at $N{=}3$ because
+DeepSeek's API is not deterministic at temperature~$0$; the Gemini baseline
+remains $N{=}1$ because the schema-only \texttt{baseline\_generate} path sets
+temperature~$0$ explicitly and Gemini~2.5~Flash is deterministic for that
+family. Table~\ref{tab:cross-family-4cell} summarises the four cells;
+Table~\ref{tab:cross-family-paired} reports the four paired McNemar tests on
+majority-vote predictions.
 
 \begin{table}[h]
 \centering
-\caption{Within-family Gemini grounding gain on the 30-question stratified GIS
-Spatial subset. Paired McNemar two-sided exact binomial.}
-\label{tab:open-source-within}
+\caption{$4$-cell cross-family factorial on the full 85-question GIS Spatial
+benchmark. $\mathrm{EX}$ is execution accuracy over the paired gold-SQL
+harness; SD is sample SD across $N=3$ samples within cell. Gemini~full
+per-sample EX is reused from the main-text Spatial $N=3$ protocol;
+DeepSeek cells are new.}
+\label{tab:cross-family-4cell}
 \begin{tabular}{lcccc}
 \toprule
-Configuration & EX & Discordant $b$ & Discordant $c$ & Paired $p$ \\
+Cell & EX mean & EX SD & $N$ & Majority-vote EX \\
 \midrule
-Gemini schema-only baseline & 0.600 (18/30) & --- & --- & --- \\
-Gemini full pipeline        & 0.800 (24/30) & 0   & 6   & \textbf{0.0312} \\
+Gemini baseline   & $0.529$ & ---      & $1$ & $0.529$ \\
+Gemini full       & $0.663$ & $0.048$  & $3$ & $0.659$ \\
+DeepSeek baseline & $0.533$ & $0.007$  & $3$ & $0.529$ \\
+DeepSeek full     & $0.459$ & $0.042$  & $3$ & $0.482$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[h]
 \centering
-\caption{Cross-family baseline parity on the same 30-question subset (schema-only
-baseline, no grounding, no intent routing, no agent loop). Paired McNemar
-two-sided exact binomial.}
-\label{tab:open-source-cross-family}
+\caption{Paired McNemar on majority-vote predictions across the $2{\times}2$
+design (two-sided exact binomial). $b$ is the number of qids where the first
+cell is correct and the second is incorrect; $c$ is the converse.}
+\label{tab:cross-family-paired}
 \begin{tabular}{lcccc}
 \toprule
-Configuration & EX & Discordant $b$ & Discordant $c$ & Paired $p$ \\
+Contrast & $b$ & $c$ & $\Delta$EX & Paired $p$ \\
 \midrule
-Gemini schema-only baseline   & 0.600 (18/30) & --- & --- & --- \\
-DeepSeek schema-only baseline & 0.600 (18/30) & 2   & 2   & 1.000 \\
+Within-family Gemini   (base vs.\ full)     & $8$  & $19$ & $+0.129$ & $0.052$ \\
+Within-family DeepSeek (base vs.\ full)     & $18$ & $14$ & $-0.047$ & $0.597$ \\
+Cross-family baseline  (Gemini vs.\ DS)     & $0$  & $0$  & $0.000$  & $1.000$ \\
+Cross-family full      (Gemini vs.\ DS)     & $22$ & $7$  & $+0.176$ & $0.008$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Reading.} Table~\ref{tab:open-source-within} shows that grounding
-plus intent-conditioned routing lifts Gemini EX by $+0.200$ on the 30-question
-subset (paired exact $p=0.0312$, $b=0$/$c=6$), directionally and inferentially
-consistent with the agent-loop component ablation on the 85-question superset
-(Section~4.6 of the main text), where semantic grounding contributed $-0.118$ EX
-when removed at $p=0.006$. Table~\ref{tab:open-source-cross-family} shows that
-at the schema-only floor an open-weight model (DeepSeek-V4-Flash) reaches the
-same $0.600$ EX as Gemini~2.5~Flash on the same 30 items, with no detectable
-within-pair preference ($p=1.000$, $b=c=2$). The cross-family parity check
-matters because it rules out the alternative reading ``the Gemini grounding
-gain is just because Gemini is stronger than open-weight competitors on this
-benchmark'': at the schema-only baseline, the two families are
-indistinguishable on the same items, so the $+0.200$ Gemini full-pipeline gain
-is attributable to the grounding and intent-routing components rather than to
-a baseline capability gap.
+\paragraph{Reading.} Three findings emerge. \emph{First}, the cross-family
+schema-only baseline is exactly matched: both families reach $0.529$ EX with
+zero discordant qids ($b=c=0$, $p=1.000$), so the full-pipeline contrast is
+not confounded by an a-priori capability gap between the two families on this
+benchmark. \emph{Second}, the within-family Gemini grounding gain of $+0.129$
+(majority-vote, $p=0.052$) replicates the main-text Spatial headline.
+\emph{Third}, the same full-pipeline stack --- identical grounding rules,
+intent routing, self-correction, and postprocessor --- does \emph{not}
+transfer to DeepSeek: the within-family DeepSeek contrast is in the opposite
+direction ($-0.047$, $p=0.597$, null), and the cross-family full contrast is
+significantly in Gemini's favour ($+0.176$, $p=0.008$). The grounding stack
+was authored and error-attributed against Gemini traces, and we interpret the
+DeepSeek regression as evidence that semantic grounding plus intent-conditioned
+routing, as currently instantiated, carries family-specific prompt
+sensitivities. This is an honest negative result for the portability claim:
+the mechanism works on the family it was tuned for, does not work on the
+unseen family at the same prompt budget, and the next question is whether
+family-adapted grounding rules recover the gain.
 
-\paragraph{Scope and the deferred run.} The fully cross-family contrast we
-cannot report here is DeepSeek-baseline vs.\ DeepSeek-full: it would establish
-whether the same grounding plus intent-routing mechanism, plumbed through
-DeepSeek instead of Gemini, also lifts EX. Implementing it requires replacing
-ADK's Gemini-bound agent loop (with retry, structured tool I/O, and execution
-self-correction) with a DeepSeek-native equivalent; ADK's \texttt{LlmAgent}
-HTTP layer is currently Gemini-only and cannot be redirected without
-refactoring. We treat the engineering of a model-agnostic agent loop, and a
-four-cell $2{\times}2$ family$\times$pipeline ablation on a larger GIS sample
-including additional open- and closed-weight model families, as future work.
+\paragraph{Protocol details.} Full-pipeline per-sample EX values were:
+Gemini $\{0.706, 0.612, 0.671\}$; DeepSeek $\{0.494, 0.412, 0.471\}$.
+DeepSeek baseline per-sample EX: $\{0.529, 0.541, 0.529\}$. Temperature
+pinning was intentionally \emph{not} applied across families: pinning
+temperature~$0$ in a cross-family study would sample a deployment
+configuration neither family actually ships; pinning temperature~$1$ would
+understate Gemini's deployed determinism. We therefore let each family run
+at its provider default and absorbed the decoding variance with $N=3$
+sampling per cell, which is the same protocol the main text uses for its
+Gemini Spatial headline. All six DeepSeek runs were executed on the same day,
+on the same benchmark snapshot, against the same PostGIS instance and the
+same gold-SQL harness.
 
 \section*{S4. DIN-SQL held-out run (150q) and Robustness paired comparison}
 

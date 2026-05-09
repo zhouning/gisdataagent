@@ -28,7 +28,7 @@ This directory holds the IJGIS submission artefacts for the double-anonymised re
 
 **Cross-lingual 50q (null translation artefact).** Bilingual human re-audit of all 50 LLM-translated BIRD Chinese questions yields paired McNemar p=1.00, ruling out translation artefacts.
 
-**Cross-family ablation (baseline-only).** On a 30q Spatial subset, Gemini-2.5-Flash baseline→full gain p=0.0312; DeepSeek-V4-Flash baseline matches Gemini-2.5-Flash baseline at EX 0.600.
+**Cross-family factorial ($2\times2$, full 85q, N=3).** Schema-only baseline parity between Gemini-2.5-Flash and DeepSeek-V3 (both 0.529 EX, paired McNemar $p=1.000$). Within-Gemini full-vs-baseline $+0.129$ ($p=0.052$, marginal); within-DeepSeek $-0.047$ ($p=0.597$, null); cross-family full $+0.176$ in Gemini's favour ($p=0.008$). The Gemini-tuned grounding stack does not transfer to DeepSeek at the same prompt budget — reported honestly as a family-portability negative finding.
 
 **External baseline (DIN-SQL paired).** BIRD 150q held-out: Full 0.507 vs DIN-SQL 0.440 (p=0.076, marginal). Robustness 40q: Full 0.975 vs DIN-SQL 0.275 (p=7.45e-9, highly significant).
 

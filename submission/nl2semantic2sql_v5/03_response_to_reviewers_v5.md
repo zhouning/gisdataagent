@@ -50,13 +50,16 @@ Post-fix grep on the submitted `.tex` file returns **0 hits** for bare "v3" or "
 
 Report 1 noted that all experiments used a single proprietary model (Gemini 2.5 Flash) and requested either a small open-model ablation or a more explicit limitations statement.
 
-**Action taken.** We added a cross-model-family ablation in **Supplement S3** using a 30-question stratified subset of the Spatial set (10 topological, 10 metric, 10 aggregation):
+**Action taken.** We ran a full $2\times2$ cross-family factorial in **Supplement S3** on the complete 85-question Spatial set, with model family $\in$ {Gemini 2.5 Flash, DeepSeek-V3} and pipeline $\in$ {schema-only baseline, full}. Each full cell is sampled $N=3$ with majority-vote aggregation, matching the main-text Spatial protocol; each family uses its own provider-default temperature.
 
-- **Gemini 2.5 Flash (Full):** 24/30 = 0.800 vs. baseline 18/30 = 0.600; paired McNemar $b=0, c=6$, $p=0.0312$ (significant).
-- **DeepSeek-V3 (schema-only baseline):** 18/30 = 0.600; cross-family baseline parity with Gemini schema-only: $p=1.000$ (the 30-question subset is tractable by an open-weight model at schema-only level).
-- **Cross-family baseline parity** confirms the 30q subset is not Gemini-specific at the schema-only tier; the Full-mode gain ($+0.200$, $p=0.0312$) is attributable to the semantic grounding layer rather than to Gemini-specific prompt sensitivity.
+- **Cross-family schema-only baseline parity.** Gemini $0.529$ vs. DeepSeek $0.529$ on majority-vote; $b=c=0$, paired McNemar $p=1.000$. The two families are exactly matched on the same 85 items at the schema-only floor, so any full-pipeline contrast is not confounded by an a-priori capability gap.
+- **Within-family Gemini (full vs. baseline).** $+0.129$ EX ($b=8, c=19$, paired McNemar $p=0.052$, marginal). Reproduces the main-text Spatial headline.
+- **Within-family DeepSeek (full vs. baseline).** $-0.047$ EX ($b=18, c=14$, paired McNemar $p=0.597$, null; direction is slightly negative). The Gemini-tuned grounding stack does not transfer to DeepSeek at the same prompt budget.
+- **Cross-family full.** Gemini full $0.659$ vs. DeepSeek full $0.482$; $b=22, c=7$, paired McNemar $p=0.008$ in Gemini's favour.
 
-The Limitations section (§6) now explicitly states: "All Full-mode experiments use Gemini 2.5 Flash; a DeepSeek-native agent loop enabling full-pipeline cross-family comparison remains future work (Supplement S3 provides a schema-only cross-family baseline)."
+**Interpretation.** This is an honest negative finding on portability. The semantic-grounding rules were authored and error-attributed against Gemini traces, and they do not lift DeepSeek-V3 on the same benchmark at the same prompt budget. We have rewritten Supplement S3, the main-text §4.6 Cross-model-family paragraph, and the §6 Limitations item (7) to state this plainly and to scope family-adapted grounding rules as future work rather than claiming cross-family universality.
+
+The Limitations section (§6) now explicitly states: "The primary evaluation uses Gemini~2.5~Flash. A $2\times2$ cross-family factorial on the full 85q Spatial set (Gemini vs.\ DeepSeek-V3, $N=3$) is reported in Supplement~S3: the two families are exactly matched at the schema-only baseline ($p=1.000$), but the current grounding-plus-routing stack does not transfer to DeepSeek (within-family $p=0.597$, null; cross-family full $p=0.008$ in Gemini's favour). We therefore treat the grounding rules as tuned to Gemini, and family-adapted grounding rules and a broader cross-family comparison across additional open- and closed-weight model families are future work."
 
 ### §3 Citation and References — VERIFIED
 
@@ -149,7 +152,7 @@ Report 2 item 9 required author-date references per IJGIS / Taylor & Francis sty
 - **Word count:** reduced from ~9,100 (v4 estimate) to 7,558 (v5 verified); abstract from ~293–316 words to 181 words.
 - **Version tokens removed:** all "v3" and "v4" tokens removed from author-visible manuscript text (grep returns 0 hits).
 - **Two new evaluation tracks added to Supplement:**
-  - S3: Cross-model-family ablation (Gemini vs. DeepSeek on 30q Spatial subset; Full 0.800 vs. baseline 0.600, $p=0.0312$; cross-family baseline parity $p=1.000$).
+  - S3: Cross-model-family $2\times2$ factorial (Gemini vs. DeepSeek-V3 on the full 85q Spatial set, $N=3$ per full cell). Schema-only baseline parity ($p=1.000$); within-Gemini $+0.129$ ($p=0.052$); within-DeepSeek $-0.047$ ($p=0.597$, null); cross-family full $+0.176$ in Gemini's favour ($p=0.008$). Reported as an honest negative finding on portability of the Gemini-tuned grounding stack.
   - S4: DIN-SQL BIRD 150q held-out (Full 0.507 vs. DIN-SQL 0.440, $b=18, c=8$, $p=0.0755$, marginal) and DIN-SQL Robustness 40q (Full 0.975 vs. DIN-SQL 0.275, $b=28, c=0$, $p=7.45 \times 10^{-9}$, highly significant).
 - **Primary Spatial headline defined:** majority-vote 0.659 ($p=0.052$, marginal) is the single primary Spatial number; 0.706/0.682/0.663 labelled as sample-specific, comparison-specific, or pooled.
 - **Five related-work corrections:** NALSpatial backend corrected to SECONDO; GeoSQL-Eval table columns restructured; PostGIS bibitem wording softened; OGC SFA lineage phrasing updated; GeoSPARQL 1.0 vs. 1.1 footnote added.
@@ -161,10 +164,9 @@ Report 2 item 9 required author-date references per IJGIS / Taylor & Francis sty
 
 ## Remaining Future Work (Not Blocking This Submission)
 
-1. Larger cross-family model comparison beyond the 30q Spatial subset (e.g., full 85q Spatial run with DeepSeek-native agent loop).
+1. Family-adapted grounding rules for DeepSeek (and other model families), motivated by the null/negative DeepSeek result in the S3 $2\times2$ cross-family factorial.
 2. Warehouse round-3 grounding on held-out BIRD failures (the $+0.033$ directional gap).
 3. Domain-selective grounding gated by the intent router (applying semantic grounding only when spatial predicates are detected).
 4. A larger OOM sub-suite and a tighter bounded-output rubric beyond the current 8-question OOM category.
 5. Extended bilingual human-reviewed cross-lingual sample beyond 50 questions.
 6. Broader external baseline comparison (e.g., MAC-SQL, CHESS) on the GIS Spatial benchmark.
-7. A DeepSeek-native agent loop to enable full-pipeline cross-family comparison (Supplement S3 currently provides schema-only cross-family baseline only).
