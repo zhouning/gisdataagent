@@ -9,6 +9,8 @@ Fully leverages the semantic layer system:
 """
 from __future__ import annotations
 
+import os
+
 from google.adk.agents import LlmAgent
 
 
@@ -59,7 +61,7 @@ def build_nl2sql_agent():
         name="NL2SQLEvalAgent",
         instruction=instruction,
         description="Focused NL2SQL evaluation agent with full semantic layer",
-        model="gemini-2.5-flash",
+        model=os.environ.get("NL2SQL_AGENT_MODEL", "gemini-2.5-flash"),
         tools=[
             DatabaseToolset(tool_filter=[
                 "query_database", "describe_table", "list_tables",

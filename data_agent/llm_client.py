@@ -98,6 +98,16 @@ def generate_text(
     Raises:
         RuntimeError: If both Gemini and DeepSeek fail.
     """
+    # --- env-flag: force DeepSeek as primary (for cross-family ablation) ---
+    _FORCE_DEEPSEEK = os.environ.get("NL2SQL_FORCE_DEEPSEEK", "").strip() in ("1", "true", "True")
+    if _FORCE_DEEPSEEK:
+        ds_key = _get_deepseek_key()
+        if not ds_key:
+            raise RuntimeError("NL2SQL_FORCE_DEEPSEEK=1 but DEEPSEEK_API_KEY missing")
+        ds_model = _DEEPSEEK_MODELS.get(tier, _DEEPSEEK_MODELS["fast"])
+        return _call_deepseek(prompt, ds_model, temperature, timeout_ms // 1000)
+    # -----------------------------------------------------------------------
+
     g_model = gemini_model or _GEMINI_MODELS.get(tier, _GEMINI_MODELS["fast"])
     last_error = None
 
