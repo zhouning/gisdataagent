@@ -1,0 +1,373 @@
+[
+  {
+    "id": "CQ_GEO_EASY_02",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "在道路数据中，列出所有限速（maxspeed）大于 100 且属于主干道（fclass 为 'primary'）的道路名称（name）。",
+    "golden_sql": "SELECT name FROM cq_osm_roads_2021 WHERE maxspeed > 100 AND fclass = 'primary';",
+    "reasoning_points": [
+      "多条件 AND 过滤",
+      "特定字段提取"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_EASY_05",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "在高德POI数据中，找出包含'三甲医院'（类型 或 名称 中包含）的所有 POI 的名称和电话。",
+    "golden_sql": "SELECT \"名称\", \"电话\" FROM cq_amap_poi_2024 WHERE \"类型\" LIKE '%三甲医院%' OR \"名称\" LIKE '%三甲医院%';",
+    "reasoning_points": [
+      "模糊查询 LIKE",
+      "OR 逻辑连接"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_EASY_07",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "在建筑物数据中，找出所有层数（Floor）恰好为 1 层的建筑，统计共有多少栋。",
+    "golden_sql": "SELECT COUNT(*) FROM cq_buildings_2021 WHERE \"Floor\" = 1;",
+    "reasoning_points": [
+      "等值过滤",
+      "COUNT 聚合"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_EASY_10",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "在高德POI数据中，找出地址（地址字段）中包含'渝北区'的所有 POI，返回名称和类型，限制 50 条。",
+    "golden_sql": "SELECT \"名称\", \"类型\" FROM cq_amap_poi_2024 WHERE \"地址\" LIKE '%渝北区%' LIMIT 50;",
+    "reasoning_points": [
+      "LIKE 模糊匹配",
+      "中文字段投影"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_EASY_14",
+    "category": "Aggregation",
+    "difficulty": "Easy",
+    "question": "统计高德 POI 数据中，共有多少条记录。",
+    "golden_sql": "SELECT COUNT(*) FROM cq_amap_poi_2024;",
+    "reasoning_points": [
+      "COUNT 全表统计"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_EASY_17",
+    "category": "Aggregation",
+    "difficulty": "Easy",
+    "question": "统计 cq_dltb 中有多少种不同的地类名称（dlmc）。",
+    "golden_sql": "SELECT COUNT(DISTINCT dlmc) FROM cq_dltb;",
+    "reasoning_points": [
+      "COUNT DISTINCT"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_EASY_20",
+    "category": "Spatial Measurement",
+    "difficulty": "Easy",
+    "question": "计算 cq_historic_districts 中每个历史街区的空间面积（使用 ST_Area，不转 geography），返回街区名称（jqmc）和面积，按面积降序排列。",
+    "golden_sql": "SELECT jqmc, ST_Area(shape) AS area FROM cq_historic_districts ORDER BY area DESC;",
+    "reasoning_points": [
+      "ST_Area 不转 geography",
+      "ORDER BY"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_EASY_23",
+    "category": "Preview/Listing",
+    "difficulty": "Easy",
+    "question": "列出 cq_district_population 中所有区县的区划名称和常住人口，按常住人口降序排列，排除总计行（行政区划代码 = 500000）。",
+    "golden_sql": "SELECT \"区划名称\", \"常住人口\" FROM cq_district_population WHERE \"行政区划代码\" != 500000 ORDER BY \"常住人口\" DESC;",
+    "reasoning_points": [
+      "过滤总计行",
+      "ORDER BY"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_07",
+    "category": "Aggregation",
+    "difficulty": "Hard",
+    "question": "使用子查询，找出建筑物楼层数（Floor）高于全部建筑平均楼层数的建筑数量。",
+    "golden_sql": "SELECT COUNT(*) FROM cq_buildings_2021 WHERE \"Floor\" > (SELECT AVG(\"Floor\") FROM cq_buildings_2021);",
+    "reasoning_points": [
+      "子查询",
+      "比较平均值"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_10",
+    "category": "Spatial Join",
+    "difficulty": "Hard",
+    "question": "对每条 fclass 为 primary 的道路，统计与其几何相交的 POI 数量，返回道路名称和 POI 数量，取 POI 最多的前 5 条道路。",
+    "golden_sql": "SELECT r.name, COUNT(DISTINCT p.\"ID\") AS poi_cnt FROM cq_osm_roads_2021 r JOIN cq_amap_poi_2024 p ON ST_Intersects(r.geometry, p.geometry) WHERE r.fclass = 'primary' GROUP BY r.name ORDER BY poi_cnt DESC LIMIT 5;",
+    "reasoning_points": [
+      "ST_Intersects 空间连接",
+      "GROUP BY + TOP-N",
+      "DISTINCT 去重"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_11",
+    "category": "Spatial Join",
+    "difficulty": "Hard",
+    "question": "找出同时满足以下条件的 POI（高德数据）：（1）类型包含'医院'；（2）位于某个地类为'村庄'的 cq_dltb 图斑内。返回 POI 名称和地址，限制 20 条。",
+    "golden_sql": "SELECT DISTINCT p.\"名称\", p.\"地址\" FROM cq_amap_poi_2024 p JOIN cq_dltb d ON ST_Within(ST_Transform(p.geometry, 4610), d.shape) WHERE p.\"类型\" LIKE '%医院%' AND d.dlmc = '村庄' LIMIT 20;",
+    "reasoning_points": [
+      "ST_Within 空间过滤",
+      "属性过滤复合条件"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_14",
+    "category": "KNN",
+    "difficulty": "Hard",
+    "question": "找出距离'重庆大学'（高德 POI 名称包含'重庆大学'，取第一条）1 千米内（ST_DWithin geography）且楼层（Floor）大于 10 层的建筑数量。",
+    "golden_sql": "SELECT COUNT(*) FROM cq_buildings_2021 b CROSS JOIN (SELECT geometry FROM cq_amap_poi_2024 WHERE \"名称\" LIKE '%重庆大学%' LIMIT 1) u WHERE ST_DWithin(b.geometry::geography, u.geometry::geography, 1000) AND b.\"Floor\" > 10;",
+    "reasoning_points": [
+      "ST_DWithin geography 圆形范围",
+      "KNN 额外属性过滤"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_17",
+    "category": "Complex Multi-Step",
+    "difficulty": "Hard",
+    "question": "统计高德 POI 中类型包含学校的 POI，与其几何相交（ST_Intersects）的楼层超过 20 层的建筑数量，按学校名称排序返回前 10 所学校和对应建筑数量。",
+    "golden_sql": "SELECT p.\"名称\", COUNT(DISTINCT b.\"Id\") AS bld_cnt FROM cq_amap_poi_2024 p JOIN cq_buildings_2021 b ON ST_Intersects(p.geometry, b.geometry) WHERE p.\"类型\" LIKE '%学校%' AND b.\"Floor\" > 20 GROUP BY p.\"名称\" ORDER BY p.\"名称\" LIMIT 10;",
+    "reasoning_points": [
+      "ST_Intersects 空间连接",
+      "GROUP BY 聚合",
+      "ORDER + LIMIT"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_20",
+    "category": "Complex Multi-Step",
+    "difficulty": "Hard",
+    "question": "对 cq_unicom_commuting_2023，按年龄段（年龄 <= 17 为'青少年'，18-59 为'劳动年龄'，>= 60 为'老年'）分组，统计每组的扩样后人口总和，按人口降序排列。",
+    "golden_sql": "SELECT CASE WHEN \"年龄\" <= 17 THEN '青少年' WHEN \"年龄\" <= 59 THEN '劳动年龄' ELSE '老年' END AS age_group, SUM(\"扩样后人口\") AS total_pop FROM cq_unicom_commuting_2023 GROUP BY age_group ORDER BY total_pop DESC;",
+    "reasoning_points": [
+      "CASE WHEN 分组",
+      "GROUP BY 计算列",
+      "SUM 聚合"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_22",
+    "category": "Cross-Table",
+    "difficulty": "Hard",
+    "question": "对 cq_district_population 中常住人口超过 100 万的区县，统计在高德 POI 数据中类型包含'医院'的 POI 数量（通过地址字段模糊匹配区县名），按 POI 数量降序排列。",
+    "golden_sql": "SELECT d.\"区划名称\", COUNT(p.\"ID\") AS hospital_cnt FROM cq_district_population d LEFT JOIN cq_amap_poi_2024 p ON p.\"地址\" LIKE '%' || d.\"区划名称\" || '%' AND p.\"类型\" LIKE '%医院%' WHERE d.\"常住人口\" > 100 AND d.\"行政区划代码\" != 500000 GROUP BY d.\"区划名称\" ORDER BY hospital_cnt DESC;",
+    "reasoning_points": [
+      "跨表属性匹配",
+      "LIKE 模糊字符串连接",
+      "GROUP BY + ORDER BY"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_HARD_25",
+    "category": "Cross-Table",
+    "difficulty": "Hard",
+    "question": "统计 cq_osm_roads_2021 中每种道路等级（fclass）的道路数量和总长度（千米，保留 2 位小数），按道路数量降序排列。",
+    "golden_sql": "SELECT fclass, COUNT(*) AS total_cnt, ROUND((SUM(ST_Length(geometry::geography)) / 1000.0)::numeric, 2) AS total_km FROM cq_osm_roads_2021 GROUP BY fclass ORDER BY total_cnt DESC;",
+    "reasoning_points": [
+      "GROUP BY 聚合",
+      "ST_Length + geography",
+      "ROUND::numeric"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_01",
+    "category": "Spatial Measurement",
+    "difficulty": "Medium",
+    "question": "计算数据库中所有'水田'（DLMC = '水田'）的真实空间总面积，以公顷为单位返回（1公顷=10000平方米）。",
+    "golden_sql": "SELECT SUM(ST_Area(geometry::geography)) / 10000.0 AS total_area_ha FROM cq_land_use_dltb WHERE \"DLMC\" = '水田';",
+    "reasoning_points": [
+      "空间函数 ST_Area",
+      "Geography 转换以获取真实面积",
+      "单位换算"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_03",
+    "category": "Spatial Join",
+    "difficulty": "Medium",
+    "question": "统计出空间上与道路网络中任意'桥梁'（bridge = 'T'）相交（Intersects）的建筑物轮廓的数量。",
+    "golden_sql": "SELECT COUNT(DISTINCT b.\"Id\") FROM cq_buildings_2021 b JOIN cq_osm_roads_2021 r ON ST_Intersects(b.geometry, r.geometry) WHERE r.bridge = 'T';",
+    "reasoning_points": [
+      "ST_Intersects 空间关联",
+      "DISTINCT 去重防止多对多导致的重复计数"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_04",
+    "category": "Spatial Filtering",
+    "difficulty": "Medium",
+    "question": "找出完全包含在某个权属单位（QSDWMC = '大安街道云雾山村'）的所有图斑几何范围内的 POI 名称列表。",
+    "golden_sql": "SELECT p.\"名称\" FROM cq_amap_poi_2024 p JOIN cq_land_use_dltb l ON ST_Contains(l.geometry, p.geometry) WHERE l.\"QSDWMC\" LIKE '%大安街道云雾山村%';",
+    "reasoning_points": [
+      "ST_Contains 空间包含关系",
+      "跨模态关联（点被多边形包含）"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_05",
+    "category": "Centroid Calculation",
+    "difficulty": "Medium",
+    "question": "提取所有'有林地'（DLMC = '有林地'）图斑的几何中心点（Centroid），并返回它们的文本格式坐标（WKT）以及图斑编号（BSM）。",
+    "golden_sql": "SELECT \"BSM\", ST_AsText(ST_Centroid(geometry)) AS center_wkt FROM cq_land_use_dltb WHERE \"DLMC\" = '有林地';",
+    "reasoning_points": [
+      "ST_Centroid 计算中心",
+      "ST_AsText 转 WKT"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_08",
+    "category": "Attribute Filtering",
+    "difficulty": "Medium",
+    "question": "在高德 POI 数据中，找出名称包含'大学'但不包含'附属'的 POI 名称列表，限制返回 20 条。",
+    "golden_sql": "SELECT \"名称\" FROM cq_amap_poi_2024 WHERE \"名称\" LIKE '%大学%' AND \"名称\" NOT LIKE '%附属%' LIMIT 20;",
+    "reasoning_points": [
+      "LIKE 与 NOT LIKE 组合",
+      "中文字段过滤"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_09",
+    "category": "Attribute Filtering",
+    "difficulty": "Medium",
+    "question": "在 cq_dltb 中，找出坐落单位名称（zldwmc）包含'街道'且地类名称（dlmc）不是'村庄'的图斑，返回图斑面积（tbmj）总和（平方米）。",
+    "golden_sql": "SELECT SUM(tbmj) FROM cq_dltb WHERE zldwmc LIKE '%街道%' AND dlmc != '村庄';",
+    "reasoning_points": [
+      "LIKE 过滤",
+      "不等于条件",
+      "SUM 聚合"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_12",
+    "category": "Aggregation",
+    "difficulty": "Medium",
+    "question": "按道路等级（fclass）分组，统计 cq_osm_roads_2021 中每种等级的平均限速（maxspeed）和最大限速，结果只保留平均限速大于 20 的等级，按平均限速降序排列。",
+    "golden_sql": "SELECT fclass, AVG(maxspeed) AS avg_speed, MAX(maxspeed) AS max_speed FROM cq_osm_roads_2021 GROUP BY fclass HAVING AVG(maxspeed) > 20 ORDER BY avg_speed DESC;",
+    "reasoning_points": [
+      "GROUP BY",
+      "HAVING",
+      "AVG/MAX 聚合"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_13",
+    "category": "Aggregation",
+    "difficulty": "Medium",
+    "question": "统计重庆市各区县的户籍总人口（户籍总人口_万人_字段），只返回人口超过 100 万人的区县，按人口降序排列，排除总计行（行政区划代码 = 500000）。",
+    "golden_sql": "SELECT \"区划名称\", \"户籍总人口_万人_\" FROM cq_district_population WHERE \"行政区划代码\" != 500000 AND \"户籍总人口_万人_\" > 100 ORDER BY \"户籍总人口_万人_\" DESC;",
+    "reasoning_points": [
+      "数值过滤",
+      "排序",
+      "中文字段名引号"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_17",
+    "category": "Spatial Measurement",
+    "difficulty": "Medium",
+    "question": "计算 cq_osm_roads_2021 中所有 fclass 为 'motorway' 的道路总长度（ST_Length(geometry::geography)），单位千米，保留 2 位小数。若无 motorway，返回 0。",
+    "golden_sql": "SELECT COALESCE(ROUND((SUM(ST_Length(geometry::geography)) / 1000.0)::numeric, 2), 0) AS motorway_km FROM cq_osm_roads_2021 WHERE fclass = 'motorway';",
+    "reasoning_points": [
+      "ST_Length + geography",
+      "COALESCE 处理 NULL",
+      "单位换算"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_23",
+    "category": "Spatial Join",
+    "difficulty": "Medium",
+    "question": "统计每个历史文化街区（jqmc）内包含的高德 POI 数量，返回街区名称和 POI 数量，按 POI 数量降序排列。",
+    "golden_sql": "SELECT h.jqmc, COUNT(p.\"ID\") AS poi_cnt FROM cq_historic_districts h LEFT JOIN cq_amap_poi_2024 p ON ST_Contains(ST_Transform(h.shape, 4326), p.geometry) GROUP BY h.jqmc ORDER BY poi_cnt DESC;",
+    "reasoning_points": [
+      "LEFT JOIN + ST_Contains",
+      "GROUP BY + COUNT",
+      "ORDER BY"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_26",
+    "category": "KNN",
+    "difficulty": "Medium",
+    "question": "找到距离某个地类为'茶园'的图斑（取第一个，按 objectid 排序）最近的 5 个高德 POI，返回 POI 名称和距离（米）。",
+    "golden_sql": "SELECT p.\"名称\", ST_Distance(ST_Transform(p.geometry, 4610)::geography, t.shape::geography) AS dist_m FROM cq_amap_poi_2024 p CROSS JOIN (SELECT shape FROM cq_dltb WHERE dlmc = '茶园' ORDER BY objectid LIMIT 1) t ORDER BY ST_Transform(p.geometry, 4610) <-> t.shape LIMIT 5;",
+    "reasoning_points": [
+      "KNN <-> 操作符",
+      "CROSS JOIN 子查询",
+      "ST_Distance 距离"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_30",
+    "category": "Centroid/Geometry",
+    "difficulty": "Medium",
+    "question": "对 cq_land_use_dltb 中所有地类为'茶园'的图斑，计算它们几何合并后（ST_Union）的总面积（ST_Area::geography，平方千米）。",
+    "golden_sql": "SELECT ROUND((ST_Area(ST_Union(geometry)::geography) / 1000000.0)::numeric, 4) AS union_km2 FROM cq_land_use_dltb WHERE \"DLMC\" = '茶园';",
+    "reasoning_points": [
+      "ST_Union 合并几何",
+      "ST_Area + geography"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_32",
+    "category": "Temporal/Statistical",
+    "difficulty": "Medium",
+    "question": "查询重庆市 2021 年各区县的城镇化率，按城镇化率从高到低排列，返回区划名称和城镇化率，排除总计行（行政区划代码 = 500000）。",
+    "golden_sql": "SELECT \"区划名称\", \"城镇化率\" FROM cq_district_population WHERE \"行政区划代码\" != 500000 AND \"年份\" = 2021 ORDER BY \"城镇化率\" DESC;",
+    "reasoning_points": [
+      "年份过滤",
+      "ORDER BY 排序",
+      "排除总计行"
+    ],
+    "target_metric": "Execution Accuracy"
+  },
+  {
+    "id": "CQ_GEO_MEDIUM_34",
+    "category": "Temporal/Statistical",
+    "difficulty": "Medium",
+    "question": "在百度搜索指数数据（cq_baidu_search_index_2023）中，找出目的地为'重庆'（ddjsmc LIKE '%重庆%'）的所有记录，按移动端搜索次数（ydsscs）降序排列，返回出发城市（odjsmc）和移动端搜索次数，取前 10 名。",
+    "golden_sql": "SELECT odjsmc, ydsscs FROM cq_baidu_search_index_2023 WHERE ddjsmc LIKE '%重庆%' ORDER BY ydsscs DESC LIMIT 10;",
+    "reasoning_points": [
+      "LIKE 模糊目的地匹配",
+      "ORDER BY + LIMIT"
+    ],
+    "target_metric": "Execution Accuracy"
+  }
+]
