@@ -119,20 +119,75 @@ reviewer label (ok / fix / drop), the pre-review prediction correctness (0/1), a
 the post-review prediction correctness (0/1). This table is machine-generated from
 the v5 re-evaluation report.
 
-% [Rows filled from the per-question re-evaluation report; see scripts/render_crosslingual_supplement.py]
-\begin{table}[h]
-\centering
+% [Rows rendered by scripts/nl2sql_bench_cq/render_crosslingual_supplement.py]
+\begin{longtable}{lllccc}
 \caption{Per-question reviewer label and pre/post EX on the BIRD Chinese 50-question re-audit.}
-\label{tab:crosslingual-per-question}
-% Rendered by scripts/nl2sql_bench_cq/render_crosslingual_supplement.py
-\begin{tabular}{lllccc}
+\label{tab:crosslingual-per-question} \\
 \toprule
 qid & db\_id & difficulty & review & pre EX & post EX \\
 \midrule
-% rendered rows go here
+\endfirsthead
+\multicolumn{6}{c}{\tablename\ \thetable{} -- continued} \\
+\toprule
+qid & db\_id & difficulty & review & pre EX & post EX \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r}{\emph{continued on next page}} \\
+\endfoot
 \bottomrule
-\end{tabular}
-\end{table}
+\endlastfoot
+1312 & student\_club & simple & fix & 1 & 1 \\
+1317 & student\_club & moderate & fix & 1 & 1 \\
+1322 & student\_club & moderate & fix & 0 & 0 \\
+1323 & student\_club & moderate & fix & 0 & 0 \\
+1331 & student\_club & simple & fix & 0 & 0 \\
+1334 & student\_club & simple & ok & 1 & 1 \\
+1338 & student\_club & moderate & fix & 0 & 0 \\
+1339 & student\_club & challenging & fix & 0 & 0 \\
+1340 & student\_club & moderate & fix & 1 & 1 \\
+1344 & student\_club & simple & fix & 1 & 1 \\
+1346 & student\_club & simple & ok & 1 & 1 \\
+1350 & student\_club & moderate & fix & 1 & 1 \\
+1351 & student\_club & simple & fix & 1 & 1 \\
+1352 & student\_club & moderate & ok & 1 & 1 \\
+1356 & student\_club & simple & fix & 1 & 1 \\
+1357 & student\_club & simple & ok & 1 & 1 \\
+1359 & student\_club & challenging & fix & 1 & 1 \\
+1361 & student\_club & simple & ok & 1 & 1 \\
+1362 & student\_club & simple & ok & 1 & 1 \\
+1368 & student\_club & simple & ok & 1 & 1 \\
+1471 & debit\_card\_specializing & simple & ok & 1 & 1 \\
+1472 & debit\_card\_specializing & moderate & fix & 1 & 1 \\
+1473 & debit\_card\_specializing & moderate & ok & 0 & 0 \\
+1476 & debit\_card\_specializing & challenging & fix & 1 & 1 \\
+1479 & debit\_card\_specializing & moderate & fix & 0 & 0 \\
+1480 & debit\_card\_specializing & moderate & fix & 1 & 1 \\
+1481 & debit\_card\_specializing & challenging & fix & 0 & 0 \\
+1482 & debit\_card\_specializing & challenging & fix & 0 & 0 \\
+1483 & debit\_card\_specializing & simple & ok & 1 & 1 \\
+1484 & debit\_card\_specializing & simple & ok & 0 & 0 \\
+1486 & debit\_card\_specializing & simple & ok & 0 & 0 \\
+1490 & debit\_card\_specializing & moderate & fix & 0 & 0 \\
+1493 & debit\_card\_specializing & simple & fix & 1 & 0 \\
+1498 & debit\_card\_specializing & simple & fix & 0 & 1 \\
+1500 & debit\_card\_specializing & simple & fix & 0 & 0 \\
+1501 & debit\_card\_specializing & moderate & ok & 0 & 0 \\
+1505 & debit\_card\_specializing & simple & ok & 0 & 0 \\
+1506 & debit\_card\_specializing & moderate & fix & 1 & 1 \\
+1507 & debit\_card\_specializing & simple & fix & 1 & 1 \\
+1509 & debit\_card\_specializing & moderate & ok & 1 & 1 \\
+1514 & debit\_card\_specializing & simple & fix & 0 & 0 \\
+1515 & debit\_card\_specializing & simple & fix & 1 & 1 \\
+1521 & debit\_card\_specializing & moderate & ok & 1 & 1 \\
+1524 & debit\_card\_specializing & simple & fix & 1 & 1 \\
+1525 & debit\_card\_specializing & simple & ok & 0 & 0 \\
+1526 & debit\_card\_specializing & challenging & fix & 0 & 0 \\
+1528 & debit\_card\_specializing & simple & fix & 1 & 0 \\
+1529 & debit\_card\_specializing & moderate & fix & 0 & 0 \\
+1531 & debit\_card\_specializing & moderate & ok & 0 & 0 \\
+1533 & debit\_card\_specializing & moderate & fix & 0 & 0 \\
+\end{longtable}
 
 \section*{S3. Open-source model cross-family ablation (Gemini vs.\ open-weight)}
 % Filled in Task 12 (Phase 2).

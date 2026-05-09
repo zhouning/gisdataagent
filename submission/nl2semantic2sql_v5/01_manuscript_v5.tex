@@ -344,6 +344,14 @@ We additionally compare against \textbf{DIN-SQL}~\cite{pourreza2023dinsql} as an
 \subsection{GIS track results}
 \label{sec:gis-results}
 
+\noindent\textbf{Primary Spatial headline.} The primary Spatial EX figure we claim is the
+three-run majority-vote result: $0.659$ on the 85-question Spatial set, with a paired McNemar
+two-sided exact $p=0.052$ against baseline (marginal). Three independent stochastic runs at
+temperature~$0.0$ underpin this figure; individual samples are $0.706$, $0.612$, $0.671$, with
+two of three paired-significant at $p=0.003$ and $p=0.029$ and one not at $p=0.230$. We also
+report a pooled mean~$\pm$~SD of $0.663 \pm 0.048$. Sample-specific numbers elsewhere in this
+paper and in Table~\ref{tab:gis-spatial} are explicitly labelled as such.
+
 Table~\ref{tab:gis-spatial} reports Spatial EX on the 85 normal spatial-SQL questions; Table~\ref{tab:gis-robust} reports per-category Robustness Success Rate on the 40 safety/refusal questions. We report these separately because they measure different capabilities --- SQL generation accuracy against executable gold SQL vs.\ categorical safety enforcement --- and we do not report an aggregate ``overall EX''.
 
 Table~\ref{tab:benchmark-profile} reports predicate-family and PostGIS
@@ -415,20 +423,20 @@ Table~\ref{tab:dinsql} compares NL2Semantic2SQL against DIN-SQL~\cite{pourreza20
 
 \begin{table}[t]
 \centering
-\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full. DIN-SQL on GIS re-implemented for PostgreSQL/PostGIS. The BIRD row is the older 495q comparison only; not directly comparable to the 108q/150q results.}
+\caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full. DIN-SQL on GIS re-implemented for PostgreSQL/PostGIS. The BIRD row is the older 495q comparison only; not directly comparable to the 108q/150q results. The GIS Spatial Full EX ($0.682$) is Sample~1 from the three-run protocol (cf.\ Section~\ref{sec:gis-results}); it is not the paper-wide primary headline.}
 \label{tab:dinsql}
 \begin{tabular}{lccccc}
 \toprule
 Track & $N$ & Baseline EX & DIN-SQL EX & Full EX & Full vs.\ DIN-SQL \\
 \midrule
-GIS Spatial        & 85  & 0.529 & 0.565 & \textbf{0.682} & $+$0.118 ($p=0.0213$) \\
+GIS Spatial        & 85  & 0.529 & 0.565 & \textbf{0.682} (Sample~1) & $+$0.118 ($p=0.0213$) \\
 GIS Robustness (pilot) & 15  & 0.333 & 0.267 & \textbf{0.800} & $+$0.533 ($p=0.0078$) \\
 BIRD (older 495q)  & 495 & 0.474 & 0.482 & 0.501 & $+$0.019 ($p=0.382$, NS) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-On the GIS Spatial split, DIN-SQL achieves EX$=0.565$, only marginally above the direct-LLM baseline (EX$=0.529$, paired McNemar DIN-SQL vs.\ baseline two-sided $p=0.508$, not significant). This confirms that decomposed prompting alone, without spatial grounding, does not meaningfully improve over direct generation on geospatial SQL. The full pipeline reaches Spatial EX$=0.682$, a $+0.118$ improvement over DIN-SQL (paired McNemar $b=3$, $c=13$, two-sided exact $p=0.0213$).
+On the GIS Spatial split, DIN-SQL achieves EX$=0.565$, only marginally above the direct-LLM baseline (EX$=0.529$, paired McNemar DIN-SQL vs.\ baseline two-sided $p=0.508$, not significant). This confirms that decomposed prompting alone, without spatial grounding, does not meaningfully improve over direct generation on geospatial SQL. The full pipeline reaches Spatial EX$=0.682$ (Sample~1, stochastic), a $+0.118$ improvement over DIN-SQL (paired McNemar $b=3$, $c=13$, two-sided exact $p=0.0213$).
 
 On the 15q Robustness pilot, DIN-SQL achieves $0.267$ Success Rate, slightly below baseline ($0.333$), because DIN-SQL has no built-in safety or refusal handling. The full pipeline achieves $0.800$ on the same pilot, a $+0.533$ improvement over DIN-SQL (paired McNemar $b=0$, $c=8$, two-sided exact $p=0.0078$).
 
@@ -597,7 +605,7 @@ Figure~\ref{fig:cross} summarises the headline EX numbers for the four tracks re
 \draw[fill=orange!50](11.5,3.8) rectangle (12.0,4.3); \node[right,font=\scriptsize] at (12.1,4.05) {DIN-SQL};
 \draw[fill=blue!50]  (11.5,3.1) rectangle (12.0,3.6); \node[right,font=\scriptsize] at (12.1,3.35) {Full};
 \end{tikzpicture}
-\caption{Cross-track EX summary. GIS Spatial 85q: full $0.682$ vs.\ DIN-SQL $0.565$ vs.\ baseline $0.529$ ($p=0.0072$ full vs.\ baseline; $p=0.0213$ full vs.\ DIN-SQL). BIRD design (108q): $0.593$ vs.\ $0.500$ ($p=0.0213$). BIRD held-out (150q): $0.507$ vs.\ $0.473$ ($p=0.3833$, NS).}
+\caption{Cross-track EX summary. GIS Spatial 85q: full $0.682$ (Sample~1, stochastic; primary headline is majority-vote $0.659$, cf.\ Section~\ref{sec:gis-results}) vs.\ DIN-SQL $0.565$ vs.\ baseline $0.529$ ($p=0.0072$ full vs.\ baseline; $p=0.0213$ full vs.\ DIN-SQL). BIRD design (108q): $0.593$ vs.\ $0.500$ ($p=0.0213$). BIRD held-out (150q): $0.507$ vs.\ $0.473$ ($p=0.3833$, NS).}
 \label{fig:cross}
 \end{figure}
 
