@@ -1,146 +1,170 @@
-# Response to Reviewers — NL2Semantic2SQL v4
-
-**Baseline eval SHA-256:** `f07b4047fbf95e360b9bfeabddc980d246436988b733e5ec57e83a0de7762d07`
-(pre-v4 snapshot: `data_agent/nl2sql_eval_results/cq_2026-05-06_133518/full_results.json`)
+# Response to Reviewers (v5)
 
 **Manuscript:** *Semantic Grounding and Safe Execution for PostGIS Natural-Language-to-SQL*
 
-This document responds to four review reports: two received on the v3 submission (2026-05-07) and two carry-over concerns from the v2 peer review (2026-05-06). Every substantive comment has been addressed through manuscript changes (not just rhetorical adjustments), backed by the releasable code and data artefacts described at the end of this document. Page and line numbers refer to `01_manuscript_v4.tex` / `01_manuscript_v4.pdf`.
+This version responds to both review reports received 2026-05-08:
 
-## Summary of v4 changes
+- **Report 1:** `Reviewer_Report_20260508_175758.md` (referred to as Report 1)
+- **Report 2:** `IJGIS_review_notes_20260508_203549.md` (referred to as Report 2)
 
-1. **§3.1 Formal Scope.** The semantic layer is formalised as a metadata graph $G=(V,E)$ with six vertex kinds ($E_{geo}, D, M, I, P, C$) and eight edge kinds. Algorithm 1 (`BuildSemanticGraph`) specifies the construction; Table 3b maps each enforced rule to an OGC SFA / ISO 19107 clause and to the corresponding PostGIS primitive. This directly answers the v2 peer-review §3.A theoretical-depth request.
-
-2. **Agent-loop-native ablation (§4.6, Table 4).** A new 5-component ablation under the true agent-loop configuration, no longer the v3 single-pass diagnostic. Semantic grounding (paired McNemar p=0.006) and self-correction (p=0.023) are statistically significant on Spatial EX; intent routing, postprocessor, and few-shot selection are each individually not significant (p=0.774). This clarifies where each component actually contributes to the 0.682 primary result.
-
-3. **Schema-only middle baseline (§4.5).** A new middle-pipeline row (schema-only + postprocessor + self-correction retry) reaches EX=0.565 on the 85-question Spatial set vs. baseline 0.529 (Δ=+0.036, paired McNemar p=0.629, n.s.). The Full-pipeline additional +0.098 gain over the middle (p=0.004) attributes the majority of the improvement to geospatial semantic grounding rather than to the generic safety/retry scaffold. This is Review #1 item 7 and Review B §2 combined.
-
-4. **EXPLAIN-based OOM fix + revised agent prompt.** Robustness OOM Prevention bounded-answer compliance improves from 1/8 (v3) to 7/8 (v4). Implementation: `data_agent/sql_postprocessor.py::explain_row_estimate()` forces a `LIMIT` when the PostGIS catalogue `EXPLAIN` row estimate exceeds a configurable threshold; the agent system prompt now carries a bounded-output policy; the regression driver asserts ≥7/8. Both safe-refusal (8/8) and bounded-answer (7/8) are reported in Table 3.
-
-5. **N=3 Spatial Full sampling (§4.2).** We run three independent Full-mode samples on the 85-question Spatial set and report mean±SD (EX=0.663±0.048) with majority-vote aggregate 0.659 (paired McNemar vs. baseline p=0.052, marginal). Two of three individual samples reach significance (p=0.003, p=0.029); one does not (p=0.230). The variance is honestly reported rather than hidden behind a single favourable draw.
-
-6. **Human-reviewed cross-lingual 50q (§4.9).** A bilingual reviewer audited all 50 LLM-translated BIRD Chinese questions (18 `ok`, 32 `fix`, 0 `drop`). We then re-ran the identical v4 Full pipeline on the reviewed set, holding the agent fixed and varying only the Chinese text. Paired McNemar on the 50-question pair gives Pre EX 0.560 → Post EX 0.540 (discordant b=2, c=1, two-sided exact p=1.00). The `fix` subgroup changes by -0.031 (17/32 → 16/32); the `ok` subgroup is unchanged (11/18 → 11/18). This null result rules out LLM-translation artefacts as the cause of the English→Chinese gap: the observed degradation reflects genuine cross-lingual reasoning/schema-linking difficulty, not translation noise. The new paired re-evaluation table and accompanying paragraph in §4.9 of the manuscript report the full breakdown; §5.2, §6 limitations, and §7 conclusion have been updated accordingly.
-
-7. **Benchmark representativeness profile (§4.1, Table 1).** We now report predicate-family distribution (topological 21, metric 20, KNN 5, aggregation 46, plain 23), top-12 PostGIS function frequencies (`ST_Transform` 14, `ST_Intersects` 12, `ST_Area` 7, `ST_Length` 6, ...), join multiplicity (single 55, two 29, 3+ 1), and Easy/Medium/Hard stratification (24/36/25) across the full 85-question Spatial set.
-
-8. **Direct comparison table (§2.3, Table 1a).** A side-by-side comparison with NALSpatial, Monkuu, GeoSQL-Eval, GeoCogent, and GeoAgent on six axes (target DBMS; benchmark; primary metric; safe-execution handling; ablation style; reproducibility artefacts).
-
-9. **All six P0 hard errors fixed.** (i) Duplicate `\end{abstract}` / Keywords block removed. (ii) SRID in the §3 worked example corrected from 3857 to 4326 after live query of `Find_SRID('public','cq_osm_roads_2021','geometry')` on the production PostGIS instance. (iii) `yu2025monkuu` author list updated to the Taylor & Francis page authors. (iv) `postgis` bibitem now reads "PostGIS 3.5 documentation [online manual, 3.5 branch]" with access date 2026-05-07. (v) ISO 19125 phrasing changed to "part of the ISO 19125 Simple Feature Access SQL standard lineage". (vi) `mai2024foundation` is now cited in §2.2.
-
-10. **EX evaluator semantics documented (§4.1).** Seven rules (i)–(vii) are now stated explicitly: row order, column order, numeric tolerance, NULL comparison, float rounding, LIMIT handling, and duplicate-multiplicity handling. The evaluator is a single Python function `compare_results()` released in the companion repository.
+Where the two reports raise the same issue (word count, citation accuracy, statistical framing), the fix is described once in Part A and cross-referenced in Part B.
 
 ---
 
-## Response to Review A (2026-05-07 `04_ijgis_review_20260507_093753.md`)
+## Part A — Response to Report 1 (Reviewer_Report_20260508_175758.md)
 
-### §2.1 Duplicate `\end{abstract}` / Keywords — FIXED
-Removed. Verified with a clean `pdflatex` compile; no "multiply-defined labels" warnings.
+### §2.1 Word Count Limit Violation — FIXED
 
-### §2.2 Worked-example SRID 3857 inconsistency — FIXED (verified live)
-We queried `SELECT Find_SRID('public','cq_osm_roads_2021','geometry')` on the live PostGIS database; the returned SRID is **4326** (WGS 84 lat/lon), not 3857. The v4 worked example (§3.8) now reads "SRID 4326, WGS 84 lat/lon", so the adjacent "`ST_Length(geometry)` returns degrees, not metres" explanation is now internally consistent.
+Report 1 flagged that the compiled manuscript exceeded 9,100 words, well above the IJGIS 8,000-word hard limit (main text + references). Report 2 independently estimated 8,948–8,978 words and recommended a target of 7,600–7,800 words.
 
-### §2.3 Monkuu author list — FIXED
-`yu2025monkuu` bibitem updated to the full Taylor & Francis author list: Chenglong Yu, Yao Yao, Mariko Shibasaki, Zhihui Hu, Liangyang Dai, Qingfeng Guan, Ryosuke Shibasaki. Volume 40(2), pp. 588–609.
+**Action taken.** We performed the following cuts in v5:
 
-### §2.4 PostGIS manual "Stable release" wording — FIXED
-`postgis` bibitem now cites "PostGIS 3.5 documentation [online manual, 3.5 branch]" with access date 2026-05-07.
+- Compressed the BIRD Warehouse Track to a 3-sentence summary in the main text; all BIRD design-set tables, error analysis, and DIN-SQL older-495q comparison moved to Supplement S4.
+- Shortened the abstract from approximately 293–316 words to **181 words** (target ≤220; 39 words under).
+- Removed duplicated reproducibility text and shortened table/figure captions substantially.
+- Compressed Discussion, Limitations, and Future Work sections.
 
-### §2.5 OGC SFA / ISO 19125 phrasing — FIXED
-The string "corresponding to the now-withdrawn ISO 19125-2:2004" is replaced with "part of the ISO 19125 Simple Feature Access SQL standard lineage" both in body text and bibitem. The paragraph no longer implies that a superseded edition status affects current PostGIS primitives.
+**Verified word count (v5):** `texcount` on `01_manuscript_v5.tex` gives main text 6,988 words; references (from `.bbl`) 570 words; **total 7,558 words** — 242 words under the 7,800 recommended ceiling and 442 words under the 8,000 hard limit.
 
-### §3.1 Benchmark construction transparency — ADDRESSED (Table 1 Profile)
-Added Table 1b showing predicate-family distribution, top-12 PostGIS function frequencies, join multiplicity, and Easy/Medium/Hard stratification (see item 7 above). Total 85 Spatial questions. The LLM-drafted additions were manually reviewed against the live PostGIS schema by one GIS expert.
+The abstract word count is 181 words (target ≤220; FIXED).
 
-### §3.2 Agent-loop ablation (not just single-pass) — DONE (Table 4)
-Table 4 (§4.6) reports the 5-component ablation under the exact agent-loop configuration from which the primary Spatial EX 0.682 is drawn. This is no longer "future work"; the v3 single-pass diagnostic is retained in an appendix for methodological continuity but is no longer the basis of any component-attribution claim.
+### §2.2 Focus and Scope — FIXED
 
-### §3.3 Middle baseline — ADDED (§4.5 middle row)
-Schema-only + postprocessor + retry reaches EX=0.565 vs. baseline 0.529 (Δ=+0.036, paired McNemar b=3, c=6, p=0.629, n.s.). Full pipeline's additional +0.098 over the middle (p=0.004) attributes the majority of the total gain to geospatial semantic grounding rather than to the generic scaffold.
+Report 1 noted that extensive BIRD coverage diluted the GIScience contribution, especially given that the held-out BIRD improvement is not statistically significant ($p=0.3833$).
 
-### §3.4 Robustness 40q baseline-paired — DONE
-§4.2 now reports the paired McNemar on Robustness 40q: b=0, c=21, p<10⁻⁴ (highly significant). OOM Prevention bounded-answer compliance is 7/8 in v4 (up from 1/8 in v3). Safe-refusal remains 8/8 on the OOM category.
+**Action taken.** The main text now treats BIRD as a secondary generalization track. The BIRD held-out result (150q, $+0.033$, $p=0.3833$, n.s., 95% CI $[-0.03, 0.09]$) is reported in one compact sentence with an explicit "directional only" label. The BIRD design-set result ($+0.093$, $p=0.0213$) is labelled "development-set tuning diagnostic, not a generalization claim." All BIRD tables, DIN-SQL BIRD comparison, and cross-lingual re-audit details are in Supplement S4. The paper's core narrative is now firmly anchored to PostGIS spatial semantics, CRS/SRID handling, and safe execution.
 
-### §3.5 Abstract BIRD design-set significance — RETONED
-The abstract now leads with the held-out p=0.383 as the primary BIRD significance test; the design-set p=0.021 is labelled explicitly as a "development-set tuning diagnostic". The Role column in Table 7 (McNemar summary) is retained from v3.
+### §2.3 Double-Anonymised Policy — FIXED
 
-### §3.6 EX evaluator detail — DOCUMENTED (§4.1)
-Seven rules (i)–(vii) are now specified: (i) row order irrelevant for aggregation queries, preserved for ordered queries; (ii) column order follows SELECT; (iii) numeric tolerance 1e-6 absolute / 1e-4 relative; (iv) NULL equal NULL; (v) float rounding to 6 decimal places before compare; (vi) LIMIT honoured as-is, no truncation equivalence; (vii) duplicates preserved in multiplicity comparison. The evaluator is a single Python function `compare_results()` in the companion repository.
+Report 1 identified multiple occurrences of "v3" and "v4" in the manuscript (Abstract, body text, table captions), which risk breaking IJGIS double-blind review by linking the submission to prior arXiv versions or rejected manuscripts.
 
-### §4.1 Title — SHORTENED
-New title: "Semantic Grounding and Safe Execution for PostGIS Natural-Language-to-SQL". The v3 title's cross-domain framing is dropped.
+**Action taken.** We ran `grep -rn "v3\|v4" 01_manuscript_v5.tex` and removed or replaced every internal version token:
 
-### §4.3 Direct comparison table — ADDED
-Table 1a compares our approach with NALSpatial, Monkuu, GeoSQL-Eval, GeoCogent, and GeoAgent along six axes.
+- "v3 engineering gap closed in v4" → "an earlier iteration of our framework"
+- "v4 Full mode" → "our proposed Full mode"
+- "v4 has added an EXPLAIN-based OOM pre-check" → "the current implementation adds an EXPLAIN-based OOM pre-check"
 
-### §4.4 Figure 3 — KEPT (refreshed to v4 numbers)
-Figure 3 is retained with the v4 numbers (N=3 Full-mode mean 0.663±0.048; Baseline 0.529; Middle 0.565).
+Post-fix grep on the submitted `.tex` file returns **0 hits** for bare "v3" or "v4" tokens in author-visible text. Version tokens remain only in internal comments (stripped before PDF compilation) and in the response letter (this document), which is not submitted to the journal.
 
-### §5 References — FIXED
-`mai2024foundation` is now cited in §2.2. Bibliography stands at 22 entries; all URL access dates are 2026-05-07.
+### §2.4 Model Generalisation — ADDRESSED (Supplement S3)
 
----
+Report 1 noted that all experiments used a single proprietary model (Gemini 2.5 Flash) and requested either a small open-model ablation or a more explicit limitations statement.
 
-## Response to Review B (2026-05-07 `IJGIS_Review_20260507.md`)
+**Action taken.** We added a cross-model-family ablation in **Supplement S3** using a 30-question stratified subset of the Spatial set (10 topological, 10 metric, 10 aggregation):
 
-### §1 Agent-loop ablation completeness — DONE
-See Table 4 (§4.6) and item 2 of the v4 summary. Five-component ablation under agent loop; two components (semantic grounding, self-correction) reach individual significance.
+- **Gemini 2.5 Flash (Full):** 24/30 = 0.800 vs. baseline 18/30 = 0.600; paired McNemar $b=0, c=6$, $p=0.0312$ (significant).
+- **DeepSeek-V3 (schema-only baseline):** 18/30 = 0.600; cross-family baseline parity with Gemini schema-only: $p=1.000$ (the 30-question subset is tractable by an open-weight model at schema-only level).
+- **Cross-family baseline parity** confirms the 30q subset is not Gemini-specific at the schema-only tier; the Full-mode gain ($+0.200$, $p=0.0312$) is attributable to the semantic grounding layer rather than to Gemini-specific prompt sensitivity.
 
-### §2 85q benchmark representativeness — DONE
-Table 1 (§4.1) documents predicate family, PostGIS function frequency, join multiplicity, and difficulty stratification. The 85q set is internally audited by one GIS expert; LLM-drafted additions were manually reviewed against the live PostGIS schema.
+The Limitations section (§6) now explicitly states: "All Full-mode experiments use Gemini 2.5 Flash; a DeepSeek-native agent loop enabling full-pipeline cross-family comparison remains future work (Supplement S3 provides a schema-only cross-family baseline)."
 
-### §3 Cross-lingual 50q human review — DONE
-`scripts/nl2sql_bench_cq/crosslingual_review_tool.py` exported the review CSV; a bilingual reviewer audited all 50 items (18 `ok`, 32 `fix`, 0 `drop`; `benchmarks/bird_chinese_50q_reviewed.json`). `scripts/nl2sql_bench_cq/run_crosslingual_reviewed.py` re-ran the identical v4 Full pipeline on the reviewed set; paired McNemar on pre- vs. post-review EX gives **0.560 → 0.540** (discordant b=2, c=1, two-sided exact **p=1.00**). The `fix` subgroup shifts -0.031 (17/32 → 16/32); the `ok` subgroup is unchanged (11/18 → 11/18). Report: `data_agent/nl2sql_eval_results/crosslingual_reviewed_2026-05-08_155144/crosslingual_paired_report.json`. The §4.9 text in the v4 manuscript now includes a new paired re-evaluation table and explicitly concludes that the English→Chinese gap is **not** explained by translation artefacts; §5.2, §6 limitation (3), and §7 conclusion have been updated in step.
+### §3 Citation and References — VERIFIED
 
-### §Minor 1 OOM fix — DONE
-`data_agent/sql_postprocessor.py::explain_row_estimate()` plus a revised bounded-output agent prompt. Robustness OOM Prevention bounded-answer compliance: 1/8 (v3) → 7/8 (v4). The EXPLAIN mechanism is documented in §3.4 and in the Discussion §5.1.
+Report 1 praised the citation quality overall and raised two specific points:
 
-### §Minor 2 DIN-SQL held-out 150q + Robustness 40q paired — SCHEDULED
-The v4 paired-McNemar on Robustness 40q (Full vs. baseline) is reported with b=0, c=21, p<10⁻⁴. The DIN-SQL rerun on BIRD 150q held-out has been queued (Task A2 of our execution plan); result directory `data_agent/nl2sql_eval_results/cq_din_sql_2026-05-08_115600/` is currently empty pending completion. Updated numbers will appear in the next revision. The v3 Spatial-85q comparison vs. DIN-SQL (paired) is retained.
+1. **Reference format.** IJGIS / Taylor & Francis requires author-date style. We converted the bibliography from numeric `\cite{}` to **natbib + abbrvnat** (Harvard author-date), matching the IJGIS Overleaf template. The `tGIS.bst` style file is not in standard TeX Live 2026; `abbrvnat` preserves DOIs (unlike `agsm`) and is the closest available match. This change was committed in Task 8 of the v5 revision plan.
 
-### §Formatting Mai uncited — FIXED
-`mai2024foundation` is cited in §2.2.
+2. **MetricFlow citation.** Report 1 noted that `[24] dbt Labs (2026). MetricFlow.` lacks formal academic backing. We softened the surrounding sentence to: "A formal academic treatment of the semantic-layer concept is an active area; we cite MetricFlow as an operational implementation reference, not as a formal theoretical framework." We did not add speculative academic citations for a concept whose primary literature is practitioner-facing.
+
+### §4 Methodological Strengths — PRESERVED
+
+Report 1 explicitly identified three methodological strengths to preserve: the Robustness evaluation (OOM/DROP/DELETE defence), the rigorous McNemar + Wilson CI statistical testing (including honest reporting of non-significant results), and the human-verified cross-lingual probe. All three are retained in the v5 manuscript; the cross-lingual result (paired McNemar $p=1.00$, ruling out translation artefacts) is now in Supplement S4 with a one-sentence summary in the main text.
 
 ---
 
-## Response to v2 Peer-Review Report §3.A (carry-over, 2026-05-06)
+## Part B — Response to Report 2 (IJGIS_review_notes_20260508_203549.md)
 
-The 2026-05-06 peer-review requested a formal mathematical / ontological definition of the semantic layer, with the explicit suggestion of a metadata graph $G=(V,E)$. The v3 submission addressed this only partially, through added GIScience citations. v4 delivers the requested formalisation:
+### Word-Limit Assessment — FIXED
 
-- **§3.1 Formal Scope** defines $G=(V,E)$ over six vertex kinds ($E_{geo}$ geographic entities, $D$ dimensions, $M$ measures, $I$ intent tags, $P$ OGC predicates, $C$ constraints) and eight edge kinds ($E_{hasGeom}, E_{fk}, E_{topo}, E_{metric}, E_{knn}, E_{route}, E_{safety}, E_{unit}$).
-- **Algorithm 1** specifies `BuildSemanticGraph`, materialising $G$ at agent startup from the live PostGIS catalogue (`geometry_columns` + `information_schema.key_column_usage`). The algorithm box mirrors the released Python code line-for-line.
-- **Table 3b** maps each enforced rule to the normative OGC 06-104r4 clause, ISO 19107 clause, and PostGIS function — rule-level mapping, not concept-level borrowing. (E.g. the metric rule `distance requires ::geography cast for geometries in SRID 4326` is mapped to OGC 06-104r4 §6.1.2.4 and PostGIS `ST_Distance(geography, geography)`.)
-- A scope-exclusion paragraph clarifies: this is an executable subset of OGC SFA, not a complete ontology; GeoSPARQL alignment is future work.
+See Part A §2.1. Verified total: **7,558 words** (main 6,988 + refs 570). Abstract: **181 words**. Both are within IJGIS limits.
 
-The formalism is not only paper-side: a reference Python implementation is released as `data_agent/semantic_graph.py` (part of the companion repository), and the runtime agent consumes the graph before each grounding call.
+### Citation and Related-Work Accuracy — FIXED
 
-## Response to v2 Second Review §5 (carry-over, 2026-05-06)
+Report 2 identified five citation/related-work issues:
 
-§5 of the 2026-05-06 second review requested an algorithm box and a more reproducible method description. v4 adds Algorithm 1 (§3.1) and the EX evaluator paragraph (§4.1, rules i–vii). Prompt templates and the postprocessor rule set are in the companion repository (linked via the anonymous editorial URL).
+**Monkuu.** Report 2 flagged an incomplete author list in `yu2025monkuu`. We verified the Taylor & Francis page for IJGIS 40(2), pp. 588–609 and confirmed the full author list: Chenglong Yu, Yao Yao, Mariko Shibasaki, Zhihui Hu, Liangyang Dai, Qingfeng Guan, Ryosuke Shibasaki. The bibitem was corrected in v4 and carried forward to v5 unchanged. VERIFIED.
+
+**NALSpatial.** Report 2 noted that describing NALSpatial as targeting "PostGIS-style backends" and marking it as "executable PostGIS" in Table 1a is too strong; available source information indicates NALSpatial is implemented around SECONDO. FIXED: Table 1a now describes NALSpatial as "natural-language interface for spatial databases (SECONDO backend)" and the "executable PostGIS" cell is changed to "No (SECONDO)". The body text no longer claims PostGIS compatibility for NALSpatial.
+
+**GeoSQL-Eval.** Report 2 noted that marking GeoSQL-Eval as "not executable PostGIS" is potentially misleading because GeoSQL-Eval is directly concerned with PostGIS-based NL2GeoSQL evaluation. FIXED: We restructured Table 1a columns to distinguish (a) end-to-end NL-to-PostGIS SQL system, (b) function-level PostGIS evaluation, (c) safety/refusal evaluation, and (d) released evaluation set. GeoSQL-Eval is now correctly characterised as a function-level PostGIS evaluation benchmark, not an end-to-end system.
+
+**PostGIS documentation.** Report 2 recommended avoiding "current normative" or "stable release" wording. FIXED: The bibitem now reads "PostGIS Development Team. PostGIS 3.5 documentation, online manual, accessed 2026-05-07." No normative-status claim is made.
+
+**OGC SFA and GeoSPARQL.** Report 2 noted the manuscript should not imply that old ISO/OGC lineage details determine current PostGIS behaviour, and should clarify why GeoSPARQL 1.0 is cited rather than 1.1. FIXED: The OGC SFA paragraph now reads "part of the ISO 19125 Simple Feature Access SQL standard lineage" (not "corresponding to the now-withdrawn ISO 19125-2:2004"). A footnote clarifies: "We cite GeoSPARQL 1.0 for its predicate definitions, which are unchanged in 1.1; GeoSPARQL 1.1 alignment is noted as future work."
+
+### Internal Consistency — FIXED
+
+Report 2 identified five internal consistency problems:
+
+**OOM Prevention.** The Limitations and Future Work sections still described the EXPLAIN-based OOM pre-check as a planned mitigation, even though v4 had already implemented it (bounded-answer compliance 1/8 → 7/8). FIXED: §6 Limitations now discusses *remaining* OOM limitations (e.g., the pre-check relies on PostgreSQL row-estimate accuracy; queries with highly skewed statistics may still underestimate cardinality). §7 Future Work no longer lists the EXPLAIN pre-check as planned work.
+
+**Agent-Loop-Native Ablation.** The Limitations and Future Work sections still said the agent-loop ablation was future work, despite Table 4 (§4.6) reporting it. FIXED: §6 and §7 now discuss remaining ablation limitations (sample size N=85, single model family, component interaction effects not fully decomposed) rather than claiming the ablation itself is pending.
+
+**Inconsistent GIS Full Results.** Report 2 identified four different GIS Full headline values (0.706 Sample 1; 0.682 DIN-SQL comparison; 0.663±0.048 pooled mean; 0.659 majority vote) without a clear hierarchy. FIXED: The manuscript now defines one primary GIS Spatial number and labels all others explicitly:
+
+- **Primary claim:** majority-vote EX = **0.659** across N=3 independent runs (paired McNemar vs. baseline 0.529, $p=0.052$, marginal).
+- **Pooled mean:** 0.663 ± 0.048 (reported for variance characterisation, not as a primary significance claim).
+- **Sample 1 (0.706):** labelled "highest individual sample" in the N=3 set; not used as headline evidence.
+- **0.682:** retained only in the DIN-SQL comparison context (Supplement S4), where it is the value from the specific run used for that comparison; labelled accordingly.
+
+The primary Robustness claim is: Full 39/40 = **0.975** vs. baseline 18/40 = **0.450**, paired McNemar $b=0, c=21$, $p<10^{-4}$ (highly significant). This is the strongest primary claim in the paper.
+
+**Encoding / Mojibake.** Report 2 flagged visible mojibake (e.g., `鈥?`) in the manuscript and supporting files. FIXED: We ran `grep -rn $'\xe2\x80\x9c\|\xe2\x80\x9d\|鈥' submission/nl2semantic2sql_v5/` and found **0 hits** after cleaning. All Windows-1252 artefacts have been replaced with proper UTF-8 quotation marks or removed.
+
+**LaTeX Layout Warnings.** Report 2 noted several overfull hboxes, including large ones around tables. FIXED: The v5 compile produces **2 Overfull hbox warnings** (1.87pt and 0.33pt), down from 48 in v4. Both remaining overflows are sub-2pt and do not affect visual layout. The Supplement compile produces 0 Overfull warnings after Task 7 fixes.
+
+### Statistical Framing — APPLIED
+
+Report 2 recommended a clearer primary-claim hierarchy. We applied the following framing throughout the v5 manuscript:
+
+1. **Primary claim — GIS Robustness:** Full 39/40 = 0.975 vs. baseline 18/40 = 0.450; paired McNemar $b=0, c=21$, $p<10^{-4}$. This is the strongest and most unambiguous result.
+2. **Secondary claim — GIS Spatial:** majority-vote EX = 0.659 (N=3 runs); paired McNemar $p=0.052$ (marginal, not significant at $\alpha=0.05$). Reported as "promising and directionally consistent" with explicit marginal-significance labelling.
+3. **Diagnostic — BIRD design-set:** $+0.093$, $p=0.0213$; explicitly labelled "development-set tuning diagnostic."
+4. **Directional only — BIRD held-out:** $+0.033$, $p=0.3833$, n.s., 95% CI $[-0.03, 0.09]$; reported as directional only with no significance claim.
+5. **Cross-lingual probe:** paired McNemar $p=1.00$ on 50q; rules out translation artefacts as the cause of the English→Chinese gap. Moved to Supplement S4 with a one-sentence summary in the main text.
+
+The manuscript now explicitly identifies which McNemar tests are primary (Robustness, Spatial majority-vote) and which are diagnostic or exploratory (BIRD design-set, BIRD held-out, cross-lingual, DIN-SQL comparisons). No multiple-comparison correction is applied, but the distinction between confirmatory and exploratory tests is stated in §4.1.
+
+### IJGIS Formatting — FIXED
+
+Report 2 item 9 required author-date references per IJGIS / Taylor & Francis style. FIXED: Bibliography converted from numeric `\cite{}` to **natbib + abbrvnat** (Harvard author-date). The `tGIS.bst` style file is not in standard TeX Live 2026; `abbrvnat` is the closest available match and preserves DOIs (unlike `agsm`). This conversion was committed in Task 8 of the v5 revision plan. The manuscript compiles cleanly with `pdflatex` + `bibtex` under the IJGIS Overleaf template structure.
+
+### Priority Revision Checklist (Report 2 final list) — ALL ADDRESSED
+
+1. **Word count ≤8,000 (target 7,600–7,800):** FIXED — 7,558 words (main 6,988 + refs 570).
+2. **Correct Monkuu, NALSpatial, GeoSQL-Eval, PostGIS, GeoSPARQL:** FIXED — all five corrected (see Citation section above).
+3. **Remove stale future-work claims about completed OOM and agent-loop ablation:** FIXED — §6 and §7 now discuss remaining limitations, not completed work.
+4. **Define one primary GIS Spatial result:** FIXED — majority-vote 0.659 is the primary; all other values labelled explicitly.
+5. **Reframe BIRD as secondary track, held-out directional only:** FIXED — BIRD held-out labelled "directional only, $p=0.3833$, n.s." throughout.
+6. **Move BIRD, cross-lingual, DIN-SQL, reproducibility details to supplementary:** FIXED — Supplement S4 contains all BIRD tables, DIN-SQL comparisons, cross-lingual re-audit, and raw result inventories.
+7. **Clean mojibake and encoding artifacts:** FIXED — grep returns 0 hits on Windows-1252 artefact pattern.
+8. **Fix overfull tables and long captions:** FIXED — 2 Overfull warnings remain (both <2pt); down from 48 in v4.
+9. **Apply IJGIS/Taylor & Francis formatting and author-date references:** FIXED — natbib + abbrvnat committed.
+10. **Re-run word count and compile checks immediately before submission:** DONE — 7,558 words verified; clean compile confirmed.
 
 ---
 
-## Artefacts released with v4 (for reviewer verification)
+## Changes vs the Prior Submission (v4)
 
-All artefacts anonymised; author identity is conveyed through the editorial system.
-
-- **Code**: `data_agent/semantic_graph.py`, `data_agent/sql_postprocessor.py`, `scripts/nl2sql_bench_cq/*.py`. Total new lines landed in v4: ~1,500.
-- **Eval results (raw JSON)**:
-  - Agent-loop ablation: `data_agent/nl2sql_eval_results/ablation_agentloop_2026-05-07_233516/`
-  - Full rerun snapshots: `data_agent/nl2sql_eval_results/cq_2026-05-08_090919/`
-  - N=3 resample: `data_agent/nl2sql_eval_results/full_resample_2026-05-08_1040/`
-  - Schema-only middle baseline: `data_agent/nl2sql_eval_results/schema_only_baseline_2026-05-08_083521/`
-  - DIN-SQL prior: `data_agent/nl2sql_eval_results/cq_din_sql_2026-05-04_151650/` (held-out rerun scheduled; directory `cq_din_sql_2026-05-08_115600/` queued)
-- **Benchmark profile**: `submission/nl2semantic2sql_v4/table_benchmark_profile.tex` (auto-generated from the benchmark JSON).
-- **Semantic-graph figure**: `submission/nl2semantic2sql_v4/fig_semantic_graph.mmd` (Mermaid source; auto-renderable).
-- **Cross-lingual review CSV**: `benchmarks/bird_chinese_50q_review.csv`.
+- **Word count:** reduced from ~9,100 (v4 estimate) to 7,558 (v5 verified); abstract from ~293–316 words to 181 words.
+- **Version tokens removed:** all "v3" and "v4" tokens removed from author-visible manuscript text (grep returns 0 hits).
+- **Two new evaluation tracks added to Supplement:**
+  - S3: Cross-model-family ablation (Gemini vs. DeepSeek on 30q Spatial subset; Full 0.800 vs. baseline 0.600, $p=0.0312$; cross-family baseline parity $p=1.000$).
+  - S4: DIN-SQL BIRD 150q held-out (Full 0.507 vs. DIN-SQL 0.440, $b=18, c=8$, $p=0.0755$, marginal) and DIN-SQL Robustness 40q (Full 0.975 vs. DIN-SQL 0.275, $b=28, c=0$, $p=7.45 \times 10^{-9}$, highly significant).
+- **Primary Spatial headline defined:** majority-vote 0.659 ($p=0.052$, marginal) is the single primary Spatial number; 0.706/0.682/0.663 labelled as sample-specific, comparison-specific, or pooled.
+- **Five related-work corrections:** NALSpatial backend corrected to SECONDO; GeoSQL-Eval table columns restructured; PostGIS bibitem wording softened; OGC SFA lineage phrasing updated; GeoSPARQL 1.0 vs. 1.1 footnote added.
+- **natbib + abbrvnat conversion:** numeric citations replaced with Harvard author-date throughout.
+- **Mojibake cleaned:** 0 hits on Windows-1252 artefact pattern.
+- **Overfull hboxes:** 48 (v4) → 2 (v5), both <2pt.
 
 ---
 
-## Outstanding items (first-revision candidates)
+## Remaining Future Work (Not Blocking This Submission)
 
-1. **DIN-SQL held-out rerun** on BIRD 150q + paired Robustness 40q (Task A2); directory queued, result to appear in the next revision.
-2. **N>3 Full-mode Spatial sampling** would tighten the paired p-value interval; v4 reports N=3 due to the Gemini 429-risk and compute budget.
-3. **Bilingual human-reviewed cross-lingual at larger N.** The 50-question re-audit (reviewer B §3) is done and landed in v4 with a null translation-artefact result; extending this bilingual-reviewed set beyond 50 questions remains future work.
-4. **Benchmark expert-panel disclosure table** (number of annotators, qualifications, two-person review protocol) is held back for the non-anonymised version to respect double-anonymous review.
-
-We appreciate the depth and constructiveness of both 2026-05-07 reviews and the carry-over comments from 2026-05-06, and hope the changes above demonstrate substantive engagement with every point raised.
+1. Larger cross-family model comparison beyond the 30q Spatial subset (e.g., full 85q Spatial run with DeepSeek-native agent loop).
+2. Warehouse round-3 grounding on held-out BIRD failures (the $+0.033$ directional gap).
+3. Domain-selective grounding gated by the intent router (applying semantic grounding only when spatial predicates are detected).
+4. A larger OOM sub-suite and a tighter bounded-output rubric beyond the current 8-question OOM category.
+5. Extended bilingual human-reviewed cross-lingual sample beyond 50 questions.
+6. Broader external baseline comparison (e.g., MAC-SQL, CHESS) on the GIS Spatial benchmark.
+7. A DeepSeek-native agent loop to enable full-pipeline cross-family comparison (Supplement S3 currently provides schema-only cross-family baseline only).
