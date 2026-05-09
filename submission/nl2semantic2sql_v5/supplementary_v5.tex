@@ -8,6 +8,7 @@
 \usepackage{caption}
 \usepackage{enumitem}
 \usepackage{longtable}
+\usepackage{array}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 
@@ -55,22 +56,24 @@ on the 150-question held-out set. Significance on the design set alone does not
 establish generalisation because the rules were derived from the same 108 items.
 
 \begin{table}[h]
-\centering
+\centering\footnotesize
 \caption{BIRD warehouse results across rounds and splits.}
 \label{tab:bird-supp}
-\begin{tabular}{lcccc}
+{\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lc>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{3.0cm}}
 \toprule
-Set & $N$ & Baseline EX [95\% CI] & Full EX [95\% CI] & $\Delta$ [95\% CI] (McNemar) \\
+Set & $N$ & Baseline EX [95\% CI] & Full EX [95\% CI] & $\Delta$ [95\% CI] \\
 \midrule
-Round-1 grounding (design, subset) & 101 & 0.515 & 0.564 & $+$0.050 ($p=0.2266$, NS) \\
-\textbf{Round-2 design set (tuning)} & \textbf{108} & \textbf{0.500 [0.41, 0.59]} & \textbf{0.593 [0.50, 0.68]} & $+$\textbf{0.093} [0.02, 0.16] ($p=0.0213$) \\
-\textbf{Round-2 held-out (primary)}  & \textbf{150} & \textbf{0.473 [0.40, 0.55]} & \textbf{0.507 [0.43, 0.59]} & $+$\textbf{0.033} [$-$0.03, 0.09] ($p=0.3833$, NS) \\
+Round-1 grounding (design, subset) & 101 & 0.515 & 0.564 & $+$0.050 ($p=0.227$, NS) \\
+\textbf{Round-2 design set (tuning)} & \textbf{108} & \textbf{0.500 [0.41, 0.59]} & \textbf{0.593 [0.50, 0.68]} & $+$\textbf{0.093} [0.02, 0.16] ($p=0.021$) \\
+\textbf{Round-2 held-out (primary)}  & \textbf{150} & \textbf{0.473 [0.40, 0.55]} & \textbf{0.507 [0.43, 0.59]} & $+$\textbf{0.033} [$-$0.03, 0.09] ($p=0.383$, NS) \\
 \midrule
 Validity (R2 design) & 108 & 0.981 & 0.991 & $+$0.010 \\
 Validity (R2 held-out) & 150 & 0.980 & 1.000 & $+$0.020 \\
 Mean tokens (R2 design) & 108 & 1{,}010 & 7{,}975 & $7.9\times$ \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \paragraph{Interpretation.} The round-2 design-set gain of $+0.093$ with $p=0.0213$
@@ -198,20 +201,22 @@ qid & db\_id & difficulty & review & pre EX & post EX \\
 \section*{S5. Full reproducibility inventory}
 
 \begin{table}[h]
-\centering
+\centering\small
 \caption{Experimental configurations and released artefacts.}
 \label{tab:repro-supp}
+{\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lll}
 \toprule
 Experiment & Model & Key parameters \\
 \midrule
 GIS 125q (baseline + full) & Gemini 2.5 Flash & temp=0.0, 60s timeout \\
 GIS 125q (DIN-SQL) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
-BIRD 108q design + 150q held-out (baseline + full) & Gemini 2.5 Flash & temp=0.0, single-pass \\
-BIRD (DIN-SQL, older 495q comparison) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
-Cross-lingual 50q BIRD + 50q GIS & Gemini 2.5 Flash & LLM-translated Chinese BIRD \\
+BIRD 108q design + 150q held-out & Gemini 2.5 Flash & temp=0.0, single-pass \\
+BIRD (DIN-SQL, older 495q) & Gemini 2.5 Flash & temp=0.0, 4-stage pipeline \\
+Cross-lingual 50q BIRD + 50q GIS & Gemini 2.5 Flash & LLM-translated Chinese \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \paragraph{Released artefacts.} The anonymised companion repository includes the
@@ -225,7 +230,7 @@ and execution results are included.
 
 \paragraph{Run-time configuration.} All runs use Gemini~2.5~Flash with
 temperature$=0.0$, default top\_p, and default maximum output tokens. Each question
-has a 60-second execution timeout; on \texttt{429 RESOURCE\_EXHAUSTED}, the runner
+has a 60-second execution timeout; on \texttt{429 RESOURCE\_\allowbreak{}EXHAUSTED}, the runner
 retries up to 3 times with 2-second initial delay. On no-SQL output, the question
 is recorded with \texttt{gen\_status = no\_sql} and EX$=0$. All McNemar results
 in this paper are reported as two-sided exact binomial tests on discordant pairs;

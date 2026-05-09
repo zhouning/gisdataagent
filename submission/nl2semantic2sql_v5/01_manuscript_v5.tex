@@ -113,7 +113,7 @@ proposal in prior reviewer feedback.
 \item $E_{geo}$ --- geographic entities; each vertex is a PostGIS table with
   attributes (geometry column, SRID, geometry type).
 \item $D, M$ --- dimension and measure vertices for the warehouse track.
-\item $I$ --- intent tags: \texttt{attribute\_filter}, \texttt{aggregation},
+\item $I$ --- intent tags: \texttt{attribute\_filter}, \texttt{aggre\-gation},
   \texttt{spatial\_join}, \texttt{spatial\_measurement}, \texttt{knn},
   \texttt{preview\_listing}.
 \item $P$ --- OGC SFA predicate vertices, partitioned into topological
@@ -126,16 +126,16 @@ proposal in prior reviewer feedback.
   safety/refusal.
 \end{itemize}
 
-\noindent\textbf{Edges.} $E$ comprises $E_{hasGeom}$ (table $\leftrightarrow$
+{\sloppy\noindent\textbf{Edges.} $E$ comprises $E_{hasGeom}$ (table $\leftrightarrow$
 geometry column), $E_{fk}$ (foreign keys from
-\texttt{information\_schema.key\_column\_usage}),
+\texttt{information\_schema.\allowbreak{}key\_column\_\allowbreak{}usage}),
 $E_{topo}, E_{metric}, E_{knn}$ (predicate $\leftrightarrow$ entity),
 $E_{route}$ (intent $\to$ predicate subset),
 $E_{safety}$ (destructive-intent refusal), and
 $E_{unit}$ (SRID range $\to$ required cast $\to$ yielded unit).
 Algorithm~\ref{alg:build-graph} materialises $G$ at agent startup from the
 live PostGIS catalog; our reference implementation is released as a single
-Python module that the runtime agent consumes before each grounding call.
+Python module that the runtime agent consumes before each grounding call.\par}
 
 \noindent\textbf{Executable subset, not a complete ontology.} $G$ is not a
 complete geospatial ontology and is not a GeoSPARQL~\cite{ogcgeosparql}
@@ -170,21 +170,23 @@ specific OGC SFA clause rather than borrowing the standard only by name.
 \centering\footnotesize
 \caption{Alignment of semantic-layer rules to OGC SFA (06-104r4), ISO 19107 clauses, and PostGIS functions. Rule-level mapping; each enforced rule traces to a specific clause.}
 \label{tab:alignment}
-\begin{tabular}{@{}llllp{3.0cm}@{}}
+{\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lllll@{}}
 \toprule
 Rule & Edge class & OGC 06-104r4 clause & ISO 19107 clause & PostGIS \\
 \midrule
 \texttt{R\_topo\_intersects} & $E_{topo}$ & \S 6.1.2.3 (Relate)   & \S 6.2.2 & \texttt{ST\_Intersects} \\
 \texttt{R\_topo\_contains}   & $E_{topo}$ & \S 6.1.2.3 (Relate)   & \S 6.2.2 & \texttt{ST\_Contains} \\
 \texttt{R\_topo\_within}     & $E_{topo}$ & \S 6.1.2.3 (Relate)   & \S 6.2.2 & \texttt{ST\_Within} \\
-\texttt{R\_metric\_length\_geog}   & $E_{unit}$ & \S 6.1.2.3 (Length) + \S 8.2.3 (units) & \S 6.4.14 (GM\_Curve.length) & \texttt{ST\_Length(geography)} \\
-\texttt{R\_metric\_area\_geog}     & $E_{unit}$ & \S 6.1.2.3 (Area) + \S 8.2.3 (units)   & \S 6.4.15 (GM\_Surface.area) & \texttt{ST\_Area(geography)} \\
-\texttt{R\_metric\_dwithin\_geog}  & $E_{unit}$ & \S 6.1.2.3 (Distance) + \S 8.2.3 & \S 6.4.10 (distance)       & \texttt{ST\_DWithin(geography)} \\
-\texttt{R\_knn\_nearest}     & $E_{knn}$  & \S 6.1.2.3 (Distance) & \S 6.4.10 & \texttt{<->} KNN operator \\
-\texttt{R\_safety\_refusal}  & $E_{safety}$ & not in OGC & --- & postprocessor AST guard \\
+\texttt{R\_metric\_length\_geog}   & $E_{unit}$ & \S 6.1.2.3 (Length) + \S 8.2.3 & \S 6.4.14 & \texttt{ST\_Length(geog)} \\
+\texttt{R\_metric\_area\_geog}     & $E_{unit}$ & \S 6.1.2.3 (Area) + \S 8.2.3   & \S 6.4.15 & \texttt{ST\_Area(geog)} \\
+\texttt{R\_metric\_dwithin\_geog}  & $E_{unit}$ & \S 6.1.2.3 (Distance) + \S 8.2.3 & \S 6.4.10 & \texttt{ST\_DWithin(geog)} \\
+\texttt{R\_knn\_nearest}     & $E_{knn}$  & \S 6.1.2.3 (Distance) & \S 6.4.10 & \texttt{<->} KNN \\
+\texttt{R\_safety\_refusal}  & $E_{safety}$ & not in OGC & --- & postprocessor AST \\
 \texttt{R\_safety\_bounded}  & $E_{safety}$ & not in OGC & --- & \texttt{LIMIT} injection \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{Problem formulation}
@@ -422,18 +424,20 @@ Our BIRD evaluation is a secondary, generalisation-oriented track. Round-1 groun
 Table~\ref{tab:dinsql} compares NL2Semantic2SQL against DIN-SQL~\cite{pourreza2023dinsql} as an external prompting baseline on both tracks. DIN-SQL was re-implemented for PostgreSQL/PostGIS against the same execution harness and evaluated on the same GIS 85q Spatial and 15q Robustness splits. For BIRD, DIN-SQL was previously evaluated on a 495-question single-pass run; we have not re-run DIN-SQL on the round-2 108-question design set or the 150-question held-out set, so the BIRD row below reports only the older 495-question comparison and should not be combined with the results in Section~\ref{sec:bird-results}.
 
 \begin{table}[t]
-\centering
+\centering\small
 \caption{Three-way comparison: Baseline vs.\ DIN-SQL vs.\ Full. DIN-SQL on GIS re-implemented for PostgreSQL/PostGIS. The BIRD row is the older 495q comparison only; not directly comparable to the 108q/150q results. The GIS Spatial Full EX ($0.682$) is Sample~1 from the three-run protocol (cf.\ Section~\ref{sec:gis-results}); it is not the paper-wide primary headline.}
 \label{tab:dinsql}
+{\setlength{\tabcolsep}{5pt}
 \begin{tabular}{lccccc}
 \toprule
 Track & $N$ & Baseline EX & DIN-SQL EX & Full EX & Full vs.\ DIN-SQL \\
 \midrule
-GIS Spatial        & 85  & 0.529 & 0.565 & \textbf{0.682} (Sample~1) & $+$0.118 ($p=0.0213$) \\
-GIS Robustness (pilot) & 15  & 0.333 & 0.267 & \textbf{0.800} & $+$0.533 ($p=0.0078$) \\
+GIS Spatial        & 85  & 0.529 & 0.565 & \textbf{0.682} (S1) & $+$0.118 ($p=0.021$) \\
+GIS Robustness (pilot) & 15  & 0.333 & 0.267 & \textbf{0.800} & $+$0.533 ($p=0.008$) \\
 BIRD (older 495q)  & 495 & 0.474 & 0.482 & 0.501 & $+$0.019 ($p=0.382$, NS) \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 On the GIS Spatial split, DIN-SQL achieves EX$=0.565$, only marginally above the direct-LLM baseline (EX$=0.529$, paired McNemar DIN-SQL vs.\ baseline two-sided $p=0.508$, not significant). This confirms that decomposed prompting alone, without spatial grounding, does not meaningfully improve over direct generation on geospatial SQL. The full pipeline reaches Spatial EX$=0.682$ (Sample~1, stochastic), a $+0.118$ improvement over DIN-SQL (paired McNemar $b=3$, $c=13$, two-sided exact $p=0.0213$).
@@ -554,7 +558,7 @@ Table~\ref{tab:case} contrasts representative successes and failures across the 
 \toprule
 Track / case & Gold query intent & Baseline outcome & Full-pipeline outcome \\
 \midrule
-GIS success (CQ\_GEO\_ MEDIUM\_02) & Compute total length (km) of one-way roads. & Fails: \texttt{ROUND(double precision, integer)} — \texttt{::numeric} cast missing. & Succeeds: \texttt{ROUND((SUM(ST\_Length( geom::geography)) /1000.0)::numeric,2)}, geometry-aware rule resolves the error. \\
+GIS success (CQ\_GEO\_ MEDIUM\_02) & Compute total length (km) of one-way roads. & Fails: \texttt{ROUND(double precision, integer)}---\texttt{::numeric} cast missing. & Succeeds: \texttt{ROUND((SUM(ST\_Length( geom::geography)) /1000.0)::numeric,2)}, geometry-aware rule resolves the error. \\
 \midrule
 GIS success (CQ\_GEO\_ HARD\_02) & Retrieve the five nearest roads to ``Chongqing North Station.'' & Uses \texttt{ORDER BY ST\_Distance(...)} instead of KNN ranking. & \textbf{Correct:} intent$=$\texttt{knn}, KNN \texttt{<->} operator injected, correct ordering produced. \\
 \midrule
@@ -702,12 +706,15 @@ Four directions emerge from this study:
 \section{Conclusion}
 \label{sec:conclusion}
 % =============================================================================
+\begin{sloppypar}
 
 We have presented NL2Semantic2SQL, a semantic-grounding and safe-execution framework for PostGIS-based NL2GeoSQL. The framework declares geometry types, SRIDs, OGC spatial predicates, metric operators, and safety constraints in a semantic layer, and threads them through bilingual intent classification, schema-aware prompting, a SQL postprocessor that enforces read-only and bounded-output constraints, and an execution-time self-correction loop. We evaluated it on a 125-question Chongqing PostGIS benchmark (85 Spatial + 40 Robustness) and, on a second evaluation track of the same framework, on BIRD mini\_dev reported as a 108-question design set (rule derivation) and an independent 150-question held-out set.
 
 The primary evidence is PostGIS-side. On GIS Spatial, three independent Full-mode runs yield mean~$\pm$~SD EX$=0.663 \pm 0.048$ vs.\ baseline $0.529$ (pooled $+0.134$; two of three samples paired-significant at $p=0.003$ and $p=0.029$; majority-vote aggregate $p=0.052$, marginal). On the 40-question Robustness suite Full reaches $0.975$ vs.\ baseline $0.450$ with paired McNemar $b=0$, $c=21$, $p<10^{-4}$; this is the strongest primary claim, with OOM Prevention bounded-answer compliance reaching $7/8$ under the \texttt{EXPLAIN}-based pre-check and bounded-output agent policy. An agent-loop-native ablation attributes the Spatial gain to semantic grounding ($p=0.006$) and self-correction ($p=0.023$). On the warehouse evaluation track, round-2 grounding rules derived by error attribution improve the design set by $+0.093$ ($p=0.0213$, in-sample tuning) but the held-out set by only $+0.033$ (95\% CI $[-0.03, 0.09]$, $p=0.3833$); we report this as the current state of the warehouse path, not a confirmed BIRD-wide improvement, and we use it to scope the next round of warehouse-side grounding work. A 50-question Chinese BIRD probe is reported alongside a bilingual human re-audit and paired re-run ($p=1.00$) that rules out translation artefacts as a confound.
 
 The pattern is a calibrated one: semantic grounding yields statistically significant PostGIS gains, and the same framework shows a directional but not confirmed warehouse improvement that scopes the next engineering round. A paired human re-audit of the 50-question cross-lingual BIRD track ($18$~\textsc{ok}, $32$~\textsc{fix}, $0$~\textsc{drop}; post-review EX $0.540$ vs.\ pre-review $0.560$, paired $p=1.00$) rules out LLM-translation artefacts as the cause of the English$\to$Chinese gap, scoping the next cross-lingual round to bilingual schema grounding rather than translation-pipeline improvement. Next steps: a warehouse round-3 grounding pass on held-out failures, domain-selective grounding gated by the intent router, a larger OOM sub-suite and a tighter bounded-output rubric for the residual $1/8$ case, and extending the bilingual human-reviewed cross-lingual sample beyond 50 questions.
+
+\end{sloppypar}
 
 % =============================================================================
 \section*{Reproducibility}
