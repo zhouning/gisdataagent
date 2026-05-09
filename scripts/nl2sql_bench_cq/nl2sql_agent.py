@@ -65,20 +65,18 @@ def build_nl2sql_agent():
     from data_agent.model_gateway import create_model
     model_obj = create_model(model_name)
 
-    # Force temperature=0.0 for benchmark reproducibility across model families.
-    # Without this, LiteLlm backends default to the underlying provider's default
-    # (often 1.0 for OpenAI-compatible APIs including DeepSeek), while the Gemini
-    # backend uses its own internal default — making a cross-family paired
-    # McNemar confound model-family with decoding stochasticity.
-    from google.genai import types as _genai_types
-    gen_cfg = _genai_types.GenerateContentConfig(temperature=0.0)
+    # No explicit generate_content_config: each provider uses its production
+    # default (Gemini: server-side default; DeepSeek via LiteLlm: OpenAI-spec
+    # default temperature=1.0). Cross-family comparisons therefore evaluate
+    # each model family at its deployed configuration rather than a forced
+    # artificial temperature pin. Stochastic variance is controlled at the
+    # experiment level via N=3 sampling per cell (see v5 Spatial protocol).
 
     return LlmAgent(
         name="NL2SQLEvalAgent",
         instruction=instruction,
         description="Focused NL2SQL evaluation agent with full semantic layer",
         model=model_obj,
-        generate_content_config=gen_cfg,
         tools=[
             DatabaseToolset(tool_filter=[
                 "query_database", "describe_table", "list_tables",
