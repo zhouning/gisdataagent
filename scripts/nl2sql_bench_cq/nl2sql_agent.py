@@ -57,11 +57,19 @@ def build_nl2sql_agent():
 - cq_osm_roads_2021: OSM道路. fclass=道路等级, oneway=单行道(F/T/B), bridge=桥梁(T/F)
 """
 
+    model_name = os.environ.get("NL2SQL_AGENT_MODEL", "gemini-2.5-flash")
+    # Route via model_gateway so non-Gemini backends (DeepSeek, LM Studio,
+    # other LiteLLM providers) get wrapped in google.adk.models.lite_llm.LiteLlm
+    # instead of being passed as a bare string (which ADK would route to Gemini
+    # regardless of the name).
+    from data_agent.model_gateway import create_model
+    model_obj = create_model(model_name)
+
     return LlmAgent(
         name="NL2SQLEvalAgent",
         instruction=instruction,
         description="Focused NL2SQL evaluation agent with full semantic layer",
-        model=os.environ.get("NL2SQL_AGENT_MODEL", "gemini-2.5-flash"),
+        model=model_obj,
         tools=[
             DatabaseToolset(tool_filter=[
                 "query_database", "describe_table", "list_tables",
