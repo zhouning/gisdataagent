@@ -15,6 +15,7 @@
 \usepackage{subcaption}
 \usepackage{enumitem}
 \usepackage{url}
+\usepackage[authoryear,round]{natbib}
 \usepackage[hidelinks]{hyperref}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc}
@@ -41,7 +42,7 @@ Natural language interfaces to PostGIS must handle challenges that mainstream te
 \label{sec:intro}
 % =============================================================================
 
-Natural language access to spatial databases is a long-standing GIScience problem~\cite{goodchild1992gis,egenhofer1991topological,clementini1993small}. Recent large language models have pushed general text-to-SQL forward on benchmarks such as Spider~\cite{yu2018spider} and BIRD~\cite{li2023bird}, yet these benchmarks deliberately abstract away the execution machinery that defines geospatial querying: the OGC Simple Feature Access predicates~\cite{ogcsfs}, coordinate reference system transformations, the \texttt{geometry}/\texttt{geography} type distinction, spatial indexes, KNN operators, and the safety constraints that any production GIS must enforce against destructive or unbounded queries. Natural language to executable PostGIS~\cite{postgis} (NL2GeoSQL) is therefore not an instance of text-to-SQL with a GIS dataset but a distinct problem shaped by spatial-database semantics.
+Natural language access to spatial databases is a long-standing GIScience problem~\citep{goodchild1992gis,egenhofer1991topological,clementini1993small}. Recent large language models have pushed general text-to-SQL forward on benchmarks such as Spider~\citep{yu2018spider} and BIRD~\citep{li2023bird}, yet these benchmarks deliberately abstract away the execution machinery that defines geospatial querying: the OGC Simple Feature Access predicates~\citep{ogcsfs}, coordinate reference system transformations, the \texttt{geometry}/\texttt{geography} type distinction, spatial indexes, KNN operators, and the safety constraints that any production GIS must enforce against destructive or unbounded queries. Natural language to executable PostGIS~\citep{postgis} (NL2GeoSQL) is therefore not an instance of text-to-SQL with a GIS dataset but a distinct problem shaped by spatial-database semantics.
 
 The grounding stage is where the gap is most visible. General text-to-SQL schema linking aligns user expressions with column names; PostGIS grounding must additionally recognise geometry-bearing attributes, infer whether a question requires a topological predicate (\texttt{ST\_Intersects}, \texttt{ST\_Touches}, \texttt{ST\_Contains}), a metric operator (\texttt{ST\_Distance}, \texttt{ST\_DWithin}, \texttt{ST\_Area}), a buffer or KNN operator (\texttt{<->}), and decide when a geography cast or \texttt{ST\_Transform} is required so that area and distance are returned in metres rather than degrees. It must also refuse destructive intent (\texttt{DELETE}, \texttt{UPDATE}, \texttt{DROP}) and enforce bounded output on large-table preview queries. These are GIScience computations, not prompt-engineering problems.
 
@@ -66,11 +67,11 @@ The paper proceeds as follows. Section~\ref{sec:related} reviews GIScience found
 
 \subsection{GIScience foundations for NL-to-spatial-database}
 
-Natural language access to spatial databases sits within the GIScience programme articulated by Goodchild~\cite{goodchild1992gis}: formalising geographic concepts so they can be computed rigorously. The relational spatial semantics we ground against have roots in the $4$- and $9$-intersection formalisms~\cite{egenhofer1991topological} and the simplified end-user topological relations of Clementini et al.~\cite{clementini1993small} --- equals, disjoint, touches, contains, overlaps, within, crosses, intersects --- which the OGC Simple Feature Access standard codifies for relational spatial SQL~\cite{ogcsfs} and GeoSPARQL~\cite{ogcgeosparql} extends to RDF. PostGIS~\cite{postgis} operationalises these in PostgreSQL and defines the \texttt{geometry}/\texttt{geography} type distinction, the \texttt{::geography} cast, \texttt{ST\_DWithin}, \texttt{ST\_Transform}, and the \texttt{<->} KNN operator any PostGIS-generating system must respect. Our grounding rules encode these formalisms as prompt-side evidence.
+Natural language access to spatial databases sits within the GIScience programme articulated by \citet{goodchild1992gis}: formalising geographic concepts so they can be computed rigorously. The relational spatial semantics we ground against have roots in the $4$- and $9$-intersection formalisms~\citep{egenhofer1991topological} and the simplified end-user topological relations of \citet{clementini1993small} --- equals, disjoint, touches, contains, overlaps, within, crosses, intersects --- which the OGC Simple Feature Access standard codifies for relational spatial SQL~\citep{ogcsfs} and GeoSPARQL~\citep{ogcgeosparql} extends to RDF. PostGIS~\citep{postgis} operationalises these in PostgreSQL and defines the \texttt{geometry}/\texttt{geography} type distinction, the \texttt{::geography} cast, \texttt{ST\_DWithin}, \texttt{ST\_Transform}, and the \texttt{<->} KNN operator any PostGIS-generating system must respect. Our grounding rules encode these formalisms as prompt-side evidence.
 
 \subsection{Natural language interfaces to spatial databases}
 
-Early geospatial question answering focused on small fact databases: Zelle and Mooney~\cite{zelle1996geoquery} used inductive logic programming for GeoQuery, and Punjani et al.~\cite{punjani2018geospatial} extended this to template-based question answering over linked geospatial data, highlighting spatial-predicate coverage and coordinate-system awareness. Recent LLM-era work falls into two groups. The first targets end-to-end NL-to-executable-spatial-SQL: NALSpatial~\cite{liu2025nalspatial} translates user queries into spatial SQL (implemented over the SECONDO spatial DBMS rather than PostGIS); Monkuu~\cite{yu2025monkuu} is an IJGIS-published LLM-powered NL interface with dynamic schema mapping; GeoSQL-Eval~\cite{hou2026geosql} contributes the first large-scale LLM evaluation on PostGIS NL2GeoSQL (14{,}178 tasks across 340 PostGIS functions at function level). The second targets higher-level GeoAI agents: GeoCogent~\cite{houcoding2025} is an LLM-based agent for geospatial code generation; GeoAgent~\cite{lin2026geoagent} is a hierarchical multi-agent architecture. Surveys map the broader opportunities~\cite{mai2024foundation}. Our contribution lies at the narrower interface between spatial-database semantics and executable SQL: we study end-to-end execution-graded NL-to-PostGIS-SQL with a semantic-layer grounding that explicitly encodes OGC predicates, SRIDs, geography casts, and KNN operators, together with a postprocessor enforcing read-only and bounded-output semantics. Compared with NALSpatial and Monkuu we contribute a 125-question execution benchmark with an explicit Robustness suite, paired McNemar significance testing, and a design/held-out split on a warehouse benchmark as a second track of the same bilingual framework.
+Early geospatial question answering focused on small fact databases: \citet{zelle1996geoquery} used inductive logic programming for GeoQuery, and \citet{punjani2018geospatial} extended this to template-based question answering over linked geospatial data, highlighting spatial-predicate coverage and coordinate-system awareness. Recent LLM-era work falls into two groups. The first targets end-to-end NL-to-executable-spatial-SQL: NALSpatial~\citep{liu2025nalspatial} translates user queries into spatial SQL (implemented over the SECONDO spatial DBMS rather than PostGIS); Monkuu~\citep{yu2025monkuu} is an IJGIS-published LLM-powered NL interface with dynamic schema mapping; GeoSQL-Eval~\citep{hou2026geosql} contributes the first large-scale LLM evaluation on PostGIS NL2GeoSQL (14{,}178 tasks across 340 PostGIS functions at function level). The second targets higher-level GeoAI agents: GeoCogent~\citep{houcoding2025} is an LLM-based agent for geospatial code generation; GeoAgent~\citep{lin2026geoagent} is a hierarchical multi-agent architecture. Surveys map the broader opportunities~\citep{mai2024foundation}. Our contribution lies at the narrower interface between spatial-database semantics and executable SQL: we study end-to-end execution-graded NL-to-PostGIS-SQL with a semantic-layer grounding that explicitly encodes OGC predicates, SRIDs, geography casts, and KNN operators, together with a postprocessor enforcing read-only and bounded-output semantics. Compared with NALSpatial and Monkuu we contribute a 125-question execution benchmark with an explicit Robustness suite, paired McNemar significance testing, and a design/held-out split on a warehouse benchmark as a second track of the same bilingual framework.
 
 Table~\ref{tab:related-comp} summarises four discriminating axes across recent NL-to-spatial-database systems: end-to-end NL-to-PostGIS execution, function-level PostGIS evaluation, safety/refusal evaluation, and release of a machine-readable evaluation set.
 
@@ -82,18 +83,18 @@ Table~\ref{tab:related-comp} summarises four discriminating axes across recent N
 System & E2E NL$\to$PostGIS & Function-level PostGIS eval & Safety/refusal eval & Released eval set \\
 \midrule
 Our framework                          & $\checkmark$ & $-$           & $\checkmark$ & $\checkmark$ \\
-NALSpatial~\cite{liu2025nalspatial}    & $-$           & $-$           & $-$           & $\checkmark$ \\
-Monkuu~\cite{yu2025monkuu}             & $\checkmark$ & $-$           & $-$           & $-$           \\
-GeoSQL-Eval~\cite{hou2026geosql}       & $-$           & $\checkmark$ & $-$           & $\checkmark$ \\
-GeoCogent~\cite{houcoding2025}         & $-$           & $-$           & $-$           & $-$           \\
-GeoAgent~\cite{lin2026geoagent}        & $-$           & $-$           & $-$           & $-$           \\
+NALSpatial~\citep{liu2025nalspatial}    & $-$           & $-$           & $-$           & $\checkmark$ \\
+Monkuu~\citep{yu2025monkuu}             & $\checkmark$ & $-$           & $-$           & $-$           \\
+GeoSQL-Eval~\citep{hou2026geosql}       & $-$           & $\checkmark$ & $-$           & $\checkmark$ \\
+GeoCogent~\citep{houcoding2025}         & $-$           & $-$           & $-$           & $-$           \\
+GeoAgent~\citep{lin2026geoagent}        & $-$           & $-$           & $-$           & $-$           \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Text-to-SQL with LLMs and semantic layers}
 
-LLM text-to-SQL has progressed through Spider~\cite{yu2018spider,rajkumar2022evaluating}, BIRD~\cite{li2023bird}, Spider~2.0~\cite{lei2025spider2}, and BEAVER~\cite{chen2024beaver}. DIN-SQL~\cite{pourreza2023dinsql} introduced decomposed in-context prompting with schema linking, query classification, generation, and self-correction; DAIL-SQL~\cite{gao2024dail} introduced skeleton-similarity few-shot selection; C3~\cite{dong2023c3} explored zero-shot ChatGPT text-to-SQL with calibrated bias correction; CSpider~\cite{min2019cspider} is an early multilingual benchmark. Semantic-layer thinking --- entities, measures, dimensions, metric graphs --- is operationalised in tools such as MetricFlow~\cite{metricflow}, which encodes metric definitions in dbt-based analytical warehouses; we adapt the same entity/measure/dimension vocabulary by combining it with GIS annotations (geometry types, SRIDs, OGC predicates). Here BIRD serves as a warehouse track of the same bilingual framework, reported as a design/held-out pair so the warehouse path is measurable and the next engineering round scopable.
+LLM text-to-SQL has progressed through Spider~\citep{yu2018spider,rajkumar2022evaluating}, BIRD~\citep{li2023bird}, Spider~2.0~\citep{lei2025spider2}, and BEAVER~\citep{chen2024beaver}. DIN-SQL~\citep{pourreza2023dinsql} introduced decomposed in-context prompting with schema linking, query classification, generation, and self-correction; DAIL-SQL~\citep{gao2024dail} introduced skeleton-similarity few-shot selection; C3~\citep{dong2023c3} explored zero-shot ChatGPT text-to-SQL with calibrated bias correction; CSpider~\citep{min2019cspider} is an early multilingual benchmark. Semantic-layer thinking --- entities, measures, dimensions, metric graphs --- is operationalised in tools such as MetricFlow~\citep{metricflow}, which encodes metric definitions in dbt-based analytical warehouses; we adapt the same entity/measure/dimension vocabulary by combining it with GIS annotations (geometry types, SRIDs, OGC predicates). Here BIRD serves as a warehouse track of the same bilingual framework, reported as a design/held-out pair so the warehouse path is measurable and the next engineering round scopable.
 
 % =============================================================================
 \section{Method}
@@ -104,7 +105,7 @@ LLM text-to-SQL has progressed through Spider~\cite{yu2018spider,rajkumar2022eva
 \label{sec:formal-scope}
 
 We formalise the semantic layer as a directed multigraph $G = (V, E)$ that
-encodes the executable subset of OGC Simple Feature Access~\cite{ogcsfs}
+encodes the executable subset of OGC Simple Feature Access~\citep{ogcsfs}
 required for PostGIS grounding. The abstraction follows the metadata-graph
 proposal in prior reviewer feedback.
 
@@ -138,7 +139,7 @@ live PostGIS catalog; our reference implementation is released as a single
 Python module that the runtime agent consumes before each grounding call.\par}
 
 \noindent\textbf{Executable subset, not a complete ontology.} $G$ is not a
-complete geospatial ontology and is not a GeoSPARQL~\cite{ogcgeosparql}
+complete geospatial ontology and is not a GeoSPARQL~\citep{ogcgeosparql}
 knowledge base. It is an \emph{executable subset} of the OGC SFA predicate
 taxonomy, expressed as prompt-side evidence for an LLM-driven NL2GeoSQL
 agent. Full ontology alignment (OGC SFA, ISO 19107, GeoSPARQL) is left to
@@ -298,7 +299,7 @@ Three implementation artefacts support this flow. The \emph{semantic layer} is a
 
 \subsection{Multi-track evaluation protocol}
 
-Evaluation is performed on three benchmark tracks. The geospatial track uses the 125-question GIS benchmark (85 Spatial + 40 Robustness), covering spatial selection, overlap analysis, metric distance queries, buffering, spatial aggregation, and a dedicated robustness suite that probes refusal behaviour on dangerous, illusory, schema-mismatched, and out-of-memory requests. The warehouse track uses BIRD mini\_dev~\cite{li2023bird} with two disjoint subsets: a 108-question design set and a 150-question independent held-out set, both evaluated in single-pass mode. The cross-lingual track pairs 50 Chinese-translated BIRD questions with 50 native-Chinese GIS questions. For all tracks we use execution accuracy (EX) as the primary metric: a prediction is correct if and only if its execution result set matches the gold SQL under set-equality with numeric tolerance. We additionally report 95\% Wilson confidence intervals, execution validity, per-difficulty breakdowns, paired McNemar tests (two-sided exact binomial), and token cost. Concrete sample sizes and the construction of each track are described in Section~\ref{sec:experiments}.
+Evaluation is performed on three benchmark tracks. The geospatial track uses the 125-question GIS benchmark (85 Spatial + 40 Robustness), covering spatial selection, overlap analysis, metric distance queries, buffering, spatial aggregation, and a dedicated robustness suite that probes refusal behaviour on dangerous, illusory, schema-mismatched, and out-of-memory requests. The warehouse track uses BIRD mini\_dev~\citep{li2023bird} with two disjoint subsets: a 108-question design set and a 150-question independent held-out set, both evaluated in single-pass mode. The cross-lingual track pairs 50 Chinese-translated BIRD questions with 50 native-Chinese GIS questions. For all tracks we use execution accuracy (EX) as the primary metric: a prediction is correct if and only if its execution result set matches the gold SQL under set-equality with numeric tolerance. We additionally report 95\% Wilson confidence intervals, execution validity, per-difficulty breakdowns, paired McNemar tests (two-sided exact binomial), and token cost. Concrete sample sizes and the construction of each track are described in Section~\ref{sec:experiments}.
 
 % =============================================================================
 \section{Experiments}
@@ -310,7 +311,7 @@ Evaluation is performed on three benchmark tracks. The geospatial track uses the
 \noindent\textbf{Single-pass mode.} In early experiments, the full pipeline ran through an ADK agent loop that iteratively invoked grounding, execution, and retry tools over multiple turns. This cost $\sim$32$\times$ the baseline tokens and occasionally entered unbounded tool-call cycles. We therefore also implement a deterministic \emph{single-pass} pipeline: (1)~build the grounding context locally (intent classification, semantic resolution, prompt assembly --- no LLM call); (2)~make a single LLM call to generate SQL; (3)~postprocess (safety check, identifier quoting, LIMIT injection) and execute; on failure, retry with a fast corrective LLM call (up to $T=2$). Single-pass mode reduced BIRD token cost from $\sim$32$\times$ to $7.9\times$ and improved design-set EX. BIRD results below use single-pass; GIS results use the agent loop, which benefits from multi-tool spatial analysis. A single-pass GIS ablation for component attribution is reported separately (Section~\ref{sec:ablation}).
 
 \medskip
-\noindent\textbf{Benchmarks.} We evaluate under three tracks. The \emph{GIS track} has 125 questions (85 Spatial with three difficulty levels covering selection, overlap, buffering, spatial aggregation, topology, and KNN; plus 40 Robustness covering six categories: Security Rejection, Anti-Illusion, Schema Hallucination, Schema Enforcement, Data Tampering Prevention, OOM Prevention). The \emph{BIRD track} uses BIRD mini\_dev~\cite{li2023bird} with a 108-question \emph{design set} (used to derive grounding rules by error attribution) and a disjoint 150-question \emph{held-out set} sampled from the remaining BIRD mini\_dev PostgreSQL items with proportional difficulty stratification. The \emph{cross-lingual track} has 50 Chinese-translated BIRD questions (drawn from the 108 design) plus 50 native Chinese GIS questions.
+\noindent\textbf{Benchmarks.} We evaluate under three tracks. The \emph{GIS track} has 125 questions (85 Spatial with three difficulty levels covering selection, overlap, buffering, spatial aggregation, topology, and KNN; plus 40 Robustness covering six categories: Security Rejection, Anti-Illusion, Schema Hallucination, Schema Enforcement, Data Tampering Prevention, OOM Prevention). The \emph{BIRD track} uses BIRD mini\_dev~\citep{li2023bird} with a 108-question \emph{design set} (used to derive grounding rules by error attribution) and a disjoint 150-question \emph{held-out set} sampled from the remaining BIRD mini\_dev PostgreSQL items with proportional difficulty stratification. The \emph{cross-lingual track} has 50 Chinese-translated BIRD questions (drawn from the 108 design) plus 50 native Chinese GIS questions.
 
 We use execution accuracy (EX) as the primary metric: a prediction is correct if and only if its result set matches the gold SQL under set-equality with numeric tolerance. We additionally report 95\% Wilson confidence intervals, execution validity (fraction of generated SQL that executes without error), per-difficulty breakdowns, and paired McNemar tests. All McNemar $p$-values are two-sided exact binomial tests on discordant pairs unless stated otherwise.
 
@@ -341,7 +342,7 @@ For each track, we compare two pipeline configurations:
   \item \textbf{Full pipeline}: full NL2Semantic2SQL with semantic-layer resolution, geometry-aware grounding, value-aware hints, postprocessing, and execution-time self-correction (single-pass on BIRD, agent-loop on GIS).
 \end{itemize}
 
-We additionally compare against \textbf{DIN-SQL}~\cite{pourreza2023dinsql} as an external prompting baseline on both tracks. All configurations share the same underlying language model (Gemini~2.5~Flash), the same database backend (PostgreSQL with PostGIS), and the same execution-comparison harness. Experimental configurations are detailed in Supplement~S5.
+We additionally compare against \textbf{DIN-SQL}~\citep{pourreza2023dinsql} as an external prompting baseline on both tracks. All configurations share the same underlying language model (Gemini~2.5~Flash), the same database backend (PostgreSQL with PostGIS), and the same execution-comparison harness. Experimental configurations are detailed in Supplement~S5.
 
 \subsection{GIS track results}
 \label{sec:gis-results}
@@ -421,7 +422,7 @@ Our BIRD evaluation is a secondary, generalisation-oriented track. Round-1 groun
 \subsection{DIN-SQL external baseline comparison}
 \label{sec:dinsql}
 
-Table~\ref{tab:dinsql} compares NL2Semantic2SQL against DIN-SQL~\cite{pourreza2023dinsql} as an external prompting baseline on both tracks. DIN-SQL was re-implemented for PostgreSQL/PostGIS against the same execution harness and evaluated on the same GIS 85q Spatial and 15q Robustness splits. For BIRD, DIN-SQL was previously evaluated on a 495-question single-pass run; we have not re-run DIN-SQL on the round-2 108-question design set or the 150-question held-out set, so the BIRD row below reports only the older 495-question comparison and should not be combined with the results in Section~\ref{sec:bird-results}.
+Table~\ref{tab:dinsql} compares NL2Semantic2SQL against DIN-SQL~\citep{pourreza2023dinsql} as an external prompting baseline on both tracks. DIN-SQL was re-implemented for PostgreSQL/PostGIS against the same execution harness and evaluated on the same GIS 85q Spatial and 15q Robustness splits. For BIRD, DIN-SQL was previously evaluated on a 495-question single-pass run; we have not re-run DIN-SQL on the round-2 108-question design set or the 150-question held-out set, so the BIRD row below reports only the older 495-question comparison and should not be combined with the results in Section~\ref{sec:bird-results}.
 
 \begin{table}[t]
 \centering\small
@@ -686,7 +687,7 @@ The cross-lingual evaluation (Section~\ref{sec:cross-lingual}) reports a $10$-po
 
 \subsection{Relationship to GeoSQL-Eval}
 
-Our work is complementary to GeoSQL-Eval~\cite{hou2026geosql}. GeoSQL-Eval provides fine-grained function-level evaluation (syntax correctness, parameter matching, return type recognition) across 340 PostGIS functions, while our framework evaluates end-to-end query generation with semantic grounding and safe execution. Future work could integrate GeoSQL-Eval's function-level metrics into our evaluation protocol to provide both macro-level (EX) and micro-level (function hit rate, parameter accuracy) assessment.
+Our work is complementary to GeoSQL-Eval~\citep{hou2026geosql}. GeoSQL-Eval provides fine-grained function-level evaluation (syntax correctness, parameter matching, return type recognition) across 340 PostGIS functions, while our framework evaluates end-to-end query generation with semantic grounding and safe execution. Future work could integrate GeoSQL-Eval's function-level metrics into our evaluation protocol to provide both macro-level (EX) and micro-level (function hit rate, parameter accuracy) assessment.
 
 \subsection{Limitations}
 
@@ -722,63 +723,7 @@ The pattern is a calibrated one: semantic grounding yields statistically signifi
 The 125-question GIS benchmark (85 Spatial + 40 Robustness), the 108q BIRD design set and 150q held-out qid lists, the cross-lingual 100q pairs, the semantic-layer YAML, the SQL postprocessor, the DIN-SQL runner, the evaluation harness, and per-question predictions are released in an anonymised companion repository (Supplement~S5).
 
 % =============================================================================
-\begin{thebibliography}{99}
-
-\bibitem{goodchild1992gis} Goodchild, M.~F. (1992). ``Geographical information science.'' \emph{International Journal of Geographical Information Systems}, 6(1), 31--45. DOI: 10.1080/02693799208901893.
-
-\bibitem{egenhofer1991topological} Egenhofer, M.~J., and Franzosa, R.~D. (1991). ``Point-set topological spatial relations.'' \emph{International Journal of Geographical Information Systems}, 5(2), 161--174. DOI: 10.1080/02693799108927841.
-
-\bibitem{clementini1993small} Clementini, E., Di~Felice, P., and van~Oosterom, P. (1993). ``A small set of formal topological relationships suitable for end-user interaction.'' In \emph{Advances in Spatial Databases (SSD'93)}, Lecture Notes in Computer Science, vol.~692, pp.~277--295. Springer. DOI: 10.1007/3-540-56869-7\_16.
-
-\bibitem{ogcsfs} Open Geospatial Consortium (2010). \emph{OpenGIS Implementation Standard for Geographic Information --- Simple Feature Access --- Part 2: SQL Option}. OGC Document 06-104r4, Version~1.2.1. Part of the ISO~19125 Simple Feature Access SQL standard lineage; we cite the OGC 1.2.1 revision for the definitions of the topological and metric predicates exercised by PostGIS. Available at: \url{https://www.ogc.org/standards/sfs}.
-
-\bibitem{ogcgeosparql} Open Geospatial Consortium (2012). \emph{OGC GeoSPARQL --- A Geographic Query Language for RDF Data}. OGC Document 11-052r4, Version~1.0. We cite the 1.0 edition because our topological predicate taxonomy (Section~\ref{sec:related}) is normatively defined there; GeoSPARQL 1.1 (OGC 22-047r1) extends this taxonomy and is also available for implementations that need the 1.1 additions. Available at: \url{https://www.ogc.org/publications/standard/geosparql/}.
-
-\bibitem{postgis}
-PostGIS Development Team. (2026). \emph{PostGIS 3.5 documentation}, online manual, accessed 2026-05-08.
-\url{https://postgis.net/docs/manual-3.5/}.
-
-\bibitem{zelle1996geoquery} Zelle, J.~M., and Mooney, R.~J. (1996). ``Learning to parse database queries using inductive logic programming.'' In \emph{Proc.\ 13th AAAI Conference on Artificial Intelligence}, pp.~1050--1055. AAAI Press.
-
-\bibitem{punjani2018geospatial} Punjani, D., Singh, K., Both, A., Koubarakis, M., Angelidis, I., Bereta, K., Beris, T., Bilidas, D., Ioannidis, T., Karalis, N., Lange, C., Pantazi, D.-A., Papaloukas, C., and Stamoulis, G. (2018). ``Template-based question answering over linked geospatial data.'' In \emph{Proc.\ 12th Workshop on Geographic Information Retrieval (GIR'18) @ ACM SIGSPATIAL}, Article~7, pp.~1--10. DOI: 10.1145/3281305.3281310.
-
-\bibitem{mai2024foundation} Mai, G., Huang, W., Sun, J., Song, S., Mishra, D., Liu, N., Gao, S., Liu, T., Cong, G., Hu, Y., Cundy, C., Li, Z., Zhu, R., and Lao, N. (2024). ``On the opportunities and challenges of foundation models for GeoAI (vision paper).'' \emph{ACM Transactions on Spatial Algorithms and Systems}, 10(2), Article~11. DOI: 10.1145/3653070.
-
-\bibitem{hou2026geosql} Hou, S., Jiao, H., Liu, Z., Xie, L., Chen, G., Wu, S., Guan, X., and Wu, H. (2026). ``GeoSQL-Eval: first evaluation of LLMs on PostGIS-based NL2GeoSQL queries.'' \emph{Expert Systems with Applications}, 320, Article~132122. DOI: 10.1016/j.eswa.2026.132122.
-
-\bibitem{houcoding2025} Hou, S., Jiao, H., Liang, J., Shen, Z., Zhao, A., and Wu, H. (2025). ``GeoCogent: an LLM-based agent for geospatial code generation.'' \emph{International Journal of Geographical Information Science}, 40(4), 1073--1106. DOI: 10.1080/13658816.2025.2549460.
-
-\bibitem{lin2026geoagent} Lin, Q., Xu, L., Wu, S., Mao, R., Wang, C., Feng, H., Huang, B., and Du, Z. (2026). ``GeoAgent: a hierarchical LLM-based multi-agent architecture for autonomous spatial analysis.'' \emph{International Journal of Geographical Information Science}. Published online 16 February 2026. DOI: 10.1080/13658816.2026.2624784.
-
-\bibitem{yu2025monkuu}
-Yu, C., Yao, Y., Shibasaki, M., Hu, Z., Dai, L., Guan, Q., and Shibasaki, R.
-(2025). ``Monkuu: an LLM-powered natural language interface with dynamic
-schema mapping for geospatial databases.'' \emph{International Journal of
-Geographical Information Science}, 40(2), 588--609.
-DOI: 10.1080/13658816.2025.2533322.
-
-\bibitem{liu2025nalspatial} Liu, M., Wang, X., Xu, J., Lu, H., and Tong, Y. (2025). ``NALSpatial: a natural language interface for spatial databases.'' \emph{IEEE Transactions on Knowledge and Data Engineering}, 37(4), 2056--2070. DOI: 10.1109/TKDE.2025.3525587.
-
-\bibitem{yu2018spider} Yu, T., Zhang, R., Yang, K., Yasunaga, M., Wang, D., Li, Z., Ma, J., Li, I., Yao, Q., Roman, S., Zhang, Z., and Radev, D. (2018). ``Spider: a large-scale human-labeled dataset for complex and cross-domain semantic parsing and text-to-SQL task.'' In \emph{Proc.\ Conference on Empirical Methods in Natural Language Processing (EMNLP)}, pp.~3911--3921. DOI: 10.18653/v1/D18-1425.
-
-\bibitem{rajkumar2022evaluating} Rajkumar, N., Li, R., and Bahdanau, D. (2022). ``Evaluating the text-to-SQL capabilities of large language models.'' \emph{arXiv preprint} arXiv:2204.00498.
-
-\bibitem{pourreza2023dinsql} Pourreza, M., and Rafiei, D. (2023). ``DIN-SQL: decomposed in-context learning of text-to-SQL with self-correction.'' In \emph{Advances in Neural Information Processing Systems (NeurIPS)}, vol.~36.
-
-\bibitem{gao2024dail} Gao, D., Wang, H., Li, Y., Sun, X., Qian, Y., Ding, B., and Zhou, J. (2024). ``Text-to-SQL empowered by large language models: a benchmark evaluation (introducing DAIL-SQL).'' \emph{Proc.\ VLDB Endowment}, 17(5), 1132--1145. DOI: 10.14778/3641204.3641221.
-
-\bibitem{dong2023c3} Dong, X., Zhang, C., Ge, Y., Mao, Y., Gao, Y., Chen, L., Lin, J., and Lou, D. (2023). ``C3: zero-shot text-to-SQL with ChatGPT.'' \emph{arXiv preprint} arXiv:2307.07306.
-
-\bibitem{li2023bird} Li, J., Hui, B., Qu, G., Yang, J., Li, B., Li, B., Wang, B., Qin, B., Geng, R., Huo, N., Zhou, X., Ma, C., Li, G., Chang, K., Huang, F., Cheng, R., and Li, Y. (2023). ``Can LLM already serve as a database interface? A big bench for large-scale database-grounded text-to-SQLs.'' In \emph{NeurIPS Datasets and Benchmarks Track}. OpenReview ID: \texttt{dI4wzAE6uV}.
-
-\bibitem{lei2025spider2} Lei, F., Chen, J., Ye, Y., Cao, R., Shin, D., Su, H., Suo, Z., Gao, H., Hu, W., Yin, P., Zhong, V., Xiong, C., Sun, R., Liu, Q., Wang, S., and Yu, T. (2025). ``Spider 2.0: evaluating language models on real-world enterprise text-to-SQL workflows.'' In \emph{Proc.\ International Conference on Learning Representations (ICLR)}.
-
-\bibitem{chen2024beaver} Chen, P.~B., Wenz, F., Zhang, Y., Kayali, M., Tatbul, N., Cafarella, M., Kraska, T., and Ding, B. (2024). ``BEAVER: an enterprise benchmark for text-to-SQL.'' \emph{arXiv preprint} arXiv:2409.02038 (revised 2025).
-
-\bibitem{min2019cspider} Min, Q., Shi, Y., and Zhang, Y. (2019). ``A pilot study for Chinese SQL semantic parsing.'' In \emph{Proc.\ EMNLP-IJCNLP}, pp.~3652--3658. DOI: 10.18653/v1/D19-1377.
-
-\bibitem{metricflow} dbt~Labs (2026). ``About MetricFlow.'' dbt Developer Hub online documentation. Available at: \url{https://docs.getdbt.com/docs/build/about-metricflow} (accessed 7 May 2026). In this paper we describe MetricFlow as a tool that \emph{operationalises} semantic-layer modelling in analytical SQL pipelines, not as a formal specification.
-
-\end{thebibliography}
+\bibliographystyle{abbrvnat}
+\bibliography{references}
 
 \end{document}
