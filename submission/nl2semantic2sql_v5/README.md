@@ -1,64 +1,50 @@
-# NL2Semantic2SQL v4 submission bundle
+# NL2Semantic2SQL — Submission Bundle (IJGIS)
 
-**Manuscript**: Semantic Grounding and Safe Execution for PostGIS Natural-Language-to-SQL
-**Target venue**: *International Journal of Geographical Information Science* (IJGIS)
-**Submission type**: Regular research article, double-anonymised peer review
-**Version**: v4 (2026-05-08)
+This directory holds the IJGIS submission artefacts for the double-anonymised review.
 
 ## Files
 
-- `01_manuscript_v4.tex` / `01_manuscript_v4.pdf` — main manuscript (~22 pages incl. bib)
-- `02_cover_letter_v4.tex` / `02_cover_letter_v4.pdf` — cover letter (1 page)
-- `03_response_to_reviewers_v4.md` / `03_response_to_reviewers_v4.pdf` — point-by-point response to four review reports (5 pages)
-- `table_benchmark_profile.tex` — auto-generated 85q benchmark composition table (consumed by §4.1 via `\input{}`)
-- `fig_semantic_graph.mmd` — Mermaid source for the G=(V,E) figure (§3.1)
+- `01_manuscript_v5.tex` / `01_manuscript_v5.pdf` — main manuscript (23 pages).
+- `02_cover_letter_v5.tex` / `02_cover_letter_v5.pdf` — cover letter (2 pages).
+- `03_response_to_reviewers_v5.md` / `03_response_to_reviewers_v5.pdf` — point-by-point response to the two 2026-05-08 review reports (5 pages).
+- `supplementary_v5.tex` / `supplementary_v5.pdf` — supplementary material (6 pages).
+- `references.bib` — BibTeX source, 24 entries, rendered via natbib + abbrvnat (Harvard author-date).
+- `table_benchmark_profile.tex` / `fig_semantic_graph.mmd` — auxiliary inputs included from the manuscript.
 
-## Primary claims
+## Word count
 
-- **Robustness (strongest)**: 40-question Robustness suite reaches 0.975 vs. baseline 0.450 (paired McNemar p<10^-4). OOM Prevention bounded-answer compliance improves from v3 1/8 to v4 7/8.
-- **Spatial (N=3 pooled)**: mean+/-SD 0.663+/-0.048 (range [0.612, 0.706]); majority-vote 0.659, p=0.052 (marginal). Two of three individual samples significant (p=0.003, p=0.029).
-- **Ablation**: semantic grounding -0.118 (p=0.006) and self-correction -0.106 (p=0.023) are statistically significant on Spatial EX; intent routing, postprocessor, and few-shot are not (p=0.774 each).
-- **Middle baseline**: schema-only + pp + retry reaches 0.565 (+0.036 over baseline, n.s.); Full's additional +0.098 over middle (p=0.004) attributes gain to semantic grounding, not generic scaffold.
+- Main text: 6988 words
+- References (rendered): 570 words
+- Total: 7558 words (target ≤7800 per IJGIS)
+- Abstract: 181 words (target ≤220 per IJGIS)
 
-## Companion code artifacts (released with v4)
+## Headline results
 
-- `data_agent/semantic_graph.py` — metadata graph G=(V,E) reference implementation (Section 3.1 Algorithm 1 mirrors this 1:1)
-- `data_agent/sql_postprocessor.py::explain_row_estimate()` — EXPLAIN-based OOM pre-check
-- `scripts/nl2sql_bench_cq/run_ablation_agentloop.py` + `run_single_ablation_config.py` — agent-loop-native ablation harness
-- `scripts/nl2sql_bench_cq/run_schema_only_baseline.py` — schema-only middle baseline driver
-- `scripts/nl2sql_bench_cq/benchmark_profile.py` — auto-generates Table 1b
-- `scripts/nl2sql_bench_cq/crosslingual_review_tool.py` — CSV exporter for the bilingual cross-lingual review
+**Robustness 40q (primary claim, paired).** Full 39/40 = 0.975 vs baseline 18/40 = 0.450; paired McNemar b=0, c=21, p<10^-4.
 
-## Eval artifacts
+**Spatial 85q (secondary, marginal).** Three-run majority-vote EX = 0.659 (primary Spatial headline, paired McNemar p=0.052, marginal). Pooled mean ± SD 0.663 ± 0.048 across three independent Full-mode runs vs baseline 0.529.
 
-All raw JSON records (per-question execution accuracy, prompts, generated SQL, timings) are available in `data_agent/nl2sql_eval_results/`:
+**BIRD 150q held-out (secondary, directional only).** +0.033 EX improvement, p=0.3833, n.s., 95% CI [-0.03, 0.09].
 
-- `cq_2026-05-08_090919/` — v4 final 125q both-mode run (baseline + full)
-- `ablation_agentloop_2026-05-07_233516/` — 6-config ablation
-- `schema_only_baseline_2026-05-08_083521/` — middle baseline
-- `full_resample_2026-05-08_1040/` — third Full sample for N=3 pooling
-- `cq_2026-05-06_133518/` — pre-v4 baseline snapshot (SHA for integrity verification)
+**Cross-lingual 50q (null translation artefact).** Bilingual human re-audit of all 50 LLM-translated BIRD Chinese questions yields paired McNemar p=1.00, ruling out translation artefacts.
 
-## Reproduction
+**Cross-family ablation (baseline-only).** On a 30q Spatial subset, Gemini-2.5-Flash baseline→full gain p=0.0312; DeepSeek-V4-Flash baseline matches Gemini-2.5-Flash baseline at EX 0.600.
+
+**External baseline (DIN-SQL paired).** BIRD 150q held-out: Full 0.507 vs DIN-SQL 0.440 (p=0.076, marginal). Robustness 40q: Full 0.975 vs DIN-SQL 0.275 (p=7.45e-9, highly significant).
+
+## Reproducibility
+
+All runs use Gemini 2.5 Flash at temperature 0.0. Per-question timeout 60 s. Paired McNemar tests are two-sided exact binomial on discordant pairs. Detailed per-track configurations are in Supplement S5.
+
+## Compile
 
 ```bash
-# Setup
-export PYTHONPATH=D:/adk
-source .venv/Scripts/activate
-# Main eval (baseline + full)
-python scripts/nl2sql_bench_cq/run_cq_eval.py --mode both --benchmark benchmarks/chongqing_geo_nl2sql_100_benchmark.json
-# Ablation
-bash scripts/nl2sql_bench_cq/run_ablation_orchestrator.sh
-# Middle baseline
-python scripts/nl2sql_bench_cq/run_schema_only_baseline.py
-# Pooling stats
-python scripts/nl2sql_bench_cq/pool_full_samples.py
+pdflatex 01_manuscript_v5.tex
+bibtex 01_manuscript_v5
+pdflatex 01_manuscript_v5.tex
+pdflatex 01_manuscript_v5.tex
+pdflatex 02_cover_letter_v5.tex
+pdflatex supplementary_v5.tex
+pdflatex supplementary_v5.tex
+pandoc 03_response_to_reviewers_v5.md -o 03_response_to_reviewers_v5.pdf --pdf-engine=xelatex
 ```
-
-Each driver is resume-safe (partial files preserved on SIGTERM/SIGKILL) and respects a per-question `CQ_EVAL_QUESTION_TIMEOUT` env var (default 90s) to bound agent-loop hangs.
-
-## Outstanding (first-revision candidates)
-
-- Cross-lingual 50q rerun after bilingual human review (CSV at `benchmarks/bird_chinese_50q_review.csv`)
-- DIN-SQL rerun on BIRD 150q held-out + GIS Robustness 40q paired evaluation
-- Additional Full-mode samples beyond N=3 for tighter significance
