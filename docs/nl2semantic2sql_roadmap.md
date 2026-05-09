@@ -1,8 +1,35 @@
 # NL2Semantic2SQL 产品路线图（精简版）
 
-**最后更新**：2026-05-08
-**关联文档**：`docs/roadmap.md`（整体路线图）、`submission/nl2semantic2sql_v4/`（论文最新快照）
+**最后更新**：2026-05-09
+**关联文档**：`docs/roadmap.md`（整体路线图）、`submission/nl2semantic2sql_v5/`（论文最新快照）
 **前版本**：`docs/nl2semantic2sql_roadmap_v1_verbose.md.bak`（详细 v25-v27 分解，已归档）
+
+---
+
+## v5 投稿包已就绪（2026-05-09 完成）
+
+IJGIS 主修订，响应两份 2026-05-08 评审报告：
+
+- Manuscript 23 pages / 6988 words; 参考文献 570 words (total 7558, ≤7800 IJGIS 限); Abstract 181 words
+- Supplement 6 pages (5 sections: BIRD details / cross-lingual per-question / **cross-model-family (S3 new)** / **DIN-SQL paired (S4 new)** / 完整复现清单)
+- Cover letter 2 pages (Robustness primary / Spatial marginal / BIRD secondary / cross-lingual null / cross-family / DIN-SQL closure 六条 highlights)
+- Response letter 5 pages (Part A 回应 Report 1 §2.1-§4, Part B 回应 Report 2 + priority checklist 10 项)
+
+**最终 headline 数字**：
+- Robustness 40q (primary): Full 0.975 vs baseline 0.450, paired p<10⁻⁴
+- Spatial 85q majority-vote 0.659, paired p=0.052 (marginal)
+- BIRD held-out 150q: +0.033 (directional, n.s.)
+- Cross-lingual 50q re-audit: p=1.00 (translation artefact ruled out)
+- **NEW Cross-family ablation**: Gemini 30q 0.600→0.800 p=0.0312; DeepSeek baseline parity p=1.00
+- **NEW DIN-SQL paired**: BIRD 150q p=0.0755 marginal; Robustness 40q **p=7.45×10⁻⁹**
+
+**主要技术交付**：
+- `thebibliography` → natbib + abbrvnat author-date (per IJGIS Overleaf 模板)
+- 22 v5 commits = 11 CODE + 11 PAPER (paper 不 push)
+- 脚手架新增：30q stratified subset builder / cross-family ablation runner / BIRD DIN-SQL fast runner / CQ DIN-SQL fast runner / cross-lingual supplement LaTeX renderer
+- Overfull hbox 48→2, mojibake 清零, 双盲 audit 全过
+
+详细：见 `memory/nl2sql_v5_session_end_20260509.md`。
 
 ---
 
