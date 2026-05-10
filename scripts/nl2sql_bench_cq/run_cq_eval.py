@@ -345,6 +345,25 @@ async def full_generate(question: str) -> dict:
             if pred_sql:
                 break
 
+    # Runtime guards (v6 Phase 1): catch give-up placeholders and hallucinated
+    # table names (file paths / cache keys) before they reach the scorer. Runs
+    # for ALL families (defense-in-depth); was motivated by DeepSeek attribution
+    # buckets F and G.
+    if pred_sql:
+        from data_agent.runtime_guards import is_safe_sql
+        ok, reason = is_safe_sql(pred_sql)
+        if not ok:
+            # Return empty SQL + guard label so scorer records this as a failure
+            # with explicit reason, NOT as a correct query. The agent's raw
+            # output is preserved in `error` for later forensic inspection.
+            return {
+                "status": "guard_rejected",
+                "sql": "",
+                "error": f"runtime_guard:{reason}|original_sql={pred_sql[:200]}",
+                "tokens": (result.total_input_tokens + result.total_output_tokens),
+                "report": result.report_text[:500] if result.report_text else "",
+            }
+
     # Mirror the LIMIT guard applied inside query_database so that Robustness
     # evaluation (which checks `LIMIT` in pred_sql) sees the effective SQL
     # after the database-side safety injection.
@@ -377,7 +396,9 @@ async def run_one(q: dict, mode: str) -> dict:
     golden_sql = q.get("golden_sql")
 
     from data_agent.nl2sql_intent import classify_intent
-    _intent_result = classify_intent(q["question"])
+    # Per-family override: DS/Qwen bypass LLM judge (v6 Phase 1).
+    _family = os.environ.get("NL2SQL_AGENT_FAMILY") or None
+    _intent_result = classify_intent(q["question"], family=_family)
     intent_value = _intent_result.primary.value
     intent_source = _intent_result.source
 

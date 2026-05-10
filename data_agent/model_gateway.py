@@ -1,8 +1,9 @@
 """
 Model Gateway — Unified online/offline model routing with cost attribution.
 
-Supports three model backends:
+Supports four model backends:
 - **gemini**: Google Gemini API (online, default)
+- **deepseek**: DeepSeek API via LiteLLM provider (online)
 - **litellm**: Any LiteLLM-compatible model (OpenAI, Anthropic, local, etc.)
 - **lm_studio**: Local models via LM Studio OpenAI-compatible API (offline)
 
@@ -14,7 +15,7 @@ Environment variables:
 - MODEL_FAST / MODEL_STANDARD / MODEL_PREMIUM — tier defaults
 - LM_STUDIO_BASE_URL — LM Studio endpoint (default http://localhost:1234/v1)
 - LM_STUDIO_MODEL — default local model name (default gemma-3-4b)
-- MODEL_BACKEND — global default backend: gemini | litellm (default gemini)
+- MODEL_BACKEND — global default backend: gemini | deepseek | litellm | lm_studio (default gemini)
 """
 import os
 
@@ -31,7 +32,7 @@ class ModelRegistry:
     """Registry of available models with metadata.
 
     Each model entry contains:
-    - backend: "gemini" | "litellm" | "lm_studio"
+    - backend: "gemini" | "deepseek" | "litellm" | "lm_studio"
     - tier: "fast" | "standard" | "premium" | "local"
     - api_base: (optional) override API endpoint for local models
     - cost_per_1k_input / output: pricing for cost tracking
@@ -72,6 +73,53 @@ class ModelRegistry:
             "latency_p50_ms": 2500,
             "max_context_tokens": 2_000_000,
             "capabilities": ["complex_reasoning", "planning", "coding", "analysis"],
+        },
+        # --- Online: DeepSeek v4 ---
+        "deepseek-v4-flash": {
+            "backend": "deepseek",
+            "tier": "fast",
+            "online": True,
+            "cost_per_1k_input": 1.0 / 1000,
+            "cost_per_1k_output": 2.0 / 1000,
+            "latency_p50_ms": 900,
+            "max_context_tokens": 1_000_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation"],
+            "api_base": "https://api.deepseek.com",
+            "api_key_env": "DEEPSEEK_API_KEY",
+            "model_id": "openai/deepseek-v4-flash",
+        },
+        "deepseek-v4-pro": {
+            "backend": "deepseek",
+            "tier": "premium",
+            "online": True,
+            "cost_per_1k_input": 12.0 / 1000,
+            "cost_per_1k_output": 24.0 / 1000,
+            "latency_p50_ms": 2000,
+            "max_context_tokens": 1_000_000,
+            "capabilities": ["complex_reasoning", "planning", "coding",
+                             "analysis", "generation"],
+            "api_base": "https://api.deepseek.com",
+            "api_key_env": "DEEPSEEK_API_KEY",
+            "model_id": "openai/deepseek-v4-pro",
+        },
+        # --- Online: Qwen via 阿里云百炼 (OpenAI-compatible endpoint) ---
+        # Dashscope's bailian platform exposes Qwen models via OpenAI-spec
+        # function calling, so LiteLLM routes them through the `openai/` prefix
+        # path same as DeepSeek. Requires DASHSCOPE_API_KEY in env.
+        "qwen3.6-flash": {
+            "backend": "qwen",
+            "tier": "fast",
+            "online": True,
+            "cost_per_1k_input": 0.5 / 1000,
+            "cost_per_1k_output": 1.5 / 1000,
+            "latency_p50_ms": 1000,
+            "max_context_tokens": 1_000_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation"],
+            "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "api_key_env": "DASHSCOPE_API_KEY",
+            "model_id": "openai/qwen3.6-flash",
         },
         # --- Offline: LM Studio local models ---
         "gemma-3-4b": {
@@ -124,7 +172,7 @@ class ModelRegistry:
 
         Args:
             name: Model identifier (e.g. "openai/gpt-4o", "ollama/llama3").
-            backend: "gemini", "litellm", or "lm_studio".
+            backend: "gemini", "deepseek", "litellm", or "lm_studio".
             tier: "fast", "standard", "premium", or "local".
             api_base: Override API endpoint (e.g. "http://localhost:1234/v1").
             online: Whether internet is required (auto-detected from backend).
@@ -281,6 +329,10 @@ def create_model(model_name: str):
 
     if backend == "gemini":
         return _create_gemini_model(model_name)
+    elif backend == "deepseek":
+        return _create_deepseek_model(model_name, info)
+    elif backend == "qwen":
+        return _create_qwen_model(model_name, info)
     elif backend == "lm_studio":
         return _create_lm_studio_model(model_name, info)
     else:
@@ -294,12 +346,56 @@ def _detect_backend(model_name: str) -> str:
         return "gemini"
     if model_name.startswith("gemma-"):
         return "gemini"  # Gemma models via Gemini API
+    if model_name.startswith("deepseek"):
+        return "deepseek"
+    if model_name.startswith("qwen"):
+        return "qwen"
     if "/" in model_name:
         # e.g. "openai/gpt-4o", "anthropic/claude-3", "ollama/llama3"
         return "litellm"
     # Default to Gemini for backward compatibility
     default = os.environ.get("MODEL_BACKEND", "gemini")
     return default
+
+
+def family_of(model_obj) -> str:
+    """Return the LLM family name for an ADK model instance.
+
+    Used by NL2SQL evaluation to pick the correct prompt namespace and tool-
+    call adapter. The single source of truth for "which family is this LLM?".
+
+    Returns one of:
+      - "gemini"    : Google Gemini (gemini-2.5-flash, gemini-2.0-flash, etc.)
+      - "gemma"     : Google Gemma (gemma-4-31b-it, etc.) — ALSO uses ADK's
+                      Gemini wrapper class but is a distinct family with its
+                      own prompt-shape preferences. Detected by model-string
+                      substring BEFORE the class-name fallback.
+      - "deepseek"  : LiteLlm wrapping a deepseek-v* model
+      - "qwen"      : LiteLlm wrapping a Qwen / dashscope model
+      - "lm_studio" : LiteLlm pointing at LM Studio's local OpenAI endpoint
+      - "litellm"   : LiteLlm with no recognised family signature
+      - "unknown"   : anything else
+    """
+    cls = type(model_obj).__name__
+    model_str = (getattr(model_obj, "model", "") or "").lower()
+    # Gemma comes BEFORE Gemini class check because Gemma also uses
+    # google.adk.models.google_llm.Gemini as its wrapper.
+    if "gemma" in model_str:
+        return "gemma"
+    if cls == "Gemini":
+        return "gemini"
+    if cls == "LiteLlm":
+        if "deepseek" in model_str:
+            return "deepseek"
+        if "qwen" in model_str or "dashscope" in model_str:
+            return "qwen"
+        # LM Studio detection: model is "openai/<name>" but base URL points at
+        # a local LM Studio endpoint (default http://localhost:1234/v1)
+        api_base = os.environ.get("OPENAI_API_BASE", "")
+        if "localhost" in api_base or "127.0.0.1" in api_base or "1234" in api_base:
+            return "lm_studio"
+        return "litellm"
+    return "unknown"
 
 
 def _create_gemini_model(model_name: str):
@@ -329,6 +425,68 @@ def _create_lm_studio_model(model_name: str, info: dict):
     os.environ["OPENAI_API_BASE"] = api_base
 
     return LiteLlm(model=litellm_name)
+
+
+def _create_deepseek_model(model_name: str, info: dict):
+    """Create a DeepSeek model via the OpenAI-compatible LiteLLM path."""
+    from google.adk.models.lite_llm import LiteLlm
+
+    api_base = info.get("api_base", "https://api.deepseek.com")
+    effective_name = info.get("model_id", f"openai/{model_name}")
+    api_key_env = info.get("api_key_env", "DEEPSEEK_API_KEY")
+    api_key = os.environ.get(api_key_env, "")
+    if not api_key:
+        os.environ.pop("OPENAI_API_KEY", None)
+        raise RuntimeError(f"{api_key_env} not set")
+
+    os.environ["OPENAI_API_BASE"] = api_base
+    os.environ["OPENAI_API_KEY"] = api_key
+
+    # deepseek-v4-flash defaults to thinking.type=enabled with reasoning_effort
+    # auto-upgraded to "max" in agent scenarios. That blows wall-clock and token
+    # budget on tool-calling loops (every turn must echo reasoning_content per
+    # DeepSeek API contract). For agent/tool-calling use we disable thinking;
+    # callers needing CoT can pass thinking_enabled=True via info.
+    thinking_enabled = info.get("thinking_enabled", False)
+    extra_body = {
+        "thinking": {"type": "enabled" if thinking_enabled else "disabled"}
+    }
+    return LiteLlm(model=effective_name, extra_body=extra_body)
+
+
+def _create_qwen_model(model_name: str, info: dict):
+    """Create a Qwen model via Aliyun Bailian's OpenAI-compatible LiteLLM path.
+
+    Qwen3 / Qwen2.5 family is served through dashscope's `compatible-mode` v1
+    endpoint which speaks the OpenAI Chat Completions spec, so LiteLLM routes
+    them through the same `openai/<model>` prefix as DeepSeek. The Qwen3
+    family also supports a thinking mode (per dashscope docs); for agent /
+    tool-calling we disable it by default to avoid the same wall-clock /
+    token blowup we saw with DeepSeek's reasoning_content. Override via
+    `info["thinking_enabled"] = True` if a caller specifically wants CoT.
+    """
+    from google.adk.models.lite_llm import LiteLlm
+
+    api_base = info.get(
+        "api_base", "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
+    effective_name = info.get("model_id", f"openai/{model_name}")
+    api_key_env = info.get("api_key_env", "DASHSCOPE_API_KEY")
+    api_key = os.environ.get(api_key_env, "")
+    if not api_key:
+        os.environ.pop("OPENAI_API_KEY", None)
+        raise RuntimeError(f"{api_key_env} not set")
+
+    os.environ["OPENAI_API_BASE"] = api_base
+    os.environ["OPENAI_API_KEY"] = api_key
+
+    # Qwen thinking-mode passthrough — dashscope expects `enable_thinking`
+    # in extra_body (different field name from DeepSeek's `thinking`). We
+    # default to disabled so agent loops stay tight; callers needing CoT
+    # can override via info["thinking_enabled"].
+    thinking_enabled = info.get("thinking_enabled", False)
+    extra_body = {"enable_thinking": bool(thinking_enabled)}
+    return LiteLlm(model=effective_name, extra_body=extra_body)
 
 
 def _create_litellm_model(model_name: str, info: dict):

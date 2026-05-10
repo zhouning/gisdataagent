@@ -198,11 +198,26 @@ def _llm_judge(question: str) -> IntentResult:
     return IntentResult(primary=label, confidence=float(payload.get("confidence", 0.7)), source="llm")
 
 
-def classify_intent(question: str) -> IntentResult:
-    """Public entrypoint: rule stage, then LLM judge if rule is uncertain."""
+def classify_intent(question: str, family: str | None = None) -> IntentResult:
+    """Public entrypoint: rule stage, then LLM judge if rule is uncertain.
+
+    Per-family override (v6 Phase 1):
+      - family="deepseek"  → rule stage ONLY (skip LLM judge). Evidence: on the
+        17 grounding-reversal qids (see docs/nl2sql_v6_phase1_error_attribution.md),
+        the LLM judge consistently misclassified aggregation questions as
+        attribute_filter or preview_listing, which then misled the DS prompt's
+        grounding block. DS's own system_instruction.md R2 handles
+        aggregation/listing distinction directly from question surface form.
+      - family="qwen" (planned) → same bypass as deepseek for now; revisit
+        after Phase 3 Qwen attribution pass.
+      - other families → rule + LLM judge (legacy behaviour).
+    """
     if os.environ.get("NL2SQL_DISABLE_INTENT") == "1":
         return IntentResult(primary=IntentLabel.UNKNOWN, confidence=0.0, source="disabled")
     rule = classify_rule(question)
+    # Families that benefit from rule-only classification skip the LLM judge.
+    if family in ("deepseek", "qwen"):
+        return rule
     if rule.primary is not IntentLabel.UNKNOWN and rule.confidence >= 0.7:
         return rule
     try:

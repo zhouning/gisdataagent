@@ -324,7 +324,121 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
     }
 
 
-def _format_grounding_prompt(payload: dict) -> str:
+def _format_grounding_prompt(payload: dict, family: str | None = None) -> str:
+    """Format the grounding payload into a strict prompt block for the LLM.
+
+    The Gemini-style rendering (legacy) is a long, narrative-heavy block with
+    detailed rules per intent. DeepSeek's system_instruction.md already
+    encodes those rules in R1-R7 strict form, so the DS rendering is a
+    slim schema-and-hints block that omits redundant rule restatements.
+    """
+    if family in ("deepseek", "qwen"):
+        return _format_grounding_prompt_compact(payload)
+    return _format_grounding_prompt_legacy(payload)
+
+
+def _format_grounding_prompt_compact(payload: dict) -> str:
+    """Slim grounding rendering for DS / Qwen — schema + hints only.
+
+    Rationale: per-family system_instruction.md already encodes safety/KNN/
+    aggregation/output-contract rules in compact R1-R7 form. Repeating them in
+    the grounding prompt creates redundancy that DS instruction-following
+    handles poorly (often produces over-engineered SQL that mixes both
+    rule sources). This compact rendering ships only the per-question
+    information that cannot live in the static system instruction:
+    candidate schema, semantic hints, few-shots, and warehouse join paths.
+    """
+    lines: list[str] = []
+    lines.append("[NL2SQL question context — use the schema and hints below]")
+
+    # Candidate schema — same content as legacy, but tighter formatting
+    cand = payload.get("candidate_tables") or []
+    if cand:
+        lines.append("")
+        lines.append("## Candidate tables")
+        geom_srids: dict[str, int] = {}
+        for table in cand:
+            lines.append("")
+            lines.append(f"### {table['table_name']}"
+                         f" (confidence {table.get('confidence', 0.0):.2f},"
+                         f" ~{table.get('row_count_hint', 0)} rows)")
+            for col in table.get("columns", []):
+                unit_str = f" [{col['unit']}]" if col.get("unit") else ""
+                aliases = col.get("aliases") or []
+                alias_str = f" aka {', '.join(aliases)}" if aliases else ""
+                sv = col.get("sample_values")
+                sample_str = (
+                    f" sample: {', '.join(str(v) for v in sv[:5])}"
+                    if sv else ""
+                )
+                lines.append(
+                    f"- {col['quoted_ref']} :: {col.get('pg_type','')}"
+                    f"{unit_str}{alias_str}{sample_str}"
+                )
+                if col.get("is_geometry"):
+                    pg_type = col.get("pg_type", "")
+                    srid = 0
+                    if "," in pg_type:
+                        try:
+                            srid = int(pg_type.rsplit(",", 1)[1].rstrip(")"))
+                        except (ValueError, IndexError):
+                            pass
+                    geom_srids[f"{table['table_name']}.{col['column_name']}"] = srid
+
+        # SRID alignment warning (kept — this is per-question information,
+        # not a static rule)
+        if len(set(geom_srids.values())) > 1:
+            lines.append("")
+            lines.append("## SRID alignment required")
+            for ref, srid in geom_srids.items():
+                lines.append(f"- {ref}: SRID={srid}")
+            lines.append("- ST_Transform geometries to a common SRID before "
+                         "spatial operations.")
+
+    # Semantic hints
+    hints = payload.get("semantic_hints", {}) or {}
+    interesting = {k: hints.get(k) for k in (
+        "spatial_ops", "region_filter", "hierarchy_matches",
+        "metric_hints", "sql_filters",
+    ) if hints.get(k)}
+    if interesting:
+        lines.append("")
+        lines.append("## Semantic hints")
+        for k, v in interesting.items():
+            lines.append(f"- {k}: {v}")
+
+    # Warehouse join paths (per-question, cannot live in system instruction)
+    wh = payload.get("warehouse_join_hints")
+    spatial_query = bool(hints.get("spatial_ops") or hints.get("region_filter"))
+    if wh and not spatial_query:
+        lines.append("")
+        lines.append("## Warehouse join paths")
+        for tbl, info in (wh.get("table_roles") or {}).items():
+            role = "fact" if info.get("role") == "fact" else "dimension"
+            entities = ", ".join(info.get("entities") or [])
+            measures = ", ".join(info.get("measures") or [])
+            parts = [f"{tbl}: {role}"]
+            if entities:
+                parts.append(f"entities={entities}")
+            if measures:
+                parts.append(f"measures={measures}")
+            lines.append(f"- {'; '.join(parts)}")
+        for jp in wh.get("join_paths") or []:
+            lines.append(f"- JOIN: {jp}")
+
+    # Few-shots — these are per-question retrieved examples, not static rules
+    few_shots = payload.get("few_shots") or []
+    if few_shots:
+        lines.append("")
+        lines.append("## Reference SQL examples")
+        for shot in few_shots[:3]:  # tighter cap for DS
+            lines.append(f"Q: {shot.get('question','')}")
+            lines.append(f"SQL: {shot.get('sql','')}")
+
+    return "\n".join(lines)
+
+
+def _format_grounding_prompt_legacy(payload: dict) -> str:
     """Format the grounding payload into a strict prompt block for the LLM."""
     lines: list[str] = []
     lines.append("[NL2SQL 上下文 — 必须严格遵循以下 schema]")
@@ -617,7 +731,8 @@ def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
     return result
 
 
-def build_nl2sql_context(user_text: str, schema_filter: str | None = None) -> dict:
+def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
+                         family: str | None = None) -> dict:
     """Build semantic + schema grounding payload for NL2SQL generation.
 
     Args:
@@ -626,13 +741,21 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None) -> di
             all tables from this schema to be included as candidates regardless
             of semantic matching. Used for warehouse benchmarks where the target
             schema is known a priori.
+        family: LLM family name ('gemini' | 'deepseek' | 'qwen' | ...). Affects
+            only the intent classification stage — DS/Qwen bypass the LLM judge
+            per v6 Phase 1 attribution evidence. If None, reads env var
+            NL2SQL_AGENT_FAMILY (set by the runner); defaults to None which
+            preserves legacy Gemini-style behaviour.
     """
     import os as _ablation_os
     if _ablation_os.environ.get("NL2SQL_DISABLE_SEMANTIC") == "1":
         return {"grounding_prompt": "", "candidate_tables": [], "semantic": {},
                 "intent": "unknown", "intent_source": "disabled",
                 "few_shots": [], "sql_filters": []}
-    intent_result = classify_intent(user_text)
+    # Family resolution order: explicit arg > env var > None (legacy behaviour)
+    if family is None:
+        family = _ablation_os.environ.get("NL2SQL_AGENT_FAMILY") or None
+    intent_result = classify_intent(user_text, family=family)
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
     # When schema_filter is set, remove sources from other schemas
@@ -749,5 +872,5 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None) -> di
     }
     if warehouse_join_hints:
         payload["warehouse_join_hints"] = warehouse_join_hints
-    payload["grounding_prompt"] = _format_grounding_prompt(payload)
+    payload["grounding_prompt"] = _format_grounding_prompt(payload, family=family)
     return payload
