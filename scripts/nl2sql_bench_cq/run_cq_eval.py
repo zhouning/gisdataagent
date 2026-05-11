@@ -502,6 +502,10 @@ async def run_one(q: dict, mode: str) -> dict:
         "valid": 1 if is_valid else 0, "reason": reason,
         "tokens": gen.get("tokens", 0),
         "pred_error": pred_res.get("error", ""),
+        # Surface upstream generation status/error so retry layers (e.g.
+        # Gemma 429 handler in run_phase3_gemma_n3.py) can see them.
+        "gen_status": gen.get("status", ""),
+        "gen_error": gen.get("error", ""),
     }
     rec["intent"] = intent_value
     rec["intent_source"] = intent_source

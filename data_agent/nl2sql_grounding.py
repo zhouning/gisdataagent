@@ -332,7 +332,7 @@ def _format_grounding_prompt(payload: dict, family: str | None = None) -> str:
     encodes those rules in R1-R7 strict form, so the DS rendering is a
     slim schema-and-hints block that omits redundant rule restatements.
     """
-    if family in ("deepseek", "qwen"):
+    if family in ("deepseek", "qwen", "gemma"):
         return _format_grounding_prompt_compact(payload)
     return _format_grounding_prompt_legacy(payload)
 

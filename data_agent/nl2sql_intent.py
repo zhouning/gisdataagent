@@ -216,7 +216,7 @@ def classify_intent(question: str, family: str | None = None) -> IntentResult:
         return IntentResult(primary=IntentLabel.UNKNOWN, confidence=0.0, source="disabled")
     rule = classify_rule(question)
     # Families that benefit from rule-only classification skip the LLM judge.
-    if family in ("deepseek", "qwen"):
+    if family in ("deepseek", "qwen", "gemma"):
         return rule
     if rule.primary is not IntentLabel.UNKNOWN and rule.confidence >= 0.7:
         return rule

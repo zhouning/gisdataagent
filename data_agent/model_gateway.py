@@ -103,10 +103,11 @@ class ModelRegistry:
             "api_key_env": "DEEPSEEK_API_KEY",
             "model_id": "openai/deepseek-v4-pro",
         },
-        # --- Online: Qwen via 阿里云百炼 (OpenAI-compatible endpoint) ---
-        # Dashscope's bailian platform exposes Qwen models via OpenAI-spec
-        # function calling, so LiteLLM routes them through the `openai/` prefix
-        # path same as DeepSeek. Requires DASHSCOPE_API_KEY in env.
+        # --- Online: Qwen via Aliyun token-plan MaaS (OpenAI-compatible endpoint) ---
+        # The token-plan MaaS service at token-plan.cn-beijing.maas.aliyuncs.com
+        # speaks OpenAI Chat Completions spec, so LiteLLM routes through the
+        # `openai/` prefix same as DeepSeek. Requires DASHSCOPE_API_KEY in env
+        # (historical name; the token-plan key is stored under it).
         "qwen3.6-flash": {
             "backend": "qwen",
             "tier": "fast",
@@ -117,7 +118,7 @@ class ModelRegistry:
             "max_context_tokens": 1_000_000,
             "capabilities": ["classification", "extraction", "summarization",
                              "reasoning", "analysis", "generation"],
-            "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "api_base": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
             "api_key_env": "DASHSCOPE_API_KEY",
             "model_id": "openai/qwen3.6-flash",
         },
@@ -399,9 +400,34 @@ def family_of(model_obj) -> str:
 
 
 def _create_gemini_model(model_name: str):
-    """Create a Gemini model with retry configuration."""
+    """Create a Gemini-class model with retry configuration.
+
+    This is also the entry point for Gemma models, which use the same ADK
+    Gemini wrapper class. However, Gemma is only served through Google AI
+    Studio, NOT Vertex AI — so when the model_name looks like a Gemma model
+    and the process is currently configured for Vertex AI, we temporarily
+    disable the Vertex routing by unsetting GOOGLE_GENAI_USE_VERTEXAI in
+    this process (and related project env vars). True Gemini models continue
+    to use whichever path the parent environment sets.
+    """
     from google.adk.models.google_llm import Gemini
     from google.genai import types
+
+    if "gemma" in model_name.lower():
+        # Gemma lives on AI Studio; Vertex AI's publisher catalog does NOT
+        # list it (tested 2026-05-10: 404 NOT_FOUND on Vertex, 200 OK on
+        # AI Studio with the same model string). Force AI Studio routing
+        # for this process.
+        if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").upper() == "TRUE":
+            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "FALSE"
+            os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
+            os.environ.pop("GOOGLE_CLOUD_LOCATION", None)
+            logger.info(
+                "Gemma model requested (%s); disabling Vertex AI routing "
+                "for this process and falling back to AI Studio endpoint.",
+                model_name,
+            )
+
     return Gemini(
         model=model_name,
         retry_options=types.HttpRetryOptions(
@@ -442,6 +468,14 @@ def _create_deepseek_model(model_name: str, info: dict):
     os.environ["OPENAI_API_BASE"] = api_base
     os.environ["OPENAI_API_KEY"] = api_key
 
+    # Same NO_PROXY defensive step as _create_qwen_model.
+    _existing_no_proxy = os.environ.get("NO_PROXY", "") or os.environ.get("no_proxy", "")
+    _merged = ",".join(_h for _h in (
+        _existing_no_proxy.split(",") + ["api.deepseek.com"]
+    ) if _h)
+    os.environ["NO_PROXY"] = _merged
+    os.environ["no_proxy"] = _merged
+
     # deepseek-v4-flash defaults to thinking.type=enabled with reasoning_effort
     # auto-upgraded to "max" in agent scenarios. That blows wall-clock and token
     # budget on tool-calling loops (every turn must echo reasoning_content per
@@ -455,20 +489,23 @@ def _create_deepseek_model(model_name: str, info: dict):
 
 
 def _create_qwen_model(model_name: str, info: dict):
-    """Create a Qwen model via Aliyun Bailian's OpenAI-compatible LiteLLM path.
+    """Create a Qwen model via Aliyun token-plan MaaS OpenAI-compatible path.
 
-    Qwen3 / Qwen2.5 family is served through dashscope's `compatible-mode` v1
-    endpoint which speaks the OpenAI Chat Completions spec, so LiteLLM routes
-    them through the same `openai/<model>` prefix as DeepSeek. The Qwen3
-    family also supports a thinking mode (per dashscope docs); for agent /
-    tool-calling we disable it by default to avoid the same wall-clock /
-    token blowup we saw with DeepSeek's reasoning_content. Override via
-    `info["thinking_enabled"] = True` if a caller specifically wants CoT.
+    Qwen3 family is served through Aliyun's MaaS `compatible-mode` v1 endpoint
+    which speaks the OpenAI Chat Completions spec, so LiteLLM routes through
+    the same `openai/<model>` prefix as DeepSeek. Qwen3 family supports a
+    thinking mode; for agent / tool-calling we disable it by default to avoid
+    the same wall-clock / token blowup we saw with DeepSeek's
+    reasoning_content. Override via `info[\"thinking_enabled\"] = True`.
+
+    Network note: HTTPS_PROXY=127.0.0.1:* does not route the token-plan
+    endpoint, so we add it to NO_PROXY for this process. DNS works fine; only
+    HTTPS through local proxy fails (proxy doesn't know about MaaS hosts).
     """
     from google.adk.models.lite_llm import LiteLlm
 
     api_base = info.get(
-        "api_base", "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        "api_base", "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
     )
     effective_name = info.get("model_id", f"openai/{model_name}")
     api_key_env = info.get("api_key_env", "DASHSCOPE_API_KEY")
@@ -476,6 +513,19 @@ def _create_qwen_model(model_name: str, info: dict):
     if not api_key:
         os.environ.pop("OPENAI_API_KEY", None)
         raise RuntimeError(f"{api_key_env} not set")
+
+    # Ensure local proxy does NOT intercept requests to the MaaS endpoint.
+    # The host resolves and pings fine, but the local corporate proxy
+    # (HTTPS_PROXY=127.0.0.1:*) hangs on CONNECT — add MaaS hosts to NO_PROXY
+    # so the OpenAI client bypasses the proxy for these destinations.
+    _bypass_hosts = [
+        "token-plan.cn-beijing.maas.aliyuncs.com",
+        "dashscope.aliyuncs.com",
+    ]
+    _existing_no_proxy = os.environ.get("NO_PROXY", "") or os.environ.get("no_proxy", "")
+    _merged = ",".join(_h for _h in (_existing_no_proxy.split(",") + _bypass_hosts) if _h)
+    os.environ["NO_PROXY"] = _merged
+    os.environ["no_proxy"] = _merged
 
     os.environ["OPENAI_API_BASE"] = api_base
     os.environ["OPENAI_API_KEY"] = api_key
