@@ -146,6 +146,25 @@ class ModelRegistry:
             "capabilities": ["classification", "extraction", "summarization",
                              "reasoning", "analysis", "generation", "coding"],
         },
+        # --- Local: Gemma 4 31B via Ollama (v6 Phase 3) ---
+        # AI Studio's 16K input-TPM ceiling makes agent-loop NL2SQL impractical
+        # for Gemma; the local Ollama deployment removes the rate limit. ADK
+        # Ollama integration uses LiteLLM with the `ollama_chat/` prefix
+        # (NOT `ollama/` — the latter causes infinite tool-call loops per ADK
+        # docs at https://adk.wiki/agents/models/ollama/).
+        "gemma-4-31b-it-ollama": {
+            "backend": "litellm",
+            "tier": "standard",
+            "online": False,
+            "cost_per_1k_input": 0.0,
+            "cost_per_1k_output": 0.0,
+            "latency_p50_ms": 8000,
+            "max_context_tokens": 128_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation", "coding"],
+            "api_base": "http://192.168.31.252:11434",
+            "model_id": "ollama_chat/gemma4:31b",
+        },
     }
 
     # Mutable registry: starts with builtins, can be extended at runtime
@@ -544,25 +563,45 @@ def _create_litellm_model(model_name: str, info: dict):
 
     v23.0: Supports extra_headers and extra_body for vLLM endpoints
     (e.g. Gemma 4 self-hosted with enable_thinking).
+    v6: Supports `ollama_chat/` prefix for Ollama local deployments. Per ADK
+    docs (https://adk.wiki/agents/models/ollama/) the `ollama_chat/` provider
+    MUST be used instead of `ollama/`; the latter causes infinite tool-call
+    loops on most Ollama-served models.
     """
     from google.adk.models.lite_llm import LiteLlm
+
+    # Use model_id override if specified (e.g. "ollama_chat/gemma4:31b")
+    effective_name = info.get("model_id", model_name)
 
     api_base = info.get("api_base")
     if api_base:
         # Provider-specific env var handling
-        if model_name.startswith("openai/"):
+        if effective_name.startswith("openai/"):
             os.environ["OPENAI_API_BASE"] = api_base
-        elif model_name.startswith("ollama/"):
+        elif effective_name.startswith(("ollama/", "ollama_chat/")):
             os.environ["OLLAMA_API_BASE"] = api_base
-
-    # Use model_id override if specified (e.g. "openai/google/gemma-4-31B-it")
-    effective_name = info.get("model_id", model_name)
+            # Add the Ollama host to NO_PROXY so local-network deployments
+            # (e.g. 192.168.x.x) bypass the corporate HTTPS_PROXY which
+            # would otherwise CONNECT-hang on internal hosts.
+            try:
+                from urllib.parse import urlparse
+                host = urlparse(api_base).hostname
+            except Exception:
+                host = None
+            if host:
+                _existing_np = (os.environ.get("NO_PROXY", "")
+                                or os.environ.get("no_proxy", ""))
+                _merged = ",".join(
+                    _h for _h in (_existing_np.split(",") + [host]) if _h
+                )
+                os.environ["NO_PROXY"] = _merged
+                os.environ["no_proxy"] = _merged
 
     # Set API key from env var name if specified
     api_key_env = info.get("api_key_env")
     if api_key_env:
         api_key = os.environ.get(api_key_env, "")
-        if api_key and model_name.startswith("openai/"):
+        if api_key and effective_name.startswith("openai/"):
             os.environ["OPENAI_API_KEY"] = api_key
 
     return LiteLlm(model=effective_name)

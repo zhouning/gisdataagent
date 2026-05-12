@@ -1,0 +1,87 @@
+[
+  {
+    "id": "CQ_GEO_EASY_01",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "统计中心城区建筑数据中，层高（Floor）大于等于 40 层的超高层建筑有多少栋？",
+    "golden_sql": "SELECT COUNT(*) FROM cq_buildings_2021 WHERE \"Floor\" >= 40;",
+    "reasoning_points": [
+      "单表属性过滤",
+      "聚合查询 COUNT"
+    ],
+    "target_metric": "Execution Accuracy",
+    "question_original": "统计中心城区建筑数据中，层高（Floor）大于等于 40 层的超高层建筑有多少栋？",
+    "question_business": "在中心城区的建筑物里，有多少栋是40层及以上的超高层建筑？",
+    "rewrite_notes": "抹掉了表名 `cq_buildings_2021` 和列名 `Floor`。用业务语言'中心城区的建筑物'指代数据，用'40层及以上'来描述筛选条件，去掉了原始问题中括号里的英文字段名。",
+    "rewrite_verification_ok": true,
+    "rewrite_verification_issues": []
+  },
+  {
+    "id": "CQ_GEO_EASY_02",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "在道路数据中，列出所有限速（maxspeed）大于 100 且属于主干道（fclass 为 'primary'）的道路名称（name）。",
+    "golden_sql": "SELECT name FROM cq_osm_roads_2021 WHERE maxspeed > 100 AND fclass = 'primary';",
+    "reasoning_points": [
+      "多条件 AND 过滤",
+      "特定字段提取"
+    ],
+    "target_metric": "Execution Accuracy",
+    "question_original": "在道路数据中，列出所有限速（maxspeed）大于 100 且属于主干道（fclass 为 'primary'）的道路名称（name）。",
+    "question_business": "帮我查一下，哪些主干道的限速超过了100？把这些路的名字列出来。",
+    "rewrite_notes": "将表名 `cq_osm_roads_2021` 替换为通俗的“道路数据”。将列名 `maxspeed`、`fclass`、`name` 分别替换为业务术语“限速”、“主干道”、“路的名字”，并把过滤条件自然地融入问句中。",
+    "rewrite_verification_ok": true,
+    "rewrite_verification_issues": []
+  },
+  {
+    "id": "CQ_GEO_EASY_03",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "找出土地利用现状图斑（cq_land_use_dltb）中，地类名称（DLMC）为'水田'且图斑面积（TBMJ）大于 50000 平方米的图斑标识码（BSM）。",
+    "golden_sql": "SELECT \"BSM\" FROM cq_land_use_dltb WHERE \"DLMC\" = '水田' AND \"TBMJ\" > 50000;",
+    "reasoning_points": [
+      "中文字段值过滤",
+      "数值比较"
+    ],
+    "target_metric": "Execution Accuracy",
+    "question_original": "找出土地利用现状图斑（cq_land_use_dltb）中，地类名称（DLMC）为'水田'且图斑面积（TBMJ）大于 50000 平方米的图斑标识码（BSM）。",
+    "question_business": "在土地利用数据里，找出所有面积大于 50000 平方米的水田，把它们的标识码列出来。",
+    "rewrite_notes": "抹掉了表名 cq_land_use_dltb 和列名 DLMC, TBMJ, BSM。用“土地利用数据”指代数据表，并将对列的筛选条件（地类名称是'水田'、图斑面积大于 50000）和查询目标（图斑标识码）融入了自然的业务问句中。",
+    "rewrite_verification_ok": true,
+    "rewrite_verification_issues": []
+  },
+  {
+    "id": "CQ_GEO_EASY_04",
+    "category": "Aggregation",
+    "difficulty": "Easy",
+    "question": "按道路等级（fclass）分组，统计每种等级的道路总条数，并按条数从大到小排序。",
+    "golden_sql": "SELECT fclass, COUNT(*) as road_count FROM cq_osm_roads_2021 GROUP BY fclass ORDER BY road_count DESC;",
+    "reasoning_points": [
+      "GROUP BY 分组聚合",
+      "ORDER BY 排序"
+    ],
+    "target_metric": "Execution Accuracy",
+    "question_original": "按道路等级（fclass）分组，统计每种等级的道路总条数，并按条数从大到小排序。",
+    "question_business": "按道路等级分类，统计每种等级的道路总共有多少条，然后按数量从多到少排序。",
+    "rewrite_notes": "抹掉了表名 cq_osm_roads_2021，用业务概念“道路”指代。抹掉了列名 fclass，用其中文业务含义“道路等级”替代。将 SQL 聚合函数（GROUP BY, COUNT）和排序（ORDER BY）改写为“按...分类统计”、“总共有多少条”、“按数量从多到少排序”等自然语言描述。",
+    "rewrite_verification_ok": true,
+    "rewrite_verification_issues": []
+  },
+  {
+    "id": "CQ_GEO_EASY_05",
+    "category": "Attribute Filtering",
+    "difficulty": "Easy",
+    "question": "在高德POI数据中，找出包含'三甲医院'（类型 或 名称 中包含）的所有 POI 的名称和电话。",
+    "golden_sql": "SELECT \"名称\", \"电话\" FROM cq_amap_poi_2024 WHERE \"类型\" LIKE '%三甲医院%' OR \"名称\" LIKE '%三甲医院%';",
+    "reasoning_points": [
+      "模糊查询 LIKE",
+      "OR 逻辑连接"
+    ],
+    "target_metric": "Execution Accuracy",
+    "question_original": "在高德POI数据中，找出包含'三甲医院'（类型 或 名称 中包含）的所有 POI 的名称和电话。",
+    "question_business": "帮我从高德POI数据里，把所有名字或类型里带'三甲医院'的地点都筛出来，告诉我它们的名称和电话号码。",
+    "rewrite_notes": "将表名 cq_amap_poi_2024 替换为业务术语'高德POI数据'。将列名'名称'、'类型'、'电话'替换为通俗的'名字'、'类型'、'电话号码'。将 SQL 的 WHERE ... LIKE ... OR ... 过滤逻辑，改写为'名字或类型里带...'的自然语言描述。",
+    "rewrite_verification_ok": true,
+    "rewrite_verification_issues": []
+  }
+]

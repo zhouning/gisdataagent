@@ -74,17 +74,45 @@ def load_questions(benchmark_path: Path | None = None) -> list[dict]:
         return json.load(f)
 
 
+def _benchmark_tables() -> list[str]:
+    """Return sorted list of cq_* table names referenced in the benchmark
+    gold SQL. v7 fix (2026-05-12): replaces the previous hardcoded 4-table
+    list, which left 7/11 benchmark tables out of the prompt schema block
+    and produced inconsistent baseline conditions across questions.
+
+    Robustness questions with golden_sql=None are excluded by gold-SQL
+    parsing; their hallucinated 'trap' table names (cq_population_census
+    etc.) therefore stay out of the schema block — which is the correct
+    behaviour, since pretending those tables exist would defeat the
+    point of the Robustness traps.
+    """
+    import json as _json
+    import re as _re
+    from pathlib import Path as _Path
+    p = _Path(__file__).resolve().parents[2] / "benchmarks" / \
+        "chongqing_geo_nl2sql_100_benchmark.json"
+    rows = _json.loads(p.read_text(encoding="utf-8"))
+    tables = set()
+    for r in rows:
+        g = r.get("golden_sql") or ""
+        for t in _re.findall(r"\b(cq_[a-z0-9_]+)\b", g):
+            tables.add(t)
+    return sorted(tables)
+
+
 def dump_schema() -> str:
     _init_runtime()
     engine = get_engine()
     lines: list[str] = []
-    tables = ["cq_amap_poi_2024", "cq_buildings_2021", "cq_land_use_dltb", "cq_osm_roads_2021"]
+    tables = _benchmark_tables()
     with engine.connect() as conn:
         for t in tables:
             cols = conn.execute(text(
                 "SELECT column_name, data_type FROM information_schema.columns "
                 "WHERE table_schema='public' AND table_name=:t ORDER BY ordinal_position"
             ), {"t": t}).fetchall()
+            if not cols:
+                continue
             geom = conn.execute(text(
                 "SELECT type, srid FROM geometry_columns "
                 "WHERE f_table_schema='public' AND f_table_name=:t LIMIT 1"
