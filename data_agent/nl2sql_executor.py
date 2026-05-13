@@ -145,6 +145,11 @@ def execute_nl2sql(sql: str) -> str:
         if pp_result.rejected:
             return f"安全拒绝: {pp_result.reject_reason}"
 
+        from .runtime_guards import is_safe_sql
+        guard_ok, guard_reason = is_safe_sql(pp_result.sql, set(schemas.keys()))
+        if not guard_ok:
+            return f"安全拒绝: runtime_guard:{guard_reason}"
+
         exec_result = execute_safe_sql(pp_result.sql)
 
         try:

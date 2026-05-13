@@ -2,6 +2,29 @@
 from unittest.mock import patch, MagicMock
 import json
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _reset_nl2sql_contextvars():
+    """Reset shared ContextVars between tests so a prior test's cached schema
+    does not leak into the runtime_guard's allowed_tables check (which would
+    flip a benign FROM clause into a hallucinated_table rejection)."""
+    from data_agent.user_context import (
+        current_nl2sql_schemas, current_nl2sql_large_tables,
+        current_nl2sql_question, current_nl2sql_intent,
+    )
+    from data_agent.nl2sql_intent import IntentLabel
+    s = current_nl2sql_schemas.set({})
+    lt = current_nl2sql_large_tables.set(set())
+    q = current_nl2sql_question.set("")
+    i = current_nl2sql_intent.set(IntentLabel.UNKNOWN)
+    yield
+    current_nl2sql_schemas.reset(s)
+    current_nl2sql_large_tables.reset(lt)
+    current_nl2sql_question.reset(q)
+    current_nl2sql_intent.reset(i)
+
 
 def test_prepare_nl2sql_context_returns_prompt_and_caches_schema():
     from data_agent.nl2sql_executor import prepare_nl2sql_context, _cached_schemas
@@ -104,7 +127,7 @@ def test_execute_nl2sql_max_retries_exceeded():
 
     with patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda s, *a, **kw: FakeResult(s)), \
          patch("data_agent.nl2sql_executor.execute_safe_sql", return_value=error_json), \
-         patch("data_agent.nl2sql_executor._retry_with_llm", return_value="SELECT 1"):
+         patch("data_agent.nl2sql_executor._retry_with_llm", return_value='SELECT COUNT(*) FROM cq_buildings_2021 WHERE "Floor" >= 40'):
         result = execute_nl2sql("SELECT bad_sql")
 
     parsed = json.loads(result)

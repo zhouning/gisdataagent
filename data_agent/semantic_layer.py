@@ -160,7 +160,8 @@ def _get_cached_registry(conn, table_names: list) -> list:
         placeholders = ", ".join(f":t{i}" for i in range(len(uncached)))
         rows = conn.execute(text(f"""
             SELECT table_name, column_name, semantic_domain,
-                   aliases, unit, description, is_geometry
+                   aliases, unit, description, is_geometry,
+                   COALESCE(value_semantics, '{{}}'::jsonb) AS value_semantics
             FROM {T_SEMANTIC_REGISTRY}
             WHERE table_name IN ({placeholders})
         """), bind_params).fetchall()
@@ -400,6 +401,7 @@ def resolve_semantic_context(user_text: str) -> dict:
             "sources": [], "matched_columns": {}, "spatial_ops": [],
             "region_filter": None, "metric_hints": [],
             "hierarchy_matches": [], "equivalences": [], "sql_filters": [],
+            "table_hints": [], "column_hints": {}, "large_tables": [],
         }
     catalog = _load_catalog()
     result = {
@@ -408,6 +410,8 @@ def resolve_semantic_context(user_text: str) -> dict:
         "spatial_ops": [],
         "region_filter": None,
         "metric_hints": [],
+        "table_hints": [],
+        "column_hints": {},
     }
 
     # --- 1. Match table sources from DB ---
@@ -443,7 +447,7 @@ def resolve_semantic_context(user_text: str) -> dict:
                     rev_col_rows = _get_cached_registry(conn, list(unmatched_tables))
                     reverse_hits: dict = {}
                     for crow in rev_col_rows:
-                        r_tbl, r_col, _, aliases_raw, _, _, _ = crow
+                        r_tbl, r_col, _, aliases_raw, _, _, _, _ = crow
                         alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
                         col_score = _match_aliases(user_text, alias_list + [r_col])
                         if col_score > 0:
@@ -467,10 +471,11 @@ def resolve_semantic_context(user_text: str) -> dict:
                     col_rows = _get_cached_registry(conn, matched_tables)
 
                     for crow in col_rows:
-                        tbl, col, domain, aliases_raw, unit, cdesc, is_geom = crow
+                        tbl, col, domain, aliases_raw, unit, cdesc, is_geom, value_sem = crow
                         alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
+                        vs = value_sem if isinstance(value_sem, dict) else (json.loads(value_sem or "{}") if value_sem else {})
                         col_score = _match_aliases(user_text, alias_list)
-                        if col_score > 0 or is_geom:
+                        if col_score > 0 or is_geom or vs:
                             if tbl not in result["matched_columns"]:
                                 result["matched_columns"][tbl] = []
                             result["matched_columns"][tbl].append({
@@ -480,8 +485,49 @@ def resolve_semantic_context(user_text: str) -> dict:
                                 "unit": unit,
                                 "description": cdesc or "",
                                 "is_geometry": is_geom,
+                                "value_semantics": vs,
                                 "confidence": col_score,
                             })
+
+                # --- 2b. Load agent_semantic_hints for matched tables ---
+                # Emits `table_hints` (scope_type in {table, dataset}) and
+                # `column_hints` keyed by "table.column". Each hint is gated
+                # by trigger_keywords unless severity == 'critical'.
+                result["table_hints"] = []
+                result["column_hints"] = {}
+                if matched_tables:
+                    try:
+                        prefixes = [t + ".%" for t in matched_tables]
+                        hint_rows = conn.execute(text("""
+                            SELECT scope_type, scope_ref, hint_kind,
+                                   hint_text_zh, hint_text_en,
+                                   severity, trigger_keywords
+                            FROM agent_semantic_hints
+                            WHERE scope_ref = ANY(:tables)
+                               OR scope_ref LIKE ANY(:prefixes)
+                        """), {"tables": matched_tables, "prefixes": prefixes}).fetchall()
+
+                        user_lower = (user_text or "").lower()
+                        for hrow in hint_rows:
+                            h_scope_type, h_ref, h_kind, h_zh, h_en, h_sev, h_trig = hrow
+                            trig_list = h_trig if isinstance(h_trig, list) else (
+                                json.loads(h_trig or "[]") if h_trig else [])
+                            if h_sev != "critical" and trig_list:
+                                if not any(k.lower() in user_lower for k in trig_list):
+                                    continue
+                            hint_dict = {
+                                "scope_ref": h_ref,
+                                "hint_kind": h_kind,
+                                "hint_text_zh": h_zh,
+                                "hint_text_en": h_en,
+                                "severity": h_sev,
+                            }
+                            if h_scope_type == "column":
+                                result["column_hints"].setdefault(h_ref, []).append(hint_dict)
+                            else:
+                                result["table_hints"].append(hint_dict)
+                    except Exception:
+                        pass  # table may not exist yet (pre-mig 069)
         except Exception:
             pass  # non-fatal, fall through to static catalog
 

@@ -68,6 +68,7 @@ from .toolsets.data_cleaning_tools import DataCleaningToolset
 from .toolsets.precision_tools import PrecisionToolset
 from .toolsets.domain_standard_tools import DomainStandardToolset
 from .toolsets.report_tools import ReportToolset
+from .toolsets.capability_qa_tools import CapabilityQAToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 from .toolsets.world_model_v2_tools import WorldModelV2Toolset
 
@@ -285,6 +286,7 @@ data_processing_agent = LlmAgent(
         RemoteSensingToolset(tool_filter=["download_lulc", "download_dem"]),
         FusionToolset(),
         knowledge_tool,  # on-demand domain knowledge (2.1)
+        CapabilityQAToolset(),
     ] + _arcpy_tools,
 )
 
@@ -398,6 +400,7 @@ governance_processing_agent = LlmAgent(
             "governance_score", "governance_summary", "classify_defects",
         ]),
         PrecisionToolset(),
+        CapabilityQAToolset(),
     ] + _arcpy_gov_process_tools,
 )
 
@@ -486,6 +489,7 @@ general_processing_agent = LlmAgent(
         PrecisionToolset(),
         ReportToolset(),
         NL2SQLEnhancedToolset(),
+        CapabilityQAToolset(),
     ] + _arcpy_tools,
 )
 
@@ -858,6 +862,47 @@ planner_agent = LlmAgent(
 
 root_agent = data_pipeline
 
+
+def _build_mention_nl2sql_agent():
+    """Build MentionNL2SQL aligned with the v7 full experiment.
+
+    Prompt source: prompts_nl2sql/<family>/system_instruction.md — the same
+    iter3 catalog rules evaluated at 72.0% EX on the v7 clean benchmark.
+    Tools: production three-step flow via NL2SQLEnhancedToolset
+    (prepare_nl2sql_context + execute_nl2sql with postprocessor + retry +
+    runtime_guard + auto_curate) PLUS the same semantic-layer / exploration
+    tool surface the experiment agent exposes, so the LLM has the same
+    affordances it had at 72% EX.
+    """
+    from . import prompts_nl2sql
+    from .model_gateway import family_of
+
+    model_obj = get_model_for_tier("standard")
+    family = family_of(model_obj)
+    instruction = prompts_nl2sql.load_system_instruction(family)
+
+    return LlmAgent(
+        name="MentionNL2SQL",
+        instruction=instruction,
+        description="NL2SQL expert aligned with the v7 full evaluation agent.",
+        model=model_obj,
+        output_key="nl2sql_result",
+        tools=[
+            NL2SQLEnhancedToolset(),
+            SemanticLayerToolset(tool_filter=[
+                "resolve_semantic_context", "describe_table_semantic",
+                "list_semantic_sources", "browse_hierarchy",
+            ]),
+            DatabaseToolset(tool_filter=[
+                "query_database", "describe_table", "list_tables",
+            ]),
+            ExplorationToolset(tool_filter=[
+                "describe_table", "list_tables",
+            ]),
+        ],
+    )
+
+
 # --- Direct sub-agent lookup for @mention routing (v24.0) ---
 _AGENT_MAP = {
     "DataExploration": lambda: _make_planner_explorer("MentionExploration"),
@@ -882,30 +927,7 @@ _AGENT_MAP = {
     ),
     "GeneralProcessing": lambda: _make_planner_processor("MentionGeneralProcessing"),
     "GeneralViz": lambda: _make_planner_visualizer("MentionGeneralViz"),
-    "NL2SQL": lambda: LlmAgent(
-        name="MentionNL2SQL",
-        instruction=(
-            "你是 NL2SQL 专家。严格按以下步骤执行，不要跳步或并行调用工具：\n"
-            "步骤1: 调用 prepare_nl2sql_context(user_question=用户问题) 获取 schema grounding\n"
-            "步骤2: 根据返回的 grounding 信息生成 SQL（不要调用 describe_table 或 query_database）\n"
-            "步骤3: 调用 execute_nl2sql(sql=生成的SQL) 执行并返回结果\n"
-            "重要: 只使用 prepare_nl2sql_context 和 execute_nl2sql 两个工具，不要使用其他工具。\n"
-            "如果用户请求 DELETE/UPDATE/DROP 等写操作，直接拒绝。\n"
-            "如果用户问的数据在 schema 中不存在，如实告知。\n"
-            "安全规则: LIMIT 仅用于预览/全表浏览场景（如样例预览）。\n"
-            "对于精确过滤或聚合问题，应返回精确答案，不要强制加 LIMIT。\n"
-            "工作模式: 系统会先识别问题意图，然后只注入与该意图相关的接地规则。LIMIT 仅用于预览类问题；KNN 仅用于最近邻问题；不要把不相关的规则套用到当前问题上。\n"
-            "投影规则: 只 SELECT 问题明确要求的字段。不要添加额外的聚合列、计算列或辅助列。"
-            "例如问'哪一年消费最多'只返回年份列，不要额外返回消费总额列。\n"
-            "输出规则: 只输出最终结论和数据结果，禁止输出推理过程或内部思考。\n"
-            "拒绝规则: 当你拒绝时，不要引用规则原文，不要解释你的内部步骤，不要追问用户。\n"
-            "写操作拒绝的标准格式是：我不能执行修改、删除或新增数据的操作。我只能帮助查询。\n"
-            "schema 不存在时的标准格式是：当前数据库中不存在与该问题对应的数据字段或数据表，因此无法查询。"
-        ),
-        model=get_model_for_tier("standard"),
-        output_key="nl2sql_result",
-        tools=[NL2SQLEnhancedToolset(), SemanticLayerToolset(), DatabaseToolset(tool_filter=["query_database", "describe_table"])],
-    ),
+    "NL2SQL": _build_mention_nl2sql_agent,
 }
 
 

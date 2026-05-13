@@ -1,6 +1,45 @@
 """Tests for nl2sql_grounding.build_nl2sql_context."""
 from unittest.mock import patch
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _flush_semantic_caches(monkeypatch):
+    """Reset semantic-layer state between tests.
+
+    Sibling test files transitively trigger `load_dotenv(override=True)`
+    when they importlib-load `scripts/nl2sql_bench_cq/run_cq_eval.py`,
+    populating DB connection env vars AND caching a live engine. That
+    state leaks into `build_nl2sql_context` → `list_semantic_sources`
+    returns real CQ rows, padding candidate_tables beyond what each test
+    mocked.
+
+    Mitigation: invalidate the semantic cache, and mock
+    `list_semantic_sources` to an empty-sources default so tests that
+    expect only their mocked semantic.sources see exactly those. Tests
+    that specifically exercise the list-fallback path provide their own
+    `list_semantic_sources` override inside their with-patch block, which
+    takes precedence over this fixture's autouse mock.
+    """
+    try:
+        from data_agent.semantic_layer import invalidate_semantic_cache
+        invalidate_semantic_cache(None)
+    except Exception:
+        pass
+    # Default no-op for list_semantic_sources so autodiscovery stays quiet.
+    monkeypatch.setattr(
+        "data_agent.nl2sql_grounding.list_semantic_sources",
+        lambda: {"status": "error", "message": "disabled in tests"},
+        raising=False,
+    )
+    yield
+    try:
+        from data_agent.semantic_layer import invalidate_semantic_cache
+        invalidate_semantic_cache(None)
+    except Exception:
+        pass
+
 
 def test_build_context_returns_expected_keys():
     from data_agent.nl2sql_grounding import build_nl2sql_context

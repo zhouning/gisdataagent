@@ -407,6 +407,30 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
         for k, v in interesting.items():
             lines.append(f"- {k}: {v}")
 
+    # Business rules from agent_semantic_hints (data-driven).
+    table_hints = payload.get("table_hints") or []
+    column_hints = payload.get("column_hints") or {}
+    if table_hints or column_hints:
+        lines.append("")
+        lines.append("## Business rules")
+        for h in table_hints:
+            mark = "!! " if h.get("severity") == "critical" else "- "
+            text = h.get("hint_text_en") or h["hint_text_zh"]
+            lines.append(f"{mark}{h['scope_ref']}: {text}")
+        for colkey, hs in column_hints.items():
+            for h in hs:
+                mark = "!! " if h.get("severity") == "critical" else "- "
+                text = h.get("hint_text_en") or h["hint_text_zh"]
+                lines.append(f"{mark}{colkey}: {text}")
+
+    # Dynamic large-table list.
+    large_tables = payload.get("large_tables") or []
+    if large_tables:
+        lines.append("")
+        lines.append("## Large tables (>=1M rows; bounded-output policy applies)")
+        for t in large_tables:
+            lines.append(f"- {t}")
+
     # Warehouse join paths (per-question, cannot live in system instruction)
     wh = payload.get("warehouse_join_hints")
     spatial_query = bool(hints.get("spatial_ops") or hints.get("region_filter"))
@@ -513,6 +537,31 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
     lines.append(f"- 层次匹配: {hints.get('hierarchy_matches') or []}")
     lines.append(f"- 指标提示: {hints.get('metric_hints') or []}")
     lines.append(f"- 推荐 SQL 过滤: {hints.get('sql_filters') or []}")
+
+    # Business rules (table- and column-scope) from agent_semantic_hints.
+    # Previously lived hard-coded in prompts_nl2sql/*/system_instruction.md;
+    # now data-driven so new customers configure via the semantic layer UI.
+    table_hints = payload.get("table_hints") or []
+    column_hints = payload.get("column_hints") or {}
+    if table_hints or column_hints:
+        lines.append("")
+        lines.append("## [业务规则]")
+        for h in table_hints:
+            mark = "⚠⚠ " if h.get("severity") == "critical" else "- "
+            lines.append(f"{mark}{h['scope_ref']}: {h['hint_text_zh']}")
+        for colkey, hs in column_hints.items():
+            for h in hs:
+                mark = "⚠⚠ " if h.get("severity") == "critical" else "- "
+                lines.append(f"{mark}{colkey}: {h['hint_text_zh']}")
+
+    # Dynamic large-table list (replaces hard-coded names in system_instruction.md).
+    large_tables = payload.get("large_tables") or []
+    if large_tables:
+        lines.append("")
+        lines.append("## 大表（≥100万行，bounded-output policy 适用）")
+        for t in large_tables:
+            lines.append(f"- {t}")
+
     # Warehouse join-path hints (non-spatial only)
     wh = payload.get("warehouse_join_hints")
     spatial_query = bool(
@@ -864,6 +913,12 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
             "metric_hints": semantic.get("metric_hints") or [],
             "sql_filters": semantic.get("sql_filters") or [],
         },
+        "table_hints": semantic.get("table_hints") or [],
+        "column_hints": semantic.get("column_hints") or {},
+        "large_tables": [
+            t["table_name"] for t in candidate_tables
+            if int(t.get("row_count_hint", 0) or 0) >= 1_000_000
+        ],
         "few_shots": few_shots,
         "intent": intent_result.primary,
         "intent_secondary": [lbl.value for lbl in intent_result.secondary],

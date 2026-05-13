@@ -6,10 +6,13 @@ in family-appropriate phrasing.
 
 ## Geometry / measurement
 - Real-world area uses geography cast: `ST_Area(geometry::geography)` returns
-  square metres. The projected column `"TBMJ"` and `"SHAPE_Area"` are NOT
-  real-world m² and must not be used as area answers.
+  square metres. Bare `ST_Area(geometry)` without the cast returns square
+  degrees on geographic (unprojected) SRIDs and is ALWAYS a bug.
 - Real-world length: `ST_Length(geometry::geography)` returns metres.
 - Distance threshold filtering: `ST_DWithin(a::geography, b::geography, metres)`.
+- Dataset-specific column caveats (e.g. "SHAPE_Area is stored in degrees²"
+  or "TBMJ is pre-computed real m²") are injected at runtime under
+  `## Business rules` — follow those in preference to any generic assumption.
 
 ## Spatial predicates
 - Intersection (geometries share any point): `ST_Intersects(a, b)`.
@@ -33,10 +36,10 @@ in family-appropriate phrasing.
   or a default-when-null behaviour.
 
 ## Identifier quoting
-- Uppercase column names must be double-quoted: `"DLMC"`, `"BSM"`, `"Floor"`,
-  `"TBMJ"`, `"QSDWMC"`.
-- The PostgreSQL parser folds unquoted identifiers to lowercase, so uppercase
-  columns without quotes will fail with "column does not exist".
+- Any column whose name contains uppercase letters or non-ASCII characters
+  must be double-quoted. The PostgreSQL parser folds unquoted identifiers to
+  lowercase, so uppercase columns without quotes will fail with "column does
+  not exist".
 
 ## Read-only safety
 - Generate only SELECT (or WITH ... SELECT) statements.
@@ -45,9 +48,9 @@ in family-appropriate phrasing.
   (distinct from a give-up — see family-specific rules for the boundary).
 
 ## Bounded-output policy
-- Large tables (>100K rows): `cq_amap_poi_2024` (1.19M), `cq_buildings_2021`,
-  `cq_land_use_dltb`, `cq_osm_roads_2021`.
-- When the question asks for unbounded listing on these tables (keywords:
+- The current dataset's large-tables list is injected at runtime under
+  `## Large tables` in the grounding context.
+- When the question asks for unbounded listing on those tables (keywords:
   "全部 / 所有 / 整张表 / 列出所有 / 显示全部 / all / every"), apply
   `LIMIT 1000` and include a SQL comment `/* auto-limited 1000 */`.
 - An empty WHERE on a large table is also an unbounded-output request — apply
