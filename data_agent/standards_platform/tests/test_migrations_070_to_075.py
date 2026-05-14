@@ -89,3 +89,24 @@ def test_std_term_shape():
     cols = _table_columns("std_term")
     assert {"id","document_version_id","term_code","name_zh","name_en",
             "definition","aliases","defined_by_clause_id","embedding"} <= cols
+
+
+def test_std_reference_shape():
+    cols = _table_columns("std_reference")
+    assert {"id","source_clause_id","source_data_element_id","target_kind",
+            "target_clause_id","target_document_id","target_url","target_doi",
+            "snapshot_id","citation_text","confidence","verified_by",
+            "verified_at"} <= cols
+
+
+def test_std_web_snapshot_shape():
+    cols = _table_columns("std_web_snapshot")
+    assert {"id","url","http_status","fetched_at","html_path","pdf_path",
+            "extracted_text","search_query"} <= cols
+
+
+def test_std_search_session_and_hit():
+    assert {"id","document_version_id","clause_id","author_user_id",
+            "messages","created_at"} <= _table_columns("std_search_session")
+    assert {"id","session_id","query","rank","snapshot_id","snippet"} \
+        <= _table_columns("std_search_hit")
