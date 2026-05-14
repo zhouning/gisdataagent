@@ -28,6 +28,7 @@ import VirtualSourcesTab from './datapanel/VirtualSourcesTab';
 import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
 import WorldModelTab from './datapanel/WorldModelTab';
+import WorldModelV2Tab from './datapanel/WorldModelV2Tab';
 import CausalReasoningTab from './datapanel/CausalReasoningTab';
 import OptimizationTab from './datapanel/OptimizationTab';
 import QcMonitorTab from './datapanel/QcMonitorTab';
@@ -38,15 +39,17 @@ import MessageBusTab from './datapanel/MessageBusTab';
 import MetadataPanel from './datapanel/MetadataPanel';
 import FeedbackTab from './datapanel/FeedbackTab';
 import DomainStandardsTab from './datapanel/DomainStandardsTab';
+import StandardsTab from './datapanel/StandardsTab';
 import IntakeTab from './datapanel/IntakeTab';
 import SemanticLayerTab from './datapanel/SemanticLayerTab';
+import ClassificationTab from './datapanel/ClassificationTab';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'semantic' | 'agents' | 'intake';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -83,9 +86,11 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'memory', label: '记忆', icon: <Brain size={ICON_SIZE} /> },
       { key: 'market', label: '市场', icon: <Store size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
+      { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
       { key: 'causal', label: '因果推理', icon: <FlaskConical size={ICON_SIZE} /> },
       { key: 'optimization', label: '优化', icon: <Target size={ICON_SIZE} /> },
       { key: 'standards', label: '领域标准', icon: <Database size={ICON_SIZE} /> },
+      { key: 'std_platform', label: '数据标准', icon: <FileText size={ICON_SIZE} /> },
       { key: 'agents', label: '智能体', icon: <Network size={ICON_SIZE} /> },
       { key: 'semantic', label: '语义层', icon: <Tags size={ICON_SIZE} /> },
     ],
@@ -98,6 +103,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'usage', label: '用量', icon: <Gauge size={ICON_SIZE} /> },
       { key: 'analytics', label: '分析', icon: <PieChart size={ICON_SIZE} /> },
       { key: 'governance', label: '治理', icon: <Shield size={ICON_SIZE} /> },
+      { key: 'classification', label: '分级', icon: <Shield size={ICON_SIZE} /> },
       { key: 'qcmonitor', label: '质检', icon: <ClipboardCheck size={ICON_SIZE} /> },
       { key: 'alerts', label: '告警', icon: <Bell size={ICON_SIZE} /> },
       { key: 'observability', label: '追踪', icon: <Activity size={ICON_SIZE} /> },
@@ -207,6 +213,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'templates' && <TemplatesTab />}
         {activeTab === 'analytics' && <AnalyticsTab />}
         {activeTab === 'governance' && <GovernanceTab />}
+        {activeTab === 'classification' && <ClassificationTab />}
         {activeTab === 'memory' && <MemorySearchTab />}
         {activeTab === 'observability' && <ObservabilityTab />}
         {activeTab === 'capabilities' && <CapabilitiesTab userRole={userRole} />}
@@ -216,6 +223,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'geojson' && <GeoJsonEditorTab />}
         {activeTab === 'charts' && <ChartsTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
+        {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
         {activeTab === 'causal' && <CausalReasoningTab />}
         {activeTab === 'optimization' && <OptimizationTab />}
         {activeTab === 'qcmonitor' && <QcMonitorTab />}
@@ -226,6 +234,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'agents' && <AgentsTab />}
         {activeTab === 'intake' && <IntakeTab />}
         {activeTab === 'standards' && <DomainStandardsTab />}
+        {activeTab === 'std_platform' && <StandardsTab />}
         {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
       </div>
     </div>
