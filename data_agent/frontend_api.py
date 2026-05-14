@@ -3783,6 +3783,7 @@ def get_frontend_api_routes():
     from .api.world_model_routes import get_world_model_routes
     from .api.causal_routes import get_causal_routes
     from .api.causal_world_model_routes import get_causal_world_model_routes
+    from .api.world_model_v2_routes import get_world_model_v2_routes
     from .api.quality_routes import get_quality_routes
     from .api.domain_standard_routes import get_domain_standard_routes
     from .api.distribution_routes import get_distribution_routes
@@ -3799,6 +3800,8 @@ def get_frontend_api_routes():
     from .api.agent_management_routes import get_agent_management_routes
     from .annotation_ws import annotation_ws_routes
     from .api.intake_routes import get_intake_routes
+    from .api.classification_routes import get_classification_routes
+    from .api.standards_routes import get_standards_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -3921,6 +3924,8 @@ def get_frontend_api_routes():
         *get_virtual_source_routes(),
         # World Model (Tech Preview)
         *get_world_model_routes(),
+        # World Model v2 (Bishan county — Dual-Layer Geospatial Dreamer)
+        *get_world_model_v2_routes(),
         # Causal Reasoning (Angle B) + Causal World Model (Angle C)
         *get_causal_routes(),
         *get_causal_world_model_routes(),
@@ -4021,6 +4026,10 @@ def get_frontend_api_routes():
         *get_agent_management_routes(),
         # Dataset Intake (v24.1)
         *get_intake_routes(),
+        # Data Classification & Anonymization (v15.8)
+        *get_classification_routes(),
+        # Standards Platform (v25.x P0)
+        *get_standards_routes(),
         # Annotation WebSocket (v23.0)
         *annotation_ws_routes,
     ]
