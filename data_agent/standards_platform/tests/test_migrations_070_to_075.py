@@ -126,3 +126,26 @@ def test_std_outbox_partial_index_pending():
         )).fetchall()
         names = {r[0] for r in rows}
     assert "idx_std_outbox_pending" in names
+
+
+def test_std_derived_link_shape():
+    cols = _table_columns("std_derived_link")
+    assert {"id","source_kind","source_id","source_version_id","target_kind",
+            "target_table","target_id","derivation_strategy","status",
+            "stale_reason","generated_at"} <= cols
+
+
+def test_downstream_tables_have_derived_link_fk():
+    for t in ("agent_semantic_hints","sources_synonyms",
+              "value_semantics","qc_rules"):
+        eng = get_engine()
+        if eng is None:
+            pytest.skip("DB unavailable")
+        with eng.connect() as conn:
+            exists = conn.execute(text(
+                "SELECT to_regclass(:t)"
+            ), {"t": t}).scalar()
+            if exists is None:
+                pytest.skip(f"{t} not in this deployment")
+            cols = _table_columns(t)
+            assert "std_derived_link_id" in cols, f"{t} missing FK column"
