@@ -52,3 +52,40 @@ def test_std_document_version_table_shape():
             "released_at", "release_notes", "supersedes_version_id",
             "status", "snapshot_blob",
             "created_at", "updated_at", "created_by", "updated_by"} <= cols
+
+
+def test_std_clause_shape_and_vector_dim():
+    cols = _table_columns("std_clause")
+    assert {"id","document_id","document_version_id","parent_clause_id",
+            "ordinal_path","heading","clause_no","kind","body_md","body_html",
+            "checksum","lock_holder","lock_expires_at","source_origin",
+            "embedding"} <= cols
+    eng = get_engine()
+    with eng.connect() as conn:
+        dim = conn.execute(text(
+            "SELECT atttypmod FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid "
+            "WHERE c.relname='std_clause' AND a.attname='embedding'"
+        )).scalar()
+        assert dim == 768, f"embedding dim must be 768, got {dim}"
+
+
+def test_std_data_element_shape():
+    cols = _table_columns("std_data_element")
+    assert {"id","document_version_id","code","name_zh","name_en","definition",
+            "representation_class","datatype","unit","value_domain_id",
+            "obligation","cardinality","defined_by_clause_id","term_id",
+            "data_classification","embedding"} <= cols
+
+
+def test_std_value_domain_shape():
+    cols = _table_columns("std_value_domain")
+    assert {"id","document_version_id","code","name","kind",
+            "defined_by_clause_id"} <= cols
+    cols2 = _table_columns("std_value_domain_item")
+    assert {"id","value_domain_id","value","label_zh","label_en","ordinal"} <= cols2
+
+
+def test_std_term_shape():
+    cols = _table_columns("std_term")
+    assert {"id","document_version_id","term_code","name_zh","name_en",
+            "definition","aliases","defined_by_clause_id","embedding"} <= cols
