@@ -110,3 +110,19 @@ def test_std_search_session_and_hit():
             "messages","created_at"} <= _table_columns("std_search_session")
     assert {"id","session_id","query","rank","snapshot_id","snippet"} \
         <= _table_columns("std_search_hit")
+
+
+def test_std_outbox_shape():
+    cols = _table_columns("std_outbox")
+    assert {"id","event_type","payload","created_at","processed_at",
+            "attempts","last_error","next_attempt_at","status"} <= cols
+
+def test_std_outbox_partial_index_pending():
+    eng = get_engine()
+    with eng.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT indexname FROM pg_indexes "
+            "WHERE tablename = 'std_outbox'"
+        )).fetchall()
+        names = {r[0] for r in rows}
+    assert "idx_std_outbox_pending" in names
