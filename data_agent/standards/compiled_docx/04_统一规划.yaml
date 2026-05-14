@@ -1,0 +1,3469 @@
+module: 04_统一规划
+source_file: 自然资源“一张图”数据库体系结构（4）统一规划1126.docx
+field_tables:
+- module: 04_统一规划
+  table_name_cn: 现状用地用海属性结构描述表
+  table_code: XZYDYH
+  caption_raw: 表11现状用地用海属性结构描述表（属性表名：XZYDYH）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 标识码
+    code: BSM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '2'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '3'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '4'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '5'
+    name_cn: 用地用海分类代码
+    code: 'YDYHFLD
+
+      M'
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '6'
+    name_cn: 用地用海分类名称
+    code: 'YDYHFLM
+
+      C'
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '7'
+    name_cn: 城镇村属性码
+    code: CZCSXM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注2
+  - seq: '8'
+    name_cn: 图斑面积
+    code: TBMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: '>0'
+    constraint: ''
+    note: 单位：平方米
+  - seq: '9'
+    name_cn: 图斑地类面积
+    code: TBDLMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: '>0'
+    constraint: ''
+    note: '单位：平方米
+
+      见注3'
+  - seq: '10'
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes:
+  - '注1:用地用海分类代码、名称参见《国土空间调査、规划、用途管制用地用海分类指南（试行）》，支持填写一级类、二级类或三级类。用地代码填写6位，代码不足6位的，在原代码后面用“0”补足，如：耕地代码为010000。
+
+    注2：城镇村属性码釆用国土变更调查成果对应的城市、建制镇和村庄范围内的属性码，城市标注“201或201A”、建制镇标注“202或202A”、村庄用地标注“203或203A"。城镇村属性代码、名称按照2020年度国土变更调査数据填写。
+
+    注3：“图斑地类面积”只针对耕地填写。'
+- module: 04_统一规划
+  table_name_cn: 天然林、生态公益林属性结构描述表（属性表名：TRL、STGYL）
+  table_code: ''
+  caption_raw: 表21天然林、生态公益林属性结构描述表（属性表名：TRL、STGYL）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 标识码
+    code: BSM
+    dtype: Char
+    length: '18'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '2'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '3'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: '12'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '4'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '5'
+    name_cn: 名称
+    code: MC
+    dtype: Char
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '6'
+    name_cn: 类型
+    code: LX
+    dtype: Char
+    length: '2'
+    decimal: ''
+    domain: 见代码表18
+    constraint: ''
+    note: ''
+  - seq: '7'
+    name_cn: 面积
+    code: MJ
+    dtype: Float
+    length: '15'
+    decimal: ''
+    domain: '>0'
+    constraint: ''
+    note: 单位：平方米
+  - seq: '8'
+    name_cn: 林地等别
+    code: LDDB
+    dtype: Char
+    length: '2'
+    decimal: ''
+    domain: 见代码表10
+    constraint: ''
+    note: 注1
+  - seq: '9'
+    name_cn: 林地级别
+    code: LDJB
+    dtype: Char
+    length: '2'
+    decimal: ''
+    domain: 见代码表19
+    constraint: ''
+    note: 注1
+  notes: []
+- module: 04_统一规划
+  table_name_cn: 规划用地用海属性结构描述表
+  table_code: GHYDYH
+  caption_raw: 表39规划用地用海属性结构描述表（属性表名：GHYDYH）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 标识码
+    code: BSM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '2'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '3'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '4'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '5'
+    name_cn: 用地用海分类代码
+    code: YDYHFLDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '6'
+    name_cn: 用地用海分类名称
+    code: YDYHFLMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '7'
+    name_cn: 图斑面积
+    code: TBMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: '>0'
+    constraint: ''
+    note: 单位：平方米
+  - seq: '8'
+    name_cn: 图斑地类面积
+    code: TBDLMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: '>0'
+    constraint: ''
+    note: '单位：平方米
+
+      见注2'
+  - seq: '9'
+    name_cn: 规划状态
+    code: GHZT
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 见代码表47
+    constraint: ''
+    note: ''
+  - seq: '10'
+    name_cn: 基期地类代码
+    code: JQDLDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注3
+  - seq: '11'
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes:
+  - '注1:用地用海分类代码、用地用海分类名称参见《国土空间调查、规划、用途管制用地用海分类指南（试行）》，支持填写一级类、二级类或三级类。用地代码填写6位，代码不足6位的，在原代码后面用“0”补足。如：耕地代码为010000。
+
+    注2：“图斑地类面积”只针对耕地填写。
+
+    注3：基期地类代码按照2020年度国土变更调査数据填写。'
+- module: 04_统一规划
+  table_name_cn: 中心城区现状用地用海属性结构描述表
+  table_code: ZXCQXZYDYH
+  caption_raw: 表50中心城区现状用地用海属性结构描述表（属性表名：ZXCQXZYDYH）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 标识码
+    code: BSM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '2'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '3'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '4'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '5'
+    name_cn: 用地用海分类代码
+    code: YDYHFLDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '6'
+    name_cn: 用地用海分类名称
+    code: YDYHFLMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '7'
+    name_cn: 城镇村属性码
+    code: CZCSXM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注2
+  - seq: '8'
+    name_cn: 图斑面积
+    code: TBMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: '>0'
+    constraint: ''
+    note: 单位：平方米
+  - seq: '9'
+    name_cn: 图斑地类面积
+    code: TBDLMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: '>0'
+    constraint: ''
+    note: '单位：平方米
+
+      见注3'
+  - seq: '10'
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes:
+  - '注1:用地用海分类代码、名称参见《国土空间调査、规划、用途管制用地用海分类指南（试行）》，支持填写一级类、二级类或三级类。用地代码填写6位，代码不足6位的，在原代码后面用“0”补足，如：耕地代码为010000。
+
+    注2：城镇村属性码釆用国土变更调查成果对应的城市、建制镇和村庄范围内的属性码，城市标注“201或201A”、建制镇标注"202或202A”、村庄用地标注“203或203A”.城镇村属性代码、名称按照2020年度国土变更调査数据填写。
+
+    注3：“图斑地类面积”只针对耕地填写。'
+- module: 04_统一规划
+  table_name_cn: 中心城区规划分区属性结构描述表
+  table_code: ZXCQGHFQ
+  caption_raw: 表52中心城区规划分区属性结构描述表（属性表名：ZXCQGHFQ）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 标识码
+    code: BSM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '2'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '3'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '4'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '5'
+    name_cn: 规划分区代码
+    code: GHFQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 见代码表32
+    constraint: M
+    note: 见注1
+  - seq: '6'
+    name_cn: 规划分区名称
+    code: GHFQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 见代码表32
+    constraint: M
+    note: 见注1
+  - seq: '7'
+    name_cn: 面积
+    code: MJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: '>0'
+    constraint: M
+    note: 单位：平方米
+  - seq: '8'
+    name_cn: 管控指引
+    code: GKZY
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: M
+    note: ''
+  - seq: '9'
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes:
+  - 注1:中心城区应细化至二级规划分区。规划分区代码表中，一级规划分区不允许更改，各地可结合实际情况扩展二级规划分区。
+- module: 04_统一规划
+  table_name_cn: 中心城区地下空间开发重点区域属性结构描述表
+  table_code: ZXCQDXKJKFZDQY
+  caption_raw: 表55中心城区地下空间开发重点区域属性结构描述表（属性表名：ZXCQDXKJKFZDQY）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 标识码
+    code: BSM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '2'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '3'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '4'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '5'
+    name_cn: 名称
+    code: MC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: C
+    note: ''
+  - seq: '6'
+    name_cn: 面积
+    code: MJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: '>0'
+    constraint: M
+    note: 单位：平方米
+  - seq: '7'
+    name_cn: 规模
+    code: GM
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: '>0'
+    constraint: M
+    note: '单位：平方米
+
+      见注1'
+  - seq: '8'
+    name_cn: 用途
+    code: YT
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 见注1
+  notes: []
+- module: 04_统一规划
+  table_name_cn: 生态保护重要性评价结果汇总表属性结构描述表
+  table_code: STBHZYXPJ
+  caption_raw: 表78生态保护重要性评价结果汇总表属性结构描述表（属性表名：STBHZYXPJ）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: '2'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 见注1
+  - seq: '3'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 见注1
+  - seq: '4'
+    name_cn: 区域类型
+    code: QYLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 见代码表1
+    constraint: M
+    note: ''
+  - seq: '5'
+    name_cn: 极重要面积
+    code: JZYMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: M
+    note: 单位：平方公里（公顷）
+  - seq: '6'
+    name_cn: 极重要比重
+    code: JZYBZ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: M
+    note: 单位：%
+  - seq: '7'
+    name_cn: 重要面积
+    code: ZYMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: M
+    note: 单位：平方公里（公顷）
+  - seq: '8'
+    name_cn: 重要比重
+    code: ZYBZ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: M
+    note: 单位：%
+  - seq: '9'
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes:
+  - '注1：根据“双评价”工作实际，可填写至县级或乡级行政单元。
+
+    注2：以县为统计单元，面积单位采用平方公里；以乡镇为统计单元，面积单位釆用公顷。'
+- module: 04_统一规划
+  table_name_cn: 农业生产适宜性评价结果汇总表属性结构描述表
+  table_code: NYSCSYXPJ
+  caption_raw: 表79农业生产适宜性评价结果汇总表属性结构描述表（属性表名：NYSCSYXPJ）
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '2'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '3'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见注1
+  - seq: '4'
+    name_cn: 种植业适宜面积
+    code: ZZYSYMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：平方公里（公顷）
+  - seq: '5'
+    name_cn: 种植业适宜比重
+    code: ZZYSYBZ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：%
+  - seq: '6'
+    name_cn: 种植业不适宜面积
+    code: ZZYBSYMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：平方公里（公顷）
+  - seq: '7'
+    name_cn: 种植业不适宜比重
+    code: ZZYBSYBZ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：%
+  - seq: '8'
+    name_cn: 畜牧业适宜面积
+    code: XMYSYMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：平方公里（公顷）
+  - seq: '9'
+    name_cn: 畜牧业适宜比重
+    code: XMYSYBZ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：%
+  - seq: '10'
+    name_cn: 畜牧业不适宜面积
+    code: 'XMYBSYM
+
+      J'
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：平方公里（公顷）
+  - seq: '11'
+    name_cn: 畜牧业不适宜比重
+    code: 'XMYBSYB
+
+      Z'
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：%
+  - seq: '12'
+    name_cn: 渔业适宜面积
+    code: YYSYMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：平方公里（公顷）
+  - seq: '13'
+    name_cn: 渔业适宜比重
+    code: YYSYBZ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：%
+  - seq: '14'
+    name_cn: 渔业不适宜面积
+    code: YYBSYMJ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：平方公里（公顷）
+  - seq: '15'
+    name_cn: 渔业不适宜比重
+    code: YYBSYBZ
+    dtype: Float
+    length: ''
+    decimal: '2'
+    domain: ≥0
+    constraint: ''
+    note: 单位：%
+  - seq: '16'
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes:
+  - '注1:根据“双评价”工作实际，可填写至县级或乡级行政单元。
+
+    注2：以县为统计单元，面积单位釆用平方公里；以乡镇为统计单元，面积单位釆用公顷。'
+- module: 04_统一规划
+  table_name_cn: ''
+  table_code: ''
+  caption_raw: ''
+  section_path: []
+  fields:
+  - seq: '1'
+    name_cn: 标识码
+    code: BSM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '2'
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '3'
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '4'
+    name_cn: 行政区名称
+    code: XZQMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '5'
+    name_cn: 详细规划编制单元编号
+    code: XXGHBZDYBH
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '6'
+    name_cn: 详细规划编制单元名称
+    code: XXGHBZDYMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '7'
+    name_cn: 名称
+    code: MC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: '8'
+    name_cn: 类型
+    code: LX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 见代码表2
+  - seq: '9'
+    name_cn: 用地面积
+    code: YDMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: '>0'
+    constraint: ''
+    note: ''
+  - seq: '10'
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+layer_tables:
+- module: 04_统一规划
+  caption_raw: ''
+  section_path: []
+  rows:
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQDS
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQXS
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQXZ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STBHZYXPJJG
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: NYSCSYXPJJG
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZJSSYXPJJG
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STXTFWGNZYXFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STCRXFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZRBHDFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: XZLSWHYCFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZRZHFXFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CQFW
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CQSTDY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XJZTGNDW
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZTGNDW
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDBHMB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNT
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STBHHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZKFBJ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: TRL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STGYL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JBCY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: HHAX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHBHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: KCZYKCBHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: HLFXKZX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STXT
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: STLD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZRBHD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHZLLHKJ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: NYSCKJBJM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNTCBQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDZLDJFQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: CZTXD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZCYKJBJM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHFQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: WWBHDWD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: WWBHDWM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHJQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMZ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMCUN
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CTCL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: LSJZD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSJZM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: LSHJYS
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: DYZ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: DXWWMCQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SXWWBHQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJWHYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJWHYZRHHYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FJMSQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZYNYWHYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJGGGCYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GJSLYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GJGYYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: BKYDWWD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: BKYDWWM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: FZJZSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: FZJZSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FZJZSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZDJTJCSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZDJTJCSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZDJTJCSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZDJCSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZDJCSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZDJCSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: STXFHGTZHZZZDGCD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: STXFHGTZHZZZDGCX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STXFHGTZHZZZDGCM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FQGHDY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: JQZDXMD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: JQZDXMX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JQZDXMM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: QYXGDY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: ''
+    table_code: QT
+    constraint: ''
+    note: 预留
+- module: 04_统一规划
+  caption_raw: ''
+  section_path: []
+  rows:
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQXZYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQFW
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQGHFQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQGHYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQLDYKCKJ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQDXKJKFZDQY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQBZZF
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSLX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSLVX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSZX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQKFQDFQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQSXTL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQGGFWSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQGGFWSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQSZGYSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQSZGYSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQSZGYSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQJTSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQJTSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQDLZXX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQDLHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQFZJZSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQFZJZSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQFZJZSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQZHFXQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSGXZDQY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSGXDY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQXGDY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: ''
+    table_code: QT
+    constraint: ''
+    note: 预留
+- module: 04_统一规划
+  caption_raw: 表3县级国土空间总体规划数据库（全域）要素图层
+  section_path: []
+  rows:
+  - seq: '1'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQX
+    constraint: M
+    note: ''
+  - seq: '2'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQXZ
+    constraint: M
+    note: ''
+  - seq: '3'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQC
+    constraint: M
+    note: ''
+  - seq: '4'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STBHZYXPJJG
+    constraint: M
+    note: 见注3
+  - seq: '5'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: NYSCSYXPJJG
+    constraint: M
+    note: 见注3
+  - seq: '6'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZJSSYXPJJG
+    constraint: M
+    note: 见注3
+  - seq: '7'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STXTFWGNZYXFB
+    constraint: M
+    note: 见注3
+  - seq: '8'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STCRXFB
+    constraint: M
+    note: 见注3
+  - seq: '9'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZYDYH
+    constraint: M
+    note: ''
+  - seq: '10'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZRBHDFB
+    constraint: C
+    note: ''
+  - seq: '11'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: XZLSWHYCFB
+    constraint: C
+    note: ''
+  - seq: '12'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: XZZRZHFXFBD
+    constraint: O
+    note: ''
+  - seq: '13'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: XZZRZHFXFBX
+    constraint: O
+    note: ''
+  - seq: '14'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZRZHFXFBM
+    constraint: C
+    note: ''
+  - seq: '15'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CQFW
+    constraint: O
+    note: ''
+  - seq: '16'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CQSTDY
+    constraint: O
+    note: ''
+  - seq: '17'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: XZKCZYFB
+    constraint: O
+    note: ''
+  - seq: '18'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZTGNDW
+    constraint: C
+    note: ''
+  - seq: '19'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDBHHX
+    constraint: M
+    note: 见注4
+  - seq: '20'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNTBHHX
+    constraint: M
+    note: 见注4
+  - seq: '21'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STBHHX
+    constraint: M
+    note: 见注4
+  - seq: '22'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZKFBJ
+    constraint: M
+    note: 见注4
+  - seq: '23'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: TRL
+    constraint: M
+    note: ''
+  - seq: '24'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STGYL
+    constraint: M
+    note: ''
+  - seq: '25'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SD
+    constraint: M
+    note: ''
+  - seq: '26'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZHQ
+    constraint: C
+    note: ''
+  - seq: '27'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SYHYD
+    constraint: C
+    note: ''
+  - seq: '28'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: HHSX
+    constraint: C
+    note: ''
+  - seq: '29'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JBCY
+    constraint: C
+    note: ''
+  - seq: '30'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: HHAX
+    constraint: C
+    note: ''
+  - seq: '31'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: KCZYKCBHX
+    constraint: C
+    note: ''
+  - seq: '32'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: HLFXKZX
+    constraint: C
+    note: ''
+  - seq: '33'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHBHX
+    constraint: C
+    note: ''
+  - seq: '34'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: WWBHDWD
+    constraint: C
+    note: ''
+  - seq: '35'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: WWBHDWM
+    constraint: C
+    note: ''
+  - seq: '36'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMC
+    constraint: C
+    note: ''
+  - seq: '37'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHJQ
+    constraint: C
+    note: ''
+  - seq: '38'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMZ
+    constraint: C
+    note: ''
+  - seq: '39'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMCUN
+    constraint: C
+    note: ''
+  - seq: '40'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CTCL
+    constraint: O
+    note: ''
+  - seq: '41'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: LSJZD
+    constraint: C
+    note: ''
+  - seq: '42'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSJZM
+    constraint: C
+    note: ''
+  - seq: '43'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: LSHJYS
+    constraint: O
+    note: ''
+  - seq: '44'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: DYZ
+    constraint: C
+    note: ''
+  - seq: '45'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: DXWWMCQ
+    constraint: C
+    note: ''
+  - seq: '46'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SXWWBHQ
+    constraint: C
+    note: ''
+  - seq: '47'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJWHYC
+    constraint: C
+    note: ''
+  - seq: '48'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJWHYZRHHYC
+    constraint: C
+    note: ''
+  - seq: '49'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FJMSQ
+    constraint: C
+    note: ''
+  - seq: '50'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZYNYWHYC
+    constraint: C
+    note: ''
+  - seq: '51'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJGGGCYC
+    constraint: C
+    note: ''
+  - seq: '52'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GJSLYC
+    constraint: C
+    note: ''
+  - seq: '53'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GJGYYC
+    constraint: C
+    note: ''
+  - seq: '54'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: BKYDWWD
+    constraint: C
+    note: ''
+  - seq: '55'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: BKYDWWM
+    constraint: C
+    note: ''
+  - seq: '56'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GYYDKZX
+    constraint: O
+    note: ''
+  - seq: '57'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STXT
+    constraint: O
+    note: ''
+  - seq: '58'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: STLD
+    constraint: O
+    note: ''
+  - seq: '59'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZRBHD
+    constraint: M
+    note: ''
+  - seq: '60'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHZLLHKJ
+    constraint: C
+    note: ''
+  - seq: '61'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: NYSCKJBJM
+    constraint: O
+    note: ''
+  - seq: '62'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNTCBQ
+    constraint: O
+    note: ''
+  - seq: '63'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDZLDJDBFQ
+    constraint: O
+    note: ''
+  - seq: '64'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: CZTXD
+    constraint: C
+    note: ''
+  - seq: '65'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZCTXD
+    constraint: O
+    note: ''
+  - seq: '66'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZCYKJBJM
+    constraint: O
+    note: ''
+  - seq: '67'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YDYHGHFQ
+    constraint: M
+    note: ''
+  - seq: '68'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHYDYH
+    constraint: O
+    note: ''
+  - seq: '69'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CLDXYDZKFZDQY
+    constraint: O
+    note: ''
+  - seq: '70'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDHBZY
+    constraint: O
+    note: ''
+  - seq: '71'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: FZJZSSD
+    constraint: M
+    note: ''
+  - seq: '72'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: FZJZSSX
+    constraint: O
+    note: ''
+  - seq: '73'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FZJZSSM
+    constraint: O
+    note: ''
+  - seq: '74'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZDJTJCSSD
+    constraint: C
+    note: ''
+  - seq: '75'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZDJTJCSSX
+    constraint: M
+    note: ''
+  - seq: '76'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZDJTJCSSM
+    constraint: O
+    note: ''
+  - seq: '77'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZDJCSSD
+    constraint: M
+    note: ''
+  - seq: '78'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZDJCSSX
+    constraint: O
+    note: ''
+  - seq: '79'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZDJCSSM
+    constraint: O
+    note: ''
+  - seq: '80'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: 'STXFHGTZHZZZDGC
+
+      D'
+    constraint: O
+    note: ''
+- module: 04_统一规划
+  caption_raw: 表4县级国土空间总体规划数据库（中心城区）要素图层
+  section_path: []
+  rows:
+  - seq: '1'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQXZYDYH
+    constraint: ''
+    note: ''
+  - seq: '2'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQFW
+    constraint: ''
+    note: ''
+  - seq: '3'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQGHFQ
+    constraint: ''
+    note: ''
+  - seq: '4'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQGHYDYH
+    constraint: ''
+    note: ''
+  - seq: '5'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQLDYKCKJ
+    constraint: ''
+    note: ''
+  - seq: '6'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQDXKJKFZDQY
+    constraint: ''
+    note: ''
+  - seq: '7'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQBZZF
+    constraint: ''
+    note: ''
+  - seq: '8'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSLX
+    constraint: ''
+    note: ''
+  - seq: '9'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSLVX
+    constraint: ''
+    note: ''
+  - seq: '10'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSZX
+    constraint: ''
+    note: ''
+  - seq: '11'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSHX
+    constraint: ''
+    note: ''
+  - seq: '12'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQKFQDFQ
+    constraint: ''
+    note: ''
+  - seq: '13'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQSXTL
+    constraint: ''
+    note: ''
+  - seq: '14'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQFMTSFQ
+    constraint: ''
+    note: ''
+  - seq: '15'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQJZGDFQ
+    constraint: ''
+    note: ''
+  - seq: '16'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQJZMDFQ
+    constraint: ''
+    note: ''
+  - seq: '17'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQGGFWSSD
+    constraint: ''
+    note: ''
+  - seq: '18'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQGGFWSSM
+    constraint: ''
+    note: ''
+  - seq: '19'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQSZGYSSD
+    constraint: ''
+    note: ''
+  - seq: '20'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQSZGYSSX
+    constraint: ''
+    note: ''
+  - seq: '21'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQSZGYSSM
+    constraint: ''
+    note: ''
+  - seq: '22'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQJTSSD
+    constraint: ''
+    note: ''
+  - seq: '23'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQJTSSM
+    constraint: ''
+    note: ''
+  - seq: '24'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQDLZXX
+    constraint: ''
+    note: ''
+  - seq: '25'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQDLHX
+    constraint: ''
+    note: ''
+  - seq: '26'
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZXCQFZJZSSD
+    constraint: ''
+    note: ''
+  - seq: '27'
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZXCQFZJZSSX
+    constraint: ''
+    note: ''
+  - seq: '28'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQFZJZSSM
+    constraint: ''
+    note: ''
+  - seq: '29'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQZHFXQ
+    constraint: ''
+    note: ''
+  - seq: '30'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSGXZDQY
+    constraint: ''
+    note: ''
+  - seq: '31'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQCSGXDY
+    constraint: ''
+    note: ''
+  - seq: '32'
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZXCQXXGHBZDY
+    constraint: ''
+    note: ''
+  - seq: '33'
+    layer_name: ''
+    feature: ''
+    geometry: ''
+    table_code: QT
+    constraint: 预留
+    note: 预留
+- module: 04_统一规划
+  caption_raw: ''
+  section_path: []
+  rows:
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQXZ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZRBHDFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: XZLSWHYCFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZZRZHFXFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZQFW
+    constraint: ''
+    note: 见注3
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZQSTDY
+    constraint: ''
+    note: 见注3
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: XZKCZYFB
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDBHHX
+    constraint: ''
+    note: 见注4
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNTBHHX
+    constraint: ''
+    note: 见注4
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STBHHX
+    constraint: ''
+    note: 见注4
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZKFBJ
+    constraint: ''
+    note: 见注4
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZJSBJ
+    constraint: ''
+    note: 见注5
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZBDDY
+    constraint: ''
+    note: 见注5
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: TRL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STGYL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JBCY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZHQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SYHYD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: HHSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: HHAX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: KCZYBHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: HLFXKZX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHBHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: WWBHDWD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: WWBHDWM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHJQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMZ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSWHMCUN
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CTCL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: LSJZD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSJZM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: LSHJYS
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: DYZ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: DXWWMCQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SXWWBHQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJWHYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJWHYZRHHYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FJMSQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZYNYWHYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SJGGGCYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GJSLYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GJGYYC
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: BKYDWWD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: BKYDWWM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GYYDKZX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZRBHD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHZLLHKJ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNTCBQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDZLDJDBFQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: CZTXD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZCYKJBJM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHFQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CLDXYDZKFZDQY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GDHBZY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: FZJZSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: FZJZSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FZJZSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZHFXQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZDJTJCSSD
+    constraint: ''
+    note: 见注7
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZDJTJCSSX
+    constraint: ''
+    note: 见注7
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZDJTJCSSM
+    constraint: ''
+    note: 见注7
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: ZDJCSSD
+    constraint: ''
+    note: 见注7
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: ZDJCSSX
+    constraint: ''
+    note: 见注7
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZDJCSSM
+    constraint: ''
+    note: 见注7
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: ZDLBSS
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: STXFHGTZHZZZDGCD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: STXFHGTZHZZZDGCX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STXFHGTZHZZZDGCM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: JQZDXMD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: JQZDXMX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JQZDXMM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: QYXXGHBZDYDY
+    constraint: ''
+    note: 见注8
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: ''
+    table_code: QT
+    constraint: ''
+    note: 预留 见注9
+- module: 04_统一规划
+  caption_raw: ''
+  section_path: []
+  rows:
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHFQ
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHYDYH(ZXHB)
+    constraint: ''
+    note: 见注2
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XXGHBZDY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LDYKCKJ
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: DXKJKFZDQY
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CSLX
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CSLVX
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CSZX
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CSHX
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: KFQDFQ
+    constraint: ''
+    note: 见注1
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SXTL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: GGFWSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GGFWSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: SZGYSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: SZGYSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SZGYSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: JTSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JTSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: DLZXX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: DLHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: FZJZSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: FZJZSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FZJZSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CSGXZDQY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CSGXDY
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: ''
+    table_code: QT
+    constraint: ''
+    note: ''
+- module: 04_统一规划
+  caption_raw: ''
+  section_path: []
+  rows:
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZQCJ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: XZYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STBHHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNT
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZJSBJ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: YJJBNTCBQ
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CYKJBJM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GHYDYH
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CZZJD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: LSJZD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: LSJZM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: WWBHDWD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: WWBHDWM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: CTCL
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: GGFWSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: GGFWSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: SZGYSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: SZGYSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: SZGYSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: JTSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JTSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: DLZXX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: DLHX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: FZJZSSD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: FZJZSSX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: FZJZSSM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: STXFHGTZHZZZDGCD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: STXFHGTZHZZZDGCX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: STXFHGTZHZZZDGCM
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 点
+    table_code: JQZDXMD
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 线
+    table_code: JQZDXMX
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: ''
+    feature: ''
+    geometry: 面
+    table_code: JQZDXMM
+    constraint: ''
+    note: ''

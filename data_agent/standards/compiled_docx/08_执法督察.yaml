@@ -1,0 +1,1353 @@
+module: 08_执法督察
+source_file: 自然资源“一张图”数据库体系结构（8）执法督察0922.docx
+field_tables:
+- module: 08_执法督察
+  table_name_cn: 违法地块属性结构描述表
+  table_code: WFDK
+  caption_raw: 表2 违法地块属性结构描述表（属性表名：WFDK)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.2空间要素属性结构
+  - 5.2.1违法地块属性结构
+  fields:
+  - seq: ''
+    name_cn: 标识码
+    code: BSM
+    dtype: Long
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 要素代码
+    code: YSDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法地块序号
+    code: WFDKXH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 起始时间
+    code: QSSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 终止时间
+    code: ZZSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新状态
+    code: GXZT
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 遥感实地伪变化图斑属性结构描述表
+  table_code: YGSDWBHTB
+  caption_raw: 表3遥感实地伪变化图斑属性结构描述表（属性表名：YGSDWBHTB)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.2空间要素属性结构
+  - 5.2.2遥感实地伪变化图斑属性结构
+  fields:
+  - seq: ''
+    name_cn: 遥感图斑主键
+    code: YGTBZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 起始时间
+    code: QSSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 终止时间
+    code: ZZSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新状态
+    code: GXZT
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 遥感新增建设用地图斑属性结构描述表
+  table_code: YGXZJSYDTB
+  caption_raw: 表4遥感新增建设用地图斑属性结构描述表（属性表名：YGXZJSYDTB)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.2空间要素属性结构
+  - 5.2.3遥感新增建设用地图斑属性结构
+  fields:
+  - seq: ''
+    name_cn: 遥感图斑主键
+    code: YGTBZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 供地项目主键
+    code: GDXMZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 起始时间
+    code: QSSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 终止时间
+    code: ZZSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新状态
+    code: GXZT
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 遥感新增建设用地监测前地类扩展属性结构描述表
+  table_code: YGXZJSYDJCQDL
+  caption_raw: 表5遥感新增建设用地监测前地类扩展属性结构描述表（属性表名：YGXZJSYDJCQDL)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.2空间要素属性结构
+  - 5.2.4遥感新增建设用地监测前地类扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 遥感图斑主键
+    code: YGTBZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 地类编码
+    code: DLBM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 遥感疑似新增建设用地图斑属性结构描述表
+  table_code: YGYSXZJSYDTB
+  caption_raw: 表6 遥感疑似新增建设用地图斑属性结构描述表（属性表名：YGYSXZJSYDTB)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.2空间要素属性结构
+  - 5.2.5遥感疑似新增建设用地图斑属性结构
+  fields:
+  - seq: ''
+    name_cn: 遥感图斑主键
+    code: YGTBZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政区代码
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 监测时段前
+    code: JCSDQ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 监测时段后
+    code: JCSDH
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 监测面积
+    code: JCMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ≥0
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 土地座落
+    code: TDZL
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 图斑类型
+    code: TBLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 年度
+    code: ND
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 起始时间
+    code: QSSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 终止时间
+    code: ZZSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新状态
+    code: GXZT
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 信访举报扩展属性结构描述表
+  table_code: XFJB
+  caption_raw: 表8信访举报扩展属性结构描述表（属性表名：XFJB)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.1信访举报扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 举报受理时间
+    code: JBSLSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 信访途径
+    code: XFTJ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 举报
+    code: JB
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 举报人
+    code: JBR
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 转来机关名称
+    code: ZLJGMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 转来机关编号
+    code: ZLJGBM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 举报人联系方式
+    code: JBRLXFS
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 举报违法地址
+    code: JBWFDZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处理意见
+    code: CLYJ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处理时间
+    code: CLSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 经办人
+    code: JBR
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 是否违法
+    code: SFWF
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 备注
+    code: BZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 执法巡查扩展属性结构描述表
+  table_code: ZFXC
+  caption_raw: 表9执法巡查扩展属性结构描述表（属性表名：ZFXC)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.2执法巡查扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政区划
+    code: XZQDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 巡查小组
+    code: XCXZ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 巡查地块编号
+    code: XCDKBH
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 巡查土地座落
+    code: XCTDZL
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 巡查时间
+    code: XCSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 巡查记录
+    code: XCJL
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 是否处理
+    code: SFCL
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 是否违法
+    code: SFWF
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处理意见
+    code: CLYJ
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 案件审理过程扩展属性结构描述表
+  table_code: AJSLGC
+  caption_raw: 表10案件审理过程扩展属性结构描述表（属性表名：AJSLGC)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.3案件审理过程扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法案件唯一编号
+    code: WFAJWYBH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 审理阶段
+    code: SLJD
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 阶段起始时间
+    code: JDQSSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 阶段结束时间
+    code: JDJSSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 经办人
+    code: JBR
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 违法案件扩展属性结构描述表
+  table_code: WFAJ
+  caption_raw: 表11违法案件扩展属性结构描述表（属性表名：WFAJ)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.4违法案件扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 案由
+    code: AY
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 案件来源
+    code: AJLY
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 立案时间
+    code: LASJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 案件描述
+    code: AJMS
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 案件审理阶段
+    code: AJSLJD
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 阶段时间
+    code: JDSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 罚没款
+    code: FMK
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 涉及土地面积
+    code: SJTDMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 涉及耕地面积
+    code: SJGDMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 违法处置扩展属性结构描述表
+  table_code: WFCZ
+  caption_raw: 表12违法处置扩展属性结构描述表（属性表名：WFCZ)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.5违法处置扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 查处序号
+    code: CCXH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 查处手段类型
+    code: CCSDLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 违法行为扩展属性结构描述表
+  table_code: WFXW
+  caption_raw: 表13违法行为扩展属性结构描述表（属性表名：WFXW)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.6违法行为扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法主体主键
+    code: WFZTZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政区划
+    code: XZQH
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法线索来源
+    code: WFXSLY
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 见表23
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 土地座落
+    code: TDZL
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法类型
+    code: WFLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 见表22
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 重点项目级别
+    code: ZDXMJB
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行为描述
+    code: WFXWMS
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法成因
+    code: WFCY
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 发现时间
+    code: FXSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 起始违法时间
+    code: QSWFSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 是否立案
+    code: SFLA
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处理状态
+    code: CLZT
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处理状态起始时间
+    code: CLZTQSSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 查处类型
+    code: CCLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 经办人员
+    code: JBR
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 违法行为发现扩展属性结构描述表
+  table_code: WFXWFX
+  caption_raw: 表14违法行为发现扩展属性结构描述表（属性表名：WFXWFX)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.7违法行为发现扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法发现类型
+    code: WFFXLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 违法占地类型扩展属性结构描述表
+  table_code: WFZDLX
+  caption_raw: 表15违法占地类型扩展属性结构描述表（属性表名：WFZDLX)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.8违法占地类型扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法地块序号
+    code: WFDKXH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 地类代码
+    code: DLDM
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 违法证据扩展属性结构描述表
+  table_code: WFZJ
+  caption_raw: 表16违法证据扩展属性结构描述表（属性表名：WFZJ)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.9违法证据扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法证据序号
+    code: WFZJXH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 违法主体扩展属性结构描述表
+  table_code: WFZT
+  caption_raw: 表17违法主体扩展属性结构描述表（属性表名：WFZT)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.10违法主体扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 主体类型
+    code: ZTLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 主体名称
+    code: ZTMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 刑事责任扩展属性结构描述表
+  table_code: XSZR
+  caption_raw: 表18刑事责任扩展属性结构描述表（属性表名：XSZR)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.11刑事责任扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 违法行为编号
+    code: WFXWBH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 刑事责任序号
+    code: XSZRXH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政级别
+    code: XZJB
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 刑事责任描述
+    code: XSZRMS
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 违法主体名称
+    code: WFZTMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 行政处分扩展属性结构描述表
+  table_code: XZCF
+  caption_raw: 表19行政处分扩展属性结构描述表（属性表名：XZCF)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.12行政处分扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政处分序号
+    code: XZCFXH
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处分分类
+    code: CFFL
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处分类型
+    code: CFLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政级别
+    code: XZJB
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 处分主体名称
+    code: CFZTMC
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 行政处罚扩展属性结构描述表
+  table_code: XZCF
+  caption_raw: 表20行政处罚扩展属性结构描述表（属性表名：XZCF)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.12行政处分扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 违法行为主键
+    code: WFXWZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 补办手续面积
+    code: BBSXMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 补办手续时间
+    code: BBSXSJ
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 拆除复耕面积
+    code: CCFKMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 拆除面积
+    code: CCMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 罚没款金额
+    code: FMKJE
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 没收面积
+    code: MSMJ
+    dtype: Float
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 强制执行公文编号
+    code: QZZXGWBH
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政责任类型
+    code: XZZRLX
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 行政责任描述
+    code: XZZRMS
+    dtype: Char
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  notes: []
+- module: 08_执法督察
+  table_name_cn: 建设用地复核验收扩展属性结构描述表
+  table_code: JSYDFHYS
+  caption_raw: 表21建设用地复核验收扩展属性结构描述表（属性表名：JSYDFHYS)
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.4非空间要素属性结构
+  - 5.4.14建设用地复核验收扩展属性结构
+  fields:
+  - seq: ''
+    name_cn: 主键
+    code: ZJ
+    dtype: Int
+    length: ''
+    decimal: ''
+    domain: 非空
+    constraint: ''
+    note: ''
+  notes: []
+layer_tables:
+- module: 08_执法督察
+  caption_raw: 表 1 空间数据属性表及命名规则
+  section_path:
+  - 5.数据库内容和要素分类
+  - 5.1空间要素分层
+  rows:
+  - seq: '1'
+    layer_name: 执法督察
+    feature: 违法地块
+    geometry: Polygon
+    table_code: WFDK
+    constraint: O
+    note: ''
+  - seq: '2'
+    layer_name: 执法督察
+    feature: 遥感实地伪变化图斑
+    geometry: Polygon
+    table_code: YGSDWBHTB
+    constraint: O
+    note: ''
+  - seq: '3'
+    layer_name: 执法督察
+    feature: 遥感新增建设用地图斑
+    geometry: Polygon
+    table_code: YGXZJSYDTB
+    constraint: O
+    note: ''
+  - seq: '4'
+    layer_name: 执法督察
+    feature: 遥感疑似新增建设用地图斑
+    geometry: Polygon
+    table_code: YGYSXZJSYDTB
+    constraint: O
+    note: ''

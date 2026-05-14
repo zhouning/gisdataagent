@@ -1,0 +1,14 @@
+mappings:
+- left: 统一规划
+  right: 统一空间规划
+  type: equivalent
+- left: 执法督察
+  right: 督察执法
+  type: equivalent
+- left: 开发利用
+  right: 统一资源利用
+  type: equivalent
+candidate_mappings:
+- left: 底线安全
+  right: 统一灾害防治
+  type: candidate

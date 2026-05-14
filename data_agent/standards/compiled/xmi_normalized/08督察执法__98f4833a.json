@@ -1,0 +1,2296 @@
+{
+  "module_id": "08督察执法__98f4833a",
+  "module_id_raw": "08督察执法",
+  "module_name": "08督察执法",
+  "source_file": "08督察执法.xml",
+  "top_package_name": "08督察执法",
+  "classes": [
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_292E3A22_3A56_4b3c_984C_48FACC8E833B",
+      "class_id_raw": "EAID_292E3A22_3A56_4b3c_984C_48FACC8E833B",
+      "class_name": "案审会议纪要",
+      "class_raw_name": "案审会议纪要",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_E0372006_3AC5_4015_BADA_B9DDAFF8E64E",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_292E3A22_3A56_4b3c_984C_48FACC8E833B",
+          "source_class_id_raw": "EAID_292E3A22_3A56_4b3c_984C_48FACC8E833B",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_name": "督察执法材料"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "super_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+      "class_id_raw": "EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+      "class_name": "处罚",
+      "class_raw_name": "处罚",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_878A1C72_44CA_4956_959E_F3BBEAA1E79E",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+          "source_class_id_raw": "EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_B446C18A_9E6A_4963_9EA1_C83A9F27D824",
+      "class_id_raw": "EAID_B446C18A_9E6A_4963_9EA1_C83A9F27D824",
+      "class_name": "处置范围",
+      "class_raw_name": "处置范围",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D7359BE4_9FF0_424d_8A45_8226F73A38CC",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_B446C18A_9E6A_4963_9EA1_C83A9F27D824",
+          "source_class_id_raw": "EAID_B446C18A_9E6A_4963_9EA1_C83A9F27D824",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_name": "督察执法空间范围"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_ids_raw": [
+        "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "super_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "class_name": "督察执法材料",
+      "class_raw_name": "督察执法材料",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_E5C69A0F_88A0_449a_9502_96367689D414",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "source_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "class_name": "督察执法空间范围",
+      "class_raw_name": "督察执法空间范围",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_538CAB09_5469_4e42_AE7C_CF4F88142BDF",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "source_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "class_name": "督察执法文书",
+      "class_raw_name": "督察执法文书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "class_name": "督察执法组织",
+      "class_raw_name": "督察执法组织",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_44B5FF63_38DF_447b_A5B2_928BC14119DD",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "source_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_433704E7_F77B_4082_999A_339DAFFACD9F",
+          "target_class_name": null
+        },
+        {
+          "generalization_id": "EAID_F48F917A_777A_4b6c_830A_13C6CC811C88",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "source_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_433704E7_F77B_4082_999A_339DAFFACD9F",
+        "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_433704E7_F77B_4082_999A_339DAFFACD9F"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_BB00DE2C_0A60_4a3f_8FC0_DD0152F6048F",
+      "class_id_raw": "EAID_BB00DE2C_0A60_4a3f_8FC0_DD0152F6048F",
+      "class_name": "法律文书送达回证",
+      "class_raw_name": "法律文书送达回证",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_95128D8B_809F_4b3a_85CE_A65C194D969B",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_BB00DE2C_0A60_4a3f_8FC0_DD0152F6048F",
+          "source_class_id_raw": "EAID_BB00DE2C_0A60_4a3f_8FC0_DD0152F6048F",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_403EE80D_22D5_43f9_86FD_1A0249C6A6EC",
+      "class_id_raw": "EAID_403EE80D_22D5_43f9_86FD_1A0249C6A6EC",
+      "class_name": "非法财物移交书",
+      "class_raw_name": "非法财物移交书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_8619AEA6_B4D4_4ac8_97D4_D6CE266EC04E",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_403EE80D_22D5_43f9_86FD_1A0249C6A6EC",
+          "source_class_id_raw": "EAID_403EE80D_22D5_43f9_86FD_1A0249C6A6EC",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_2E81179B_EC4C_4d00_A188_6244BB82D199",
+      "class_id_raw": "EAID_2E81179B_EC4C_4d00_A188_6244BB82D199",
+      "class_name": "监管部门",
+      "class_raw_name": "监管部门",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_DAC3247C_DC34_4a41_97B5_B55BCC0FA72F",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_2E81179B_EC4C_4d00_A188_6244BB82D199",
+          "source_class_id_raw": "EAID_2E81179B_EC4C_4d00_A188_6244BB82D199",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_name": "督察执法组织"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+      ],
+      "super_class_ids_raw": [
+        "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "super_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_FD9D5D98_A406_4b45_8790_F29B655F0A1C",
+      "class_id_raw": "EAID_FD9D5D98_A406_4b45_8790_F29B655F0A1C",
+      "class_name": "接受调查通知书",
+      "class_raw_name": "接受调查通知书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_E1BC3F58_C63A_4aa2_AE2C_222AC690940E",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_FD9D5D98_A406_4b45_8790_F29B655F0A1C",
+          "source_class_id_raw": "EAID_FD9D5D98_A406_4b45_8790_F29B655F0A1C",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_956E4FCF_59C6_4fb8_B18B_B9D5C53DE98F",
+      "class_id_raw": "EAID_956E4FCF_59C6_4fb8_B18B_B9D5C53DE98F",
+      "class_name": "结案报告",
+      "class_raw_name": "结案报告",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_61435DE2_A689_407d_AF27_0A468872ADC4",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_956E4FCF_59C6_4fb8_B18B_B9D5C53DE98F",
+          "source_class_id_raw": "EAID_956E4FCF_59C6_4fb8_B18B_B9D5C53DE98F",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_name": "督察执法材料"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "super_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+      "class_id_raw": "EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+      "class_name": "立案",
+      "class_raw_name": "立案",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_0F9577D1_BF08_4ae6_AC72_F8DF22BC2C58",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+          "source_class_id_raw": "EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_C03AA449_F1AB_4ffc_9F06_12E3B5EC34F3",
+      "class_id_raw": "EAID_C03AA449_F1AB_4ffc_9F06_12E3B5EC34F3",
+      "class_name": "履行行政处罚决定催告书",
+      "class_raw_name": "履行行政处罚决定催告书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_9494A94C_0189_4c10_BC65_87014622EB7C",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_C03AA449_F1AB_4ffc_9F06_12E3B5EC34F3",
+          "source_class_id_raw": "EAID_C03AA449_F1AB_4ffc_9F06_12E3B5EC34F3",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_0AA706C6_D574_40d9_88ED_818559DCA648",
+      "class_id_raw": "EAID_0AA706C6_D574_40d9_88ED_818559DCA648",
+      "class_name": "媒体曝光",
+      "class_raw_name": "媒体曝光",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_AF849E17_4B93_466b_AA70_8E667F82741A",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_0AA706C6_D574_40d9_88ED_818559DCA648",
+          "source_class_id_raw": "EAID_0AA706C6_D574_40d9_88ED_818559DCA648",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_name": "线索发现"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "super_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_5B3DCD7B_4B0C_46c1_AF5D_E36141989D9C",
+      "class_id_raw": "EAID_5B3DCD7B_4B0C_46c1_AF5D_E36141989D9C",
+      "class_name": "批后监管",
+      "class_raw_name": "批后监管",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_527E57C1_B877_45b9_8497_C1C0319BFFCA",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_5B3DCD7B_4B0C_46c1_AF5D_E36141989D9C",
+          "source_class_id_raw": "EAID_5B3DCD7B_4B0C_46c1_AF5D_E36141989D9C",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_name": "线索发现"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "super_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_E1DB0B1D_8FFA_4cf1_9D3E_64D9560D1F1E",
+      "class_id_raw": "EAID_E1DB0B1D_8FFA_4cf1_9D3E_64D9560D1F1E",
+      "class_name": "其他部门移送",
+      "class_raw_name": "其他部门移送",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_926DCC52_1D57_48a2_991A_4B2456141AA4",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_E1DB0B1D_8FFA_4cf1_9D3E_64D9560D1F1E",
+          "source_class_id_raw": "EAID_E1DB0B1D_8FFA_4cf1_9D3E_64D9560D1F1E",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_name": "线索发现"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "super_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_FBDCDB6D_5593_4bd5_B66A_92554C8C0D45",
+      "class_id_raw": "EAID_FBDCDB6D_5593_4bd5_B66A_92554C8C0D45",
+      "class_name": "强制执行申请书",
+      "class_raw_name": "强制执行申请书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_09620E35_A1A6_4b47_8A21_B714B478411F",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_FBDCDB6D_5593_4bd5_B66A_92554C8C0D45",
+          "source_class_id_raw": "EAID_FBDCDB6D_5593_4bd5_B66A_92554C8C0D45",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_17F43F68_565D_4ee0_8616_0DF20A25A82C",
+      "class_id_raw": "EAID_17F43F68_565D_4ee0_8616_0DF20A25A82C",
+      "class_name": "认定范围",
+      "class_raw_name": "认定范围",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_F91D7D42_1352_4f8e_BB5C_7457E260473D",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_17F43F68_565D_4ee0_8616_0DF20A25A82C",
+          "source_class_id_raw": "EAID_17F43F68_565D_4ee0_8616_0DF20A25A82C",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_name": "督察执法空间范围"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_ids_raw": [
+        "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "super_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_B0ADAE56_C1A3_49a7_8C87_5D613794B5BC",
+      "class_id_raw": "EAID_B0ADAE56_C1A3_49a7_8C87_5D613794B5BC",
+      "class_name": "日常巡查",
+      "class_raw_name": "日常巡查",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_A52933AA_B565_4a2a_8E2E_A308829255F5",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_B0ADAE56_C1A3_49a7_8C87_5D613794B5BC",
+          "source_class_id_raw": "EAID_B0ADAE56_C1A3_49a7_8C87_5D613794B5BC",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_name": "线索发现"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "super_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_2B9A7191_BF27_488d_8794_E2712049E0EE",
+      "class_id_raw": "EAID_2B9A7191_BF27_488d_8794_E2712049E0EE",
+      "class_name": "上级交办",
+      "class_raw_name": "上级交办",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B4A63865_59E9_4fa8_AA65_17C90888E881",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_2B9A7191_BF27_488d_8794_E2712049E0EE",
+          "source_class_id_raw": "EAID_2B9A7191_BF27_488d_8794_E2712049E0EE",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_name": "线索发现"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "super_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_165F1166_E3AF_4afa_AFA0_497B449D4D86",
+      "class_id_raw": "EAID_165F1166_E3AF_4afa_AFA0_497B449D4D86",
+      "class_name": "涉嫌犯罪案件移送书",
+      "class_raw_name": "涉嫌犯罪案件移送书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3DC8A186_DCAA_42c7_B2C7_2EDE66DEBA09",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_165F1166_E3AF_4afa_AFA0_497B449D4D86",
+          "source_class_id_raw": "EAID_165F1166_E3AF_4afa_AFA0_497B449D4D86",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_372097C0_0E1E_4b6b_A7F0_DD02EBB40E96",
+      "class_id_raw": "EAID_372097C0_0E1E_4b6b_A7F0_DD02EBB40E96",
+      "class_name": "投诉举报",
+      "class_raw_name": "投诉举报",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3D6A2CCF_86F3_4c9d_8BB6_CFCA4F98C8C4",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_372097C0_0E1E_4b6b_A7F0_DD02EBB40E96",
+          "source_class_id_raw": "EAID_372097C0_0E1E_4b6b_A7F0_DD02EBB40E96",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_name": "线索发现"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "super_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_BD5E59C5_2334_4a26_8C71_2D8B38F84A37",
+      "class_id_raw": "EAID_BD5E59C5_2334_4a26_8C71_2D8B38F84A37",
+      "class_name": "违法案件调查报告",
+      "class_raw_name": "违法案件调查报告",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C1DCB6F3_C5ED_4009_9F77_F094E283A3BE",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_BD5E59C5_2334_4a26_8C71_2D8B38F84A37",
+          "source_class_id_raw": "EAID_BD5E59C5_2334_4a26_8C71_2D8B38F84A37",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_name": "督察执法材料"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "super_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_00DC5F50_CE39_4313_B57E_A0E02BF05453",
+      "class_id_raw": "EAID_00DC5F50_CE39_4313_B57E_A0E02BF05453",
+      "class_name": "违法测绘项目",
+      "class_raw_name": "违法测绘项目",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C1DDDE28_F981_4606_A4D1_01336F27F5E1",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_00DC5F50_CE39_4313_B57E_A0E02BF05453",
+          "source_class_id_raw": "EAID_00DC5F50_CE39_4313_B57E_A0E02BF05453",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_name": "违法项目案件"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "super_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_1CABB6B5_549D_44be_AFC9_22D7DC8B6664",
+      "class_id_raw": "EAID_1CABB6B5_549D_44be_AFC9_22D7DC8B6664",
+      "class_name": "违法矿产项目",
+      "class_raw_name": "违法矿产项目",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D2A009FC_0EAD_4595_A6BA_BF1B3C2CC5F1",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_1CABB6B5_549D_44be_AFC9_22D7DC8B6664",
+          "source_class_id_raw": "EAID_1CABB6B5_549D_44be_AFC9_22D7DC8B6664",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_name": "违法项目案件"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "super_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_029C1E7F_981A_4d2f_8B85_563B26AA8A9C",
+      "class_id_raw": "EAID_029C1E7F_981A_4d2f_8B85_563B26AA8A9C",
+      "class_name": "违法林草项目",
+      "class_raw_name": "违法林草项目",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C49124A9_AE67_4c7e_8131_9A67408ACEDF",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_029C1E7F_981A_4d2f_8B85_563B26AA8A9C",
+          "source_class_id_raw": "EAID_029C1E7F_981A_4d2f_8B85_563B26AA8A9C",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_name": "违法项目案件"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "super_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_5670020F_5FF3_4962_A4B0_64E8937B8AF7",
+      "class_id_raw": "EAID_5670020F_5FF3_4962_A4B0_64E8937B8AF7",
+      "class_name": "违法土地项目",
+      "class_raw_name": "违法土地项目",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_5AD6BF4F_30D0_4ff9_B5E2_1B3C75B3F368",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_5670020F_5FF3_4962_A4B0_64E8937B8AF7",
+          "source_class_id_raw": "EAID_5670020F_5FF3_4962_A4B0_64E8937B8AF7",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_name": "违法项目案件"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "super_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "class_name": "违法项目案件",
+      "class_raw_name": "违法项目案件",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_1B3FE151_10EF_4c5b_87C5_8EF0896A0673",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "source_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_6FA35718_C6B3_4139_B074_E4E86E31189A",
+      "class_id_raw": "EAID_6FA35718_C6B3_4139_B074_E4E86E31189A",
+      "class_name": "违法主体",
+      "class_raw_name": "违法主体",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_ED60963F_45F8_49af_9C99_5463475BA86A",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_6FA35718_C6B3_4139_B074_E4E86E31189A",
+          "source_class_id_raw": "EAID_6FA35718_C6B3_4139_B074_E4E86E31189A",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_name": "督察执法组织"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+      ],
+      "super_class_ids_raw": [
+        "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "super_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_E71F478C_49FE_4a68_855D_87B144C3C135",
+      "class_id_raw": "EAID_E71F478C_49FE_4a68_855D_87B144C3C135",
+      "class_name": "现场勘验笔录",
+      "class_raw_name": "现场勘验笔录",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_E07F9256_3619_4ac0_B809_FB9CD4888004",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_E71F478C_49FE_4a68_855D_87B144C3C135",
+          "source_class_id_raw": "EAID_E71F478C_49FE_4a68_855D_87B144C3C135",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_name": "督察执法材料"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "super_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "class_name": "线索发现",
+      "class_raw_name": "线索发现",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_F815AFD9_AE14_4b27_BBBB_A633848DD0BF",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "source_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+      "class_id_raw": "EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+      "class_name": "线索核查",
+      "class_raw_name": "线索核查",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_95CD95B4_24DE_49d6_A146_006482A31AF7",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+          "source_class_id_raw": "EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_A8E73EB9_BEEB_4fee_BD79_0EF72BF885F2",
+      "class_id_raw": "EAID_A8E73EB9_BEEB_4fee_BD79_0EF72BF885F2",
+      "class_name": "行政处罚告知书",
+      "class_raw_name": "行政处罚告知书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_BB73FEB1_4E39_4a57_A868_3FE37F5569DF",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_A8E73EB9_BEEB_4fee_BD79_0EF72BF885F2",
+          "source_class_id_raw": "EAID_A8E73EB9_BEEB_4fee_BD79_0EF72BF885F2",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_ACC6D330_4434_42c3_9117_36937B62129A",
+      "class_id_raw": "EAID_ACC6D330_4434_42c3_9117_36937B62129A",
+      "class_name": "行政处罚决定书",
+      "class_raw_name": "行政处罚决定书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_E725EF0B_24A6_4fc8_8CCF_D7964CD7B2DF",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_ACC6D330_4434_42c3_9117_36937B62129A",
+          "source_class_id_raw": "EAID_ACC6D330_4434_42c3_9117_36937B62129A",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_2B826626_1E00_4b89_BD50_347D238FB2DD",
+      "class_id_raw": "EAID_2B826626_1E00_4b89_BD50_347D238FB2DD",
+      "class_name": "行政处罚听证告知书",
+      "class_raw_name": "行政处罚听证告知书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_639BEB3A_4A7C_400f_86FD_43680523799C",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_2B826626_1E00_4b89_BD50_347D238FB2DD",
+          "source_class_id_raw": "EAID_2B826626_1E00_4b89_BD50_347D238FB2DD",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_A31D3BEF_592C_42c2_A0F0_A050D7B63D1C",
+      "class_id_raw": "EAID_A31D3BEF_592C_42c2_A0F0_A050D7B63D1C",
+      "class_name": "行政强制措施决定书",
+      "class_raw_name": "行政强制措施决定书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C88AB258_114D_411d_B56F_EC473EE75215",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_A31D3BEF_592C_42c2_A0F0_A050D7B63D1C",
+          "source_class_id_raw": "EAID_A31D3BEF_592C_42c2_A0F0_A050D7B63D1C",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_D40DD000_189B_4b2d_B5F4_9F7BF5711557",
+      "class_id_raw": "EAID_D40DD000_189B_4b2d_B5F4_9F7BF5711557",
+      "class_name": "询问笔录",
+      "class_raw_name": "询问笔录",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2A00F814_7FCF_429f_9FE2_2172BD55045D",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_D40DD000_189B_4b2d_B5F4_9F7BF5711557",
+          "source_class_id_raw": "EAID_D40DD000_189B_4b2d_B5F4_9F7BF5711557",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_name": "督察执法材料"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "super_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_639D38BB_E691_4775_8E6D_03E5A514FC6B",
+      "class_id_raw": "EAID_639D38BB_E691_4775_8E6D_03E5A514FC6B",
+      "class_name": "疑似范围",
+      "class_raw_name": "疑似范围",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D0D8DFCD_1134_4c67_AEB6_56BC4CA243E3",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_639D38BB_E691_4775_8E6D_03E5A514FC6B",
+          "source_class_id_raw": "EAID_639D38BB_E691_4775_8E6D_03E5A514FC6B",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_name": "督察执法空间范围"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_ids_raw": [
+        "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "super_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_79CD4475_CC75_4de6_8867_C206DDB1024E",
+      "class_id_raw": "EAID_79CD4475_CC75_4de6_8867_C206DDB1024E",
+      "class_name": "责令改正违法行为通知书",
+      "class_raw_name": "责令改正违法行为通知书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_9F7B8096_2E66_4dc5_8A7D_434E1ACE82FD",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_79CD4475_CC75_4de6_8867_C206DDB1024E",
+          "source_class_id_raw": "EAID_79CD4475_CC75_4de6_8867_C206DDB1024E",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_79E75C9D_5BF3_44bd_8766_CB3695642004",
+      "class_id_raw": "EAID_79E75C9D_5BF3_44bd_8766_CB3695642004",
+      "class_name": "责令停止违法行为通知书",
+      "class_raw_name": "责令停止违法行为通知书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [
+        {
+          "attribute_id": "08督察执法__98f4833a::class::EAID_79E75C9D_5BF3_44bd_8766_CB3695642004::attr::EAID_7570985E_13BF_45c3_AF24_A8D0873504E6",
+          "attribute_id_raw": "EAID_7570985E_13BF_45c3_AF24_A8D0873504E6",
+          "attribute_name": "01违法人姓名",
+          "attribute_raw_name": "01违法人姓名",
+          "attribute_type": "",
+          "type_ref": null,
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "08督察执法__98f4833a::class::EAID_79E75C9D_5BF3_44bd_8766_CB3695642004::attr::EAID_A78573EA_D263_4bd8_A6F1_BF506A2F9B97",
+          "attribute_id_raw": "EAID_A78573EA_D263_4bd8_A6F1_BF506A2F9B97",
+          "attribute_name": "02违法事实",
+          "attribute_raw_name": "02违法事实",
+          "attribute_type": "",
+          "type_ref": null,
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        }
+      ],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2704B51A_8F7A_43bc_A1F7_3B870986FF00",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_79E75C9D_5BF3_44bd_8766_CB3695642004",
+          "source_class_id_raw": "EAID_79E75C9D_5BF3_44bd_8766_CB3695642004",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_1B7D4081_35AF_4cbe_BFFD_80F04440C770",
+      "class_id_raw": "EAID_1B7D4081_35AF_4cbe_BFFD_80F04440C770",
+      "class_name": "整改范围",
+      "class_raw_name": "整改范围",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_241E2EA3_74E8_40fd_A751_B964843EF37D",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_1B7D4081_35AF_4cbe_BFFD_80F04440C770",
+          "source_class_id_raw": "EAID_1B7D4081_35AF_4cbe_BFFD_80F04440C770",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "target_class_name": "督察执法空间范围"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_ids_raw": [
+        "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "super_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_42372294_2E41_4d15_9C08_E6C95D9C2492",
+      "class_id_raw": "EAID_42372294_2E41_4d15_9C08_E6C95D9C2492",
+      "class_name": "证据保存清单",
+      "class_raw_name": "证据保存清单",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_58F8AEF2_BA2E_4d47_B8FF_01395B00C037",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_42372294_2E41_4d15_9C08_E6C95D9C2492",
+          "source_class_id_raw": "EAID_42372294_2E41_4d15_9C08_E6C95D9C2492",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_name": "督察执法材料"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "super_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_22554655_7DD0_4f24_A88D_6AF4D9AE7E0B",
+      "class_id_raw": "EAID_22554655_7DD0_4f24_A88D_6AF4D9AE7E0B",
+      "class_name": "证据先行登记保存通知书",
+      "class_raw_name": "证据先行登记保存通知书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D196486C_F132_4f36_8848_E321D287F1E9",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_22554655_7DD0_4f24_A88D_6AF4D9AE7E0B",
+          "source_class_id_raw": "EAID_22554655_7DD0_4f24_A88D_6AF4D9AE7E0B",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_9F8ED74B_0777_4d12_B26F_4C56D06EEECC",
+      "class_id_raw": "EAID_9F8ED74B_0777_4d12_B26F_4C56D06EEECC",
+      "class_name": "证据先行登记处理通知书",
+      "class_raw_name": "证据先行登记处理通知书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_7D433A83_9CAA_41e1_9D12_7C0E490101E2",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_9F8ED74B_0777_4d12_B26F_4C56D06EEECC",
+          "source_class_id_raw": "EAID_9F8ED74B_0777_4d12_B26F_4C56D06EEECC",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+      "class_id_raw": "EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+      "class_name": "执行",
+      "class_raw_name": "执行",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_4133743F_AB1E_44f9_B33C_5D1300CA5EF0",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+          "source_class_id_raw": "EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_B9A6AF16_5389_4575_A531_38552F1B60B2",
+      "class_id_raw": "EAID_B9A6AF16_5389_4575_A531_38552F1B60B2",
+      "class_name": "执行部门",
+      "class_raw_name": "执行部门",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_8C755282_5598_4bd5_AECF_D2818DEC4F62",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_B9A6AF16_5389_4575_A531_38552F1B60B2",
+          "source_class_id_raw": "EAID_B9A6AF16_5389_4575_A531_38552F1B60B2",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "target_class_name": "督察执法组织"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+      ],
+      "super_class_ids_raw": [
+        "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "super_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_15807F20_0103_41df_AB15_4B690EAD8D4E",
+      "class_id_raw": "EAID_15807F20_0103_41df_AB15_4B690EAD8D4E",
+      "class_name": "终结调查报告",
+      "class_raw_name": "终结调查报告",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_0C2C7F00_5F30_4ee0_86BA_7BB2C979ECC1",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_15807F20_0103_41df_AB15_4B690EAD8D4E",
+          "source_class_id_raw": "EAID_15807F20_0103_41df_AB15_4B690EAD8D4E",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "target_class_name": "督察执法材料"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "super_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_06CDFE08_C916_435b_A4D7_8D3986C50046",
+      "class_id_raw": "EAID_06CDFE08_C916_435b_A4D7_8D3986C50046",
+      "class_name": "重大执法决定法制审核意见书",
+      "class_raw_name": "重大执法决定法制审核意见书",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_79926002_4866_43dd_B15C_E3B56D695B32",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_06CDFE08_C916_435b_A4D7_8D3986C50046",
+          "source_class_id_raw": "EAID_06CDFE08_C916_435b_A4D7_8D3986C50046",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "target_class_name": "督察执法文书"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "super_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2"
+    },
+    {
+      "class_id": "08督察执法__98f4833a::class::EAID_7B71DD8A_B7B4_40f5_AC4B_CF82F47B71BB",
+      "class_id_raw": "EAID_7B71DD8A_B7B4_40f5_AC4B_CF82F47B71BB",
+      "class_name": "专项行动",
+      "class_raw_name": "专项行动",
+      "package_path": [
+        "08督察执法"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_5CFF136E_C69C_4d78_8F7F_9B362860611F",
+          "source_class_id": "08督察执法__98f4833a::class::EAID_7B71DD8A_B7B4_40f5_AC4B_CF82F47B71BB",
+          "source_class_id_raw": "EAID_7B71DD8A_B7B4_40f5_AC4B_CF82F47B71BB",
+          "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "target_class_name": "线索发现"
+        }
+      ],
+      "super_class_ids": [
+        "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+      ],
+      "super_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "super_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    }
+  ],
+  "associations": [
+    {
+      "association_id": "EAID_46B847B7_C0C4_4e70_AD41_D584CCA939E2",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstB847B7_C0C4_4e70_AD41_D584CCA939E2",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+          "type_name": "执行",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcB847B7_C0C4_4e70_AD41_D584CCA939E2",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+          "type_name": "处罚",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_9A1A62B6_E4C5_4472_9AB1_0593BAA21024",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src1A62B6_E4C5_4472_9AB1_0593BAA21024",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+          "type_name": "立案",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst1A62B6_E4C5_4472_9AB1_0593BAA21024",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+          "type_name": "处罚",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_A075B2F1_139B_4ac3_B91D_AB7F29263F3F",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src75B2F1_139B_4ac3_B91D_AB7F29263F3F",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "type_global_ref": null,
+          "type_name": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst75B2F1_139B_4ac3_B91D_AB7F29263F3F",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+          "type_name": "督察执法材料",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_372F9081_9DB4_4464_A3D3_9793FD510548",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src2F9081_9DB4_4464_A3D3_9793FD510548",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "type_name": "违法项目案件",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst2F9081_9DB4_4464_A3D3_9793FD510548",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+          "type_name": "督察执法空间范围",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_0E24FA32_2E53_4901_8E29_08FA454100FC",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src24FA32_2E53_4901_8E29_08FA454100FC",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "type_global_ref": null,
+          "type_name": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst24FA32_2E53_4901_8E29_08FA454100FC",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+          "type_name": "督察执法文书",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_E81853A4_B105_45f0_ACC7_9CEC908DE31E",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src1853A4_B105_45f0_ACC7_9CEC908DE31E",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "type_name": "违法项目案件",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst1853A4_B105_45f0_ACC7_9CEC908DE31E",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+          "type_name": "督察执法组织",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_18E95E56_C765_484c_85E3_0C961C012AB2",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcE95E56_C765_484c_85E3_0C961C012AB2",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+          "type_name": "线索核查",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dstE95E56_C765_484c_85E3_0C961C012AB2",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+          "type_name": "立案",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_A5D53A21_AC9F_4ad1_991A_3F2C0FD887C0",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstD53A21_AC9F_4ad1_991A_3F2C0FD887C0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "type_global_ref": null,
+          "type_name": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcD53A21_AC9F_4ad1_991A_3F2C0FD887C0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+          "type_name": "违法项目案件",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_A37FFCD1_AB1B_482b_A172_4998D906DE8C",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\08督察执法.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst7FFCD1_AB1B_482b_A172_4998D906DE8C",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+          "type_name": "线索核查",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src7FFCD1_AB1B_482b_A172_4998D906DE8C",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "type_global_ref": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+          "type_name": "线索发现",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    }
+  ],
+  "generalizations": [
+    {
+      "generalization_id": "EAID_E0372006_3AC5_4015_BADA_B9DDAFF8E64E",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_292E3A22_3A56_4b3c_984C_48FACC8E833B",
+      "source_class_id_raw": "EAID_292E3A22_3A56_4b3c_984C_48FACC8E833B",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_name": "督察执法材料"
+    },
+    {
+      "generalization_id": "EAID_878A1C72_44CA_4956_959E_F3BBEAA1E79E",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+      "source_class_id_raw": "EAID_340D9019_E853_40e2_A1AE_62B4141E01C5",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_D7359BE4_9FF0_424d_8A45_8226F73A38CC",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_B446C18A_9E6A_4963_9EA1_C83A9F27D824",
+      "source_class_id_raw": "EAID_B446C18A_9E6A_4963_9EA1_C83A9F27D824",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_name": "督察执法空间范围"
+    },
+    {
+      "generalization_id": "EAID_E5C69A0F_88A0_449a_9502_96367689D414",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "source_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_538CAB09_5469_4e42_AE7C_CF4F88142BDF",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "source_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_44B5FF63_38DF_447b_A5B2_928BC14119DD",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "source_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_433704E7_F77B_4082_999A_339DAFFACD9F",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_F48F917A_777A_4b6c_830A_13C6CC811C88",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "source_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_95128D8B_809F_4b3a_85CE_A65C194D969B",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_BB00DE2C_0A60_4a3f_8FC0_DD0152F6048F",
+      "source_class_id_raw": "EAID_BB00DE2C_0A60_4a3f_8FC0_DD0152F6048F",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_8619AEA6_B4D4_4ac8_97D4_D6CE266EC04E",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_403EE80D_22D5_43f9_86FD_1A0249C6A6EC",
+      "source_class_id_raw": "EAID_403EE80D_22D5_43f9_86FD_1A0249C6A6EC",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_DAC3247C_DC34_4a41_97B5_B55BCC0FA72F",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_2E81179B_EC4C_4d00_A188_6244BB82D199",
+      "source_class_id_raw": "EAID_2E81179B_EC4C_4d00_A188_6244BB82D199",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_name": "督察执法组织"
+    },
+    {
+      "generalization_id": "EAID_E1BC3F58_C63A_4aa2_AE2C_222AC690940E",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_FD9D5D98_A406_4b45_8790_F29B655F0A1C",
+      "source_class_id_raw": "EAID_FD9D5D98_A406_4b45_8790_F29B655F0A1C",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_61435DE2_A689_407d_AF27_0A468872ADC4",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_956E4FCF_59C6_4fb8_B18B_B9D5C53DE98F",
+      "source_class_id_raw": "EAID_956E4FCF_59C6_4fb8_B18B_B9D5C53DE98F",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_name": "督察执法材料"
+    },
+    {
+      "generalization_id": "EAID_0F9577D1_BF08_4ae6_AC72_F8DF22BC2C58",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+      "source_class_id_raw": "EAID_DF11FABF_60A6_450d_BEA3_842694649CEB",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_9494A94C_0189_4c10_BC65_87014622EB7C",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_C03AA449_F1AB_4ffc_9F06_12E3B5EC34F3",
+      "source_class_id_raw": "EAID_C03AA449_F1AB_4ffc_9F06_12E3B5EC34F3",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_AF849E17_4B93_466b_AA70_8E667F82741A",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_0AA706C6_D574_40d9_88ED_818559DCA648",
+      "source_class_id_raw": "EAID_0AA706C6_D574_40d9_88ED_818559DCA648",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_name": "线索发现"
+    },
+    {
+      "generalization_id": "EAID_527E57C1_B877_45b9_8497_C1C0319BFFCA",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_5B3DCD7B_4B0C_46c1_AF5D_E36141989D9C",
+      "source_class_id_raw": "EAID_5B3DCD7B_4B0C_46c1_AF5D_E36141989D9C",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_name": "线索发现"
+    },
+    {
+      "generalization_id": "EAID_926DCC52_1D57_48a2_991A_4B2456141AA4",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_E1DB0B1D_8FFA_4cf1_9D3E_64D9560D1F1E",
+      "source_class_id_raw": "EAID_E1DB0B1D_8FFA_4cf1_9D3E_64D9560D1F1E",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_name": "线索发现"
+    },
+    {
+      "generalization_id": "EAID_09620E35_A1A6_4b47_8A21_B714B478411F",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_FBDCDB6D_5593_4bd5_B66A_92554C8C0D45",
+      "source_class_id_raw": "EAID_FBDCDB6D_5593_4bd5_B66A_92554C8C0D45",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_F91D7D42_1352_4f8e_BB5C_7457E260473D",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_17F43F68_565D_4ee0_8616_0DF20A25A82C",
+      "source_class_id_raw": "EAID_17F43F68_565D_4ee0_8616_0DF20A25A82C",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_name": "督察执法空间范围"
+    },
+    {
+      "generalization_id": "EAID_A52933AA_B565_4a2a_8E2E_A308829255F5",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_B0ADAE56_C1A3_49a7_8C87_5D613794B5BC",
+      "source_class_id_raw": "EAID_B0ADAE56_C1A3_49a7_8C87_5D613794B5BC",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_name": "线索发现"
+    },
+    {
+      "generalization_id": "EAID_B4A63865_59E9_4fa8_AA65_17C90888E881",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_2B9A7191_BF27_488d_8794_E2712049E0EE",
+      "source_class_id_raw": "EAID_2B9A7191_BF27_488d_8794_E2712049E0EE",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_name": "线索发现"
+    },
+    {
+      "generalization_id": "EAID_3DC8A186_DCAA_42c7_B2C7_2EDE66DEBA09",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_165F1166_E3AF_4afa_AFA0_497B449D4D86",
+      "source_class_id_raw": "EAID_165F1166_E3AF_4afa_AFA0_497B449D4D86",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_3D6A2CCF_86F3_4c9d_8BB6_CFCA4F98C8C4",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_372097C0_0E1E_4b6b_A7F0_DD02EBB40E96",
+      "source_class_id_raw": "EAID_372097C0_0E1E_4b6b_A7F0_DD02EBB40E96",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_name": "线索发现"
+    },
+    {
+      "generalization_id": "EAID_C1DCB6F3_C5ED_4009_9F77_F094E283A3BE",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_BD5E59C5_2334_4a26_8C71_2D8B38F84A37",
+      "source_class_id_raw": "EAID_BD5E59C5_2334_4a26_8C71_2D8B38F84A37",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_name": "督察执法材料"
+    },
+    {
+      "generalization_id": "EAID_C1DDDE28_F981_4606_A4D1_01336F27F5E1",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_00DC5F50_CE39_4313_B57E_A0E02BF05453",
+      "source_class_id_raw": "EAID_00DC5F50_CE39_4313_B57E_A0E02BF05453",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_name": "违法项目案件"
+    },
+    {
+      "generalization_id": "EAID_D2A009FC_0EAD_4595_A6BA_BF1B3C2CC5F1",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_1CABB6B5_549D_44be_AFC9_22D7DC8B6664",
+      "source_class_id_raw": "EAID_1CABB6B5_549D_44be_AFC9_22D7DC8B6664",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_name": "违法项目案件"
+    },
+    {
+      "generalization_id": "EAID_C49124A9_AE67_4c7e_8131_9A67408ACEDF",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_029C1E7F_981A_4d2f_8B85_563B26AA8A9C",
+      "source_class_id_raw": "EAID_029C1E7F_981A_4d2f_8B85_563B26AA8A9C",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_name": "违法项目案件"
+    },
+    {
+      "generalization_id": "EAID_5AD6BF4F_30D0_4ff9_B5E2_1B3C75B3F368",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_5670020F_5FF3_4962_A4B0_64E8937B8AF7",
+      "source_class_id_raw": "EAID_5670020F_5FF3_4962_A4B0_64E8937B8AF7",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_name": "违法项目案件"
+    },
+    {
+      "generalization_id": "EAID_1B3FE151_10EF_4c5b_87C5_8EF0896A0673",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "source_class_id_raw": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_ED60963F_45F8_49af_9C99_5463475BA86A",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_6FA35718_C6B3_4139_B074_E4E86E31189A",
+      "source_class_id_raw": "EAID_6FA35718_C6B3_4139_B074_E4E86E31189A",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_name": "督察执法组织"
+    },
+    {
+      "generalization_id": "EAID_E07F9256_3619_4ac0_B809_FB9CD4888004",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_E71F478C_49FE_4a68_855D_87B144C3C135",
+      "source_class_id_raw": "EAID_E71F478C_49FE_4a68_855D_87B144C3C135",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_name": "督察执法材料"
+    },
+    {
+      "generalization_id": "EAID_F815AFD9_AE14_4b27_BBBB_A633848DD0BF",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "source_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_95CD95B4_24DE_49d6_A146_006482A31AF7",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+      "source_class_id_raw": "EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_BB73FEB1_4E39_4a57_A868_3FE37F5569DF",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_A8E73EB9_BEEB_4fee_BD79_0EF72BF885F2",
+      "source_class_id_raw": "EAID_A8E73EB9_BEEB_4fee_BD79_0EF72BF885F2",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_E725EF0B_24A6_4fc8_8CCF_D7964CD7B2DF",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_ACC6D330_4434_42c3_9117_36937B62129A",
+      "source_class_id_raw": "EAID_ACC6D330_4434_42c3_9117_36937B62129A",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_639BEB3A_4A7C_400f_86FD_43680523799C",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_2B826626_1E00_4b89_BD50_347D238FB2DD",
+      "source_class_id_raw": "EAID_2B826626_1E00_4b89_BD50_347D238FB2DD",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_C88AB258_114D_411d_B56F_EC473EE75215",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_A31D3BEF_592C_42c2_A0F0_A050D7B63D1C",
+      "source_class_id_raw": "EAID_A31D3BEF_592C_42c2_A0F0_A050D7B63D1C",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_2A00F814_7FCF_429f_9FE2_2172BD55045D",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_D40DD000_189B_4b2d_B5F4_9F7BF5711557",
+      "source_class_id_raw": "EAID_D40DD000_189B_4b2d_B5F4_9F7BF5711557",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_name": "督察执法材料"
+    },
+    {
+      "generalization_id": "EAID_D0D8DFCD_1134_4c67_AEB6_56BC4CA243E3",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_639D38BB_E691_4775_8E6D_03E5A514FC6B",
+      "source_class_id_raw": "EAID_639D38BB_E691_4775_8E6D_03E5A514FC6B",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_name": "督察执法空间范围"
+    },
+    {
+      "generalization_id": "EAID_9F7B8096_2E66_4dc5_8A7D_434E1ACE82FD",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_79CD4475_CC75_4de6_8867_C206DDB1024E",
+      "source_class_id_raw": "EAID_79CD4475_CC75_4de6_8867_C206DDB1024E",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_2704B51A_8F7A_43bc_A1F7_3B870986FF00",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_79E75C9D_5BF3_44bd_8766_CB3695642004",
+      "source_class_id_raw": "EAID_79E75C9D_5BF3_44bd_8766_CB3695642004",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_241E2EA3_74E8_40fd_A751_B964843EF37D",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_1B7D4081_35AF_4cbe_BFFD_80F04440C770",
+      "source_class_id_raw": "EAID_1B7D4081_35AF_4cbe_BFFD_80F04440C770",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_id_raw": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72",
+      "target_class_name": "督察执法空间范围"
+    },
+    {
+      "generalization_id": "EAID_58F8AEF2_BA2E_4d47_B8FF_01395B00C037",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_42372294_2E41_4d15_9C08_E6C95D9C2492",
+      "source_class_id_raw": "EAID_42372294_2E41_4d15_9C08_E6C95D9C2492",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_name": "督察执法材料"
+    },
+    {
+      "generalization_id": "EAID_D196486C_F132_4f36_8848_E321D287F1E9",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_22554655_7DD0_4f24_A88D_6AF4D9AE7E0B",
+      "source_class_id_raw": "EAID_22554655_7DD0_4f24_A88D_6AF4D9AE7E0B",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_7D433A83_9CAA_41e1_9D12_7C0E490101E2",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_9F8ED74B_0777_4d12_B26F_4C56D06EEECC",
+      "source_class_id_raw": "EAID_9F8ED74B_0777_4d12_B26F_4C56D06EEECC",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_4133743F_AB1E_44f9_B33C_5D1300CA5EF0",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+      "source_class_id_raw": "EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_8C755282_5598_4bd5_AECF_D2818DEC4F62",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_B9A6AF16_5389_4575_A531_38552F1B60B2",
+      "source_class_id_raw": "EAID_B9A6AF16_5389_4575_A531_38552F1B60B2",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_id_raw": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB",
+      "target_class_name": "督察执法组织"
+    },
+    {
+      "generalization_id": "EAID_0C2C7F00_5F30_4ee0_86BA_7BB2C979ECC1",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_15807F20_0103_41df_AB15_4B690EAD8D4E",
+      "source_class_id_raw": "EAID_15807F20_0103_41df_AB15_4B690EAD8D4E",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_id_raw": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE",
+      "target_class_name": "督察执法材料"
+    },
+    {
+      "generalization_id": "EAID_79926002_4866_43dd_B15C_E3B56D695B32",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_06CDFE08_C916_435b_A4D7_8D3986C50046",
+      "source_class_id_raw": "EAID_06CDFE08_C916_435b_A4D7_8D3986C50046",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_id_raw": "EAID_6361268B_2078_41a7_9842_AFEA11CC9BF2",
+      "target_class_name": "督察执法文书"
+    },
+    {
+      "generalization_id": "EAID_5CFF136E_C69C_4d78_8F7F_9B362860611F",
+      "source_class_id": "08督察执法__98f4833a::class::EAID_7B71DD8A_B7B4_40f5_AC4B_CF82F47B71BB",
+      "source_class_id_raw": "EAID_7B71DD8A_B7B4_40f5_AC4B_CF82F47B71BB",
+      "target_class_id": "08督察执法__98f4833a::class::EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_id_raw": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924",
+      "target_class_name": "线索发现"
+    }
+  ],
+  "class_count": 50,
+  "association_count": 9,
+  "generalization_count": 50,
+  "unresolved_ref_count": 15,
+  "unresolved_refs": [
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "generalization_target",
+      "owner_id": "EAID_340D9019_E853_40e2_A1AE_62B4141E01C5"
+    },
+    {
+      "ref_id": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315",
+      "context": "generalization_target",
+      "owner_id": "EAID_1CB5E970_E506_4d60_9C3E_62C0B10B9ABE"
+    },
+    {
+      "ref_id": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+      "context": "generalization_target",
+      "owner_id": "EAID_EEBA0443_9C08_4f6f_AAAD_E43C312A6C72"
+    },
+    {
+      "ref_id": "EAID_433704E7_F77B_4082_999A_339DAFFACD9F",
+      "context": "generalization_target",
+      "owner_id": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+    },
+    {
+      "ref_id": "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E",
+      "context": "generalization_target",
+      "owner_id": "EAID_72B137A8_4F66_46b9_A850_36C378C444AB"
+    },
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "generalization_target",
+      "owner_id": "EAID_DF11FABF_60A6_450d_BEA3_842694649CEB"
+    },
+    {
+      "ref_id": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+      "context": "generalization_target",
+      "owner_id": "EAID_16E4A717_D0AA_42b5_9B5E_76F34E8544D6"
+    },
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "generalization_target",
+      "owner_id": "EAID_4DCCBE7B_5FBC_4636_A005_1FD39CA78924"
+    },
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "generalization_target",
+      "owner_id": "EAID_46B7DB64_D3AD_420f_AC5E_7C7BBB86EB37"
+    },
+    {
+      "ref_id": "EAID_7570985E_13BF_45c3_AF24_A8D0873504E6",
+      "context": "missing_type_ref",
+      "owner_id": "EAID_79E75C9D_5BF3_44bd_8766_CB3695642004"
+    },
+    {
+      "ref_id": "EAID_A78573EA_D263_4bd8_A6F1_BF506A2F9B97",
+      "context": "missing_type_ref",
+      "owner_id": "EAID_79E75C9D_5BF3_44bd_8766_CB3695642004"
+    },
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "generalization_target",
+      "owner_id": "EAID_EFB011A0_E1BE_4414_A04F_A04E67049BAD"
+    },
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "association_end_type",
+      "owner_id": "EAID_A075B2F1_139B_4ac3_B91D_AB7F29263F3F"
+    },
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "association_end_type",
+      "owner_id": "EAID_0E24FA32_2E53_4901_8E29_08FA454100FC"
+    },
+    {
+      "ref_id": "EAID_CB9168B6_A41E_4162_B302_CE6A725B84D9",
+      "context": "association_end_type",
+      "owner_id": "EAID_A5D53A21_AC9F_4ad1_991A_3F2C0FD887C0"
+    }
+  ],
+  "stats": {
+    "total_packages": 3,
+    "total_classes": 50,
+    "total_attributes": 2,
+    "total_associations": 9,
+    "total_generalizations": 50
+  }
+}

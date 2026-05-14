@@ -1,0 +1,1934 @@
+{
+  "module_id": "01统一地理底图__c550df8c",
+  "module_id_raw": "01统一地理底图",
+  "module_name": "01统一地理底图",
+  "source_file": "01统一地理底图.xml",
+  "top_package_name": "01统一地理底图",
+  "classes": [
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "class_name": "mesh三维模型",
+      "class_raw_name": "mesh三维模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_75059F4F_1782_4872_B148_23D689B16C55",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "source_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_name": "三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "super_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_E3B6B228_B84A_4566_A249_3B690B867D2A",
+      "class_id_raw": "EAID_E3B6B228_B84A_4566_A249_3B690B867D2A",
+      "class_name": "白模",
+      "class_raw_name": "白模",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_A3063D94_564E_4904_B5D1_36696E0A61C1",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_E3B6B228_B84A_4566_A249_3B690B867D2A",
+          "source_class_id_raw": "EAID_E3B6B228_B84A_4566_A249_3B690B867D2A",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "target_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "target_class_name": "mesh三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "super_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_812331D0_F3CB_4238_A7EF_28F53F65D0B8",
+      "class_id_raw": "EAID_812331D0_F3CB_4238_A7EF_28F53F65D0B8",
+      "class_name": "冰雪",
+      "class_raw_name": "冰雪",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_860717A1_0D65_4e71_B91E_9B41B0F75381",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_812331D0_F3CB_4238_A7EF_28F53F65D0B8",
+          "source_class_id_raw": "EAID_812331D0_F3CB_4238_A7EF_28F53F65D0B8",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_name": "自然地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "super_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+      "class_id_raw": "EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+      "class_name": "参数化三维模型",
+      "class_raw_name": "参数化三维模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_AB3B9FD1_5730_4ce3_8C71_1BC2257B38D1",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+          "source_class_id_raw": "EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_name": "三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "super_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_1249B6B7_586B_46c9_8F5F_FB4F01BA6887",
+      "class_id_raw": "EAID_1249B6B7_586B_46c9_8F5F_FB4F01BA6887",
+      "class_name": "测绘项目",
+      "class_raw_name": "测绘项目",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "class_name": "测绘资质",
+      "class_raw_name": "测绘资质",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_25563760_F39C_47e1_A758_E5D44329A37E",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "source_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "class_name": "地理场景",
+      "class_raw_name": "地理场景",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_68BB5CC9_3C88_41ad_8259_F75D8EADF06D",
+      "class_id_raw": "EAID_68BB5CC9_3C88_41ad_8259_F75D8EADF06D",
+      "class_name": "地理场景元数据",
+      "class_raw_name": "地理场景元数据",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_BA507760_FB0E_4581_BA0E_852F3356B618",
+      "class_id_raw": "EAID_BA507760_FB0E_4581_BA0E_852F3356B618",
+      "class_name": "地名地址",
+      "class_raw_name": "地名地址",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_0C7B9959_7F3E_4fad_A544_0F0331965605",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_BA507760_FB0E_4581_BA0E_852F3356B618",
+          "source_class_id_raw": "EAID_BA507760_FB0E_4581_BA0E_852F3356B618",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+          "target_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+          "target_class_name": "管理地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F"
+      ],
+      "super_class_ids_raw": [
+        "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "super_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+      "class_id_raw": "EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+      "class_name": "地图",
+      "class_raw_name": "地图",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "class_name": "地形地貌",
+      "class_raw_name": "地形地貌",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_F28F33A5_87AF_4614_8ED2_EFA4122B4419",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "source_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "target_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "target_class_name": "地理场景"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+      ],
+      "super_class_ids_raw": [
+        "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "super_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_B2D1C65F_BC6D_49ec_A545_AACFD808793A",
+      "class_id_raw": "EAID_B2D1C65F_BC6D_49ec_A545_AACFD808793A",
+      "class_name": "地质",
+      "class_raw_name": "地质",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3FFD8171_5685_4671_B3B2_13C83C626E26",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_B2D1C65F_BC6D_49ec_A545_AACFD808793A",
+          "source_class_id_raw": "EAID_B2D1C65F_BC6D_49ec_A545_AACFD808793A",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_name": "自然地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "super_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "class_name": "管理地理实体",
+      "class_raw_name": "管理地理实体",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_500BBA9F_1657_4b20_B15F_12DD6C3A41BF",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+          "source_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+          "target_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+          "target_class_name": "基础地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9338CA07_7121_4903_9F06_545015108255"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+      "super_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_A0BE2117_9594_424a_A879_C6724AAB887E",
+      "class_id_raw": "EAID_A0BE2117_9594_424a_A879_C6724AAB887E",
+      "class_name": "管线",
+      "class_raw_name": "管线",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_9E73E32E_03CD_4daa_B245_77B3B27F8A42",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_A0BE2117_9594_424a_A879_C6724AAB887E",
+          "source_class_id_raw": "EAID_A0BE2117_9594_424a_A879_C6724AAB887E",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_name": "人工地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "super_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_AF70026D_2E71_44b6_B056_5E67303BAD0E",
+      "class_id_raw": "EAID_AF70026D_2E71_44b6_B056_5E67303BAD0E",
+      "class_name": "海洋",
+      "class_raw_name": "海洋",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B555BA4A_7C27_4b66_B108_7988C152B643",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_AF70026D_2E71_44b6_B056_5E67303BAD0E",
+          "source_class_id_raw": "EAID_AF70026D_2E71_44b6_B056_5E67303BAD0E",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_name": "自然地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "super_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+      "class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+      "class_name": "基础地理实体",
+      "class_raw_name": "基础地理实体",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_4D9A3689_339F_444f_82A9_3DFF5B0B4DAF",
+          "attribute_id_raw": "EAID_4D9A3689_339F_444f_82A9_3DFF5B0B4DAF",
+          "attribute_name": "产生时间",
+          "attribute_raw_name": "产生时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_A5FDBAC9_D602_4e6b_A7CF_3F1933E5F352",
+          "attribute_id_raw": "EAID_A5FDBAC9_D602_4e6b_A7CF_3F1933E5F352",
+          "attribute_name": "分类码",
+          "attribute_raw_name": "分类码",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_1CA2A39F_FDEA_423e_AD39_2495734DF369",
+          "attribute_id_raw": "EAID_1CA2A39F_FDEA_423e_AD39_2495734DF369",
+          "attribute_name": "分类名称",
+          "attribute_raw_name": "分类名称",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_B8A0397C_9D8C_4468_83AB_A144EC95F5D9",
+          "attribute_id_raw": "EAID_B8A0397C_9D8C_4468_83AB_A144EC95F5D9",
+          "attribute_name": "更新时间",
+          "attribute_raw_name": "更新时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_054EBEB3_D497_40db_87FC_B43F57444FB2",
+          "attribute_id_raw": "EAID_054EBEB3_D497_40db_87FC_B43F57444FB2",
+          "attribute_name": "更新状态",
+          "attribute_raw_name": "更新状态",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_827AE8D2_7389_477a_9D13_910AB4EE62BE",
+          "attribute_id_raw": "EAID_827AE8D2_7389_477a_9D13_910AB4EE62BE",
+          "attribute_name": "空间身份编码",
+          "attribute_raw_name": "空间身份编码",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_791D17C2_5348_4901_A037_ED2FB1F3BB87",
+          "attribute_id_raw": "EAID_791D17C2_5348_4901_A037_ED2FB1F3BB87",
+          "attribute_name": "入库时间",
+          "attribute_raw_name": "入库时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_11D685FE_238F_40eb_AEF6_2765DC0AAF28",
+          "attribute_id_raw": "EAID_11D685FE_238F_40eb_AEF6_2765DC0AAF28",
+          "attribute_name": "实体名称",
+          "attribute_raw_name": "实体名称",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_32D42A88_DBF5_4983_ABC4_3C6639B55A17",
+          "attribute_id_raw": "EAID_32D42A88_DBF5_4983_ABC4_3C6639B55A17",
+          "attribute_name": "位置码",
+          "attribute_raw_name": "位置码",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255::attr::EAID_0594E60A_86EC_409e_8D63_0D13B2F7C17C",
+          "attribute_id_raw": "EAID_0594E60A_86EC_409e_8D63_0D13B2F7C17C",
+          "attribute_name": "消亡时间",
+          "attribute_raw_name": "消亡时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        }
+      ],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_B5C53910_DECB_46fa_B95E_56687FD2DC6A",
+      "class_id_raw": "EAID_B5C53910_DECB_46fa_B95E_56687FD2DC6A",
+      "class_name": "激光点云",
+      "class_raw_name": "激光点云",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_896321D0_64F2_465a_AC76_B3CBC8F4B40D",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_B5C53910_DECB_46fa_B95E_56687FD2DC6A",
+          "source_class_id_raw": "EAID_B5C53910_DECB_46fa_B95E_56687FD2DC6A",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_name": "三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "super_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+      "class_id_raw": "EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+      "class_name": "甲级测绘资质",
+      "class_raw_name": "甲级测绘资质",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_8C873DFD_BFEB_48f3_8436_6778BE57EACB",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+          "source_class_id_raw": "EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "target_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "target_class_name": "测绘资质"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "super_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_17C26921_270B_407a_AC71_90A355B8F91F",
+      "class_id_raw": "EAID_17C26921_270B_407a_AC71_90A355B8F91F",
+      "class_name": "建（构）筑物及设施",
+      "class_raw_name": "建（构）筑物及设施",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_98B3C414_0F03_4293_8C19_88E46590A999",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_17C26921_270B_407a_AC71_90A355B8F91F",
+          "source_class_id_raw": "EAID_17C26921_270B_407a_AC71_90A355B8F91F",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_name": "人工地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "super_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_694C3B96_E8CC_4068_A81D_734A7D22F5EF",
+      "class_id_raw": "EAID_694C3B96_E8CC_4068_A81D_734A7D22F5EF",
+      "class_name": "建筑物模型",
+      "class_raw_name": "建筑物模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_09B73C6A_D391_497a_B3CF_22F32C06EC1A",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_694C3B96_E8CC_4068_A81D_734A7D22F5EF",
+          "source_class_id_raw": "EAID_694C3B96_E8CC_4068_A81D_734A7D22F5EF",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "target_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "target_class_name": "mesh三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "super_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_847CCE73_3F49_4355_A94F_FFC2F2E56B9D",
+      "class_id_raw": "EAID_847CCE73_3F49_4355_A94F_FFC2F2E56B9D",
+      "class_name": "建筑信息模型",
+      "class_raw_name": "建筑信息模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D3D21358_EAC0_4acd_BB59_C241CB53E9C6",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_847CCE73_3F49_4355_A94F_FFC2F2E56B9D",
+          "source_class_id_raw": "EAID_847CCE73_3F49_4355_A94F_FFC2F2E56B9D",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+          "target_class_id_raw": "EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+          "target_class_name": "参数化三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+      "super_class_id_raw": "EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_00A40729_467E_4a42_93F8_FF80CEB3A664",
+      "class_id_raw": "EAID_00A40729_467E_4a42_93F8_FF80CEB3A664",
+      "class_name": "交通运输",
+      "class_raw_name": "交通运输",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_41663E41_BD5C_4974_BCDB_CBA7F90F283B",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_00A40729_467E_4a42_93F8_FF80CEB3A664",
+          "source_class_id_raw": "EAID_00A40729_467E_4a42_93F8_FF80CEB3A664",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_name": "人工地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "super_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_5B790B67_2B36_4f71_8A37_69536A7D14FF",
+      "class_id_raw": "EAID_5B790B67_2B36_4f71_8A37_69536A7D14FF",
+      "class_name": "农林用地和土地",
+      "class_raw_name": "农林用地和土地",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_9CDCA762_0C6E_44cc_9D24_4DCC8A41E9FC",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_5B790B67_2B36_4f71_8A37_69536A7D14FF",
+          "source_class_id_raw": "EAID_5B790B67_2B36_4f71_8A37_69536A7D14FF",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_name": "自然地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "super_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_8761E953_34BE_4ec7_950D_F1BDCB70E03A",
+      "class_id_raw": "EAID_8761E953_34BE_4ec7_950D_F1BDCB70E03A",
+      "class_name": "坡度图",
+      "class_raw_name": "坡度图",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D5F51B63_4C37_4545_8A6D_F90EADFCAC77",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_8761E953_34BE_4ec7_950D_F1BDCB70E03A",
+          "source_class_id_raw": "EAID_8761E953_34BE_4ec7_950D_F1BDCB70E03A",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_name": "地形地貌"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "super_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_BEA6DDDB_DE91_42f1_890C_73DF7B937F9F",
+      "class_id_raw": "EAID_BEA6DDDB_DE91_42f1_890C_73DF7B937F9F",
+      "class_name": "倾斜摄影三维模型",
+      "class_raw_name": "倾斜摄影三维模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_600DAFC4_B538_4125_984B_870ACBBB096F",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_BEA6DDDB_DE91_42f1_890C_73DF7B937F9F",
+          "source_class_id_raw": "EAID_BEA6DDDB_DE91_42f1_890C_73DF7B937F9F",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "target_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+          "target_class_name": "mesh三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "super_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "class_name": "人工地理实体",
+      "class_raw_name": "人工地理实体",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_1249A478_C281_400d_9159_1EED5F3464B5",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "source_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+          "target_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+          "target_class_name": "基础地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9338CA07_7121_4903_9F06_545015108255"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+      "super_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "class_name": "三维模型",
+      "class_raw_name": "三维模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_EDEA7BE7_6884_4fd1_82EC_3EAD54C81C93",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "source_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "target_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "target_class_name": "地理场景"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+      ],
+      "super_class_ids_raw": [
+        "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "super_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_DF8E5654_9353_42f9_9AB1_960F947B27D8",
+      "class_id_raw": "EAID_DF8E5654_9353_42f9_9AB1_960F947B27D8",
+      "class_name": "山体",
+      "class_raw_name": "山体",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_841BEA8D_AA4B_45c2_AE73_7849CF09D01B",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_DF8E5654_9353_42f9_9AB1_960F947B27D8",
+          "source_class_id_raw": "EAID_DF8E5654_9353_42f9_9AB1_960F947B27D8",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_name": "自然地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "super_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_56C86453_EB4B_4d68_AB02_031CAD475214",
+      "class_id_raw": "EAID_56C86453_EB4B_4d68_AB02_031CAD475214",
+      "class_name": "数字地表模型",
+      "class_raw_name": "数字地表模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_A62E0156_805C_4f4c_90B4_2F55507DD6B2",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_56C86453_EB4B_4d68_AB02_031CAD475214",
+          "source_class_id_raw": "EAID_56C86453_EB4B_4d68_AB02_031CAD475214",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_name": "地形地貌"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "super_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+      "class_id_raw": "EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+      "class_name": "数字地面模型",
+      "class_raw_name": "数字地面模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_74420BBD_1231_43f9_91B5_734510E70B2F",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+          "source_class_id_raw": "EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_name": "地形地貌"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "super_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_DC1BDD86_031B_42c6_A130_9B2D335967A0",
+      "class_id_raw": "EAID_DC1BDD86_031B_42c6_A130_9B2D335967A0",
+      "class_name": "数字高程模型",
+      "class_raw_name": "数字高程模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_467B5736_7132_4987_B0C2_7BBE66108C3A",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_DC1BDD86_031B_42c6_A130_9B2D335967A0",
+          "source_class_id_raw": "EAID_DC1BDD86_031B_42c6_A130_9B2D335967A0",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+          "target_class_id_raw": "EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+          "target_class_name": "数字地面模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_24991B28_B8CB_4299_80E6_70B5715F805F"
+      ],
+      "super_class_ids_raw": [
+        "EAID_24991B28_B8CB_4299_80E6_70B5715F805F"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+      "super_class_id_raw": "EAID_24991B28_B8CB_4299_80E6_70B5715F805F"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_8DC833E6_7538_4627_983A_85231DFCA20E",
+      "class_id_raw": "EAID_8DC833E6_7538_4627_983A_85231DFCA20E",
+      "class_name": "数字正射影像",
+      "class_raw_name": "数字正射影像",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_7C7E6402_BD0B_4605_BB45_269850283A41",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_8DC833E6_7538_4627_983A_85231DFCA20E",
+          "source_class_id_raw": "EAID_8DC833E6_7538_4627_983A_85231DFCA20E",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "target_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "target_class_name": "遥感影像"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71"
+      ],
+      "super_class_ids_raw": [
+        "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "super_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_DD7AA74F_B8D6_4819_9FF6_7A9FCD617BD6",
+      "class_id_raw": "EAID_DD7AA74F_B8D6_4819_9FF6_7A9FCD617BD6",
+      "class_name": "水利",
+      "class_raw_name": "水利",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_CD860974_43F7_4f31_AC1A_E3B3DB2B3B88",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_DD7AA74F_B8D6_4819_9FF6_7A9FCD617BD6",
+          "source_class_id_raw": "EAID_DD7AA74F_B8D6_4819_9FF6_7A9FCD617BD6",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_name": "人工地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "super_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_C726FA55_D925_4123_BB66_EF92A245EE73",
+      "class_id_raw": "EAID_C726FA55_D925_4123_BB66_EF92A245EE73",
+      "class_name": "水系",
+      "class_raw_name": "水系",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_9B810FEE_7243_4659_8CC9_64759DAAB560",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_C726FA55_D925_4123_BB66_EF92A245EE73",
+          "source_class_id_raw": "EAID_C726FA55_D925_4123_BB66_EF92A245EE73",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_name": "自然地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "super_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_A490192B_0F18_4ec3_B7BE_91B84E1B9E84",
+      "class_id_raw": "EAID_A490192B_0F18_4ec3_B7BE_91B84E1B9E84",
+      "class_name": "体素模型",
+      "class_raw_name": "体素模型",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_67A2CE9D_084E_4ac9_9622_95C1387F94C3",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_A490192B_0F18_4ec3_B7BE_91B84E1B9E84",
+          "source_class_id_raw": "EAID_A490192B_0F18_4ec3_B7BE_91B84E1B9E84",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+          "target_class_name": "三维模型"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "super_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_3D912942_CE15_40e8_9DA8_9578FF19336D",
+      "class_id_raw": "EAID_3D912942_CE15_40e8_9DA8_9578FF19336D",
+      "class_name": "行政区划",
+      "class_raw_name": "行政区划",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_70B686B2_C4A2_42fe_AF52_144F359E53EC",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_3D912942_CE15_40e8_9DA8_9578FF19336D",
+          "source_class_id_raw": "EAID_3D912942_CE15_40e8_9DA8_9578FF19336D",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+          "target_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+          "target_class_name": "管理地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F"
+      ],
+      "super_class_ids_raw": [
+        "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "super_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_A61B9E05_605F_4a70_958D_196951050EC9",
+      "class_id_raw": "EAID_A61B9E05_605F_4a70_958D_196951050EC9",
+      "class_name": "形变速率图（INSAR）",
+      "class_raw_name": "形变速率图（INSAR）",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_7D32F480_817C_4fab_BFA1_B9FEA8A50D16",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_A61B9E05_605F_4a70_958D_196951050EC9",
+          "source_class_id_raw": "EAID_A61B9E05_605F_4a70_958D_196951050EC9",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_name": "地形地貌"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "super_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_7EEAA3BB_ACE0_493e_BABC_13C5DD59D7E7",
+      "class_id_raw": "EAID_7EEAA3BB_ACE0_493e_BABC_13C5DD59D7E7",
+      "class_name": "形变速率图（水准）",
+      "class_raw_name": "形变速率图（水准）",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2936083D_828D_49ba_A86F_190816173F68",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_7EEAA3BB_ACE0_493e_BABC_13C5DD59D7E7",
+          "source_class_id_raw": "EAID_7EEAA3BB_ACE0_493e_BABC_13C5DD59D7E7",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+          "target_class_name": "地形地貌"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "super_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "class_name": "遥感影像",
+      "class_raw_name": "遥感影像",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_31DB3989_5D72_4358_985C_117D7FF12FAD",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "source_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "target_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "target_class_name": "地理场景"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+      ],
+      "super_class_ids_raw": [
+        "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "super_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_103B0C5E_75AB_49f7_92CD_57AB9F9BE24A",
+      "class_id_raw": "EAID_103B0C5E_75AB_49f7_92CD_57AB9F9BE24A",
+      "class_name": "遥感影像元数据",
+      "class_raw_name": "遥感影像元数据",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_4E3D60C4_48F2_4402_841A_AF67407CE66D",
+      "class_id_raw": "EAID_4E3D60C4_48F2_4402_841A_AF67407CE66D",
+      "class_name": "乙级测绘资质",
+      "class_raw_name": "乙级测绘资质",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_79E292C0_B697_40a0_BCE1_5F5170FF7426",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_4E3D60C4_48F2_4402_841A_AF67407CE66D",
+          "source_class_id_raw": "EAID_4E3D60C4_48F2_4402_841A_AF67407CE66D",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "target_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "target_class_name": "测绘资质"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711"
+      ],
+      "super_class_ids_raw": [
+        "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "super_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_CE4C0A85_2F91_42e2_8EB0_21F80C6C32D2",
+      "class_id_raw": "EAID_CE4C0A85_2F91_42e2_8EB0_21F80C6C32D2",
+      "class_name": "院落",
+      "class_raw_name": "院落",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_F91244E6_A723_46ec_9E1F_B12004C675C9",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_CE4C0A85_2F91_42e2_8EB0_21F80C6C32D2",
+          "source_class_id_raw": "EAID_CE4C0A85_2F91_42e2_8EB0_21F80C6C32D2",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+          "target_class_name": "人工地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "super_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_327B877E_EC38_434d_8174_8DEFB7B6E317",
+      "class_id_raw": "EAID_327B877E_EC38_434d_8174_8DEFB7B6E317",
+      "class_name": "真正射影像",
+      "class_raw_name": "真正射影像",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_138272A9_7822_448f_A234_ACAF5E9F5845",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_327B877E_EC38_434d_8174_8DEFB7B6E317",
+          "source_class_id_raw": "EAID_327B877E_EC38_434d_8174_8DEFB7B6E317",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "target_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "target_class_name": "遥感影像"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71"
+      ],
+      "super_class_ids_raw": [
+        "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "super_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71"
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_574E158A_EEB0_4d23_A9DB_A25E134D346E",
+      "class_id_raw": "EAID_574E158A_EEB0_4d23_A9DB_A25E134D346E",
+      "class_name": "注册测绘师",
+      "class_raw_name": "注册测绘师",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "class_name": "自然地理实体",
+      "class_raw_name": "自然地理实体",
+      "package_path": [
+        "01统一地理底图"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_71389840_A810_46a4_AF19_0E6DD0DD36F5",
+          "source_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "source_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+          "target_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+          "target_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+          "target_class_name": "基础地理实体"
+        }
+      ],
+      "super_class_ids": [
+        "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9338CA07_7121_4903_9F06_545015108255"
+      ],
+      "super_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+      "super_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255"
+    }
+  ],
+  "associations": [
+    {
+      "association_id": "EAID_AAC90219_5ABE_4273_A349_12255F9DA530",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcC90219_5ABE_4273_A349_12255F9DA530",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_name": "地图",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dstC90219_5ABE_4273_A349_12255F9DA530",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_1249B6B7_586B_46c9_8F5F_FB4F01BA6887",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_1249B6B7_586B_46c9_8F5F_FB4F01BA6887",
+          "type_name": "测绘项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_F6417470_BAF1_4016_B1F5_70A19CA42AD7",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src417470_BAF1_4016_B1F5_70A19CA42AD7",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_name": "地图",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst417470_BAF1_4016_B1F5_70A19CA42AD7",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+          "type_name": "测绘资质",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_B659F71D_552E_46cc_8E1A_ADF9E7F89E8B",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src59F71D_552E_46cc_8E1A_ADF9E7F89E8B",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "type_name": "地理场景",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst59F71D_552E_46cc_8E1A_ADF9E7F89E8B",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_name": "地图",
+          "owner_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "owner_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "owner_class_name": "地理场景",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_DD9D9A67_0E76_420b_BB26_32176DCF79C0",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src9D9A67_0E76_420b_BB26_32176DCF79C0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_68BB5CC9_3C88_41ad_8259_F75D8EADF06D",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_68BB5CC9_3C88_41ad_8259_F75D8EADF06D",
+          "type_name": "地理场景元数据",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst9D9A67_0E76_420b_BB26_32176DCF79C0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+          "type_name": "地理场景",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_CE70ED97_8F88_4d89_94F8_BFEBA8011856",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src70ED97_8F88_4d89_94F8_BFEBA8011856",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9338CA07_7121_4903_9F06_545015108255",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+          "type_name": "基础地理实体",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst70ED97_8F88_4d89_94F8_BFEBA8011856",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_AD99F03A_894E_497a_BA09_2DC23D5164F3",
+          "type_name": "地图",
+          "owner_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+          "owner_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+          "owner_class_name": "基础地理实体",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_3F28F44C_3527_4bfc_8CF5_A70C06262484",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src28F44C_3527_4bfc_8CF5_A70C06262484",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_574E158A_EEB0_4d23_A9DB_A25E134D346E",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_574E158A_EEB0_4d23_A9DB_A25E134D346E",
+          "type_name": "注册测绘师",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst28F44C_3527_4bfc_8CF5_A70C06262484",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+          "type_name": "甲级测绘资质",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_71127F1C_F5E7_430e_95A8_1561E43E57E0",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\01统一地理底图.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src127F1C_F5E7_430e_95A8_1561E43E57E0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_103B0C5E_75AB_49f7_92CD_57AB9F9BE24A",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_103B0C5E_75AB_49f7_92CD_57AB9F9BE24A",
+          "type_name": "遥感影像元数据",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst127F1C_F5E7_430e_95A8_1561E43E57E0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "type_global_ref": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+          "type_name": "遥感影像",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    }
+  ],
+  "generalizations": [
+    {
+      "generalization_id": "EAID_75059F4F_1782_4872_B148_23D689B16C55",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "source_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_name": "三维模型"
+    },
+    {
+      "generalization_id": "EAID_A3063D94_564E_4904_B5D1_36696E0A61C1",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_E3B6B228_B84A_4566_A249_3B690B867D2A",
+      "source_class_id_raw": "EAID_E3B6B228_B84A_4566_A249_3B690B867D2A",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "target_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "target_class_name": "mesh三维模型"
+    },
+    {
+      "generalization_id": "EAID_860717A1_0D65_4e71_B91E_9B41B0F75381",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_812331D0_F3CB_4238_A7EF_28F53F65D0B8",
+      "source_class_id_raw": "EAID_812331D0_F3CB_4238_A7EF_28F53F65D0B8",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_name": "自然地理实体"
+    },
+    {
+      "generalization_id": "EAID_AB3B9FD1_5730_4ce3_8C71_1BC2257B38D1",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+      "source_class_id_raw": "EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_name": "三维模型"
+    },
+    {
+      "generalization_id": "EAID_25563760_F39C_47e1_A758_E5D44329A37E",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "source_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_0C7B9959_7F3E_4fad_A544_0F0331965605",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_BA507760_FB0E_4581_BA0E_852F3356B618",
+      "source_class_id_raw": "EAID_BA507760_FB0E_4581_BA0E_852F3356B618",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "target_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "target_class_name": "管理地理实体"
+    },
+    {
+      "generalization_id": "EAID_F28F33A5_87AF_4614_8ED2_EFA4122B4419",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "source_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "target_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "target_class_name": "地理场景"
+    },
+    {
+      "generalization_id": "EAID_3FFD8171_5685_4671_B3B2_13C83C626E26",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_B2D1C65F_BC6D_49ec_A545_AACFD808793A",
+      "source_class_id_raw": "EAID_B2D1C65F_BC6D_49ec_A545_AACFD808793A",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_name": "自然地理实体"
+    },
+    {
+      "generalization_id": "EAID_500BBA9F_1657_4b20_B15F_12DD6C3A41BF",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "source_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+      "target_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+      "target_class_name": "基础地理实体"
+    },
+    {
+      "generalization_id": "EAID_9E73E32E_03CD_4daa_B245_77B3B27F8A42",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_A0BE2117_9594_424a_A879_C6724AAB887E",
+      "source_class_id_raw": "EAID_A0BE2117_9594_424a_A879_C6724AAB887E",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_name": "人工地理实体"
+    },
+    {
+      "generalization_id": "EAID_B555BA4A_7C27_4b66_B108_7988C152B643",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_AF70026D_2E71_44b6_B056_5E67303BAD0E",
+      "source_class_id_raw": "EAID_AF70026D_2E71_44b6_B056_5E67303BAD0E",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_name": "自然地理实体"
+    },
+    {
+      "generalization_id": "EAID_896321D0_64F2_465a_AC76_B3CBC8F4B40D",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_B5C53910_DECB_46fa_B95E_56687FD2DC6A",
+      "source_class_id_raw": "EAID_B5C53910_DECB_46fa_B95E_56687FD2DC6A",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_name": "三维模型"
+    },
+    {
+      "generalization_id": "EAID_8C873DFD_BFEB_48f3_8436_6778BE57EACB",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+      "source_class_id_raw": "EAID_01FFC6E0_0784_4e86_8AB9_1CAEE39279AE",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "target_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "target_class_name": "测绘资质"
+    },
+    {
+      "generalization_id": "EAID_98B3C414_0F03_4293_8C19_88E46590A999",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_17C26921_270B_407a_AC71_90A355B8F91F",
+      "source_class_id_raw": "EAID_17C26921_270B_407a_AC71_90A355B8F91F",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_name": "人工地理实体"
+    },
+    {
+      "generalization_id": "EAID_09B73C6A_D391_497a_B3CF_22F32C06EC1A",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_694C3B96_E8CC_4068_A81D_734A7D22F5EF",
+      "source_class_id_raw": "EAID_694C3B96_E8CC_4068_A81D_734A7D22F5EF",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "target_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "target_class_name": "mesh三维模型"
+    },
+    {
+      "generalization_id": "EAID_D3D21358_EAC0_4acd_BB59_C241CB53E9C6",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_847CCE73_3F49_4355_A94F_FFC2F2E56B9D",
+      "source_class_id_raw": "EAID_847CCE73_3F49_4355_A94F_FFC2F2E56B9D",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+      "target_class_id_raw": "EAID_1F25C797_92DB_4f43_A895_F8D65DC746DD",
+      "target_class_name": "参数化三维模型"
+    },
+    {
+      "generalization_id": "EAID_41663E41_BD5C_4974_BCDB_CBA7F90F283B",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_00A40729_467E_4a42_93F8_FF80CEB3A664",
+      "source_class_id_raw": "EAID_00A40729_467E_4a42_93F8_FF80CEB3A664",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_name": "人工地理实体"
+    },
+    {
+      "generalization_id": "EAID_9CDCA762_0C6E_44cc_9D24_4DCC8A41E9FC",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_5B790B67_2B36_4f71_8A37_69536A7D14FF",
+      "source_class_id_raw": "EAID_5B790B67_2B36_4f71_8A37_69536A7D14FF",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_name": "自然地理实体"
+    },
+    {
+      "generalization_id": "EAID_D5F51B63_4C37_4545_8A6D_F90EADFCAC77",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_8761E953_34BE_4ec7_950D_F1BDCB70E03A",
+      "source_class_id_raw": "EAID_8761E953_34BE_4ec7_950D_F1BDCB70E03A",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_name": "地形地貌"
+    },
+    {
+      "generalization_id": "EAID_600DAFC4_B538_4125_984B_870ACBBB096F",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_BEA6DDDB_DE91_42f1_890C_73DF7B937F9F",
+      "source_class_id_raw": "EAID_BEA6DDDB_DE91_42f1_890C_73DF7B937F9F",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "target_class_id_raw": "EAID_C65D2210_4FE2_4675_A96F_56535F36EADD",
+      "target_class_name": "mesh三维模型"
+    },
+    {
+      "generalization_id": "EAID_1249A478_C281_400d_9159_1EED5F3464B5",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "source_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+      "target_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+      "target_class_name": "基础地理实体"
+    },
+    {
+      "generalization_id": "EAID_EDEA7BE7_6884_4fd1_82EC_3EAD54C81C93",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "source_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "target_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "target_class_name": "地理场景"
+    },
+    {
+      "generalization_id": "EAID_841BEA8D_AA4B_45c2_AE73_7849CF09D01B",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_DF8E5654_9353_42f9_9AB1_960F947B27D8",
+      "source_class_id_raw": "EAID_DF8E5654_9353_42f9_9AB1_960F947B27D8",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_name": "自然地理实体"
+    },
+    {
+      "generalization_id": "EAID_A62E0156_805C_4f4c_90B4_2F55507DD6B2",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_56C86453_EB4B_4d68_AB02_031CAD475214",
+      "source_class_id_raw": "EAID_56C86453_EB4B_4d68_AB02_031CAD475214",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_name": "地形地貌"
+    },
+    {
+      "generalization_id": "EAID_74420BBD_1231_43f9_91B5_734510E70B2F",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+      "source_class_id_raw": "EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_name": "地形地貌"
+    },
+    {
+      "generalization_id": "EAID_467B5736_7132_4987_B0C2_7BBE66108C3A",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_DC1BDD86_031B_42c6_A130_9B2D335967A0",
+      "source_class_id_raw": "EAID_DC1BDD86_031B_42c6_A130_9B2D335967A0",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+      "target_class_id_raw": "EAID_24991B28_B8CB_4299_80E6_70B5715F805F",
+      "target_class_name": "数字地面模型"
+    },
+    {
+      "generalization_id": "EAID_7C7E6402_BD0B_4605_BB45_269850283A41",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_8DC833E6_7538_4627_983A_85231DFCA20E",
+      "source_class_id_raw": "EAID_8DC833E6_7538_4627_983A_85231DFCA20E",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "target_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "target_class_name": "遥感影像"
+    },
+    {
+      "generalization_id": "EAID_CD860974_43F7_4f31_AC1A_E3B3DB2B3B88",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_DD7AA74F_B8D6_4819_9FF6_7A9FCD617BD6",
+      "source_class_id_raw": "EAID_DD7AA74F_B8D6_4819_9FF6_7A9FCD617BD6",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_name": "人工地理实体"
+    },
+    {
+      "generalization_id": "EAID_9B810FEE_7243_4659_8CC9_64759DAAB560",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_C726FA55_D925_4123_BB66_EF92A245EE73",
+      "source_class_id_raw": "EAID_C726FA55_D925_4123_BB66_EF92A245EE73",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_name": "自然地理实体"
+    },
+    {
+      "generalization_id": "EAID_67A2CE9D_084E_4ac9_9622_95C1387F94C3",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_A490192B_0F18_4ec3_B7BE_91B84E1B9E84",
+      "source_class_id_raw": "EAID_A490192B_0F18_4ec3_B7BE_91B84E1B9E84",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_id_raw": "EAID_4A6B97ED_1E6C_4ede_A074_247724F4EB84",
+      "target_class_name": "三维模型"
+    },
+    {
+      "generalization_id": "EAID_70B686B2_C4A2_42fe_AF52_144F359E53EC",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_3D912942_CE15_40e8_9DA8_9578FF19336D",
+      "source_class_id_raw": "EAID_3D912942_CE15_40e8_9DA8_9578FF19336D",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "target_class_id_raw": "EAID_3807E3F2_E1B9_4da2_B378_A83E3596906F",
+      "target_class_name": "管理地理实体"
+    },
+    {
+      "generalization_id": "EAID_7D32F480_817C_4fab_BFA1_B9FEA8A50D16",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_A61B9E05_605F_4a70_958D_196951050EC9",
+      "source_class_id_raw": "EAID_A61B9E05_605F_4a70_958D_196951050EC9",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_name": "地形地貌"
+    },
+    {
+      "generalization_id": "EAID_2936083D_828D_49ba_A86F_190816173F68",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_7EEAA3BB_ACE0_493e_BABC_13C5DD59D7E7",
+      "source_class_id_raw": "EAID_7EEAA3BB_ACE0_493e_BABC_13C5DD59D7E7",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_id_raw": "EAID_5195C2C3_1A39_4e41_B0B5_B8D3FA44D1EF",
+      "target_class_name": "地形地貌"
+    },
+    {
+      "generalization_id": "EAID_31DB3989_5D72_4358_985C_117D7FF12FAD",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "source_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "target_class_id_raw": "EAID_52BB64CD_FAC3_44aa_BEA6_EB0BC67E2F12",
+      "target_class_name": "地理场景"
+    },
+    {
+      "generalization_id": "EAID_79E292C0_B697_40a0_BCE1_5F5170FF7426",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_4E3D60C4_48F2_4402_841A_AF67407CE66D",
+      "source_class_id_raw": "EAID_4E3D60C4_48F2_4402_841A_AF67407CE66D",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "target_class_id_raw": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711",
+      "target_class_name": "测绘资质"
+    },
+    {
+      "generalization_id": "EAID_F91244E6_A723_46ec_9E1F_B12004C675C9",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_CE4C0A85_2F91_42e2_8EB0_21F80C6C32D2",
+      "source_class_id_raw": "EAID_CE4C0A85_2F91_42e2_8EB0_21F80C6C32D2",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_id_raw": "EAID_0704775E_DF56_4614_8386_1ED03C2A1654",
+      "target_class_name": "人工地理实体"
+    },
+    {
+      "generalization_id": "EAID_138272A9_7822_448f_A234_ACAF5E9F5845",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_327B877E_EC38_434d_8174_8DEFB7B6E317",
+      "source_class_id_raw": "EAID_327B877E_EC38_434d_8174_8DEFB7B6E317",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "target_class_id_raw": "EAID_A072E69F_27F0_47ec_B28B_E67116CD1E71",
+      "target_class_name": "遥感影像"
+    },
+    {
+      "generalization_id": "EAID_71389840_A810_46a4_AF19_0E6DD0DD36F5",
+      "source_class_id": "01统一地理底图__c550df8c::class::EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "source_class_id_raw": "EAID_8C4E4CB1_CF02_4b97_87BE_EEA27E222A41",
+      "target_class_id": "01统一地理底图__c550df8c::class::EAID_9338CA07_7121_4903_9F06_545015108255",
+      "target_class_id_raw": "EAID_9338CA07_7121_4903_9F06_545015108255",
+      "target_class_name": "基础地理实体"
+    }
+  ],
+  "class_count": 45,
+  "association_count": 7,
+  "generalization_count": 38,
+  "unresolved_ref_count": 1,
+  "unresolved_refs": [
+    {
+      "ref_id": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+      "context": "generalization_target",
+      "owner_id": "EAID_4B90C9A5_28F9_4ed6_910E_18D49677D711"
+    }
+  ],
+  "stats": {
+    "total_packages": 3,
+    "total_classes": 45,
+    "total_attributes": 10,
+    "total_associations": 7,
+    "total_generalizations": 38
+  }
+}

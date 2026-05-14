@@ -1,0 +1,3489 @@
+{
+  "module_id": "04统一空间规划__2919b80c",
+  "module_id_raw": "04统一空间规划",
+  "module_name": "04统一空间规划",
+  "source_file": "04统一空间规划.xml",
+  "top_package_name": "04统一空间规划",
+  "classes": [
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_55DA3CA1_AEE1_4f4b_AFE1_4BFE0F8A99B9",
+      "class_id_raw": "EAID_55DA3CA1_AEE1_4f4b_AFE1_4BFE0F8A99B9",
+      "class_name": "Class1",
+      "class_raw_name": "Class1",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_2A02C8FC_2DEB_44fd_BA73_5DE11B560F40",
+      "class_id_raw": "EAID_2A02C8FC_2DEB_44fd_BA73_5DE11B560F40",
+      "class_name": "安全指标",
+      "class_raw_name": "安全指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3E4B8BCD_E8D8_4573_A54F_2D4BDC153BB1",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_2A02C8FC_2DEB_44fd_BA73_5DE11B560F40",
+          "source_class_id_raw": "EAID_2A02C8FC_2DEB_44fd_BA73_5DE11B560F40",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_name": "国土空间规划城市体检评估指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "super_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_DA1998A7_FCBA_436a_B31D_6EFDA0046A20",
+      "class_id_raw": "EAID_DA1998A7_FCBA_436a_B31D_6EFDA0046A20",
+      "class_name": "城市设计编制项目",
+      "class_raw_name": "城市设计编制项目",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C6B65F84_8042_4183_8458_40EBA8188DF1",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_DA1998A7_FCBA_436a_B31D_6EFDA0046A20",
+          "source_class_id_raw": "EAID_DA1998A7_FCBA_436a_B31D_6EFDA0046A20",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_name": "规划编制项目"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_ids_raw": [
+        "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "super_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+      "class_id_raw": "EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+      "class_name": "城市设计空间成果",
+      "class_raw_name": "城市设计空间成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_7CAACA0E_19F1_4434_A07F_7291888F9105",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "source_class_id_raw": "EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_name": "规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "super_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_8276670A_F1AB_4974_A8A9_CB224C24F3B4",
+      "class_id_raw": "EAID_8276670A_F1AB_4974_A8A9_CB224C24F3B4",
+      "class_name": "城乡规划编制单位资质",
+      "class_raw_name": "城乡规划编制单位资质",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_DEBE3D9B_392C_43b5_B54A_C44C95CBF31D",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_8276670A_F1AB_4974_A8A9_CB224C24F3B4",
+          "source_class_id_raw": "EAID_8276670A_F1AB_4974_A8A9_CB224C24F3B4",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_name": "规划文书证照"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "super_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_0252E8EF_80FF_4336_8D23_34D74582862F",
+      "class_id_raw": "EAID_0252E8EF_80FF_4336_8D23_34D74582862F",
+      "class_name": "创新指标",
+      "class_raw_name": "创新指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_301C98DE_0C19_43b2_AC1D_DB83F6CC9E48",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_0252E8EF_80FF_4336_8D23_34D74582862F",
+          "source_class_id_raw": "EAID_0252E8EF_80FF_4336_8D23_34D74582862F",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_name": "国土空间规划城市体检评估指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "super_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_43D79444_6D6C_4cdb_8CD5_E3E6EB7F72F8",
+      "class_id_raw": "EAID_43D79444_6D6C_4cdb_8CD5_E3E6EB7F72F8",
+      "class_name": "村级行政区",
+      "class_raw_name": "村级行政区",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+      "class_id_raw": "EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+      "class_name": "村庄规划空间成果",
+      "class_raw_name": "村庄规划空间成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_621C3B9F_366C_44bc_A894_13B3CD5FFBDD",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "source_class_id_raw": "EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+          "target_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+          "target_class_name": "国土空间详细规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B12DA787_DF77_4c6a_982B_473503A724C5"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "super_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_790C312C_7902_4e97_9804_3A350A17B2E8",
+      "class_id_raw": "EAID_790C312C_7902_4e97_9804_3A350A17B2E8",
+      "class_name": "村庄建设边界",
+      "class_raw_name": "村庄建设边界",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_4681EC08_D5D4_449a_9075_D90EB817BF75",
+      "class_id_raw": "EAID_4681EC08_D5D4_449a_9075_D90EB817BF75",
+      "class_name": "道路中心线",
+      "class_raw_name": "道路中心线",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_B8ADF5A1_868C_4661_862B_B79318D38E53",
+      "class_id_raw": "EAID_B8ADF5A1_868C_4661_862B_B79318D38E53",
+      "class_name": "底线管控指标",
+      "class_raw_name": "底线管控指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B14F6A9E_0125_4842_98FE_044E93F203C0",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_B8ADF5A1_868C_4661_862B_B79318D38E53",
+          "source_class_id_raw": "EAID_B8ADF5A1_868C_4661_862B_B79318D38E53",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "target_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "target_class_name": "国土空间总体规划指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+      ],
+      "super_class_ids_raw": [
+        "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "super_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_AC677770_051E_4034_99BF_E2D07FAEB626",
+      "class_id_raw": "EAID_AC677770_051E_4034_99BF_E2D07FAEB626",
+      "class_name": "分析评价",
+      "class_raw_name": "分析评价",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_8AFCE4A4_2DEB_4e55_B1DE_836CB882D40C",
+      "class_id_raw": "EAID_8AFCE4A4_2DEB_4e55_B1DE_836CB882D40C",
+      "class_name": "共享指标",
+      "class_raw_name": "共享指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_63407C1F_159A_4518_BD4E_41C09AF04C3F",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_8AFCE4A4_2DEB_4e55_B1DE_836CB882D40C",
+          "source_class_id_raw": "EAID_8AFCE4A4_2DEB_4e55_B1DE_836CB882D40C",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_name": "国土空间规划城市体检评估指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "super_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+      "class_id_raw": "EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+      "class_name": "规划编审管理",
+      "class_raw_name": "规划编审管理",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_60A98F10_95EB_40b0_96AB_FF9E26EB225A",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+          "source_class_id_raw": "EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_AD12487E_283B_490b_B90D_FE32DB4D8DBA",
+      "class_id_raw": "EAID_AD12487E_283B_490b_B90D_FE32DB4D8DBA",
+      "class_name": "规划编制计划",
+      "class_raw_name": "规划编制计划",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_A5074599_8F37_425d_B3BC_6B4C40C53CE5",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_AD12487E_283B_490b_B90D_FE32DB4D8DBA",
+          "source_class_id_raw": "EAID_AD12487E_283B_490b_B90D_FE32DB4D8DBA",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "class_name": "规划编制项目",
+      "class_raw_name": "规划编制项目",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_40BF5036_386B_4cd0_B5E7_6F4354A94DBD",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "source_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_91B0EB64_3B1F_4eef_9F21_3CCCE5639A21",
+      "class_id_raw": "EAID_91B0EB64_3B1F_4eef_9F21_3CCCE5639A21",
+      "class_name": "规划编制项目管理",
+      "class_raw_name": "规划编制项目管理",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_30B1BF35_F792_45a9_8A03_08B21F6A568E",
+      "class_id_raw": "EAID_30B1BF35_F792_45a9_8A03_08B21F6A568E",
+      "class_name": "规划表格",
+      "class_raw_name": "规划表格",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_7EA7167B_E3BB_4d63_ABFD_71BDD83EF519",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_30B1BF35_F792_45a9_8A03_08B21F6A568E",
+          "source_class_id_raw": "EAID_30B1BF35_F792_45a9_8A03_08B21F6A568E",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_name": "规划材料"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_ids_raw": [
+        "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "super_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "class_name": "规划材料",
+      "class_raw_name": "规划材料",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_5C52FC6E_DC37_4c36_9CEA_CB9310344AE6",
+      "class_id_raw": "EAID_5C52FC6E_DC37_4c36_9CEA_CB9310344AE6",
+      "class_name": "规划成果",
+      "class_raw_name": "规划成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_8A7DE393_54AF_443e_875D_72288D779795",
+      "class_id_raw": "EAID_8A7DE393_54AF_443e_875D_72288D779795",
+      "class_name": "规划调整",
+      "class_raw_name": "规划调整",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3C1ECC07_02D2_468a_838E_F546883A054C",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_8A7DE393_54AF_443e_875D_72288D779795",
+          "source_class_id_raw": "EAID_8A7DE393_54AF_443e_875D_72288D779795",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+      "class_id_raw": "EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+      "class_name": "规划符合性审查",
+      "class_raw_name": "规划符合性审查",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_FD49CB15_61B6_4a46_A2FC_AFCF53EF5D10",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "source_class_id_raw": "EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_AD8BE3DB_087D_45e4_B3EC_358D59298F20",
+      "class_id_raw": "EAID_AD8BE3DB_087D_45e4_B3EC_358D59298F20",
+      "class_name": "规划符合性审查意见",
+      "class_raw_name": "规划符合性审查意见",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_95A5BE18_7ABD_4ae0_8635_D854CDC5730F",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_AD8BE3DB_087D_45e4_B3EC_358D59298F20",
+          "source_class_id_raw": "EAID_AD8BE3DB_087D_45e4_B3EC_358D59298F20",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_name": "规划文书证照"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "super_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_0E4308F4_68F7_4714_9C7D_79DBA403C596",
+      "class_id_raw": "EAID_0E4308F4_68F7_4714_9C7D_79DBA403C596",
+      "class_name": "规划附件",
+      "class_raw_name": "规划附件",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_7CFB5A04_DF5B_425b_947D_EA1BB26E3861",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_0E4308F4_68F7_4714_9C7D_79DBA403C596",
+          "source_class_id_raw": "EAID_0E4308F4_68F7_4714_9C7D_79DBA403C596",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_name": "规划材料"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_ids_raw": [
+        "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "super_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "class_name": "规划空间成果",
+      "class_raw_name": "规划空间成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_086DF9CA_2C69_47a7_A110_166F7CD6AABE",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "source_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_79BE6572_DC25_4a08_923F_1CC3CB02DD41",
+      "class_id_raw": "EAID_79BE6572_DC25_4a08_923F_1CC3CB02DD41",
+      "class_name": "规划批复",
+      "class_raw_name": "规划批复",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_DFA5AD70_D41D_44be_977E_09F3E0BE2A9F",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_79BE6572_DC25_4a08_923F_1CC3CB02DD41",
+          "source_class_id_raw": "EAID_79BE6572_DC25_4a08_923F_1CC3CB02DD41",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_name": "规划文书证照"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "super_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_4ADFD599_8824_410b_BB15_BF5B999A5337",
+      "class_id_raw": "EAID_4ADFD599_8824_410b_BB15_BF5B999A5337",
+      "class_name": "规划图集",
+      "class_raw_name": "规划图集",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_ECA04998_E486_4a48_9DFF_D3650AD95658",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_4ADFD599_8824_410b_BB15_BF5B999A5337",
+          "source_class_id_raw": "EAID_4ADFD599_8824_410b_BB15_BF5B999A5337",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_name": "规划材料"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_ids_raw": [
+        "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "super_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_D4D8A811_362D_4099_8BC9_505BEEA8426B",
+      "class_id_raw": "EAID_D4D8A811_362D_4099_8BC9_505BEEA8426B",
+      "class_name": "规划文本",
+      "class_raw_name": "规划文本",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_1DD7825B_B017_4c2d_ABDE_D8E5C25505A0",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_D4D8A811_362D_4099_8BC9_505BEEA8426B",
+          "source_class_id_raw": "EAID_D4D8A811_362D_4099_8BC9_505BEEA8426B",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "target_class_name": "规划材料"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_ids_raw": [
+        "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "super_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "class_name": "规划文书证照",
+      "class_raw_name": "规划文书证照",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_69DE1273_4F16_4cad_9763_92E31C545F29",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "source_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+          "target_class_name": null
+        },
+        {
+          "generalization_id": "EAID_A40BA9D5_7FBE_40b9_A76A_A504B9FD9B0E",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "source_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+        "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_78A0F9F3_25C0_46e1_B102_FF9593461C3C",
+      "class_id_raw": "EAID_78A0F9F3_25C0_46e1_B102_FF9593461C3C",
+      "class_name": "规划用地",
+      "class_raw_name": "规划用地",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+      "class_id_raw": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+      "class_name": "国土空间规划城市体检评估",
+      "class_raw_name": "国土空间规划城市体检评估",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_CEC1FCC2_E9C0_45da_B0FA_1D87FBFE7119",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "source_class_id_raw": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_A3EE54DA_C094_44aa_B2A7_EB6A7AF13601",
+      "class_id_raw": "EAID_A3EE54DA_C094_44aa_B2A7_EB6A7AF13601",
+      "class_name": "国土空间规划城市体检评估报告",
+      "class_raw_name": "国土空间规划城市体检评估报告",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2C6A663C_2B18_4b9f_9111_0318FD512BC3",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_A3EE54DA_C094_44aa_B2A7_EB6A7AF13601",
+          "source_class_id_raw": "EAID_A3EE54DA_C094_44aa_B2A7_EB6A7AF13601",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "target_class_name": "规划文书证照"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "super_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "class_name": "国土空间规划城市体检评估指标",
+      "class_raw_name": "国土空间规划城市体检评估指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_6ADD18F3_0F38_4a5c_9A6A_D132772AFC13",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "source_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "target_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "target_class_name": "国土空间规划指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954"
+      ],
+      "super_class_ids_raw": [
+        "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "super_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "class_name": "国土空间规划指标",
+      "class_raw_name": "国土空间规划指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_F14AD5E9_4C0E_4889_9E80_5C168F71F04F",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "source_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_8209BAC8_BB58_4ad2_805D_B214A7A239B8",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_8209BAC8_BB58_4ad2_805D_B214A7A239B8"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_8209BAC8_BB58_4ad2_805D_B214A7A239B8"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "class_name": "国土空间详细规划空间成果",
+      "class_raw_name": "国土空间详细规划空间成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_EC87ED55_0119_4d41_B2BF_F73B4A512441",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+          "source_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_name": "规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "super_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "class_name": "国土空间专项规划空间成果",
+      "class_raw_name": "国土空间专项规划空间成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_8795860D_48A4_4689_8326_C8B7514484F1",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "source_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_name": "规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "super_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+      "class_id_raw": "EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+      "class_name": "国土空间总体规划空间成果",
+      "class_raw_name": "国土空间总体规划空间成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B43A6F02_65FE_412f_8BF1_CF87AB579509",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "source_class_id_raw": "EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "target_class_name": "规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "super_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "class_name": "国土空间总体规划指标",
+      "class_raw_name": "国土空间总体规划指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_07B17AEE_2CC2_4acf_AC99_2FD8F2714575",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "source_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "target_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "target_class_name": "国土空间规划指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954"
+      ],
+      "super_class_ids_raw": [
+        "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "super_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_C708249E_4500_4b3f_B8F0_96986190A1FB",
+      "class_id_raw": "EAID_C708249E_4500_4b3f_B8F0_96986190A1FB",
+      "class_name": "基期年现状",
+      "class_raw_name": "基期年现状",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_0AA98DE7_3494_4b92_918A_2BFCEB1E6932",
+      "class_id_raw": "EAID_0AA98DE7_3494_4b92_918A_2BFCEB1E6932",
+      "class_name": "交通相关专项规划",
+      "class_raw_name": "交通相关专项规划",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_6D85DD29_872A_4bc3_9C09_706EDE8EBBD2",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_0AA98DE7_3494_4b92_918A_2BFCEB1E6932",
+          "source_class_id_raw": "EAID_0AA98DE7_3494_4b92_918A_2BFCEB1E6932",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_name": "国土空间专项规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "super_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_55452D20_D424_458b_B5BD_83E6222BBC56",
+      "class_id_raw": "EAID_55452D20_D424_458b_B5BD_83E6222BBC56",
+      "class_name": "教育相关专项规划",
+      "class_raw_name": "教育相关专项规划",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_A406538F_6837_4783_8C5E_1B0D96E11507",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_55452D20_D424_458b_B5BD_83E6222BBC56",
+          "source_class_id_raw": "EAID_55452D20_D424_458b_B5BD_83E6222BBC56",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_name": "国土空间专项规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "super_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_5DE7548E_8792_406a_9DFE_C120BCE4CC5D",
+      "class_id_raw": "EAID_5DE7548E_8792_406a_9DFE_C120BCE4CC5D",
+      "class_name": "结构效率指标",
+      "class_raw_name": "结构效率指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_5F4BF4C1_F3BA_48f1_838A_1BB08AD79F63",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_5DE7548E_8792_406a_9DFE_C120BCE4CC5D",
+          "source_class_id_raw": "EAID_5DE7548E_8792_406a_9DFE_C120BCE4CC5D",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "target_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "target_class_name": "国土空间总体规划指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+      ],
+      "super_class_ids_raw": [
+        "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "super_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_3A4BE3D6_9241_4acf_A4E6_726B3F35B93D",
+      "class_id_raw": "EAID_3A4BE3D6_9241_4acf_A4E6_726B3F35B93D",
+      "class_name": "景观风貌",
+      "class_raw_name": "景观风貌",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_FBCF4824_1F93_40d0_84ED_3DE4EE093BAF",
+      "class_id_raw": "EAID_FBCF4824_1F93_40d0_84ED_3DE4EE093BAF",
+      "class_name": "境界与行政区",
+      "class_raw_name": "境界与行政区",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_34461C62_0921_4e46_9B6B_0DF3AE759BB2",
+      "class_id_raw": "EAID_34461C62_0921_4e46_9B6B_0DF3AE759BB2",
+      "class_name": "开敞空间",
+      "class_raw_name": "开敞空间",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_DE66428A_8D50_45c7_84DE_A94F005462A5",
+      "class_id_raw": "EAID_DE66428A_8D50_45c7_84DE_A94F005462A5",
+      "class_name": "开放指标",
+      "class_raw_name": "开放指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B4D7DA9E_361F_41a6_BCF5_B1FF71BE0194",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_DE66428A_8D50_45c7_84DE_A94F005462A5",
+          "source_class_id_raw": "EAID_DE66428A_8D50_45c7_84DE_A94F005462A5",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_name": "国土空间规划城市体检评估指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "super_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_5AD5296B_47D3_447a_AF77_6F9460DBD3D1",
+      "class_id_raw": "EAID_5AD5296B_47D3_447a_AF77_6F9460DBD3D1",
+      "class_name": "空间形态",
+      "class_raw_name": "空间形态",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_1FE14234_D30A_4b22_9769_CE07E5E5DDE4",
+      "class_id_raw": "EAID_1FE14234_D30A_4b22_9769_CE07E5E5DDE4",
+      "class_name": "控规单元",
+      "class_raw_name": "控规单元",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+      "class_id_raw": "EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+      "class_name": "控制性详细规划空间成果",
+      "class_raw_name": "控制性详细规划空间成果",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_49D5B15F_7984_45a6_B30F_FF89C31DB927",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "source_class_id_raw": "EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+          "target_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+          "target_class_name": "国土空间详细规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B12DA787_DF77_4c6a_982B_473503A724C5"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "super_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_3B1CFA8E_0BA4_4564_8E4F_7FCD163089A7",
+      "class_id_raw": "EAID_3B1CFA8E_0BA4_4564_8E4F_7FCD163089A7",
+      "class_name": "历史文化保护相关专项规划",
+      "class_raw_name": "历史文化保护相关专项规划",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3ED59CB9_071D_4597_9616_995067D72361",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_3B1CFA8E_0BA4_4564_8E4F_7FCD163089A7",
+          "source_class_id_raw": "EAID_3B1CFA8E_0BA4_4564_8E4F_7FCD163089A7",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_name": "国土空间专项规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "super_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_AC22EBCB_678B_45f5_A13E_0AD7CFB3F157",
+      "class_id_raw": "EAID_AC22EBCB_678B_45f5_A13E_0AD7CFB3F157",
+      "class_name": "绿色指标",
+      "class_raw_name": "绿色指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2E2E4DC8_96E5_433e_AEC5_A6D584D1F86F",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_AC22EBCB_678B_45f5_A13E_0AD7CFB3F157",
+          "source_class_id_raw": "EAID_AC22EBCB_678B_45f5_A13E_0AD7CFB3F157",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_name": "国土空间规划城市体检评估指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "super_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_1C9AC9BE_8440_4500_8F2E_A439B6D9CB17",
+      "class_id_raw": "EAID_1C9AC9BE_8440_4500_8F2E_A439B6D9CB17",
+      "class_name": "目标年规划",
+      "class_raw_name": "目标年规划",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_865E9DD8_969D_480e_9214_53A46D35AE3A",
+      "class_id_raw": "EAID_865E9DD8_969D_480e_9214_53A46D35AE3A",
+      "class_name": "生活品质指标",
+      "class_raw_name": "生活品质指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_FBEE90FC_1C51_4a07_B4C6_D326AECCF23D",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_865E9DD8_969D_480e_9214_53A46D35AE3A",
+          "source_class_id_raw": "EAID_865E9DD8_969D_480e_9214_53A46D35AE3A",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "target_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "target_class_name": "国土空间总体规划指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+      ],
+      "super_class_ids_raw": [
+        "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "super_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_7818DD93_340B_4cd2_8910_BE74F12A6FC4",
+      "class_id_raw": "EAID_7818DD93_340B_4cd2_8910_BE74F12A6FC4",
+      "class_name": "生态保护专项规划",
+      "class_raw_name": "生态保护专项规划",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_0A0ABF67_126B_4ffa_A867_82B13397B851",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_7818DD93_340B_4cd2_8910_BE74F12A6FC4",
+          "source_class_id_raw": "EAID_7818DD93_340B_4cd2_8910_BE74F12A6FC4",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+          "target_class_name": "国土空间专项规划空间成果"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_ids_raw": [
+        "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "super_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_AB26B5AF_70F9_43fe_9311_1712C200B855",
+      "class_id_raw": "EAID_AB26B5AF_70F9_43fe_9311_1712C200B855",
+      "class_name": "现状用地用海",
+      "class_raw_name": "现状用地用海",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_A2238B82_500F_42db_A164_EA2F598A9F74",
+      "class_id_raw": "EAID_A2238B82_500F_42db_A164_EA2F598A9F74",
+      "class_name": "详规编制项目",
+      "class_raw_name": "详规编制项目",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_6311F025_131A_4e42_8F79_9A920A2DC199",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_A2238B82_500F_42db_A164_EA2F598A9F74",
+          "source_class_id_raw": "EAID_A2238B82_500F_42db_A164_EA2F598A9F74",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_name": "规划编制项目"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_ids_raw": [
+        "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "super_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_BE40DA76_C4D5_45be_A930_40B883F61709",
+      "class_id_raw": "EAID_BE40DA76_C4D5_45be_A930_40B883F61709",
+      "class_name": "协调指标",
+      "class_raw_name": "协调指标",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_DC5CFC74_0569_443c_9412_4524F31D351A",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_BE40DA76_C4D5_45be_A930_40B883F61709",
+          "source_class_id_raw": "EAID_BE40DA76_C4D5_45be_A930_40B883F61709",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "target_class_name": "国土空间规划城市体检评估指标"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "super_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22",
+      "class_id_raw": "EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22",
+      "class_name": "一级图例",
+      "class_raw_name": "一级图例",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_C4E8D002_9361_4ff4_9410_C1F8CABEA6EB",
+          "attribute_id_raw": "EAID_C4E8D002_9361_4ff4_9410_C1F8CABEA6EB",
+          "attribute_name": "产生时间",
+          "attribute_raw_name": "产生时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_A15A073D_7D6C_49ec_9138_D60C77EC92CE",
+          "attribute_id_raw": "EAID_A15A073D_7D6C_49ec_9138_D60C77EC92CE",
+          "attribute_name": "分类码",
+          "attribute_raw_name": "分类码",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_55AFDF28_CF03_4ad0_BDC3_D65794CFA7AD",
+          "attribute_id_raw": "EAID_55AFDF28_CF03_4ad0_BDC3_D65794CFA7AD",
+          "attribute_name": "分类名称",
+          "attribute_raw_name": "分类名称",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_5414CCF5_292A_4ca3_9EF0_C87B44B9D2A7",
+          "attribute_id_raw": "EAID_5414CCF5_292A_4ca3_9EF0_C87B44B9D2A7",
+          "attribute_name": "更新时间",
+          "attribute_raw_name": "更新时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_73A08613_3F25_4737_96B2_B0BD06054F1E",
+          "attribute_id_raw": "EAID_73A08613_3F25_4737_96B2_B0BD06054F1E",
+          "attribute_name": "更新状态",
+          "attribute_raw_name": "更新状态",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_1B1F8523_8071_471b_A538_8FEE04D14C4C",
+          "attribute_id_raw": "EAID_1B1F8523_8071_471b_A538_8FEE04D14C4C",
+          "attribute_name": "空间身份编码",
+          "attribute_raw_name": "空间身份编码",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_9ED2F9BF_F748_4a68_BFAF_DD73392A176D",
+          "attribute_id_raw": "EAID_9ED2F9BF_F748_4a68_BFAF_DD73392A176D",
+          "attribute_name": "入库时间",
+          "attribute_raw_name": "入库时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_C3E695DD_51C2_42c1_A20D_2934EA30EC11",
+          "attribute_id_raw": "EAID_C3E695DD_51C2_42c1_A20D_2934EA30EC11",
+          "attribute_name": "实体名称",
+          "attribute_raw_name": "实体名称",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_4717D476_EB2B_44a3_98E8_CF6E4919397B",
+          "attribute_id_raw": "EAID_4717D476_EB2B_44a3_98E8_CF6E4919397B",
+          "attribute_name": "位置码",
+          "attribute_raw_name": "位置码",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        },
+        {
+          "attribute_id": "04统一空间规划__2919b80c::class::EAID_8895B372_B5CB_45f6_9B84_EFE2279B6F22::attr::EAID_FAD341BB_1ED8_4e6f_9212_F33130296053",
+          "attribute_id_raw": "EAID_FAD341BB_1ED8_4e6f_9212_F33130296053",
+          "attribute_name": "消亡时间",
+          "attribute_raw_name": "消亡时间",
+          "attribute_type": "integer",
+          "type_ref": "EAJava_int",
+          "type_global_ref": null,
+          "lower": "1",
+          "upper": "1",
+          "visibility": "private"
+        }
+      ],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_1E1B2E32_79B7_4a27_B9CC_09AD6172F27C",
+      "class_id_raw": "EAID_1E1B2E32_79B7_4a27_B9CC_09AD6172F27C",
+      "class_name": "专规编制项目",
+      "class_raw_name": "专规编制项目",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_92304896_DAE8_4e28_A838_C357CDC04FF2",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_1E1B2E32_79B7_4a27_B9CC_09AD6172F27C",
+          "source_class_id_raw": "EAID_1E1B2E32_79B7_4a27_B9CC_09AD6172F27C",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_name": "规划编制项目"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_ids_raw": [
+        "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "super_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+    },
+    {
+      "class_id": "04统一空间规划__2919b80c::class::EAID_DB9168CA_3606_424e_9E75_B046587F28A2",
+      "class_id_raw": "EAID_DB9168CA_3606_424e_9E75_B046587F28A2",
+      "class_name": "总规编制项目",
+      "class_raw_name": "总规编制项目",
+      "package_path": [
+        "04统一空间规划"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3425DA3F_CFC9_42ea_9EE4_BEDB7AFD30A9",
+          "source_class_id": "04统一空间规划__2919b80c::class::EAID_DB9168CA_3606_424e_9E75_B046587F28A2",
+          "source_class_id_raw": "EAID_DB9168CA_3606_424e_9E75_B046587F28A2",
+          "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "target_class_name": "规划编制项目"
+        }
+      ],
+      "super_class_ids": [
+        "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_ids_raw": [
+        "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+      ],
+      "super_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "super_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+    }
+  ],
+  "associations": [
+    {
+      "association_id": "EAID_766782A0_3476_4bce_B517_C84701416199",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src6782A0_3476_4bce_B517_C84701416199",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_34461C62_0921_4e46_9B6B_0DF3AE759BB2",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_34461C62_0921_4e46_9B6B_0DF3AE759BB2",
+          "type_name": "开敞空间",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst6782A0_3476_4bce_B517_C84701416199",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "type_name": "城市设计空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_34461C62_0921_4e46_9B6B_0DF3AE759BB2",
+          "owner_class_id_raw": "EAID_34461C62_0921_4e46_9B6B_0DF3AE759BB2",
+          "owner_class_name": "开敞空间",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_789E86D9_BC47_4fbc_ABC3_69D30B147C91",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src9E86D9_BC47_4fbc_ABC3_69D30B147C91",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_3A4BE3D6_9241_4acf_A4E6_726B3F35B93D",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_3A4BE3D6_9241_4acf_A4E6_726B3F35B93D",
+          "type_name": "景观风貌",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst9E86D9_BC47_4fbc_ABC3_69D30B147C91",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "type_name": "城市设计空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_3A4BE3D6_9241_4acf_A4E6_726B3F35B93D",
+          "owner_class_id_raw": "EAID_3A4BE3D6_9241_4acf_A4E6_726B3F35B93D",
+          "owner_class_name": "景观风貌",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_A6CC299C_117C_49ad_B12D_FC148DB32E51",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcCC299C_117C_49ad_B12D_FC148DB32E51",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_5AD5296B_47D3_447a_AF77_6F9460DBD3D1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_5AD5296B_47D3_447a_AF77_6F9460DBD3D1",
+          "type_name": "空间形态",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dstCC299C_117C_49ad_B12D_FC148DB32E51",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+          "type_name": "城市设计空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_5AD5296B_47D3_447a_AF77_6F9460DBD3D1",
+          "owner_class_id_raw": "EAID_5AD5296B_47D3_447a_AF77_6F9460DBD3D1",
+          "owner_class_name": "空间形态",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_440D5BDD_52A1_46ab_B13B_10A6A5811593",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src0D5BDD_52A1_46ab_B13B_10A6A5811593",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_43D79444_6D6C_4cdb_8CD5_E3E6EB7F72F8",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_43D79444_6D6C_4cdb_8CD5_E3E6EB7F72F8",
+          "type_name": "村级行政区",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst0D5BDD_52A1_46ab_B13B_10A6A5811593",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "type_name": "村庄规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_43D79444_6D6C_4cdb_8CD5_E3E6EB7F72F8",
+          "owner_class_id_raw": "EAID_43D79444_6D6C_4cdb_8CD5_E3E6EB7F72F8",
+          "owner_class_name": "村级行政区",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_1FAEAD53_397D_42f8_BC98_24185B6181CE",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcAEAD53_397D_42f8_BC98_24185B6181CE",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_790C312C_7902_4e97_9804_3A350A17B2E8",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_790C312C_7902_4e97_9804_3A350A17B2E8",
+          "type_name": "村庄建设边界",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dstAEAD53_397D_42f8_BC98_24185B6181CE",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "type_name": "村庄规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_790C312C_7902_4e97_9804_3A350A17B2E8",
+          "owner_class_id_raw": "EAID_790C312C_7902_4e97_9804_3A350A17B2E8",
+          "owner_class_name": "村庄建设边界",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_20022269_EE84_45e8_9CB0_29D07F657C02",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src022269_EE84_45e8_9CB0_29D07F657C02",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_AB26B5AF_70F9_43fe_9311_1712C200B855",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_AB26B5AF_70F9_43fe_9311_1712C200B855",
+          "type_name": "现状用地用海",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst022269_EE84_45e8_9CB0_29D07F657C02",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+          "type_name": "村庄规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_AB26B5AF_70F9_43fe_9311_1712C200B855",
+          "owner_class_id_raw": "EAID_AB26B5AF_70F9_43fe_9311_1712C200B855",
+          "owner_class_name": "现状用地用海",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_FED48EE1_3B55_42c4_8AE4_A61D5E742C81",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcD48EE1_3B55_42c4_8AE4_A61D5E742C81",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_4681EC08_D5D4_449a_9075_D90EB817BF75",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_4681EC08_D5D4_449a_9075_D90EB817BF75",
+          "type_name": "道路中心线",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dstD48EE1_3B55_42c4_8AE4_A61D5E742C81",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "type_name": "控制性详细规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_4681EC08_D5D4_449a_9075_D90EB817BF75",
+          "owner_class_id_raw": "EAID_4681EC08_D5D4_449a_9075_D90EB817BF75",
+          "owner_class_name": "道路中心线",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_5540EE43_59FF_4b95_AE7B_0C7917D558E7",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src40EE43_59FF_4b95_AE7B_0C7917D558E7",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_AC677770_051E_4034_99BF_E2D07FAEB626",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_AC677770_051E_4034_99BF_E2D07FAEB626",
+          "type_name": "分析评价",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst40EE43_59FF_4b95_AE7B_0C7917D558E7",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_name": "国土空间总体规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_AC677770_051E_4034_99BF_E2D07FAEB626",
+          "owner_class_id_raw": "EAID_AC677770_051E_4034_99BF_E2D07FAEB626",
+          "owner_class_name": "分析评价",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_AC19B7E0_339C_4e88_837F_AFB90C10F66B",
+      "association_name": "对成果进行审查",
+      "association_raw_name": "对成果进行审查",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src19B7E0_339C_4e88_837F_AFB90C10F66B",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst19B7E0_339C_4e88_837F_AFB90C10F66B",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+          "type_name": "规划编审管理",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_F3F0D9F6_CA56_4db7_8C1B_EE01B7230B78",
+      "association_name": "审查通过批复",
+      "association_raw_name": "审查通过批复",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcF0D9F6_CA56_4db7_8C1B_EE01B7230B78",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+          "type_global_ref": null,
+          "type_name": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dstF0D9F6_CA56_4db7_8C1B_EE01B7230B78",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+          "type_name": "规划编审管理",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_4C3B57E9_6C06_4546_BE58_B0FABC1DCE0C",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst3B57E9_6C06_4546_BE58_B0FABC1DCE0C",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "type_name": "国土空间规划指标",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src3B57E9_6C06_4546_BE58_B0FABC1DCE0C",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_5064E352_87D2_4dad_B7BD_B79EA9B4CB20",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst64E352_87D2_4dad_B7BD_B79EA9B4CB20",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_5C52FC6E_DC37_4c36_9CEA_CB9310344AE6",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_5C52FC6E_DC37_4c36_9CEA_CB9310344AE6",
+          "type_name": "规划成果",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src64E352_87D2_4dad_B7BD_B79EA9B4CB20",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_6987DCFA_52DA_4130_BE38_0EB55C290F0C",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst87DCFA_52DA_4130_BE38_0EB55C290F0C",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_91B0EB64_3B1F_4eef_9F21_3CCCE5639A21",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_91B0EB64_3B1F_4eef_9F21_3CCCE5639A21",
+          "type_name": "规划编制项目管理",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src87DCFA_52DA_4130_BE38_0EB55C290F0C",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_E70DCA2B_0538_4003_B2CE_E985962B1910",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst0DCA2B_0538_4003_B2CE_E985962B1910",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_name": "国土空间规划城市体检评估",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src0DCA2B_0538_4003_B2CE_E985962B1910",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_F15A2A5C_EB49_4f31_89E4_16CB14842AFF",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst5A2A5C_EB49_4f31_89E4_16CB14842AFF",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "type_global_ref": null,
+          "type_name": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src5A2A5C_EB49_4f31_89E4_16CB14842AFF",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_F3AE8828_3093_4df1_B86D_19F76EA2A59E",
+      "association_name": "成果应用",
+      "association_raw_name": "成果应用",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstAE8828_3093_4df1_B86D_19F76EA2A59E",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "type_name": "规划符合性审查",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcAE8828_3093_4df1_B86D_19F76EA2A59E",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_1DAAE4DF_63DE_4297_83A9_5A1FB3CA5AA5",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcAAE4DF_63DE_4297_83A9_5A1FB3CA5AA5",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_name": "规划材料",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dstAAE4DF_63DE_4297_83A9_5A1FB3CA5AA5",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "owner_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "owner_class_name": "规划材料",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_7DD0ED8D_36C1_4183_AAFE_BB654C948CC0",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcD0ED8D_36C1_4183_AAFE_BB654C948CC0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "type_name": "规划空间成果",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dstD0ED8D_36C1_4183_AAFE_BB654C948CC0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_AF2A47B4_F91F_45f4_A102_CDF6178D2E8F",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src2A47B4_F91F_45f4_A102_CDF6178D2E8F",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "type_name": "国土空间总体规划指标",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst2A47B4_F91F_45f4_A102_CDF6178D2E8F",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "owner_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+          "owner_class_name": "国土空间总体规划指标",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_E8135BB1_01A5_4cdd_9A48_06993B37EBE7",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src135BB1_01A5_4cdd_9A48_06993B37EBE7",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_name": "规划材料",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst135BB1_01A5_4cdd_9A48_06993B37EBE7",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+          "type_name": "规划编制项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_400A59B7_B580_4caf_B10E_DF817B0B3408",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst0A59B7_B580_4caf_B10E_DF817B0B3408",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_name": "规划文书证照",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src0A59B7_B580_4caf_B10E_DF817B0B3408",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_name": "规划材料",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_ADEEE700_BAB2_4cbc_914B_8F80B5BEEE49",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstEEE700_BAB2_4cbc_914B_8F80B5BEEE49",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "type_global_ref": null,
+          "type_name": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcEEE700_BAB2_4cbc_914B_8F80B5BEEE49",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+          "type_name": "规划材料",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_65711E95_D8F4_4a37_8869_F2C475397772",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst711E95_D8F4_4a37_8869_F2C475397772",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_name": "规划文书证照",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src711E95_D8F4_4a37_8869_F2C475397772",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "type_name": "规划符合性审查",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_B5B67D0A_914F_45fa_9BCF_7AFA88C50581",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstB67D0A_914F_45fa_9BCF_7AFA88C50581",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+          "type_global_ref": null,
+          "type_name": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcB67D0A_914F_45fa_9BCF_7AFA88C50581",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+          "type_name": "规划符合性审查",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_6E3A919F_4F8A_4ae1_B572_B7A7BF7B37AE",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst3A919F_4F8A_4ae1_B572_B7A7BF7B37AE",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "type_global_ref": null,
+          "type_name": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src3A919F_4F8A_4ae1_B572_B7A7BF7B37AE",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+          "type_name": "规划空间成果",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_83447849_3C15_4e41_965B_229AC83AD651",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src447849_3C15_4e41_965B_229AC83AD651",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "type_global_ref": null,
+          "type_name": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst447849_3C15_4e41_965B_229AC83AD651",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_name": "规划文书证照",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_8E1D6E11_F23F_4b93_8E96_3240EC3DD0DD",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src1D6E11_F23F_4b93_8E96_3240EC3DD0DD",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_name": "国土空间规划城市体检评估",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst1D6E11_F23F_4b93_8E96_3240EC3DD0DD",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_name": "规划文书证照",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_C88D2963_3A53_4c7b_AEC5_661C18C8C7ED",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src8D2963_3A53_4c7b_AEC5_661C18C8C7ED",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "type_global_ref": null,
+          "type_name": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst8D2963_3A53_4c7b_AEC5_661C18C8C7ED",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+          "type_name": "规划文书证照",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_57E9E512_5284_43e0_8177_D625210488AE",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcE9E512_5284_43e0_8177_D625210488AE",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_78A0F9F3_25C0_46e1_B102_FF9593461C3C",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_78A0F9F3_25C0_46e1_B102_FF9593461C3C",
+          "type_name": "规划用地",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dstE9E512_5284_43e0_8177_D625210488AE",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "type_name": "控制性详细规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_78A0F9F3_25C0_46e1_B102_FF9593461C3C",
+          "owner_class_id_raw": "EAID_78A0F9F3_25C0_46e1_B102_FF9593461C3C",
+          "owner_class_name": "规划用地",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_1F4AC488_F9C1_4190_9C50_5A8F5863D1A9",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst4AC488_F9C1_4190_9C50_5A8F5863D1A9",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+          "type_name": "国土空间规划城市体检评估指标",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src4AC488_F9C1_4190_9C50_5A8F5863D1A9",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_name": "国土空间规划城市体检评估",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_A2A1062C_E8BC_43d9_A4F9_1AE307114D46",
+      "association_name": "体验评估报告",
+      "association_raw_name": "体验评估报告",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstA1062C_E8BC_43d9_A4F9_1AE307114D46",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+          "type_global_ref": null,
+          "type_name": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcA1062C_E8BC_43d9_A4F9_1AE307114D46",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_name": "国土空间规划城市体检评估",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_F0E89482_2D67_46ce_A71A_931CFE0EA787",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstE89482_2D67_46ce_A71A_931CFE0EA787",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "type_name": "国土空间规划指标",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcE89482_2D67_46ce_A71A_931CFE0EA787",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+          "type_name": "国土空间规划城市体检评估",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_42C47165_1770_49c0_8985_18D9068BCA88",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstC47165_1770_49c0_8985_18D9068BCA88",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "type_global_ref": null,
+          "type_name": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcC47165_1770_49c0_8985_18D9068BCA88",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+          "type_name": "国土空间规划指标",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_33F307CE_725E_4bb4_B96C_D519237BC4E3",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcF307CE_725E_4bb4_B96C_D519237BC4E3",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_FBCF4824_1F93_40d0_84ED_3DE4EE093BAF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_FBCF4824_1F93_40d0_84ED_3DE4EE093BAF",
+          "type_name": "境界与行政区",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dstF307CE_725E_4bb4_B96C_D519237BC4E3",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_name": "国土空间总体规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_FBCF4824_1F93_40d0_84ED_3DE4EE093BAF",
+          "owner_class_id_raw": "EAID_FBCF4824_1F93_40d0_84ED_3DE4EE093BAF",
+          "owner_class_name": "境界与行政区",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_6146BDA7_1FDB_488b_B824_954C1B610D09",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src46BDA7_1FDB_488b_B824_954C1B610D09",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_C708249E_4500_4b3f_B8F0_96986190A1FB",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_C708249E_4500_4b3f_B8F0_96986190A1FB",
+          "type_name": "基期年现状",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst46BDA7_1FDB_488b_B824_954C1B610D09",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_name": "国土空间总体规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_C708249E_4500_4b3f_B8F0_96986190A1FB",
+          "owner_class_id_raw": "EAID_C708249E_4500_4b3f_B8F0_96986190A1FB",
+          "owner_class_name": "基期年现状",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_6BFC2A95_4C1B_43bc_96C8_530599BFA24F",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcFC2A95_4C1B_43bc_96C8_530599BFA24F",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_1C9AC9BE_8440_4500_8F2E_A439B6D9CB17",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_1C9AC9BE_8440_4500_8F2E_A439B6D9CB17",
+          "type_name": "目标年规划",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dstFC2A95_4C1B_43bc_96C8_530599BFA24F",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+          "type_name": "国土空间总体规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_1C9AC9BE_8440_4500_8F2E_A439B6D9CB17",
+          "owner_class_id_raw": "EAID_1C9AC9BE_8440_4500_8F2E_A439B6D9CB17",
+          "owner_class_name": "目标年规划",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_0F1C3B46_766D_48ea_841A_4DFE5B918EE0",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\04统一空间规划.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src1C3B46_766D_48ea_841A_4DFE5B918EE0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_1FE14234_D30A_4b22_9769_CE07E5E5DDE4",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_1FE14234_D30A_4b22_9769_CE07E5E5DDE4",
+          "type_name": "控规单元",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst1C3B46_766D_48ea_841A_4DFE5B918EE0",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "type_global_ref": "04统一空间规划__2919b80c::class::EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+          "type_name": "控制性详细规划空间成果",
+          "owner_class_id": "04统一空间规划__2919b80c::class::EAID_1FE14234_D30A_4b22_9769_CE07E5E5DDE4",
+          "owner_class_id_raw": "EAID_1FE14234_D30A_4b22_9769_CE07E5E5DDE4",
+          "owner_class_name": "控规单元",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    }
+  ],
+  "generalizations": [
+    {
+      "generalization_id": "EAID_3E4B8BCD_E8D8_4573_A54F_2D4BDC153BB1",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_2A02C8FC_2DEB_44fd_BA73_5DE11B560F40",
+      "source_class_id_raw": "EAID_2A02C8FC_2DEB_44fd_BA73_5DE11B560F40",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_name": "国土空间规划城市体检评估指标"
+    },
+    {
+      "generalization_id": "EAID_C6B65F84_8042_4183_8458_40EBA8188DF1",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_DA1998A7_FCBA_436a_B31D_6EFDA0046A20",
+      "source_class_id_raw": "EAID_DA1998A7_FCBA_436a_B31D_6EFDA0046A20",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_name": "规划编制项目"
+    },
+    {
+      "generalization_id": "EAID_7CAACA0E_19F1_4434_A07F_7291888F9105",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+      "source_class_id_raw": "EAID_67B118F4_8D1D_4a1e_8BE7_2D9E3E8F686C",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_name": "规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_DEBE3D9B_392C_43b5_B54A_C44C95CBF31D",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_8276670A_F1AB_4974_A8A9_CB224C24F3B4",
+      "source_class_id_raw": "EAID_8276670A_F1AB_4974_A8A9_CB224C24F3B4",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_name": "规划文书证照"
+    },
+    {
+      "generalization_id": "EAID_301C98DE_0C19_43b2_AC1D_DB83F6CC9E48",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_0252E8EF_80FF_4336_8D23_34D74582862F",
+      "source_class_id_raw": "EAID_0252E8EF_80FF_4336_8D23_34D74582862F",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_name": "国土空间规划城市体检评估指标"
+    },
+    {
+      "generalization_id": "EAID_621C3B9F_366C_44bc_A894_13B3CD5FFBDD",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+      "source_class_id_raw": "EAID_524B6AAD_ADFB_42cf_BF2C_9BC66BC1748F",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "target_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "target_class_name": "国土空间详细规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_B14F6A9E_0125_4842_98FE_044E93F203C0",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_B8ADF5A1_868C_4661_862B_B79318D38E53",
+      "source_class_id_raw": "EAID_B8ADF5A1_868C_4661_862B_B79318D38E53",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "target_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "target_class_name": "国土空间总体规划指标"
+    },
+    {
+      "generalization_id": "EAID_63407C1F_159A_4518_BD4E_41C09AF04C3F",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_8AFCE4A4_2DEB_4e55_B1DE_836CB882D40C",
+      "source_class_id_raw": "EAID_8AFCE4A4_2DEB_4e55_B1DE_836CB882D40C",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_name": "国土空间规划城市体检评估指标"
+    },
+    {
+      "generalization_id": "EAID_60A98F10_95EB_40b0_96AB_FF9E26EB225A",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+      "source_class_id_raw": "EAID_573F4781_541C_4dd9_B6A9_495EE527F736",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_A5074599_8F37_425d_B3BC_6B4C40C53CE5",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_AD12487E_283B_490b_B90D_FE32DB4D8DBA",
+      "source_class_id_raw": "EAID_AD12487E_283B_490b_B90D_FE32DB4D8DBA",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_40BF5036_386B_4cd0_B5E7_6F4354A94DBD",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "source_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_7EA7167B_E3BB_4d63_ABFD_71BDD83EF519",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_30B1BF35_F792_45a9_8A03_08B21F6A568E",
+      "source_class_id_raw": "EAID_30B1BF35_F792_45a9_8A03_08B21F6A568E",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_name": "规划材料"
+    },
+    {
+      "generalization_id": "EAID_3C1ECC07_02D2_468a_838E_F546883A054C",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_8A7DE393_54AF_443e_875D_72288D779795",
+      "source_class_id_raw": "EAID_8A7DE393_54AF_443e_875D_72288D779795",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_FD49CB15_61B6_4a46_A2FC_AFCF53EF5D10",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+      "source_class_id_raw": "EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_95A5BE18_7ABD_4ae0_8635_D854CDC5730F",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_AD8BE3DB_087D_45e4_B3EC_358D59298F20",
+      "source_class_id_raw": "EAID_AD8BE3DB_087D_45e4_B3EC_358D59298F20",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_name": "规划文书证照"
+    },
+    {
+      "generalization_id": "EAID_7CFB5A04_DF5B_425b_947D_EA1BB26E3861",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_0E4308F4_68F7_4714_9C7D_79DBA403C596",
+      "source_class_id_raw": "EAID_0E4308F4_68F7_4714_9C7D_79DBA403C596",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_name": "规划材料"
+    },
+    {
+      "generalization_id": "EAID_086DF9CA_2C69_47a7_A110_166F7CD6AABE",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "source_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_DFA5AD70_D41D_44be_977E_09F3E0BE2A9F",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_79BE6572_DC25_4a08_923F_1CC3CB02DD41",
+      "source_class_id_raw": "EAID_79BE6572_DC25_4a08_923F_1CC3CB02DD41",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_name": "规划文书证照"
+    },
+    {
+      "generalization_id": "EAID_ECA04998_E486_4a48_9DFF_D3650AD95658",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_4ADFD599_8824_410b_BB15_BF5B999A5337",
+      "source_class_id_raw": "EAID_4ADFD599_8824_410b_BB15_BF5B999A5337",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_name": "规划材料"
+    },
+    {
+      "generalization_id": "EAID_1DD7825B_B017_4c2d_ABDE_D8E5C25505A0",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_D4D8A811_362D_4099_8BC9_505BEEA8426B",
+      "source_class_id_raw": "EAID_D4D8A811_362D_4099_8BC9_505BEEA8426B",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_id_raw": "EAID_74A589B0_5EAE_4cad_B68F_BB89A9EDBB21",
+      "target_class_name": "规划材料"
+    },
+    {
+      "generalization_id": "EAID_69DE1273_4F16_4cad_9763_92E31C545F29",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "source_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_A40BA9D5_7FBE_40b9_A76A_A504B9FD9B0E",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "source_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_CEC1FCC2_E9C0_45da_B0FA_1D87FBFE7119",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+      "source_class_id_raw": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_2C6A663C_2B18_4b9f_9111_0318FD512BC3",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_A3EE54DA_C094_44aa_B2A7_EB6A7AF13601",
+      "source_class_id_raw": "EAID_A3EE54DA_C094_44aa_B2A7_EB6A7AF13601",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_id_raw": "EAID_8FF19136_4876_4c30_9756_26DD138571DF",
+      "target_class_name": "规划文书证照"
+    },
+    {
+      "generalization_id": "EAID_6ADD18F3_0F38_4a5c_9A6A_D132772AFC13",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "source_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "target_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "target_class_name": "国土空间规划指标"
+    },
+    {
+      "generalization_id": "EAID_F14AD5E9_4C0E_4889_9E80_5C168F71F04F",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "source_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_8209BAC8_BB58_4ad2_805D_B214A7A239B8",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_EC87ED55_0119_4d41_B2BF_F73B4A512441",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "source_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_name": "规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_8795860D_48A4_4689_8326_C8B7514484F1",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "source_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_name": "规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_B43A6F02_65FE_412f_8BF1_CF87AB579509",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+      "source_class_id_raw": "EAID_0E6E9FFD_3F67_4117_84B6_52DEA2D590CF",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_id_raw": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9",
+      "target_class_name": "规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_07B17AEE_2CC2_4acf_AC99_2FD8F2714575",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "source_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "target_class_id_raw": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954",
+      "target_class_name": "国土空间规划指标"
+    },
+    {
+      "generalization_id": "EAID_6D85DD29_872A_4bc3_9C09_706EDE8EBBD2",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_0AA98DE7_3494_4b92_918A_2BFCEB1E6932",
+      "source_class_id_raw": "EAID_0AA98DE7_3494_4b92_918A_2BFCEB1E6932",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_name": "国土空间专项规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_A406538F_6837_4783_8C5E_1B0D96E11507",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_55452D20_D424_458b_B5BD_83E6222BBC56",
+      "source_class_id_raw": "EAID_55452D20_D424_458b_B5BD_83E6222BBC56",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_name": "国土空间专项规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_5F4BF4C1_F3BA_48f1_838A_1BB08AD79F63",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_5DE7548E_8792_406a_9DFE_C120BCE4CC5D",
+      "source_class_id_raw": "EAID_5DE7548E_8792_406a_9DFE_C120BCE4CC5D",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "target_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "target_class_name": "国土空间总体规划指标"
+    },
+    {
+      "generalization_id": "EAID_B4D7DA9E_361F_41a6_BCF5_B1FF71BE0194",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_DE66428A_8D50_45c7_84DE_A94F005462A5",
+      "source_class_id_raw": "EAID_DE66428A_8D50_45c7_84DE_A94F005462A5",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_name": "国土空间规划城市体检评估指标"
+    },
+    {
+      "generalization_id": "EAID_49D5B15F_7984_45a6_B30F_FF89C31DB927",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+      "source_class_id_raw": "EAID_B09C732A_4D5C_4277_9BC6_322EBA97E307",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "target_class_id_raw": "EAID_B12DA787_DF77_4c6a_982B_473503A724C5",
+      "target_class_name": "国土空间详细规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_3ED59CB9_071D_4597_9616_995067D72361",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_3B1CFA8E_0BA4_4564_8E4F_7FCD163089A7",
+      "source_class_id_raw": "EAID_3B1CFA8E_0BA4_4564_8E4F_7FCD163089A7",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_name": "国土空间专项规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_2E2E4DC8_96E5_433e_AEC5_A6D584D1F86F",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_AC22EBCB_678B_45f5_A13E_0AD7CFB3F157",
+      "source_class_id_raw": "EAID_AC22EBCB_678B_45f5_A13E_0AD7CFB3F157",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_name": "国土空间规划城市体检评估指标"
+    },
+    {
+      "generalization_id": "EAID_FBEE90FC_1C51_4a07_B4C6_D326AECCF23D",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_865E9DD8_969D_480e_9214_53A46D35AE3A",
+      "source_class_id_raw": "EAID_865E9DD8_969D_480e_9214_53A46D35AE3A",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "target_class_id_raw": "EAID_A8CAF118_8DAF_4fc6_8B38_CA7DDA513E30",
+      "target_class_name": "国土空间总体规划指标"
+    },
+    {
+      "generalization_id": "EAID_0A0ABF67_126B_4ffa_A867_82B13397B851",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_7818DD93_340B_4cd2_8910_BE74F12A6FC4",
+      "source_class_id_raw": "EAID_7818DD93_340B_4cd2_8910_BE74F12A6FC4",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_id_raw": "EAID_113F49EC_8822_442f_A030_38F7A410AFBD",
+      "target_class_name": "国土空间专项规划空间成果"
+    },
+    {
+      "generalization_id": "EAID_6311F025_131A_4e42_8F79_9A920A2DC199",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_A2238B82_500F_42db_A164_EA2F598A9F74",
+      "source_class_id_raw": "EAID_A2238B82_500F_42db_A164_EA2F598A9F74",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_name": "规划编制项目"
+    },
+    {
+      "generalization_id": "EAID_DC5CFC74_0569_443c_9412_4524F31D351A",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_BE40DA76_C4D5_45be_A930_40B883F61709",
+      "source_class_id_raw": "EAID_BE40DA76_C4D5_45be_A930_40B883F61709",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_id_raw": "EAID_B36FD03A_6CC0_4df6_8EE5_EC025B77F129",
+      "target_class_name": "国土空间规划城市体检评估指标"
+    },
+    {
+      "generalization_id": "EAID_92304896_DAE8_4e28_A838_C357CDC04FF2",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_1E1B2E32_79B7_4a27_B9CC_09AD6172F27C",
+      "source_class_id_raw": "EAID_1E1B2E32_79B7_4a27_B9CC_09AD6172F27C",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_name": "规划编制项目"
+    },
+    {
+      "generalization_id": "EAID_3425DA3F_CFC9_42ea_9EE4_BEDB7AFD30A9",
+      "source_class_id": "04统一空间规划__2919b80c::class::EAID_DB9168CA_3606_424e_9E75_B046587F28A2",
+      "source_class_id_raw": "EAID_DB9168CA_3606_424e_9E75_B046587F28A2",
+      "target_class_id": "04统一空间规划__2919b80c::class::EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_id_raw": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1",
+      "target_class_name": "规划编制项目"
+    }
+  ],
+  "class_count": 60,
+  "association_count": 37,
+  "generalization_count": 43,
+  "unresolved_ref_count": 19,
+  "unresolved_refs": [
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "generalization_target",
+      "owner_id": "EAID_573F4781_541C_4dd9_B6A9_495EE527F736"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "generalization_target",
+      "owner_id": "EAID_AD12487E_283B_490b_B90D_FE32DB4D8DBA"
+    },
+    {
+      "ref_id": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+      "context": "generalization_target",
+      "owner_id": "EAID_487902D4_40AD_4e07_873D_6CE1F7BC3CF1"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "generalization_target",
+      "owner_id": "EAID_8A7DE393_54AF_443e_875D_72288D779795"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "generalization_target",
+      "owner_id": "EAID_FEC5A971_5963_491e_A077_55A6AC6B84FC"
+    },
+    {
+      "ref_id": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+      "context": "generalization_target",
+      "owner_id": "EAID_6FFF4F3C_DFF8_4d3f_92EB_9AD3F5AC5DC9"
+    },
+    {
+      "ref_id": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+      "context": "generalization_target",
+      "owner_id": "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+    },
+    {
+      "ref_id": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+      "context": "generalization_target",
+      "owner_id": "EAID_8FF19136_4876_4c30_9756_26DD138571DF"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "generalization_target",
+      "owner_id": "EAID_9D0DE2DE_ACA2_4385_83A9_989F6233D1ED"
+    },
+    {
+      "ref_id": "EAID_8209BAC8_BB58_4ad2_805D_B214A7A239B8",
+      "context": "generalization_target",
+      "owner_id": "EAID_5EA1BAB4_867B_442f_A721_3D94AD2C8954"
+    },
+    {
+      "ref_id": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+      "context": "association_end_type",
+      "owner_id": "EAID_F3F0D9F6_CA56_4db7_8C1B_EE01B7230B78"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "association_end_type",
+      "owner_id": "EAID_F15A2A5C_EB49_4f31_89E4_16CB14842AFF"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "association_end_type",
+      "owner_id": "EAID_ADEEE700_BAB2_4cbc_914B_8F80B5BEEE49"
+    },
+    {
+      "ref_id": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+      "context": "association_end_type",
+      "owner_id": "EAID_B5B67D0A_914F_45fa_9BCF_7AFA88C50581"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "association_end_type",
+      "owner_id": "EAID_6E3A919F_4F8A_4ae1_B572_B7A7BF7B37AE"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "association_end_type",
+      "owner_id": "EAID_83447849_3C15_4e41_965B_229AC83AD651"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "association_end_type",
+      "owner_id": "EAID_C88D2963_3A53_4c7b_AEC5_661C18C8C7ED"
+    },
+    {
+      "ref_id": "EAID_9BBF0572_C35E_42fe_A57A_BD8F1AA8E42C",
+      "context": "association_end_type",
+      "owner_id": "EAID_A2A1062C_E8BC_43d9_A4F9_1AE307114D46"
+    },
+    {
+      "ref_id": "EAID_B63BBB6A_A5DD_402c_94D8_BE9213E5D6B5",
+      "context": "association_end_type",
+      "owner_id": "EAID_42C47165_1770_49c0_8985_18D9068BCA88"
+    }
+  ],
+  "stats": {
+    "total_packages": 4,
+    "total_classes": 60,
+    "total_attributes": 10,
+    "total_associations": 37,
+    "total_generalizations": 43
+  }
+}

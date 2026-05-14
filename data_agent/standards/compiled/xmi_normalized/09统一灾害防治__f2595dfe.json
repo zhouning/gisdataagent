@@ -1,0 +1,3299 @@
+{
+  "module_id": "09统一灾害防治__f2595dfe",
+  "module_id_raw": "09统一灾害防治",
+  "module_name": "09统一灾害防治",
+  "source_file": "09统一灾害防治.xml",
+  "top_package_name": "09统一灾害防治",
+  "classes": [
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_58C2334A_5A4F_4e55_BEF1_114BEEAC0AB5",
+      "class_id_raw": "EAID_58C2334A_5A4F_4e55_BEF1_114BEEAC0AB5",
+      "class_name": "气象监测",
+      "class_raw_name": " 气象监测",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_AFFE2C57_7C14_4442_B02E_C66797002228",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_58C2334A_5A4F_4e55_BEF1_114BEEAC0AB5",
+          "source_class_id_raw": "EAID_58C2334A_5A4F_4e55_BEF1_114BEEAC0AB5",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "target_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "target_class_name": "监测设备"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "super_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_DDCBC398_BDD7_4712_A02B_B1C38A97C97D",
+      "class_id_raw": "EAID_DDCBC398_BDD7_4712_A02B_B1C38A97C97D",
+      "class_name": "Class1",
+      "class_raw_name": "Class1",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_DA4FE120_C9D9_4216_9074_3E49D4AB6DAC",
+      "class_id_raw": "EAID_DA4FE120_C9D9_4216_9074_3E49D4AB6DAC",
+      "class_name": "Class2",
+      "class_raw_name": "Class2",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_FBC11D96_D1D1_40eb_938A_9E85FAD37F80",
+      "class_id_raw": "EAID_FBC11D96_D1D1_40eb_938A_9E85FAD37F80",
+      "class_name": "Class3",
+      "class_raw_name": "Class3",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_548D9654_2A3A_47e9_A158_B94E30F818C1",
+      "class_id_raw": "EAID_548D9654_2A3A_47e9_A158_B94E30F818C1",
+      "class_name": "Class4",
+      "class_raw_name": "Class4",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_3474C735_E83C_4bda_B5D9_054CE5B2C8A2",
+      "class_id_raw": "EAID_3474C735_E83C_4bda_B5D9_054CE5B2C8A2",
+      "class_name": "搬迁避让项目",
+      "class_raw_name": "搬迁避让项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_7EF5A2AB_054A_4ca0_B8E2_596C09FCC3DE",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_3474C735_E83C_4bda_B5D9_054CE5B2C8A2",
+          "source_class_id_raw": "EAID_3474C735_E83C_4bda_B5D9_054CE5B2C8A2",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_name": "地质灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_ids_raw": [
+        "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "super_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_4D766A70_41EB_4d06_9C61_4159EAB4144A",
+      "class_id_raw": "EAID_4D766A70_41EB_4d06_9C61_4159EAB4144A",
+      "class_name": "草原火灾高风险区综合治理工程项目",
+      "class_raw_name": "草原火灾高风险区综合治理工程项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_8C82E225_4693_4aa8_8307_F7ED198859A2",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_4D766A70_41EB_4d06_9C61_4159EAB4144A",
+          "source_class_id_raw": "EAID_4D766A70_41EB_4d06_9C61_4159EAB4144A",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+          "target_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+          "target_class_name": "森林草原火灾高危区综合治理项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "super_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_28C48E33_F8AA_4179_B2FD_2159F8547A31",
+      "class_id_raw": "EAID_28C48E33_F8AA_4179_B2FD_2159F8547A31",
+      "class_name": "传感器",
+      "class_raw_name": "传感器",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D517CBEB_5EE1_4b7a_889C_3BD0741CB55E",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_28C48E33_F8AA_4179_B2FD_2159F8547A31",
+          "source_class_id_raw": "EAID_28C48E33_F8AA_4179_B2FD_2159F8547A31",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "target_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "target_class_name": "监测设备"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "super_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_4474602B_ACFA_4b67_9F30_2CD88C0FF9AC",
+      "class_id_raw": "EAID_4474602B_ACFA_4b67_9F30_2CD88C0FF9AC",
+      "class_name": "地质灾害调查材料",
+      "class_raw_name": "地质灾害调查材料",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B66480DD_C264_43eb_B823_547FFFB87386",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_4474602B_ACFA_4b67_9F30_2CD88C0FF9AC",
+          "source_class_id_raw": "EAID_4474602B_ACFA_4b67_9F30_2CD88C0FF9AC",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "target_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "target_class_name": "灾害防治材料"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+      ],
+      "super_class_ids_raw": [
+        "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "super_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "class_name": "地质灾害调查评价",
+      "class_raw_name": "地质灾害调查评价",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C0F331CE_A857_49c6_BD44_FD5E2EC9C0CC",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "source_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "target_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "target_class_name": "灾害调查评价"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+      ],
+      "super_class_ids_raw": [
+        "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "super_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "class_name": "地质灾害防治项目",
+      "class_raw_name": "地质灾害防治项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_1D3A90D5_98A7_413e_89B1_2500BA61F2FD",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "source_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "target_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "target_class_name": "灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+      ],
+      "super_class_ids_raw": [
+        "EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "super_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_7C3EA891_839E_46f4_B35C_46E0D9A2FC14",
+      "class_id_raw": "EAID_7C3EA891_839E_46f4_B35C_46E0D9A2FC14",
+      "class_name": "地质灾害风防治区划",
+      "class_raw_name": "地质灾害风防治区划",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_75A34DBE_6F9A_4c4d_B320_29B420DD5C5E",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_7C3EA891_839E_46f4_B35C_46E0D9A2FC14",
+          "source_class_id_raw": "EAID_7C3EA891_839E_46f4_B35C_46E0D9A2FC14",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_0E9CFDDB_6F38_4792_8663_DE31D7B528D6",
+      "class_id_raw": "EAID_0E9CFDDB_6F38_4792_8663_DE31D7B528D6",
+      "class_name": "地质灾害风险评价",
+      "class_raw_name": "地质灾害风险评价",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_47DC88D9_C48D_4289_B86C_C666E0A13206",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E9CFDDB_6F38_4792_8663_DE31D7B528D6",
+          "source_class_id_raw": "EAID_0E9CFDDB_6F38_4792_8663_DE31D7B528D6",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_93F37090_3D04_4d19_8F34_DABD4F0A09D2",
+      "class_id_raw": "EAID_93F37090_3D04_4d19_8F34_DABD4F0A09D2",
+      "class_name": "地质灾害风险普查",
+      "class_raw_name": "地质灾害风险普查",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_BDCAF4EE_2F7B_48ac_9F07_4F5341EC892C",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_93F37090_3D04_4d19_8F34_DABD4F0A09D2",
+          "source_class_id_raw": "EAID_93F37090_3D04_4d19_8F34_DABD4F0A09D2",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "target_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "target_class_name": "地质灾害调查评价"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "super_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_8ADBC8D1_E95B_46ec_9A16_CCD5617B73C9",
+      "class_id_raw": "EAID_8ADBC8D1_E95B_46ec_9A16_CCD5617B73C9",
+      "class_name": "地质灾害风险区划",
+      "class_raw_name": "地质灾害风险区划",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_71E9F4EB_EA68_4774_A5BE_98097D041DF0",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8ADBC8D1_E95B_46ec_9A16_CCD5617B73C9",
+          "source_class_id_raw": "EAID_8ADBC8D1_E95B_46ec_9A16_CCD5617B73C9",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_A60285E1_408F_4326_AE3E_9EFE13A378F2",
+      "class_id_raw": "EAID_A60285E1_408F_4326_AE3E_9EFE13A378F2",
+      "class_name": "地质灾害风险隐患排查",
+      "class_raw_name": "地质灾害风险隐患排查",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_FB7C9A77_9578_47e9_AC28_ED35A6CD35AC",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A60285E1_408F_4326_AE3E_9EFE13A378F2",
+          "source_class_id_raw": "EAID_A60285E1_408F_4326_AE3E_9EFE13A378F2",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "target_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "target_class_name": "地质灾害调查评价"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "super_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_718F3CDF_385C_4819_99EE_B2C6DF7F8530",
+      "class_id_raw": "EAID_718F3CDF_385C_4819_99EE_B2C6DF7F8530",
+      "class_name": "地质灾害及隐患分布",
+      "class_raw_name": "地质灾害及隐患分布",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B59EFC83_03DF_4b44_ABAF_A61D5A96BCE9",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_718F3CDF_385C_4819_99EE_B2C6DF7F8530",
+          "source_class_id_raw": "EAID_718F3CDF_385C_4819_99EE_B2C6DF7F8530",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_30471476_C3AF_40ae_AB7A_49D6BC4C7A6A",
+      "class_id_raw": "EAID_30471476_C3AF_40ae_AB7A_49D6BC4C7A6A",
+      "class_name": "地质灾害监测",
+      "class_raw_name": "地质灾害监测",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C7480699_A66F_4c72_B0F4_3D97FF426E77",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_30471476_C3AF_40ae_AB7A_49D6BC4C7A6A",
+          "source_class_id_raw": "EAID_30471476_C3AF_40ae_AB7A_49D6BC4C7A6A",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "target_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "target_class_name": "灾害监测"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "super_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_A08165E5_5812_4715_8BCD_314F2A408F91",
+      "class_id_raw": "EAID_A08165E5_5812_4715_8BCD_314F2A408F91",
+      "class_name": "地质灾害受灾范围",
+      "class_raw_name": "地质灾害受灾范围",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_6681234F_E682_4704_ABF9_88D25EF32B17",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A08165E5_5812_4715_8BCD_314F2A408F91",
+          "source_class_id_raw": "EAID_A08165E5_5812_4715_8BCD_314F2A408F91",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_468E7203_681E_4124_8E01_62C1745E773B",
+      "class_id_raw": "EAID_468E7203_681E_4124_8E01_62C1745E773B",
+      "class_name": "地质灾害危险性评价",
+      "class_raw_name": "地质灾害危险性评价",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_28280660_F626_4598_99DE_9B5CCA985159",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_468E7203_681E_4124_8E01_62C1745E773B",
+          "source_class_id_raw": "EAID_468E7203_681E_4124_8E01_62C1745E773B",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_1B4124E4_9AA3_40b4_815E_DC5E6A12469E",
+      "class_id_raw": "EAID_1B4124E4_9AA3_40b4_815E_DC5E6A12469E",
+      "class_name": "地质灾害详细调查",
+      "class_raw_name": "地质灾害详细调查",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_74726264_583E_4f28_9CC6_9E4EC26E85BD",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_1B4124E4_9AA3_40b4_815E_DC5E6A12469E",
+          "source_class_id_raw": "EAID_1B4124E4_9AA3_40b4_815E_DC5E6A12469E",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "target_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+          "target_class_name": "地质灾害调查评价"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+      ],
+      "super_class_ids_raw": [
+        "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "super_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_FF63BAAD_9965_4243_BA83_ED8520227CD9",
+      "class_id_raw": "EAID_FF63BAAD_9965_4243_BA83_ED8520227CD9",
+      "class_name": "地质灾害信息员",
+      "class_raw_name": "地质灾害信息员",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_E04A1B43_8C84_4d59_A910_D8F6BA3D2448",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_FF63BAAD_9965_4243_BA83_ED8520227CD9",
+          "source_class_id_raw": "EAID_FF63BAAD_9965_4243_BA83_ED8520227CD9",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_name": "灾害防治组织"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_ids_raw": [
+        "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "super_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_69BE438A_6E8D_43c2_ADEE_AB2A04602FA6",
+      "class_id_raw": "EAID_69BE438A_6E8D_43c2_ADEE_AB2A04602FA6",
+      "class_name": "地质灾害易发性评价",
+      "class_raw_name": "地质灾害易发性评价",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B505457B_F9A0_4d59_9300_0322444696B2",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_69BE438A_6E8D_43c2_ADEE_AB2A04602FA6",
+          "source_class_id_raw": "EAID_69BE438A_6E8D_43c2_ADEE_AB2A04602FA6",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_B5C1AA13_1A05_406a_98C7_83740A8B78FD",
+      "class_id_raw": "EAID_B5C1AA13_1A05_406a_98C7_83740A8B78FD",
+      "class_name": "地质灾害隐患点",
+      "class_raw_name": "地质灾害隐患点",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_AC9C6130_275F_41b6_BFA6_ABE10C996596",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_B5C1AA13_1A05_406a_98C7_83740A8B78FD",
+          "source_class_id_raw": "EAID_B5C1AA13_1A05_406a_98C7_83740A8B78FD",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_074EE063_EF2A_4176_9752_D2EBCA110B12",
+      "class_id_raw": "EAID_074EE063_EF2A_4176_9752_D2EBCA110B12",
+      "class_name": "地质灾害应急预案",
+      "class_raw_name": "地质灾害应急预案",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_5CAB1698_6809_4017_B625_4F2586E2629A",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_074EE063_EF2A_4176_9752_D2EBCA110B12",
+          "source_class_id_raw": "EAID_074EE063_EF2A_4176_9752_D2EBCA110B12",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_name": "灾害应急预案"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "super_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_8B99EDB8_8921_435d_893B_50DAE74B25DA",
+      "class_id_raw": "EAID_8B99EDB8_8921_435d_893B_50DAE74B25DA",
+      "class_name": "地质灾害整治项目资料",
+      "class_raw_name": "地质灾害整治项目资料",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_0E417307_840D_4baf_9E84_A6BF46365592",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8B99EDB8_8921_435d_893B_50DAE74B25DA",
+          "source_class_id_raw": "EAID_8B99EDB8_8921_435d_893B_50DAE74B25DA",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "target_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "target_class_name": "灾害防治材料"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+      ],
+      "super_class_ids_raw": [
+        "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "super_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_E5E91BFD_CD04_46d6_93D7_1535BA751154",
+      "class_id_raw": "EAID_E5E91BFD_CD04_46d6_93D7_1535BA751154",
+      "class_name": "地质灾害治理工程监理资质",
+      "class_raw_name": "地质灾害治理工程监理资质",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_63E48551_5192_443b_A9EA_CB5FA38F0214",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E5E91BFD_CD04_46d6_93D7_1535BA751154",
+          "source_class_id_raw": "EAID_E5E91BFD_CD04_46d6_93D7_1535BA751154",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "target_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "target_class_name": "资质证书"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "super_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_44955C8E_6BD5_45d8_B30B_4992C7A62022",
+      "class_id_raw": "EAID_44955C8E_6BD5_45d8_B30B_4992C7A62022",
+      "class_name": "地质灾害治理工程监理资质审批",
+      "class_raw_name": "地质灾害治理工程监理资质审批",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_36205B23_7258_4ddf_9F7F_298F345FC6F3",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_44955C8E_6BD5_45d8_B30B_4992C7A62022",
+          "source_class_id_raw": "EAID_44955C8E_6BD5_45d8_B30B_4992C7A62022",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "target_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "target_class_name": "地质灾害治理资质审批"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+      ],
+      "super_class_ids_raw": [
+        "EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "super_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_E7FA3B36_E5D7_41e4_B8BE_6010B5412207",
+      "class_id_raw": "EAID_E7FA3B36_E5D7_41e4_B8BE_6010B5412207",
+      "class_name": "地质灾害治理工程勘察设计资质",
+      "class_raw_name": "地质灾害治理工程勘察设计资质",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_902780E8_B4CC_4868_BAF0_715843139E04",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E7FA3B36_E5D7_41e4_B8BE_6010B5412207",
+          "source_class_id_raw": "EAID_E7FA3B36_E5D7_41e4_B8BE_6010B5412207",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "target_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "target_class_name": "资质证书"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "super_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_0F809494_BADF_4a21_ADE9_ACBEDB918F78",
+      "class_id_raw": "EAID_0F809494_BADF_4a21_ADE9_ACBEDB918F78",
+      "class_name": "地质灾害治理工程勘察设计资质审批",
+      "class_raw_name": "地质灾害治理工程勘察设计资质审批",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_76A29FBF_F92A_4aeb_82B6_55237DF10BA0",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0F809494_BADF_4a21_ADE9_ACBEDB918F78",
+          "source_class_id_raw": "EAID_0F809494_BADF_4a21_ADE9_ACBEDB918F78",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "target_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "target_class_name": "地质灾害治理资质审批"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+      ],
+      "super_class_ids_raw": [
+        "EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "super_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_4C449FB7_4F10_42db_8815_502B73DF7275",
+      "class_id_raw": "EAID_4C449FB7_4F10_42db_8815_502B73DF7275",
+      "class_name": "地质灾害治理工程施工资质",
+      "class_raw_name": "地质灾害治理工程施工资质",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C221E5F0_AFD9_41b8_B00A_3FE01A4DCD06",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_4C449FB7_4F10_42db_8815_502B73DF7275",
+          "source_class_id_raw": "EAID_4C449FB7_4F10_42db_8815_502B73DF7275",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "target_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "target_class_name": "资质证书"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "super_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_D6C5CFA9_0613_415d_900D_4DEA21BDC7E5",
+      "class_id_raw": "EAID_D6C5CFA9_0613_415d_900D_4DEA21BDC7E5",
+      "class_name": "地质灾害治理工程施工资质审批",
+      "class_raw_name": "地质灾害治理工程施工资质审批",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2AC0A338_7D47_4d5a_A548_1B127704075F",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_D6C5CFA9_0613_415d_900D_4DEA21BDC7E5",
+          "source_class_id_raw": "EAID_D6C5CFA9_0613_415d_900D_4DEA21BDC7E5",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "target_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "target_class_name": "地质灾害治理资质审批"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+      ],
+      "super_class_ids_raw": [
+        "EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "super_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "class_name": "地质灾害治理资质审批",
+      "class_raw_name": "地质灾害治理资质审批",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_DA63AEDA_9ACD_4927_B1AA_FC3038794689",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "source_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "target_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "target_class_name": "灾害防治事项"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "super_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_78137D3A_939F_4a72_9014_CE3DBE3097BA",
+      "class_id_raw": "EAID_78137D3A_939F_4a72_9014_CE3DBE3097BA",
+      "class_name": "地质灾害资质审批材料",
+      "class_raw_name": "地质灾害资质审批材料",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_B85238E0_28C2_493c_A12B_0E4057379882",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_78137D3A_939F_4a72_9014_CE3DBE3097BA",
+          "source_class_id_raw": "EAID_78137D3A_939F_4a72_9014_CE3DBE3097BA",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "target_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "target_class_name": "灾害防治材料"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+      ],
+      "super_class_ids_raw": [
+        "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "super_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_BF2AE702_E282_48d9_866A_DBA08F02F879",
+      "class_id_raw": "EAID_BF2AE702_E282_48d9_866A_DBA08F02F879",
+      "class_name": "调查评价项目",
+      "class_raw_name": "调查评价项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3109418F_C5DF_4b26_8D36_98822D70232B",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_BF2AE702_E282_48d9_866A_DBA08F02F879",
+          "source_class_id_raw": "EAID_BF2AE702_E282_48d9_866A_DBA08F02F879",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_name": "地质灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_ids_raw": [
+        "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "super_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_B6AD160E_51CE_45ad_B1AA_994A72BAA860",
+      "class_id_raw": "EAID_B6AD160E_51CE_45ad_B1AA_994A72BAA860",
+      "class_name": "工程治理项目",
+      "class_raw_name": "工程治理项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_A75EC49D_89B9_4499_AE53_41775D5C5225",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_B6AD160E_51CE_45ad_B1AA_994A72BAA860",
+          "source_class_id_raw": "EAID_B6AD160E_51CE_45ad_B1AA_994A72BAA860",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_name": "地质灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_ids_raw": [
+        "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "super_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_24A14940_73A0_44d6_83F2_A968E0F4621F",
+      "class_id_raw": "EAID_24A14940_73A0_44d6_83F2_A968E0F4621F",
+      "class_name": "海洋灾害调查和影响评估",
+      "class_raw_name": "海洋灾害调查和影响评估",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_5D975E62_F4DE_456e_86BF_F643E15761C2",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_24A14940_73A0_44d6_83F2_A968E0F4621F",
+          "source_class_id_raw": "EAID_24A14940_73A0_44d6_83F2_A968E0F4621F",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "target_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "target_class_name": "灾害调查评价"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+      ],
+      "super_class_ids_raw": [
+        "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "super_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_D8E24F5E_261A_4948_B906_292818285977",
+      "class_id_raw": "EAID_D8E24F5E_261A_4948_B906_292818285977",
+      "class_name": "海洋灾害监测",
+      "class_raw_name": "海洋灾害监测",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_4DDECDCB_8403_41af_9EA7_9B2B179D2C5C",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_D8E24F5E_261A_4948_B906_292818285977",
+          "source_class_id_raw": "EAID_D8E24F5E_261A_4948_B906_292818285977",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "target_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "target_class_name": "灾害监测"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "super_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_6D7641D8_9646_46ba_A710_09F0A900C672",
+      "class_id_raw": "EAID_6D7641D8_9646_46ba_A710_09F0A900C672",
+      "class_name": "海洋灾害受灾范围",
+      "class_raw_name": "海洋灾害受灾范围",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_41FC914B_F4B6_4124_8F59_9956C8F30784",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_6D7641D8_9646_46ba_A710_09F0A900C672",
+          "source_class_id_raw": "EAID_6D7641D8_9646_46ba_A710_09F0A900C672",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_9D415A4D_F366_46c7_96AC_3561C60136A6",
+      "class_id_raw": "EAID_9D415A4D_F366_46c7_96AC_3561C60136A6",
+      "class_name": "海洋灾害隐患区",
+      "class_raw_name": "海洋灾害隐患区",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_FC98C2CB_E73F_4fc6_8E5D_3E73601142CE",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9D415A4D_F366_46c7_96AC_3561C60136A6",
+          "source_class_id_raw": "EAID_9D415A4D_F366_46c7_96AC_3561C60136A6",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_BE2FD26A_ED65_48c6_ACED_DA37E90D6D62",
+      "class_id_raw": "EAID_BE2FD26A_ED65_48c6_ACED_DA37E90D6D62",
+      "class_name": "海洋灾害应急预案",
+      "class_raw_name": "海洋灾害应急预案",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C43F77D8_FCDF_48d5_AB12_DBD946837C3C",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_BE2FD26A_ED65_48c6_ACED_DA37E90D6D62",
+          "source_class_id_raw": "EAID_BE2FD26A_ED65_48c6_ACED_DA37E90D6D62",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_name": "灾害应急预案"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "super_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_EDD3D2D8_899F_4b47_8232_B91C70ED4BDA",
+      "class_id_raw": "EAID_EDD3D2D8_899F_4b47_8232_B91C70ED4BDA",
+      "class_name": "海洋灾害综合防治体系建设工程项目",
+      "class_raw_name": "海洋灾害综合防治体系建设工程项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3CE78906_3752_420f_A0DA_978AF7698A66",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_EDD3D2D8_899F_4b47_8232_B91C70ED4BDA",
+          "source_class_id_raw": "EAID_EDD3D2D8_899F_4b47_8232_B91C70ED4BDA",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "target_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "target_class_name": "灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+      ],
+      "super_class_ids_raw": [
+        "EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "super_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_042F5260_A32B_40cb_8ACD_94E68A499F9C",
+      "class_id_raw": "EAID_042F5260_A32B_40cb_8ACD_94E68A499F9C",
+      "class_name": "技术支撑人员",
+      "class_raw_name": "技术支撑人员",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3CB6AEE7_FEFA_4b3b_A1C3_32A677F9752B",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_042F5260_A32B_40cb_8ACD_94E68A499F9C",
+          "source_class_id_raw": "EAID_042F5260_A32B_40cb_8ACD_94E68A499F9C",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_name": "灾害防治组织"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_ids_raw": [
+        "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "super_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "class_name": "监测设备",
+      "class_raw_name": "监测设备",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_5D4DD8AE_A102_4532_A940_53C26CC7C1B2",
+      "class_id_raw": "EAID_5D4DD8AE_A102_4532_A940_53C26CC7C1B2",
+      "class_name": "监测信息",
+      "class_raw_name": "监测信息",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_31965C80_E73F_484c_9E25_3798C8E65F0C",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_5D4DD8AE_A102_4532_A940_53C26CC7C1B2",
+          "source_class_id_raw": "EAID_5D4DD8AE_A102_4532_A940_53C26CC7C1B2",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "target_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "target_class_name": "监测设备"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+      ],
+      "super_class_ids_raw": [
+        "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "super_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_CCC906D2_6DDC_4b24_B8FB_63B0F1AFF806",
+      "class_id_raw": "EAID_CCC906D2_6DDC_4b24_B8FB_63B0F1AFF806",
+      "class_name": "监测预警项目",
+      "class_raw_name": "监测预警项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_43FEF61F_B7B9_40fd_B7EE_CC5731C35E77",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_CCC906D2_6DDC_4b24_B8FB_63B0F1AFF806",
+          "source_class_id_raw": "EAID_CCC906D2_6DDC_4b24_B8FB_63B0F1AFF806",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_name": "地质灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_ids_raw": [
+        "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "super_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_16A5A652_F785_4b1a_9D14_36559431014A",
+      "class_id_raw": "EAID_16A5A652_F785_4b1a_9D14_36559431014A",
+      "class_name": "监测站点",
+      "class_raw_name": "监测站点",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_0964058E_B1C7_4d32_B0E3_E5B06AF15BDB",
+      "class_id_raw": "EAID_0964058E_B1C7_4d32_B0E3_E5B06AF15BDB",
+      "class_name": "监理单位",
+      "class_raw_name": "监理单位",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2F1609C4_1499_41ba_8E10_B10FE3DE9760",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0964058E_B1C7_4d32_B0E3_E5B06AF15BDB",
+          "source_class_id_raw": "EAID_0964058E_B1C7_4d32_B0E3_E5B06AF15BDB",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_name": "灾害防治组织"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_ids_raw": [
+        "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "super_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_0BD99F6D_E3CB_4093_9CCB_E9F26A53D365",
+      "class_id_raw": "EAID_0BD99F6D_E3CB_4093_9CCB_E9F26A53D365",
+      "class_name": "勘测设计单位",
+      "class_raw_name": "勘测设计单位",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_FC0DAA58_A017_4dd1_8D73_EE82FB085FB8",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0BD99F6D_E3CB_4093_9CCB_E9F26A53D365",
+          "source_class_id_raw": "EAID_0BD99F6D_E3CB_4093_9CCB_E9F26A53D365",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_name": "灾害防治组织"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_ids_raw": [
+        "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "super_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_3F97E8C0_8DE3_4695_AFA0_4FD8FB6A9087",
+      "class_id_raw": "EAID_3F97E8C0_8DE3_4695_AFA0_4FD8FB6A9087",
+      "class_name": "可燃物单位面积载量等级分布",
+      "class_raw_name": "可燃物单位面积载量等级分布",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_3A1DF2BC_3913_4b86_81C1_48015D82D302",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_3F97E8C0_8DE3_4695_AFA0_4FD8FB6A9087",
+          "source_class_id_raw": "EAID_3F97E8C0_8DE3_4695_AFA0_4FD8FB6A9087",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_97765797_B629_48a5_AF33_52E2F35B18FB",
+      "class_id_raw": "EAID_97765797_B629_48a5_AF33_52E2F35B18FB",
+      "class_name": "林区牧区野外火源分布",
+      "class_raw_name": "林区牧区野外火源分布",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D1348E49_3375_46e8_8119_389E09519639",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_97765797_B629_48a5_AF33_52E2F35B18FB",
+          "source_class_id_raw": "EAID_97765797_B629_48a5_AF33_52E2F35B18FB",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_36B8ABDD_40D0_4dae_A4CA_C932AE473867",
+      "class_id_raw": "EAID_36B8ABDD_40D0_4dae_A4CA_C932AE473867",
+      "class_name": "临灾处置和排危除险项目",
+      "class_raw_name": "临灾处置和排危除险项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_F423555B_EC5B_4a40_A0E8_824B25CD674F",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_36B8ABDD_40D0_4dae_A4CA_C932AE473867",
+          "source_class_id_raw": "EAID_36B8ABDD_40D0_4dae_A4CA_C932AE473867",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_name": "地质灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_ids_raw": [
+        "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "super_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_60AD1755_A7F3_4b89_A7E1_B94A1182751B",
+      "class_id_raw": "EAID_60AD1755_A7F3_4b89_A7E1_B94A1182751B",
+      "class_name": "能力建设项目",
+      "class_raw_name": "能力建设项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_F4C5F7F1_716D_4fb9_9496_0DBA792A4B52",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_60AD1755_A7F3_4b89_A7E1_B94A1182751B",
+          "source_class_id_raw": "EAID_60AD1755_A7F3_4b89_A7E1_B94A1182751B",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_name": "地质灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_ids_raw": [
+        "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "super_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_E19BAD72_CBB1_4cb8_B329_3CDB63693090",
+      "class_id_raw": "EAID_E19BAD72_CBB1_4cb8_B329_3CDB63693090",
+      "class_name": "年地质灾害防治方案",
+      "class_raw_name": "年地质灾害防治方案",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_BAA84A08_A53B_4486_A30D_5C12334C1721",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E19BAD72_CBB1_4cb8_B329_3CDB63693090",
+          "source_class_id_raw": "EAID_E19BAD72_CBB1_4cb8_B329_3CDB63693090",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_name": "灾害应急预案"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "super_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_9258E18B_78EE_4f5a_B9E5_AA61278A49AF",
+      "class_id_raw": "EAID_9258E18B_78EE_4f5a_B9E5_AA61278A49AF",
+      "class_name": "其他项目",
+      "class_raw_name": "其他项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_FA574715_93A1_4848_BA89_24AB3383D915",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9258E18B_78EE_4f5a_B9E5_AA61278A49AF",
+          "source_class_id_raw": "EAID_9258E18B_78EE_4f5a_B9E5_AA61278A49AF",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+          "target_class_name": "地质灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_ids_raw": [
+        "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "super_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_C5297ED3_043C_4173_9EBE_EB5ACDADA759",
+      "class_id_raw": "EAID_C5297ED3_043C_4173_9EBE_EB5ACDADA759",
+      "class_name": "森林草原火灾风险普查",
+      "class_raw_name": "森林草原火灾风险普查",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_2EFCB222_8835_4393_8118_0F9879760D12",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_C5297ED3_043C_4173_9EBE_EB5ACDADA759",
+          "source_class_id_raw": "EAID_C5297ED3_043C_4173_9EBE_EB5ACDADA759",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "target_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "target_class_name": "灾害调查评价"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+      ],
+      "super_class_ids_raw": [
+        "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "super_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "class_name": "森林草原火灾高危区综合治理项目",
+      "class_raw_name": "森林草原火灾高危区综合治理项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_99CFDCF8_F2CD_4abe_BE12_1B2B155A5484",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+          "source_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "target_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "target_class_name": "灾害防治项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+      ],
+      "super_class_ids_raw": [
+        "EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "super_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_8A4F76F0_29DC_42cd_AC9C_DF3E9BE381FB",
+      "class_id_raw": "EAID_8A4F76F0_29DC_42cd_AC9C_DF3E9BE381FB",
+      "class_name": "森林草原火灾监测",
+      "class_raw_name": "森林草原火灾监测",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D0840900_A453_456c_9AF7_FE9A32E756B0",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8A4F76F0_29DC_42cd_AC9C_DF3E9BE381FB",
+          "source_class_id_raw": "EAID_8A4F76F0_29DC_42cd_AC9C_DF3E9BE381FB",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "target_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "target_class_name": "灾害监测"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "super_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_A48B7C61_5154_4e6b_9F79_F8A37CCDE9C7",
+      "class_id_raw": "EAID_A48B7C61_5154_4e6b_9F79_F8A37CCDE9C7",
+      "class_name": "森林草原火灾应急预案",
+      "class_raw_name": "森林草原火灾应急预案",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_76FDA8C3_4FD7_4741_864E_4B8923C1B121",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A48B7C61_5154_4e6b_9F79_F8A37CCDE9C7",
+          "source_class_id_raw": "EAID_A48B7C61_5154_4e6b_9F79_F8A37CCDE9C7",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_name": "灾害应急预案"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_ids_raw": [
+        "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "super_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_636F3AAD_C5C4_458c_94EF_C24926A63153",
+      "class_id_raw": "EAID_636F3AAD_C5C4_458c_94EF_C24926A63153",
+      "class_name": "森林火灾高风险区综合治理工程建设项目",
+      "class_raw_name": "森林火灾高风险区综合治理工程建设项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_5807EF19_7931_488b_B433_B1DB8B3ADA5A",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_636F3AAD_C5C4_458c_94EF_C24926A63153",
+          "source_class_id_raw": "EAID_636F3AAD_C5C4_458c_94EF_C24926A63153",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+          "target_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+          "target_class_name": "森林草原火灾高危区综合治理项目"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056"
+      ],
+      "super_class_ids_raw": [
+        "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "super_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_632CF610_46CB_4cfc_9A4B_1EAD019224E1",
+      "class_id_raw": "EAID_632CF610_46CB_4cfc_9A4B_1EAD019224E1",
+      "class_name": "森林火灾危险性图",
+      "class_raw_name": "森林火灾危险性图",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D99F22A6_B47A_458e_B452_1993ECD5D00B",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_632CF610_46CB_4cfc_9A4B_1EAD019224E1",
+          "source_class_id_raw": "EAID_632CF610_46CB_4cfc_9A4B_1EAD019224E1",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_9675B01A_A04B_416d_918D_83F251C9C5FA",
+      "class_id_raw": "EAID_9675B01A_A04B_416d_918D_83F251C9C5FA",
+      "class_name": "森林可燃物大样地分布",
+      "class_raw_name": "森林可燃物大样地分布",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_EDAD0284_01CF_497b_B7E4_1DB4A8227252",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9675B01A_A04B_416d_918D_83F251C9C5FA",
+          "source_class_id_raw": "EAID_9675B01A_A04B_416d_918D_83F251C9C5FA",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_DEF931E2_674F_48ab_9796_833844D28ABA",
+      "class_id_raw": "EAID_DEF931E2_674F_48ab_9796_833844D28ABA",
+      "class_name": "实施单位",
+      "class_raw_name": "实施单位",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D3821666_1DC7_4c3b_8983_D392735003E2",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_DEF931E2_674F_48ab_9796_833844D28ABA",
+          "source_class_id_raw": "EAID_DEF931E2_674F_48ab_9796_833844D28ABA",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_name": "灾害防治组织"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_ids_raw": [
+        "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "super_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_E5ECDBD2_BC49_4144_A469_81789A1F859E",
+      "class_id_raw": "EAID_E5ECDBD2_BC49_4144_A469_81789A1F859E",
+      "class_name": "受害森林草原范围",
+      "class_raw_name": "受害森林草原范围",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C0BF3D6B_E2B2_4c26_8793_1576A8204CB8",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E5ECDBD2_BC49_4144_A469_81789A1F859E",
+          "source_class_id_raw": "EAID_E5ECDBD2_BC49_4144_A469_81789A1F859E",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_A6539271_0B6E_4a0a_A5A5_7F5085E69E44",
+      "class_id_raw": "EAID_A6539271_0B6E_4a0a_A5A5_7F5085E69E44",
+      "class_name": "渔港、锚地、海上航线分布",
+      "class_raw_name": "渔港、锚地、海上航线分布",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D268B276_0FF6_4b3e_B52D_333FCBD49187",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A6539271_0B6E_4a0a_A5A5_7F5085E69E44",
+          "source_class_id_raw": "EAID_A6539271_0B6E_4a0a_A5A5_7F5085E69E44",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_DA46D377_2C53_4b21_927C_6FE070126F46",
+      "class_id_raw": "EAID_DA46D377_2C53_4b21_927C_6FE070126F46",
+      "class_name": "孕灾地质条件",
+      "class_raw_name": "孕灾地质条件",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_75DCC37A_AFF2_46c4_AEA9_F4EF9904BFA7",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_DA46D377_2C53_4b21_927C_6FE070126F46",
+          "source_class_id_raw": "EAID_DA46D377_2C53_4b21_927C_6FE070126F46",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_name": "自然灾害空间对象"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "super_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "class_name": "灾害调查评价",
+      "class_raw_name": "灾害调查评价",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_322A5A8D_FEB2_4771_8DD6_CFC19E482C72",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "source_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "target_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "target_class_name": "灾害防治事项"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "super_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "class_name": "灾害防治材料",
+      "class_raw_name": "灾害防治材料",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_EF4992FF_3F84_49f9_A715_7CBB01AE49B6",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "source_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "class_name": "灾害防治事项",
+      "class_raw_name": "灾害防治事项",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_6C2FD005_BF7E_4e54_A728_C5BEDE352FAB",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "source_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_3FDC8240_8240_4435_9368_FBD8F62FA771",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_3FDC8240_8240_4435_9368_FBD8F62FA771"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_3FDC8240_8240_4435_9368_FBD8F62FA771"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "class_name": "灾害防治文证",
+      "class_raw_name": "灾害防治文证",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_D6113C98_EE00_48b9_9355_77C3A0A0D953",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "source_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "class_name": "灾害防治项目",
+      "class_raw_name": "灾害防治项目",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_73AE9CD7_4860_49c7_BFA7_11BD72E1CCDA",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "source_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "class_name": "灾害防治组织",
+      "class_raw_name": "灾害防治组织",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_1087F962_A6E9_4c16_8409_68CC7EA4700F",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "source_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E",
+          "target_class_name": null
+        },
+        {
+          "generalization_id": "EAID_DB4A556B_536C_487e_A905_37F057D8EB1D",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "source_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_433704E7_F77B_4082_999A_339DAFFACD9F",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E",
+        "EAID_433704E7_F77B_4082_999A_339DAFFACD9F"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "class_name": "灾害监测",
+      "class_raw_name": "灾害监测",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_76151C1A_73CC_4f5f_86E2_9BB517733ABA",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "source_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "target_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "target_class_name": "灾害防治事项"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+      ],
+      "super_class_ids_raw": [
+        "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "super_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "class_name": "灾害应急预案",
+      "class_raw_name": "灾害应急预案",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_FCE5A884_C6EF_4ebb_98B0_931D349A2446",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "source_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "target_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "target_class_name": "灾害防治文证"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "super_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_13D46DBD_B032_404b_90B1_21427E488469",
+      "class_id_raw": "EAID_13D46DBD_B032_404b_90B1_21427E488469",
+      "class_name": "值班人员",
+      "class_raw_name": "值班人员",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_DEC47A11_74A7_45dd_B0E0_2305F91715B7",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_13D46DBD_B032_404b_90B1_21427E488469",
+          "source_class_id_raw": "EAID_13D46DBD_B032_404b_90B1_21427E488469",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_name": "灾害防治组织"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_ids_raw": [
+        "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "super_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_12D81C6A_3985_43fa_8DC9_6EC4B84D6294",
+      "class_id_raw": "EAID_12D81C6A_3985_43fa_8DC9_6EC4B84D6294",
+      "class_name": "专家",
+      "class_raw_name": "专家",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_418CA2C3_28BB_4785_A98D_F701A66FFDE3",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_12D81C6A_3985_43fa_8DC9_6EC4B84D6294",
+          "source_class_id_raw": "EAID_12D81C6A_3985_43fa_8DC9_6EC4B84D6294",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "target_class_name": "灾害防治组织"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_ids_raw": [
+        "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "super_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "class_name": "资质证书",
+      "class_raw_name": "资质证书",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_164EBD75_E546_4191_B033_2B2B949F529D",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "source_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "target_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "target_class_name": "灾害防治文证"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4"
+      ],
+      "super_class_ids_raw": [
+        "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "super_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "class_name": "自然灾害空间对象",
+      "class_raw_name": "自然灾害空间对象",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_C50E0CD9_0125_4821_8463_C12DCCF3A019",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "source_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "target_class_id": null,
+          "target_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+          "target_class_name": null
+        }
+      ],
+      "super_class_ids": [],
+      "super_class_ids_raw": [
+        "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54"
+      ],
+      "super_class_id": null,
+      "super_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_CBE80615_85EB_496c_98C5_14DDA9CE5EE4",
+      "class_id_raw": "EAID_CBE80615_85EB_496c_98C5_14DDA9CE5EE4",
+      "class_name": "",
+      "class_raw_name": "",
+      "package_path": [
+        "09统一灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_4C4D9EFA_261B_4682_BCAF_D7BE375389BD",
+      "class_id_raw": "EAID_4C4D9EFA_261B_4682_BCAF_D7BE375389BD",
+      "class_name": "传感器",
+      "class_raw_name": "传感器",
+      "package_path": [
+        "09统一灾害防治",
+        "灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_7572E130_7E7B_4fe0_99D4_3E2EDBCDD618",
+      "class_id_raw": "EAID_7572E130_7E7B_4fe0_99D4_3E2EDBCDD618",
+      "class_name": "监测信息",
+      "class_raw_name": "监测信息",
+      "package_path": [
+        "09统一灾害防治",
+        "灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [
+        {
+          "generalization_id": "EAID_361833E5_5579_4cb9_8B0E_D0C12D22105B",
+          "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_7572E130_7E7B_4fe0_99D4_3E2EDBCDD618",
+          "source_class_id_raw": "EAID_7572E130_7E7B_4fe0_99D4_3E2EDBCDD618",
+          "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB",
+          "target_class_id_raw": "EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB",
+          "target_class_name": "设备"
+        }
+      ],
+      "super_class_ids": [
+        "09统一灾害防治__f2595dfe::class::EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB"
+      ],
+      "super_class_ids_raw": [
+        "EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB"
+      ],
+      "super_class_id": "09统一灾害防治__f2595dfe::class::EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB",
+      "super_class_id_raw": "EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB"
+    },
+    {
+      "class_id": "09统一灾害防治__f2595dfe::class::EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB",
+      "class_id_raw": "EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB",
+      "class_name": "设备",
+      "class_raw_name": "设备",
+      "package_path": [
+        "09统一灾害防治",
+        "灾害防治"
+      ],
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "attributes": [],
+      "generalizations": [],
+      "super_class_ids": [],
+      "super_class_ids_raw": [],
+      "super_class_id": null,
+      "super_class_id_raw": null
+    }
+  ],
+  "associations": [
+    {
+      "association_id": "EAID_59334F78_C035_4a0b_AB38_3E075B6AF110",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst334F78_C035_4a0b_AB38_3E075B6AF110",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_name": "灾害防治事项",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src334F78_C035_4a0b_AB38_3E075B6AF110",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "type_name": "监测设备",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_BC7A1485_78D3_4f86_9F12_B8ED9E0C5488",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dst7A1485_78D3_4f86_9F12_B8ED9E0C5488",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_16A5A652_F785_4b1a_9D14_36559431014A",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_16A5A652_F785_4b1a_9D14_36559431014A",
+          "type_name": "监测站点",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_src7A1485_78D3_4f86_9F12_B8ED9E0C5488",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "type_name": "监测设备",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_DAE8E903_8FB9_4a43_8D7A_EEE754CA5C72",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_dstE8E903_8FB9_4a43_8D7A_EEE754CA5C72",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+          "type_name": "灾害监测",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_srcE8E903_8FB9_4a43_8D7A_EEE754CA5C72",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+          "type_name": "监测设备",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_FB632B14_3EA1_40b5_A04F_690EA3C09844",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src632B14_3EA1_40b5_A04F_690EA3C09844",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_name": "灾害防治事项",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst632B14_3EA1_40b5_A04F_690EA3C09844",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+          "type_name": "灾害防治材料",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_428AD079_70C4_458b_83F0_62AAA9114612",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src8AD079_70C4_458b_83F0_62AAA9114612",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "type_name": "灾害防治组织",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst8AD079_70C4_458b_83F0_62AAA9114612",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_name": "灾害防治事项",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_5426E85A_27F9_45b5_8EB9_98EEB9B75446",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src26E85A_27F9_45b5_8EB9_98EEB9B75446",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+          "type_name": "灾害防治文证",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst26E85A_27F9_45b5_8EB9_98EEB9B75446",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_name": "灾害防治事项",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_9F41C724_E553_4376_B590_3B63AE210085",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src41C724_E553_4376_B590_3B63AE210085",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "type_name": "自然灾害空间对象",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dst41C724_E553_4376_B590_3B63AE210085",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+          "type_name": "灾害防治事项",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_CDDE583F_1319_4dfc_A78E_F5086C7F77A5",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcDE583F_1319_4dfc_A78E_F5086C7F77A5",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+          "type_name": "灾害防治组织",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dstDE583F_1319_4dfc_A78E_F5086C7F77A5",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "type_name": "灾害防治项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_E7B61BD8_6863_49ca_8B3F_407920D53DA8",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_srcB61BD8_6863_49ca_8B3F_407920D53DA8",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+          "type_name": "自然灾害空间对象",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        },
+        {
+          "end_id": "EAID_dstB61BD8_6863_49ca_8B3F_407920D53DA8",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+          "type_name": "灾害防治项目",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    },
+    {
+      "association_id": "EAID_6D3DDAA9_1FFB_4cd4_AD72_AB6581199C61",
+      "association_name": "",
+      "association_raw_name": "",
+      "source": "D:\\adk\\数据标准\\自然资源全域数据模型\\09统一灾害防治.xml",
+      "ends": [
+        {
+          "end_id": "EAID_src3DDAA9_1FFB_4cd4_AD72_AB6581199C61",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_4C4D9EFA_261B_4682_BCAF_D7BE375389BD",
+          "type_global_ref": "09统一灾害防治__f2595dfe::class::EAID_4C4D9EFA_261B_4682_BCAF_D7BE375389BD",
+          "type_name": "传感器",
+          "owner_class_id": null,
+          "owner_class_id_raw": null,
+          "owner_class_name": null,
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": "shared"
+        },
+        {
+          "end_id": "EAID_dst3DDAA9_1FFB_4cd4_AD72_AB6581199C61",
+          "role_name": null,
+          "role_name_decoded": null,
+          "type_ref": "EAID_8915A023_76DC_4893_8DD3_EE8E1C0BFAC8",
+          "type_global_ref": null,
+          "type_name": "EAID_8915A023_76DC_4893_8DD3_EE8E1C0BFAC8",
+          "owner_class_id": "09统一灾害防治__f2595dfe::class::EAID_4C4D9EFA_261B_4682_BCAF_D7BE375389BD",
+          "owner_class_id_raw": "EAID_4C4D9EFA_261B_4682_BCAF_D7BE375389BD",
+          "owner_class_name": "传感器",
+          "lower": null,
+          "upper": null,
+          "visibility": null,
+          "aggregation": null
+        }
+      ]
+    }
+  ],
+  "generalizations": [
+    {
+      "generalization_id": "EAID_AFFE2C57_7C14_4442_B02E_C66797002228",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_58C2334A_5A4F_4e55_BEF1_114BEEAC0AB5",
+      "source_class_id_raw": "EAID_58C2334A_5A4F_4e55_BEF1_114BEEAC0AB5",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "target_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "target_class_name": "监测设备"
+    },
+    {
+      "generalization_id": "EAID_7EF5A2AB_054A_4ca0_B8E2_596C09FCC3DE",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_3474C735_E83C_4bda_B5D9_054CE5B2C8A2",
+      "source_class_id_raw": "EAID_3474C735_E83C_4bda_B5D9_054CE5B2C8A2",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_name": "地质灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_8C82E225_4693_4aa8_8307_F7ED198859A2",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_4D766A70_41EB_4d06_9C61_4159EAB4144A",
+      "source_class_id_raw": "EAID_4D766A70_41EB_4d06_9C61_4159EAB4144A",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "target_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "target_class_name": "森林草原火灾高危区综合治理项目"
+    },
+    {
+      "generalization_id": "EAID_D517CBEB_5EE1_4b7a_889C_3BD0741CB55E",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_28C48E33_F8AA_4179_B2FD_2159F8547A31",
+      "source_class_id_raw": "EAID_28C48E33_F8AA_4179_B2FD_2159F8547A31",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "target_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "target_class_name": "监测设备"
+    },
+    {
+      "generalization_id": "EAID_B66480DD_C264_43eb_B823_547FFFB87386",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_4474602B_ACFA_4b67_9F30_2CD88C0FF9AC",
+      "source_class_id_raw": "EAID_4474602B_ACFA_4b67_9F30_2CD88C0FF9AC",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "target_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "target_class_name": "灾害防治材料"
+    },
+    {
+      "generalization_id": "EAID_C0F331CE_A857_49c6_BD44_FD5E2EC9C0CC",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "source_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "target_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "target_class_name": "灾害调查评价"
+    },
+    {
+      "generalization_id": "EAID_1D3A90D5_98A7_413e_89B1_2500BA61F2FD",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "source_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "target_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "target_class_name": "灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_75A34DBE_6F9A_4c4d_B320_29B420DD5C5E",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_7C3EA891_839E_46f4_B35C_46E0D9A2FC14",
+      "source_class_id_raw": "EAID_7C3EA891_839E_46f4_B35C_46E0D9A2FC14",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_47DC88D9_C48D_4289_B86C_C666E0A13206",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E9CFDDB_6F38_4792_8663_DE31D7B528D6",
+      "source_class_id_raw": "EAID_0E9CFDDB_6F38_4792_8663_DE31D7B528D6",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_BDCAF4EE_2F7B_48ac_9F07_4F5341EC892C",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_93F37090_3D04_4d19_8F34_DABD4F0A09D2",
+      "source_class_id_raw": "EAID_93F37090_3D04_4d19_8F34_DABD4F0A09D2",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "target_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "target_class_name": "地质灾害调查评价"
+    },
+    {
+      "generalization_id": "EAID_71E9F4EB_EA68_4774_A5BE_98097D041DF0",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8ADBC8D1_E95B_46ec_9A16_CCD5617B73C9",
+      "source_class_id_raw": "EAID_8ADBC8D1_E95B_46ec_9A16_CCD5617B73C9",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_FB7C9A77_9578_47e9_AC28_ED35A6CD35AC",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A60285E1_408F_4326_AE3E_9EFE13A378F2",
+      "source_class_id_raw": "EAID_A60285E1_408F_4326_AE3E_9EFE13A378F2",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "target_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "target_class_name": "地质灾害调查评价"
+    },
+    {
+      "generalization_id": "EAID_B59EFC83_03DF_4b44_ABAF_A61D5A96BCE9",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_718F3CDF_385C_4819_99EE_B2C6DF7F8530",
+      "source_class_id_raw": "EAID_718F3CDF_385C_4819_99EE_B2C6DF7F8530",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_C7480699_A66F_4c72_B0F4_3D97FF426E77",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_30471476_C3AF_40ae_AB7A_49D6BC4C7A6A",
+      "source_class_id_raw": "EAID_30471476_C3AF_40ae_AB7A_49D6BC4C7A6A",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "target_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "target_class_name": "灾害监测"
+    },
+    {
+      "generalization_id": "EAID_6681234F_E682_4704_ABF9_88D25EF32B17",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A08165E5_5812_4715_8BCD_314F2A408F91",
+      "source_class_id_raw": "EAID_A08165E5_5812_4715_8BCD_314F2A408F91",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_28280660_F626_4598_99DE_9B5CCA985159",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_468E7203_681E_4124_8E01_62C1745E773B",
+      "source_class_id_raw": "EAID_468E7203_681E_4124_8E01_62C1745E773B",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_74726264_583E_4f28_9CC6_9E4EC26E85BD",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_1B4124E4_9AA3_40b4_815E_DC5E6A12469E",
+      "source_class_id_raw": "EAID_1B4124E4_9AA3_40b4_815E_DC5E6A12469E",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "target_class_id_raw": "EAID_6A6A98C7_2EC1_4541_9B67_B54699DCF4E3",
+      "target_class_name": "地质灾害调查评价"
+    },
+    {
+      "generalization_id": "EAID_E04A1B43_8C84_4d59_A910_D8F6BA3D2448",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_FF63BAAD_9965_4243_BA83_ED8520227CD9",
+      "source_class_id_raw": "EAID_FF63BAAD_9965_4243_BA83_ED8520227CD9",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_name": "灾害防治组织"
+    },
+    {
+      "generalization_id": "EAID_B505457B_F9A0_4d59_9300_0322444696B2",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_69BE438A_6E8D_43c2_ADEE_AB2A04602FA6",
+      "source_class_id_raw": "EAID_69BE438A_6E8D_43c2_ADEE_AB2A04602FA6",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_AC9C6130_275F_41b6_BFA6_ABE10C996596",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_B5C1AA13_1A05_406a_98C7_83740A8B78FD",
+      "source_class_id_raw": "EAID_B5C1AA13_1A05_406a_98C7_83740A8B78FD",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_5CAB1698_6809_4017_B625_4F2586E2629A",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_074EE063_EF2A_4176_9752_D2EBCA110B12",
+      "source_class_id_raw": "EAID_074EE063_EF2A_4176_9752_D2EBCA110B12",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_name": "灾害应急预案"
+    },
+    {
+      "generalization_id": "EAID_0E417307_840D_4baf_9E84_A6BF46365592",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8B99EDB8_8921_435d_893B_50DAE74B25DA",
+      "source_class_id_raw": "EAID_8B99EDB8_8921_435d_893B_50DAE74B25DA",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "target_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "target_class_name": "灾害防治材料"
+    },
+    {
+      "generalization_id": "EAID_63E48551_5192_443b_A9EA_CB5FA38F0214",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E5E91BFD_CD04_46d6_93D7_1535BA751154",
+      "source_class_id_raw": "EAID_E5E91BFD_CD04_46d6_93D7_1535BA751154",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "target_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "target_class_name": "资质证书"
+    },
+    {
+      "generalization_id": "EAID_36205B23_7258_4ddf_9F7F_298F345FC6F3",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_44955C8E_6BD5_45d8_B30B_4992C7A62022",
+      "source_class_id_raw": "EAID_44955C8E_6BD5_45d8_B30B_4992C7A62022",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "target_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "target_class_name": "地质灾害治理资质审批"
+    },
+    {
+      "generalization_id": "EAID_902780E8_B4CC_4868_BAF0_715843139E04",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E7FA3B36_E5D7_41e4_B8BE_6010B5412207",
+      "source_class_id_raw": "EAID_E7FA3B36_E5D7_41e4_B8BE_6010B5412207",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "target_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "target_class_name": "资质证书"
+    },
+    {
+      "generalization_id": "EAID_76A29FBF_F92A_4aeb_82B6_55237DF10BA0",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0F809494_BADF_4a21_ADE9_ACBEDB918F78",
+      "source_class_id_raw": "EAID_0F809494_BADF_4a21_ADE9_ACBEDB918F78",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "target_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "target_class_name": "地质灾害治理资质审批"
+    },
+    {
+      "generalization_id": "EAID_C221E5F0_AFD9_41b8_B00A_3FE01A4DCD06",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_4C449FB7_4F10_42db_8815_502B73DF7275",
+      "source_class_id_raw": "EAID_4C449FB7_4F10_42db_8815_502B73DF7275",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "target_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "target_class_name": "资质证书"
+    },
+    {
+      "generalization_id": "EAID_2AC0A338_7D47_4d5a_A548_1B127704075F",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_D6C5CFA9_0613_415d_900D_4DEA21BDC7E5",
+      "source_class_id_raw": "EAID_D6C5CFA9_0613_415d_900D_4DEA21BDC7E5",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "target_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "target_class_name": "地质灾害治理资质审批"
+    },
+    {
+      "generalization_id": "EAID_DA63AEDA_9ACD_4927_B1AA_FC3038794689",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "source_class_id_raw": "EAID_C29CA386_E089_4561_A32B_5D61356807D3",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "target_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "target_class_name": "灾害防治事项"
+    },
+    {
+      "generalization_id": "EAID_B85238E0_28C2_493c_A12B_0E4057379882",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_78137D3A_939F_4a72_9014_CE3DBE3097BA",
+      "source_class_id_raw": "EAID_78137D3A_939F_4a72_9014_CE3DBE3097BA",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "target_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "target_class_name": "灾害防治材料"
+    },
+    {
+      "generalization_id": "EAID_3109418F_C5DF_4b26_8D36_98822D70232B",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_BF2AE702_E282_48d9_866A_DBA08F02F879",
+      "source_class_id_raw": "EAID_BF2AE702_E282_48d9_866A_DBA08F02F879",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_name": "地质灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_A75EC49D_89B9_4499_AE53_41775D5C5225",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_B6AD160E_51CE_45ad_B1AA_994A72BAA860",
+      "source_class_id_raw": "EAID_B6AD160E_51CE_45ad_B1AA_994A72BAA860",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_name": "地质灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_5D975E62_F4DE_456e_86BF_F643E15761C2",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_24A14940_73A0_44d6_83F2_A968E0F4621F",
+      "source_class_id_raw": "EAID_24A14940_73A0_44d6_83F2_A968E0F4621F",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "target_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "target_class_name": "灾害调查评价"
+    },
+    {
+      "generalization_id": "EAID_4DDECDCB_8403_41af_9EA7_9B2B179D2C5C",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_D8E24F5E_261A_4948_B906_292818285977",
+      "source_class_id_raw": "EAID_D8E24F5E_261A_4948_B906_292818285977",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "target_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "target_class_name": "灾害监测"
+    },
+    {
+      "generalization_id": "EAID_41FC914B_F4B6_4124_8F59_9956C8F30784",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_6D7641D8_9646_46ba_A710_09F0A900C672",
+      "source_class_id_raw": "EAID_6D7641D8_9646_46ba_A710_09F0A900C672",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_FC98C2CB_E73F_4fc6_8E5D_3E73601142CE",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9D415A4D_F366_46c7_96AC_3561C60136A6",
+      "source_class_id_raw": "EAID_9D415A4D_F366_46c7_96AC_3561C60136A6",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_C43F77D8_FCDF_48d5_AB12_DBD946837C3C",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_BE2FD26A_ED65_48c6_ACED_DA37E90D6D62",
+      "source_class_id_raw": "EAID_BE2FD26A_ED65_48c6_ACED_DA37E90D6D62",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_name": "灾害应急预案"
+    },
+    {
+      "generalization_id": "EAID_3CE78906_3752_420f_A0DA_978AF7698A66",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_EDD3D2D8_899F_4b47_8232_B91C70ED4BDA",
+      "source_class_id_raw": "EAID_EDD3D2D8_899F_4b47_8232_B91C70ED4BDA",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "target_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "target_class_name": "灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_3CB6AEE7_FEFA_4b3b_A1C3_32A677F9752B",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_042F5260_A32B_40cb_8ACD_94E68A499F9C",
+      "source_class_id_raw": "EAID_042F5260_A32B_40cb_8ACD_94E68A499F9C",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_name": "灾害防治组织"
+    },
+    {
+      "generalization_id": "EAID_31965C80_E73F_484c_9E25_3798C8E65F0C",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_5D4DD8AE_A102_4532_A940_53C26CC7C1B2",
+      "source_class_id_raw": "EAID_5D4DD8AE_A102_4532_A940_53C26CC7C1B2",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "target_class_id_raw": "EAID_B3F07EEE_CBF2_48a6_9E42_62DF94A2777E",
+      "target_class_name": "监测设备"
+    },
+    {
+      "generalization_id": "EAID_43FEF61F_B7B9_40fd_B7EE_CC5731C35E77",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_CCC906D2_6DDC_4b24_B8FB_63B0F1AFF806",
+      "source_class_id_raw": "EAID_CCC906D2_6DDC_4b24_B8FB_63B0F1AFF806",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_name": "地质灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_2F1609C4_1499_41ba_8E10_B10FE3DE9760",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0964058E_B1C7_4d32_B0E3_E5B06AF15BDB",
+      "source_class_id_raw": "EAID_0964058E_B1C7_4d32_B0E3_E5B06AF15BDB",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_name": "灾害防治组织"
+    },
+    {
+      "generalization_id": "EAID_FC0DAA58_A017_4dd1_8D73_EE82FB085FB8",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0BD99F6D_E3CB_4093_9CCB_E9F26A53D365",
+      "source_class_id_raw": "EAID_0BD99F6D_E3CB_4093_9CCB_E9F26A53D365",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_name": "灾害防治组织"
+    },
+    {
+      "generalization_id": "EAID_3A1DF2BC_3913_4b86_81C1_48015D82D302",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_3F97E8C0_8DE3_4695_AFA0_4FD8FB6A9087",
+      "source_class_id_raw": "EAID_3F97E8C0_8DE3_4695_AFA0_4FD8FB6A9087",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_D1348E49_3375_46e8_8119_389E09519639",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_97765797_B629_48a5_AF33_52E2F35B18FB",
+      "source_class_id_raw": "EAID_97765797_B629_48a5_AF33_52E2F35B18FB",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_F423555B_EC5B_4a40_A0E8_824B25CD674F",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_36B8ABDD_40D0_4dae_A4CA_C932AE473867",
+      "source_class_id_raw": "EAID_36B8ABDD_40D0_4dae_A4CA_C932AE473867",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_name": "地质灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_F4C5F7F1_716D_4fb9_9496_0DBA792A4B52",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_60AD1755_A7F3_4b89_A7E1_B94A1182751B",
+      "source_class_id_raw": "EAID_60AD1755_A7F3_4b89_A7E1_B94A1182751B",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_name": "地质灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_BAA84A08_A53B_4486_A30D_5C12334C1721",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E19BAD72_CBB1_4cb8_B329_3CDB63693090",
+      "source_class_id_raw": "EAID_E19BAD72_CBB1_4cb8_B329_3CDB63693090",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_name": "灾害应急预案"
+    },
+    {
+      "generalization_id": "EAID_FA574715_93A1_4848_BA89_24AB3383D915",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9258E18B_78EE_4f5a_B9E5_AA61278A49AF",
+      "source_class_id_raw": "EAID_9258E18B_78EE_4f5a_B9E5_AA61278A49AF",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_id_raw": "EAID_AE504EA4_95E8_4f40_916E_C9E86A835D33",
+      "target_class_name": "地质灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_2EFCB222_8835_4393_8118_0F9879760D12",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_C5297ED3_043C_4173_9EBE_EB5ACDADA759",
+      "source_class_id_raw": "EAID_C5297ED3_043C_4173_9EBE_EB5ACDADA759",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "target_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "target_class_name": "灾害调查评价"
+    },
+    {
+      "generalization_id": "EAID_99CFDCF8_F2CD_4abe_BE12_1B2B155A5484",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "source_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "target_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "target_class_name": "灾害防治项目"
+    },
+    {
+      "generalization_id": "EAID_D0840900_A453_456c_9AF7_FE9A32E756B0",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_8A4F76F0_29DC_42cd_AC9C_DF3E9BE381FB",
+      "source_class_id_raw": "EAID_8A4F76F0_29DC_42cd_AC9C_DF3E9BE381FB",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "target_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "target_class_name": "灾害监测"
+    },
+    {
+      "generalization_id": "EAID_76FDA8C3_4FD7_4741_864E_4B8923C1B121",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A48B7C61_5154_4e6b_9F79_F8A37CCDE9C7",
+      "source_class_id_raw": "EAID_A48B7C61_5154_4e6b_9F79_F8A37CCDE9C7",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_name": "灾害应急预案"
+    },
+    {
+      "generalization_id": "EAID_5807EF19_7931_488b_B433_B1DB8B3ADA5A",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_636F3AAD_C5C4_458c_94EF_C24926A63153",
+      "source_class_id_raw": "EAID_636F3AAD_C5C4_458c_94EF_C24926A63153",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "target_class_id_raw": "EAID_8E24F51B_B4AB_4f61_8A8E_6F3686CE4056",
+      "target_class_name": "森林草原火灾高危区综合治理项目"
+    },
+    {
+      "generalization_id": "EAID_D99F22A6_B47A_458e_B452_1993ECD5D00B",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_632CF610_46CB_4cfc_9A4B_1EAD019224E1",
+      "source_class_id_raw": "EAID_632CF610_46CB_4cfc_9A4B_1EAD019224E1",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_EDAD0284_01CF_497b_B7E4_1DB4A8227252",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9675B01A_A04B_416d_918D_83F251C9C5FA",
+      "source_class_id_raw": "EAID_9675B01A_A04B_416d_918D_83F251C9C5FA",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_D3821666_1DC7_4c3b_8983_D392735003E2",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_DEF931E2_674F_48ab_9796_833844D28ABA",
+      "source_class_id_raw": "EAID_DEF931E2_674F_48ab_9796_833844D28ABA",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_name": "灾害防治组织"
+    },
+    {
+      "generalization_id": "EAID_C0BF3D6B_E2B2_4c26_8793_1576A8204CB8",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_E5ECDBD2_BC49_4144_A469_81789A1F859E",
+      "source_class_id_raw": "EAID_E5ECDBD2_BC49_4144_A469_81789A1F859E",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_D268B276_0FF6_4b3e_B52D_333FCBD49187",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_A6539271_0B6E_4a0a_A5A5_7F5085E69E44",
+      "source_class_id_raw": "EAID_A6539271_0B6E_4a0a_A5A5_7F5085E69E44",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_75DCC37A_AFF2_46c4_AEA9_F4EF9904BFA7",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_DA46D377_2C53_4b21_927C_6FE070126F46",
+      "source_class_id_raw": "EAID_DA46D377_2C53_4b21_927C_6FE070126F46",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_name": "自然灾害空间对象"
+    },
+    {
+      "generalization_id": "EAID_322A5A8D_FEB2_4771_8DD6_CFC19E482C72",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "source_class_id_raw": "EAID_CD98B67F_33A7_48b8_A860_1995AE0BA8D7",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "target_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "target_class_name": "灾害防治事项"
+    },
+    {
+      "generalization_id": "EAID_EF4992FF_3F84_49f9_A715_7CBB01AE49B6",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "source_class_id_raw": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_6C2FD005_BF7E_4e54_A728_C5BEDE352FAB",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "source_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_3FDC8240_8240_4435_9368_FBD8F62FA771",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_D6113C98_EE00_48b9_9355_77C3A0A0D953",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "source_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_73AE9CD7_4860_49c7_BFA7_11BD72E1CCDA",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "source_class_id_raw": "EAID_577114C2_B525_466e_9BCF_E3A14D720026",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_1087F962_A6E9_4c16_8409_68CC7EA4700F",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "source_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_DB4A556B_536C_487e_A905_37F057D8EB1D",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "source_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_433704E7_F77B_4082_999A_339DAFFACD9F",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_76151C1A_73CC_4f5f_86E2_9BB517733ABA",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "source_class_id_raw": "EAID_0C765006_77F9_43d3_8A45_34B09F2FEF9A",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "target_class_id_raw": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF",
+      "target_class_name": "灾害防治事项"
+    },
+    {
+      "generalization_id": "EAID_FCE5A884_C6EF_4ebb_98B0_931D349A2446",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "source_class_id_raw": "EAID_0471E97E_CF2C_4bba_B387_9A4FA332ABD6",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "target_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "target_class_name": "灾害防治文证"
+    },
+    {
+      "generalization_id": "EAID_DEC47A11_74A7_45dd_B0E0_2305F91715B7",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_13D46DBD_B032_404b_90B1_21427E488469",
+      "source_class_id_raw": "EAID_13D46DBD_B032_404b_90B1_21427E488469",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_name": "灾害防治组织"
+    },
+    {
+      "generalization_id": "EAID_418CA2C3_28BB_4785_A98D_F701A66FFDE3",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_12D81C6A_3985_43fa_8DC9_6EC4B84D6294",
+      "source_class_id_raw": "EAID_12D81C6A_3985_43fa_8DC9_6EC4B84D6294",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_id_raw": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C",
+      "target_class_name": "灾害防治组织"
+    },
+    {
+      "generalization_id": "EAID_164EBD75_E546_4191_B033_2B2B949F529D",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "source_class_id_raw": "EAID_0E05FB15_600D_4405_84E7_0DF92F732D86",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "target_class_id_raw": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4",
+      "target_class_name": "灾害防治文证"
+    },
+    {
+      "generalization_id": "EAID_C50E0CD9_0125_4821_8463_C12DCCF3A019",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "source_class_id_raw": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4",
+      "target_class_id": null,
+      "target_class_id_raw": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+      "target_class_name": null
+    },
+    {
+      "generalization_id": "EAID_361833E5_5579_4cb9_8B0E_D0C12D22105B",
+      "source_class_id": "09统一灾害防治__f2595dfe::class::EAID_7572E130_7E7B_4fe0_99D4_3E2EDBCDD618",
+      "source_class_id_raw": "EAID_7572E130_7E7B_4fe0_99D4_3E2EDBCDD618",
+      "target_class_id": "09统一灾害防治__f2595dfe::class::EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB",
+      "target_class_id_raw": "EAID_DF6CB268_7AFD_4fdb_BF9D_E5D15C743CAB",
+      "target_class_name": "设备"
+    }
+  ],
+  "class_count": 82,
+  "association_count": 10,
+  "generalization_count": 74,
+  "unresolved_ref_count": 8,
+  "unresolved_refs": [
+    {
+      "ref_id": "EAID_7A3ABA8B_BCBA_4b16_BE61_4AAE8392F315",
+      "context": "generalization_target",
+      "owner_id": "EAID_90ADA98C_B2E9_40d8_A42E_931D9F14873A"
+    },
+    {
+      "ref_id": "EAID_3FDC8240_8240_4435_9368_FBD8F62FA771",
+      "context": "generalization_target",
+      "owner_id": "EAID_ED6437E2_B970_4bf5_8C1F_9DE81103EBDF"
+    },
+    {
+      "ref_id": "EAID_6E95A796_04E7_407d_9C02_2ACFEC16565A",
+      "context": "generalization_target",
+      "owner_id": "EAID_620FF41A_7615_4e0c_BF5D_FCC5821515D4"
+    },
+    {
+      "ref_id": "EAID_42AFA2FE_366D_48f1_828E_83C56FFED99C",
+      "context": "generalization_target",
+      "owner_id": "EAID_577114C2_B525_466e_9BCF_E3A14D720026"
+    },
+    {
+      "ref_id": "EAID_94AA5E5A_EAF0_4ff9_9DFB_C7554048621E",
+      "context": "generalization_target",
+      "owner_id": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "ref_id": "EAID_433704E7_F77B_4082_999A_339DAFFACD9F",
+      "context": "generalization_target",
+      "owner_id": "EAID_564B4707_87A1_48ca_9974_1CD704261D8C"
+    },
+    {
+      "ref_id": "EAID_5CDFB174_400B_490e_9766_D9CAD59ECE54",
+      "context": "generalization_target",
+      "owner_id": "EAID_9ED7A480_1952_47f9_BA72_6DFDD2D131E4"
+    },
+    {
+      "ref_id": "EAID_8915A023_76DC_4893_8DD3_EE8E1C0BFAC8",
+      "context": "association_end_type",
+      "owner_id": "EAID_6D3DDAA9_1FFB_4cd4_AD72_AB6581199C61"
+    }
+  ],
+  "stats": {
+    "total_packages": 3,
+    "total_classes": 82,
+    "total_attributes": 0,
+    "total_associations": 10,
+    "total_generalizations": 74
+  }
+}

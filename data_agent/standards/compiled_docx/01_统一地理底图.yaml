@@ -1,0 +1,5161 @@
+module: 01_统一地理底图
+source_file: 自然资源“一张图”数据库体系结构（1）统一地理底图1126.docx
+field_tables:
+- module: 01_统一地理底图
+  table_name_cn: 遥感影像分区调度网格表
+  table_code: imagery_mosaicgrid
+  caption_raw: 表 3 遥感影像分区调度网格表（属性表名： imagery_mosaicgrid）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.2遥感影像属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 影像名称
+    code: name
+    dtype: 字符型
+    length: '512'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 类别
+    code: category
+    dtype: 长整型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 最大像素大小
+    code: maxps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 最小像素大小
+    code: minps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 像素高值
+    code: highps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 像素低值
+    code: lowps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 文件路径
+    code: path
+    dtype: 字符型
+    length: '1024'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 地面分辨率
+    code: resolution
+    dtype: 浮点型
+    length: '-'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 单位：米
+  - seq: ''
+    name_cn: 影像获取时间
+    code: arqdate
+    dtype: 日期型
+    length: '-'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 大地基准
+    code: hdatum
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 高程基准
+    code: vdatum
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: DEM 分区调度网格表
+  table_code: dem_mosaicgrid
+  caption_raw: 表 4 DEM 分区调度网格表（属性表名：dem_mosaicgrid）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.3地形地貌属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 影像名称
+    code: name
+    dtype: 字符型
+    length: '512'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 类别
+    code: category
+    dtype: 长整型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 最大像素大小
+    code: maxps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 最小像素大小
+    code: minps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 像素高值
+    code: highps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 像素低值
+    code: lowps
+    dtype: 浮点型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 文件路径
+    code: path
+    dtype: 字符型
+    length: '1024'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 格网间距
+    code: gridsize
+    dtype: 浮点型
+    length: '-'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 单位：米
+  - seq: ''
+    name_cn: 生产时间
+    code: prddate
+    dtype: 日期型
+    length: '-'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 大地基准
+    code: hdatum
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 高程基准
+    code: vdatum
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 坡度图
+  table_code: pdt_a
+  caption_raw: 表 5 坡度图（属性表名：pdt_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.3地形地貌属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 坡度级别
+    code: pdjb
+    dtype: 字符型
+    length: '2'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 白模属性表
+  table_code: dmb_v
+  caption_raw: 表 6白模属性表（属性表名：dmb_v）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.4三维模型属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: 一
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 房屋层数
+    code: floor
+    dtype: 整型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 建筑物模型（LOD1.3）属性表
+  table_code: lod_v
+  caption_raw: 表 7建筑物模型（LOD1.3）属性表（属性表名： lod_v）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.4三维模型属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: 一
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 实体名称
+    code: name
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity ld
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 位置码
+    code: locationld
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '6'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '30'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 基底面积
+    code: basearea
+    dtype: 浮点型
+    length: 一
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 单位：平方米
+  - seq: ''
+    name_cn: 建筑面积
+    code: builtupare
+    dtype: 浮点型
+    length: 一
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: '收集到相关资料必须填
+
+      单位：平方米'
+  - seq: ''
+    name_cn: 高度
+    code: height
+    dtype: 浮点型
+    length: 一
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: '建（构）筑物顶部到基底面高度
+
+      单位：米'
+  - seq: ''
+    name_cn: 地坪高
+    code: floorheigh
+    dtype: 浮点型
+    length: 一
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: '建（构）筑物基底面的高程
+
+      单位：米'
+  - seq: ''
+    name_cn: 最高点高度
+    code: highestpoi
+    dtype: 浮点型
+    length: 一
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 建（构）筑物最高点（避雷针等）到基底面高度收集到相关资料必须填单位：米
+  - seq: ''
+    name_cn: 房屋层数
+    code: floornumbe
+    dtype: 整数型
+    length: '6'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 地面以上房屋层数
+  - seq: ''
+    name_cn: 地下房屋层数
+    code: floornumun
+    dtype: 整数型
+    length: '4'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 地面以下房屋层数收集到相关资料必须填
+  - seq: ''
+    name_cn: 架空层数
+    code: floornumov
+    dtype: 整数型
+    length: '6'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 架空的房屋层数
+  - seq: ''
+    name_cn: 竣工年代
+    code: comp letime
+    dtype: 日期型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 建（构）筑物竣工验收时间收集到相关资料必须填
+  - seq: ''
+    name_cn: 用途
+    code: usage
+    dtype: 字符型
+    length: '30'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 建（构）筑物的功用收集到相关资料必须填
+  - seq: ''
+    name_cn: 地址
+    code: address
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 门牌号+楼号收集到相关资料必须填
+  - seq: ''
+    name_cn: 其他名称
+    code: alias
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 建（构）筑物其他名称收集到相关资料必须填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 乡级行政区域、村（社区）等属性表（属性表名： a_tow_a、a_vil_a）
+  table_code: ''
+  caption_raw: 表 8 乡级行政区域、村（社区）等属性表（属性表名： a_tow_a、a_vil_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 乡级行政区域、村（社区）范围面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 区划代码
+    code: politcode
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 乡级区域界线/范围线、村（社区）范围线属性表（属性表名：a_tow_l、a_vil_l）
+  table_code: ''
+  caption_raw: 表 9 乡级区域界线/范围线、村（社区）范围线属性表（属性表名：a_tow_l、a_vil_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 乡级区域界线/范围线、村（社区）范围线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 注：PolitCode码小号在前
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 界线类型
+    code: bdytype
+    dtype: 字符型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 临水控制线线属性表
+  table_code: a_wbl_l
+  caption_raw: 表 10 临水控制线线属性表（属性表名：a_wbl_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 临水控制线线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 临水控制线面属性表（a_wbl_a）
+  table_code: ''
+  caption_raw: 表 11临水控制线面属性表（a_wbl_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 临水控制线面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 水利编码
+    code: rlcode
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 上游河段水利编码
+    code: uprlcolde
+    dtype: 字符型
+    length: '40'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 上游河段名称
+    code: upname
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 所属地形
+    code: landform
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 所属河流编码
+    code: basinid
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 所属河流名称
+    code: basinname
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 功能
+    code: function
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 铁路线属性表
+  table_code: t_rai_l
+  caption_raw: 表 12 铁路线属性表（属性表名：t_rai_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 铁路线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 线路类型
+    code: linetype
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 公路面、城市道路面属性表（属性表名：t_hig_a、t_cir_a）
+  table_code: ''
+  caption_raw: 表 13 公路面、城市道路面属性表（属性表名：t_hig_a、t_cir_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 公路面、城市道路面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 线路简称
+    code: abbre
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 线路编号
+    code: linecode
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 技术等级
+    code: grade
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 公路线、城市道路线属性表（属性表名：t_hig_l、t_cir_l）
+  table_code: ''
+  caption_raw: 表 14 公路线、城市道路线属性表（属性表名：t_hig_l、t_cir_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 公路线、城市道路线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 线路简称
+    code: abbre
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 线路编号
+    code: linecode
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 技术等级
+    code: grade
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 路口面属性表
+  table_code: t_int_a
+  caption_raw: 表 15  路口面属性表（属性表名：t_int_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 路口面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: ''
+  table_code: ''
+  caption_raw: t_cor_l、t_bri_l、t_tun_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 城市轨道交通线、乡村道路线、桥梁线、隧道线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 漏斗坑穴、山洞溶洞、沟壑、其他山体相关实体点属性表（属性表名：m_fun_p、m_cav_p、m_gul_p、m_oth_p）
+  table_code: ''
+  caption_raw: 表 17漏斗坑穴、山洞溶洞、沟壑、其他山体相关实体点属性表（属性表名：m_fun_p、m_cav_p、m_gul_p、m_oth_p）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 漏斗坑穴、山洞溶洞、沟壑、其他山体相关实体点属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 表质类型
+    code: substype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 沙土/土/石/岩溶/黄土
+    constraint: 选填
+    note: 见本表注1
+  - seq: ''
+    name_cn: 海拔
+    code: altitude
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体为山脉、山岭、山峰等凸出于地表的实体类型时，必填
+  - seq: ''
+    name_cn: 深度
+    code: depth
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 选填
+    note: 当实体为漏斗、坑穴以及冲沟、地裂缝等凹陷于地表的实体类型时，选填
+  - seq: ''
+    name_cn: 宽度
+    code: width
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 选填
+    note: 当实体为冲沟、地裂缝时，选填
+  - seq: ''
+    name_cn: 方向
+    code: direction
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: 0～360
+    constraint: 符合条件时必填
+    note: 见本表注2当实体为山洞、溶洞时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 漏斗坑穴、山洞溶洞、沟壑、其他山体相关实体面属性表（属性表名：m_fun_a、m_cav_a、m_gul_a、m_oth_a）
+  table_code: ''
+  caption_raw: 表 18漏斗坑穴、山洞溶洞、沟壑、其他山体相关实体面属性表（属性表名：m_fun_a、m_cav_a、m_gul_a、m_oth_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 漏斗坑穴、山洞溶洞、沟壑、其他山体相关实体面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 表质类型
+    code: substype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 沙土/土/石/岩溶/黄土
+    constraint: 选填
+    note: 见本表注1
+  - seq: ''
+    name_cn: 海拔
+    code: altitude
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体为山脉、山岭、山峰等凸出于地表的实体类型时，必填
+  - seq: ''
+    name_cn: 深度
+    code: depth
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 选填
+    note: 当实体为漏斗、坑穴以及冲沟、地裂缝等凹陷于地表的实体类型时，选填
+  - seq: ''
+    name_cn: 宽度
+    code: width
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 选填
+    note: 当实体为冲沟、地裂缝时，选填
+  - seq: ''
+    name_cn: 方向
+    code: direction
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: 0～360
+    constraint: 符合条件时必填
+    note: 见本表注2当实体为山洞、溶洞时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 沟壑、其他山体相关实体线属性表（属性表名：m_gul_l、m_oth_l）
+  table_code: ''
+  caption_raw: 表 19 沟壑、其他山体相关实体线属性表（属性表名：m_gul_l、m_oth_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 沟壑、其他山体相关实体线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 表质类型
+    code: substype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 沙土/土/石/岩溶/黄土
+    constraint: 选填
+    note: 见本表注1
+  - seq: ''
+    name_cn: 海拔
+    code: altitude
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体为山脉、山岭、山峰等凸出于地表的实体类型时，必填
+  - seq: ''
+    name_cn: 深度
+    code: depth
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 选填
+    note: 当实体为冲沟、地裂缝等凹陷于地表的实体类型时，选填
+  - seq: ''
+    name_cn: 宽度
+    code: width
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 选填
+    note: 当实体为冲沟、地裂缝时，选填
+  - seq: ''
+    name_cn: 方向
+    code: direction
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: 0～360
+    constraint: 符合条件时必填
+    note: 见本表注2当实体为山洞、溶洞时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 园地、林地点属性表（属性表名：a_gal_p、a_fol_p）
+  table_code: ''
+  caption_raw: 表 20 园地、林地点属性表（属性表名：a_gal_p、a_fol_p）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 园地、林地点属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 形态类型
+    code: layouttype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 表质类型
+    code: substype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 作物种类
+    code: cropspec
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  - seq: ''
+    name_cn: 灌溉方式
+    code: irrimethod
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: 喷灌/滴灌/浸灌
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  - seq: ''
+    name_cn: 坡度等级
+    code: slope
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 树高
+    code: height
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 最高高度
+  - seq: ''
+    name_cn: 郁闭度
+    code: canopydens
+    dtype: 字符型
+    length: '4'
+    decimal: ''
+    domain: 70%
+    constraint: 符合条件时必填
+    note: 当实体为林地时，必填
+  - seq: ''
+    name_cn: 管理者
+    code: manager
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管理等级
+    code: adminlevel
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管理单位
+    code: mgmtunit
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 林地、其他土地线属性表（属性表名：a_fol_l、a_oth_l）
+  table_code: ''
+  caption_raw: 表 21 林地、其他土地线属性表（属性表名：a_fol_l、a_oth_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 林地、其他土地线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 形态类型
+    code: layouttype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 沙地：平沙地/灌丛沙堆/新月形沙丘/垄状沙丘/窝状沙丘田坎：未加固/已加固
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 表质类型
+    code: substype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 裸岩石砾地：露岩地/沙砾地、戈壁滩/石块地/残丘地
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 作物种类
+    code: cropspec
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  - seq: ''
+    name_cn: 灌溉方式
+    code: irrimethod
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: 喷灌/滴灌/浸灌
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时， 必填
+  - seq: ''
+    name_cn: 坡度等级
+    code: slope
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 树高
+    code: height
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 最高高度
+  - seq: ''
+    name_cn: 郁闭度
+    code: canopydens
+    dtype: 字符型
+    length: '4'
+    decimal: ''
+    domain: 70%
+    constraint: 符合条件时必填
+    note: 当实体为林地时，必填
+  - seq: ''
+    name_cn: 管理者
+    code: manager
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管理等级
+    code: adminlevel
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管理单位
+    code: mgmtunit
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 耕地、园地、林地、草地、湿地、其他土地面属性表（属性表名：a_fal_a、a_gal_a、a_fol_a、a_grl_a、a_wel_a、a_oth_a）
+  table_code: ''
+  caption_raw: 表 22 耕地、园地、林地、草地、湿地、其他土地面属性表（属性表名：a_fal_a、a_gal_a、a_fol_a、a_grl_a、a_wel_a、a_oth_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 耕地、园地、林地、草地、湿地、其他土地面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 形态类型
+    code: layouttype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 沙地：平沙地/灌丛沙堆/新月形沙丘/垄状沙丘/窝状沙丘田坎：未加固/已加固
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 表质类型
+    code: substype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 裸岩石砾地：露岩地/沙砾地、戈壁滩/石块地/残丘地
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 作物种类
+    code: cropspec
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  - seq: ''
+    name_cn: 灌溉方式
+    code: irrimethod
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: 喷灌/滴灌/浸灌
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  - seq: ''
+    name_cn: 坡度等级
+    code: slope
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 树高
+    code: height
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 最高高度
+  - seq: ''
+    name_cn: 郁闭度
+    code: canopydens
+    dtype: 字符型
+    length: '4'
+    decimal: ''
+    domain: 70%
+    constraint: 符合条件时必填
+    note: 当实体为林地时，必填
+  - seq: ''
+    name_cn: 管理者
+    code: manager
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管理等级
+    code: adminlevel
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管理单位
+    code: mgmtunit
+    dtype: 字符型
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当收集到相关资料时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 河流水面线属性表
+  table_code: h_riv_l
+  caption_raw: 表 23 河流水面线属性表（属性表名：h_riv_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 河流水面线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 存在共享河段时以“/”分割
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 行业名称代码
+    code: profcode
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 级别
+    code: grade
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 河流水面面属性表
+  table_code: h_riv_a
+  caption_raw: 表 24 河流水面面属性表（属性表名：h_riv_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 河流水面面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: '存在共享
+
+      河段时以“/ ”分割'
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 行业名称代码
+    code: profcode
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 级别
+    code: grade
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: ''
+  table_code: ''
+  caption_raw: h_lak_a、h_res_a、h_can_a、h_wfc_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 湖泊池塘面、水库山塘面、运河沟渠面、水利附属设施面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 运河沟渠线、水利附属设施线属性表（属性表名：h_can_l、h_wfc_l）
+  table_code: ''
+  caption_raw: 表 26 运河沟渠线、水利附属设施线属性表（属性表名：h_can_l、h_wfc_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 运河沟渠线、水利附属设施线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 长输输电管线、长输通信管线、长输油气水输送主管道、城市管线出入地口、城市管线附属设施点属性表（属性表名：p_lep_p、p_lcp_p、p_lop_p、p_cpe_p、p_cpf_p）
+  table_code: ''
+  caption_raw: 表 27 长输输电管线、长输通信管线、长输油气水输送主管道、城市管线出入地口、城市管线附属设施点属性表（属性表名：p_lep_p、p_lcp_p、p_lop_p、p_cpe_p、p_cpf_p）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 长输输电管线、长输通信管线、长输油气水输送主管道、城市管线出入地口、城市管线附属设施点属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 材质
+    code: material
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管径
+    code: diameter
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 净空高
+    code: clearhgt
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体形态类型是架空，收集到专业资料时，必填
+  - seq: ''
+    name_cn: 埋深
+    code: burdepth
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体形态类型是地下，收集到专业资料时，必填；宜采用绝对高程记录
+  - seq: ''
+    name_cn: 方向
+    code: direction
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: 0～360
+    constraint: 符合条件时必填
+    note: 当实体为长输输电管线出入地口及附属设施、长输通信管线出入地口及附属设施、长输油气水输送主管道出入地口及附属设施、城市管线附属设施、城市管线出入地口时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 长输输电管线、长输通信管线、长输油气水输送主管道、城市管线线路线属性表（属性表名：p_lep_l、p_lcp_l、p_lop_l）
+  table_code: ''
+  caption_raw: 表 28 长输输电管线、长输通信管线、长输油气水输送主管道、城市管线线路线属性表（属性表名：p_lep_l、p_lcp_l、p_lop_l）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 长输输电管线、长输通信管线、长输油气水输送主管道、城市管线线路线属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 形态类型
+    code: layouttype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 架空/地上/地下
+    constraint: 符合条件时必填
+    note: 当实体为高压输电线、通信线、油主管道、天然气主管道、水主管道、城市管线线路时，必填
+  - seq: ''
+    name_cn: 通信线类型
+    code: commLitype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 光缆/电缆
+    constraint: 符合条件时必填
+    note: 当实体为通信线时，必填
+  - seq: ''
+    name_cn: 工业管线类型
+    code: indlitype
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: 氧/氯/乙炔/石油/排渣
+    constraint: 符合条件时必填
+    note: 当实体为城市工业管线时，必填
+  - seq: ''
+    name_cn: 材质
+    code: material
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管径
+    code: diameter
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 净空高
+    code: clearhgt
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体形态类型是架空，收集到专业资料时，必填
+  - seq: ''
+    name_cn: 埋深
+    code: burdepth
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体形态类型是地下，收集到专业资料时，必填；宜采用绝高程记录
+  - seq: ''
+    name_cn: 电压值
+    code: voltageval
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 当实体为城市电力管线时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 长输输电管线、长输通信管线、长输油气水输送主管道面属性表（属性表名：p_lep_a、p_lcp_a、p_lop_a）
+  table_code: ''
+  caption_raw: 表 29 长输输电管线、长输通信管线、长输油气水输送主管道面属性表（属性表名：p_lep_a、p_lcp_a、p_lop_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 长输输电管线、长输通信管线、长输油气水输送主管道面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 材质
+    code: material
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 管径
+    code: diameter
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 净空高
+    code: clearhgt
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体形态类型是架空，收集到专业资料时，必填
+  - seq: ''
+    name_cn: 埋深
+    code: burdepth
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: 符合条件时必填
+    note: 当实体形态类型是地下，收集到专业资料时，必填；宜采用绝对高程记录
+  - seq: ''
+    name_cn: 电压值
+    code: voltageval
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 当实体为城市电力管线时，必填
+  - seq: ''
+    name_cn: 方向
+    code: direction
+    dtype: 浮点型
+    length: '10'
+    decimal: ''
+    domain: 0～360
+    constraint: 符合条件时必填
+    note: 当实体为长输通信管线出入地口及附属设施、长输油气水输送主管道出入地口及附属设施时，必填
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: ''
+  table_code: ''
+  caption_raw: y_tsp_a、y_spe_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 生活居住、公共管理与公共服务、商业服务、工矿生产、农业生产、交通运输、特殊场院属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 院落主要名称；没有名称时填写 null
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 临时场院属性表（属性层名：y_tem_a）
+  table_code: ''
+  caption_raw: 表 31 临时场院属性表（属性层名：y_tem_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 临时场院属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 产生时间
+    code: borntime
+    dtype: 字符型
+    length: '8'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 施工围栏区的产生时间
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 建（构）筑物面属性表
+  table_code: r_bld_a
+  caption_raw: 表 32 建（构）筑物面属性表（属性表名：r_bld_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 建（构）筑物面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: 建（构）筑物主要名称；建（构）筑物没有名称时填写 null
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 房屋层数
+    code: floor
+    dtype: 整数型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 楼高
+    code: hight
+    dtype: 浮点型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 结构类型
+    code: structure
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 建筑用途
+    code: usefunc
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 绿地场地面属性表
+  table_code: r_gro_a
+  caption_raw: 表 33 绿地场地面属性表（属性表名：r_gro_a）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 绿地场地面属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 空间身份编码
+    code: entity id
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 自然地名、人文地名属性表（属性表名：p_ngn_p、p_hgn_p）
+  table_code: ''
+  caption_raw: 表 34自然地名、人文地名属性表（属性表名：p_ngn_p、p_hgn_p）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 自然地名、人文地名属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 简称
+    code: abbre
+    dtype: 字符型
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 标准地址属性表
+  table_code: p_add_p
+  caption_raw: 表 35 标准地址属性表（属性表名：p_add_p)
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 标准地址属性表
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 标准地址
+    code: address
+    dtype: 字符型
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  notes: []
+- module: 01_统一地理底图
+  table_name_cn: 政务兴趣点属性表
+  table_code: p_gap_p
+  caption_raw: 表 36 政务兴趣点属性表（属性表名：p_gap_p）
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.5矢量数据属性表
+  - 政务兴趣点
+  fields:
+  - seq: ''
+    name_cn: 唯一标识
+    code: guid
+    dtype: INT64
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry
+    dtype: '-'
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 入库时间
+    code: createtime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 更新时间
+    code: updatetime
+    dtype: 日期型
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 所属管理域
+    code: managedomain
+    dtype: 字符型
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 名称
+    code: name
+    dtype: 字符型
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 简称
+    code: abbre
+    dtype: 字符型
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 分类码
+    code: classid
+    dtype: 字符型
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 分类名称
+    code: classname
+    dtype: 字符型
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: ''
+  - seq: ''
+    name_cn: 标准地址
+    code: address
+    dtype: 字符型
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 区划代码
+    code: politcode
+    dtype: 字符型
+    length: '9'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 所在乡镇的行政区划代码
+  - seq: ''
+    name_cn: 数据标签
+    code: tag
+    dtype: 字符型
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  - seq: ''
+    name_cn: 显示优先级
+    code: importance
+    dtype: 字符型
+    length: '2'
+    decimal: ''
+    domain: ''
+    constraint: O
+    note: ''
+  notes: []
+layer_tables:
+- module: 01_统一地理底图
+  caption_raw: 表 2 空间要素分层
+  section_path:
+  - 统一地理底图数据库结构定义
+  - 5.1空间要素分层
+  rows:
+  - seq: ''
+    layer_name: 遥感影像
+    feature: 0.5 米、亚米
+    geometry: 栅格
+    table_code: imagery_mosaicgrid
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 地形地貌
+    feature: DEM
+    geometry: 栅格
+    table_code: dem_mosaicgrid
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 地形地貌
+    feature: 坡度图
+    geometry: 面
+    table_code: pdt_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 三维模型
+    feature: 白模（LOD1.0）
+    geometry: 体
+    table_code: dmb_v
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 三维模型
+    feature: 建筑物模型（LOD1.3）
+    geometry: 体
+    table_code: lod_v
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 行政区划及管理单元
+    feature: 乡级行政区域
+    geometry: 面
+    table_code: a_tow_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 行政区划及管理单元
+    feature: 村（社区）
+    geometry: 面
+    table_code: a_vil_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 行政区划及管理单元
+    feature: 乡级行政区域界线
+    geometry: 线
+    table_code: a_tow_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 行政区划及管理单元
+    feature: 村（社区）范围线
+    geometry: 线
+    table_code: a_vil_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 行政区划及管理单元
+    feature: 临水控制线
+    geometry: 线
+    table_code: a_wbl_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 行政区划及管理单元
+    feature: 临水控制线
+    geometry: 面
+    table_code: a_wbl_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 铁路
+    geometry: 线
+    table_code: t_rai_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 公路
+    geometry: 线
+    table_code: t_hig_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 公路
+    geometry: 面
+    table_code: t_hig_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 城市轨道交通
+    geometry: 线
+    table_code: t_crt_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 城市道路
+    geometry: 线
+    table_code: t_cir_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 城市道路
+    geometry: 面
+    table_code: t_cir_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 乡村道路
+    geometry: 线
+    table_code: t_cor_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 桥梁
+    geometry: 线
+    table_code: t_bri_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 隧道、明峒
+    geometry: 线
+    table_code: t_tun_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 交通运输
+    feature: 路口
+    geometry: 面
+    table_code: t_int_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 漏斗、坑穴
+    geometry: 点
+    table_code: m_fun_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 漏斗、坑穴
+    geometry: 面
+    table_code: m_fun_m
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 山洞、溶洞
+    geometry: 点
+    table_code: m_cav_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 山洞、溶洞
+    geometry: 面
+    table_code: m_cav_m
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 沟壑
+    geometry: 点
+    table_code: m_gul_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 沟壑
+    geometry: 线
+    table_code: m_gul_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 沟壑
+    geometry: 面
+    table_code: m_gul_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 其他山体相关实体
+    geometry: 点
+    table_code: m_oth_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 其他山体相关实体
+    geometry: 线
+    table_code: m_oth_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 山体
+    feature: 其他山体相关实体
+    geometry: 面
+    table_code: m_oth_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 耕地
+    geometry: 面
+    table_code: a_fal_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 园地
+    geometry: 点
+    table_code: a_gal_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 园地
+    geometry: 面
+    table_code: a_gal_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 林地
+    geometry: 点
+    table_code: a_fol_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 林地
+    geometry: 线
+    table_code: a_fol_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 林地
+    geometry: 面
+    table_code: a_fol_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 草地
+    geometry: 面
+    table_code: a_grl_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 湿地
+    geometry: 面
+    table_code: a_wel_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 其他土地
+    geometry: 线
+    table_code: a_oth_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 农林用地与其他土地
+    feature: 其他土地
+    geometry: 面
+    table_code: a_oth_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 河流水面
+    geometry: 线
+    table_code: h_riv_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 河流水面
+    geometry: 面
+    table_code: h_riv_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 湖泊、池塘
+    geometry: 面
+    table_code: h_lak_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 水库、山塘
+    geometry: 面
+    table_code: h_res_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 运河、沟渠
+    geometry: 线
+    table_code: h_can_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 运河、沟渠
+    geometry: 面
+    table_code: h_can_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 水利附属设施
+    geometry: 线
+    table_code: h_wfc_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 水系及设施
+    feature: 水利附属设施
+    geometry: 面
+    table_code: h_wfc_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输输电管线
+    geometry: 点
+    table_code: p_lep_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输输电管线
+    geometry: 线
+    table_code: p_lep_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输输电管线
+    geometry: 面
+    table_code: p_lep_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输通信管线
+    geometry: 点
+    table_code: p_lcp_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输通信管线
+    geometry: 线
+    table_code: p_lcp_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输通信管线
+    geometry: 面
+    table_code: p_lcp_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输油、气、水输送主管道
+    geometry: 点
+    table_code: p_lop_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输油、气、水输送主管道
+    geometry: 线
+    table_code: p_lop_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 长输油、气、水输送主管道
+    geometry: 面
+    table_code: p_lop_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 城市管线线路
+    geometry: 线
+    table_code: p_cpi_l
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 城市管线出入地口
+    geometry: 点
+    table_code: p_cpe_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 管线
+    feature: 城市管线附属设施
+    geometry: 点
+    table_code: p_cpf_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 生活居住
+    geometry: 面
+    table_code: y_liv_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 公共管理与公共服务
+    geometry: 面
+    table_code: y_p se_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 商业服务
+    geometry: 面
+    table_code: y_bse_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 工矿生产
+    geometry: 面
+    table_code: y_inp_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 农业生产
+    geometry: 面
+    table_code: y_arp_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 交通运输
+    geometry: 面
+    table_code: y_tsp_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 特殊场院
+    geometry: 面
+    table_code: y_spe_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 院落
+    feature: 临时场院
+    geometry: 面
+    table_code: y_tem_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 建构筑物
+    feature: 建（构）筑物
+    geometry: 面
+    table_code: r_bld_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 建构筑物
+    feature: 绿地场地
+    geometry: 面
+    table_code: r_gro_a
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 地名地址
+    feature: 自然地名
+    geometry: 点
+    table_code: p_ngn_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 地名地址
+    feature: 人文地名
+    geometry: 点
+    table_code: p_hgn_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 地名地址
+    feature: 标准地址
+    geometry: 点
+    table_code: p_add_p
+    constraint: ''
+    note: ''
+  - seq: ''
+    layer_name: 地名地址
+    feature: 政务兴趣点
+    geometry: 点
+    table_code: p_gap_p
+    constraint: ''
+    note: ''
+- module: 01_统一地理底图
+  caption_raw: 表 38 数据库图层编码表
+  section_path:
+  - 附录C 数据库图层编码
+  rows:
+  - seq: '1'
+    layer_name: 矢量数据
+    feature: 乡级行政区域
+    geometry: 面
+    table_code: '107'
+    constraint: ''
+    note: ''
+  - seq: '2'
+    layer_name: 矢量数据
+    feature: 乡级行政区界线
+    geometry: 线
+    table_code: '108'
+    constraint: ''
+    note: ''
+  - seq: '3'
+    layer_name: 矢量数据
+    feature: 村（社区）范围面
+    geometry: 面
+    table_code: '109'
+    constraint: ''
+    note: ''
+  - seq: '4'
+    layer_name: 矢量数据
+    feature: 村（社区）范围线
+    geometry: 线
+    table_code: '110'
+    constraint: ''
+    note: ''
+  - seq: '5'
+    layer_name: 矢量数据
+    feature: 铁路线
+    geometry: 线
+    table_code: '120'
+    constraint: ''
+    note: ''
+  - seq: '6'
+    layer_name: 矢量数据
+    feature: 公路线
+    geometry: 线
+    table_code: '121'
+    constraint: ''
+    note: ''
+  - seq: '7'
+    layer_name: 矢量数据
+    feature: 公路面
+    geometry: 面
+    table_code: '122'
+    constraint: ''
+    note: ''
+  - seq: '8'
+    layer_name: 矢量数据
+    feature: 城市轨道交通线
+    geometry: 线
+    table_code: '123'
+    constraint: ''
+    note: ''
+  - seq: '9'
+    layer_name: 矢量数据
+    feature: 城市道路线
+    geometry: 线
+    table_code: '124'
+    constraint: ''
+    note: ''
+  - seq: '10'
+    layer_name: 矢量数据
+    feature: 城市道路面
+    geometry: 面
+    table_code: '125'
+    constraint: ''
+    note: ''
+  - seq: '11'
+    layer_name: 矢量数据
+    feature: 乡村道路线
+    geometry: 线
+    table_code: '126'
+    constraint: ''
+    note: ''
+  - seq: '12'
+    layer_name: 矢量数据
+    feature: 桥梁线
+    geometry: 线
+    table_code: '127'
+    constraint: ''
+    note: ''
+  - seq: '13'
+    layer_name: 矢量数据
+    feature: 隧道明峒线
+    geometry: 线
+    table_code: '128'
+    constraint: ''
+    note: ''
+  - seq: '14'
+    layer_name: 矢量数据
+    feature: 路口面
+    geometry: 面
+    table_code: '129'
+    constraint: ''
+    note: ''
+  - seq: '15'
+    layer_name: 矢量数据
+    feature: 河流水面线
+    geometry: 线
+    table_code: '130'
+    constraint: ''
+    note: ''
+  - seq: '16'
+    layer_name: 矢量数据
+    feature: 河流水面面
+    geometry: 面
+    table_code: '131'
+    constraint: ''
+    note: ''
+  - seq: '17'
+    layer_name: 矢量数据
+    feature: 湖泊、池塘
+    geometry: 面
+    table_code: '132'
+    constraint: ''
+    note: ''
+  - seq: '18'
+    layer_name: 矢量数据
+    feature: 水库、山塘
+    geometry: 面
+    table_code: '133'
+    constraint: ''
+    note: ''
+  - seq: '19'
+    layer_name: 矢量数据
+    feature: 运河、沟渠线
+    geometry: 线
+    table_code: '134'
+    constraint: ''
+    note: ''
+  - seq: '20'
+    layer_name: 矢量数据
+    feature: 运河、沟渠面
+    geometry: 面
+    table_code: '135'
+    constraint: ''
+    note: ''
+  - seq: '21'
+    layer_name: 矢量数据
+    feature: 水利附属设施线
+    geometry: 线
+    table_code: '137'
+    constraint: ''
+    note: ''
+  - seq: '22'
+    layer_name: 矢量数据
+    feature: 水利附属设施面
+    geometry: 面
+    table_code: '138'
+    constraint: ''
+    note: ''
+  - seq: '23'
+    layer_name: 矢量数据
+    feature: 生活居住
+    geometry: 面
+    table_code: '147'
+    constraint: ''
+    note: ''
+  - seq: '24'
+    layer_name: 矢量数据
+    feature: 公共管理与公共服务
+    geometry: 面
+    table_code: '148'
+    constraint: ''
+    note: ''
+  - seq: '25'
+    layer_name: 矢量数据
+    feature: 商业服务
+    geometry: 面
+    table_code: '149'
+    constraint: ''
+    note: ''
+  - seq: '26'
+    layer_name: 矢量数据
+    feature: 工矿生产
+    geometry: 面
+    table_code: '150'
+    constraint: ''
+    note: ''
+  - seq: '27'
+    layer_name: 矢量数据
+    feature: 农业生产
+    geometry: 面
+    table_code: '151'
+    constraint: ''
+    note: ''
+  - seq: '28'
+    layer_name: 矢量数据
+    feature: 交通运输
+    geometry: 面
+    table_code: '152'
+    constraint: ''
+    note: ''
+  - seq: '29'
+    layer_name: 矢量数据
+    feature: 特殊场院
+    geometry: 面
+    table_code: '153'
+    constraint: ''
+    note: ''
+  - seq: '30'
+    layer_name: 矢量数据
+    feature: 临时场院
+    geometry: 面
+    table_code: '154'
+    constraint: ''
+    note: ''
+  - seq: '31'
+    layer_name: 矢量数据
+    feature: 建（构）筑物面
+    geometry: 面
+    table_code: '155'
+    constraint: ''
+    note: ''
+  - seq: '32'
+    layer_name: 矢量数据
+    feature: 绿地场地面
+    geometry: 面
+    table_code: '156'
+    constraint: ''
+    note: ''
+  - seq: '33'
+    layer_name: 矢量数据
+    feature: 自然地名
+    geometry: 点
+    table_code: '157'
+    constraint: ''
+    note: ''
+  - seq: '34'
+    layer_name: 矢量数据
+    feature: 人文地名
+    geometry: 点
+    table_code: '158'
+    constraint: ''
+    note: ''
+  - seq: '35'
+    layer_name: 矢量数据
+    feature: 标准地址
+    geometry: 点
+    table_code: '160'
+    constraint: ''
+    note: ''
+  - seq: '36'
+    layer_name: 矢量数据
+    feature: 政务兴趣点
+    geometry: 点
+    table_code: '161'
+    constraint: ''
+    note: ''
+  - seq: '37'
+    layer_name: 矢量数据
+    feature: 临水控制线
+    geometry: 线
+    table_code: '162'
+    constraint: ''
+    note: ''
+  - seq: '38'
+    layer_name: 矢量数据
+    feature: 临水控制线
+    geometry: 面
+    table_code: '163'
+    constraint: ''
+    note: ''
+  - seq: '39'
+    layer_name: 矢量数据
+    feature: 漏斗、坑穴点
+    geometry: 点
+    table_code: '165'
+    constraint: ''
+    note: ''
+  - seq: '40'
+    layer_name: 矢量数据
+    feature: 漏斗、坑穴面
+    geometry: 面
+    table_code: '166'
+    constraint: ''
+    note: ''
+  - seq: '41'
+    layer_name: 矢量数据
+    feature: 山洞、溶洞点
+    geometry: 点
+    table_code: '167'
+    constraint: ''
+    note: ''
+  - seq: '42'
+    layer_name: 矢量数据
+    feature: 山洞、溶洞面
+    geometry: 面
+    table_code: '168'
+    constraint: ''
+    note: ''
+  - seq: '43'
+    layer_name: 矢量数据
+    feature: 沟壑点
+    geometry: 点
+    table_code: '169'
+    constraint: ''
+    note: ''
+  - seq: '44'
+    layer_name: 矢量数据
+    feature: 沟壑线
+    geometry: 线
+    table_code: '170'
+    constraint: ''
+    note: ''
+  - seq: '45'
+    layer_name: 矢量数据
+    feature: 沟壑面
+    geometry: 面
+    table_code: '171'
+    constraint: ''
+    note: ''
+  - seq: '46'
+    layer_name: 矢量数据
+    feature: 其他山体相关实体点
+    geometry: 点
+    table_code: '172'
+    constraint: ''
+    note: ''
+  - seq: '47'
+    layer_name: 矢量数据
+    feature: 其他山体相关实体线
+    geometry: 线
+    table_code: '173'
+    constraint: ''
+    note: ''
+  - seq: '48'
+    layer_name: 矢量数据
+    feature: 其他山体相关实体面
+    geometry: 面
+    table_code: '174'
+    constraint: ''
+    note: ''
+  - seq: '49'
+    layer_name: 矢量数据
+    feature: 耕地面
+    geometry: 面
+    table_code: '175'
+    constraint: ''
+    note: ''
+  - seq: '50'
+    layer_name: 矢量数据
+    feature: 园地点
+    geometry: 点
+    table_code: '176'
+    constraint: ''
+    note: ''
+  - seq: '51'
+    layer_name: 矢量数据
+    feature: 园地面
+    geometry: 面
+    table_code: '177'
+    constraint: ''
+    note: ''
+  - seq: '52'
+    layer_name: 矢量数据
+    feature: 林地点
+    geometry: 点
+    table_code: '178'
+    constraint: ''
+    note: ''
+  - seq: '53'
+    layer_name: 矢量数据
+    feature: 林地线
+    geometry: 线
+    table_code: '179'
+    constraint: ''
+    note: ''
+  - seq: '54'
+    layer_name: 矢量数据
+    feature: 林地面
+    geometry: 面
+    table_code: '180'
+    constraint: ''
+    note: ''
+  - seq: '55'
+    layer_name: 矢量数据
+    feature: 草地面
+    geometry: 面
+    table_code: '181'
+    constraint: ''
+    note: ''
+  - seq: '56'
+    layer_name: 矢量数据
+    feature: 湿地面
+    geometry: 面
+    table_code: '182'
+    constraint: ''
+    note: ''
+  - seq: '57'
+    layer_name: 矢量数据
+    feature: 其他土地线
+    geometry: 线
+    table_code: '183'
+    constraint: ''
+    note: ''
+  - seq: '58'
+    layer_name: 矢量数据
+    feature: 其他土地面
+    geometry: 面
+    table_code: '184'
+    constraint: ''
+    note: ''
+  - seq: '59'
+    layer_name: 矢量数据
+    feature: 长输输电管线点
+    geometry: 点
+    table_code: '185'
+    constraint: ''
+    note: ''
+  - seq: '60'
+    layer_name: 矢量数据
+    feature: 长输输电管线线
+    geometry: 线
+    table_code: '186'
+    constraint: ''
+    note: ''
+  - seq: '61'
+    layer_name: 矢量数据
+    feature: 长输输电管线面
+    geometry: 面
+    table_code: '187'
+    constraint: ''
+    note: ''
+  - seq: '62'
+    layer_name: 矢量数据
+    feature: 长输通信管线点
+    geometry: 点
+    table_code: '188'
+    constraint: ''
+    note: ''
+  - seq: '63'
+    layer_name: 矢量数据
+    feature: 长输通信管线线
+    geometry: 线
+    table_code: '189'
+    constraint: ''
+    note: ''
+  - seq: '64'
+    layer_name: 矢量数据
+    feature: 长输通信管线面
+    geometry: 面
+    table_code: '190'
+    constraint: ''
+    note: ''
+  - seq: '65'
+    layer_name: 矢量数据
+    feature: 长输油、气、水输送主管道点
+    geometry: 点
+    table_code: '191'
+    constraint: ''
+    note: ''
+  - seq: '66'
+    layer_name: 矢量数据
+    feature: 长输油、气、水输送主管道线
+    geometry: 线
+    table_code: '192'
+    constraint: ''
+    note: ''
+  - seq: '67'
+    layer_name: 矢量数据
+    feature: 长输油、气、水输送主管道面
+    geometry: 面
+    table_code: '193'
+    constraint: ''
+    note: ''
+  - seq: '68'
+    layer_name: 矢量数据
+    feature: 城市管线线路线
+    geometry: 线
+    table_code: '194'
+    constraint: ''
+    note: ''
+  - seq: '69'
+    layer_name: 矢量数据
+    feature: 城市管线出入地口点
+    geometry: 点
+    table_code: '195'
+    constraint: ''
+    note: ''
+  - seq: '70'
+    layer_name: 矢量数据
+    feature: 城市管线附属设施点
+    geometry: 点
+    table_code: '196'
+    constraint: ''
+    note: ''
+  - seq: '71'
+    layer_name: 遥感影像
+    feature: 0.5、亚米影像
+    geometry: 栅格
+    table_code: '201'
+    constraint: ''
+    note: ''
+  - seq: '72'
+    layer_name: 地形地貌
+    feature: DEM
+    geometry: 栅格
+    table_code: '301'
+    constraint: ''
+    note: ''
+  - seq: '73'
+    layer_name: 地形地貌
+    feature: 坡度图
+    geometry: 面
+    table_code: '304'
+    constraint: ''
+    note: ''
+  - seq: '74'
+    layer_name: 三维模型
+    feature: 白模（LOD1.0）
+    geometry: 体
+    table_code: '501'
+    constraint: ''
+    note: ''
+  - seq: '75'
+    layer_name: 三维模型
+    feature: 建筑物模型（LOD1.3）
+    geometry: 体
+    table_code: '502'
+    constraint: ''
+    note: ''

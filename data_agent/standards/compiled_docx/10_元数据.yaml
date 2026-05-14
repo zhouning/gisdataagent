@@ -1,0 +1,881 @@
+module: 10_元数据
+source_file: 自然资源“一张图”数据库体系结构（10）元数据0907.docx
+field_tables:
+- module: 10_元数据
+  table_name_cn: 基础数据元数据表（meta_NormalData）
+  table_code: ''
+  caption_raw: 表4 基础数据元数据表（meta_NormalData）
+  section_path:
+  - 前  言
+  fields:
+  - seq: ''
+    name_cn: 数据编码
+    code: data_id
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 数据唯一编码（可以是系统自动生成）
+  - seq: ''
+    name_cn: 资源编码
+    code: resource_id
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 资源唯一编码，与资源总表一致
+  - seq: ''
+    name_cn: 数据名称
+    code: data_name
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 原始数据文件的名称，包括扩展名。文件名必须完全一致，包括大小写。
+  - seq: ''
+    name_cn: 数据别名
+    code: data_alias
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 一般情况下数据别名与数据名称一致；数据名称与标准或者规范名称不一致时，别名是标准或者规范名称
+  - seq: ''
+    name_cn: 数据描述
+    code: data_des
+    dtype: Varchar
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 数据类型
+    code: data_type
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 数据格式
+    code: data_format
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 可选类型：api，关系型数据库等
+  - seq: ''
+    name_cn: 数据量
+    code: data_size
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 单位为MB
+  - seq: ''
+    name_cn: 密级
+    code: security_order
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 可选类型：绝密、机密、秘密、内部、公开
+  - seq: ''
+    name_cn: 是否共享
+    code: is_shareable
+    dtype: Bool
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 是/否
+  - seq: ''
+    name_cn: 共享类型
+    code: share_type
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 共享条件
+    code: shareable_conditions
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 共享方式
+    code: share_method
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 是否向社会开放
+    code: is_opentosociety
+    dtype: Bool
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 是/否
+  - seq: ''
+    name_cn: 开放条件
+    code: openable_conditions
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 接收方式
+    code: receive_mode
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 接收批次
+    code: receive_batch
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 采集时间
+    code: product_date
+    dtype: timestamp
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 元数据采集时间（元数据创建时间），系统自动生成
+  - seq: ''
+    name_cn: 生产日期
+    code: product_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新日期
+    code: update_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新周期
+    code: update_cycle
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 发布日期
+    code: release_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 生产人或提交者
+    code: producer
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 主要生产者或数据提交者
+  - seq: ''
+    name_cn: 生产单位名称
+    code: pro_unit_name
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 数据源类型
+    code: source_type
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: MySQL、SQLServer、pg等
+  - seq: ''
+    name_cn: 数据源现势性
+    code: source_currency
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: '201701'
+  - seq: ''
+    name_cn: 完整性
+    code: integrity
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 符合
+  - seq: ''
+    name_cn: 数据总分
+    code: score
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: '95'
+  - seq: ''
+    name_cn: 质检日期
+    code: quality_check_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: '20230615'
+  - seq: ''
+    name_cn: 质检单位
+    code: check_unit_name
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 某省测绘产品质量监督检验站
+  - seq: ''
+    name_cn: 质量总评价
+    code: quality_evaluation
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 优/良/中/差
+  - seq: ''
+    name_cn: 质量描述
+    code: quality_des
+    dtype: Varchar
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 分发介质
+    code: distribution_medium
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 分发格式
+    code: distribution_format
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 分发单位
+    code: distribution_unit
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: XX市XX 区 XX路XX号
+  - seq: ''
+    name_cn: 分发单位地址
+    code: distribution _unit_addr
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: (XXX) XXXXXXXX
+  - seq: ''
+    name_cn: 分发单位电话
+    code: distribution _unit_tel
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: (XXX) XXXXXXXX
+  - seq: ''
+    name_cn: 分发单位传真
+    code: distribution _uni_fax
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: XXX@XXXXXX
+  - seq: ''
+    name_cn: 分发单位邮箱
+    code: distribution _unit_email
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: Http://XXXXXXXX.XXX
+  - seq: ''
+    name_cn: 分发单位网址
+    code: distribution _unit_web
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: XX市XX 区 XX路XX号
+  notes:
+  - '注1：约束条件说明相应的元数据实体或元素是否必须包括在核心元数据中，或满足一定条件时必须包括。约束条件可能有如下三种取值：①是（m）必须包括的元数据实体或元素。否的实体中可以有是的元素，这些元素只有在否的实体被选中时才成为是元素；②条件是（c）：当满足约束条件中的条件时，相应的元数据实体或元素必须包括在核心元数据中；③否（o）：元数据实体或元素可以包括,也可不包括在核心元数据中。定义否的元数据实体和否的元数据元素，是为满足描述不同数据集的需要。如果没有选用某个实体，则该实体包含的元素（包括是的元素）也不能选用。下同。
+
+    注2：当一个字段中有多个值时，各值间用分号“；”分隔，下同。'
+- module: 10_元数据
+  table_name_cn: 矢量数据元数据表（meta_VectorData）
+  table_code: ''
+  caption_raw: 表5 矢量数据元数据表（meta_VectorData）
+  section_path:
+  - 前  言
+  fields:
+  - seq: ''
+    name_cn: 数据编码
+    code: data_id
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 数据唯一编码（可以是系统自动生成）
+  - seq: ''
+    name_cn: 资源编码
+    code: resource_id
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 资源唯一编码，与资源总表一致
+  - seq: ''
+    name_cn: 地理格网编码
+    code: geo_sot
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 全球剖分网格编码集合
+  - seq: ''
+    name_cn: 数据名称
+    code: data_name
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 原始数据文件的名称，包括扩展名。文件名必须完全一致，包括大小写。(gdb数据则是图层名称)
+  - seq: ''
+    name_cn: 数据别名
+    code: data_alias
+    dtype: Varchar
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 一般情况下数据别名与数据名称一致；数据名称与标准或者规范名称不一致时，别名是标准或者规范名称
+  - seq: ''
+    name_cn: 数据描述
+    code: data_des
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 数据格式
+    code: data_format
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 可选类型：gdb、ShaPefile、SDE等
+  - seq: ''
+    name_cn: 数据类型
+    code: data_type
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 数据量
+    code: data_size
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 单位为MB
+  - seq: ''
+    name_cn: 覆盖范围坐标
+    code: cover_range_coor
+    dtype: Varchar
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 符合标准OGC规范的坐标字符串
+  - seq: ''
+    name_cn: 覆盖范围描述
+    code: cover_range
+    dtype: Varchar
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 密级
+    code: security_order
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 可选类型：绝密、机密、秘密、内部、公开
+  - seq: ''
+    name_cn: 是否多图层
+    code: is_multilayer
+    dtype: Bool
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 1表示是多图层，0表示是单图层
+  - seq: ''
+    name_cn: 图层数量
+    code: layer_count
+    dtype: int
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 数据包含的图层数量
+  - seq: ''
+    name_cn: 图层名称
+    code: layer_name
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 单图层名称
+  - seq: ''
+    name_cn: 图层字段信息
+    code: layer_field
+    dtype: Varchar
+    length: '1024'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 图层包含字段
+  - seq: ''
+    name_cn: 几何类型
+    code: geometry_type
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 矢量数据的几何类型，可选值包括：点要素、线要素、面要素、多点要素、多线要素、多面要素
+  - seq: ''
+    name_cn: 是否共享
+    code: is_shareable
+    dtype: Bool
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 是/否
+  - seq: ''
+    name_cn: 共享类型
+    code: share_type
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 共享条件
+    code: shareable_conditions
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 共享方式
+    code: share_method
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 是否向社会开放
+    code: is_opentosociety
+    dtype: Bool
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 是/否
+  - seq: ''
+    name_cn: 开放条件
+    code: openable_conditions
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 接收方式
+    code: receive_mode
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 接收批次
+    code: receive_batch
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 采集时间
+    code: import_time
+    dtype: timestamp
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 元数据采集时间（元数据创建时间），系统自动生成
+  - seq: ''
+    name_cn: WKID
+    code: wkid
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 与WKID一致
+  - seq: ''
+    name_cn: 大地基准面
+    code: geodetic_datum
+    dtype: Varchar
+    length: '30'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 坐标系椭球名称 (中国2000、北京54、西安80等)
+  - seq: ''
+    name_cn: 参考椭球体
+    code: projection
+    dtype: Varchar
+    length: '30'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: CGCS2000，International_1975，WGS_1984等
+  - seq: ''
+    name_cn: 中央子午线
+    code: central_meridian
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 投影有(根据分带号决定，代号*3或6)
+  - seq: ''
+    name_cn: 分带方式
+    code: zonation_mode
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 3度或6度
+  - seq: ''
+    name_cn: 投影带号
+    code: projection_zone_number
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 分带的编号
+  - seq: ''
+    name_cn: 坐标单位
+    code: coordinate_unit
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: M
+    note: 获取坐标的单位信息(度、米等)
+  - seq: ''
+    name_cn: 生产日期
+    code: product_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新日期
+    code: update_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 更新周期
+    code: update_cycle
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 发布日期
+    code: release_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 生产人或提交者
+    code: producer
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 主要生产者或数据提交者
+  - seq: ''
+    name_cn: 生产单位名称
+    code: pro_unit_name
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 数据源类型
+    code: source_type
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: gdb、ShaPefile、SDE等
+  - seq: ''
+    name_cn: 数据源现势性
+    code: source_currency
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: '201701'
+  - seq: ''
+    name_cn: 完整性
+    code: integrity
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 符合
+  - seq: ''
+    name_cn: 数据总分
+    code: score
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: '95'
+  - seq: ''
+    name_cn: 质检日期
+    code: quality_check_date
+    dtype: Date
+    length: ''
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: '20230615'
+  - seq: ''
+    name_cn: 质检单位
+    code: check_unit_name
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 某省测绘产品质量监督检验站
+  - seq: ''
+    name_cn: 质量总评价
+    code: quality_evaluation
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 优/良/中/差
+  - seq: ''
+    name_cn: 质量描述
+    code: quality_des
+    dtype: Varchar
+    length: '200'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 分发介质
+    code: distribution_medium
+    dtype: Varchar
+    length: '10'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: 移动硬盘
+  - seq: ''
+    name_cn: 分发格式
+    code: distribution_format
+    dtype: Varchar
+    length: '20'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: ''
+  - seq: ''
+    name_cn: 分发单位
+    code: distribution_medium
+    dtype: Varchar
+    length: '60'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: XX市XX 区 XX路XX号
+  - seq: ''
+    name_cn: 分发单位地址
+    code: distribution _unit_addr
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: (XXX) XXXXXXXX
+  - seq: ''
+    name_cn: 分发单位电话
+    code: distribution _unit_tel
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: (XXX) XXXXXXXX
+  - seq: ''
+    name_cn: 分发单位传真
+    code: distribution _uni_fax
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: XXX@XXXXXX
+  - seq: ''
+    name_cn: 分发单位邮箱
+    code: distribution _unit_email
+    dtype: Varchar
+    length: '50'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: Http://XXXXXXXX.XXX
+  - seq: ''
+    name_cn: 分发单位网址
+    code: distribution _unit_web
+    dtype: Varchar
+    length: '100'
+    decimal: ''
+    domain: ''
+    constraint: ''
+    note: XX市XX 区 XX路XX号
+  notes:
+  - '注1：约束条件说明相应的元数据实体或元素是否必须包括在核心元数据中，或满足一定条件时必须包括。约束条件可能有如下三种取值：①是（m）必须包括的元数据实体或元素。否的实体中可以有是的元素，这些元素只有在否的实体被选中时才成为是元素；②条件是（c）：当满足约束条件中的条件时，相应的元数据实体或元素必须包括在核心元数据中；③否（o）：元数据实体或元素可以包括,也可不包括在核心元数据中。定义否的元数据实体和否的元数据元素，是为满足描述不同数据集的需要。如果没有选用某个实体，则该实体包含的元素（包括是的元素）也不能选用。下同。
+
+    注2：当一个字段中有多个值时，各值间用分号“；”分隔，下同。'
+layer_tables: []
