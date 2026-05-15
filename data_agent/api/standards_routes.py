@@ -269,7 +269,8 @@ async def save_clause_route(request: Request):
         out = _editor.save_clause(cid, username,
                                   if_match_checksum=if_match,
                                   body_md=body.get("body_md", ""),
-                                  body_html=body.get("body_html"))
+                                  body_html=body.get("body_html"),
+                                  data_elements=body.get("data_elements"))
     except _editor.ConflictError as e:
         return JSONResponse({"error": "Conflict",
                              "server_checksum": e.server_checksum,
