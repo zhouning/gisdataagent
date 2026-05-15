@@ -9,6 +9,8 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
 import { marked } from "marked";
 import TurndownService from "turndown";
+// @ts-expect-error - turndown-plugin-gfm has no types
+import { tables, strikethrough } from "turndown-plugin-gfm";
 import {
   acquireLock, heartbeat, releaseLock, saveClause, breakLock,
   getClauseElements,
@@ -31,6 +33,25 @@ type EditorState =
   | { kind: "conflict"; server: ConflictDetail };
 
 const turndown = new TurndownService();
+turndown.use([tables, strikethrough]);
+
+/** Remove any lines that look like markdown table rows or dividers, plus
+ *  any orphan single-column "table" lines turndown may have left from a
+ *  pre-fix save (each cell on its own line). Conservative: strips lines
+ *  that start with '|' or that contain only digits/whitespace (likely the
+ *  序号 column from a broken old save). */
+function stripExistingTable(md: string): string {
+  if (!md) return "";
+  const lines = md.split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith("|")) continue;          // markdown table row or divider
+    out.push(line);
+  }
+  // collapse runs of blank lines
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd();
+}
 
 function elementsToMarkdownTable(elements: StdDataElement[]): string {
   if (elements.length === 0) return "";
@@ -105,8 +126,9 @@ export default function ClauseEditor({
       const ok = r as Exclude<typeof r, { status: 423; body: unknown }>;
       const elementsResp = await getClauseElements(clause.id);
       if (cancelled) return;
+      const cleanedBody = stripExistingTable(ok.body_md);
       const tableMd = elementsToMarkdownTable(elementsResp.data_elements);
-      const combined = ok.body_md + (tableMd ? "\n" + tableMd : "");
+      const combined = cleanedBody + (tableMd ? "\n\n" + tableMd : "");
       const html = marked.parse(combined) as string;
       editor.commands.setContent(html, false);
       setState({
