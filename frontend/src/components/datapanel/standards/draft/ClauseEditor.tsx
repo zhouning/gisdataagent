@@ -200,13 +200,45 @@ export default function ClauseEditor({
 
       {/* Editor area */}
       <div
+        className="std-clause-editor"
         style={{
           flex: 1,
           overflow: "auto",
           padding: 12,
           background: "#fff",
+          color: "#222",
         }}
       >
+        <style>{`
+          .std-clause-editor .ProseMirror {
+            min-height: 100%;
+            outline: none;
+            color: #222;
+            line-height: 1.6;
+          }
+          .std-clause-editor .ProseMirror p { margin: 0 0 8px; }
+          .std-clause-editor .ProseMirror h1,
+          .std-clause-editor .ProseMirror h2,
+          .std-clause-editor .ProseMirror h3 {
+            color: #111; margin: 12px 0 6px;
+          }
+          .std-clause-editor .ProseMirror code {
+            background: #f4f4f4; padding: 1px 4px; border-radius: 3px;
+            font-family: ui-monospace, monospace;
+          }
+          .std-clause-editor .ProseMirror pre {
+            background: #f6f8fa; padding: 8px; border-radius: 4px;
+            overflow-x: auto;
+          }
+          .std-clause-editor .ProseMirror a { color: #0969da; }
+          .std-clause-editor .ProseMirror p.is-editor-empty:first-child::before {
+            content: attr(data-placeholder);
+            color: #aaa;
+            float: left;
+            height: 0;
+            pointer-events: none;
+          }
+        `}</style>
         <EditorContent editor={editor} />
       </div>
 
