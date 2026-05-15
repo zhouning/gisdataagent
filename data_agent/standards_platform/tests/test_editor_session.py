@@ -140,3 +140,21 @@ def test_acquire_lock_clause_not_found(db):
     import uuid as _u
     with pytest.raises(LookupError):
         acquire_lock(str(_u.uuid4()), "alice")
+
+
+from data_agent.standards_platform.drafting.editor_session import heartbeat
+import time
+
+
+def test_heartbeat_extends_expiry(db, clause_row):
+    cid, _vid, _did = clause_row
+    first = acquire_lock(cid, "alice")
+    time.sleep(1)
+    second = heartbeat(cid, "alice")
+    assert second["lock_expires_at"] > first["lock_expires_at"]
+
+
+def test_heartbeat_lost_lock_raises(db, clause_row):
+    cid, _vid, _did = clause_row
+    with pytest.raises(LockError):
+        heartbeat(cid, "alice")

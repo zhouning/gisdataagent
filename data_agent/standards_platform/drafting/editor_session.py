@@ -91,3 +91,23 @@ def acquire_lock(clause_id: str, user_id: str,
             "lock_expires_at": updated.lock_expires_at,
             "lock_token": user_id,
         }
+
+
+def heartbeat(clause_id: str, user_id: str,
+              *, ttl_minutes: int = _DEFAULT_TTL_MIN) -> dict:
+    """Extend the lock TTL. Raises LockError if lock no longer held."""
+    eng = get_engine()
+    if eng is None:
+        raise RuntimeError("DB engine unavailable")
+    with eng.begin() as conn:
+        row = conn.execute(text("""
+            UPDATE std_clause
+               SET lock_expires_at = now() + (:ttl || ' minutes')::interval
+             WHERE id=:c
+               AND lock_holder=:u
+               AND (lock_expires_at IS NULL OR lock_expires_at >= now())
+            RETURNING lock_expires_at
+        """), {"c": clause_id, "u": user_id, "ttl": str(ttl_minutes)}).first()
+        if row is None:
+            raise LockError("lock no longer held")
+        return {"lock_expires_at": row.lock_expires_at}
