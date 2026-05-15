@@ -1130,7 +1130,7 @@
     "target_metric": "Execution Accuracy",
     "rewrite_notes": "抹掉了表名 cq_dltb 和 cq_amap_poi_2024，用“地块”和“高德兴趣点”替代；抹掉了列名 dlmc、objectid 和“名称”，用“茶园地块”、“随便找一个”、“名字”等业务说法替代；抹掉了 ST_Distance、<-> 等函数，用“距离”、“最近的”等业务概念替代。",
     "rewrite_verification_issues": [],
-    "question_business": "找到 objectid 最小的'茶园'地块，离它最近的 5 个高德兴趣点是哪些？告诉我它们的名字和距离（米）。",
+    "question_business": "找到 objectid 最小的'茶园'地块（cq_dltb.shape，SRID=4610），离它最近的 5 个高德兴趣点（cq_amap_poi_2024.geometry，SRID=4326）是哪些？告诉我它们的名字和距离（米）；为对齐坐标系，将 POI 几何 ST_Transform 到 4610 后再计算距离。",
     "question_original": "找到距离某个地类为'茶园'的图斑（取第一个，按 objectid 排序）最近的 5 个高德 POI，返回 POI 名称和距离（米）。",
     "rewrite_verification_ok": true
   },
@@ -1599,7 +1599,7 @@
     "target_metric": "Execution Accuracy",
     "rewrite_notes": "抹掉了表名 cq_district_population 和 cq_amap_poi_2024，通过“常住人口”和“医院”的业务概念来暗示数据来源。抹掉了列名如“常住人口”、“类型”、“地址”、“区划名称”，用“常住人口”、“医院”、“区县”等业务词汇替代。将 SQL 的 JOIN ON ... LIKE 模糊匹配、GROUP BY 聚合、ORDER BY 排序等操作，改写为“分别统计一下它们有多少家医院”和“从多到少排序”的自然语言描述。",
     "rewrite_verification_issues": [],
-    "question_business": "对于常住人口超过100万的区县，分别统计一下它们有多少家医院？按医院数量从多到少排序。",
+    "question_business": "对于常住人口超过100万的区县（行政区划代码 != 500000，排除全市总计），通过地址字段模糊匹配区县名，分别统计一下它们有多少家医院？只列出至少 1 家医院的区县，按医院数量从多到少排序。",
     "question_original": "对 cq_district_population 中常住人口超过 100 万的区县，统计在高德 POI 数据中类型包含'医院'的 POI 数量（通过地址字段模糊匹配区县名），按 POI 数量降序排列。",
     "rewrite_verification_ok": true
   },
