@@ -54,6 +54,53 @@ function stripExistingTable(md: string): string {
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd();
 }
 
+/** Extract any <table> elements from the HTML, return:
+ *  - htmlWithoutTables: the HTML with all <table>...</table> removed
+ *  - tableMd: each table converted to clean GFM markdown, joined with \n\n
+ */
+function extractTablesAsMarkdown(html: string): {
+  htmlWithoutTables: string;
+  tableMd: string;
+} {
+  if (typeof DOMParser === "undefined") {
+    return { htmlWithoutTables: html, tableMd: "" };
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const tables = Array.from(doc.querySelectorAll("table"));
+  if (tables.length === 0) {
+    return { htmlWithoutTables: html, tableMd: "" };
+  }
+  const tableMds: string[] = [];
+  for (const table of tables) {
+    const rows = Array.from(table.querySelectorAll("tr"));
+    if (rows.length === 0) continue;
+    const cellRows = rows.map((tr) =>
+      Array.from(tr.querySelectorAll("th, td")).map((cell) =>
+        // collapse internal whitespace, trim
+        (cell.textContent || "").replace(/\s+/g, " ").trim(),
+      ),
+    );
+    if (cellRows[0].length === 0) continue;
+    const ncols = cellRows[0].length;
+    const lines: string[] = [];
+    lines.push("| " + cellRows[0].join(" | ") + " |");
+    lines.push("|" + " --- |".repeat(ncols));
+    for (let i = 1; i < cellRows.length; i++) {
+      // pad row to ncols columns
+      const row = [...cellRows[i]];
+      while (row.length < ncols) row.push("");
+      lines.push("| " + row.slice(0, ncols).join(" | ") + " |");
+    }
+    tableMds.push(lines.join("\n"));
+    // remove this table from the DOM
+    table.remove();
+  }
+  return {
+    htmlWithoutTables: doc.body.innerHTML,
+    tableMd: tableMds.join("\n\n"),
+  };
+}
+
 function elementsToMarkdownTable(elements: StdDataElement[]): string {
   if (elements.length === 0) return "";
   const rows = elements.map((e, i) =>
@@ -166,9 +213,11 @@ export default function ClauseEditor({
 
   const onSave = async () => {
     if (!clause || !editor || state.kind !== "editing") return;
-    const html = editor.getHTML();
-    const md = turndown.turndown(html);
-    const r = await saveClause(clause.id, state.checksum, md, html);
+    const fullHtml = editor.getHTML();
+    const { htmlWithoutTables, tableMd } = extractTablesAsMarkdown(fullHtml);
+    const proseMd = turndown.turndown(htmlWithoutTables);
+    const md = tableMd ? `${proseMd.trimEnd()}\n\n${tableMd}\n` : proseMd;
+    const r = await saveClause(clause.id, state.checksum, md, fullHtml);
     if ("status" in r && r.status === 409) {
       setState({ kind: "conflict", server: r.body });
     } else if ("status" in r && r.status === 410) {
