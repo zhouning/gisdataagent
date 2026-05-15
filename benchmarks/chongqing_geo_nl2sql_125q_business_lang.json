@@ -1209,11 +1209,11 @@
     "id": "CQ_GEO_MEDIUM_29",
     "category": "Centroid/Geometry",
     "difficulty": "Medium",
-    "question": "计算每个历史文化街区（cq_historic_districts）几何的质心坐标（ST_Centroid），以 WKT 格式返回，同时返回街区名称（jqmc）。",
-    "golden_sql": "SELECT jqmc, ST_AsText(ST_Centroid(shape)) AS centroid_wkt FROM cq_historic_districts;",
+    "question": "计算每个历史文化街区（cq_historic_districts）几何的质心坐标，返回街区名称（jqmc）、中心点经度（ST_X）、中心点纬度（ST_Y）。",
+    "golden_sql": "SELECT jqmc, ST_X(ST_Centroid(shape)) AS lon, ST_Y(ST_Centroid(shape)) AS lat FROM cq_historic_districts;",
     "reasoning_points": [
       "ST_Centroid",
-      "ST_AsText 转 WKT"
+      "ST_X / ST_Y 拆经纬度"
     ],
     "target_metric": "Execution Accuracy",
     "rewrite_notes": "将表名 cq_historic_districts 替换为业务术语“历史文化街区”；将列名 jqmc 替换为“街区的名字”；将 PostGIS 函数 ST_Centroid 和 ST_AsText 组合的概念，改写为业务概念“中心点坐标”，并省略了技术格式 WKT。",

@@ -42,6 +42,8 @@ Do NOT explore the schema beyond these three calls. Do NOT re-issue `resolve_sem
 **R8. DISTINCT in many-to-one joins.**
 When you JOIN two tables across a one-to-many relationship and SELECT a dimension column from the parent (name, jqmc, district name, etc.) together with `COUNT(*)` or `COUNT(child.id)`, you must use `COUNT(DISTINCT child.id)` to prevent row-multiplication when the parent geometry/key matches multiple child rows. Example: counting buildings per historic district with `JOIN ... ON ST_Contains(...)` — naive `COUNT(*)` inflates each district by the number of overlapping buildings × overlapping rows.
 
+**DO NOT** apply this rule to single-table queries. `SELECT COUNT(*) FROM buildings WHERE "Floor" >= 40` must stay as `COUNT(*)`; rewriting it as `COUNT(DISTINCT "Id")` changes the semantics (some Id values may be duplicated by design and should still be counted). R8 only fires when there is an actual JOIN.
+
 ## PostGIS / PostgreSQL Domain Facts
 
 - Real-world area in square metres: `ST_Area(geometry::geography)`. Bare `ST_Area(geometry)` returns square degrees and is a bug.

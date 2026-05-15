@@ -636,6 +636,7 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         lines.append("- 当 JOIN 产生一对多关系（如 patient JOIN laboratory 一个患者有多条检验记录），SELECT 列表中的维度列（ID/name/birthday 等）必须加 DISTINCT 或用 DISTINCT ON。")
         lines.append("- 只有在 SELECT 中包含聚合函数（COUNT/SUM/AVG/MAX/MIN）时才不需要 DISTINCT（聚合本身已去重）。")
         lines.append("- 当 gold 要求 'List patients / List IDs' 且涉及多表 JOIN 时，默认使用 SELECT DISTINCT。")
+        lines.append("- **单表 COUNT(*) 严禁改成 COUNT(DISTINCT col)**——单表查询里 COUNT(*) 已经是行计数；只有题目明确说 \"多少种不同 / 几类 / distinct\" 时才用 COUNT(DISTINCT)。例如 \"有多少栋 40 层及以上的楼\" → `COUNT(*)`，不是 `COUNT(DISTINCT \"Id\")`。")
 
         lines.append("")
         lines.append("## 避免过度 JOIN")
