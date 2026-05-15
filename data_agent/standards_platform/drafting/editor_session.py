@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import text
@@ -35,6 +36,10 @@ class ConflictError(Exception):
         super().__init__("checksum mismatch")
         self.server_checksum = server_checksum
         self.server_body_md = server_body_md
+
+
+def _now_utc():
+    return datetime.now(timezone.utc)
 
 
 def compute_checksum(body_md: str) -> str:
@@ -111,3 +116,36 @@ def heartbeat(clause_id: str, user_id: str,
         if row is None:
             raise LockError("lock no longer held")
         return {"lock_expires_at": row.lock_expires_at}
+
+
+def save_clause(clause_id: str, user_id: str, *,
+                if_match_checksum: str,
+                body_md: str, body_html: str | None) -> dict:
+    """Optimistic save. Verifies If-Match checksum and lock ownership."""
+    eng = get_engine()
+    if eng is None:
+        raise RuntimeError("DB engine unavailable")
+    with eng.begin() as conn:
+        row = conn.execute(text("""
+            SELECT checksum, body_md, lock_holder, lock_expires_at
+              FROM std_clause WHERE id=:c FOR UPDATE
+        """), {"c": clause_id}).first()
+        if row is None:
+            raise LookupError(f"clause {clause_id} not found")
+        if row.checksum != if_match_checksum:
+            raise ConflictError(server_checksum=row.checksum or "",
+                                server_body_md=row.body_md or "")
+        if (row.lock_holder != user_id
+                or row.lock_expires_at is None
+                or row.lock_expires_at < _now_utc()):
+            raise LockError("lock no longer held")
+        new_chk = compute_checksum(body_md)
+        updated = conn.execute(text("""
+            UPDATE std_clause
+               SET body_md=:b, body_html=:h, checksum=:k,
+                   updated_at=now(), updated_by=:u
+             WHERE id=:c
+            RETURNING checksum, updated_at
+        """), {"c": clause_id, "u": user_id, "b": body_md,
+               "h": body_html, "k": new_chk}).first()
+        return {"checksum": updated.checksum, "updated_at": updated.updated_at}

@@ -158,3 +158,47 @@ def test_heartbeat_lost_lock_raises(db, clause_row):
     cid, _vid, _did = clause_row
     with pytest.raises(LockError):
         heartbeat(cid, "alice")
+
+
+from data_agent.standards_platform.drafting.editor_session import (
+    save_clause, ConflictError,
+)
+
+
+def test_save_clause_happy_path(db, clause_row):
+    cid, _vid, _did = clause_row
+    a = acquire_lock(cid, "alice")
+    out = save_clause(cid, "alice",
+                      if_match_checksum=a["checksum"],
+                      body_md="updated body", body_html="<p>updated body</p>")
+    assert out["checksum"] != a["checksum"]
+    with db.connect() as c:
+        row = c.execute(_sql(
+            "SELECT body_md, body_html, updated_by FROM std_clause WHERE id=:i"
+        ), {"i": cid}).first()
+    assert row.body_md == "updated body"
+    assert row.body_html == "<p>updated body</p>"
+    assert row.updated_by == "alice"
+
+
+def test_save_clause_checksum_mismatch_raises_conflict(db, clause_row):
+    cid, _vid, _did = clause_row
+    acquire_lock(cid, "alice")
+    with pytest.raises(ConflictError) as exc:
+        save_clause(cid, "alice",
+                    if_match_checksum="0000000000000000",
+                    body_md="x", body_html=None)
+    assert exc.value.server_body_md == "initial body"
+
+
+def test_save_clause_lost_lock_raises(db, clause_row):
+    cid, _vid, _did = clause_row
+    a = acquire_lock(cid, "alice")
+    with db.begin() as c:
+        c.execute(_sql(
+            "UPDATE std_clause SET lock_holder=NULL WHERE id=:i"
+        ), {"i": cid})
+    with pytest.raises(LockError):
+        save_clause(cid, "alice",
+                    if_match_checksum=a["checksum"],
+                    body_md="x", body_html=None)
