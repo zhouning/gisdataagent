@@ -58,12 +58,24 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--main-dir", required=True, type=Path)
     ap.add_argument("--gemma-dir", required=True, type=Path)
+    ap.add_argument("--bench-json", required=False, type=Path, default=None,
+                    help="If set, override gold_sql per qid by reading current benchmark JSON")
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
+
+    overridden_gold: dict[str, str] = {}
+    if args.bench_json:
+        bench = json.loads(args.bench_json.read_text(encoding="utf-8"))
+        for q in bench:
+            if q.get("id") and q.get("golden_sql"):
+                overridden_gold[q["id"]] = q["golden_sql"]
+        print(f"loaded {len(overridden_gold)} gold_sql overrides from {args.bench_json}")
 
     targets = []
     for r in _iter_records(args.main_dir, args.gemma_dir):
         if r["qid"] in D1_QIDS and r.get("pred_sql"):
+            if r["qid"] in overridden_gold:
+                r["gold_sql"] = overridden_gold[r["qid"]]
             targets.append(r)
     print(f"loaded {len(targets)} D1 candidate records")
 
