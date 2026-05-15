@@ -6,15 +6,24 @@ Entrypoint:
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import sys
 import time
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env before any module reads os.environ for DB credentials.
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env_path)
 
 from . import outbox
 from .config import StandardsConfig
 from .handlers import dispatch
-from ..observability import get_logger
+from ..observability import get_logger, setup_logging
 
+setup_logging()
 logger = get_logger("standards_platform.outbox_worker")
 
 _shutdown = False
