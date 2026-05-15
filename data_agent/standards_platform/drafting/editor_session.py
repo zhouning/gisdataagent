@@ -156,12 +156,25 @@ def save_clause(clause_id: str, user_id: str, *,
         """), {"c": clause_id, "u": user_id, "b": body_md,
                "h": body_html, "k": new_chk}).first()
 
+        # Auto-parse body_md if caller did not pass explicit data_elements.
+        effective = data_elements
+        if effective is None:
+            try:
+                from .md_table import parse_md_table
+                parsed = parse_md_table(body_md)
+                if parsed:
+                    effective = parsed
+            except ValueError as e:
+                logger.warning("clause %s body_md table parse failed: %s",
+                               clause_id, e)
+                effective = None
+
         de_summary = None
-        if data_elements is not None:
+        if effective is not None:
             de_summary = _diff_data_elements(
                 conn, clause_id=clause_id,
                 version_id=str(row.document_version_id),
-                new_elements=data_elements)
+                new_elements=effective)
 
         out = {"checksum": updated.checksum, "updated_at": updated.updated_at}
         if de_summary is not None:

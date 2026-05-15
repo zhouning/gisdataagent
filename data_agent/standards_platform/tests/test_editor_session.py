@@ -320,3 +320,25 @@ def test_save_clause_without_data_elements_param_skips_diff(db, clause_row):
             "SELECT COUNT(*) FROM std_data_element WHERE defined_by_clause_id=:i"
         ), {"i": cid}).scalar()
     assert n == 1  # untouched
+
+
+def test_save_clause_auto_parses_md_table_when_data_elements_omitted(db, clause_row):
+    cid, _vid, _did = clause_row
+    md = (
+        "module preamble\n\n"
+        "| 字段代码 | 字段名称 | 类型 | 长度 | 必选 |\n"
+        "|----------|----------|------|------|------|\n"
+        "| ZONE | 区域 | char | 8 | M |\n"
+        "| LABEL | 标签 | varchar | 50 | O |\n"
+    )
+    a = acquire_lock(cid, "alice")
+    out = save_clause(cid, "alice",
+                      if_match_checksum=a["checksum"],
+                      body_md=md, body_html=None)
+    # auto-parsed two new elements, no explicit param needed
+    assert out["data_elements"] == {"inserted": 2, "updated": 0, "deleted": 0}
+    with db.connect() as c:
+        codes = sorted(r.code for r in c.execute(_sql(
+            "SELECT code FROM std_data_element WHERE defined_by_clause_id=:i"
+        ), {"i": cid}).fetchall())
+    assert codes == ["LABEL", "ZONE"]
