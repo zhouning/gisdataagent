@@ -149,3 +149,16 @@ def save_clause(clause_id: str, user_id: str, *,
         """), {"c": clause_id, "u": user_id, "b": body_md,
                "h": body_html, "k": new_chk}).first()
         return {"checksum": updated.checksum, "updated_at": updated.updated_at}
+
+
+def release_lock(clause_id: str, user_id: str) -> None:
+    """Idempotent release. No-op if user no longer holds the lock."""
+    eng = get_engine()
+    if eng is None:
+        return
+    with eng.begin() as conn:
+        conn.execute(text("""
+            UPDATE std_clause
+               SET lock_holder=NULL, lock_expires_at=NULL
+             WHERE id=:c AND lock_holder=:u
+        """), {"c": clause_id, "u": user_id})

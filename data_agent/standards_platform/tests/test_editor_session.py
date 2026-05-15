@@ -202,3 +202,15 @@ def test_save_clause_lost_lock_raises(db, clause_row):
         save_clause(cid, "alice",
                     if_match_checksum=a["checksum"],
                     body_md="x", body_html=None)
+
+
+from data_agent.standards_platform.drafting.editor_session import release_lock
+
+
+def test_release_lock_idempotent(db, clause_row):
+    cid, _vid, _did = clause_row
+    acquire_lock(cid, "alice")
+    release_lock(cid, "alice")
+    release_lock(cid, "alice")  # second call: no-op, no exception
+    holder, _ = _holder(db, cid)
+    assert holder is None
