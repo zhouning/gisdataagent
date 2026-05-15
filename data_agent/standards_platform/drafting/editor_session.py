@@ -120,14 +120,21 @@ def heartbeat(clause_id: str, user_id: str,
 
 def save_clause(clause_id: str, user_id: str, *,
                 if_match_checksum: str,
-                body_md: str, body_html: str | None) -> dict:
-    """Optimistic save. Verifies If-Match checksum and lock ownership."""
+                body_md: str, body_html: str | None,
+                data_elements: list[dict] | None = None) -> dict:
+    """Optimistic save. Verifies If-Match checksum and lock ownership.
+
+    If data_elements is provided, diff against existing rows where
+    defined_by_clause_id = clause_id (by code) and apply
+    insert/update/delete in the same transaction.
+    """
     eng = get_engine()
     if eng is None:
         raise RuntimeError("DB engine unavailable")
     with eng.begin() as conn:
         row = conn.execute(text("""
-            SELECT checksum, body_md, lock_holder, lock_expires_at
+            SELECT checksum, body_md, lock_holder, lock_expires_at,
+                   document_version_id
               FROM std_clause WHERE id=:c FOR UPDATE
         """), {"c": clause_id}).first()
         if row is None:
@@ -148,7 +155,18 @@ def save_clause(clause_id: str, user_id: str, *,
             RETURNING checksum, updated_at
         """), {"c": clause_id, "u": user_id, "b": body_md,
                "h": body_html, "k": new_chk}).first()
-        return {"checksum": updated.checksum, "updated_at": updated.updated_at}
+
+        de_summary = None
+        if data_elements is not None:
+            de_summary = _diff_data_elements(
+                conn, clause_id=clause_id,
+                version_id=str(row.document_version_id),
+                new_elements=data_elements)
+
+        out = {"checksum": updated.checksum, "updated_at": updated.updated_at}
+        if de_summary is not None:
+            out["data_elements"] = de_summary
+        return out
 
 
 def release_lock(clause_id: str, user_id: str) -> None:
@@ -188,3 +206,67 @@ def break_lock(clause_id: str, admin_user_id: str) -> dict:
         logger.info("clause %s lock broken by %s (was held by %s)",
                     clause_id, admin_user_id, previous_holder)
         return {"previous_holder": previous_holder}
+
+
+def _diff_data_elements(conn, *, clause_id: str, version_id: str,
+                        new_elements: list[dict]) -> dict:
+    """Insert/update/delete std_data_element rows attached to clause_id.
+
+    Returns {"inserted": n, "updated": n, "deleted": n}.
+    """
+    existing = {r.code: r for r in conn.execute(text(
+        "SELECT id, code, name_zh, datatype, definition, obligation "
+        "FROM std_data_element WHERE defined_by_clause_id=:c"
+    ), {"c": clause_id}).fetchall()}
+
+    new_by_code: dict[str, dict] = {}
+    for el in new_elements:
+        code = (el.get("code") or "").strip()
+        if not code:
+            continue
+        new_by_code[code] = el
+
+    inserted = 0
+    updated_n = 0
+    deleted = 0
+
+    for code, el in new_by_code.items():
+        if code in existing:
+            old = existing[code]
+            if (old.name_zh != (el.get("name_zh") or "")
+                    or (old.datatype or "") != (el.get("datatype") or "")
+                    or (old.definition or "") != (el.get("definition") or "")
+                    or old.obligation != el.get("obligation", "optional")):
+                conn.execute(text("""
+                    UPDATE std_data_element
+                       SET name_zh=:n, datatype=:t, definition=:d,
+                           obligation=:o
+                     WHERE id=:i
+                """), {"i": old.id,
+                       "n": el.get("name_zh", ""),
+                       "t": el.get("datatype") or None,
+                       "d": el.get("definition") or None,
+                       "o": el.get("obligation", "optional")})
+                updated_n += 1
+        else:
+            conn.execute(text("""
+                INSERT INTO std_data_element
+                  (document_version_id, code, name_zh, datatype, definition,
+                   obligation, defined_by_clause_id)
+                VALUES (:v, :c, :n, :t, :d, :o, :cl)
+            """), {"v": version_id, "c": code,
+                   "n": el.get("name_zh", ""),
+                   "t": el.get("datatype") or None,
+                   "d": el.get("definition") or None,
+                   "o": el.get("obligation", "optional"),
+                   "cl": clause_id})
+            inserted += 1
+
+    for code, old in existing.items():
+        if code not in new_by_code:
+            conn.execute(text(
+                "DELETE FROM std_data_element WHERE id=:i"
+            ), {"i": old.id})
+            deleted += 1
+
+    return {"inserted": inserted, "updated": updated_n, "deleted": deleted}

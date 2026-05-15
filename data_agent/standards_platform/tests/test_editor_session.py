@@ -249,3 +249,74 @@ def test_lazy_checksum_on_first_acquire(db, clause_row):
             "SELECT checksum FROM std_clause WHERE id=:i"
         ), {"i": cid}).scalar()
     assert chk == compute_checksum("initial body")
+
+
+def test_save_clause_inserts_new_data_elements(db, clause_row):
+    cid, _vid, _did = clause_row
+    a = acquire_lock(cid, "alice")
+    out = save_clause(cid, "alice",
+                      if_match_checksum=a["checksum"],
+                      body_md="x", body_html="<p>x</p>",
+                      data_elements=[
+                          {"code": "FOO", "name_zh": "foo", "datatype": "char(8)"},
+                          {"code": "BAR", "name_zh": "bar", "datatype": "varchar(50)",
+                           "obligation": "mandatory"},
+                      ])
+    assert out["data_elements"] == {"inserted": 2, "updated": 0, "deleted": 0}
+    with db.connect() as c:
+        rows = c.execute(_sql(
+            "SELECT code, name_zh, datatype, obligation FROM std_data_element "
+            "WHERE defined_by_clause_id=:i ORDER BY code"
+        ), {"i": cid}).fetchall()
+    assert [r.code for r in rows] == ["BAR", "FOO"]
+    assert rows[0].obligation == "mandatory"
+
+
+def test_save_clause_updates_changed_and_deletes_missing(db, clause_row):
+    cid, _vid, _did = clause_row
+    # First save: 2 elements
+    a = acquire_lock(cid, "alice")
+    save_clause(cid, "alice", if_match_checksum=a["checksum"],
+                body_md="x", body_html=None,
+                data_elements=[
+                    {"code": "FOO", "name_zh": "foo-old", "datatype": "char(8)"},
+                    {"code": "BAR", "name_zh": "bar", "datatype": "char(8)"},
+                ])
+    # Re-acquire (save changed checksum)
+    a2 = acquire_lock(cid, "alice")
+    # Second save: rename FOO, drop BAR, add BAZ
+    out = save_clause(cid, "alice", if_match_checksum=a2["checksum"],
+                      body_md="y", body_html=None,
+                      data_elements=[
+                          {"code": "FOO", "name_zh": "foo-new", "datatype": "char(8)"},
+                          {"code": "BAZ", "name_zh": "baz", "datatype": "int"},
+                      ])
+    assert out["data_elements"] == {"inserted": 1, "updated": 1, "deleted": 1}
+    with db.connect() as c:
+        codes = [r.code for r in c.execute(_sql(
+            "SELECT code FROM std_data_element "
+            "WHERE defined_by_clause_id=:i ORDER BY code"
+        ), {"i": cid}).fetchall()]
+    assert codes == ["BAZ", "FOO"]
+
+
+def test_save_clause_without_data_elements_param_skips_diff(db, clause_row):
+    cid, _vid, _did = clause_row
+    # Pre-seed an element
+    with db.begin() as c:
+        vid = c.execute(_sql(
+            "SELECT document_version_id FROM std_clause WHERE id=:i"
+        ), {"i": cid}).scalar()
+        c.execute(_sql(
+            "INSERT INTO std_data_element (document_version_id, code, "
+            "name_zh, defined_by_clause_id) VALUES (:v, 'EXIST', 'e', :cl)"
+        ), {"v": vid, "cl": cid})
+    a = acquire_lock(cid, "alice")
+    out = save_clause(cid, "alice", if_match_checksum=a["checksum"],
+                      body_md="z", body_html=None)
+    assert "data_elements" not in out
+    with db.connect() as c:
+        n = c.execute(_sql(
+            "SELECT COUNT(*) FROM std_data_element WHERE defined_by_clause_id=:i"
+        ), {"i": cid}).scalar()
+    assert n == 1  # untouched
