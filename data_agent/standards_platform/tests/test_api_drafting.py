@@ -108,3 +108,37 @@ def test_post_break_admin_only(monkeypatch, fresh_clause):
     r = _client().post(f"/api/std/clauses/{fresh_clause}/lock/break")
     assert r.status_code == 200
     assert r.json()["previous_holder"] == "alice"
+
+
+def test_get_clause_elements_returns_only_owned(monkeypatch, fresh_clause):
+    """clause-scoped elements returns only data_elements with defined_by_clause_id matching."""
+    from data_agent.db_engine import get_engine
+    from sqlalchemy import text
+
+    # Insert a few data_elements with this clause as defined_by_clause_id
+    eng = get_engine()
+    with eng.begin() as conn:
+        # Get the version_id from the clause
+        vid = conn.execute(text(
+            "SELECT document_version_id FROM std_clause WHERE id=:i"
+        ), {"i": fresh_clause}).scalar()
+        # Insert 2 elements attached to this clause
+        for code in ("FOO", "BAR"):
+            conn.execute(text(
+                "INSERT INTO std_data_element (document_version_id, code, "
+                "name_zh, defined_by_clause_id) VALUES (:v, :c, :n, :cl)"
+            ), {"v": vid, "c": code, "n": f"name-{code}", "cl": fresh_clause})
+        # Insert one un-attached element (different clause_id = NULL)
+        conn.execute(text(
+            "INSERT INTO std_data_element (document_version_id, code, name_zh) "
+            "VALUES (:v, 'OTHER', 'name-other')"
+        ), {"v": vid})
+
+    _auth_user(monkeypatch, username="admin", role="admin")
+    r = _client().get(f"/api/std/clauses/{fresh_clause}/elements")
+    assert r.status_code == 200
+    body = r.json()
+    codes = sorted(e["code"] for e in body["data_elements"])
+    assert codes == ["BAR", "FOO"]
+    # Verify embedding is excluded
+    assert "embedding" not in body["data_elements"][0]

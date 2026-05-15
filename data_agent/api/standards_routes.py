@@ -140,6 +140,22 @@ async def list_data_elements(request: Request):
         _list_under_version("std_data_element", request)})
 
 
+async def list_clause_elements(request: Request):
+    """List std_data_element rows whose defined_by_clause_id matches."""
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    cid = request.path_params["clause_id"]
+    eng = get_engine()
+    with eng.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT * FROM std_data_element WHERE defined_by_clause_id = :c "
+            "ORDER BY code"
+        ), {"c": cid}).mappings().all()
+    return JSONResponse({"data_elements": [
+        {k: _json_safe(v) for k, v in dict(r).items() if k != "embedding"}
+        for r in rows]})
+
+
 async def list_terms(request: Request):
     username, role, err = _auth_or_401(request)
     if err: return err
@@ -283,6 +299,8 @@ standards_routes = [
     Route("/api/std/documents/{doc_id}/versions", endpoint=list_versions, methods=["GET"]),
     Route("/api/std/versions/{version_id}/clauses", endpoint=list_clauses, methods=["GET"]),
     Route("/api/std/versions/{version_id}/data-elements", endpoint=list_data_elements, methods=["GET"]),
+    Route("/api/std/clauses/{clause_id}/elements",
+          endpoint=list_clause_elements, methods=["GET"]),
     Route("/api/std/versions/{version_id}/terms", endpoint=list_terms, methods=["GET"]),
     Route("/api/std/versions/{version_id}/value-domains", endpoint=list_value_domains, methods=["GET"]),
     Route("/api/std/versions/{version_id}/similar", endpoint=list_similar, methods=["GET"]),
