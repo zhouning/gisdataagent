@@ -80,3 +80,57 @@ def test_clause_fixture_round_trips(db, clause_row):
         ), {"i": cid}).first()
     assert row is not None
     assert row[0] == "initial body"
+
+
+from datetime import datetime, timezone, timedelta
+from data_agent.standards_platform.drafting.editor_session import (
+    LockError, acquire_lock,
+)
+
+
+def _holder(db, cid):
+    with db.connect() as c:
+        return c.execute(_sql(
+            "SELECT lock_holder, lock_expires_at FROM std_clause WHERE id=:i"
+        ), {"i": cid}).first()
+
+
+def test_acquire_lock_when_unlocked(db, clause_row):
+    cid, _vid, _did = clause_row
+    out = acquire_lock(cid, "alice")
+    assert out["body_md"] == "initial body"
+    assert out["checksum"]              # backfilled
+    holder, exp = _holder(db, cid)
+    assert holder == "alice"
+    assert exp > datetime.now(timezone.utc) + timedelta(minutes=14)
+
+
+def test_acquire_lock_when_held_by_other(db, clause_row):
+    cid, _vid, _did = clause_row
+    acquire_lock(cid, "alice")
+    with pytest.raises(LockError) as exc:
+        acquire_lock(cid, "bob")
+    assert exc.value.holder == "alice"
+
+
+def test_acquire_lock_when_expired_steals(db, clause_row):
+    cid, _vid, _did = clause_row
+    acquire_lock(cid, "alice")
+    with db.begin() as c:
+        c.execute(_sql(
+            "UPDATE std_clause SET lock_expires_at = now() - interval '1 min' "
+            "WHERE id=:i"
+        ), {"i": cid})
+    out = acquire_lock(cid, "bob")
+    assert out["checksum"]
+    holder, _exp = _holder(db, cid)
+    assert holder == "bob"
+
+
+def test_acquire_lock_same_user_renews(db, clause_row):
+    cid, _vid, _did = clause_row
+    acquire_lock(cid, "alice")
+    out = acquire_lock(cid, "alice")
+    assert out["body_md"] == "initial body"
+    holder, _ = _holder(db, cid)
+    assert holder == "alice"
