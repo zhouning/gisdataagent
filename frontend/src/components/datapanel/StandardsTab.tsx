@@ -28,7 +28,10 @@ export default function StandardsTab() {
       </div>
       <div style={{flex:1, overflow:"auto"}}>
         {sub==="ingest" &&
-          <IngestSubTab onPickVersion={setSelectedVersionId} />}
+          <IngestSubTab onPickVersion={(vid)=>{
+            setSelectedVersionId(vid);
+            setSub("analyze");
+          }} />}
         {sub==="analyze" &&
           <AnalyzeSubTab versionId={selectedVersionId}/>}
       </div>
