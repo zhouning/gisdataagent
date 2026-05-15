@@ -157,7 +157,7 @@ def execute_pg(sql: str, timeout_ms: int = 60_000) -> dict:
                 "rows": None, "error": msg[:500]}
 
 
-def compare_results(gold_res, pred_res, rel_tol=1e-3) -> tuple[bool, str]:
+def compare_results(gold_res, pred_res, rel_tol=1e-3, gold_sql: str = "") -> tuple[bool, str]:
     if gold_res["status"] != "ok":
         return False, f"gold exec failed: {gold_res.get('error', '')[:100]}"
     if pred_res["status"] != "ok":
@@ -203,7 +203,67 @@ def compare_results(gold_res, pred_res, rel_tol=1e-3) -> tuple[bool, str]:
     ps = sorted(tuple(norm(c) for c in r) for r in p)
     if gs == ps:
         return True, "match"
+    # Fallback: gold uses LIMIT without a stable ORDER BY → result is
+    # non-deterministic at the database level. Re-check pred as a *subset* of
+    # the unbounded gold candidate set instead of exact equality.
+    if gold_sql and _gold_has_unstable_limit(gold_sql):
+        ok, reason = _superset_compare(gold_sql, p, len(g[0]) if g else 0, norm)
+        if ok:
+            return True, f"match (limit-unstable: {reason})"
+        return False, f"rowset mismatch (limit-unstable check failed: {reason})"
     return False, "rowset mismatch"
+
+
+_LIMIT_RE = __import__("re").compile(r"\bLIMIT\s+\d+\s*$", __import__("re").IGNORECASE)
+
+
+def _gold_has_unstable_limit(sql: str) -> bool:
+    """Return True if gold has LIMIT N but lacks an ORDER BY that is provably stable.
+
+    Conservative: any LIMIT without ORDER BY is unstable; ORDER BY on a single
+    non-unique column (e.g. by a search-count or timestamp with potential ties)
+    may also be unstable, but we leave that to a more granular check below.
+    """
+    import re
+    s = re.sub(r"\s+", " ", sql or "").strip().rstrip(";").strip()
+    if not re.search(r"\bLIMIT\s+\d+", s, re.IGNORECASE):
+        return False
+    if not re.search(r"\bORDER\s+BY\b", s, re.IGNORECASE):
+        return True
+    return False
+
+
+def _superset_compare(gold_sql: str, pred_rows, ncols: int, norm_fn) -> tuple[bool, str]:
+    """Re-run gold WITHOUT LIMIT and verify pred rows are a subset.
+
+    Used when gold's LIMIT is unstable (no ORDER BY). pred passes if:
+      - pred row count == original gold LIMIT N (already checked upstream)
+      - every pred row exists in the unbounded gold result set
+    """
+    import re
+    s = re.sub(r"\s+", " ", gold_sql).strip().rstrip(";").strip()
+    m = re.search(r"\bLIMIT\s+(\d+)\s*$", s, re.IGNORECASE)
+    if not m:
+        return False, "no trailing LIMIT to strip"
+    expected_n = int(m.group(1))
+    unlimited_sql = s[: m.start()].rstrip()
+    full = execute_pg(unlimited_sql, timeout_ms=30_000)
+    if full["status"] != "ok":
+        return False, f"unlimited gold exec failed: {full.get('error', '')[:80]}"
+    full_rows = full["rows"] or []
+    if not full_rows:
+        return False, "unlimited gold returned 0 rows"
+    if ncols and full_rows and len(full_rows[0]) != ncols:
+        return False, f"unlimited gold col count {len(full_rows[0])} != pred {ncols}"
+    full_set = {tuple(norm_fn(c) for c in r) for r in full_rows}
+    miss = 0
+    for r in pred_rows:
+        key = tuple(norm_fn(c) for c in r)
+        if key not in full_set:
+            miss += 1
+    if miss == 0:
+        return True, f"pred is subset of gold-unbounded ({len(pred_rows)}/{expected_n} match)"
+    return False, f"{miss}/{len(pred_rows)} pred rows not in gold-unbounded set"
 
 
 def evaluate_robustness(q: dict, generated_sql: str) -> tuple[bool, str]:
@@ -329,6 +389,96 @@ def baseline_generate(question: str) -> dict:
         tokens = (getattr(resp.usage_metadata, "prompt_token_count", 0) or 0) + \
                  (getattr(resp.usage_metadata, "candidates_token_count", 0) or 0)
     return {"status": "ok", "sql": sql, "error": None, "tokens": tokens}
+
+
+def baseline_generate_family_aware(question: str, model_name: str | None = None) -> dict:
+    """Family-aware baseline generator for cross-family v7 P1 matrix.
+
+    The legacy ``baseline_generate`` hard-codes ``_client.models.generate_content``
+    which only works for Gemini family. For v7 P1 we need DeepSeek / Qwen / Gemma
+    to run through the SAME BASELINE_PROMPT + raw schema dump path. This wraps
+    ``model_gateway.create_model()`` + LiteLLM completion to provide that.
+
+    The Gemini code path is byte-equivalent to ``baseline_generate`` when
+    ``model_name`` is a Gemini model (same client, same config, same prompt).
+
+    Args:
+        question: Natural-language question (use ``question_business``).
+        model_name: Registered model name. Defaults to env ``NL2SQL_BASELINE_MODEL``
+            or the module-level ``MODEL`` constant.
+
+    Returns:
+        {"status", "sql", "error", "tokens"} — same shape as ``baseline_generate``.
+    """
+    import concurrent.futures
+
+    _HARD_TIMEOUT = int(os.environ.get("BASELINE_HARD_TIMEOUT", "180"))
+
+    _init_runtime()
+    name = model_name or os.environ.get("NL2SQL_BASELINE_MODEL") or MODEL
+    schema = get_schema()
+    prompt = BASELINE_PROMPT + f"\n\nSCHEMA:\n{schema}\n\nQUESTION: {question}\n\nSQL:"
+
+    from data_agent.model_gateway import create_model, family_of
+    adk_model = create_model(name)
+    family = family_of(adk_model)
+    # Routing decision: Gemini-wrapped models (Gemini class from ADK) use the
+    # google-genai direct client. LiteLlm-wrapped models (DeepSeek, Qwen,
+    # Ollama-hosted Gemma, LM Studio, etc.) go through litellm.completion.
+    # NOTE: ``family=='gemma'`` is NOT sufficient — Gemma can be served via
+    # AI Studio (Gemini class) OR Ollama (LiteLlm class). Use the ADK wrapper
+    # class as the true gate.
+    adk_class = type(adk_model).__name__
+
+    def _call_gemini():
+        resp = _client.models.generate_content(
+            model=name, contents=[prompt],
+            config=types.GenerateContentConfig(
+                http_options=types.HttpOptions(
+                    timeout=60_000,
+                    retry_options=types.HttpRetryOptions(initial_delay=2.0, attempts=3)),
+                temperature=0.0,
+            ),
+        )
+        sql = _strip_fences(resp.text or "")
+        tokens = 0
+        if hasattr(resp, "usage_metadata") and resp.usage_metadata:
+            tokens = (getattr(resp.usage_metadata, "prompt_token_count", 0) or 0) + \
+                     (getattr(resp.usage_metadata, "candidates_token_count", 0) or 0)
+        return {"status": "ok", "sql": sql, "error": None, "tokens": tokens}
+
+    def _call_litellm():
+        import litellm
+        resp = litellm.completion(
+            model=adk_model.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            timeout=60,
+            extra_body=(adk_model._additional_args or {}).get("extra_body"),
+        )
+        text = (resp.choices[0].message.content or "").strip()
+        sql = _strip_fences(text)
+        tokens = 0
+        usage = getattr(resp, "usage", None)
+        if usage is not None:
+            tokens = (getattr(usage, "prompt_tokens", 0) or 0) + \
+                     (getattr(usage, "completion_tokens", 0) or 0)
+        return {"status": "ok", "sql": sql, "error": None, "tokens": tokens}
+
+    fn = _call_gemini if adk_class == "Gemini" else _call_litellm
+
+    # Hard timeout via ThreadPoolExecutor — catches TCP half-open / server-side
+    # infinite generation that the library-level timeout misses.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(fn)
+        try:
+            return future.result(timeout=_HARD_TIMEOUT)
+        except concurrent.futures.TimeoutError:
+            return {"status": "hard_timeout", "sql": "",
+                    "error": f"baseline hard timeout ({_HARD_TIMEOUT}s)", "tokens": 0}
+        except Exception as e:
+            return {"status": "error", "sql": "",
+                    "error": f"{type(e).__name__}: {e}", "tokens": 0}
 
 
 # ============================================================================
@@ -542,7 +692,7 @@ async def run_one(q: dict, mode: str) -> dict:
     gold_res = execute_pg(golden_sql) if golden_sql else {"status": "error", "rows": None, "error": "no gold"}
 
     is_valid = pred_res["status"] == "ok"
-    passed, reason = compare_results(gold_res, pred_res) if is_valid else (False, pred_res.get("error", ""))
+    passed, reason = compare_results(gold_res, pred_res, gold_sql=golden_sql or "") if is_valid else (False, pred_res.get("error", ""))
 
     rec = {
         "qid": qid, "category": category, "difficulty": difficulty,
