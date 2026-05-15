@@ -362,6 +362,20 @@ export default function ClauseEditor({
         <button onClick={onSave} disabled={state.kind !== "editing"}>
           保存
         </button>
+        <button
+          onClick={() => editor?.chain().focus().addRowAfter().run()}
+          disabled={state.kind !== "editing" || !editor?.can().addRowAfter()}
+          title="在当前行下方插入新行（光标需在表格内）"
+        >
+          + 行
+        </button>
+        <button
+          onClick={() => editor?.chain().focus().deleteRow().run()}
+          disabled={state.kind !== "editing" || !editor?.can().deleteRow()}
+          title="删除当前行（光标需在表格内）"
+        >
+          − 行
+        </button>
         {state.kind === "conflict" && (
           <>
             <span style={{ color: "#a60", fontSize: 12 }}>
