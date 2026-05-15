@@ -162,3 +162,29 @@ def release_lock(clause_id: str, user_id: str) -> None:
                SET lock_holder=NULL, lock_expires_at=NULL
              WHERE id=:c AND lock_holder=:u
         """), {"c": clause_id, "u": user_id})
+
+
+def break_lock(clause_id: str, admin_user_id: str) -> dict:
+    """Admin force-break of a clause lock. Writes agent_audit_log entry."""
+    eng = get_engine()
+    if eng is None:
+        raise RuntimeError("DB engine unavailable")
+    with eng.begin() as conn:
+        row = conn.execute(text(
+            "SELECT lock_holder FROM std_clause WHERE id=:c FOR UPDATE"
+        ), {"c": clause_id}).first()
+        if row is None:
+            raise LookupError(f"clause {clause_id} not found")
+        previous_holder = row.lock_holder
+        conn.execute(text(
+            "UPDATE std_clause SET lock_holder=NULL, lock_expires_at=NULL "
+            "WHERE id=:c"
+        ), {"c": clause_id})
+        meta = {"clause_id": clause_id, "previous_holder": previous_holder}
+        conn.execute(text(
+            "INSERT INTO agent_audit_log (username, action, details) "
+            "VALUES (:u, 'std_clause.lock.break', CAST(:m AS jsonb))"
+        ), {"u": admin_user_id, "m": json.dumps(meta)})
+        logger.info("clause %s lock broken by %s (was held by %s)",
+                    clause_id, admin_user_id, previous_holder)
+        return {"previous_holder": previous_holder}

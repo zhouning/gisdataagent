@@ -214,3 +214,38 @@ def test_release_lock_idempotent(db, clause_row):
     release_lock(cid, "alice")  # second call: no-op, no exception
     holder, _ = _holder(db, cid)
     assert holder is None
+
+
+from data_agent.standards_platform.drafting.editor_session import break_lock
+
+
+def test_break_lock_writes_audit(db, clause_row):
+    cid, _vid, _did = clause_row
+    acquire_lock(cid, "alice")
+    out = break_lock(cid, "admin_user")
+    assert out["previous_holder"] == "alice"
+    holder, _ = _holder(db, cid)
+    assert holder is None
+    with db.connect() as c:
+        n = c.execute(_sql(
+            "SELECT COUNT(*) FROM agent_audit_log "
+            "WHERE username=:u AND action='std_clause.lock.break' "
+            "AND details->>'clause_id'=:c "
+            "AND details->>'previous_holder'='alice'"
+        ), {"u": "admin_user", "c": cid}).scalar()
+    assert n >= 1
+
+
+def test_lazy_checksum_on_first_acquire(db, clause_row):
+    cid, _vid, _did = clause_row
+    # P0 inserts may have NULL checksum; ensure backfill happens
+    with db.begin() as c:
+        c.execute(_sql("UPDATE std_clause SET checksum=NULL WHERE id=:i"),
+                  {"i": cid})
+    out = acquire_lock(cid, "alice")
+    assert out["checksum"]
+    with db.connect() as c:
+        chk = c.execute(_sql(
+            "SELECT checksum FROM std_clause WHERE id=:i"
+        ), {"i": cid}).scalar()
+    assert chk == compute_checksum("initial body")
