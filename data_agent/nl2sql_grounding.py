@@ -618,8 +618,11 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
 
     # Aggregation / Warehouse semantics — apply when query has aggregation intent
     # or when warehouse join hints exist (i.e., non-spatial multi-table query).
+    # Also apply on SPATIAL_JOIN: spatial joins with COUNT/SUM frequently need
+    # DISTINCT to prevent row-multiplication when one parent contains many children
+    # (e.g. count buildings per historic district).
     has_warehouse_hints = bool(payload.get("warehouse_join_hints"))
-    if intent == IntentLabel.AGGREGATION or has_warehouse_hints:
+    if intent in (IntentLabel.AGGREGATION, IntentLabel.SPATIAL_JOIN) or has_warehouse_hints:
         lines.append("")
         lines.append("## 聚合语义规则")
         lines.append("- COUNT(*) 计入所有行（包含 NULL），COUNT(col) 只计 col 非 NULL 的行；二者结果常不同。")
@@ -927,5 +930,27 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     }
     if warehouse_join_hints:
         payload["warehouse_join_hints"] = warehouse_join_hints
+
+    # v7 P1 observability: surface how many data-driven hints were injected so
+    # cross-family sanity probes can verify the semantic-layer path is live
+    # BEFORE committing to the 12h matrix. Zero hints for a question that
+    # names cq_* tables is a strong signal of a fallback / trigger_keywords
+    # miss rather than model incompetence.
+    _hint_stats = {
+        "table_hints": len(payload.get("table_hints") or []),
+        "column_hints": sum(len(v) for v in (payload.get("column_hints") or {}).values()),
+        "large_tables": len(payload.get("large_tables") or []),
+        "candidate_tables": len(candidate_tables),
+        "few_shots": len(few_shots),
+        "family": family or "default",
+    }
+    payload["_hint_injection_stats"] = _hint_stats
+    logger.info(
+        "[NL2SQL grounding] injected hints: tables=%d columns=%d large_tables=%d "
+        "candidates=%d few_shots=%d family=%s",
+        _hint_stats["table_hints"], _hint_stats["column_hints"],
+        _hint_stats["large_tables"], _hint_stats["candidate_tables"],
+        _hint_stats["few_shots"], _hint_stats["family"],
+    )
     payload["grounding_prompt"] = _format_grounding_prompt(payload, family=family)
     return payload
