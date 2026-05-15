@@ -3,11 +3,16 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
 import { marked } from "marked";
 import TurndownService from "turndown";
 import {
   acquireLock, heartbeat, releaseLock, saveClause, breakLock,
-  StdClause, ConflictDetail,
+  getClauseElements,
+  StdClause, StdDataElement, ConflictDetail,
 } from "../standardsApi";
 
 interface Props {
@@ -27,6 +32,20 @@ type EditorState =
 
 const turndown = new TurndownService();
 
+function elementsToMarkdownTable(elements: StdDataElement[]): string {
+  if (elements.length === 0) return "";
+  const rows = elements.map((e, i) =>
+    `| ${i + 1} | ${e.code} | ${e.name_zh ?? ""} | ${e.datatype ?? ""} | ${e.obligation ?? "optional"} |`
+  );
+  return [
+    "",
+    "| 序号 | 字段代码 | 字段名称 | 类型 | 必选 |",
+    "|------|----------|----------|------|------|",
+    ...rows,
+    "",
+  ].join("\n");
+}
+
 export default function ClauseEditor({
   clause,
   isAdmin,
@@ -42,6 +61,10 @@ export default function ClauseEditor({
         StarterKit,
         Placeholder.configure({ placeholder: "开始编写条款内容…" }),
         Link,
+        Table.configure({ resizable: false }),
+        TableRow,
+        TableHeader,
+        TableCell,
       ],
       editable: false,
       content: "",
@@ -65,7 +88,7 @@ export default function ClauseEditor({
 
     setState({ kind: "acquiring" });
 
-    acquireLock(clause.id).then((r) => {
+    acquireLock(clause.id).then(async (r) => {
       if (cancelled) return;
 
       if ("status" in r && r.status === 423) {
@@ -80,7 +103,11 @@ export default function ClauseEditor({
 
       // r is AcquireLockResponse here
       const ok = r as Exclude<typeof r, { status: 423; body: unknown }>;
-      const html = marked.parse(ok.body_md) as string;
+      const elementsResp = await getClauseElements(clause.id);
+      if (cancelled) return;
+      const tableMd = elementsToMarkdownTable(elementsResp.data_elements);
+      const combined = ok.body_md + (tableMd ? "\n" + tableMd : "");
+      const html = marked.parse(combined) as string;
       editor.commands.setContent(html, false);
       setState({
         kind: "editing",
@@ -231,6 +258,14 @@ export default function ClauseEditor({
             overflow-x: auto;
           }
           .std-clause-editor .ProseMirror a { color: #0969da; }
+          .std-clause-editor .ProseMirror table {
+            border-collapse: collapse; width: 100%; margin: 8px 0;
+          }
+          .std-clause-editor .ProseMirror th,
+          .std-clause-editor .ProseMirror td {
+            border: 1px solid #ccc; padding: 4px 8px; text-align: left;
+          }
+          .std-clause-editor .ProseMirror th { background: #f0f0f0; font-weight: 600; }
           .std-clause-editor .ProseMirror p.is-editor-empty:first-child::before {
             content: attr(data-placeholder);
             color: #aaa;

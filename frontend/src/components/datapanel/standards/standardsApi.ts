@@ -108,3 +108,7 @@ export const breakLock = async (clauseId: string)
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
 };
+
+export const getClauseElements = (clauseId: string) =>
+  fetch(`/api/std/clauses/${clauseId}/elements`)
+    .then(j<{data_elements: StdDataElement[]}>);
