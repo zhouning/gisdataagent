@@ -104,8 +104,18 @@ def _list_under_version(table: str, request: Request):
         rows = conn.execute(text(
             f"SELECT * FROM {table} WHERE document_version_id = :v ORDER BY 1"
         ), {"v": request.path_params["version_id"]}).mappings().all()
-    return [{k: (str(v) if hasattr(v, "hex") else v) for k, v in dict(r).items()
-             if k != "embedding"} for r in rows]
+    return [{k: _json_safe(v) for k, v in dict(r).items() if k != "embedding"}
+            for r in rows]
+
+
+def _json_safe(v):
+    if v is None:
+        return None
+    if hasattr(v, "hex"):
+        return str(v)
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    return v
 
 
 async def list_clauses(request: Request):
