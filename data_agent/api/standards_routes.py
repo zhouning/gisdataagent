@@ -26,6 +26,15 @@ logger = get_logger("api.standards_routes")
 _EDITOR_ROLES = {"admin", "analyst", "standard_editor"}
 _REVIEWER_ROLES = {"admin", "analyst", "standard_editor", "standard_reviewer"}
 
+from ..standards_platform.drafting import editor_session as _editor
+
+
+def _require_editor_or_403(role: str | None) -> JSONResponse | None:
+    if role not in _EDITOR_ROLES:
+        return JSONResponse({"error": "Forbidden — editor role required"},
+                            status_code=403)
+    return None
+
 
 def _auth_or_401(request: Request):
     u = _helpers._get_user_from_request(request)
@@ -190,6 +199,83 @@ async def outbox_status(request: Request):
     return JSONResponse({"counts": {r["status"]: r["n"] for r in rows}})
 
 
+async def lock_clause(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_editor_or_403(role)
+    if forbid: return forbid
+    cid = request.path_params["clause_id"]
+    try:
+        out = _editor.acquire_lock(cid, username)
+    except _editor.LockError as e:
+        return JSONResponse({"error": "Locked",
+                             "holder": e.holder,
+                             "expires_at": e.expires_at.isoformat()
+                                if e.expires_at else None},
+                            status_code=423)
+    out["lock_expires_at"] = out["lock_expires_at"].isoformat()
+    return JSONResponse(out)
+
+
+async def heartbeat_clause(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_editor_or_403(role)
+    if forbid: return forbid
+    cid = request.path_params["clause_id"]
+    try:
+        out = _editor.heartbeat(cid, username)
+    except _editor.LockError:
+        return JSONResponse({"error": "Lock lost"}, status_code=410)
+    out["lock_expires_at"] = out["lock_expires_at"].isoformat()
+    return JSONResponse(out)
+
+
+async def release_clause_lock(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_editor_or_403(role)
+    if forbid: return forbid
+    cid = request.path_params["clause_id"]
+    _editor.release_lock(cid, username)
+    return JSONResponse({"ok": True})
+
+
+async def save_clause_route(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_editor_or_403(role)
+    if forbid: return forbid
+    cid = request.path_params["clause_id"]
+    if_match = request.headers.get("if-match", "")
+    body = await request.json()
+    try:
+        out = _editor.save_clause(cid, username,
+                                  if_match_checksum=if_match,
+                                  body_md=body.get("body_md", ""),
+                                  body_html=body.get("body_html"))
+    except _editor.ConflictError as e:
+        return JSONResponse({"error": "Conflict",
+                             "server_checksum": e.server_checksum,
+                             "server_body_md": e.server_body_md},
+                            status_code=409)
+    except _editor.LockError:
+        return JSONResponse({"error": "Lock lost"}, status_code=410)
+    out["updated_at"] = out["updated_at"].isoformat()
+    return JSONResponse(out)
+
+
+async def break_clause_lock(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    if role != "admin":
+        return JSONResponse({"error": "Forbidden — admin only"},
+                            status_code=403)
+    cid = request.path_params["clause_id"]
+    out = _editor.break_lock(cid, username)
+    return JSONResponse(out)
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -203,6 +289,16 @@ standards_routes = [
     Route("/api/std/web/fetch", endpoint=web_fetch_route, methods=["POST"]),
     Route("/api/std/web/manual", endpoint=web_manual_route, methods=["POST"]),
     Route("/api/std/outbox/status", endpoint=outbox_status, methods=["GET"]),
+    Route("/api/std/clauses/{clause_id}/lock",
+          endpoint=lock_clause, methods=["POST"]),
+    Route("/api/std/clauses/{clause_id}/heartbeat",
+          endpoint=heartbeat_clause, methods=["POST"]),
+    Route("/api/std/clauses/{clause_id}/lock/release",
+          endpoint=release_clause_lock, methods=["POST"]),
+    Route("/api/std/clauses/{clause_id}",
+          endpoint=save_clause_route, methods=["PUT"]),
+    Route("/api/std/clauses/{clause_id}/lock/break",
+          endpoint=break_clause_lock, methods=["POST"]),
 ]
 
 
