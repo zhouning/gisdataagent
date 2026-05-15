@@ -35,21 +35,22 @@ type EditorState =
 const turndown = new TurndownService();
 turndown.use([tables, strikethrough]);
 
-/** Remove any lines that look like markdown table rows or dividers, plus
- *  any orphan single-column "table" lines turndown may have left from a
- *  pre-fix save (each cell on its own line). Conservative: strips lines
- *  that start with '|' or that contain only digits/whitespace (likely the
- *  序号 column from a broken old save). */
+/** Keep ONLY the standard metadata header lines (模块:/章节:/表代码:/字段数:/
+ *  页码:/表头:/行数:) — strip everything else. The data_element table is
+ *  always reconstructed from the API on load, so any leftover table or
+ *  scattered cell text in body_md is purely noise. */
 function stripExistingTable(md: string): string {
   if (!md) return "";
+  const headerKeys = /^(模块|章节|表代码|字段数|页码|表头|行数)\s*[:：]/;
   const lines = md.split("\n");
   const out: string[] = [];
   for (const line of lines) {
     const t = line.trim();
-    if (t.startsWith("|")) continue;          // markdown table row or divider
-    out.push(line);
+    if (t === "" || headerKeys.test(t)) {
+      out.push(line);
+    }
+    // else: discard (table debris, cell-per-line debris, stray prose)
   }
-  // collapse runs of blank lines
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd();
 }
 
