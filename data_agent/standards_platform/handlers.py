@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .ingestion.extractor_runner import run_extractor
+from .ingestion.extractor_adapter import adapt_extractor_output
 from .analysis.structurer import structure_extracted
 from .analysis.embedder import embed_version
 from .analysis.deduper import find_similar_clauses
@@ -18,10 +19,14 @@ def dispatch(event: dict) -> None:
                 event.get("attempts", 0))
     if et == "extract_requested":
         extracted = run_extractor(p["file_path"])
+        adapted = adapt_extractor_output(extracted)
+        n_clauses = len(adapted.get("FieldTable") or [])
+        logger.info("extract_requested produced %d clause(s) for version %s",
+                    n_clauses, p.get("version_id"))
         outbox.enqueue("structure_requested",
                        {"document_id": p["document_id"],
                         "version_id": p["version_id"],
-                        "extracted": extracted})
+                        "extracted": adapted})
     elif et == "structure_requested":
         structure_extracted(doc_id=p["document_id"], version_id=p["version_id"],
                             payload=p["extracted"])
