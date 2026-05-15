@@ -134,3 +134,9 @@ def test_acquire_lock_same_user_renews(db, clause_row):
     assert out["body_md"] == "initial body"
     holder, _ = _holder(db, cid)
     assert holder == "alice"
+
+
+def test_acquire_lock_clause_not_found(db):
+    import uuid as _u
+    with pytest.raises(LookupError):
+        acquire_lock(str(_u.uuid4()), "alice")
