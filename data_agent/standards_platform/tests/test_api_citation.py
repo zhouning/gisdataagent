@@ -247,6 +247,39 @@ def test_citation_insert_whitespace_text_rejected(monkeypatch, fresh_clause):
     assert r.status_code == 400
 
 
+def test_citation_insert_kb_chunk_target(monkeypatch, engine, fresh_clause):
+    """Regression: kb_chunk candidate maps to target_kind=internet_search and
+    is accepted with NULL target_url (Wave 3 migration 077)."""
+    cid, _, _ = fresh_clause
+    _auth_user(monkeypatch, username="admin", role="admin")
+    resp = _client().post("/api/std/citation/insert", json={
+        "clause_id": cid,
+        "candidate": {
+            "kind": "kb_chunk",
+            "target_id": "kb-chunk-uuid",
+            "target_url": None,
+            "snippet": "知识库片段引用",
+            "extra": {"confidence": 0.7},
+        },
+    })
+    assert resp.status_code == 200, resp.text
+    ref_id = resp.json()["ref_id"]
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "SELECT target_kind, target_url, target_clause_id "
+                "FROM std_reference WHERE id=:i"
+            ), {"i": ref_id}).first()
+        assert row[0] == "internet_search"
+        assert row[1] is None
+        assert row[2] is None
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "DELETE FROM std_reference WHERE id=:i"
+            ), {"i": ref_id})
+
+
 def test_citation_insert_web_snapshot_target(monkeypatch, engine, fresh_clause):
     """Regression: web_snapshot target writes target_url and snapshot_id."""
     cid, _, _ = fresh_clause

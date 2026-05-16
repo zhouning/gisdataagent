@@ -31,6 +31,11 @@ def engine():
 def fresh_clause(engine):
     """Insert a throwaway document/version/clause and return (clause_id, doc_id, version_id).
 
+    Cleanup: deletes the parent document on test end. Cascades through
+    std_document_version → std_clause → std_reference (and std_data_element,
+    std_term seeded against this version). Tests that seed additional rows
+    against external versions are responsible for cleaning those up themselves.
+
     Note: returns three values now (vs. two in the old _seed_clause). Tests
     that only need clause_id/doc_id can unpack with `cid, did, _ = fresh_clause`.
     Returning version_id makes Task 5's data_element/term seeding straightforward.
@@ -54,4 +59,7 @@ def fresh_clause(engine):
             "ordinal_path, clause_no, kind, body_md) VALUES (:i, :d, :v, "
             "CAST('1' AS ltree), '1', 'clause', 'hello')"
         ), {"i": cid, "d": doc_id, "v": ver_id})
-    return cid, doc_id, ver_id
+    yield cid, doc_id, ver_id
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM std_document WHERE id=:i"),
+                     {"i": doc_id})

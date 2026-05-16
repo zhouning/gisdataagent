@@ -71,13 +71,18 @@ ALTER TABLE std_reference ADD CONSTRAINT std_reference_target_kind_check
     'std_clause','std_data_element','std_term','std_document',
     'external_url','web_snapshot','internet_search'));
 
+-- Note: internet_search is permitted to have NULL target_url because it is
+-- the catch-all bucket for KB-chunk citations (which have no real URL);
+-- other URL-bearing kinds (external_url, web_snapshot) still require a URL.
+-- Migration 077 relaxed the original CHECK that grouped internet_search
+-- with the URL-required kinds (Wave 3 post-PR critical fix C1).
 ALTER TABLE std_reference ADD CONSTRAINT std_reference_target_consistency CHECK (
   (target_kind = 'std_clause'       AND target_clause_id        IS NOT NULL) OR
   (target_kind = 'std_data_element' AND target_data_element_id  IS NOT NULL) OR
   (target_kind = 'std_term'         AND target_term_id          IS NOT NULL) OR
   (target_kind = 'std_document'     AND target_document_id      IS NOT NULL) OR
-  (target_kind IN ('external_url','web_snapshot','internet_search')
-                                    AND target_url              IS NOT NULL)
+  (target_kind IN ('external_url','web_snapshot') AND target_url IS NOT NULL) OR
+  (target_kind = 'internet_search')
 );
 
 ALTER TABLE std_reference ADD CONSTRAINT std_reference_verification_status_check
