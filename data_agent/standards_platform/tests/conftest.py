@@ -33,7 +33,7 @@ def fresh_clause(engine):
 
     Note: returns three values now (vs. two in the old _seed_clause). Tests
     that only need clause_id/doc_id can unpack with `cid, did, _ = fresh_clause`.
-    Returning version_id makes Task 4's data_element/term seeding straightforward.
+    Returning version_id makes Task 5's data_element/term seeding straightforward.
     """
     doc_id = str(uuid.uuid4())
     ver_id = str(uuid.uuid4())

@@ -67,15 +67,11 @@ def test_post_break_admin_only(monkeypatch, fresh_clause):
     assert r.json()["previous_holder"] == "alice"
 
 
-def test_get_clause_elements_returns_only_owned(monkeypatch, fresh_clause):
+def test_get_clause_elements_returns_only_owned(monkeypatch, engine, fresh_clause):
     """clause-scoped elements returns only data_elements with defined_by_clause_id matching."""
-    from data_agent.db_engine import get_engine
-    from sqlalchemy import text
-
     cid, doc_id, _ = fresh_clause
     # Insert a few data_elements with this clause as defined_by_clause_id
-    eng = get_engine()
-    with eng.begin() as conn:
+    with engine.begin() as conn:
         # Get the version_id from the clause
         vid = conn.execute(text(
             "SELECT document_version_id FROM std_clause WHERE id=:i"
