@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 import uuid
+from unittest.mock import patch
 from sqlalchemy import text as _sql
 from data_agent.db_engine import get_engine
 from dotenv import load_dotenv as _ld
@@ -67,3 +68,21 @@ def test_search_pgvector_returns_clause_matches(db):
         with db.begin() as c:
             c.execute(_sql("DELETE FROM std_document WHERE id=:d"),
                       {"d": doc_id})
+
+
+def test_search_kb_wraps_chunks(monkeypatch):
+    """Mock data_agent.knowledge_base.search_kb to return 2 chunks."""
+    fake_chunks = [
+        {"chunk_id": "c1", "kb_id": 5, "title": "GB/T 13923",
+         "content": "行政区代码定义……", "score": 0.92},
+        {"chunk_id": "c2", "kb_id": 5, "title": "国土调查规程",
+         "content": "图斑要素……", "score": 0.78},
+    ]
+    with patch("data_agent.knowledge_base.search_kb",
+               return_value=fake_chunks):
+        results = search_kb("行政区代码", top_k=5)
+    assert len(results) == 2
+    assert results[0]["kind"] == "kb_chunk"
+    assert results[0]["target_id"] == "c1"
+    assert results[0]["base_score"] == 0.92
+    assert "行政区代码" in results[0]["snippet"]

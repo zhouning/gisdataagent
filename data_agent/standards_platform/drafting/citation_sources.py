@@ -79,7 +79,35 @@ def search_pgvector(query_embedding: list[float], *,
 
 def search_kb(query: str, *, top_k: int = 10) -> list[Candidate]:
     """Wrap data_agent.knowledge_base.search_kb()."""
-    raise NotImplementedError
+    try:
+        from ...knowledge_base import search_kb as _kb_search
+    except Exception as e:
+        logger.warning("knowledge_base import failed: %s", e)
+        return []
+    kb_id_env = os.getenv("STANDARDS_KB_ID")
+    kwargs: dict = {"top_k": top_k}
+    if kb_id_env:
+        try:
+            kwargs["kb_id"] = int(kb_id_env)
+        except ValueError:
+            pass
+    try:
+        chunks = _kb_search(query, **kwargs)
+    except Exception as e:
+        logger.warning("knowledge_base.search_kb failed: %s", e)
+        return []
+    out: list[Candidate] = []
+    for ch in chunks or []:
+        out.append({
+            "kind": "kb_chunk",
+            "target_id": str(ch.get("chunk_id") or ""),
+            "target_url": None,
+            "snippet": (ch.get("content") or "")[:500],
+            "base_score": float(ch.get("score") or 0.0),
+            "extra": {"kb_id": ch.get("kb_id"),
+                      "title": ch.get("title")},
+        })
+    return out
 
 
 def search_web(query: str, *, top_k: int = 5) -> list[Candidate]:
