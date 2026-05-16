@@ -46,10 +46,12 @@ Current `std_reference` row count: **0**. No backfill or data migration needed.
 
 Migration `076_std_reference_extend_targets.sql`:
 
+> All `target_*_id` FKs use `ON DELETE CASCADE` because the `target_consistency` CHECK would otherwise reject the `SET NULL` update fired by Postgres when a target row is deleted — the CHECK requires the FK column to be `NOT NULL` whenever `target_kind` matches that column.
+
 ```sql
 ALTER TABLE std_reference
-  ADD COLUMN IF NOT EXISTS target_data_element_id UUID REFERENCES std_data_element(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS target_term_id         UUID REFERENCES std_term(id)         ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS target_data_element_id UUID REFERENCES std_data_element(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS target_term_id         UUID REFERENCES std_term(id)         ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS inserted_by            TEXT,
   ADD COLUMN IF NOT EXISTS inserted_at            TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS verification_status    TEXT NOT NULL DEFAULT 'pending';
