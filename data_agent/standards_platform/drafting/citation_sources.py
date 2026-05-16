@@ -111,14 +111,18 @@ def search_kb(query: str, *, top_k: int = 10) -> list[Candidate]:
         return []
     out: list[Candidate] = []
     for ch in chunks or []:
+        title = (
+            (ch.get("metadata") or {}).get("title")
+            or ch.get("doc_id")
+            or "(无标题)"
+        )
         out.append({
             "kind": "kb_chunk",
             "target_id": str(ch.get("chunk_id") or ""),
             "target_url": None,
             "snippet": (ch.get("content") or "")[:500],
             "base_score": float(ch.get("score") or 0.0),
-            "extra": {"kb_id": ch.get("kb_id"),
-                      "title": ch.get("title")},
+            "extra": {"kb_id": ch.get("kb_id"), "title": title},
         })
     return out
 

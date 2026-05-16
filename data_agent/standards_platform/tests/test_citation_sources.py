@@ -109,3 +109,38 @@ def test_search_web_returns_snapshot_matches(db):
         with db.begin() as c:
             c.execute(_sql("DELETE FROM std_web_snapshot WHERE id=:i"),
                       {"i": snap_id})
+
+
+def test_search_kb_title_from_metadata():
+    """search_kb should pull title from chunk['metadata']['title'] (Fix #1)."""
+    fake_chunks = [{
+        "chunk_id": "c1",
+        "content": "some snippet",
+        "score": 0.9,
+        "doc_id": "doc-x",
+        "chunk_index": 0,
+        "metadata": {"title": "测绘行业标准 X"},
+        "kb_id": 7,
+    }]
+    with patch("data_agent.knowledge_base.search_kb",
+               return_value=fake_chunks):
+        out = search_kb("test query")
+    assert len(out) == 1
+    assert out[0]["extra"]["title"] == "测绘行业标准 X"
+
+
+def test_search_kb_title_falls_back_to_doc_id():
+    """When metadata has no title, fall back to doc_id (Fix #1)."""
+    fake_chunks = [{
+        "chunk_id": "c2",
+        "content": "x",
+        "score": 0.5,
+        "doc_id": "DOC-FALLBACK",
+        "chunk_index": 0,
+        "metadata": {},
+        "kb_id": 7,
+    }]
+    with patch("data_agent.knowledge_base.search_kb",
+               return_value=fake_chunks):
+        out = search_kb("q")
+    assert out[0]["extra"]["title"] == "DOC-FALLBACK"

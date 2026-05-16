@@ -111,4 +111,7 @@ def rerank(query: str, candidates: list[Candidate], *,
         copy["extra"] = {**copy.get("extra", {}),
                          "confidence": copy["base_score"]}
         out.append(copy)  # type: ignore[arg-type]
+    out.sort(
+        key=lambda c: -float(c.get("extra", {}).get("confidence", 0.0) or 0.0)
+    )
     return out[:top_k]
