@@ -293,6 +293,79 @@ async def break_clause_lock(request: Request):
     return JSONResponse(out)
 
 
+async def citation_search(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_editor_or_403(role)
+    if forbid: return forbid
+    body = await request.json()
+    clause_id = body.get("clause_id")
+    query = (body.get("query") or "").strip()
+    if not clause_id or not query:
+        return JSONResponse({"error": "clause_id and query required"},
+                            status_code=400)
+    sources_list = body.get("sources")
+    sources = set(sources_list) if sources_list else None
+    from ..standards_platform.drafting.citation_assistant import (
+        search_citations,
+    )
+    cands = search_citations(clause_id=clause_id, query=query,
+                             sources=sources, top_k=20)
+    return JSONResponse({"candidates": cands})
+
+
+async def citation_insert(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_editor_or_403(role)
+    if forbid: return forbid
+    body = await request.json()
+    clause_id = body.get("clause_id")
+    cand = body.get("candidate") or {}
+    if not clause_id or not cand:
+        return JSONResponse({"error": "clause_id and candidate required"},
+                            status_code=400)
+    kind = cand.get("kind", "")
+    target_kind_map = {
+        "std_clause": "std_clause",
+        "std_data_element": "std_clause",  # element belongs to a clause
+        "std_term": "std_clause",
+        "kb_chunk": "internet_search",
+        "web_snapshot": "web_snapshot",
+    }
+    target_kind = target_kind_map.get(kind)
+    if target_kind is None:
+        return JSONResponse(
+            {"error": f"unsupported candidate kind: {kind}"},
+            status_code=400)
+    target_clause_id = None
+    target_url = cand.get("target_url")
+    snapshot_id = None
+    if kind in ("std_clause",):
+        target_clause_id = cand.get("target_id")
+    elif kind == "web_snapshot":
+        snapshot_id = cand.get("target_id")
+    citation_text = (cand.get("snippet") or "")[:500]
+    confidence = cand.get("extra", {}).get("confidence")
+    eng = get_engine()
+    import uuid as _u
+    ref_id = str(_u.uuid4())
+    with eng.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO std_reference (
+                id, source_clause_id, target_kind, target_clause_id,
+                target_url, snapshot_id, citation_text, confidence,
+                verified_by, verified_at)
+            VALUES (:i, :sc, :tk, :tc, :tu, :sn, :ct, :cf, :u, now())
+        """), {
+            "i": ref_id, "sc": clause_id, "tk": target_kind,
+            "tc": target_clause_id, "tu": target_url,
+            "sn": snapshot_id, "ct": citation_text,
+            "cf": confidence, "u": username,
+        })
+    return JSONResponse({"ref_id": ref_id, "citation_text": citation_text})
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -318,6 +391,10 @@ standards_routes = [
           endpoint=save_clause_route, methods=["PUT"]),
     Route("/api/std/clauses/{clause_id}/lock/break",
           endpoint=break_clause_lock, methods=["POST"]),
+    Route("/api/std/citation/search",
+          endpoint=citation_search, methods=["POST"]),
+    Route("/api/std/citation/insert",
+          endpoint=citation_insert, methods=["POST"]),
 ]
 
 
