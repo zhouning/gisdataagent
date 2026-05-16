@@ -111,5 +111,38 @@ def search_kb(query: str, *, top_k: int = 10) -> list[Candidate]:
 
 
 def search_web(query: str, *, top_k: int = 5) -> list[Candidate]:
-    """Search std_web_snapshot.body via ILIKE for the query terms."""
-    raise NotImplementedError
+    """Search std_web_snapshot.extracted_text via ILIKE for any token in the query.
+
+    Simple substring matching; no FTS index dependency. The snippet is
+    the first ~500 chars of the matched extracted_text (a window around the first
+    match would be better but is deferred).
+    """
+    eng = get_engine()
+    if eng is None:
+        return []
+    tokens = [t for t in query.split() if t.strip()]
+    if not tokens:
+        return []
+    # Build OR-ed ILIKE conditions
+    pattern_clauses = " OR ".join(
+        f"extracted_text ILIKE :p{i}" for i in range(len(tokens))
+    )
+    params = {f"p{i}": f"%{tok}%" for i, tok in enumerate(tokens)}
+    params["k"] = top_k
+    sql = f"""
+        SELECT id::text AS id, url, LEFT(extracted_text, 500) AS snippet
+          FROM std_web_snapshot
+         WHERE {pattern_clauses}
+         ORDER BY fetched_at DESC
+         LIMIT :k
+    """
+    with eng.connect() as conn:
+        rows = conn.execute(text(sql), params).mappings().all()
+    return [{
+        "kind": "web_snapshot",
+        "target_id": r["id"],
+        "target_url": r["url"],
+        "snippet": r["snippet"] or "",
+        "base_score": 0.5,  # neutral; rerank will refine
+        "extra": {},
+    } for r in rows]

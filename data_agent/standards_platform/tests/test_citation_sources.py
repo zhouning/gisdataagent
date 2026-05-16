@@ -86,3 +86,26 @@ def test_search_kb_wraps_chunks(monkeypatch):
     assert results[0]["target_id"] == "c1"
     assert results[0]["base_score"] == 0.92
     assert "行政区代码" in results[0]["snippet"]
+
+
+def test_search_web_returns_snapshot_matches(db):
+    """Insert a fake std_web_snapshot row and search by ILIKE."""
+    snap_id = str(uuid.uuid4())
+    with db.begin() as c:
+        c.execute(_sql(
+            "INSERT INTO std_web_snapshot (id, url, fetched_at, "
+            "extracted_text, http_status) "
+            "VALUES (:i, :u, now(), :b, 200)"
+        ), {"i": snap_id, "u": "https://std.samr.gov.cn/test",
+            "b": "测试内容: 行政区代码 XZQDM 是字段定义"})
+    try:
+        results = search_web("行政区代码 XZQDM", top_k=5)
+        hits = [r for r in results if r["target_id"] == snap_id]
+        assert len(hits) == 1
+        assert hits[0]["kind"] == "web_snapshot"
+        assert hits[0]["target_url"] == "https://std.samr.gov.cn/test"
+        assert "行政区代码" in hits[0]["snippet"]
+    finally:
+        with db.begin() as c:
+            c.execute(_sql("DELETE FROM std_web_snapshot WHERE id=:i"),
+                      {"i": snap_id})
