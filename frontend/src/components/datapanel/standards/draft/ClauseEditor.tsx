@@ -7,6 +7,8 @@ import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
+import { Citation } from "./citationMark";
+import CitationPanel from "./CitationPanel";
 import { marked } from "marked";
 import TurndownService from "turndown";
 // @ts-expect-error - turndown-plugin-gfm has no types
@@ -122,6 +124,7 @@ export default function ClauseEditor({
   onSaved,
 }: Props) {
   const [state, setState] = useState<EditorState>({ kind: "idle" });
+  const [citationOpen, setCitationOpen] = useState(false);
   const heartbeatRef = useRef<number | null>(null);
 
   const editor = useEditor(
@@ -134,6 +137,7 @@ export default function ClauseEditor({
         TableRow,
         TableHeader,
         TableCell,
+        Citation,
       ],
       editable: false,
       content: "",
@@ -177,7 +181,12 @@ export default function ClauseEditor({
       const cleanedBody = stripExistingTable(ok.body_md);
       const tableMd = elementsToMarkdownTable(elementsResp.data_elements);
       const combined = cleanedBody + (tableMd ? "\n\n" + tableMd : "");
-      const html = marked.parse(combined) as string;
+      const rawHtml = marked.parse(combined) as string;
+      // Enhance bare [[ref:UUID]] text into chip spans so the Citation mark renders it
+      const html = rawHtml.replace(
+        /\[\[ref:([0-9a-fA-F-]+)\]\]/g,
+        (_m, id) => `<span data-citation="${id}" class="citation-chip">[[ref:${id}]]</span>`
+      );
       editor.commands.setContent(html, false);
       setState({
         kind: "editing",
@@ -265,7 +274,7 @@ export default function ClauseEditor({
           : "#f4f4f4";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* Status bar */}
       <div
         style={{
@@ -345,6 +354,18 @@ export default function ClauseEditor({
             height: 0;
             pointer-events: none;
           }
+          .std-clause-editor .citation-chip {
+            display: inline-block;
+            padding: 0 4px;
+            margin: 0 2px;
+            background: #eef6ff;
+            border: 1px solid #99c2ee;
+            border-radius: 3px;
+            font-family: ui-monospace, monospace;
+            font-size: 12px;
+            color: #0a4;
+            white-space: nowrap;
+          }
         `}</style>
         <EditorContent editor={editor} />
       </div>
@@ -376,6 +397,13 @@ export default function ClauseEditor({
         >
           − 行
         </button>
+        <button
+          onClick={() => setCitationOpen(true)}
+          disabled={state.kind !== "editing"}
+          title="查找并插入引用 (Ctrl+Shift+R)"
+        >
+          查找引用
+        </button>
         {state.kind === "conflict" && (
           <>
             <span style={{ color: "#a60", fontSize: 12 }}>
@@ -385,6 +413,18 @@ export default function ClauseEditor({
           </>
         )}
       </div>
+      {citationOpen && clause && (
+        <CitationPanel
+          clauseId={clause.id}
+          onClose={() => setCitationOpen(false)}
+          onInsert={(refId) => {
+            editor?.chain().focus().insertContent(
+              `<span data-citation="${refId}" class="citation-chip">[[ref:${refId}]]</span>`
+            ).run();
+            setCitationOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
