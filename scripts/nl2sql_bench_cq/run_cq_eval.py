@@ -469,16 +469,26 @@ def baseline_generate_family_aware(question: str, model_name: str | None = None)
 
     # Hard timeout via ThreadPoolExecutor — catches TCP half-open / server-side
     # infinite generation that the library-level timeout misses.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(fn)
-        try:
-            return future.result(timeout=_HARD_TIMEOUT)
-        except concurrent.futures.TimeoutError:
-            return {"status": "hard_timeout", "sql": "",
-                    "error": f"baseline hard timeout ({_HARD_TIMEOUT}s)", "tokens": 0}
-        except Exception as e:
-            return {"status": "error", "sql": "",
-                    "error": f"{type(e).__name__}: {e}", "tokens": 0}
+    # CRITICAL: do NOT use `with` block — its __exit__ calls shutdown(wait=True)
+    # which BLOCKS until the hung worker thread finishes. That made the hard
+    # timeout silently ineffective during the 2026-05-15 N=3 run (16h hang on
+    # ROBUSTNESS_22 with no hard_timeout log entry). Manual shutdown with
+    # wait=False + cancel_futures=True returns immediately; the hung daemon
+    # thread is leaked but harmless since the process exits at end of run.
+    pool = concurrent.futures.ThreadPoolExecutor(
+        max_workers=1, thread_name_prefix="baseline-hard-to"
+    )
+    future = pool.submit(fn)
+    try:
+        result = future.result(timeout=_HARD_TIMEOUT)
+    except concurrent.futures.TimeoutError:
+        result = {"status": "hard_timeout", "sql": "",
+                  "error": f"baseline hard timeout ({_HARD_TIMEOUT}s)", "tokens": 0}
+    except Exception as e:
+        result = {"status": "error", "sql": "",
+                  "error": f"{type(e).__name__}: {e}", "tokens": 0}
+    pool.shutdown(wait=False, cancel_futures=True)
+    return result
 
 
 # ============================================================================
