@@ -65,14 +65,16 @@ Start-Process -FilePath $python `
     -NoNewWindow
 Write-Host "Chainlit launched. Waiting for 'Your app is available'..."
 
-# 6. Wait for ready signal (max 90s)
+# 6. Wait for ready signal (max 90s) — chainlit logs "Your app is available"
+# to stdout, while stderr captures Python warnings/structured logs.
 $timeout = 90
 $elapsed = 0
 while ($elapsed -lt $timeout) {
     Start-Sleep -Seconds 1
     $elapsed++
-    if (Test-Path $stderr) {
-        $content = Get-Content $stderr -Raw -ErrorAction SilentlyContinue
+    foreach ($logFile in @($stdout, $stderr)) {
+        if (-not (Test-Path $logFile)) { continue }
+        $content = Get-Content $logFile -Raw -ErrorAction SilentlyContinue
         if ($content -match "Your app is available at") {
             Write-Host "READY after ${elapsed}s — http://localhost:8000"
             exit 0
@@ -83,5 +85,5 @@ while ($elapsed -lt $timeout) {
         }
     }
 }
-Write-Warning "Timeout after ${timeout}s. Check $stderr for status."
+Write-Warning "Timeout after ${timeout}s. Check $stdout / $stderr for status."
 exit 1
