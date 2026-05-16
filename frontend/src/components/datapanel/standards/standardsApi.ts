@@ -112,3 +112,28 @@ export const breakLock = async (clauseId: string)
 export const getClauseElements = (clauseId: string) =>
   fetch(`/api/std/clauses/${clauseId}/elements`)
     .then(j<{data_elements: StdDataElement[]}>);
+
+export interface CitationCandidate {
+  kind: string;
+  target_id: string | null;
+  target_url: string | null;
+  snippet: string;
+  base_score: number;
+  extra: Record<string, any>;
+}
+
+export const citationSearch = (clauseId: string, query: string,
+                                sources?: string[]) =>
+  fetch("/api/std/citation/search", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({clause_id: clauseId, query, sources}),
+  }).then(j<{candidates: CitationCandidate[]}>);
+
+export const citationInsert = (clauseId: string,
+                                candidate: CitationCandidate) =>
+  fetch("/api/std/citation/insert", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({clause_id: clauseId, candidate}),
+  }).then(j<{ref_id: string; citation_text: string}>);
