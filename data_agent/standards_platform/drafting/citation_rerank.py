@@ -7,6 +7,7 @@ score each candidate on relevance to the query, then re-sorts.
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any
 
@@ -92,6 +93,9 @@ def rerank(query: str, candidates: list[Candidate], *,
                 continue
             seen_indexes.add(i)
             conf = float(entry.get("confidence", candidates[i]["base_score"]))
+            if math.isnan(conf) or math.isinf(conf):
+                conf = float(candidates[i]["base_score"])
+            conf = max(0.0, min(1.0, conf))
         except (KeyError, ValueError, TypeError):
             continue
         cand = dict(candidates[i])  # shallow copy

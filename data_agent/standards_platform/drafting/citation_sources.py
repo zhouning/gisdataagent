@@ -5,6 +5,7 @@ called in parallel by citation_assistant.search_citations.
 """
 from __future__ import annotations
 
+import math
 import os
 from typing import TypedDict
 
@@ -31,6 +32,12 @@ def search_pgvector(query_embedding: list[float], *,
     """Cosine search over std_clause / std_data_element / std_term."""
     eng = get_engine()
     if eng is None:
+        return []
+    # pgvector cosine on a zero vector yields NaN (0/0); refuse rather than
+    # produce JSON-incompatible NaN scores. Caller (citation_assistant)
+    # treats empty result as "skip pgvector".
+    if not any(x != 0.0 for x in query_embedding):
+        logger.warning("search_pgvector: zero query embedding, skipping")
         return []
     emb_lit = "[" + ",".join(f"{x:.6f}" for x in query_embedding) + "]"
     sql = """
@@ -67,14 +74,20 @@ def search_pgvector(query_embedding: list[float], *,
     with eng.connect() as conn:
         rows = conn.execute(text(sql), {"e": emb_lit,
                                         "k": top_k_per_table}).mappings().all()
-    return [{
-        "kind": r["kind"],
-        "target_id": r["target_id"],
-        "target_url": None,
-        "snippet": r["snippet"] or "",
-        "base_score": float(r["base_score"]),
-        "extra": dict(r["extra"]) if r["extra"] else {},
-    } for r in rows]
+    out: list[Candidate] = []
+    for r in rows:
+        score = float(r["base_score"]) if r["base_score"] is not None else 0.0
+        if math.isnan(score) or math.isinf(score):
+            score = 0.0
+        out.append({
+            "kind": r["kind"],
+            "target_id": r["target_id"],
+            "target_url": None,
+            "snippet": r["snippet"] or "",
+            "base_score": score,
+            "extra": dict(r["extra"]) if r["extra"] else {},
+        })
+    return out
 
 
 def search_kb(query: str, *, top_k: int = 10) -> list[Candidate]:
