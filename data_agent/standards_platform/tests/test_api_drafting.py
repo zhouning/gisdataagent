@@ -96,3 +96,17 @@ def test_get_clause_elements_returns_only_owned(monkeypatch, engine, fresh_claus
     assert codes == ["BAR", "FOO"]
     # Verify embedding is excluded
     assert "embedding" not in body["data_elements"][0]
+
+
+def test_drafting_blocked_when_version_in_review(monkeypatch, engine, fresh_clause):
+    """Wave 4: drafting endpoints return 409 when version.status='review'."""
+    cid, doc_id, ver_id = fresh_clause
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE std_document_version SET status='review' WHERE id=:v"
+        ), {"v": ver_id})
+    _auth_user(monkeypatch, username="admin", role="admin")
+    resp = _client().put(f"/api/std/clauses/{cid}",
+                         json={"body_md": "trying to edit"})
+    assert resp.status_code == 409
+    assert "review" in resp.json().get("error", "").lower()

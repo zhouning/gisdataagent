@@ -47,6 +47,22 @@ def _require_admin_or_403(role: str | None) -> JSONResponse | None:
     return None
 
 
+def _block_if_reviewing(version_id: str) -> JSONResponse | None:
+    """Returns a 409 JSONResponse if the version is in 'review' status."""
+    eng = get_engine()
+    with eng.connect() as conn:
+        row = conn.execute(text(
+            "SELECT status FROM std_document_version WHERE id=:i"
+        ), {"i": version_id}).first()
+    if row is None:
+        return None  # downstream will 404
+    if row[0] == "review":
+        return JSONResponse(
+            {"error": "version is under review, drafting blocked"},
+            status_code=409)
+    return None
+
+
 def _auth_or_401(request: Request):
     u = _helpers._get_user_from_request(request)
     if not u:
@@ -232,6 +248,15 @@ async def lock_clause(request: Request):
     forbid = _require_editor_or_403(role)
     if forbid: return forbid
     cid = request.path_params["clause_id"]
+    # Wave 4: block drafting writes when version is in review
+    eng = get_engine()
+    with eng.connect() as conn:
+        ver = conn.execute(text(
+            "SELECT document_version_id FROM std_clause WHERE id=:i"
+        ), {"i": cid}).first()
+    if ver:
+        forbid = _block_if_reviewing(str(ver[0]))
+        if forbid: return forbid
     try:
         out = _editor.acquire_lock(cid, username)
     except _editor.LockError as e:
@@ -274,6 +299,15 @@ async def save_clause_route(request: Request):
     forbid = _require_editor_or_403(role)
     if forbid: return forbid
     cid = request.path_params["clause_id"]
+    # Wave 4: block drafting writes when version is in review
+    eng = get_engine()
+    with eng.connect() as conn:
+        ver = conn.execute(text(
+            "SELECT document_version_id FROM std_clause WHERE id=:i"
+        ), {"i": cid}).first()
+    if ver:
+        forbid = _block_if_reviewing(str(ver[0]))
+        if forbid: return forbid
     if_match = request.headers.get("if-match", "")
     body = await request.json()
     try:
