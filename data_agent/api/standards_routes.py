@@ -27,12 +27,23 @@ _EDITOR_ROLES = {"admin", "analyst", "standard_editor"}
 _REVIEWER_ROLES = {"admin", "analyst", "standard_editor", "standard_reviewer"}
 
 from ..standards_platform.drafting import editor_session as _editor
+from ..standards_platform.review import (
+    round_repo as _round_repo,
+    comment_repo as _comment_repo,
+    gating as _gating,
+)
 
 
 def _require_editor_or_403(role: str | None) -> JSONResponse | None:
     if role not in _EDITOR_ROLES:
         return JSONResponse({"error": "Forbidden — editor role required"},
                             status_code=403)
+    return None
+
+
+def _require_admin_or_403(role: str | None) -> JSONResponse | None:
+    if role != "admin":
+        return JSONResponse({"error": "Forbidden — admin only"}, status_code=403)
     return None
 
 
@@ -400,6 +411,124 @@ async def citation_insert(request: Request):
     return JSONResponse({"ref_id": ref_id, "citation_text": citation_text})
 
 
+# ---------------------------------------------------------------------------
+# Wave 4: Review stage handlers
+# ---------------------------------------------------------------------------
+
+
+def _round_or_404(round_id: str):
+    r = _round_repo.get_round(round_id)
+    if r is None:
+        return None, JSONResponse({"error": "round not found"}, status_code=404)
+    return r, None
+
+
+def _require_round_reviewer_or_403(round_dict, username, role):
+    """Allow if user is admin OR is the round's reviewer."""
+    if role == "admin":
+        return None
+    if round_dict["reviewer_user_id"] == username:
+        return None
+    return JSONResponse({"error": "not the assigned reviewer"},
+                        status_code=403)
+
+
+async def review_round_start(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_admin_or_403(role)
+    if forbid: return forbid
+    body = await request.json()
+    version_id = body.get("document_version_id")
+    reviewer = body.get("reviewer_user_id")
+    if not version_id or not reviewer:
+        return JSONResponse(
+            {"error": "document_version_id and reviewer_user_id required"},
+            status_code=400)
+    eng = get_engine()
+    with eng.connect() as conn:
+        v = conn.execute(text(
+            "SELECT status FROM std_document_version WHERE id=:i"
+        ), {"i": version_id}).first()
+    if v is None:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    existing = _round_repo.get_open_round_for_version(version_id)
+    if existing is not None:
+        return JSONResponse({"error": "round already open for this version",
+                              "round_id": str(existing["id"])}, status_code=409)
+    if v[0] != "draft":
+        return JSONResponse({"error": "version status must be draft",
+                              "current_status": v[0]}, status_code=409)
+    rid = _round_repo.create_round(
+        document_version_id=version_id,
+        reviewer_user_id=reviewer,
+        initiated_by=username)
+    return JSONResponse({"round_id": rid}, status_code=201)
+
+
+async def review_round_list(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    p = request.query_params
+    rounds = _round_repo.list_rounds(
+        version_id=p.get("version_id"),
+        reviewer_user_id=p.get("reviewer_user_id"),
+        status=p.get("status"))
+    return JSONResponse({"rounds": [
+        {"id": str(r["id"]),
+         "document_version_id": str(r["document_version_id"]),
+         "reviewer_user_id": r["reviewer_user_id"],
+         "initiated_by": r["initiated_by"],
+         "initiated_at": r["initiated_at"].isoformat() if r["initiated_at"] else None,
+         "closed_at": r["closed_at"].isoformat() if r["closed_at"] else None,
+         "status": r["status"],
+         "outcome": r["outcome"]} for r in rounds]})
+
+
+async def review_round_close_precheck(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    rid = request.path_params["round_id"]
+    r, err404 = _round_or_404(rid)
+    if err404: return err404
+    forbid = _require_round_reviewer_or_403(r, username, role)
+    if forbid: return forbid
+    g = _gating.check_close_gating(round_id=rid,
+                                   version_id=str(r["document_version_id"]))
+    return JSONResponse(g)
+
+
+async def review_round_close(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    rid = request.path_params["round_id"]
+    r, err404 = _round_or_404(rid)
+    if err404: return err404
+    forbid = _require_round_reviewer_or_403(r, username, role)
+    if forbid: return forbid
+    body = await request.json()
+    outcome = body.get("outcome")
+    if outcome not in ("approved", "rejected"):
+        return JSONResponse(
+            {"error": "outcome must be 'approved' or 'rejected'"},
+            status_code=400)
+    if r["status"] == "closed":
+        return JSONResponse({"error": "round already closed"}, status_code=409)
+    if outcome == "approved":
+        g = _gating.check_close_gating(round_id=rid,
+                                       version_id=str(r["document_version_id"]))
+        if g["blocking"]:
+            return JSONResponse({"error": "cannot close: gating not satisfied",
+                                  "pending_refs": g["pending_refs"],
+                                  "open_comments": g["open_comments"]},
+                                  status_code=409)
+    try:
+        out = _round_repo.close_round(round_id=rid, outcome=outcome)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    return JSONResponse(out)
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -429,6 +558,14 @@ standards_routes = [
           endpoint=citation_search, methods=["POST"]),
     Route("/api/std/citation/insert",
           endpoint=citation_insert, methods=["POST"]),
+    Route("/api/std/reviews/rounds",
+          endpoint=review_round_start, methods=["POST"]),
+    Route("/api/std/reviews/rounds",
+          endpoint=review_round_list, methods=["GET"]),
+    Route("/api/std/reviews/rounds/{round_id}/close-precheck",
+          endpoint=review_round_close_precheck, methods=["GET"]),
+    Route("/api/std/reviews/rounds/{round_id}/close",
+          endpoint=review_round_close, methods=["POST"]),
 ]
 
 
