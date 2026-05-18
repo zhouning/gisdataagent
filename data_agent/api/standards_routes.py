@@ -529,6 +529,128 @@ async def review_round_close(request: Request):
     return JSONResponse(out)
 
 
+async def review_comment_list(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    rid = request.path_params["round_id"]
+    r, err404 = _round_or_404(rid)
+    if err404: return err404
+    clause_id = request.query_params.get("clause_id")
+    comments = _comment_repo.list_comments(round_id=rid, clause_id=clause_id)
+    return JSONResponse({"comments": [
+        {"id": str(c["id"]), "round_id": str(c["round_id"]),
+         "clause_id": str(c["clause_id"]),
+         "parent_comment_id": str(c["parent_comment_id"]) if c["parent_comment_id"] else None,
+         "author_user_id": c["author_user_id"], "body_md": c["body_md"],
+         "resolution": c["resolution"],
+         "created_at": c["created_at"].isoformat() if c["created_at"] else None,
+         "resolved_at": c["resolved_at"].isoformat() if c["resolved_at"] else None,
+         "resolved_by": c["resolved_by"]} for c in comments]})
+
+
+async def review_comment_post(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    rid = request.path_params["round_id"]
+    r, err404 = _round_or_404(rid)
+    if err404: return err404
+    forbid = _require_round_reviewer_or_403(r, username, role)
+    if forbid: return forbid
+    if r["status"] == "closed":
+        return JSONResponse({"error": "round closed"}, status_code=409)
+    body = await request.json()
+    clause_id = body.get("clause_id")
+    body_md = (body.get("body_md") or "").strip()
+    parent = body.get("parent_comment_id")
+    if not clause_id:
+        return JSONResponse({"error": "clause_id required"}, status_code=400)
+    if not body_md:
+        return JSONResponse({"error": "body_md is required"}, status_code=400)
+    if parent:
+        p = _comment_repo.get_comment(parent)
+        if p is None or str(p["round_id"]) != rid:
+            return JSONResponse({"error": "parent must belong to same round"},
+                                status_code=400)
+    cid = _comment_repo.create_comment(
+        round_id=rid, clause_id=clause_id,
+        author_user_id=username, body_md=body_md,
+        parent_comment_id=parent)
+    return JSONResponse({"comment_id": cid}, status_code=201)
+
+
+async def review_comment_resolve(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    comm_id = request.path_params["comment_id"]
+    c = _comment_repo.get_comment(comm_id)
+    if c is None:
+        return JSONResponse({"error": "comment not found"}, status_code=404)
+    r, err404 = _round_or_404(str(c["round_id"]))
+    if err404: return err404
+    forbid = _require_round_reviewer_or_403(r, username, role)
+    if forbid: return forbid
+    if r["status"] == "closed":
+        return JSONResponse({"error": "round closed"}, status_code=409)
+    body = await request.json()
+    resolution = body.get("resolution")
+    if resolution not in ("accepted", "rejected", "duplicate"):
+        return JSONResponse(
+            {"error": "resolution must be accepted/rejected/duplicate"},
+            status_code=400)
+    _comment_repo.resolve_comment(
+        comment_id=comm_id, resolution=resolution,
+        resolver_user_id=username)
+    return JSONResponse({"comment_id": comm_id, "resolution": resolution})
+
+
+async def review_reference_patch_status(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    ref_id = request.path_params["ref_id"]
+    body = await request.json()
+    new_status = body.get("verification_status")
+    rid = body.get("round_id")
+    if new_status not in ("approved", "rejected"):
+        return JSONResponse(
+            {"error": "verification_status must be approved or rejected"},
+            status_code=400)
+    if not rid:
+        return JSONResponse({"error": "round_id required"}, status_code=400)
+    r, err404 = _round_or_404(rid)
+    if err404: return err404
+    forbid = _require_round_reviewer_or_403(r, username, role)
+    if forbid: return forbid
+    if r["status"] == "closed":
+        return JSONResponse({"error": "round closed"}, status_code=409)
+    eng = get_engine()
+    with eng.connect() as conn:
+        ref_row = conn.execute(text(
+            "SELECT r.id, c.document_version_id "
+            "FROM std_reference r "
+            "JOIN std_clause c ON c.id = r.source_clause_id "
+            "WHERE r.id=:i"
+        ), {"i": ref_id}).first()
+    if ref_row is None:
+        return JSONResponse({"error": "reference not found"}, status_code=404)
+    if str(ref_row[1]) != str(r["document_version_id"]):
+        return JSONResponse({"error": "reference not in round"}, status_code=404)
+    with eng.begin() as conn:
+        conn.execute(text("""
+            UPDATE std_reference
+               SET verification_status=:s,
+                   verified_by=:u, verified_at=now()
+             WHERE id=:i
+        """), {"s": new_status, "u": username, "i": ref_id})
+        row = conn.execute(text(
+            "SELECT verification_status, verified_by, verified_at "
+            "FROM std_reference WHERE id=:i"
+        ), {"i": ref_id}).first()
+    return JSONResponse({"ref_id": ref_id,
+                         "verification_status": row[0],
+                         "verified_by": row[1],
+                         "verified_at": row[2].isoformat() if row[2] else None})
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -566,6 +688,14 @@ standards_routes = [
           endpoint=review_round_close_precheck, methods=["GET"]),
     Route("/api/std/reviews/rounds/{round_id}/close",
           endpoint=review_round_close, methods=["POST"]),
+    Route("/api/std/reviews/rounds/{round_id}/comments",
+          endpoint=review_comment_list, methods=["GET"]),
+    Route("/api/std/reviews/rounds/{round_id}/comments",
+          endpoint=review_comment_post, methods=["POST"]),
+    Route("/api/std/reviews/comments/{comment_id}/resolve",
+          endpoint=review_comment_resolve, methods=["POST"]),
+    Route("/api/std/reviews/references/{ref_id}/status",
+          endpoint=review_reference_patch_status, methods=["PATCH"]),
 ]
 
 
