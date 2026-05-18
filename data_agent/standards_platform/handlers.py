@@ -7,6 +7,7 @@ from .analysis.structurer import structure_extracted
 from .analysis.embedder import embed_version
 from .analysis.deduper import find_similar_clauses
 from .ingestion.web_fetcher import fetch as web_fetch, save_manual
+from .derivation import runner as _derive_runner
 from . import outbox, repository
 from ..observability import get_logger
 
@@ -50,5 +51,15 @@ def dispatch(event: dict) -> None:
             repository.update_document_status(doc_id, "drafting")
     elif et == "web_snapshot_requested":
         web_fetch(p["url"])
+    elif et == "version_released":
+        # Wave 5: trigger downstream derivation strategies.
+        results = _derive_runner.dispatch(version_id=p["version_id"])
+        logger.info("version_released derivation results: %s", results)
+    elif et == "derivation_requested":
+        # Wave 5: explicit re-derive (e.g. admin rerun).
+        results = _derive_runner.dispatch(
+            version_id=p["version_id"],
+            strategies=p.get("strategies"))
+        logger.info("derivation_requested results: %s", results)
     else:
         raise ValueError(f"unknown event type: {et}")
