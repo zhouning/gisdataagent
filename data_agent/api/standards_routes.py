@@ -685,6 +685,32 @@ async def review_reference_patch_status(request: Request):
                          "verified_at": row[2].isoformat() if row[2] else None})
 
 
+async def list_clause_references(request: Request):
+    """GET /api/std/clauses/{clause_id}/references — list refs sourced from clause.
+
+    Used by Wave 4 ReviewSubTab to render ReferenceAuditCard entries.
+    """
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    clause_id = request.path_params["clause_id"]
+    eng = get_engine()
+    with eng.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT id, target_kind, citation_text, verification_status, "
+            "verified_by, verified_at "
+            "FROM std_reference WHERE source_clause_id=:c "
+            "ORDER BY created_at ASC"
+        ), {"c": clause_id}).mappings().all()
+    return JSONResponse({"references": [
+        {"id": str(r["id"]),
+         "target_kind": r["target_kind"],
+         "citation_text": r["citation_text"],
+         "verification_status": r["verification_status"],
+         "verified_by": r["verified_by"],
+         "verified_at": r["verified_at"].isoformat() if r["verified_at"] else None}
+        for r in rows]})
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -730,6 +756,8 @@ standards_routes = [
           endpoint=review_comment_resolve, methods=["POST"]),
     Route("/api/std/reviews/references/{ref_id}/status",
           endpoint=review_reference_patch_status, methods=["PATCH"]),
+    Route("/api/std/clauses/{clause_id}/references",
+          endpoint=list_clause_references, methods=["GET"]),
 ]
 
 
