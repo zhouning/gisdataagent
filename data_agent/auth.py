@@ -26,6 +26,12 @@ _LOCKOUT_DURATION = 900        # 15 minutes lockout
 _login_failures: dict[str, dict] = {}  # username → {"count": int, "locked_until": float}
 _login_failures_lock = threading.Lock()
 
+# ---------------------------------------------------------------------------
+# Recognized RBAC roles. Storage is VARCHAR (no enum migration needed).
+# ---------------------------------------------------------------------------
+_VALID_ROLES = {"viewer", "analyst", "admin",
+                "standard_editor", "standard_reviewer"}
+
 
 def _check_lockout(username: str) -> Optional[str]:
     """Check if username is locked out. Returns error message or None."""
@@ -191,8 +197,8 @@ def change_password(username: str, old_password: str, new_password: str) -> dict
 
 
 def register_user(username: str, password: str, display_name: str = "",
-                   email: str = "") -> dict:
-    """Register a new user with 'analyst' role.
+                   email: str = "", role: str = "analyst") -> dict:
+    """Register a new user with the given role (default 'analyst').
 
     Returns: {"status": "success", "message": "..."} or {"status": "error", "message": "..."}
     """
@@ -210,6 +216,9 @@ def register_user(username: str, password: str, display_name: str = "",
 
     if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
         return {"status": "error", "message": t("auth.email_format")}
+
+    if role not in _VALID_ROLES:
+        return {"status": "error", "message": f"invalid role: {role}"}
 
     engine = get_engine()
     if not engine:
@@ -229,9 +238,9 @@ def register_user(username: str, password: str, display_name: str = "",
             conn.execute(text(
                 f"INSERT INTO {T_APP_USERS} "
                 "(username, password_hash, display_name, email, role, auth_provider) "
-                "VALUES (:u, :p, :d, :e, 'analyst', 'password')"
+                "VALUES (:u, :p, :d, :e, :r, 'password')"
             ), {"u": username, "p": pw_hash, "d": display_name or username,
-                "e": email or ""})
+                "e": email or "", "r": role})
             conn.commit()
             return {"status": "success", "message": t("auth.register_success")}
     except Exception as e:

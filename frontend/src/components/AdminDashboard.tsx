@@ -213,6 +213,8 @@ function UsersSection() {
                     <option value="admin">admin</option>
                     <option value="analyst">analyst</option>
                     <option value="viewer">viewer</option>
+                    <option value="standard_editor">standard_editor</option>
+                    <option value="standard_reviewer">standard_reviewer</option>
                   </select>
                 </td>
                 <td>{u.auth_provider}</td>
