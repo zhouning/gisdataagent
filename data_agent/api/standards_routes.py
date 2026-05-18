@@ -32,6 +32,14 @@ from ..standards_platform.review import (
     comment_repo as _comment_repo,
     gating as _gating,
 )
+from ..standards_platform.publishing import (
+    publish_repo as _publish_repo,
+    guards as _publish_guards,
+)
+from ..standards_platform.derivation import (
+    runner as _derive_runner,
+    link_repo as _link_repo,
+)
 
 
 def _require_editor_or_403(role: str | None) -> JSONResponse | None:
@@ -711,6 +719,176 @@ async def list_clause_references(request: Request):
         for r in rows]})
 
 
+# ---------------------------------------------------------------------------
+# Wave 5: Publishing handlers
+# ---------------------------------------------------------------------------
+
+
+async def publish_version_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_admin_or_403(role)
+    if forbid: return forbid
+    version_id = request.path_params["version_id"]
+    try:
+        out = _publish_repo.publish_version(
+            version_id=version_id, by_user=username
+        )
+    except LookupError:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    return JSONResponse(out, status_code=201)
+
+
+async def publish_fork_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_admin_or_403(role)
+    if forbid: return forbid
+    body = await request.json()
+    src = body.get("source_version_id")
+    label = body.get("new_label")
+    if not src or not label:
+        return JSONResponse(
+            {"error": "source_version_id and new_label required"},
+            status_code=400,
+        )
+    try:
+        new_vid = _publish_repo.fork_version(
+            source_version_id=src, new_label=label, by_user=username,
+        )
+    except LookupError:
+        return JSONResponse({"error": "source version not found"}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    return JSONResponse(
+        {"new_version_id": new_vid,
+         "source_version_id": src,
+         "status": "draft"},
+        status_code=201,
+    )
+
+
+async def publish_list_versions_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    doc_id = request.query_params.get("document_id")
+    rows = _publish_repo.list_published_versions(document_id=doc_id)
+    return JSONResponse({"versions": [
+        {"id": str(r["id"]),
+         "document_id": str(r["document_id"]),
+         "version_label": r["version_label"],
+         "released_at": r["released_at"].isoformat() if r.get("released_at") else None,
+         "released_by": r.get("released_by"),
+         "supersedes_version_id": str(r["supersedes_version_id"])
+            if r.get("supersedes_version_id") else None}
+        for r in rows
+    ]})
+
+
+async def publish_timeline_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    version_id = request.path_params["version_id"]
+    rows = _publish_repo.get_publish_timeline(version_id=version_id)
+    return JSONResponse({"events": [
+        {"id": str(r["id"]),
+         "event_type": r["event_type"],
+         "actor_user_id": r["actor_user_id"],
+         "occurred_at": r["occurred_at"].isoformat() if r["occurred_at"] else None,
+         "notes": r.get("notes")}
+        for r in rows
+    ]})
+
+
+# ---------------------------------------------------------------------------
+# Wave 5: Derivation handlers
+# ---------------------------------------------------------------------------
+
+
+async def derive_strategies_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    return JSONResponse({"strategies": _derive_runner.get_strategy_status()})
+
+
+async def derive_links_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    p = request.query_params
+    vid = p.get("version_id")
+    if not vid:
+        return JSONResponse({"error": "version_id query param required"},
+                            status_code=400)
+    rows = _link_repo.list_links_by_version(
+        version_id=vid,
+        derivation_strategy=p.get("strategy"),
+        status=p.get("status"),
+    )
+    return JSONResponse({"links": [
+        {"id": str(r["id"]),
+         "source_kind": r["source_kind"],
+         "source_id": str(r["source_id"]),
+         "source_version_id": str(r["source_version_id"]),
+         "target_kind": r["target_kind"],
+         "target_table": r["target_table"],
+         "target_id": r["target_id"],
+         "derivation_strategy": r["derivation_strategy"],
+         "status": r["status"],
+         "stale_reason": r.get("stale_reason"),
+         "generated_at": r["generated_at"].isoformat() if r.get("generated_at") else None}
+        for r in rows
+    ]})
+
+
+async def derive_rerun_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_admin_or_403(role)
+    if forbid: return forbid
+    vid = request.path_params["version_id"]
+    eng = get_engine()
+    with eng.connect() as c:
+        row = c.execute(text(
+            "SELECT status FROM std_document_version WHERE id=:i"
+        ), {"i": vid}).first()
+    if row is None:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    if row[0] != "released":
+        return JSONResponse(
+            {"error": "version must be released to re-derive",
+             "current_status": row[0]},
+            status_code=409,
+        )
+    body = await request.json() if (await request.body()) else {}
+    strategies = body.get("strategies")
+    results = _derive_runner.dispatch(
+        version_id=vid, by_user=username, strategies=strategies,
+    )
+    return JSONResponse({"results": results})
+
+
+async def derive_status_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    vid = request.path_params["version_id"]
+    eng = get_engine()
+    with eng.connect() as c:
+        rows = c.execute(text(
+            "SELECT derivation_strategy, status, count(*) "
+            "FROM std_derived_link WHERE source_version_id=:v "
+            "GROUP BY derivation_strategy, status"
+        ), {"v": vid}).fetchall()
+    by_strategy: dict[str, dict[str, int]] = {}
+    for strategy, status, n in rows:
+        by_strategy.setdefault(strategy, {"active": 0, "stale": 0,
+                                          "failed": 0, "pending": 0,
+                                          "overridden": 0, "superseded": 0})
+        by_strategy[strategy][status] = n
+    return JSONResponse({"strategies": by_strategy})
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -758,6 +936,24 @@ standards_routes = [
           endpoint=review_reference_patch_status, methods=["PATCH"]),
     Route("/api/std/clauses/{clause_id}/references",
           endpoint=list_clause_references, methods=["GET"]),
+    # Wave 5: publishing
+    Route("/api/std/publish/versions/{version_id}",
+          endpoint=publish_version_handler, methods=["POST"]),
+    Route("/api/std/publish/fork",
+          endpoint=publish_fork_handler, methods=["POST"]),
+    Route("/api/std/publish/versions",
+          endpoint=publish_list_versions_handler, methods=["GET"]),
+    Route("/api/std/publish/timeline/{version_id}",
+          endpoint=publish_timeline_handler, methods=["GET"]),
+    # Wave 5: derivation
+    Route("/api/std/derive/strategies",
+          endpoint=derive_strategies_handler, methods=["GET"]),
+    Route("/api/std/derive/links",
+          endpoint=derive_links_handler, methods=["GET"]),
+    Route("/api/std/derive/rerun/{version_id}",
+          endpoint=derive_rerun_handler, methods=["POST"]),
+    Route("/api/std/derive/status/{version_id}",
+          endpoint=derive_status_handler, methods=["GET"]),
 ]
 
 
