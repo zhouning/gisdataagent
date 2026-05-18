@@ -110,3 +110,48 @@ def test_drafting_blocked_when_version_in_review(monkeypatch, engine, fresh_clau
                          json={"body_md": "trying to edit"})
     assert resp.status_code == 409
     assert "review" in resp.json().get("error", "").lower()
+
+
+def test_put_clause_blocked_when_released(monkeypatch, engine, fresh_clause):
+    """Wave 5: PUT /clauses on released version returns 409 immutable."""
+    cid, doc_id, ver_id = fresh_clause
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE std_document_version SET status='released' WHERE id=:v"
+        ), {"v": ver_id})
+    _auth_user(monkeypatch, username="admin", role="admin")
+    resp = _client().put(f"/api/std/clauses/{cid}",
+                         json={"body_md": "x"})
+    assert resp.status_code == 409
+    assert "immutable" in resp.json().get("error", "").lower()
+    assert resp.json().get("current_status") == "released"
+
+
+def test_citation_insert_blocked_when_released(monkeypatch, engine, fresh_clause):
+    """Wave 5: POST /citation/insert on released version returns 409."""
+    cid, doc_id, ver_id = fresh_clause
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE std_document_version SET status='released' WHERE id=:v"
+        ), {"v": ver_id})
+    _auth_user(monkeypatch, username="admin", role="admin")
+    resp = _client().post("/api/std/citation/insert", json={
+        "clause_id": cid,
+        "candidate": {"kind": "internet_search",
+                      "snippet": "x",
+                      "target_id": "tg",
+                      "target_url": "http://x"},
+    })
+    assert resp.status_code == 409
+
+
+def test_break_lock_blocked_when_released(monkeypatch, engine, fresh_clause):
+    """Wave 5: even admin cannot break_lock on released version."""
+    cid, doc_id, ver_id = fresh_clause
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE std_document_version SET status='released' WHERE id=:v"
+        ), {"v": ver_id})
+    _auth_user(monkeypatch, username="admin", role="admin")
+    resp = _client().post(f"/api/std/clauses/{cid}/lock/break")
+    assert resp.status_code == 409

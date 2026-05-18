@@ -56,19 +56,9 @@ def _require_admin_or_403(role: str | None) -> JSONResponse | None:
 
 
 def _block_if_reviewing(version_id: str) -> JSONResponse | None:
-    """Returns a 409 JSONResponse if the version is in 'review' status."""
-    eng = get_engine()
-    with eng.connect() as conn:
-        row = conn.execute(text(
-            "SELECT status FROM std_document_version WHERE id=:i"
-        ), {"i": version_id}).first()
-    if row is None:
-        return None  # downstream will 404
-    if row[0] == "review":
-        return JSONResponse(
-            {"error": "version is under review, drafting blocked"},
-            status_code=409)
-    return None
+    """Wave 4 alias retained for compatibility — delegates to Wave 5's
+    block_if_not_drafting (covers review/approved/released/retired)."""
+    return _publish_guards.block_if_not_drafting(version_id)
 
 
 def _auth_or_401(request: Request):
@@ -342,6 +332,15 @@ async def break_clause_lock(request: Request):
         return JSONResponse({"error": "Forbidden — admin only"},
                             status_code=403)
     cid = request.path_params["clause_id"]
+    # Wave 5: even admin cannot break_lock on released versions.
+    eng = get_engine()
+    with eng.connect() as conn:
+        ver = conn.execute(text(
+            "SELECT document_version_id FROM std_clause WHERE id=:i"
+        ), {"i": cid}).first()
+    if ver:
+        forbid = _block_if_reviewing(str(ver[0]))
+        if forbid: return forbid
     out = _editor.break_lock(cid, username)
     return JSONResponse(out)
 
@@ -378,6 +377,16 @@ async def citation_insert(request: Request):
     if not clause_id or not cand:
         return JSONResponse({"error": "clause_id and candidate required"},
                             status_code=400)
+
+    # Wave 5: block when version not in 'draft'
+    eng = get_engine()
+    with eng.connect() as conn:
+        ver = conn.execute(text(
+            "SELECT document_version_id FROM std_clause WHERE id=:i"
+        ), {"i": clause_id}).first()
+    if ver:
+        forbid = _block_if_reviewing(str(ver[0]))
+        if forbid: return forbid
 
     # Fix #4: validate citation_text early
     citation_text = (cand.get("snippet") or "").strip()[:500]
