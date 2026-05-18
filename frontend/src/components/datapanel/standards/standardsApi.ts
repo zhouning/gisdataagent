@@ -137,3 +137,99 @@ export const citationInsert = (clauseId: string,
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({clause_id: clauseId, candidate}),
   }).then(j<{ref_id: string; citation_text: string}>);
+
+// ===========================================================================
+// Wave 4: Review stage SDK
+// ===========================================================================
+
+export type ReviewRound = {
+  id: string;
+  document_version_id: string;
+  reviewer_user_id: string;
+  initiated_by: string;
+  initiated_at: string | null;
+  closed_at: string | null;
+  status: 'open' | 'closed';
+  outcome: 'approved' | 'rejected' | null;
+};
+
+export type ReviewComment = {
+  id: string;
+  round_id: string;
+  clause_id: string;
+  parent_comment_id: string | null;
+  author_user_id: string;
+  body_md: string;
+  resolution: 'open' | 'accepted' | 'rejected' | 'duplicate';
+  created_at: string | null;
+  resolved_at: string | null;
+  resolved_by: string | null;
+};
+
+export type GatingPrecheck = {
+  pending_refs: number;
+  open_comments: number;
+  blocking: boolean;
+};
+
+export const startReviewRound = (versionId: string, reviewerUserId: string) =>
+  fetch("/api/std/reviews/rounds", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({document_version_id: versionId,
+                          reviewer_user_id: reviewerUserId}),
+  }).then(j<{round_id: string}>);
+
+export const listReviewRounds = (params: {version_id?: string;
+                                            reviewer_user_id?: string;
+                                            status?: string} = {}) => {
+  const q = new URLSearchParams(params as Record<string,string>).toString();
+  return fetch(`/api/std/reviews/rounds?${q}`)
+    .then(j<{rounds: ReviewRound[]}>);
+};
+
+export const closeReviewPrecheck = (roundId: string) =>
+  fetch(`/api/std/reviews/rounds/${roundId}/close-precheck`)
+    .then(j<GatingPrecheck>);
+
+export const closeReviewRound = (roundId: string,
+                                 outcome: 'approved' | 'rejected') =>
+  fetch(`/api/std/reviews/rounds/${roundId}/close`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({outcome}),
+  }).then(j<{round_id: string; status: string;
+              outcome: string; version_status: string}>);
+
+export const listReviewComments = (roundId: string, clauseId?: string) => {
+  const q = clauseId ? `?clause_id=${clauseId}` : "";
+  return fetch(`/api/std/reviews/rounds/${roundId}/comments${q}`)
+    .then(j<{comments: ReviewComment[]}>);
+};
+
+export const postReviewComment = (roundId: string, clauseId: string,
+                                   bodyMd: string,
+                                   parentCommentId?: string) =>
+  fetch(`/api/std/reviews/rounds/${roundId}/comments`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({clause_id: clauseId, body_md: bodyMd,
+                          parent_comment_id: parentCommentId ?? null}),
+  }).then(j<{comment_id: string}>);
+
+export const resolveReviewComment = (commentId: string,
+                                      resolution: 'accepted' | 'rejected' | 'duplicate') =>
+  fetch(`/api/std/reviews/comments/${commentId}/resolve`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({resolution}),
+  }).then(j<{comment_id: string; resolution: string}>);
+
+export const patchReferenceStatus = (refId: string, roundId: string,
+                                      status: 'approved' | 'rejected') =>
+  fetch(`/api/std/reviews/references/${refId}/status`, {
+    method: "PATCH",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({verification_status: status, round_id: roundId}),
+  }).then(j<{ref_id: string; verification_status: string;
+              verified_by: string; verified_at: string}>);
