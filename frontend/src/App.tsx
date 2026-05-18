@@ -259,7 +259,7 @@ export default function App() {
             )}
             {(!isMobile || activePanel === 'data') && (
               <ErrorBoundary name="数据面板">
-                <DataPanel dataFile={dataFile} userRole={userRole} />
+                <DataPanel dataFile={dataFile} userRole={userRole} username={user?.identifier || ''} />
               </ErrorBoundary>
             )}
           </div>

@@ -47,6 +47,7 @@ import ClassificationTab from './datapanel/ClassificationTab';
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
+  username?: string;
 }
 
 type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
@@ -119,7 +120,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
 const TAB_TO_GROUP: Record<TabKey, GroupKey> = {} as any;
 TAB_GROUPS.forEach(g => g.tabs.forEach(t => { TAB_TO_GROUP[t.key] = g.key; }));
 
-export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
+export default function DataPanel({ dataFile, userRole, username }: DataPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('files');
   const [activeGroup, setActiveGroup] = useState<GroupKey>('data');
   const [tableData, setTableData] = useState<any[]>([]);
@@ -234,7 +235,7 @@ export default function DataPanel({ dataFile, userRole }: DataPanelProps) {
         {activeTab === 'agents' && <AgentsTab />}
         {activeTab === 'intake' && <IntakeTab />}
         {activeTab === 'standards' && <DomainStandardsTab />}
-        {activeTab === 'std_platform' && <StandardsTab />}
+        {activeTab === 'std_platform' && <StandardsTab userRole={userRole} username={username} />}
         {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
       </div>
     </div>
