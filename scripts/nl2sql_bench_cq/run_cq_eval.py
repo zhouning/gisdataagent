@@ -75,10 +75,14 @@ def load_questions(benchmark_path: Path | None = None) -> list[dict]:
 
 
 def _benchmark_tables() -> list[str]:
-    """Return sorted list of cq_* table names referenced in the benchmark
-    gold SQL. v7 fix (2026-05-12): replaces the previous hardcoded 4-table
-    list, which left 7/11 benchmark tables out of the prompt schema block
-    and produced inconsistent baseline conditions across questions.
+    """Return sorted list of table names referenced in the benchmark gold SQL.
+
+    Default: cq_* tables from the CQ benchmark JSON (legacy behaviour).
+    Overridable via env var ``BENCH_TABLES_JSON`` pointing to an alternate
+    benchmark JSONL/JSON file plus ``BENCH_TABLE_PREFIX_RE`` regex (e.g.
+    ``BENCH_TABLE_PREFIX_RE=^(claims|county|floodplain|...)$``) so the same
+    schema-dump infrastructure can serve FloodSQL-Bench / BIRD without code
+    changes.
 
     Robustness questions with golden_sql=None are excluded by gold-SQL
     parsing; their hallucinated 'trap' table names (cq_population_census
@@ -87,38 +91,59 @@ def _benchmark_tables() -> list[str]:
     point of the Robustness traps.
     """
     import json as _json
+    import os as _os
     import re as _re
     from pathlib import Path as _Path
-    p = _Path(__file__).resolve().parents[2] / "benchmarks" / \
-        "chongqing_geo_nl2sql_100_benchmark.json"
-    rows = _json.loads(p.read_text(encoding="utf-8"))
+
+    bench_path_override = _os.environ.get("BENCH_TABLES_JSON")
+    table_pat = _os.environ.get("BENCH_TABLE_PREFIX_RE", r"\bcq_[a-z0-9_]+\b")
+
+    if bench_path_override:
+        p = _Path(bench_path_override)
+    else:
+        p = _Path(__file__).resolve().parents[2] / "benchmarks" / \
+            "chongqing_geo_nl2sql_100_benchmark.json"
+
+    raw = p.read_text(encoding="utf-8")
+    # Accept both top-level JSON array and JSONL (one record per line).
+    try:
+        rows = _json.loads(raw)
+        if not isinstance(rows, list):
+            rows = []
+    except _json.JSONDecodeError:
+        rows = [_json.loads(line) for line in raw.splitlines() if line.strip()]
+
+    pat = _re.compile(table_pat)
     tables = set()
     for r in rows:
-        g = r.get("golden_sql") or ""
-        for t in _re.findall(r"\b(cq_[a-z0-9_]+)\b", g):
-            tables.add(t)
+        g = r.get("golden_sql") or r.get("sql") or ""
+        for m in pat.findall(g):
+            # m may be the full match or a captured group
+            tables.add(m if isinstance(m, str) else m[0])
     return sorted(tables)
 
 
 def dump_schema() -> str:
     _init_runtime()
     engine = get_engine()
+    import os as _os
+    schema_name = _os.environ.get("BENCH_SCHEMA", "public")
     lines: list[str] = []
     tables = _benchmark_tables()
     with engine.connect() as conn:
         for t in tables:
             cols = conn.execute(text(
                 "SELECT column_name, data_type FROM information_schema.columns "
-                "WHERE table_schema='public' AND table_name=:t ORDER BY ordinal_position"
-            ), {"t": t}).fetchall()
+                "WHERE table_schema=:s AND table_name=:t ORDER BY ordinal_position"
+            ), {"s": schema_name, "t": t}).fetchall()
             if not cols:
                 continue
             geom = conn.execute(text(
                 "SELECT type, srid FROM geometry_columns "
-                "WHERE f_table_schema='public' AND f_table_name=:t LIMIT 1"
-            ), {"t": t}).fetchone()
+                "WHERE f_table_schema=:s AND f_table_name=:t LIMIT 1"
+            ), {"s": schema_name, "t": t}).fetchone()
             suffix = f"  -- geom={geom[0]}, srid={geom[1]}" if geom else ""
-            lines.append(f'CREATE TABLE public.{t} ({suffix}')
+            lines.append(f'CREATE TABLE {schema_name}.{t} ({suffix}')
             for c in cols:
                 lines.append(f'  "{c[0]}" {c[1]},')
             lines.append(");\n")
