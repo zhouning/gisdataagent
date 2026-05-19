@@ -257,8 +257,11 @@ def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
         # Exact word match
         if alias_lower == user_lower:
             return 1.0
-        # Substring match (user text contains alias)
-        if len(alias_lower) >= 2 and alias_lower in user_lower:
+        # Substring match (user text contains alias). Require alias length >= 3
+        # to avoid 2-char column aliases (e.g. "id", "st") false-positive
+        # matching short fragments inside common English words ("identified",
+        # "GEOID", "STATE", "starting"). 2-char aliases must match exactly.
+        if len(alias_lower) >= 3 and alias_lower in user_lower:
             best_score = max(best_score, 0.7)
             continue
         # Reverse substring (alias contains a significant segment of user text)

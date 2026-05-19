@@ -209,8 +209,13 @@ def _rank_sources(user_text: str, sources: list[dict], semantic: dict) -> list[d
             if not has_geom:
                 score += 0.1
             else:
-                # Stronger penalty for ASCII-heavy queries (GIS very unlikely)
-                score -= 0.25 if ascii_heavy else 0.12
+                # Penalize geometry tables for non-spatial queries — but only
+                # if the source confidence is below 0.7 (i.e. table name not
+                # explicitly mentioned). This protects FloodSQL claims/county
+                # which are key-only joins by spec yet carry geometry.
+                base_conf = float(source.get("confidence", 0.0))
+                if base_conf < 0.7:
+                    score -= 0.25 if ascii_heavy else 0.12
 
         ranked.append((score, source))
 
@@ -271,7 +276,12 @@ def _rank_candidate_tables(user_text: str, candidate_tables: list[dict], semanti
             if not has_geom:
                 score += 0.1
             else:
-                score -= 0.25 if ascii_heavy else 0.12
+                # Same conditional penalty as in _rank_sources: only penalize
+                # geom tables when their base confidence is below 0.7 (i.e.
+                # table name not explicitly mentioned in the question).
+                base_conf = float(table.get("confidence", 0.0))
+                if base_conf < 0.7:
+                    score -= 0.25 if ascii_heavy else 0.12
 
             value_hits = 0
             for col in table.get("columns", []):

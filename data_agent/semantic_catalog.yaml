@@ -180,28 +180,37 @@ region_groups:
 spatial_operations:
   buffer:
     tool_name: "create_buffer"
-    aliases: ["缓冲", "缓冲区", "范围", "周边", "辐射", "半径"]
+    aliases: ["缓冲", "缓冲区", "范围", "周边", "辐射", "半径", "buffer", "within X meters", "within X km"]
   clip:
     tool_name: "pairwise_clip"
-    aliases: ["裁剪", "切割", "提取", "截取"]
+    aliases: ["裁剪", "切割", "提取", "截取", "clip"]
   overlay:
     tool_name: "overlay_analysis"
-    aliases: ["叠加", "相交", "交集", "合并", "擦除"]
+    aliases: ["叠加", "相交", "交集", "合并", "擦除", "overlay"]
+  intersects:
+    tool_name: "st_intersects"
+    aliases: ["intersect", "intersects", "intersecting", "overlap", "overlapping", "cross", "crosses"]
+  contains:
+    tool_name: "st_contains"
+    aliases: ["contain", "contains", "containing", "inside", "fall inside", "fall in"]
+  within:
+    tool_name: "st_within"
+    aliases: ["within", "located within", "located in", "lie within", "lies within", "fall within", "are within"]
   distance:
     tool_name: "find_within_distance"
-    aliases: ["距离", "远离", "公里内", "米内", "附近", "范围内"]
+    aliases: ["距离", "远离", "公里内", "米内", "附近", "范围内", "nearest", "closest", "within distance", "proximity"]
   clustering:
     tool_name: "perform_clustering"
-    aliases: ["聚类", "分群", "聚集", "扎堆", "DBSCAN"]
+    aliases: ["聚类", "分群", "聚集", "扎堆", "DBSCAN", "cluster", "clustering"]
   heatmap:
     tool_name: "generate_heatmap"
-    aliases: ["热力图", "密度图", "核密度", "热点"]
+    aliases: ["热力图", "密度图", "核密度", "热点", "heatmap", "heat map", "hotspot"]
   choropleth:
     tool_name: "generate_choropleth"
-    aliases: ["分级设色", "专题图", "着色", "渲染", "分级"]
+    aliases: ["分级设色", "专题图", "着色", "渲染", "分级", "choropleth"]
   tessellation:
     tool_name: "generate_tessellation"
-    aliases: ["网格", "格网", "镶嵌", "渔网"]
+    aliases: ["网格", "格网", "镶嵌", "渔网", "grid", "tessellation"]
 
 # ---------------------------------------------------------------------------
 # Composite Metric Templates — common spatial calculations
