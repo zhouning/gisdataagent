@@ -233,3 +233,100 @@ export const patchReferenceStatus = (refId: string, roundId: string,
     body: JSON.stringify({verification_status: status, round_id: roundId}),
   }).then(j<{ref_id: string; verification_status: string;
               verified_by: string; verified_at: string}>);
+
+
+// ===========================================================================
+// Wave 5: Publish + Derive SDK
+// ===========================================================================
+
+export type PublishedVersion = {
+  id: string;
+  document_id: string;
+  version_label: string;
+  released_at: string | null;
+  released_by: string | null;
+  supersedes_version_id: string | null;
+};
+
+export type PublishEvent = {
+  id: string;
+  event_type: 'published' | 'forked';
+  actor_user_id: string;
+  occurred_at: string | null;
+  notes: string | null;
+};
+
+export type Strategy = {
+  name: string;
+  status: 'active' | 'coming_soon';
+  description: string;
+};
+
+export type DerivedLink = {
+  id: string;
+  source_kind: string;
+  source_id: string;
+  source_version_id: string;
+  target_kind: string;
+  target_table: string;
+  target_id: string;
+  derivation_strategy: string;
+  status: 'pending' | 'active' | 'stale' | 'overridden' | 'superseded';
+  stale_reason: string | null;
+  generated_at: string | null;
+};
+
+export type DerivationStatusByStrategy = Record<
+  string,
+  {active: number; stale: number; failed: number;
+   pending: number; overridden: number; superseded: number}
+>;
+
+export const publishVersion = (versionId: string) =>
+  fetch(`/api/std/publish/versions/${versionId}`, {method: "POST"})
+    .then(j<{version_id: string; status: string; released_at: string;
+              outbox_event_id: string}>);
+
+export const forkVersion = (sourceVersionId: string, newLabel: string) =>
+  fetch("/api/std/publish/fork", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({source_version_id: sourceVersionId,
+                          new_label: newLabel}),
+  }).then(j<{new_version_id: string; source_version_id: string;
+              status: string}>);
+
+export const listPublishedVersions = (documentId?: string) => {
+  const q = documentId ? `?document_id=${documentId}` : "";
+  return fetch(`/api/std/publish/versions${q}`)
+    .then(j<{versions: PublishedVersion[]}>);
+};
+
+export const getPublishTimeline = (versionId: string) =>
+  fetch(`/api/std/publish/timeline/${versionId}`)
+    .then(j<{events: PublishEvent[]}>);
+
+export const listDeriveStrategies = () =>
+  fetch("/api/std/derive/strategies")
+    .then(j<{strategies: Strategy[]}>);
+
+export const listDeriveLinks = (params: {version_id: string;
+                                          strategy?: string;
+                                          status?: string}) => {
+  const q = new URLSearchParams(params as Record<string,string>).toString();
+  return fetch(`/api/std/derive/links?${q}`)
+    .then(j<{links: DerivedLink[]}>);
+};
+
+export const rerunDerivation = (versionId: string, strategies?: string[]) =>
+  fetch(`/api/std/derive/rerun/${versionId}`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({strategies: strategies ?? null}),
+  }).then(j<{results: Record<string, {ok: boolean; new?: number;
+                                       staled?: number; failed?: number;
+                                       error?: string}>}>);
+
+export const getDeriveStatus = (versionId: string) =>
+  fetch(`/api/std/derive/status/${versionId}`)
+    .then(j<{strategies: DerivationStatusByStrategy}>);

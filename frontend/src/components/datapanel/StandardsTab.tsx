@@ -3,6 +3,8 @@ import IngestSubTab from "./standards/IngestSubTab";
 import AnalyzeSubTab from "./standards/AnalyzeSubTab";
 import DraftSubTab from "./standards/DraftSubTab";
 import ReviewSubTab from "./standards/ReviewSubTab";
+import PublishSubTab from "./standards/PublishSubTab";
+import DeriveSubTab from "./standards/DeriveSubTab";
 
 type Sub = "ingest" | "analyze" | "draft" | "review" | "publish" | "derive";
 
@@ -15,7 +17,9 @@ export default function StandardsTab({userRole = "", username = ""}: Props) {
   const [sub, setSub] = useState<Sub>("ingest");
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const isAdmin = userRole === "admin";
-  const enabled: Set<Sub> = new Set(["ingest", "analyze", "draft", "review"]);
+  const enabled: Set<Sub> = new Set([
+    "ingest", "analyze", "draft", "review", "publish", "derive",
+  ]);
 
   return (
     <div style={{display:"flex", flexDirection:"column", height:"100%"}}>
@@ -48,6 +52,16 @@ export default function StandardsTab({userRole = "", username = ""}: Props) {
         {sub==="review" &&
           <ReviewSubTab versionId={selectedVersionId}
                          userRole={userRole} username={username}/>}
+        {sub==="publish" &&
+          <PublishSubTab
+            selectedVersionId={selectedVersionId}
+            onSelectVersion={setSelectedVersionId}
+            userRole={userRole}
+            username={username}/>}
+        {sub==="derive" &&
+          <DeriveSubTab
+            versionId={selectedVersionId}
+            userRole={userRole}/>}
       </div>
     </div>
   );
