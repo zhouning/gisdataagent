@@ -811,6 +811,44 @@ async def publish_timeline_handler(request: Request):
     ]})
 
 
+async def get_version_handler(request: Request):
+    """GET /api/std/versions/{version_id} — return version metadata.
+
+    Wave 5 UX hotfix: PublishSubTab needs the current status to decide
+    whether the version is publishable (approved) or forkable (released).
+    """
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    version_id = request.path_params["version_id"]
+    eng = get_engine()
+    with eng.connect() as conn:
+        row = conn.execute(text(
+            "SELECT id, document_id, version_label, status, "
+            "       semver_major, semver_minor, semver_patch, "
+            "       released_at, supersedes_version_id, "
+            "       created_at, updated_at, created_by, updated_by "
+            "FROM std_document_version WHERE id=:i"
+        ), {"i": version_id}).mappings().first()
+    if row is None:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    return JSONResponse({
+        "id": str(row["id"]),
+        "document_id": str(row["document_id"]),
+        "version_label": row["version_label"],
+        "status": row["status"],
+        "semver_major": row["semver_major"],
+        "semver_minor": row["semver_minor"],
+        "semver_patch": row["semver_patch"],
+        "released_at": row["released_at"].isoformat() if row["released_at"] else None,
+        "supersedes_version_id": str(row["supersedes_version_id"])
+            if row["supersedes_version_id"] else None,
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+        "created_by": row["created_by"],
+        "updated_by": row["updated_by"],
+    })
+
+
 # ---------------------------------------------------------------------------
 # Wave 5: Derivation handlers
 # ---------------------------------------------------------------------------
@@ -954,6 +992,8 @@ standards_routes = [
           endpoint=publish_list_versions_handler, methods=["GET"]),
     Route("/api/std/publish/timeline/{version_id}",
           endpoint=publish_timeline_handler, methods=["GET"]),
+    Route("/api/std/versions/{version_id}",
+          endpoint=get_version_handler, methods=["GET"]),
     # Wave 5: derivation
     Route("/api/std/derive/strategies",
           endpoint=derive_strategies_handler, methods=["GET"]),

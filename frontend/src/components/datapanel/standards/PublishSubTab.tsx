@@ -3,6 +3,7 @@ import VersionPickerPane from "./publish/VersionPickerPane";
 import PublishActionPane from "./publish/PublishActionPane";
 import PublishTimeline from "./publish/PublishTimeline";
 import ForkDialog from "./publish/ForkDialog";
+import { getVersion } from "./standardsApi";
 
 interface Props {
   selectedVersionId: string | null;
@@ -21,25 +22,8 @@ export default function PublishSubTab({
 
   useEffect(() => {
     if (!selectedVersionId) { setVersionStatus(null); return; }
-    fetch(`/api/std/documents`).then(() => {});  // warm cache (noop)
-    // Use the publish/versions endpoint to check status — but it only lists
-    // released versions. For a full status check we use the document_id-less
-    // fetch fallback to query the version directly.
-    fetch(`/api/std/publish/versions`)
-      .then(r => r.ok ? r.json() : {versions: []})
-      .then(j => {
-        const found = (j.versions || []).find((v: any) => v.id === selectedVersionId);
-        if (found) {
-          setVersionStatus("released");
-        } else {
-          // Otherwise we don't know yet — try fetching version metadata via
-          // the documents/versions endpoint chain. For Wave 5 simplicity we
-          // just leave it null and let user select 'approved' manually via
-          // analyze/draft. A future endpoint GET /api/std/versions/{id} would
-          // make this cleaner.
-          setVersionStatus(null);
-        }
-      })
+    getVersion(selectedVersionId)
+      .then(v => setVersionStatus(v.status))
       .catch(() => setVersionStatus(null));
   }, [selectedVersionId, refreshTick]);
 

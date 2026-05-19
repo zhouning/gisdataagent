@@ -248,6 +248,22 @@ export type PublishedVersion = {
   supersedes_version_id: string | null;
 };
 
+export type VersionMeta = {
+  id: string;
+  document_id: string;
+  version_label: string;
+  status: 'draft' | 'review' | 'approved' | 'released' | 'retired';
+  semver_major: number;
+  semver_minor: number;
+  semver_patch: number;
+  released_at: string | null;
+  supersedes_version_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
 export type PublishEvent = {
   id: string;
   event_type: 'published' | 'forked';
@@ -305,6 +321,9 @@ export const listPublishedVersions = (documentId?: string) => {
 export const getPublishTimeline = (versionId: string) =>
   fetch(`/api/std/publish/timeline/${versionId}`)
     .then(j<{events: PublishEvent[]}>);
+
+export const getVersion = (versionId: string) =>
+  fetch(`/api/std/versions/${versionId}`).then(j<VersionMeta>);
 
 export const listDeriveStrategies = () =>
   fetch("/api/std/derive/strategies")
