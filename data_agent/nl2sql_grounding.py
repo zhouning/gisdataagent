@@ -609,6 +609,27 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
     lines.append("- 只允许 SELECT 查询")
     lines.append("- 不允许 DELETE / UPDATE / INSERT / DROP / ALTER")
 
+    # Projection discipline (R1 from DS/Qwen/Gemma system_instruction.md).
+    # The Gemini legacy renderer was missing this rule, which is the dominant
+    # cause of FloodSQL L0/L3 column-count mismatches: question asks for "list
+    # top 3 categories" → gold returns 1 col; model defaults to 2 cols (cat
+    # + count) and the rowset-by-tuple comparator flags it as wrong.
+    lines.append("")
+    lines.append("## Projection discipline (CRITICAL)")
+    lines.append("- 严格 SELECT only what the question explicitly asks for. 不加 \"context\" 列、不加 ORDER BY 列、不加主键列、不加聚合辅助列。")
+    lines.append("- 例: \"List the top 3 most frequent X\" → `SELECT X ... GROUP BY X ORDER BY COUNT(*) DESC LIMIT 3`，**只 SELECT X 一列**，不要把 COUNT(*) 也放进 SELECT。")
+    lines.append("- 例: \"Which county has the lowest Y\" → `SELECT county.name ... ORDER BY Y ASC LIMIT 1`，只输出 name 一列。")
+    lines.append("- 例外: 题目明说 \"return X and Y\" / \"列出 X 和 Y\" 时才 SELECT 两列。")
+
+    # Numeric CAST discipline (FloodSQL claims TEXT amounts).
+    # CAST AS NUMERIC vs CAST AS DOUBLE PRECISION causes 1-2% precision drift
+    # on large sums (gold = 16,361,840,016 vs pred = 16,523,745,810 = 1% off
+    # because NUMERIC truncates float→numeric conversion).
+    lines.append("")
+    lines.append("## Numeric CAST discipline")
+    lines.append("- TEXT 列存数值 → 用 `CAST(col AS DOUBLE PRECISION)` 或 `col::DOUBLE PRECISION`。")
+    lines.append("- **不要用 `CAST AS NUMERIC`** 做求和/平均，会在大数值上引入精度漂移（实测 sum 差异 1-2%）。")
+
     from .nl2sql_intent import IntentLabel
     intent = payload.get("intent", IntentLabel.UNKNOWN)
     if not isinstance(intent, IntentLabel):
