@@ -332,7 +332,11 @@ export const listDeriveStrategies = () =>
 export const listDeriveLinks = (params: {version_id: string;
                                           strategy?: string;
                                           status?: string}) => {
-  const q = new URLSearchParams(params as Record<string,string>).toString();
+  const filtered: Record<string,string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) filtered[k] = v;
+  }
+  const q = new URLSearchParams(filtered).toString();
   return fetch(`/api/std/derive/links?${q}`)
     .then(j<{links: DerivedLink[]}>);
 };
