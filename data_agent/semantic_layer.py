@@ -120,11 +120,28 @@ def _get_cached_sources(conn) -> list:
         _sources_cache_time = time.time()
         return _sources_cache
 
-    rows = conn.execute(text(f"""
-        SELECT table_name, display_name, description,
-               geometry_type, srid, synonyms
-        FROM {T_SEMANTIC_SOURCES}
-    """)).fetchall()
+    # Check whether migration 082 (derived_synonyms column) has been applied.
+    # Fall back to synonyms-only query on pre-082 environments.
+    has_derived_syn = conn.execute(text(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+        "WHERE table_name='agent_semantic_sources' "
+        "  AND column_name='derived_synonyms')"
+    )).scalar()
+
+    if has_derived_syn:
+        rows = conn.execute(text(f"""
+            SELECT table_name, display_name, description,
+                   geometry_type, srid,
+                   (COALESCE(synonyms, '[]'::jsonb)
+                    || COALESCE(derived_synonyms, '[]'::jsonb)) AS synonyms
+            FROM {T_SEMANTIC_SOURCES}
+        """)).fetchall()
+    else:
+        rows = conn.execute(text(f"""
+            SELECT table_name, display_name, description,
+                   geometry_type, srid, synonyms
+            FROM {T_SEMANTIC_SOURCES}
+        """)).fetchall()
 
     _sources_cache = rows
     _sources_cache_time = time.time()
