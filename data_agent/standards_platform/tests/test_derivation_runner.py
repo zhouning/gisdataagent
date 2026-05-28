@@ -49,9 +49,12 @@ def test_get_strategy_status_lists_six(engine):
     assert "to_synonym" in names
     active_names = {s["name"] for s in statuses if s["status"] == "active"}
     coming_names = {s["name"] for s in statuses if s["status"] == "coming_soon"}
-    # Wave 6-eng: to_value_semantics moved from coming_soon → active
-    assert active_names == {"to_semantic_hint", "to_value_semantics"}
-    assert len(coming_names) == 4
+    # Wave 6+ to_synonym: 3 active strategies, 3 coming_soon (to_qc_rule,
+    # to_defect_code, to_data_model).
+    assert active_names == {
+        "to_semantic_hint", "to_value_semantics", "to_synonym",
+    }
+    assert len(coming_names) == 3
 
 
 def test_dispatch_runs_active_strategy(engine, fresh_clause):
@@ -62,13 +65,16 @@ def test_dispatch_runs_active_strategy(engine, fresh_clause):
         assert "to_semantic_hint" in results
         assert results["to_semantic_hint"]["ok"] is True
         assert results["to_semantic_hint"]["new"] == 1
-        # Wave 6-eng: to_value_semantics is now active too. The seeded element
-        # has no value_domain → strategy succeeds with 0 new links.
+        # to_value_semantics: no value_domain seeded → 0 new
         assert "to_value_semantics" in results
         assert results["to_value_semantics"]["ok"] is True
         assert results["to_value_semantics"]["new"] == 0
+        # to_synonym: bound_table='cq_dltb' resolves to a real semantic_source
+        # row (seeded by 4-27 production data), so 1 link is produced.
+        assert "to_synonym" in results
+        assert results["to_synonym"]["ok"] is True
         # Coming-soon strategies aren't run
-        assert "to_synonym" not in results
+        assert "to_qc_rule" not in results
     finally:
         _cleanup(engine, ver_id)
 
@@ -78,9 +84,9 @@ def test_dispatch_with_strategies_filter(engine, fresh_clause):
     _seed_bound_element(engine, ver_id)
     try:
         results = runner.dispatch(
-            version_id=ver_id, strategies=["to_synonym"]
+            version_id=ver_id, strategies=["to_qc_rule"]
         )
-        # to_synonym is coming_soon → not in active, results empty
+        # to_qc_rule is coming_soon → not in active, results empty
         assert results == {}
     finally:
         _cleanup(engine, ver_id)
@@ -118,12 +124,13 @@ def test_handlers_dispatch_routes_version_released(engine, fresh_clause):
             "id": "test-evt",
             "attempts": 0,
         })
-        # Should have produced a derived link
+        # Should have produced at least 1 derived link (to_semantic_hint +
+        # to_synonym may each contribute; assert >= 1 rather than == 1).
         with engine.connect() as c:
             n_links = c.execute(text(
                 "SELECT count(*) FROM std_derived_link "
                 "WHERE source_version_id=:v AND status='active'"
             ), {"v": ver_id}).scalar()
-        assert n_links == 1
+        assert n_links >= 1
     finally:
         _cleanup(engine, ver_id)

@@ -52,11 +52,11 @@ def test_list_strategies(monkeypatch):
     assert "to_semantic_hint" in names
     active = [s for s in strats if s["status"] == "active"]
     coming = [s for s in strats if s["status"] == "coming_soon"]
-    # Wave 6-eng: to_value_semantics activated alongside to_semantic_hint.
-    assert len(active) == 2
-    assert len(coming) == 4
+    # Wave 6+: to_synonym activated (3 active, 3 coming_soon).
+    assert len(active) == 3
+    assert len(coming) == 3
     assert {s["name"] for s in active} == {
-        "to_semantic_hint", "to_value_semantics",
+        "to_semantic_hint", "to_value_semantics", "to_synonym",
     }
 
 

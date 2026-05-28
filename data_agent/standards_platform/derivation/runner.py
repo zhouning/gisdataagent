@@ -8,13 +8,14 @@ from __future__ import annotations
 from typing import Optional
 
 from .strategies.semantic_hint import SemanticHintStrategy
+from .strategies.synonym import SynonymStrategy
 from .strategies.value_domain import ValueDomainStrategy
 from .strategy_base import DerivationStrategy
 
 
 _REGISTRY: dict[str, Optional[DerivationStrategy]] = {
     "to_semantic_hint": SemanticHintStrategy(),
-    "to_synonym": None,
+    "to_synonym": SynonymStrategy(),
     "to_value_semantics": ValueDomainStrategy(),
     "to_qc_rule": None,
     "to_defect_code": None,
@@ -24,7 +25,7 @@ _REGISTRY: dict[str, Optional[DerivationStrategy]] = {
 # Friendly descriptions for UI
 _DESCRIPTIONS: dict[str, str] = {
     "to_semantic_hint": "派生标准 data_element 到 agent_semantic_hints (column-scope hint)",
-    "to_synonym": "(Wave 6+) 派生术语别名到 sources.synonyms",
+    "to_synonym": "派生标准 data_element/term 名称别名到 agent_semantic_sources.derived_synonyms",
     "to_value_semantics": "派生标准值域 (enumeration/range/pattern) 到 agent_semantic_hints",
     "to_qc_rule": "(Wave 6+) 派生质检规则",
     "to_defect_code": "(Wave 6+) 派生缺陷分类编码",
