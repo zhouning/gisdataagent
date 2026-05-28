@@ -114,9 +114,31 @@ class SemanticHintStrategy(DerivationStrategy):
             f"（类型 {el['datatype'] or 'unspecified'}，"
             f"{el['obligation']}）"
         )
-        trigger_keywords = json.dumps(
-            [el["bound_column"], el["name_zh"]], ensure_ascii=False
-        )
+
+        # Trigger keywords: bound_column + name_zh + downstream registry
+        # aliases for the bound (table, column). Without registry aliases the
+        # trigger gate in semantic_layer.resolve_semantic_context filters out
+        # the hint whenever the user phrases the column with a synonym
+        # (e.g. business-lang "面积" instead of standards-doc "图斑面积").
+        eng = get_engine()
+        registry_aliases: list[str] = []
+        with eng.connect() as conn:
+            row = conn.execute(text(
+                "SELECT aliases FROM agent_semantic_registry "
+                "WHERE table_name=:t AND column_name=:c"
+            ), {"t": el["bound_table"], "c": el["bound_column"]}).first()
+        if row is not None and row[0]:
+            raw = row[0]
+            registry_aliases = raw if isinstance(raw, list) else (
+                json.loads(raw) if raw else [])
+
+        seen: set[str] = set()
+        merged: list[str] = []
+        for kw in [el["bound_column"], el["name_zh"], *registry_aliases]:
+            if kw and kw not in seen:
+                seen.add(kw)
+                merged.append(kw)
+        trigger_keywords = json.dumps(merged, ensure_ascii=False)
         source_tag = f"std:v{version_id}"
 
         eng = get_engine()
