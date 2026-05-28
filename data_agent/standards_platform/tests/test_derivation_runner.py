@@ -49,8 +49,9 @@ def test_get_strategy_status_lists_six(engine):
     assert "to_synonym" in names
     active_names = {s["name"] for s in statuses if s["status"] == "active"}
     coming_names = {s["name"] for s in statuses if s["status"] == "coming_soon"}
-    assert active_names == {"to_semantic_hint"}
-    assert len(coming_names) == 5
+    # Wave 6-eng: to_value_semantics moved from coming_soon → active
+    assert active_names == {"to_semantic_hint", "to_value_semantics"}
+    assert len(coming_names) == 4
 
 
 def test_dispatch_runs_active_strategy(engine, fresh_clause):
@@ -61,6 +62,11 @@ def test_dispatch_runs_active_strategy(engine, fresh_clause):
         assert "to_semantic_hint" in results
         assert results["to_semantic_hint"]["ok"] is True
         assert results["to_semantic_hint"]["new"] == 1
+        # Wave 6-eng: to_value_semantics is now active too. The seeded element
+        # has no value_domain → strategy succeeds with 0 new links.
+        assert "to_value_semantics" in results
+        assert results["to_value_semantics"]["ok"] is True
+        assert results["to_value_semantics"]["new"] == 0
         # Coming-soon strategies aren't run
         assert "to_synonym" not in results
     finally:
