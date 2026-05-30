@@ -34,6 +34,8 @@ CORE_TOOLS: frozenset[str] = frozenset({
     "world_model_predict",
     "world_model_scenarios",
     "world_model_status",
+    # Capability introspection — always available so users can ask "what can you do?"
+    "query_capabilities",
 })
 
 # ---------------------------------------------------------------------------

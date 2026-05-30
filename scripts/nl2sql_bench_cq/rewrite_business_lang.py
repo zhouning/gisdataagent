@@ -251,9 +251,15 @@ def _verify_rewrite(rewritten: str, original_row: dict) -> tuple[bool, list[str]
     # Drop any quoted Chinese values from check (they're allowed)
     text = re.sub(r"'[^']*'", "", rewritten)
     text = re.sub(r"\"[^\"]*\"", "", text)
-    # 1. No cq_* tables
-    for t in re.findall(r"\bcq_[a-z0-9_]+\b", text):
-        issues.append(f"LEAK: cq_* table name '{t}' still present")
+    # Robustness/Schema-Hallucination questions intentionally retain
+    # made-up cq_* table names (cq_population_census, cq_weather_stations,
+    # cq_bus_routes, etc.) — those traps are the actual test target.
+    cat = (original_row.get("category") or "").lower()
+    is_hallucination_trap = "hallucination" in cat or "schema_hallucination" in cat
+    # 1. No cq_* tables — except for hallucination traps
+    if not is_hallucination_trap:
+        for t in re.findall(r"\bcq_[a-z0-9_]+\b", text):
+            issues.append(f"LEAK: cq_* table name '{t}' still present")
     # 2. No ST_*/PostGIS fns
     for f in re.findall(r"\bST_[A-Za-z_]+\b", text):
         issues.append(f"LEAK: PostGIS fn '{f}' still present")
@@ -347,17 +353,31 @@ def main() -> int:
                     help="rewrite first 5 questions only (default)")
     ap.add_argument("--full", action="store_true",
                     help="rewrite all 125 questions")
+    ap.add_argument("--ids", type=str, default=None,
+                    help="comma-separated benchmark IDs to rewrite (overrides --pilot/--full); "
+                         "merges into the canonical _business_lang.json")
     args = ap.parse_args()
-    if not args.pilot and not args.full:
+    if not args.pilot and not args.full and not args.ids:
         args.pilot = True  # default
 
     rows = json.loads(SRC.read_text(encoding="utf-8"))
-    if args.pilot:
+    if args.ids:
+        wanted = {x.strip() for x in args.ids.split(",") if x.strip()}
+        rows = [r for r in rows if r["id"] in wanted]
+        dst = ROOT / "benchmarks" / "chongqing_geo_nl2sql_125q_business_lang.json"
+        # Load existing rewrite so we can merge
+        existing = json.loads(dst.read_text(encoding="utf-8")) if dst.exists() else []
+        existing_by_id = {r["id"]: r for r in existing}
+        merge_mode = True
+    elif args.pilot:
         rows = rows[:5]
         dst = ROOT / "benchmarks" / "chongqing_geo_nl2sql_125q_business_lang_pilot.json"
+        merge_mode = False
     else:
         dst = ROOT / "benchmarks" / "chongqing_geo_nl2sql_125q_business_lang.json"
-    print(f"[rewrite] mode={'PILOT' if args.pilot else 'FULL'}  n={len(rows)}")
+        merge_mode = False
+    mode_str = f"IDS ({len(rows)} rows)" if args.ids else ("PILOT" if args.pilot else "FULL")
+    print(f"[rewrite] mode={mode_str}  n={len(rows)}")
     print(f"[rewrite] output: {dst}")
 
     out_rows = []
@@ -372,6 +392,7 @@ def main() -> int:
             new["rewrite_verification_ok"] = False
             new["rewrite_verification_issues"] = [f"exception: {type(e).__name__}: {str(e)[:200]}"]
             new["question_business"] = None
+            new["question_original"] = r["question"]
         dur = time.time() - t0
         ok = "✓" if new.get("rewrite_verification_ok") else "✗"
         print(f"  [{i}/{len(rows)}] {r['id']} {ok} {dur:.1f}s  "
@@ -383,8 +404,19 @@ def main() -> int:
                 print(f"          [issue] {iss}", flush=True)
         out_rows.append(new)
         # Save after every row so partial progress survives a crash
-        dst.write_text(json.dumps(out_rows, ensure_ascii=False, indent=2),
-                       encoding="utf-8")
+        if merge_mode:
+            # Merge into existing rewrite
+            for nr in out_rows:
+                existing_by_id[nr["id"]] = nr
+            # Preserve original row order from source
+            src_rows = json.loads(SRC.read_text(encoding="utf-8"))
+            merged_ordered = [existing_by_id[sr["id"]] for sr in src_rows
+                              if sr["id"] in existing_by_id]
+            dst.write_text(json.dumps(merged_ordered, ensure_ascii=False, indent=2),
+                           encoding="utf-8")
+        else:
+            dst.write_text(json.dumps(out_rows, ensure_ascii=False, indent=2),
+                           encoding="utf-8")
 
     ok_count = sum(1 for r in out_rows if r.get("rewrite_verification_ok"))
     print()

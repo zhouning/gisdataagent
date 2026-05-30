@@ -22,6 +22,22 @@ def test_load_unknown_family_falls_back_to_gemini():
     assert text == gem
 
 
+def test_load_model_level_override_takes_precedence():
+    """gemini-3.5-flash has a model-level override that supersedes family default."""
+    family_text = prompts_nl2sql.load_system_instruction("gemini")
+    model_text = prompts_nl2sql.load_system_instruction("gemini", model_name="gemini-3.5-flash")
+    assert model_text != family_text
+    assert "Minimal-Modification Principle" in model_text
+    assert "No unsolicited GROUP BY" in model_text
+
+
+def test_load_unknown_model_falls_back_to_family():
+    """Unknown model_name falls back to family-level instruction."""
+    family_text = prompts_nl2sql.load_system_instruction("gemini")
+    text = prompts_nl2sql.load_system_instruction("gemini", model_name="gemini-2.5-flash")
+    assert text == family_text
+
+
 def test_load_grounding_template_returns_none_when_missing():
     """Families without a grounding_template.md return None so callers fall back."""
     # gemini does not yet have a grounding_template.md (Phase 1 doesn't add one)

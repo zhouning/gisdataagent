@@ -1,0 +1,38 @@
+# Development-only dependencies for GIS Data Agent
+#
+# Install via:
+#   pip install -r requirements-dev.txt
+#
+# Runtime dependencies (needed to actually use the platform) live in
+# requirements.txt. This file is for contributor tools: formatters, linters,
+# type checkers, benchmark harnesses, and documentation builders.
+
+# --- testing --------------------------------------------------------------
+# pytest is already in requirements.txt; listed here for explicit intent only
+pytest>=8.0
+pytest-xdist>=3.6     # parallel test execution: pytest -n auto
+pytest-cov>=5.0       # coverage reports for CI artifacts
+pytest-timeout>=2.3   # kill hung tests
+pytest-asyncio>=0.24  # async test support
+responses>=0.25       # mock HTTP for User Tool http_call engine tests
+
+# --- formatting + linting -------------------------------------------------
+ruff>=0.8             # linter + formatter; replaces black/flake8/isort
+mypy>=1.13            # static type checking
+types-requests        # type stubs for requests
+
+# --- paper reproducibility scripts ---------------------------------------
+prometheus-client>=0.20       # used by scripts/paper_eval/extract_prometheus_metrics.py
+# cloc is a non-Python tool; install via package manager (apt/brew) if needed
+
+# --- documentation --------------------------------------------------------
+# mkdocs-material and plugins are OPTIONAL — only needed if you want to
+# build the public-facing docs site at docs.<repo>.io. The Markdown files
+# in docs/ render fine on GitHub without any extra tooling.
+# mkdocs>=1.6
+# mkdocs-material>=9.5
+
+# --- release automation ---------------------------------------------------
+# Used by maintainers to cut release tags; skip if you're only contributing
+# bugfixes or features.
+# python-semantic-release>=9.0

@@ -50,6 +50,49 @@ OUT_ROOT = ROOT / "data_agent" / "nl2sql_eval_results"
 V7_BENCH = ROOT / "benchmarks" / "chongqing_geo_nl2sql_125q_business_lang.json"
 
 
+# Quota / rate-limit error signatures across LLM providers. When 3 consecutive
+# records in a row carry one of these in gen_error, we bail the cell early so
+# we don't burn 100 more API calls producing junk records (e.g. end-of-month
+# DashScope quota exhaustion). Match is case-insensitive substring.
+_QUOTA_SIGNATURES = (
+    "insufficient_balance", "insufficientbalance",
+    "quota",                    # covers "QuotaExceeded", "exceeded_quota", "quota exhausted"
+    "rate_limit", "ratelimit", "rate limit",
+    "throttling", "throttled",
+    "requestlimitexceeded",
+    "toomanyrequests", "too many requests",
+    " 402 ", " 429 ",           # bare status codes embedded in LiteLLM error strs
+    "billing", "payment_required",
+)
+
+
+def _load_existing_records(path: Path) -> list[dict]:
+    """Load any prior records from a partial run so we can resume per-question."""
+    if not path.exists():
+        return []
+    out: list[dict] = []
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    # Skip a corrupt trailing line rather than abort resume.
+                    continue
+    return out
+
+
+def _is_quota_error(rec: dict) -> bool:
+    """Heuristic: did this record fail because the upstream API is out of quota?"""
+    if rec.get("gen_status") != "exception":
+        return False
+    msg = (rec.get("gen_error") or rec.get("error") or "").lower()
+    if not msg:
+        return False
+    return any(sig in msg for sig in _QUOTA_SIGNATURES)
+
+
 # Ordered so a failing family (e.g. quota exhaustion) doesn't block the
 # downstream families we care most about. Gemini 2.5-flash first so we get a
 # parity datapoint early; Ollama last so network LAN round-trip dominates the
@@ -59,10 +102,12 @@ FAMILIES: list[tuple[str, str]] = [
     ("gemini-2.5-pro", "gemini"),
     ("gemini-3.1-flash-lite-preview", "gemini"),
     ("gemini-3.1-pro-preview", "gemini"),
+    ("gemini-3.5-flash", "gemini"),
     ("deepseek-v4-flash", "deepseek"),
     ("deepseek-v4-pro", "deepseek"),
     ("qwen3.6-flash", "qwen"),
     ("qwen3.6-plus", "qwen"),
+    ("qwen3.7-max", "qwen"),
     ("gemma-4-31b-it-ollama", "gemma"),
 ]
 
@@ -134,41 +179,74 @@ async def run_family(model_name: str, family: str, qs: list[dict],
                          "sample_idx": sample_idx, "modes": {}}
 
     for mode in ("baseline", "full"):
-        # Skip cells whose records jsonl is already complete (resume support).
-        existing = fam_dir / f"records_{mode}.jsonl"
-        if existing.exists():
-            existing_lines = sum(1 for _ in existing.open(encoding="utf-8"))
-            if existing_lines >= len(qs):
-                print(f"\n--- [{model_name}] mode={mode} SKIPPED "
-                      f"(existing {existing_lines}/{len(qs)} records) ---",
-                      flush=True)
-                # Hydrate fam_summary from existing records so matrix.json
-                # still reflects this mode after the resume run.
-                recs_existing = []
-                for line in existing.open(encoding="utf-8"):
-                    if line.strip():
-                        recs_existing.append(json.loads(line))
-                ex_e = sum(r.get("ex", 0) for r in recs_existing)
-                valid_e = sum(r.get("valid", 1) for r in recs_existing)
-                bins_e = {"catalog": 0, "dialect": 0, "golden": 0,
-                          "safety": 0, "unknown": 0, "pass": 0}
-                for r in recs_existing:
-                    bins_e[classify_failure(r)] += 1
-                fam_summary["modes"][mode] = {
-                    "ex": ex_e, "n": len(recs_existing),
-                    "ex_rate": round(ex_e / max(1, len(recs_existing)), 4),
-                    "valid": valid_e,
-                    "duration_sec": None,
-                    "failure_bins": bins_e,
-                    "resumed": True,
-                }
-                continue
+        records_path = fam_dir / f"records_{mode}.jsonl"
 
-        print(f"\n--- [{model_name}] mode={mode} on {len(qs)} questions ---",
-              flush=True)
-        records: list[dict] = []
+        # Per-question resume: load any partial records and skip qids that
+        # already produced a *valid* (non-quota-exception) answer. This means
+        # a cell that died at q=80/125 from quota exhaustion can be resumed
+        # next month and pick up at q=81 — the existing 80 good answers are
+        # kept, while the trailing junk exceptions (if any) are discarded.
+        prior = _load_existing_records(records_path)
+        # Drop trailing quota-exception records so we re-attempt those qids.
+        # Keep records whose generation succeeded (even if EX=0); only retry
+        # the records that were corrupted by quota outage.
+        kept_prior: list[dict] = []
+        for r in prior:
+            if _is_quota_error(r):
+                # Stop keeping at the first quota-error: everything after it
+                # is presumed corrupted by the same outage.
+                break
+            kept_prior.append(r)
+        done_qids = {r["qid"] for r in kept_prior}
+
+        if kept_prior and len(kept_prior) >= len(qs):
+            # Cell already complete — full skip + hydrate summary.
+            print(f"\n--- [{model_name}] mode={mode} SKIPPED "
+                  f"(existing {len(kept_prior)}/{len(qs)} records) ---",
+                  flush=True)
+            ex_e = sum(r.get("ex", 0) for r in kept_prior)
+            valid_e = sum(r.get("valid", 1) for r in kept_prior)
+            bins_e = {"catalog": 0, "dialect": 0, "golden": 0,
+                      "safety": 0, "unknown": 0, "pass": 0}
+            for r in kept_prior:
+                bins_e[classify_failure(r)] += 1
+            fam_summary["modes"][mode] = {
+                "ex": ex_e, "n": len(kept_prior),
+                "ex_rate": round(ex_e / max(1, len(kept_prior)), 4),
+                "valid": valid_e,
+                "duration_sec": None,
+                "failure_bins": bins_e,
+                "resumed": True,
+            }
+            continue
+
+        # Partial resume: persist the kept_prior subset back so any trailing
+        # quota-junk is dropped before we start appending new records.
+        if kept_prior and len(kept_prior) < len(prior):
+            print(f"\n--- [{model_name}] mode={mode} RESUME "
+                  f"(keeping {len(kept_prior)}/{len(prior)} prior records, "
+                  f"discarding {len(prior) - len(kept_prior)} quota-corrupted) ---",
+                  flush=True)
+            records_path.write_text(
+                "\n".join(json.dumps(r, ensure_ascii=False) for r in kept_prior),
+                encoding="utf-8")
+        elif kept_prior:
+            print(f"\n--- [{model_name}] mode={mode} RESUME "
+                  f"({len(kept_prior)}/{len(qs)} done, continuing) ---",
+                  flush=True)
+        else:
+            print(f"\n--- [{model_name}] mode={mode} on {len(qs)} questions ---",
+                  flush=True)
+
+        records: list[dict] = list(kept_prior)
         t0 = time.time()
+        # Track consecutive quota errors among NEW records this run, so we
+        # can fast-abort an end-of-month outage without producing junk.
+        consecutive_quota_errors = 0
+        new_records_this_run = 0
         for i, q in enumerate(qs, 1):
+            if q["id"] in done_qids:
+                continue  # already answered in a prior run
             difficulty = q["difficulty"]
             category = q["category"]
             target_metric = q.get("target_metric") or "Execution Accuracy"
@@ -217,6 +295,7 @@ async def run_family(model_name: str, family: str, qs: list[dict],
                     "tokens": gen.get("tokens", 0),
                     "is_robust": True,
                     "gen_status": gen.get("status", "?"),
+                    "gen_error": (gen.get("error") or "")[:300],
                     "hint_injection_stats": hint_stats,
                 }
             else:
@@ -246,6 +325,7 @@ async def run_family(model_name: str, family: str, qs: list[dict],
                     "hint_injection_stats": hint_stats,
                 }
             records.append(rec)
+            new_records_this_run += 1
             mark = "✓" if rec["ex"] else "✗"
             print(f"  [{i:>2}/{len(qs)}] {q['id']:<28} {mark} "
                   f"{str(rec.get('reason',''))[:70]}", flush=True)
@@ -253,15 +333,40 @@ async def run_family(model_name: str, family: str, qs: list[dict],
                 "\n".join(json.dumps(r, ensure_ascii=False) for r in records),
                 encoding="utf-8")
 
-            # Early-failure detection: if the first 5 records all returned
+            # Quota fast-abort: 3 consecutive quota errors → bail this cell
+            # without producing more junk records. The records we've already
+            # written are safe to resume next month with the same --out-dir.
+            if _is_quota_error(rec):
+                consecutive_quota_errors += 1
+                if consecutive_quota_errors >= 3:
+                    print(f"  [QUOTA-ABORT] 3 consecutive quota errors — "
+                          f"upstream API quota exhausted. {len(records)}/"
+                          f"{len(qs)} records persisted; rerun with same "
+                          f"--out-dir next month to resume.", flush=True)
+                    # Truncate the trailing 3 quota junk records so resume
+                    # picks up cleanly at the first failed qid.
+                    records = records[:-3]
+                    (fam_dir / f"records_{mode}.jsonl").write_text(
+                        "\n".join(json.dumps(r, ensure_ascii=False) for r in records),
+                        encoding="utf-8")
+                    raise RuntimeError(
+                        f"quota-abort: 3 consecutive quota errors "
+                        f"(model={os.environ.get('NL2SQL_BASELINE_MODEL', '?')}, "
+                        f"mode={mode}, last_error={rec.get('gen_error','')[:120]})"
+                    )
+            else:
+                consecutive_quota_errors = 0
+
+            # Early-failure detection: if the first 5 NEW records all returned
             # gen_status=exception (LLM call failed before any token was
             # produced), the upstream API is likely down. Abort this cell
             # so we don't waste 1 hour producing 125 empty records, like
             # the qwen3.6-plus s1 / qwen3.6-flash s3 disaster on 2026-05-15
             # 03:00 (DashScope outage, ~125 empty records before noticed).
-            if i == 5:
+            if new_records_this_run == 5:
+                new_recs = records[-5:]
                 exc_in_first5 = sum(
-                    1 for r in records if r.get("gen_status") == "exception"
+                    1 for r in new_recs if r.get("gen_status") == "exception"
                 )
                 if exc_in_first5 >= 4:
                     print(f"  [ABORT] {exc_in_first5}/5 first records had "
@@ -310,9 +415,19 @@ async def main() -> int:
                     help="explicit output dir (resume into existing dir)")
     ap.add_argument("--only", type=str, default=None,
                     help="comma-separated list of model names to run (debug)")
+    ap.add_argument("--qids", type=str, default=None,
+                    help="comma-separated list of qids to filter (debug / ablation). "
+                         "When set, --limit is ignored and only matching qids are run.")
     args = ap.parse_args()
 
     questions = load_v7_questions_first_n(args.limit)
+    if args.qids:
+        qid_set = {q.strip() for q in args.qids.split(",")}
+        questions = [q for q in questions if q.get("id") in qid_set]
+        # If no match in first --limit slice, expand to full benchmark
+        if not questions:
+            questions = [q for q in load_v7_questions_first_n(125) if q.get("id") in qid_set]
+        print(f"[smoke-b] qid filter active: {len(questions)} matching questions")
     if args.out_dir:
         out_dir = Path(args.out_dir)
     else:

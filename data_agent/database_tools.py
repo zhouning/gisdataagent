@@ -7,8 +7,11 @@ from sqlalchemy import text
 from .db_engine import get_engine
 from .gis_processors import _generate_output_path, _resolve_path
 from .user_context import current_user_id, current_user_role
+from .observability import get_logger
 
 import urllib.parse
+
+logger = get_logger("database_tools")
 
 # --- System table name constants (prefixed to avoid collisions in shared DB) ---
 TABLE_PREFIX = "agent_"

@@ -38,6 +38,32 @@ class TestModelRegistryBuiltins(unittest.TestCase):
         self.assertFalse(info["online"])
         self.assertEqual(info["cost_per_1k_input"], 0.0)
 
+    def test_has_deepseek_models(self):
+        from data_agent.model_gateway import ModelRegistry
+        ModelRegistry._ensure_initialized()
+        self.assertIn("deepseek-v4-flash", ModelRegistry.models)
+        self.assertIn("deepseek-v4-pro", ModelRegistry.models)
+        flash = ModelRegistry.models["deepseek-v4-flash"]
+        pro = ModelRegistry.models["deepseek-v4-pro"]
+        self.assertEqual(flash["backend"], "deepseek")
+        self.assertEqual(flash["tier"], "fast")
+        self.assertTrue(flash["online"])
+        self.assertGreater(flash["cost_per_1k_input"], 0.0)
+        self.assertGreater(flash["cost_per_1k_output"], 0.0)
+        self.assertEqual(flash["max_context_tokens"], 1_000_000)
+        self.assertEqual(flash["api_base"], "https://api.deepseek.com")
+        self.assertEqual(flash["api_key_env"], "DEEPSEEK_API_KEY")
+        self.assertEqual(flash["model_id"], "openai/deepseek-v4-flash")
+        self.assertEqual(pro["backend"], "deepseek")
+        self.assertEqual(pro["tier"], "premium")
+        self.assertTrue(pro["online"])
+        self.assertGreater(pro["cost_per_1k_input"], 0.0)
+        self.assertGreater(pro["cost_per_1k_output"], 0.0)
+        self.assertEqual(pro["max_context_tokens"], 1_000_000)
+        self.assertEqual(pro["api_base"], "https://api.deepseek.com")
+        self.assertEqual(pro["api_key_env"], "DEEPSEEK_API_KEY")
+        self.assertEqual(pro["model_id"], "openai/deepseek-v4-pro")
+
     def test_gemini_models_are_online(self):
         from data_agent.model_gateway import ModelRegistry
         ModelRegistry._ensure_initialized()
@@ -157,6 +183,38 @@ class TestCreateModel(unittest.TestCase):
         create_model("gemma-3-4b")
         mock_create.assert_called_once()
 
+    @patch("data_agent.model_gateway._create_deepseek_model")
+    def test_deepseek_model_uses_deepseek_backend(self, mock_create):
+        from data_agent.model_gateway import create_model
+        mock_create.return_value = MagicMock()
+        create_model("deepseek-v4-flash")
+        mock_create.assert_called_once()
+
+    @patch("google.adk.models.lite_llm.LiteLlm")
+    @patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}, clear=False)
+    def test_create_deepseek_model_sets_openai_compat_env(self, mock_litellm):
+        from data_agent.model_gateway import _create_deepseek_model
+        _create_deepseek_model("deepseek-v4-flash", {
+            "api_base": "https://api.deepseek.com",
+            "api_key_env": "DEEPSEEK_API_KEY",
+            "model_id": "openai/deepseek-v4-flash",
+        })
+        self.assertEqual(os.environ["OPENAI_API_BASE"], "https://api.deepseek.com")
+        self.assertEqual(os.environ["OPENAI_API_KEY"], "test-key")
+        mock_litellm.assert_called_once_with(model="openai/deepseek-v4-flash")
+
+    def test_create_deepseek_model_requires_dedicated_api_key(self):
+        from data_agent.model_gateway import _create_deepseek_model
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "stale-key"}, clear=False):
+            os.environ.pop("DEEPSEEK_API_KEY", None)
+            with self.assertRaisesRegex(RuntimeError, "DEEPSEEK_API_KEY not set"):
+                _create_deepseek_model("deepseek-v4-flash", {
+                    "api_base": "https://api.deepseek.com",
+                    "api_key_env": "DEEPSEEK_API_KEY",
+                    "model_id": "openai/deepseek-v4-flash",
+                })
+            self.assertNotIn("OPENAI_API_KEY", os.environ)
+
     @patch("data_agent.model_gateway._create_litellm_model")
     def test_litellm_prefix_uses_litellm_backend(self, mock_create):
         from data_agent.model_gateway import ModelRegistry, create_model
@@ -172,6 +230,10 @@ class TestBackendDetection(unittest.TestCase):
     def test_gemini_prefix_detected(self):
         from data_agent.model_gateway import _detect_backend
         self.assertEqual(_detect_backend("gemini-2.5-flash"), "gemini")
+
+    def test_deepseek_prefix_detected(self):
+        from data_agent.model_gateway import _detect_backend
+        self.assertEqual(_detect_backend("deepseek-v4-flash"), "deepseek")
 
     def test_openai_prefix_detected(self):
         from data_agent.model_gateway import _detect_backend

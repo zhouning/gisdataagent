@@ -174,6 +174,7 @@ def _cli_main():
         gis-agent init          Initialize local DuckDB database
         gis-agent status        Show Lite mode status
         gis-agent run           Start Chainlit server in Lite mode
+        gis-agent standards ... Standard-driven semantic config helpers
     """
     import sys
     args = sys.argv[1:]
@@ -199,8 +200,12 @@ def _cli_main():
             print("[gis-agent] First run — initializing database...")
             init_lite_database(db_path)
         os.execvp("chainlit", ["chainlit", "run", "data_agent/app.py", "-w"])
+    elif cmd == "standards":
+        from data_agent.standards.cli import main as standards_main
+        sys.exit(standards_main(args[1:]))
     else:
         print("Usage: gis-agent <command>")
-        print("  init     Initialize local DuckDB database")
-        print("  status   Show current mode status")
-        print("  run      Start server in Lite mode")
+        print("  init        Initialize local DuckDB database")
+        print("  status      Show current mode status")
+        print("  run         Start server in Lite mode")
+        print("  standards   Standard-driven semantic-layer config helpers")

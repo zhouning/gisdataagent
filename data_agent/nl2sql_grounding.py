@@ -855,6 +855,81 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
         sources.extend(scored[:top_n])
         sources = _rank_sources(user_text, sources, semantic)
 
+    # LLM Schema Mapper backfill (Monkuu-style, opt-in via env var):
+    # When substring/fuzzy matching produces too few high-confidence sources
+    # (or zero, as observed on CQ_GEO_HARD_15), invoke an LLM call with the
+    # full schema dump to select top-K relevant tables. This catches cases
+    # where Chinese references like "百度 AOI" cannot be matched to
+    # `cq_baidu_aoi_2024` by substring/SequenceMatcher.
+    # Modes:
+    #   backfill (default): only invoke when len(high_conf_sources) < min_required
+    #   merge:              invoke always; merge LLM result with substring result
+    #   replace:            invoke always; ignore substring result
+    try:
+        from . import llm_schema_mapper as _lsm  # noqa: WPS433
+    except ImportError:
+        _lsm = None
+    if _lsm is not None and _lsm.schema_mapper_enabled():
+        try:
+            mode = _lsm.schema_mapper_mode()
+            high_conf_count = sum(1 for s in sources if s.get("confidence", 0) >= 0.6)
+            min_required = int(_ablation_os.environ.get("NL2SQL_LLM_SCHEMA_MAPPER_MIN", "3"))
+            should_invoke = (
+                mode in ("merge", "replace")
+                or (mode == "backfill" and high_conf_count < min_required)
+            )
+            if should_invoke:
+                # Lazy schema dump: only fetch when actually invoking
+                from data_agent.semantic_layer import list_semantic_sources as _lss
+                _src_list = _lss().get("sources", []) if _lss else []
+                valid_names = {str(s.get("table_name", "")).split(".")[-1]
+                               for s in _src_list if s.get("table_name")}
+                # Build a lightweight schema (table-name + col-list) from the
+                # already-loaded source list to feed the mapper. Falls back to
+                # a comma-separated table-name list if column info unavailable.
+                schema_lines = []
+                for s in _src_list[:50]:  # cap to avoid context blowup
+                    tname = str(s.get("table_name", "")).split(".")[-1]
+                    desc = (s.get("description") or "")[:120]
+                    if tname:
+                        schema_lines.append(f"- {tname}: {desc}" if desc else f"- {tname}")
+                schema_dump = "\n".join(schema_lines) or "(no schema info)"
+                topk = int(_ablation_os.environ.get("NL2SQL_LLM_SCHEMA_MAPPER_TOPK", "5"))
+                model = _ablation_os.environ.get("NL2SQL_LLM_SCHEMA_MAPPER_MODEL", "gemini-2.5-flash")
+                llm_picks = _lsm.select_relevant_tables(
+                    user_text, schema_dump, top_k=topk, model=model,
+                    valid_table_names=valid_names,
+                )
+                if llm_picks:
+                    if mode == "replace":
+                        sources = []
+                    existing_tnames = {str(s.get("table_name", "")).split(".")[-1] for s in sources}
+                    src_by_short = {
+                        str(s.get("table_name", "")).split(".")[-1]: s
+                        for s in _src_list
+                    }
+                    backfill_count = 0
+                    for tname in llm_picks:
+                        if tname in existing_tnames:
+                            continue
+                        full_src = src_by_short.get(tname)
+                        if not full_src:
+                            continue
+                        new_src = dict(full_src)
+                        # Mark with high but not absolute confidence so it
+                        # competes naturally with substring matches.
+                        new_src["confidence"] = 0.65
+                        new_src["_via_llm_mapper"] = True
+                        sources.append(new_src)
+                        backfill_count += 1
+                    if backfill_count:
+                        sources = _rank_sources(user_text, sources, semantic)
+                        # Prefer LLM-mapped sources slightly: stable sort with
+                        # _via_llm_mapper getting a small bonus on ties
+        except Exception as _exc:  # never break grounding on mapper failure
+            import logging as _lg
+            _lg.getLogger(__name__).warning(f"[SchemaMapper] backfill failed: {_exc}")
+
     candidate_tables = []
     ascii_heavy = _is_ascii_heavy(user_text)
     spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))

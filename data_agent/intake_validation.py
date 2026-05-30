@@ -20,6 +20,22 @@ logger = logging.getLogger(__name__)
 PASS_THRESHOLD = 0.80
 
 
+def _fetch_sample_value(table_name: str, col_name: str) -> str | None:
+    """Fetch a real sample value from the DB when profile sample_values is empty."""
+    engine = get_engine()
+    if not engine:
+        return None
+    try:
+        col_ref = f'"{col_name}"' if col_name != col_name.lower() else col_name
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                f"SELECT {col_ref} FROM {table_name} WHERE {col_ref} IS NOT NULL LIMIT 1"
+            )).fetchone()
+            return str(row[0]) if row else None
+    except Exception:
+        return None
+
+
 def _build_validation_questions(table_name: str, draft: dict, profile: dict) -> list[dict]:
     """Generate a minimal cold-start validation set for a dataset.
 
@@ -38,7 +54,11 @@ def _build_validation_questions(table_name: str, draft: dict, profile: dict) -> 
 
     questions = []
     if category_col:
-        sample_val = (sample_values.get(category_col) or ["示例"])[0]
+        sample_val = (sample_values.get(category_col) or [None])[0]
+        if not sample_val:
+            sample_val = _fetch_sample_value(table_name, category_col)
+        if not sample_val:
+            sample_val = "示例"
         questions.append({
             "type": "filter",
             "question": f"找出所有 {category_col} = '{sample_val}' 的记录数量",

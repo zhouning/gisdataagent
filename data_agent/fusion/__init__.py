@@ -55,7 +55,6 @@ from .profiling import (
 # --- Matching ---
 from .matching import (
     _embedding_cache,
-    _EMBEDDING_MODEL,
     _get_embeddings,
     _cosine_similarity,
     _catalog_equiv_cache,

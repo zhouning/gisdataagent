@@ -56,8 +56,13 @@ def _load_family_records(family_dir: Path) -> list[dict]:
     return rows
 
 
-def _load_all(main_dir: Path, gemma_dir: Path | None) -> dict[str, list[dict]]:
-    """Return {family_name: [record, ...]}."""
+def _load_all(main_dir: Path, gemma_dir: Path | None, extra_dirs: list[Path] | None = None) -> dict[str, list[dict]]:
+    """Return {family_name: [record, ...]}.
+
+    extra_dirs: list of dirs each containing one or more family subdirs (same
+    layout as main-dir/gemma-dir). Used to pull in qwen3.7-max and gemini-3.5-flash
+    runs that were done outside the 5-13 main run.
+    """
     out: dict[str, list[dict]] = {}
     for fam_dir in sorted(p for p in main_dir.iterdir() if p.is_dir()):
         rows = _load_family_records(fam_dir)
@@ -67,6 +72,15 @@ def _load_all(main_dir: Path, gemma_dir: Path | None) -> dict[str, list[dict]]:
             out[fam_dir.name] = rows
     if gemma_dir and gemma_dir.exists():
         for fam_dir in sorted(p for p in gemma_dir.iterdir() if p.is_dir()):
+            rows = _load_family_records(fam_dir)
+            if rows:
+                for r in rows:
+                    r["_family"] = fam_dir.name
+                out[fam_dir.name] = rows
+    for ed in (extra_dirs or []):
+        if not ed.exists():
+            continue
+        for fam_dir in sorted(p for p in ed.iterdir() if p.is_dir()):
             rows = _load_family_records(fam_dir)
             if rows:
                 for r in rows:
@@ -362,10 +376,13 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--main-dir", required=True, type=Path)
     ap.add_argument("--gemma-dir", required=False, type=Path, default=None)
+    ap.add_argument("--extra-dir", action="append", type=Path, default=[],
+                    help="Additional run directories (can be passed multiple times). "
+                         "Each must contain family subdirs like the main-dir.")
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
 
-    by_family = _load_all(args.main_dir, args.gemma_dir)
+    by_family = _load_all(args.main_dir, args.gemma_dir, args.extra_dir)
     print(f"loaded {len(by_family)} families, total records: {sum(len(v) for v in by_family.values())}")
 
     universal = _find_universal_fails(by_family)

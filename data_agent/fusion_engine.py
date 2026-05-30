@@ -29,7 +29,6 @@ from data_agent.fusion import (  # noqa: F401
     _profile_tabular,
     _profile_point_cloud,
     _embedding_cache,
-    _EMBEDDING_MODEL,
     _get_embeddings,
     _cosine_similarity,
     _get_equiv_groups,

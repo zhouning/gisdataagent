@@ -143,7 +143,7 @@ pipeline_runs = _safe_counter(
 tool_calls = _safe_counter(
     "agent_tool_calls_total",
     "Total tool invocations",
-    ["tool_name", "status"],
+    ["tool_name", "status", "tool_type"],
 )
 auth_events = _safe_counter(
     "agent_auth_events_total",
@@ -318,11 +318,32 @@ def record_llm_call(agent_name: str, model_name: str,
         pass
 
 
+def _infer_tool_type(tool_name: str) -> str:
+    """Classify a tool for telemetry.
+
+    MCP tools carry a ``mcp__<server>__<tool>`` prefix in the ADK integration;
+    built-in tools do not. This is used as a label on agent_tool_calls_total
+    so dashboards and the evaluation table can filter MCP success rate.
+    """
+    if not tool_name:
+        return "unknown"
+    if tool_name.startswith("mcp__") or tool_name.startswith("mcp_"):
+        return "mcp"
+    return "builtin"
+
+
 def record_tool_execution(tool_name: str, agent_name: str = "",
-                          duration_s: float = 0, output_size: int = 0, status: str = "success"):
-    """Record a tool execution with timing and output size."""
+                          duration_s: float = 0, output_size: int = 0, status: str = "success",
+                          tool_type: str = ""):
+    """Record a tool execution with timing and output size.
+
+    Args:
+        tool_type: "mcp" | "builtin" | "user_tool" | "unknown". If empty, it is
+            inferred from ``tool_name`` via :func:`_infer_tool_type`.
+    """
     try:
-        tool_calls.labels(tool_name=tool_name, status=status).inc()
+        ttype = tool_type or _infer_tool_type(tool_name)
+        tool_calls.labels(tool_name=tool_name, status=status, tool_type=ttype).inc()
         if duration_s > 0:
             tool_duration.labels(tool_name=tool_name, agent_name=agent_name).observe(duration_s)
         if output_size > 0:

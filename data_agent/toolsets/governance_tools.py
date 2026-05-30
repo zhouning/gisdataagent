@@ -1,18 +1,20 @@
 """
-GovernanceToolset — 12 governance audit + standard tools (v14.5).
+GovernanceToolset — 12 governance audit + standard tools (v14.5) + grid anonymize (v15.8).
 
 Provides comprehensive data quality audit capabilities:
 - Gap detection, completeness, attribute range, duplicates, CRS consistency
 - Composite governance scoring (0-100, 6 dimensions)
 - Data Standard Registry integration (list/validate/formulas/gap matrix)
 - Governance plan generation
+- Grid-based spatial data anonymization (declassification)
 """
 
 import json
 import logging
 
 import geopandas as gpd
-from shapely.geometry import mapping
+import numpy as np
+from shapely.geometry import box, mapping
 
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
@@ -1110,6 +1112,214 @@ def classify_defects(file_path: str, standard_id: str = "gb_t_24356") -> str:
         return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
 
 
+# ---------------------------------------------------------------------------
+# Grid Anonymize — spatial declassification via regular grid aggregation
+# ---------------------------------------------------------------------------
+
+_SENSITIVE_FIELD_BLACKLIST = frozenset({
+    "bsm", "qsdwdm", "qsdwmc", "zldwdm", "zldwmc",
+    "cbf", "cbfmc", "syqr", "syqrmc",
+    "qlr", "qlrmc", "zjhm", "zjh",
+    "bdcdyh", "zl", "dzwtzb",
+})
+
+_LEVEL_GRID_SIZE = {
+    "L1": 25.0,
+    "L2": 100.0,
+    "L3": 250.0,
+    "L4": 1000.0,
+}
+
+_METRIC_CRS_LOOKUP = {
+    4490: 4523,
+    4610: 4523,
+    4326: 32649,
+}
+
+
+def grid_anonymize(
+    file_path: str,
+    grid_size_m: float = 100.0,
+    level: str = "L2",
+    keep_attrs: str = "dlmc,tbmj",
+    agg_strategy: str = "mode",
+    random_offset: bool = True,
+) -> str:
+    """[脱密工具] 格网化脱密：将矢量图斑转为规则格网，剥离敏感字段，实现空间数据脱密。
+
+    将原始地类图斑（如 cq_dltb）按指定尺寸的规则方格网进行空间聚合，
+    自动剥离权属/标识等涉密字段，仅保留白名单属性的聚合值。
+    输出可安全用于跨部门共享或对外展示。
+
+    脱密等级参考：
+    - L1 (25m): 内部精细分析，定位精度~13m，仍属内部级
+    - L2 (100m): 跨部门协作，定位精度~50m，可内部共享
+    - L3 (250m): 对外展示，定位精度~125m，可公开发布
+    - L4 (1000m): 科普可视化，仅主导地类
+
+    Args:
+        file_path: 输入空间数据文件路径（Shapefile/GeoJSON/GPKG 等）。
+        grid_size_m: 格网边长（米），默认 100。若指定 level 则以 level 对应尺寸为准。
+        level: 脱密等级 L1/L2/L3/L4，覆盖 grid_size_m。
+        keep_attrs: 保留的属性字段（逗号分隔），敏感字段即使列入也会被强制剥离。
+        agg_strategy: 聚合策略 mode（众数）/ area_weighted（面积加权）/ topk（前3类占比）。
+        random_offset: 是否对格网原点施加随机偏移（防止通过已知格网重建原图斑边界）。
+
+    Returns:
+        JSON 格式结果：输出文件路径、格网数、脱密等级、被剥离的敏感字段列表。
+    """
+    from ..gis_processors import _resolve_path, _generate_output_path
+    from ..utils import _load_spatial_data
+
+    try:
+        resolved = _resolve_path(file_path)
+        gdf = _load_spatial_data(resolved)
+
+        if gdf.empty:
+            return json.dumps({"status": "error", "message": "输入数据为空"}, ensure_ascii=False)
+
+        actual_grid_size = _LEVEL_GRID_SIZE.get(level, grid_size_m)
+
+        # --- 1. Project to metric CRS ---
+        src_epsg = gdf.crs.to_epsg() if gdf.crs else None
+        target_epsg = _METRIC_CRS_LOOKUP.get(src_epsg, 4523)
+        gdf_proj = gdf.to_crs(epsg=target_epsg)
+
+        # --- 2. Determine keep fields (whitelist minus blacklist) ---
+        requested_attrs = [a.strip().lower() for a in keep_attrs.split(",") if a.strip()]
+        available_cols = [c for c in gdf_proj.columns if c != "geometry"]
+        col_lower_map = {c.lower(): c for c in available_cols}
+
+        stripped_sensitive = []
+        final_attrs = []
+        for attr in requested_attrs:
+            if attr in _SENSITIVE_FIELD_BLACKLIST:
+                stripped_sensitive.append(attr)
+            elif attr in col_lower_map:
+                final_attrs.append(col_lower_map[attr])
+
+        # Also detect and report any sensitive fields present in source
+        for col in available_cols:
+            if col.lower() in _SENSITIVE_FIELD_BLACKLIST and col.lower() not in stripped_sensitive:
+                stripped_sensitive.append(col.lower())
+
+        # --- 3. Generate regular grid ---
+        minx, miny, maxx, maxy = gdf_proj.total_bounds
+        if random_offset:
+            rng = np.random.default_rng(42)
+            offset_x = rng.uniform(-actual_grid_size / 2, actual_grid_size / 2)
+            offset_y = rng.uniform(-actual_grid_size / 2, actual_grid_size / 2)
+            minx += offset_x
+            miny += offset_y
+
+        cols_count = int(np.ceil((maxx - minx) / actual_grid_size))
+        rows_count = int(np.ceil((maxy - miny) / actual_grid_size))
+
+        if cols_count * rows_count > 500_000:
+            return json.dumps({
+                "status": "error",
+                "message": f"格网数过多({cols_count * rows_count})，请增大 grid_size_m 或缩小范围",
+            }, ensure_ascii=False)
+
+        grid_cells = []
+        grid_ids = []
+        for row_i in range(rows_count):
+            for col_i in range(cols_count):
+                x0 = minx + col_i * actual_grid_size
+                y0 = miny + row_i * actual_grid_size
+                cell = box(x0, y0, x0 + actual_grid_size, y0 + actual_grid_size)
+                grid_cells.append(cell)
+                col_letter = ""
+                ci = col_i
+                while True:
+                    col_letter = chr(65 + ci % 26) + col_letter
+                    ci = ci // 26 - 1
+                    if ci < 0:
+                        break
+                grid_ids.append(f"{col_letter}-{row_i + 1}")
+
+        grid_gdf = gpd.GeoDataFrame(
+            {"_ANON_GID": grid_ids},
+            geometry=grid_cells,
+            crs=f"EPSG:{target_epsg}",
+        )
+
+        # --- 4. Spatial join + aggregation ---
+        joined = gpd.overlay(gdf_proj, grid_gdf, how="intersection")
+        joined["_cell_area"] = joined.geometry.area
+
+        agg_results = []
+        for grid_id, group in joined.groupby("_ANON_GID"):
+            row_data = {"GRID_ID": grid_id}
+
+            for attr in final_attrs:
+                if attr not in group.columns:
+                    continue
+                if agg_strategy == "mode":
+                    mode_val = group[attr].mode()
+                    row_data[attr] = mode_val.iloc[0] if not mode_val.empty else None
+                elif agg_strategy == "area_weighted":
+                    if group[attr].dtype in ("float64", "int64", "float32", "int32"):
+                        total_area = group["_cell_area"].sum()
+                        if total_area > 0:
+                            row_data[attr] = round(
+                                (group[attr] * group["_cell_area"]).sum() / total_area, 4
+                            )
+                        else:
+                            row_data[attr] = None
+                    else:
+                        mode_val = group[attr].mode()
+                        row_data[attr] = mode_val.iloc[0] if not mode_val.empty else None
+                elif agg_strategy == "topk":
+                    area_by_val = group.groupby(attr)["_cell_area"].sum().sort_values(ascending=False)
+                    total = area_by_val.sum()
+                    top3 = area_by_val.head(3)
+                    row_data[attr] = "|".join(
+                        f"{v}:{round(a / total * 100, 1)}%" for v, a in top3.items()
+                    )
+
+            row_data["Shape_Area"] = round(group["_cell_area"].sum(), 2)
+            agg_results.append(row_data)
+
+        if not agg_results:
+            return json.dumps({"status": "error", "message": "格网聚合结果为空"}, ensure_ascii=False)
+
+        # --- 5. Build output GeoDataFrame ---
+        result_df = gpd.GeoDataFrame(agg_results)
+        grid_lookup = grid_gdf.set_index("_ANON_GID")["geometry"]
+        result_df = gpd.GeoDataFrame(
+            result_df,
+            geometry=result_df["GRID_ID"].map(grid_lookup),
+            crs=f"EPSG:{target_epsg}",
+        )
+
+        # --- 6. Write output ---
+        out_path = _generate_output_path(f"grid_anon_{level}_{int(actual_grid_size)}m", "shp")
+        result_df.to_file(out_path, encoding="utf-8")
+
+        output = {
+            "status": "ok",
+            "output_file": out_path,
+            "grid_count": len(result_df),
+            "grid_size_m": actual_grid_size,
+            "level": level,
+            "crs": f"EPSG:{target_epsg}",
+            "kept_attrs": final_attrs,
+            "stripped_sensitive_fields": sorted(stripped_sensitive),
+            "agg_strategy": agg_strategy,
+            "random_offset_applied": random_offset,
+            "note": (
+                f"脱密等级 {level}：定位精度约 {actual_grid_size / 2:.0f}m，"
+                f"{'可公开发布' if actual_grid_size >= 250 else '仅限内部使用'}"
+            ),
+        }
+        return json.dumps(output, ensure_ascii=False, default=str)
+
+    except Exception as e:
+        logger.exception("grid_anonymize failed")
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
 _ALL_FUNCS = [
     check_gaps,
     check_completeness,
@@ -1222,7 +1432,149 @@ def recommend_data_model(file_path: str, standard_id: str = "") -> str:
         return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
 
 
-_ALL_FUNCS_FINAL = _ALL_FUNCS + [classify_data_sensitivity, recommend_data_model]
+def grid_anonymize_pg(
+    source_table: str,
+    output_table: str,
+    level: str = "L3",
+    grid_size_m: float = 0.0,
+    keep_attrs: str = "dlmc,tbmj",
+    agg_strategy: str = "mode",
+    k_anonymity: int = 5,
+    dp_epsilon: float = 0.0,
+    dp_numeric_fields: str = "",
+    random_offset: bool = True,
+    dry_run: bool = False,
+) -> str:
+    """[脱密工具-DB版] PostGIS 直连格网脱密：对数据库大表做格网化脱密处理。
+
+    适用于行数在 10 万~百万级的 PostGIS 表（如 cq_dltb 101,657 图斑）。
+    使用原生 ST_SquareGrid 实现，不经 GeoPandas，避免 OOM。
+    输出新 PG 表，自动建空间索引并注册到数据血缘。
+
+    Args:
+        source_table: 源表名 (如 "cq_dltb")
+        output_table: 输出表名 (如 "cq_dltb_grid_L3_public")
+        level: 脱密等级 L1(25m)/L2(100m)/L3(250m)/L4(1000m)
+        grid_size_m: 手动指定格网尺寸（米），>0 则覆盖 level
+        keep_attrs: 保留字段（逗号分隔），敏感字段即使列入也会被强制剥离
+        agg_strategy: mode（众数）/ area_weighted（面积加权）/ topk（类型列表）
+        k_anonymity: k-匿名阈值，覆盖源图斑数 < k 的格网会被剔除（默认 5）
+        dp_epsilon: 差分隐私预算，>0 时对 dp_numeric_fields 加拉普拉斯噪声
+        dp_numeric_fields: 需要加 DP 噪声的数值字段（逗号分隔）
+        random_offset: 是否施加格网原点随机偏移
+        dry_run: True 仅返回执行计划，不实际写入
+
+    Returns:
+        JSON 结果: 输出表/行数/k-匿名过滤数/剥离字段/血缘ID/合规验证入口
+    """
+    try:
+        from ..grid_anonymize import grid_anonymize_pg as _impl
+        result = _impl(
+            source_table=source_table,
+            output_table=output_table,
+            level=level,
+            grid_size_m=grid_size_m if grid_size_m > 0 else None,
+            keep_attrs=[a.strip() for a in keep_attrs.split(",") if a.strip()],
+            agg_strategy=agg_strategy,
+            k_anonymity=k_anonymity,
+            dp_epsilon=dp_epsilon if dp_epsilon > 0 else None,
+            dp_numeric_fields=[a.strip() for a in dp_numeric_fields.split(",") if a.strip()],
+            random_offset=random_offset,
+            dry_run=dry_run,
+        )
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        logger.exception("grid_anonymize_pg wrapper failed")
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def verify_anonymization(
+    source_table: str,
+    output_table: str,
+    sample_size: int = 100,
+) -> str:
+    """[验证工具] 对脱密输出做逆向攻击测试，计算再识别风险评分。
+
+    5 项测试: 敏感字段泄露 / 几何反推攻击 / k-匿名违规 / l-多样性 / 综合评分。
+
+    Args:
+        source_table: 源表名
+        output_table: 脱密输出表名
+        sample_size: 几何重建攻击的抽样格网数（默认 100）
+
+    Returns:
+        JSON: 各维度风险评分 (0-100, 越低越好) + 综合再识别风险 + 判决
+    """
+    try:
+        from ..grid_anonymize import verify_anonymization as _impl
+        result = _impl(
+            source_table=source_table,
+            output_table=output_table,
+            sample_size=sample_size,
+        )
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        logger.exception("verify_anonymization wrapper failed")
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+def poi_grid_aggregate_pg(
+    source_table: str,
+    output_table: str,
+    category_column: str,
+    level: str = "L3",
+    grid_size_m: float = 0.0,
+    k_anonymity: int = 5,
+    top_k_categories: int = 5,
+    geom_column: str = "",
+    dry_run: bool = False,
+) -> str:
+    """[脱密工具-POI版] 对点数据（高德 POI/百度 AOI 等）做格网聚合，丢弃所有个体记录。
+
+    与图斑版不同: POI 每点含商户名/电话/精确地址/亚米级坐标等严重 PII,
+    不能保留任何个体记录。本工具只输出每格网内: POI 总数 + Top K 类别计数。
+
+    Args:
+        source_table: POI 源表 (如 "cq_amap_poi_2024")
+        output_table: 输出表 (如 "cq_amap_poi_2024_grid_L3_public")
+        category_column: 分类字段名（可含中文，如 "类型"）
+        level: L1/L2/L3/L4
+        grid_size_m: 手动指定，>0 覆盖 level
+        k_anonymity: 格网 POI 数 < k 则剔除
+        top_k_categories: 每格网保留 Top K 类别
+        geom_column: 几何列名（空则自动检测）
+        dry_run: True 仅返回计划
+
+    Returns:
+        JSON: 输出表 / 行数 / 源POI数 / 保留POI数 / 血缘ID
+    """
+    try:
+        from ..grid_anonymize import poi_grid_aggregate_pg as _impl
+        result = _impl(
+            source_table=source_table,
+            output_table=output_table,
+            category_column=category_column,
+            level=level,
+            grid_size_m=grid_size_m if grid_size_m > 0 else None,
+            k_anonymity=k_anonymity,
+            top_k_categories=top_k_categories,
+            geom_column=geom_column if geom_column else None,
+            dry_run=dry_run,
+        )
+        return json.dumps(result, ensure_ascii=False, default=str)
+    except Exception as e:
+        logger.exception("poi_grid_aggregate_pg wrapper failed")
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+
+
+_ALL_FUNCS_FINAL = _ALL_FUNCS + [
+    classify_data_sensitivity,
+    recommend_data_model,
+    grid_anonymize,
+    grid_anonymize_pg,
+    poi_grid_aggregate_pg,
+    verify_anonymization,
+]
 
 
 class GovernanceToolset(BaseToolset):

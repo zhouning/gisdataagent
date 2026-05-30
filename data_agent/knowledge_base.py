@@ -236,31 +236,14 @@ def _chunk_text(
 
 
 def _get_embeddings(texts: list[str]) -> list[list[float]]:
-    """Get embedding vectors via Gemini text-embedding-004.
+    """Get embedding vectors via configurable embedding gateway.
 
-    Batches requests in groups of _EMBEDDING_BATCH_SIZE.
+    Delegates to embedding_gateway.get_embeddings() which supports
+    gemini, sentence-transformers, and ollama backends.
     Returns empty list on failure (graceful degradation).
     """
-    if not texts:
-        return []
-    try:
-        from google import genai
-        client = genai.Client()
-        all_embeddings = []
-
-        for i in range(0, len(texts), _EMBEDDING_BATCH_SIZE):
-            batch = texts[i:i + _EMBEDDING_BATCH_SIZE]
-            response = client.models.embed_content(
-                model=_EMBEDDING_MODEL,
-                contents=batch,
-            )
-            for emb in response.embeddings:
-                all_embeddings.append(emb.values)
-
-        return all_embeddings
-    except Exception as e:
-        logger.warning("[KB] Embedding API failed: %s", e)
-        return []
+    from .embedding_gateway import get_embeddings
+    return get_embeddings(texts)
 
 
 def _cosine_search(

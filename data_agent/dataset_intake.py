@@ -167,7 +167,13 @@ def _scan_single_table(conn, schema_name: str, table_name: str,
             r = conn.execute(text(
                 "SELECT reltuples::bigint FROM pg_class WHERE relname = :t"
             ), {"t": table_name}).scalar()
-            row_count = max(int(r or 0), 0)
+            val = int(r) if r is not None else -1
+            if val >= 0:
+                row_count = val
+            else:
+                row_count = int(conn.execute(text(
+                    f'SELECT COUNT(*) FROM "{schema_name}"."{table_name}"'
+                )).scalar() or 0)
         except Exception:
             pass
 

@@ -146,6 +146,100 @@ class ModelRegistry:
             "capabilities": ["classification", "extraction", "summarization",
                              "reasoning", "analysis", "generation", "coding"],
         },
+        # --- Online: Gemini 3.x preview (v7 2026-05-12) ---
+        # 3.x is the next generation after 2.5; API model ids use the
+        # `-preview` suffix while in public preview.
+        "gemini-3-flash-preview": {
+            "backend": "gemini",
+            "tier": "standard",
+            "online": True,
+            "cost_per_1k_input": 0.20,
+            "cost_per_1k_output": 0.80,
+            "latency_p50_ms": 1200,
+            "max_context_tokens": 2_000_000,
+            "capabilities": ["reasoning", "analysis", "generation",
+                             "classification", "coding"],
+        },
+        "gemini-3.1-pro-preview": {
+            "backend": "gemini",
+            "tier": "premium",
+            "online": True,
+            "cost_per_1k_input": 1.50,
+            "cost_per_1k_output": 6.00,
+            "latency_p50_ms": 2500,
+            "max_context_tokens": 2_000_000,
+            "capabilities": ["complex_reasoning", "planning", "coding",
+                             "analysis", "generation"],
+        },
+        # Gemini 3.1 Flash-Lite preview — high-volume / low-latency tier in
+        # the 3.1 family. Published pricing places it below Flash / Pro while
+        # retaining function-calling and 1M-token context (per ai.google.dev
+        # model docs, 2026-05).
+        "gemini-3.1-flash-lite-preview": {
+            "backend": "gemini",
+            "tier": "fast",
+            "online": True,
+            "cost_per_1k_input": 0.10,
+            "cost_per_1k_output": 0.40,
+            "latency_p50_ms": 700,
+            "max_context_tokens": 1_000_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "generation", "coding"],
+        },
+        # Gemini 3.5 Flash — GA 2026-05-19 at Google I/O 2026. Replaces
+        # gemini-3-flash-preview; the preview id now points at the prior
+        # generation. Pricing $1.50 / $9.00 per 1M tokens (input/output),
+        # 1M input context / 64K output. Dynamic thinking ON by default
+        # (thinking_level=medium); temperature/top_p/top_k are no longer
+        # recommended in config but still accepted. Knowledge cutoff Jan 2026.
+        "gemini-3.5-flash": {
+            "backend": "gemini",
+            "tier": "standard",
+            "online": True,
+            "cost_per_1k_input": 1.50 / 1000,
+            "cost_per_1k_output": 9.00 / 1000,
+            "latency_p50_ms": 1500,
+            "max_context_tokens": 1_048_576,
+            "capabilities": ["reasoning", "analysis", "generation",
+                             "classification", "coding", "complex_reasoning"],
+        },
+        # --- Online: Qwen 3.6 plus via Aliyun token-plan MaaS ---
+        # 'plus' is the higher-quality tier in the Qwen MaaS hierarchy
+        # (flash < plus < max). Same endpoint as qwen3.6-flash.
+        "qwen3.6-plus": {
+            "backend": "qwen",
+            "tier": "premium",
+            "online": True,
+            "cost_per_1k_input": 4.0 / 1000,
+            "cost_per_1k_output": 12.0 / 1000,
+            "latency_p50_ms": 1800,
+            "max_context_tokens": 1_000_000,
+            "capabilities": ["complex_reasoning", "planning", "coding",
+                             "analysis", "generation"],
+            "api_base": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+            "api_key_env": "DASHSCOPE_API_KEY",
+            "model_id": "openai/qwen3.6-plus",
+        },
+        # --- Online: Qwen 3.7 Max via Aliyun token-plan MaaS (2026-05-21 GA) ---
+        # Flagship model for agent workloads (Terminal-Bench 2.0 = 69.7,
+        # 35-hour autonomous runs with 1000+ tool calls per Alibaba). Top
+        # tier in the Qwen MaaS hierarchy (flash < plus < max). Same
+        # OpenAI-compatible endpoint as qwen3.6-flash/plus. Same NO_PROXY
+        # bypass via _create_qwen_model.
+        "qwen3.7-max": {
+            "backend": "qwen",
+            "tier": "premium",
+            "online": True,
+            "cost_per_1k_input": 12.0 / 1000,
+            "cost_per_1k_output": 36.0 / 1000,
+            "latency_p50_ms": 2500,
+            "max_context_tokens": 1_000_000,
+            "capabilities": ["complex_reasoning", "planning", "coding",
+                             "analysis", "generation"],
+            "api_base": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+            "api_key_env": "DASHSCOPE_API_KEY",
+            "model_id": "openai/qwen3.7-max",
+        },
         # --- Local: Gemma 4 31B via Ollama (v6 Phase 3) ---
         # AI Studio's 16K input-TPM ceiling makes agent-loop NL2SQL impractical
         # for Gemma; the local Ollama deployment removes the rate limit. ADK
@@ -428,6 +522,12 @@ def _create_gemini_model(model_name: str):
     disable the Vertex routing by unsetting GOOGLE_GENAI_USE_VERTEXAI in
     this process (and related project env vars). True Gemini models continue
     to use whichever path the parent environment sets.
+
+    Gemini 3.x family supports thinking_level (minimal|low|medium|high). When
+    env GEMINI_THINKING_LEVEL is set and model_name matches gemini-3*, we
+    return a subclass that injects thinking_config into every LlmRequest. For
+    2.5 family we keep the old thinking_budget path (set via THINKING_BUDGET
+    if needed; current code does not use this).
     """
     from google.adk.models.google_llm import Gemini
     from google.genai import types
@@ -447,6 +547,18 @@ def _create_gemini_model(model_name: str):
                 model_name,
             )
 
+    thinking_level = os.environ.get("GEMINI_THINKING_LEVEL", "").strip().lower()
+    if thinking_level and thinking_level in ("minimal", "low", "medium", "high") \
+            and model_name.startswith("gemini-3"):
+        return _GeminiWithThinkingLevel(
+            model=model_name,
+            thinking_level=thinking_level,
+            retry_options=types.HttpRetryOptions(
+                initial_delay=2.0,
+                attempts=3,
+            ),
+        )
+
     return Gemini(
         model=model_name,
         retry_options=types.HttpRetryOptions(
@@ -454,6 +566,45 @@ def _create_gemini_model(model_name: str):
             attempts=3,
         ),
     )
+
+
+class _GeminiWithThinkingLevel:
+    """Lazy-bound subclass of ADK Gemini that injects thinking_config.
+
+    Defined lazily (not at module import) because the parent class lives in
+    google.adk.models.google_llm.Gemini which imports the full ADK runtime.
+    Constructing on first instantiation keeps cold import cheap.
+    """
+    def __new__(cls, *, model: str, thinking_level: str, retry_options):
+        from typing import Optional
+        from google.adk.models.google_llm import Gemini
+        from google.genai import types
+
+        class GeminiWithThinkingLevel(Gemini):
+            """Gemini wrapper that sets thinking_config.thinking_level on every request."""
+            thinking_level_value: Optional[str] = None
+
+            async def _preprocess_request(self, llm_request):
+                await super()._preprocess_request(llm_request)
+                if not self.thinking_level_value or not llm_request.config:
+                    return
+                existing = getattr(llm_request.config, "thinking_config", None)
+                include = getattr(existing, "include_thoughts", None) if existing else None
+                llm_request.config.thinking_config = types.ThinkingConfig(
+                    thinking_level=self.thinking_level_value,
+                    include_thoughts=include,
+                )
+
+        inst = GeminiWithThinkingLevel(
+            model=model,
+            retry_options=retry_options,
+            thinking_level_value=thinking_level,
+        )
+        logger.info(
+            "Gemini model %s wrapped with thinking_level=%s",
+            model, thinking_level,
+        )
+        return inst
 
 
 def _create_lm_studio_model(model_name: str, info: dict):

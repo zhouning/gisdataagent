@@ -41,7 +41,7 @@ def build_nl2sql_agent():
     # cross-family portability experiments (e.g. running DS R1-R7 prompt on a
     # Gemini model). DO NOT set this in production.
     prompt_family = os.environ.get("NL2SQL_PROMPT_FAMILY_OVERRIDE") or family
-    instruction = prompts_nl2sql.load_system_instruction(prompt_family)
+    instruction = prompts_nl2sql.load_system_instruction(prompt_family, model_name=model_name)
 
     # Propagate prompt_family (NOT the underlying model family) to downstream
     # callers via env var so build_nl2sql_context() and run_cq_eval.run_one()

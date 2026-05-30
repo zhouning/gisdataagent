@@ -1021,6 +1021,14 @@ try:
 except Exception as _obs_err:
     logger.warning("Observability middleware failed: %s", _obs_err)
 
+# --- GZip compression for large JSON responses (catalog lists, GeoJSON) ---
+try:
+    from starlette.middleware.gzip import GZipMiddleware
+    chainlit_app.add_middleware(GZipMiddleware, minimum_size=1024)
+    logger.info("[GZip] response compression enabled (minimum_size=1024)")
+except Exception as _gz_err:
+    logger.warning("GZip middleware failed: %s", _gz_err)
+
 # --- Initialize OpenTelemetry tracing (v15.0) ---
 try:
     from data_agent.otel_tracing import setup_otel_tracing
@@ -1948,9 +1956,11 @@ async def _execute_pipeline(
                                 "is_error": _is_err,
                             })
                             # Prometheus: track tool call
+                            from data_agent.observability import _infer_tool_type as _itt
                             tool_calls.labels(
                                 tool_name=_pending_tool_call["tool_name"],
                                 status="error" if _is_err else "success",
+                                tool_type=_itt(_pending_tool_call["tool_name"]),
                             ).inc()
                             _pending_tool_call = None
                         current_tool_step = None
@@ -3019,8 +3029,34 @@ async def main(message: cl.Message):
 
         # --- Ambiguous Intent: Ask user to clarify ---
         if intent == "AMBIGUOUS":
+            # Part B: proactive capability hints — surface what the system can do
+            # so the user has something concrete to choose from instead of three
+            # abstract pipeline names.
+            hint_text = ""
+            try:
+                from data_agent.toolsets.capability_qa_tools import suggest_for_ambiguous
+                hints = suggest_for_ambiguous(user_text, language=user_lang)
+                if hints:
+                    if user_lang == "en":
+                        lines = ["", "**You might be looking for:**"]
+                        for i, h in enumerate(hints, 1):
+                            line = f"  {i}. **{h['name']}** — {h['description']}"
+                            if h.get("example_prompt"):
+                                line += f"  _e.g._ \"{h['example_prompt']}\""
+                            lines.append(line)
+                    else:
+                        lines = ["", "**您可能想做：**"]
+                        for i, h in enumerate(hints, 1):
+                            line = f"  {i}. **{h['name']}** — {h['description']}"
+                            if h.get("example_prompt"):
+                                line += f"  _示例_: \"{h['example_prompt']}\""
+                            lines.append(line)
+                    hint_text = "\n".join(lines)
+            except Exception as _hint_exc:
+                logger.debug("Capability hints unavailable: %s", _hint_exc)
+
             res = await cl.AskActionMessage(
-                content=t("routing.ambiguous_prompt", reason=f"（{intent_reason}）" if intent_reason else ""),
+                content=t("routing.ambiguous_prompt", reason=f"（{intent_reason}）" if intent_reason else "") + hint_text,
                 actions=[
                     cl.Action(name="general", payload={"value": "GENERAL"}, label=t("action.general")),
                     cl.Action(name="governance", payload={"value": "GOVERNANCE"}, label=t("action.governance")),

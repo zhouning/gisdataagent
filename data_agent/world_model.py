@@ -169,69 +169,148 @@ def encode_scenario(scenario_name: str) -> "torch.Tensor":
 #  LatentDynamicsNet — the world model
 # ====================================================================
 
-def _build_model(z_dim: int = Z_DIM, scenario_dim: int = SCENARIO_DIM, n_context: int = N_CONTEXT):
-    """Build a LatentDynamicsNet instance. Deferred torch import."""
+def _get_torch():
+    """Deferred torch import."""
     import torch
+    return torch
+
+
+def _get_nn():
+    """Deferred torch.nn import."""
     import torch.nn as nn
+    return nn
 
-    class LatentDynamicsNet(nn.Module):
-        """Residual CNN predicting embedding delta: z_{t+1} = z_t + f(z_t, s, ctx).
 
-        Now accepts optional spatial context (DEM elevation + slope) to enable
-        spatially heterogeneous predictions under the same scenario.
-        """
+class LatentDynamicsNet:
+    """Residual CNN predicting embedding delta: z_{t+1} = z_t + f(z_t, s, ctx).
 
-        def __init__(self, z_dim_: int = z_dim, scenario_dim_: int = scenario_dim,
-                     n_context_: int = n_context):
-            super().__init__()
-            self.z_dim = z_dim_
-            self.scenario_dim = scenario_dim_
-            self.n_context = n_context_
-            self.scenario_enc = nn.Sequential(
-                nn.Linear(scenario_dim_, 64),
-                nn.ReLU(),
-                nn.Linear(64, z_dim_),
-            )
-            # Input: z_t (z_dim) + scenario (z_dim) + context (n_context)
-            in_channels = z_dim_ * 2 + n_context_
-            # Dilated convolutions: dilation 1,2,4 gives receptive field 17x17
-            # At 10m resolution: 170m x 170m — captures local urban/road influence
-            self.dynamics = nn.Sequential(
-                nn.Conv2d(in_channels, 128, 3, padding=1, dilation=1),
-                nn.GroupNorm(8, 128),
-                nn.GELU(),
-                nn.Conv2d(128, 128, 3, padding=2, dilation=2),
-                nn.GroupNorm(8, 128),
-                nn.GELU(),
-                nn.Conv2d(128, 128, 3, padding=4, dilation=4),
-                nn.GroupNorm(8, 128),
-                nn.GELU(),
-                nn.Conv2d(128, z_dim_, 1),
-            )
+    Accepts optional spatial context (DEM elevation + slope) to enable
+    spatially heterogeneous predictions under the same scenario.
 
-        def forward(self, z_t: torch.Tensor, scenario: torch.Tensor,
-                    context: torch.Tensor | None = None) -> torch.Tensor:
-            """
-            Args:
-                z_t: [B, z_dim, H, W] current embedding grid
-                scenario: [B, scenario_dim] scenario vector
-                context: [B, n_context, H, W] optional spatial context (DEM, slope)
-                         If None, zeros are used (backward compatible).
-            Returns:
-                z_tp1: [B, z_dim, H, W] predicted next embedding grid
-            """
-            s = self.scenario_enc(scenario)[:, :, None, None].expand_as(z_t)
-            if context is not None:
-                inp = torch.cat([z_t, s, context], dim=1)
-            else:
-                # Backward compatible: zero context
-                B, _, H, W = z_t.shape
-                zeros = torch.zeros(B, self.n_context, H, W, device=z_t.device)
-                inp = torch.cat([z_t, s, zeros], dim=1)
-            delta_z = self.dynamics(inp)
-            return z_t + delta_z  # residual connection
+    This is a lazy-init wrapper: the actual nn.Module is built on first use
+    to avoid importing torch at module load time.
+    """
 
-    return LatentDynamicsNet()
+    _instance = None
+
+    def __new__(cls, z_dim: int = Z_DIM, scenario_dim: int = SCENARIO_DIM,
+                n_context: int = N_CONTEXT):
+        obj = super().__new__(cls)
+        obj.z_dim = z_dim
+        obj.scenario_dim = scenario_dim
+        obj.n_context = n_context
+        obj._module = None
+        return obj
+
+    def _ensure_module(self):
+        if self._module is not None:
+            return
+        nn = _get_nn()
+        torch = _get_torch()
+
+        z_dim_ = self.z_dim
+        scenario_dim_ = self.scenario_dim
+        n_context_ = self.n_context
+
+        class _LatentDynamicsModule(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.z_dim = z_dim_
+                self.scenario_dim = scenario_dim_
+                self.n_context = n_context_
+                self.scenario_enc = nn.Sequential(
+                    nn.Linear(scenario_dim_, 64),
+                    nn.ReLU(),
+                    nn.Linear(64, z_dim_),
+                )
+                in_channels = z_dim_ * 2 + n_context_
+                self.dynamics = nn.Sequential(
+                    nn.Conv2d(in_channels, 128, 3, padding=1, dilation=1),
+                    nn.GroupNorm(8, 128),
+                    nn.GELU(),
+                    nn.Conv2d(128, 128, 3, padding=2, dilation=2),
+                    nn.GroupNorm(8, 128),
+                    nn.GELU(),
+                    nn.Conv2d(128, 128, 3, padding=4, dilation=4),
+                    nn.GroupNorm(8, 128),
+                    nn.GELU(),
+                    nn.Conv2d(128, z_dim_, 1),
+                )
+
+            def forward(self, z_t, scenario, context=None):
+                s = self.scenario_enc(scenario)[:, :, None, None].expand_as(z_t)
+                if context is not None:
+                    inp = torch.cat([z_t, s, context], dim=1)
+                else:
+                    B, _, H, W = z_t.shape
+                    zeros = torch.zeros(B, self.n_context, H, W, device=z_t.device)
+                    inp = torch.cat([z_t, s, zeros], dim=1)
+                delta_z = self.dynamics(inp)
+                return z_t + delta_z
+
+        self._module = _LatentDynamicsModule()
+
+    def __call__(self, z_t, scenario, context=None):
+        self._ensure_module()
+        return self._module(z_t, scenario, context)
+
+    def state_dict(self):
+        self._ensure_module()
+        return self._module.state_dict()
+
+    def load_state_dict(self, sd, **kw):
+        self._ensure_module()
+        return self._module.load_state_dict(sd, **kw)
+
+    def parameters(self):
+        self._ensure_module()
+        return self._module.parameters()
+
+    def eval(self):
+        self._ensure_module()
+        self._module.eval()
+        return self
+
+    def train(self, mode=True):
+        self._ensure_module()
+        self._module.train(mode)
+        return self
+
+    @property
+    def module(self):
+        self._ensure_module()
+        return self._module
+
+
+def _build_model(z_dim: int = Z_DIM, scenario_dim: int = SCENARIO_DIM, n_context: int = N_CONTEXT):
+    """Build a LatentDynamicsNet instance. Backward-compatible entry point."""
+    return LatentDynamicsNet(z_dim, scenario_dim, n_context)
+
+
+def load_pretrained_dynamics(weights_path: str | None = None) -> LatentDynamicsNet:
+    """Load a pre-trained LatentDynamicsNet from disk.
+
+    Args:
+        weights_path: path to .pt file. If None, uses default location.
+
+    Returns:
+        LatentDynamicsNet with loaded weights in eval mode.
+    """
+    import torch
+
+    if weights_path is None:
+        weights_path = os.path.join(
+            os.path.dirname(__file__), "weights", "latent_dynamics_v1.pt"
+        )
+    model = LatentDynamicsNet()
+    if os.path.exists(weights_path):
+        sd = torch.load(weights_path, map_location="cpu", weights_only=True)
+        model.load_state_dict(sd)
+        logger.info("Loaded LatentDynamicsNet from %s", weights_path)
+    else:
+        logger.warning("Weights not found at %s, using random init", weights_path)
+    model.eval()
+    return model
 
 
 # ====================================================================

@@ -59,6 +59,43 @@ _LANG_HINTS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Capability-query shortcut — route meta-questions directly to GENERAL
+# ---------------------------------------------------------------------------
+# These patterns catch "what can you do?" style questions so they skip the
+# Gemini router and never land in AMBIGUOUS. The agent's query_capabilities
+# tool (CapabilityQAToolset) handles the actual explanation.
+_CAPABILITY_QUERY_PATTERNS = [
+    r"你\s*(能|可以|会|支持)\s*(做|干|处理|分析|提供)?\s*(什么|啥|哪些)",
+    r"(有|能|可以|支持)\s*(什么|啥|哪些)\s*(功能|能力|工具|用途)",
+    r"(能不能|可不可以|能否|是否|会不会).{0,20}(做|处理|分析|支持|完成)",
+    r"你\s*(是|做)\s*什么\s*的",
+    r"你\s*是\s*(做|干)?\s*什么\s*的",
+    r"介绍\s*一?下?\s*(你|你的)?\s*(功能|能力|用途)",
+    r"(能力|功能)\s*清单",
+    r"帮助\s*文档",
+    r"\bwhat\s+can\s+you\s+do\b",
+    r"\bwhat\s+are\s+your\s+(capabilities|features|functions)\b",
+    r"\b(list|show)\s+(all\s+)?(capabilities|features|functions|tools)\b",
+    r"\bhelp\b\s*$",
+    r"\bcan\s+you\s+.{0,40}\?",
+]
+
+_CAPABILITY_QUERY_REGEX = re.compile(
+    "|".join(_CAPABILITY_QUERY_PATTERNS), re.IGNORECASE
+)
+
+
+def _is_capability_query(text: str) -> bool:
+    """Detect whether the user is asking about system capabilities."""
+    if not text:
+        return False
+    stripped = text.strip()
+    if not stripped:
+        return False
+    return bool(_CAPABILITY_QUERY_REGEX.search(stripped))
+
+
 def _get_router_model() -> str:
     """Get the configured router model name (v23.0)."""
     try:
@@ -79,6 +116,18 @@ def classify_intent(text: str, previous_pipeline: str = None,
     and language is 'zh'/'en'/'ja'.
     """
     lang = detect_language(text)
+    import time as _time
+    _router_start = _time.perf_counter()
+    # Shortcut: meta-questions about the system itself route directly to GENERAL
+    # so the agent can call query_capabilities (always in CORE_TOOLS) instead of
+    # being misclassified as AMBIGUOUS.
+    if text and _is_capability_query(text) and not image_paths:
+        try:
+            from data_agent.observability import record_intent
+            record_intent("GENERAL", lang, _time.perf_counter() - _router_start)
+        except Exception:
+            pass
+        return ("GENERAL", "capability_query_shortcut", 0, set(), lang, "agentic")
     try:
         prev_hint = ""
         if previous_pipeline:
@@ -216,8 +265,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
         # Record intent metrics (v14.5)
         try:
             from data_agent.observability import record_intent
-            import time as _time
-            record_intent(result_intent, lang, 0)  # duration tracked at caller level
+            record_intent(result_intent, lang, _time.perf_counter() - _router_start)
         except Exception:
             pass
 
@@ -227,6 +275,11 @@ def classify_intent(text: str, previous_pipeline: str = None,
         return (result_intent, reason, router_tokens, tool_cats, lang, execution_mode)
     except Exception as e:
         logger.error("Router error: %s", e)
+        try:
+            from data_agent.observability import record_intent
+            record_intent("GENERAL", lang, _time.perf_counter() - _router_start)
+        except Exception:
+            pass
         return ("GENERAL", "", 0, set(), detect_language(text), "agentic")
 
 

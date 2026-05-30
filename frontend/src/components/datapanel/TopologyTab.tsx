@@ -96,7 +96,7 @@ function AgentNode({ data }: NodeProps) {
         }}>
           {getTypeLabel(d.agentType)}
         </span>
-        <span style={{ fontWeight: 600, fontSize: 11 }}>{d.label}</span>
+        <span style={{ fontWeight: 600, fontSize: 11, color: '#1e293b' }}>{d.label}</span>
         {d.mentionable && (
           <span style={{ color: '#10b981', fontSize: 10, fontWeight: 700 }}>@</span>
         )}

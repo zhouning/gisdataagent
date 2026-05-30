@@ -1047,3 +1047,81 @@ def integrate_statistical_prior(
         logger.exception("integrate_statistical_prior failed")
         return json.dumps({"status": "error", "error": str(e)},
                           ensure_ascii=False)
+
+
+# ====================================================================
+#  Standalone ATT computation for reward calibration
+# ====================================================================
+
+def compute_att(
+    rewards: np.ndarray,
+    treatment: np.ndarray,
+    confounders: np.ndarray,
+    n_strata: int = 5,
+    trim_bounds: tuple[float, float] = (0.05, 0.95),
+) -> dict:
+    """Compute Average Treatment Effect on the Treated via propensity stratification.
+
+    Standalone function for use by the Dual-Layer Dreamer's reward calibrator.
+    Adapted from Paper 7's causal reward calibration methodology.
+
+    Args:
+        rewards: (N,) outcome values (e.g., per-step reward).
+        treatment: (N,) binary treatment indicator (1=high-potential action, 0=low).
+        confounders: (N, D) confounder matrix (global state features, block features).
+        n_strata: number of propensity score strata.
+        trim_bounds: (low, high) for propensity score trimming.
+
+    Returns:
+        dict with keys: att, se, n_treated, n_control, calibration_factor,
+        model_effect (None if not provided externally).
+    """
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.model_selection import cross_val_predict
+
+    n = len(rewards)
+    if n < 20 or treatment.sum() < 5 or (1 - treatment).sum() < 5:
+        return {"att": 0.0, "se": 0.0, "n_treated": int(treatment.sum()),
+                "n_control": int((1 - treatment).sum()),
+                "calibration_factor": 1.0, "model_effect": None}
+
+    gbt = GradientBoostingClassifier(n_estimators=100, max_depth=3, random_state=42)
+    ps = cross_val_predict(gbt, confounders, treatment, cv=5, method="predict_proba")[:, 1]
+
+    lo, hi = trim_bounds
+    mask = (ps >= lo) & (ps <= hi)
+    ps_t = ps[mask]
+    r_t = rewards[mask]
+    t_t = treatment[mask]
+
+    if t_t.sum() < 3 or (1 - t_t).sum() < 3:
+        return {"att": 0.0, "se": 0.0, "n_treated": int(t_t.sum()),
+                "n_control": int((1 - t_t).sum()),
+                "calibration_factor": 1.0, "model_effect": None}
+
+    strata = np.digitize(ps_t, np.linspace(lo, hi, n_strata + 1)[1:-1])
+    att_strata = []
+    for s in range(n_strata):
+        s_mask = strata == s
+        s_treated = s_mask & (t_t == 1)
+        s_control = s_mask & (t_t == 0)
+        if s_treated.sum() > 0 and s_control.sum() > 0:
+            att_s = r_t[s_treated].mean() - r_t[s_control].mean()
+            att_strata.append(att_s)
+
+    if not att_strata:
+        return {"att": 0.0, "se": 0.0, "n_treated": int(t_t.sum()),
+                "n_control": int((1 - t_t).sum()),
+                "calibration_factor": 1.0, "model_effect": None}
+
+    att = float(np.mean(att_strata))
+    se = float(np.std(att_strata) / np.sqrt(len(att_strata))) if len(att_strata) > 1 else 0.0
+
+    return {
+        "att": att,
+        "se": se,
+        "n_treated": int(t_t.sum()),
+        "n_control": int((1 - t_t).sum()),
+        "calibration_factor": 1.0,
+        "model_effect": None,
+    }

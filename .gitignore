@@ -7,7 +7,7 @@ __pycache__/
 # Virtual environment
 .venv/
 
-# Environment variables (sensitive) �?NEVER commit .env files
+# Environment variables (sensitive) �?NEVER commit .env files
 **/.env
 .env
 *.env
@@ -26,7 +26,7 @@ __pycache__/
 /data_agent/*.tif
 /data_agent/*.docx
 
-# Geospatial data files �?NEVER commit data to the repository
+# Geospatial data files �?NEVER commit data to the repository
 *.shp
 *.dbf
 *.shx
@@ -82,8 +82,8 @@ Analysis_Report*.docx
 data_agent/eval_results/
 
 # Chinese-named data files (local test data)
-和平�?000.*
-斑竹�?
+和平�?000.*
+斑竹�?
 政务数据汇交样本*
 斑竹村_治理演示样本*
 
@@ -125,7 +125,7 @@ data_agent/nl2sql_eval_results/
 scripts/nl2sql_bench_bird/run_state.db
 scripts/nl2sql_bench_cq/run_state.db
 
-# Papers and client-facing documents �?NEVER commit
+# Papers and client-facing documents �?NEVER commit
 docs/*paper*.tex
 docs/*paper*.docx
 docs/*paper*.pdf
@@ -144,7 +144,7 @@ docs/technical_paper_*
 docs/surveying_qc_demo_script.*
 docs/surveying_qc_agent_design.*
 
-# PDF and video files �?NEVER commit (may contain sensitive data)
+# PDF and video files �?NEVER commit (may contain sensitive data)
 *.pdf
 *.mp4
 *.avi
@@ -152,14 +152,14 @@ docs/surveying_qc_agent_design.*
 *.wmv
 !docs/dita/out/pdf-css-html5/data-agent-user-guide.pdf
 
-# Log files �?NEVER commit (runtime artifacts)
+# Log files �?NEVER commit (runtime artifacts)
 *.log
 
 # Binary/archive artifacts
 *.pyz
 .files/
 
-# Local data samples �?NEVER commit (sensitive/large)
+# Local data samples �?NEVER commit (sensitive/large)
 01*/
 
 # AlphaEarth sub-projects and docs (separate repos)
@@ -193,8 +193,8 @@ create_satellites.sql
 satellites.json
 pdf_text.txt
 
-# Client-facing architecture docs �?NEVER commit (sensitive)
-上海测绘�?.md
+# Client-facing architecture docs �?NEVER commit (sensitive)
+上海测绘�?.md
 docs/华能新能源_行动计划.md
 docs/传统数据平台智能体化策略分析.docx
 docs/治理分析报告_*.docx
@@ -209,7 +209,7 @@ GEMINI.md
 # Node lockfile (root level, not frontend/)
 /package-lock.json
 
-# Papers / submissions / cover letters �?NEVER commit to public remote
+# Papers / submissions / cover letters �?NEVER commit to public remote
 submission/
 docs/nl2semantic2sql_*.pdf
 docs/nl2semantic2sql_*.tex
@@ -227,3 +227,149 @@ docs/*cover_letter*
 docs/*manuscript*
 docs/*response_to_reviewers*
 docs/causal_inference_paper*docs/paper*.tex
+
+# =============================================================
+# Additions 2026-05-30 — clean working tree before push
+# =============================================================
+
+# DRL experiment artifacts (huge, ~88GB total)
+results_dual_dreamer_real*/
+
+# Local datasets / workspace (multi-GB)
+/data/
+/workspace/
+
+# SIGSPATIAL public-repo packaging artifacts (paper companion repo)
+.env.sigspatial.sample
+.gitignore.sigspatial
+.zenodo.json
+CHANGELOG.sigspatial.md
+README.sigspatial.md
+LICENSE
+CONTRIBUTING.md
+SECURITY.md
+docker-compose.sigspatial.yml
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE.md
+.github/workflows/sigspatial-ci.yml
+docs/sigspatial2026_*
+docs/IJGIS_Review_*
+docs/SCI_Review_*
+docs/Review_Report_*
+docs/nl2semantic2sql_review_report*
+docs/nl2semantic2sql_roadmap_v1_verbose*
+ijgis_peer_review_report_*.md
+
+# Paper-related docs (analysis, audits, attribution)
+docs/v6_headline_audit.md
+docs/v7_*.md
+docs/v7_p1_failure_*
+docs/v7_business_review_*
+docs/v7_cross_family_*
+docs/v7_gemini35_*
+docs/v7_iter1_*
+docs/v7_minimod_*
+docs/v7_three_factor_*
+docs/case_study_dltb_semantic_config.md
+docs/distinct_guard_findings.md
+docs/dltb_semantic_diff.md
+docs/schema_mapper_ablation_findings.md
+docs/spatial_memory_alignment_analysis.md
+docs/cac_intelligent_agent_policy_alignment_*
+docs/databricks_genie_inspiration_*
+docs/openai_inhouse_data_agent_comparison.md
+docs/deepeye_benchmark_analysis.md
+docs/hermes_agent_benchmark_analysis.md
+docs/ai_coding_productivity_report.md
+docs/session_footprint_*
+docs/nl2sql_v6_grounding_reversal_*.json
+docs/nl2sql_model_profile_architecture.md
+docs/eval/
+docs/client_deliverables/
+docs/shanghai-proposal-v2/
+docs/superpowers/specs/2026-04-18-shanghai-surveying-institute-*
+docs/superpowers/specs/2026-04-18-技术写作课程作业*
+docs/superpowers/plans/2026-04-18-drl-course-manual.md
+docs/superpowers/plans/2026-04-18-shanghai-surveying-institute-*
+docs/superpowers/std_platform_roadmap_review_*
+
+# Public-facing / client docs (sensitive)
+Unstructured_Data_Analysis_Report.md
+上海测绘院_*.md
+2026初期技术洞察*.xlsx
+docs/技术四看刷新建议稿_*.md
+docs/figures/architecture.*
+docs/figures/architecture_standalone.*
+docs/figures/deployment.*
+docs/figures/deployment_standalone.*
+docs/architecture.md
+docs/extension.md
+docs/faq.md
+docs/mcp.md
+docs/troubleshooting.md
+docs/v24_changelog.md
+docs/write_cn.py
+
+# 数据标准 / clauses tree (local domain content)
+数据标准/
+
+# Sensitive files
+data_agent/cookies.txt
+test_huawei.sde
+data_agent/.chainlit/
+
+# Top-level exploration / debug scripts (one-off)
+/_a_*.py
+/_check_*.py
+/_test_*.py
+/_verify_*.py
+/_diag_*.py
+/_seed_*.py
+/_reset_*.py
+/_cleanup_*.py
+/_recheck_*.txt
+/check_local_db.py
+/compare_cq_tables.py
+/create_pg_schema.py
+/describe_img.py
+/fix_hw_tables.py
+/import_*.py
+/import_log.txt
+/list_models.py
+/patch_huawei_*.py
+/scan_unstructured.py
+/verify_poi.py
+/cq_declassify_report.json
+/cq_*_dump.sql
+/tmp_*.sql
+/tmp_verify*.sql
+bash.exe.stackdump
+nl2semantic2sql_cross_domain_paper.aux
+nl2semantic2sql_cross_domain_paper.out
+docs/sigspatial2026_demo_paper.aux
+docs/sigspatial2026_demo_paper.out
+docs/sigspatial2026_industry_paper.aux
+docs/sigspatial2026_industry_paper.out
+docs/sigspatial2026_poster.aux
+docs/sigspatial2026_poster.nav
+docs/sigspatial2026_poster.out
+docs/sigspatial2026_poster.snm
+docs/sigspatial2026_poster.tex
+docs/sigspatial2026_poster.toc
+
+# Frontend test scratch
+frontend/_test_turndown.cjs
+
+# Paper-only eval tooling
+scripts/paper_eval/
+
+# Scripts: output / scratch data files
+scripts/cols_check.json
+scripts/data_sample.json
+scripts/new_questions_part1.json
+scripts/questions_test.json
+scripts/test_write.txt
+scripts/nl2sql_bench_cq/_debug_enh.py
+scripts/nl2sql_bench_cq/_dryrun_ablation.py
+scripts/nl2sql_bench_cq/_fullrun_ablation.py
+

@@ -449,6 +449,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             continue;
           }
 
+          // FlatGeobuf layers are only supported by the 3D deck.gl view.
+          // Any FGB layer forces a hand-off to 3D so we never blow up Leaflet.
+          if (layerConfig.type === 'fgb') {
+            setViewMode('3d');
+            return;
+          }
+
           let geojsonData = layerConfig.geojsonData;
 
           // Fetch GeoJSON if we only have a filename

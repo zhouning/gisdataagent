@@ -45,11 +45,13 @@ from scripts.nl2sql_bench_baselines.din_sql.din_sql_runner import predict as din
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="DIN-SQL baseline on GIS 20 Chongqing benchmark"
+        description="DIN-SQL baseline on GIS Chongqing benchmark"
     )
     p.add_argument("--out-dir", default=None)
     p.add_argument("--max-retries", type=int, default=1,
                    help="DIN-SQL self-correction retries (default 1)")
+    p.add_argument("--benchmark", default=None,
+                   help="Path to benchmark JSON (default: 20-question benchmark)")
     return p
 
 
@@ -141,8 +143,9 @@ def main() -> int:
     p = build_arg_parser()
     args = p.parse_args()
 
-    questions = load_questions()
-    print(f"[cq-din-sql] Loaded {len(questions)} questions")
+    bench_path = Path(args.benchmark) if args.benchmark else None
+    questions = load_questions(bench_path)
+    print(f"[cq-din-sql] Loaded {len(questions)} questions" + (f" from {bench_path.name}" if bench_path else ""))
 
     out_dir = Path(args.out_dir) if args.out_dir else (
         RESULTS_ROOT / f"cq_din_sql_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"

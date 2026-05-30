@@ -485,7 +485,6 @@ _CANONICAL_FIELDS: dict[str, str] = {
     "zoning": "分区规划 / zoning planning regulation",
 }
 
-_EMBEDDING_MODEL = "text-embedding-004"
 _SEMANTIC_THRESHOLD = 0.72
 _schema_embedding_cache: dict[str, list[float]] = {}
 
@@ -495,14 +494,10 @@ def _get_schema_embeddings(texts: list[str]) -> list[list[float]]:
     uncached = [t for t in texts if t not in _schema_embedding_cache]
     if uncached:
         try:
-            from google import genai
-            client = genai.Client()
-            response = client.models.embed_content(
-                model=_EMBEDDING_MODEL,
-                contents=uncached,
-            )
-            for txt, emb in zip(uncached, response.embeddings):
-                _schema_embedding_cache[txt] = emb.values
+            from .embedding_gateway import get_embeddings
+            results = get_embeddings(uncached)
+            for txt, emb in zip(uncached, results):
+                _schema_embedding_cache[txt] = emb
         except Exception as e:
             logger.debug("Schema embedding API failed: %s — skipping semantic mapping", e)
             return []

@@ -14,11 +14,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _embedding_cache: dict[str, list[float]] = {}
-_EMBEDDING_MODEL = "text-embedding-004"
 
 
 def _get_embeddings(texts: list[str]) -> list[list[float]]:
-    """Get embedding vectors for field names using Gemini embedding API.
+    """Get embedding vectors for field names via embedding gateway.
 
     Uses module-level cache to avoid redundant API calls.
     Returns empty list on failure (graceful degradation).
@@ -26,14 +25,10 @@ def _get_embeddings(texts: list[str]) -> list[list[float]]:
     uncached = [t for t in texts if t not in _embedding_cache]
     if uncached:
         try:
-            from google import genai
-            client = genai.Client()
-            response = client.models.embed_content(
-                model=_EMBEDDING_MODEL,
-                contents=uncached,
-            )
-            for txt, emb in zip(uncached, response.embeddings):
-                _embedding_cache[txt] = emb.values
+            from ..embedding_gateway import get_embeddings
+            results = get_embeddings(uncached)
+            for txt, emb in zip(uncached, results):
+                _embedding_cache[txt] = emb
         except Exception as e:
             logger.warning("Embedding API failed: %s — skipping embedding tier", e)
             return []

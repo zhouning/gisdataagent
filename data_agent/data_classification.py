@@ -87,7 +87,12 @@ def classify_asset(file_path: str) -> dict:
 
 
 def set_asset_sensitivity(asset_id: int, level: str, username: str) -> dict:
-    """Update data catalog asset with sensitivity level."""
+    """Update data asset with sensitivity level.
+
+    Writes to ``agent_data_assets.business_metadata.classification.sensitivity``
+    (``agent_data_catalog`` is a read-only view that doesn't expose a plain
+    ``sensitivity_level`` column).
+    """
     if level not in SENSITIVITY_LEVELS:
         return {"status": "error", "message": f"Invalid level. Must be one of {SENSITIVITY_LEVELS}"}
     try:
@@ -97,10 +102,22 @@ def set_asset_sensitivity(asset_id: int, level: str, username: str) -> dict:
         if not engine:
             return {"status": "error", "message": "Database unavailable"}
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "UPDATE agent_data_catalog SET sensitivity_level = :level, updated_at = NOW() "
-                "WHERE id = :id AND (owner_username = :owner OR :owner = 'admin')"
-            ), {"level": level, "id": asset_id, "owner": username})
+            result = conn.execute(text("""
+                UPDATE agent_data_assets
+                SET business_metadata = jsonb_set(
+                        jsonb_set(
+                            COALESCE(business_metadata, '{}'::jsonb),
+                            '{classification}',
+                            COALESCE(business_metadata->'classification', '{}'::jsonb),
+                            true
+                        ),
+                        '{classification,sensitivity}',
+                        to_jsonb(CAST(:level AS text)),
+                        true
+                    ),
+                    updated_at = NOW()
+                WHERE id = :id AND (owner_username = :owner OR :owner = 'admin')
+            """), {"level": level, "id": asset_id, "owner": username})
             conn.commit()
             if result.rowcount == 0:
                 return {"status": "error", "message": "Asset not found or no permission"}

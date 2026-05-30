@@ -38,3 +38,4 @@ from .operator_tools import OperatorToolset
 from .evolution_tools import ToolEvolutionToolset
 from .domain_standard_tools import DomainStandardToolset
 from .nl2sql_enhanced_tools import NL2SQLEnhancedToolset
+from .world_model_v2_tools import WorldModelV2Toolset

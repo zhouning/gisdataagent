@@ -52,14 +52,29 @@ export default function AgentsTab() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return targets.filter(t => {
-      if (filter !== 'all' && t.type !== filter) return false;
-      if (!q) return true;
-      if (t.handle.toLowerCase().includes(q)) return true;
-      if (t.display_name.toLowerCase().includes(q)) return true;
-      if (t.aliases.some(a => a.toLowerCase().includes(q))) return true;
-      return false;
-    });
+    const typeOrder: Record<FilterKey, number> = {
+      all: 99,
+      pipeline: 0,
+      sub_agent: 1,
+      adk_skill: 2,
+      custom_skill: 3,
+    };
+    return targets
+      .filter(t => {
+        if (filter !== 'all' && t.type !== filter) return false;
+        if (!q) return true;
+        if (t.handle.toLowerCase().includes(q)) return true;
+        if (t.display_name.toLowerCase().includes(q)) return true;
+        if (t.aliases.some(a => a.toLowerCase().includes(q))) return true;
+        return false;
+      })
+      .sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        const at = typeOrder[a.type] ?? 99;
+        const bt = typeOrder[b.type] ?? 99;
+        if (at !== bt) return at - bt;
+        return (a.display_name || a.handle).localeCompare(b.display_name || b.handle, 'zh-CN');
+      });
   }, [targets, filter, search]);
 
   if (loading) return <div className="empty-state">加载中...</div>;

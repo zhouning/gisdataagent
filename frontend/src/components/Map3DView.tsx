@@ -133,18 +133,24 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
         if (layer.geojsonData) {
           newData[layer.name] = layer.geojsonData;
         } else if (layer.type === 'fgb' && layer.fgb) {
-          // FlatGeobuf: fetch and convert to GeoJSON
+          // FlatGeobuf: fetch the whole file with auth cookies, then deserialize
+          // from a Uint8Array. Streaming via `deserialize(url)` is unusable here
+          // because flatgeobuf's http-reader doesn't pass `credentials:'include'`
+          // and our /api/user/files route is JWT-gated.
           try {
             const { deserialize } = await import('flatgeobuf/lib/mjs/geojson.js');
             const fgbUrl = `/api/user/files/${layer.fgb}`;
-            const iter = deserialize(fgbUrl);
-            const features: any[] = [];
-            for await (const feature of iter) {
-              features.push(feature);
+            const resp = await fetch(fgbUrl, { credentials: 'include' });
+            if (!resp.ok) {
+              console.warn(`[Map3DView] FGB fetch failed ${layer.fgb}: HTTP ${resp.status}`);
+              continue;
             }
-            newData[layer.name] = { type: 'FeatureCollection', features };
+            const buf = new Uint8Array(await resp.arrayBuffer());
+            const fc: any = deserialize(buf);
+            // deserialize(Uint8Array) returns a FeatureCollection
+            newData[layer.name] = fc;
           } catch (e) {
-            console.warn(`Failed to fetch FlatGeobuf for layer ${layer.name}:`, e);
+            console.warn(`[Map3DView] Failed to parse FlatGeobuf ${layer.fgb}:`, e);
           }
         } else if (layer.geojson) {
           try {
@@ -343,8 +349,11 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
         });
       }
 
-      // Categorized layer (per-category color from category_colors/style_map)
-      if (layer.type === 'categorized') {
+      // Categorized layer (per-category color from category_colors/style_map).
+      // FGB layers that carry category_column/style_map also render here — the
+      // fetch step above has already populated data from the FlatGeobuf buffer.
+      if (layer.type === 'categorized' ||
+          (layer.type === 'fgb' && (layer.category_column || layer.style_map))) {
         const catCol = layer.category_column || '';
         const catColors = layer.category_colors || {};
         const styleMap = layer.style_map || {};

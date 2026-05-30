@@ -231,3 +231,51 @@ class TestMentionTargetsAPI(unittest.TestCase):
         gov = next((t for t in body["targets"] if t["handle"] == "Governance"), None)
         self.assertIsNotNone(gov)
         self.assertFalse(gov["allowed"])
+
+
+class TestSubAgentDirectProgress(unittest.TestCase):
+    """Progress rendering for sub_agent_direct pipeline type."""
+
+    def test_single_agent_progress_no_extra_stages(self):
+        from data_agent.pipeline_helpers import build_progress_content
+        import time
+
+        now = time.time()
+        stage_timings = [
+            {"name": "MentionNL2SQL", "label": "NL2SQL 查询",
+             "start": now - 5, "end": now}
+        ]
+        agent_labels = {"MentionNL2SQL": "NL2SQL 查询"}
+        content = build_progress_content(
+            pipeline_label="@NL2SQL (直接调用)",
+            pipeline_type="sub_agent_direct",
+            stages=[],
+            stage_timings=stage_timings,
+            agent_labels=agent_labels,
+            is_complete=True,
+            total_duration=5.0,
+        )
+        self.assertIn("NL2SQL", content)
+        self.assertNotIn("数据处理与分析", content)
+        self.assertNotIn("生成可视化", content)
+        self.assertNotIn("生成分析总结", content)
+
+    def test_in_progress_renders_running_indicator(self):
+        from data_agent.pipeline_helpers import build_progress_content
+        import time
+
+        now = time.time()
+        stage_timings = [
+            {"name": "MentionNL2SQL", "label": "NL2SQL 查询",
+             "start": now - 2, "end": None}
+        ]
+        content = build_progress_content(
+            pipeline_label="@NL2SQL (直接调用)",
+            pipeline_type="sub_agent_direct",
+            stages=[],
+            stage_timings=stage_timings,
+            agent_labels={},
+            is_complete=False,
+        )
+        self.assertIn("NL2SQL", content)
+        self.assertIn("▶", content)

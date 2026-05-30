@@ -133,9 +133,9 @@ class TestMetrics(unittest.TestCase):
         self.assertEqual(after, before + 1)
 
     def test_tool_calls_counter(self):
-        before = tool_calls.labels(tool_name="test_tool", status="success")._value.get()
-        tool_calls.labels(tool_name="test_tool", status="success").inc()
-        after = tool_calls.labels(tool_name="test_tool", status="success")._value.get()
+        before = tool_calls.labels(tool_name="test_tool", status="success", tool_type="builtin")._value.get()
+        tool_calls.labels(tool_name="test_tool", status="success", tool_type="builtin").inc()
+        after = tool_calls.labels(tool_name="test_tool", status="success", tool_type="builtin")._value.get()
         self.assertEqual(after, before + 1)
 
     def test_auth_events_counter(self):

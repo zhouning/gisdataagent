@@ -211,6 +211,35 @@ def compare_results(gold_res, pred_res, rel_tol=1e-3, gold_sql: str = "") -> tup
             if math.isclose(float(vg), float(vp), rel_tol=rel_tol):
                 return True, "match (float)"
             return False, f"value: gold={vg} pred={vp}"
+        # L2 numeric-in-prose extraction:
+        # Some models wrap scalar answers in a string template, e.g.
+        #   pred_sql = SELECT 'The count is ' || COUNT(*) AS result FROM ...
+        # → pred=='The count is 30096' but gold==30096. The SQL ran correctly;
+        # only the output framing differs. Extract the numeric literal from the
+        # string side and re-compare with float tolerance. Anchored to single-
+        # value comparisons only, so it cannot incorrectly merge unrelated rows.
+        if isinstance(vg, (int, float)) and isinstance(vp, str):
+            import re as _re
+            nums = _re.findall(r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", vp)
+            if len(nums) == 1:
+                try:
+                    extracted = float(nums[0])
+                    import math
+                    if math.isclose(float(vg), extracted, rel_tol=rel_tol):
+                        return True, f"match (numeric-in-prose: extracted {extracted} from '{vp[:40]}')"
+                except (ValueError, OverflowError):
+                    pass
+        if isinstance(vp, (int, float)) and isinstance(vg, str):
+            import re as _re
+            nums = _re.findall(r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", vg)
+            if len(nums) == 1:
+                try:
+                    extracted = float(nums[0])
+                    import math
+                    if math.isclose(extracted, float(vp), rel_tol=rel_tol):
+                        return True, f"match (numeric-in-prose: extracted {extracted} from gold '{vg[:40]}')"
+                except (ValueError, OverflowError):
+                    pass
         if str(vg) == str(vp):
             return True, "match (str)"
         return False, f"value: gold={vg} pred={vp}"
