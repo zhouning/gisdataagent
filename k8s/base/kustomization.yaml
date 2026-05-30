@@ -23,6 +23,9 @@ resources:
   - app-service.yaml
   - outbox-worker.yaml
 
+  # ----- Local LLM backend (host Ollama) -----
+  - ollama-service.yaml
+
   # ----- Surveying QC subsystems (cv / cad / reference-data) -----
   - qc-subsystems.yaml
 

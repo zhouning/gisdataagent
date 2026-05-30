@@ -268,6 +268,15 @@ class ModelRegistry:
     def _ensure_initialized(cls):
         if not cls.models:
             cls.models = dict(cls._builtin_models)
+            # Allow OLLAMA_API_BASE env to override the hardcoded api_base on
+            # any builtin Ollama-backed model. K8s deployments set this to
+            # http://ollama:11434 (ExternalName Service pointing at the host).
+            ollama_base_env = os.environ.get("OLLAMA_API_BASE")
+            if ollama_base_env:
+                for name, cfg in cls.models.items():
+                    model_id = cfg.get("model_id", "")
+                    if model_id.startswith(("ollama/", "ollama_chat/")):
+                        cfg["api_base"] = ollama_base_env
             # Auto-register LM Studio model from env var
             lm_model = os.environ.get("LM_STUDIO_MODEL")
             if lm_model and lm_model not in cls.models:

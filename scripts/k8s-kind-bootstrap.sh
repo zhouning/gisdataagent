@@ -38,6 +38,44 @@ require_cmd() {
 }
 
 # ----------------------------------------------------------------------------
+# Ollama precheck — verify the host Ollama is reachable from the kind network
+# ----------------------------------------------------------------------------
+ollama_check() {
+    log "checking host Ollama availability"
+    local node_container
+    node_container=$(docker ps --filter "name=${CLUSTER_NAME}-control-plane" --format '{{.Names}}' | head -1)
+    if [ -z "$node_container" ]; then
+        warn "kind control-plane container not found, skipping ollama check"
+        return 0
+    fi
+    if docker exec "$node_container" sh -c \
+            "wget -qO- --timeout=5 http://host.docker.internal:11434/api/tags 2>/dev/null" >/dev/null 2>&1; then
+        ok "host Ollama reachable at host.docker.internal:11434"
+        local tags_json
+        tags_json=$(docker exec "$node_container" sh -c \
+            "wget -qO- --timeout=5 http://host.docker.internal:11434/api/tags" 2>/dev/null || true)
+        if [ -n "$tags_json" ]; then
+            local models
+            models=$(echo "$tags_json" | python3 -c \
+                "import sys, json; d=json.load(sys.stdin); print(','.join(m['name'] for m in d.get('models', [])))" \
+                2>/dev/null || echo "")
+            if [ -n "$models" ]; then
+                log "  available models: $models"
+            else
+                warn "  no models pulled — run: docker exec ollama ollama pull gemma3:27b"
+            fi
+        fi
+    else
+        warn "host Ollama NOT reachable at host.docker.internal:11434"
+        warn "  Docker Desktop maps host.docker.internal automatically; ensure:"
+        warn "    1. Ollama container is running:    docker ps | grep ollama"
+        warn "    2. Ollama listens on 0.0.0.0:      docker logs ollama | grep '0.0.0.0:11434'"
+        warn "    3. Models are pulled:              docker exec ollama ollama list"
+        warn "  Deployment will continue; app pods will fall back to GOOGLE_API_KEY if set."
+    fi
+}
+
+# ----------------------------------------------------------------------------
 # Cluster lifecycle
 # ----------------------------------------------------------------------------
 cluster_exists() {
@@ -154,11 +192,12 @@ status() {
 }
 
 # ----------------------------------------------------------------------------
-# Reset = down + up + build + deploy
+# Reset = down + up + ollama check + build + deploy
 # ----------------------------------------------------------------------------
 reset() {
     cluster_down
     cluster_up
+    ollama_check
     build_all
     deploy
 }
@@ -172,16 +211,17 @@ require_cmd kubectl
 
 cmd="${1:-up}"
 case "$cmd" in
-    up)        cluster_up && build_all && deploy ;;
+    up)        cluster_up && ollama_check && build_all && deploy ;;
     build)     build_all ;;
     deploy)    deploy ;;
     forward)   forward ;;
     status)    status ;;
+    ollama)    ollama_check ;;
     down)      cluster_down ;;
     reset)     reset ;;
     *)
         echo "Unknown command: $cmd"
-        echo "Usage: $0 {up|build|deploy|forward|status|down|reset}"
+        echo "Usage: $0 {up|build|deploy|forward|status|ollama|down|reset}"
         exit 1
         ;;
 esac

@@ -1,0 +1,42 @@
+# ExternalName Service: routes in-cluster traffic for `ollama:11434` to the
+# host's Ollama container running on macOS Docker Desktop.
+#
+# Why ExternalName instead of an in-cluster Ollama Deployment:
+#   - macOS Docker Desktop can't pass-through Apple Silicon GPU to containers
+#     that aren't run directly on the Docker Desktop VM. A pod-hosted Ollama
+#     would fall back to CPU and burn ~30s per request on Gemma 3 27B.
+#   - The user's Ollama container is already running in Docker Desktop with
+#     Metal acceleration; we just need K8s pods to reach it.
+#
+# Why this works on kind:
+#   - kind nodes are themselves containers in Docker Desktop's bridge network.
+#   - Docker Desktop adds `host.docker.internal` to /etc/hosts inside every
+#     container in that network, resolving to the host gateway.
+#   - An ExternalName Service makes K8s DNS return that hostname when a pod
+#     queries `ollama.gis-agent.svc.cluster.local`, so the app can use a
+#     stable in-cluster URL (`http://ollama:11434`) without baking the host
+#     bridge into env vars.
+#
+# When you move to a real cluster:
+#   - Run Ollama as a real Deployment + Service (drop the ExternalName) OR
+#   - Update `externalName` to whatever the real Ollama endpoint is.
+#   - The app config doesn't need to change — it always talks to "ollama".
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/component: llm-backend
+spec:
+  type: ExternalName
+  # On Docker Desktop this resolves to the host. Other platforms may need
+  # `host.minikube.internal` or a fixed IP — patch in the appropriate
+  # overlay if you change kind for something else.
+  externalName: host.docker.internal
+  ports:
+    - port: 11434
+      targetPort: 11434
+      protocol: TCP
+      name: api

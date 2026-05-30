@@ -1,9 +1,10 @@
 """
 Intent Router — Semantic classification of user queries into pipeline categories.
 
-Extracted from app.py (S-1 refactoring). Uses Gemini 2.0 Flash for low-latency
-intent classification with multimodal support (text + images + PDF context).
-v14.3: Added multi-language detection (zh/en/ja).
+Extracted from app.py (S-1 refactoring). Uses Gemini 2.0 Flash by default,
+but falls back to any LiteLLM-supported model (Ollama / vLLM / OpenAI-
+compatible) when ROUTER_MODEL points at a non-Gemini backend. v14.3 adds
+multi-language detection (zh/en/ja); v25.x adds local-LLM routing.
 """
 import logging
 import os
@@ -14,8 +15,78 @@ from google.genai import types
 
 logger = logging.getLogger("data_agent.intent_router")
 
-# Dedicated GenAI client for routing (outside ADK agents)
-_router_client = genai_client.Client()
+# Dedicated GenAI client for routing (outside ADK agents). Initialised lazily
+# so a fully-local deployment with no GOOGLE_API_KEY doesn't fail at import
+# time -- the router falls through to the LiteLLM path instead.
+_router_client = None
+
+
+def _is_local_router_backend(model_name: str) -> bool:
+    """Return True iff the configured router model needs the LiteLLM path
+    (Ollama / vLLM / OpenAI-compatible) rather than Google GenAI."""
+    if not model_name:
+        return False
+    if model_name.startswith(("ollama/", "ollama_chat/", "openai/")):
+        return True
+    # Look up the registered model in ModelRegistry; backend != google_genai
+    # also routes through LiteLLM.
+    try:
+        from data_agent.model_gateway import ModelRegistry
+        info = ModelRegistry.get_model_info(model_name)
+        backend = (info or {}).get("backend", "")
+        if backend in ("litellm", "ollama", "vllm", "lm_studio", "openai"):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _ensure_genai_client():
+    global _router_client
+    if _router_client is None:
+        _router_client = genai_client.Client()
+    return _router_client
+
+
+def _route_via_litellm(prompt: str, model_name: str, image_paths=None) -> tuple[str, int, int]:
+    """Run a single completion through LiteLLM. Returns (text, in_tokens, out_tokens).
+
+    Images are dropped on the LiteLLM path: most local Ollama-served models
+    (gemma2/3/4) don't support vision, and the router prompt's text-only
+    rules are sufficient for classification. Multimodal routing stays on the
+    Gemini path.
+    """
+    if image_paths:
+        logger.debug("[Router] LiteLLM backend doesn't accept images; ignoring %d image(s)",
+                     len(image_paths))
+    import litellm
+    # Resolve the LiteLLM-side model id and base URL from the registry.
+    api_base = None
+    effective_id = model_name
+    try:
+        from data_agent.model_gateway import ModelRegistry
+        info = ModelRegistry.get_model_info(model_name) or {}
+        effective_id = info.get("model_id", model_name)
+        api_base = info.get("api_base") or os.environ.get("OLLAMA_API_BASE")
+    except Exception:
+        api_base = os.environ.get("OLLAMA_API_BASE")
+
+    kwargs = {
+        "model": effective_id,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.0,
+        "max_tokens": 256,
+        "timeout": 30,
+    }
+    if api_base:
+        kwargs["api_base"] = api_base
+
+    resp = litellm.completion(**kwargs)
+    text_out = resp.choices[0].message.content or ""
+    usage = getattr(resp, "usage", None)
+    in_tok = getattr(usage, "prompt_tokens", 0) if usage else 0
+    out_tok = getattr(usage, "completion_tokens", 0) if usage else 0
+    return text_out.strip(), in_tok, out_tok
 
 
 # ---------------------------------------------------------------------------
@@ -195,20 +266,36 @@ def classify_intent(text: str, previous_pipeline: str = None,
                 logger.debug("Could not load images for router: %s", img_err)
 
         try:
-            response = _router_client.models.generate_content(
-                model=_get_router_model(),
-                contents=content_parts,
-                config=types.GenerateContentConfig(
-                    http_options=types.HttpOptions(
-                        timeout=30_000,  # 30s
-                        retry_options=types.HttpRetryOptions(
-                            initial_delay=2.0,
-                            attempts=3,
+            router_model_name = _get_router_model()
+            response = None
+            if _is_local_router_backend(router_model_name):
+                # Pure local backend (Ollama/vLLM/OpenAI-compatible). Skip the
+                # Gemini Client and don't fall back to DeepSeek either — when
+                # the operator opts into local LLM, network round-trips to
+                # external providers are explicitly off the table.
+                _text_prompt = content_parts[0] if isinstance(content_parts[0], str) else str(content_parts[0])
+                raw, _in_tok, _out_tok = _route_via_litellm(
+                    _text_prompt, router_model_name, image_paths=image_paths,
+                )
+                router_input_tokens = _in_tok
+                router_output_tokens = _out_tok
+            else:
+                response = _ensure_genai_client().models.generate_content(
+                    model=router_model_name,
+                    contents=content_parts,
+                    config=types.GenerateContentConfig(
+                        http_options=types.HttpOptions(
+                            timeout=30_000,  # 30s
+                            retry_options=types.HttpRetryOptions(
+                                initial_delay=2.0,
+                                attempts=3,
+                            ),
                         ),
                     ),
-                ),
-            )
-            raw = response.text.strip()
+                )
+                raw = response.text.strip()
+                router_input_tokens = 0
+                router_output_tokens = 0
         except Exception as _gemini_err:
             _err_str = str(_gemini_err)
             if "429" not in _err_str and "RESOURCE_EXHAUSTED" not in _err_str:
@@ -218,12 +305,13 @@ def classify_intent(text: str, previous_pipeline: str = None,
                 from .llm_client import generate_text
                 _text_prompt = content_parts[0] if isinstance(content_parts[0], str) else str(content_parts[0])
                 raw = generate_text(_text_prompt, tier="fast", timeout_ms=20_000)
+                router_input_tokens = 0
+                router_output_tokens = 0
             except Exception as _ds_err:
                 logger.error("[Router] DeepSeek fallback failed: %s", _ds_err)
                 raise _gemini_err
-        # Track router token consumption
-        router_input_tokens = 0
-        router_output_tokens = 0
+        # Track router token consumption — only update from response.usage when
+        # we used the Gemini path (LiteLLM populates the counts above).
         try:
             if response and hasattr(response, 'usage_metadata') and response.usage_metadata:
                 router_input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
@@ -340,8 +428,13 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
         prompt_template = get_prompt("planner", "plan_generation_prompt")
         prompt = prompt_template.format(intent=intent, user_text=user_text, files_info=files_info)
 
-        response = _router_client.models.generate_content(
-            model=_get_router_model(),
+        router_model_name = _get_router_model()
+        if _is_local_router_backend(router_model_name):
+            text, _, _ = _route_via_litellm(prompt, router_model_name)
+            return text
+
+        response = _ensure_genai_client().models.generate_content(
+            model=router_model_name,
             contents=prompt,
             config=types.GenerateContentConfig(
                 http_options=types.HttpOptions(

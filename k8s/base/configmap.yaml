@@ -23,6 +23,19 @@ data:
   REFERENCE_DATA_URL: "http://reference-data:8004"
   MARTIN_URL: "http://martin:3000"
 
+  # ----- Local LLM backend (Ollama on host via ExternalName service) -----
+  # The 'ollama' DNS name resolves to host.docker.internal on kind/Docker
+  # Desktop -- see k8s/base/ollama-service.yaml. App code reads OLLAMA_API_BASE
+  # in embedding_gateway.py and via api_base on registered models in
+  # model_gateway.py.
+  OLLAMA_API_BASE: "http://ollama:11434"
+  ROUTER_MODEL: "gemma-4-31b-it-ollama"
+  EMBEDDING_MODEL: "nomic-embed-text"
+  # Disable Vertex AI / Google GenAI bootstrap when running fully local.
+  # Code paths that hit the Google client are guarded; setting this to FALSE
+  # short-circuits them.
+  GOOGLE_GENAI_USE_VERTEXAI: "FALSE"
+
   # ----- LLM defaults -----
   GOOGLE_CLOUD_LOCATION: "global"
 

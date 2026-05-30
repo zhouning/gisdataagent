@@ -161,9 +161,112 @@ k8s/
 
 ---
 
-## 5. LLM API Key 注入
+## 5. 本地 LLM（Ollama，默认配置）
 
-`secret-patch.yaml` 把 `GOOGLE_API_KEY` / `GOOGLE_APPLICATION_CREDENTIALS` 留空。两种填充方式：
+本地部署默认走宿主 macOS 上运行的 Ollama，**无需 Google API key**。架构：
+
+```
+macOS host
+├── Docker Desktop
+│   ├── Ollama 容器 (Metal GPU, port 11434)
+│   │   ├── gemma3:27b (主力 LLM)
+│   │   └── nomic-embed-text (embedding)
+│   └── kind 集群
+│       └── gis-agent pod
+│           └── http://ollama:11434  ──► host.docker.internal:11434
+```
+
+`k8s/base/ollama-service.yaml` 是一个 ExternalName Service，把集群内的
+`ollama` DNS 名解析到 `host.docker.internal`，pod 直接访问宿主 Ollama 容器。
+
+### 5.1 准备宿主 Ollama 容器
+
+确保 Docker Desktop 里跑着 Ollama 容器（你已经在跑）：
+
+```bash
+# 在宿主 macOS 上拉模型
+docker exec -it ollama ollama pull gemma3:27b
+docker exec -it ollama ollama pull nomic-embed-text
+
+# 验证模型
+docker exec -it ollama ollama list
+# 应看到 gemma3:27b 和 nomic-embed-text
+```
+
+### 5.2 ConfigMap 已默认走 Ollama
+
+`k8s/base/configmap.yaml` 已经配好：
+
+```yaml
+OLLAMA_API_BASE: "http://ollama:11434"
+ROUTER_MODEL: "gemma-4-31b-it-ollama"     # 走 LiteLLM ollama_chat/ 后端
+EMBEDDING_MODEL: "nomic-embed-text"
+GOOGLE_GENAI_USE_VERTEXAI: "FALSE"        # 关闭 Vertex AI
+```
+
+### 5.3 模型选择（按你机器配比调整）
+
+| 主力模型 | 显存/RAM 占用 | 适用场景 | 修改位置 |
+|---|---|---|---|
+| `gemma3:27b`（默认推荐） | ~20 GB | NL2SQL / 报告生成 / 标准平台 Agent | configmap.yaml `ROUTER_MODEL` |
+| `gemma2:9b` | ~6 GB | 轻量 routing / 分类（不够 NL2SQL） | 同上 |
+| `qwen2.5:32b` | ~22 GB | 中文场景更强 | 同上 |
+| `llama3.3:70b` | ~45 GB | 顶配（M2 Max 128GB 跑得动） | 同上 |
+
+如果切到 `gemma2:9b`，把 `model_gateway.py` 的 builtin entry 改成：
+```python
+"gemma-2-9b-ollama": {
+    "backend": "litellm",
+    "model_id": "ollama_chat/gemma2:9b",
+    ...
+}
+```
+或在 `conf/models.yaml` 里直接添加新条目（已有 vLLM 注释模板可仿照）。
+
+### 5.4 验证 LLM 链路
+
+部署后，进 app pod 测一下：
+
+```bash
+kubectl -n gis-agent exec -it deployment/gis-agent-app -- bash -lc '
+python -c "
+import litellm
+r = litellm.completion(
+    model=\"ollama_chat/gemma3:27b\",
+    api_base=\"http://ollama:11434\",
+    messages=[{\"role\":\"user\",\"content\":\"reply with OK\"}],
+    max_tokens=10,
+)
+print(r.choices[0].message.content)
+"
+'
+```
+
+应输出 `OK`。如果挂在 `ConnectError` —— 检查宿主 Ollama 容器是否监听 `0.0.0.0:11434`（不是 `127.0.0.1`），以及防火墙：
+
+```bash
+# 在宿主上检查
+docker logs ollama | tail -20
+nc -zv host.docker.internal 11434  # 从 kind 容器外测试
+```
+
+### 5.5 退到云端 LLM（可选）
+
+如果想暂时切回 Gemini API：
+
+```bash
+# 编辑 secret-patch.yaml 加 GOOGLE_API_KEY
+# 改 configmap.yaml: ROUTER_MODEL=gemini-2.0-flash, GOOGLE_GENAI_USE_VERTEXAI=TRUE
+./scripts/k8s-kind-bootstrap.sh deploy
+kubectl -n gis-agent rollout restart deployment/gis-agent-app
+```
+
+---
+
+## 6. （旧 Google API 章节）切回云端 Gemini API
+
+`secret-patch.yaml` 默认 `GOOGLE_API_KEY` 留空（因为本地 Ollama 不需要）。
+如要切回 Gemini API：
 
 ### 方式 A：直接编辑 patch
 
