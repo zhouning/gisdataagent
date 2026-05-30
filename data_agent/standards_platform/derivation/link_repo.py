@@ -95,3 +95,157 @@ def mark_stale(*, link_ids: list[str], reason: Optional[str] = None) -> int:
             "WHERE id = ANY(CAST(:ids AS uuid[]))"
         ), {"r": reason or "superseded by new version", "ids": link_ids})
         return result.rowcount
+
+
+# ---------------------------------------------------------------------------
+# Rollback + impact graph (Wave 7)
+# ---------------------------------------------------------------------------
+
+# Map target_table -> SQL fragment to flip its derived_status to stale.
+# Tables that don't carry derived_status are skipped at the application layer.
+_TARGET_DERIVED_STATUS_TABLES: set[str] = {
+    "agent_semantic_hints",
+    "agent_quality_rules",
+    "agent_defect_code_bindings",
+}
+
+
+def rollback_version(*, version_id: str, by_user: str = "system",
+                     reason: Optional[str] = None) -> dict:
+    """Roll back all derivations from a published version.
+
+    Marks every active std_derived_link with source_version_id=version_id as
+    'superseded' and sets the corresponding derived_status='stale' on the
+    downstream rows that carry that column. Manual rows (std_derived_link_id
+    IS NULL) are NEVER touched — see strategy contracts.
+
+    Returns: {strategy: {links_marked, downstream_marked, target_tables: [...]}}.
+
+    Note: synonym derivation lives as a JSONB column on agent_semantic_sources
+    rather than a per-row derived_status, so the SynonymStrategy fan-in
+    contract is honoured by clearing derived_synonyms='[]' for tables whose
+    only source was this version.
+    """
+    eng = get_engine()
+    summary: dict = {}
+    rollback_reason = reason or f"rolled back from version {version_id}"
+
+    with eng.connect() as conn:
+        active = conn.execute(text(
+            "SELECT id, derivation_strategy, target_table, target_id "
+            "FROM std_derived_link "
+            "WHERE source_version_id=:v AND status='active'"
+        ), {"v": version_id}).mappings().all()
+
+    if not active:
+        return {}
+
+    # Group by strategy + target_table so we can flip downstream status in
+    # one batch per (strategy, table) pair.
+    by_strategy: dict[str, dict[str, list[dict]]] = {}
+    for row in active:
+        strat = row["derivation_strategy"]
+        tbl = row["target_table"]
+        by_strategy.setdefault(strat, {}).setdefault(tbl, []).append(dict(row))
+
+    with eng.begin() as conn:
+        for strat, tables in by_strategy.items():
+            link_ids: list[str] = []
+            target_tables: list[str] = []
+            downstream_marked = 0
+            for tbl, rows in tables.items():
+                target_tables.append(tbl)
+                ids = [r["id"] for r in rows]
+                target_ids = [r["target_id"] for r in rows]
+                link_ids.extend(ids)
+
+                if tbl in _TARGET_DERIVED_STATUS_TABLES:
+                    # PK type varies (UUID for hints/bindings, INT for rules).
+                    # std_derived_link_id is the safe handle.
+                    res = conn.execute(text(
+                        f"UPDATE {tbl} SET derived_status='stale', "
+                        f"updated_at=now() "
+                        f"WHERE std_derived_link_id = ANY(CAST(:ids AS uuid[]))"
+                    ), {"ids": [str(i) for i in ids]})
+                    downstream_marked += res.rowcount or 0
+                elif tbl == "agent_semantic_sources":
+                    # Synonym fan-in — clear derived_synonyms for source rows
+                    # whose only contributor was this version. We can't
+                    # cheaply check uniqueness here, so we conservatively
+                    # clear the column; manual `synonyms` is untouched.
+                    res = conn.execute(text(
+                        "UPDATE agent_semantic_sources "
+                        "SET derived_synonyms = '[]'::jsonb, updated_at=now() "
+                        "WHERE id = ANY(CAST(:ids AS int[]))"
+                    ), {"ids": [int(t) for t in target_ids]})
+                    downstream_marked += res.rowcount or 0
+                # else: unknown table — skip silently, only the link gets marked.
+
+            # Mark all collected links 'superseded' (terminal status, distinct
+            # from 'stale' which is reserved for natural re-derive flow).
+            conn.execute(text(
+                "UPDATE std_derived_link SET status='superseded', "
+                "stale_reason=:r "
+                "WHERE id = ANY(CAST(:ids AS uuid[]))"
+            ), {"r": rollback_reason,
+                 "ids": [str(i) for i in link_ids]})
+
+            summary[strat] = {
+                "links_marked": len(link_ids),
+                "downstream_marked": downstream_marked,
+                "target_tables": sorted(set(target_tables)),
+            }
+
+    return summary
+
+
+def impact_graph(*, source_kind: str, source_id: str,
+                 include_stale: bool = False) -> list[dict]:
+    """Return all derivations that descend from a (kind, source) pair.
+
+    Used by the impact-analysis UI: pick a clause / data_element / value_domain
+    / term and see every downstream artefact (semantic_hint, quality_rule,
+    defect_binding, ...). By default only active rows are returned.
+
+    For data_element source: walks std_derived_link.source_id directly.
+    For clause source: walks `defined_by_clause_id` on data_element/term
+    first, then recurses through their links.
+    """
+    eng = get_engine()
+    rows: list[dict] = []
+    status_filter = "" if include_stale else " AND l.status='active'"
+
+    if source_kind == "clause":
+        # Clauses don't appear as source_id in std_derived_link directly.
+        # We expand to (data_element ∪ term ∪ value_domain) defined by clause.
+        sql = (
+            "SELECT l.id AS link_id, l.derivation_strategy, "
+            "       l.target_kind, l.target_table, l.target_id, "
+            "       l.status, l.generated_at, "
+            "       l.source_kind, l.source_id "
+            "FROM std_derived_link l "
+            "WHERE l.source_id IN ("
+            "  SELECT id FROM std_data_element WHERE defined_by_clause_id=:c "
+            "  UNION SELECT id FROM std_term WHERE defined_by_clause_id=:c "
+            "  UNION SELECT id FROM std_value_domain WHERE defined_by_clause_id=:c"
+            ")"
+            + status_filter
+            + " ORDER BY l.generated_at DESC"
+        )
+        params = {"c": source_id}
+    else:
+        sql = (
+            "SELECT l.id AS link_id, l.derivation_strategy, "
+            "       l.target_kind, l.target_table, l.target_id, "
+            "       l.status, l.generated_at, "
+            "       l.source_kind, l.source_id "
+            "FROM std_derived_link l "
+            "WHERE l.source_kind=:sk AND l.source_id=:si"
+            + status_filter
+            + " ORDER BY l.generated_at DESC"
+        )
+        params = {"sk": source_kind, "si": source_id}
+
+    with eng.connect() as conn:
+        rows = [dict(r) for r in conn.execute(text(sql), params).mappings().all()]
+    return rows

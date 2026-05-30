@@ -49,12 +49,12 @@ def test_get_strategy_status_lists_six(engine):
     assert "to_synonym" in names
     active_names = {s["name"] for s in statuses if s["status"] == "active"}
     coming_names = {s["name"] for s in statuses if s["status"] == "coming_soon"}
-    # Wave 7 to_qc_rule: 4 active strategies, 2 coming_soon (to_defect_code,
-    # to_data_model).
+    # Wave 7 to_defect_code: 5 active strategies, 1 coming_soon (to_data_model).
     assert active_names == {
-        "to_semantic_hint", "to_value_semantics", "to_synonym", "to_qc_rule",
+        "to_semantic_hint", "to_value_semantics", "to_synonym",
+        "to_qc_rule", "to_defect_code",
     }
-    assert len(coming_names) == 2
+    assert len(coming_names) == 1
 
 
 def test_dispatch_runs_active_strategy(engine, fresh_clause):
@@ -77,8 +77,12 @@ def test_dispatch_runs_active_strategy(engine, fresh_clause):
         assert "to_qc_rule" in results
         assert results["to_qc_rule"]["ok"] is True
         assert results["to_qc_rule"]["new"] == 0
+        # to_defect_code (Wave 7): same input → 0 new
+        assert "to_defect_code" in results
+        assert results["to_defect_code"]["ok"] is True
+        assert results["to_defect_code"]["new"] == 0
         # Coming-soon strategies aren't run
-        assert "to_defect_code" not in results
+        assert "to_data_model" not in results
     finally:
         _cleanup(engine, ver_id)
 

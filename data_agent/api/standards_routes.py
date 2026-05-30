@@ -936,6 +936,63 @@ async def derive_status_handler(request: Request):
     return JSONResponse({"strategies": by_strategy})
 
 
+async def derive_rollback_handler(request: Request):
+    """POST /api/std/derive/rollback/{version_id} — flip every active link
+    from this version to 'superseded' and stale every downstream row that
+    carries derived_status. Manual rows untouched. Admin only."""
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_admin_or_403(role)
+    if forbid: return forbid
+    vid = request.path_params["version_id"]
+    eng = get_engine()
+    with eng.connect() as c:
+        row = c.execute(text(
+            "SELECT id FROM std_document_version WHERE id=:i"
+        ), {"i": vid}).first()
+    if row is None:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    body = await request.json() if (await request.body()) else {}
+    reason = body.get("reason") or f"manual rollback by {username}"
+    summary = _link_repo.rollback_version(
+        version_id=vid, by_user=username, reason=reason,
+    )
+    return JSONResponse({"version_id": vid, "by_strategy": summary})
+
+
+async def derive_impact_handler(request: Request):
+    """GET /api/std/impact/{kind}/{source_id}?include_stale=0 — return all
+    derivations descending from the given source. kind is one of:
+    clause | data_element | term | value_domain."""
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    kind = request.path_params["kind"]
+    source_id = request.path_params["source_id"]
+    if kind not in ("clause", "data_element", "term", "value_domain"):
+        return JSONResponse(
+            {"error": "kind must be clause | data_element | term | value_domain"},
+            status_code=400,
+        )
+    include_stale = request.query_params.get("include_stale", "0") == "1"
+    rows = _link_repo.impact_graph(
+        source_kind=kind, source_id=source_id,
+        include_stale=include_stale,
+    )
+    return JSONResponse({"source_kind": kind, "source_id": source_id,
+                         "impacts": [
+        {"link_id": str(r["link_id"]),
+         "derivation_strategy": r["derivation_strategy"],
+         "target_kind": r["target_kind"],
+         "target_table": r["target_table"],
+         "target_id": r["target_id"],
+         "status": r["status"],
+         "source_kind_resolved": r["source_kind"],
+         "source_id_resolved": str(r["source_id"]),
+         "generated_at": r["generated_at"].isoformat() if r.get("generated_at") else None}
+        for r in rows
+    ]})
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -1003,6 +1060,11 @@ standards_routes = [
           endpoint=derive_rerun_handler, methods=["POST"]),
     Route("/api/std/derive/status/{version_id}",
           endpoint=derive_status_handler, methods=["GET"]),
+    # Wave 7: rollback + impact graph
+    Route("/api/std/derive/rollback/{version_id}",
+          endpoint=derive_rollback_handler, methods=["POST"]),
+    Route("/api/std/impact/{kind}/{source_id}",
+          endpoint=derive_impact_handler, methods=["GET"]),
 ]
 
 

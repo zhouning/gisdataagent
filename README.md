@@ -7,7 +7,7 @@
 系统实现了《Agentic Design Patterns》**21/21 (100%)** 设计模式，遵循 Google《Prototype to Production》AgentOps 白皮书规范（**78% 符合度**），涵盖 3 阶段 CI/CD（CI → Staging → Production）、评估门控、Canary 发布、Feature Flags、USD 成本熔断、HITL 审批、分布式追踪等生产级运维能力。
 
 **v25.0 新增**：**Standards Platform 全链路 + 世界模型 v2 + NL2SQL hardening** —
-- **Standards Platform Wave 1 → Wave 6+**：数据标准从 Word 文档升级为全生命周期可治理资产（采集 / 起草 / 审定 / 发布 / 派生 / 数据建模六阶段闭环）。16 张 `std_*` 表 + Outbox 独立 worker + ltree + pgvector(768) + StandardsTab 双 sub-tab + StandardsEditorAgent；6 大派生策略已落地 3 个（SemanticHintStrategy / ValueDomainStrategy / SynonymStrategy），**派生覆盖率 50% (3/6)**，从场景驱动升级为**标准驱动**。Migrations 067-082 全部落地，230 standards_platform tests passed。
+- **Standards Platform Wave 1 → Wave 7**：数据标准从 Word 文档升级为全生命周期可治理资产（采集 / 起草 / 审定 / 发布 / 派生 / 数据建模六阶段闭环）。16 张 `std_*` 表 + Outbox 独立 worker + ltree + pgvector(768) + StandardsTab 双 sub-tab + StandardsEditorAgent；6 大派生策略已落地 5 个（SemanticHint / ValueDomain / Synonym / **QcRule / DefectTaxonomy**），**派生覆盖率 83% (5/6)**，从场景驱动升级为**标准驱动**。新增派生回滚 + 影响图谱 API（`POST /api/std/derive/rollback/{vid}` + `GET /api/std/impact/{kind}/{id}`）。Migrations 067-084 全部落地，264 standards_platform tests passed。
 - **世界模型 v2**：Dual-layer Dreamer（`dual_layer_dreamer.py` + `dual_dreamer_pipeline.py`）+ Causal World Model + Transition Model + 4 个 DAgger ensemble resume 实验；新增 `embedding_gateway`（Ollama backup path）+ `classification_routes` / `world_model_v2_routes` API + `capability_qa` toolset + 前端 ClassificationTab / WorldModelV2Tab。
 - **NL2SQL hardening**：`llm_schema_mapper`（LLM 主导的 schema 映射降级）+ `sql_distinct_guard`（DISTINCT 注入静态分析）+ `grid_anonymize`（网格匿名化 + PG 适配器）+ gemini-3.5-flash 专属 system_instruction。
 
@@ -54,8 +54,8 @@
 | 工具集 | 44 BaseToolset (含 GovernanceToolset 18 工具 + DataCleaningToolset 11 工具 + PrecisionToolset 5 工具 + NL2SQLToolset + CapabilityQAToolset + WorldModelV2Toolset), 5 SkillBundle, 280+ 工具 |
 | ADK Skills | 26 场景化领域技能 (含 skill-creator, world-model, causal, surveying-qc) + DB 自定义 Skills + 用户工具 |
 | REST API | 297 endpoints (frontend_api 3438 行 + 24 拆分路由模块 4992 行 + app + stream + bots + WebSocket) |
-| DB 迁移 | 82 个 SQL 迁移（最新 082 — `agent_semantic_sources.derived_synonyms`） |
-| Standards Platform | 16 张 `std_*` 表 + Outbox 独立 worker + ltree + pgvector(768) + 6 大派生策略（已落地 3/6: SemanticHint / ValueDomain / Synonym）+ StandardsEditorAgent |
+| DB 迁移 | 84 个 SQL 迁移（最新 084 — `agent_defect_code_bindings`） |
+| Standards Platform | 16 张 `std_*` 表 + Outbox 独立 worker + ltree + pgvector(768) + 6 大派生策略（已落地 5/6: SemanticHint / ValueDomain / Synonym / QcRule / DefectTaxonomy）+ 派生回滚 + 影响图谱 + StandardsEditorAgent |
 | DataPanel | 31 标签页 (3 分组: 数据资源/智能分析/平台运营 + Classification + WorldModelV2) |
 | Data Agent Level | **SIGMOD 2026 L3+** (完整条件自主 + 上下文工程 + 跨系统血缘) |
 | 跨系统血缘 | agent_asset_lineage 边表 + 外部资产注册 + BFS 图谱查询 (Tableau/Airflow/PowerBI) |

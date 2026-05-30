@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-05-30 &nbsp;|&nbsp; **Current version**: v25.0 &nbsp;|&nbsp; **Next**: v25.1 (Standards Platform Wave 7 — `to_qc_rule` 派生) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-05-30 &nbsp;|&nbsp; **Current version**: v25.0 &nbsp;|&nbsp; **Next**: v25.1 (Standards Platform Wave 7 — `to_qc_rule` + `to_defect_taxonomy` + 派生回滚 完成；剩 Wave 6-eval) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -43,11 +43,12 @@
 
 ---
 
-## v25.1 — Standards Platform Wave 7 (计划, 2 周)
+## v25.1 — Standards Platform Wave 7 (进行中, 2026-05-30 起)
 
-- [ ] **`to_qc_rule` 派生策略** — 标准条款 → `agent_qc_rules` 单向派生（覆盖率 50%→66%, 4/6）
-- [ ] **`to_defect_taxonomy` 派生策略** — 标准条款 → `defect_taxonomy.yaml` 增量补充（覆盖率 66%→83%, 5/6）
-- [ ] **派生回滚 + 影响图谱** — 单条款撤销 → 反向清理派生产物
+- [x] **`to_qc_rule` 派生策略** — 标准 data_element → `agent_quality_rules` 单向派生（migration 083）；mandatory→completeness、enum/range/pattern→field_check；覆盖率 50%→66% (4/6)
+- [x] **`to_defect_taxonomy` 派生策略** — 标准 data_element → `agent_defect_code_bindings` 单向派生（migration 084）；mandatory→MIS-001、enum/range→NRM-003、pattern→NRM-002；覆盖率 66%→**83% (5/6)**
+- [x] **派生回滚** — `link_repo.rollback_version()` + `POST /api/std/derive/rollback/{vid}` admin-only；active 链 → superseded、下游 derived_status → stale、manual 行不动
+- [x] **影响图谱** — `link_repo.impact_graph()` + `GET /api/std/impact/{kind}/{id}` 4 种 source kind（clause/data_element/term/value_domain）；clause 自动展开到子 element/term/value_domain
 - [ ] **Wave 6-eval** — 派生质量评测：人工标注 50 条款 vs 自动派生，目标 P>0.85 / R>0.75
 
 ---
