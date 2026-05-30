@@ -1,16 +1,66 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-05-06 &nbsp;|&nbsp; **Current version**: v24.1 &nbsp;|&nbsp; **Next**: v24.2 (STAC 标准化) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-05-30 &nbsp;|&nbsp; **Current version**: v25.0 &nbsp;|&nbsp; **Next**: v25.1 (Standards Platform Wave 7 — `to_qc_rule` 派生) &nbsp;|&nbsp; **ADK**: v1.27.2
 
-> 参照标杆：SeerAI Geodesic（地理空间数据编排）、OpenClaw（Agent 交互）、Frontier（企业治理）、CoWork（多 Agent 协作）、**DeerFlow v2.0（ByteDance 通用 Agent Harness — 工程质量）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台 — 平台能力）**、**Datus.ai（开源数据工程智能体 — 上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime — learning loop + 持久记忆 + 多入口网关）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
+> 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
-> 核心战略：**从 Data Agent 自主性演进，升级为 Agentic Spatial Data Governance Platform（智能体驱动的时空数据治理平台）**——保持智能层 + 交互层领先，把空间数据治理、活跃元数据、声明式治理、数据产品化和多模态治理做成面向行业客户的产品能力；从"用户带数据来"转向"Agent 主动发现、治理、编排和运营数据"，从"一次性回答"转向"越用越准、越用越能沉淀的数据治理飞轮"。
+> 核心战略：**Agentic Spatial Data Governance Platform（智能体驱动的时空数据治理平台）**——保持智能层 + 交互层领先，把空间数据治理、活跃元数据、声明式治理、数据产品化和多模态治理做成面向行业客户的产品能力；从"用户带数据来"转向"Agent 主动发现、治理、编排和运营数据"，从"一次性回答"转向"越用越准、越用越能沉淀的数据治理飞轮"。
 >
-> **Data Agent Level**: v24.1 = L3.5（垂直场景 + 显式路由 + 域标准 + NL2SQL 16/16）→ v25.0 起进入 **Agentic Governance** 阶段；下一阶段以数据治理产品化交付为主，Hermes 对标能力仍保留在观察池，仅择机落地低成本试点
+> **Data Agent Level**: v25.0 = **L4 — Agentic Governance**（标准全生命周期闭环 + 单向派生 + 双层世界模型 + NL2SQL 列名反查 + 跨家族评估），从场景驱动升级为**标准驱动**
 
 ---
 
-## 已完成 (v24.1) — NL2SQL Benchmark 16/16 + DeepSeek 兼容 + CostGuard 前端配置
+## 已完成 (v25.0) — Standards Platform 全链路 + 世界模型 v2 + NL2SQL hardening
+
+> **主题**: 数据标准从"Word 文档"升级为**全生命周期可治理资产**——采集 / 起草 / 审定 / 发布 / 派生 / 数据建模六阶段闭环；同时世界模型从单层 latent dynamics 升级为双层 dual-layer dreamer；NL2SQL 加上列名反查 + DISTINCT guard + LLM schema mapper。
+
+### Standards Platform — Wave 1 → Wave 6+ (主线, 2026-05-13 → 2026-05-28, ~30 commits)
+
+- [x] **Wave 1 / 1.5 — 采集底座 + data_elements 动态拼接** — 16 张 `std_*` 表 + Outbox 独立 worker + ltree + pgvector(768) + 12+6 REST + StandardsTab 双 sub-tab
+- [x] **Wave 2 — TipTap 起草 + 引用助手 + 一致性校验** + StandardsEditorAgent (Agent #7)
+- [x] **Wave 3 — 审定流模板 + v1 Fixes**
+- [x] **Wave 4 — 发布 + 版本快照**
+- [x] **Wave 5 — ABCD 产品化核心闭环** — standards_platform 210 passed / npm build OK / 浏览器 smoke 后端 SQL 验证
+- [x] **Wave 6-eng — ValueDomainStrategy 派生** — `agent_semantic_hints` (migration 081) + SemanticHintStrategy 合并 registry aliases
+- [x] **Wave 6+ — SynonymStrategy 派生** — `agent_semantic_sources.derived_synonyms` (migration 082) + grounding 合并 (`synonyms ‖ derived_synonyms`)，**派生覆盖率 33%→50% (3/6 strategy)**
+
+> Migrations 067-082 全部落地；230 standards_platform tests passed。Spec 全集见 `docs/superpowers/specs/2026-05-13-data-standard-lifecycle-platform-design.md`。
+
+### 世界模型 v2 + DRL hardening (2026-05 中下旬)
+
+- [x] **world_model_v2** — Causal World Model + Transition Model + 第二层 dynamics (`dual_layer_dreamer.py` + `dual_dreamer_pipeline.py`) + 4 个 DAgger ensemble resume 实验脚本
+- [x] **embedding_gateway** — Ollama backup path（本地 `192.168.31.252:11435` nomic-embed-text 768d）
+- [x] **classification_routes / world_model_v2_routes / capability_qa toolset** — 数据分级 API + 能力问答 toolset
+
+### NL2SQL hardening (2026-05 全月)
+
+- [x] **llm_schema_mapper** — LLM 主导的 schema 映射降级路径
+- [x] **sql_distinct_guard** — DISTINCT 注入静态分析（P=63.5% R=12.1%，作 ablation 而非主线）
+- [x] **grid_anonymize + PG 适配器** — 网格匿名化 + 单元 / PG 双套测试
+- [x] **gemini-3.5-flash 专属 system_instruction.md** — `prompts_nl2sql/gemini-3.5-flash/` 模型族特化
+
+> 详细攻防记录在内部 memory，本仓库不公开 v6/v7 paper experiments。
+
+---
+
+## v25.1 — Standards Platform Wave 7 (计划, 2 周)
+
+- [ ] **`to_qc_rule` 派生策略** — 标准条款 → `agent_qc_rules` 单向派生（覆盖率 50%→66%, 4/6）
+- [ ] **`to_defect_taxonomy` 派生策略** — 标准条款 → `defect_taxonomy.yaml` 增量补充（覆盖率 66%→83%, 5/6）
+- [ ] **派生回滚 + 影响图谱** — 单条款撤销 → 反向清理派生产物
+- [ ] **Wave 6-eval** — 派生质量评测：人工标注 50 条款 vs 自动派生，目标 P>0.85 / R>0.75
+
+---
+
+## v25.x — Standards Platform 后续阶段 (规划)
+
+- **P3**：`to_data_model` — CDM/LDM/PDM 三层 + DDL + 反向 XMI（替代 EA 工作流）
+- **P4**：审定流模板可视化、批量回滚、跨标准影响图谱
+- **P5**：标准市场（多组织共享 + 订阅 + diff）
+
+---
+
+## 历史 — v24.1 (NL2SQL Benchmark 16/16 + DeepSeek 兼容 + CostGuard 前端配置)
 
 > **主题**: NL2SQL 从"需要英文表名"到"纯自然语言查询"，benchmark 全量通过
 

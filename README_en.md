@@ -1,12 +1,17 @@
 **English** | [中文](./README.md)
 
-# GIS Data Agent (ADK Edition) v24.0
+# GIS Data Agent (ADK Edition) v25.0
 
-An AI-powered geospatial analysis platform that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend (Palantir-inspired dark theme, 3 groups, 29 tabs), and enterprise-grade security.
+An AI-powered **Agentic Spatial Data Governance Platform** that turns natural language into spatial intelligence. Built on **Google Agent Developer Kit (ADK) v1.27.2** with multi-language semantic intent routing (Chinese/English/Japanese), three specialized pipelines, a React three-panel frontend, enterprise-grade security, and a **standards-driven data governance lifecycle** — moving from "users bring data" to "agents discover, govern, orchestrate, and operate data."
 
 The system implements **all 21 of 21 (100%)** agentic design patterns, including three ADK Agent types (SequentialAgent / LoopAgent / ParallelAgent), 5 Agent Plugins, 4 Guardrails, SSE streaming, bidirectional A2A interop (Agent Card + Task lifecycle + Agent Registry), NSGA-II multi-objective Pareto optimization (5 scenarios), dynamic agent composition, Circuit Breaker fault tolerance, conditional analysis chains, and self-improvement. Backend serves **297 REST API endpoints**.
 
-**v24.0**: **@SubAgent Mention Routing + NL2SQL Enhancement + PostGIS Direct Visualization** — Chat @mention routing (`mention_registry.py` + `mention_parser.py` + frontend autocomplete dropdown); NL2SQL multi-table recall fix (column-reverse-lookup + fallback supplement mode + synonym expansion), `execute_safe_sql` default limit raised from 1000 to 100000; PostGIS visualization 3-tier access fallback (ownership → semantic_sources → pg_class) + adaptive sampling for large tables (>100K rows auto-sample 10K); XMI domain standard system (parser + compiler + toolset + 6 REST APIs); 2026 Q2 technology four-lens roadmap refresh.
+**v25.0**: **Standards Platform end-to-end + World Model v2 + NL2SQL hardening**
+- **Standards Platform Wave 1 → Wave 6+**: Data standards upgraded from Word documents to **fully governable lifecycle assets** — collection / drafting / review / publication / derivation / data modeling. 16 `std_*` tables + standalone Outbox worker + ltree + pgvector(768) + StandardsTab dual sub-tabs + StandardsEditorAgent; 3 of 6 derivation strategies shipped (SemanticHintStrategy / ValueDomainStrategy / SynonymStrategy), **derivation coverage 50% (3/6)**, shifting from scenario-driven to **standard-driven**. Migrations 067-082 all applied; 230 standards_platform tests passing.
+- **World Model v2**: Dual-layer Dreamer (`dual_layer_dreamer.py` + `dual_dreamer_pipeline.py`) + Causal World Model + Transition Model + 4 DAgger ensemble resume experiments; new `embedding_gateway` (Ollama backup path) + `classification_routes` / `world_model_v2_routes` APIs + `capability_qa` toolset + frontend ClassificationTab / WorldModelV2Tab.
+- **NL2SQL hardening**: `llm_schema_mapper` (LLM-driven schema mapping fallback) + `sql_distinct_guard` (DISTINCT-injection static analysis) + `grid_anonymize` (grid anonymization + PG adapter) + gemini-3.5-flash family-specific system_instruction.
+
+**v24.0/24.1**: **@SubAgent Mention Routing + NL2SQL Benchmark 16/16 + DeepSeek compatibility + CostGuard frontend config** — Chat @mention routing; NL2SQL benchmark v2 16/16 passing (no English table names, bidirectional substring matching, Chinese synonyms, reusable spatial few-shot, SRID fix, golden SQL optimization); DeepSeek CoT leakage cleanup; CostGuard threshold frontend-configurable.
 
 **v23.0**: **Gemma 4 Multi-Model Management + Platform Enhancements** — Gemma 4 31B registration (Gemini API + vLLM dual path), DB-persistent admin model config (ModelConfigManager), interactive frontend model switching UI, configurable Intent Router, LiteLLM extra_headers/extra_body support; intent disambiguation v2 (subtask decomposition + wave execution), DRL constraint modeling (hard/soft constraints), cross-layer association highlighting, offline Service Worker, embodied execution interface, annotation WebSocket real-time broadcast. 84 new tests.
 
@@ -27,12 +32,13 @@ Industrial-grade **DITA XML** documentation with two document sets:
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 4700+ tests, 186 test files |
-| Toolsets | 42 BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools + NL2SQLToolset), 5 SkillBundle, 270+ tools |
+| Test Coverage | 5400+ tests, 241 test files |
+| Toolsets | 44 BaseToolset (incl. GovernanceToolset 18 tools + DataCleaningToolset 11 tools + PrecisionToolset 5 tools + NL2SQLToolset + CapabilityQAToolset + WorldModelV2Toolset), 5 SkillBundle, 280+ tools |
 | ADK Skills | 26 scenario skills (incl. surveying-qc, skill-creator, world-model, causal) + DB-driven custom Skills + User Tools |
 | REST API | 297 endpoints (frontend_api 3438 lines + 24 route modules 4992 lines + app + stream + bots + WebSocket) |
-| DB Migrations | 65 SQL migrations |
-| DataPanel | 29 tabs in 3 groups (Data Resources / Intelligent Analysis / Platform Operations) |
+| DB Migrations | 82 SQL migrations (latest 082 — `agent_semantic_sources.derived_synonyms`) |
+| Standards Platform | 16 `std_*` tables + standalone Outbox worker + ltree + pgvector(768) + 6 derivation strategies (3/6 shipped: SemanticHint / ValueDomain / Synonym) + StandardsEditorAgent |
+| DataPanel | 31 tabs in 3 groups (Data Resources / Intelligent Analysis / Platform Operations + Classification + WorldModelV2) |
 | Connectors | 10 built-in (WFS, STAC, OGC API, Custom API, WMS, ArcGIS REST, Database, OBS, Reference Data, SaveMyself) |
 | Data Agent Level | **SIGMOD 2026 L3+** (Full Conditional Autonomy + Context Engineering + Cross-System Lineage) |
 | Context Engine | 6 Providers (semantic layer / knowledge base / knowledge graph / reference queries / success stories / metric definitions) + hybrid ranking + token budget |
