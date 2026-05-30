@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-outbox-worker
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-outbox-worker
+    app.kubernetes.io/component: worker
+spec:
+  # Outbox worker is a single-process consumer (no SKIP LOCKED on
+  # std_outbox_event yet); running multiple replicas would cause double
+  # processing. If you need throughput later, add SELECT ... FOR UPDATE SKIP
+  # LOCKED to standards_platform/outbox.py and bump replicas here.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-outbox-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-outbox-worker
+        app.kubernetes.io/component: worker
+    spec:
+      initContainers:
+        - name: wait-for-migrate
+          # Block until the migrations Job's pod has succeeded. This avoids
+          # the worker reading from std_outbox_event before the table exists
+          # on a fresh cluster.
+          image: bitnami/kubectl:1.30
+          command:
+            - sh
+            - -c
+            - |
+              echo "[wait-for-migrate] polling Job/gis-agent-migrate"
+              until kubectl -n gis-agent wait --for=condition=complete \
+                       --timeout=10s job/gis-agent-migrate 2>/dev/null; do
+                echo "[wait-for-migrate] not yet, sleeping 5s"
+                sleep 5
+              done
+          securityContext:
+            runAsNonRoot: false  # bitnami/kubectl needs uid 0 to talk to API
+      serviceAccountName: gis-agent-outbox-worker
+      containers:
+        - name: worker
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - -m
+            - data_agent.standards_platform.outbox_worker
+          envFrom:
+            - configMapRef:
+                name: gis-agent-config
+            - secretRef:
+                name: gis-agent-secret
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          # No HTTP probe — worker is a long-running consumer. We rely on
+          # liveness via process exit (Deployment auto-restarts on crash).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-outbox-worker
+  namespace: gis-agent
+---
+# Minimal RBAC: outbox-worker init container needs to wait on the migrate
+# Job, nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gis-agent-outbox-worker
+  namespace: gis-agent
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gis-agent-outbox-worker
+  namespace: gis-agent
+subjects:
+  - kind: ServiceAccount
+    name: gis-agent-outbox-worker
+    namespace: gis-agent
+roleRef:
+  kind: Role
+  name: gis-agent-outbox-worker
+  apiGroup: rbac.authorization.k8s.io

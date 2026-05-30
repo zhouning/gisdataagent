@@ -1,0 +1,78 @@
+# Local kind overlay — for `kubectl apply -k k8s/overlays/local-kind`.
+#
+# Differences from base:
+#   - All credentials replaced with deterministic local values (don't ship
+#     these secrets anywhere; they're for the local laptop kind cluster only)
+#   - Ingress disabled (kind by default has no ingress controller, and the
+#     bootstrap script port-forwards instead)
+#   - HPA min/max forced to 1 (single-laptop, no multi-replica testing here)
+#   - Image tags pinned to `:dev` so kind's loaded images match
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gis-agent
+
+resources:
+  - ../../base
+
+# Override images to use the local-built tags loaded into kind via
+# `kind load docker-image gis-data-agent:dev`. Keeps base manifests using
+# `:latest` for prod-style overlays.
+images:
+  - name: gis-data-agent
+    newTag: dev
+  - name: gis-cv-service
+    newTag: dev
+  - name: gis-cad-parser
+    newTag: dev
+  - name: gis-reference-data
+    newTag: dev
+
+# Patch the base Secret in-place. Strategic merge with stringData is the
+# cleanest path — kustomize handles the base64 encoding for us. Don't ship
+# these credentials anywhere; they're for the local laptop kind cluster only.
+patches:
+  - path: secret-patch.yaml
+    target:
+      kind: Secret
+      name: gis-agent-secret
+
+  - path: minio-secret-patch.yaml
+    target:
+      kind: Secret
+      name: minio-root
+
+  # Single-replica + no HPA on kind (no metrics-server by default).
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: gis-agent-app-hpa
+    patch: |-
+      - op: replace
+        path: /spec/maxReplicas
+        value: 1
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+
+  # Drop ingress on kind — bootstrap script uses port-forward.
+  - target:
+      kind: Ingress
+      name: gis-agent-ingress
+    patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: gis-agent-ingress
+        namespace: gis-agent
+
+  # Loosen NetworkPolicy on kind: kindnet doesn't enforce these anyway, and
+  # we want `kubectl port-forward` to work from anywhere on the host.
+  - target:
+      kind: NetworkPolicy
+      name: app-access
+    patch: |-
+      - op: replace
+        path: /spec/ingress
+        value:
+          - {}

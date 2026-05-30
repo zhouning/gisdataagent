@@ -1,0 +1,246 @@
+# QC subsystems (Surveying QC v15.7) — three independent FastAPI services
+# the main app calls into. Defaults to replicas=1; bump if QC throughput
+# becomes a bottleneck (each is stateless behind its own API).
+#
+# CV detection runs ML inference (YOLO/ultralytics). The Dockerfile uses
+# nvidia/cuda but the container falls back to CPU when no GPU is scheduled,
+# so this works on a kind cluster without GPU support. Add a `nodeSelector`
+# / `tolerations` if you bring up GPU nodes later.
+
+# =============================================================
+# CV Detection Service (port 8001)
+# =============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cv-service
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: cv-service
+    app.kubernetes.io/component: qc-subsystem
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cv-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cv-service
+        app.kubernetes.io/component: qc-subsystem
+    spec:
+      containers:
+        - name: cv
+          image: gis-cv-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+              name: http
+          env:
+            - name: MODEL_DIR
+              value: "/app/models"
+            - name: DEVICE
+              value: "cpu"  # change to 'cuda' when GPU node available
+          volumeMounts:
+            - name: models
+              mountPath: /app/models
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: cv-models
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cv-models
+  namespace: gis-agent
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cv-service
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: cv-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8001
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: cv-service
+---
+# =============================================================
+# CAD/3D Parser Service (port 8002)
+# =============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cad-parser
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: cad-parser
+    app.kubernetes.io/component: qc-subsystem
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cad-parser
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cad-parser
+        app.kubernetes.io/component: qc-subsystem
+    spec:
+      containers:
+        - name: cad
+          image: gis-cad-parser:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8002
+              name: http
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: uploads
+          emptyDir:
+            sizeLimit: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cad-parser
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: cad-parser
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8002
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: cad-parser
+---
+# =============================================================
+# Reference Data Service (port 8004)
+# =============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reference-data
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: reference-data
+    app.kubernetes.io/component: qc-subsystem
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: reference-data
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: reference-data
+        app.kubernetes.io/component: qc-subsystem
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z postgres 5432; do sleep 2; done']
+      containers:
+        - name: ref-data
+          image: gis-reference-data:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8004
+              name: http
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-secret
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reference-data
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: reference-data
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8004
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: reference-data

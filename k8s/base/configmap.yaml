@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gis-agent-config
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent
+data:
+  # ----- Postgres connection (non-secret parts) -----
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DATABASE: "gis_agent"
+  POSTGRES_USER: "agent_user"
+  POSTGRES_ADMIN_USER: "postgres"
+
+  # ----- Redis -----
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # ----- QC subsystem endpoints (in-cluster DNS) -----
+  CV_SERVICE_URL: "http://cv-service:8001"
+  CAD_PARSER_URL: "http://cad-parser:8002"
+  REFERENCE_DATA_URL: "http://reference-data:8004"
+  MARTIN_URL: "http://martin:3000"
+
+  # ----- LLM defaults -----
+  GOOGLE_CLOUD_LOCATION: "global"
+
+  # ----- App behavior -----
+  DYNAMIC_PLANNER: "true"
+  DAILY_ANALYSIS_LIMIT: "20"
+  AUDIT_LOG_RETENTION_DAYS: "90"
+
+  # ----- Standards Platform (Wave 6+ outbox worker) -----
+  OUTBOX_WORKER_INTERVAL_SEC: "5"
+  OUTBOX_MAX_ATTEMPTS: "5"

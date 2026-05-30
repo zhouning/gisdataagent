@@ -233,16 +233,30 @@ class HuaweiOBSAdapter(CloudStorageAdapter):
 # =====================================================================
 
 class AWSS3Adapter(CloudStorageAdapter):
-    """AWS S3 via standard boto3 client."""
+    """AWS S3 / MinIO via standard boto3 client.
+
+    MinIO compatibility:
+      Set AWS_ENDPOINT_URL to the MinIO endpoint (e.g. http://minio:9000) and
+      the same access/secret keys MinIO is configured with. boto3 will speak
+      the S3 API to MinIO transparently. Path-style addressing is forced via
+      `s3={'addressing_style': 'path'}` so we don't need wildcard DNS for
+      bucket subdomains — required for in-cluster MinIO.
+    """
 
     def __init__(self):
         import boto3
-        self._client = boto3.client(
-            's3',
+        from botocore.config import Config as BotoConfig
+        endpoint_url = os.environ.get("AWS_ENDPOINT_URL") or None
+        boto_kwargs = dict(
             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
             region_name=os.environ.get("AWS_REGION", "us-east-1"),
         )
+        if endpoint_url:
+            # MinIO / non-AWS S3-compatible endpoint — force path-style.
+            boto_kwargs["endpoint_url"] = endpoint_url
+            boto_kwargs["config"] = BotoConfig(s3={"addressing_style": "path"})
+        self._client = boto3.client('s3', **boto_kwargs)
         self._bucket = os.environ.get("AWS_S3_BUCKET", "")
 
     def upload(self, local_path: str, key: str) -> bool:

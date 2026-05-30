@@ -21,7 +21,7 @@
 
 **v20.0 新增**：**分布式任务队列 + Redis 缓存 + 体验优化** — Redis 统一基础层（async/sync 双客户端 + SETNX 分布式锁）、TaskQueue Redis Sorted Set 后端（跨进程共享队列 + 分布式信号量，内存降级兼容）、语义层 + 上下文引擎双层缓存（Redis + 内存）、声明式多 LLM YAML 配置（`conf/models.yaml` 一键切换 Gemini/DeepSeek/Qwen/本地模型）、Agentic/Workflow 双模式执行（关键词检测 + 意图路由）、DuckDB Lite 轻量空间数据库（无 PostGIS 依赖的离线/Demo 部署）。
 
-**产品化就绪**：Docker 一键部署（`docker compose up -d`）、[快速启动指南](QUICKSTART.md)、端到端质检 Demo（`scripts/demo_qc.py`，107K 建筑 69 秒完成 5 步标准质检）、SCI 论文实验框架（`data_agent/experiments/`，12 张 300 DPI 图表 + GEE 真实数据）。
+**产品化就绪**：Docker 一键部署（`docker compose up -d`）、**kind 本地 K8s 一键部署**（`./scripts/k8s-kind-bootstrap.sh up`，详见 [docs/k8s-kind-deployment.md](docs/k8s-kind-deployment.md)）、[快速启动指南](QUICKSTART.md)、端到端质检 Demo（`scripts/demo_qc.py`，107K 建筑 69 秒完成 5 步标准质检）、SCI 论文实验框架（`data_agent/experiments/`，12 张 300 DPI 图表 + GEE 真实数据）。
 
 ## 项目思想起源
 

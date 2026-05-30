@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gis-agent
+
+resources:
+  # ----- Namespace + config -----
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+
+  # ----- Stateful core -----
+  - postgres-statefulset.yaml
+  - postgres-service.yaml
+  - redis-statefulset.yaml
+  - minio.yaml
+
+  # ----- Bootstrap Jobs (run once on apply) -----
+  - migrations-job.yaml
+
+  # ----- App tier -----
+  - app-deployment.yaml
+  - app-service.yaml
+  - outbox-worker.yaml
+
+  # ----- Surveying QC subsystems (cv / cad / reference-data) -----
+  - qc-subsystems.yaml
+
+  # ----- Tile server -----
+  - martin-deployment.yaml
+  - martin-service.yaml
+
+  # ----- Networking + HA -----
+  - ingress.yaml
+  - hpa.yaml
+  - networkpolicy.yaml
+
+# All resources tagged for easy `kubectl get all -l app.kubernetes.io/part-of=gis-data-agent`.
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: gis-data-agent
+      app.kubernetes.io/managed-by: kustomize
