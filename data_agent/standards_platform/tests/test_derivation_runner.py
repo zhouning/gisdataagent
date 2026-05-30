@@ -49,12 +49,12 @@ def test_get_strategy_status_lists_six(engine):
     assert "to_synonym" in names
     active_names = {s["name"] for s in statuses if s["status"] == "active"}
     coming_names = {s["name"] for s in statuses if s["status"] == "coming_soon"}
-    # Wave 6+ to_synonym: 3 active strategies, 3 coming_soon (to_qc_rule,
-    # to_defect_code, to_data_model).
+    # Wave 7 to_qc_rule: 4 active strategies, 2 coming_soon (to_defect_code,
+    # to_data_model).
     assert active_names == {
-        "to_semantic_hint", "to_value_semantics", "to_synonym",
+        "to_semantic_hint", "to_value_semantics", "to_synonym", "to_qc_rule",
     }
-    assert len(coming_names) == 3
+    assert len(coming_names) == 2
 
 
 def test_dispatch_runs_active_strategy(engine, fresh_clause):
@@ -73,8 +73,12 @@ def test_dispatch_runs_active_strategy(engine, fresh_clause):
         # row (seeded by 4-27 production data), so 1 link is produced.
         assert "to_synonym" in results
         assert results["to_synonym"]["ok"] is True
+        # to_qc_rule (Wave 7): obligation='optional' + no value_domain → 0 new
+        assert "to_qc_rule" in results
+        assert results["to_qc_rule"]["ok"] is True
+        assert results["to_qc_rule"]["new"] == 0
         # Coming-soon strategies aren't run
-        assert "to_qc_rule" not in results
+        assert "to_defect_code" not in results
     finally:
         _cleanup(engine, ver_id)
 
@@ -86,8 +90,10 @@ def test_dispatch_with_strategies_filter(engine, fresh_clause):
         results = runner.dispatch(
             version_id=ver_id, strategies=["to_qc_rule"]
         )
-        # to_qc_rule is coming_soon → not in active, results empty
-        assert results == {}
+        # to_qc_rule is now active (Wave 7) → only it runs.
+        assert "to_qc_rule" in results
+        assert results["to_qc_rule"]["ok"] is True
+        assert "to_semantic_hint" not in results
     finally:
         _cleanup(engine, ver_id)
 

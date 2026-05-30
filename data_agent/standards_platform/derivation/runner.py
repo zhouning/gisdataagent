@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from .strategies.qc_rule import QcRuleStrategy
 from .strategies.semantic_hint import SemanticHintStrategy
 from .strategies.synonym import SynonymStrategy
 from .strategies.value_domain import ValueDomainStrategy
@@ -17,7 +18,7 @@ _REGISTRY: dict[str, Optional[DerivationStrategy]] = {
     "to_semantic_hint": SemanticHintStrategy(),
     "to_synonym": SynonymStrategy(),
     "to_value_semantics": ValueDomainStrategy(),
-    "to_qc_rule": None,
+    "to_qc_rule": QcRuleStrategy(),
     "to_defect_code": None,
     "to_data_model": None,
 }
@@ -27,8 +28,8 @@ _DESCRIPTIONS: dict[str, str] = {
     "to_semantic_hint": "派生标准 data_element 到 agent_semantic_hints (column-scope hint)",
     "to_synonym": "派生标准 data_element/term 名称别名到 agent_semantic_sources.derived_synonyms",
     "to_value_semantics": "派生标准值域 (enumeration/range/pattern) 到 agent_semantic_hints",
-    "to_qc_rule": "(Wave 6+) 派生质检规则",
-    "to_defect_code": "(Wave 6+) 派生缺陷分类编码",
+    "to_qc_rule": "派生标准 data_element 到 agent_quality_rules (mandatory→completeness, value_domain→field_check)",
+    "to_defect_code": "(Wave 7+) 派生缺陷分类编码",
     "to_data_model": "(P3) 派生 CDM/LDM/PDM 三层模型",
 }
 
