@@ -55,6 +55,16 @@ def _route_via_litellm(prompt: str, model_name: str, image_paths=None) -> tuple[
     (gemma2/3/4) don't support vision, and the router prompt's text-only
     rules are sufficient for classification. Multimodal routing stays on the
     Gemini path.
+
+    Reasoning models (Gemma 4, Qwen3, DeepSeek-R1) default to emitting their
+    chain-of-thought into the `thinking` field, leaving `content` empty until
+    the `num_predict` budget runs out — which can blow past 200 tokens before
+    a single classification token is emitted. The router prompt expects a
+    one-liner ("CATEGORY|REASON|TOOLS:..."), so we explicitly disable the
+    thinking pathway via Ollama's `think: false` option. Verified against
+    gemma4:31b on 2026-05-30: 38 tokens, ~25 tok/s, correct OPTIMIZATION
+    classification on Chinese input. Without `think: false` the same prompt
+    produced an empty content string with 300 tokens trapped in `thinking`.
     """
     if image_paths:
         logger.debug("[Router] LiteLLM backend doesn't accept images; ignoring %d image(s)",
@@ -80,6 +90,10 @@ def _route_via_litellm(prompt: str, model_name: str, image_paths=None) -> tuple[
     }
     if api_base:
         kwargs["api_base"] = api_base
+    # Disable reasoning-mode thinking for Ollama-served models. Other LiteLLM
+    # backends (OpenAI, vLLM-without-thinking) silently ignore the param.
+    if effective_id.startswith(("ollama/", "ollama_chat/")):
+        kwargs["extra_body"] = {"think": False}
 
     resp = litellm.completion(**kwargs)
     text_out = resp.choices[0].message.content or ""
