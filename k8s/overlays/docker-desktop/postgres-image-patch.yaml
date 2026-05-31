@@ -1,0 +1,23 @@
+# Patch postgres StatefulSet to use a locally-built derived image
+# (gis-postgis-pgvector:16-3.4) that bakes pgvector on top of imresamu/postgis.
+#
+# Why a derived image instead of an apt install at first start:
+#   - The official postgis/postgis:16-3.4 has no arm64 build (blocker on
+#     Apple Silicon).
+#   - imresamu/postgis:16-3.4 is multi-arch but ships no pgvector binary.
+#   - apt install in /docker-entrypoint-initdb.d runs as user `postgres` and
+#     fails with permission denied — the lock files are root-owned.
+#   - Baking pgvector at build time (see docker/postgis-pgvector/Dockerfile)
+#     dodges both issues with one image to track.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: gis-agent
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          image: gis-postgis-pgvector:16-3.4
+          imagePullPolicy: IfNotPresent

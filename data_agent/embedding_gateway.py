@@ -42,6 +42,17 @@ class EmbeddingRegistry:
             "online": False,
             "description": "Nomic Embed Text via Ollama",
         },
+        # nomic-embed-text-v2 MoE — 305M active / 475M total, 768-dim, F16.
+        # ollama tag is `nomic-embed-text-v2-moe:latest`; `ollama_model_id`
+        # below is what gets sent to Ollama's /api/embeddings (case-sensitive
+        # match with `ollama list`).
+        "nomic-embed-text-v2-moe": {
+            "backend": "ollama",
+            "dimension": 768,
+            "online": False,
+            "ollama_model_id": "nomic-embed-text-v2-moe:latest",
+            "description": "Nomic Embed Text v2 MoE via Ollama",
+        },
     }
 
     models: dict[str, dict] = {}

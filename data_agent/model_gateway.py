@@ -240,12 +240,37 @@ class ModelRegistry:
             "api_key_env": "DASHSCOPE_API_KEY",
             "model_id": "openai/qwen3.7-max",
         },
-        # --- Local: Gemma 4 31B via Ollama (v6 Phase 3) ---
+        # --- Local: Gemma 4 via Ollama (v6 Phase 3) ---
         # AI Studio's 16K input-TPM ceiling makes agent-loop NL2SQL impractical
         # for Gemma; the local Ollama deployment removes the rate limit. ADK
         # Ollama integration uses LiteLLM with the `ollama_chat/` prefix
         # (NOT `ollama/` — the latter causes infinite tool-call loops per ADK
         # docs at https://adk.wiki/agents/models/ollama/).
+        #
+        # The api_base default below is the host-loopback for native macOS dev;
+        # K8s overlays set OLLAMA_API_BASE=http://ollama:11434 (ExternalName
+        # Service pointing at host.docker.internal). The override loop in
+        # _ensure_initialized() rewrites api_base on this entry at startup.
+        #
+        # `model_id` MUST match the tag served by the host Ollama exactly
+        # (case-sensitive). Verify with `curl localhost:11434/api/tags`.
+        "gemma4-26b-ollama": {
+            "backend": "litellm",
+            "tier": "standard",
+            "online": False,
+            "cost_per_1k_input": 0.0,
+            "cost_per_1k_output": 0.0,
+            "latency_p50_ms": 8000,
+            "max_context_tokens": 128_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation", "coding"],
+            "api_base": "http://localhost:11434",
+            "model_id": "ollama_chat/Gemma4:26b",
+        },
+        # Back-compat alias — older configs/env still reference the 31B name.
+        # Points at the same Gemma4 tag the user actually has pulled locally
+        # so existing ROUTER_MODEL=gemma-4-31b-it-ollama deployments keep
+        # working without a code change. Drop after all overlays are migrated.
         "gemma-4-31b-it-ollama": {
             "backend": "litellm",
             "tier": "standard",
@@ -256,8 +281,8 @@ class ModelRegistry:
             "max_context_tokens": 128_000,
             "capabilities": ["classification", "extraction", "summarization",
                              "reasoning", "analysis", "generation", "coding"],
-            "api_base": "http://192.168.31.252:11434",
-            "model_id": "ollama_chat/gemma4:31b",
+            "api_base": "http://localhost:11434",
+            "model_id": "ollama_chat/Gemma4:26b",
         },
     }
 

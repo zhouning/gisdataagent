@@ -42,9 +42,16 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV="/app/.venv"
 
 # ---- Install Python dependencies -------------------------------------------
+# PIP_INDEX_URL build-arg lets local builds (especially in mainland China)
+# point at a faster mirror without modifying the file. Default keeps the
+# upstream pypi.org behaviour for CI / overseas builds.
+#   docker build --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple .
+ARG PIP_INDEX_URL=https://pypi.org/simple
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+        --index-url "${PIP_INDEX_URL}" && \
+    pip install --no-cache-dir -r requirements.txt \
+        --index-url "${PIP_INDEX_URL}"
 
 # ---- Rebuild matplotlib font cache (pick up CJK fonts) ---------------------
 RUN python -c "import matplotlib.font_manager; matplotlib.font_manager._load_fontmanager(try_read_cache=False)"

@@ -1,0 +1,53 @@
+# Patch postgres-init ConfigMap to fix a SQL syntax error in 01-init.sh.
+#
+# Original 01-init.sh (in base/postgres-statefulset.yaml) uses psql -v variable
+# substitution (`:'agent_pw'`) inside DO $$ ... $$ blocks. That doesn't work:
+# psql only substitutes in the SQL stream BEFORE wrapping it in a DO block —
+# inside the dollar-quoted body the `:'agent_pw'` text is sent verbatim to the
+# server, which can't parse it. The script never creates agent_user, all
+# clients fail to authenticate.
+#
+# Fix: drop the DO block. The original guard against re-creating the role is
+# unnecessary — this script only runs on a fresh PGDATA (docker-entrypoint
+# convention), so the role is guaranteed not to exist yet.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: gis-agent
+data:
+  01-init.sh: |
+    #!/bin/bash
+    set -e
+    if [ -z "$AGENT_USER_PASSWORD" ]; then
+        echo "[postgres-init] AGENT_USER_PASSWORD not set; aborting" >&2
+        exit 1
+    fi
+    psql -v ON_ERROR_STOP=1 \
+         -v agent_pw="$AGENT_USER_PASSWORD" \
+         --username "$POSTGRES_USER" \
+         --dbname "$POSTGRES_DB" <<-EOSQL
+        -- Required extensions for the application.
+        CREATE EXTENSION IF NOT EXISTS postgis;
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+        CREATE EXTENSION IF NOT EXISTS ltree;
+        CREATE EXTENSION IF NOT EXISTS vector;
+
+        -- Application role. /docker-entrypoint-initdb.d only runs on a fresh
+        -- PGDATA, so the role is guaranteed not to exist; no IF NOT EXISTS
+        -- guard needed.
+        CREATE ROLE agent_user WITH LOGIN PASSWORD :'agent_pw';
+
+        -- Postgres 16 default-deny on public schema means USAGE alone isn't
+        -- enough; the migration runner needs CREATE to land its tables. The
+        -- base init script in postgres-statefulset.yaml omits this and the
+        -- migration job silently no-ops every CREATE TABLE.
+        GRANT USAGE, CREATE ON SCHEMA public TO agent_user;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO agent_user;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO agent_user;
+        GRANT ALL ON ALL TABLES IN SCHEMA public TO agent_user;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO agent_user;
+        GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO agent_user;
+    EOSQL
+    echo "[postgres-init] agent_user created and granted"

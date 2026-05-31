@@ -1,0 +1,19 @@
+# Fix a base manifest bug: app Deployment sets
+# `automountServiceAccountToken: false` at the pod level, but the
+# `wait-for-migrate` init container needs the kubeconfig token to call
+# `kubectl wait --for=condition=complete job/...`. Without the token, kubectl
+# falls back to `localhost:8080` and the init loop never exits.
+#
+# The base also defines a Role with verbs get/watch/list on jobs.batch
+# binding the SA `gis-agent-app` — clearly intended for this wait container.
+# We just need to flip automount on so kubectl can authenticate against the
+# in-cluster API.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-app
+  namespace: gis-agent
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: true

@@ -1,0 +1,162 @@
+# Docker Desktop kind-mode overlay — for `kubectl apply -k k8s/overlays/docker-desktop`.
+#
+# Why a separate overlay from local-kind/:
+#   - local-kind/ assumes external `kind` CLI for image loading; Docker Desktop's
+#     bundled kind cluster (context: docker-desktop, nodes labelled
+#     io.x-k8s.kind.cluster=desktop) isn't visible to the external kind CLI.
+#   - This overlay leaves image distribution to a side-channel (the bootstrap
+#     script does `docker save | docker exec ... ctr images import` per node)
+#     and otherwise mirrors local-kind's local-laptop ergonomics.
+#   - QC subsystems (cv-service / cad-parser / reference-data) are stripped here
+#     to keep first-deploy time bounded; re-enable by switching to local-kind
+#     or removing the $patch: delete blocks below.
+#   - Router / embedding model names point at what the user's host Ollama
+#     actually serves: Gemma4:26b + nomic-embed-text-v2-moe:latest.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gis-agent
+
+resources:
+  - ../../base
+
+# Override images to match the local-built `:dev` tags. Pull policy on the base
+# Deployments is already IfNotPresent so the kubelet won't reach for a registry.
+#
+# Also swap two upstream images that are unreachable from mainland China:
+#   - ghcr.io/maplibre/martin:v0.15 → :v0.18.0 (the v0.15 tag is gone from ghcr)
+#   - bitnami/kubectl:1.30          → alpine/k8s:1.30.4 (bitnami images are
+#     blocked by docker.m.daocloud.io as of 2025/04. rancher/kubectl is
+#     distroless without sh, so the init containers' `until ... sleep` loops
+#     can't run there. alpine/k8s ships kubectl + a busybox shell.)
+images:
+  - name: gis-data-agent
+    newTag: dev
+  - name: ghcr.io/maplibre/martin
+    newName: ghcr.io/maplibre/martin
+    newTag: v0.18.0
+  - name: bitnami/kubectl
+    newName: alpine/k8s
+    newTag: 1.30.4
+
+# Patch the base Secret in-place. Strategic merge with stringData is the
+# cleanest path — kustomize handles base64 encoding for us. Don't ship these
+# credentials anywhere; they're for the local laptop only.
+patches:
+  - path: secret-patch.yaml
+    target:
+      kind: Secret
+      name: gis-agent-secret
+
+  - path: minio-secret-patch.yaml
+    target:
+      kind: Secret
+      name: minio-root
+
+  # Point ConfigMap at the model names the user's Ollama actually serves.
+  # ROUTER_MODEL is the registry key in model_gateway.py (gemma4-26b-ollama),
+  # not the raw Ollama tag — the registry maps it to ollama_chat/Gemma4:26b.
+  - path: configmap-patch.yaml
+    target:
+      kind: ConfigMap
+      name: gis-agent-config
+
+  # Switch postgres to a local derived image that bakes pgvector on top of
+  # imresamu/postgis (the official postgis/postgis:16-3.4 has no arm64 build
+  # and ships no pgvector binary; runtime apt install fails as the postgres
+  # user). Build with: docker build docker/postgis-pgvector/.
+  - path: postgres-image-patch.yaml
+    target:
+      kind: StatefulSet
+      name: postgres
+
+  # Fix a base manifest SQL bug: psql -v variable substitution (`:'agent_pw'`)
+  # doesn't work inside DO $$ ... $$ blocks, so agent_user is never created.
+  # See postgres-init-patch.yaml for the corrected init script.
+  - path: postgres-init-patch.yaml
+    target:
+      kind: ConfigMap
+      name: postgres-init
+
+  # Fix another base manifest bug: app Deployment disables SA token automount
+  # but the wait-for-migrate init container needs it for `kubectl wait`.
+  - path: app-sa-token-patch.yaml
+    target:
+      kind: Deployment
+      name: gis-agent-app
+
+  # Single-replica + no HPA on Docker Desktop kind (no metrics-server installed).
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: gis-agent-app-hpa
+    patch: |-
+      - op: replace
+        path: /spec/maxReplicas
+        value: 1
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+
+  # Drop ingress — no ingress controller in Docker Desktop kind by default.
+  # Bootstrap script uses port-forward instead.
+  - target:
+      kind: Ingress
+      name: gis-agent-ingress
+    patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: gis-agent-ingress
+        namespace: gis-agent
+
+  # Loosen NetworkPolicy: kindnet doesn't enforce these, and we want
+  # `kubectl port-forward` to work from anywhere on the host.
+  - target:
+      kind: NetworkPolicy
+      name: app-access
+    patch: |-
+      - op: replace
+        path: /spec/ingress
+        value:
+          - {}
+
+  # ----- Strip QC subsystems -----
+  # User opted to skip QC on first deploy. Each subsystem ships as a
+  # Deployment + Service in the base (qc-subsystems.yaml).
+  - target: { kind: Deployment, name: cv-service }
+    patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata: { name: cv-service, namespace: gis-agent }
+  - target: { kind: Service, name: cv-service }
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata: { name: cv-service, namespace: gis-agent }
+  - target: { kind: Deployment, name: cad-parser }
+    patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata: { name: cad-parser, namespace: gis-agent }
+  - target: { kind: Service, name: cad-parser }
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata: { name: cad-parser, namespace: gis-agent }
+  - target: { kind: Deployment, name: reference-data }
+    patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata: { name: reference-data, namespace: gis-agent }
+  - target: { kind: Service, name: reference-data }
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata: { name: reference-data, namespace: gis-agent }
