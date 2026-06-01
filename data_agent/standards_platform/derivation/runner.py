@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Optional
 
 from .strategies.defect_taxonomy import DefectTaxonomyStrategy
+from .strategies.data_model import DataModelStrategy
 from .strategies.qc_rule import QcRuleStrategy
 from .strategies.semantic_hint import SemanticHintStrategy
 from .strategies.synonym import SynonymStrategy
@@ -21,7 +22,7 @@ _REGISTRY: dict[str, Optional[DerivationStrategy]] = {
     "to_value_semantics": ValueDomainStrategy(),
     "to_qc_rule": QcRuleStrategy(),
     "to_defect_code": DefectTaxonomyStrategy(),
-    "to_data_model": None,
+    "to_data_model": DataModelStrategy(),
 }
 
 # Friendly descriptions for UI
@@ -31,7 +32,7 @@ _DESCRIPTIONS: dict[str, str] = {
     "to_value_semantics": "派生标准值域 (enumeration/range/pattern) 到 agent_semantic_hints",
     "to_qc_rule": "派生标准 data_element 到 agent_quality_rules (mandatory→completeness, value_domain→field_check)",
     "to_defect_code": "派生标准 data_element 到 agent_defect_code_bindings (mandatory→MIS-001, enum/range→NRM-003, pattern→NRM-002)",
-    "to_data_model": "(P3) 派生 CDM/LDM/PDM 三层模型",
+    "to_data_model": "派生标准 data_element 到 CDM/LDM/PDM 三层模型 + PostgreSQL DDL",
 }
 
 

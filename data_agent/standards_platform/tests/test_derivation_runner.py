@@ -30,6 +30,10 @@ def _cleanup(engine, ver_id):
         link_ids = [str(r[0]) for r in c.execute(text(
             "SELECT id FROM std_derived_link WHERE source_version_id=:v"
         ), {"v": ver_id}).fetchall()]
+        snap_ids = [str(r[0]) for r in c.execute(text(
+            "SELECT id FROM std_data_model_snapshot "
+            "WHERE document_version_id=:v"
+        ), {"v": ver_id}).fetchall()]
     with engine.begin() as conn:
         if hint_ids:
             conn.execute(text(
@@ -40,6 +44,11 @@ def _cleanup(engine, ver_id):
                 "DELETE FROM std_derived_link "
                 "WHERE id = ANY(CAST(:ids AS uuid[]))"
             ), {"ids": link_ids})
+        if snap_ids:
+            conn.execute(text(
+                "DELETE FROM std_data_model_snapshot "
+                "WHERE id = ANY(CAST(:ids AS uuid[]))"
+            ), {"ids": snap_ids})
 
 
 def test_get_strategy_status_lists_six(engine):
@@ -49,12 +58,12 @@ def test_get_strategy_status_lists_six(engine):
     assert "to_synonym" in names
     active_names = {s["name"] for s in statuses if s["status"] == "active"}
     coming_names = {s["name"] for s in statuses if s["status"] == "coming_soon"}
-    # Wave 7 to_defect_code: 5 active strategies, 1 coming_soon (to_data_model).
+    # Wave 8 to_data_model: 6 active strategies, 0 coming_soon — 100% coverage.
     assert active_names == {
         "to_semantic_hint", "to_value_semantics", "to_synonym",
-        "to_qc_rule", "to_defect_code",
+        "to_qc_rule", "to_defect_code", "to_data_model",
     }
-    assert len(coming_names) == 1
+    assert len(coming_names) == 0
 
 
 def test_dispatch_runs_active_strategy(engine, fresh_clause):
@@ -81,8 +90,11 @@ def test_dispatch_runs_active_strategy(engine, fresh_clause):
         assert "to_defect_code" in results
         assert results["to_defect_code"]["ok"] is True
         assert results["to_defect_code"]["new"] == 0
-        # Coming-soon strategies aren't run
-        assert "to_data_model" not in results
+        # to_data_model (Wave 8): always emits exactly 1 snapshot per
+        # dispatched run, even when only 1 (or 0) bound elements exist.
+        assert "to_data_model" in results
+        assert results["to_data_model"]["ok"] is True
+        assert results["to_data_model"]["new"] == 1
     finally:
         _cleanup(engine, ver_id)
 
