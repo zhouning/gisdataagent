@@ -353,3 +353,58 @@ export const rerunDerivation = (versionId: string, strategies?: string[]) =>
 export const getDeriveStatus = (versionId: string) =>
   fetch(`/api/std/derive/status/${versionId}`)
     .then(j<{strategies: DerivationStatusByStrategy}>);
+
+
+// ---------- Wave 8: data-model snapshot ----------
+
+export interface DataModelStats {
+  entity_count: number;
+  attribute_count: number;
+  constraint_count: number;
+}
+
+export interface DataModelSnapshotMeta {
+  snapshot_id: string;
+  generated_at: string | null;
+  generated_by: string;
+  derived_status: "active" | "stale" | "manual";
+  source_tag: string | null;
+  std_derived_link_id: string | null;
+  stats: DataModelStats;
+}
+
+export interface DataModelPayload {
+  snapshot_id: string;
+  version_id: string;
+  generated_at: string | null;
+  generated_by: string;
+  derived_status: "active" | "stale" | "manual";
+  source_tag: string | null;
+  stats: DataModelStats;
+  cdm: any;
+  ldm: any;
+  pdm: any;
+  ddl_postgresql: string;
+}
+
+export const getDataModel = (versionId: string) =>
+  fetch(`/api/std/data-model/${versionId}`).then(j<DataModelPayload>);
+
+export const getDataModelLayer = (versionId: string,
+                                  layer: "cdm" | "ldm" | "pdm" | "ddl") =>
+  fetch(`/api/std/data-model/${versionId}?layer=${layer}`)
+    .then(j<{layer: string; data: any}>);
+
+// Plain-text DDL — Content-Type=text/plain, returns the raw text.
+export const getDataModelDdlText = (versionId: string) =>
+  fetch(`/api/std/data-model/${versionId}/ddl`).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.text();
+  });
+
+export const getDataModelDdlDownloadUrl = (versionId: string) =>
+  `/api/std/data-model/${versionId}/ddl`;
+
+export const listDataModelSnapshots = (versionId: string) =>
+  fetch(`/api/std/data-model/${versionId}/snapshots`)
+    .then(j<{version_id: string; snapshots: DataModelSnapshotMeta[]}>);

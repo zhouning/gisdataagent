@@ -3,6 +3,7 @@ import StrategyPane from "./derive/StrategyPane";
 import LinkTable from "./derive/LinkTable";
 import DeriveStatusSummary from "./derive/DeriveStatusSummary";
 import RerunButton from "./derive/RerunButton";
+import DataModelPreviewModal from "./derive/DataModelPreviewModal";
 
 interface Props {
   versionId: string | null;
@@ -13,6 +14,7 @@ export default function DeriveSubTab({versionId, userRole}: Props) {
   const isAdmin = userRole === "admin";
   const [strategy, setStrategy] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [dataModelOpen, setDataModelOpen] = useState(false);
 
   return (
     <div style={{display: "grid", gridTemplateColumns: "20% 60% 20%",
@@ -36,6 +38,24 @@ export default function DeriveSubTab({versionId, userRole}: Props) {
           isAdmin={isAdmin}
           onCompleted={() => setRefreshTick(t => t + 1)}
         />
+        {versionId && (
+          <button
+            onClick={() => setDataModelOpen(true)}
+            style={{
+              marginTop: 8, padding: "6px 10px", fontSize: 12,
+              width: "100%", background: "#fff",
+              border: "1px solid #007aff", color: "#007aff",
+              borderRadius: 4, cursor: "pointer",
+            }}>
+            📐 查看数据模型 (CDM/LDM/PDM/DDL)
+          </button>
+        )}
+        {dataModelOpen && versionId && (
+          <DataModelPreviewModal
+            versionId={versionId}
+            onClose={() => setDataModelOpen(false)}
+          />
+        )}
       </div>
     </div>
   );
