@@ -9,7 +9,7 @@ from pathlib import Path
 
 from sqlalchemy import text
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Route
 
 from ..db_engine import get_engine
@@ -993,6 +993,159 @@ async def derive_impact_handler(request: Request):
     ]})
 
 
+# ---------------------------------------------------------------------------
+# Wave 8: data-model snapshot read endpoints (write-side is the to_data_model
+# strategy, exposed via existing /api/std/derive/rerun/{vid}).
+# ---------------------------------------------------------------------------
+
+
+def _data_model_version_or_404(vid: str):
+    """Verify the version exists. Returns (None) on success, JSONResponse on 404."""
+    eng = get_engine()
+    with eng.connect() as c:
+        row = c.execute(text(
+            "SELECT id FROM std_document_version WHERE id=:i"
+        ), {"i": vid}).first()
+    if row is None:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    return None
+
+
+def _active_snapshot_or_404(vid: str):
+    """Return the latest active snapshot row for a version, or a 404 JSONResponse."""
+    eng = get_engine()
+    with eng.connect() as c:
+        row = c.execute(text(
+            "SELECT id, document_version_id, generated_at, generated_by, "
+            "       cdm_json, ldm_json, pdm_json, ddl_postgresql, "
+            "       entity_count, attribute_count, constraint_count, "
+            "       derived_status, source_tag "
+            "FROM std_data_model_snapshot "
+            "WHERE document_version_id=:v AND derived_status='active' "
+            "ORDER BY generated_at DESC LIMIT 1"
+        ), {"v": vid}).mappings().first()
+    if row is None:
+        return JSONResponse(
+            {"error": "no active data-model snapshot for this version; "
+                      "trigger one via /api/std/derive/rerun/{vid}"},
+            status_code=404,
+        )
+    return dict(row)
+
+
+async def data_model_get_handler(request: Request):
+    """GET /api/std/data-model/{vid}?layer=cdm|ldm|pdm|ddl
+
+    Returns the latest active snapshot's full payload, or just one layer
+    if `layer=` is supplied. 404 if no active snapshot exists yet.
+    """
+    _, _, err = _auth_or_401(request)
+    if err: return err
+    vid = request.path_params["version_id"]
+    not_found = _data_model_version_or_404(vid)
+    if not_found: return not_found
+
+    snap = _active_snapshot_or_404(vid)
+    if isinstance(snap, JSONResponse): return snap
+
+    layer = request.query_params.get("layer")
+    if layer:
+        if layer == "cdm":
+            return JSONResponse({"layer": "CDM", "data": snap["cdm_json"]})
+        if layer == "ldm":
+            return JSONResponse({"layer": "LDM", "data": snap["ldm_json"]})
+        if layer == "pdm":
+            return JSONResponse({"layer": "PDM", "data": snap["pdm_json"]})
+        if layer == "ddl":
+            return JSONResponse({"layer": "DDL",
+                                 "data": snap["ddl_postgresql"]})
+        return JSONResponse(
+            {"error": "layer must be cdm | ldm | pdm | ddl"},
+            status_code=400,
+        )
+
+    return JSONResponse({
+        "snapshot_id": str(snap["id"]),
+        "version_id": str(snap["document_version_id"]),
+        "generated_at": snap["generated_at"].isoformat()
+                        if snap.get("generated_at") else None,
+        "generated_by": snap["generated_by"],
+        "derived_status": snap["derived_status"],
+        "source_tag": snap["source_tag"],
+        "stats": {
+            "entity_count": snap["entity_count"],
+            "attribute_count": snap["attribute_count"],
+            "constraint_count": snap["constraint_count"],
+        },
+        "cdm": snap["cdm_json"],
+        "ldm": snap["ldm_json"],
+        "pdm": snap["pdm_json"],
+        "ddl_postgresql": snap["ddl_postgresql"],
+    })
+
+
+async def data_model_ddl_handler(request: Request):
+    """GET /api/std/data-model/{vid}/ddl — returns the rendered DDL as
+    text/plain so a browser will save it as a .sql file."""
+    _, _, err = _auth_or_401(request)
+    if err: return err
+    vid = request.path_params["version_id"]
+    not_found = _data_model_version_or_404(vid)
+    if not_found: return not_found
+
+    snap = _active_snapshot_or_404(vid)
+    if isinstance(snap, JSONResponse): return snap
+
+    return PlainTextResponse(
+        snap["ddl_postgresql"],
+        headers={
+            "Content-Disposition":
+                f'attachment; filename="data_model_{vid[:8]}.sql"',
+        },
+    )
+
+
+async def data_model_snapshots_handler(request: Request):
+    """GET /api/std/data-model/{vid}/snapshots — list all snapshots (active
+    + stale + manual) for a version, newest first. Useful for diffing
+    re-derive history."""
+    _, _, err = _auth_or_401(request)
+    if err: return err
+    vid = request.path_params["version_id"]
+    not_found = _data_model_version_or_404(vid)
+    if not_found: return not_found
+
+    eng = get_engine()
+    with eng.connect() as c:
+        rows = c.execute(text(
+            "SELECT id, generated_at, generated_by, derived_status, "
+            "       entity_count, attribute_count, constraint_count, "
+            "       source_tag, std_derived_link_id "
+            "FROM std_data_model_snapshot "
+            "WHERE document_version_id=:v "
+            "ORDER BY generated_at DESC"
+        ), {"v": vid}).mappings().all()
+
+    return JSONResponse({"version_id": vid, "snapshots": [
+        {
+            "snapshot_id": str(r["id"]),
+            "generated_at": r["generated_at"].isoformat()
+                            if r.get("generated_at") else None,
+            "generated_by": r["generated_by"],
+            "derived_status": r["derived_status"],
+            "source_tag": r["source_tag"],
+            "std_derived_link_id": str(r["std_derived_link_id"])
+                                    if r.get("std_derived_link_id") else None,
+            "stats": {
+                "entity_count": r["entity_count"],
+                "attribute_count": r["attribute_count"],
+                "constraint_count": r["constraint_count"],
+            },
+        }
+        for r in rows
+    ]})
+
+
 standards_routes = [
     Route("/api/std/documents", endpoint=list_documents, methods=["GET"]),
     Route("/api/std/documents", endpoint=upload_document, methods=["POST"]),
@@ -1065,6 +1218,13 @@ standards_routes = [
           endpoint=derive_rollback_handler, methods=["POST"]),
     Route("/api/std/impact/{kind}/{source_id}",
           endpoint=derive_impact_handler, methods=["GET"]),
+    # Wave 8: data-model snapshot read endpoints
+    Route("/api/std/data-model/{version_id}",
+          endpoint=data_model_get_handler, methods=["GET"]),
+    Route("/api/std/data-model/{version_id}/ddl",
+          endpoint=data_model_ddl_handler, methods=["GET"]),
+    Route("/api/std/data-model/{version_id}/snapshots",
+          endpoint=data_model_snapshots_handler, methods=["GET"]),
 ]
 
 
