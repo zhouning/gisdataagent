@@ -341,6 +341,7 @@ data_agent/.chainlit/
 /verify_poi.py
 /cq_declassify_report.json
 /cq_*_dump.sql
+/dumps/
 /tmp_*.sql
 /tmp_verify*.sql
 bash.exe.stackdump
