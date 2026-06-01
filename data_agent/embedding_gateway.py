@@ -53,6 +53,18 @@ class EmbeddingRegistry:
             "ollama_model_id": "nomic-embed-text-v2-moe:latest",
             "description": "Nomic Embed Text v2 MoE via Ollama",
         },
+        # Cross-host benchmark cell — same v2-moe model served by a
+        # *different* Ollama instance (192.168.43.10). Pinned api_base
+        # so OLLAMA_API_BASE env doesn't redirect it. Companion to
+        # ModelRegistry.gemma4-26b-host43.
+        "nomic-embed-text-v2-moe-host43": {
+            "backend": "ollama",
+            "dimension": 768,
+            "online": False,
+            "ollama_model_id": "nomic-embed-text-v2-moe:latest",
+            "api_base": "http://192.168.43.10:11434",
+            "description": "Nomic Embed Text v2 MoE via Ollama @ 192.168.43.10",
+        },
     }
 
     models: dict[str, dict] = {}

@@ -284,6 +284,24 @@ class ModelRegistry:
             "api_base": "http://localhost:11434",
             "model_id": "ollama_chat/Gemma4:26b",
         },
+        # Cross-host benchmark cell — same Gemma4:26b model served by a
+        # *different* Ollama instance (192.168.43.10). Pinned so OLLAMA_API_BASE
+        # env doesn't redirect it. Used to measure host/network/embedding-stack
+        # variance independent of model weights.
+        "gemma4-26b-host43": {
+            "backend": "litellm",
+            "tier": "standard",
+            "online": False,
+            "cost_per_1k_input": 0.0,
+            "cost_per_1k_output": 0.0,
+            "latency_p50_ms": 8000,
+            "max_context_tokens": 128_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation", "coding"],
+            "api_base": "http://192.168.43.10:11434",
+            "api_base_pinned": True,
+            "model_id": "ollama_chat/Gemma4:26b",
+        },
     }
 
     # Mutable registry: starts with builtins, can be extended at runtime
@@ -296,11 +314,15 @@ class ModelRegistry:
             # Allow OLLAMA_API_BASE env to override the hardcoded api_base on
             # any builtin Ollama-backed model. K8s deployments set this to
             # http://ollama:11434 (ExternalName Service pointing at the host).
+            # Entries that pin their host explicitly via `api_base_pinned: True`
+            # are exempt — used for benchmark cells that need a specific host
+            # so the comparison is repeatable regardless of env state.
             ollama_base_env = os.environ.get("OLLAMA_API_BASE")
             if ollama_base_env:
                 for name, cfg in cls.models.items():
                     model_id = cfg.get("model_id", "")
-                    if model_id.startswith(("ollama/", "ollama_chat/")):
+                    if model_id.startswith(("ollama/", "ollama_chat/")) \
+                            and not cfg.get("api_base_pinned"):
                         cfg["api_base"] = ollama_base_env
             # Auto-register LM Studio model from env var
             lm_model = os.environ.get("LM_STUDIO_MODEL")
