@@ -107,6 +107,7 @@ _TARGET_DERIVED_STATUS_TABLES: set[str] = {
     "agent_semantic_hints",
     "agent_quality_rules",
     "agent_defect_code_bindings",
+    "std_data_model_snapshot",
 }
 
 
