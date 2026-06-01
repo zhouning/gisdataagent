@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-05-30 &nbsp;|&nbsp; **Current version**: v25.0 &nbsp;|&nbsp; **Next**: v25.1 (Standards Platform Wave 7 — `to_qc_rule` + `to_defect_taxonomy` + 派生回滚 完成；剩 Wave 6-eval) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-01 &nbsp;|&nbsp; **Current version**: v25.2 &nbsp;|&nbsp; **Next**: v25.3 (Standards Platform Wave 8b — 反向 XMI + Wave 6-eval 评测) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -43,19 +43,32 @@
 
 ---
 
-## v25.1 — Standards Platform Wave 7 (进行中, 2026-05-30 起)
+## v25.2 — Standards Platform Wave 8 (已完成, 2026-06-01)
+
+- [x] **`to_data_model` 派生策略** — 每个 std_document_version 派生一份 CDM/LDM/PDM 三层模型 + PostgreSQL DDL（migration 085 + `std_data_model_snapshot` 表）；data_model_renderer 纯函数模块，类型映射含 enum CHECK / regex CHECK / range BETWEEN / GEOMETRY(SRID) + GIST / NOT NULL；**派生覆盖率 5/6 → 6/6 (100%)**
+- [x] **三层渲染器** — `data_model_renderer.py` 416 行：`build_model()` IR + `render_cdm/ldm/pdm/ddl()`；纯函数无 DB 调用；CDM 屏蔽技术细节、LDM 加 logical_type、PDM 含 PG 物理类型；DEFAULT_CODE_LENGTH / DEFAULT_GEOMETRY_SRID 模块常量便于未来扩展
+- [x] **3 个读取 REST 端点** — `GET /api/std/data-model/{vid}`（完整 payload，可 `?layer=cdm\|ldm\|pdm\|ddl`） + `GET /api/std/data-model/{vid}/ddl`（text/plain，Content-Disposition .sql 下载） + `GET /api/std/data-model/{vid}/snapshots`（历史列表）；任何已登录角色可读；写入复用 `/api/std/derive/rerun/{vid}`
+- [x] **rollback 联动** — `link_repo._TARGET_DERIVED_STATUS_TABLES` 纳入 std_data_model_snapshot；`rollback_version()` 自动 flip snapshot.derived_status='stale'，无需 strategy 特殊处理；manual snapshot 行永不被动
+- [x] **前端预览 modal** — `DataModelPreviewModal.tsx`：4 tab（PDM JSON / DDL 含「复制」+「下载 .sql」/ LDM JSON / CDM JSON）；`DeriveSubTab.tsx` 增加「📐 查看数据模型」按钮；4 个 SDK 函数加入 `standardsApi.ts`
+- [x] **测试 +46** — test_migration_085 (8) + test_data_model_renderer (16) + test_data_model_strategy (11) + test_api_data_model (11)；standards_platform 全套 310 passed (vs Wave 7 264)
+
+> 6 commits + spec/plan/roadmap：`db2f6c2..` HEAD。Spec：`docs/superpowers/specs/2026-06-01-std-platform-wave8-data-model-design.md`。
+
+---
+
+## v25.1 — Standards Platform Wave 7 (已完成, 2026-05-30)
 
 - [x] **`to_qc_rule` 派生策略** — 标准 data_element → `agent_quality_rules` 单向派生（migration 083）；mandatory→completeness、enum/range/pattern→field_check；覆盖率 50%→66% (4/6)
-- [x] **`to_defect_taxonomy` 派生策略** — 标准 data_element → `agent_defect_code_bindings` 单向派生（migration 084）；mandatory→MIS-001、enum/range→NRM-003、pattern→NRM-002；覆盖率 66%→**83% (5/6)**
+- [x] **`to_defect_taxonomy` 派生策略** — 标准 data_element → `agent_defect_code_bindings` 单向派生（migration 084）；mandatory→MIS-001、enum/range→NRM-003、pattern→NRM-002；覆盖率 66%→83% (5/6)
 - [x] **派生回滚** — `link_repo.rollback_version()` + `POST /api/std/derive/rollback/{vid}` admin-only；active 链 → superseded、下游 derived_status → stale、manual 行不动
 - [x] **影响图谱** — `link_repo.impact_graph()` + `GET /api/std/impact/{kind}/{id}` 4 种 source kind（clause/data_element/term/value_domain）；clause 自动展开到子 element/term/value_domain
-- [ ] **Wave 6-eval** — 派生质量评测：人工标注 50 条款 vs 自动派生，目标 P>0.85 / R>0.75
+- [ ] **Wave 6-eval** — 派生质量评测：人工标注 50 条款 vs 自动派生，目标 P>0.85 / R>0.75（推到 v25.3）
 
 ---
 
 ## v25.x — Standards Platform 后续阶段 (规划)
 
-- **P3**：`to_data_model` — CDM/LDM/PDM 三层 + DDL + 反向 XMI（替代 EA 工作流）
+- **Wave 8b / v25.3**：反向 XMI（EA 兼容输出，配合 Wave 8 的 PDM）+ Wave 6-eval 派生质量评测
 - **P4**：审定流模板可视化、批量回滚、跨标准影响图谱
 - **P5**：标准市场（多组织共享 + 订阅 + diff）
 
