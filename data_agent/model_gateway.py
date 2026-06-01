@@ -288,6 +288,13 @@ class ModelRegistry:
         # *different* Ollama instance (192.168.43.10). Pinned so OLLAMA_API_BASE
         # env doesn't redirect it. Used to measure host/network/embedding-stack
         # variance independent of model weights.
+        #
+        # think:False is mandatory — Gemma4's reasoning mode emits CoT into
+        # message.thinking and leaves message.content empty until num_predict
+        # is exhausted, which manifests as ~240s timeouts in full-mode agent
+        # loops (the router fix in ed97623 covers classify_intent only; the
+        # NL2SQL agent path needs its own pin). request_timeout=600s gives
+        # us headroom for slow first-token latency on cold loads.
         "gemma4-26b-host43": {
             "backend": "litellm",
             "tier": "standard",
@@ -301,6 +308,8 @@ class ModelRegistry:
             "api_base": "http://192.168.43.10:11434",
             "api_base_pinned": True,
             "model_id": "ollama_chat/Gemma4:26b",
+            "extra_body": {"think": False},
+            "request_timeout": 600,
         },
     }
 
@@ -811,7 +820,21 @@ def _create_litellm_model(model_name: str, info: dict):
         if api_key and effective_name.startswith("openai/"):
             os.environ["OPENAI_API_KEY"] = api_key
 
-    return LiteLlm(model=effective_name)
+    # Optional per-entry request timeout (seconds). Useful for slow Ollama
+    # hosts where the default 600s litellm timeout still trips on long
+    # full-mode prompts. Pass it through to litellm.completion via the
+    # LiteLlm wrapper's kwargs.
+    extra_kwargs: dict = {}
+    request_timeout = info.get("request_timeout")
+    if request_timeout is not None:
+        extra_kwargs["timeout"] = request_timeout
+
+    # Forward extra_body if the registry entry pinned one (e.g. for Ollama
+    # reasoning models we may want to disable thinking mode).
+    if info.get("extra_body"):
+        extra_kwargs["extra_body"] = info["extra_body"]
+
+    return LiteLlm(model=effective_name, **extra_kwargs)
 
 
 # =====================================================================

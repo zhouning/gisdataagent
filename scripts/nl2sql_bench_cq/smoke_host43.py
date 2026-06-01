@@ -37,7 +37,9 @@ load_dotenv(str(ROOT / "data_agent" / ".env"), override=False)
 # their respective registries.
 os.environ["NL2SQL_AGENT_MODEL"] = "gemma4-26b-host43"
 os.environ["EMBEDDING_MODEL"] = "nomic-embed-text-v2-moe-host43"
-os.environ["CQ_EVAL_QUESTION_TIMEOUT"] = "240"
+# 192.168.43.10 is meaningfully slower than 192.168.31.252 on Gemma4:26b;
+# bump per-question timeout so full-mode multi-step prompts have room.
+os.environ["CQ_EVAL_QUESTION_TIMEOUT"] = "540"
 
 OUT_ROOT = ROOT / "data_agent" / "nl2sql_eval_results"
 BENCH = ROOT / "benchmarks" / "chongqing_geo_nl2sql_100_benchmark.json"
@@ -72,6 +74,17 @@ async def run_cell(mode: str, qs: list[dict],
     from run_cq_eval import run_one, _init_runtime
     _init_runtime()
 
+    # baseline_generate() is hard-coded to Gemini; redirect it to the
+    # family-aware wrapper for the smoke. This is the same trick
+    # probe_baseline_gemma_ollama.py uses (just not yet baked into the
+    # eval pipeline). We restore at function exit so the rest of the
+    # process is unaffected.
+    import run_cq_eval as _rcq
+    _orig_baseline = _rcq.baseline_generate
+    _rcq.baseline_generate = lambda question: _rcq.baseline_generate_family_aware(
+        question, "gemma4-26b-host43"
+    )
+
     if mode == "full":
         from nl2sql_agent import build_nl2sql_agent
         agent = build_nl2sql_agent()
@@ -81,26 +94,29 @@ async def run_cell(mode: str, qs: list[dict],
         print(f"  [probe/host43/{mode}] class={cls_name} model={model_str} "
               f"api_base={api_base}", flush=True)
 
-    recs = []
-    for i, q in enumerate(qs, 1):
-        t0 = datetime.now()
-        try:
-            rec = await asyncio.wait_for(run_one(q, mode), timeout=300)
-        except asyncio.TimeoutError:
-            rec = {"qid": q.get("id", "?"), "ex": 0, "valid": 0,
-                   "gen_status": "timeout",
-                   "gen_error": "300s per-question timeout"}
-        except Exception as e:
-            rec = {"qid": q.get("id", "?"), "ex": 0, "valid": 0,
-                   "gen_status": "exception",
-                   "gen_error": str(e)[:300]}
-        rec["family"] = "gemma4-26b-host43"
-        rec["mode"] = mode
-        recs.append(rec)
-        dur = (datetime.now() - t0).total_seconds()
-        m = "OK" if rec.get("ex") else ("VAL" if rec.get("valid") else "ERR")
-        print(f"  [host43/{mode} {i}/{len(qs)}] {m} {rec.get('qid')} "
-              f"ex={rec.get('ex')} dur={dur:.1f}s", flush=True)
+    try:
+        recs = []
+        for i, q in enumerate(qs, 1):
+            t0 = datetime.now()
+            try:
+                rec = await asyncio.wait_for(run_one(q, mode), timeout=300)
+            except asyncio.TimeoutError:
+                rec = {"qid": q.get("id", "?"), "ex": 0, "valid": 0,
+                       "gen_status": "timeout",
+                       "gen_error": "300s per-question timeout"}
+            except Exception as e:
+                rec = {"qid": q.get("id", "?"), "ex": 0, "valid": 0,
+                       "gen_status": "exception",
+                       "gen_error": str(e)[:300]}
+            rec["family"] = "gemma4-26b-host43"
+            rec["mode"] = mode
+            recs.append(rec)
+            dur = (datetime.now() - t0).total_seconds()
+            m = "OK" if rec.get("ex") else ("VAL" if rec.get("valid") else "ERR")
+            print(f"  [host43/{mode} {i}/{len(qs)}] {m} {rec.get('qid')} "
+                  f"ex={rec.get('ex')} dur={dur:.1f}s", flush=True)
+    finally:
+        _rcq.baseline_generate = _orig_baseline
 
     out_path = out_dir / f"host43_{mode}_s1_results.json"
     out_path.write_text(
