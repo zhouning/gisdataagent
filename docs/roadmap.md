@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-01 &nbsp;|&nbsp; **Current version**: v25.2 &nbsp;|&nbsp; **Next**: v25.3 (Standards Platform Wave 8b — 反向 XMI + Wave 6-eval 评测) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-03 &nbsp;|&nbsp; **Current version**: v25.3 &nbsp;|&nbsp; **Next**: P4 (Standards Platform 审定流模板可视化 / 批量回滚 / 跨标准影响图谱) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -43,6 +43,29 @@
 
 ---
 
+## v25.3 — Standards Platform Wave 8b (P3 收口, 已完成, 2026-06-03)
+
+- [x] **EA-compatible XMI 导出** — 新增 `data_model_xmi_exporter.py`，从 active `std_data_model_snapshot.pdm_json` 导出 UML/XMI XML；稳定 ID 基于 package + physical_table / physical_column，PDM 类型映射覆盖 string / numeric / integer / boolean / geometry-as-string，nullable 映射为 UML multiplicity。
+- [x] **XMI 下载 API** — `GET /api/std/data-model/{vid}/xmi`，任何已登录角色可读；返回 `application/xml` + `Content-Disposition: data_model_<vid>.xml`，复用现有 active snapshot/version 404 语义。
+- [x] **前端下载入口** — `DataModelPreviewModal.tsx` 在 DDL 工具栏增加「下载 XMI」，复用既有数据模型预览 modal，不新增独立建模 sub-tab。
+- [x] **Round-trip 验证** — 导出的 XMI 可被现有 `parse_xmi_file()` 解析出 class / attribute / multiplicity；新增 exporter + API focused tests，前端 build 通过。
+
+> P3 首个生产级闭环完成：CDM/LDM/PDM + PostgreSQL DDL + EA-compatible XMI export。下一步进入 P4：审定流模板可视化、批量回滚、跨标准影响图谱。
+
+---
+
+## v25.3-eval — Standards Platform Wave 6-eval First Slice (已完成, 2026-06-03)
+
+- [x] **派生质量离线评测框架** — 新增 `data_agent/standards_platform/evaluation/`：统一 `DerivationEvalItem` schema、canonical identity、gold/prediction set 校验、重复身份拒绝。
+- [x] **P/R/F1 评分与阈值门禁** — `score_eval_sets()` 输出 overall + per-strategy precision / recall / F1，默认验收阈值 precision >= 0.85、recall >= 0.75；空 gold/prediction 场景按 no-op pass 处理。
+- [x] **预测提取器** — 从 active `std_derived_link` 抽取六类派生预测：semantic_hint、value_semantics、synonym、qc_rule、defect_code、data_model；`to_value_semantics` 将 value_domain kind/code/values 纳入匹配身份，`to_synonym` 按 table + token 粒度评分。
+- [x] **报告与 CLI** — `render_markdown()` 生成 CI/人工复核报告，`python -m data_agent.standards_platform.evaluation.cli` 支持 gold JSON + version_id 输出 JSON/Markdown，并用退出码表示阈值是否通过。
+- [x] **测试 +14** — Wave 6-eval schema / scorer / extractor / report / CLI 全覆盖；standards_platform 全套 **326 passed, 1 skipped**。
+
+> 这是一阶段评测底座：已具备 deterministic scoring 和报告门禁；后续仍需补 50 条款人工 gold set 与真实业务集成评测。
+
+---
+
 ## v25.2 — Standards Platform Wave 8 (已完成, 2026-06-01)
 
 - [x] **`to_data_model` 派生策略** — 每个 std_document_version 派生一份 CDM/LDM/PDM 三层模型 + PostgreSQL DDL（migration 085 + `std_data_model_snapshot` 表）；data_model_renderer 纯函数模块，类型映射含 enum CHECK / regex CHECK / range BETWEEN / GEOMETRY(SRID) + GIST / NOT NULL；**派生覆盖率 5/6 → 6/6 (100%)**
@@ -62,13 +85,12 @@
 - [x] **`to_defect_taxonomy` 派生策略** — 标准 data_element → `agent_defect_code_bindings` 单向派生（migration 084）；mandatory→MIS-001、enum/range→NRM-003、pattern→NRM-002；覆盖率 66%→83% (5/6)
 - [x] **派生回滚** — `link_repo.rollback_version()` + `POST /api/std/derive/rollback/{vid}` admin-only；active 链 → superseded、下游 derived_status → stale、manual 行不动
 - [x] **影响图谱** — `link_repo.impact_graph()` + `GET /api/std/impact/{kind}/{id}` 4 种 source kind（clause/data_element/term/value_domain）；clause 自动展开到子 element/term/value_domain
-- [ ] **Wave 6-eval** — 派生质量评测：人工标注 50 条款 vs 自动派生，目标 P>0.85 / R>0.75（推到 v25.3）
+- [x] **Wave 6-eval first slice** — 派生质量评测底座：统一 eval item schema、active 派生预测抽取、overall/per-strategy P/R/F1、JSON/Markdown 报告与 CLI；50 条款人工 gold set 继续保留为后续数据工作。
 
 ---
 
 ## v25.x — Standards Platform 后续阶段 (规划)
 
-- **Wave 8b / v25.3**：反向 XMI（EA 兼容输出，配合 Wave 8 的 PDM）+ Wave 6-eval 派生质量评测
 - **P4**：审定流模板可视化、批量回滚、跨标准影响图谱
 - **P5**：标准市场（多组织共享 + 订阅 + diff）
 
