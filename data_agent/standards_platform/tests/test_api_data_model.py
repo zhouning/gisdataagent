@@ -55,6 +55,14 @@ def test_data_model_ddl_requires_auth(monkeypatch):
     assert r.status_code == 401
 
 
+def test_data_model_xmi_requires_auth(monkeypatch):
+    monkeypatch.setattr(
+        "data_agent.api.helpers._get_user_from_request", lambda r: None
+    )
+    r = _client().get(f"/api/std/data-model/{uuid.uuid4()}/xmi")
+    assert r.status_code == 401
+
+
 # ---------------------------------------------------------------- not found
 
 
@@ -69,6 +77,20 @@ def test_data_model_get_no_active_snapshot_404(monkeypatch, fresh_clause):
     _, doc_id, ver_id = fresh_clause
     _auth_user(monkeypatch, role="admin")
     r = _client().get(f"/api/std/data-model/{ver_id}")
+    assert r.status_code == 404
+    assert "no active data-model snapshot" in r.json()["error"]
+
+
+def test_data_model_xmi_unknown_version_404(monkeypatch):
+    _auth_user(monkeypatch, role="admin")
+    r = _client().get(f"/api/std/data-model/{uuid.uuid4()}/xmi")
+    assert r.status_code == 404
+
+
+def test_data_model_xmi_no_active_snapshot_404(monkeypatch, fresh_clause):
+    _, _, ver_id = fresh_clause
+    _auth_user(monkeypatch, role="admin")
+    r = _client().get(f"/api/std/data-model/{ver_id}/xmi")
     assert r.status_code == 404
     assert "no active data-model snapshot" in r.json()["error"]
 
@@ -129,6 +151,22 @@ def test_data_model_ddl_returns_text(monkeypatch, engine, fresh_clause):
     assert "Content-Disposition" in {k.title() for k in r.headers.keys()} \
            or "content-disposition" in r.headers
     assert "CREATE TABLE" in r.text
+
+
+def test_data_model_xmi_returns_xml_attachment(monkeypatch, engine, fresh_clause):
+    _, _, ver_id = fresh_clause
+    _seed_one_element(engine, ver_id)
+    DataModelStrategy().run(version_id=ver_id)
+    _auth_user(monkeypatch, role="viewer")
+
+    r = _client().get(f"/api/std/data-model/{ver_id}/xmi")
+
+    assert r.status_code == 200
+    assert "application/xml" in r.headers.get("content-type", "")
+    assert "content-disposition" in {k.lower() for k in r.headers.keys()}
+    assert f"data_model_{ver_id[:8]}.xml" in r.headers["content-disposition"]
+    assert "<uml:Model" in r.text
+    assert 'xmi:type="uml:Class"' in r.text
 
 
 def test_data_model_snapshots_lists_history(monkeypatch, engine, fresh_clause):

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from sqlalchemy import text
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 
 from ..db_engine import get_engine
@@ -39,6 +39,9 @@ from ..standards_platform.publishing import (
 from ..standards_platform.derivation import (
     runner as _derive_runner,
     link_repo as _link_repo,
+)
+from ..standards_platform.derivation.data_model_xmi_exporter import (
+    export_pdm_to_ea_xmi,
 )
 
 
@@ -1105,6 +1108,38 @@ async def data_model_ddl_handler(request: Request):
     )
 
 
+async def data_model_xmi_handler(request: Request):
+    """GET /api/std/data-model/{vid}/xmi - returns EA-compatible XMI XML."""
+    _, _, err = _auth_or_401(request)
+    if err: return err
+    vid = request.path_params["version_id"]
+    not_found = _data_model_version_or_404(vid)
+    if not_found: return not_found
+
+    snap = _active_snapshot_or_404(vid)
+    if isinstance(snap, JSONResponse): return snap
+
+    try:
+        xmi = export_pdm_to_ea_xmi(
+            snap["pdm_json"],
+            model_name=f"Standards Platform Data Model {vid[:8]}",
+            package_name=f"Data Model {vid[:8]}",
+        )
+    except Exception as e:
+        logger.exception("failed to export data-model XMI")
+        return JSONResponse({"error": f"failed to export XMI: {e}"},
+                            status_code=500)
+
+    return Response(
+        xmi,
+        media_type="application/xml",
+        headers={
+            "Content-Disposition":
+                f'attachment; filename="data_model_{vid[:8]}.xml"',
+        },
+    )
+
+
 async def data_model_snapshots_handler(request: Request):
     """GET /api/std/data-model/{vid}/snapshots — list all snapshots (active
     + stale + manual) for a version, newest first. Useful for diffing
@@ -1223,6 +1258,8 @@ standards_routes = [
           endpoint=data_model_get_handler, methods=["GET"]),
     Route("/api/std/data-model/{version_id}/ddl",
           endpoint=data_model_ddl_handler, methods=["GET"]),
+    Route("/api/std/data-model/{version_id}/xmi",
+          endpoint=data_model_xmi_handler, methods=["GET"]),
     Route("/api/std/data-model/{version_id}/snapshots",
           endpoint=data_model_snapshots_handler, methods=["GET"]),
 ]
