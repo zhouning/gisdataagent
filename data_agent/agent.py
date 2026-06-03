@@ -71,6 +71,7 @@ from .toolsets.report_tools import ReportToolset
 from .toolsets.capability_qa_tools import CapabilityQAToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 from .toolsets.world_model_v2_tools import WorldModelV2Toolset
+from .toolsets.world_model_v21_tools import WorldModelV21Toolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
 from .toolsets.geo_processing_tools import (
@@ -484,6 +485,7 @@ general_processing_agent = LlmAgent(
         CausalWorldModelToolset(tool_filter=intent_tool_predicate),
         LLMCausalToolset(tool_filter=intent_tool_predicate),
         WorldModelV2Toolset(tool_filter=intent_tool_predicate),
+        WorldModelV21Toolset(tool_filter=intent_tool_predicate),
         GovernanceToolset(),
         DataCleaningToolset(),
         PrecisionToolset(),
@@ -755,6 +757,7 @@ def _make_analyst(name: str, **overrides) -> LlmAgent:
             LLMCausalToolset(),
             WorldModelToolset(),
             CausalWorldModelToolset(),
+            WorldModelV21Toolset(),
             DreamerToolset(),
         ],
     )
