@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from hashlib import sha1
+import re
 import xml.etree.ElementTree as ET
 
 
@@ -23,9 +24,11 @@ def _ea_java_type(physical_type: str | None, is_geometry: bool) -> str:
         return "EAJava_String"
 
     normalized = (physical_type or "").upper()
+    if "GEOMETRY" in normalized:
+        return "EAJava_String"
     if any(token in normalized for token in ("NUMERIC", "DECIMAL", "DOUBLE", "FLOAT", "REAL")):
         return "EAJava_double"
-    if any(token in normalized for token in ("BIGINT", "INTEGER", "SMALLINT", "INT")):
+    if re.search(r"(^|[^A-Z0-9])(?:BIGINT|INTEGER|SMALLINT|INT)(?=$|[^A-Z0-9])", normalized):
         return "EAJava_long"
     if "BOOLEAN" in normalized or "BOOL" in normalized:
         return "EAJava_boolean"

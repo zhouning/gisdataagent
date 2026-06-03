@@ -145,3 +145,34 @@ def test_export_pdm_to_ea_xmi_maps_exact_int_to_integer(tmp_path: Path):
     attr = parsed.classes[0].attributes[0]
 
     assert attr.type_name == "integer"
+
+
+def test_export_pdm_to_ea_xmi_maps_geometry_type_string_to_string(tmp_path: Path):
+    pdm = {
+        "layer": "PDM",
+        "dialect": "postgresql",
+        "entities": [
+            {
+                "physical_table": "geom_table",
+                "name_zh": "几何表",
+                "attributes": [
+                    {
+                        "physical_column": "geom_col",
+                        "name_zh": "几何列",
+                        "physical_type": "GEOMETRY(POINT, 4490)",
+                        "nullable": False,
+                        "constraints": [],
+                    }
+                ],
+            }
+        ],
+    }
+
+    xml = export_pdm_to_ea_xmi(pdm, package_name="几何模型")
+    target = tmp_path / "geometry_model.xml"
+    target.write_text(xml, encoding="utf-8")
+
+    parsed = parse_xmi_file(target)
+    attr = parsed.classes[0].attributes[0]
+
+    assert attr.type_name == "string"
