@@ -3,6 +3,7 @@ import {
   DataModelPayload,
   getDataModel,
   getDataModelDdlDownloadUrl,
+  getDataModelXmiDownloadUrl,
 } from "../standardsApi";
 
 interface Props {
@@ -75,6 +76,12 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
                         background: "#007aff", color: "#fff",
                         textDecoration: "none", borderRadius: 4 }}>
               下载 .sql
+            </a>
+            <a href={getDataModelXmiDownloadUrl(versionId)}
+               style={{ padding: "4px 12px",
+                        background: "#2f6f4e", color: "#fff",
+                        textDecoration: "none", borderRadius: 4 }}>
+              下载 XMI
             </a>
             {copyHint && (
               <span style={{ color: "#0a7", fontSize: 12 }}>{copyHint}</span>

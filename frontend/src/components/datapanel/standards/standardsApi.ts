@@ -405,6 +405,9 @@ export const getDataModelDdlText = (versionId: string) =>
 export const getDataModelDdlDownloadUrl = (versionId: string) =>
   `/api/std/data-model/${versionId}/ddl`;
 
+export const getDataModelXmiDownloadUrl = (versionId: string) =>
+  `/api/std/data-model/${versionId}/xmi`;
+
 export const listDataModelSnapshots = (versionId: string) =>
   fetch(`/api/std/data-model/${versionId}/snapshots`)
     .then(j<{version_id: string; snapshots: DataModelSnapshotMeta[]}>);
