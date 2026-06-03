@@ -3784,6 +3784,7 @@ def get_frontend_api_routes():
     from .api.causal_routes import get_causal_routes
     from .api.causal_world_model_routes import get_causal_world_model_routes
     from .api.world_model_v2_routes import get_world_model_v2_routes
+    from .api.world_model_v21_routes import get_world_model_v21_routes
     from .api.quality_routes import get_quality_routes
     from .api.domain_standard_routes import get_domain_standard_routes
     from .api.distribution_routes import get_distribution_routes
@@ -3926,6 +3927,8 @@ def get_frontend_api_routes():
         *get_world_model_routes(),
         # World Model v2 (Bishan county — Dual-Layer Geospatial Dreamer)
         *get_world_model_v2_routes(),
+        # World Model v2.1 (Paper9 arcgis-farmland-mpc Tool 4)
+        *get_world_model_v21_routes(),
         # Causal Reasoning (Angle B) + Causal World Model (Angle C)
         *get_causal_routes(),
         *get_causal_world_model_routes(),
