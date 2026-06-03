@@ -115,3 +115,33 @@ def test_export_pdm_to_ea_xmi_round_trips_through_existing_parser(tmp_path: Path
     assert attrs["面积"].upper == "1"
     assert attrs["面积"].type_name == "numeric"
     assert attrs["几何图形"].type_name == "string"
+def test_export_pdm_to_ea_xmi_maps_exact_int_to_integer(tmp_path: Path):
+    pdm = {
+        "layer": "PDM",
+        "dialect": "postgresql",
+        "entities": [
+            {
+                "physical_table": "int_table",
+                "name_zh": "整数表",
+                "attributes": [
+                    {
+                        "physical_column": "int_col",
+                        "name_zh": "整数列",
+                        "physical_type": "INT",
+                        "nullable": False,
+                        "is_geometry": False,
+                        "constraints": [],
+                    }
+                ],
+            }
+        ],
+    }
+
+    xml = export_pdm_to_ea_xmi(pdm, package_name="整数模型")
+    target = tmp_path / "int_model.xml"
+    target.write_text(xml, encoding="utf-8")
+
+    parsed = parse_xmi_file(target)
+    attr = parsed.classes[0].attributes[0]
+
+    assert attr.type_name == "integer"

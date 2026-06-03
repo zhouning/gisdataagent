@@ -25,7 +25,7 @@ def _ea_java_type(physical_type: str | None, is_geometry: bool) -> str:
     normalized = (physical_type or "").upper()
     if any(token in normalized for token in ("NUMERIC", "DECIMAL", "DOUBLE", "FLOAT", "REAL")):
         return "EAJava_double"
-    if any(token in normalized for token in ("BIGINT", "INTEGER", "SMALLINT", " INT", "(INT)", "INT ", "INT)", "INT(")):
+    if any(token in normalized for token in ("BIGINT", "INTEGER", "SMALLINT", "INT")):
         return "EAJava_long"
     if "BOOLEAN" in normalized or "BOOL" in normalized:
         return "EAJava_boolean"
