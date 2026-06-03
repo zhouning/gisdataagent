@@ -1,0 +1,117 @@
+"""Pure-function tests for EA-compatible XMI export from PDM snapshots."""
+from __future__ import annotations
+
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+from data_agent.standards.xmi_parser import parse_xmi_file
+from data_agent.standards_platform.derivation.data_model_xmi_exporter import (
+    export_pdm_to_ea_xmi,
+)
+
+
+def _pdm() -> dict:
+    return {
+        "layer": "PDM",
+        "dialect": "postgresql",
+        "entities": [
+            {
+                "physical_table": "cq_dltb",
+                "name_zh": "土地利用图斑",
+                "name_en": "land_parcel",
+                "attributes": [
+                    {
+                        "physical_column": "DLBM",
+                        "name_zh": "地类编码",
+                        "physical_type": "VARCHAR(64)",
+                        "nullable": False,
+                        "is_geometry": False,
+                        "constraints": ["CHECK (\"DLBM\" IN ('01'))"],
+                    },
+                    {
+                        "physical_column": "MJ",
+                        "name_zh": "面积",
+                        "physical_type": "NUMERIC(18,4)",
+                        "nullable": True,
+                        "is_geometry": False,
+                        "constraints": [],
+                    },
+                    {
+                        "physical_column": "geometry",
+                        "name_zh": "几何图形",
+                        "physical_type": "GEOMETRY(POLYGON, 4490)",
+                        "nullable": False,
+                        "is_geometry": True,
+                        "constraints": [],
+                    },
+                ],
+            },
+            {
+                "physical_table": "std_region",
+                "name_zh": "行政区",
+                "name_en": "region",
+                "attributes": [
+                    {
+                        "physical_column": "enabled",
+                        "name_zh": "是否启用",
+                        "physical_type": "BOOLEAN",
+                        "nullable": True,
+                        "is_geometry": False,
+                        "constraints": [],
+                    }
+                ],
+            },
+        ],
+    }
+
+
+def test_export_pdm_to_ea_xmi_emits_minimal_uml_document():
+    xml = export_pdm_to_ea_xmi(
+        _pdm(),
+        model_name="Standards Platform Data Model",
+        package_name="自然资源数据模型",
+    )
+
+    root = ET.fromstring(xml)
+    assert root.tag.endswith("XMI")
+    assert "uml:Model" in xml
+    assert "自然资源数据模型" in xml
+    assert "土地利用图斑" in xml
+    assert "地类编码" in xml
+
+    class_count = xml.count('xmi:type="uml:Class"')
+    attr_count = xml.count('xmi:type="uml:Property"')
+    assert class_count == 2
+    assert attr_count == 4
+
+
+def test_export_pdm_to_ea_xmi_is_deterministic():
+    first = export_pdm_to_ea_xmi(_pdm(), package_name="自然资源数据模型")
+    second = export_pdm_to_ea_xmi(_pdm(), package_name="自然资源数据模型")
+
+    assert first == second
+    assert "CLASS_" in first
+    assert "ATTR_" in first
+
+
+def test_export_pdm_to_ea_xmi_round_trips_through_existing_parser(tmp_path: Path):
+    xml = export_pdm_to_ea_xmi(_pdm(), package_name="自然资源数据模型")
+    target = tmp_path / "exported_model.xml"
+    target.write_text(xml, encoding="utf-8")
+
+    parsed = parse_xmi_file(target)
+
+    assert parsed.top_package_name == "自然资源数据模型"
+    assert parsed.stats.total_classes == 2
+    assert parsed.stats.total_attributes == 4
+    class_by_name = {c.name_decoded: c for c in parsed.classes}
+    assert "土地利用图斑" in class_by_name
+
+    attrs = {a.name_decoded: a for a in class_by_name["土地利用图斑"].attributes}
+    assert attrs["地类编码"].lower == "1"
+    assert attrs["地类编码"].upper == "1"
+    assert attrs["地类编码"].type_name == "string"
+    assert attrs["面积"].lower == "0"
+    assert attrs["面积"].upper == "1"
+    assert attrs["面积"].type_name == "numeric"
+    assert attrs["几何图形"].type_name == "string"
