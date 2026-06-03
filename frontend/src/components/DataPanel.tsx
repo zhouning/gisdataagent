@@ -29,6 +29,7 @@ import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
 import WorldModelTab from './datapanel/WorldModelTab';
 import WorldModelV2Tab from './datapanel/WorldModelV2Tab';
+import WorldModelV21Tab from './datapanel/WorldModelV21Tab';
 import CausalReasoningTab from './datapanel/CausalReasoningTab';
 import OptimizationTab from './datapanel/OptimizationTab';
 import QcMonitorTab from './datapanel/QcMonitorTab';
@@ -50,7 +51,7 @@ interface DataPanelProps {
   username?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'worldmodel_v21' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -88,6 +89,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'market', label: '市场', icon: <Store size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
+      { key: 'worldmodel_v21', label: '世界模型v2.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'causal', label: '因果推理', icon: <FlaskConical size={ICON_SIZE} /> },
       { key: 'optimization', label: '优化', icon: <Target size={ICON_SIZE} /> },
       { key: 'standards', label: '领域标准', icon: <Database size={ICON_SIZE} /> },
@@ -225,6 +227,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'charts' && <ChartsTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
+        {activeTab === 'worldmodel_v21' && <WorldModelV21Tab />}
         {activeTab === 'causal' && <CausalReasoningTab />}
         {activeTab === 'optimization' && <OptimizationTab />}
         {activeTab === 'qcmonitor' && <QcMonitorTab />}

@@ -3131,6 +3131,73 @@ body {
 .fm-preview-actions { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
 
 /* ============================================================
+   World Model v2.1 Tab
+   ============================================================ */
+.worldmodel-v21-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.worldmodel-v21-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.worldmodel-v21-path {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  word-break: break-all;
+  line-height: 1.45;
+}
+
+.worldmodel-v21-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.worldmodel-v21-grid .config-row {
+  min-width: 0;
+}
+
+.worldmodel-v21-grid input,
+.worldmodel-v21-grid select {
+  width: 100%;
+}
+
+.worldmodel-v21-results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  font-size: 12px;
+}
+
+.worldmodel-v21-metric {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+.worldmodel-v21-metric span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  margin-bottom: 2px;
+}
+
+.worldmodel-v21-metric strong {
+  display: block;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================
    Semantic Layer Tab (DataPanel → 智能分析 → 语义层)
    ============================================================ */
 .semantic-layer-tab { display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; }
