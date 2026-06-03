@@ -13,7 +13,8 @@ def test_extract_requested_routes_to_extract_then_enqueues_structure():
                   "attempts":0})
     fake_ex.assert_called_once()
     fake_enq.assert_called_with("structure_requested",
-        {"document_id":"D","version_id":"V","extracted":{"FieldTable":[]}})
+        {"document_id":"D","version_id":"V",
+         "extracted":{"FieldTable":[], "LayerTable":[]}})
 
 
 def test_structure_requested_routes_to_structurer_then_enqueues_embed():
