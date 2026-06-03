@@ -73,6 +73,7 @@ def test_build_context_returns_expected_keys():
             {"column_name": "geometry", "data_type": "USER-DEFINED", "semantic_domain": None, "aliases": [], "is_geometry": True},
         ],
     }
+    schema["columns"][1]["value_semantics"] = {"identifier": False}
     with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
          patch("data_agent.nl2sql_grounding.describe_table_semantic", return_value=schema), \
          patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value="参考查询示例:\nQ: ...\nSQL: SELECT ..."), \
@@ -88,6 +89,7 @@ def test_build_context_returns_expected_keys():
     assert cols["Floor"]["quoted_ref"] == '"Floor"'
     assert cols["geometry"]["quoted_ref"] == "geometry"
     assert cols["Floor"]["needs_quoting"] is True
+    assert cols["Floor"]["value_semantics"] == {"identifier": False}
 
 
 def test_build_context_fallbacks_to_list_sources_when_semantic_has_no_sources():
@@ -129,6 +131,128 @@ def test_build_context_fallbacks_to_list_sources_when_semantic_has_no_sources():
 
     assert len(result["candidate_tables"]) == 1
     assert result["candidate_tables"][0]["table_name"] == "cq_buildings_2021"
+
+
+def test_build_context_boosts_table_with_explicit_identifier_column_names():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "lowercase_parcels",
+                "display_name": "Lowercase parcels",
+                "description": "Parcel table with lowercase physical columns",
+                "geometry_type": "POLYGON",
+                "confidence": 0.56,
+            },
+            {
+                "table_name": "survey_parcels",
+                "display_name": "Survey parcels",
+                "description": "Parcel table with official uppercase physical columns",
+                "geometry_type": "POLYGON",
+                "confidence": 0.56,
+            },
+        ],
+        "matched_columns": {
+            "lowercase_parcels": [
+                {"column_name": "dlmc", "aliases": ["DLMC"], "semantic_domain": "NAME", "is_geometry": False},
+                {"column_name": "bsm", "aliases": ["BSM"], "semantic_domain": "ID", "is_geometry": False},
+            ],
+            "survey_parcels": [
+                {"column_name": "DLMC", "aliases": ["dlmc"], "semantic_domain": "NAME", "is_geometry": False},
+                {"column_name": "BSM", "aliases": ["bsm"], "semantic_domain": "ID", "is_geometry": False},
+            ],
+        },
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+    schemas = {
+        "lowercase_parcels": {
+            "status": "success",
+            "table_name": "lowercase_parcels",
+            "columns": [
+                {"column_name": "dlmc", "data_type": "text", "aliases": ["DLMC"]},
+                {"column_name": "bsm", "data_type": "text", "aliases": ["BSM"]},
+            ],
+        },
+        "survey_parcels": {
+            "status": "success",
+            "table_name": "survey_parcels",
+            "columns": [
+                {"column_name": "DLMC", "data_type": "text", "aliases": ["dlmc"]},
+                {"column_name": "BSM", "data_type": "text", "aliases": ["bsm"]},
+            ],
+        },
+    }
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=lambda t: schemas[t]), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context("Return BSM and centroid where DLMC = 'forest'", family="gemma")
+
+    assert result["candidate_tables"][0]["table_name"] == "survey_parcels"
+
+
+def test_build_context_preserves_table_synonyms_for_grounding_prompt():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "cq_buildings_2021",
+                "display_name": "重庆建筑物数据",
+                "description": "建筑轮廓与楼层信息",
+                "geometry_type": "MULTIPOLYGON",
+                "confidence": 0.9,
+            },
+        ],
+        "matched_columns": {},
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+    source_list = {
+        "status": "success",
+        "sources": [
+            {
+                "table_name": "cq_buildings_2021",
+                "display_name": "重庆建筑物数据",
+                "description": "建筑轮廓与楼层信息",
+                "geometry_type": "MULTIPOLYGON",
+                "synonyms": ["建筑", "建筑物", "楼"],
+                "suggested_analyses": [],
+            }
+        ],
+    }
+    schema = {
+        "status": "success",
+        "table_name": "cq_buildings_2021",
+        "display_name": "重庆建筑物数据",
+        "columns": [
+            {"column_name": "Id", "data_type": "integer", "semantic_domain": None, "aliases": []},
+            {"column_name": "Floor", "data_type": "integer", "semantic_domain": "HEIGHT", "aliases": ["楼层"]},
+        ],
+    }
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.list_semantic_sources", return_value=source_list), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", return_value=schema), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context("统计建筑中楼层超过 20 层的数量")
+
+    table = result["candidate_tables"][0]
+    assert "建筑" in table["table_aliases"]
+    assert "楼" in table["table_aliases"]
+    assert "table aliases" in result["grounding_prompt"]
 
 
 def test_build_context_prioritizes_non_gis_tables_for_english_warehouse_query():
@@ -238,6 +362,25 @@ def test_build_context_prioritizes_non_gis_tables_for_english_warehouse_query():
         "bird_debit_card_specializing.yearmonth",
     ]
     assert "cq_jsydgzq" not in names[:2]
+
+
+def test_prune_cross_domain_noise_keeps_high_conf_cjk_source_and_drops_low_conf_ascii():
+    from data_agent.nl2sql_grounding import _prune_cross_domain_noise
+
+    sources = [
+        {"table_name": "cq_amap_poi_2024", "display_name": "高德POI", "confidence": 0.7},
+        {"table_name": "bird_california_schools.frpm", "display_name": "FRPM", "confidence": 0.56},
+        {"table_name": "cq_historic_districts", "display_name": "历史文化街区", "confidence": 0.48},
+    ]
+
+    pruned = _prune_cross_domain_noise("统计高德 POI 数量", sources)
+    names = [s["table_name"] for s in pruned]
+
+    assert "cq_amap_poi_2024" in names
+    assert "cq_historic_districts" in names
+    assert "bird_california_schools.frpm" not in names
+
+
 def test_build_context_prefers_relevant_tables_within_schema_hint():
     from data_agent.nl2sql_grounding import build_nl2sql_context
 

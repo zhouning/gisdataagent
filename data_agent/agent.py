@@ -882,6 +882,15 @@ def _build_mention_nl2sql_agent():
 
     model_obj = get_model_for_tier("standard")
     family = family_of(model_obj)
+    model_str = (getattr(model_obj, "model", "") or "").lower()
+
+    if family == "gemma" and "ollama_chat/" in model_str:
+        from .nl2semantic2sql_direct_agent import DirectNL2SemanticSQLAgent
+        return DirectNL2SemanticSQLAgent(
+            name="MentionNL2SQL",
+            description="NL2SQL expert using deterministic NL2Semantic2SQL.",
+        )
+
     instruction = prompts_nl2sql.load_system_instruction(family)
 
     return LlmAgent(

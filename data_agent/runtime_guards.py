@@ -61,6 +61,29 @@ def detect_give_up_sql(sql: str) -> bool:
 _HALLUCINATED_TOKENS = ("/", "\\", ".csv", "query_result_", "uploads")
 
 
+def _extract_cte_names(sql: str) -> set[str]:
+    """Best-effort extraction of WITH-query CTE aliases."""
+    if not sql:
+        return set()
+    try:
+        import sqlglot
+        import sqlglot.expressions as exp
+
+        parsed = sqlglot.parse_one(sql, dialect="postgres")
+        if parsed is None:
+            return set()
+        return {cte.alias for cte in parsed.find_all(exp.CTE) if cte.alias}
+    except Exception:
+        names: set[str] = set()
+        for cte_match in re.finditer(
+            r"(?:\bWITH\b|,)\s*(?P<name>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(",
+            sql,
+            re.IGNORECASE,
+        ):
+            names.add(cte_match.group("name").strip('"'))
+        return names
+
+
 def detect_hallucinated_table_name(
     sql: str, allowed_tables: set[str] | None = None
 ) -> str | None:
@@ -85,6 +108,7 @@ def detect_hallucinated_table_name(
     #    - a bare identifier (letters/digits/_/.)
     #    Subqueries `(` are skipped.
     targets: list[str] = []
+    cte_names = _extract_cte_names(sql)
     for m in re.finditer(r"\b(?:from|join)\s+", sql, re.IGNORECASE):
         rest = sql[m.end():]
         # Skip subqueries
@@ -109,6 +133,10 @@ def detect_hallucinated_table_name(
 
     for tok in targets:
         lo = tok.lower()
+        if lo == "lateral":
+            continue
+        if tok in cte_names or lo in {name.lower() for name in cte_names}:
+            continue
         if any(bad in lo for bad in _HALLUCINATED_TOKENS):
             return tok
         if allowed_tables:

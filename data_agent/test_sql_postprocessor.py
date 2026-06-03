@@ -174,15 +174,15 @@ def test_inject_limit_on_large_table_full_scan():
     assert "1000" in result.sql
 
 
-def test_existing_small_limit_bumped_on_large_table():
+def test_existing_small_limit_preserved_on_large_table():
     from data_agent.sql_postprocessor import postprocess_sql
     result = postprocess_sql(
         "SELECT * FROM cq_amap_poi_2024 LIMIT 100",
         table_schemas=_POI_SCHEMA,
         large_tables={"cq_amap_poi_2024"},
     )
-    assert "LIMIT 1000" in result.sql.upper()
-    assert any("bumped" in c.lower() for c in result.corrections)
+    assert "LIMIT 100" in result.sql.upper()
+    assert not any("bumped" in c.lower() for c in result.corrections)
 
 
 def test_existing_reasonable_limit_preserved():

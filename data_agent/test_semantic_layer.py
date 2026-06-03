@@ -103,6 +103,16 @@ class TestAliasMatching(unittest.TestCase):
         score = _match_aliases("xyz", ["x"])
         self.assertEqual(score, 0.0)  # "x" is len=1, skipped in substring
 
+    def test_two_char_cjk_alias_substring_match(self):
+        """Two-character CJK aliases are meaningful business terms."""
+        score = _match_aliases("\u7edf\u8ba1\u9053\u8def\u6570\u91cf", ["\u9053\u8def"])
+        self.assertEqual(score, 0.7)
+
+    def test_two_char_ascii_alias_still_not_substring_matched(self):
+        """Short ASCII aliases like id/st should not match inside longer words."""
+        score = _match_aliases("identified starting points", ["id", "st"])
+        self.assertEqual(score, 0.0)
+
     def test_exact_single_char(self):
         """Single-char alias can exact match."""
         score = _match_aliases("x", ["x", "lng"])

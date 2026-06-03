@@ -262,6 +262,11 @@ def ensure_semantic_tables():
 # Synonym Matching (simple, no ML)
 # ---------------------------------------------------------------------------
 
+def _contains_cjk(text: str) -> bool:
+    """Return True when text contains a CJK unified ideograph."""
+    return any("\u4e00" <= ch <= "\u9fff" for ch in text or "")
+
+
 def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
     """Match user text against a list of aliases. Returns confidence 0-1.
 
@@ -274,11 +279,13 @@ def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
         # Exact word match
         if alias_lower == user_lower:
             return 1.0
-        # Substring match (user text contains alias). Require alias length >= 3
-        # to avoid 2-char column aliases (e.g. "id", "st") false-positive
-        # matching short fragments inside common English words ("identified",
-        # "GEOID", "STATE", "starting"). 2-char aliases must match exactly.
-        if len(alias_lower) >= 3 and alias_lower in user_lower:
+        # Substring match (user text contains alias). Require ASCII aliases to
+        # have length >= 3 to avoid 2-char column aliases (e.g. "id", "st")
+        # false-positive matching inside common English words ("identified",
+        # "GEOID", "STATE", "starting"). CJK two-character words are common
+        # meaningful business terms, so allow them to substring match.
+        min_substring_len = 2 if _contains_cjk(alias_lower) else 3
+        if len(alias_lower) >= min_substring_len and alias_lower in user_lower:
             best_score = max(best_score, 0.7)
             continue
         # Reverse substring (alias contains a significant segment of user text)
@@ -1091,19 +1098,25 @@ def describe_table_semantic(table_name: str) -> dict:
             annotations = {}
             try:
                 ann_rows = conn.execute(text(f"""
-                    SELECT column_name, semantic_domain, aliases, unit, description, is_geometry
+                    SELECT column_name, semantic_domain, aliases, unit, description, is_geometry,
+                           COALESCE(value_semantics, '{{}}'::jsonb) AS value_semantics
                     FROM {T_SEMANTIC_REGISTRY}
                     WHERE table_name = :t
                 """), {"t": table_name}).fetchall()
                 for row in ann_rows:
-                    col, domain, aliases_raw, unit, desc, is_geom = row
+                    col, domain, aliases_raw, unit, desc, is_geom, value_sem = row
                     alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
+                    value_semantics = (
+                        value_sem if isinstance(value_sem, dict)
+                        else json.loads(value_sem or "{}")
+                    )
                     annotations[col] = {
                         "semantic_domain": domain,
                         "aliases": alias_list,
                         "unit": unit or "",
                         "description": desc or "",
                         "is_geometry": is_geom,
+                        "value_semantics": value_semantics,
                     }
             except Exception:
                 pass  # table may not exist yet

@@ -221,6 +221,16 @@ def test_seed_semantic_hints_cq_has_expected_rules():
     assert ("cq_land_use_dltb", "SHAPE_Area") in vs_cols
     assert ("cq_osm_roads_2021", "maxspeed") in vs_cols
     assert ("cq_baidu_aoi_2024", "第一分类") in vs_cols
+    assert ("cq_amap_poi_2024", "类型") in vs_cols
+    assert ("cq_amap_poi_2024", "电话") in vs_cols
+    assert ("cq_unicom_commuting_2023", "扩样后人口") in vs_cols
+    dlmc_vs = next(vs for t, c, vs in _VALUE_SEMANTICS if (t, c) == ("cq_dltb", "dlmc"))
+    override_values = {
+        item["value"]
+        for item in dlmc_vs.get("literal_column_overrides", [])
+        if item.get("wrong_columns") == ["dlbm"]
+    }
+    assert {"村庄", "茶园", "有林地"}.issubset(override_values)
 
 
 def test_resolve_semantic_context_returns_new_hint_keys():

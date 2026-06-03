@@ -114,6 +114,30 @@ class TestHallucinated:
         )
         assert detect_hallucinated_table_name(sql) is None
 
+    def test_cte_reference_allowed_with_allow_list(self):
+        sql = (
+            "WITH large_items AS ("
+            "SELECT geometry FROM cq_land_use_dltb WHERE \"DLMC\" = 'forest'"
+            ") SELECT COUNT(*) FROM large_items l "
+            "WHERE EXISTS (SELECT 1 FROM cq_osm_roads_2021 r "
+            "WHERE ST_Intersects(l.geometry, r.geometry))"
+        )
+        allowed = {"cq_land_use_dltb", "cq_osm_roads_2021"}
+
+        assert detect_hallucinated_table_name(sql, allowed) is None
+
+    def test_lateral_join_keyword_not_flagged_with_allow_list(self):
+        sql = (
+            "SELECT r.name, nearest.aoi_name FROM cq_osm_roads_2021 r "
+            "CROSS JOIN LATERAL ("
+            "SELECT a.name AS aoi_name FROM cq_baidu_aoi_2024 a "
+            "ORDER BY r.geometry <-> a.shape LIMIT 1"
+            ") nearest"
+        )
+        allowed = {"cq_osm_roads_2021", "cq_baidu_aoi_2024"}
+
+        assert detect_hallucinated_table_name(sql, allowed) is None
+
     def test_allow_list_rejects_unknown(self):
         sql = "SELECT * FROM made_up_table"
         allowed = {"cq_buildings_2021", "cq_amap_poi_2024"}

@@ -273,18 +273,6 @@ def postprocess_sql(
             result.corrections.append(
                 f"LIMIT {DEFAULT_LIMIT} injected (large-table guard: intent={intent})"
             )
-        else:
-            # Bump LLM-injected small LIMITs (<=100) to DEFAULT_LIMIT
-            outermost = _get_outermost_select(parsed)
-            if outermost:
-                limit_node = outermost.args.get("limit")
-                if limit_node:
-                    limit_expr = limit_node.expression
-                    if isinstance(limit_expr, exp.Literal) and limit_expr.is_int:
-                        val = int(limit_expr.this)
-                        if val <= 100:
-                            limit_node.set("expression", exp.Literal.number(DEFAULT_LIMIT))
-                            result.corrections.append(f"LIMIT {val} bumped to {DEFAULT_LIMIT} (large table)")
 
     # EXPLAIN-based OOM pre-check (Task 5).
     #

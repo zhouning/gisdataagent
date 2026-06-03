@@ -20,3 +20,13 @@ def test_enhanced_toolset_exposes_two_tools():
     tools = asyncio.run(ts.get_tools())
     tool_names = sorted([t.name for t in tools])
     assert tool_names == ["execute_nl2sql", "prepare_nl2sql_context"]
+
+
+def test_enhanced_toolset_single_tool_mode_exposes_high_level_runner():
+    import asyncio
+    from data_agent.toolsets.nl2sql_enhanced_tools import NL2SQLEnhancedToolset
+
+    ts = NL2SQLEnhancedToolset(single_tool=True)
+    tools = asyncio.run(ts.get_tools())
+    tool_names = [t.name for t in tools]
+    assert tool_names == ["run_nl2semantic2sql"]

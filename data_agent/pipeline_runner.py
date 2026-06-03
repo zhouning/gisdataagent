@@ -197,19 +197,20 @@ async def run_pipeline_headless(
                             _is_err = _resp.get("status") == "error"
                         elif isinstance(_resp, str):
                             _result_msg = _resp[:200]
-                        tool_execution_log.append(
-                            {
-                                "step": _tool_step_counter,
-                                "agent_name": _pending_tool_call["agent_name"],
-                                "tool_name": _pending_tool_call["tool_name"],
-                                "args": _pending_tool_call["args"],
-                                "output_path": _out_path,
-                                "result_summary": _result_msg,
-                                "duration": time.time()
-                                - _pending_tool_call["start_time"],
-                                "is_error": _is_err,
-                            }
-                        )
+                        _tool_entry = {
+                            "step": _tool_step_counter,
+                            "agent_name": _pending_tool_call["agent_name"],
+                            "tool_name": _pending_tool_call["tool_name"],
+                            "args": _pending_tool_call["args"],
+                            "output_path": _out_path,
+                            "result_summary": _result_msg,
+                            "duration": time.time()
+                            - _pending_tool_call["start_time"],
+                            "is_error": _is_err,
+                        }
+                        if _pending_tool_call["tool_name"] == "run_nl2semantic2sql":
+                            _tool_entry["result"] = _resp
+                        tool_execution_log.append(_tool_entry)
                         _pending_tool_call = None
                     if on_event and tool_execution_log:
                         _last = tool_execution_log[-1]

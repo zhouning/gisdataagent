@@ -177,6 +177,11 @@ _VALUE_SEMANTICS: list[tuple[str, str, dict]] = [
     }),
     ("cq_land_use_dltb", "TBMJ", {
         "unit_caveat": "pre-computed parcel area in real m²",
+        "geometry_area_column": "geometry",
+        "use_geometry_area_when_question_matches": [
+            "real", "spatial", "geometry", "geography", "st_area",
+            "真实", "空间", "几何", "占地",
+        ],
     }),
     ("cq_baidu_aoi_2024", "第一分类", {
         "enum": [
@@ -200,6 +205,10 @@ _VALUE_SEMANTICS: list[tuple[str, str, dict]] = [
             {"value": "footway", "meaning": "步行道"},
             {"value": "service", "meaning": "服务道路"},
         ],
+        "semantic_groups": [{
+            "aliases": ["主干道", "main road"],
+            "values": ["primary", "motorway"],
+        }],
     }),
     ("cq_osm_roads_2021", "maxspeed", {
         "sentinels": [{"value": 0, "meaning": "unset / not configured"}],
@@ -226,6 +235,54 @@ _VALUE_SEMANTICS: list[tuple[str, str, dict]] = [
             {"value": 1, "meaning": "同网格 (本地通勤)"},
             {"value": 0, "meaning": "跨网格 (跨区县通勤)"},
         ],
+    }),
+    ("cq_osm_roads_2021", "osm_id", {"identifier": True}),
+    ("cq_land_use_dltb", "BSM", {"identifier": True, "sql_aliases": ["bsm"]}),
+    ("cq_buildings_2021", "Id", {"identifier": True, "sql_aliases": ["id"]}),
+    ("cq_amap_poi_2024", "ID", {"identifier": True, "sql_aliases": ["id"]}),
+    ("cq_amap_poi_2024", "名称", {"sql_aliases": ["name"]}),
+    ("cq_amap_poi_2024", "地址", {"sql_aliases": ["address"]}),
+    ("cq_amap_poi_2024", "电话", {"sql_aliases": ["phone", "tel"]}),
+    ("cq_amap_poi_2024", "类型", {"sql_aliases": ["type", "category"]}),
+    ("cq_amap_poi_2024", "geometry", {"sql_aliases": ["shape", "geom"]}),
+    ("cq_baidu_aoi_2024", "名称", {"sql_aliases": ["name"]}),
+    ("cq_baidu_aoi_2024", "类型", {"sql_aliases": ["type", "category"]}),
+    ("cq_baidu_aoi_2024", "评分", {"sql_aliases": ["score"]}),
+    ("cq_baidu_aoi_2024", "shape", {"sql_aliases": ["geometry", "geom"]}),
+    ("cq_dltb", "bsm", {"identifier": True, "sql_aliases": ["BSM"]}),
+    ("cq_dltb", "dlbm", {"sql_aliases": ["DLCB", "dlcb"]}),
+    ("cq_dltb", "dlmc", {
+        "sql_aliases": ["DLMC"],
+        "literal_column_overrides": [
+            {"value": "村庄", "wrong_columns": ["dlbm"]},
+            {"value": "茶园", "wrong_columns": ["dlbm"]},
+            {"value": "有林地", "wrong_columns": ["dlbm"]},
+        ],
+    }),
+    ("cq_dltb", "tbmj", {"sql_aliases": ["TBMJ"]}),
+    ("cq_dltb", "shape", {"sql_aliases": ["geometry", "geom"]}),
+    ("cq_unicom_commuting_2023", "年龄", {"sql_aliases": ["age"]}),
+    ("cq_unicom_commuting_2023", "扩样后人口", {
+        "sql_aliases": ["sample_population", "population_after_sampling", "扩样后总人口"],
+    }),
+    ("cq_district_population", "户籍总人口_万人_", {
+        "stored_unit_multiplier": 10000,
+        "natural_unit_aliases": ["人", "people", "persons"],
+    }),
+    ("cq_baidu_search_index_2023", "pcsscs", {
+        "default_preview_sort": "desc",
+        "default_sort_priority": 10,
+        "measure_role": "primary_preview_metric",
+    }),
+    ("cq_baidu_search_index_2023", "ydsscs", {
+        "default_preview_sort": "desc",
+        "default_sort_priority": 5,
+        "measure_role": "secondary_preview_metric",
+    }),
+    ("cq_baidu_search_index_2023", "sszs", {
+        "default_preview_sort": "desc",
+        "default_sort_priority": 1,
+        "measure_role": "search_index_total",
     }),
 ]
 
@@ -286,36 +343,43 @@ def seed_semantic_hints_cq(owner: str = "audit") -> dict:
 
     with engine.begin() as conn:
         # --- 1. Upsert agent_semantic_hints rows ---
-        for h in _HINTS:
-            conn.execute(text("""
-                INSERT INTO agent_semantic_hints
-                    (scope_type, scope_ref, hint_kind,
-                     hint_text_zh, hint_text_en, severity,
-                     trigger_keywords, sample_sql, source_tag, owner_username)
-                VALUES
-                    (:scope_type, :scope_ref, :hint_kind,
-                     :hint_text_zh, :hint_text_en, :severity,
-                     CAST(:trigger_keywords AS jsonb), :sample_sql,
-                     'cq_migration_069', :owner)
-                ON CONFLICT (scope_ref, hint_kind, hint_text_zh)
-                DO UPDATE SET
-                    hint_text_en     = EXCLUDED.hint_text_en,
-                    severity         = EXCLUDED.severity,
-                    trigger_keywords = EXCLUDED.trigger_keywords,
-                    sample_sql       = EXCLUDED.sample_sql,
-                    updated_at       = NOW()
-            """), {
-                "scope_type": h["scope_type"],
-                "scope_ref": h["scope_ref"],
-                "hint_kind": h["hint_kind"],
-                "hint_text_zh": h["hint_text_zh"],
-                "hint_text_en": h.get("hint_text_en"),
-                "severity": h.get("severity", "info"),
-                "trigger_keywords": json.dumps(h.get("trigger_keywords", [])),
-                "sample_sql": h.get("sample_sql"),
-                "owner": owner,
-            })
-            hints_written += 1
+        has_hints_table = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'agent_semantic_hints'
+            )
+        """)).scalar()
+        if has_hints_table:
+            for h in _HINTS:
+                conn.execute(text("""
+                    INSERT INTO agent_semantic_hints
+                        (scope_type, scope_ref, hint_kind,
+                         hint_text_zh, hint_text_en, severity,
+                         trigger_keywords, sample_sql, source_tag, owner_username)
+                    VALUES
+                        (:scope_type, :scope_ref, :hint_kind,
+                         :hint_text_zh, :hint_text_en, :severity,
+                         CAST(:trigger_keywords AS jsonb), :sample_sql,
+                         'cq_migration_069', :owner)
+                    ON CONFLICT (scope_ref, hint_kind, hint_text_zh)
+                    DO UPDATE SET
+                        hint_text_en     = EXCLUDED.hint_text_en,
+                        severity         = EXCLUDED.severity,
+                        trigger_keywords = EXCLUDED.trigger_keywords,
+                        sample_sql       = EXCLUDED.sample_sql,
+                        updated_at       = NOW()
+                """), {
+                    "scope_type": h["scope_type"],
+                    "scope_ref": h["scope_ref"],
+                    "hint_kind": h["hint_kind"],
+                    "hint_text_zh": h["hint_text_zh"],
+                    "hint_text_en": h.get("hint_text_en"),
+                    "severity": h.get("severity", "info"),
+                    "trigger_keywords": json.dumps(h.get("trigger_keywords", [])),
+                    "sample_sql": h.get("sample_sql"),
+                    "owner": owner,
+                })
+                hints_written += 1
 
         # --- 2. Patch agent_semantic_registry.value_semantics ---
         for table_name, column_name, vs_dict in _VALUE_SEMANTICS:
@@ -385,5 +449,9 @@ def seed_semantic_hints_cq(owner: str = "audit") -> dict:
 
 
 if __name__ == "__main__":
+    from pathlib import Path
+    from dotenv import load_dotenv
+
+    load_dotenv(str(Path(__file__).resolve().parent / ".env"), override=False)
     result = seed_semantic_hints_cq()
     print(json.dumps(result, ensure_ascii=False, indent=2))

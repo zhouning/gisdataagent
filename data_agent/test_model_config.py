@@ -45,6 +45,20 @@ class TestGemma4Registration(unittest.TestCase):
         online = ModelRegistry.get_online_models()
         assert "gemma-4-31b-it" in online
 
+    def test_gemma4_host9_ollama_registration(self):
+        from data_agent.model_gateway import ModelRegistry
+        ModelRegistry.reset()
+        ModelRegistry._ensure_initialized()
+        info = ModelRegistry.get_model_info("gemma4-26b-host9")
+        assert info["backend"] == "litellm"
+        assert info["tier"] == "standard"
+        assert info["online"] is False
+        assert info["api_base"] == "http://192.168.43.9:11434"
+        assert info["api_base_pinned"] is True
+        assert info["model_id"] == "ollama_chat/Gemma4:26b"
+        assert info["extra_body"] == {"think": False}
+        assert info["request_timeout"] == 600
+
 
 class TestLiteLlmExtraParams(unittest.TestCase):
     """Verify extra_headers and extra_body are stored in registry."""

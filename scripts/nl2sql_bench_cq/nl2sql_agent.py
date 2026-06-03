@@ -48,6 +48,14 @@ def build_nl2sql_agent():
     # pick the matching grounding template / intent path.
     os.environ["NL2SQL_AGENT_FAMILY"] = prompt_family
 
+    model_str = (getattr(model_obj, "model", "") or "").lower()
+    if family == "gemma" and "ollama_chat/" in model_str:
+        from data_agent.nl2semantic2sql_direct_agent import DirectNL2SemanticSQLAgent
+        return DirectNL2SemanticSQLAgent(
+            name="NL2SQLEvalAgent",
+            description="Focused NL2SQL evaluation agent using high-level NL2Semantic2SQL",
+        )
+
     # No explicit generate_content_config: each provider uses its production
     # default (Gemini: server-side default; DeepSeek via LiteLlm: OpenAI-spec
     # default temperature=1.0). Cross-family comparisons therefore evaluate

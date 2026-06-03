@@ -65,6 +65,16 @@ class EmbeddingRegistry:
             "api_base": "http://192.168.43.10:11434",
             "description": "Nomic Embed Text v2 MoE via Ollama @ 192.168.43.10",
         },
+        # Current LAN Ollama embedding cell paired with gemma4-26b-host9.
+        "nomic-embed-text-v2-moe-host9": {
+            "backend": "ollama",
+            "dimension": 768,
+            "online": False,
+            "ollama_model_id": "nomic-embed-text-v2-moe:latest",
+            "api_base": "http://192.168.43.9:11434",
+            "api_base_pinned": True,
+            "description": "Nomic Embed Text v2 MoE via Ollama @ 192.168.43.9",
+        },
     }
 
     models: dict[str, dict] = {}

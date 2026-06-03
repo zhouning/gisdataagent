@@ -311,6 +311,27 @@ class ModelRegistry:
             "extra_body": {"think": False},
             "request_timeout": 600,
         },
+        # Current LAN Ollama cell used for Gemma4 NL2Semantic2SQL tests.
+        # Pinned to 192.168.43.9 so OLLAMA_API_BASE cannot redirect the CQ
+        # benchmark/agent path to a different host. Keep thinking disabled for
+        # the same reason as host43: the production @NL2SQL path must return
+        # concise SQL/tool output instead of model-side reasoning traces.
+        "gemma4-26b-host9": {
+            "backend": "litellm",
+            "tier": "standard",
+            "online": False,
+            "cost_per_1k_input": 0.0,
+            "cost_per_1k_output": 0.0,
+            "latency_p50_ms": 8000,
+            "max_context_tokens": 128_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation", "coding"],
+            "api_base": "http://192.168.43.9:11434",
+            "api_base_pinned": True,
+            "model_id": "ollama_chat/Gemma4:26b",
+            "extra_body": {"think": False},
+            "request_timeout": 600,
+        },
     }
 
     # Mutable registry: starts with builtins, can be extended at runtime

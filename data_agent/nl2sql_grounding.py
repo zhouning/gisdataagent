@@ -1,6 +1,7 @@
 """NL2SQL grounding: semantic resolution + schema assembly + few-shot formatting."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 from difflib import SequenceMatcher
@@ -109,7 +110,7 @@ def _needs_quoting(column_name: str) -> bool:
         return True
     if column_name in PG_RESERVED_WORDS:
         return True
-    if not column_name.replace("_", "a").isalnum():
+    if not all(ch == "_" or (ch.isascii() and ch.isalnum()) for ch in column_name):
         return True
     return False
 
@@ -170,6 +171,38 @@ def _is_ascii_heavy(text: str) -> bool:
     ascii_chars = sum(1 for ch in text if ch.isascii() and ch.isalpha())
     alpha_chars = sum(1 for ch in text if ch.isalpha())
     return alpha_chars > 0 and ascii_chars / max(alpha_chars, 1) >= 0.6
+
+
+def _contains_cjk_text(text: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in text or "")
+
+
+def _prune_cross_domain_noise(user_text: str, sources: list[dict]) -> list[dict]:
+    """Drop low-confidence ASCII-only sources when CJK sources matched strongly."""
+    if not _contains_cjk_text(user_text):
+        return sources
+    if not any(float(s.get("confidence") or 0) >= 0.65 for s in sources):
+        return sources
+    q_low = (user_text or "").lower()
+    pruned = []
+    for source in sources:
+        confidence = float(source.get("confidence") or 0)
+        table_name = str(source.get("table_name") or "")
+        bare = table_name.split(".")[-1]
+        source_text = " ".join(
+            str(source.get(k) or "")
+            for k in ("table_name", "display_name", "description")
+        )
+        if confidence >= 0.6:
+            pruned.append(source)
+            continue
+        if table_name.lower() in q_low or bare.lower() in q_low:
+            pruned.append(source)
+            continue
+        if _contains_cjk_text(source_text):
+            pruned.append(source)
+            continue
+    return pruned
 
 
 def _extract_schema_hint(user_text: str) -> str | None:
@@ -273,6 +306,12 @@ def _rank_candidate_tables(user_text: str, candidate_tables: list[dict], semanti
         if not spatial_query:
             if col_hits:
                 score += min(0.3, 0.1 * col_hits)
+            table_alias_hits = _explicit_table_alias_hits(user_text, table)
+            if table_alias_hits:
+                score += min(0.5, 0.2 * table_alias_hits)
+            explicit_col_hits = _explicit_physical_column_hits(user_text, table)
+            if explicit_col_hits:
+                score += min(0.4, 0.18 * explicit_col_hits)
             if not has_geom:
                 score += 0.1
             else:
@@ -295,6 +334,56 @@ def _rank_candidate_tables(user_text: str, candidate_tables: list[dict], semanti
 
     ranked.sort(key=lambda x: x[0], reverse=True)
     return [t for _, t in ranked]
+
+
+def _explicit_physical_column_hits(user_text: str, table: dict) -> int:
+    """Count exact physical column-name mentions in the question.
+
+    Aliases are intentionally ignored here. This is a tie-breaker for cases
+    where two tables share business aliases but only one has the exact physical
+    identifiers the user typed, such as case-sensitive PostgreSQL columns.
+    """
+    hits = 0
+    text = user_text or ""
+    for col in table.get("columns", []) or []:
+        name = str(col.get("column_name") or "")
+        if not name:
+            continue
+        if _identifier_token_in_text(text, name):
+            hits += 1
+    return hits
+
+
+def _explicit_table_alias_hits(user_text: str, table: dict) -> int:
+    hits = 0
+    seen: set[str] = set()
+    table_name = str(table.get("table_name") or "")
+    display_name = str(table.get("display_name") or "")
+    probes = [table_name, table_name.split(".")[-1], display_name]
+    probes.extend(str(a) for a in (table.get("table_aliases") or []))
+    for part in re.split(r"[\W_]+", table_name.split(".")[-1]):
+        if part and not part.isdigit():
+            probes.append(part)
+    for probe in probes:
+        probe = probe.strip()
+        key = probe.lower()
+        if not probe or key in seen or key in {"cq", "bird", "public"}:
+            continue
+        seen.add(key)
+        if _identifier_token_in_text(user_text, probe):
+            hits += 1
+    return hits
+
+
+def _identifier_token_in_text(text: str, token: str) -> bool:
+    if not token:
+        return False
+    if any(ch.isascii() and (ch.isalnum() or ch == "_") for ch in token):
+        return bool(re.search(
+            rf"(?<![A-Za-z0-9_]){re.escape(token)}(?![A-Za-z0-9_])",
+            text,
+        ))
+    return token in text
 
 
 def _build_candidate_table(source: dict, schema: dict) -> dict:
@@ -322,16 +411,64 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
             "description": col.get("description") or "",
             "is_geometry": is_geom,
             "needs_quoting": _needs_quoting(column_name),
+            "value_semantics": col.get("value_semantics") or {},
             "sample_values": [],
         })
     return {
         "table_name": source.get("table_name") or schema.get("table_name"),
         "display_name": source.get("display_name") or schema.get("display_name") or source.get("table_name"),
         "description": source.get("description") or schema.get("description") or "",
+        "table_aliases": _table_aliases_from_source(source, schema),
         "confidence": float(source.get("confidence", 0.0)),
         "columns": out_columns,
         "row_count_hint": _estimate_table_size(source.get("table_name") or schema.get("table_name")),
+        "schema_complete": True,
     }
+
+
+def _as_str_list(value) -> list[str]:
+    if not value:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple, set)):
+        return [str(v) for v in value if v]
+    return []
+
+
+def _table_aliases_from_source(source: dict, schema: dict) -> list[str]:
+    source_meta = schema.get("source_metadata") or {}
+    table_name = source.get("table_name") or schema.get("table_name") or ""
+    aliases: list[str] = []
+    for key in ("table_aliases", "sql_aliases", "synonyms"):
+        aliases.extend(_as_str_list(source.get(key)))
+    aliases.extend(_as_str_list(source_meta.get("synonyms")))
+    for label in (
+        source.get("display_name"),
+        schema.get("display_name"),
+        source_meta.get("display_name"),
+    ):
+        if label:
+            aliases.append(str(label))
+    cleaned = []
+    for alias in aliases:
+        alias = str(alias).strip()
+        if not alias or alias == table_name:
+            continue
+        cleaned.append(alias)
+    return list(dict.fromkeys(cleaned))
+
+
+def _merge_source_metadata(source: dict, source_list_item: dict | None) -> dict:
+    if not source_list_item:
+        return source
+    merged = dict(source_list_item)
+    merged.update(source)
+    for key in ("synonyms", "suggested_analyses", "table_aliases", "sql_aliases"):
+        if key not in source or not source.get(key):
+            if source_list_item.get(key):
+                merged[key] = source_list_item[key]
+    return merged
 
 
 def _format_grounding_prompt(payload: dict, family: str | None = None) -> str:
@@ -372,6 +509,9 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
             lines.append(f"### {table['table_name']}"
                          f" (confidence {table.get('confidence', 0.0):.2f},"
                          f" ~{table.get('row_count_hint', 0)} rows)")
+            table_aliases = table.get("table_aliases") or []
+            if table_aliases:
+                lines.append(f"- table aliases: {', '.join(str(a) for a in table_aliases[:12])}")
             for col in table.get("columns", []):
                 unit_str = f" [{col['unit']}]" if col.get("unit") else ""
                 aliases = col.get("aliases") or []
@@ -381,9 +521,14 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
                     f" sample: {', '.join(str(v) for v in sv[:5])}"
                     if sv else ""
                 )
+                value_semantics = col.get("value_semantics") or {}
+                value_semantics_str = (
+                    f" semantics: {json.dumps(value_semantics, ensure_ascii=False)}"
+                    if value_semantics else ""
+                )
                 lines.append(
                     f"- {col['quoted_ref']} :: {col.get('pg_type','')}"
-                    f"{unit_str}{alias_str}{sample_str}"
+                    f"{unit_str}{alias_str}{sample_str}{value_semantics_str}"
                 )
                 if col.get("is_geometry"):
                     pg_type = col.get("pg_type", "")
@@ -483,6 +628,9 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         lines.append("")
         lines.append(f"### {table['table_name']} ({table.get('display_name') or table['table_name']})")
         lines.append(f"置信度: {table.get('confidence', 0.0):.2f}; 估计行数: {table.get('row_count_hint', 0)}")
+        table_aliases = table.get("table_aliases") or []
+        if table_aliases:
+            lines.append(f"- table aliases: {', '.join(str(a) for a in table_aliases[:12])}")
         for col in table.get("columns", []):
             alias_str = ", ".join(col.get("aliases") or []) or "—"
             unit_str = f" [单位: {col['unit']}]" if col.get("unit") else ""
@@ -831,6 +979,15 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     source_list = list_semantic_sources()
     schema_hint = _extract_schema_hint(user_text) or schema_filter
     if source_list.get("status") == "success":
+        source_by_table = {
+            str(s.get("table_name") or ""): s
+            for s in source_list.get("sources", [])
+            if s.get("table_name")
+        }
+        sources = [
+            _merge_source_metadata(s, source_by_table.get(str(s.get("table_name") or "")))
+            for s in sources
+        ]
         scored = []
         for source in source_list.get("sources", []):
             if source.get("table_name") in source_table_names:
@@ -933,6 +1090,8 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     candidate_tables = []
     ascii_heavy = _is_ascii_heavy(user_text)
     spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    if not schema_filter:
+        sources = _prune_cross_domain_noise(user_text, sources)
     source_limit = 5 if not spatial_query else 3
     if schema_filter:
         source_limit = 8  # warehouse benchmarks may have many tables per schema
