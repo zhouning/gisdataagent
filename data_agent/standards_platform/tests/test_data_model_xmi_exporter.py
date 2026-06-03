@@ -26,7 +26,7 @@ def _pdm() -> dict:
                         "physical_type": "VARCHAR(64)",
                         "nullable": False,
                         "is_geometry": False,
-                        "constraints": ["CHECK (\"DLBM\" IN ('01'))"],
+                        "constraints": ['CHECK ("DLBM" IN (\'01\'))'],
                     },
                     {
                         "physical_column": "MJ",
@@ -115,6 +115,67 @@ def test_export_pdm_to_ea_xmi_round_trips_through_existing_parser(tmp_path: Path
     assert attrs["面积"].upper == "1"
     assert attrs["面积"].type_name == "numeric"
     assert attrs["几何图形"].type_name == "string"
+
+
+def test_export_pdm_to_ea_xmi_emits_xml_declaration_and_trailing_newline():
+    xml = export_pdm_to_ea_xmi(_pdm(), package_name="自然资源数据模型")
+
+    assert xml.startswith("<?xml version='1.0' encoding='utf-8'?>") or xml.startswith(
+        '<?xml version="1.0" encoding="utf-8"?>'
+    )
+    assert xml.endswith("\n")
+
+
+def test_export_pdm_to_ea_xmi_preserves_ids_for_reordered_entities_and_attributes(tmp_path: Path):
+    pdm = _pdm()
+    parcel_name = pdm["entities"][0]["name_zh"]
+    region_name = pdm["entities"][1]["name_zh"]
+    reordered = {
+        **pdm,
+        "entities": [
+            {
+                **pdm["entities"][1],
+                "attributes": list(reversed(pdm["entities"][1]["attributes"])),
+            },
+            {
+                **pdm["entities"][0],
+                "attributes": list(reversed(pdm["entities"][0]["attributes"])),
+            },
+        ],
+    }
+
+    original = export_pdm_to_ea_xmi(pdm, package_name="自然资源数据模型")
+    shuffled = export_pdm_to_ea_xmi(reordered, package_name="自然资源数据模型")
+
+    original_path = tmp_path / "original.xml"
+    shuffled_path = tmp_path / "shuffled.xml"
+    original_path.write_text(original, encoding="utf-8")
+    shuffled_path.write_text(shuffled, encoding="utf-8")
+
+    original_parsed = parse_xmi_file(original_path)
+    shuffled_parsed = parse_xmi_file(shuffled_path)
+
+    original_classes = {c.name_decoded: c for c in original_parsed.classes}
+    shuffled_classes = {c.name_decoded: c for c in shuffled_parsed.classes}
+
+    assert original_classes[parcel_name].class_id == shuffled_classes[parcel_name].class_id
+    assert original_classes[region_name].class_id == shuffled_classes[region_name].class_id
+
+    original_attrs = {a.name_decoded: a.attr_id for a in original_classes[parcel_name].attributes}
+    shuffled_attrs = {a.name_decoded: a.attr_id for a in shuffled_classes[parcel_name].attributes}
+    assert original_attrs == shuffled_attrs
+
+
+def test_export_pdm_to_ea_xmi_uses_model_name_as_package_fallback(tmp_path: Path):
+    xml = export_pdm_to_ea_xmi(_pdm(), model_name="Model Fallback")
+    target = tmp_path / "fallback.xml"
+    target.write_text(xml, encoding="utf-8")
+
+    parsed = parse_xmi_file(target)
+    assert parsed.top_package_name == "Model Fallback"
+    assert "Model Fallback" in xml
+
+
 def test_export_pdm_to_ea_xmi_maps_exact_int_to_integer(tmp_path: Path):
     pdm = {
         "layer": "PDM",

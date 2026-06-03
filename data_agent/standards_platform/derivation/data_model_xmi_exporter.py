@@ -19,6 +19,23 @@ def _stable_id(prefix: str, *parts: object) -> str:
     return f"{prefix}_{digest[:16]}"
 
 
+def _class_id(package_name: str, entity: dict, entity_index: int) -> str:
+    physical_table = entity.get("physical_table")
+    if physical_table:
+        return _stable_id("CLASS", package_name, physical_table)
+    class_name = entity.get("name_zh") or entity.get("name_en") or ""
+    return _stable_id("CLASS", package_name, class_name, entity_index)
+
+
+def _attr_id(package_name: str, entity: dict, attribute: dict, attr_index: int) -> str:
+    physical_table = entity.get("physical_table")
+    physical_column = attribute.get("physical_column")
+    if physical_table and physical_column:
+        return _stable_id("ATTR", package_name, physical_table, physical_column)
+    attr_name = attribute.get("name_zh") or attribute.get("name_en") or ""
+    return _stable_id("ATTR", package_name, physical_table or "", attr_name, attr_index)
+
+
 def _ea_java_type(physical_type: str | None, is_geometry: bool) -> str:
     if is_geometry:
         return "EAJava_String"
@@ -49,9 +66,7 @@ def export_pdm_to_ea_xmi(
     package_name: str | None = None,
 ) -> str:
     """Return an EA-compatible UML/XMI XML document."""
-    del model_name
-
-    package_name = package_name or "Standards Platform Data Model"
+    package_name = package_name or model_name or "Standards Platform Data Model"
 
     root = ET.Element(f"{{{XMI_NS}}}XMI")
     model = ET.SubElement(
@@ -81,7 +96,7 @@ def export_pdm_to_ea_xmi(
             "packagedElement",
             {
                 f"{{{XMI_NS}}}type": "uml:Class",
-                f"{{{XMI_NS}}}id": _stable_id("CLASS", package_name, entity.get("physical_table"), entity_index, class_name),
+                f"{{{XMI_NS}}}id": _class_id(package_name, entity, entity_index),
                 "name": class_name,
             },
         )
@@ -96,14 +111,7 @@ def export_pdm_to_ea_xmi(
                 "ownedAttribute",
                 {
                     f"{{{XMI_NS}}}type": "uml:Property",
-                    f"{{{XMI_NS}}}id": _stable_id(
-                        "ATTR",
-                        package_name,
-                        entity.get("physical_table"),
-                        attribute.get("physical_column"),
-                        attr_index,
-                        attr_name,
-                    ),
+                    f"{{{XMI_NS}}}id": _attr_id(package_name, entity, attribute, attr_index),
                     "name": attr_name,
                     "visibility": "private",
                 },
