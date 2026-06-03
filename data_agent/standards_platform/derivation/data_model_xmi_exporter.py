@@ -52,11 +52,27 @@ def _ea_java_type(physical_type: str | None, is_geometry: bool) -> str:
     return "EAJava_String"
 
 
-def _append_multiplicity(parent: ET.Element, *, nullable: bool) -> None:
+def _append_multiplicity(parent: ET.Element, *, attr_id: str, nullable: bool) -> None:
     lower = "0" if nullable else "1"
     upper = "1"
-    ET.SubElement(parent, "lowerValue", {"value": lower})
-    ET.SubElement(parent, "upperValue", {"value": upper})
+    ET.SubElement(
+        parent,
+        "lowerValue",
+        {
+            f"{{{XMI_NS}}}type": "uml:LiteralInteger",
+            f"{{{XMI_NS}}}id": _stable_id("LOWER", attr_id),
+            "value": lower,
+        },
+    )
+    ET.SubElement(
+        parent,
+        "upperValue",
+        {
+            f"{{{XMI_NS}}}type": "uml:LiteralUnlimitedNatural",
+            f"{{{XMI_NS}}}id": _stable_id("UPPER", attr_id),
+            "value": upper,
+        },
+    )
 
 
 def export_pdm_to_ea_xmi(
@@ -106,17 +122,18 @@ def export_pdm_to_ea_xmi(
             attr_name = attribute.get("name_zh") or attribute.get("physical_column") or ""
             nullable = bool(attribute.get("nullable", True))
             primitive_id = _ea_java_type(attribute.get("physical_type"), bool(attribute.get("is_geometry")))
+            attr_id = _attr_id(package_name, entity, attribute, attr_index)
             prop_elem = ET.SubElement(
                 class_elem,
                 "ownedAttribute",
                 {
                     f"{{{XMI_NS}}}type": "uml:Property",
-                    f"{{{XMI_NS}}}id": _attr_id(package_name, entity, attribute, attr_index),
+                    f"{{{XMI_NS}}}id": attr_id,
                     "name": attr_name,
                     "visibility": "private",
                 },
             )
-            _append_multiplicity(prop_elem, nullable=nullable)
+            _append_multiplicity(prop_elem, attr_id=attr_id, nullable=nullable)
             ET.SubElement(prop_elem, "type", {f"{{{XMI_NS}}}idref": primitive_id})
 
     xml = ET.tostring(root, encoding="utf-8", xml_declaration=True)

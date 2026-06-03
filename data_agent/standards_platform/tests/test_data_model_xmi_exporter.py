@@ -94,6 +94,26 @@ def test_export_pdm_to_ea_xmi_is_deterministic():
     assert "ATTR_" in first
 
 
+def test_export_pdm_to_ea_xmi_emits_stable_multiplicity_ids_and_types():
+    xml = export_pdm_to_ea_xmi(_pdm(), package_name="鑷劧璧勬簮鏁版嵁妯″瀷")
+    root = ET.fromstring(xml)
+    xmi_id = "{http://www.omg.org/spec/XMI/20131001}id"
+    xmi_type = "{http://www.omg.org/spec/XMI/20131001}type"
+
+    attributes = root.findall(".//ownedAttribute")
+
+    assert attributes
+    for attribute in attributes:
+        lower = attribute.find("lowerValue")
+        upper = attribute.find("upperValue")
+        assert lower is not None
+        assert upper is not None
+        assert lower.attrib[xmi_type] == "uml:LiteralInteger"
+        assert upper.attrib[xmi_type] == "uml:LiteralUnlimitedNatural"
+        assert lower.attrib[xmi_id].startswith("LOWER_")
+        assert upper.attrib[xmi_id].startswith("UPPER_")
+
+
 def test_export_pdm_to_ea_xmi_round_trips_through_existing_parser(tmp_path: Path):
     xml = export_pdm_to_ea_xmi(_pdm(), package_name="自然资源数据模型")
     target = tmp_path / "exported_model.xml"
