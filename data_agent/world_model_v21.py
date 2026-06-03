@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import importlib
 import os
+import re
 import subprocess
 import sys
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -160,6 +162,81 @@ class WorldModelV21Service:
             "delta_conn": self._optional_float(payload, "delta_conn"),
         }
 
+    def run_plan(self, payload: dict[str, Any], user_id: str) -> dict[str, Any]:
+        """Run Paper9 Tool 4 MPC planning and return normalized JSON."""
+        cfg = self.validate_plan_request(payload)
+        plan_run = self._load_paper9_plan_run()
+        out_dir = self._new_output_dir(user_id)
+
+        output_fc = out_dir / "optimized_dltb.shp"
+        input_dltb_fc = (
+            cfg["prepared_dir"] / "dem_slope_analysis" / "output" / "DLTB_with_slope.shp"
+        )
+        output_fc_arg = (
+            str(output_fc)
+            if cfg["env_kind"] == "county" and input_dltb_fc.exists()
+            else None
+        )
+
+        try:
+            summary = plan_run(
+                ensemble_dir=str(cfg["ensemble_dir"]),
+                out_dir=str(out_dir),
+                horizon=cfg["horizon"],
+                top_k=cfg["top_k"],
+                n_episodes=cfg["n_episodes"],
+                continuation=cfg["continuation"],
+                scoring=cfg["scoring"],
+                threads=cfg["threads"],
+                seed_offset=cfg["seed_offset"],
+                prepared_dir=str(cfg["prepared_dir"]),
+                proj_crs=cfg["proj_crs"],
+                env_kind=cfg["env_kind"],
+                output_fc=output_fc_arg,
+                input_dltb_fc=str(input_dltb_fc) if output_fc_arg else None,
+                cultivated_area_floor_delta_ha=cfg[
+                    "cultivated_area_floor_delta_ha"
+                ],
+                baimu_area_floor_delta_ha=cfg["baimu_area_floor_delta_ha"],
+                gamma_conn=cfg["gamma_conn"],
+                delta_conn=cfg["delta_conn"],
+            )
+        except WorldModelV21Error:
+            raise
+        except Exception as exc:
+            raise WorldModelV21UnavailableError(str(exc)) from exc
+
+        warnings: list[str] = []
+        map_layer = None
+        if output_fc_arg:
+            map_layer = self._convert_optimized_shp_to_fgb(output_fc, out_dir, warnings)
+
+        artifacts = {
+            "summary_json": "mpc_summary.json"
+            if (out_dir / "mpc_summary.json").exists()
+            else None,
+            "land_use_npy": "mpc_land_use.npy"
+            if (out_dir / "mpc_land_use.npy").exists()
+            else None,
+            "optimized_shp": output_fc.name if output_fc.exists() else None,
+            "map_layer": map_layer.name if map_layer else None,
+        }
+        return {
+            "status": "ok",
+            "version": VERSION,
+            "source": "arcgis-farmland-mpc",
+            "mode": "tool4_mpc",
+            "env_kind": cfg["env_kind"],
+            "prepared_dir": str(cfg["prepared_dir"]),
+            "ensemble_dir": str(cfg["ensemble_dir"]),
+            "out_dir": str(out_dir),
+            "summary": self._normalize_summary(summary),
+            "artifacts": artifacts,
+            "map_config": self._build_map_config(map_layer) if map_layer else None,
+            "map_update_queued": False,
+            "warnings": warnings,
+        }
+
     def _import_paper9(self) -> dict[str, Any]:
         repo = str(self.repo_path)
         if repo not in sys.path:
@@ -177,6 +254,101 @@ class WorldModelV21Service:
                 "package_version": None,
                 "error": str(exc),
             }
+
+    def _load_paper9_plan_run(self):
+        info = self._import_paper9()
+        if not info["importable"]:
+            raise WorldModelV21UnavailableError(info["error"] or "Paper9 import failed")
+        from farmland_mpc.mpc_plan import run
+
+        return run
+
+    def _new_output_dir(self, user_id: str) -> Path:
+        safe_user = re.sub(r"[^A-Za-z0-9_.-]+", "_", user_id or "anonymous")
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        out_dir = (
+            Path(__file__).resolve().parent
+            / "uploads"
+            / safe_user
+            / "world_model_v21"
+            / stamp
+        )
+        out_dir.mkdir(parents=True, exist_ok=False)
+        return out_dir
+
+    def _normalize_summary(self, summary: dict[str, Any]) -> dict[str, Any]:
+        results = summary.get("results") or []
+        first = results[0] if results else {}
+        aggregate = summary.get("aggregate") or {}
+        config = summary.get("config") or {}
+        return {
+            "total_reward": first.get("total_reward"),
+            "steps_run": first.get("steps_run"),
+            "swaps_completed": first.get("swaps_completed"),
+            "n_selected": first.get("n_selected"),
+            "budget_used": first.get("budget_used"),
+            "budget_fraction_used": first.get("budget_fraction_used"),
+            "slope_change_pct": first.get(
+                "slope_change_pct", aggregate.get("slope_pct_mean")
+            ),
+            "cont_change": first.get("cont_change", aggregate.get("cont_mean")),
+            "baimu_area_change_ha": first.get(
+                "baimu_area_change_ha", aggregate.get("baimu_ha_mean")
+            ),
+            "n_episodes": config.get("n_episodes"),
+            "n_blocks": config.get("n_blocks"),
+            "n_parcels": config.get("n_parcels"),
+            "max_steps": config.get("max_steps"),
+            "ensemble_members": (summary.get("ensemble") or {}).get("n_members"),
+        }
+
+    def _convert_optimized_shp_to_fgb(
+        self, optimized_shp: Path, out_dir: Path, warnings: list[str]
+    ) -> Path | None:
+        if not optimized_shp.exists():
+            warnings.append(f"optimized shapefile not found: {optimized_shp}")
+            return None
+        try:
+            import geopandas as gpd
+
+            gdf = gpd.read_file(optimized_shp)
+            if gdf.crs is not None:
+                gdf = gdf.to_crs(epsg=4326)
+            map_layer = out_dir / "optimized_dltb.fgb"
+            gdf.to_file(map_layer, driver="FlatGeobuf")
+            return map_layer
+        except Exception as exc:
+            warnings.append(f"map conversion failed: {exc}")
+            return None
+
+    def _build_map_config(self, map_layer: Path) -> dict[str, Any]:
+        return {
+            "layers": [
+                {
+                    "name": "World Model v2.1 optimized",
+                    "type": "fgb",
+                    "fgb": map_layer.name,
+                    "category_column": "OPT_DLBM",
+                    "style_map": {
+                        "011": {
+                            "fillColor": "#FFD166",
+                            "color": "#B7791F",
+                            "fillOpacity": 0.7,
+                            "weight": 0.4,
+                        },
+                        "031": {
+                            "fillColor": "#2F855A",
+                            "color": "#276749",
+                            "fillOpacity": 0.7,
+                            "weight": 0.4,
+                        },
+                    },
+                    "visible": True,
+                }
+            ],
+            "center": None,
+            "zoom": 12,
+        }
 
     def _git(self, args: list[str]) -> str | None:
         if not self.repo_path.is_dir():
