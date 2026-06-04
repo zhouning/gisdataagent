@@ -164,6 +164,26 @@ def test_build_context_renders_relation_confidence_kg_hints():
     assert "mp_project_list.project_id -> mp_relation_confidence.project_id" in prompt
 
 
+def test_format_kg_hints_renders_neo4j_backend_metadata():
+    from data_agent.nl2sql_grounding import _format_kg_hints_lines
+
+    lines = _format_kg_hints_lines({
+        "matched_entities": ["\u91cd\u5927\u9879\u76ee"],
+        "required_edges": ["OCCUPIES_PARCEL"],
+        "graph_backend": "neo4j",
+        "neo4j": {
+            "status": "ok",
+            "database": "zdxmdb",
+            "edge_counts": {"OCCUPIES_PARCEL": 200},
+        },
+    })
+
+    rendered = "\n".join(lines)
+    assert "graph backend: neo4j" in rendered
+    assert "database: zdxmdb" in rendered
+    assert "OCCUPIES_PARCEL=200" in rendered
+
+
 def test_kg_hint_tables_are_grounded_when_semantic_only_finds_project_list():
     from data_agent.nl2sql_grounding import build_nl2sql_context
 

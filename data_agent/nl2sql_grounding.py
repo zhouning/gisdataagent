@@ -783,6 +783,21 @@ def _format_kg_hints_lines(kg_hints: dict | None) -> list[str]:
     if required_edges:
         lines.append(f"- required graph edges: {', '.join(required_edges[:8])}")
 
+    graph_backend = kg_hints.get("graph_backend")
+    neo4j_info = kg_hints.get("neo4j") if isinstance(kg_hints.get("neo4j"), dict) else {}
+    if graph_backend:
+        backend_parts = [f"graph backend: {graph_backend}"]
+        if neo4j_info.get("status") == "ok" and neo4j_info.get("database"):
+            backend_parts.append(f"database: {neo4j_info.get('database')}")
+        lines.append(f"- {'; '.join(backend_parts)}")
+        edge_counts = neo4j_info.get("edge_counts") if isinstance(neo4j_info, dict) else {}
+        if isinstance(edge_counts, dict) and edge_counts:
+            rendered_counts = [
+                f"{edge_type}={count}"
+                for edge_type, count in list(edge_counts.items())[:8]
+            ]
+            lines.append(f"- neo4j edge counts: {', '.join(rendered_counts)}")
+
     missing_stage = kg_hints.get("missing_stage")
     if kg_hints.get("missing_stage_filter") or missing_stage:
         suffix = f"; missing_stage: {missing_stage}" if missing_stage else ""

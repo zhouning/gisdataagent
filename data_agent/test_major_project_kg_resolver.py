@@ -152,3 +152,44 @@ def test_semantic_sources_and_matched_tables_feed_major_project_candidates():
         "mp_relation_confidence.target_id -> mp_parcel.parcel_id"
         in result["join_paths"]
     )
+
+
+def test_neo4j_backend_enriches_required_edge_counts_when_enabled(monkeypatch):
+    monkeypatch.setenv("MAJOR_PROJECT_KG_BACKEND", "neo4j")
+    monkeypatch.setenv("NEO4J_DATABASE", "zdxmdb")
+    monkeypatch.setattr(
+        "data_agent.major_project_kg_resolver._query_neo4j_edge_counts",
+        lambda edge_types: {"OCCUPIES_PARCEL": 200},
+        raising=False,
+    )
+
+    result = resolve_major_project_kg_hints(
+        "List major project parcel links with relation confidence greater than 0.9"
+    )
+
+    assert result["graph_backend"] == "neo4j"
+    assert result["neo4j"]["status"] == "ok"
+    assert result["neo4j"]["database"] == "zdxmdb"
+    assert result["neo4j"]["edge_counts"]["OCCUPIES_PARCEL"] == 200
+
+
+def test_neo4j_backend_failure_keeps_projection_hints(monkeypatch):
+    monkeypatch.setenv("MAJOR_PROJECT_KG_BACKEND", "neo4j")
+
+    def _raise(_edge_types):
+        raise RuntimeError("neo4j unavailable")
+
+    monkeypatch.setattr(
+        "data_agent.major_project_kg_resolver._query_neo4j_edge_counts",
+        _raise,
+        raising=False,
+    )
+
+    result = resolve_major_project_kg_hints(
+        "List major project parcel links with relation confidence greater than 0.9"
+    )
+
+    assert result["graph_backend"] == "postgres_projection"
+    assert result["neo4j"]["status"] == "error"
+    assert "OCCUPIES_PARCEL" in result["required_edges"]
+    assert "mp_relation_confidence" in result["candidate_tables"]
