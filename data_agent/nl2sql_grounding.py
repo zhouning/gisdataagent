@@ -471,6 +471,68 @@ def _merge_source_metadata(source: dict, source_list_item: dict | None) -> dict:
     return merged
 
 
+def _resolve_major_project_kg_hints(user_text: str, semantic: dict, intent: str | None) -> dict:
+    """Resolve major-project KG hints without letting resolver failures break grounding."""
+    try:
+        from .major_project_kg_resolver import resolve_major_project_kg_hints
+
+        hints = resolve_major_project_kg_hints(
+            user_text,
+            semantic=semantic,
+            intent=intent,
+        )
+        return hints if isinstance(hints, dict) else {}
+    except Exception as exc:
+        logger.warning("[NL2SQL grounding] major-project KG hint resolution failed: %s", exc)
+        return {}
+
+
+def _format_kg_hints_lines(kg_hints: dict | None) -> list[str]:
+    """Render deterministic KG hints in a compact, prompt-safe form."""
+    if not isinstance(kg_hints, dict):
+        return []
+
+    matched_entities = _as_str_list(kg_hints.get("matched_entities"))
+    required_edges = _as_str_list(kg_hints.get("required_edges"))
+    if not matched_entities and not required_edges:
+        return []
+
+    lines = ["KG hints:"]
+    if matched_entities:
+        lines.append(f"- matched entities: {', '.join(matched_entities[:8])}")
+    if required_edges:
+        lines.append(f"- required graph edges: {', '.join(required_edges[:8])}")
+
+    missing_stage = kg_hints.get("missing_stage")
+    if kg_hints.get("missing_stage_filter") or missing_stage:
+        suffix = f"; missing_stage: {missing_stage}" if missing_stage else ""
+        lines.append(
+            f"- lifecycle missing-stage filter: {bool(kg_hints.get('missing_stage_filter'))}{suffix}"
+        )
+
+    min_confidence = kg_hints.get("min_relation_confidence")
+    if kg_hints.get("relation_confidence_filter") or min_confidence is not None:
+        parts = [f"enabled: {bool(kg_hints.get('relation_confidence_filter'))}"]
+        if min_confidence is not None:
+            parts.append(f"min_relation_confidence: {min_confidence}")
+        lines.append(f"- relation confidence filter: {'; '.join(parts)}")
+
+    spatial_threshold = kg_hints.get("spatial_overlap_threshold")
+    if spatial_threshold is not None:
+        lines.append(f"- spatial overlap threshold: {spatial_threshold}")
+
+    join_paths = _as_str_list(kg_hints.get("join_paths"))
+    for join_path in join_paths[:5]:
+        lines.append(f"- graph join path: {join_path}")
+
+    candidate_tables = _as_str_list(kg_hints.get("candidate_tables"))
+    joined_tables = ", ".join(candidate_tables)
+    if candidate_tables and len(joined_tables) <= 180:
+        lines.append(f"- candidate graph tables: {joined_tables}")
+
+    return lines
+
+
 def _format_grounding_prompt(payload: dict, family: str | None = None) -> str:
     """Format the grounding payload into a strict prompt block for the LLM.
 
@@ -561,6 +623,11 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
         lines.append("## Semantic hints")
         for k, v in interesting.items():
             lines.append(f"- {k}: {v}")
+
+    kg_hint_lines = _format_kg_hints_lines(payload.get("kg_hints"))
+    if kg_hint_lines:
+        lines.append("")
+        lines.extend(kg_hint_lines)
 
     # Business rules from agent_semantic_hints (data-driven).
     table_hints = payload.get("table_hints") or []
@@ -695,6 +762,11 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
     lines.append(f"- 层次匹配: {hints.get('hierarchy_matches') or []}")
     lines.append(f"- 指标提示: {hints.get('metric_hints') or []}")
     lines.append(f"- 推荐 SQL 过滤: {hints.get('sql_filters') or []}")
+
+    kg_hint_lines = _format_kg_hints_lines(payload.get("kg_hints"))
+    if kg_hint_lines:
+        lines.append("")
+        lines.extend(kg_hint_lines)
 
     # Business rules (table- and column-scope) from agent_semantic_hints.
     # Previously lived hard-coded in prompts_nl2sql/*/system_instruction.md;
@@ -1144,6 +1216,12 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     if not spatial_query:
         warehouse_join_hints = _build_warehouse_join_hints(candidate_tables)
 
+    kg_hints = _resolve_major_project_kg_hints(
+        user_text,
+        semantic=semantic,
+        intent=getattr(intent_result.primary, "value", intent_result.primary),
+    )
+
     few_shot_text = ""
     import os as _abl_os
     if _abl_os.environ.get("NL2SQL_DISABLE_FEWSHOT") != "1" and _should_fetch_few_shots(user_text, candidate_tables, semantic):
@@ -1168,6 +1246,7 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
             if int(t.get("row_count_hint", 0) or 0) >= 1_000_000
         ],
         "few_shots": few_shots,
+        "kg_hints": kg_hints,
         "intent": intent_result.primary,
         "intent_secondary": [lbl.value for lbl in intent_result.secondary],
         "intent_confidence": intent_result.confidence,
