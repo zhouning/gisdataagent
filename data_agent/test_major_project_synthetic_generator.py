@@ -15,6 +15,16 @@ def test_generator_is_deterministic_for_same_seed():
     assert first.kg_edges == second.kg_edges
 
 
+def test_generator_repeated_build_is_deterministic_on_same_instance():
+    cfg = GenerationConfig(profile="small_dev", project_count=5, seed=42)
+    generator = SyntheticMajorProjectGenerator(cfg)
+
+    first = generator.build()
+    second = generator.build()
+
+    assert first == second
+
+
 def test_small_profile_contains_expected_lifecycle_anomalies():
     cfg = GenerationConfig(profile="small_dev", project_count=30, seed=7)
     data = SyntheticMajorProjectGenerator(cfg).build()

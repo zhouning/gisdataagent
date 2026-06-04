@@ -120,6 +120,7 @@ class SyntheticMajorProjectGenerator:
         self.rng = random.Random(config.seed)
 
     def build(self) -> SyntheticDataBundle:
+        self.rng = random.Random(self.config.seed)
         bundle = SyntheticDataBundle()
         for idx in range(1, self.config.project_count + 1):
             project = self._project(idx)
