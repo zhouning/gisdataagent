@@ -23,15 +23,20 @@ python scripts\synthetic_major_projects\generate_major_project_data.py --profile
 ## Optional PostGIS Load
 
 Requires PostgreSQL with PostGIS enabled. For Huawei Cloud DB development, set
-`DATABASE_URL` to the demo/test database or schema, then run from this directory:
+`DATABASE_URL` only to an isolated demo/test database. If using a shared test
+database, first verify the connection uses an explicit dedicated schema or
+`search_path` for these synthetic tables.
+
+The seed file runs `TRUNCATE TABLE ... RESTART IDENTITY`, and the SQL is not
+schema-qualified. Do not run these commands against production, any production
+clone, or any shared schema that contains real or manually curated tables.
+
+After verifying the target is isolated, run from this directory:
 
 ```powershell
 psql "$env:DATABASE_URL" -f schema_postgis.sql
 psql "$env:DATABASE_URL" -f seed_small.sql
 ```
-
-These files are synthetic fixtures. Load them only into a demo/test namespace,
-not a production schema.
 
 ## Optional Neo4j Load
 
@@ -42,13 +47,20 @@ for current local development.
 
 For Neo4j Desktop 2.1.4 on Windows:
 
-1. Create a local project, DBMS, and database if none exists.
+1. Create a dedicated empty synthetic project, DBMS, and database. Do not use an
+   existing real graph or local production graph.
 2. Start the DBMS/database.
 3. Locate or open the DBMS import directory from Desktop.
 4. Copy `neo4j_nodes_small.csv`, `neo4j_edges_small.csv`, and
    `neo4j_import.cypher` into the import directory.
-5. Open Neo4j Browser and run:
+5. Load the Cypher with one of these Desktop-safe options:
+   - Open `neo4j_import.cypher`, paste its contents into Neo4j Browser or Query,
+     and run it against the dedicated synthetic database.
+   - From the import directory, run:
 
-```cypher
-:source neo4j_import.cypher
+```powershell
+cypher-shell -u neo4j -p <password> -f neo4j_import.cypher
 ```
+
+The import creates synthetic nodes and edges. Do not run it against real graph
+data or any shared local production graph.
