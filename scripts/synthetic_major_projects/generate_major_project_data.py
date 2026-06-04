@@ -393,12 +393,15 @@ class SyntheticMajorProjectGenerator:
                 "project_id": project["project_id"],
                 "source_table": "mp_project_list",
                 "source_id": project["project_id"],
-                "target_table": "mp_project_parcel",
+                "target_table": "mp_parcel",
                 "target_id": target_id,
                 "relation_type": relation_type,
                 "match_method": match_method,
                 "confidence": confidence,
                 "evidence": self._json_properties(evidence),
+                "synthetic_seed": self.config.seed,
+                "profile": self.config.profile,
+                "generator_version": GENERATOR_VERSION,
             }
         )
 
@@ -465,7 +468,15 @@ class SyntheticMajorProjectGenerator:
                 "label": "LifecycleAnomaly",
                 "biz_id": f"{project['project_id']}:{stage}",
                 "name": f"缺失阶段:{_STAGE_NAMES[stage]}",
-                "properties": self._json_properties({"project_id": project["project_id"], "missing_stage": stage}),
+                "properties": self._json_properties(
+                    {
+                        "project_id": project["project_id"],
+                        "missing_stage": stage,
+                        "synthetic_seed": self.config.seed,
+                        "profile": self.config.profile,
+                        "generator_version": GENERATOR_VERSION,
+                    }
+                ),
             }
         )
         self._add_edge(
@@ -486,7 +497,15 @@ class SyntheticMajorProjectGenerator:
                 "label": "RiskEvent",
                 "biz_id": risk_id,
                 "name": risk_type,
-                "properties": self._json_properties({"project_id": project["project_id"], "risk_type": risk_type}),
+                "properties": self._json_properties(
+                    {
+                        "project_id": project["project_id"],
+                        "risk_type": risk_type,
+                        "synthetic_seed": self.config.seed,
+                        "profile": self.config.profile,
+                        "generator_version": GENERATOR_VERSION,
+                    }
+                ),
             }
         )
         self._add_edge(
