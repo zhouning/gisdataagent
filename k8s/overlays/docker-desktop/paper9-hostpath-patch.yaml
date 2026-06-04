@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-app
+  namespace: gis-agent
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          volumeMounts:
+            - name: paper9-demo
+              mountPath: /app/paper9-demo
+              readOnly: true
+      volumes:
+        - name: paper9-demo
+          hostPath:
+            path: /paper9-demo
+            type: Directory

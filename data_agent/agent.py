@@ -919,6 +919,32 @@ def _build_mention_nl2sql_agent():
     )
 
 
+def _build_mention_world_model_v21_agent():
+    return LlmAgent(
+        name="MentionWorldModelV21",
+        instruction=(
+            "你是世界模型 v2.1 演示代理，只使用可用的 world_model_v21_status "
+            "和 world_model_v21_plan 工具。必须先调用 world_model_v21_status "
+            "检查 Paper9 仓库、默认 prepared_dir 和 ensemble_dir；如果用户要求运行规划，"
+            "再调用 world_model_v21_plan。用户未提供 prepared_dir 或 ensemble_dir 时，"
+            "对应参数保持空字符串以使用环境变量默认路径。默认使用 env_kind=restoration, "
+            "horizon=2, top_k=5, n_episodes=1, continuation=greedy, scoring=reward，"
+            "除非用户明确指定其他参数。最终用中文简要总结 status/version/mode/env_kind/"
+            "steps_run/n_blocks/n_selected/total_reward/artifacts，并明确列出工具调用轨迹："
+            "world_model_v21_status -> world_model_v21_plan。不要输出英文 Plan/Step、"
+            "思考过程、参数复述或重试纠错过程；如果工具重试后成功，只报告最终成功结果。"
+            "说明 horizon 是 MPC 前瞻步长，steps_run 是环境实际执行步数，两者不是同一个指标。"
+            "如果结果包含地图图层，明确说明右侧地图会展示 World Model v2.1 optimized 图层，"
+            "绿色为 MPC selected，灰色为 Not selected。"
+        ),
+        description="世界模型 v2.1 状态检查与 MPC 规划。",
+        model=get_model_for_tier("standard"),
+        output_key="analysis_result",
+        disallow_transfer_to_peers=True,
+        tools=[WorldModelV21Toolset()],
+    )
+
+
 # --- Direct sub-agent lookup for @mention routing (v24.0) ---
 _AGENT_MAP = {
     "DataExploration": lambda: _make_planner_explorer("MentionExploration"),
@@ -944,6 +970,7 @@ _AGENT_MAP = {
     "GeneralProcessing": lambda: _make_planner_processor("MentionGeneralProcessing"),
     "GeneralViz": lambda: _make_planner_visualizer("MentionGeneralViz"),
     "NL2SQL": _build_mention_nl2sql_agent,
+    "WorldModelV21": _build_mention_world_model_v21_agent,
 }
 
 

@@ -1784,10 +1784,14 @@ def _rewrite_distinct_entity_count(
     if changed:
         return rewritten, True
     sql_low = (sql or "").lower()
+    if "count(distinct" in re.sub(r"\s+", "", sql_low):
+        return sql, False
+    rewritten, changed = _rewrite_exists_spatial_count_to_distinct(sql, tables)
+    if changed:
+        return rewritten, True
     if (
         "join" not in sql_low
         or not _sql_has_spatial_join_function(sql)
-        or "count(distinct" in re.sub(r"\s+", "", sql_low)
     ):
         return sql, False
     first = _first_from_table(sql, tables)
@@ -1798,6 +1802,34 @@ def _rewrite_distinct_entity_count(
     if not ident:
         return sql, False
     expr = f'COUNT(DISTINCT {qualifier}.{ident.quoted_ref})'
+    rewritten, n = re.subn(r"COUNT\s*\(\s*\*\s*\)", expr, sql, count=1, flags=re.IGNORECASE)
+    return rewritten, bool(n)
+
+
+def _rewrite_exists_spatial_count_to_distinct(
+    sql: str,
+    tables: list[TableInfo],
+) -> tuple[str, bool]:
+    if not re.search(r"\bCOUNT\s*\(\s*\*\s*\)", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    if not re.search(r"\bEXISTS\s*\(", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    if not _sql_has_spatial_join_function(sql):
+        return sql, False
+    first = _first_from_table(sql, tables)
+    if not first:
+        return sql, False
+    table, qualifier = first
+    ident = table.identifier_column()
+    if not ident:
+        return sql, False
+    if not re.search(
+        rf"\bST_(?:INTERSECTS|CONTAINS|WITHIN|DWITHIN)\s*\([^)]*\b{re.escape(qualifier)}\.",
+        sql or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        return sql, False
+    expr = f"COUNT(DISTINCT {qualifier}.{ident.quoted_ref})"
     rewritten, n = re.subn(r"COUNT\s*\(\s*\*\s*\)", expr, sql, count=1, flags=re.IGNORECASE)
     return rewritten, bool(n)
 
@@ -2087,6 +2119,21 @@ def _extract_question_limit(question: str) -> int | None:
 
 
 def _first_from_table(sql: str, tables: list[TableInfo]) -> tuple[TableInfo, str] | None:
+    top_level_from = _first_top_level_from(sql)
+    if top_level_from:
+        table_ref, alias = top_level_from
+        table_key = _normalize_table_ref(table_ref).lower()
+        for table in tables:
+            known = {
+                table.table_name.lower(),
+                table.bare_name.lower(),
+                _normalize_table_ref(table.table_name).lower(),
+            }
+            if table_key not in known:
+                continue
+            qualifier = alias or table.bare_name
+            return table, qualifier
+
     for table in tables:
         bare = table.bare_name
         full_re = re.escape(table.table_name).replace(r"\.", r'\."?')
@@ -2103,6 +2150,62 @@ def _first_from_table(sql: str, tables: list[TableInfo]) -> tuple[TableInfo, str
             alias = bare
         return table, alias
     return None
+
+
+def _first_top_level_from(sql: str) -> tuple[str, str | None] | None:
+    text = sql or ""
+    for pos in _top_level_keyword_positions(text, "FROM"):
+        match = re.match(
+            r"\bFROM\s+"
+            r"(?P<table>(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)(?:\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))?)"
+            r"(?:\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?",
+            text[pos:],
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            continue
+        alias = match.group("alias")
+        if alias and alias.upper() in {"ON", "WHERE", "JOIN", "GROUP", "ORDER", "LIMIT", "LEFT", "RIGHT", "FULL", "INNER", "CROSS"}:
+            alias = None
+        return match.group("table"), alias
+    return None
+
+
+def _top_level_keyword_positions(sql: str, keyword: str) -> list[int]:
+    positions: list[int] = []
+    depth = 0
+    in_single = False
+    in_double = False
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        if ch == "'" and not in_double:
+            if in_single and i + 1 < len(sql) and sql[i + 1] == "'":
+                i += 2
+                continue
+            in_single = not in_single
+            i += 1
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            i += 1
+            continue
+        if not in_single and not in_double:
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth = max(0, depth - 1)
+            elif depth == 0 and re.match(rf"\b{re.escape(keyword)}\b", sql[i:], flags=re.IGNORECASE):
+                positions.append(i)
+                i += len(keyword)
+                continue
+        i += 1
+    return positions
+
+
+def _normalize_table_ref(table_ref: str) -> str:
+    parts = [part.strip() for part in (table_ref or "").split(".")]
+    return ".".join(_strip_identifier_quotes(part) for part in parts if part)
 
 
 def _first_geometry(table: TableInfo) -> ColumnInfo | None:

@@ -35,3 +35,7 @@ data:
   # The ExternalName Service still exists in the namespace (harmless) but
   # nothing references it now.
   OLLAMA_API_BASE: "http://host.docker.internal:11434"
+  # Paper9 / World Model v2.1 demo bundle copied into Docker Desktop kind nodes.
+  PAPER9_FARMLAND_MPC_REPO: "/app/paper9-demo"
+  PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR: "/app/paper9-demo/runs/restoration/buchanan_va/prepared_watershed"
+  PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR: "/app/paper9-demo/paper/checkpoints/restoration/profiles/buchanan_va/watershed/ensemble_seed0"

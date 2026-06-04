@@ -34,6 +34,16 @@ def _default_path(value: str, env_name: str) -> str:
     return raw or os.environ.get(env_name, "")
 
 
+def _env_kind_arg(value: str) -> str:
+    raw = str(value or "county").strip().lower()
+    compact = raw.replace("_", "").replace("-", "").replace(" ", "")
+    if compact == "restoration":
+        return "restoration"
+    if compact == "county":
+        return "county"
+    return raw
+
+
 def world_model_v21_status() -> str:
     """Return Paper9 World Model v2.1 availability, source commit, and defaults.
 
@@ -75,7 +85,7 @@ def _world_model_v21_plan_sync(
         "ensemble_dir": _default_path(
             ensemble_dir, "PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR"
         ),
-        "env_kind": str(env_kind or "county").strip().lower(),
+        "env_kind": _env_kind_arg(env_kind),
         "horizon": _int_arg(horizon, 5),
         "top_k": _int_arg(top_k, 50),
         "n_episodes": _int_arg(n_episodes, 1),
@@ -95,10 +105,15 @@ def _world_model_v21_plan_sync(
     }
 
     try:
+        from ..user_context import current_user_id
+
         result = get_world_model_v21_service().run_plan(
-            payload, user_id="agent_world_model_v21"
+            payload, user_id=current_user_id.get("agent_world_model_v21")
         )
-        result.pop("map_config", None)
+        map_config = result.pop("map_config", None)
+        if map_config:
+            result["map_update"] = map_config
+            result["map_update_queued"] = True
         return _json(result)
     except Exception as exc:
         return _json({"error": str(exc), "payload": payload})

@@ -46,32 +46,37 @@ def test_world_model_v21_status_tool_returns_service_status(monkeypatch):
     assert result["paper9"]["repo_path"] == "paper9"
 
 
-def test_world_model_v21_plan_tool_normalizes_payload_and_removes_map_config(monkeypatch):
+def test_world_model_v21_plan_tool_normalizes_payload_and_returns_map_update(monkeypatch):
     from data_agent.toolsets import world_model_v21_tools as tools
+    from data_agent.user_context import current_user_id
 
     fake = FakeWorldModelV21Service()
     monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
 
-    result = json.loads(
-        tools._world_model_v21_plan_sync(
-            prepared_dir="prepared",
-            ensemble_dir="ensemble",
-            env_kind="restoration",
-            horizon="2",
-            top_k="5",
-            n_episodes="1",
-            continuation="greedy",
-            scoring="reward",
-            threads="0",
-            seed_offset="0",
-            cultivated_area_floor_delta_ha="",
-            baimu_area_floor_delta_ha="",
-            gamma_conn="",
-            delta_conn="",
+    token = current_user_id.set("demo_user")
+    try:
+        result = json.loads(
+            tools._world_model_v21_plan_sync(
+                prepared_dir="prepared",
+                ensemble_dir="ensemble",
+                env_kind="restoration",
+                horizon="2",
+                top_k="5",
+                n_episodes="1",
+                continuation="greedy",
+                scoring="reward",
+                threads="0",
+                seed_offset="0",
+                cultivated_area_floor_delta_ha="",
+                baimu_area_floor_delta_ha="",
+                gamma_conn="",
+                delta_conn="",
+            )
         )
-    )
+    finally:
+        current_user_id.reset(token)
 
-    assert fake.user_id == "agent_world_model_v21"
+    assert fake.user_id == "demo_user"
     assert fake.payload["prepared_dir"] == "prepared"
     assert fake.payload["ensemble_dir"] == "ensemble"
     assert fake.payload["env_kind"] == "restoration"
@@ -83,6 +88,20 @@ def test_world_model_v21_plan_tool_normalizes_payload_and_removes_map_config(mon
     assert result["status"] == "ok"
     assert result["summary"]["steps_run"] == 50
     assert "map_config" not in result
+    assert result["map_update"] == {"layers": []}
+    assert result["map_update_queued"] is True
+
+
+def test_world_model_v21_plan_normalizes_common_env_kind_typo(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+
+    result = json.loads(tools._world_model_v21_plan_sync(env_kind="rest_oration"))
+
+    assert result["status"] == "ok"
+    assert fake.payload["env_kind"] == "restoration"
 
 
 def test_world_model_v21_toolset_lists_status_and_plan_tools():
@@ -111,3 +130,13 @@ def test_general_and_analyst_agents_include_world_model_v21_toolset():
 
     assert "WorldModelV21Toolset" in general_names
     assert "WorldModelV21Toolset" in analyst_names
+
+
+def test_world_model_v21_agent_is_directly_mentionable():
+    from data_agent.agent import _make_agent_by_name
+
+    agent = _make_agent_by_name("WorldModelV21")
+    toolset_names = [type(toolset).__name__ for toolset in agent.tools]
+
+    assert agent.name == "MentionWorldModelV21"
+    assert toolset_names == ["WorldModelV21Toolset"]

@@ -57,6 +57,9 @@ _SUB_AGENT_TARGETS = [
     {"handle": "NL2SQL", "label": "NL2SQL", "type": "sub_agent",
      "description": "自然语言直达数据库查询（跳过意图路由，更快）", "allowed_roles": ["admin", "analyst"],
      "required_state_keys": [], "pipeline": "GENERAL"},
+    {"handle": "WorldModelV21", "label": "WorldModelV21", "type": "sub_agent",
+     "description": "世界模型 v2.1 状态检查与 MPC 规划", "allowed_roles": ["admin", "analyst"],
+     "required_state_keys": [], "pipeline": "GENERAL"},
 ]
 
 

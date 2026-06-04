@@ -219,6 +219,7 @@ class TestMentionTargetsAPI(unittest.TestCase):
         handles = [t["handle"] for t in body["targets"]]
         self.assertIn("General", handles)
         self.assertIn("DataVisualization", handles)
+        self.assertIn("WorldModelV21", handles)
 
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_viewer_sees_allowed_flag(self, mock_user):

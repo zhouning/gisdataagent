@@ -85,6 +85,12 @@ patches:
       kind: Deployment
       name: gis-agent-app
 
+  # Mount the minimal Paper9 demo bundle copied into Docker Desktop kind nodes.
+  - path: paper9-hostpath-patch.yaml
+    target:
+      kind: Deployment
+      name: gis-agent-app
+
   # Single-replica + no HPA on Docker Desktop kind (no metrics-server installed).
   - target:
       kind: HorizontalPodAutoscaler

@@ -7,6 +7,7 @@ from data_agent.world_model_v21 import (
     WorldModelV21Service,
     WorldModelV21ValidationError,
 )
+import data_agent.world_model_v21 as world_model_v21_module
 
 
 def test_status_missing_repo(tmp_path):
@@ -122,3 +123,45 @@ def test_map_conversion_failure_is_warning(tmp_path):
 
     assert svc._convert_optimized_shp_to_fgb(bad_shp, tmp_path, warnings) is None
     assert warnings and "optimized shapefile not found" in warnings[0]
+
+
+def test_upload_relative_path_strips_user_directory(tmp_path):
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    uploads = Path(world_model_v21_module.__file__).resolve().parent / "uploads"
+    map_layer = uploads / "admin" / "world_model_v21" / "run1" / "optimized_dltb.fgb"
+
+    assert (
+        svc._upload_relative_path(map_layer)
+        == "world_model_v21/run1/optimized_dltb.fgb"
+    )
+
+
+def test_build_restoration_grid_geojson_from_selected_units(tmp_path):
+    import numpy as np
+    import pandas as pd
+
+    prepared = tmp_path / "prepared"
+    out_dir = tmp_path / "out"
+    prepared.mkdir()
+    out_dir.mkdir()
+    pd.DataFrame({
+        "unit_id": [0, 1],
+        "row": [0, 1],
+        "col": [0, 1],
+        "area_ha": [10.0, 20.0],
+        "candidate": [1, 1],
+    }).to_csv(prepared / "attributes.csv", index=False)
+    selected_path = out_dir / "mpc_land_use.npy"
+    np.save(selected_path, np.array([0, 1], dtype="int8"))
+
+    warnings = []
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    geojson_path = svc._build_restoration_grid_geojson(
+        prepared, out_dir, selected_path, warnings
+    )
+
+    data = json.loads(geojson_path.read_text(encoding="utf-8"))
+    labels = [f["properties"]["selected_label"] for f in data["features"]]
+    assert warnings == []
+    assert labels == ["not_selected", "selected"]
+    assert data["features"][0]["geometry"]["type"] == "Polygon"

@@ -1155,6 +1155,9 @@ TOOL_LABELS = {
     "list_team_resources": "团队共享资源",
     "leave_team": "退出团队",
     "delete_team": "删除团队",
+    "run_nl2semantic2sql": "NL2Semantic2SQL",
+    "world_model_v21_status": "世界模型 v2.1 状态检查",
+    "world_model_v21_plan": "世界模型 v2.1 MPC规划",
 }
 
 AGENT_LABELS = {
@@ -1177,6 +1180,8 @@ AGENT_LABELS = {
     "PlannerAnalyzer": "分析优化",
     "PlannerVisualizer": "生成可视化",
     "PlannerReporter": "撰写报告",
+    "MentionNL2SQL": "NL2SQL 查询",
+    "MentionWorldModelV21": "世界模型 v2.1",
 }
 
 # --- Tool Descriptions: method names + parameter labels for explainability ---
@@ -1730,6 +1735,8 @@ async def _execute_pipeline(
     _final_map_update = None    # accumulated map config (not cleared during flush, injected into final_msg)
     _final_data_update = None   # accumulated data update
     _final_chart_updates = []   # accumulated chart configs
+    _world_model_v21_result = None
+    _world_model_v21_args = None
     current_agent_name = None
     current_agent_step = None
     current_tool_step = None
@@ -1910,23 +1917,29 @@ async def _execute_pipeline(
                             pass
                         # Direct map_update from tool response (v14.5 — WMS layers etc.)
                         try:
-                            if isinstance(_resp_val, str):
-                                try:
-                                    _parsed = json.loads(_resp_val)
-                                except (json.JSONDecodeError, TypeError):
-                                    _parsed = None
-                            elif isinstance(_resp_val, dict):
-                                _parsed = _resp_val
-                            else:
-                                _parsed = None
-                            if isinstance(_parsed, dict) and "map_update" in _parsed:
-                                _direct_mu = _parsed["map_update"]
-                                if isinstance(_direct_mu, dict) and "layers" in _direct_mu:
-                                    _pending_map_update = _direct_mu
-                                    _final_map_update = _direct_mu
-                                    logger.info("[MapUpdateDirect] Injected map_update from tool: layers=%s", len(_direct_mu.get("layers", [])))
+                            from data_agent.pipeline_helpers import extract_map_update_from_tool_response
+
+                            _direct_mu = extract_map_update_from_tool_response(_resp_val)
+                            if _direct_mu:
+                                _pending_map_update = _direct_mu
+                                _final_map_update = _direct_mu
+                                logger.info("[MapUpdateDirect] Injected map_update from tool: layers=%s", len(_direct_mu.get("layers", [])))
                         except Exception:
                             pass
+                        try:
+                            if current_tool_name == "world_model_v21_plan":
+                                from data_agent.world_model_v21_presentation import parse_world_model_v21_tool_response
+
+                                _parsed_wm = parse_world_model_v21_tool_response(_resp_val)
+                                if _parsed_wm:
+                                    _world_model_v21_result = _parsed_wm
+                                    _world_model_v21_args = (
+                                        dict(_pending_tool_call.get("args") or {})
+                                        if _pending_tool_call else {}
+                                    )
+                                    logger.info("[WorldModelV21Presentation] Captured planning result for deterministic summary")
+                        except Exception as _wm_present_capture_err:
+                            logger.debug("WorldModelV21 presentation capture skipped: %s", _wm_present_capture_err)
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
                             _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
@@ -2082,6 +2095,56 @@ async def _execute_pipeline(
         pipeline_duration.labels(pipeline=pipeline_type).observe(total_duration)
         pipeline_runs.labels(pipeline=pipeline_type, status="success").inc()
         logger.info("[Trace:%s] Pipeline=%s Finished duration=%.1fs", trace_id, pipeline_name, total_duration)
+
+        # --- NL2SQL direct-call presentation ---
+        # Keep run_nl2semantic2sql() structured JSON for API/tests, but present
+        # direct chat output as a concise result and optional map handoff.
+        try:
+            _agent_name = getattr(selected_agent, "name", "") or ""
+            _is_nl2sql_direct = (
+                pipeline_type == "sub_agent_direct"
+                and (_agent_name == "MentionNL2SQL" or pipeline_name.startswith("@NL2SQL"))
+            )
+            if _is_nl2sql_direct and full_response_text:
+                from data_agent.nl2sql_presentation import (
+                    build_bridge_building_map_update,
+                    describe_map_update,
+                    format_nl2sql_result_for_chat,
+                )
+                _nl2sql_map_update = build_bridge_building_map_update(
+                    full_response_text,
+                    question=full_prompt,
+                )
+                if _nl2sql_map_update:
+                    _final_map_update = _nl2sql_map_update
+                _nl2sql_display_text = format_nl2sql_result_for_chat(
+                    full_response_text,
+                    question=full_prompt,
+                    map_summary=describe_map_update(_nl2sql_map_update),
+                )
+                if _nl2sql_display_text:
+                    full_response_text = _nl2sql_display_text
+        except Exception as _nl2sql_present_err:
+            logger.warning("[NL2SQLPresentation] skipped: %s", _nl2sql_present_err)
+
+        # --- WorldModelV21 direct-call presentation ---
+        # Key numbers such as n_selected must come from the tool JSON, not from
+        # an LLM rephrasing that may confuse top_k with selected count.
+        try:
+            _agent_name = getattr(selected_agent, "name", "") or ""
+            _is_world_model_v21_direct = (
+                pipeline_type == "sub_agent_direct"
+                and (_agent_name == "MentionWorldModelV21" or pipeline_name.startswith("@WorldModelV21"))
+            )
+            if _is_world_model_v21_direct and _world_model_v21_result:
+                from data_agent.world_model_v21_presentation import format_world_model_v21_result_for_chat
+
+                full_response_text = format_world_model_v21_result_for_chat(
+                    _world_model_v21_result,
+                    tool_args=_world_model_v21_args or {},
+                )
+        except Exception as _wm_present_err:
+            logger.warning("[WorldModelV21Presentation] skipped: %s", _wm_present_err)
 
         # --- Inject map/data updates into final_msg metadata ---
         # This ensures the main response message carries map_update, which is

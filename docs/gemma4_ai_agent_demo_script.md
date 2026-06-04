@@ -116,9 +116,7 @@ family=gemma
 输入：
 
 ```text
-@Analyst 调用世界模型 v2.1。先检查状态，然后使用 Buchanan VA prepared_watershed 和 ensemble_seed0，运行 restoration 环境下的 MPC 规划：horizon=2，top_k=5，n_episodes=1，continuation=greedy，scoring=reward。
-prepared_dir=D:/test/_publish/arcgis-farmland-mpc/runs/restoration/buchanan_va/prepared_watershed
-ensemble_dir=D:/test/_publish/arcgis-farmland-mpc/paper/checkpoints/restoration/profiles/buchanan_va/watershed/ensemble_seed0
+@WorldModelV21 请先检查世界模型 v2.1 状态，再使用系统默认的 Buchanan VA restoration 数据运行一次快速 MPC 规划。参数：env_kind=restoration，horizon=2，top_k=5，n_episodes=1，continuation=greedy，scoring=reward。使用默认 prepared_dir 和 ensemble_dir，不要要求我补充路径。
 ```
 
 画面重点：

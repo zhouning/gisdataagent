@@ -210,6 +210,10 @@ class WorldModelV21Service:
         map_layer = None
         if output_fc_arg:
             map_layer = self._convert_optimized_shp_to_fgb(output_fc, out_dir, warnings)
+        elif (out_dir / "mpc_land_use.npy").exists():
+            map_layer = self._build_restoration_grid_geojson(
+                cfg["prepared_dir"], out_dir, out_dir / "mpc_land_use.npy", warnings
+            )
 
         artifacts = {
             "summary_json": "mpc_summary.json"
@@ -219,7 +223,7 @@ class WorldModelV21Service:
             if (out_dir / "mpc_land_use.npy").exists()
             else None,
             "optimized_shp": output_fc.name if output_fc.exists() else None,
-            "map_layer": map_layer.name if map_layer else None,
+            "map_layer": self._upload_relative_path(map_layer) if map_layer else None,
         }
         return {
             "status": "ok",
@@ -321,34 +325,178 @@ class WorldModelV21Service:
             warnings.append(f"map conversion failed: {exc}")
             return None
 
+    def _build_restoration_grid_geojson(
+        self,
+        prepared_dir: Path,
+        out_dir: Path,
+        land_use_npy: Path,
+        warnings: list[str],
+    ) -> Path | None:
+        attrs_path = prepared_dir / "attributes.csv"
+        if not attrs_path.exists():
+            warnings.append(f"restoration attributes not found: {attrs_path}")
+            return None
+        try:
+            import geopandas as gpd
+            import numpy as np
+            import pandas as pd
+            from shapely.geometry import box
+
+            attrs = pd.read_csv(attrs_path)
+            selected = np.load(land_use_npy)
+            if len(attrs) != len(selected):
+                warnings.append(
+                    f"land use length mismatch: attrs={len(attrs)} selected={len(selected)}"
+                )
+                return None
+
+            max_row = int(attrs["row"].max())
+            # Approximate Buchanan VA 2 km planning grid. The source prepared
+            # data is tabular row/col, so this builds a stable display grid.
+            origin_lng = -82.45
+            origin_lat = 37.00
+            cell_lng = 0.0225
+            cell_lat = 0.0180
+
+            geometries = []
+            selected_values = []
+            labels = []
+            opt_codes = []
+            for idx, row in attrs.iterrows():
+                r = int(row["row"])
+                c = int(row["col"])
+                min_lng = origin_lng + c * cell_lng
+                max_lng = min_lng + cell_lng
+                min_lat = origin_lat + (max_row - r) * cell_lat
+                max_lat = min_lat + cell_lat
+                geometries.append(box(min_lng, min_lat, max_lng, max_lat))
+                is_selected = int(selected[idx]) == 1
+                selected_values.append(1 if is_selected else 0)
+                labels.append("selected" if is_selected else "not_selected")
+                opt_codes.append("031" if is_selected else "011")
+
+            gdf = gpd.GeoDataFrame(
+                attrs.copy(),
+                geometry=geometries,
+                crs="EPSG:4326",
+            )
+            gdf["selected"] = selected_values
+            gdf["selected_label"] = labels
+            gdf["OPT_DLBM"] = opt_codes
+            out_path = out_dir / "restoration_mpc_units.geojson"
+            gdf.to_file(out_path, driver="GeoJSON")
+            return out_path
+        except Exception as exc:
+            warnings.append(f"restoration grid map failed: {exc}")
+            return None
+
     def _build_map_config(self, map_layer: Path) -> dict[str, Any]:
+        center, zoom = self._map_view_from_layer(map_layer)
+        rel_path = self._upload_relative_path(map_layer)
+        if map_layer.suffix.lower() == ".fgb":
+            layer_ref = {
+                "type": "fgb",
+                "fgb": rel_path,
+                "category_column": "OPT_DLBM",
+                "style_map": {
+                    "011": {
+                        "fillColor": "#FFD166",
+                        "color": "#B7791F",
+                        "fillOpacity": 0.7,
+                        "weight": 0.4,
+                    },
+                    "031": {
+                        "fillColor": "#2F855A",
+                        "color": "#276749",
+                        "fillOpacity": 0.7,
+                        "weight": 0.4,
+                    },
+                },
+            }
+        else:
+            layer_ref = {
+                "type": "categorized",
+                "geojson": rel_path,
+                "category_column": "selected_label",
+                "category_labels": {
+                    "selected": "MPC selected",
+                    "not_selected": "Not selected",
+                },
+                "style_map": {
+                    "selected": {
+                        "fillColor": "#2F855A",
+                        "color": "#14532D",
+                        "fillOpacity": 0.82,
+                        "weight": 0.7,
+                    },
+                    "not_selected": {
+                        "fillColor": "#CBD5E1",
+                        "color": "#64748B",
+                        "fillOpacity": 0.28,
+                        "weight": 0.25,
+                    },
+                },
+            }
         return {
             "layers": [
                 {
                     "name": "World Model v2.1 optimized",
-                    "type": "fgb",
-                    "fgb": map_layer.name,
-                    "category_column": "OPT_DLBM",
-                    "style_map": {
-                        "011": {
-                            "fillColor": "#FFD166",
-                            "color": "#B7791F",
-                            "fillOpacity": 0.7,
-                            "weight": 0.4,
-                        },
-                        "031": {
-                            "fillColor": "#2F855A",
-                            "color": "#276749",
-                            "fillOpacity": 0.7,
-                            "weight": 0.4,
-                        },
-                    },
                     "visible": True,
+                    **layer_ref,
                 }
             ],
-            "center": None,
-            "zoom": 12,
+            "center": center,
+            "zoom": zoom,
         }
+
+    def _upload_relative_path(self, path: Path) -> str:
+        uploads_base = Path(__file__).resolve().parent / "uploads"
+        try:
+            rel = path.resolve().relative_to(uploads_base.resolve())
+            # /uploads/<user>/<path> is served as /api/user/files/<path>
+            # for the current user, so strip the user directory.
+            if len(rel.parts) > 1:
+                return Path(*rel.parts[1:]).as_posix()
+            return rel.as_posix()
+        except Exception:
+            return path.name
+
+    def _map_view_from_layer(self, map_layer: Path) -> tuple[list[float] | None, int]:
+        try:
+            import geopandas as gpd
+
+            gdf = gpd.read_file(map_layer)
+            if gdf.empty:
+                return None, 12
+            if gdf.crs is not None and gdf.crs.to_epsg() != 4326:
+                gdf = gdf.to_crs(epsg=4326)
+            minx, miny, maxx, maxy = [float(v) for v in gdf.total_bounds]
+            center = [(miny + maxy) / 2.0, (minx + maxx) / 2.0]
+            return center, self._estimate_zoom_from_extent(minx, miny, maxx, maxy)
+        except Exception:
+            return None, 12
+
+    def _estimate_zoom_from_extent(
+        self, min_lng: float, min_lat: float, max_lng: float, max_lat: float
+    ) -> int:
+        span = max(abs(max_lng - min_lng), abs(max_lat - min_lat))
+        if span >= 1.0:
+            return 8
+        if span >= 0.5:
+            return 9
+        if span >= 0.18:
+            return 10
+        if span >= 0.09:
+            return 11
+        if span >= 0.045:
+            return 12
+        if span >= 0.022:
+            return 13
+        if span >= 0.011:
+            return 14
+        if span >= 0.006:
+            return 15
+        return 16
 
     def _git(self, args: list[str]) -> str | None:
         if not self.repo_path.is_dir():

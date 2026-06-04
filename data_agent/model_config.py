@@ -33,6 +33,10 @@ _ENV_DEFAULTS = {
 }
 
 
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 class ModelConfigManager:
     """Manages persistent model configuration with DB + env fallback."""
 
@@ -67,6 +71,7 @@ class ModelConfigManager:
         # Start with env var defaults
         for key, (env_var, default) in _ENV_DEFAULTS.items():
             self._cache[key] = os.environ.get(env_var, default)
+        force_env = _truthy_env("MODEL_CONFIG_FORCE_ENV")
 
         # Override with DB values if available
         engine = self._get_engine()
@@ -83,6 +88,12 @@ class ModelConfigManager:
                         logger.info("Loaded %d model config entries from DB", len(rows))
             except Exception as e:
                 logger.debug("DB model config load failed (using env defaults): %s", e)
+
+        if force_env:
+            for key, (env_var, _) in _ENV_DEFAULTS.items():
+                if env_var in os.environ:
+                    self._cache[key] = os.environ[env_var]
+            logger.info("MODEL_CONFIG_FORCE_ENV enabled; environment model config overrides DB")
 
         self._loaded = True
 

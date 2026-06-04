@@ -7,6 +7,7 @@ No Chainlit dependency — reusable by CLI/API/Bot channels.
 """
 import os
 import time
+import json
 import logging
 from contextvars import ContextVar
 
@@ -95,6 +96,38 @@ def extract_source_paths(args: dict) -> list:
         elif key.endswith("_path") or key.endswith("_file"):
             sources.append(val)
     return sources
+
+
+def extract_map_update_from_tool_response(value):
+    """Extract a frontend map_update config from ADK tool response payloads.
+
+    Tool responses may arrive as a plain dict, a JSON string, or nested under
+    wrapper keys such as {"result": "...json..."}. The frontend only needs the
+    map_update object with a layers list.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        return extract_map_update_from_tool_response(parsed)
+
+    if isinstance(value, dict):
+        map_update = value.get("map_update")
+        if isinstance(map_update, dict) and isinstance(map_update.get("layers"), list):
+            return map_update
+
+        for key in ("result", "output", "response", "content"):
+            if key not in value:
+                continue
+            nested = extract_map_update_from_tool_response(value[key])
+            if nested:
+                return nested
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -371,7 +404,10 @@ _COT_PATTERNS = _re.compile(
     r"(?:"
     r"(?:让我|我来|我需要|我应该|我查看|我先|根据规则|根据返回|根据 grounding|不过根据|"
     r"所以我|实际上|用户想要|用户要求|用户想|用户问|用户明确|"
-    r"不过，安全|不过，|现在我来|这涉及到)"
+    r"不过，安全|不过，|现在我来|这涉及到|"
+    r"The user wants|The user specifies|The status check|Now, I will|I will proceed|"
+    r"Ah, I made a typo|Corrected parameters|Final Summary Data|"
+    r"Step \d+:|Plan:|Call world_model|Provide a summary|Language:)"
     r"[^\n]{0,200}\n?"
     r")+",
     _re.MULTILINE,
@@ -387,12 +423,39 @@ def clean_cot_leakage(text: str) -> str:
     """Remove chain-of-thought reasoning leaked into model output."""
     if not text or len(text) < 20:
         return text
+    final_markers = ("规划已完成", "NL2SQL 查询结果", "查询成功", "已成功完成。")
+    leak_markers = (
+        "The user wants",
+        "Plan:",
+        "Step 1:",
+        "Ah, I made a typo",
+        "Corrected parameters",
+    )
+    if any(marker in text for marker in leak_markers):
+        marker_positions = [text.find(marker) for marker in final_markers if text.find(marker) > 0]
+        if marker_positions:
+            text = text[min(marker_positions):]
     cleaned = _COT_PATTERNS.sub("\n", text)
     cleaned = _COT_PREFIXES.sub("", cleaned)
-    lines = [ln for ln in cleaned.split("\n") if ln.strip()]
+    skip_prefixes = (
+        "Check the status",
+        "Run a fast MPC",
+        "Use default",
+        "Parameters:",
+        "env_kind:",
+        "horizon:",
+        "top_k:",
+        "n_episodes:",
+        "continuation:",
+        "scoring:",
+        "prepared_dir:",
+        "ensemble_dir:",
+    )
+    lines = [
+        ln for ln in cleaned.split("\n")
+        if ln.strip() and not ln.strip().startswith(skip_prefixes)
+    ]
     result = "\n".join(lines)
     if len(result.strip()) < 10 and len(text.strip()) > 10:
         return text
     return result
-
-

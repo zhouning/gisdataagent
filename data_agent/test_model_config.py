@@ -107,6 +107,32 @@ class TestModelConfigManager(unittest.TestCase):
         assert mgr.get_tier_model("standard") == os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
         assert mgr.get_router_model() == os.environ.get("ROUTER_MODEL", "gemini-2.0-flash")
 
+    def test_force_env_overrides_db_config(self):
+        from data_agent.model_config import ModelConfigManager
+
+        conn = MagicMock()
+        conn.execute.return_value.fetchall.return_value = [
+            ("tier_standard", "gemini-2.5-flash"),
+            ("router_model", "gemini-2.0-flash"),
+        ]
+        cm = MagicMock()
+        cm.__enter__.return_value = conn
+        engine = MagicMock()
+        engine.connect.return_value = cm
+
+        mgr = ModelConfigManager()
+        with patch.object(mgr, "_get_engine", return_value=engine), \
+             patch.object(mgr, "_ensure_table"), \
+             patch.dict(os.environ, {
+                 "MODEL_CONFIG_FORCE_ENV": "true",
+                 "MODEL_STANDARD": "gemma4-26b-ollama",
+                 "ROUTER_MODEL": "gemma4-26b-ollama",
+             }):
+            mgr.load()
+
+        assert mgr.get_tier_model("standard") == "gemma4-26b-ollama"
+        assert mgr.get_router_model() == "gemma4-26b-ollama"
+
     def test_set_tier_updates_cache(self):
         from data_agent.model_config import ModelConfigManager
         mgr = ModelConfigManager()

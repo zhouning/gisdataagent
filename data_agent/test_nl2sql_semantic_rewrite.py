@@ -920,6 +920,115 @@ def test_semantic_rewrite_requested_intersects_changes_left_join_when_predicate_
     assert "semantic_distinct_join_count" in corrections
 
 
+def test_semantic_rewrite_counts_distinct_entity_for_exists_spatial_count():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_buildings_2021",
+                "table_aliases": ["建筑物", "建筑物轮廓"],
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "quoted_ref": '"Id"',
+                        "needs_quoting": True,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_osm_roads_2021",
+                "table_aliases": ["道路", "桥梁"],
+                "columns": [
+                    {"column_name": "bridge", "quoted_ref": "bridge", "needs_quoting": False},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiLineString,4326)",
+                    },
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计出空间上与道路网络中任意桥梁（bridge = T）相交（Intersects）的建筑物轮廓数量。",
+        "SELECT COUNT(*) FROM cq_buildings_2021 AS b "
+        "WHERE EXISTS(SELECT 1 FROM cq_osm_roads_2021 AS r "
+        "WHERE r.bridge = 'T' AND ST_INTERSECTS(b.geometry, r.geometry))",
+        context,
+    )
+
+    assert 'COUNT(DISTINCT b."Id")' in rewritten
+    assert "semantic_distinct_join_count" in corrections
+
+
+def test_semantic_rewrite_exists_spatial_count_uses_outer_from_table_not_subquery_order():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_osm_roads_2021",
+                "table_aliases": ["道路", "桥梁"],
+                "columns": [
+                    {
+                        "column_name": "osm_id",
+                        "quoted_ref": "osm_id",
+                        "needs_quoting": False,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {"column_name": "bridge", "quoted_ref": "bridge", "needs_quoting": False},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiLineString,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_buildings_2021",
+                "table_aliases": ["建筑物", "建筑物轮廓"],
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "quoted_ref": '"Id"',
+                        "needs_quoting": True,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4326)",
+                    },
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计出空间上与道路网络中任意桥梁（bridge = T）相交（Intersects）的建筑物轮廓数量。",
+        "SELECT COUNT(*) FROM cq_buildings_2021 AS b "
+        "WHERE EXISTS(SELECT 1 FROM cq_osm_roads_2021 AS r "
+        "WHERE r.bridge = 'T' AND ST_INTERSECTS(b.geometry, r.geometry))",
+        context,
+    )
+
+    assert 'COUNT(DISTINCT b."Id")' in rewritten
+    assert "COUNT(DISTINCT r.osm_id)" not in rewritten
+    assert "semantic_distinct_join_count" in corrections
+
+
 def test_semantic_rewrite_grouped_spatial_count_uses_question_target_entity_alias():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
