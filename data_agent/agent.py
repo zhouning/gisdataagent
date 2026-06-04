@@ -878,9 +878,13 @@ def _build_mention_nl2sql_agent():
     affordances it had at 72% EX.
     """
     from . import prompts_nl2sql
-    from .model_gateway import family_of
+    from .model_gateway import create_model, family_of
 
-    model_obj = get_model_for_tier("standard")
+    nl2sql_model = os.environ.get("NL2SQL_AGENT_MODEL")
+    model_obj = (
+        create_model(nl2sql_model)
+        if nl2sql_model else get_model_for_tier("standard")
+    )
     family = family_of(model_obj)
     model_str = (getattr(model_obj, "model", "") or "").lower()
 
