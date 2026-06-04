@@ -24,6 +24,9 @@ KNOWN_MAJOR_PROJECT_TABLES = {
     "mp_land_supply",
     "mp_parcel",
     "mp_relation_confidence",
+    "mp_spatial_overlap",
+    "kg_edges",
+    "kg_nodes",
 }
 
 POSITIVE_STAGE_HINTS = {
@@ -42,11 +45,18 @@ PROJECT_JOIN_PATHS = {
         "mp_project_list.project_id -> mp_relation_confidence.project_id"
     ),
     "mp_parcel": "mp_project_list.project_id -> mp_parcel.project_id",
+    "mp_spatial_overlap": "mp_project_list.project_id -> mp_spatial_overlap.project_id",
 }
 
 RELATION_CONFIDENCE_PARCEL_JOIN = (
     "mp_relation_confidence.target_id -> mp_parcel.parcel_id"
 )
+SPATIAL_OVERLAP_PARCEL_JOIN = (
+    "mp_spatial_overlap.parcel_id -> mp_parcel.parcel_id"
+)
+KG_EDGE_SOURCE_JOIN = "kg_edges.source_node_id -> kg_nodes.node_id"
+KG_EDGE_TARGET_JOIN = "kg_edges.target_node_id -> kg_nodes.node_id"
+KG_NODE_PROJECT_JOIN = "kg_nodes.biz_id -> mp_project_list.project_id"
 
 MAJOR_PROJECT_DOMAIN_TOKENS = (
     "审批流程",
@@ -123,6 +133,8 @@ def resolve_major_project_kg_hints(
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "MISSING_STAGE")
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
+        _add_unique(result["candidate_tables"], "kg_edges")
+        _add_unique(result["candidate_tables"], "kg_nodes")
 
     mentions_pre_review = _contains_any(
         natural_text,
@@ -188,6 +200,7 @@ def resolve_major_project_kg_hints(
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
         _add_unique(result["candidate_tables"], "mp_relation_confidence")
         _add_unique(result["candidate_tables"], "mp_parcel")
+        _add_unique(result["candidate_tables"], "mp_spatial_overlap")
 
     if _mentions_occupancy_or_relation_confidence(natural_text, natural_low):
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
@@ -397,6 +410,13 @@ def _populate_join_paths(candidate_tables: list[str], join_paths: list[str]) -> 
                 _add_unique(join_paths, join_path)
     if {"mp_relation_confidence", "mp_parcel"} <= tables:
         _add_unique(join_paths, RELATION_CONFIDENCE_PARCEL_JOIN)
+    if {"mp_spatial_overlap", "mp_parcel"} <= tables:
+        _add_unique(join_paths, SPATIAL_OVERLAP_PARCEL_JOIN)
+    if {"kg_edges", "kg_nodes"} <= tables:
+        _add_unique(join_paths, KG_EDGE_SOURCE_JOIN)
+        _add_unique(join_paths, KG_EDGE_TARGET_JOIN)
+    if {PROJECT_TABLE, "kg_nodes"} <= tables:
+        _add_unique(join_paths, KG_NODE_PROJECT_JOIN)
 
 
 def _semantic_hint_text(semantic: dict | None) -> str:

@@ -9,6 +9,9 @@ def test_missing_stage_query_marks_breakpoint_and_project_table():
     assert result["missing_stage"] is None
     assert "MISSING_STAGE" in result["required_edges"]
     assert "mp_project_list" in result["candidate_tables"]
+    assert "kg_edges" in result["candidate_tables"]
+    assert "kg_nodes" in result["candidate_tables"]
+    assert "kg_nodes.biz_id -> mp_project_list.project_id" in result["join_paths"]
     assert result["graph_backend"] == "postgres_projection"
 
 
@@ -40,8 +43,17 @@ def test_spatial_overlay_query_adds_relation_confidence_and_parcel_tables():
     assert "SPATIALLY_OVERLAPS" in result["required_edges"]
     assert "mp_relation_confidence" in result["candidate_tables"]
     assert "mp_parcel" in result["candidate_tables"]
+    assert "mp_spatial_overlap" in result["candidate_tables"]
     assert (
         "mp_project_list.project_id -> mp_relation_confidence.project_id"
+        in result["join_paths"]
+    )
+    assert (
+        "mp_project_list.project_id -> mp_spatial_overlap.project_id"
+        in result["join_paths"]
+    )
+    assert (
+        "mp_spatial_overlap.parcel_id -> mp_parcel.parcel_id"
         in result["join_paths"]
     )
     assert (

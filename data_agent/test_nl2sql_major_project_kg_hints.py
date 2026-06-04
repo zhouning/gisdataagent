@@ -89,6 +89,24 @@ def _schema_for(table_name: str) -> dict:
             {"column_name": "project_id", "data_type": "text", "aliases": ["\u9879\u76eeID"]},
             {"column_name": "supply_area_mu", "data_type": "double precision", "aliases": ["\u4f9b\u5730\u9762\u79ef"]},
         ],
+        "mp_spatial_overlap": [
+            {"column_name": "project_id", "data_type": "text", "aliases": ["\u9879\u76eeID"]},
+            {"column_name": "parcel_id", "data_type": "text", "aliases": ["\u5730\u5757ID"]},
+            {"column_name": "overlap_ratio", "data_type": "double precision", "aliases": ["\u53e0\u52a0\u6bd4\u4f8b"]},
+            {"column_name": "overlap_area_mu", "data_type": "double precision", "aliases": ["\u53e0\u52a0\u9762\u79ef"]},
+        ],
+        "kg_edges": [
+            {"column_name": "edge_id", "data_type": "text", "aliases": ["\u8fb9ID"]},
+            {"column_name": "source_node_id", "data_type": "text", "aliases": ["\u6e90\u8282\u70b9ID"]},
+            {"column_name": "target_node_id", "data_type": "text", "aliases": ["\u76ee\u6807\u8282\u70b9ID"]},
+            {"column_name": "edge_type", "data_type": "text", "aliases": ["\u8fb9\u7c7b\u578b"]},
+        ],
+        "kg_nodes": [
+            {"column_name": "node_id", "data_type": "text", "aliases": ["\u8282\u70b9ID"]},
+            {"column_name": "label", "data_type": "text", "aliases": ["\u8282\u70b9\u7c7b\u578b"]},
+            {"column_name": "biz_id", "data_type": "text", "aliases": ["\u4e1a\u52a1ID"]},
+            {"column_name": "name", "data_type": "text", "aliases": ["\u540d\u79f0"]},
+        ],
         "cq_buildings_2021": [
             {"column_name": "Id", "data_type": "integer", "aliases": ["建筑ID"]},
             {"column_name": "Floor", "data_type": "integer", "aliases": ["楼层"]},
@@ -132,6 +150,7 @@ def test_build_context_includes_major_project_kg_hints():
     assert result["kg_hints"]["missing_stage_filter"] is True
     assert "MISSING_STAGE" in result["kg_hints"]["required_edges"]
     assert "KG hints:" in result["grounding_prompt"]
+    assert "kg_edges.edge_type = 'MISSING_STAGE'" in result["grounding_prompt"]
 
 
 def test_build_context_renders_relation_confidence_kg_hints():

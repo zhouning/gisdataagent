@@ -511,12 +511,20 @@ _MAJOR_PROJECT_KG_TABLES = {
     "mp_land_supply",
     "mp_parcel",
     "mp_relation_confidence",
+    "mp_spatial_overlap",
+    "kg_edges",
+    "kg_nodes",
 }
 
 _KG_EDGE_TABLE_REQUIREMENTS = {
-    "MISSING_STAGE": {"mp_project_list"},
+    "MISSING_STAGE": {"mp_project_list", "kg_edges", "kg_nodes"},
     "OCCUPIES_PARCEL": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
-    "SPATIALLY_OVERLAPS": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
+    "SPATIALLY_OVERLAPS": {
+        "mp_project_list",
+        "mp_relation_confidence",
+        "mp_parcel",
+        "mp_spatial_overlap",
+    },
     "FUZZY_PROJECT_PARCEL_MATCH": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
     "HAS_PRE_REVIEW": {"mp_project_list", "mp_pre_review"},
     "HAS_CONVERSION": {"mp_project_list", "mp_conversion_expropriation"},
@@ -804,6 +812,10 @@ def _format_kg_hints_lines(kg_hints: dict | None) -> list[str]:
         lines.append(
             f"- lifecycle missing-stage filter: {bool(kg_hints.get('missing_stage_filter'))}{suffix}"
         )
+        predicate = "kg_edges.edge_type = 'MISSING_STAGE'"
+        if missing_stage:
+            predicate += f"; kg_edges.evidence->>'missing_stage' = '{missing_stage}'"
+        lines.append(f"- missing-stage SQL predicate: {predicate}")
 
     min_confidence = kg_hints.get("min_relation_confidence")
     if kg_hints.get("relation_confidence_filter") or min_confidence is not None:
