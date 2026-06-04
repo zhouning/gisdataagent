@@ -6,6 +6,7 @@ to Neo4j or any database at runtime.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
@@ -23,12 +24,21 @@ KNOWN_MAJOR_PROJECT_TABLES = {
     "mp_relation_confidence",
 }
 
+POSITIVE_STAGE_HINTS = {
+    "pre_review": ("HAS_PRE_REVIEW", "mp_pre_review"),
+    "conversion": ("HAS_CONVERSION", "mp_conversion_expropriation"),
+    "land_supply": ("HAS_LAND_SUPPLY", "mp_land_supply"),
+}
+
 PROJECT_JOIN_PATHS = {
     "mp_pre_review": "mp_project_list.project_id -> mp_pre_review.project_id",
     "mp_conversion_expropriation": (
         "mp_project_list.project_id -> mp_conversion_expropriation.project_id"
     ),
     "mp_land_supply": "mp_project_list.project_id -> mp_land_supply.project_id",
+    "mp_relation_confidence": (
+        "mp_project_list.project_id -> mp_relation_confidence.project_id"
+    ),
     "mp_parcel": "mp_project_list.project_id -> mp_parcel.project_id",
 }
 
@@ -48,11 +58,17 @@ MAJOR_PROJECT_DOMAIN_TOKENS = (
     "土地征收",
     "供地",
     "土地供应",
+    "占用",
+    "地块",
+    "耕地",
+    "关系置信度",
+    "置信度",
     "空间叠加",
     "叠加补全",
     "补全关联",
     "major_project",
     "mp_project",
+    "mp_relation_confidence",
 )
 
 
@@ -77,8 +93,11 @@ def resolve_major_project_kg_hints(
         "matched_entities": [],
         "lifecycle_stage": None,
         "required_edges": [],
+        "missing_stage": None,
         "missing_stage_filter": False,
         "spatial_overlap_threshold": None,
+        "relation_confidence_filter": False,
+        "min_relation_confidence": None,
         "candidate_tables": [],
         "join_paths": [],
         "graph_backend": GRAPH_BACKEND,
@@ -96,6 +115,7 @@ def resolve_major_project_kg_hints(
 
     if _mentions_missing_stage(combined_text, combined_low):
         result["missing_stage_filter"] = True
+        result["missing_stage"] = _resolve_missing_stage(combined_text)
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "MISSING_STAGE")
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
@@ -116,12 +136,12 @@ def resolve_major_project_kg_hints(
         "conversion_expropriation",
         "HAS_CONVERSION",
     )
-    if mentions_pre_review:
+    if mentions_pre_review and _should_add_positive_stage(result, "pre_review"):
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "HAS_PRE_REVIEW")
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
         _add_unique(result["candidate_tables"], "mp_pre_review")
-    if mentions_conversion:
+    if mentions_conversion and _should_add_positive_stage(result, "conversion"):
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "HAS_CONVERSION")
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
@@ -129,6 +149,7 @@ def resolve_major_project_kg_hints(
     if (
         mentions_pre_review
         and mentions_conversion
+        and not result["missing_stage_filter"]
         and _contains_any(
             combined_text,
             "未完成",
@@ -149,7 +170,7 @@ def resolve_major_project_kg_hints(
         "land supply",
         "mp_land_supply",
         "HAS_LAND_SUPPLY",
-    ):
+    ) and _should_add_positive_stage(result, "land_supply"):
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "HAS_LAND_SUPPLY")
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
@@ -164,6 +185,22 @@ def resolve_major_project_kg_hints(
         _add_unique(result["candidate_tables"], "mp_relation_confidence")
         _add_unique(result["candidate_tables"], "mp_parcel")
 
+    if _mentions_occupancy_or_relation_confidence(combined_text, combined_low):
+        _add_unique(result["matched_entities"], PROJECT_ENTITY)
+        _add_unique(result["required_edges"], "OCCUPIES_PARCEL")
+        _add_unique(result["candidate_tables"], PROJECT_TABLE)
+        _add_unique(result["candidate_tables"], "mp_relation_confidence")
+        _add_unique(result["candidate_tables"], "mp_parcel")
+
+    if _mentions_relation_confidence(combined_text, combined_low):
+        result["relation_confidence_filter"] = True
+        result["min_relation_confidence"] = _extract_relation_confidence_threshold(
+            combined_text
+        )
+        _add_unique(result["candidate_tables"], PROJECT_TABLE)
+        _add_unique(result["candidate_tables"], "mp_relation_confidence")
+
+    _suppress_missing_stage_positive_hints(result)
     _populate_join_paths(result["candidate_tables"], result["join_paths"])
     return result
 
@@ -182,10 +219,53 @@ def _mentions_missing_stage(text: str, text_low: str) -> bool:
         return True
     stage_words = ("阶段", "环节", "流程", "stage")
     missing_words = ("缺失", "缺少", "遗漏", "漏办", "missing")
+    has_missing_word = any(
+        token in text or token in text_low for token in missing_words
+    )
+    if has_missing_word and _resolve_missing_stage(text) is not None:
+        return True
     return (
         any(token in text or token in text_low for token in stage_words)
-        and any(token in text or token in text_low for token in missing_words)
+        and has_missing_word
     )
+
+
+def _resolve_missing_stage(text: str) -> str | None:
+    if _contains_any(text, "用地预审", "预审", "pre_review", "HAS_PRE_REVIEW"):
+        return "pre_review"
+    if _contains_any(
+        text,
+        "农转征",
+        "农转用",
+        "农用地转用",
+        "土地征收",
+        "conversion_expropriation",
+        "HAS_CONVERSION",
+    ):
+        return "conversion"
+    if _contains_any(text, "供地", "土地供应", "land supply", "HAS_LAND_SUPPLY"):
+        return "land_supply"
+    return None
+
+
+def _should_add_positive_stage(result: dict[str, Any], stage: str) -> bool:
+    if not result.get("missing_stage_filter"):
+        return True
+    missing_stage = result.get("missing_stage")
+    return missing_stage not in {None, stage}
+
+
+def _suppress_missing_stage_positive_hints(result: dict[str, Any]) -> None:
+    if not result.get("missing_stage_filter"):
+        return
+    missing_stage = result.get("missing_stage")
+    stages = [missing_stage] if missing_stage else list(POSITIVE_STAGE_HINTS)
+    for stage in stages:
+        if stage not in POSITIVE_STAGE_HINTS:
+            continue
+        edge, table_name = POSITIVE_STAGE_HINTS[stage]
+        _remove_value(result["required_edges"], edge)
+        _remove_value(result["candidate_tables"], table_name)
 
 
 def _mentions_spatial_overlay(text: str, text_low: str) -> bool:
@@ -201,6 +281,43 @@ def _mentions_spatial_overlay(text: str, text_low: str) -> bool:
         "OCCUPIES_PARCEL",
         "SPATIALLY_OVERLAPS",
     ) or ("spatial" in text_low and "overlap" in text_low)
+
+
+def _mentions_occupancy_or_relation_confidence(text: str, text_low: str) -> bool:
+    return _contains_any(
+        text,
+        "占用",
+        "占地",
+        "耕地",
+        "地块",
+        "parcel",
+        "OCCUPIES_PARCEL",
+    ) or _mentions_relation_confidence(text, text_low)
+
+
+def _mentions_relation_confidence(text: str, text_low: str) -> bool:
+    return _contains_any(
+        text,
+        "关系置信度",
+        "置信度",
+        "relation confidence",
+        "relation_confidence",
+        "mp_relation_confidence",
+        "confidence",
+    )
+
+
+def _extract_relation_confidence_threshold(text: str) -> float | None:
+    patterns = (
+        r"(?:关系)?置信度\s*(?:大于等于|不低于|至少|>=|＞=)\s*(0(?:\.\d+)?|1(?:\.0+)?)",
+        r"(?:关系)?置信度\s*(?:大于|超过|高于|>|＞)\s*(0(?:\.\d+)?|1(?:\.0+)?)",
+        r"(?:relation[_ ]?confidence|confidence)\s*(?:>=|>|above|over|greater than)\s*(0(?:\.\d+)?|1(?:\.0+)?)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text or "", flags=re.IGNORECASE)
+        if match:
+            return float(match.group(1))
+    return None
 
 
 def _populate_join_paths(candidate_tables: list[str], join_paths: list[str]) -> None:
@@ -223,7 +340,14 @@ def _semantic_hint_text(semantic: dict | None) -> str:
         if value:
             parts.append(str(value))
 
-    for key in ("matched_entities", "required_edges", "candidate_tables"):
+    for key in (
+        "matched_entities",
+        "required_edges",
+        "candidate_tables",
+        "matched_tables",
+        "matched_table_names",
+        "sources",
+    ):
         value = semantic.get(key)
         if isinstance(value, list):
             for item in value:
@@ -237,6 +361,18 @@ def _semantic_hint_text(semantic: dict | None) -> str:
                     )
                     if name:
                         parts.append(str(name))
+        elif isinstance(value, dict):
+            parts.extend(str(name) for name in value.keys() if name)
+            for item in value.values():
+                if isinstance(item, dict):
+                    name = (
+                        item.get("table_name")
+                        or item.get("name")
+                        or item.get("source")
+                        or item.get("table")
+                    )
+                    if name:
+                        parts.append(str(name))
     return " ".join(parts)
 
 
@@ -245,11 +381,46 @@ def _semantic_candidate_tables(semantic: dict | None) -> list[str]:
         return []
 
     tables: list[str] = []
-    for item in semantic.get("candidate_tables", []) or []:
-        table_name = item.get("table_name") if isinstance(item, dict) else item
-        if isinstance(table_name, str) and table_name in KNOWN_MAJOR_PROJECT_TABLES:
-            _add_unique(tables, str(table_name))
+    for key in (
+        "sources",
+        "matched_tables",
+        "matched_table_names",
+        "source_tables",
+        "matched_sources",
+        "candidate_tables",
+    ):
+        for table_name in _table_names_from_semantic_value(semantic.get(key)):
+            if table_name in KNOWN_MAJOR_PROJECT_TABLES:
+                _add_unique(tables, table_name)
     return tables
+
+
+def _table_names_from_semantic_value(value: Any) -> list[str]:
+    names: list[str] = []
+    if isinstance(value, str):
+        _add_unique(names, value)
+    elif isinstance(value, dict):
+        direct_name = _table_name_from_semantic_item(value)
+        if direct_name:
+            _add_unique(names, direct_name)
+        for key, item in value.items():
+            if isinstance(key, str):
+                _add_unique(names, key)
+            for table_name in _table_names_from_semantic_value(item):
+                _add_unique(names, table_name)
+    elif isinstance(value, (list, tuple, set)):
+        for item in value:
+            for table_name in _table_names_from_semantic_value(item):
+                _add_unique(names, table_name)
+    return names
+
+
+def _table_name_from_semantic_item(item: dict[str, Any]) -> str | None:
+    for key in ("table_name", "name", "source", "source_name", "table"):
+        value = item.get(key)
+        if isinstance(value, str):
+            return value
+    return None
 
 
 def _contains_any(text: str, *tokens: str) -> bool:
@@ -260,6 +431,11 @@ def _contains_any(text: str, *tokens: str) -> bool:
 def _add_unique(items: list[str], value: str) -> None:
     if value not in items:
         items.append(value)
+
+
+def _remove_value(items: list[str], value: str) -> None:
+    while value in items:
+        items.remove(value)
 
 
 __all__ = ["resolve_major_project_kg_hints"]
