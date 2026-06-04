@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import csv
 import json
 import random
 from dataclasses import dataclass, field
@@ -85,6 +87,129 @@ _STAGE_NAMES = {
     "verification": "规划核实",
 }
 
+ARTIFACT_NAMES = [
+    "schema_postgis.sql",
+    "seed_small.sql",
+    "kg_nodes_small.csv",
+    "kg_edges_small.csv",
+    "neo4j_nodes_small.csv",
+    "neo4j_edges_small.csv",
+    "neo4j_import.cypher",
+    "semantic_sources.json",
+    "semantic_registry.json",
+    "semantic_models.yaml",
+    "semantic_relation_map.json",
+    "nl2sql_benchmark_questions.jsonl",
+]
+
+KG_NODE_COLUMNS = ["node_id", "label", "biz_id", "name", "properties"]
+KG_EDGE_COLUMNS = [
+    "edge_id",
+    "source_node_id",
+    "target_node_id",
+    "edge_type",
+    "confidence",
+    "match_method",
+    "evidence",
+]
+
+_PROJECT_SQL_COLUMNS = [
+    "project_id",
+    "zdxmbh",
+    "zdxm_sec",
+    "project_name",
+    "project_type",
+    "province",
+    "city",
+    "county",
+    "construction_unit",
+    "total_investment_million",
+    "planned_land_area_mu",
+    "list_year",
+    "status",
+    "geom",
+    "synthetic_seed",
+    "profile",
+    "generator_version",
+]
+
+_STAGE_COMMON_COLUMNS = [
+    "project_id",
+    "zdxmbh",
+    "zdxm_sec",
+    "project_name",
+    "stage",
+    "stage_name",
+    "flowsn",
+    "dzjgh",
+    "approval_date",
+    "status",
+    "area_mu",
+    "synthetic_seed",
+    "profile",
+    "generator_version",
+]
+
+_STAGE_EXTRA_COLUMNS = {
+    "pre_review": ["xs_dzjgh"],
+    "approval_project": ["bp_guid"],
+    "approval_supply": ["bp_guid", "gd_guid"],
+    "land_supply": ["gd_guid"],
+    "land_use_permit": ["ygdzjgh"],
+    "construction_permit": ["ggdzjgh"],
+    "verification": ["verification_no"],
+}
+
+_STAGE_TABLE_SPECS = [
+    {
+        "stage": stage,
+        "attr": attr,
+        "table": f"mp_{stage}",
+        "id_field": key_field,
+        "columns": [key_field, *_STAGE_COMMON_COLUMNS, *_STAGE_EXTRA_COLUMNS.get(stage, [])],
+    }
+    for stage, attr, _label, _edge_type, _prefix, key_field in _STAGE_DEFS
+]
+
+_PARCEL_SQL_COLUMNS = [
+    "parcel_id",
+    "project_id",
+    "land_use_type",
+    "area_mu",
+    "geom",
+    "synthetic_seed",
+    "profile",
+    "generator_version",
+]
+
+_SPATIAL_OVERLAP_SQL_COLUMNS = [
+    "overlap_id",
+    "project_id",
+    "parcel_id",
+    "overlap_ratio",
+    "overlap_area_mu",
+    "geometry_source",
+    "synthetic_seed",
+    "profile",
+    "generator_version",
+]
+
+_RELATION_CONFIDENCE_SQL_COLUMNS = [
+    "relation_id",
+    "project_id",
+    "source_table",
+    "source_id",
+    "target_table",
+    "target_id",
+    "relation_type",
+    "match_method",
+    "confidence",
+    "evidence",
+    "synthetic_seed",
+    "profile",
+    "generator_version",
+]
+
 
 @dataclass(frozen=True)
 class GenerationConfig:
@@ -129,6 +254,9 @@ class SyntheticMajorProjectGenerator:
             self._append_lifecycle_records(bundle, project, idx)
             self._append_parcels_and_spatial_relations(bundle, project, idx)
         return bundle
+
+    def write_all(self, bundle: SyntheticDataBundle) -> list[Path]:
+        return _write_all_artifacts(self.config, bundle)
 
     def _project(self, idx: int) -> dict[str, Any]:
         province = self.rng.choice(["示范省A", "示范省B", "示范省C"])
@@ -520,3 +648,645 @@ class SyntheticMajorProjectGenerator:
 
     def _json_properties(self, value: dict[str, Any]) -> str:
         return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _write_all_artifacts(config: GenerationConfig, bundle: SyntheticDataBundle) -> list[Path]:
+    output_dir = config.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    written = [
+        _write_text(output_dir / "schema_postgis.sql", _schema_postgis_sql()),
+        _write_text(output_dir / "seed_small.sql", _seed_sql(config, bundle)),
+        _write_csv(output_dir / "kg_nodes_small.csv", KG_NODE_COLUMNS, bundle.kg_nodes),
+        _write_csv(output_dir / "kg_edges_small.csv", KG_EDGE_COLUMNS, bundle.kg_edges),
+        _write_csv(output_dir / "neo4j_nodes_small.csv", KG_NODE_COLUMNS, bundle.kg_nodes),
+        _write_csv(output_dir / "neo4j_edges_small.csv", KG_EDGE_COLUMNS, bundle.kg_edges),
+        _write_text(output_dir / "neo4j_import.cypher", _neo4j_import_cypher()),
+        _write_json(output_dir / "semantic_sources.json", _semantic_sources(config)),
+        _write_json(output_dir / "semantic_registry.json", _semantic_registry(config)),
+        _write_text(output_dir / "semantic_models.yaml", _semantic_models_yaml(config)),
+        _write_json(output_dir / "semantic_relation_map.json", _semantic_relation_map(config)),
+        _write_jsonl(output_dir / "nl2sql_benchmark_questions.jsonl", _benchmark_questions()),
+    ]
+    return written
+
+
+def _write_text(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not text.endswith("\n"):
+        text = f"{text}\n"
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+    return path
+
+
+def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, Any]]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore", lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({field: row.get(field, "") for field in fieldnames})
+    return path
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> Path:
+    text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+    return _write_text(path, text)
+
+
+def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> Path:
+    text = "\n".join(json.dumps(row, ensure_ascii=False, sort_keys=True) for row in rows)
+    return _write_text(path, text)
+
+
+def _schema_postgis_sql() -> str:
+    blocks = [
+        "-- Synthetic major-project PostGIS schema",
+        "-- Synthetic-only demonstration structure; contains no production records.",
+        "CREATE EXTENSION IF NOT EXISTS postgis;",
+        """CREATE TABLE IF NOT EXISTS mp_project_list (
+    project_id TEXT PRIMARY KEY,
+    zdxmbh TEXT NOT NULL,
+    zdxm_sec TEXT NOT NULL,
+    project_name TEXT NOT NULL,
+    project_type TEXT,
+    province TEXT,
+    city TEXT,
+    county TEXT,
+    construction_unit TEXT,
+    total_investment_million NUMERIC,
+    planned_land_area_mu NUMERIC,
+    list_year INTEGER,
+    status TEXT,
+    geom geometry(Polygon, 4326),
+    synthetic_seed INTEGER NOT NULL,
+    profile TEXT NOT NULL,
+    generator_version TEXT NOT NULL
+);""",
+    ]
+
+    blocks.extend(_stage_schema_sql(spec) for spec in _STAGE_TABLE_SPECS)
+    blocks.extend(
+        [
+            """CREATE TABLE IF NOT EXISTS mp_parcel (
+    parcel_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES mp_project_list(project_id),
+    land_use_type TEXT,
+    area_mu NUMERIC,
+    geom geometry(Polygon, 4326),
+    synthetic_seed INTEGER NOT NULL,
+    profile TEXT NOT NULL,
+    generator_version TEXT NOT NULL
+);""",
+            """CREATE TABLE IF NOT EXISTS mp_spatial_overlap (
+    overlap_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES mp_project_list(project_id),
+    parcel_id TEXT NOT NULL REFERENCES mp_parcel(parcel_id),
+    overlap_ratio NUMERIC,
+    overlap_area_mu NUMERIC,
+    geometry_source TEXT,
+    synthetic_seed INTEGER NOT NULL,
+    profile TEXT NOT NULL,
+    generator_version TEXT NOT NULL
+);""",
+            """CREATE TABLE IF NOT EXISTS mp_relation_confidence (
+    relation_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES mp_project_list(project_id),
+    source_table TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    target_table TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    relation_type TEXT NOT NULL,
+    match_method TEXT NOT NULL,
+    confidence NUMERIC NOT NULL,
+    evidence JSONB,
+    synthetic_seed INTEGER NOT NULL,
+    profile TEXT NOT NULL,
+    generator_version TEXT NOT NULL
+);""",
+            """CREATE TABLE IF NOT EXISTS kg_nodes (
+    node_id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    biz_id TEXT NOT NULL,
+    name TEXT,
+    properties JSONB
+);""",
+            """CREATE TABLE IF NOT EXISTS kg_edges (
+    edge_id TEXT PRIMARY KEY,
+    source_node_id TEXT NOT NULL REFERENCES kg_nodes(node_id),
+    target_node_id TEXT NOT NULL REFERENCES kg_nodes(node_id),
+    edge_type TEXT NOT NULL,
+    confidence NUMERIC,
+    match_method TEXT,
+    evidence JSONB
+);""",
+            """CREATE TABLE IF NOT EXISTS kg_query_result (
+    result_id BIGSERIAL PRIMARY KEY,
+    benchmark_id TEXT,
+    question TEXT NOT NULL,
+    route_class TEXT,
+    sql_text TEXT,
+    result_json JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);""",
+            "CREATE INDEX IF NOT EXISTS idx_mp_project_list_geom ON mp_project_list USING GIST (geom);",
+            "CREATE INDEX IF NOT EXISTS idx_mp_parcel_geom ON mp_parcel USING GIST (geom);",
+            "CREATE INDEX IF NOT EXISTS idx_mp_relation_confidence_type ON mp_relation_confidence (relation_type);",
+            "CREATE INDEX IF NOT EXISTS idx_kg_edges_edge_type ON kg_edges (edge_type);",
+        ]
+    )
+    return "\n\n".join(blocks)
+
+
+def _stage_schema_sql(spec: dict[str, Any]) -> str:
+    id_field = spec["id_field"]
+    lines = [f"CREATE TABLE IF NOT EXISTS {spec['table']} (", f"    {id_field} TEXT PRIMARY KEY"]
+    for column in spec["columns"][1:]:
+        lines.append(f"    ,{column} {_sql_column_type(column)}")
+    lines.append("    ,FOREIGN KEY (project_id) REFERENCES mp_project_list(project_id)")
+    lines.append(");")
+    return "\n".join(lines)
+
+
+def _sql_column_type(column: str) -> str:
+    if column in {"synthetic_seed"}:
+        return "INTEGER NOT NULL"
+    if column in {"area_mu", "overlap_ratio", "overlap_area_mu", "confidence"}:
+        return "NUMERIC"
+    if column == "approval_date":
+        return "DATE"
+    return "TEXT"
+
+
+def _seed_sql(config: GenerationConfig, bundle: SyntheticDataBundle) -> str:
+    blocks = [
+        "-- Synthetic major-project seed data",
+        "-- Synthetic-only demonstration records; contains no production records.",
+        f"-- profile={config.profile}; project_count={config.project_count}; seed={config.seed}",
+        "BEGIN;",
+        _sql_insert_block(
+            "mp_project_list",
+            bundle.projects,
+            _PROJECT_SQL_COLUMNS,
+            source_columns={"geom": "geom_wkt"},
+            geometry_columns={"geom"},
+        ),
+    ]
+
+    for spec in _STAGE_TABLE_SPECS:
+        blocks.append(_sql_insert_block(spec["table"], getattr(bundle, spec["attr"]), spec["columns"]))
+
+    blocks.extend(
+        [
+            _sql_insert_block(
+                "mp_parcel",
+                bundle.parcels,
+                _PARCEL_SQL_COLUMNS,
+                source_columns={"geom": "geom_wkt"},
+                geometry_columns={"geom"},
+            ),
+            _sql_insert_block("mp_spatial_overlap", bundle.spatial_overlaps, _SPATIAL_OVERLAP_SQL_COLUMNS),
+            _sql_insert_block(
+                "mp_relation_confidence",
+                bundle.relation_confidence,
+                _RELATION_CONFIDENCE_SQL_COLUMNS,
+                jsonb_columns={"evidence"},
+            ),
+            _sql_insert_block("kg_nodes", bundle.kg_nodes, KG_NODE_COLUMNS, jsonb_columns={"properties"}),
+            _sql_insert_block("kg_edges", bundle.kg_edges, KG_EDGE_COLUMNS, jsonb_columns={"evidence"}),
+            "COMMIT;",
+        ]
+    )
+    return "\n\n".join(blocks)
+
+
+def _sql_insert_block(
+    table: str,
+    rows: list[dict[str, Any]],
+    columns: list[str],
+    *,
+    source_columns: dict[str, str] | None = None,
+    geometry_columns: set[str] | None = None,
+    jsonb_columns: set[str] | None = None,
+) -> str:
+    if not rows:
+        return f"-- No synthetic rows generated for {table}."
+
+    source_columns = source_columns or {}
+    geometry_columns = geometry_columns or set()
+    jsonb_columns = jsonb_columns or set()
+    rendered_rows = []
+    for row in rows:
+        values = []
+        for column in columns:
+            source_column = source_columns.get(column, column)
+            values.append(
+                _sql_value(
+                    row.get(source_column),
+                    is_geometry=column in geometry_columns,
+                    is_jsonb=column in jsonb_columns,
+                )
+            )
+        rendered_rows.append(f"    ({', '.join(values)})")
+
+    joined_rows = ",\n".join(rendered_rows)
+    return f"INSERT INTO {table} ({', '.join(columns)}) VALUES\n{joined_rows}\nON CONFLICT DO NOTHING;"
+
+
+def _sql_value(value: Any, *, is_geometry: bool = False, is_jsonb: bool = False) -> str:
+    if value is None:
+        return "NULL"
+    if is_geometry:
+        return f"ST_GeomFromText({_sql_literal(value)}, 4326)"
+    if is_jsonb:
+        if isinstance(value, str):
+            payload = value
+        else:
+            payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        return f"{_sql_literal(payload)}::jsonb"
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, int | float):
+        return str(value)
+    return _sql_literal(value)
+
+
+def _sql_literal(value: Any) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _neo4j_import_cypher() -> str:
+    return """// Synthetic major-project Neo4j import
+// Synthetic-only demonstration graph; contains no production records.
+// Copy neo4j_nodes_small.csv and neo4j_edges_small.csv into Neo4j's import directory before running.
+
+CREATE CONSTRAINT synthetic_major_project_node_id IF NOT EXISTS
+FOR (n:SyntheticMajorProjectNode)
+REQUIRE n.node_id IS UNIQUE;
+
+LOAD CSV WITH HEADERS FROM 'file:///neo4j_nodes_small.csv' AS row
+CREATE (n:SyntheticMajorProjectNode)
+SET n.node_id = row.node_id,
+    n.label = row.label,
+    n.biz_id = row.biz_id,
+    n.name = row.name,
+    n.properties_json = row.properties,
+    n.synthetic_notice = 'Synthetic major-project demo only; no production records';
+
+LOAD CSV WITH HEADERS FROM 'file:///neo4j_edges_small.csv' AS row
+MATCH (source:SyntheticMajorProjectNode {node_id: row.source_node_id})
+MATCH (target:SyntheticMajorProjectNode {node_id: row.target_node_id})
+CREATE (source)-[r:SYNTHETIC_KG_EDGE]->(target)
+SET r.edge_id = row.edge_id,
+    r.edge_type = row.edge_type,
+    r.confidence = toFloat(row.confidence),
+    r.match_method = row.match_method,
+    r.evidence_json = row.evidence,
+    r.synthetic_notice = 'Synthetic major-project demo only; no production records';
+"""
+
+
+def _semantic_sources(config: GenerationConfig) -> dict[str, Any]:
+    return {
+        "metadata": {
+            "profile": config.profile,
+            "seed": config.seed,
+            "generator_version": GENERATOR_VERSION,
+            "synthetic_only": True,
+            "notice": "Synthetic major-project semantic sources; no production records.",
+        },
+        "sources": {
+            "mp_project_list": {
+                "display_name": "重大项目清单（合成）",
+                "description": "重大项目主表，保留项目编号、名称、行政区、投资、计划用地面积和空间范围等业务结构。",
+                "primary_key": "project_id",
+                "synonyms": ["重大项目", "重点项目", "项目清单", "省级重大项目", "重大项目列表"],
+                "default_grain": "one row per major project",
+                "geometry_column": "geom",
+            },
+            "mp_land_plan": {
+                "display_name": "用地计划配置（合成）",
+                "description": "项目用地计划阶段记录。",
+                "primary_key": "plan_id",
+                "synonyms": ["用地计划", "计划配置", "土地计划"],
+            },
+            "mp_pre_review": {
+                "display_name": "建设项目用地预审（合成）",
+                "description": "项目用地预审阶段记录，可通过 project_id 或 zdxmbh 关联项目清单。",
+                "primary_key": "pre_review_id",
+                "synonyms": ["用地预审", "预审", "预审意见", "建设项目预审"],
+            },
+            "mp_conversion_expropriation": {
+                "display_name": "农转用和征收（合成）",
+                "description": "农用地转用及土地征收阶段记录。",
+                "primary_key": "conversion_id",
+                "synonyms": ["农转用", "土地征收", "转用征收", "农用地转用"],
+            },
+            "mp_land_supply": {
+                "display_name": "土地供应（合成）",
+                "description": "土地供应阶段记录。",
+                "primary_key": "land_supply_id",
+                "synonyms": ["供地", "土地供应", "供地结果", "供应地块"],
+            },
+            "mp_parcel": {
+                "display_name": "项目占用地块（合成）",
+                "description": "项目关联地块，包含地类、面积和 PostGIS 几何。",
+                "primary_key": "parcel_id",
+                "synonyms": ["地块", "项目地块", "占用地块", "宗地", "图斑"],
+                "geometry_column": "geom",
+            },
+            "mp_relation_confidence": {
+                "display_name": "关系置信度（合成）",
+                "description": "项目、地块和流程节点之间的关系推断证据及置信度。",
+                "primary_key": "relation_id",
+                "synonyms": ["关系置信度", "匹配置信度", "关系证据", "图谱关系"],
+            },
+        },
+    }
+
+
+def _semantic_registry(config: GenerationConfig) -> dict[str, Any]:
+    return {
+        "metadata": {
+            "profile": config.profile,
+            "seed": config.seed,
+            "generator_version": GENERATOR_VERSION,
+            "synthetic_only": True,
+            "notice": "Chinese NL2SQL grounding registry for synthetic major-project data only.",
+        },
+        "columns": {
+            "project_id": {
+                "display_name": "项目内部ID",
+                "aliases": ["项目ID", "项目编号", "内部项目编号", "major project id"],
+                "domain": "major_project_identifier",
+                "tables": ["mp_project_list", "mp_relation_confidence", "mp_parcel"],
+                "value_example": "MP000001",
+            },
+            "zdxmbh": {
+                "display_name": "重大项目编号",
+                "aliases": ["重大项目编号", "重点项目编号", "zdxmbh", "业务编号"],
+                "domain": "business_project_identifier",
+                "tables": ["mp_project_list", "mp_land_plan", "mp_pre_review", "mp_conversion_expropriation"],
+                "value_example": "ZDXM-000001",
+            },
+            "project_name": {
+                "display_name": "项目名称",
+                "aliases": ["项目名称", "重大项目名称", "工程名称", "建设项目名称"],
+                "domain": "project_text",
+                "tables": ["mp_project_list", "mp_land_plan", "mp_pre_review", "mp_land_supply"],
+            },
+            "planned_land_area_mu": {
+                "display_name": "计划用地面积",
+                "aliases": ["计划用地面积", "拟用地面积", "规划用地面积", "用地规模", "用地面积"],
+                "domain": "land_area",
+                "unit": "亩",
+                "tables": ["mp_project_list"],
+            },
+            "area_mu": {
+                "display_name": "阶段或地块面积",
+                "aliases": ["面积", "阶段面积", "地块面积", "供地面积", "预审面积"],
+                "domain": "land_area",
+                "unit": "亩",
+                "tables": ["mp_pre_review", "mp_land_supply", "mp_parcel"],
+            },
+            "geom": {
+                "display_name": "空间几何",
+                "aliases": ["空间范围", "几何", "geometry", "geom", "坐标范围", "图形"],
+                "domain": "postgis_geometry",
+                "tables": ["mp_project_list", "mp_parcel"],
+                "operators": ["ST_Intersects", "ST_Contains", "ST_Area", "ST_GeomFromText"],
+            },
+            "land_use_type": {
+                "display_name": "地类",
+                "aliases": ["地类", "土地用途", "用地类型", "土地利用类型", "现状地类"],
+                "domain": "land_use_category",
+                "tables": ["mp_parcel"],
+                "value_examples": ["耕地", "建设用地", "林地", "未利用地"],
+            },
+            "relation_type": {
+                "display_name": "图谱关系类型",
+                "aliases": ["关系类型", "边类型", "图谱边", "关联类型"],
+                "domain": "kg_relation",
+                "tables": ["mp_relation_confidence", "kg_edges"],
+            },
+            "confidence": {
+                "display_name": "关系置信度",
+                "aliases": ["置信度", "匹配分数", "可信度", "关系分值"],
+                "domain": "confidence_score",
+                "tables": ["mp_relation_confidence", "kg_edges"],
+                "range": [0, 1],
+            },
+        },
+    }
+
+
+def _semantic_models_yaml(config: GenerationConfig) -> str:
+    return f"""version: 1
+metadata:
+  profile: {config.profile}
+  seed: {config.seed}
+  generator_version: {GENERATOR_VERSION}
+  synthetic_only: true
+  notice: "Synthetic major-project semantic model; no production records."
+models:
+  mp_project_lifecycle:
+    description: "重大项目从清单、用地计划、预审、农转用、供地到许可核实的合成生命周期模型。"
+    base_table: mp_project_list
+    primary_key: project_id
+    default_time_column: list_year
+    entities:
+      - name: major_project
+        table: mp_project_list
+        key: project_id
+        aliases: ["重大项目", "重点项目", "项目"]
+      - name: parcel
+        table: mp_parcel
+        key: parcel_id
+        aliases: ["地块", "宗地", "图斑"]
+    joins:
+      - name: project_to_pre_review
+        left_table: mp_project_list
+        right_table: mp_pre_review
+        left_key: project_id
+        right_key: project_id
+        relationship: one_to_many
+      - name: project_to_conversion
+        left_table: mp_project_list
+        right_table: mp_conversion_expropriation
+        left_key: project_id
+        right_key: project_id
+        relationship: one_to_many
+      - name: project_to_parcel_confidence
+        left_table: mp_project_list
+        right_table: mp_relation_confidence
+        left_key: project_id
+        right_key: project_id
+        relationship: one_to_many
+        filter: "relation_type = 'OCCUPIES_PARCEL'"
+      - name: parcel_confidence_to_parcel
+        left_table: mp_relation_confidence
+        right_table: mp_parcel
+        left_key: target_id
+        right_key: parcel_id
+        relationship: many_to_one
+    dimensions:
+      - project_name
+      - zdxmbh
+      - province
+      - city
+      - county
+      - project_type
+      - status
+      - land_use_type
+    measures:
+      - name: project_count
+        expression: "COUNT(DISTINCT mp_project_list.project_id)"
+      - name: planned_land_area_mu
+        expression: "SUM(mp_project_list.planned_land_area_mu)"
+      - name: occupied_parcel_area_mu
+        expression: "SUM(mp_parcel.area_mu)"
+"""
+
+
+def _semantic_relation_map(config: GenerationConfig) -> dict[str, Any]:
+    edge_types: dict[str, Any] = {
+        edge_type: {
+            "sql_table": f"mp_{stage}",
+            "source_table": "mp_project_list",
+            "source_key": "project_id",
+            "target_key": "project_id",
+            "semantic": f"项目具有{_STAGE_NAMES[stage]}阶段记录",
+            "route_hint": "sql_join",
+        }
+        for stage, _attr, _label, edge_type, _prefix, _key_field in _STAGE_DEFS
+    }
+    edge_types.update(
+        {
+            "OCCUPIES_PARCEL": {
+                "sql_table": "mp_relation_confidence",
+                "target_table": "mp_parcel",
+                "relation_filter": "relation_type = 'OCCUPIES_PARCEL'",
+                "source_key": "project_id",
+                "target_key": "target_id",
+                "target_join_key": "parcel_id",
+                "semantic": "项目占用或关联地块",
+                "route_hint": "hybrid_sql_graph",
+            },
+            "SPATIALLY_OVERLAPS": {
+                "sql_table": "mp_relation_confidence",
+                "target_table": "mp_parcel",
+                "relation_filter": "relation_type = 'SPATIALLY_OVERLAPS'",
+                "semantic": "项目空间范围与地块有叠加关系",
+                "route_hint": "hybrid_spatial",
+            },
+            "FUZZY_PROJECT_PARCEL_MATCH": {
+                "sql_table": "mp_relation_confidence",
+                "target_table": "mp_parcel",
+                "relation_filter": "relation_type = 'FUZZY_PROJECT_PARCEL_MATCH'",
+                "semantic": "项目和地块通过名称或弱键模糊匹配",
+                "route_hint": "graph_evidence",
+            },
+            "MISSING_STAGE": {
+                "sql_table": "kg_edges",
+                "semantic": "生命周期缺失阶段告警",
+                "route_hint": "graph",
+            },
+            "NEXT_STAGE": {
+                "sql_table": "kg_edges",
+                "semantic": "生命周期阶段顺序边",
+                "route_hint": "graph",
+            },
+            "HAS_RISK": {
+                "sql_table": "kg_edges",
+                "semantic": "项目风险事件",
+                "route_hint": "graph",
+            },
+        }
+    )
+    return {
+        "metadata": {
+            "profile": config.profile,
+            "seed": config.seed,
+            "generator_version": GENERATOR_VERSION,
+            "synthetic_only": True,
+            "notice": "KG-to-SQL relation map for synthetic major-project data only.",
+        },
+        "kg_edge_types": edge_types,
+    }
+
+
+def _benchmark_questions() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "mp_small_sql_001",
+            "class": "sql_only",
+            "question": "统计2024年列入清单的重大项目数量。",
+            "expected_sql_tables": ["mp_project_list"],
+            "expected_route": "sql",
+            "notes": "验证清单主表和 list_year 过滤。",
+        },
+        {
+            "id": "mp_small_sql_002",
+            "class": "sql_only",
+            "question": "按城市汇总重大项目计划用地面积，并按面积从高到低排序。",
+            "expected_sql_tables": ["mp_project_list"],
+            "expected_route": "sql",
+            "notes": "验证 planned_land_area_mu、city 和聚合排序。",
+        },
+        {
+            "id": "mp_small_graph_001",
+            "class": "graph",
+            "question": "找出知识图谱中缺少用地预审阶段的重大项目。",
+            "expected_sql_tables": ["kg_nodes", "kg_edges"],
+            "expected_kg_edge_types": ["MISSING_STAGE"],
+            "expected_route": "graph",
+            "notes": "验证生命周期异常边。",
+        },
+        {
+            "id": "mp_small_hybrid_001",
+            "class": "hybrid",
+            "question": "列出占用耕地且关系置信度大于0.9的重大项目名称和地块面积。",
+            "expected_sql_tables": ["mp_project_list", "mp_relation_confidence", "mp_parcel"],
+            "expected_kg_edge_types": ["OCCUPIES_PARCEL"],
+            "expected_route": "semantic_graph_sql",
+            "notes": "验证 OCCUPIES_PARCEL 关系到 mp_parcel 的混合接地。",
+        },
+    ]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Generate synthetic major-project KG and NL2SQL artifacts.")
+    parser.add_argument("--profile", default="small_dev")
+    parser.add_argument("--project-count", type=int, default=200)
+    parser.add_argument("--seed", type=int, default=20260604)
+    parser.add_argument("--output-dir", type=Path, default=Path("data_agent/synthetic/major_projects"))
+    args = parser.parse_args(argv)
+
+    config = GenerationConfig(
+        profile=args.profile,
+        project_count=args.project_count,
+        seed=args.seed,
+        output_dir=args.output_dir,
+    )
+    generator = SyntheticMajorProjectGenerator(config)
+    bundle = generator.build()
+    written_paths = generator.write_all(bundle)
+    print(
+        json.dumps(
+            {
+                "status": "success",
+                "profile": config.profile,
+                "project_count": config.project_count,
+                "seed": config.seed,
+                "written_paths": [str(path) for path in written_paths],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

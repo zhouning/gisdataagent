@@ -1,0 +1,92 @@
+{
+  "metadata": {
+    "generator_version": "major_project_synthetic_core_v1",
+    "notice": "Synthetic major-project semantic sources; no production records.",
+    "profile": "small_dev",
+    "seed": 20260604,
+    "synthetic_only": true
+  },
+  "sources": {
+    "mp_conversion_expropriation": {
+      "description": "农用地转用及土地征收阶段记录。",
+      "display_name": "农转用和征收（合成）",
+      "primary_key": "conversion_id",
+      "synonyms": [
+        "农转用",
+        "土地征收",
+        "转用征收",
+        "农用地转用"
+      ]
+    },
+    "mp_land_plan": {
+      "description": "项目用地计划阶段记录。",
+      "display_name": "用地计划配置（合成）",
+      "primary_key": "plan_id",
+      "synonyms": [
+        "用地计划",
+        "计划配置",
+        "土地计划"
+      ]
+    },
+    "mp_land_supply": {
+      "description": "土地供应阶段记录。",
+      "display_name": "土地供应（合成）",
+      "primary_key": "land_supply_id",
+      "synonyms": [
+        "供地",
+        "土地供应",
+        "供地结果",
+        "供应地块"
+      ]
+    },
+    "mp_parcel": {
+      "description": "项目关联地块，包含地类、面积和 PostGIS 几何。",
+      "display_name": "项目占用地块（合成）",
+      "geometry_column": "geom",
+      "primary_key": "parcel_id",
+      "synonyms": [
+        "地块",
+        "项目地块",
+        "占用地块",
+        "宗地",
+        "图斑"
+      ]
+    },
+    "mp_pre_review": {
+      "description": "项目用地预审阶段记录，可通过 project_id 或 zdxmbh 关联项目清单。",
+      "display_name": "建设项目用地预审（合成）",
+      "primary_key": "pre_review_id",
+      "synonyms": [
+        "用地预审",
+        "预审",
+        "预审意见",
+        "建设项目预审"
+      ]
+    },
+    "mp_project_list": {
+      "default_grain": "one row per major project",
+      "description": "重大项目主表，保留项目编号、名称、行政区、投资、计划用地面积和空间范围等业务结构。",
+      "display_name": "重大项目清单（合成）",
+      "geometry_column": "geom",
+      "primary_key": "project_id",
+      "synonyms": [
+        "重大项目",
+        "重点项目",
+        "项目清单",
+        "省级重大项目",
+        "重大项目列表"
+      ]
+    },
+    "mp_relation_confidence": {
+      "description": "项目、地块和流程节点之间的关系推断证据及置信度。",
+      "display_name": "关系置信度（合成）",
+      "primary_key": "relation_id",
+      "synonyms": [
+        "关系置信度",
+        "匹配置信度",
+        "关系证据",
+        "图谱关系"
+      ]
+    }
+  }
+}

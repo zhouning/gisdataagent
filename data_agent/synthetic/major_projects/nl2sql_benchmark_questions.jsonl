@@ -1,0 +1,4 @@
+{"class": "sql_only", "expected_route": "sql", "expected_sql_tables": ["mp_project_list"], "id": "mp_small_sql_001", "notes": "验证清单主表和 list_year 过滤。", "question": "统计2024年列入清单的重大项目数量。"}
+{"class": "sql_only", "expected_route": "sql", "expected_sql_tables": ["mp_project_list"], "id": "mp_small_sql_002", "notes": "验证 planned_land_area_mu、city 和聚合排序。", "question": "按城市汇总重大项目计划用地面积，并按面积从高到低排序。"}
+{"class": "graph", "expected_kg_edge_types": ["MISSING_STAGE"], "expected_route": "graph", "expected_sql_tables": ["kg_nodes", "kg_edges"], "id": "mp_small_graph_001", "notes": "验证生命周期异常边。", "question": "找出知识图谱中缺少用地预审阶段的重大项目。"}
+{"class": "hybrid", "expected_kg_edge_types": ["OCCUPIES_PARCEL"], "expected_route": "semantic_graph_sql", "expected_sql_tables": ["mp_project_list", "mp_relation_confidence", "mp_parcel"], "id": "mp_small_hybrid_001", "notes": "验证 OCCUPIES_PARCEL 关系到 mp_parcel 的混合接地。", "question": "列出占用耕地且关系置信度大于0.9的重大项目名称和地块面积。"}

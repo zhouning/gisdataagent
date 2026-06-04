@@ -1,0 +1,130 @@
+{
+  "kg_edge_types": {
+    "FUZZY_PROJECT_PARCEL_MATCH": {
+      "relation_filter": "relation_type = 'FUZZY_PROJECT_PARCEL_MATCH'",
+      "route_hint": "graph_evidence",
+      "semantic": "项目和地块通过名称或弱键模糊匹配",
+      "sql_table": "mp_relation_confidence",
+      "target_table": "mp_parcel"
+    },
+    "HAS_APPROVAL_PROJECT": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有建设用地审批项目阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_approval_project",
+      "target_key": "project_id"
+    },
+    "HAS_APPROVAL_SUPPLY": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有批供关联阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_approval_supply",
+      "target_key": "project_id"
+    },
+    "HAS_CONSTRUCTION_PERMIT": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有建设工程规划许可阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_construction_permit",
+      "target_key": "project_id"
+    },
+    "HAS_CONVERSION": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有农用地转用和土地征收阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_conversion_expropriation",
+      "target_key": "project_id"
+    },
+    "HAS_LAND_PLAN": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有用地计划配置阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_land_plan",
+      "target_key": "project_id"
+    },
+    "HAS_LAND_SUPPLY": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有土地供应阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_land_supply",
+      "target_key": "project_id"
+    },
+    "HAS_LAND_USE_PERMIT": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有建设用地规划许可阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_land_use_permit",
+      "target_key": "project_id"
+    },
+    "HAS_PRE_REVIEW": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有建设项目用地预审阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_pre_review",
+      "target_key": "project_id"
+    },
+    "HAS_RISK": {
+      "route_hint": "graph",
+      "semantic": "项目风险事件",
+      "sql_table": "kg_edges"
+    },
+    "HAS_SITE_SELECTION": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有规划选址阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_site_selection",
+      "target_key": "project_id"
+    },
+    "HAS_VERIFICATION": {
+      "route_hint": "sql_join",
+      "semantic": "项目具有规划核实阶段记录",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
+      "sql_table": "mp_verification",
+      "target_key": "project_id"
+    },
+    "MISSING_STAGE": {
+      "route_hint": "graph",
+      "semantic": "生命周期缺失阶段告警",
+      "sql_table": "kg_edges"
+    },
+    "NEXT_STAGE": {
+      "route_hint": "graph",
+      "semantic": "生命周期阶段顺序边",
+      "sql_table": "kg_edges"
+    },
+    "OCCUPIES_PARCEL": {
+      "relation_filter": "relation_type = 'OCCUPIES_PARCEL'",
+      "route_hint": "hybrid_sql_graph",
+      "semantic": "项目占用或关联地块",
+      "source_key": "project_id",
+      "sql_table": "mp_relation_confidence",
+      "target_join_key": "parcel_id",
+      "target_key": "target_id",
+      "target_table": "mp_parcel"
+    },
+    "SPATIALLY_OVERLAPS": {
+      "relation_filter": "relation_type = 'SPATIALLY_OVERLAPS'",
+      "route_hint": "hybrid_spatial",
+      "semantic": "项目空间范围与地块有叠加关系",
+      "sql_table": "mp_relation_confidence",
+      "target_table": "mp_parcel"
+    }
+  },
+  "metadata": {
+    "generator_version": "major_project_synthetic_core_v1",
+    "notice": "KG-to-SQL relation map for synthetic major-project data only.",
+    "profile": "small_dev",
+    "seed": 20260604,
+    "synthetic_only": true
+  }
+}

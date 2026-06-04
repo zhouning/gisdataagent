@@ -1,0 +1,64 @@
+version: 1
+metadata:
+  profile: small_dev
+  seed: 20260604
+  generator_version: major_project_synthetic_core_v1
+  synthetic_only: true
+  notice: "Synthetic major-project semantic model; no production records."
+models:
+  mp_project_lifecycle:
+    description: "重大项目从清单、用地计划、预审、农转用、供地到许可核实的合成生命周期模型。"
+    base_table: mp_project_list
+    primary_key: project_id
+    default_time_column: list_year
+    entities:
+      - name: major_project
+        table: mp_project_list
+        key: project_id
+        aliases: ["重大项目", "重点项目", "项目"]
+      - name: parcel
+        table: mp_parcel
+        key: parcel_id
+        aliases: ["地块", "宗地", "图斑"]
+    joins:
+      - name: project_to_pre_review
+        left_table: mp_project_list
+        right_table: mp_pre_review
+        left_key: project_id
+        right_key: project_id
+        relationship: one_to_many
+      - name: project_to_conversion
+        left_table: mp_project_list
+        right_table: mp_conversion_expropriation
+        left_key: project_id
+        right_key: project_id
+        relationship: one_to_many
+      - name: project_to_parcel_confidence
+        left_table: mp_project_list
+        right_table: mp_relation_confidence
+        left_key: project_id
+        right_key: project_id
+        relationship: one_to_many
+        filter: "relation_type = 'OCCUPIES_PARCEL'"
+      - name: parcel_confidence_to_parcel
+        left_table: mp_relation_confidence
+        right_table: mp_parcel
+        left_key: target_id
+        right_key: parcel_id
+        relationship: many_to_one
+    dimensions:
+      - project_name
+      - zdxmbh
+      - province
+      - city
+      - county
+      - project_type
+      - status
+      - land_use_type
+    measures:
+      - name: project_count
+        expression: "COUNT(DISTINCT mp_project_list.project_id)"
+      - name: planned_land_area_mu
+        expression: "SUM(mp_project_list.planned_land_area_mu)"
+      - name: occupied_parcel_area_mu
+        expression: "SUM(mp_parcel.area_mu)"

@@ -1,0 +1,166 @@
+{
+  "columns": {
+    "area_mu": {
+      "aliases": [
+        "面积",
+        "阶段面积",
+        "地块面积",
+        "供地面积",
+        "预审面积"
+      ],
+      "display_name": "阶段或地块面积",
+      "domain": "land_area",
+      "tables": [
+        "mp_pre_review",
+        "mp_land_supply",
+        "mp_parcel"
+      ],
+      "unit": "亩"
+    },
+    "confidence": {
+      "aliases": [
+        "置信度",
+        "匹配分数",
+        "可信度",
+        "关系分值"
+      ],
+      "display_name": "关系置信度",
+      "domain": "confidence_score",
+      "range": [
+        0,
+        1
+      ],
+      "tables": [
+        "mp_relation_confidence",
+        "kg_edges"
+      ]
+    },
+    "geom": {
+      "aliases": [
+        "空间范围",
+        "几何",
+        "geometry",
+        "geom",
+        "坐标范围",
+        "图形"
+      ],
+      "display_name": "空间几何",
+      "domain": "postgis_geometry",
+      "operators": [
+        "ST_Intersects",
+        "ST_Contains",
+        "ST_Area",
+        "ST_GeomFromText"
+      ],
+      "tables": [
+        "mp_project_list",
+        "mp_parcel"
+      ]
+    },
+    "land_use_type": {
+      "aliases": [
+        "地类",
+        "土地用途",
+        "用地类型",
+        "土地利用类型",
+        "现状地类"
+      ],
+      "display_name": "地类",
+      "domain": "land_use_category",
+      "tables": [
+        "mp_parcel"
+      ],
+      "value_examples": [
+        "耕地",
+        "建设用地",
+        "林地",
+        "未利用地"
+      ]
+    },
+    "planned_land_area_mu": {
+      "aliases": [
+        "计划用地面积",
+        "拟用地面积",
+        "规划用地面积",
+        "用地规模",
+        "用地面积"
+      ],
+      "display_name": "计划用地面积",
+      "domain": "land_area",
+      "tables": [
+        "mp_project_list"
+      ],
+      "unit": "亩"
+    },
+    "project_id": {
+      "aliases": [
+        "项目ID",
+        "项目编号",
+        "内部项目编号",
+        "major project id"
+      ],
+      "display_name": "项目内部ID",
+      "domain": "major_project_identifier",
+      "tables": [
+        "mp_project_list",
+        "mp_relation_confidence",
+        "mp_parcel"
+      ],
+      "value_example": "MP000001"
+    },
+    "project_name": {
+      "aliases": [
+        "项目名称",
+        "重大项目名称",
+        "工程名称",
+        "建设项目名称"
+      ],
+      "display_name": "项目名称",
+      "domain": "project_text",
+      "tables": [
+        "mp_project_list",
+        "mp_land_plan",
+        "mp_pre_review",
+        "mp_land_supply"
+      ]
+    },
+    "relation_type": {
+      "aliases": [
+        "关系类型",
+        "边类型",
+        "图谱边",
+        "关联类型"
+      ],
+      "display_name": "图谱关系类型",
+      "domain": "kg_relation",
+      "tables": [
+        "mp_relation_confidence",
+        "kg_edges"
+      ]
+    },
+    "zdxmbh": {
+      "aliases": [
+        "重大项目编号",
+        "重点项目编号",
+        "zdxmbh",
+        "业务编号"
+      ],
+      "display_name": "重大项目编号",
+      "domain": "business_project_identifier",
+      "tables": [
+        "mp_project_list",
+        "mp_land_plan",
+        "mp_pre_review",
+        "mp_conversion_expropriation"
+      ],
+      "value_example": "ZDXM-000001"
+    }
+  },
+  "metadata": {
+    "generator_version": "major_project_synthetic_core_v1",
+    "notice": "Chinese NL2SQL grounding registry for synthetic major-project data only.",
+    "profile": "small_dev",
+    "seed": 20260604,
+    "synthetic_only": true
+  }
+}
