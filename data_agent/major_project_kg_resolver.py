@@ -83,6 +83,8 @@ def resolve_major_project_kg_hints(
     NL2Semantic2SQL code can merge it into grounding without runtime services.
     """
     question_text = question or ""
+    natural_text = " ".join(part for part in (question_text, intent or "") if part)
+    natural_low = natural_text.lower()
     hint_text = _semantic_hint_text(semantic)
     combined_text = " ".join(
         part for part in (question_text, intent or "", hint_text) if part
@@ -113,22 +115,22 @@ def resolve_major_project_kg_hints(
     for table_name in semantic_tables:
         _add_unique(result["candidate_tables"], table_name)
 
-    if _mentions_missing_stage(combined_text, combined_low):
+    if _mentions_missing_stage(natural_text, natural_low):
         result["missing_stage_filter"] = True
-        result["missing_stage"] = _resolve_missing_stage(combined_text)
+        result["missing_stage"] = _resolve_missing_stage(natural_text)
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "MISSING_STAGE")
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
 
     mentions_pre_review = _contains_any(
-        combined_text,
+        natural_text,
         "用地预审",
         "预审",
         "pre_review",
         "HAS_PRE_REVIEW",
     )
     mentions_conversion = _contains_any(
-        combined_text,
+        natural_text,
         "农转征",
         "农转用",
         "农用地转用",
@@ -151,7 +153,7 @@ def resolve_major_project_kg_hints(
         and mentions_conversion
         and not result["missing_stage_filter"]
         and _contains_any(
-            combined_text,
+            natural_text,
             "未完成",
             "未办理",
             "未办结",
@@ -164,7 +166,7 @@ def resolve_major_project_kg_hints(
         result["lifecycle_stage"] = "pre_review_without_conversion"
 
     if _contains_any(
-        combined_text,
+        natural_text,
         "供地",
         "土地供应",
         "land supply",
@@ -176,7 +178,7 @@ def resolve_major_project_kg_hints(
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
         _add_unique(result["candidate_tables"], "mp_land_supply")
 
-    if _mentions_spatial_overlay(combined_text, combined_low):
+    if _mentions_spatial_overlay(natural_text, natural_low):
         result["spatial_overlap_threshold"] = DEFAULT_SPATIAL_OVERLAP_THRESHOLD
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "OCCUPIES_PARCEL")
@@ -185,17 +187,17 @@ def resolve_major_project_kg_hints(
         _add_unique(result["candidate_tables"], "mp_relation_confidence")
         _add_unique(result["candidate_tables"], "mp_parcel")
 
-    if _mentions_occupancy_or_relation_confidence(combined_text, combined_low):
+    if _mentions_occupancy_or_relation_confidence(natural_text, natural_low):
         _add_unique(result["matched_entities"], PROJECT_ENTITY)
         _add_unique(result["required_edges"], "OCCUPIES_PARCEL")
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
         _add_unique(result["candidate_tables"], "mp_relation_confidence")
         _add_unique(result["candidate_tables"], "mp_parcel")
 
-    if _mentions_relation_confidence(combined_text, combined_low):
+    if _mentions_relation_confidence(natural_text, natural_low):
         result["relation_confidence_filter"] = True
         result["min_relation_confidence"] = _extract_relation_confidence_threshold(
-            combined_text
+            natural_text
         )
         _add_unique(result["candidate_tables"], PROJECT_TABLE)
         _add_unique(result["candidate_tables"], "mp_relation_confidence")

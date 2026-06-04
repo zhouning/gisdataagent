@@ -66,6 +66,29 @@ def _schema_for(table_name: str) -> dict:
             {"column_name": "land_type", "data_type": "text", "aliases": ["地类"]},
             {"column_name": "area_mu", "data_type": "double precision", "aliases": ["地块面积"]},
         ],
+        "cq_dltb": [
+            {"column_name": "bsm", "data_type": "text", "aliases": ["BSM"]},
+            {"column_name": "dlmc", "data_type": "text", "aliases": ["\u5730\u7c7b\u540d\u79f0", "\u8015\u5730"]},
+            {"column_name": "tbmj", "data_type": "double precision", "aliases": ["\u56fe\u6591\u9762\u79ef"]},
+            {
+                "column_name": "shape",
+                "data_type": "USER-DEFINED",
+                "aliases": ["geometry"],
+                "is_geometry": True,
+            },
+        ],
+        "mp_pre_review": [
+            {"column_name": "project_id", "data_type": "text", "aliases": ["\u9879\u76eeID"]},
+            {"column_name": "pre_review_status", "data_type": "text", "aliases": ["\u9884\u5ba1\u72b6\u6001"]},
+        ],
+        "mp_conversion_expropriation": [
+            {"column_name": "project_id", "data_type": "text", "aliases": ["\u9879\u76eeID"]},
+            {"column_name": "conversion_status", "data_type": "text", "aliases": ["\u519c\u8f6c\u5f81\u72b6\u6001"]},
+        ],
+        "mp_land_supply": [
+            {"column_name": "project_id", "data_type": "text", "aliases": ["\u9879\u76eeID"]},
+            {"column_name": "supply_area_mu", "data_type": "double precision", "aliases": ["\u4f9b\u5730\u9762\u79ef"]},
+        ],
         "cq_buildings_2021": [
             {"column_name": "Id", "data_type": "integer", "aliases": ["建筑ID"]},
             {"column_name": "Floor", "data_type": "integer", "aliases": ["楼层"]},
@@ -165,6 +188,86 @@ def test_kg_hint_tables_are_grounded_when_semantic_only_finds_project_list():
     assert "### mp_relation_confidence" in result["grounding_prompt"]
     assert "### mp_parcel" in result["grounding_prompt"]
     assert "mp_project_list.project_id -> mp_relation_confidence.project_id" in result["grounding_prompt"]
+
+
+def test_kg_required_tables_survive_competing_farmland_semantic_source():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = _semantic_for_major_project(["mp_project_list"])
+    source_list = {
+        "status": "success",
+        "sources": [
+            {
+                "table_name": "cq_dltb",
+                "display_name": "\u571f\u5730\u5229\u7528\u73b0\u72b6\u56fe\u6591",
+                "description": "\u5305\u542b\u8015\u5730\u7b49\u5730\u7c7b\u56fe\u6591\u4fe1\u606f",
+                "synonyms": ["\u8015\u5730", "\u5730\u7c7b\u56fe\u6591"],
+                "geometry_type": "MULTIPOLYGON",
+                "srid": 4326,
+            },
+            {
+                "table_name": "mp_parcel",
+                "display_name": "\u91cd\u5927\u9879\u76ee\u5730\u5757",
+                "description": "\u91cd\u5927\u9879\u76ee\u5173\u8054\u5730\u5757\u53ca\u5730\u7c7b",
+                "synonyms": ["\u5730\u5757", "\u5730\u5757\u9762\u79ef", "\u8015\u5730"],
+            },
+            {
+                "table_name": "mp_relation_confidence",
+                "display_name": "\u91cd\u5927\u9879\u76ee\u5173\u7cfb\u7f6e\u4fe1\u5ea6",
+                "description": "\u9879\u76ee\u4e0e\u5730\u5757\u7684\u5173\u7cfb\u8fb9\u7f6e\u4fe1\u5ea6",
+                "synonyms": ["\u5173\u7cfb\u7f6e\u4fe1\u5ea6", "\u7f6e\u4fe1\u5ea6"],
+            },
+        ],
+    }
+
+    with patch("data_agent.nl2sql_grounding.classify_intent", return_value=_fake_intent()), \
+         patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.list_semantic_sources", return_value=source_list), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=100), \
+         patch("data_agent.nl2sql_grounding._build_warehouse_join_hints", return_value=None):
+        result = build_nl2sql_context(
+            "\u5217\u51fa\u5360\u7528\u8015\u5730\u4e14\u5173\u7cfb\u7f6e\u4fe1\u5ea6\u5927\u4e8e0.9\u7684\u91cd\u5927\u9879\u76ee\u540d\u79f0\u548c\u5730\u5757\u9762\u79ef\u3002",
+            family="deepseek",
+        )
+
+    candidate_names = {table["table_name"] for table in result["candidate_tables"]}
+    assert {"mp_project_list", "mp_relation_confidence", "mp_parcel"} <= candidate_names
+    assert "OCCUPIES_PARCEL" in result["kg_hints"]["required_edges"]
+    assert result["kg_hints"]["relation_confidence_filter"] is True
+    assert result["kg_hints"]["min_relation_confidence"] == 0.9
+    assert "mp_project_list.project_id -> mp_relation_confidence.project_id" in result["grounding_prompt"]
+
+
+def test_unasked_lifecycle_tables_from_semantic_context_do_not_expand_kg_grounding():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = _semantic_for_major_project(
+        [
+            "mp_project_list",
+            "mp_pre_review",
+            "mp_conversion_expropriation",
+            "mp_land_supply",
+        ]
+    )
+
+    with patch("data_agent.nl2sql_grounding.classify_intent", return_value=_fake_intent()), \
+         patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=100), \
+         patch("data_agent.nl2sql_grounding._build_warehouse_join_hints", return_value=None):
+        result = build_nl2sql_context(
+            "\u5217\u51fa\u5360\u7528\u8015\u5730\u4e14\u5173\u7cfb\u7f6e\u4fe1\u5ea6\u5927\u4e8e0.9\u7684\u91cd\u5927\u9879\u76ee\u540d\u79f0\u548c\u5730\u5757\u9762\u79ef\u3002",
+            family="deepseek",
+        )
+
+    candidate_names = {table["table_name"] for table in result["candidate_tables"]}
+    assert candidate_names == {"mp_project_list", "mp_relation_confidence", "mp_parcel"}
+    assert result["kg_hints"]["required_edges"] == ["OCCUPIES_PARCEL"]
+    assert "HAS_PRE_REVIEW" not in result["grounding_prompt"]
+    assert "mp_pre_review" not in result["grounding_prompt"]
 
 
 def test_access_control_removes_kg_edges_when_required_tables_are_filtered():

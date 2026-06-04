@@ -514,6 +514,7 @@ _MAJOR_PROJECT_KG_TABLES = {
 }
 
 _KG_EDGE_TABLE_REQUIREMENTS = {
+    "MISSING_STAGE": {"mp_project_list"},
     "OCCUPIES_PARCEL": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
     "SPATIALLY_OVERLAPS": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
     "FUZZY_PROJECT_PARCEL_MATCH": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
@@ -620,6 +621,63 @@ def _schema_filter_allows_kg_table(table_name: str, schema_filter: str | None) -
     if "." not in table_name:
         return schema_filter == "public"
     return table_name.startswith(f"{schema_filter}.")
+
+
+def _kg_priority_table_names(kg_hints: dict | None, schema_filter: str | None) -> set[str]:
+    if not _is_actionable_kg_hints(kg_hints):
+        return set()
+
+    names: set[str] = set()
+    for edge in _as_str_list(kg_hints.get("required_edges")):
+        names.update(_KG_EDGE_TABLE_REQUIREMENTS.get(edge, set()))
+    if not names:
+        names.update(_as_str_list(kg_hints.get("candidate_tables")))
+        for join_path in _as_str_list(kg_hints.get("join_paths")):
+            names.update(_kg_join_path_tables(join_path))
+    return {
+        table_name
+        for table_name in names
+        if table_name and _schema_filter_allows_kg_table(table_name, schema_filter)
+    }
+
+
+def _select_with_kg_priority(
+    ranked_items: list[dict],
+    limit: int,
+    kg_hints: dict | None,
+    schema_filter: str | None,
+) -> list[dict]:
+    if limit <= 0:
+        return []
+
+    priority_names = _kg_priority_table_names(kg_hints, schema_filter)
+    if not priority_names:
+        return ranked_items[:limit]
+
+    available_priority_names = {
+        str(item.get("table_name") or "")
+        for item in ranked_items
+        if str(item.get("table_name") or "") in priority_names
+    }
+    effective_limit = max(limit, len(available_priority_names))
+    selected: list[dict] = []
+    selected_names: set[str] = set()
+
+    for item in ranked_items:
+        table_name = str(item.get("table_name") or "")
+        if table_name in priority_names and table_name not in selected_names:
+            selected.append(item)
+            selected_names.add(table_name)
+
+    for item in ranked_items:
+        if len(selected) >= effective_limit:
+            break
+        table_name = str(item.get("table_name") or "")
+        if table_name and table_name not in selected_names:
+            selected.append(item)
+            selected_names.add(table_name)
+
+    return selected
 
 
 def _kg_hint_sources(
@@ -1405,7 +1463,8 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     source_limit = 5 if not spatial_query else 3
     if schema_filter:
         source_limit = 8  # warehouse benchmarks may have many tables per schema
-    for source in sources[:source_limit]:
+    selected_sources = _select_with_kg_priority(sources, source_limit, kg_hints, schema_filter)
+    for source in selected_sources:
         table_name = source.get("table_name")
         if not table_name:
             continue
@@ -1430,7 +1489,12 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
 
     # Limit candidate tables: more for warehouse (need full schema for join hints)
     max_candidates = 5 if schema_filter else 3
-    candidate_tables = _rank_candidate_tables(user_text, candidate_tables, semantic)[:max_candidates]
+    candidate_tables = _select_with_kg_priority(
+        _rank_candidate_tables(user_text, candidate_tables, semantic),
+        max_candidates,
+        kg_hints,
+        schema_filter,
+    )
 
     # --- Sensitivity-based access control ---
     # Filter tables by user role. Admin sees all; analyst sees up to internal;

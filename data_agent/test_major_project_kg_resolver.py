@@ -100,6 +100,27 @@ def test_occupancy_confidence_benchmark_adds_relation_and_parcel_hints():
     )
 
 
+def test_semantic_stage_tables_do_not_create_unasked_lifecycle_edges():
+    semantic = {
+        "sources": [
+            {"table_name": "mp_project_list"},
+            {"table_name": "mp_pre_review"},
+            {"table_name": "mp_conversion_expropriation"},
+            {"table_name": "mp_land_supply"},
+        ],
+    }
+
+    result = resolve_major_project_kg_hints(
+        "\u5217\u51fa\u5360\u7528\u8015\u5730\u4e14\u5173\u7cfb\u7f6e\u4fe1\u5ea6\u5927\u4e8e0.9\u7684\u91cd\u5927\u9879\u76ee\u540d\u79f0\u548c\u5730\u5757\u9762\u79ef\u3002",
+        semantic=semantic,
+    )
+
+    assert "OCCUPIES_PARCEL" in result["required_edges"]
+    assert "HAS_PRE_REVIEW" not in result["required_edges"]
+    assert "HAS_CONVERSION" not in result["required_edges"]
+    assert "HAS_LAND_SUPPLY" not in result["required_edges"]
+
+
 def test_semantic_sources_and_matched_tables_feed_major_project_candidates():
     semantic = {
         "sources": {
