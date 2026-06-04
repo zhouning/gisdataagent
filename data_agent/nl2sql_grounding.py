@@ -487,6 +487,175 @@ def _resolve_major_project_kg_hints(user_text: str, semantic: dict, intent: str 
         return {}
 
 
+def _is_actionable_kg_hints(kg_hints: dict | None) -> bool:
+    if not isinstance(kg_hints, dict):
+        return False
+    if _as_str_list(kg_hints.get("matched_entities")):
+        return True
+    if _as_str_list(kg_hints.get("required_edges")):
+        return True
+    return bool(
+        _as_str_list(kg_hints.get("candidate_tables"))
+        or _as_str_list(kg_hints.get("join_paths"))
+    )
+
+
+def _normalize_kg_hints(kg_hints: dict | None) -> dict:
+    return dict(kg_hints) if _is_actionable_kg_hints(kg_hints) else {}
+
+
+_MAJOR_PROJECT_KG_TABLES = {
+    "mp_project_list",
+    "mp_pre_review",
+    "mp_conversion_expropriation",
+    "mp_land_supply",
+    "mp_parcel",
+    "mp_relation_confidence",
+}
+
+_MAJOR_PROJECT_EXPLICIT_TOKENS = (
+    "重大项目",
+    "重点项目",
+    "major project",
+    "major_project",
+    "mp_project",
+    "mp_relation_confidence",
+    "审批流程",
+    "流程断点",
+    "用地预审",
+    "农转征",
+    "农转用",
+    "农用地转用",
+    "土地征收",
+    "土地供应",
+)
+
+_MAJOR_PROJECT_PROJECT_CONTEXT_TOKENS = (
+    "占用",
+    "耕地",
+    "地块",
+    "关系置信度",
+    "置信度",
+    "供地",
+    "预审",
+    "空间叠加",
+    "叠加补全",
+    "补全关联",
+    "空间覆盖",
+    "空间关联",
+)
+
+
+def _semantic_major_project_table_names(semantic: dict | None) -> set[str]:
+    if not isinstance(semantic, dict):
+        return set()
+
+    names = set()
+    for key in (
+        "sources",
+        "matched_tables",
+        "matched_table_names",
+        "source_tables",
+        "matched_sources",
+        "candidate_tables",
+    ):
+        value = semantic.get(key)
+        if isinstance(value, str):
+            names.add(value)
+        elif isinstance(value, dict):
+            for name, item in value.items():
+                if isinstance(name, str):
+                    names.add(name)
+                if isinstance(item, dict):
+                    table_name = item.get("table_name") or item.get("name")
+                    if isinstance(table_name, str):
+                        names.add(table_name)
+        elif isinstance(value, (list, tuple, set)):
+            for item in value:
+                if isinstance(item, str):
+                    names.add(item)
+                elif isinstance(item, dict):
+                    table_name = item.get("table_name") or item.get("name")
+                    if isinstance(table_name, str):
+                        names.add(table_name)
+    return names
+
+
+def _has_major_project_grounding_context(user_text: str, semantic: dict | None) -> bool:
+    text = user_text or ""
+    text_low = text.lower()
+    if any(token in text or token.lower() in text_low for token in _MAJOR_PROJECT_EXPLICIT_TOKENS):
+        return True
+    if "项目" in text and any(
+        token in text or token.lower() in text_low
+        for token in _MAJOR_PROJECT_PROJECT_CONTEXT_TOKENS
+    ):
+        return True
+    return bool(_semantic_major_project_table_names(semantic) & _MAJOR_PROJECT_KG_TABLES)
+
+
+def _schema_filter_allows_kg_table(table_name: str, schema_filter: str | None) -> bool:
+    if not schema_filter:
+        return True
+    if "." not in table_name:
+        return schema_filter == "public"
+    return table_name.startswith(f"{schema_filter}.")
+
+
+def _kg_hint_sources(
+    kg_hints: dict,
+    sources: list[dict],
+    schema_filter: str | None,
+) -> list[dict]:
+    existing = {str(source.get("table_name") or "") for source in sources}
+    additions = []
+    for table_name in _as_str_list(kg_hints.get("candidate_tables")):
+        if not table_name or table_name in existing:
+            continue
+        if not _schema_filter_allows_kg_table(table_name, schema_filter):
+            continue
+        additions.append({
+            "table_name": table_name,
+            "display_name": table_name,
+            "description": "KG hint candidate table",
+            "confidence": 0.72,
+        })
+        existing.add(table_name)
+    return additions
+
+
+def _kg_join_path_tables(join_path: str) -> set[str]:
+    return set(re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z_][A-Za-z0-9_]*", join_path))
+
+
+def _normalize_kg_hints_for_candidate_tables(
+    kg_hints: dict,
+    candidate_table_names: set[str],
+) -> dict:
+    kg_hints = _normalize_kg_hints(kg_hints)
+    if not kg_hints:
+        return {}
+
+    final_names = {str(name) for name in candidate_table_names if name}
+    if not final_names:
+        return {}
+
+    normalized = dict(kg_hints)
+    hinted_tables = _as_str_list(normalized.get("candidate_tables"))
+    grounded_tables = [table_name for table_name in hinted_tables if table_name in final_names]
+    if hinted_tables and not grounded_tables:
+        return {}
+    normalized["candidate_tables"] = grounded_tables
+
+    grounded_join_paths = []
+    for join_path in _as_str_list(normalized.get("join_paths")):
+        path_tables = _kg_join_path_tables(join_path)
+        if path_tables and path_tables <= final_names:
+            grounded_join_paths.append(join_path)
+    normalized["join_paths"] = grounded_join_paths
+    return _normalize_kg_hints(normalized)
+
+
 def _format_kg_hints_lines(kg_hints: dict | None) -> list[str]:
     """Render deterministic KG hints in a compact, prompt-safe form."""
     if not isinstance(kg_hints, dict):
@@ -1039,6 +1208,7 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     if family is None:
         family = _ablation_os.environ.get("NL2SQL_AGENT_FAMILY") or None
     intent_result = classify_intent(user_text, family=family)
+    intent_value = getattr(intent_result.primary, "value", intent_result.primary)
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
     # When schema_filter is set, remove sources from other schemas
@@ -1159,6 +1329,21 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
             import logging as _lg
             _lg.getLogger(__name__).warning(f"[SchemaMapper] backfill failed: {_exc}")
 
+    kg_hints = _normalize_kg_hints(
+        _resolve_major_project_kg_hints(
+            user_text,
+            semantic=semantic,
+            intent=intent_value,
+        )
+    )
+    if kg_hints and not _has_major_project_grounding_context(user_text, semantic):
+        kg_hints = {}
+    if kg_hints:
+        kg_sources = _kg_hint_sources(kg_hints, sources, schema_filter)
+        if kg_sources:
+            sources.extend(kg_sources)
+            sources = _rank_sources(user_text, sources, semantic)
+
     candidate_tables = []
     ascii_heavy = _is_ascii_heavy(user_text)
     spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
@@ -1211,16 +1396,15 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
                 len(candidate_tables), pre_filter_count, role,
             )
 
+    kg_hints = _normalize_kg_hints_for_candidate_tables(
+        kg_hints,
+        {str(t.get("table_name") or "") for t in candidate_tables},
+    )
+
     # Build warehouse join hints from SemanticModelStore (non-spatial only)
     warehouse_join_hints = None
     if not spatial_query:
         warehouse_join_hints = _build_warehouse_join_hints(candidate_tables)
-
-    kg_hints = _resolve_major_project_kg_hints(
-        user_text,
-        semantic=semantic,
-        intent=getattr(intent_result.primary, "value", intent_result.primary),
-    )
 
     few_shot_text = ""
     import os as _abl_os

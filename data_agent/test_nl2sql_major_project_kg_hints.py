@@ -66,6 +66,14 @@ def _schema_for(table_name: str) -> dict:
             {"column_name": "land_type", "data_type": "text", "aliases": ["地类"]},
             {"column_name": "area_mu", "data_type": "double precision", "aliases": ["地块面积"]},
         ],
+        "cq_buildings_2021": [
+            {"column_name": "Id", "data_type": "integer", "aliases": ["建筑ID"]},
+            {"column_name": "Floor", "data_type": "integer", "aliases": ["楼层"]},
+        ],
+        "bird_debit_card_specializing.customers": [
+            {"column_name": "customerid", "data_type": "bigint", "aliases": ["客户ID"]},
+            {"column_name": "segment", "data_type": "text", "aliases": ["客户分层"]},
+        ],
     }
     return {
         "status": "success",
@@ -131,6 +139,73 @@ def test_build_context_renders_relation_confidence_kg_hints():
     assert "mp_relation_confidence" in prompt
     assert "min_relation_confidence: 0.9" in prompt
     assert "mp_project_list.project_id -> mp_relation_confidence.project_id" in prompt
+
+
+def test_kg_hint_tables_are_grounded_when_semantic_only_finds_project_list():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = _semantic_for_major_project(["mp_project_list"])
+
+    with patch("data_agent.nl2sql_grounding.classify_intent", return_value=_fake_intent()), \
+         patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=100), \
+         patch("data_agent.nl2sql_grounding._build_warehouse_join_hints", return_value=None):
+        result = build_nl2sql_context(
+            "列出占用耕地且关系置信度大于0.9的重大项目名称和地块面积。",
+            family="deepseek",
+        )
+
+    candidate_names = {table["table_name"] for table in result["candidate_tables"]}
+    assert {"mp_project_list", "mp_relation_confidence", "mp_parcel"} <= candidate_names
+    assert {"mp_project_list", "mp_relation_confidence", "mp_parcel"} <= set(
+        result["kg_hints"]["candidate_tables"]
+    )
+    assert "### mp_relation_confidence" in result["grounding_prompt"]
+    assert "### mp_parcel" in result["grounding_prompt"]
+    assert "mp_project_list.project_id -> mp_relation_confidence.project_id" in result["grounding_prompt"]
+
+
+def test_non_major_query_has_no_kg_hints_or_prompt_block():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = _semantic_for_major_project(["cq_buildings_2021"])
+
+    with patch("data_agent.nl2sql_grounding.classify_intent", return_value=_fake_intent()), \
+         patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=100), \
+         patch("data_agent.nl2sql_grounding._build_warehouse_join_hints", return_value=None):
+        result = build_nl2sql_context("统计中心城区建筑数据中层高大于40层的建筑数量")
+
+    assert result["kg_hints"] == {}
+    assert "KG hints:" not in result["grounding_prompt"]
+
+
+def test_schema_filter_blocks_unqualified_major_project_kg_table_injection():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = _semantic_for_major_project(["bird_debit_card_specializing.customers"])
+
+    with patch("data_agent.nl2sql_grounding.classify_intent", return_value=_fake_intent()), \
+         patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=100), \
+         patch("data_agent.nl2sql_grounding._build_warehouse_join_hints", return_value=None):
+        result = build_nl2sql_context(
+            "列出占用耕地且关系置信度大于0.9的重大项目名称和地块面积。",
+            schema_filter="bird_debit_card_specializing",
+            family="deepseek",
+        )
+
+    candidate_names = {table["table_name"] for table in result["candidate_tables"]}
+    assert candidate_names == {"bird_debit_card_specializing.customers"}
+    assert result["kg_hints"] == {}
+    assert "mp_relation_confidence" not in result["grounding_prompt"]
+    assert "mp_parcel" not in result["grounding_prompt"]
 
 
 def test_build_context_survives_major_project_kg_resolver_failure():
