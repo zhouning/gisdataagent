@@ -210,6 +210,26 @@ _RELATION_CONFIDENCE_SQL_COLUMNS = [
     "generator_version",
 ]
 
+_SEED_RESET_TABLE_ORDER = [
+    "kg_query_result",
+    "kg_edges",
+    "kg_nodes",
+    "mp_relation_confidence",
+    "mp_spatial_overlap",
+    "mp_parcel",
+    "mp_verification",
+    "mp_construction_permit",
+    "mp_land_use_permit",
+    "mp_land_supply",
+    "mp_approval_supply",
+    "mp_approval_project",
+    "mp_conversion_expropriation",
+    "mp_site_selection",
+    "mp_pre_review",
+    "mp_land_plan",
+    "mp_project_list",
+]
+
 
 @dataclass(frozen=True)
 class GenerationConfig:
@@ -825,6 +845,7 @@ def _seed_sql(config: GenerationConfig, bundle: SyntheticDataBundle) -> str:
         "-- Synthetic-only demonstration records; contains no production records.",
         f"-- profile={config.profile}; project_count={config.project_count}; seed={config.seed}",
         "BEGIN;",
+        _seed_reset_sql(),
         _sql_insert_block(
             "mp_project_list",
             bundle.projects,
@@ -859,6 +880,15 @@ def _seed_sql(config: GenerationConfig, bundle: SyntheticDataBundle) -> str:
         ]
     )
     return "\n\n".join(blocks)
+
+
+def _seed_reset_sql() -> str:
+    table_lines = ",\n".join(f"    {table_name}" for table_name in _SEED_RESET_TABLE_ORDER)
+    return (
+        "-- Reset synthetic major-project tables before loading this seed/profile.\n"
+        "-- This keeps repeated demo loads deterministic across seeds and profiles.\n"
+        f"TRUNCATE TABLE\n{table_lines}\nRESTART IDENTITY;"
+    )
 
 
 def _sql_insert_block(
@@ -948,6 +978,78 @@ SET r.edge_id = row.edge_id,
 
 
 def _semantic_sources(config: GenerationConfig) -> dict[str, Any]:
+    stage_synonyms = {
+        "land_plan": ["用地计划", "计划配置", "土地计划"],
+        "pre_review": ["用地预审", "预审", "预审意见", "建设项目预审"],
+        "site_selection": ["规划选址", "选址意见", "项目选址", "选址阶段"],
+        "conversion_expropriation": ["农转用", "土地征收", "转用征收", "农用地转用"],
+        "approval_project": ["建设用地审批", "审批项目", "用地审批", "项目审批"],
+        "approval_supply": ["批供关联", "审批供地关联", "批供", "批供关系"],
+        "land_supply": ["供地", "土地供应", "供地结果", "供应地块"],
+        "land_use_permit": ["用地规划许可", "建设用地规划许可证", "用地许可", "规划许可"],
+        "construction_permit": ["工程规划许可", "建设工程规划许可证", "工程许可", "建设许可"],
+        "verification": ["规划核实", "核实", "竣工核实", "规划核验"],
+    }
+    sources: dict[str, Any] = {
+        "mp_project_list": {
+            "display_name": "重大项目清单（合成）",
+            "description": "重大项目主表，保留项目编号、名称、行政区、投资、计划用地面积和空间范围等业务结构。",
+            "primary_key": "project_id",
+            "synonyms": ["重大项目", "重点项目", "项目清单", "省级重大项目", "重大项目列表"],
+            "default_grain": "one row per major project",
+            "geometry_column": "geom",
+        },
+    }
+    for spec in _STAGE_TABLE_SPECS:
+        stage = spec["stage"]
+        sources[spec["table"]] = {
+            "display_name": f"{_STAGE_NAMES[stage]}（合成）",
+            "description": f"重大项目生命周期中的{_STAGE_NAMES[stage]}阶段记录，可通过 project_id 或 zdxmbh 关联项目清单。",
+            "primary_key": spec["id_field"],
+            "synonyms": stage_synonyms[stage],
+            "default_grain": "one row per project lifecycle stage record",
+        }
+    sources.update(
+        {
+            "mp_parcel": {
+                "display_name": "项目占用地块（合成）",
+                "description": "项目关联地块，包含地类、面积和 PostGIS 几何。",
+                "primary_key": "parcel_id",
+                "synonyms": ["地块", "项目地块", "占用地块", "宗地", "图斑"],
+                "geometry_column": "geom",
+            },
+            "mp_spatial_overlap": {
+                "display_name": "项目地块空间叠加（合成）",
+                "description": "项目范围与地块范围的空间叠加比例和面积。",
+                "primary_key": "overlap_id",
+                "synonyms": ["空间叠加", "空间重叠", "叠加分析", "重叠地块"],
+            },
+            "mp_relation_confidence": {
+                "display_name": "关系置信度（合成）",
+                "description": "项目、地块和流程节点之间的关系推断证据及置信度。",
+                "primary_key": "relation_id",
+                "synonyms": ["关系置信度", "匹配置信度", "关系证据", "图谱关系"],
+            },
+            "kg_nodes": {
+                "display_name": "知识图谱节点（合成）",
+                "description": "重大项目、生命周期节点、地块、异常和风险事件的图谱节点投影。",
+                "primary_key": "node_id",
+                "synonyms": ["图谱节点", "KG节点", "知识图谱节点", "节点表"],
+            },
+            "kg_edges": {
+                "display_name": "知识图谱边（合成）",
+                "description": "生命周期、占地、空间叠加、缺失阶段和风险事件的图谱边投影。",
+                "primary_key": "edge_id",
+                "synonyms": ["图谱边", "KG边", "知识图谱关系", "边表"],
+            },
+            "kg_query_result": {
+                "display_name": "知识图谱查询结果（合成）",
+                "description": "用于记录合成 benchmark 问题、路由类别、SQL 和结果 JSON 的结果表。",
+                "primary_key": "result_id",
+                "synonyms": ["查询结果", "图谱查询结果", "Benchmark结果", "问答结果"],
+            },
+        }
+    )
     return {
         "metadata": {
             "profile": config.profile,
@@ -956,53 +1058,7 @@ def _semantic_sources(config: GenerationConfig) -> dict[str, Any]:
             "synthetic_only": True,
             "notice": "Synthetic major-project semantic sources; no production records.",
         },
-        "sources": {
-            "mp_project_list": {
-                "display_name": "重大项目清单（合成）",
-                "description": "重大项目主表，保留项目编号、名称、行政区、投资、计划用地面积和空间范围等业务结构。",
-                "primary_key": "project_id",
-                "synonyms": ["重大项目", "重点项目", "项目清单", "省级重大项目", "重大项目列表"],
-                "default_grain": "one row per major project",
-                "geometry_column": "geom",
-            },
-            "mp_land_plan": {
-                "display_name": "用地计划配置（合成）",
-                "description": "项目用地计划阶段记录。",
-                "primary_key": "plan_id",
-                "synonyms": ["用地计划", "计划配置", "土地计划"],
-            },
-            "mp_pre_review": {
-                "display_name": "建设项目用地预审（合成）",
-                "description": "项目用地预审阶段记录，可通过 project_id 或 zdxmbh 关联项目清单。",
-                "primary_key": "pre_review_id",
-                "synonyms": ["用地预审", "预审", "预审意见", "建设项目预审"],
-            },
-            "mp_conversion_expropriation": {
-                "display_name": "农转用和征收（合成）",
-                "description": "农用地转用及土地征收阶段记录。",
-                "primary_key": "conversion_id",
-                "synonyms": ["农转用", "土地征收", "转用征收", "农用地转用"],
-            },
-            "mp_land_supply": {
-                "display_name": "土地供应（合成）",
-                "description": "土地供应阶段记录。",
-                "primary_key": "land_supply_id",
-                "synonyms": ["供地", "土地供应", "供地结果", "供应地块"],
-            },
-            "mp_parcel": {
-                "display_name": "项目占用地块（合成）",
-                "description": "项目关联地块，包含地类、面积和 PostGIS 几何。",
-                "primary_key": "parcel_id",
-                "synonyms": ["地块", "项目地块", "占用地块", "宗地", "图斑"],
-                "geometry_column": "geom",
-            },
-            "mp_relation_confidence": {
-                "display_name": "关系置信度（合成）",
-                "description": "项目、地块和流程节点之间的关系推断证据及置信度。",
-                "primary_key": "relation_id",
-                "synonyms": ["关系置信度", "匹配置信度", "关系证据", "图谱关系"],
-            },
-        },
+        "sources": sources,
     }
 
 
@@ -1082,28 +1138,25 @@ def _semantic_registry(config: GenerationConfig) -> dict[str, Any]:
 
 
 def _semantic_models_yaml(config: GenerationConfig) -> str:
-    return f"""version: 1
-metadata:
-  profile: {config.profile}
-  seed: {config.seed}
-  generator_version: {GENERATOR_VERSION}
-  synthetic_only: true
-  notice: "Synthetic major-project semantic model; no production records."
-models:
-  mp_project_lifecycle:
+    return f"""semantic_models:
+  - name: mp_project_lifecycle
     description: "重大项目从清单、用地计划、预审、农转用、供地到许可核实的合成生命周期模型。"
-    base_table: mp_project_list
-    primary_key: project_id
-    default_time_column: list_year
+    source_table: mp_project_list
+    srid: 4326
+    geometry_type: Polygon
+    metadata:
+      profile: {config.profile}
+      seed: {config.seed}
+      generator_version: {GENERATOR_VERSION}
+      synthetic_only: true
+      notice: "Synthetic major-project semantic model; no production records."
     entities:
       - name: major_project
-        table: mp_project_list
-        key: project_id
-        aliases: ["重大项目", "重点项目", "项目"]
+        type: primary
+        column: project_id
       - name: parcel
-        table: mp_parcel
-        key: parcel_id
-        aliases: ["地块", "宗地", "图斑"]
+        type: foreign
+        column: parcel_id
     joins:
       - name: project_to_pre_review
         left_table: mp_project_list
@@ -1131,21 +1184,52 @@ models:
         right_key: parcel_id
         relationship: many_to_one
     dimensions:
-      - project_name
-      - zdxmbh
-      - province
-      - city
-      - county
-      - project_type
-      - status
-      - land_use_type
+      - name: project_name
+        type: categorical
+        column: project_name
+      - name: zdxmbh
+        type: categorical
+        column: zdxmbh
+      - name: province
+        type: categorical
+        column: province
+      - name: city
+        type: categorical
+        column: city
+      - name: county
+        type: categorical
+        column: county
+      - name: project_type
+        type: categorical
+        column: project_type
+      - name: status
+        type: categorical
+        column: status
+      - name: list_year
+        type: time
+        column: list_year
+      - name: geom
+        type: spatial
+        column: geom
+        srid: 4326
+        geometry_type: Polygon
     measures:
       - name: project_count
-        expression: "COUNT(DISTINCT mp_project_list.project_id)"
+        agg: count_distinct
+        column: project_id
       - name: planned_land_area_mu
-        expression: "SUM(mp_project_list.planned_land_area_mu)"
+        agg: sum
+        column: planned_land_area_mu
       - name: occupied_parcel_area_mu
-        expression: "SUM(mp_parcel.area_mu)"
+        agg: sum
+        column: area_mu
+    metrics:
+      - name: total_planned_land_area_mu
+        type: simple
+        measure: planned_land_area_mu
+      - name: total_occupied_parcel_area_mu
+        type: simple
+        measure: occupied_parcel_area_mu
 """
 
 
@@ -1165,25 +1249,40 @@ def _semantic_relation_map(config: GenerationConfig) -> dict[str, Any]:
         {
             "OCCUPIES_PARCEL": {
                 "sql_table": "mp_relation_confidence",
+                "source_table": "mp_project_list",
                 "target_table": "mp_parcel",
                 "relation_filter": "relation_type = 'OCCUPIES_PARCEL'",
                 "source_key": "project_id",
                 "target_key": "target_id",
                 "target_join_key": "parcel_id",
+                "relation_source_key": "project_id",
+                "relation_target_key": "target_id",
                 "semantic": "项目占用或关联地块",
                 "route_hint": "hybrid_sql_graph",
             },
             "SPATIALLY_OVERLAPS": {
                 "sql_table": "mp_relation_confidence",
+                "source_table": "mp_project_list",
                 "target_table": "mp_parcel",
                 "relation_filter": "relation_type = 'SPATIALLY_OVERLAPS'",
+                "source_key": "project_id",
+                "target_key": "target_id",
+                "target_join_key": "parcel_id",
+                "relation_source_key": "project_id",
+                "relation_target_key": "target_id",
                 "semantic": "项目空间范围与地块有叠加关系",
                 "route_hint": "hybrid_spatial",
             },
             "FUZZY_PROJECT_PARCEL_MATCH": {
                 "sql_table": "mp_relation_confidence",
+                "source_table": "mp_project_list",
                 "target_table": "mp_parcel",
                 "relation_filter": "relation_type = 'FUZZY_PROJECT_PARCEL_MATCH'",
+                "source_key": "project_id",
+                "target_key": "target_id",
+                "target_join_key": "parcel_id",
+                "relation_source_key": "project_id",
+                "relation_target_key": "target_id",
                 "semantic": "项目和地块通过名称或弱键模糊匹配",
                 "route_hint": "graph_evidence",
             },

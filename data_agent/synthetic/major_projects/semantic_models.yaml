@@ -1,25 +1,22 @@
-version: 1
-metadata:
-  profile: small_dev
-  seed: 20260604
-  generator_version: major_project_synthetic_core_v1
-  synthetic_only: true
-  notice: "Synthetic major-project semantic model; no production records."
-models:
-  mp_project_lifecycle:
+semantic_models:
+  - name: mp_project_lifecycle
     description: "重大项目从清单、用地计划、预审、农转用、供地到许可核实的合成生命周期模型。"
-    base_table: mp_project_list
-    primary_key: project_id
-    default_time_column: list_year
+    source_table: mp_project_list
+    srid: 4326
+    geometry_type: Polygon
+    metadata:
+      profile: small_dev
+      seed: 20260604
+      generator_version: major_project_synthetic_core_v1
+      synthetic_only: true
+      notice: "Synthetic major-project semantic model; no production records."
     entities:
       - name: major_project
-        table: mp_project_list
-        key: project_id
-        aliases: ["重大项目", "重点项目", "项目"]
+        type: primary
+        column: project_id
       - name: parcel
-        table: mp_parcel
-        key: parcel_id
-        aliases: ["地块", "宗地", "图斑"]
+        type: foreign
+        column: parcel_id
     joins:
       - name: project_to_pre_review
         left_table: mp_project_list
@@ -47,18 +44,49 @@ models:
         right_key: parcel_id
         relationship: many_to_one
     dimensions:
-      - project_name
-      - zdxmbh
-      - province
-      - city
-      - county
-      - project_type
-      - status
-      - land_use_type
+      - name: project_name
+        type: categorical
+        column: project_name
+      - name: zdxmbh
+        type: categorical
+        column: zdxmbh
+      - name: province
+        type: categorical
+        column: province
+      - name: city
+        type: categorical
+        column: city
+      - name: county
+        type: categorical
+        column: county
+      - name: project_type
+        type: categorical
+        column: project_type
+      - name: status
+        type: categorical
+        column: status
+      - name: list_year
+        type: time
+        column: list_year
+      - name: geom
+        type: spatial
+        column: geom
+        srid: 4326
+        geometry_type: Polygon
     measures:
       - name: project_count
-        expression: "COUNT(DISTINCT mp_project_list.project_id)"
+        agg: count_distinct
+        column: project_id
       - name: planned_land_area_mu
-        expression: "SUM(mp_project_list.planned_land_area_mu)"
+        agg: sum
+        column: planned_land_area_mu
       - name: occupied_parcel_area_mu
-        expression: "SUM(mp_parcel.area_mu)"
+        agg: sum
+        column: area_mu
+    metrics:
+      - name: total_planned_land_area_mu
+        type: simple
+        measure: planned_land_area_mu
+      - name: total_occupied_parcel_area_mu
+        type: simple
+        measure: occupied_parcel_area_mu

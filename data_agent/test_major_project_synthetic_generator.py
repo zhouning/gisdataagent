@@ -1,10 +1,20 @@
 import csv
 import json
 
+import yaml
+
 from scripts.synthetic_major_projects.generate_major_project_data import (
     GenerationConfig,
     SyntheticMajorProjectGenerator,
 )
+
+
+def _write_artifacts(tmp_path, project_count=12):
+    cfg = GenerationConfig(profile="small_dev", project_count=project_count, seed=20260604, output_dir=tmp_path)
+    generator = SyntheticMajorProjectGenerator(cfg)
+    data = generator.build()
+    generator.write_all(data)
+    return tmp_path
 
 
 def test_generator_is_deterministic_for_same_seed():
@@ -148,7 +158,7 @@ def test_generator_writes_expected_artifacts(tmp_path):
     assert "geom" in semantic_registry["columns"]
 
     semantic_models = (tmp_path / "semantic_models.yaml").read_text(encoding="utf-8")
-    assert "mp_project_lifecycle:" in semantic_models
+    assert "name: mp_project_lifecycle" in semantic_models
 
     relation_map = json.loads((tmp_path / "semantic_relation_map.json").read_text(encoding="utf-8"))
     for edge_type in ["HAS_PRE_REVIEW", "HAS_CONVERSION", "OCCUPIES_PARCEL"]:
@@ -161,3 +171,93 @@ def test_generator_writes_expected_artifacts(tmp_path):
     ]
     assert len(questions) >= 4
     assert {"sql_only", "graph", "hybrid"} <= {question["class"] for question in questions}
+
+
+def test_semantic_model_yaml_loads_with_existing_store(tmp_path):
+    _write_artifacts(tmp_path)
+    semantic_models_yaml = (tmp_path / "semantic_models.yaml").read_text(encoding="utf-8")
+
+    raw = yaml.safe_load(semantic_models_yaml)
+    assert "semantic_models" in raw
+    assert raw["semantic_models"][0]["name"] == "mp_project_lifecycle"
+
+    from data_agent.semantic_model import SemanticModelStore
+
+    parsed = SemanticModelStore().load_from_yaml(semantic_models_yaml)
+    assert parsed["name"] == "mp_project_lifecycle"
+    assert parsed["source_table"] == "mp_project_list"
+    assert any(entity["name"] == "major_project" for entity in parsed["entities"])
+
+
+def test_semantic_sources_cover_generated_tables(tmp_path):
+    _write_artifacts(tmp_path)
+    semantic_sources = json.loads((tmp_path / "semantic_sources.json").read_text(encoding="utf-8"))
+
+    expected_sources = {
+        "mp_project_list",
+        "mp_land_plan",
+        "mp_pre_review",
+        "mp_site_selection",
+        "mp_conversion_expropriation",
+        "mp_approval_project",
+        "mp_approval_supply",
+        "mp_land_supply",
+        "mp_land_use_permit",
+        "mp_construction_permit",
+        "mp_verification",
+        "mp_parcel",
+        "mp_spatial_overlap",
+        "mp_relation_confidence",
+        "kg_nodes",
+        "kg_edges",
+        "kg_query_result",
+    }
+    assert expected_sources <= set(semantic_sources["sources"])
+    for source_name in expected_sources:
+        source = semantic_sources["sources"][source_name]
+        assert source["display_name"]
+        assert source["synonyms"]
+
+
+def test_seed_sql_resets_generated_tables_before_inserts(tmp_path):
+    _write_artifacts(tmp_path)
+    seed_sql = (tmp_path / "seed_small.sql").read_text(encoding="utf-8")
+
+    assert "-- Reset synthetic major-project tables before loading this seed/profile." in seed_sql
+    assert seed_sql.index("TRUNCATE TABLE") < seed_sql.index("INSERT INTO mp_project_list")
+    for table_name in [
+        "kg_query_result",
+        "kg_edges",
+        "kg_nodes",
+        "mp_relation_confidence",
+        "mp_spatial_overlap",
+        "mp_parcel",
+        "mp_verification",
+        "mp_construction_permit",
+        "mp_land_use_permit",
+        "mp_land_supply",
+        "mp_approval_supply",
+        "mp_approval_project",
+        "mp_conversion_expropriation",
+        "mp_site_selection",
+        "mp_pre_review",
+        "mp_land_plan",
+        "mp_project_list",
+    ]:
+        assert table_name in seed_sql.split("INSERT INTO mp_project_list", maxsplit=1)[0]
+    assert "RESTART IDENTITY;" in seed_sql
+
+
+def test_relation_map_has_generic_join_contracts(tmp_path):
+    _write_artifacts(tmp_path)
+    relation_map = json.loads((tmp_path / "semantic_relation_map.json").read_text(encoding="utf-8"))
+
+    for edge_type in ["OCCUPIES_PARCEL", "SPATIALLY_OVERLAPS", "FUZZY_PROJECT_PARCEL_MATCH"]:
+        entry = relation_map["kg_edge_types"][edge_type]
+        assert entry["sql_table"] == "mp_relation_confidence"
+        assert entry["source_table"] == "mp_project_list"
+        assert entry["source_key"] == "project_id"
+        assert entry["target_table"] == "mp_parcel"
+        assert entry["target_key"] == "target_id"
+        assert entry["target_join_key"] == "parcel_id"
+        assert "relation_type =" in entry["relation_filter"]

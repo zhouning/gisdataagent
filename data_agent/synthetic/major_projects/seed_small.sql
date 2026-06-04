@@ -6,6 +6,28 @@
 
 BEGIN;
 
+-- Reset synthetic major-project tables before loading this seed/profile.
+-- This keeps repeated demo loads deterministic across seeds and profiles.
+TRUNCATE TABLE
+    kg_query_result,
+    kg_edges,
+    kg_nodes,
+    mp_relation_confidence,
+    mp_spatial_overlap,
+    mp_parcel,
+    mp_verification,
+    mp_construction_permit,
+    mp_land_use_permit,
+    mp_land_supply,
+    mp_approval_supply,
+    mp_approval_project,
+    mp_conversion_expropriation,
+    mp_site_selection,
+    mp_pre_review,
+    mp_land_plan,
+    mp_project_list
+RESTART IDENTITY;
+
 INSERT INTO mp_project_list (project_id, zdxmbh, zdxm_sec, project_name, project_type, province, city, county, construction_unit, total_investment_million, planned_land_area_mu, list_year, status, geom, synthetic_seed, profile, generator_version) VALUES
     ('MP000001', 'ZDXM-000001', 'SEC-0604-00000001', '示范重大项目A-0001', '能源', '示范省B', '示范省B示范市2', '示范县2', '示范建设单位-002', 237.24, 26.0, 2023, '已供地', ST_GeomFromText('POLYGON((118.020000 31.020000, 118.026000 31.020000, 118.026000 31.026000, 118.020000 31.026000, 118.020000 31.020000))', 4326), 20260604, 'small_dev', 'major_project_synthetic_core_v1'),
     ('MP000002', 'ZDXM-000002', 'SEC-0604-00000002', '示范重大项目B-0002', '水利', '示范省A', '示范省A示范市3', '示范县3', '示范建设单位-003', 1245.67, 478.54, 2024, '已核实', ST_GeomFromText('POLYGON((118.040000 31.040000, 118.047000 31.040000, 118.047000 31.047000, 118.040000 31.047000, 118.040000 31.040000))', 4326), 20260604, 'small_dev', 'major_project_synthetic_core_v1'),

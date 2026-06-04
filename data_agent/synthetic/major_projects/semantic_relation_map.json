@@ -2,9 +2,15 @@
   "kg_edge_types": {
     "FUZZY_PROJECT_PARCEL_MATCH": {
       "relation_filter": "relation_type = 'FUZZY_PROJECT_PARCEL_MATCH'",
+      "relation_source_key": "project_id",
+      "relation_target_key": "target_id",
       "route_hint": "graph_evidence",
       "semantic": "项目和地块通过名称或弱键模糊匹配",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
       "sql_table": "mp_relation_confidence",
+      "target_join_key": "parcel_id",
+      "target_key": "target_id",
       "target_table": "mp_parcel"
     },
     "HAS_APPROVAL_PROJECT": {
@@ -104,9 +110,12 @@
     },
     "OCCUPIES_PARCEL": {
       "relation_filter": "relation_type = 'OCCUPIES_PARCEL'",
+      "relation_source_key": "project_id",
+      "relation_target_key": "target_id",
       "route_hint": "hybrid_sql_graph",
       "semantic": "项目占用或关联地块",
       "source_key": "project_id",
+      "source_table": "mp_project_list",
       "sql_table": "mp_relation_confidence",
       "target_join_key": "parcel_id",
       "target_key": "target_id",
@@ -114,9 +123,15 @@
     },
     "SPATIALLY_OVERLAPS": {
       "relation_filter": "relation_type = 'SPATIALLY_OVERLAPS'",
+      "relation_source_key": "project_id",
+      "relation_target_key": "target_id",
       "route_hint": "hybrid_spatial",
       "semantic": "项目空间范围与地块有叠加关系",
+      "source_key": "project_id",
+      "source_table": "mp_project_list",
       "sql_table": "mp_relation_confidence",
+      "target_join_key": "parcel_id",
+      "target_key": "target_id",
       "target_table": "mp_parcel"
     }
   },
