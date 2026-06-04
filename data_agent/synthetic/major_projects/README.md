@@ -19,3 +19,36 @@ Regenerate the runtime artifacts from the repository root with:
 ```powershell
 python scripts\synthetic_major_projects\generate_major_project_data.py --profile small_dev --project-count 200 --seed 20260604 --output-dir data_agent\synthetic\major_projects
 ```
+
+## Optional PostGIS Load
+
+Requires PostgreSQL with PostGIS enabled. For Huawei Cloud DB development, set
+`DATABASE_URL` to the demo/test database or schema, then run from this directory:
+
+```powershell
+psql "$env:DATABASE_URL" -f schema_postgis.sql
+psql "$env:DATABASE_URL" -f seed_small.sql
+```
+
+These files are synthetic fixtures. Load them only into a demo/test namespace,
+not a production schema.
+
+## Optional Neo4j Load
+
+Neo4j is optional and only validates the external graph-database route. Current
+local NL2Semantic2SQL integration uses Postgres projection KG hints and does not
+require a Neo4j runtime. Neo4j Desktop is sufficient; Neo4j Server is not needed
+for current local development.
+
+For Neo4j Desktop 2.1.4 on Windows:
+
+1. Create a local project, DBMS, and database if none exists.
+2. Start the DBMS/database.
+3. Locate or open the DBMS import directory from Desktop.
+4. Copy `neo4j_nodes_small.csv`, `neo4j_edges_small.csv`, and
+   `neo4j_import.cypher` into the import directory.
+5. Open Neo4j Browser and run:
+
+```cypher
+:source neo4j_import.cypher
+```
