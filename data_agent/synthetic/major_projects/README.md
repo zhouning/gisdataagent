@@ -64,3 +64,42 @@ cypher-shell -u neo4j -p <password> -f neo4j_import.cypher
 
 The import creates synthetic nodes and edges. Do not run it against real graph
 data or any shared local production graph.
+
+## Optional NL2Semantic2SQL Smoke
+
+After loading synthetic PostGIS tables and optional Neo4j graph data, run the
+end-to-end smoke from the repository root. The script reads questions from the
+UTF-8 benchmark JSONL file, so it avoids Windows PowerShell pipe encoding issues
+with Chinese prompts.
+
+Set connection variables in the current shell or in `data_agent/.env`. Do not
+commit local credentials.
+
+```env
+MAJOR_PROJECT_KG_BACKEND=neo4j
+NEO4J_URI=neo4j://127.0.0.1:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=<your-local-neo4j-password>
+NEO4J_DATABASE=zdxmdb
+NL2SQL_AGENT_MODEL=gemma4-26b-host9
+OLLAMA_API_BASE=http://192.168.43.9:11434
+NL2SQL_DISABLE_FEWSHOT=1
+```
+
+Then run:
+
+```powershell
+$env:TEMP='D:\tmp'
+$env:TMP='D:\tmp'
+.\.venv\Scripts\python.exe scripts\synthetic_major_projects\smoke_major_project_kg_nl2sql.py
+```
+
+Expected checks:
+
+- `mp_bench_graph_missing_001` uses `kg_edges`, `kg_nodes`, and
+  `MISSING_STAGE`.
+- `mp_bench_hybrid_spatial_002` uses `mp_spatial_overlap`.
+- `mp_bench_farmland_001` uses `mp_relation_confidence` and `mp_parcel`.
+
+The script writes `summary.json` under
+`data_agent/nl2sql_eval_results/major_project_kg_smoke_<timestamp>/`.
