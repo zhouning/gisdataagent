@@ -167,6 +167,35 @@ def test_kg_hint_tables_are_grounded_when_semantic_only_finds_project_list():
     assert "mp_project_list.project_id -> mp_relation_confidence.project_id" in result["grounding_prompt"]
 
 
+def test_access_control_removes_kg_edges_when_required_tables_are_filtered():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+    from data_agent.user_context import current_user_role
+
+    semantic = _semantic_for_major_project(["mp_project_list"])
+    token = current_user_role.set("viewer")
+    try:
+        with patch("data_agent.nl2sql_grounding.classify_intent", return_value=_fake_intent()), \
+             patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+             patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_schema_for), \
+             patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+             patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=100), \
+             patch("data_agent.nl2sql_grounding._build_warehouse_join_hints", return_value=None), \
+             patch(
+                 "data_agent.nl2sql_grounding._table_accessible",
+                 side_effect=lambda table_name, role: table_name == "mp_project_list",
+             ):
+            result = build_nl2sql_context(
+                "列出占用耕地且关系置信度大于0.9的重大项目名称和地块面积。",
+                family="deepseek",
+            )
+    finally:
+        current_user_role.reset(token)
+
+    assert {table["table_name"] for table in result["candidate_tables"]} == {"mp_project_list"}
+    assert result["kg_hints"] == {}
+    assert "KG hints:" not in result["grounding_prompt"]
+
+
 def test_non_major_query_has_no_kg_hints_or_prompt_block():
     from data_agent.nl2sql_grounding import build_nl2sql_context
 

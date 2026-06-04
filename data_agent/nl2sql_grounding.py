@@ -513,6 +513,26 @@ _MAJOR_PROJECT_KG_TABLES = {
     "mp_relation_confidence",
 }
 
+_KG_EDGE_TABLE_REQUIREMENTS = {
+    "OCCUPIES_PARCEL": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
+    "SPATIALLY_OVERLAPS": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
+    "FUZZY_PROJECT_PARCEL_MATCH": {"mp_project_list", "mp_relation_confidence", "mp_parcel"},
+    "HAS_PRE_REVIEW": {"mp_project_list", "mp_pre_review"},
+    "HAS_CONVERSION": {"mp_project_list", "mp_conversion_expropriation"},
+    "HAS_LAND_SUPPLY": {"mp_project_list", "mp_land_supply"},
+}
+
+_KG_PARCEL_EDGE_NAMES = {
+    "OCCUPIES_PARCEL",
+    "SPATIALLY_OVERLAPS",
+    "FUZZY_PROJECT_PARCEL_MATCH",
+}
+
+_KG_SPATIAL_EDGE_NAMES = {
+    "SPATIALLY_OVERLAPS",
+    "FUZZY_PROJECT_PARCEL_MATCH",
+}
+
 _MAJOR_PROJECT_EXPLICIT_TOKENS = (
     "重大项目",
     "重点项目",
@@ -628,6 +648,38 @@ def _kg_join_path_tables(join_path: str) -> set[str]:
     return set(re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z_][A-Za-z0-9_]*", join_path))
 
 
+def _filter_kg_edges_for_candidate_tables(kg_hints: dict, final_names: set[str]) -> dict:
+    filtered = dict(kg_hints)
+    kept_edges = []
+    removed_edges = []
+    for edge in _as_str_list(filtered.get("required_edges")):
+        required_tables = _KG_EDGE_TABLE_REQUIREMENTS.get(edge)
+        if required_tables and not required_tables <= final_names:
+            removed_edges.append(edge)
+            continue
+        kept_edges.append(edge)
+
+    filtered["required_edges"] = kept_edges
+    kept_edge_set = set(kept_edges)
+    removed_edge_set = set(removed_edges)
+
+    if removed_edge_set & _KG_PARCEL_EDGE_NAMES or "mp_relation_confidence" not in final_names:
+        filtered["relation_confidence_filter"] = False
+        filtered["min_relation_confidence"] = None
+
+    if removed_edge_set & _KG_SPATIAL_EDGE_NAMES or not (kept_edge_set & _KG_SPATIAL_EDGE_NAMES):
+        filtered["spatial_overlap_threshold"] = None
+
+    return filtered
+
+
+def _is_grounded_actionable_kg_hints(kg_hints: dict) -> bool:
+    return bool(
+        _as_str_list(kg_hints.get("required_edges"))
+        or _as_str_list(kg_hints.get("join_paths"))
+    )
+
+
 def _normalize_kg_hints_for_candidate_tables(
     kg_hints: dict,
     candidate_table_names: set[str],
@@ -653,7 +705,8 @@ def _normalize_kg_hints_for_candidate_tables(
         if path_tables and path_tables <= final_names:
             grounded_join_paths.append(join_path)
     normalized["join_paths"] = grounded_join_paths
-    return _normalize_kg_hints(normalized)
+    normalized = _filter_kg_edges_for_candidate_tables(normalized, final_names)
+    return normalized if _is_grounded_actionable_kg_hints(normalized) else {}
 
 
 def _format_kg_hints_lines(kg_hints: dict | None) -> list[str]:
