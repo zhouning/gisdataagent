@@ -297,6 +297,15 @@ scope=per-user persistent memory
 - 右侧数据面板“记忆”：搜索 `region`、`viz_preference`、`analysis_result`、`auto_extract`、`custom` 等用户记忆。
 - 对话框“历史会话”：恢复 Chainlit `Thread/Step` 对话记录，属于会话历史/产品体验，不等同于 Agent Memory；可作为辅助展示，但不要替代 `save_memory`/`recall_memories`。
 
+录制前功能检查：
+
+```text
+智能记忆管理=已验证 save/list/delete auto_extract
+右侧记忆搜索=已验证 keyword/q 参数均可检索
+历史会话=已验证 /api/sessions 可列出并删除 Chainlit Thread
+注意=历史会话列表为空时，优先检查 Chainlit data layer、Thread.userIdentifier 和登录用户是否一致
+```
+
 录制建议：
 
 > Memory 这里不只展示历史聊天列表，而是让 Gemma 4 调用记忆工具，把已经执行过的空间 SQL 和世界模型规划结果保存到用户级持久化记忆中，再通过关键词检索回来。历史会话用于恢复 UI 对话线程，智能记忆用于管理自动提取事实，它们是增强体验；比赛主证据是工具调用日志和 Postgres 持久化结果。
