@@ -59,22 +59,67 @@ def _has_write_node(parsed: exp.Expression) -> bool:
 
 
 def _build_column_map(table_schemas: dict) -> dict[str, tuple[str, bool]]:
-    """Build {lowercase_name -> (real_name, needs_quoting)} from table_schemas."""
-    column_map: dict[str, tuple[str, bool]] = {}
+    """Build a global map for columns that are unambiguous across schemas."""
+    column_map: dict[str, tuple[str, bool] | None] = {}
     for cols in table_schemas.values():
         for col in cols:
             real = col["column_name"]
             needs_q = bool(col.get("needs_quoting", False))
             key = real.lower()
-            if key in column_map:
+            value = (real, needs_q)
+            if key in column_map and column_map[key] != value:
+                column_map[key] = None
                 continue
-            column_map[key] = (real, needs_q)
-    return column_map
+            column_map[key] = value
+    return {key: value for key, value in column_map.items() if value is not None}
 
 
-def _fix_identifiers(parsed: exp.Expression, column_map: dict) -> tuple[exp.Expression, list[str]]:
+def _build_table_column_maps(table_schemas: dict) -> dict[str, dict[str, tuple[str, bool]]]:
+    table_maps: dict[str, dict[str, tuple[str, bool]]] = {}
+    for table_name, cols in table_schemas.items():
+        col_map: dict[str, tuple[str, bool]] = {}
+        for col in cols:
+            real = col["column_name"]
+            col_map[real.lower()] = (real, bool(col.get("needs_quoting", False)))
+        table_maps[table_name] = col_map
+        table_maps[table_name.split(".")[-1]] = col_map
+    return table_maps
+
+
+def _build_sql_table_alias_map(
+    parsed: exp.Expression,
+    table_schemas: dict,
+) -> tuple[dict[str, str], set[str]]:
+    known_tables = set(table_schemas) | {str(t).split(".")[-1] for t in table_schemas}
+    aliases: dict[str, str] = {}
+    referenced: set[str] = set()
+    for table in parsed.find_all(exp.Table):
+        name = table.name
+        if name not in known_tables:
+            continue
+        schema_key = name
+        if schema_key not in table_schemas:
+            schema_key = next(
+                (t for t in table_schemas if str(t).split(".")[-1] == name),
+                name,
+            )
+        aliases[name] = schema_key
+        aliases[table.alias_or_name] = schema_key
+        referenced.add(schema_key)
+    return aliases, referenced
+
+
+def _fix_identifiers(
+    parsed: exp.Expression,
+    column_map: dict,
+    table_column_maps: dict[str, dict[str, tuple[str, bool]]] | None = None,
+    table_alias_map: dict[str, str] | None = None,
+    default_table: str | None = None,
+) -> tuple[exp.Expression, list[str]]:
     """Walk AST and rewrite Column nodes to use real-cased + quoted names."""
     corrections: list[str] = []
+    table_column_maps = table_column_maps or {}
+    table_alias_map = table_alias_map or {}
 
     def transform(node: exp.Expression) -> exp.Expression:
         if isinstance(node, exp.Column):
@@ -82,8 +127,18 @@ def _fix_identifiers(parsed: exp.Expression, column_map: dict) -> tuple[exp.Expr
             if isinstance(ident, exp.Identifier):
                 name = ident.name
                 key = name.lower()
-                if key in column_map:
-                    real, needs_q = column_map[key]
+                scoped_map = None
+                if node.table:
+                    table_name = table_alias_map.get(str(node.table))
+                    if table_name:
+                        scoped_map = table_column_maps.get(table_name)
+                    else:
+                        return node
+                elif default_table:
+                    scoped_map = table_column_maps.get(default_table)
+                active_map = scoped_map if scoped_map is not None else column_map
+                if key in active_map:
+                    real, needs_q = active_map[key]
                     if name != real or (needs_q and not ident.quoted):
                         new_ident = exp.Identifier(this=real, quoted=needs_q)
                         node.set("this", new_ident)
@@ -244,8 +299,17 @@ def postprocess_sql(
         return result
 
     column_map = _build_column_map(table_schemas)
-    if column_map:
-        parsed, fix_corrections = _fix_identifiers(parsed, column_map)
+    if table_schemas:
+        table_column_maps = _build_table_column_maps(table_schemas)
+        table_alias_map, referenced_tables = _build_sql_table_alias_map(parsed, table_schemas)
+        default_table = next(iter(referenced_tables)) if len(referenced_tables) == 1 else None
+        parsed, fix_corrections = _fix_identifiers(
+            parsed,
+            column_map,
+            table_column_maps=table_column_maps,
+            table_alias_map=table_alias_map,
+            default_table=default_table,
+        )
         result.corrections.extend(fix_corrections)
 
     # LIMIT injection for large tables.

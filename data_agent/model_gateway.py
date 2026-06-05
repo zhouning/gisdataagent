@@ -332,6 +332,25 @@ class ModelRegistry:
             "extra_body": {"think": False},
             "request_timeout": 600,
         },
+        # Gemma4 hackathon Windows demo cell: 31B Dense model on host228.
+        # Pinned so the local demo and CQ benchmark use the requested LAN
+        # Ollama endpoint even when OLLAMA_API_BASE is set for another service.
+        "gemma4-31b-host228": {
+            "backend": "litellm",
+            "tier": "standard",
+            "online": False,
+            "cost_per_1k_input": 0.0,
+            "cost_per_1k_output": 0.0,
+            "latency_p50_ms": 12000,
+            "max_context_tokens": 128_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation", "coding"],
+            "api_base": "http://192.168.25.228:11434",
+            "api_base_pinned": True,
+            "model_id": "ollama_chat/Gemma4:31b",
+            "extra_body": {"think": False},
+            "request_timeout": 900,
+        },
     }
 
     # Mutable registry: starts with builtins, can be extended at runtime

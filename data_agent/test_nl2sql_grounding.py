@@ -198,6 +198,115 @@ def test_build_context_boosts_table_with_explicit_identifier_column_names():
     assert result["candidate_tables"][0]["table_name"] == "survey_parcels"
 
 
+def test_spatial_context_keeps_table_with_explicit_physical_column_anchor():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "city_poi",
+                "display_name": "City POI",
+                "description": "Point of interest table",
+                "geometry_type": "POINT",
+                "confidence": 0.7,
+            },
+            {
+                "table_name": "city_roads",
+                "display_name": "City roads",
+                "description": "Road table with street names",
+                "geometry_type": "LINESTRING",
+                "confidence": 0.7,
+            },
+            {
+                "table_name": "generic_parcels",
+                "display_name": "Generic parcels",
+                "description": "Parcel table with lowercase owner columns",
+                "geometry_type": "POLYGON",
+                "confidence": 0.7,
+            },
+            {
+                "table_name": "official_land_use",
+                "display_name": "Official land-use parcels",
+                "description": "Land-use parcel table with official physical owner columns",
+                "geometry_type": "POLYGON",
+                "confidence": 0.7,
+            },
+        ],
+        "matched_columns": {
+            "city_poi": [
+                {"column_name": "name", "aliases": ["POI name"], "is_geometry": False},
+                {"column_name": "geom", "aliases": ["geometry"], "is_geometry": True},
+            ],
+            "city_roads": [
+                {"column_name": "name", "aliases": ["street"], "is_geometry": False},
+                {"column_name": "geom", "aliases": ["geometry"], "is_geometry": True},
+            ],
+            "generic_parcels": [
+                {"column_name": "qsdwmc", "aliases": ["QSDWMC"], "is_geometry": False},
+                {"column_name": "geom", "aliases": ["geometry"], "is_geometry": True},
+            ],
+            "official_land_use": [
+                {"column_name": "QSDWMC", "aliases": ["owner unit"], "is_geometry": False},
+                {"column_name": "geometry", "aliases": ["geometry"], "is_geometry": True},
+            ],
+        },
+        "spatial_ops": [{"operation": "contains", "tool_name": "contains"}],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+    schemas = {
+        "city_poi": {
+            "status": "success",
+            "table_name": "city_poi",
+            "columns": [
+                {"column_name": "name", "data_type": "text", "aliases": ["POI name"]},
+                {"column_name": "geom", "data_type": "USER-DEFINED", "aliases": [], "is_geometry": True},
+            ],
+        },
+        "city_roads": {
+            "status": "success",
+            "table_name": "city_roads",
+            "columns": [
+                {"column_name": "name", "data_type": "text", "aliases": ["street"]},
+                {"column_name": "geom", "data_type": "USER-DEFINED", "aliases": [], "is_geometry": True},
+            ],
+        },
+        "generic_parcels": {
+            "status": "success",
+            "table_name": "generic_parcels",
+            "columns": [
+                {"column_name": "qsdwmc", "data_type": "text", "aliases": ["QSDWMC"]},
+                {"column_name": "geom", "data_type": "USER-DEFINED", "aliases": [], "is_geometry": True},
+            ],
+        },
+        "official_land_use": {
+            "status": "success",
+            "table_name": "official_land_use",
+            "source_metadata": {"synonyms": ["land-use parcels"]},
+            "columns": [
+                {"column_name": "QSDWMC", "data_type": "text", "aliases": ["owner unit"]},
+                {"column_name": "geometry", "data_type": "USER-DEFINED", "aliases": [], "is_geometry": True},
+            ],
+        },
+    }
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=lambda t: schemas[t]), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context(
+            "List POI names completely contained in land-use parcels where QSDWMC LIKE '%Downtown%'",
+            family="gemma",
+        )
+
+    candidate_names = [table["table_name"] for table in result["candidate_tables"]]
+    assert "official_land_use" in candidate_names
+    assert candidate_names.index("official_land_use") < candidate_names.index("generic_parcels")
+
+
 def test_build_context_preserves_table_synonyms_for_grounding_prompt():
     from data_agent.nl2sql_grounding import build_nl2sql_context
 
@@ -253,6 +362,68 @@ def test_build_context_preserves_table_synonyms_for_grounding_prompt():
     assert "建筑" in table["table_aliases"]
     assert "楼" in table["table_aliases"]
     assert "table aliases" in result["grounding_prompt"]
+
+
+def test_build_context_prioritizes_exact_physical_column_hits_over_alias_only_table():
+    from unittest.mock import patch
+
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "alias_land_use",
+                "display_name": "land use parcels",
+                "description": "",
+                "geometry_type": "POLYGON",
+                "confidence": 0.7,
+            },
+            {
+                "table_name": "official_land_use",
+                "display_name": "official land use",
+                "description": "",
+                "geometry_type": "POLYGON",
+                "confidence": 0.56,
+            },
+        ],
+        "matched_columns": {},
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+    schemas = {
+        "alias_land_use": {
+            "status": "success",
+            "table_name": "alias_land_use",
+            "columns": [
+                {"column_name": "dlmc", "data_type": "text", "aliases": ["DLMC"]},
+                {"column_name": "bsm", "data_type": "text", "aliases": ["BSM"]},
+                {"column_name": "shape", "data_type": "USER-DEFINED", "is_geometry": True},
+            ],
+        },
+        "official_land_use": {
+            "status": "success",
+            "table_name": "official_land_use",
+            "columns": [
+                {"column_name": "DLMC", "data_type": "text", "aliases": []},
+                {"column_name": "BSM", "data_type": "text", "aliases": []},
+                {"column_name": "geometry", "data_type": "USER-DEFINED", "is_geometry": True},
+            ],
+        },
+    }
+
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.list_semantic_sources", return_value={"status": "success", "sources": semantic["sources"]}), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=lambda t: schemas[t]), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context("return centroid WKT and BSM where DLMC = 'forest'", family="gemma")
+
+    candidate_names = [table["table_name"] for table in result["candidate_tables"]]
+    assert candidate_names.index("official_land_use") < candidate_names.index("alias_land_use")
 
 
 def test_build_context_prioritizes_non_gis_tables_for_english_warehouse_query():

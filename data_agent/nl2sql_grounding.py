@@ -234,11 +234,18 @@ def _rank_sources(user_text: str, sources: list[dict], semantic: dict) -> list[d
         has_geom = bool(source.get("geometry_type"))
         col_hits = len(matched_columns.get(table_name, []))
 
+        if col_hits:
+            score += min(0.25, 0.08 * col_hits)
+        source_alias_hits = _source_alias_hits(user_text, source)
+        if source_alias_hits:
+            score += min(0.3, 0.12 * source_alias_hits)
+        explicit_col_hits = _source_explicit_physical_column_hits(user_text, table_name, semantic)
+        if explicit_col_hits:
+            score += min(0.35, 0.18 * explicit_col_hits)
+
         if schema_hint and table_name.startswith(f"{schema_hint}."):
             score += 0.5
         if not spatial_query:
-            if col_hits:
-                score += min(0.3, 0.1 * col_hits)
             if not has_geom:
                 score += 0.1
             else:
@@ -254,6 +261,40 @@ def _rank_sources(user_text: str, sources: list[dict], semantic: dict) -> list[d
 
     ranked.sort(key=lambda x: x[0], reverse=True)
     return [s for _, s in ranked]
+
+
+def _source_alias_hits(user_text: str, source: dict) -> int:
+    hits = 0
+    seen: set[str] = set()
+    table_name = str(source.get("table_name") or "")
+    probes = [
+        table_name,
+        table_name.split(".")[-1],
+        str(source.get("display_name") or ""),
+        str(source.get("description") or ""),
+    ]
+    probes.extend(str(a) for a in (source.get("synonyms") or []))
+    for part in re.split(r"[\W_]+", table_name.split(".")[-1]):
+        if part and not part.isdigit():
+            probes.append(part)
+    for probe in probes:
+        probe = probe.strip()
+        key = probe.lower()
+        if not probe or key in seen or key in {"cq", "bird", "public"}:
+            continue
+        seen.add(key)
+        if _identifier_token_in_text(user_text, probe):
+            hits += 1
+    return hits
+
+
+def _source_explicit_physical_column_hits(user_text: str, table_name: str, semantic: dict) -> int:
+    hits = 0
+    for col in (semantic.get("matched_columns") or {}).get(table_name, []) or []:
+        name = str(col.get("column_name") or "")
+        if name and _identifier_token_in_text(user_text, name):
+            hits += 1
+    return hits
 
 
 def _sample_distinct_values(table_name: str, column_name: str, limit: int = 5) -> list[str]:
@@ -303,15 +344,15 @@ def _rank_candidate_tables(user_text: str, candidate_tables: list[dict], semanti
         score = float(table.get("confidence", 0.0))
         has_geom = any(col.get("is_geometry") for col in table.get("columns", []))
         col_hits = len(matched_columns.get(table_name, []))
+        if col_hits:
+            score += min(0.3, 0.1 * col_hits)
+        table_alias_hits = _explicit_table_alias_hits(user_text, table)
+        if table_alias_hits:
+            score += min(0.5, 0.2 * table_alias_hits)
+        explicit_col_hits = _explicit_physical_column_hits(user_text, table)
+        if explicit_col_hits:
+            score += min(0.7, 0.28 * explicit_col_hits)
         if not spatial_query:
-            if col_hits:
-                score += min(0.3, 0.1 * col_hits)
-            table_alias_hits = _explicit_table_alias_hits(user_text, table)
-            if table_alias_hits:
-                score += min(0.5, 0.2 * table_alias_hits)
-            explicit_col_hits = _explicit_physical_column_hits(user_text, table)
-            if explicit_col_hits:
-                score += min(0.4, 0.18 * explicit_col_hits)
             if not has_geom:
                 score += 0.1
             else:
@@ -620,7 +661,36 @@ def _has_major_project_grounding_context(user_text: str, semantic: dict | None) 
         for token in _MAJOR_PROJECT_PROJECT_CONTEXT_TOKENS
     ):
         return True
-    return bool(_semantic_major_project_table_names(semantic) & _MAJOR_PROJECT_KG_TABLES)
+    return False
+
+
+def _is_major_project_kg_table_name(table_name: str) -> bool:
+    bare = str(table_name or "").split(".")[-1]
+    return bare in _MAJOR_PROJECT_KG_TABLES
+
+
+def _question_mentions_physical_table_name(user_text: str, table_name: str) -> bool:
+    table_ref = str(table_name or "")
+    if not table_ref:
+        return False
+    bare = table_ref.split(".")[-1]
+    return (
+        _identifier_token_in_text(user_text, table_ref)
+        or _identifier_token_in_text(user_text, bare)
+    )
+
+
+def _prune_unqualified_major_project_sources(user_text: str, sources: list[dict]) -> list[dict]:
+    pruned = []
+    for source in sources:
+        table_name = str(source.get("table_name") or "")
+        if (
+            _is_major_project_kg_table_name(table_name)
+            and not _question_mentions_physical_table_name(user_text, table_name)
+        ):
+            continue
+        pruned.append(source)
+    return pruned
 
 
 def _schema_filter_allows_kg_table(table_name: str, schema_filter: str | None) -> bool:
@@ -1467,15 +1537,16 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
             import logging as _lg
             _lg.getLogger(__name__).warning(f"[SchemaMapper] backfill failed: {_exc}")
 
-    kg_hints = _normalize_kg_hints(
-        _resolve_major_project_kg_hints(
-            user_text,
-            semantic=semantic,
-            intent=intent_value,
+    major_project_context = _has_major_project_grounding_context(user_text, semantic)
+    kg_hints = {}
+    if major_project_context:
+        kg_hints = _normalize_kg_hints(
+            _resolve_major_project_kg_hints(
+                user_text,
+                semantic=semantic,
+                intent=intent_value,
+            )
         )
-    )
-    if kg_hints and not _has_major_project_grounding_context(user_text, semantic):
-        kg_hints = {}
     if kg_hints:
         kg_sources = _kg_hint_sources(kg_hints, sources, schema_filter)
         if kg_sources:
@@ -1485,6 +1556,8 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     candidate_tables = []
     ascii_heavy = _is_ascii_heavy(user_text)
     spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    if not schema_filter and not major_project_context:
+        sources = _prune_unqualified_major_project_sources(user_text, sources)
     if not schema_filter:
         sources = _prune_cross_domain_noise(user_text, sources)
     source_limit = 5 if not spatial_query else 3

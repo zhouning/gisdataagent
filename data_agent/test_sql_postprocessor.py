@@ -152,6 +152,54 @@ def test_qualified_alias_columns_fixed():
     assert '"Id"' in result.sql
 
 
+def test_identifier_fix_uses_qualified_table_schema_when_column_names_conflict():
+    from data_agent.sql_postprocessor import postprocess_sql
+
+    schemas = {
+        "cq_dltb": [
+            {"column_name": "dlmc", "needs_quoting": False},
+            {"column_name": "shape", "needs_quoting": False},
+        ],
+        "cq_land_use_dltb": [
+            {"column_name": "DLMC", "needs_quoting": True},
+            {"column_name": "geometry", "needs_quoting": False},
+        ],
+    }
+
+    result = postprocess_sql(
+        'SELECT SUM(t.geometry) FROM cq_land_use_dltb AS t WHERE t."DLMC" = \'水田\'',
+        table_schemas=schemas,
+    )
+
+    assert 't."DLMC"' in result.sql
+    assert "t.dlmc" not in result.sql
+
+
+def test_identifier_fix_keeps_lowercase_column_on_qualified_lowercase_table():
+    from data_agent.sql_postprocessor import postprocess_sql
+
+    schemas = {
+        "cq_land_use_dltb": [
+            {"column_name": "DLMC", "needs_quoting": True},
+            {"column_name": "TBMJ", "needs_quoting": True},
+        ],
+        "cq_dltb": [
+            {"column_name": "dlmc", "needs_quoting": False},
+            {"column_name": "tbmj", "needs_quoting": False},
+        ],
+    }
+
+    result = postprocess_sql(
+        "SELECT COUNT(*) FROM cq_dltb AS d WHERE d.dlmc LIKE '%林%' AND d.tbmj > 10000",
+        table_schemas=schemas,
+    )
+
+    assert "d.dlmc" in result.sql
+    assert "d.tbmj" in result.sql
+    assert '"DLMC"' not in result.sql
+    assert '"TBMJ"' not in result.sql
+
+
 # --- LIMIT injection tests (from CQ_GEO_ROBUSTNESS_03) ---
 
 _POI_SCHEMA = {

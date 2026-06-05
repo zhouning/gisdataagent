@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -198,6 +199,67 @@ def test_cq_full_generate_falls_back_to_direct_tool_when_agent_log_has_no_sql(mo
     assert gen["error"] is None
 
 
+def test_cq_full_generate_uses_direct_tool_first_for_gemma_model(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_gemma_direct_first_test",
+    )
+
+    tool_payload = {
+        "status": "ok",
+        "sql": "SELECT COUNT(*) FROM cq_osm_roads_2021",
+        "execution": {"status": "ok", "rows": 1},
+    }
+
+    monkeypatch.setenv("NL2SQL_AGENT_MODEL", "gemma4-31b-host228")
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "")
+    monkeypatch.setattr(
+        "data_agent.nl2sql_executor.run_nl2semantic2sql",
+        lambda question: json.dumps(tool_payload, ensure_ascii=False),
+    )
+    monkeypatch.setattr(
+        "data_agent.pipeline_runner.run_pipeline_headless",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("pipeline should not run")),
+    )
+
+    gen = asyncio.run(mod.full_generate("count roads"))
+
+    assert gen["status"] == "ok"
+    assert gen["sql"] == "SELECT COUNT(*) FROM cq_osm_roads_2021 LIMIT 100000"
+    assert gen["tokens"] == 0
+
+
+def test_cq_full_generate_uses_baseline_when_gemma_direct_returns_empty(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_gemma_empty_baseline_test",
+    )
+
+    monkeypatch.setenv("NL2SQL_AGENT_MODEL", "gemma4-31b-host228")
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "")
+    monkeypatch.setattr(mod, "_direct_full_fallback", lambda question: {"sql": "", "error": ""})
+    monkeypatch.setattr(
+        mod,
+        "baseline_generate_family_aware",
+        lambda question, model_name=None: {
+            "status": "ok",
+            "sql": "SELECT name FROM cq_osm_roads_2021 LIMIT 5",
+            "error": None,
+            "tokens": 9,
+        },
+    )
+    monkeypatch.setattr(
+        "data_agent.pipeline_runner.run_pipeline_headless",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("pipeline should not run")),
+    )
+
+    gen = asyncio.run(mod.full_generate("list road names"))
+
+    assert gen["status"] == "ok"
+    assert gen["sql"] == "SELECT name FROM cq_osm_roads_2021 LIMIT 5"
+    assert gen["tokens"] == 9
+
+
 def test_compare_results_allows_multirow_numeric_rounding_tolerance():
     mod = _load_script_module(
         "scripts/nl2sql_bench_cq/run_cq_eval.py",
@@ -249,3 +311,44 @@ def test_run_one_baseline_uses_configured_family_model(monkeypatch):
 
     assert calls == {"family": ("count rows", "gemma4-26b-host228")}
     assert rec["ex"] == 1
+
+
+def test_baseline_family_aware_uses_configurable_litellm_timeout(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_baseline_timeout_test",
+    )
+
+    class FakeLiteLlmModel:
+        model = "ollama_chat/Gemma4:31b"
+        _additional_args = {"extra_body": {"think": False}}
+
+    calls = {}
+
+    def fake_completion(**kwargs):
+        calls["timeout"] = kwargs.get("timeout")
+        calls["extra_body"] = kwargs.get("extra_body")
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="SELECT 1"),
+                )
+            ],
+            usage=SimpleNamespace(prompt_tokens=2, completion_tokens=3),
+        )
+
+    monkeypatch.setenv("BASELINE_LITELLM_TIMEOUT", "240")
+    monkeypatch.setattr(mod, "_init_runtime", lambda: None)
+    monkeypatch.setattr(mod, "get_schema", lambda: "CREATE TABLE public.t (id integer);")
+    monkeypatch.setattr(
+        "data_agent.model_gateway.create_model",
+        lambda name: FakeLiteLlmModel(),
+    )
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(completion=fake_completion))
+
+    result = mod.baseline_generate_family_aware("count rows", "gemma4-31b-host164")
+
+    assert result["status"] == "ok"
+    assert result["sql"] == "SELECT 1"
+    assert result["tokens"] == 5
+    assert calls == {"timeout": 240, "extra_body": {"think": False}}

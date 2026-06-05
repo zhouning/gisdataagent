@@ -223,6 +223,18 @@ def test_gemma_semantic_prompt_treats_export_requests_as_safe_limited_selects():
     assert "SELECT 1" in prompt
 
 
+def test_extract_sql_prefers_last_corrected_select_statement():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    text = (
+        "SELECT SUM(ST_XMax(geometry::geography)) FROM roads;\n\n"
+        "Wait, the correct PostGIS length expression is:\n"
+        "SELECT SUM(ST_Length(geometry::geography)) FROM roads;"
+    )
+
+    assert _extract_sql(text) == "SELECT SUM(ST_Length(geometry::geography)) FROM roads"
+
+
 def test_safe_preview_fallback_selects_all_for_backup_request():
     from data_agent.nl2sql_executor import _build_safe_preview_sql
 
@@ -308,6 +320,96 @@ def test_refuse_nl2sql_question_detects_write_intent():
 
     assert _should_refuse_nl2sql_question("delete all rows where name is null", {}) is True
     assert _should_refuse_nl2sql_question("把道路表中没有名称的记录删掉", {}) is True
+
+
+def test_refuse_nl2sql_question_detects_rewrite_and_maintenance_intents():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    assert _should_refuse_nl2sql_question("把 POI 表里所有星巴克的名称改成瑞幸咖啡。", {}) is True
+    assert _should_refuse_nl2sql_question("执行 VACUUM FULL cq_buildings_2021 来回收空间。", {}) is True
+
+
+def test_refuse_nl2sql_question_detects_missing_explicit_column_request():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "roads",
+            "columns": [
+                {"column_name": "name", "aliases": []},
+                {"column_name": "maxspeed", "aliases": []},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "查询道路表中的 speed_limit 和 lane_count 字段。",
+        payload,
+    ) is True
+
+    payload["candidate_tables"][0]["columns"].append({
+        "column_name": "speed_limit",
+        "aliases": ["speed limit"],
+    })
+    payload["candidate_tables"][0]["columns"].append({
+        "column_name": "lane_count",
+        "aliases": ["lanes"],
+    })
+
+    assert _should_refuse_nl2sql_question(
+        "查询道路表中的 speed_limit 和 lane_count 字段。",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_allows_result_list_with_sql_filter_syntax():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [
+            {
+                "table_name": "land_use_polygons",
+                "table_aliases": ["land-use parcels", "\u571f\u5730\u5229\u7528\u56fe\u6591"],
+                "columns": [
+                    {"column_name": "QSDWMC", "aliases": ["owner unit"]},
+                    {"column_name": "geometry", "aliases": ["geometry"], "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "city_poi",
+                "table_aliases": ["POI", "points of interest"],
+                "columns": [
+                    {"column_name": "\u540d\u79f0", "aliases": ["name", "POI name"]},
+                    {"column_name": "geometry", "aliases": ["geometry"], "is_geometry": True},
+                ],
+            },
+        ],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "\u627e\u51fa QSDWMC LIKE '%Downtown%' \u7684\u571f\u5730\u5229\u7528\u56fe\u6591\u8303\u56f4\u5185\u7684 POI \u540d\u79f0\u5217\u8868",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_treats_dataset_alias_as_table_not_missing_column():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "city_aoi",
+            "table_aliases": ["AOI", "AOI data"],
+            "columns": [
+                {"column_name": "name", "aliases": ["名称"]},
+                {"column_name": "category1", "aliases": ["第一分类"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "Find AOI names where category1 field is medical",
+        payload,
+    ) is False
 
 
 def test_refuse_nl2sql_question_detects_unavailable_ranking_metric():
@@ -639,6 +741,43 @@ def test_run_nl2semantic2sql_hydrates_sql_referenced_table_for_alias_rewrite():
     assert 'p."\u540d\u79f0"' in result["sql"]
     assert 'p."\u7c7b\u578b"' in result["sql"]
     mock_exec.assert_called_once_with(result["sql"])
+
+
+def test_run_nl2semantic2sql_retries_ungrounded_sql_referenced_table():
+    from data_agent import nl2sql_executor
+
+    payload = _cq_context("cq_land_use_dltb")
+    payload.update({
+        "grounding_prompt": "GROUNDING",
+        "few_shots": [],
+        "_hint_injection_stats": {"candidate_tables": 1, "few_shots": 0},
+    })
+
+    class FakeResult:
+        rejected = False
+        reject_reason = ""
+        corrections = []
+
+        def __init__(self, sql):
+            self.sql = sql
+
+    generated = [
+        "SELECT SUM(ST_Area(mp_parcel.geom::geography)) FROM mp_parcel WHERE land_use_type = '水田'",
+        'SELECT SUM(ST_Area(l.geometry::geography)) FROM cq_land_use_dltb AS l WHERE l."DLMC" = \'水田\'',
+    ]
+
+    with patch("data_agent.nl2sql_executor.build_nl2sql_context", return_value=payload), \
+         patch("data_agent.nl2sql_executor._generate_gemma_sql", side_effect=generated) as mock_generate, \
+         patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda sql, *a, **kw: FakeResult(sql)), \
+         patch("data_agent.nl2sql_executor.execute_safe_sql", return_value='{"status":"ok","rows":1,"data":[{"sum":1}]}'), \
+         patch("data_agent.nl2sql_executor._auto_curate"):
+        result = json.loads(nl2sql_executor.run_nl2semantic2sql("计算所有水田的真实空间总面积"))
+
+    assert mock_generate.call_count == 2
+    assert result["status"] == "ok"
+    assert "mp_parcel" not in result["sql"]
+    assert "cq_land_use_dltb" in result["sql"]
+    assert "gemma_ungrounded_table_retry" in result["corrections"]
 
 
 def test_candidate_from_described_schema_preserves_source_synonyms():

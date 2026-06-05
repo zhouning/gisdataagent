@@ -139,7 +139,7 @@ def execute_safe_sql(
         }
     """
     try:
-        # Safety check: only allow SELECT
+        # Safety check: only allow read-only SELECT / WITH ... SELECT
         sql_upper = sql.strip().upper()
         forbidden = ["INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE", "GRANT", "REVOKE"]
         if any(kw in sql_upper for kw in forbidden):
@@ -148,7 +148,7 @@ def execute_safe_sql(
                 ensure_ascii=False,
             )
 
-        if not sql_upper.startswith("SELECT"):
+        if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
             return json.dumps(
                 {"error": "安全检查失败：SQL 必须以 SELECT 开头"},
                 ensure_ascii=False,

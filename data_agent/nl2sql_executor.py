@@ -148,16 +148,94 @@ def _augment_payload_with_sql_referenced_tables(sql: str, payload: dict) -> dict
     return payload
 
 
+def _find_ungrounded_sql_reference(question: str, sql: str, payload: dict) -> str:
+    """Return a SQL table reference not grounded by the original semantic context.
+
+    Gemma/Ollama can name a real table from model memory even when the semantic
+    context chose a different table. A real table is not automatically a
+    grounded table, so this harness check runs before SQL-referenced table
+    hydration. It stays productized by relying on candidate tables and explicit
+    table-token mentions rather than dataset-specific names.
+    """
+    allowed = _payload_table_ref_terms(payload)
+    for table_ref in _referenced_sql_tables(sql):
+        terms = _table_ref_terms(table_ref)
+        if terms & allowed:
+            continue
+        if _question_mentions_table_ref(question, table_ref):
+            continue
+        return table_ref
+    return ""
+
+
+def _payload_table_ref_terms(payload: dict) -> set[str]:
+    terms: set[str] = set()
+    for table in payload.get("candidate_tables", []) or []:
+        table_name = str(table.get("table_name") or "")
+        terms.update(_table_ref_terms(table_name))
+    return terms
+
+
+def _table_ref_terms(table_ref: str) -> set[str]:
+    ref = str(table_ref or "").strip().strip('"')
+    if not ref:
+        return set()
+    bare = ref.split(".")[-1]
+    terms = {_normalize_identifier_like(ref), _normalize_identifier_like(bare)}
+    versionless = re.sub(r"_(?:19|20)\d{2}$", "", bare)
+    terms.add(_normalize_identifier_like(versionless))
+    return {term for term in terms if term}
+
+
+def _question_mentions_table_ref(question: str, table_ref: str) -> bool:
+    q_low = (question or "").lower()
+    for term in _table_ref_terms(table_ref):
+        if term and re.search(rf"(?<![a-z0-9_]){re.escape(term)}(?![a-z0-9_])", q_low):
+            return True
+    bare = str(table_ref or "").split(".")[-1].lower()
+    for token in re.split(r"[_\W]+", bare):
+        if len(token) < 3 or token.isdigit() or token in {"public", "data"}:
+            continue
+        if re.search(rf"(?<![a-z0-9_]){re.escape(token)}(?![a-z0-9_])", q_low):
+            return True
+    return False
+
+
+def _build_ungrounded_table_retry_prompt(question: str, payload: dict, sql: str, table_ref: str) -> str:
+    allowed = sorted(
+        str(t.get("table_name") or "")
+        for t in payload.get("candidate_tables", []) or []
+        if t.get("table_name")
+    )
+    return (
+        _build_gemma_semantic_prompt(question, payload)
+        + "\n\nHarness correction:\n"
+        + f"- Previous SQL referenced `{table_ref}`, which is not grounded by the candidate schema.\n"
+        + f"- Use only these candidate tables: {', '.join(allowed) or '(none)'}.\n"
+        + "- If the question cannot be answered from those candidate tables, output SELECT 1.\n"
+        + "- Output SQL only.\n\n"
+        + f"Previous SQL:\n{sql}\n"
+    )
+
+
 def _extract_sql(text: str) -> str:
-    """Extract the first SELECT/WITH statement from model text."""
+    """Extract the most recent complete SELECT/WITH statement from model text."""
     sql = _strip_fences(text)
     sql = re.sub(r"^\s*(?:sql\s*:|SQL\s*:)", "", sql).strip()
-    m = re.search(r"\b(SELECT|WITH)\b", sql, flags=re.IGNORECASE)
-    if m:
-        sql = sql[m.start():].strip()
-    if ";" in sql:
-        sql = sql.split(";", 1)[0].strip()
-    return sql or "SELECT 1"
+    matches = list(re.finditer(r"\b(SELECT|WITH)\b", sql, flags=re.IGNORECASE))
+    if not matches:
+        return sql or "SELECT 1"
+    candidates: list[str] = []
+    for match in matches:
+        candidate = sql[match.start():].strip()
+        if ";" in candidate:
+            candidate = candidate.split(";", 1)[0].strip()
+        if candidate:
+            candidates.append(candidate)
+    for candidate in reversed(candidates):
+        if candidate.upper().startswith("WITH") or re.search(r"\bFROM\b", candidate, flags=re.IGNORECASE):
+            return candidate
+    return candidates[-1] if candidates else "SELECT 1"
 
 
 def _get_standard_model_name() -> str:
@@ -308,9 +386,14 @@ def _should_refuse_nl2sql_question(question: str, payload: dict) -> bool:
     q_low = (question or "").lower()
     write_tokens = (
         "delete", "update", "insert", "drop", "truncate", "alter", "create table",
-        "删掉", "删除", "更新", "修改", "写入", "插入", "清空", "覆盖", "置为 null", "置为NULL",
+        "vacuum", "reindex", "cluster", "grant", "revoke", "rename",
+        "删掉", "删除", "更新", "修改", "改成", "写入", "插入", "清空", "覆盖",
+        "置为 null", "置为NULL", "执行 vacuum", "执行vacuum", "回收空间",
     )
     if any(token in q_low for token in write_tokens):
+        return True
+
+    if _has_missing_explicit_column_request(question, payload):
         return True
 
     ranking_terms = _extract_ranking_metric_terms(question)
@@ -339,7 +422,10 @@ def _extract_ranking_metric_terms(question: str) -> list[str]:
 
 
 def _payload_has_column_term(payload: dict, terms: tuple[str, ...]) -> bool:
-    lowered_terms = [term.lower() for term in terms]
+    lowered_terms = [
+        term for term in (_normalize_semantic_search_term(term) for term in terms)
+        if term
+    ]
     for table in payload.get("candidate_tables", []) or []:
         for col in table.get("columns", []) or []:
             probes = [str(col.get("column_name") or ""), str(col.get("quoted_ref") or "")]
@@ -347,12 +433,103 @@ def _payload_has_column_term(payload: dict, terms: tuple[str, ...]) -> bool:
             vs = col.get("value_semantics") or {}
             probes.extend(str(a) for a in (vs.get("sql_aliases") or []))
             for probe in probes:
-                p = probe.lower().strip('"')
+                p = _normalize_semantic_search_term(probe)
                 if not p:
                     continue
                 if any(term in p or p in term for term in lowered_terms):
                     return True
     return False
+
+
+def _has_missing_explicit_column_request(question: str, payload: dict) -> bool:
+    terms = _extract_explicit_column_request_terms(question)
+    if not terms:
+        return False
+    table_terms = _payload_table_terms(payload)
+    terms = [term for term in terms if term not in table_terms]
+    if not terms:
+        return False
+    known_columns = _payload_column_terms(payload)
+    if not known_columns:
+        return True
+    return any(term not in known_columns for term in terms)
+
+
+def _extract_explicit_column_request_terms(question: str) -> list[str]:
+    q = question or ""
+    q_low = q.lower()
+    markers = ("字段", "列名", "column", "columns", "field", "fields")
+    if not any(marker in q_low for marker in markers):
+        return []
+
+    table_terms = {
+        "table", "schema", "select", "from", "where", "and", "or", "by", "as",
+        "like", "ilike", "limit", "join", "on", "group", "order", "having",
+    }
+    terms: list[str] = []
+    for raw in re.findall(r"(?<![A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)(?![A-Za-z0-9_])", q):
+        norm = _normalize_identifier_like(raw)
+        if not norm or norm in table_terms:
+            continue
+        if norm.startswith("cq_") or norm.startswith("public_"):
+            continue
+        if not _looks_like_explicit_column_identifier(raw):
+            continue
+        terms.append(norm)
+    return list(dict.fromkeys(terms))
+
+
+def _looks_like_explicit_column_identifier(raw: str) -> bool:
+    token = str(raw or "").strip()
+    if not token:
+        return False
+    if "_" in token or any(ch.isdigit() for ch in token):
+        return True
+    return token.isupper() and len(token) > 1
+
+
+def _payload_column_terms(payload: dict) -> set[str]:
+    terms: set[str] = set()
+    for table in payload.get("candidate_tables", []) or []:
+        for col in table.get("columns", []) or []:
+            probes = [str(col.get("column_name") or ""), str(col.get("quoted_ref") or "")]
+            probes.extend(str(a) for a in (col.get("aliases") or []))
+            vs = col.get("value_semantics") or {}
+            probes.extend(str(a) for a in (vs.get("sql_aliases") or []))
+            for probe in probes:
+                norm = _normalize_identifier_like(probe)
+                if norm:
+                    terms.add(norm)
+    return terms
+
+
+def _payload_table_terms(payload: dict) -> set[str]:
+    terms: set[str] = set()
+    for table in payload.get("candidate_tables", []) or []:
+        probes = [
+            str(table.get("table_name") or ""),
+            str(table.get("display_name") or ""),
+            str(table.get("description") or ""),
+        ]
+        probes.extend(str(a) for a in (table.get("table_aliases") or []))
+        for probe in probes:
+            norm = _normalize_identifier_like(probe)
+            if norm:
+                terms.add(norm)
+    return terms
+
+
+def _normalize_identifier_like(value: str) -> str:
+    text = str(value or "").strip().strip('"').strip("'").lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    return re.sub(r"_+", "_", text).strip("_")
+
+
+def _normalize_semantic_search_term(value: str) -> str:
+    ident = _normalize_identifier_like(value)
+    if ident:
+        return ident
+    return str(value or "").strip().strip('"').strip("'").lower()
 
 
 def _postprocess_safe_preview_fallback(
@@ -615,6 +792,39 @@ def run_nl2semantic2sql(user_question: str) -> str:
         }, ensure_ascii=False)
 
     extracted_sql = _extract_sql(raw_sql)
+    harness_corrections: list[str] = []
+    ungrounded_ref = _find_ungrounded_sql_reference(user_question, extracted_sql, payload)
+    if ungrounded_ref and os.environ.get("NL2SQL_GEMMA_ALLOW_SQL_REFERENCED_TABLES") != "1":
+        retry_prompt = _build_ungrounded_table_retry_prompt(
+            user_question,
+            payload,
+            extracted_sql,
+            ungrounded_ref,
+        )
+        try:
+            raw_sql = _generate_gemma_sql(retry_prompt)
+            extracted_sql = _extract_sql(raw_sql)
+            harness_corrections.append("gemma_ungrounded_table_retry")
+        except Exception as exc:
+            return json.dumps({
+                "status": "error",
+                "error": f"gemma_sql_generation_failed:{exc}",
+                "sql": "",
+                "semantic": _semantic_summary(payload),
+                "corrections": harness_corrections,
+            }, ensure_ascii=False)
+
+    ungrounded_ref = _find_ungrounded_sql_reference(user_question, extracted_sql, payload)
+    if ungrounded_ref and os.environ.get("NL2SQL_GEMMA_ALLOW_SQL_REFERENCED_TABLES") != "1":
+        return json.dumps({
+            "status": "rejected",
+            "error": f"runtime_guard:ungrounded_table:{ungrounded_ref}",
+            "raw_sql": raw_sql,
+            "sql": "",
+            "semantic": _semantic_summary(payload),
+            "corrections": harness_corrections + ["gemma_ungrounded_table_rejected"],
+        }, ensure_ascii=False)
+
     payload = _augment_payload_with_sql_referenced_tables(extracted_sql, payload)
     schemas, large_tables = _schemas_and_large_tables(payload)
     current_nl2sql_schemas.set(schemas)
@@ -633,6 +843,7 @@ def run_nl2semantic2sql(user_question: str) -> str:
         intent=current_nl2sql_intent.get(),
     )
     corrections = rewrite_corrections + list(getattr(pp_result, "corrections", []) or [])
+    corrections = harness_corrections + corrections
     if pp_result.rejected:
         fallback_pp, fallback_error = _postprocess_safe_preview_fallback(
             user_question,

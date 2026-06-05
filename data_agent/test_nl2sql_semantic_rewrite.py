@@ -40,6 +40,145 @@ def test_semantic_rewrite_uses_column_aliases_for_arbitrary_table():
     assert "semantic_column_alias" in corrections
 
 
+def test_semantic_rewrite_does_not_use_unreferenced_table_for_unqualified_column_alias():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "official_land_use",
+                "columns": [
+                    {"column_name": "DLMC", "quoted_ref": '"DLMC"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "legacy_land_use",
+                "columns": [
+                    {"column_name": "dlmc", "quoted_ref": "dlmc", "aliases": ["DLMC"]},
+                    {
+                        "column_name": "shape",
+                        "quoted_ref": "shape",
+                        "aliases": ["geometry"],
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4610)",
+                    },
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "sum real spatial area where DLMC is paddy field",
+        "SELECT SUM(ST_Area(geometry::geography)) / 10000 FROM official_land_use WHERE \"DLMC\" = 'paddy'",
+        context,
+    )
+
+    assert "legacy_land_use.shape" not in rewritten
+    assert "ST_Area(official_land_use.geometry::geography)" in rewritten
+    assert "semantic_area_geometry_qualified" in corrections
+
+
+def test_semantic_rewrite_column_aliases_match_public_schema_qualified_tables():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "roads",
+            "columns": [
+                {"column_name": "name", "quoted_ref": "name", "needs_quoting": False},
+                {
+                    "column_name": "geometry",
+                    "quoted_ref": "geometry",
+                    "aliases": ["shape"],
+                    "is_geometry": True,
+                    "pg_type": "geometry(LineString,4326)",
+                },
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "return road names near the target geometry",
+        "SELECT r.name FROM public.roads AS r WHERE ST_Intersects(r.shape, r.geometry)",
+        context,
+    )
+
+    assert "r.shape" not in rewritten
+    assert "ST_Intersects(r.geometry, r.geometry)" in rewritten
+    assert "semantic_column_alias" in corrections
+
+
+def test_semantic_rewrite_moves_geography_cast_outside_st_union_area():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "land_use",
+            "columns": [
+                {"column_name": "DLMC", "quoted_ref": '"DLMC"', "needs_quoting": True},
+                {
+                    "column_name": "geometry",
+                    "quoted_ref": "geometry",
+                    "is_geometry": True,
+                    "pg_type": "geometry(MultiPolygon,4326)",
+                },
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "area of unioned tea garden polygons in square kilometres",
+        "SELECT ST_Area(ST_Union(geometry::geography)) / 1000000.0 FROM land_use WHERE \"DLMC\" = 'tea garden'",
+        context,
+    )
+
+    assert "ST_Union(geometry::geography)" not in rewritten
+    assert "ST_Area(ST_Union(geometry)::geography)" in rewritten
+    assert "semantic_st_union_geography" in corrections
+
+
+def test_semantic_rewrite_existential_sum_spatial_join_with_alias_uses_exists():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "polygons",
+                "columns": [
+                    {"column_name": "land_type", "quoted_ref": "land_type", "needs_quoting": False},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "bridge", "quoted_ref": "bridge", "needs_quoting": False},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "sum the area of polygons that intersect any bridge road",
+        "SELECT SUM(ST_Area(p.geometry::geography)) AS total_area "
+        "FROM polygons AS p JOIN roads AS r ON ST_Intersects(p.geometry, r.geometry) "
+        "WHERE p.land_type = 'paddy' AND r.bridge = 'T'",
+        context,
+    )
+
+    assert "JOIN roads" not in rewritten
+    assert "EXISTS (SELECT 1 FROM roads AS r" in rewritten
+    assert "r.bridge = 'T'" in rewritten
+    assert "semantic_existential_spatial_join" in corrections
+
+
 def test_semantic_rewrite_expands_value_group_from_value_semantics():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
@@ -181,6 +320,46 @@ def test_semantic_rewrite_transforms_mixed_srid_distance_to_geography():
     )
 
     assert "ST_Distance(r.geom::geography, ST_Transform(d.shape, 4326)::geography)" in rewritten
+    assert "semantic_distance_srid_transform" in corrections
+
+
+def test_semantic_rewrite_distance_to_cte_geometry_uses_known_geography_side():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "columns": [{
+                    "column_name": "geometry",
+                    "quoted_ref": "geometry",
+                    "is_geometry": True,
+                    "pg_type": "geometry(LineString,4326)",
+                    "needs_quoting": False,
+                }],
+            },
+            {
+                "table_name": "buildings",
+                "columns": [{
+                    "column_name": "geometry",
+                    "quoted_ref": "geometry",
+                    "is_geometry": True,
+                    "pg_type": "geometry(Polygon,4326)",
+                    "needs_quoting": False,
+                }],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "nearest roads and distance in meters",
+        "WITH target_building AS (SELECT geometry FROM buildings LIMIT 1) "
+        "SELECT r.name, ST_Distance(r.geometry, b.geometry) AS distance "
+        "FROM roads AS r, target_building AS b ORDER BY r.geometry <-> b.geometry LIMIT 10",
+        context,
+    )
+
+    assert "ST_Distance(r.geometry::geography, b.geometry::geography)" in rewritten
     assert "semantic_distance_srid_transform" in corrections
 
 
@@ -1029,6 +1208,128 @@ def test_semantic_rewrite_exists_spatial_count_uses_outer_from_table_not_subquer
     assert "semantic_distinct_join_count" in corrections
 
 
+def test_semantic_rewrite_counts_distinct_entity_for_quoted_exists_outer_table():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "quoted_ref": '"Id"',
+                        "needs_quoting": True,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "bridge", "quoted_ref": "bridge", "needs_quoting": False},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "count buildings that intersect any bridge road",
+        'SELECT COUNT(*) FROM "buildings" '
+        'WHERE EXISTS(SELECT 1 FROM "roads" '
+        'WHERE "roads".bridge = \'T\' AND ST_INTERSECTS("buildings".geometry, "roads".geometry))',
+        context,
+    )
+
+    assert 'COUNT(DISTINCT buildings."Id")' in rewritten
+    assert "semantic_distinct_join_count" in corrections
+
+
+def test_semantic_rewrite_line_length_aggregate_uses_st_length_geography():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "transport_edges",
+            "columns": [
+                {"column_name": "road_class", "quoted_ref": "road_class", "needs_quoting": False},
+                {
+                    "column_name": "geometry",
+                    "quoted_ref": "geometry",
+                    "is_geometry": True,
+                    "pg_type": "geometry(MultiLineString,4326)",
+                },
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "count roads by class and report total length in kilometers",
+        "SELECT road_class, COUNT(*) AS road_count, "
+        "ROUND((CAST((SUM(CAST(ST_XMAX(geometry) AS DECIMAL) - CAST(ST_XMIN(geometry) AS DECIMAL)) * 0) "
+        "AS DECIMAL))::numeric, 2) AS total_length_km "
+        "FROM transport_edges GROUP BY road_class ORDER BY road_count DESC",
+        context,
+    )
+
+    assert "ST_XMAX" not in rewritten
+    assert "SUM(ST_Length(geometry::geography)) / 1000.0" in rewritten
+    assert "semantic_length_metric" in corrections
+
+
+def test_semantic_rewrite_centroid_text_projection_places_label_first():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "districts",
+            "columns": [
+                {"column_name": "name", "quoted_ref": "name", "semantic_domain": "NAME"},
+                {"column_name": "shape", "quoted_ref": "shape", "is_geometry": True},
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "return each district name and centroid WKT",
+        "SELECT ST_AsText(ST_Centroid(shape)) AS centroid_wkt, name FROM districts",
+        context,
+    )
+
+    assert rewritten.startswith("SELECT name, ST_AsText(ST_Centroid(shape)) AS centroid_wkt FROM districts")
+    assert "semantic_centroid_projection_order" in corrections
+
+
+def test_semantic_rewrite_conditional_sum_pivot_to_grouped_rows():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "commute",
+            "columns": [
+                {"column_name": "gender", "quoted_ref": "gender"},
+                {"column_name": "population", "quoted_ref": "population"},
+                {"column_name": "cross_area", "quoted_ref": "cross_area"},
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "report male and female population separately",
+        "SELECT SUM(CASE WHEN gender = 1 THEN population ELSE 0 END) AS male_population, "
+        "SUM(CASE WHEN gender = 2 THEN population ELSE 0 END) AS female_population "
+        "FROM commute WHERE cross_area = 0 LIMIT 100",
+        context,
+    )
+
+    assert "SELECT gender, SUM(population) AS total_value" in rewritten
+    assert "gender IN (1, 2)" in rewritten
+    assert "GROUP BY gender ORDER BY gender LIMIT 100" in rewritten
+    assert "semantic_conditional_sum_group_rows" in corrections
+
+
 def test_semantic_rewrite_grouped_spatial_count_uses_question_target_entity_alias():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
@@ -1236,3 +1537,74 @@ def test_semantic_rewrite_preview_matches_redundantly_quoted_ascii_sort_metric()
 
     assert rewritten.endswith('ORDER BY "pc_count" DESC LIMIT 10')
     assert "semantic_default_preview_sort" in corrections
+
+
+def test_semantic_rewrite_knn_order_by_distance_alias_uses_geometry_operator():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "transport_edges",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name", "needs_quoting": False},
+                    {"column_name": "geom", "quoted_ref": "geom", "is_geometry": True, "pg_type": "geometry(LineString,4326)"},
+                ],
+            },
+            {
+                "table_name": "stations",
+                "columns": [
+                    {"column_name": "station_name", "quoted_ref": "station_name", "needs_quoting": False},
+                    {"column_name": "geom", "quoted_ref": "geom", "is_geometry": True, "pg_type": "geometry(Point,4326)"},
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "find the nearest 5 transport edges to Central Station and return straight-line distance",
+        "SELECT e.name, ST_Distance(e.geom::geography, s.geom::geography) AS distance_meters "
+        "FROM transport_edges AS e CROSS JOIN ("
+        "SELECT geom FROM stations WHERE station_name = 'Central Station' LIMIT 1"
+        ") AS s ORDER BY distance_meters ASC LIMIT 5",
+        context,
+    )
+
+    assert "ORDER BY e.geom <-> s.geom LIMIT 5" in rewritten
+    assert "ORDER BY distance_meters" not in rewritten
+    assert "semantic_knn_order" in corrections
+
+
+def test_semantic_rewrite_prefers_versioned_candidate_over_generic_table():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "transport_edges_2021",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name", "needs_quoting": False},
+                    {"column_name": "road_class", "quoted_ref": "road_class", "needs_quoting": False},
+                    {"column_name": "tunnel", "quoted_ref": "tunnel", "needs_quoting": False},
+                ],
+            },
+            {
+                "table_name": "transport_edges",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name", "needs_quoting": False},
+                    {"column_name": "road_class", "quoted_ref": "road_class", "needs_quoting": False},
+                    {"column_name": "tunnel", "quoted_ref": "tunnel", "needs_quoting": False},
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "list roads with tunnels",
+        "SELECT name, road_class FROM transport_edges WHERE tunnel = 'T'",
+        context,
+    )
+
+    assert "FROM transport_edges_2021" in rewritten
+    assert "FROM transport_edges " not in rewritten
+    assert "semantic_table_normalized" in corrections

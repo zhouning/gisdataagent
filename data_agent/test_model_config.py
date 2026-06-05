@@ -59,6 +59,32 @@ class TestGemma4Registration(unittest.TestCase):
         assert info["extra_body"] == {"think": False}
         assert info["request_timeout"] == 600
 
+    def test_gemma4_31b_host228_ollama_registration(self):
+        from data_agent.model_gateway import ModelRegistry
+        ModelRegistry.reset()
+        ModelRegistry._ensure_initialized()
+        info = ModelRegistry.get_model_info("gemma4-31b-host228")
+        assert info["backend"] == "litellm"
+        assert info["tier"] == "standard"
+        assert info["online"] is False
+        assert info["api_base"] == "http://192.168.25.228:11434"
+        assert info["api_base_pinned"] is True
+        assert info["model_id"] == "ollama_chat/Gemma4:31b"
+        assert info["extra_body"] == {"think": False}
+        assert info["request_timeout"] == 900
+
+    def test_nomic_v2_moe_host228_embedding_registration(self):
+        from data_agent.embedding_gateway import EmbeddingRegistry
+        EmbeddingRegistry._initialized = False
+        EmbeddingRegistry._ensure_initialized()
+        info = EmbeddingRegistry.get_model_info("nomic-embed-text-v2-moe-host228")
+        assert info["backend"] == "ollama"
+        assert info["dimension"] == 768
+        assert info["online"] is False
+        assert info["ollama_model_id"] == "nomic-embed-text-v2-moe:latest"
+        assert info["api_base"] == "http://192.168.25.228:11434"
+        assert info["api_base_pinned"] is True
+
 
 class TestLiteLlmExtraParams(unittest.TestCase):
     """Verify extra_headers and extra_body are stored in registry."""
@@ -103,7 +129,8 @@ class TestModelConfigManager(unittest.TestCase):
     def test_default_values(self):
         from data_agent.model_config import ModelConfigManager
         mgr = ModelConfigManager()
-        mgr.load()
+        with patch.object(mgr, "_get_engine", return_value=None):
+            mgr.load()
         assert mgr.get_tier_model("standard") == os.environ.get("MODEL_STANDARD", "gemini-2.5-flash")
         assert mgr.get_router_model() == os.environ.get("ROUTER_MODEL", "gemini-2.0-flash")
 

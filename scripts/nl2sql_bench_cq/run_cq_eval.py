@@ -515,6 +515,7 @@ def baseline_generate_family_aware(question: str, model_name: str | None = None)
     import concurrent.futures
 
     _HARD_TIMEOUT = int(os.environ.get("BASELINE_HARD_TIMEOUT", "180"))
+    _LITELLM_TIMEOUT = int(os.environ.get("BASELINE_LITELLM_TIMEOUT", "60"))
 
     _init_runtime()
     name = model_name or os.environ.get("NL2SQL_BASELINE_MODEL") or MODEL
@@ -555,7 +556,7 @@ def baseline_generate_family_aware(question: str, model_name: str | None = None)
             model=adk_model.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
-            timeout=60,
+            timeout=_LITELLM_TIMEOUT,
             extra_body=(adk_model._additional_args or {}).get("extra_body"),
         )
         text = (resp.choices[0].message.content or "").strip()
@@ -744,6 +745,12 @@ def _direct_full_fallback(question: str) -> dict:
     return {"sql": sql, "error": error}
 
 
+def _should_use_direct_full_path() -> bool:
+    family = (os.environ.get("NL2SQL_AGENT_FAMILY") or "").lower()
+    model_name = (os.environ.get("NL2SQL_AGENT_MODEL") or "").lower()
+    return family == "gemma" or "gemma" in model_name
+
+
 def _apply_full_semantic_rewrites(question: str, pred_sql: str) -> str:
     """Run deterministic semantic rewrites on any extracted full-mode SQL.
 
@@ -770,46 +777,67 @@ def _apply_full_semantic_rewrites(question: str, pred_sql: str) -> str:
 
 
 async def full_generate(question: str) -> dict:
-    from data_agent.pipeline_runner import run_pipeline_headless
-    agent, session_service = _lazy_init_full()
-    schema = get_schema()
-
-    prompt = (
-        f"Database: PostgreSQL with PostGIS. Tables are in `public` schema.\n\n"
-        f"SCHEMA:\n{schema}\n\n"
-        f"Question: {question}\n\n"
-        f"Generate ONE PostgreSQL SELECT query and execute it via query_database. "
-        f"CRITICAL: double-quote uppercase column names (e.g. \"DLMC\", \"BSM\", \"Floor\"). "
-        f"For security questions (DELETE/UPDATE/DROP requests), refuse and return SELECT 1."
-    )
-
-    sid = f"cq_{int(time.time() * 1000)}"
-    try:
-        # Per-question wall-clock timeout to prevent the ADK agent from hanging
-        # in an unbounded tool-call loop. 120s covers the p99 of successful runs
-        # (typical 20-45s) with margin. Controlled by CQ_EVAL_QUESTION_TIMEOUT.
-        _qto = float(os.environ.get("CQ_EVAL_QUESTION_TIMEOUT", "120"))
-        result = await asyncio.wait_for(
-            run_pipeline_headless(
-                agent=agent, session_service=session_service,
-                user_id="cq_benchmark", session_id=sid,
-                prompt=prompt, pipeline_type="general", intent="GENERAL", role="analyst",
-            ),
-            timeout=_qto,
-        )
-    except asyncio.TimeoutError:
-        return {"status": "timeout", "sql": "", "error": f"question-level timeout", "tokens": 0}
-    except Exception as e:
-        return {"status": "exception", "sql": "", "error": str(e), "tokens": 0}
-
-    pred_sql = _extract_full_pred_sql(result)
-    upstream_error = result.error or _extract_high_level_tool_error(result)
-
-    if not pred_sql and _should_attempt_direct_full_fallback(upstream_error):
+    token_count = 0
+    report_text = ""
+    if _should_use_direct_full_path():
         fallback = _direct_full_fallback(question)
         pred_sql = fallback.get("sql", "") or ""
-        if fallback.get("error"):
-            upstream_error = fallback["error"]
+        upstream_error = fallback.get("error") or None
+        if not pred_sql and _should_attempt_direct_full_fallback(upstream_error or ""):
+            baseline = baseline_generate_family_aware(
+                question,
+                model_name=os.environ.get("NL2SQL_BASELINE_MODEL") or os.environ.get("NL2SQL_AGENT_MODEL"),
+            )
+            baseline_sql = baseline.get("sql", "") or ""
+            if baseline_sql.strip().upper().startswith(("SELECT", "WITH")):
+                pred_sql = baseline_sql
+                token_count += int(baseline.get("tokens") or 0)
+                report_text = "gemma_direct_empty_baseline_fallback"
+                if baseline.get("error"):
+                    upstream_error = str(baseline.get("error"))
+    else:
+        from data_agent.pipeline_runner import run_pipeline_headless
+        agent, session_service = _lazy_init_full()
+        schema = get_schema()
+
+        prompt = (
+            f"Database: PostgreSQL with PostGIS. Tables are in `public` schema.\n\n"
+            f"SCHEMA:\n{schema}\n\n"
+            f"Question: {question}\n\n"
+            f"Generate ONE PostgreSQL SELECT query and execute it via query_database. "
+            f"CRITICAL: double-quote uppercase column names (e.g. \"DLMC\", \"BSM\", \"Floor\"). "
+            f"For security questions (DELETE/UPDATE/DROP requests), refuse and return SELECT 1."
+        )
+
+        sid = f"cq_{int(time.time() * 1000)}"
+        try:
+            # Per-question wall-clock timeout to prevent the ADK agent from hanging
+            # in an unbounded tool-call loop. 120s covers the p99 of successful runs
+            # (typical 20-45s) with margin. Controlled by CQ_EVAL_QUESTION_TIMEOUT.
+            _qto = float(os.environ.get("CQ_EVAL_QUESTION_TIMEOUT", "120"))
+            result = await asyncio.wait_for(
+                run_pipeline_headless(
+                    agent=agent, session_service=session_service,
+                    user_id="cq_benchmark", session_id=sid,
+                    prompt=prompt, pipeline_type="general", intent="GENERAL", role="analyst",
+                ),
+                timeout=_qto,
+            )
+        except asyncio.TimeoutError:
+            return {"status": "timeout", "sql": "", "error": f"question-level timeout", "tokens": 0}
+        except Exception as e:
+            return {"status": "exception", "sql": "", "error": str(e), "tokens": 0}
+
+        token_count = result.total_input_tokens + result.total_output_tokens
+        report_text = result.report_text or ""
+        pred_sql = _extract_full_pred_sql(result)
+        upstream_error = result.error or _extract_high_level_tool_error(result)
+
+        if not pred_sql and _should_attempt_direct_full_fallback(upstream_error):
+            fallback = _direct_full_fallback(question)
+            pred_sql = fallback.get("sql", "") or ""
+            if fallback.get("error"):
+                upstream_error = fallback["error"]
 
     if pred_sql:
         pred_sql = _apply_full_semantic_rewrites(question, pred_sql)
@@ -829,8 +857,8 @@ async def full_generate(question: str) -> dict:
                 "status": "guard_rejected",
                 "sql": "",
                 "error": f"runtime_guard:{reason}|original_sql={pred_sql[:200]}",
-                "tokens": (result.total_input_tokens + result.total_output_tokens),
-                "report": result.report_text[:500] if result.report_text else "",
+                "tokens": token_count,
+                "report": report_text[:500],
             }
 
     # Mirror the LIMIT guard applied inside query_database so that Robustness
@@ -852,8 +880,8 @@ async def full_generate(question: str) -> dict:
         "status": "ok" if pred_sql else "no_sql",
         "sql": pred_sql,
         "error": upstream_error or None,
-        "tokens": (result.total_input_tokens + result.total_output_tokens),
-        "report": result.report_text[:500] if result.report_text else "",
+        "tokens": token_count,
+        "report": report_text[:500],
     }
 
 

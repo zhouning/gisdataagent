@@ -24,6 +24,7 @@ class ColumnInfo:
     description: str = ""
     needs_quoting: bool = False
     is_geometry: bool = False
+    pg_type: str = ""
     srid: int = 0
     unit: str = ""
     semantic_domain: str = ""
@@ -96,6 +97,10 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_table_normalized")
 
+    rewritten, changed = _prefer_versioned_candidate_refs(question, rewritten, tables)
+    if changed:
+        corrections.append("semantic_table_normalized")
+
     rewritten, changed = _collapse_duplicate_union(rewritten)
     if changed:
         corrections.append("semantic_duplicate_union")
@@ -147,6 +152,10 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_area_geometry_qualified")
 
+    rewritten, changed = _rewrite_st_union_geography_area(rewritten)
+    if changed:
+        corrections.append("semantic_st_union_geography")
+
     rewritten, changed = _rewrite_spatial_srid_transforms(rewritten, alias_map)
     if changed:
         corrections.append("semantic_srid_transform")
@@ -162,6 +171,14 @@ def apply_semantic_sql_rewrites(
     rewritten, changed = _rewrite_st_distance_srid_transforms(rewritten, alias_map)
     if changed:
         corrections.append("semantic_distance_srid_transform")
+
+    rewritten, changed = _rewrite_line_length_aggregates(question, rewritten, tables)
+    if changed:
+        corrections.append("semantic_length_metric")
+
+    rewritten, changed = _rewrite_knn_order_by_distance_alias(question, rewritten)
+    if changed:
+        corrections.append("semantic_knn_order")
 
     rewritten, changed = _rewrite_existential_spatial_join_aggregate(question, rewritten)
     if changed:
@@ -190,6 +207,14 @@ def apply_semantic_sql_rewrites(
     rewritten, changed = _rewrite_distinct_entity_count(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_distinct_join_count")
+
+    rewritten, changed = _rewrite_centroid_label_projection_order(question, rewritten)
+    if changed:
+        corrections.append("semantic_centroid_projection_order")
+
+    rewritten, changed = _rewrite_conditional_sum_pivot_to_grouped_rows(question, rewritten)
+    if changed:
+        corrections.append("semantic_conditional_sum_group_rows")
 
     rewritten, changed = _rewrite_question_limit(question, rewritten)
     if changed:
@@ -233,6 +258,7 @@ def _build_tables(context: dict) -> list[TableInfo]:
                 description=str(col.get("description") or ""),
                 needs_quoting=bool(col.get("needs_quoting")),
                 is_geometry=bool(col.get("is_geometry")),
+                pg_type=str(col.get("pg_type") or ""),
                 srid=srid,
                 unit=str(col.get("unit") or ""),
                 semantic_domain=str(col.get("semantic_domain") or ""),
@@ -288,6 +314,61 @@ def _normalize_versioned_table_refs(sql: str, tables: list[TableInfo]) -> tuple[
     )
     rewritten, n = pattern.subn(repl, sql)
     return rewritten, bool(n and rewritten != sql)
+
+
+def _prefer_versioned_candidate_refs(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+) -> tuple[str, bool]:
+    """Prefer latest versioned sibling when both generic and versioned candidates exist."""
+    latest_by_base: dict[str, str] = {}
+    generic_names = {t.bare_name for t in tables if not _is_versioned_table_name(t.bare_name)}
+    for table in tables:
+        bare = table.bare_name
+        if not _is_versioned_table_name(bare):
+            continue
+        base = _versionless_table_name(bare)
+        if base not in generic_names:
+            continue
+        current = latest_by_base.get(base)
+        if not current or _version_suffix_year(bare) > _version_suffix_year(current):
+            latest_by_base[base] = bare
+    if not latest_by_base:
+        return sql, False
+
+    q_low = (question or "").lower()
+
+    def repl(match: re.Match) -> str:
+        prefix = match.group("prefix")
+        quote = match.group("quote") or ""
+        table_ref = match.group("table")
+        suffix = match.group("suffix") or ""
+        bare = table_ref.split(".")[-1]
+        if bare not in latest_by_base:
+            return match.group(0)
+        # Respect explicit physical-table mentions: product users may really
+        # request the generic table by name.
+        if re.search(rf"(?<![a-z0-9_]){re.escape(bare.lower())}(?![a-z0-9_])", q_low):
+            return match.group(0)
+        replacement_bare = latest_by_base[bare]
+        if "." in table_ref:
+            replacement = ".".join(table_ref.split(".")[:-1] + [replacement_bare])
+        else:
+            replacement = replacement_bare
+        return f"{prefix}{quote}{replacement}{quote}{suffix}"
+
+    pattern = re.compile(
+        r"(?P<prefix>\b(?:FROM|JOIN)\s+)(?P<quote>\"?)(?P<table>[A-Za-z_][A-Za-z0-9_\.]*)(?P=quote)(?P<suffix>\b)",
+        flags=re.IGNORECASE,
+    )
+    rewritten, n = pattern.subn(repl, sql or "")
+    return rewritten, bool(n and rewritten != (sql or ""))
+
+
+def _version_suffix_year(table_name: str) -> int:
+    m = re.search(r"_(?P<year>(?:19|20)\d{2})$", table_name or "")
+    return int(m.group("year")) if m else 0
 
 
 def _collapse_duplicate_union(sql: str) -> tuple[str, bool]:
@@ -422,18 +503,32 @@ def _table_alias_map(sql: str, tables: list[TableInfo]) -> dict[str, tuple[Table
     alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]] = {}
     for table in tables:
         alias = _find_table_alias(sql, table.table_name)
+        referenced = _sql_references_table(sql, table.table_name)
         if alias:
             alias_map[alias] = (table, None)
-        alias_map[table.bare_name] = (table, None)
-        alias_map[table.table_name] = (table, None)
+        if referenced:
+            alias_map[table.bare_name] = (table, None)
+            alias_map[table.table_name] = (table, None)
     return alias_map
+
+
+def _sql_references_table(sql: str, table_name: str) -> bool:
+    bare = table_name.split(".")[-1]
+    full_re = re.escape(table_name).replace(r"\.", r'\."?')
+    public_bare_re = rf"(?:\"?public\"?\.)?\"?{re.escape(bare)}\"?"
+    pattern = re.compile(
+        rf"\b(?:FROM|JOIN)\s+(?:\"?{full_re}\"?|{public_bare_re})(?![A-Za-z0-9_])",
+        flags=re.IGNORECASE,
+    )
+    return bool(pattern.search(sql or ""))
 
 
 def _find_table_alias(sql: str, table_name: str) -> str | None:
     bare = table_name.split(".")[-1]
     full_re = re.escape(table_name).replace(r"\.", r'\."?')
+    public_bare_re = rf"(?:\"?public\"?\.)?\"?{re.escape(bare)}\"?"
     pattern = re.compile(
-        rf"\b(?:FROM|JOIN)\s+(?:\"?{full_re}\"?|\"?{re.escape(bare)}\"?)"
+        rf"\b(?:FROM|JOIN)\s+(?:\"?{full_re}\"?|{public_bare_re})"
         r"(?:\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?",
         flags=re.IGNORECASE,
     )
@@ -454,7 +549,12 @@ def _rewrite_column_aliases(
     rewritten = sql
     changed = False
     unique_aliases: dict[str, tuple[TableInfo, ColumnInfo] | None] = {}
+    referenced_table_names = {
+        table.table_name for table, _ in alias_map.values()
+    }
     for table in tables:
+        if table.table_name not in referenced_table_names:
+            continue
         for col in table.columns:
             for token in col.ref_tokens:
                 key = _strip_identifier_quotes(token).lower()
@@ -1227,6 +1327,31 @@ def _qualify_unqualified_area_geometry(
     return rewritten, changed
 
 
+def _rewrite_st_union_geography_area(sql: str) -> tuple[str, bool]:
+    rewritten = sql or ""
+    changed = False
+
+    def repl_cast(match: re.Match) -> str:
+        nonlocal changed
+        changed = True
+        geom = match.group("geom").strip()
+        return f"ST_Area(ST_Union({geom})::geography)"
+
+    patterns = [
+        re.compile(
+            r"ST_AREA\s*\(\s*ST_UNION\s*\(\s*(?P<geom>[A-Za-z_][A-Za-z0-9_\.]*|\"[^\"]+\")\s*::\s*GEOGRAPHY\s*\)\s*\)",
+            flags=re.IGNORECASE,
+        ),
+        re.compile(
+            r"ST_AREA\s*\(\s*ST_UNION\s*\(\s*CAST\s*\(\s*(?P<geom>[A-Za-z_][A-Za-z0-9_\.]*|\"[^\"]+\")\s+AS\s+GEOGRAPHY\s*\)\s*\)\s*\)",
+            flags=re.IGNORECASE,
+        ),
+    ]
+    for pattern in patterns:
+        rewritten = pattern.sub(repl_cast, rewritten)
+    return rewritten, changed
+
+
 def _rewrite_spatial_srid_transforms(
     sql: str,
     alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
@@ -1298,7 +1423,18 @@ def _rewrite_st_distance_srid_transforms(
         b = match.group("b")
         a_col = _lookup_column_ref(a, alias_map)
         b_col = _lookup_column_ref(b, alias_map)
-        if not a_col or not b_col or not a_col.is_geometry or not b_col.is_geometry:
+        if not a_col or not b_col:
+            known_col = a_col or b_col
+            unknown_ref = b if a_col else a
+            if (
+                known_col
+                and known_col.is_geometry
+                and _geometry_prefers_geography(known_col)
+                and _distance_ref_looks_like_geometry(unknown_ref)
+            ):
+                return f"ST_Distance({_as_geography(a)}, {_as_geography(b)})"
+            return match.group(0)
+        if not a_col.is_geometry or not b_col.is_geometry:
             return match.group(0)
         if not a_col.srid or not b_col.srid:
             return match.group(0)
@@ -1315,6 +1451,20 @@ def _rewrite_st_distance_srid_transforms(
 
     rewritten, n = pattern.subn(repl, sql)
     return rewritten, bool(n and rewritten != sql)
+
+
+def _geometry_prefers_geography(col: ColumnInfo) -> bool:
+    unit = (col.unit or "").lower()
+    if unit in {"meter", "metre", "meters", "metres", "m"} and col.srid not in _GEOGRAPHIC_SRIDS:
+        return False
+    return not col.srid or col.srid in _GEOGRAPHIC_SRIDS
+
+
+def _distance_ref_looks_like_geometry(ref: str) -> bool:
+    if "." not in (ref or ""):
+        return False
+    col = _strip_identifier_quotes(ref.split(".")[-1]).lower()
+    return col in {"geometry", "geom", "shape"}
 
 
 def _rewrite_distance_degree_multiplier_to_geography(sql: str) -> tuple[str, bool]:
@@ -1359,12 +1509,185 @@ def _rewrite_distance_degree_multiplier_to_geography(sql: str) -> tuple[str, boo
     return "".join(out), changed
 
 
+def _rewrite_line_length_aggregates(question: str, sql: str, tables: list[TableInfo]) -> tuple[str, bool]:
+    if not _question_requests_length_metric(question):
+        return sql, False
+    if re.search(r"\bST_LENGTH\s*\(", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    if re.search(r"\bJOIN\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    first = _first_from_table(sql, tables)
+    if not first:
+        return sql, False
+    table, qualifier = first
+    geom = _preferred_line_geometry(table)
+    if not geom:
+        return sql, False
+    geom_ref = _length_geometry_ref(sql, qualifier, geom)
+    length_expr = _st_length_measure_expr(geom_ref, geom)
+    divisor = "1000.0" if _question_or_sql_requests_kilometres(question, sql) else ""
+
+    changed = False
+    pattern = re.compile(
+        r"ROUND\s*\(\s*(?P<body>.+?)::\s*numeric\s*,\s*(?P<digits>\d+)\s*\)\s+AS\s+"
+        r"(?P<alias>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    def repl(match: re.Match) -> str:
+        nonlocal changed
+        body = match.group("body")
+        alias = match.group("alias")
+        if not (_length_alias(alias) or _bbox_length_body(body)):
+            return match.group(0)
+        aggregate = f"SUM({length_expr})"
+        if divisor:
+            aggregate = f"{aggregate} / {divisor}"
+        changed = True
+        return f"ROUND(({aggregate})::numeric, {match.group('digits')}) AS {alias}"
+
+    rewritten = pattern.sub(repl, sql or "", count=1)
+    return rewritten, changed and rewritten != (sql or "")
+
+
+def _question_requests_length_metric(question: str) -> bool:
+    q_low = (question or "").lower()
+    return any(token in q_low for token in (
+        "length",
+        "kilometer",
+        "kilometre",
+        "km",
+        "\u957f\u5ea6",
+        "\u603b\u957f",
+        "\u516c\u91cc",
+        "\u5343\u7c73",
+    ))
+
+
+def _question_or_sql_requests_kilometres(question: str, sql: str) -> bool:
+    text = f"{question or ''} {sql or ''}".lower()
+    return any(token in text for token in ("kilometer", "kilometre", " km", "_km", "\u516c\u91cc", "\u5343\u7c73"))
+
+
+def _preferred_line_geometry(table: TableInfo) -> ColumnInfo | None:
+    geoms = table.geometry_columns()
+    line_geoms = [geom for geom in geoms if "line" in (geom.pg_type or "").lower()]
+    if line_geoms:
+        return line_geoms[0]
+    return geoms[0] if len(geoms) == 1 else None
+
+
+def _length_geometry_ref(sql: str, qualifier: str, geom: ColumnInfo) -> str:
+    quoted_qualifier = f'"{_strip_identifier_quotes(qualifier)}"'
+    if re.search(rf"{re.escape(quoted_qualifier)}\s*\.", sql or "", flags=re.IGNORECASE):
+        return f"{quoted_qualifier}.{geom.quoted_ref}"
+    if re.search(rf"\b{re.escape(qualifier)}\s*\.", sql or "", flags=re.IGNORECASE):
+        return f"{qualifier}.{geom.quoted_ref}"
+    return geom.quoted_ref
+
+
+def _st_length_measure_expr(geom_ref: str, geom: ColumnInfo) -> str:
+    unit = (geom.unit or "").lower()
+    if unit in {"meter", "metre", "meters", "metres", "m"} and geom.srid not in _GEOGRAPHIC_SRIDS:
+        return f"ST_Length({geom_ref})"
+    if geom.srid and geom.srid not in _GEOGRAPHIC_SRIDS:
+        return f"ST_Length({geom_ref})"
+    return f"ST_Length({geom_ref}::geography)"
+
+
+def _length_alias(alias: str) -> bool:
+    alias_low = _strip_identifier_quotes(alias).lower()
+    return any(token in alias_low for token in ("length", "len", "km", "meter", "metre"))
+
+
+def _bbox_length_body(body: str) -> bool:
+    body_low = (body or "").lower()
+    return (
+        ("st_xmax" in body_low and "st_xmin" in body_low)
+        or ("st_ymax" in body_low and "st_ymin" in body_low)
+    )
+
+
+def _rewrite_knn_order_by_distance_alias(question: str, sql: str) -> tuple[str, bool]:
+    if not _question_requests_nearest_neighbor(question):
+        return sql, False
+    distance_projection = _find_distance_projection(sql)
+    if not distance_projection:
+        return sql, False
+    distance_alias, left_geom, right_geom = distance_projection
+    left_ref = _geometry_ref_for_knn(left_geom)
+    right_ref = _geometry_ref_for_knn(right_geom)
+    if not left_ref or not right_ref:
+        return sql, False
+
+    alias_re = re.escape(distance_alias.strip('"'))
+    pattern = re.compile(
+        rf"\bORDER\s+BY\s+\"?{alias_re}\"?\s*(?:ASC|DESC)?\s*(?P<limit>\bLIMIT\s+\d+\b)",
+        flags=re.IGNORECASE,
+    )
+    replacement = f"ORDER BY {left_ref} <-> {right_ref} \\g<limit>"
+    rewritten, n = pattern.subn(replacement, sql or "", count=1)
+    return rewritten, bool(n and rewritten != (sql or ""))
+
+
+def _question_requests_nearest_neighbor(question: str) -> bool:
+    q = question or ""
+    q_low = q.lower()
+    markers = (
+        "nearest",
+        "closest",
+        "nearby",
+        "k-nearest",
+        "knn",
+        "最近",
+        "最近的",
+        "距离",
+    )
+    return any(marker in q_low for marker in markers)
+
+
+def _find_distance_projection(sql: str) -> tuple[str, str, str] | None:
+    pattern = re.compile(r"\bST_DISTANCE\s*\(", flags=re.IGNORECASE)
+    for match in pattern.finditer(sql or ""):
+        open_paren = match.end() - 1
+        close = _find_matching_paren(sql, open_paren)
+        if close < 0:
+            continue
+        args = _split_top_level_args(sql[open_paren + 1:close])
+        if len(args) != 2:
+            continue
+        alias_match = re.match(
+            r"\s+AS\s+(?P<alias>\"?[A-Za-z_][A-Za-z0-9_]*\"?)",
+            sql[close + 1:],
+            flags=re.IGNORECASE,
+        )
+        if not alias_match:
+            continue
+        return alias_match.group("alias"), args[0].strip(), args[1].strip()
+    return None
+
+
+def _geometry_ref_for_knn(expr: str) -> str:
+    value = (expr or "").strip()
+    value = re.sub(r"::\s*geography\b", "", value, flags=re.IGNORECASE).strip()
+    cast_match = re.fullmatch(
+        r"CAST\s*\(\s*(?P<inner>[A-Za-z_][A-Za-z0-9_]*\.(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s+AS\s+GEOGRAPHY\s*\)",
+        value,
+        flags=re.IGNORECASE,
+    )
+    if cast_match:
+        return cast_match.group("inner")
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*\.(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)", value):
+        return value
+    return ""
+
+
 def _rewrite_existential_spatial_join_aggregate(question: str, sql: str) -> tuple[str, bool]:
     q_low = (question or "").lower()
     if not any(token in q_low for token in ("any", "exists", "intersect any", "任何", "任一", "至少一个")):
         return sql, False
     pattern = re.compile(
-        r"^\s*SELECT\s+(?P<select>SUM\s*\(.*\))\s+FROM\s+"
+        r"^\s*SELECT\s+(?P<select>.+?)\s+FROM\s+"
         r"(?P<left>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<la>[A-Za-z_][A-Za-z0-9_]*)\s+"
         r"JOIN\s+(?P<right>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<ra>[A-Za-z_][A-Za-z0-9_]*)\s+"
         r"ON\s+(?P<on>ST_INTERSECTS\s*\([^)]*\))\s+WHERE\s+(?P<where>.*?)(?P<limit>\s+LIMIT\s+\d+)?\s*$",
@@ -1376,18 +1699,49 @@ def _rewrite_existential_spatial_join_aggregate(question: str, sql: str) -> tupl
     select_expr = m.group("select")
     left_alias = m.group("la")
     right_alias = m.group("ra")
-    where = m.group("where").strip()
-    if f"{right_alias}." in select_expr or f"{right_alias}." in where:
+    if not _select_is_single_sum_aggregate(select_expr):
         return sql, False
+    if _expr_references_alias(select_expr, right_alias):
+        return sql, False
+
+    left_parts: list[str] = []
+    exists_parts = [m.group("on").strip()]
+    for part in _split_top_level_and_predicates(m.group("where").strip()):
+        predicate = part.strip()
+        if not predicate:
+            continue
+        if _expr_references_alias(predicate, right_alias):
+            exists_parts.append(predicate)
+        else:
+            left_parts.append(predicate)
+    if not left_parts:
+        return sql, False
+
+    where = " AND ".join(left_parts)
+    exists_where = " AND ".join(exists_parts)
     exists_sql = (
         f"EXISTS (SELECT 1 FROM {m.group('right')} AS {right_alias} "
-        f"WHERE {m.group('on')})"
+        f"WHERE {exists_where})"
     )
     rewritten = (
         f"SELECT {select_expr} FROM {m.group('left')} AS {left_alias} "
         f"WHERE {where} AND {exists_sql}{m.group('limit') or ''}"
     )
     return rewritten, True
+
+
+def _select_is_single_sum_aggregate(select_expr: str) -> bool:
+    text = (select_expr or "").strip()
+    match = re.match(r"SUM\s*\(", text, flags=re.IGNORECASE)
+    if not match:
+        return False
+    close = _find_matching_paren(text, match.end() - 1)
+    if close < 0:
+        return False
+    tail = text[close + 1:].strip()
+    if not tail:
+        return True
+    return bool(re.fullmatch(r"AS\s+(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)", tail, flags=re.IGNORECASE))
 
 
 def _rewrite_distinct_name_not_null(
@@ -1774,6 +2128,11 @@ def _expr_references_alias(expr: str, alias: str) -> bool:
     return bool(re.search(rf"\b{re.escape(alias)}\.", expr or "", flags=re.IGNORECASE))
 
 
+def _qualifier_ref_pattern(qualifier: str) -> str:
+    bare = _strip_identifier_quotes(qualifier)
+    return rf"(?:\b{re.escape(bare)}|\"{re.escape(bare)}\")\s*\."
+
+
 def _rewrite_distinct_entity_count(
     question: str,
     sql: str,
@@ -1823,8 +2182,9 @@ def _rewrite_exists_spatial_count_to_distinct(
     ident = table.identifier_column()
     if not ident:
         return sql, False
+    qualifier_ref = _qualifier_ref_pattern(qualifier)
     if not re.search(
-        rf"\bST_(?:INTERSECTS|CONTAINS|WITHIN|DWITHIN)\s*\([^)]*\b{re.escape(qualifier)}\.",
+        rf"\bST_(?:INTERSECTS|CONTAINS|WITHIN|DWITHIN)\s*\([^)]*{qualifier_ref}",
         sql or "",
         flags=re.IGNORECASE | re.DOTALL,
     ):
@@ -1965,6 +2325,131 @@ def _question_mentions_semantic_token(question: str, token: str) -> bool:
             return False
         return bool(re.search(rf"(?<![A-Za-z0-9_]){re.escape(token_low)}(?![A-Za-z0-9_])", q_low))
     return token_low in q_low
+
+
+def _rewrite_centroid_label_projection_order(question: str, sql: str) -> tuple[str, bool]:
+    if not _question_requests_centroid_text(question, sql):
+        return sql, False
+    match = re.match(
+        r"^(?P<prefix>\s*SELECT\s+)(?P<select>.+?)(?P<suffix>\s+FROM\s+.+)$",
+        sql or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return sql, False
+    items = [part.strip() for part in _split_top_level_args(match.group("select"))]
+    if len(items) != 2:
+        return sql, False
+    first_centroid = _is_centroid_text_projection(items[0])
+    second_centroid = _is_centroid_text_projection(items[1])
+    if not first_centroid or second_centroid:
+        return sql, False
+    if not _is_simple_column_projection(items[1]):
+        return sql, False
+    rewritten = f"{match.group('prefix')}{items[1]}, {items[0]}{match.group('suffix')}"
+    return rewritten, rewritten != (sql or "")
+
+
+def _question_requests_centroid_text(question: str, sql: str) -> bool:
+    text = f"{question or ''} {sql or ''}".lower()
+    return "st_centroid" in text or "centroid" in text or "\u8d28\u5fc3" in text or "\u4e2d\u5fc3\u70b9" in text
+
+
+def _is_centroid_text_projection(expr: str) -> bool:
+    expr_low = (expr or "").lower()
+    return "st_centroid" in expr_low and ("st_astext" in expr_low or "st_asgeojson" in expr_low)
+
+
+def _is_simple_column_projection(expr: str) -> bool:
+    value = re.sub(
+        r"\s+AS\s+(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)\s*$",
+        "",
+        (expr or "").strip(),
+        flags=re.IGNORECASE,
+    )
+    return bool(re.fullmatch(
+        r"(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)",
+        value,
+        flags=re.IGNORECASE,
+    ))
+
+
+def _rewrite_conditional_sum_pivot_to_grouped_rows(question: str, sql: str) -> tuple[str, bool]:
+    if not _question_prefers_grouped_rows(question):
+        return sql, False
+    if re.search(r"\bGROUP\s+BY\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    match = re.match(
+        r"^\s*SELECT\s+(?P<select>.+?)\s+FROM\s+(?P<rest>.+?)\s*$",
+        sql or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return sql, False
+    items = [part.strip() for part in _split_top_level_args(match.group("select"))]
+    if len(items) < 2:
+        return sql, False
+    parsed = [_parse_conditional_sum_projection(item) for item in items]
+    if any(item is None for item in parsed):
+        return sql, False
+    first = parsed[0]
+    assert first is not None
+    category = first["category"]
+    measure = first["measure"]
+    values = []
+    for item in parsed:
+        assert item is not None
+        if item["category"].lower() != category.lower() or item["measure"].lower() != measure.lower():
+            return sql, False
+        values.append(item["value"])
+    rest = match.group("rest").strip().rstrip(";").strip()
+    limit = ""
+    limit_match = re.search(r"\s+LIMIT\s+\d+\s*$", rest, flags=re.IGNORECASE)
+    if limit_match:
+        limit = rest[limit_match.start():].rstrip()
+        rest = rest[:limit_match.start()].rstrip()
+    predicate = f"{category} IN ({', '.join(values)})"
+    if re.search(r"\bWHERE\b", rest, flags=re.IGNORECASE):
+        rest = f"{rest} AND {predicate}"
+    else:
+        rest = f"{rest} WHERE {predicate}"
+    rewritten = (
+        f"SELECT {category}, SUM({measure}) AS total_value FROM {rest} "
+        f"GROUP BY {category} ORDER BY {category}{limit}"
+    )
+    return rewritten, rewritten != (sql or "")
+
+
+def _question_prefers_grouped_rows(question: str) -> bool:
+    q_low = (question or "").lower()
+    return any(token in q_low for token in (
+        "each",
+        "per ",
+        " by ",
+        "group",
+        "separately",
+        "\u5206\u522b",
+        "\u5206\u7ec4",
+    ))
+
+
+def _parse_conditional_sum_projection(expr: str) -> dict[str, str] | None:
+    ref = r'(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)'
+    literal = r"(?:'[^']*'|\d+(?:\.\d+)?)"
+    pattern = re.compile(
+        rf"^\s*SUM\s*\(\s*CASE\s+WHEN\s+(?P<category>{ref})\s*=\s*(?P<value>{literal})\s+"
+        rf"THEN\s+(?P<measure>{ref})\s+ELSE\s+0\s+END\s*\)\s+AS\s+"
+        r"(?P<alias>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)\s*$",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    match = pattern.match(expr or "")
+    if not match:
+        return None
+    return {
+        "category": match.group("category").strip(),
+        "value": match.group("value").strip(),
+        "measure": match.group("measure").strip(),
+    }
 
 
 def _rewrite_question_limit(question: str, sql: str) -> tuple[str, bool]:
@@ -2261,6 +2746,58 @@ def _split_top_level_args(text: str) -> list[str]:
                 start = i + 1
     args.append(text[start:])
     return args
+
+
+def _split_top_level_and_predicates(text: str) -> list[str]:
+    parts: list[str] = []
+    depth = 0
+    in_string = False
+    in_identifier = False
+    pending_between_and = False
+    start = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "'":
+            if in_string and i + 1 < len(text) and text[i + 1] == "'":
+                i += 2
+                continue
+            in_string = not in_string
+            i += 1
+            continue
+        if ch == '"' and not in_string:
+            in_identifier = not in_identifier
+            i += 1
+            continue
+        if not in_string and not in_identifier:
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth = max(0, depth - 1)
+            elif depth == 0 and _word_at(text, i, "BETWEEN"):
+                pending_between_and = True
+                i += len("BETWEEN")
+                continue
+            elif depth == 0 and _word_at(text, i, "AND"):
+                if pending_between_and:
+                    pending_between_and = False
+                else:
+                    parts.append(text[start:i])
+                    start = i + len("AND")
+                i += len("AND")
+                continue
+        i += 1
+    parts.append(text[start:])
+    return parts
+
+
+def _word_at(text: str, pos: int, word: str) -> bool:
+    end = pos + len(word)
+    if text[pos:end].lower() != word.lower():
+        return False
+    before = text[pos - 1] if pos > 0 else " "
+    after = text[end] if end < len(text) else " "
+    return not (before.isalnum() or before == "_") and not (after.isalnum() or after == "_")
 
 
 def _as_geography(expr: str) -> str:

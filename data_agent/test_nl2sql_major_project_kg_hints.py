@@ -77,6 +77,10 @@ def _schema_for(table_name: str) -> dict:
                 "is_geometry": True,
             },
         ],
+        "cq_land_use_dltb": [
+            {"column_name": "DLMC", "data_type": "text", "aliases": ["dlmc", "\u5730\u7c7b\u540d\u79f0"]},
+            {"column_name": "geometry", "data_type": "USER-DEFINED", "aliases": ["geometry"], "is_geometry": True},
+        ],
         "mp_pre_review": [
             {"column_name": "project_id", "data_type": "text", "aliases": ["\u9879\u76eeID"]},
             {"column_name": "pre_review_status", "data_type": "text", "aliases": ["\u9884\u5ba1\u72b6\u6001"]},
@@ -352,6 +356,72 @@ def test_non_major_query_has_no_kg_hints_or_prompt_block():
         result = build_nl2sql_context("统计中心城区建筑数据中层高大于40层的建筑数量")
 
     assert result["kg_hints"] == {}
+    assert "KG hints:" not in result["grounding_prompt"]
+
+
+def test_generic_land_use_query_does_not_activate_major_project_kg_from_mp_noise():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [
+            {
+                "table_name": "cq_land_use_dltb",
+                "display_name": "\u571f\u5730\u5229\u7528\u73b0\u72b6\u56fe\u6591",
+                "description": "\u571f\u5730\u5229\u7528\u56fe\u6591\u8868",
+                "geometry_type": "MULTIPOLYGON",
+                "confidence": 0.56,
+            },
+            {
+                "table_name": "mp_parcel",
+                "display_name": "\u91cd\u5927\u9879\u76ee\u5730\u5757",
+                "description": "\u9879\u76ee\u5730\u5757\u8868",
+                "geometry_type": "POLYGON",
+                "confidence": 0.56,
+            },
+        ],
+        "matched_columns": {
+            "cq_land_use_dltb": [
+                {"column_name": "DLMC", "aliases": ["dlmc"], "is_geometry": False},
+                {"column_name": "geometry", "aliases": ["\u51e0\u4f55"], "is_geometry": True},
+            ],
+            "mp_parcel": [
+                {"column_name": "land_use_type", "aliases": ["\u5730\u7c7b"], "is_geometry": False},
+                {"column_name": "geom", "aliases": ["\u51e0\u4f55"], "is_geometry": True},
+            ],
+        },
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+
+    kg_hint_noise = {
+        "candidate_tables": ["mp_project_list", "mp_parcel"],
+        "join_paths": ["mp_project_list.project_id -> mp_parcel.project_id"],
+        "required_edges": [],
+    }
+
+    with patch("data_agent.nl2sql_grounding.classify_intent", return_value=_fake_intent()), \
+         patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=_schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=100), \
+         patch("data_agent.nl2sql_grounding._build_warehouse_join_hints", return_value=None), \
+         patch(
+             "data_agent.major_project_kg_resolver.resolve_major_project_kg_hints",
+             return_value=kg_hint_noise,
+         ) as mock_resolver:
+        result = build_nl2sql_context(
+            "\u8ba1\u7b97\u6240\u6709\u6c34\u7530\uff08DLMC = '\u6c34\u7530'\uff09\u7684\u771f\u5b9e\u7a7a\u95f4\u603b\u9762\u79ef",
+            family="gemma",
+        )
+
+    mock_resolver.assert_not_called()
+    assert result["kg_hints"] == {}
+    candidate_names = {table["table_name"] for table in result["candidate_tables"]}
+    assert not any(name.startswith("mp_") for name in candidate_names)
     assert "KG hints:" not in result["grounding_prompt"]
 
 

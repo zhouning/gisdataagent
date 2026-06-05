@@ -75,6 +75,15 @@ class EmbeddingRegistry:
             "api_base_pinned": True,
             "description": "Nomic Embed Text v2 MoE via Ollama @ 192.168.43.9",
         },
+        "nomic-embed-text-v2-moe-host228": {
+            "backend": "ollama",
+            "dimension": 768,
+            "online": False,
+            "ollama_model_id": "nomic-embed-text-v2-moe:latest",
+            "api_base": "http://192.168.25.228:11434",
+            "api_base_pinned": True,
+            "description": "Nomic Embed Text v2 MoE via Ollama @ 192.168.25.228",
+        },
     }
 
     models: dict[str, dict] = {}
