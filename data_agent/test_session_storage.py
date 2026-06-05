@@ -9,6 +9,7 @@ Covers:
 """
 
 from unittest.mock import MagicMock, patch, PropertyMock
+from datetime import datetime
 
 import pytest
 
@@ -153,6 +154,10 @@ class TestSessionResumptionLogic:
 class TestSessionAPI:
     """Test the session list/delete endpoints."""
 
+    class _UserObj:
+        identifier = "user1"
+        metadata = {"role": "analyst"}
+
     @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
     def test_sessions_list_unauthorized(self, mock_user):
         import asyncio
@@ -173,6 +178,30 @@ class TestSessionAPI:
         import json
         body = json.loads(resp.body)
         assert body["sessions"] == []
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request",
+           return_value=_UserObj())
+    def test_sessions_list_accepts_chainlit_user_object(self, mock_user, mock_engine):
+        import asyncio
+        import json
+        from data_agent.frontend_api import _api_sessions_list
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = [
+            ("thread-1", "历史会话", datetime(2026, 6, 5, 12, 0), datetime(2026, 6, 5, 12, 5))
+        ]
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        request = MagicMock()
+        resp = asyncio.run(_api_sessions_list(request))
+
+        assert resp.status_code == 200
+        body = json.loads(resp.body)
+        assert body["sessions"][0]["id"] == "thread-1"
 
     @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
     def test_session_delete_unauthorized(self, mock_user):
@@ -214,3 +243,46 @@ class TestSessionAPI:
         request.path_params = {"session_id": "nonexistent"}
         resp = asyncio.run(_api_session_delete(request))
         assert resp.status_code == 404
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request",
+           return_value=_UserObj())
+    def test_session_delete_accepts_chainlit_user_object(self, mock_user, mock_engine):
+        import asyncio
+        import json
+        from data_agent.frontend_api import _api_session_delete
+
+        mock_conn = MagicMock()
+        mock_result = MagicMock()
+        mock_result.rowcount = 1
+        mock_conn.execute.return_value = mock_result
+        mock_eng = MagicMock()
+        mock_eng.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_eng.connect.return_value.__exit__ = MagicMock(return_value=False)
+        mock_engine.return_value = mock_eng
+
+        request = MagicMock()
+        request.path_params = {"session_id": "thread-1"}
+        resp = asyncio.run(_api_session_delete(request))
+
+        assert resp.status_code == 200
+        body = json.loads(resp.body)
+        assert body["status"] == "deleted"
+
+    @patch("data_agent.memory.recall_memories",
+           return_value={"status": "success", "memories": []})
+    @patch("data_agent.frontend_api._get_user_from_request",
+           return_value=_UserObj())
+    def test_memory_search_accepts_frontend_keyword_param(self, mock_user, mock_recall):
+        import asyncio
+        from data_agent.frontend_api import _api_memory_search
+
+        request = MagicMock()
+        request.query_params = {"keyword": "桥梁", "type": "analysis_result"}
+        resp = asyncio.run(_api_memory_search(request))
+
+        assert resp.status_code == 200
+        mock_recall.assert_called_once_with(
+            memory_type="analysis_result",
+            keyword="桥梁",
+        )

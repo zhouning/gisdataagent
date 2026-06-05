@@ -173,12 +173,25 @@ def _get_user_from_request(request: Request):
         return None
 
 
+def _user_identifier(user) -> str:
+    """Return a stable username from Chainlit User objects, JWT dicts, or strings."""
+    if hasattr(user, "identifier"):
+        return str(user.identifier)
+    if isinstance(user, dict):
+        return str(user.get("identifier") or user.get("id") or user)
+    if hasattr(user, "id"):
+        return str(user.id)
+    return str(user)
+
+
 def _set_user_context(user):
     """Set ContextVars from a decoded JWT user object."""
-    username = user.identifier if hasattr(user, "identifier") else str(user)
+    username = _user_identifier(user)
     role = "analyst"
     if hasattr(user, "metadata") and isinstance(user.metadata, dict):
         role = user.metadata.get("role", "analyst")
+    elif isinstance(user, dict) and isinstance(user.get("metadata"), dict):
+        role = user["metadata"].get("role", "analyst")
     current_user_id.set(username)
     current_user_role.set(role)
     return username, role
@@ -1136,7 +1149,7 @@ async def _api_sessions_list(request: Request):
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
-    username = user.get("identifier") or user.get("id")
+    username = _user_identifier(user)
     engine = get_engine()
     if not engine:
         return JSONResponse({"sessions": []})
@@ -1167,7 +1180,7 @@ async def _api_session_delete(request: Request):
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
-    username = user.get("identifier") or user.get("id")
+    username = _user_identifier(user)
     session_id = request.path_params["session_id"]
     engine = get_engine()
     if not engine:
@@ -2988,7 +3001,7 @@ async def _api_memory_search(request: Request):
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     _set_user_context(user)
-    query = request.query_params.get("q", "")
+    query = request.query_params.get("q") or request.query_params.get("keyword", "")
     mem_type = request.query_params.get("type", "")
     from .memory import recall_memories
     result = recall_memories(memory_type=mem_type, keyword=query)

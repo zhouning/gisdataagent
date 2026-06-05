@@ -306,6 +306,55 @@ Documentation implication:
 - The script should show both `save_memory` and `recall_memories`.
 - Memory should be described as persistent user context in Postgres, not an in-process cache.
 
+## Memory and Conversation History Check
+
+This check separated three similarly named capabilities:
+
+1. Competition Memory: explicit Agent memory tools, persisted in `agent_user_memories`.
+2. Smart Memory UI: auto-extracted `auto_extract` memories shown in user settings and the data panel.
+3. Conversation History: Chainlit `Thread`/`Step` session persistence for reopening chat threads.
+
+Real PostgreSQL verification:
+
+```text
+agent_user_memories CRUD:
+  save_analysis=success
+  recall_count=1
+  delete_analysis=success
+  after_delete_count=0
+
+analysis_perspective:
+  save_perspective=success
+  injected_perspective=Gemma比赛演示关注真实GIS工具调用和Memory
+  delete_perspective=success
+
+auto_extract smart memory:
+  save_auto_extract.saved=1
+  auto_found=1
+  delete_auto=success
+
+conversation history:
+  Chainlit data layer tables ready
+  sessions_api_found=1
+  session_delete_status=deleted
+```
+
+Bug findings and fixes:
+
+- `/api/sessions` originally assumed decoded users were dicts and called `user.get(...)`. Chainlit `decode_jwt()` returns a `User` object, so the real history-session path could fail before querying `Thread`.
+- `frontend_api._set_user_context()` now uses a shared `_user_identifier()` helper that supports Chainlit `User` objects, JWT dicts, and strings.
+- `/api/memory/search` had duplicate route definitions and the effective handler read `q`, while `MemorySearchTab` sends `keyword`. The handler now accepts both `q` and `keyword`.
+
+Regression:
+
+```text
+data_agent/test_memory.py
+data_agent/test_conversation_memory.py
+data_agent/test_session_storage.py
+
+75 passed, 1 warning
+```
+
 ## Focused Regression
 
 Focused regression tests after syncing the GitHub development branch:

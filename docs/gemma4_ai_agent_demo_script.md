@@ -280,6 +280,27 @@ world_model=steps_run=50, n_blocks=562, n_selected=50, total_reward=230.75136300
 
 > AI Agent 赛道要求展示 Memory。这里系统把本次 NL2SQL 和 WorldModel 的真实执行结果保存为用户空间记忆，随后按关键词从 Postgres 检索回来。后续对话可以复用这些上下文。
 
+## Memory 考察项边界
+
+比赛 README 中 AI Agent 赛道的 Memory 要点，应理解为 Agent 能把有价值的用户偏好、分析结果或上下文事实持久化，并在后续请求中检索复用。演示时优先展示可审计的工具级记忆能力：
+
+```text
+save_memory(memory_type="analysis_result", key="Gemma4空间演示_...", value={...})
+recall_memories(memory_type="analysis_result", keyword="Gemma4空间演示")
+storage=PostgreSQL agent_user_memories
+scope=per-user persistent memory
+```
+
+和 Memory 相关但不作为主评分点的能力：
+
+- 个人信息里的“智能记忆”：展示系统自动提取的 `auto_extract` 记忆，支持列表和删除，属于长期记忆管理 UI。
+- 右侧数据面板“记忆”：搜索 `region`、`viz_preference`、`analysis_result`、`auto_extract`、`custom` 等用户记忆。
+- 对话框“历史会话”：恢复 Chainlit `Thread/Step` 对话记录，属于会话历史/产品体验，不等同于 Agent Memory；可作为辅助展示，但不要替代 `save_memory`/`recall_memories`。
+
+录制建议：
+
+> Memory 这里不只展示历史聊天列表，而是让 Gemma 4 调用记忆工具，把已经执行过的空间 SQL 和世界模型规划结果保存到用户级持久化记忆中，再通过关键词检索回来。历史会话用于恢复 UI 对话线程，智能记忆用于管理自动提取事实，它们是增强体验；比赛主证据是工具调用日志和 Postgres 持久化结果。
+
 ## 5 分钟时间分配
 
 ```text
