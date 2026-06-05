@@ -4,6 +4,7 @@ import LinkTable from "./derive/LinkTable";
 import DeriveStatusSummary from "./derive/DeriveStatusSummary";
 import RerunButton from "./derive/RerunButton";
 import DataModelPreviewModal from "./derive/DataModelPreviewModal";
+import OutboxDeadLetterPanel from "./derive/OutboxDeadLetterPanel";
 
 interface Props {
   versionId: string | null;
@@ -38,6 +39,12 @@ export default function DeriveSubTab({versionId, userRole}: Props) {
           isAdmin={isAdmin}
           onCompleted={() => setRefreshTick(t => t + 1)}
         />
+        {isAdmin && (
+          <OutboxDeadLetterPanel
+            refreshTick={refreshTick}
+            onRetryComplete={() => setRefreshTick(t => t + 1)}
+          />
+        )}
         {versionId && (
           <button
             onClick={() => setDataModelOpen(true)}
