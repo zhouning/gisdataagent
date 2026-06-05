@@ -355,6 +355,55 @@ export const getDeriveStatus = (versionId: string) =>
     .then(j<{strategies: DerivationStatusByStrategy}>);
 
 
+// ---------- P4: outbox dead-letter operations ----------
+
+export type OutboxStatus = "pending" | "in_flight" | "done" | "failed";
+
+export interface OutboxEvent {
+  id: string;
+  event_type: string;
+  payload: Record<string, any>;
+  created_at: string | null;
+  processed_at: string | null;
+  attempts: number;
+  last_error: string | null;
+  next_attempt_at: string | null;
+  status: OutboxStatus;
+}
+
+export type OutboxCounts = Record<OutboxStatus, number>;
+
+export interface OutboxRetryResult {
+  id: string;
+  status: "retried" | "skipped";
+  reason?: string;
+}
+
+export const listOutboxEvents = (
+  params: {status?: OutboxStatus; event_type?: string;
+           limit?: number; offset?: number} = {},
+) => {
+  const filtered: Record<string,string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") filtered[k] = String(v);
+  }
+  const q = new URLSearchParams(filtered).toString();
+  return fetch(`/api/std/outbox/events${q ? `?${q}` : ""}`)
+    .then(j<{events: OutboxEvent[]; counts: OutboxCounts}>);
+};
+
+export const retryOutboxEvent = (eventId: string) =>
+  fetch(`/api/std/outbox/events/${eventId}/retry`, {method: "POST"})
+    .then(j<{result: OutboxRetryResult}>);
+
+export const retryOutboxEvents = (eventIds: string[]) =>
+  fetch("/api/std/outbox/events/retry", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({event_ids: eventIds}),
+  }).then(j<{retried: OutboxRetryResult[]; skipped: OutboxRetryResult[]}>);
+
+
 // ---------- Wave 8: data-model snapshot ----------
 
 export interface DataModelStats {
