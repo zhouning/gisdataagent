@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-03 &nbsp;|&nbsp; **Current version**: v25.3 &nbsp;|&nbsp; **Next**: P4 (Standards Platform 审定流模板可视化 / 批量回滚 / 跨标准影响图谱) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-05 &nbsp;|&nbsp; **Current version**: v25.4 &nbsp;|&nbsp; **Next**: P4 remaining (Standards Platform 审定流模板可视化 / 批量回滚 / 跨标准影响图谱) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -51,6 +51,16 @@
 - [x] **Round-trip 验证** — 导出的 XMI 可被现有 `parse_xmi_file()` 解析出 class / attribute / multiplicity；新增 exporter + API focused tests，前端 build 通过。
 
 > P3 首个生产级闭环完成：CDM/LDM/PDM + PostgreSQL DDL + EA-compatible XMI export。下一步进入 P4：审定流模板可视化、批量回滚、跨标准影响图谱。
+
+---
+
+## v25.4 — Standards Platform P4 First Slice (已完成, 2026-06-05)
+
+- [x] **Outbox dead-letter UI** — 在 `DeriveSubTab` 增加 admin-only outbox 运维面板，可查看 `failed` / `pending` / `in_flight` / `done` 事件、展开 payload 与 last_error，并支持单条与批量 retry。
+- [x] **Outbox admin API** — 新增 `GET /api/std/outbox/events`、`POST /api/std/outbox/events/{id}/retry`、`POST /api/std/outbox/events/retry`；保留 worker at-least-once 语义，不删除或编辑事件 payload。
+- [x] **测试覆盖** — 新增 outbox repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
+
+> P4 仍未完成的主线：审定流模板可视化、批量回滚、跨标准影响图谱。
 
 ---
 
