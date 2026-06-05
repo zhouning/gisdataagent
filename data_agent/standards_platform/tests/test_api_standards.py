@@ -48,10 +48,13 @@ def test_outbox_status_admin_only(monkeypatch):
     r = _client().get("/api/std/outbox/status")
     assert r.status_code == 403
     _auth_user(monkeypatch, role="admin")
-    with patch("data_agent.api.standards_routes.get_engine") as mock_eng:
-        mock_conn = mock_eng.return_value.__enter__.return_value
-        mock_conn.execute.return_value.mappings.return_value.all.return_value = []
-        mock_eng.return_value.connect.return_value.__enter__ = lambda s: mock_conn
-        mock_eng.return_value.connect.return_value.__exit__ = lambda s, *a: None
+    with patch(
+        "data_agent.api.standards_routes._outbox_admin.get_counts",
+        return_value={"pending": 0, "in_flight": 0, "done": 0, "failed": 0},
+    ) as get_counts:
         r = _client().get("/api/std/outbox/status")
     assert r.status_code == 200
+    assert r.json() == {
+        "counts": {"pending": 0, "in_flight": 0, "done": 0, "failed": 0}
+    }
+    get_counts.assert_called_once_with()

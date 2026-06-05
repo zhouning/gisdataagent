@@ -15,6 +15,7 @@ from starlette.routing import Route
 from ..db_engine import get_engine
 from ..observability import get_logger
 from ..standards_platform import repository, outbox
+from ..standards_platform import outbox_admin as _outbox_admin
 from ..standards_platform.ingestion.uploader import ingest_upload
 from ..standards_platform.ingestion.web_fetcher import fetch as web_fetch, save_manual, NotAllowed
 from ..standards_platform.analysis.deduper import find_similar_clauses
@@ -70,6 +71,16 @@ def _auth_or_401(request: Request):
         return None, None, JSONResponse({"error": "Unauthorized"}, status_code=401)
     username, role = _set_user_context(u)
     return username, role, None
+
+
+def _parse_int_param(request: Request, name: str, default: int) -> int:
+    raw = request.query_params.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError as e:
+        raise ValueError(f"{name} must be an integer") from e
 
 
 async def list_documents(request: Request):
@@ -235,12 +246,58 @@ async def web_manual_route(request: Request):
 async def outbox_status(request: Request):
     user, username, role, err = _require_admin(request)
     if err: return err
-    eng = get_engine()
-    with eng.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT status, COUNT(*) AS n FROM std_outbox GROUP BY status"
-        )).mappings().all()
-    return JSONResponse({"counts": {r["status"]: r["n"] for r in rows}})
+    return JSONResponse({"counts": _outbox_admin.get_counts()})
+
+
+async def list_outbox_events(request: Request):
+    user, username, role, err = _require_admin(request)
+    if err: return err
+    try:
+        limit = _parse_int_param(request, "limit", 50)
+        offset = _parse_int_param(request, "offset", 0)
+        events = _outbox_admin.list_events(
+            status=request.query_params.get("status"),
+            event_type=request.query_params.get("event_type"),
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return JSONResponse({"events": events, "counts": _outbox_admin.get_counts()})
+
+
+async def retry_outbox_event(request: Request):
+    user, username, role, err = _require_admin(request)
+    if err: return err
+    result = _outbox_admin.retry_event(
+        request.path_params["event_id"],
+        by_user=username,
+    )
+    return JSONResponse({"result": result})
+
+
+async def retry_outbox_events(request: Request):
+    user, username, role, err = _require_admin(request)
+    if err: return err
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+    event_ids = body.get("event_ids") if isinstance(body, dict) else None
+    if not isinstance(event_ids, list) or not event_ids:
+        return JSONResponse(
+            {"error": "event_ids must be a non-empty list"},
+            status_code=400,
+        )
+    if any(not isinstance(event_id, str) or not event_id
+           for event_id in event_ids):
+        return JSONResponse(
+            {"error": "event_ids must contain non-empty strings"},
+            status_code=400,
+        )
+    return JSONResponse(
+        _outbox_admin.retry_events(event_ids, by_user=username)
+    )
 
 
 async def lock_clause(request: Request):
@@ -1196,6 +1253,11 @@ standards_routes = [
     Route("/api/std/web/fetch", endpoint=web_fetch_route, methods=["POST"]),
     Route("/api/std/web/manual", endpoint=web_manual_route, methods=["POST"]),
     Route("/api/std/outbox/status", endpoint=outbox_status, methods=["GET"]),
+    Route("/api/std/outbox/events", endpoint=list_outbox_events, methods=["GET"]),
+    Route("/api/std/outbox/events/retry",
+          endpoint=retry_outbox_events, methods=["POST"]),
+    Route("/api/std/outbox/events/{event_id}/retry",
+          endpoint=retry_outbox_event, methods=["POST"]),
     Route("/api/std/clauses/{clause_id}/lock",
           endpoint=lock_clause, methods=["POST"]),
     Route("/api/std/clauses/{clause_id}/heartbeat",
