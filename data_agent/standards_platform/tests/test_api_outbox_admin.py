@@ -150,6 +150,37 @@ def test_retry_outbox_events_rejects_empty_bulk(monkeypatch):
     assert resp.json()["error"] == "event_ids must be a non-empty list"
 
 
+def test_retry_outbox_events_rejects_too_many_ids(monkeypatch):
+    _auth_user(monkeypatch, username="admin", role="admin")
+    event_ids = [f"evt-{i}" for i in range(201)]
+
+    resp = _client().post(
+        "/api/std/outbox/events/retry",
+        json={"event_ids": event_ids},
+    )
+
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "event_ids must contain at most 200 ids"
+
+
+def test_retry_outbox_events_accepts_max_ids(monkeypatch):
+    _auth_user(monkeypatch, username="admin", role="admin")
+    event_ids = [f"evt-{i}" for i in range(200)]
+    result = {"retried": [], "skipped": []}
+    with patch(
+        "data_agent.api.standards_routes._outbox_admin.retry_events",
+        return_value=result,
+    ) as retry:
+        resp = _client().post(
+            "/api/std/outbox/events/retry",
+            json={"event_ids": event_ids},
+        )
+
+    assert resp.status_code == 200
+    assert resp.json() == result
+    retry.assert_called_once_with(event_ids, by_user="admin")
+
+
 def test_retry_outbox_events_rejects_non_string_ids(monkeypatch):
     _auth_user(monkeypatch, username="admin", role="admin")
 

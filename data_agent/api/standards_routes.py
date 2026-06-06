@@ -26,6 +26,7 @@ logger = get_logger("api.standards_routes")
 
 _EDITOR_ROLES = {"admin", "analyst", "standard_editor"}
 _REVIEWER_ROLES = {"admin", "analyst", "standard_editor", "standard_reviewer"}
+_MAX_OUTBOX_RETRY_IDS = 200
 
 from ..standards_platform.drafting import editor_session as _editor
 from ..standards_platform.review import (
@@ -287,6 +288,11 @@ async def retry_outbox_events(request: Request):
     if not isinstance(event_ids, list) or not event_ids:
         return JSONResponse(
             {"error": "event_ids must be a non-empty list"},
+            status_code=400,
+        )
+    if len(event_ids) > _MAX_OUTBOX_RETRY_IDS:
+        return JSONResponse(
+            {"error": "event_ids must contain at most 200 ids"},
             status_code=400,
         )
     if any(not isinstance(event_id, str) or not event_id
