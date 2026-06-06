@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-05 &nbsp;|&nbsp; **Current version**: v25.4 &nbsp;|&nbsp; **Next**: P4 remaining (Standards Platform 审定流模板可视化 / 批量回滚 / 跨标准影响图谱) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.5 &nbsp;|&nbsp; **Next**: P4 remaining (Standards Platform 审定流模板可视化 / 跨标准影响图谱) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -61,6 +61,16 @@
 - [x] **测试覆盖** — 新增 outbox repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
 
 > P4 仍未完成的主线：审定流模板可视化、批量回滚、跨标准影响图谱。
+
+---
+
+## v25.5 — Standards Platform P4 Batch Rollback First Slice (已完成, 2026-06-06)
+
+- [x] **Batch rollback repository/API** — 新增 `link_repo.rollback_versions()` 与 admin-only `POST /api/std/derive/rollback`，复用单版本 rollback 语义，支持 duplicate/missing/malformed ID 跳过与最多 50 个版本的批量请求。
+- [x] **Batch rollback UI** — 在 `DeriveSubTab` 增加 admin-only 批量回滚运维面板，可加入当前版本或粘贴多个 version id，显示 rolled_back / skipped 汇总与逐版本结果，并在前端提前拦截超过 50 个 ID 的请求。
+- [x] **测试覆盖** — 新增 repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
+
+> P4 仍未完成的主线：审定流模板可视化、跨标准影响图谱。
 
 ---
 
