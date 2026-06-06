@@ -46,6 +46,7 @@ from ..standards_platform.derivation import (
 )
 from ..standards_platform.analysis import impact_graph as _impact_graph
 from ..standards_platform.market import catalog as _market_catalog
+from ..standards_platform.market import listings as _market_listings
 from ..standards_platform.market import subscriptions as _market_subscriptions
 from ..standards_platform.derivation.data_model_xmi_exporter import (
     export_pdm_to_ea_xmi,
@@ -990,6 +991,76 @@ async def market_diff_handler(request: Request):
         return JSONResponse({"error": "version not found"}, status_code=404)
 
 
+async def market_list_listings_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    if role != "admin":
+        return JSONResponse({"error": "Forbidden — admin only"}, status_code=403)
+    try:
+        limit = _parse_int_param(request, "limit", 50)
+        offset = _parse_int_param(request, "offset", 0)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    if limit < 1:
+        return JSONResponse({"error": "limit must be at least 1"}, status_code=400)
+    if offset < 0:
+        return JSONResponse({"error": "offset must be at least 0"}, status_code=400)
+    try:
+        return JSONResponse(_market_listings.list_listings(
+            status=request.query_params.get("status"),
+            limit=min(limit, 100),
+            offset=offset,
+        ))
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+async def market_submit_listing_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    if role not in _EDITOR_ROLES:
+        return JSONResponse({"error": "Forbidden — editor role required"},
+                            status_code=403)
+    body = await request.json()
+    version_id = body.get("version_id")
+    if not version_id:
+        return JSONResponse({"error": "version_id required"}, status_code=400)
+    notes = body.get("notes")
+    try:
+        listing = _market_listings.submit_listing(
+            version_id=version_id,
+            submitted_by=username,
+            notes=notes if isinstance(notes, str) else None,
+        )
+    except LookupError:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    return JSONResponse(listing, status_code=201)
+
+
+async def market_review_listing_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    if role != "admin":
+        return JSONResponse({"error": "Forbidden — admin only"}, status_code=403)
+    body = await request.json()
+    decision = body.get("decision")
+    review_notes = body.get("review_notes")
+    try:
+        listing = _market_listings.review_listing(
+            listing_id=request.path_params["listing_id"],
+            decision=decision,
+            reviewed_by=username,
+            review_notes=review_notes if isinstance(review_notes, str) else None,
+        )
+    except LookupError:
+        return JSONResponse({"error": "listing not found"}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return JSONResponse(listing)
+
+
 async def market_list_subscriptions_handler(request: Request):
     username, role, err = _auth_or_401(request)
     if err: return err
@@ -1530,6 +1601,12 @@ standards_routes = [
           endpoint=market_list_standards_handler, methods=["GET"]),
     Route("/api/std/market/diff",
           endpoint=market_diff_handler, methods=["GET"]),
+    Route("/api/std/market/listings",
+          endpoint=market_list_listings_handler, methods=["GET"]),
+    Route("/api/std/market/listings",
+          endpoint=market_submit_listing_handler, methods=["POST"]),
+    Route("/api/std/market/listings/{listing_id}/review",
+          endpoint=market_review_listing_handler, methods=["POST"]),
     Route("/api/std/market/subscriptions",
           endpoint=market_list_subscriptions_handler, methods=["GET"]),
     Route("/api/std/market/subscriptions",
