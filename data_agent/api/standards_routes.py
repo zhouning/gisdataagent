@@ -43,6 +43,7 @@ from ..standards_platform.derivation import (
     runner as _derive_runner,
     link_repo as _link_repo,
 )
+from ..standards_platform.analysis import impact_graph as _impact_graph
 from ..standards_platform.derivation.data_model_xmi_exporter import (
     export_pdm_to_ea_xmi,
 )
@@ -83,6 +84,28 @@ def _parse_int_param(request: Request, name: str, default: int) -> int:
         return int(raw)
     except ValueError as e:
         raise ValueError(f"{name} must be an integer") from e
+
+
+def _parse_float_param(request: Request, name: str, default: float) -> float:
+    raw = request.query_params.get(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError as e:
+        raise ValueError(f"{name} must be a number") from e
+
+
+def _parse_bool_param(request: Request, name: str, default: bool) -> bool:
+    raw = request.query_params.get(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
 
 
 async def list_documents(request: Request):
@@ -1100,6 +1123,48 @@ async def derive_impact_handler(request: Request):
     ]})
 
 
+async def derive_version_impact_graph_handler(request: Request):
+    """GET /api/std/impact/versions/{version_id} - version-level graph."""
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    vid = request.path_params["version_id"]
+    eng = get_engine()
+    with eng.connect() as c:
+        row = c.execute(text(
+            "SELECT id FROM std_document_version WHERE id=:i"
+        ), {"i": vid}).first()
+    if row is None:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+
+    try:
+        include_similar = _parse_bool_param(
+            request, "include_similar", True,
+        )
+        min_similarity = _parse_float_param(request, "min_similarity", 0.8)
+        top_k = _parse_int_param(request, "top_k", 20)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    if not 0 <= min_similarity <= 1:
+        return JSONResponse(
+            {"error": "min_similarity must be between 0 and 1"},
+            status_code=400,
+        )
+    if top_k < 1:
+        return JSONResponse(
+            {"error": "top_k must be at least 1"},
+            status_code=400,
+        )
+    top_k = min(top_k, 100)
+
+    graph = _impact_graph.version_impact_graph(
+        vid,
+        include_similar=include_similar,
+        min_similarity=min_similarity,
+        top_k=top_k,
+    )
+    return JSONResponse(graph)
+
+
 # ---------------------------------------------------------------------------
 # Wave 8: data-model snapshot read endpoints (write-side is the to_data_model
 # strategy, exposed via existing /api/std/derive/rerun/{vid}).
@@ -1362,6 +1427,8 @@ standards_routes = [
           endpoint=derive_batch_rollback_handler, methods=["POST"]),
     Route("/api/std/derive/rollback/{version_id}",
           endpoint=derive_rollback_handler, methods=["POST"]),
+    Route("/api/std/impact/versions/{version_id}",
+          endpoint=derive_version_impact_graph_handler, methods=["GET"]),
     Route("/api/std/impact/{kind}/{source_id}",
           endpoint=derive_impact_handler, methods=["GET"]),
     # Wave 8: data-model snapshot read endpoints
