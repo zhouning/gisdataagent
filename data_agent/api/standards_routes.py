@@ -27,6 +27,7 @@ logger = get_logger("api.standards_routes")
 _EDITOR_ROLES = {"admin", "analyst", "standard_editor"}
 _REVIEWER_ROLES = {"admin", "analyst", "standard_editor", "standard_reviewer"}
 _MAX_OUTBOX_RETRY_IDS = 200
+_MAX_BATCH_ROLLBACK_IDS = 50
 
 from ..standards_platform.drafting import editor_session as _editor
 from ..standards_platform.review import (
@@ -1026,6 +1027,46 @@ async def derive_rollback_handler(request: Request):
     return JSONResponse({"version_id": vid, "by_strategy": summary})
 
 
+async def derive_batch_rollback_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    forbid = _require_admin_or_403(role)
+    if forbid: return forbid
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+    version_ids = body.get("version_ids") if isinstance(body, dict) else None
+    if not isinstance(version_ids, list) or not version_ids:
+        return JSONResponse(
+            {"error": "version_ids must be a non-empty list"},
+            status_code=400,
+        )
+    if len(version_ids) > _MAX_BATCH_ROLLBACK_IDS:
+        return JSONResponse(
+            {"error": "version_ids must contain at most 50 ids"},
+            status_code=400,
+        )
+    if any(not isinstance(version_id, str) or not version_id
+           for version_id in version_ids):
+        return JSONResponse(
+            {"error": "version_ids must contain non-empty strings"},
+            status_code=400,
+        )
+    raw_reason = body.get("reason")
+    reason = (
+        raw_reason
+        if isinstance(raw_reason, str) and raw_reason
+        else f"batch rollback by {username}"
+    )
+    result = _link_repo.rollback_versions(
+        version_ids=version_ids,
+        by_user=username,
+        reason=reason,
+    )
+    return JSONResponse(result)
+
+
 async def derive_impact_handler(request: Request):
     """GET /api/std/impact/{kind}/{source_id}?include_stale=0 — return all
     derivations descending from the given source. kind is one of:
@@ -1317,6 +1358,8 @@ standards_routes = [
     Route("/api/std/derive/status/{version_id}",
           endpoint=derive_status_handler, methods=["GET"]),
     # Wave 7: rollback + impact graph
+    Route("/api/std/derive/rollback",
+          endpoint=derive_batch_rollback_handler, methods=["POST"]),
     Route("/api/std/derive/rollback/{version_id}",
           endpoint=derive_rollback_handler, methods=["POST"]),
     Route("/api/std/impact/{kind}/{source_id}",
