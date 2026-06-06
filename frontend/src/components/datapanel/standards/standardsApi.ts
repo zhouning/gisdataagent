@@ -611,6 +611,8 @@ export interface MarketAssetCounts {
   value_domains: number;
 }
 
+export type MarketVisibilityScope = "public" | "organization" | "private";
+
 export interface MarketStandardItem {
   version_id: string;
   document_id: string;
@@ -629,6 +631,9 @@ export interface MarketStandardItem {
   market_submitted_at: string | null;
   market_reviewed_by: string | null;
   market_reviewed_at: string | null;
+  visibility_scope: MarketVisibilityScope;
+  owner_org_id: string | null;
+  allowed_org_ids: string[];
   asset_counts: MarketAssetCounts;
 }
 
@@ -712,6 +717,9 @@ export interface MarketListing {
   released_at: string | null;
   released_by: string | null;
   status: MarketListingStatus;
+  visibility_scope: MarketVisibilityScope;
+  owner_org_id: string | null;
+  allowed_org_ids: string[];
   submitted_by: string;
   submitted_at: string | null;
   reviewed_by: string | null;
@@ -720,6 +728,13 @@ export interface MarketListing {
   review_notes: string | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface MarketListingVisibilityInput {
+  visibility_scope?: MarketVisibilityScope;
+  owner_org_id?: string | null;
+  allowed_org_ids?: string[];
+  notes?: string | null;
 }
 
 export const listMarketStandards = (
@@ -780,13 +795,26 @@ export const listMarketListings = (
     .then(j<{items: MarketListing[]; total: number; limit: number; offset: number}>);
 };
 
-export const submitMarketListing = (versionId: string,
-                                    notes?: string) =>
+export const submitMarketListing = (
+  versionId: string,
+  options: string | MarketListingVisibilityInput = {},
+) => {
+  const payload: MarketListingVisibilityInput =
+    typeof options === "string" ? {notes: options} : options;
+  return (
   fetch("/api/std/market/listings", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({version_id: versionId, notes: notes ?? null}),
-  }).then(j<MarketListing>);
+    body: JSON.stringify({
+      version_id: versionId,
+      notes: payload.notes ?? null,
+      visibility_scope: payload.visibility_scope ?? "public",
+      owner_org_id: payload.owner_org_id ?? null,
+      allowed_org_ids: payload.allowed_org_ids ?? [],
+    }),
+  }).then(j<MarketListing>)
+  );
+};
 
 export const reviewMarketListing = (
   listingId: string,
@@ -797,4 +825,18 @@ export const reviewMarketListing = (
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({decision, review_notes: reviewNotes ?? null}),
+  }).then(j<MarketListing>);
+
+export const updateMarketListingVisibility = (
+  listingId: string,
+  visibility: MarketListingVisibilityInput,
+) =>
+  fetch(`/api/std/market/listings/${listingId}/visibility`, {
+    method: "PATCH",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      visibility_scope: visibility.visibility_scope ?? "public",
+      owner_org_id: visibility.owner_org_id ?? null,
+      allowed_org_ids: visibility.allowed_org_ids ?? [],
+    }),
   }).then(j<MarketListing>);

@@ -4,6 +4,7 @@ import {
   MarketListing,
   MarketStandardItem,
   MarketSubscription,
+  MarketVisibilityScope,
   getMarketDiff,
   listMarketListings,
   listMarketSubscriptions,
@@ -29,6 +30,10 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
   const [diff, setDiff] = useState<MarketDiffResponse | null>(null);
   const [subscriptions, setSubscriptions] = useState<MarketSubscription[]>([]);
   const [reviewItems, setReviewItems] = useState<MarketListing[]>([]);
+  const [visibilityScope, setVisibilityScope] =
+    useState<MarketVisibilityScope>("public");
+  const [ownerOrgId, setOwnerOrgId] = useState("");
+  const [allowedOrgInput, setAllowedOrgInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [diffBusy, setDiffBusy] = useState(false);
   const [subsBusy, setSubsBusy] = useState(false);
@@ -137,7 +142,11 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
     setError(null);
     setAuditMessage(null);
     try {
-      await submitMarketListing(selected.version_id);
+      await submitMarketListing(selected.version_id, {
+        visibility_scope: visibilityScope,
+        owner_org_id: ownerOrgId.trim() || null,
+        allowed_org_ids: parseOrgList(allowedOrgInput),
+      });
       setAuditMessage("已提交");
       loadCatalog();
     } catch (e: any) {
@@ -247,6 +256,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
               <Chip label="术语" value={item.asset_counts.terms}/>
               <Chip label="值域" value={item.asset_counts.value_domains}/>
               <Chip label="上架" value={marketStatusLabel(item.market_status)}/>
+              <Chip label="范围" value={visibilityLabel(item.visibility_scope)}/>
             </div>
           </button>
         ))}
@@ -363,6 +373,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                 {item.title}
               </div>
               <div style={{display: "flex", gap: 4, marginTop: 6}}>
+                <Chip label="范围" value={visibilityLabel(item.visibility_scope)}/>
                 <button
                   onClick={() => reviewListing(item.id, "approved")}
                   disabled={auditBusy}
@@ -427,6 +438,42 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                   </button>
                 )}
               </div>
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "140px 1fr 1fr",
+              gap: 8,
+              alignItems: "end",
+              marginBottom: 12,
+            }}>
+              <label style={{display: "block"}}>
+                <div style={{fontSize: 11, color: "#6b7280", marginBottom: 3}}>
+                  Visibility
+                </div>
+                <select
+                  value={visibilityScope}
+                  onChange={e => setVisibilityScope(e.target.value as MarketVisibilityScope)}
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "6px 8px", border: "1px solid #d1d5db",
+                    borderRadius: 4, fontSize: 12, background: "#fff",
+                  }}>
+                  <option value="public">公开</option>
+                  <option value="organization">组织</option>
+                  <option value="private">私有</option>
+                </select>
+              </label>
+              <Field
+                label="Owner org"
+                value={ownerOrgId}
+                onChange={setOwnerOrgId}
+              />
+              <Field
+                label="Allowed orgs"
+                value={allowedOrgInput}
+                onChange={setAllowedOrgInput}
+              />
             </div>
 
             <div style={{
@@ -535,6 +582,24 @@ function marketStatusLabel(status: string | null | undefined) {
     default:
       return "已上架";
   }
+}
+
+function visibilityLabel(scope: string | null | undefined) {
+  switch (scope) {
+    case "organization":
+      return "组织";
+    case "private":
+      return "私有";
+    default:
+      return "公开";
+  }
+}
+
+function parseOrgList(raw: string) {
+  return raw
+    .split(/[,\s]+/)
+    .map(v => v.trim())
+    .filter((v, idx, arr) => v.length > 0 && arr.indexOf(v) === idx);
 }
 
 function Field({label, value, onChange}: {
