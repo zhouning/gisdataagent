@@ -6,9 +6,11 @@ interface Props {
   roundId: string;
   clauseId: string;
   isReviewer: boolean;
+  onChanged?: () => void;
 }
 
-export default function CommentThread({roundId, clauseId, isReviewer}: Props) {
+export default function CommentThread({roundId, clauseId, isReviewer,
+                                      onChanged}: Props) {
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export default function CommentThread({roundId, clauseId, isReviewer}: Props) {
       setDraft("");
       setReplyTo(null);
       refresh();
+      onChanged?.();
     } catch (e: any) {
       alert(`发表失败: ${e.message}`);
     } finally {
@@ -40,6 +43,7 @@ export default function CommentThread({roundId, clauseId, isReviewer}: Props) {
     try {
       await resolveReviewComment(id, resolution);
       refresh();
+      onChanged?.();
     } catch (e: any) {
       alert(`解决失败: ${e.message}`);
     }

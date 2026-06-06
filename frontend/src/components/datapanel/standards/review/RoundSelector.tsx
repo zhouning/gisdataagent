@@ -5,9 +5,11 @@ interface Props {
   versionId: string | null;
   isAdmin: boolean;
   onSelect: (round: ReviewRound | null) => void;
+  onChanged?: () => void;
 }
 
-export default function RoundSelector({versionId, isAdmin, onSelect}: Props) {
+export default function RoundSelector({versionId, isAdmin, onSelect,
+                                      onChanged}: Props) {
   const [rounds, setRounds] = useState<ReviewRound[]>([]);
   const [reviewerInput, setReviewerInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,6 +28,7 @@ export default function RoundSelector({versionId, isAdmin, onSelect}: Props) {
       await startReviewRound(versionId, reviewerInput.trim());
       setReviewerInput("");
       refresh();
+      onChanged?.();
     } catch (e: any) {
       alert(`启动失败: ${e.message}`);
     } finally {

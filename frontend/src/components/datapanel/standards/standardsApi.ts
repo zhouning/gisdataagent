@@ -222,6 +222,52 @@ export type GatingPrecheck = {
   blocking: boolean;
 };
 
+export type ReviewTemplateStepStatus =
+  'done' | 'active' | 'blocked' | 'pending';
+
+export type ReviewTemplateStep = {
+  id: string;
+  label: string;
+  role: string;
+  status: ReviewTemplateStepStatus;
+  description: string;
+  metrics: Record<string, any>;
+};
+
+export type ReviewTemplateEdge = {
+  source: string;
+  target: string;
+  label: string;
+};
+
+export type ReviewTemplateSummary = {
+  open_round_id: string | null;
+  latest_round_id: string | null;
+  latest_round_status: string | null;
+  latest_round_outcome: string | null;
+  reviewer_user_id: string | null;
+  pending_refs: number;
+  approved_refs: number;
+  rejected_refs: number;
+  total_refs: number;
+  open_comments: number;
+  resolved_comments: number;
+  total_comments: number;
+  blocking: boolean;
+};
+
+export type ReviewTemplate = {
+  template_id: string;
+  version_id: string;
+  version_status: string;
+  steps: ReviewTemplateStep[];
+  edges: ReviewTemplateEdge[];
+  summary: ReviewTemplateSummary;
+};
+
+export const getReviewTemplate = (versionId: string) =>
+  fetch(`/api/std/reviews/template/${versionId}`).then(j<ReviewTemplate>);
+
 export const startReviewRound = (versionId: string, reviewerUserId: string) =>
   fetch("/api/std/reviews/rounds", {
     method: "POST",
