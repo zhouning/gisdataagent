@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.7 &nbsp;|&nbsp; **Next**: P5 (Standards Platform 标准市场) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.8 &nbsp;|&nbsp; **Next**: P5 remaining (订阅持久化 + 多组织共享) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -94,6 +94,17 @@
 
 ---
 
+## v25.8 — Standards Platform P5 Market Catalog + Diff First Slice (已完成, 2026-06-06)
+
+- [x] **Market catalog repository/API** — 新增 released 标准版本市场目录，复用现有 `std_document_version.status='released'` 作为可共享条目，返回文档元数据、标签、owner、release 信息和条款/数据元/术语/值域资产计数。
+- [x] **Version diff repository/API** — 新增 `GET /api/std/market/diff`，支持两个版本按 clause / data_element / term / value_domain 自然键做 added / removed / changed / unchanged 的确定性结构化 diff。
+- [x] **Market UI** — `StandardsTab` 新增「市场」子页，可搜索 released 标准、查看资产计数、设置市场版本为当前版本，并以当前版本 vs 市场版本运行 diff。
+- [x] **测试覆盖** — 新增 market repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
+
+> P5 已启动并完成目录 + diff first slice。P5 剩余主线：订阅持久化、多组织共享/权限模型、市场审核与 diff 深化。
+
+---
+
 ## v25.3-eval — Standards Platform Wave 6-eval First Slice (已完成, 2026-06-03)
 
 - [x] **派生质量离线评测框架** — 新增 `data_agent/standards_platform/evaluation/`：统一 `DerivationEvalItem` schema、canonical identity、gold/prediction set 校验、重复身份拒绝。
@@ -132,7 +143,7 @@
 ## v25.x — Standards Platform 后续阶段 (规划)
 
 - **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
-- **P5**：标准市场（多组织共享 + 订阅 + diff）
+- **P5**：标准市场（目录 + diff first slice 已完成，后续补多组织共享 + 订阅）
 
 ---
 
