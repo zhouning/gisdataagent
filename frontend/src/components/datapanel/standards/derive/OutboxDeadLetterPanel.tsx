@@ -53,6 +53,17 @@ const formatPayload = (payload: Record<string, any>) => {
   }
 };
 
+const summarizeSkipped = (
+  skipped: {id: string; reason?: string}[],
+  max = 3,
+) => {
+  if (skipped.length === 0) return "";
+  const reasons = skipped.slice(0, max)
+    .map(s => `${s.id.slice(0, 8)}: ${s.reason ?? "skipped"}`);
+  const suffix = skipped.length > max ? `; +${skipped.length - max}` : "";
+  return ` (${reasons.join("; ")}${suffix})`;
+};
+
 const shortId = (id: string) => id.length > 8 ? id.slice(0, 8) : id;
 
 export default function OutboxDeadLetterPanel({
@@ -67,6 +78,7 @@ export default function OutboxDeadLetterPanel({
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [localRefreshTick, setLocalRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -123,6 +135,7 @@ export default function OutboxDeadLetterPanel({
     if (nextStatus === status) return;
     setStatus(nextStatus);
     setError(null);
+    setRetryMessage(null);
     setSelectedIds(new Set());
     setExpandedEventId(null);
   };
@@ -141,8 +154,14 @@ export default function OutboxDeadLetterPanel({
     if (!RETRYABLE.has(event.status)) return;
     setBusy(true);
     setError(null);
+    setRetryMessage(null);
     try {
-      await retryOutboxEvent(event.id);
+      const r = await retryOutboxEvent(event.id);
+      if (r.result.status === "retried") {
+        setRetryMessage("已重试 1 条事件");
+      } else {
+        setRetryMessage(`未重试: ${r.result.reason ?? "skipped"}`);
+      }
       setSelectedIds(prev => {
         const next = new Set(prev);
         next.delete(event.id);
@@ -161,8 +180,13 @@ export default function OutboxDeadLetterPanel({
     const ids = selectedRetryableIds;
     setBusy(true);
     setError(null);
+    setRetryMessage(null);
     try {
-      await retryOutboxEvents(ids);
+      const r = await retryOutboxEvents(ids);
+      const skippedNote = summarizeSkipped(r.skipped);
+      setRetryMessage(
+        `重试完成: retried ${r.retried.length}, skipped ${r.skipped.length}${skippedNote}`,
+      );
       setSelectedIds(prev => {
         const next = new Set(prev);
         ids.forEach(id => next.delete(id));
@@ -233,6 +257,17 @@ export default function OutboxDeadLetterPanel({
             overflowWrap: "anywhere",
           }}>
           {error}
+        </div>
+      )}
+
+      {retryMessage && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 8, color: "#075", lineHeight: 1.35,
+            overflowWrap: "anywhere",
+          }}>
+          {retryMessage}
         </div>
       )}
 
