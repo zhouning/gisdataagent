@@ -672,6 +672,25 @@ export interface MarketDiffResponse {
   changes: MarketDiffChange[];
 }
 
+export interface MarketSubscription {
+  id: string;
+  subscriber_user_id: string;
+  document_id: string;
+  doc_code: string;
+  title: string;
+  source_version_id: string;
+  source_version_label: string;
+  last_seen_version_id: string | null;
+  latest_version_id: string | null;
+  latest_version_label: string | null;
+  latest_released_at: string | null;
+  has_update: boolean;
+  status: "active" | "cancelled";
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export const listMarketStandards = (
   params: {query?: string; limit?: number; offset?: number} = {},
 ) => {
@@ -692,3 +711,24 @@ export const getMarketDiff = (sourceVersionId: string,
   }).toString();
   return fetch(`/api/std/market/diff?${q}`).then(j<MarketDiffResponse>);
 };
+
+export const listMarketSubscriptions = () =>
+  fetch("/api/std/market/subscriptions")
+    .then(j<{subscriptions: MarketSubscription[]}>);
+
+export const subscribeMarketStandard = (versionId: string,
+                                        notes?: string) =>
+  fetch("/api/std/market/subscriptions", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({version_id: versionId, notes: notes ?? null}),
+  }).then(j<MarketSubscription>);
+
+export const unsubscribeMarketSubscription = (subscriptionId: string) =>
+  fetch(`/api/std/market/subscriptions/${subscriptionId}`, {method: "DELETE"})
+    .then(j<MarketSubscription>);
+
+export const markMarketSubscriptionSeen = (subscriptionId: string) =>
+  fetch(`/api/std/market/subscriptions/${subscriptionId}/mark-seen`,
+        {method: "POST"})
+    .then(j<MarketSubscription>);

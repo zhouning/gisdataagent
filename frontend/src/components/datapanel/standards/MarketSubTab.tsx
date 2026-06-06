@@ -2,8 +2,13 @@ import React, { useEffect, useState } from "react";
 import {
   MarketDiffResponse,
   MarketStandardItem,
+  MarketSubscription,
   getMarketDiff,
+  listMarketSubscriptions,
   listMarketStandards,
+  markMarketSubscriptionSeen,
+  subscribeMarketStandard,
+  unsubscribeMarketSubscription,
 } from "./standardsApi";
 
 interface Props {
@@ -18,8 +23,10 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
   const [sourceVersionId, setSourceVersionId] = useState(selectedVersionId || "");
   const [targetVersionId, setTargetVersionId] = useState("");
   const [diff, setDiff] = useState<MarketDiffResponse | null>(null);
+  const [subscriptions, setSubscriptions] = useState<MarketSubscription[]>([]);
   const [loading, setLoading] = useState(false);
   const [diffBusy, setDiffBusy] = useState(false);
+  const [subsBusy, setSubsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = () => {
@@ -39,7 +46,16 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadCatalog, []);
+  const loadSubscriptions = () => {
+    listMarketSubscriptions()
+      .then(r => setSubscriptions(r.subscriptions))
+      .catch(() => setSubscriptions([]));
+  };
+
+  useEffect(() => {
+    loadCatalog();
+    loadSubscriptions();
+  }, []);
 
   useEffect(() => {
     setSourceVersionId(selectedVersionId || "");
@@ -61,6 +77,50 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       setError(e?.message || "diff 失败");
     } finally {
       setDiffBusy(false);
+    }
+  };
+
+  const selectedSubscription = selected
+    ? subscriptions.find(s => s.document_id === selected.document_id) || null
+    : null;
+
+  const subscribeSelected = async () => {
+    if (!selected) return;
+    setSubsBusy(true);
+    setError(null);
+    try {
+      await subscribeMarketStandard(selected.version_id);
+      loadSubscriptions();
+    } catch (e: any) {
+      setError(e?.message || "订阅失败");
+    } finally {
+      setSubsBusy(false);
+    }
+  };
+
+  const cancelSubscription = async (subscriptionId: string) => {
+    setSubsBusy(true);
+    setError(null);
+    try {
+      await unsubscribeMarketSubscription(subscriptionId);
+      loadSubscriptions();
+    } catch (e: any) {
+      setError(e?.message || "取消订阅失败");
+    } finally {
+      setSubsBusy(false);
+    }
+  };
+
+  const markSeen = async (subscriptionId: string) => {
+    setSubsBusy(true);
+    setError(null);
+    try {
+      await markMarketSubscriptionSeen(subscriptionId);
+      loadSubscriptions();
+    } catch (e: any) {
+      setError(e?.message || "标记已读失败");
+    } finally {
+      setSubsBusy(false);
     }
   };
 
@@ -136,6 +196,69 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             </div>
           </button>
         ))}
+        <div style={{
+          marginTop: 14, paddingTop: 10, borderTop: "1px solid #e5e7eb",
+        }}>
+          <div style={{
+            fontSize: 13, fontWeight: 650, color: "#111827",
+            marginBottom: 8,
+          }}>
+            我的订阅
+          </div>
+          {subscriptions.length === 0 && (
+            <div style={mutedStyle}>暂无订阅</div>
+          )}
+          {subscriptions.map(sub => (
+            <div key={sub.id}
+                 style={{
+                   padding: 8, marginBottom: 6, borderRadius: 4,
+                   border: "1px solid #e5e7eb", background: "#fff",
+                 }}>
+              <div style={{
+                display: "flex", justifyContent: "space-between", gap: 8,
+              }}>
+                <div style={{minWidth: 0}}>
+                  <div style={{
+                    fontSize: 12, fontWeight: 650, color: "#111827",
+                    overflow: "hidden", textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {sub.doc_code} · {sub.latest_version_label || "-"}
+                  </div>
+                  <div style={{
+                    fontSize: 11, color: "#6b7280", marginTop: 2,
+                    overflow: "hidden", textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {sub.title}
+                  </div>
+                </div>
+                {sub.has_update && <Chip label="更新" value="new"/>}
+              </div>
+              <div style={{display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6}}>
+                {sub.latest_version_id && (
+                  <button
+                    onClick={() => onSelectVersion(sub.latest_version_id!)}
+                    style={smallButtonStyle}>
+                    设为当前
+                  </button>
+                )}
+                <button
+                  onClick={() => markSeen(sub.id)}
+                  disabled={subsBusy}
+                  style={smallButtonStyle}>
+                  标记已读
+                </button>
+                <button
+                  onClick={() => cancelSubscription(sub.id)}
+                  disabled={subsBusy}
+                  style={smallDangerButtonStyle}>
+                  取消订阅
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{padding: 12, overflow: "auto"}}>
@@ -158,6 +281,21 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                 style={outlineButtonStyle}>
                 设为当前版本
               </button>
+              {selectedSubscription ? (
+                <button
+                  onClick={() => cancelSubscription(selectedSubscription.id)}
+                  disabled={subsBusy}
+                  style={outlineButtonStyle}>
+                  取消订阅
+                </button>
+              ) : (
+                <button
+                  onClick={subscribeSelected}
+                  disabled={subsBusy}
+                  style={buttonStyle}>
+                  订阅
+                </button>
+              )}
             </div>
 
             <div style={{
@@ -309,4 +447,20 @@ const outlineButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 12,
   whiteSpace: "nowrap",
+};
+
+const smallButtonStyle: React.CSSProperties = {
+  padding: "3px 6px",
+  background: "#fff",
+  color: "#047857",
+  border: "1px solid #a7f3d0",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 11,
+};
+
+const smallDangerButtonStyle: React.CSSProperties = {
+  ...smallButtonStyle,
+  color: "#b91c1c",
+  border: "1px solid #fecaca",
 };
