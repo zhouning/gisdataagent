@@ -298,6 +298,33 @@ export type DerivationStatusByStrategy = Record<
    pending: number; overridden: number; superseded: number}
 >;
 
+export type RollbackByStrategy = Record<string, {
+  links_marked: number;
+  downstream_marked: number;
+  target_tables: string[];
+}>;
+
+export interface RollbackVersionResult {
+  version_id: string;
+  by_strategy: RollbackByStrategy;
+}
+
+export interface BatchRollbackItem {
+  version_id: string;
+  status: "rolled_back" | "no_active_links";
+  by_strategy: RollbackByStrategy;
+}
+
+export interface BatchRollbackSkipped {
+  version_id: string;
+  reason: string;
+}
+
+export interface BatchRollbackResult {
+  rolled_back: BatchRollbackItem[];
+  skipped: BatchRollbackSkipped[];
+}
+
 export const publishVersion = (versionId: string) =>
   fetch(`/api/std/publish/versions/${versionId}`, {method: "POST"})
     .then(j<{version_id: string; status: string; released_at: string;
@@ -349,6 +376,23 @@ export const rerunDerivation = (versionId: string, strategies?: string[]) =>
   }).then(j<{results: Record<string, {ok: boolean; new?: number;
                                        staled?: number; failed?: number;
                                        error?: string}>}>);
+
+export const rollbackDerivations = (versionId: string, reason?: string) =>
+  fetch(`/api/std/derive/rollback/${versionId}`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({reason: reason ?? null}),
+  }).then(j<RollbackVersionResult>);
+
+export const rollbackDerivationsBatch = (
+  versionIds: string[],
+  reason?: string,
+) =>
+  fetch("/api/std/derive/rollback", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({version_ids: versionIds, reason: reason ?? null}),
+  }).then(j<BatchRollbackResult>);
 
 export const getDeriveStatus = (versionId: string) =>
   fetch(`/api/std/derive/status/${versionId}`)
