@@ -34,6 +34,7 @@ from ..standards_platform.review import (
     round_repo as _round_repo,
     comment_repo as _comment_repo,
     gating as _gating,
+    template_repo as _template_repo,
 )
 from ..standards_platform.publishing import (
     publish_repo as _publish_repo,
@@ -624,6 +625,18 @@ async def review_round_list(request: Request):
          "closed_at": r["closed_at"].isoformat() if r["closed_at"] else None,
          "status": r["status"],
          "outcome": r["outcome"]} for r in rounds]})
+
+
+async def review_template_get(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    try:
+        template = _template_repo.default_review_template(
+            request.path_params["version_id"],
+        )
+    except LookupError:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    return JSONResponse(template)
 
 
 async def review_round_close_precheck(request: Request):
@@ -1388,6 +1401,8 @@ standards_routes = [
           endpoint=review_round_start, methods=["POST"]),
     Route("/api/std/reviews/rounds",
           endpoint=review_round_list, methods=["GET"]),
+    Route("/api/std/reviews/template/{version_id}",
+          endpoint=review_template_get, methods=["GET"]),
     Route("/api/std/reviews/rounds/{round_id}/close-precheck",
           endpoint=review_round_close_precheck, methods=["GET"]),
     Route("/api/std/reviews/rounds/{round_id}/close",
