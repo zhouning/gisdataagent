@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.9 &nbsp;|&nbsp; **Next**: P5 remaining (多组织共享/权限模型 + 市场审核 + diff 深化) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.10 &nbsp;|&nbsp; **Next**: P5 remaining (多组织共享/权限模型 + diff 深化) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -101,7 +101,7 @@
 - [x] **Market UI** — `StandardsTab` 新增「市场」子页，可搜索 released 标准、查看资产计数、设置市场版本为当前版本，并以当前版本 vs 市场版本运行 diff。
 - [x] **测试覆盖** — 新增 market repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
 
-> P5 已启动并完成目录 + diff first slice；订阅持久化已在 v25.9 补齐。P5 剩余主线：多组织共享/权限模型、市场审核与 diff 深化。
+> P5 已启动并完成目录 + diff first slice；订阅持久化已在 v25.9 补齐，市场审核已在 v25.10 补齐。P5 剩余主线：多组织共享/权限模型与 diff 深化。
 
 ---
 
@@ -112,7 +112,18 @@
 - [x] **Market UI** — 市场页增加「我的订阅」面板，支持从目录订阅/取消、切换订阅版本为当前版本、标记已读，并在目录项上显示已订阅与有更新状态。
 - [x] **测试覆盖** — 新增 market subscription repository + API focused tests；focused `12 passed`、standards_platform 全套 `422 passed, 1 skipped`，前端 `npm run build` 通过。
 
-> P5 已完成目录 + diff + 订阅持久化两个 first slice。P5 剩余主线：多组织共享/权限模型、市场审核与 diff 深化。
+> P5 已完成目录 + diff + 订阅持久化两个 first slice；市场审核已在 v25.10 补齐。P5 剩余主线：多组织共享/权限模型与 diff 深化。
+
+---
+
+## v25.10 — Standards Platform P5 Market Review First Slice (已完成, 2026-06-06)
+
+- [x] **Market listing review repository/API** — 新增 `std_market_listing` 迁移与仓储，支持 released 标准版本提交上架、admin 通过/拒绝审核、待审列表与审核审计字段。
+- [x] **Catalog visibility integration** — 市场目录兼容历史 released 版本（无 listing 行视为 `legacy_approved`），但对已有 listing 的版本按审核状态控制展示：`submitted/rejected/withdrawn` 隐藏，`approved` 展示。
+- [x] **Market UI review controls** — 市场页增加「提交审核」与「市场审核」队列，支持刷新待审项、通过/拒绝，并在目录卡片显示上架审核状态。
+- [x] **测试覆盖** — 新增 market listing repository + API focused tests；market focused `34 passed`，standards_platform 全套 `432 passed, 1 skipped`，前端 `npm run build` 通过。
+
+> P5 已完成标准市场目录、版本 diff、订阅持久化和市场审核四个 first slice。P5 剩余主线：多组织共享/权限模型与 diff 深化。
 
 ---
 
@@ -154,7 +165,7 @@
 ## v25.x — Standards Platform 后续阶段 (规划)
 
 - **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
-- **P5**：标准市场（目录 + diff first slice、订阅持久化 first slice 已完成，后续补多组织共享/权限模型 + 市场审核 + diff 深化）
+- **P5**：标准市场（目录 + diff first slice、订阅持久化 first slice、市场审核 first slice 已完成，后续补多组织共享/权限模型 + diff 深化）
 
 ---
 
