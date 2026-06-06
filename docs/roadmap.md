@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.6 &nbsp;|&nbsp; **Next**: P4 remaining (Standards Platform 审定流模板可视化) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.7 &nbsp;|&nbsp; **Next**: P5 (Standards Platform 标准市场) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -84,6 +84,16 @@
 
 ---
 
+## v25.7 — Standards Platform P4 Review Template Visualization First Slice (已完成, 2026-06-06)
+
+- [x] **Review template repository/API** — 新增只读默认审定流模板，按现有 `std_document_version` / `std_review_round` / `std_reference` / `std_review_comment` 状态计算 draft → review → audit → comments → close → approved 的步骤、角色、门禁与摘要。
+- [x] **Review UI** — 在 `ReviewSubTab` 顶部增加审定流模板面板，展示版本状态、open/latest round、reviewer、待审引用、未决意见和六步流程状态；引用审定、评论解决、启动/关闭 round 后自动刷新。
+- [x] **测试覆盖** — 新增 repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
+
+> P4 三项（审定流模板可视化、批量回滚、跨标准影响图谱）全部完成。下一阶段进入 P5：标准市场（多组织共享 + 订阅 + diff）。
+
+---
+
 ## v25.3-eval — Standards Platform Wave 6-eval First Slice (已完成, 2026-06-03)
 
 - [x] **派生质量离线评测框架** — 新增 `data_agent/standards_platform/evaluation/`：统一 `DerivationEvalItem` schema、canonical identity、gold/prediction set 校验、重复身份拒绝。
@@ -121,7 +131,7 @@
 
 ## v25.x — Standards Platform 后续阶段 (规划)
 
-- **P4**：审定流模板可视化、批量回滚、跨标准影响图谱
+- **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
 - **P5**：标准市场（多组织共享 + 订阅 + diff）
 
 ---
@@ -208,7 +218,7 @@
 - **P2**：审定 + 发布 + 派生（6 strategy；标准 → semantic_hints / value_semantics
   / synonyms / qc_rules / defect_taxonomy 单向派生）
 - **P3**：to_data_model — CDM/LDM/PDM 三层 + DDL + 反向 XMI（替代 EA 工作流）
-- **P4**：审定流模板可视化、批量回滚、跨标准影响图谱
+- **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
 
 ---
 
