@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import text
 
 from ...db_engine import get_engine
+from .listings import ensure_listing_table
 
 
 ASSET_TYPES = ("clauses", "data_elements", "terms", "value_domains")
@@ -18,7 +19,11 @@ def list_market_standards(
     *, query: str | None = None, limit: int = 50, offset: int = 0
 ) -> dict[str, Any]:
     """Return released standards as market catalog items."""
-    where = ["v.status = 'released'"]
+    ensure_listing_table()
+    where = [
+        "v.status = 'released'",
+        "(l.id IS NULL OR l.status = 'approved')",
+    ]
     params: dict[str, Any] = {"limit": limit, "offset": offset}
     normalized = (query or "").strip()
     if normalized:
@@ -34,6 +39,7 @@ def list_market_standards(
             SELECT count(*)
               FROM std_document_version v
               JOIN std_document d ON d.id = v.document_id
+              LEFT JOIN std_market_listing l ON l.version_id = v.id
              WHERE {where_sql}
         """), params).scalar() or 0
         rows = conn.execute(text(f"""
@@ -48,6 +54,12 @@ def list_market_standards(
                    v.released_at,
                    v.updated_by AS released_by,
                    v.supersedes_version_id,
+                   l.id AS market_listing_id,
+                   COALESCE(l.status, 'legacy_approved') AS market_status,
+                   l.submitted_by AS market_submitted_by,
+                   l.submitted_at AS market_submitted_at,
+                   l.reviewed_by AS market_reviewed_by,
+                   l.reviewed_at AS market_reviewed_at,
                    (SELECT count(*) FROM std_clause c
                      WHERE c.document_version_id = v.id) AS clauses,
                    (SELECT count(*) FROM std_data_element e
@@ -58,6 +70,7 @@ def list_market_standards(
                      WHERE vd.document_version_id = v.id) AS value_domains
               FROM std_document_version v
               JOIN std_document d ON d.id = v.document_id
+              LEFT JOIN std_market_listing l ON l.version_id = v.id
              WHERE {where_sql}
              ORDER BY v.released_at DESC NULLS LAST, d.doc_code, v.version_label
              LIMIT :limit OFFSET :offset
@@ -128,6 +141,21 @@ def _market_item(row: dict[str, Any]) -> dict[str, Any]:
         "supersedes_version_id": (
             str(row["supersedes_version_id"])
             if row.get("supersedes_version_id") else None
+        ),
+        "market_listing_id": (
+            str(row["market_listing_id"])
+            if row.get("market_listing_id") else None
+        ),
+        "market_status": row.get("market_status") or "legacy_approved",
+        "market_submitted_by": row.get("market_submitted_by"),
+        "market_submitted_at": (
+            row["market_submitted_at"].isoformat()
+            if row.get("market_submitted_at") else None
+        ),
+        "market_reviewed_by": row.get("market_reviewed_by"),
+        "market_reviewed_at": (
+            row["market_reviewed_at"].isoformat()
+            if row.get("market_reviewed_at") else None
         ),
         "asset_counts": {
             "clauses": int(row["clauses"] or 0),
