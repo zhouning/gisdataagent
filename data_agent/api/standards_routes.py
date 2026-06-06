@@ -45,6 +45,7 @@ from ..standards_platform.derivation import (
     link_repo as _link_repo,
 )
 from ..standards_platform.analysis import impact_graph as _impact_graph
+from ..standards_platform.market import catalog as _market_catalog
 from ..standards_platform.derivation.data_model_xmi_exporter import (
     export_pdm_to_ea_xmi,
 )
@@ -952,6 +953,42 @@ async def get_version_handler(request: Request):
     })
 
 
+async def market_list_standards_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    try:
+        limit = _parse_int_param(request, "limit", 50)
+        offset = _parse_int_param(request, "offset", 0)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    if limit < 1:
+        return JSONResponse({"error": "limit must be at least 1"}, status_code=400)
+    if offset < 0:
+        return JSONResponse({"error": "offset must be at least 0"}, status_code=400)
+    limit = min(limit, 100)
+    return JSONResponse(_market_catalog.list_market_standards(
+        query=request.query_params.get("query"),
+        limit=limit,
+        offset=offset,
+    ))
+
+
+async def market_diff_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    source = request.query_params.get("source_version_id")
+    target = request.query_params.get("target_version_id")
+    if not source or not target:
+        return JSONResponse(
+            {"error": "source_version_id and target_version_id required"},
+            status_code=400,
+        )
+    try:
+        return JSONResponse(_market_catalog.version_diff(source, target))
+    except LookupError:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+
+
 # ---------------------------------------------------------------------------
 # Wave 5: Derivation handlers
 # ---------------------------------------------------------------------------
@@ -1428,6 +1465,11 @@ standards_routes = [
           endpoint=publish_timeline_handler, methods=["GET"]),
     Route("/api/std/versions/{version_id}",
           endpoint=get_version_handler, methods=["GET"]),
+    # P5: standards market
+    Route("/api/std/market/standards",
+          endpoint=market_list_standards_handler, methods=["GET"]),
+    Route("/api/std/market/diff",
+          endpoint=market_diff_handler, methods=["GET"]),
     # Wave 5: derivation
     Route("/api/std/derive/strategies",
           endpoint=derive_strategies_handler, methods=["GET"]),
