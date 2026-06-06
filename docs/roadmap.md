@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.5 &nbsp;|&nbsp; **Next**: P4 remaining (Standards Platform 审定流模板可视化 / 跨标准影响图谱) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.6 &nbsp;|&nbsp; **Next**: P4 remaining (Standards Platform 审定流模板可视化) &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -71,6 +71,16 @@
 - [x] **测试覆盖** — 新增 repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
 
 > P4 仍未完成的主线：审定流模板可视化、跨标准影响图谱。
+
+---
+
+## v25.6 — Standards Platform P4 Cross-Standard Impact Graph First Slice (已完成, 2026-06-06)
+
+- [x] **Version impact graph repository/API** — 新增版本级影响图谱聚合，统一派生链、引用关系与相似条款边，输出 nodes/edges/summary，并对 `include_similar` / `min_similarity` / `top_k` 做 API 参数校验。
+- [x] **Analyze UI** — 在 `AnalyzeSubTab` 增加跨标准影响图谱摘要与边列表，展示 derives / references / similar_clause 关系和跨版本边计数；加载切换具备 stale guard，避免版本切换时图谱与条款列表错位。
+- [x] **测试覆盖** — 新增 repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
+
+> P4 仍未完成的主线：审定流模板可视化。
 
 ---
 
