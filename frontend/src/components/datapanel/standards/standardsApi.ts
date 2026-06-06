@@ -600,3 +600,95 @@ export const getDataModelXmiDownloadUrl = (versionId: string) =>
 export const listDataModelSnapshots = (versionId: string) =>
   fetch(`/api/std/data-model/${versionId}/snapshots`)
     .then(j<{version_id: string; snapshots: DataModelSnapshotMeta[]}>);
+
+
+// ---------- P5: standards market ----------
+
+export interface MarketAssetCounts {
+  clauses: number;
+  data_elements: number;
+  terms: number;
+  value_domains: number;
+}
+
+export interface MarketStandardItem {
+  version_id: string;
+  document_id: string;
+  doc_code: string;
+  title: string;
+  source_type: string;
+  owner_user_id: string;
+  tags: string[];
+  version_label: string;
+  released_at: string | null;
+  released_by: string | null;
+  supersedes_version_id: string | null;
+  asset_counts: MarketAssetCounts;
+}
+
+export interface MarketCatalogResponse {
+  items: MarketStandardItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface MarketDiffAssetCounts {
+  added: number;
+  removed: number;
+  changed: number;
+  unchanged: number;
+}
+
+export interface MarketDiffSummary extends MarketDiffAssetCounts {
+  by_asset_type: Record<string, MarketDiffAssetCounts>;
+}
+
+export interface MarketDiffChange {
+  asset_type: string;
+  key: string;
+  change_type: "added" | "removed" | "changed";
+  source_label: string | null;
+  target_label: string | null;
+}
+
+export interface MarketDiffVersionMeta {
+  version_id: string;
+  document_id: string;
+  version_label: string;
+  status: string;
+  released_at: string | null;
+  doc_code: string;
+  title: string;
+  source_type: string;
+}
+
+export interface MarketDiffResponse {
+  source_version_id: string;
+  target_version_id: string;
+  source: MarketDiffVersionMeta;
+  target: MarketDiffVersionMeta;
+  summary: MarketDiffSummary;
+  changes: MarketDiffChange[];
+}
+
+export const listMarketStandards = (
+  params: {query?: string; limit?: number; offset?: number} = {},
+) => {
+  const filtered: Record<string,string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") filtered[k] = String(v);
+  }
+  const q = new URLSearchParams(filtered).toString();
+  return fetch(`/api/std/market/standards${q ? `?${q}` : ""}`)
+    .then(j<MarketCatalogResponse>);
+};
+
+export const getMarketDiff = (sourceVersionId: string,
+                              targetVersionId: string) => {
+  const q = new URLSearchParams({
+    source_version_id: sourceVersionId,
+    target_version_id: targetVersionId,
+  }).toString();
+  return fetch(`/api/std/market/diff?${q}`).then(j<MarketDiffResponse>);
+};

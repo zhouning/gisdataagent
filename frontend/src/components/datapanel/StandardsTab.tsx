@@ -5,8 +5,10 @@ import DraftSubTab from "./standards/DraftSubTab";
 import ReviewSubTab from "./standards/ReviewSubTab";
 import PublishSubTab from "./standards/PublishSubTab";
 import DeriveSubTab from "./standards/DeriveSubTab";
+import MarketSubTab from "./standards/MarketSubTab";
 
-type Sub = "ingest" | "analyze" | "draft" | "review" | "publish" | "derive";
+type Sub = "ingest" | "analyze" | "draft" | "review" | "publish" | "derive"
+  | "market";
 
 interface Props {
   userRole?: string;
@@ -18,13 +20,13 @@ export default function StandardsTab({userRole = "", username = ""}: Props) {
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const isAdmin = userRole === "admin";
   const enabled: Set<Sub> = new Set([
-    "ingest", "analyze", "draft", "review", "publish", "derive",
+    "ingest", "analyze", "draft", "review", "publish", "derive", "market",
   ]);
 
   return (
     <div style={{display:"flex", flexDirection:"column", height:"100%"}}>
       <div style={{display:"flex", gap:8, padding:8, borderBottom:"1px solid #eee"}}>
-        {(["ingest","analyze","draft","review","publish","derive"] as Sub[]).map(k => (
+        {(["ingest","analyze","draft","review","publish","derive","market"] as Sub[]).map(k => (
           <button key={k}
             onClick={()=>setSub(k)}
             disabled={!enabled.has(k)}
@@ -35,7 +37,8 @@ export default function StandardsTab({userRole = "", username = ""}: Props) {
               opacity: enabled.has(k) ? 1 : 0.4,
               cursor: enabled.has(k) ? "pointer" : "not-allowed"}}>
             {({ingest:"采集", analyze:"分析", draft:"起草",
-               review:"审定", publish:"发布", derive:"派生"} as Record<Sub,string>)[k]}
+               review:"审定", publish:"发布", derive:"派生",
+               market:"市场"} as Record<Sub,string>)[k]}
           </button>
         ))}
       </div>
@@ -62,6 +65,10 @@ export default function StandardsTab({userRole = "", username = ""}: Props) {
           <DeriveSubTab
             versionId={selectedVersionId}
             userRole={userRole}/>}
+        {sub==="market" &&
+          <MarketSubTab
+            selectedVersionId={selectedVersionId}
+            onSelectVersion={setSelectedVersionId}/>}
       </div>
     </div>
   );
