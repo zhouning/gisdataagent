@@ -16,15 +16,44 @@ ZERO_COUNTS = {"added": 0, "removed": 0, "changed": 0, "unchanged": 0}
 
 
 def list_market_standards(
-    *, query: str | None = None, limit: int = 50, offset: int = 0
+    *, query: str | None = None, limit: int = 50, offset: int = 0,
+    viewer_user_id: str | None = None, viewer_role: str | None = None,
+    viewer_org_id: str | None = None,
 ) -> dict[str, Any]:
     """Return released standards as market catalog items."""
     ensure_listing_table()
     where = [
         "v.status = 'released'",
         "(l.id IS NULL OR l.status = 'approved')",
+        """(
+            l.id IS NULL
+            OR l.visibility_scope = 'public'
+            OR :viewer_is_admin
+            OR (
+                l.visibility_scope = 'organization'
+                AND :viewer_org_id IS NOT NULL
+                AND (
+                    l.owner_org_id = :viewer_org_id
+                    OR :viewer_org_id = ANY(COALESCE(l.allowed_org_ids, ARRAY[]::TEXT[]))
+                )
+            )
+            OR (
+                l.visibility_scope = 'private'
+                AND :viewer_user_id IS NOT NULL
+                AND (
+                    d.owner_user_id = :viewer_user_id
+                    OR l.submitted_by = :viewer_user_id
+                )
+            )
+        )""",
     ]
-    params: dict[str, Any] = {"limit": limit, "offset": offset}
+    params: dict[str, Any] = {
+        "limit": limit,
+        "offset": offset,
+        "viewer_user_id": viewer_user_id,
+        "viewer_org_id": viewer_org_id,
+        "viewer_is_admin": viewer_role == "admin",
+    }
     normalized = (query or "").strip()
     if normalized:
         where.append(
@@ -56,6 +85,9 @@ def list_market_standards(
                    v.supersedes_version_id,
                    l.id AS market_listing_id,
                    COALESCE(l.status, 'legacy_approved') AS market_status,
+                   COALESCE(l.visibility_scope, 'public') AS visibility_scope,
+                   l.owner_org_id,
+                   l.allowed_org_ids,
                    l.submitted_by AS market_submitted_by,
                    l.submitted_at AS market_submitted_at,
                    l.reviewed_by AS market_reviewed_by,
@@ -147,6 +179,9 @@ def _market_item(row: dict[str, Any]) -> dict[str, Any]:
             if row.get("market_listing_id") else None
         ),
         "market_status": row.get("market_status") or "legacy_approved",
+        "visibility_scope": row.get("visibility_scope") or "public",
+        "owner_org_id": row.get("owner_org_id"),
+        "allowed_org_ids": list(row.get("allowed_org_ids") or []),
         "market_submitted_by": row.get("market_submitted_by"),
         "market_submitted_at": (
             row["market_submitted_at"].isoformat()

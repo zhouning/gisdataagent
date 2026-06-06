@@ -10,6 +10,7 @@ from ...db_engine import get_engine
 
 LISTING_STATUSES = {"submitted", "approved", "rejected", "withdrawn"}
 REVIEW_DECISIONS = {"approved", "rejected"}
+VISIBILITY_SCOPES = {"public", "organization", "private"}
 
 
 def ensure_listing_table() -> None:
@@ -22,6 +23,9 @@ def ensure_listing_table() -> None:
                 version_id      UUID NOT NULL REFERENCES std_document_version(id) ON DELETE CASCADE,
                 document_id     UUID NOT NULL REFERENCES std_document(id) ON DELETE CASCADE,
                 status          TEXT NOT NULL DEFAULT 'submitted',
+                visibility_scope TEXT NOT NULL DEFAULT 'public',
+                owner_org_id    TEXT,
+                allowed_org_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
                 submitted_by    TEXT NOT NULL,
                 submitted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
                 reviewed_by     TEXT,
@@ -32,8 +36,35 @@ def ensure_listing_table() -> None:
                 updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
                 CONSTRAINT std_market_listing_status_check
                     CHECK (status IN ('submitted','approved','rejected','withdrawn')),
+                CONSTRAINT std_market_listing_visibility_scope_check
+                    CHECK (visibility_scope IN ('public','organization','private')),
                 CONSTRAINT std_market_listing_version_unique UNIQUE (version_id)
             )
+        """))
+        conn.execute(text("""
+            ALTER TABLE std_market_listing
+                ADD COLUMN IF NOT EXISTS visibility_scope TEXT NOT NULL DEFAULT 'public'
+        """))
+        conn.execute(text("""
+            ALTER TABLE std_market_listing
+                ADD COLUMN IF NOT EXISTS owner_org_id TEXT
+        """))
+        conn.execute(text("""
+            ALTER TABLE std_market_listing
+                ADD COLUMN IF NOT EXISTS allowed_org_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]
+        """))
+        conn.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint
+                     WHERE conname = 'std_market_listing_visibility_scope_check'
+                ) THEN
+                    ALTER TABLE std_market_listing
+                        ADD CONSTRAINT std_market_listing_visibility_scope_check
+                        CHECK (visibility_scope IN ('public','organization','private'));
+                END IF;
+            END $$
         """))
         conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_std_market_listing_status
@@ -43,12 +74,32 @@ def ensure_listing_table() -> None:
             CREATE INDEX IF NOT EXISTS idx_std_market_listing_document
                 ON std_market_listing(document_id)
         """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_std_market_listing_visibility
+                ON std_market_listing(visibility_scope)
+        """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_std_market_listing_owner_org
+                ON std_market_listing(owner_org_id)
+        """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_std_market_listing_allowed_orgs
+                ON std_market_listing USING GIN (allowed_org_ids)
+        """))
 
 
 def submit_listing(*, version_id: str, submitted_by: str,
-                   notes: str | None = None) -> dict[str, Any]:
+                   notes: str | None = None,
+                   visibility_scope: str = "public",
+                   owner_org_id: str | None = None,
+                   allowed_org_ids: list[str] | None = None) -> dict[str, Any]:
     """Submit a released standard version for market review."""
     ensure_listing_table()
+    visibility_scope, owner_org_id, allowed_org_ids = _normalize_visibility(
+        visibility_scope=visibility_scope,
+        owner_org_id=owner_org_id,
+        allowed_org_ids=allowed_org_ids,
+    )
     eng = get_engine()
     with eng.begin() as conn:
         version = conn.execute(text("""
@@ -63,12 +114,16 @@ def submit_listing(*, version_id: str, submitted_by: str,
 
         row = conn.execute(text("""
             INSERT INTO std_market_listing
-                (version_id, document_id, status, submitted_by, notes)
+                (version_id, document_id, status, visibility_scope,
+                 owner_org_id, allowed_org_ids, submitted_by, notes)
             VALUES
-                (:v, :d, 'submitted', :u, :n)
+                (:v, :d, 'submitted', :scope, :org, :allowed, :u, :n)
             ON CONFLICT (version_id)
             DO UPDATE SET
                 status = 'submitted',
+                visibility_scope = EXCLUDED.visibility_scope,
+                owner_org_id = EXCLUDED.owner_org_id,
+                allowed_org_ids = EXCLUDED.allowed_org_ids,
                 submitted_by = EXCLUDED.submitted_by,
                 submitted_at = now(),
                 reviewed_by = NULL,
@@ -80,6 +135,9 @@ def submit_listing(*, version_id: str, submitted_by: str,
         """), {
             "v": version_id,
             "d": version["document_id"],
+            "scope": visibility_scope,
+            "org": owner_org_id,
+            "allowed": allowed_org_ids,
             "u": submitted_by,
             "n": notes,
         }).first()
@@ -108,6 +166,38 @@ def review_listing(*, listing_id: str, decision: str, reviewed_by: str,
             "decision": decision,
             "u": reviewed_by,
             "notes": review_notes,
+        }).first()
+        if row is None:
+            raise LookupError("listing not found")
+        return _get_listing_by_id(conn, str(row[0]))
+
+
+def update_listing_visibility(*, listing_id: str, visibility_scope: str,
+                              owner_org_id: str | None = None,
+                              allowed_org_ids: list[str] | None = None
+                              ) -> dict[str, Any]:
+    """Update visibility settings for an existing market listing."""
+    ensure_listing_table()
+    visibility_scope, owner_org_id, allowed_org_ids = _normalize_visibility(
+        visibility_scope=visibility_scope,
+        owner_org_id=owner_org_id,
+        allowed_org_ids=allowed_org_ids,
+    )
+    eng = get_engine()
+    with eng.begin() as conn:
+        row = conn.execute(text("""
+            UPDATE std_market_listing
+               SET visibility_scope = :scope,
+                   owner_org_id = :org,
+                   allowed_org_ids = :allowed,
+                   updated_at = now()
+             WHERE id = :i
+             RETURNING id
+        """), {
+            "i": listing_id,
+            "scope": visibility_scope,
+            "org": owner_org_id,
+            "allowed": allowed_org_ids,
         }).first()
         if row is None:
             raise LookupError("listing not found")
@@ -153,6 +243,9 @@ _LISTING_SQL_BASE = """
            l.version_id,
            l.document_id,
            l.status,
+           l.visibility_scope,
+           l.owner_org_id,
+           l.allowed_org_ids,
            l.submitted_by,
            l.submitted_at,
            l.reviewed_by,
@@ -198,6 +291,9 @@ def _row_to_listing(row: dict[str, Any]) -> dict[str, Any]:
         ),
         "released_by": row.get("released_by"),
         "status": row["status"],
+        "visibility_scope": row.get("visibility_scope") or "public",
+        "owner_org_id": row.get("owner_org_id"),
+        "allowed_org_ids": list(row.get("allowed_org_ids") or []),
         "submitted_by": row["submitted_by"],
         "submitted_at": (
             row["submitted_at"].isoformat() if row.get("submitted_at") else None
@@ -215,3 +311,24 @@ def _row_to_listing(row: dict[str, Any]) -> dict[str, Any]:
             row["updated_at"].isoformat() if row.get("updated_at") else None
         ),
     }
+
+
+def _normalize_visibility(*, visibility_scope: str | None,
+                          owner_org_id: str | None,
+                          allowed_org_ids: list[str] | None
+                          ) -> tuple[str, str | None, list[str]]:
+    scope = (visibility_scope or "public").strip().lower()
+    if scope not in VISIBILITY_SCOPES:
+        raise ValueError("invalid visibility_scope")
+    owner = owner_org_id.strip() if isinstance(owner_org_id, str) else None
+    owner = owner or None
+    allowed = []
+    for org in allowed_org_ids or []:
+        if not isinstance(org, str):
+            continue
+        normalized = org.strip()
+        if normalized and normalized not in allowed:
+            allowed.append(normalized)
+    if scope == "organization" and not owner:
+        raise ValueError("owner_org_id required for organization visibility")
+    return scope, owner, allowed
