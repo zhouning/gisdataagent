@@ -1,6 +1,7 @@
 """Admin-safe std_outbox listing, counts, and retry operations."""
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from typing import Any, Iterable
 from uuid import UUID
@@ -104,7 +105,7 @@ def retry_event(event_id: str, by_user: str) -> dict:
 
     with eng.begin() as conn:
         row = conn.execute(text(
-            "SELECT status FROM std_outbox WHERE id=:id FOR UPDATE"
+            "SELECT event_type, status FROM std_outbox WHERE id=:id FOR UPDATE"
         ), {"id": str(event_uuid)}).mappings().first()
         if row is None:
             return {"id": event_id_str, "status": "skipped",
@@ -123,6 +124,16 @@ def retry_event(event_id: str, by_user: str) -> dict:
             "SET status='pending', next_attempt_at=now() "
             "WHERE id=:id"
         ), {"id": str(event_uuid)})
+        audit_details = {
+            "event_id": event_id_str,
+            "event_type": str(row["event_type"]),
+            "previous_status": status,
+        }
+        conn.execute(text(
+            "INSERT INTO agent_audit_log (username, action, details) "
+            "VALUES (:u, 'std_outbox.retry', CAST(:d AS jsonb))"
+        ), {"u": by_user,
+            "d": json.dumps(audit_details, ensure_ascii=False)})
 
     logger.info("retried std_outbox event id=%s by_user=%s", event_id_str,
                 by_user)

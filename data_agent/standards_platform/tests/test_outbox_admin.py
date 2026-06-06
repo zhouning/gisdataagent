@@ -1,7 +1,6 @@
 """Tests for admin outbox dead-letter operations."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import uuid
 
 import pytest
@@ -41,6 +40,20 @@ def _row(engine, event_id: str):
             "SELECT status, attempts, last_error, next_attempt_at "
             "FROM std_outbox WHERE id=:i"
         ), {"i": event_id}).mappings().first()
+
+
+def _db_now(engine):
+    with engine.connect() as conn:
+        return conn.execute(text("SELECT clock_timestamp()")).scalar()
+
+
+def _audit_count(engine, *, event_id: str,
+                 action: str = "std_outbox.retry") -> int:
+    with engine.connect() as conn:
+        return conn.execute(text(
+            "SELECT COUNT(*) FROM agent_audit_log "
+            "WHERE action=:a AND details->>'event_id'=:i"
+        ), {"a": action, "i": event_id}).scalar()
 
 
 def test_list_events_filters_failed_newest_first(clean_outbox):
@@ -96,7 +109,31 @@ def test_retry_failed_event_resets_to_pending(clean_outbox):
     assert row["status"] == "pending"
     assert row["attempts"] == 5
     assert row["last_error"] == "boom"
-    assert row["next_attempt_at"] <= datetime.now(timezone.utc)
+    assert row["next_attempt_at"] <= _db_now(clean_outbox)
+
+
+def test_retry_failed_event_writes_audit(clean_outbox):
+    event_id = _event({"retry": "audit"})
+    _set_status(clean_outbox, event_id, "failed", attempts=5,
+                last_error="boom")
+
+    result = outbox_admin.retry_event(event_id, by_user="admin")
+
+    assert result == {"id": event_id, "status": "retried"}
+    with clean_outbox.connect() as conn:
+        row = conn.execute(text(
+            "SELECT username, action, details "
+            "FROM agent_audit_log "
+            "WHERE action='std_outbox.retry' "
+            "AND details->>'event_id'=:i "
+            "ORDER BY created_at DESC "
+            "LIMIT 1"
+        ), {"i": event_id}).mappings().first()
+    assert row is not None
+    assert row["username"] == "admin"
+    assert row["details"]["event_id"] == event_id
+    assert row["details"]["event_type"] == "derivation_requested"
+    assert row["details"]["previous_status"] == "failed"
 
 
 def test_retry_in_flight_event_resets_to_pending(clean_outbox):
@@ -125,6 +162,17 @@ def test_retry_done_event_is_skipped(clean_outbox):
         "reason": "status done is not retryable",
     }
     assert row["status"] == "done"
+
+
+def test_retry_done_event_does_not_write_audit(clean_outbox):
+    event_id = _event({"retry": "no-audit"})
+    _set_status(clean_outbox, event_id, "done", attempts=0)
+    before = _audit_count(clean_outbox, event_id=event_id)
+
+    result = outbox_admin.retry_event(event_id, by_user="admin")
+
+    assert result["status"] == "skipped"
+    assert _audit_count(clean_outbox, event_id=event_id) == before
 
 
 def test_retry_missing_event_is_skipped(clean_outbox):
