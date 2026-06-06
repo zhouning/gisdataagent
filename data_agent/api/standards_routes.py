@@ -46,6 +46,7 @@ from ..standards_platform.derivation import (
 )
 from ..standards_platform.analysis import impact_graph as _impact_graph
 from ..standards_platform.market import catalog as _market_catalog
+from ..standards_platform.market import subscriptions as _market_subscriptions
 from ..standards_platform.derivation.data_model_xmi_exporter import (
     export_pdm_to_ea_xmi,
 )
@@ -989,6 +990,65 @@ async def market_diff_handler(request: Request):
         return JSONResponse({"error": "version not found"}, status_code=404)
 
 
+async def market_list_subscriptions_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    return JSONResponse({
+        "subscriptions": _market_subscriptions.list_subscriptions(
+            subscriber_user_id=username,
+        )
+    })
+
+
+async def market_subscribe_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    body = await request.json()
+    version_id = body.get("version_id")
+    if not version_id:
+        return JSONResponse({"error": "version_id required"}, status_code=400)
+    notes = body.get("notes")
+    try:
+        sub = _market_subscriptions.subscribe(
+            version_id=version_id,
+            subscriber_user_id=username,
+            notes=notes if isinstance(notes, str) else None,
+        )
+    except LookupError:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    return JSONResponse(sub, status_code=201)
+
+
+async def market_unsubscribe_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    try:
+        sub = _market_subscriptions.unsubscribe(
+            subscription_id=request.path_params["subscription_id"],
+            subscriber_user_id=username,
+            is_admin=role == "admin",
+        )
+    except LookupError:
+        return JSONResponse({"error": "subscription not found"}, status_code=404)
+    return JSONResponse(sub)
+
+
+async def market_subscription_mark_seen_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    try:
+        sub = _market_subscriptions.mark_seen(
+            subscription_id=request.path_params["subscription_id"],
+            subscriber_user_id=username,
+            is_admin=role == "admin",
+        )
+    except LookupError:
+        return JSONResponse({"error": "subscription not found"}, status_code=404)
+    return JSONResponse(sub)
+
+
 # ---------------------------------------------------------------------------
 # Wave 5: Derivation handlers
 # ---------------------------------------------------------------------------
@@ -1470,6 +1530,14 @@ standards_routes = [
           endpoint=market_list_standards_handler, methods=["GET"]),
     Route("/api/std/market/diff",
           endpoint=market_diff_handler, methods=["GET"]),
+    Route("/api/std/market/subscriptions",
+          endpoint=market_list_subscriptions_handler, methods=["GET"]),
+    Route("/api/std/market/subscriptions",
+          endpoint=market_subscribe_handler, methods=["POST"]),
+    Route("/api/std/market/subscriptions/{subscription_id}/mark-seen",
+          endpoint=market_subscription_mark_seen_handler, methods=["POST"]),
+    Route("/api/std/market/subscriptions/{subscription_id}",
+          endpoint=market_unsubscribe_handler, methods=["DELETE"]),
     # Wave 5: derivation
     Route("/api/std/derive/strategies",
           endpoint=derive_strategies_handler, methods=["GET"]),
