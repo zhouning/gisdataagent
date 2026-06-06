@@ -6,7 +6,7 @@ derivation_strategy (not strategy), status ∈ pending/active/stale/overridden/s
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from typing import Iterable, Optional
 
 from sqlalchemy import text
 
@@ -198,6 +198,53 @@ def rollback_version(*, version_id: str, by_user: str = "system",
             }
 
     return summary
+
+
+def rollback_versions(*, version_ids: Iterable[str],
+                      by_user: str = "system",
+                      reason: Optional[str] = None) -> dict:
+    """Rollback multiple versions independently in input order."""
+    if isinstance(version_ids, str):
+        version_ids = [version_ids]
+
+    rolled_back: list[dict] = []
+    skipped: list[dict] = []
+    seen: set[str] = set()
+    eng = get_engine()
+
+    for raw_id in version_ids:
+        version_id = str(raw_id)
+        try:
+            normalized_id = str(uuid.UUID(version_id))
+        except ValueError:
+            skipped.append({"version_id": version_id, "reason": "not found"})
+            continue
+
+        if normalized_id in seen:
+            skipped.append({"version_id": version_id, "reason": "duplicate id"})
+            continue
+        seen.add(normalized_id)
+
+        with eng.connect() as conn:
+            exists = conn.execute(text(
+                "SELECT 1 FROM std_document_version WHERE id=:i"
+            ), {"i": normalized_id}).first()
+        if exists is None:
+            skipped.append({"version_id": version_id, "reason": "not found"})
+            continue
+
+        summary = rollback_version(
+            version_id=normalized_id,
+            by_user=by_user,
+            reason=reason,
+        )
+        rolled_back.append({
+            "version_id": normalized_id,
+            "status": "rolled_back" if summary else "no_active_links",
+            "by_strategy": summary,
+        })
+
+    return {"rolled_back": rolled_back, "skipped": skipped}
 
 
 def impact_graph(*, source_kind: str, source_id: str,

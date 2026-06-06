@@ -166,6 +166,77 @@ def test_rollback_empty_when_nothing_active(engine, fresh_clause):
         _cleanup_all(engine, doc_id)
 
 
+def test_rollback_versions_returns_mixed_results(engine, fresh_clause):
+    cid, doc_id, ver_id = fresh_clause
+    _seed_bound_element(engine, ver_id, obligation="mandatory")
+    SemanticHintStrategy().run(version_id=ver_id, by_user="admin")
+    QcRuleStrategy().run(version_id=ver_id, by_user="admin")
+    missing_id = str(uuid.uuid4())
+    try:
+        result = link_repo.rollback_versions(
+            version_ids=[ver_id, ver_id, missing_id, "not-a-uuid"],
+            by_user="admin",
+            reason="batch test",
+        )
+
+        assert result["rolled_back"][0]["version_id"] == ver_id
+        assert result["rolled_back"][0]["status"] == "rolled_back"
+        assert "to_semantic_hint" in result["rolled_back"][0]["by_strategy"]
+        assert "to_qc_rule" in result["rolled_back"][0]["by_strategy"]
+        assert result["skipped"] == [
+            {"version_id": ver_id, "reason": "duplicate id"},
+            {"version_id": missing_id, "reason": "not found"},
+            {"version_id": "not-a-uuid", "reason": "not found"},
+        ]
+
+        with engine.connect() as c:
+            statuses = [r[0] for r in c.execute(text(
+                "SELECT status FROM std_derived_link "
+                "WHERE source_version_id=:v"
+            ), {"v": ver_id}).fetchall()]
+        assert statuses and all(s == "superseded" for s in statuses)
+    finally:
+        _cleanup_all(engine, doc_id)
+
+
+def test_rollback_versions_reports_no_active_links(engine, fresh_clause):
+    cid, doc_id, ver_id = fresh_clause
+    try:
+        result = link_repo.rollback_versions(
+            version_ids=[ver_id],
+            by_user="admin",
+            reason="batch no-op",
+        )
+
+        assert result == {
+            "rolled_back": [
+                {"version_id": ver_id, "status": "no_active_links",
+                 "by_strategy": {}}
+            ],
+            "skipped": [],
+        }
+    finally:
+        _cleanup_all(engine, doc_id)
+
+
+def test_rollback_versions_accepts_single_string(engine, fresh_clause):
+    cid, doc_id, ver_id = fresh_clause
+    _seed_bound_element(engine, ver_id, obligation="mandatory")
+    QcRuleStrategy().run(version_id=ver_id, by_user="admin")
+    try:
+        result = link_repo.rollback_versions(
+            version_ids=ver_id,
+            by_user="admin",
+            reason="single string",
+        )
+
+        assert result["rolled_back"][0]["version_id"] == ver_id
+        assert result["rolled_back"][0]["status"] == "rolled_back"
+        assert result["skipped"] == []
+    finally:
+        _cleanup_all(engine, doc_id)
+
+
 # ---------------------------------------------------------------------------
 # impact_graph
 # ---------------------------------------------------------------------------
