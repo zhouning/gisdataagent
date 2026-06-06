@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
 import {
   MarketDiffResponse,
+  MarketListing,
   MarketStandardItem,
   MarketSubscription,
   getMarketDiff,
+  listMarketListings,
   listMarketSubscriptions,
   listMarketStandards,
   markMarketSubscriptionSeen,
+  reviewMarketListing,
+  submitMarketListing,
   subscribeMarketStandard,
   unsubscribeMarketSubscription,
 } from "./standardsApi";
@@ -24,9 +28,12 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
   const [targetVersionId, setTargetVersionId] = useState("");
   const [diff, setDiff] = useState<MarketDiffResponse | null>(null);
   const [subscriptions, setSubscriptions] = useState<MarketSubscription[]>([]);
+  const [reviewItems, setReviewItems] = useState<MarketListing[]>([]);
   const [loading, setLoading] = useState(false);
   const [diffBusy, setDiffBusy] = useState(false);
   const [subsBusy, setSubsBusy] = useState(false);
+  const [auditBusy, setAuditBusy] = useState(false);
+  const [auditMessage, setAuditMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = () => {
@@ -124,6 +131,52 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
     }
   };
 
+  const submitSelectedListing = async () => {
+    if (!selected) return;
+    setAuditBusy(true);
+    setError(null);
+    setAuditMessage(null);
+    try {
+      await submitMarketListing(selected.version_id);
+      setAuditMessage("已提交");
+      loadCatalog();
+    } catch (e: any) {
+      setError(e?.message || "提交审核失败");
+    } finally {
+      setAuditBusy(false);
+    }
+  };
+
+  const loadAuditQueue = async () => {
+    setAuditBusy(true);
+    setAuditMessage(null);
+    try {
+      const result = await listMarketListings({status: "submitted", limit: 20});
+      setReviewItems(result.items);
+    } catch (e: any) {
+      setAuditMessage(e?.message || "加载审核队列失败");
+    } finally {
+      setAuditBusy(false);
+    }
+  };
+
+  const reviewListing = async (
+    listingId: string,
+    decision: "approved" | "rejected",
+  ) => {
+    setAuditBusy(true);
+    setError(null);
+    try {
+      await reviewMarketListing(listingId, decision);
+      await loadAuditQueue();
+      loadCatalog();
+    } catch (e: any) {
+      setError(e?.message || "审核失败");
+    } finally {
+      setAuditBusy(false);
+    }
+  };
+
   return (
     <div style={{
       display: "grid", gridTemplateColumns: "36% 64%",
@@ -193,6 +246,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
               <Chip label="要素" value={item.asset_counts.data_elements}/>
               <Chip label="术语" value={item.asset_counts.terms}/>
               <Chip label="值域" value={item.asset_counts.value_domains}/>
+              <Chip label="上架" value={marketStatusLabel(item.market_status)}/>
             </div>
           </button>
         ))}
@@ -259,6 +313,72 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             </div>
           ))}
         </div>
+        <div style={{
+          marginTop: 14, paddingTop: 10, borderTop: "1px solid #e5e7eb",
+        }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between",
+            alignItems: "center", gap: 8, marginBottom: 8,
+          }}>
+            <div style={{fontSize: 13, fontWeight: 650, color: "#111827"}}>
+              市场审核
+            </div>
+            <button
+              onClick={loadAuditQueue}
+              disabled={auditBusy}
+              style={smallButtonStyle}>
+              刷新
+            </button>
+          </div>
+          {auditMessage && (
+            <div style={{
+              marginBottom: 8, padding: 6, border: "1px solid #e5e7eb",
+              background: "#f9fafb", color: "#374151", borderRadius: 4,
+              fontSize: 11,
+            }}>
+              {auditMessage}
+            </div>
+          )}
+          {reviewItems.length === 0 && (
+            <div style={mutedStyle}>暂无待审</div>
+          )}
+          {reviewItems.map(item => (
+            <div key={item.id}
+                 style={{
+                   padding: 8, marginBottom: 6, borderRadius: 4,
+                   border: "1px solid #e5e7eb", background: "#fff",
+                 }}>
+              <div style={{
+                fontSize: 12, fontWeight: 650, color: "#111827",
+                overflow: "hidden", textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {item.doc_code} · {item.version_label}
+              </div>
+              <div style={{
+                fontSize: 11, color: "#6b7280", marginTop: 2,
+                overflow: "hidden", textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {item.title}
+              </div>
+              <div style={{display: "flex", gap: 4, marginTop: 6}}>
+                <button
+                  onClick={() => reviewListing(item.id, "approved")}
+                  disabled={auditBusy}
+                  style={smallButtonStyle}>
+                  通过
+                </button>
+                <button
+                  onClick={() => reviewListing(item.id, "rejected")}
+                  disabled={auditBusy}
+                  style={smallDangerButtonStyle}>
+                  拒绝
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{padding: 12, overflow: "auto"}}>
@@ -276,26 +396,37 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                   {selected.doc_code} · {selected.version_label} · {selected.source_type}
                 </div>
               </div>
-              <button
-                onClick={() => onSelectVersion(selected.version_id)}
-                style={outlineButtonStyle}>
-                设为当前版本
-              </button>
-              {selectedSubscription ? (
+              <div style={{
+                display: "flex", gap: 6, flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}>
                 <button
-                  onClick={() => cancelSubscription(selectedSubscription.id)}
-                  disabled={subsBusy}
+                  onClick={() => onSelectVersion(selected.version_id)}
                   style={outlineButtonStyle}>
-                  取消订阅
+                  设为当前版本
                 </button>
-              ) : (
                 <button
-                  onClick={subscribeSelected}
-                  disabled={subsBusy}
-                  style={buttonStyle}>
-                  订阅
+                  onClick={submitSelectedListing}
+                  disabled={auditBusy || selected.market_status === "approved"}
+                  style={outlineButtonStyle}>
+                  {selected.market_status === "approved" ? "已通过审核" : "提交审核"}
                 </button>
-              )}
+                {selectedSubscription ? (
+                  <button
+                    onClick={() => cancelSubscription(selectedSubscription.id)}
+                    disabled={subsBusy}
+                    style={outlineButtonStyle}>
+                    取消订阅
+                  </button>
+                ) : (
+                  <button
+                    onClick={subscribeSelected}
+                    disabled={subsBusy}
+                    style={buttonStyle}>
+                    订阅
+                  </button>
+                )}
+              </div>
             </div>
 
             <div style={{
@@ -389,6 +520,21 @@ function Chip({label, value}: {label: string; value: React.ReactNode}) {
       <strong>{value}</strong>
     </span>
   );
+}
+
+function marketStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case "approved":
+      return "已通过";
+    case "submitted":
+      return "待审";
+    case "rejected":
+      return "已拒绝";
+    case "withdrawn":
+      return "已撤回";
+    default:
+      return "已上架";
+  }
 }
 
 function Field({label, value, onChange}: {

@@ -623,6 +623,12 @@ export interface MarketStandardItem {
   released_at: string | null;
   released_by: string | null;
   supersedes_version_id: string | null;
+  market_listing_id: string | null;
+  market_status: MarketListingStatus | "legacy_approved";
+  market_submitted_by: string | null;
+  market_submitted_at: string | null;
+  market_reviewed_by: string | null;
+  market_reviewed_at: string | null;
   asset_counts: MarketAssetCounts;
 }
 
@@ -691,12 +697,39 @@ export interface MarketSubscription {
   updated_at: string | null;
 }
 
+export type MarketListingStatus =
+  "submitted" | "approved" | "rejected" | "withdrawn";
+
+export interface MarketListing {
+  id: string;
+  version_id: string;
+  document_id: string;
+  doc_code: string;
+  title: string;
+  source_type: string;
+  owner_user_id: string;
+  version_label: string;
+  released_at: string | null;
+  released_by: string | null;
+  status: MarketListingStatus;
+  submitted_by: string;
+  submitted_at: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+  review_notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export const listMarketStandards = (
   params: {query?: string; limit?: number; offset?: number} = {},
 ) => {
   const filtered: Record<string,string> = {};
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") filtered[k] = String(v);
+    if (v !== undefined && v !== null && String(v) !== "") {
+      filtered[k] = String(v);
+    }
   }
   const q = new URLSearchParams(filtered).toString();
   return fetch(`/api/std/market/standards${q ? `?${q}` : ""}`)
@@ -732,3 +765,36 @@ export const markMarketSubscriptionSeen = (subscriptionId: string) =>
   fetch(`/api/std/market/subscriptions/${subscriptionId}/mark-seen`,
         {method: "POST"})
     .then(j<MarketSubscription>);
+
+export const listMarketListings = (
+  params: {status?: MarketListingStatus; limit?: number; offset?: number} = {},
+) => {
+  const filtered: Record<string,string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && String(v) !== "") {
+      filtered[k] = String(v);
+    }
+  }
+  const q = new URLSearchParams(filtered).toString();
+  return fetch(`/api/std/market/listings${q ? `?${q}` : ""}`)
+    .then(j<{items: MarketListing[]; total: number; limit: number; offset: number}>);
+};
+
+export const submitMarketListing = (versionId: string,
+                                    notes?: string) =>
+  fetch("/api/std/market/listings", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({version_id: versionId, notes: notes ?? null}),
+  }).then(j<MarketListing>);
+
+export const reviewMarketListing = (
+  listingId: string,
+  decision: "approved" | "rejected",
+  reviewNotes?: string,
+) =>
+  fetch(`/api/std/market/listings/${listingId}/review`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({decision, review_notes: reviewNotes ?? null}),
+  }).then(j<MarketListing>);
