@@ -39,6 +39,56 @@ export const getVersionTerms = (versionId: string) =>
 export const getSimilar = (versionId: string) =>
   fetch(`/api/std/versions/${versionId}/similar`).then(j<{hits: any[]}>);
 
+export interface ImpactGraphNode {
+  id: string;
+  kind: string;
+  label?: string;
+  document_id?: string;
+  version_id?: string;
+  metadata?: Record<string, any>;
+}
+
+export type ImpactGraphEdgeType =
+  "derives" | "references" | "similar_clause" | (string & {});
+
+export interface ImpactGraphEdge {
+  id: string;
+  edge_type: ImpactGraphEdgeType;
+  source: string;
+  target: string;
+  label?: string;
+  status?: string | null;
+  score?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface ImpactGraphSummary {
+  node_count: number;
+  edge_count: number;
+  by_edge_type: Record<string, number>;
+  cross_version_edge_count: number;
+}
+
+export interface ImpactGraphResult {
+  version_id: string;
+  nodes: ImpactGraphNode[];
+  edges: ImpactGraphEdge[];
+  summary: ImpactGraphSummary;
+}
+
+export const getVersionImpactGraph = (
+  versionId: string,
+  params: {include_similar?: boolean; min_similarity?: number; top_k?: number} = {},
+) => {
+  const filtered: Record<string,string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) filtered[k] = String(v);
+  }
+  const q = new URLSearchParams(filtered).toString();
+  return fetch(`/api/std/impact/versions/${versionId}${q ? `?${q}` : ""}`)
+    .then(j<ImpactGraphResult>);
+};
+
 export const listVersions = (docId: string) =>
   fetch(`/api/std/documents/${docId}/versions`).then(j<{versions: {id: string; version_label: string; status: string}[]}>);
 
