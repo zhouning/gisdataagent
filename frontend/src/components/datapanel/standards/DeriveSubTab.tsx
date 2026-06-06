@@ -4,6 +4,7 @@ import LinkTable from "./derive/LinkTable";
 import DeriveStatusSummary from "./derive/DeriveStatusSummary";
 import RerunButton from "./derive/RerunButton";
 import DataModelPreviewModal from "./derive/DataModelPreviewModal";
+import BatchRollbackPanel from "./derive/BatchRollbackPanel";
 import OutboxDeadLetterPanel from "./derive/OutboxDeadLetterPanel";
 
 interface Props {
@@ -39,6 +40,12 @@ export default function DeriveSubTab({versionId, userRole}: Props) {
           isAdmin={isAdmin}
           onCompleted={() => setRefreshTick(t => t + 1)}
         />
+        {isAdmin && (
+          <BatchRollbackPanel
+            versionId={versionId}
+            onRollbackComplete={() => setRefreshTick(t => t + 1)}
+          />
+        )}
         {isAdmin && (
           <OutboxDeadLetterPanel
             refreshTick={refreshTick}
