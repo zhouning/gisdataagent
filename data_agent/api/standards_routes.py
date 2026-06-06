@@ -80,6 +80,39 @@ def _auth_or_401(request: Request):
     return username, role, None
 
 
+def _auth_market_or_401(request: Request):
+    u = _helpers._get_user_from_request(request)
+    if not u:
+        return None, None, None, JSONResponse(
+            {"error": "Unauthorized"}, status_code=401,
+        )
+    username, role = _set_user_context(u)
+    return username, role, _org_id_from_user(u), None
+
+
+def _org_id_from_user(user) -> str | None:
+    if not hasattr(user, "metadata") or not isinstance(user.metadata, dict):
+        return None
+    for key in ("org_id", "organization_id", "org", "tenant_id"):
+        value = user.metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _string_list(value) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        normalized = item.strip()
+        if normalized and normalized not in out:
+            out.append(normalized)
+    return out
+
+
 def _parse_int_param(request: Request, name: str, default: int) -> int:
     raw = request.query_params.get(name)
     if raw is None:
@@ -956,7 +989,7 @@ async def get_version_handler(request: Request):
 
 
 async def market_list_standards_handler(request: Request):
-    username, role, err = _auth_or_401(request)
+    username, role, org_id, err = _auth_market_or_401(request)
     if err: return err
     try:
         limit = _parse_int_param(request, "limit", 50)
@@ -972,6 +1005,9 @@ async def market_list_standards_handler(request: Request):
         query=request.query_params.get("query"),
         limit=limit,
         offset=offset,
+        viewer_user_id=username,
+        viewer_role=role,
+        viewer_org_id=org_id,
     ))
 
 
@@ -1016,7 +1052,7 @@ async def market_list_listings_handler(request: Request):
 
 
 async def market_submit_listing_handler(request: Request):
-    username, role, err = _auth_or_401(request)
+    username, role, org_id, err = _auth_market_or_401(request)
     if err: return err
     if role not in _EDITOR_ROLES:
         return JSONResponse({"error": "Forbidden — editor role required"},
@@ -1026,17 +1062,48 @@ async def market_submit_listing_handler(request: Request):
     if not version_id:
         return JSONResponse({"error": "version_id required"}, status_code=400)
     notes = body.get("notes")
+    visibility_scope = body.get("visibility_scope") or "public"
+    owner_org_id = body.get("owner_org_id")
+    if not isinstance(owner_org_id, str) or not owner_org_id.strip():
+        owner_org_id = org_id
+    allowed_org_ids = _string_list(body.get("allowed_org_ids"))
     try:
         listing = _market_listings.submit_listing(
             version_id=version_id,
             submitted_by=username,
             notes=notes if isinstance(notes, str) else None,
+            visibility_scope=visibility_scope,
+            owner_org_id=owner_org_id,
+            allowed_org_ids=allowed_org_ids,
         )
     except LookupError:
         return JSONResponse({"error": "version not found"}, status_code=404)
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=409)
     return JSONResponse(listing, status_code=201)
+
+
+async def market_listing_visibility_handler(request: Request):
+    username, role, err = _auth_or_401(request)
+    if err: return err
+    if role != "admin":
+        return JSONResponse({"error": "Forbidden — admin only"}, status_code=403)
+    body = await request.json()
+    visibility_scope = body.get("visibility_scope")
+    owner_org_id = body.get("owner_org_id")
+    allowed_org_ids = _string_list(body.get("allowed_org_ids"))
+    try:
+        listing = _market_listings.update_listing_visibility(
+            listing_id=request.path_params["listing_id"],
+            visibility_scope=visibility_scope,
+            owner_org_id=owner_org_id if isinstance(owner_org_id, str) else None,
+            allowed_org_ids=allowed_org_ids,
+        )
+    except LookupError:
+        return JSONResponse({"error": "listing not found"}, status_code=404)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return JSONResponse(listing)
 
 
 async def market_review_listing_handler(request: Request):
@@ -1605,6 +1672,8 @@ standards_routes = [
           endpoint=market_list_listings_handler, methods=["GET"]),
     Route("/api/std/market/listings",
           endpoint=market_submit_listing_handler, methods=["POST"]),
+    Route("/api/std/market/listings/{listing_id}/visibility",
+          endpoint=market_listing_visibility_handler, methods=["PATCH"]),
     Route("/api/std/market/listings/{listing_id}/review",
           endpoint=market_review_listing_handler, methods=["POST"]),
     Route("/api/std/market/subscriptions",
