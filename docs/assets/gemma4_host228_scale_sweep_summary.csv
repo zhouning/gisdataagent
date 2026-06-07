@@ -1,0 +1,6 @@
+model,host,dataset,baseline_ex_correct,baseline_ex_total,baseline_ex_pct,baseline_valid_correct,baseline_valid_total,baseline_valid_pct,baseline_minutes,full_ex_correct,full_ex_total,full_ex_pct,full_valid_correct,full_valid_total,full_valid_pct,full_minutes,delta_ex_pp,selection_note
+Gemma4:e2b,host228,CQ-125,37,125,29.6,82,125,65.6,7.39,82,125,65.6,108,125,86.4,21.22,36.0,"single-host engineering summary; highest-EX full row if multiple host228 full runs existed"
+Gemma4:e4b,host228,CQ-125,42,125,33.6,95,125,76.0,6.75,80,125,64.0,110,125,88.0,13.49,30.4,"single-host engineering summary; highest-EX full row if multiple host228 full runs existed"
+Gemma4:12b,host228,CQ-125,62,125,49.6,98,125,78.4,7.21,107,125,85.6,120,125,96.0,16.45,36.0,"single-host engineering summary; highest-EX full row if multiple host228 full runs existed"
+Gemma4:26b,host228,CQ-125,71,125,56.8,111,125,88.8,7.20,113,125,90.4,118,125,94.4,12.50,33.6,"single-host engineering summary; highest-EX full row if multiple host228 full runs existed"
+Gemma4:31b,host228,CQ-125,69,125,55.2,119,125,95.2,13.92,114,125,91.2,117,125,93.6,20.04,36.0,"single-host engineering summary; highest-EX full row if multiple host228 full runs existed"

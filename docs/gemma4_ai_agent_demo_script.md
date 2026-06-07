@@ -1,49 +1,75 @@
 # Gemma 4 AI Agent 赛道演示脚本
 
-本文档用于录制 GIS Data Agent 参加 Gemma 4 开发者大赛 AI Agent 赛道的 5 分钟演示视频。
+本文档用于录制 GIS Data Agent 参加 Gemma 4 开发者大赛 AI Agent 赛道的 5 分钟演示视频，并记录 2026-06-06 本地复测结果。
 
 比赛 README 对齐点：
 
-- AI Agent 赛道需要展示 Native Function Calling、Tool Calling、Memory 和多步规划。
+- AI Agent 赛道需要展示 Native Function Calling / Tool Calling、Memory 和多步规划。
+- 赛道 A 提交建议提供运行日志截图；本项目使用“工作台 -> 平台运营 -> 运行日志”展示可截图的 Thread/Step、Tool Calling、Memory 和地图事件摘要。
 - 核心代码需要包含 Gemma 4 调用逻辑。
 - 演示视频控制在 5 分钟以内。
-- 提交文档需要说明本地安装、环境变量和可复现运行方式。
+- 必须准备技术报告，阐述为何选择 Gemma 4 26B MoE / 31B Dense 等特定规格，以及 GIS Data Agent 的架构设计。
+- 提交文档需要说明本地安装、环境变量和可复现运行方式；本项目参赛主线使用纯 Docker / Docker Compose，不把 K8s 作为评审必需环境。
 
-本次演示固定使用本机 Windows 测试环境，模型来源为 `http://192.168.25.228:11434/` 上的 `Gemma4:31b`。
+## 提交材料硬性清单
+
+1. 核心代码说明：
+   - 明确指出 Gemma 4 调用逻辑在 `data_agent/model_gateway.py`、模型配置和 NL2SQL / WorldModelV21 Agent 调用链中的位置。
+   - 明确说明不是单纯 Prompt 工程，而是通过 Agent 路由、Tool Calling、结构化工具返回、PostGIS / WorldModel 工具执行形成原生函数调用闭环。
+
+2. Memory 与 Tool Calling 代码说明：
+   - `nl2semantic2sql` 场景：说明 `@NL2SQL` 路由、`run_nl2semantic2sql` 工具调用、SQL 生成/语义修正/PostGIS 执行、结果地图和自动 Memory 提取。
+   - `worldmodelv2.1` 场景：说明 `world_model_v21_status`、`world_model_v21_pipeline` 的 A/B/C/D 多步规划，以及 Tool 4 MPC 真实运行产物。
+   - 使用“工作台 -> 平台运营 -> 运行日志”截图展示 Thread/Step、Tool Calling、Memory 和 Step Timeline。
+   - 代码说明入口：`docs/gemma4_ai_agent_code_walkthrough.md`。
+
+3. 技术报告：
+   - 单独准备技术报告，覆盖模型选型理由、Gemma 4 规格选择、架构设计、关键模块、函数调用链路、真实数据与部署方式。
+   - 当前报告入口：`docs/gemma4_ai_agent_technical_report.md`。
+   - 报告中必须把 `nl2semantic2sql` 和 `worldmodelv2.1` 作为主场景，不泛泛描述平台能力。
+
+4. README / About 刷新：
+   - `README.md` 需要围绕 Gemma 4 AI Agent 赛道重新组织，而不是保留泛平台介绍。
+   - README 需包含一键 Docker Compose 启动、环境变量、模型配置、演示脚本、运行日志截图路径、技术报告入口。
+   - GitHub About 建议改成比赛导向的一句话，例如：`Gemma 4 powered GIS Data Agent for NL2Semantic2SQL and WorldModel v2.1 planning with native tool calling and memory.`
 
 ## 录制前真实验证基线
 
-准备过程不计入 5 分钟视频。录制前先确认以下基线，不在视频里展示任何密码、API key 或云账号凭证。
+准备过程不计入 5 分钟视频。录制前不要展示任何密码、API key、数据库连接串或云账号凭证。
 
 ```text
-OS=Windows
-repo=D:\adk
+local_retest_date=2026-06-06
+local_os=macOS
+repo=/Users/zhouning/gisdataagent
 branch=feat/v12-extensible-platform
-git sync=HEAD...origin/feat/v12-extensible-platform -> 0 0
+paper9_repo=/Users/zhouning/arcgis-farmland-mpc
+paper9_commit=aefc9e85a0b8b4f8443bc5785e6f7f3016286abb
+paper9_version=0.2.1
+proj_data_dir=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj
+docker_compose_file=docker-compose.gemma4-demo.yml
+docker_db=gisdataagent-db-1 on localhost:5433
+k8s_status=gis-agent namespace workloads scaled to 0; not part of demo path
+```
 
+模型与录制环境：
+
+```text
 OLLAMA_API_BASE=http://192.168.25.228:11434
-MODEL_FAST=gemma4-31b-host228
-MODEL_STANDARD=gemma4-31b-host228
-MODEL_PREMIUM=gemma4-31b-host228
-ROUTER_MODEL=gemma4-31b-host228
+MODEL_FAST=gemma4-26b-host228
+MODEL_STANDARD=gemma4-26b-host228
+MODEL_PREMIUM=gemma4-26b-host228
+ROUTER_MODEL=gemma4-26b-host228
 MODEL_CONFIG_FORCE_ENV=true
-NL2SQL_AGENT_MODEL=gemma4-31b-host228
-NL2SQL_LLM_SCHEMA_MAPPER_MODEL=gemma4-31b-host228
+NL2SQL_AGENT_MODEL=gemma4-26b-host228
+NL2SQL_LLM_SCHEMA_MAPPER_MODEL=gemma4-26b-host228
 EMBEDDING_MODEL=nomic-embed-text-v2-moe-host228
-
-POSTGRES_HOST=119.3.175.198
-POSTGRES_PORT=5432
-
-PAPER9_FARMLAND_MPC_REPO=D:\test\_publish\arcgis-farmland-mpc
-PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR=D:\test\_publish\arcgis-farmland-mpc\runs\restoration\buchanan_va\prepared_watershed
-PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR=D:\test\_publish\arcgis-farmland-mpc\paper\checkpoints\restoration\profiles\buchanan_va\watershed\ensemble_seed0
 ```
 
 已验证模型标签：
 
 ```text
-Gemma4:31b
-  parameter_size=31.3B
+Gemma4:26b
+  parameter_size=25.8B
   capabilities=completion, tools, thinking
 
 nomic-embed-text-v2-moe:latest
@@ -51,20 +77,54 @@ nomic-embed-text-v2-moe:latest
   capabilities=embedding
 ```
 
-已验证应用模型路由：
+本次本地测试命令：
 
-```text
-standard tier=gemma4-31b-host228
-model_class=LiteLlm
-model=ollama_chat/Gemma4:31b
-family=gemma
+```bash
+docker compose -f docker-compose.gemma4-demo.yml up -d db redis
+
+docker exec gisdataagent-db-1 psql -U postgres -d gis_agent -c \
+  "SELECT 'roads' AS table_name, count(*) FROM cq_osm_roads_2021
+   UNION ALL SELECT 'buildings', count(*) FROM cq_buildings_2021
+   UNION ALL SELECT 'poi', count(*) FROM cq_amap_poi_2024
+   UNION ALL SELECT 'historic', count(*) FROM cq_historic_districts
+   UNION ALL SELECT 'memory', count(*) FROM agent_user_memories
+   ORDER BY table_name;"
+
+env POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5433 \
+  POSTGRES_DATABASE=gis_agent POSTGRES_USER=agent_user \
+  POSTGRES_PASSWORD=<redacted> \
+/Users/zhouning/gisdataagent/.venv/bin/python -m pytest \
+    data_agent/test_sql_postprocessor.py \
+    data_agent/test_nl2sql_semantic_rewrite.py \
+    data_agent/test_nl2sql_executor.py \
+    data_agent/test_nl2sql_cq_eval_gemma.py \
+    data_agent/test_nl2sql_tools.py -q
+
+# result: 143 passed
+
+env PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj \
+  /Users/zhouning/gisdataagent/.venv/bin/python -m pytest \
+    data_agent/test_world_model_v21.py \
+    data_agent/test_world_model_v21_tools.py \
+    data_agent/test_world_model_v21_routes.py \
+    data_agent/test_world_model_v21_presentation.py \
+    data_agent/test_pipeline_helpers.py -q
+
+# result: 45 passed
 ```
 
-启动并打开系统：
+纯 Docker PostGIS 数据验证：
 
 ```text
-http://localhost:8000
-登录：admin / admin123
+postgis_extensions=postgis, vector
+cq_osm_roads_2021=50366
+cq_buildings_2021=107035
+cq_amap_poi_2024=1194351
+cq_historic_districts=20
+agent_user_memories=4
+explain_row_estimate(SELECT COUNT(*) FROM cq_osm_roads_2021)=1
+explain_row_estimate(SELECT * FROM cq_amap_poi_2024)=1194474
+memory_smoke=transactional insert count 1, rollback count 0
 ```
 
 ## 场景一：真实 PostGIS NL2Semantic2SQL
@@ -79,169 +139,210 @@ http://localhost:8000
 
 ```text
 tool_name=run_nl2semantic2sql
-model=Gemma4:31b @ http://192.168.25.228:11434
-database=PostGIS on 119.3.175.198:5432
+model=Gemma4:26b @ http://192.168.25.228:11434
+database=PostGIS on configured POSTGRES_* / DATABASE_URL
+docker_database=gisdataagent-db-1, exposed at localhost:5433 for local tests
 ```
 
-真实验证结果：
-
-```text
-status=ok
-execution.rows=1
-execution.data[0].count=1
-candidate_tables=cq_osm_roads_2021, cq_buildings_2021, cq_osm_roads
-few_shot_count=0
-family=gemma
-corrections=semantic_column_alias
-```
-
-已执行 SQL：
+期望 SQL 形态：
 
 ```sql
 SELECT COUNT(DISTINCT b."Id")
 FROM cq_buildings_2021 AS b
 JOIN cq_osm_roads_2021 AS r
-  ON ST_INTERSECTS(b.geometry, r.geometry)
-WHERE r.bridge = 'T'
+  ON ST_Intersects(b.geometry, r.geometry)
+WHERE r.bridge = 'T';
 ```
 
-地图层验证：
+纯 Docker SQL 实测结果：
 
 ```text
-golden_building_count=1
-building_feature_count=31
-bridge_road_count=19
-map_center=[29.61213837765004, 106.54456038199999]
-map_zoom=10
-layers=
-  相交建筑几何行 (31 个)
-  bridge=T 道路线 (19 条)
+bridge_buildings_distinct=1
+bridge_building_join_rows=33
+bridge_roads=7532
+named_bridge_roads=2111
+bridge_road_length_km=1376.597572365853
+pois_within_100m_longest_bridge=35
+buildings_near_any_bridge_1000m=86167
+historic_district_sample=慈云寺-米市街-龙门浩历史文化街区
+historic_district_sample_poi_cnt=38
+```
+
+Gemma4:26b 端到端工具实测：
+
+```text
+tool=run_nl2semantic2sql
+status=ok
+raw_sql=SELECT COUNT(DISTINCT b."Id") FROM cq_buildings_2021 AS b WHERE EXISTS(SELECT 1 FROM cq_osm_roads_2021 AS r WHERE ST_Intersects(b.geometry, r.geometry) AND r.bridge = 'T')
+final_sql=SELECT COUNT(DISTINCT b."Id") FROM cq_buildings_2021 AS b WHERE EXISTS(SELECT 1 FROM cq_osm_roads_2021 AS r WHERE ST_INTERSECTS(b.geometry, r.geometry) AND r.bridge = 'T')
+execution_rows=1
+execution_count=1
+candidate_tables=cq_osm_roads_2021, cq_osm_roads, cq_buildings_2021
+few_shot_count=1
+corrections=semantic_column_alias
+regression_fixed=_extract_sql no longer selects inner EXISTS(SELECT 1 ...) fragment
+regression_fixed=_extract_sql preserves WITH CTE around the final outer SELECT
+```
+
+纯 Docker 容器内 Gemma4:26b 空间查询扩展实测：
+
+```text
+case_1=bridge/building ST_Intersects count
+status=ok
+final_sql=SELECT COUNT(DISTINCT b."Id") FROM cq_buildings_2021 AS b WHERE EXISTS(SELECT 1 FROM cq_osm_roads_2021 AS r WHERE ST_INTERSECTS(b.geometry, r.geometry) AND r.bridge = 'T')
+data=[{"count": 1}]
+
+case_2=bridge road length in km
+status=ok
+final_sql=SELECT SUM(ST_LENGTH(CAST(geometry AS GEOGRAPHY))) / 1000 AS total_length_km FROM cq_osm_roads_2021 WHERE bridge = 'T'
+data=[{"total_length_km": 1376.5975723658505}]
+manual_fail_if=SQL uses ST_Length(ST_Transform(geometry, 3857)) for real-world length
+manual_fail_if=chat label says 道路数量 instead of 道路总长度（公里）
+
+case_3=POI count within 100m of the longest bridge
+status=ok
+final_sql=WITH longest_bridge AS (SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' ORDER BY ST_LENGTH(CAST(geometry AS GEOGRAPHY)) DESC LIMIT 1) SELECT COUNT(DISTINCT p."ID") FROM cq_amap_poi_2024 AS p, longest_bridge AS lb WHERE ST_DWITHIN(CAST(p.geometry AS GEOGRAPHY), CAST(lb.geometry AS GEOGRAPHY), 100)
+data=[{"count": 35}]
+manual_fail_if=chat label says 道路总长度 instead of POI数量
 ```
 
 录制重点：
 
 - 展示 `run_nl2semantic2sql` 工具调用，而不是只展示模型文本输出。
-- 展示自然语言参数、候选表、Gemma 4 生成 SQL、后处理修正和真实数据库执行结果。
-- 明确解释 `count=1` 是 `COUNT(DISTINCT b."Id")` 的聚合结果；地图上展示的是满足相交条件的几何行，数量为 31。
-- 停留在 `ST_INTERSECTS` 和 `COUNT(DISTINCT)`，说明空间 join 和去重计数是关键。
+- 展示自然语言参数、候选表、Gemma 4 生成 SQL、语义后处理修正和真实数据库执行结果。
+- 停留在 `ST_Intersects` 和 `COUNT(DISTINCT)`，说明空间 join 与多对多去重计数。
+- 录制前使用 Docker Compose 数据库确认真实 PostGIS 返回结果，避免把 K8s PVC 当作参赛复现前提。
 
 口播建议：
 
-> 用户只提出一个自然语言空间问题，Gemma 4 通过 `run_nl2semantic2sql` 进入语义 SQL 工作流。系统识别建筑物和道路表，生成 PostGIS 的 `ST_INTERSECTS` 空间连接，并使用 `COUNT(DISTINCT)` 避免空间 join 重复计数。SQL 已在真实 PostGIS 数据库执行，返回建筑物轮廓聚合数量为 1，同时右侧地图展示参与相交判断的建筑几何行和桥梁道路线。
+> 用户只提出一个自然语言空间问题，Gemma 4 通过 `run_nl2semantic2sql` 进入语义 SQL 工作流。系统识别建筑物和道路表，生成 PostGIS 的 `ST_Intersects` 空间连接，并使用 `COUNT(DISTINCT)` 避免空间 join 重复计数。这里展示的是 Function Calling 进入工具、SQL 后处理和真实数据库执行结果的完整链路。
 
-## 场景二：真实 WorldModelV21 Buchanan MPC
+## 场景二：真实 WorldModelV21 Bishan / Dongxing MPC
+
+主录屏建议优先用 Bishan，因为纯 Docker 容器内完整运行约 54 秒，适合 5 分钟视频。Dongxing 纯 Docker 容器内约 90 秒，可作为答辩补充或展示摘要。
+
+GIS Data Agent 现在已集成 World Model v2.1 的完整 A->B->C->D 四阶段工具链：
+
+```text
+A / Tool 1 = world_model_v21_prepare
+  DLTB + DEM -> prepared_dir
+
+B / Tool 2 = world_model_v21_sample
+  prepared_dir -> tool2/transitions.npz + tool2/pairwise.npz
+
+C / Tool 3 = world_model_v21_train
+  tool2 samples -> ONNX ensemble members
+
+D / Tool 4 = world_model_v21_plan
+  prepared_dir + ensemble_dir -> MPC optimized output
+
+orchestrator = world_model_v21_pipeline
+  支持 reuse_existing=true，已有 prepared/ensemble 时跳过 A/B/C，直接进入 D。
+```
+
+比赛录屏建议不要现场重跑 B/C 采样和训练；它们是长任务。录屏时展示智能体调用 `world_model_v21_status -> world_model_v21_pipeline`，其中 A/B/C 阶段通过 `reuse_existing=true` 显示 `skipped_reused`，D/Tool 4 实际运行快速县域 MPC。只有用户明确说“只运行 Tool 4”时才展示 `world_model_v21_plan`。
+
+前端人工验证：打开右侧数据面板的“世界模型 v2.1”tab，应先看到 A/Tool 1 Prepare、B/Tool 2 Sample、C/Tool 3 Train、D/Tool 4 Plan 四张阶段卡片。选择 Bishan 或 Dongxing 快捷数据集后，保持 `reuse_existing=true`，点击“运行/复用 A→D 编排”，A/B/C 应显示 `skipped_reused`，D 阶段会运行快速 MPC 并返回规划摘要与地图产物。
 
 用户输入：
 
 ```text
-@WorldModelV21 请先检查世界模型 v2.1 状态，再使用系统默认的 Buchanan VA restoration 数据运行一次快速 MPC 规划。参数：env_kind=restoration，horizon=2，top_k=5，n_episodes=1，continuation=greedy，scoring=reward。使用默认 prepared_dir 和 ensemble_dir，不要要求我补充路径。
+@WorldModelV21 请先检查世界模型 v2.1 状态，然后使用 bishan 数据集运行一次快速县域 MPC 规划。
 ```
 
-验证工具链：
+Dongxing 补充验证输入：
 
 ```text
-world_model_v21_status -> world_model_v21_plan
-repo=D:\test\_publish\arcgis-farmland-mpc
-prepared_dir=...\runs\restoration\buchanan_va\prepared_watershed
-ensemble_dir=...\paper\checkpoints\restoration\profiles\buchanan_va\watershed\ensemble_seed0
+@WorldModelV21 请先检查世界模型 v2.1 状态，然后使用 dongxing 数据集运行一次快速县域 MPC 规划。
 ```
 
-真实 status 验证：
+工具链：
 
 ```text
-status=ready
-version=2.1.0
-repo_exists=true
-importable=true
+world_model_v21_status -> world_model_v21_pipeline
+repo=/app/paper9-demo
+env_kind=county
 onnx_member_count=3
+docker_mounts=/app/bishan-runs, /app/dongxing-runs
+default_fast_params=horizon=1, top_k=1, n_episodes=1, continuation=greedy, scoring=reward, threads=0
+dataset_mapping=bishan -> /app/bishan-runs/prepared + /app/bishan-runs/prepared/ensemble_seed0
+dataset_mapping=dongxing -> /app/dongxing-runs/prepared + /app/dongxing-runs/prepared/ensemble_seed0
+progress=A/B/C/D 4 阶段完成
+steps=A prepare skipped_reused, B sample skipped_reused, C train skipped_reused, D plan ok
 ```
 
-真实 plan 验证：
+Bishan 真实 plan 验证：
 
 ```text
-plan_status=ok
-mode=tool4_mpc
-env_kind=restoration
-steps_run=50
-n_blocks=562
-n_parcels=562
-n_selected=50
-total_reward=230.75136300693933
-budget_used=132013.76804078548
-budget_fraction_used=0.6600688402039274
-map_update_queued=true
+status=ok
+prepared_dir=/app/bishan-runs/prepared
+ensemble_dir=/app/bishan-runs/prepared/ensemble_seed0
+n_blocks=2640
+n_parcels=53004
+steps_run=100
+swaps_completed=427
+total_reward=66.43446147434678
+slope_change_pct=-1.7563837440044885
+cont_change=0.011685552407931787
+baimu_area_change_ha=-489.02137531148793
 ```
 
-产物验证：
+Bishan 产物验证：
 
 ```text
-artifacts=mpc_summary.json, mpc_land_use.npy, restoration_mpc_units.geojson
-map_layer=world_model_v21/20260605_114726_601605/restoration_mpc_units.geojson
+out_dir=/app/data_agent/uploads/agent_world_model_v21/world_model_v21/<timestamp>
+artifacts=mpc_summary.json, mpc_land_use.npy, optimized_dltb.shp, optimized_dltb.fgb
+map_layer=world_model_v21/<timestamp>/optimized_dltb.fgb
+warnings=[]
+```
+
+Dongxing 真实 plan 验证：
+
+```text
+status=ok
+prepared_dir=/app/dongxing-runs/prepared
+ensemble_dir=/app/dongxing-runs/prepared/ensemble_seed0
+n_blocks=3711
+n_parcels=76377
+steps_run=100
+swaps_completed=466
+total_reward=112.63640181479221
+slope_change_pct=-0.5822305233384841
+cont_change=0.035509686447719346
+baimu_area_change_ha=40.31168372728825
+```
+
+Dongxing 产物验证：
+
+```text
+out_dir=/app/data_agent/uploads/agent_world_model_v21/world_model_v21/<timestamp>
+artifacts=mpc_summary.json, mpc_land_use.npy, optimized_dltb.shp, optimized_dltb.fgb
+map_layer=world_model_v21/<timestamp>/optimized_dltb.fgb
+warnings=[]
 ```
 
 录制重点：
 
-- 先展示 `world_model_v21_status`，再展示 `world_model_v21_plan`，突出多步规划。
-- 展示 3 个 ONNX ensemble member、Buchanan VA restoration 默认数据目录和长任务运行日志。
-- 展示规划摘要、地图图层和产物文件。
-- 说明这是地块级土地利用规划模型执行，不是纯文本推理。
+- 先展示 `world_model_v21_status`，再展示 `world_model_v21_pipeline`，突出智能体多步工具编排。
+- 展示顶部进度不再是“1 步骤完成”，而是 `A/B/C/D 4 阶段完成`。
+- 展示 A/B/C 阶段 `skipped_reused`，D/Tool 4 `ok`，说明长任务可复用且 Tool 4 真实执行。
+- 展示用户只输入短句，Agent 自动根据 `bishan` / `dongxing` 选择正确数据集路径。
+- 展示 3 个 ONNX ensemble member、县域 prepared_dir 和长任务运行日志。
+- 展示环境构建：Bishan `53004 parcels / 2640 blocks` 或 Dongxing `76377 parcels / 3711 blocks`。
+- 展示规划摘要、输出目录、`mpc_summary.json`、`mpc_land_use.npy` 和 `optimized_dltb.fgb`。
+- 展示地图图例：`CHG_FLAG` 灰色保持不变、红色耕地 -> 林地、绿色林地 -> 耕地。
+- 说明这是县域土地利用规划模型执行，不是纯文本推理。
 
 口播建议：
 
-> 第二个场景展示多步工具规划。Agent 先检查 Paper9 世界模型、ONNX ensemble 和默认数据目录，再调用长任务工具运行 Buchanan VA restoration MPC。这个过程真实加载 562 个规划单元和 3 个 ONNX 成员，完成 50 步规划，输出规划摘要、Numpy 结果和可视化 GeoJSON 图层。
-
-## 扩展验证：空间 SQL 与区县世界模型
-
-这部分不进入 5 分钟主录屏，只作为答辩或提交说明中的真实验证补充。
-
-新增 NL2Semantic2SQL 空间场景验证：
-
-```text
-model=Gemma4:31b @ http://192.168.25.228:11434
-database=PostGIS on 119.3.175.198:5432
-questions=5
-generation_status_ok=5/5
-exact_top10_match=2/5
-covered_patterns=ST_INTERSECTS, ST_DWITHIN, ST_Length, grouped contains count, ST_Union area
-```
-
-验证结论：
-
-- `CQ_GEO_HARD_10` 和 `CQ_GEO_HARD_14` 与 golden SQL 精确匹配。
-- `CQ_GEO_HARD_25` 道路长度聚合、`CQ_GEO_MEDIUM_30` union 面积聚合为数值等价，差异来自别名或小数精度。
-- `CQ_GEO_MEDIUM_23` 暴露真实问题：当前 `COUNT(DISTINCT poi."ID")` 修正会改变 grouped POI 行计数语义，后续需要按问题意图限制去重注入。
-
-WorldModelV21 区县数据验证：
-
-```text
-Bishan:
-  prepared_dir=D:\test
-  ensemble_dir=D:\test\_publish\arcgis-farmland-mpc\paper\checkpoints\bishan\shipped_onnx
-  onnx_member_count=3
-  env_build=ok
-  swappable_parcels=52515
-  blocks=2600
-  plan_status=blocked_by_memory
-  error=Unable to allocate 401 MiB for shape (2380, 2600, 17) float32
-
-Dongxing / Neijiang Dongxing:
-  current_live_onnx_member_count=0
-  available_checkpoints=.pt state dicts
-  live_plan_status=expected_rejected_without_onnx
-  historical_repro_reward_mean=96.29512009811995
-  historical_repro_slope_pct_mean=-0.5741333407356206
-```
-
-答辩说明：
-
-> 主演示选择 Buchanan VA，是因为当前 Windows 本机可以完整完成 status -> plan -> GeoJSON 图层输出。Bishan 已通过真实数据、ONNX 和环境构建验证，但区县级规划在本机 MPC 阶段触发内存不足；Dongxing 当前只有 `.pt` 研究检查点和历史复现实验摘要，ADK v2.1 实时入口需要先导出 ONNX ensemble 后才能运行同一路径。
+> 第二个场景展示多步工具规划。用户只说使用 Bishan 或 Dongxing 运行快速县域 MPC，Agent 先调用 `world_model_v21_status` 检查 Paper9 世界模型、PROJ 运行时、ONNX ensemble 和默认路径，再调用 `world_model_v21_pipeline` 展开 A/B/C/D 四阶段。这里 A/B/C 复用已有 prepared、sample 和 ensemble，D 阶段实际运行 Tool 4 MPC，输出 Shapefile、FlatGeobuf、Numpy 结果和 JSON 摘要。地图按 `CHG_FLAG` 展示优化变化，灰色保持不变，红色表示耕地转林地，绿色表示林地转耕地。
 
 ## 场景三：真实 Postgres Memory 保存与检索
 
 保存输入：
 
 ```text
-请把本次演示保存为记忆：Gemma 4 完成了桥梁道路与建筑物相交的空间 NL2Semantic2SQL 查询，世界模型 v2.1 完成了 Buchanan VA restoration MPC 规划。关键词：Gemma4空间演示。
+请把本次演示保存为记忆：Gemma 4 完成了桥梁道路与建筑物相交的空间 NL2Semantic2SQL 查询，世界模型 v2.1 完成了 Bishan 和 Dongxing 县域 MPC 规划。关键词：Gemma4空间演示。
 ```
 
 检索输入：
@@ -250,24 +351,24 @@ Dongxing / Neijiang Dongxing:
 检索关键词“Gemma4空间演示”的记忆。
 ```
 
-真实 DB 验证：
+录制时 DB 验证项：
 
 ```text
 memory_table=agent_user_memories
-user=demo_gemma4_memory_user
-key=Gemma4空间演示_20260605_114845
-save_status=success
-recall_status=success
-recall_count=1
 memory_type=analysis_result
+schema=username, memory_type, memory_key, memory_value, description
+docker_smoke_insert=success inside transaction
+docker_smoke_rollback=verified no residual test row
+recording_requirement=save_memory and recall_memories through app UI/tool call
 ```
 
-记忆内容包含：
+记忆内容建议包含：
 
 ```text
-model=Gemma4:31b @ http://192.168.25.228:11434
-nl2sql=COUNT(DISTINCT)=1, map geometry rows=31, bridge roads=19
-world_model=steps_run=50, n_blocks=562, n_selected=50, total_reward=230.75136300693933
+model=Gemma4:26b @ http://192.168.25.228:11434
+nl2sql=bridge-road/building ST_Intersects COUNT(DISTINCT)
+world_model_bishan=steps_run=100, n_blocks=2640, n_parcels=53004, total_reward=66.43446147434678
+world_model_dongxing=steps_run=100, n_blocks=3711, n_parcels=76377, total_reward=112.63640181479221
 ```
 
 录制重点：
@@ -276,9 +377,62 @@ world_model=steps_run=50, n_blocks=562, n_selected=50, total_reward=230.75136300
 - 展示检索返回的是 Postgres 中持久化的用户空间记忆。
 - 说明 Memory 可把已执行工具结果沉淀为后续上下文，而不是临时聊天缓存。
 
-口播建议：
+## 扩展验证：NL2Semantic2SQL 空间查询
 
-> AI Agent 赛道要求展示 Memory。这里系统把本次 NL2SQL 和 WorldModel 的真实执行结果保存为用户空间记忆，随后按关键词从 Postgres 检索回来。后续对话可以复用这些上下文。
+本次新增和修复的空间查询覆盖：
+
+```text
+CQ_GEO_HARD_10:
+  pattern=ST_Intersects grouped road-POI count
+  assertion=COUNT(DISTINCT p."ID"), GROUP BY r.name, ORDER BY poi_cnt DESC LIMIT 5
+
+CQ_GEO_HARD_14:
+  pattern=ST_DWithin geography + singleton CROSS JOIN
+  assertion=ST_DWithin(b.geometry::geography, u.geometry::geography, 1000)
+  assertion=保持 COUNT(*)，不误改为 COUNT(DISTINCT b."Id")
+
+CQ_GEO_HARD_25:
+  pattern=grouped road length aggregate
+  assertion=SUM(ST_Length(geometry::geography)) / 1000.0
+
+CQ_GEO_MEDIUM_23:
+  pattern=LEFT JOIN + ST_Contains grouped POI count
+  assertion=保持 COUNT(p."ID")，不误注入 COUNT(DISTINCT p."ID")
+```
+
+已修复问题：
+
+- `CQ_GEO_MEDIUM_23` 历史街区包含 POI 计数不再强行注入 `COUNT(DISTINCT)`。
+- `CQ_GEO_HARD_14` 子查询别名 `u.geometry` 不在候选表 alias map 时，仍能安全改写为 geography 距离。
+- `CQ_GEO_HARD_14` 的单点 `CROSS JOIN (SELECT ... LIMIT 1)` 不再触发不必要的 distinct 计数改写。
+- `_extract_sql` 不再把 `EXISTS(SELECT ...)` 或 `WITH ... SELECT` CTE 中的内层/外层片段误当成完整 SQL。
+- `data_agent.toolsets` 改为 lazy re-export，NL2SQL 导入不再加载无关 DRL 依赖。
+
+## 扩展验证：WorldModelV21 工程修复
+
+本次修复：
+
+```text
+WorldModelV21 PROJ_DATA auto-detect:
+  fixed=macOS/conda pyproj DataDirError
+  detected=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj
+
+WorldModelV21 restoration GeoJSON:
+  fixed=PROJ/GDAL 缺失时最小 GeoJSON 输出失败
+  approach=直接写标准 FeatureCollection
+
+optional dependencies:
+  analysis_tools=sb3_contrib/stable_baselines3 optional
+  visualization_tools=contextily optional
+  spatial_statistics=libpysal/esda optional
+```
+
+注意：
+
+- Dongxing 顶层 `runs/dongxing/ensemble` 与当前 prepared 不匹配，`n_blocks=2640` vs `3711`，会被正确拒绝。
+- Dongxing 录制要使用容器内 `/app/dongxing-runs/prepared/ensemble_seed0`。
+- Bishan 录制要使用容器内 `/app/bishan-runs/prepared/ensemble_seed0`。
+- Paper9 shipped Bishan ONNX 仍可作为 ONNX 存在性证据，但本次 live plan 使用 matching prepared ensemble。
 
 ## Memory 考察项边界
 
@@ -295,30 +449,17 @@ scope=per-user persistent memory
 
 - 个人信息里的“智能记忆”：展示系统自动提取的 `auto_extract` 记忆，支持列表和删除，属于长期记忆管理 UI。
 - 右侧数据面板“记忆”：搜索 `region`、`viz_preference`、`analysis_result`、`auto_extract`、`custom` 等用户记忆。
-- 对话框“历史会话”：恢复 Chainlit `Thread/Step` 对话记录，属于会话历史/产品体验，不等同于 Agent Memory；可作为辅助展示，但不要替代 `save_memory`/`recall_memories`。
-
-录制前功能检查：
-
-```text
-智能记忆管理=已验证 save/list/delete auto_extract
-右侧记忆搜索=已验证 keyword/q 参数均可检索
-历史会话=已验证 /api/sessions 可列出并删除 Chainlit Thread
-注意=历史会话列表为空时，优先检查 Chainlit data layer、Thread.userIdentifier 和登录用户是否一致
-```
-
-录制建议：
-
-> Memory 这里不只展示历史聊天列表，而是让 Gemma 4 调用记忆工具，把已经执行过的空间 SQL 和世界模型规划结果保存到用户级持久化记忆中，再通过关键词检索回来。历史会话用于恢复 UI 对话线程，智能记忆用于管理自动提取事实，它们是增强体验；比赛主证据是工具调用日志和 Postgres 持久化结果。
+- 对话框“历史会话”：恢复 Chainlit `Thread/Step` 对话记录，属于会话历史/产品体验，不等同于 Agent Memory。
 
 ## 5 分钟时间分配
 
 ```text
 0:00-0:20  开场：GIS Data Agent + Gemma 4 AI Agent 赛道对齐
-0:20-1:50  场景一：真实 PostGIS NL2Semantic2SQL
-1:50-2:15  展示 NL2SQL Tool Calling 日志和地图层差异
-2:15-3:45  场景二：WorldModelV21 status -> plan 多步规划
+0:20-1:45  场景一：真实 PostGIS NL2Semantic2SQL
+1:45-2:05  展示 NL2SQL Tool Calling 日志、SQL/map 结果和运行日志面板
+2:05-3:45  场景二：WorldModelV21 status -> pipeline A/B/C/D 多步规划
 3:45-4:25  场景三：Memory 保存与检索
-4:25-4:50  架构与代码路径对齐
+4:25-4:50  架构、代码路径和运行日志管理对齐
 4:50-5:00  收尾总结
 ```
 
@@ -329,18 +470,21 @@ data_agent/model_gateway.py
 data_agent/embedding_gateway.py
 data_agent/nl2semantic2sql_direct_agent.py
 data_agent/nl2sql_executor.py
+data_agent/nl2sql_semantic_rewrite.py
 data_agent/nl2sql_presentation.py
 data_agent/toolsets/world_model_v21_tools.py
 data_agent/world_model_v21.py
 data_agent/memory.py
+data_agent/frontend_api.py  # /api/agent/run-logs
+frontend/src/components/datapanel/AgentRunLogsTab.tsx
 ```
 
 ## 录制注意事项
 
 - 不展示数据库密码、API key、云账号、OBS AK/SK、OAuth secret 等敏感信息。
 - 视频中只展示 host、端口、模型名、工具名、SQL 和结果摘要。
-- PowerShell 一次性命令不要直接传原始中文 here-string；需要使用 UTF-8 文件或 `\u` 转义，避免中文变成 `????` 后影响语义候选表。
-- Windows 本机 ArcPy worker 当前会打印启动失败提示；本次 NL2SQL、WorldModelV21 和 Memory 场景均不依赖 ArcPy，该提示不影响演示。
-- 演示时不要只展示单元测试或评测封装，要展示真实数据库、真实 Buchanan 数据和真实 Memory 持久化结果。
-- 如被问到 Bishan 或 Dongxing，不要在 5 分钟视频中临时运行区县 MPC；直接展示上面的真实验证边界和后续工程项。
+- 录制前重新确认 Docker Compose PostGIS 和 `run_nl2semantic2sql` 真实执行。
+- 每个核心场景完成后切到“工作台 -> 平台运营 -> 运行日志”，展开最新运行，截图保留 Tool Calling、Memory 和 Step Timeline。
+- WorldModelV21 录制优先 Bishan；Dongxing 可展示已跑通摘要和产物目录。
+- 不要临时使用 Dongxing 顶层 `runs/dongxing/ensemble`，它与当前 prepared 维度不匹配。
 - 结尾强调：Gemma 4 + Function Calling + Tool Calling 日志 + Memory + 多步规划 + 真实 GIS 数据/模型执行。
