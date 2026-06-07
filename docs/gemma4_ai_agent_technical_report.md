@@ -60,18 +60,18 @@ GIS Data Agent 是一个面向真实 GIS 数据分析与空间规划的多智能
 
 ```mermaid
 flowchart TB
-  U[用户界面<br/>Chainlit + React 工作台] --> R[@mention 路由<br/>NL2SQL / WorldModelV21 / General]
-  R --> A[Google ADK Agent 编排层<br/>LlmAgent / SequentialAgent / ParallelAgent / LoopAgent]
-  A --> M[Gemma 4 模型网关<br/>gemma4-26b-host228 via Ollama]
-  A --> T[Toolset / Native Function Calling<br/>FunctionTool / LongRunningFunctionTool]
-  T --> N[NL2Semantic2SQL 引擎<br/>Semantic layer + grounding + PostGIS]
-  T --> W[WorldModel v2.1 引擎<br/>Tool 1/2/3/4 + MPC]
-  T --> MEM[Memory 工具<br/>save / recall / auto_extract]
-  N --> PG[(PostgreSQL + PostGIS + pgvector)]
+  U["用户界面：Chainlit 和 React 工作台"] --> R["显式路由：NL2SQL、WorldModelV21、General"]
+  R --> A["Google ADK Agent 编排层"]
+  A --> M["Gemma 4 模型网关：gemma4-26b-host228 via Ollama"]
+  A --> T["Toolset 和原生函数调用"]
+  T --> N["NL2Semantic2SQL 引擎"]
+  T --> W["WorldModel v2.1 引擎"]
+  T --> MEM["Memory 工具"]
+  N --> PG["PostgreSQL + PostGIS + pgvector"]
   MEM --> PG
-  W --> FS[(Paper9 repo + Bishan/Dongxing runs)]
-  A --> LOG[Thread/Step 运行日志<br/>Tool calls / Memory / Map events]
-  LOG --> UI[运行日志截图]
+  W --> FS["Paper9 仓库 + Bishan/Dongxing 运行数据"]
+  A --> LOG["Thread/Step 运行日志：工具调用、记忆、地图事件"]
+  LOG --> UI["运行日志截图"]
 ```
 
 ### 4.1 交互层
