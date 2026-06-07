@@ -13,6 +13,43 @@
 - 两个真实 GIS 场景：`nl2semantic2sql` 和 `worldmodelv2.1`。
 - 纯 Docker Compose 可复现演示环境。
 
+## 演示视频与系统截图
+
+评委可以优先查看以下材料，快速确认本项目的 Gemma 4 模型配置、真实工具调用、空间 SQL、世界模型规划和 Memory 证据。
+
+| 材料 | 入口 |
+|---|---|
+| 5 分钟系统演示录屏 | [YouTube: GIS Data Agent Gemma 4 AI Agent Demo](https://youtu.be/HDCg88TqShQ) |
+| 系统截图目录 | [docs/submission_screenshots/](docs/submission_screenshots/) |
+| 技术报告 | [docs/gemma4_ai_agent_technical_report.md](docs/gemma4_ai_agent_technical_report.md) |
+| Memory / Tool Calling 代码说明 | [docs/gemma4_ai_agent_code_walkthrough.md](docs/gemma4_ai_agent_code_walkthrough.md) |
+| 演示脚本 | [docs/gemma4_ai_agent_demo_script.md](docs/gemma4_ai_agent_demo_script.md) |
+
+截图索引：
+
+| 证据点 | 截图 |
+|---|---|
+| Ollama 中已加载 Gemma 4 家族模型，包含 `Gemma4:26b` | [01_ollama_gemma4_family.png](docs/submission_screenshots/01_ollama_gemma4_family.png) |
+| 系统 LLM 模型配置固定到 Gemma 4 | [02_系统LLM模型配置.png](docs/submission_screenshots/02_系统LLM模型配置.png) |
+| NL2Semantic2SQL 空间查询 1 | [03_nl2geosql_1.png](docs/submission_screenshots/03_nl2geosql_1.png) |
+| NL2Semantic2SQL 空间查询 2 | [04_nl2geosql_2.png](docs/submission_screenshots/04_nl2geosql_2.png) |
+| NL2Semantic2SQL 空间查询 3 | [05_nl2geosql_3.png](docs/submission_screenshots/05_nl2geosql_3.png) |
+| 语义层 / semantic harness | [06_semantic_layer.png](docs/submission_screenshots/06_semantic_layer.png) |
+| WorldModel v2.1 页面与工具链 | [07_地理空间世界模型.png](docs/submission_screenshots/07_地理空间世界模型.png) |
+| WorldModel v2.1 A/B/C/D 编排与结果 1 | [08_地理空间世界模型_1.png](docs/submission_screenshots/08_地理空间世界模型_1.png) |
+| WorldModel v2.1 A/B/C/D 编排与结果 2 | [09地理空间世界模型_2.png](docs/submission_screenshots/09地理空间世界模型_2.png) |
+| Memory 保存与检索 1 | [11_memory_1.png](docs/submission_screenshots/11_memory_1.png) |
+| Memory 保存与检索 2 | [12_memory_2.png](docs/submission_screenshots/12_memory_2.png) |
+
+关键截图预览：
+
+<p>
+  <a href="docs/submission_screenshots/01_ollama_gemma4_family.png"><img src="docs/submission_screenshots/01_ollama_gemma4_family.png" alt="Ollama Gemma 4 模型列表" width="260"></a>
+  <a href="docs/submission_screenshots/03_nl2geosql_1.png"><img src="docs/submission_screenshots/03_nl2geosql_1.png" alt="NL2Semantic2SQL 空间查询" width="260"></a>
+  <a href="docs/submission_screenshots/08_地理空间世界模型_1.png"><img src="docs/submission_screenshots/08_地理空间世界模型_1.png" alt="WorldModel v2.1 编排结果" width="260"></a>
+  <a href="docs/submission_screenshots/11_memory_1.png"><img src="docs/submission_screenshots/11_memory_1.png" alt="Memory 保存与检索" width="260"></a>
+</p>
+
 ## 比赛要求对齐
 
 | 比赛要求 | 本项目交付 |
@@ -21,11 +58,11 @@
 | 原生函数调用和工具调用 | ADK `FunctionTool` / `LongRunningFunctionTool`，运行日志展示 `run_nl2semantic2sql` 和 `world_model_v21_status -> world_model_v21_pipeline` |
 | 多步规划 | WorldModel v2.1 A/B/C/D 流程：Prepare、Sample、Train、Plan |
 | 记忆机制 | `PostgresMemoryService`、`save_memory`、`recall_memories`、`auto_extract`、运行日志记忆统计 |
-| 演示视频 5 分钟以内 | [docs/gemma4_ai_agent_demo_script.md](docs/gemma4_ai_agent_demo_script.md) |
+| 演示视频 5 分钟以内 | [YouTube 演示录屏](https://youtu.be/HDCg88TqShQ)；录制脚本见 [docs/gemma4_ai_agent_demo_script.md](docs/gemma4_ai_agent_demo_script.md) |
 | 技术报告 | [docs/gemma4_ai_agent_technical_report.md](docs/gemma4_ai_agent_technical_report.md) |
 | 记忆和工具调用代码说明 | [docs/gemma4_ai_agent_code_walkthrough.md](docs/gemma4_ai_agent_code_walkthrough.md) |
 | Docker 部署指南 | 本 README 的 [Docker Compose 快速启动](#docker-compose-快速启动) |
-| 运行日志截图 | UI 路径：`工作台 -> 平台运营 -> 运行日志`；建议保存到 `docs/submission_screenshots/` |
+| 运行日志截图 | 截图已提交到 [docs/submission_screenshots/](docs/submission_screenshots/)；UI 路径：`工作台 -> 平台运营 -> 运行日志` |
 
 ## 为什么选择 Gemma 4 26B
 
