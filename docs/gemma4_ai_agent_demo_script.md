@@ -58,7 +58,7 @@ k8s_status=gis-agent namespace workloads scaled to 0; not part of demo path
 模型与录制环境：
 
 ```text
-OLLAMA_API_BASE=http://192.168.25.228:11434
+OLLAMA_API_BASE=http://host.docker.internal:11434
 MODEL_FAST=gemma4-26b-ollama
 MODEL_STANDARD=gemma4-26b-ollama
 MODEL_PREMIUM=gemma4-26b-ollama
@@ -66,7 +66,7 @@ ROUTER_MODEL=gemma4-26b-ollama
 MODEL_CONFIG_FORCE_ENV=true
 NL2SQL_AGENT_MODEL=gemma4-26b-ollama
 NL2SQL_LLM_SCHEMA_MAPPER_MODEL=gemma4-26b-ollama
-EMBEDDING_MODEL=nomic-embed-text-v2-moe-host228
+EMBEDDING_MODEL=nomic-embed-text-v2-moe
 ```
 
 已验证模型标签：
@@ -261,7 +261,7 @@ net_change=-130
 
 ```text
 tool_name=run_nl2semantic2sql
-model=Gemma4:26b @ http://192.168.25.228:11434
+model=Gemma4:26b @ http://host.docker.internal:11434
 database=PostGIS on configured POSTGRES_* / DATABASE_URL
 docker_database=gisdataagent-db-1, exposed at localhost:5433 for local tests
 ```
@@ -503,7 +503,7 @@ latest_recall_internal_reasoning_leak=false
 记忆内容建议包含：
 
 ```text
-model=Gemma4:26b @ http://192.168.25.228:11434
+model=Gemma4:26b @ http://host.docker.internal:11434
 nl2sql=bridge-road/building ST_Intersects COUNT(DISTINCT)
 world_model_bishan=steps_run=100, n_blocks=2640, n_parcels=53004, total_reward=66.43446147434678
 world_model_dongxing=steps_run=100, n_blocks=3711, n_parcels=76377, total_reward=112.63640181479221

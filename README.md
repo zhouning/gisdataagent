@@ -290,14 +290,16 @@ docker compose -f docker-compose.gemma4-demo.yml down
 | `MODEL_PREMIUM` | `gemma4-26b-ollama` | 高质量层级模型 |
 | `NL2SQL_AGENT_MODEL` | `gemma4-26b-ollama` | NL2SQL SQL 生成链路模型 |
 | `NL2SQL_LLM_SCHEMA_MAPPER_MODEL` | `gemma4-26b-ollama` | NL2SQL schema mapper 模型 |
-| `EMBEDDING_MODEL` | `nomic-embed-text-v2-moe-host228` | few-shot 和语义检索 embedding |
-| `OLLAMA_API_BASE` | `http://192.168.25.228:11434` | Ollama 服务地址 |
+| `EMBEDDING_MODEL` | `nomic-embed-text-v2-moe` | few-shot 和语义检索 embedding；使用非固定 IP 的 Ollama embedding 别名 |
+| `OLLAMA_API_BASE` | `${OLLAMA_API_BASE:-http://host.docker.internal:11434}` | 宿主机本机 Ollama 服务地址；比赛现场可通过环境变量覆盖 |
 | `PAPER9_FARMLAND_MPC_REPO` | `/app/paper9-demo` | WorldModel v2.1 Paper9 仓库 |
 | `PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR` | `/app/bishan-runs/prepared` | 默认 Bishan 准备数据 |
 | `PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR` | `/app/bishan-runs/prepared/ensemble_seed0` | 默认 Bishan ONNX 集成模型 |
 | `PROJ_DATA` / `PROJ_LIB` | 容器内 pyproj 数据目录 | 修复投影运行时问题，例如 `EPSG:32648` |
 
 PostGIS / Redis 也在 `docker-compose.gemma4-demo.yml` 中配置。
+
+比赛演示默认假设 Ollama 运行在宿主机本机而不是 Docker 容器内，GIS Data Agent app 容器通过 `host.docker.internal:11434` 访问宿主机 Ollama。若现场必须改用另一台模型机器，只需要在启动前设置 `OLLAMA_API_BASE=http://<现场模型机IP>:11434`；不要使用 `gemma4-26b-host228` 或 `nomic-embed-text-v2-moe-host228` 这类固定公司局域网 IP 的历史 benchmark 别名。
 
 ## 演示脚本
 

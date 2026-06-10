@@ -84,8 +84,8 @@ services:
       MODEL_CONFIG_FORCE_ENV: "true"
       NL2SQL_AGENT_MODEL: gemma4-26b-ollama
       NL2SQL_LLM_SCHEMA_MAPPER_MODEL: gemma4-26b-ollama
-      EMBEDDING_MODEL: nomic-embed-text-v2-moe-host228
-      OLLAMA_API_BASE: http://192.168.25.228:11434
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text-v2-moe}
+      OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
 
       PAPER9_FARMLAND_MPC_REPO: /app/paper9-demo
       PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR: /app/bishan-runs/prepared
