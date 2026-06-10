@@ -2,7 +2,7 @@
 
 **中文** | [English](./README_en.md)
 
-本项目是基于 Gemma 4 的 GIS Data Agent，面向 NL2Semantic2SQL 和 WorldModel v2.1 规划场景，重点展示原生工具调用和持久化记忆能力。
+本项目是基于 Gemma 4 的 GIS Data Agent，面向自然语言 GIS 数据发现、耕地空间布局优化、NL2Semantic2SQL 和 WorldModel v2.1 规划场景，重点展示原生工具调用、多智能体工作流和持久化记忆能力。
 
 本仓库当前 README 面向 Gemma 4 开发者大赛赛道 A：AI Agent 组织，重点展示：
 
@@ -10,16 +10,16 @@
 - 基于 Google ADK 的多智能体架构。
 - 原生函数调用和工具调用。
 - 智能体记忆。
-- 两个真实 GIS 场景：`nl2semantic2sql` 和 `worldmodelv2.1`。
+- 三个真实 GIS 场景：无 `@` 数据发现与耕地优化、`nl2semantic2sql`、`worldmodelv2.1`。
 - 纯 Docker Compose 可复现演示环境。
 
 ## 比赛要求对齐
 
 | 比赛要求 | 本项目交付 |
 |---|---|
-| 核心代码包含 Gemma 4 调用逻辑 | `data_agent/model_gateway.py` 注册 `gemma4-26b-host228`，Docker 环境变量固定所有演示模型层级 |
-| 原生函数调用和工具调用 | ADK `FunctionTool` / `LongRunningFunctionTool`，运行日志展示 `run_nl2semantic2sql` 和 `world_model_v21_status -> world_model_v21_pipeline` |
-| 多步规划 | WorldModel v2.1 A/B/C/D 流程：Prepare、Sample、Train、Plan |
+| 核心代码包含 Gemma 4 调用逻辑 | `data_agent/model_gateway.py` 注册 Gemma 4 26B，Docker 环境变量固定所有演示模型层级 |
+| 原生函数调用和工具调用 | ADK `FunctionTool` / `LongRunningFunctionTool`，运行日志展示 `drl_model`、`visualize_interactive_map`、`run_nl2semantic2sql` 和 `world_model_v21_status -> world_model_v21_pipeline` |
+| 多步规划 | `Farmland Optimization Workflow` 多智能体工作流；WorldModel v2.1 A/B/C/D 流程：Prepare、Sample、Train、Plan |
 | 记忆机制 | `PostgresMemoryService`、`save_memory`、`recall_memories`、`auto_extract`、运行日志记忆统计 |
 | 演示视频 5 分钟以内 | [docs/gemma4_ai_agent_demo_script.md](docs/gemma4_ai_agent_demo_script.md) |
 | 技术报告 | [docs/gemma4_ai_agent_technical_report.md](docs/gemma4_ai_agent_technical_report.md) |
@@ -52,7 +52,57 @@
 
 ## 核心场景
 
-### 1. NL2Semantic2SQL
+### 1. 无 @ 数据发现与耕地空间布局优化
+
+这个场景展示 GIS Data Agent 不是只能依赖 `@NL2SQL` / `@WorldModelV21` 显式路由。用户直接在对话框提问，系统会先发现用户上传的数据资产，再自动进入耕地空间布局优化专用工作流。
+
+数据进入方式：
+
+```text
+上传 /Users/zhouning/Downloads/shp/斑竹村10000.zip
+```
+
+用户输入：
+
+```text
+我有哪些数据？
+```
+
+随后继续输入：
+
+```text
+基于斑竹村10000数据进行耕地空间布局优化分析
+```
+
+核心链路：
+
+```text
+自然语言输入
+  -> GENERAL 数据发现：list_user_files / data catalog
+  -> OPTIMIZATION 意图路由
+  -> Farmland Optimization Workflow
+  -> FarmlandDataPreparation
+  -> FarmlandDRLOptimizer: drl_model(data_path)
+  -> FarmlandOptimizationVisualizer: visualize_interactive_map(original, optimized)
+  -> FarmlandOptimizationSummary
+  -> 地图图层 + PNG + PDF 报告导出
+```
+
+本轮真实数据验证：
+
+| 项目 | 结果 |
+|---|---|
+| 数据 | `斑竹村10000.shp`，EPSG:4523，10,653 个要素 |
+| 路由 | `我有哪些数据` -> GENERAL；`基于斑竹村10000数据...` -> OPTIMIZATION |
+| 工作流 | `Farmland Optimization Workflow (耕地空间布局优化)` |
+| 核心工具 | `drl_model`, `visualize_interactive_map` |
+| DRL 结果 | `Conversions=200`, `Pairs=0`, `Net Change=-130` |
+| 可视化 | 生成优化 PNG、优化后 Shapefile、交互式对比地图 |
+| 报告导出 | `Analysis_Report.pdf`，PDF 转换成功并嵌入优化 PNG |
+
+录制口径：`Pairs=0` 时不要口播“成对置换已完成”；`Net Change=-130` 表示地类数量存在净变化，不应说成总量完全平衡。
+
+### 2. NL2Semantic2SQL
 
 用户输入中文空间问题，系统执行：
 
@@ -84,7 +134,7 @@
 
 为什么不是普通 NL2SQL：空间 SQL 需要处理 `geometry/geography` 单位、SRID、空间谓词、距离、面积、长度和空间连接去重。项目通过语义层 grounding 和 PostGIS 执行护栏降低 LLM 直接生成空间 SQL 的不稳定性。
 
-### 2. WorldModel v2.1
+### 3. WorldModel v2.1
 
 用户输入短句即可运行县域 MPC 规划：
 
@@ -131,13 +181,15 @@ world_model_v21_status -> world_model_v21_pipeline
 
 ```mermaid
 flowchart TB
-  U["聊天界面：React 工作台"] --> R["显式路由：NL2SQL 和 WorldModelV21"]
+  U["聊天界面：React 工作台"] --> R["路由：无 @ 自然语言 / @NL2SQL / @WorldModelV21"]
   R --> A["Google ADK 智能体编排"]
   A --> M["Gemma 4 26B：Ollama 模型网关"]
   A --> T["ADK 工具集"]
+  T --> F["数据发现 + Farmland DRL 优化"]
   T --> N["NL2Semantic2SQL 引擎"]
   T --> W["WorldModel v2.1 引擎"]
   T --> MEM["记忆工具"]
+  F --> FS1["用户上传 Shapefile / ZIP / PNG / PDF 报告"]
   N --> PG["PostgreSQL + PostGIS + pgvector"]
   MEM --> PG
   W --> FS["Paper9 仓库 + Bishan/Dongxing 运行数据"]
@@ -150,11 +202,13 @@ flowchart TB
 |---|---|
 | Gemma 4 模型网关 | `data_agent/model_gateway.py`, `docker-compose.gemma4-demo.yml` |
 | ADK 路由 | `data_agent/agent.py` |
+| 无 @ 数据发现与耕地优化 | `data_agent/toolsets/file_tools.py`, `data_agent/data_catalog.py`, `data_agent/gis_processors.py`, `data_agent/drl_engine.py`, `data_agent/pipeline_helpers.py` |
 | NL2Semantic2SQL 直接工具事件 | `data_agent/nl2semantic2sql_direct_agent.py` |
 | NL2SQL 执行护栏 | `data_agent/nl2sql_executor.py`, `data_agent/nl2sql_grounding.py`, `data_agent/nl2sql_semantic_rewrite.py`, `data_agent/sql_postprocessor.py` |
 | WorldModel v2.1 工具 | `data_agent/toolsets/world_model_v21_tools.py`, `data_agent/world_model_v21.py` |
 | 记忆机制 | `data_agent/conversation_memory.py`, `data_agent/memory.py` |
 | 运行日志 | `data_agent/app.py`, `data_agent/frontend_api.py`, `frontend/src/components/datapanel/AgentRunLogsTab.tsx` |
+| Word / PDF 报告导出 | `data_agent/report_generator.py`, `data_agent/app.py` |
 
 ## Docker Compose 快速启动
 
@@ -212,12 +266,12 @@ docker compose -f docker-compose.gemma4-demo.yml down
 | 变量 | 演示值 | 用途 |
 |---|---|---|
 | `MODEL_CONFIG_FORCE_ENV` | `true` | 强制使用环境变量中的模型配置 |
-| `ROUTER_MODEL` | `gemma4-26b-host228` | 意图路由模型 |
-| `MODEL_FAST` | `gemma4-26b-host228` | 快速层级模型 |
-| `MODEL_STANDARD` | `gemma4-26b-host228` | 标准层级模型 |
-| `MODEL_PREMIUM` | `gemma4-26b-host228` | 高质量层级模型 |
-| `NL2SQL_AGENT_MODEL` | `gemma4-26b-host228` | NL2SQL SQL 生成链路模型 |
-| `NL2SQL_LLM_SCHEMA_MAPPER_MODEL` | `gemma4-26b-host228` | NL2SQL schema mapper 模型 |
+| `ROUTER_MODEL` | `gemma4-26b-ollama` | 意图路由模型 |
+| `MODEL_FAST` | `gemma4-26b-ollama` | 快速层级模型 |
+| `MODEL_STANDARD` | `gemma4-26b-ollama` | 标准层级模型 |
+| `MODEL_PREMIUM` | `gemma4-26b-ollama` | 高质量层级模型 |
+| `NL2SQL_AGENT_MODEL` | `gemma4-26b-ollama` | NL2SQL SQL 生成链路模型 |
+| `NL2SQL_LLM_SCHEMA_MAPPER_MODEL` | `gemma4-26b-ollama` | NL2SQL schema mapper 模型 |
 | `EMBEDDING_MODEL` | `nomic-embed-text-v2-moe-host228` | few-shot 和语义检索 embedding |
 | `OLLAMA_API_BASE` | `http://192.168.25.228:11434` | Ollama 服务地址 |
 | `PAPER9_FARMLAND_MPC_REPO` | `/app/paper9-demo` | WorldModel v2.1 Paper9 仓库 |
@@ -230,6 +284,22 @@ PostGIS / Redis 也在 `docker-compose.gemma4-demo.yml` 中配置。
 ## 演示脚本
 
 打开应用后依次运行以下提示词。
+
+无 `@` 数据发现与耕地优化：
+
+```text
+上传 /Users/zhouning/Downloads/shp/斑竹村10000.zip
+```
+
+```text
+我有哪些数据？
+```
+
+```text
+基于斑竹村10000数据进行耕地空间布局优化分析
+```
+
+完成后可点击“导出 PDF 报告”，验证生成的是 PDF，并包含优化 PNG。
 
 NL2Semantic2SQL：
 
@@ -258,7 +328,7 @@ WorldModel v2.1：
 记忆：
 
 ```text
-请把本次演示保存为记忆：Gemma 4 完成了桥梁道路与建筑物相交的空间 NL2Semantic2SQL 查询，世界模型 v2.1 完成了 Bishan 和 Dongxing 县域 MPC 规划。关键词：Gemma4空间演示。
+请把本次演示保存为记忆：Gemma 4 完成了斑竹村耕地空间布局优化、桥梁道路与建筑物相交的空间 NL2Semantic2SQL 查询，世界模型 v2.1 完成了 Bishan 和 Dongxing 县域 MPC 规划。关键词：Gemma4空间演示。
 ```
 
 ```text
@@ -282,6 +352,7 @@ WorldModel v2.1：
 ```text
 docs/submission_screenshots/run_logs_nl2sql.png
 docs/submission_screenshots/run_logs_worldmodel_v21.png
+docs/submission_screenshots/run_logs_farmland_optimization.png
 docs/submission_screenshots/run_logs_memory.png
 ```
 
@@ -292,6 +363,8 @@ docs/submission_screenshots/run_logs_memory.png
 - 函数参数和响应摘要。
 - 与记忆相关的统计。
 - 生成地图图层的事件摘要。
+- 时间应显示东八区 `+08:00`，不要出现次日漂移。
+- 展开内容不足时点击“完整详情”查看全文。
 
 该面板对应的 API 是：
 
@@ -304,7 +377,7 @@ GET /api/agent/run-logs
 | 文档 | 用途 |
 |---|---|
 | [docs/gemma4_ai_agent_technical_report.md](docs/gemma4_ai_agent_technical_report.md) | 技术报告：模型选择、架构、场景和部署 |
-| [docs/gemma4_ai_agent_code_walkthrough.md](docs/gemma4_ai_agent_code_walkthrough.md) | 面向 `nl2semantic2sql` 和 `worldmodelv2.1` 的记忆、工具调用代码说明 |
+| [docs/gemma4_ai_agent_code_walkthrough.md](docs/gemma4_ai_agent_code_walkthrough.md) | 面向无 `@` 耕地优化、`nl2semantic2sql` 和 `worldmodelv2.1` 的记忆、工具调用代码说明 |
 | [docs/gemma4_ai_agent_demo_script.md](docs/gemma4_ai_agent_demo_script.md) | 5 分钟演示脚本和本地复测证据 |
 | [docs/assets/gemma4_host228_scale_sweep_summary.csv](docs/assets/gemma4_host228_scale_sweep_summary.csv) | Gemma 4 模型规格评测依据 |
 | [docs/assets/gemma4_host228_scale_sweep.svg](docs/assets/gemma4_host228_scale_sweep.svg) | 模型规格评测图 |
@@ -314,13 +387,13 @@ GET /api/agent/run-logs
 建议仓库描述（英文，适合 GitHub About）：
 
 ```text
-Gemma 4 powered GIS Data Agent for NL2Semantic2SQL and WorldModel v2.1 planning with native tool calling and memory.
+Gemma 4 powered GIS Data Agent for geospatial NL2Semantic2SQL, farmland optimization, and WorldModel v2.1 planning with native tool calling and memory.
 ```
 
 建议主题：
 
 ```text
-agent-memory, ai-agent, docker-compose, function-calling, gemma4, geospatial, gis, google-adk, mpc, multi-agent, nl2sql, postgis, tool-calling, world-model
+agent-memory, ai-agent, docker-compose, farmland-optimization, function-calling, gemma4, geospatial, gis, google-adk, mpc, multi-agent, nl2sql, postgis, tool-calling, world-model
 ```
 
 ## 许可证
