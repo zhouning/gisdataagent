@@ -1,7 +1,19 @@
 import { useState, useRef, useEffect, useCallback, useContext, KeyboardEvent, ChangeEvent } from 'react';
 import { useChatMessages, useChatInteract, useChatData, useChatSession, ChainlitContext } from '@chainlit/react-client';
-import { useSetRecoilState } from 'recoil';
-import { threadIdToResumeState } from '@chainlit/react-client';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
+import {
+  actionState,
+  askUserState,
+  currentThreadIdState,
+  elementState,
+  firstUserInteraction,
+  loadingState,
+  messagesState,
+  sideViewState,
+  tasklistState,
+  threadIdToResumeState,
+  tokenCountState,
+} from '@chainlit/react-client';
 import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
 import FeedbackBar from './FeedbackBar';
@@ -59,11 +71,25 @@ interface SessionInfo {
 }
 
 export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }: ChatPanelProps) {
-  const { messages } = useChatMessages();
-  const { sendMessage, uploadFile, clear } = useChatInteract();
+  const { messages, threadId: currentThreadId } = useChatMessages();
+  const chatInteract = useChatInteract() as ReturnType<typeof useChatInteract> & {
+    setIdToResume?: (threadId?: string) => void;
+  };
+  const { sendMessage, uploadFile, clear } = chatInteract;
   const { askUser, actions, loading } = useChatData();
   const { sessionId, connect, disconnect } = useChatSession();
-  const setIdToResume = useSetRecoilState(threadIdToResumeState);
+  const setRecoilIdToResume = useSetRecoilState(threadIdToResumeState);
+  const threadIdToResume = useRecoilValue(threadIdToResumeState);
+  const setMessages = useSetRecoilState(messagesState);
+  const setElements = useSetRecoilState(elementState);
+  const setTasklists = useSetRecoilState(tasklistState);
+  const setActions = useSetRecoilState(actionState);
+  const setTokenCount = useSetRecoilState(tokenCountState);
+  const setLoading = useSetRecoilState(loadingState);
+  const setAskUser = useSetRecoilState(askUserState);
+  const setSideView = useSetRecoilState(sideViewState);
+  const setCurrentThreadId = useSetRecoilState(currentThreadIdState);
+  const setFirstUserInteraction = useSetRecoilState(firstUserInteraction);
   const apiClient = useContext(ChainlitContext);
   const [input, setInput] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
@@ -80,6 +106,8 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const [showSessions, setShowSessions] = useState(false);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
+  const [connectMode, setConnectMode] = useState<'new' | 'resume' | null>(null);
 
   // Mention autocomplete state
   const [mentionTargets, setMentionTargets] = useState<Array<{
@@ -324,24 +352,79 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     finally { setSessionsLoading(false); }
   }, []);
 
+  const setResumeThreadId = useCallback((threadId?: string) => {
+    chatInteract.setIdToResume?.(threadId);
+    setRecoilIdToResume(threadId);
+  }, [chatInteract, setRecoilIdToResume]);
+
+  const resetVisibleChatState = useCallback(() => {
+    setMessages([]);
+    setElements([]);
+    setTasklists([]);
+    setActions([]);
+    setTokenCount(0);
+    setLoading(false);
+    setAskUser(undefined);
+    setSideView(undefined);
+    setCurrentThreadId(undefined);
+    setFirstUserInteraction(undefined);
+  }, [
+    setMessages,
+    setElements,
+    setTasklists,
+    setActions,
+    setTokenCount,
+    setLoading,
+    setAskUser,
+    setSideView,
+    setCurrentThreadId,
+    setFirstUserInteraction,
+  ]);
+
+  useEffect(() => {
+    if (!connectMode) return;
+    if (connectMode === 'resume' && !threadIdToResume) return;
+    if (connectMode === 'new' && threadIdToResume) return;
+
+    processedMetaRef.current.clear();
+    disconnect();
+
+    if (connectMode === 'resume') {
+      resetVisibleChatState();
+    } else {
+      clear();
+    }
+
+    const timer = window.setTimeout(() => {
+      connect({ userEnv: {} });
+      if (connectMode === 'resume') {
+        window.setTimeout(() => setResumingSessionId(null), 3000);
+      }
+      setConnectMode(null);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [connectMode, threadIdToResume, clear, disconnect, connect, resetVisibleChatState]);
+
+  useEffect(() => {
+    if (resumingSessionId && currentThreadId === resumingSessionId) {
+      setResumingSessionId(null);
+      setShowSessions(false);
+    }
+  }, [resumingSessionId, currentThreadId]);
+
   const handleNewChat = useCallback(() => {
     // Clear resume ID so Chainlit creates a fresh thread
-    setIdToResume(undefined);
-    clear();
-    processedMetaRef.current.clear();
-    disconnect();
-    setTimeout(() => connect({ userEnv: {} }), 300);
+    setResumeThreadId(undefined);
+    setResumingSessionId(null);
+    setConnectMode('new');
     setShowSessions(false);
-  }, [clear, disconnect, connect, setIdToResume]);
+  }, [setResumeThreadId]);
 
   const handleResumeSession = useCallback((threadId: string) => {
-    setIdToResume(threadId);
-    clear();
-    processedMetaRef.current.clear();
-    disconnect();
-    setTimeout(() => connect({ userEnv: {} }), 300);
-    setShowSessions(false);
-  }, [clear, disconnect, connect, setIdToResume]);
+    setResumeThreadId(threadId);
+    setResumingSessionId(threadId);
+    setConnectMode('resume');
+  }, [setResumeThreadId]);
 
   const handleDeleteSession = useCallback(async (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -397,12 +480,12 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
               {sessions.map(s => (
                 <div
                   key={s.id}
-                  className={`session-item ${s.id === sessionId ? 'session-item-active' : ''}`}
+                  className={`session-item ${s.id === currentThreadId ? 'session-item-active' : ''} ${s.id === resumingSessionId ? 'session-item-resuming' : ''}`}
                   onClick={() => handleResumeSession(s.id)}
                 >
                   <div className="session-item-name">{s.name || '未命名会话'}</div>
                   <div className="session-item-meta">
-                    {s.updated_at ? new Date(s.updated_at).toLocaleString() : ''}
+                    {s.id === resumingSessionId ? '恢复中...' : s.updated_at ? new Date(s.updated_at).toLocaleString() : ''}
                   </div>
                   <button
                     className="session-item-delete"

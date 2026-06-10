@@ -115,7 +115,10 @@ import folium
 from folium import plugins
 import branca.colormap as cm
 import mapclassify
-import contextily as cx
+try:
+    import contextily as cx
+except Exception:  # pragma: no cover - optional basemap backend
+    cx = None
 
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
@@ -810,10 +813,11 @@ def export_map_png(file_path: str, value_column: str = None, title: str = None) 
         else:
             gdf_plot.plot(ax=ax, color='#4A90D9', edgecolor='black', linewidth=0.3, alpha=0.7)
 
-        try:
-            cx.add_basemap(ax, source=cx.providers.CartoDB.Positron)
-        except Exception:
-            pass
+        if cx is not None:
+            try:
+                cx.add_basemap(ax, source=cx.providers.CartoDB.Positron)
+            except Exception:
+                pass
 
         ax.set_axis_off()
         if title:

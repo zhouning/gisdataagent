@@ -29,6 +29,44 @@ class FakeWorldModelV21Service:
             "warnings": [],
         }
 
+    def run_prepare(self, payload, user_id):
+        self.payload = payload
+        self.user_id = user_id
+        return {
+            "status": "ok",
+            "mode": "tool1_prepare",
+            "prepared_dir": payload.get("prepared_dir") or "prepared",
+        }
+
+    def run_sample(self, payload, user_id):
+        self.payload = payload
+        self.user_id = user_id
+        return {
+            "status": "ok",
+            "mode": "tool2_sample",
+            "prepared_dir": payload.get("prepared_dir"),
+        }
+
+    def run_train(self, payload, user_id):
+        self.payload = payload
+        self.user_id = user_id
+        return {
+            "status": "ok",
+            "mode": "tool3_train",
+            "ensemble_dir": "prepared/tool3",
+            "onnx_member_count": payload.get("n_members", 3),
+        }
+
+    def run_pipeline(self, payload, user_id):
+        self.payload = payload
+        self.user_id = user_id
+        return {
+            "status": "ok",
+            "mode": "pipeline_a_to_d",
+            "steps": [{"step": "prepare", "status": "skipped_reused"}],
+            "plan_result": {"status": "ok", "map_config": {"layers": []}},
+        }
+
 
 def test_world_model_v21_status_tool_returns_service_status(monkeypatch):
     from data_agent.toolsets import world_model_v21_tools as tools
@@ -104,7 +142,141 @@ def test_world_model_v21_plan_normalizes_common_env_kind_typo(monkeypatch):
     assert fake.payload["env_kind"] == "restoration"
 
 
-def test_world_model_v21_toolset_lists_status_and_plan_tools():
+def test_world_model_v21_plan_uses_demo_defaults_and_env_paths(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+    monkeypatch.setenv("PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR", "/app/bishan-runs/prepared")
+    monkeypatch.setenv(
+        "PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR",
+        "/app/bishan-runs/prepared/ensemble_seed0",
+    )
+
+    result = json.loads(tools._world_model_v21_plan_sync())
+
+    assert result["status"] == "ok"
+    assert fake.payload["prepared_dir"] == "/app/bishan-runs/prepared"
+    assert fake.payload["ensemble_dir"] == "/app/bishan-runs/prepared/ensemble_seed0"
+    assert fake.payload["env_kind"] == "county"
+    assert fake.payload["horizon"] == 1
+    assert fake.payload["top_k"] == 1
+    assert fake.payload["n_episodes"] == 1
+    assert fake.payload["continuation"] == "greedy"
+    assert fake.payload["scoring"] == "reward"
+    assert fake.payload["threads"] == 0
+
+
+def test_world_model_v21_pipeline_uses_demo_defaults_and_env_paths(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+    monkeypatch.setenv("PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR", "/app/bishan-runs/prepared")
+    monkeypatch.setenv(
+        "PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR",
+        "/app/bishan-runs/prepared/ensemble_seed0",
+    )
+
+    result = json.loads(tools._world_model_v21_pipeline_sync())
+
+    assert result["status"] == "ok"
+    assert fake.payload["prepared_dir"] == "/app/bishan-runs/prepared"
+    assert fake.payload["ensemble_dir"] == "/app/bishan-runs/prepared/ensemble_seed0"
+    assert fake.payload["reuse_existing"] is True
+    assert fake.payload["run_prepare"] is True
+    assert fake.payload["run_sample"] is True
+    assert fake.payload["run_train"] is True
+    assert fake.payload["run_plan"] is True
+    assert fake.payload["horizon"] == 1
+    assert fake.payload["top_k"] == 1
+    assert fake.payload["continuation"] == "greedy"
+
+
+def test_world_model_v21_pipeline_dataset_dongxing_overrides_bishan_env(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+    monkeypatch.setenv("PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR", "/app/bishan-runs/prepared")
+    monkeypatch.setenv(
+        "PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR",
+        "/app/bishan-runs/prepared/ensemble_seed0",
+    )
+
+    result = json.loads(tools._world_model_v21_pipeline_sync(dataset="dongxing"))
+
+    assert result["status"] == "ok"
+    assert fake.payload["dataset"] == "dongxing"
+    assert fake.payload["prepared_dir"] == "/app/dongxing-runs/prepared"
+    assert fake.payload["ensemble_dir"] == "/app/dongxing-runs/prepared/ensemble_seed0"
+
+
+def test_world_model_v21_plan_dataset_dongxing_overrides_bishan_env(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+    monkeypatch.setenv("PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR", "/app/bishan-runs/prepared")
+    monkeypatch.setenv(
+        "PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR",
+        "/app/bishan-runs/prepared/ensemble_seed0",
+    )
+
+    result = json.loads(tools._world_model_v21_plan_sync(dataset="东兴"))
+
+    assert result["status"] == "ok"
+    assert fake.payload["dataset"] == "dongxing"
+    assert fake.payload["prepared_dir"] == "/app/dongxing-runs/prepared"
+    assert fake.payload["ensemble_dir"] == "/app/dongxing-runs/prepared/ensemble_seed0"
+
+
+def test_world_model_v21_prepare_sample_train_pipeline_tools_call_service(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+    from data_agent.user_context import current_user_id
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+    token = current_user_id.set("demo_user")
+    try:
+        prepared = json.loads(tools._world_model_v21_prepare_sync(
+            dltb_path="/data/dltb.shp",
+            dem_path="/data/dem.tif",
+            prepared_dir="/out/prepared",
+        ))
+        assert prepared["mode"] == "tool1_prepare"
+        assert fake.user_id == "demo_user"
+        assert fake.payload["dltb_path"] == "/data/dltb.shp"
+
+        sampled = json.loads(tools._world_model_v21_sample_sync(
+            prepared_dir="/out/prepared",
+            n_transition_episodes="2",
+        ))
+        assert sampled["mode"] == "tool2_sample"
+        assert fake.payload["n_transition_episodes"] == 2
+
+        trained = json.loads(tools._world_model_v21_train_sync(
+            prepared_dir="/out/prepared",
+            n_members="1",
+            epochs="1",
+        ))
+        assert trained["mode"] == "tool3_train"
+        assert fake.payload["n_members"] == 1
+
+        piped = json.loads(tools._world_model_v21_pipeline_sync(
+            prepared_dir="/out/prepared",
+            ensemble_dir="/out/ensemble",
+            run_prepare="false",
+            run_sample="false",
+            run_train="false",
+        ))
+        assert piped["mode"] == "pipeline_a_to_d"
+        assert fake.payload["run_prepare"] is False
+    finally:
+        current_user_id.reset(token)
+
+
+def test_world_model_v21_toolset_lists_all_v21_tools():
     from data_agent.toolsets.world_model_v21_tools import WorldModelV21Toolset
 
     toolset = WorldModelV21Toolset()
@@ -112,14 +284,22 @@ def test_world_model_v21_toolset_lists_status_and_plan_tools():
     names = {tool.name for tool in tools}
 
     assert "world_model_v21_status" in names
+    assert "world_model_v21_prepare" in names
+    assert "world_model_v21_sample" in names
+    assert "world_model_v21_train" in names
     assert "world_model_v21_plan" in names
+    assert "world_model_v21_pipeline" in names
 
 
 def test_world_model_category_includes_v21_tools():
     from data_agent.tool_filter import TOOL_CATEGORIES
 
     assert "world_model_v21_status" in TOOL_CATEGORIES["world_model"]
+    assert "world_model_v21_prepare" in TOOL_CATEGORIES["world_model"]
+    assert "world_model_v21_sample" in TOOL_CATEGORIES["world_model"]
+    assert "world_model_v21_train" in TOOL_CATEGORIES["world_model"]
     assert "world_model_v21_plan" in TOOL_CATEGORIES["world_model"]
+    assert "world_model_v21_pipeline" in TOOL_CATEGORIES["world_model"]
 
 
 def test_general_and_analyst_agents_include_world_model_v21_toolset():
@@ -140,3 +320,19 @@ def test_world_model_v21_agent_is_directly_mentionable():
 
     assert agent.name == "MentionWorldModelV21"
     assert toolset_names == ["WorldModelV21Toolset"]
+
+
+def test_world_model_v21_agent_instruction_uses_fast_defaults():
+    from data_agent.agent import _make_agent_by_name
+
+    agent = _make_agent_by_name("WorldModelV21")
+    instruction = agent.instruction
+
+    assert "horizon=1, top_k=1" in instruction
+    assert "horizon=2, top_k=5" not in instruction
+    assert "默认调用 world_model_v21_pipeline" in instruction
+    assert "只有用户明确要求“只运行 Tool 4”" in instruction
+    assert "dataset='dongxing'" in instruction
+    assert "dataset='bishan'" in instruction
+    assert "CHG_FLAG" in instruction
+    assert "红色为耕地 -> 林地" in instruction

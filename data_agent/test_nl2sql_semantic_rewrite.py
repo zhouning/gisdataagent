@@ -1395,6 +1395,181 @@ def test_semantic_rewrite_grouped_spatial_count_uses_question_target_entity_alia
     assert "semantic_distinct_join_count" in corrections
 
 
+def _cq_spatial_context():
+    return {
+        "candidate_tables": [
+            {
+                "table_name": "cq_osm_roads_2021",
+                "table_aliases": ["道路", "道路网络", "桥梁", "road"],
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name", "needs_quoting": False},
+                    {"column_name": "fclass", "quoted_ref": "fclass", "needs_quoting": False},
+                    {"column_name": "bridge", "quoted_ref": "bridge", "needs_quoting": False},
+                    {
+                        "column_name": "osm_id",
+                        "quoted_ref": "osm_id",
+                        "needs_quoting": False,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiLineString,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_amap_poi_2024",
+                "table_aliases": ["POI", "高德 POI", "学校"],
+                "columns": [
+                    {
+                        "column_name": "ID",
+                        "quoted_ref": '"ID"',
+                        "needs_quoting": True,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {"column_name": "类型", "quoted_ref": '"类型"', "needs_quoting": True},
+                    {"column_name": "地址", "quoted_ref": '"地址"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(Point,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_buildings_2021",
+                "table_aliases": ["建筑", "建筑物", "建筑物轮廓"],
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "quoted_ref": '"Id"',
+                        "needs_quoting": True,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {
+                        "column_name": "Floor",
+                        "quoted_ref": '"Floor"',
+                        "needs_quoting": True,
+                        "aliases": ["floor", "楼层"],
+                    },
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_historic_districts",
+                "table_aliases": ["历史文化街区", "街区"],
+                "columns": [
+                    {"column_name": "jqmc", "quoted_ref": "jqmc", "needs_quoting": False},
+                    {
+                        "column_name": "shape",
+                        "quoted_ref": "shape",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4547)",
+                    },
+                ],
+            },
+        ],
+    }
+
+
+def test_semantic_rewrite_cq_hard_10_primary_road_poi_count_uses_distinct():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "对每条 fclass 为 primary 的道路，统计与其几何相交的 POI 数量，"
+        "返回道路名称和 POI 数量，取 POI 最多的前 5 条道路。",
+        'SELECT r.name, COUNT(p."ID") AS poi_cnt '
+        "FROM cq_osm_roads_2021 r JOIN cq_amap_poi_2024 p "
+        "ON ST_Intersects(r.geometry, p.geometry) "
+        "WHERE r.fclass = 'primary' GROUP BY r.name ORDER BY poi_cnt DESC LIMIT 5",
+        _cq_spatial_context(),
+    )
+
+    assert 'COUNT(DISTINCT p."ID") AS poi_cnt' in rewritten
+    assert "ST_Intersects(r.geometry, p.geometry)" in rewritten
+    assert "GROUP BY r.name ORDER BY poi_cnt DESC LIMIT 5" in rewritten
+    assert "semantic_distinct_join_count" in corrections
+
+
+def test_semantic_rewrite_cq_hard_14_dwithin_uses_geography_and_floor_quote():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "找出距离'重庆大学'1 千米内（ST_DWithin geography）且楼层（Floor）大于 10 层的建筑数量。",
+        'SELECT COUNT(*) FROM cq_buildings_2021 b '
+        'CROSS JOIN (SELECT geometry FROM cq_amap_poi_2024 WHERE "名称" LIKE \'%重庆大学%\' LIMIT 1) u '
+        "WHERE ST_DWithin(b.geometry, u.geometry, 1000) AND b.Floor > 10",
+        _cq_spatial_context(),
+    )
+
+    assert "ST_DWithin(b.geometry::geography, u.geometry::geography, 1000)" in rewritten
+    assert 'b."Floor" > 10' in rewritten
+    assert rewritten.startswith("SELECT COUNT(*) FROM cq_buildings_2021 b")
+    assert 'COUNT(DISTINCT b."Id")' not in rewritten
+    assert "semantic_st_dwithin_geography" in corrections
+    assert "semantic_column_alias" in corrections
+
+
+def test_semantic_rewrite_cq_hard_25_grouped_road_length_uses_geography_km():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计 cq_osm_roads_2021 中每种道路等级 fclass 的道路数量和总长度，单位千米，保留 2 位小数。",
+        "SELECT fclass, COUNT(*) AS total_cnt, "
+        "ROUND((SUM(CAST(ST_XMAX(geometry) AS DECIMAL) - CAST(ST_XMIN(geometry) AS DECIMAL)) * 0)::numeric, 2) AS total_km "
+        "FROM cq_osm_roads_2021 GROUP BY fclass ORDER BY total_cnt DESC",
+        _cq_spatial_context(),
+    )
+
+    assert "ST_XMAX" not in rewritten
+    assert "SUM(ST_Length(geometry::geography)) / 1000.0" in rewritten
+    assert "GROUP BY fclass ORDER BY total_cnt DESC" in rewritten
+    assert "semantic_length_metric" in corrections
+
+
+def test_semantic_rewrite_bridge_length_webmercator_uses_geography_km():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计重庆2021年道路网络中所有桥梁道路（bridge = T）的总长度，单位为公里。",
+        "SELECT SUM(ST_LENGTH(ST_TRANSFORM(geometry, 3857)) / 1000.0) "
+        "FROM cq_osm_roads_2021 WHERE bridge = 'T'",
+        _cq_spatial_context(),
+    )
+
+    assert "ST_TRANSFORM" not in rewritten.upper()
+    assert "ST_Length(geometry::geography)" in rewritten
+    assert "semantic_length_geography" in corrections
+
+
+def test_semantic_rewrite_cq_medium_23_preserves_left_join_poi_row_count():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计每个历史文化街区（jqmc）内包含的高德 POI 数量，返回街区名称和 POI 数量，按 POI 数量降序排列。",
+        'SELECT h.jqmc, COUNT(p."ID") AS poi_cnt '
+        "FROM cq_historic_districts h LEFT JOIN cq_amap_poi_2024 p "
+        "ON ST_Contains(ST_Transform(h.shape, 4326), p.geometry) "
+        "GROUP BY h.jqmc ORDER BY poi_cnt DESC",
+        _cq_spatial_context(),
+    )
+
+    assert 'COUNT(p."ID") AS poi_cnt' in rewritten
+    assert 'COUNT(DISTINCT p."ID")' not in rewritten
+    assert "LEFT JOIN cq_amap_poi_2024 p" in rewritten
+    assert "ST_Contains(ST_Transform(h.shape, 4326), p.geometry)" in rewritten
+    assert "semantic_distinct_join_count" not in corrections
+
+
 def test_semantic_rewrite_prunes_unrequested_unreferenced_spatial_join():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 

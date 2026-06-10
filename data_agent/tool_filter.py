@@ -105,7 +105,9 @@ TOOL_CATEGORIES: dict[str, frozenset[str]] = {
     # World model prediction + causal world model
     "world_model": frozenset({
         "world_model_predict", "world_model_scenarios", "world_model_status",
-        "world_model_v21_status", "world_model_v21_plan",
+        "world_model_v21_status", "world_model_v21_prepare",
+        "world_model_v21_sample", "world_model_v21_train",
+        "world_model_v21_plan", "world_model_v21_pipeline",
         "intervention_predict", "counterfactual_comparison",
         "embedding_treatment_effect", "integrate_statistical_prior",
     }),

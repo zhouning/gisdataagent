@@ -219,23 +219,153 @@ def _build_ungrounded_table_retry_prompt(question: str, payload: dict, sql: str,
 
 
 def _extract_sql(text: str) -> str:
-    """Extract the most recent complete SELECT/WITH statement from model text."""
+    """Extract the most recent complete top-level SELECT/WITH statement."""
     sql = _strip_fences(text)
     sql = re.sub(r"^\s*(?:sql\s*:|SQL\s*:)", "", sql).strip()
+    starts = _top_level_sql_starts(sql)
+    candidates = [_slice_sql_statement(sql, start) for start in starts]
+    candidates = [candidate for candidate in candidates if candidate]
+    for candidate in reversed(candidates):
+        if candidate.upper().startswith("WITH") or re.search(r"\bFROM\b", candidate, flags=re.IGNORECASE):
+            return candidate
+
     matches = list(re.finditer(r"\b(SELECT|WITH)\b", sql, flags=re.IGNORECASE))
     if not matches:
         return sql or "SELECT 1"
-    candidates: list[str] = []
+    nested_candidates: list[str] = []
     for match in matches:
         candidate = sql[match.start():].strip()
         if ";" in candidate:
             candidate = candidate.split(";", 1)[0].strip()
         if candidate:
-            candidates.append(candidate)
-    for candidate in reversed(candidates):
+            nested_candidates.append(candidate)
+    for candidate in reversed(nested_candidates):
         if candidate.upper().startswith("WITH") or re.search(r"\bFROM\b", candidate, flags=re.IGNORECASE):
             return candidate
-    return candidates[-1] if candidates else "SELECT 1"
+    return nested_candidates[-1] if nested_candidates else "SELECT 1"
+
+
+def _top_level_sql_starts(sql: str) -> list[int]:
+    starts: list[int] = []
+    depth = 0
+    in_single = False
+    in_double = False
+    in_line_comment = False
+    in_block_comment = False
+    in_top_level_with_statement = False
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        nxt = sql[i + 1] if i + 1 < len(sql) else ""
+
+        if in_line_comment:
+            if ch == "\n":
+                in_line_comment = False
+            i += 1
+            continue
+        if in_block_comment:
+            if ch == "*" and nxt == "/":
+                in_block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if in_single:
+            if ch == "'" and nxt == "'":
+                i += 2
+            elif ch == "'":
+                in_single = False
+                i += 1
+            else:
+                i += 1
+            continue
+        if in_double:
+            if ch == '"' and nxt == '"':
+                i += 2
+            elif ch == '"':
+                in_double = False
+                i += 1
+            else:
+                i += 1
+            continue
+
+        if ch == "-" and nxt == "-":
+            in_line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            in_block_comment = True
+            i += 2
+            continue
+        if ch == "'":
+            in_single = True
+            i += 1
+            continue
+        if ch == '"':
+            in_double = True
+            i += 1
+            continue
+        if ch == "(":
+            depth += 1
+            i += 1
+            continue
+        if ch == ")":
+            depth = max(0, depth - 1)
+            i += 1
+            continue
+        if ch == ";" and depth == 0:
+            in_top_level_with_statement = False
+            i += 1
+            continue
+        if depth == 0:
+            if re.match(r"\bWITH\b", sql[i:], flags=re.IGNORECASE):
+                starts.append(i)
+                in_top_level_with_statement = True
+            elif (
+                not in_top_level_with_statement
+                and re.match(r"\bSELECT\b", sql[i:], flags=re.IGNORECASE)
+            ):
+                starts.append(i)
+        i += 1
+    return starts
+
+
+def _slice_sql_statement(sql: str, start: int) -> str:
+    depth = 0
+    in_single = False
+    in_double = False
+    i = start
+    while i < len(sql):
+        ch = sql[i]
+        nxt = sql[i + 1] if i + 1 < len(sql) else ""
+        if in_single:
+            if ch == "'" and nxt == "'":
+                i += 2
+                continue
+            if ch == "'":
+                in_single = False
+            i += 1
+            continue
+        if in_double:
+            if ch == '"' and nxt == '"':
+                i += 2
+                continue
+            if ch == '"':
+                in_double = False
+            i += 1
+            continue
+        if ch == "'":
+            in_single = True
+        elif ch == '"':
+            in_double = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        elif ch == ";" and depth == 0:
+            return sql[start:i].strip()
+        i += 1
+    return sql[start:].strip()
 
 
 def _get_standard_model_name() -> str:

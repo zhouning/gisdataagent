@@ -1,42 +1,66 @@
-"""Toolset re-exports."""
-from .exploration_tools import ExplorationToolset
-from .geo_processing_tools import GeoProcessingToolset
-from .location_tools import LocationToolset
-from .analysis_tools import AnalysisToolset
-from .visualization_tools import VisualizationToolset
-from .database_tools_set import DatabaseToolset
-from .file_tools import FileToolset
-from .memory_tools import MemoryToolset
-from .admin_tools import AdminToolset
-from .remote_sensing_tools import RemoteSensingToolset
-from .spatial_statistics_tools import SpatialStatisticsToolset
-from .semantic_layer_tools import SemanticLayerToolset
-from .streaming_tools import StreamingToolset
-from .team_tools import TeamToolset
-from .datalake_tools import DataLakeToolset
-from .mcp_hub_toolset import McpHubToolset
-from .fusion_tools import FusionToolset
-from .knowledge_graph_tools import KnowledgeGraphToolset
-from .knowledge_base_tools import KnowledgeBaseToolset
-from .advanced_analysis_tools import AdvancedAnalysisToolset
-from .user_tools_toolset import UserToolset
-from .virtual_source_tools import VirtualSourceToolset
-from .chart_tools import ChartToolset
-from .governance_tools import GovernanceToolset
-from .data_cleaning_tools import DataCleaningToolset
-from .spark_tools import SparkToolset
-from .storage_tools import StorageToolset
-from .report_tools import ReportToolset
-from .precision_tools import PrecisionToolset
-from .world_model_tools import WorldModelToolset
-from .nl2sql_tools import NL2SQLToolset
-from .causal_inference_tools import CausalInferenceToolset
-from .llm_causal_tools import LLMCausalToolset
-from .causal_world_model_tools import CausalWorldModelToolset
-from .dreamer_tools import DreamerToolset
-from .operator_tools import OperatorToolset
-from .evolution_tools import ToolEvolutionToolset
-from .domain_standard_tools import DomainStandardToolset
-from .nl2sql_enhanced_tools import NL2SQLEnhancedToolset
-from .world_model_v2_tools import WorldModelV2Toolset
-from .world_model_v21_tools import WorldModelV21Toolset
+"""Lazy toolset re-exports.
+
+Importing this package should not load every optional tool backend. Several
+toolsets have heavyweight dependencies, so resolve public classes only when a
+caller asks for them.
+"""
+
+from importlib import import_module
+from typing import Any
+
+
+_EXPORTS = {
+    "AdminToolset": ".admin_tools",
+    "AdvancedAnalysisToolset": ".advanced_analysis_tools",
+    "AnalysisToolset": ".analysis_tools",
+    "CausalInferenceToolset": ".causal_inference_tools",
+    "CausalWorldModelToolset": ".causal_world_model_tools",
+    "ChartToolset": ".chart_tools",
+    "DataCleaningToolset": ".data_cleaning_tools",
+    "DataLakeToolset": ".datalake_tools",
+    "DatabaseToolset": ".database_tools_set",
+    "DomainStandardToolset": ".domain_standard_tools",
+    "DreamerToolset": ".dreamer_tools",
+    "ExplorationToolset": ".exploration_tools",
+    "FileToolset": ".file_tools",
+    "FusionToolset": ".fusion_tools",
+    "GeoProcessingToolset": ".geo_processing_tools",
+    "GovernanceToolset": ".governance_tools",
+    "KnowledgeBaseToolset": ".knowledge_base_tools",
+    "KnowledgeGraphToolset": ".knowledge_graph_tools",
+    "LLMCausalToolset": ".llm_causal_tools",
+    "LocationToolset": ".location_tools",
+    "McpHubToolset": ".mcp_hub_toolset",
+    "MemoryToolset": ".memory_tools",
+    "NL2SQLEnhancedToolset": ".nl2sql_enhanced_tools",
+    "NL2SQLToolset": ".nl2sql_tools",
+    "OperatorToolset": ".operator_tools",
+    "PrecisionToolset": ".precision_tools",
+    "RemoteSensingToolset": ".remote_sensing_tools",
+    "ReportToolset": ".report_tools",
+    "SemanticLayerToolset": ".semantic_layer_tools",
+    "SparkToolset": ".spark_tools",
+    "SpatialStatisticsToolset": ".spatial_statistics_tools",
+    "StorageToolset": ".storage_tools",
+    "StreamingToolset": ".streaming_tools",
+    "TeamToolset": ".team_tools",
+    "ToolEvolutionToolset": ".evolution_tools",
+    "UserToolset": ".user_tools_toolset",
+    "VirtualSourceToolset": ".virtual_source_tools",
+    "VisualizationToolset": ".visualization_tools",
+    "WorldModelToolset": ".world_model_tools",
+    "WorldModelV21Toolset": ".world_model_v21_tools",
+    "WorldModelV2Toolset": ".world_model_v2_tools",
+}
+
+__all__ = sorted(_EXPORTS)
+
+
+def __getattr__(name: str) -> Any:
+    module_name = _EXPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module = import_module(module_name, __name__)
+    value = getattr(module, name)
+    globals()[name] = value
+    return value

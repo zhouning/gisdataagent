@@ -249,14 +249,37 @@ def _extract_count_value(execution: dict[str, Any]) -> tuple[str, Any] | None:
 
 def _friendly_count_label(label: str, *, question: str, sql: str) -> str:
     joined = f"{question}\n{sql}".lower()
+    is_count = _is_count_metric_label(label)
+    if is_count and ("poi" in joined or "高德" in question):
+        return "POI数量"
     if "building_count" in label.lower() or (
         ("建筑" in question or "cq_buildings_2021" in joined)
         and ("桥" in question or "bridge" in joined)
     ):
         return "建筑物轮廓数量"
+    if _is_length_metric_result(label, joined, count_metric=is_count):
+        if any(token in joined for token in ("公里", "千米", "kilometer", "kilometre", "_km", " km")):
+            return "道路总长度（公里）" if "道路" in question or "road" in joined else "总长度（公里）"
+        return "道路总长度" if "道路" in question or "road" in joined else "总长度"
     if "road" in label.lower() or "道路" in question:
         return "道路数量"
     return "数量"
+
+
+def _is_count_metric_label(label: str) -> bool:
+    label_low = (label or "").lower()
+    return bool(re.search(r"(count|cnt|num|数量)", label_low))
+
+
+def _is_length_metric_result(label: str, joined: str, *, count_metric: bool = False) -> bool:
+    label_low = (label or "").lower()
+    if count_metric:
+        return False
+    return (
+        any(token in label_low for token in ("length", "len", "km", "meter", "metre"))
+        or "st_length" in (joined or "")
+        or any(token in (joined or "") for token in ("总长度", "长度", "公里", "千米"))
+    )
 
 
 def _is_bridge_building_intersection_query(question: str, sql: str) -> bool:

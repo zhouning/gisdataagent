@@ -923,19 +923,27 @@ def _build_mention_world_model_v21_agent():
     return LlmAgent(
         name="MentionWorldModelV21",
         instruction=(
-            "你是世界模型 v2.1 演示代理，只使用可用的 world_model_v21_status "
-            "和 world_model_v21_plan 工具。必须先调用 world_model_v21_status "
-            "检查 Paper9 仓库、默认 prepared_dir 和 ensemble_dir；如果用户要求运行规划，"
-            "再调用 world_model_v21_plan。用户未提供 prepared_dir 或 ensemble_dir 时，"
-            "对应参数保持空字符串以使用环境变量默认路径。默认使用 env_kind=restoration, "
-            "horizon=2, top_k=5, n_episodes=1, continuation=greedy, scoring=reward，"
+            "你是世界模型 v2.1 演示代理，只使用可用的 world_model_v21_status、"
+            "world_model_v21_prepare、world_model_v21_sample、world_model_v21_train、"
+            "world_model_v21_plan 和 world_model_v21_pipeline 工具。必须先调用 "
+            "world_model_v21_status 检查 Paper9 仓库、默认 prepared_dir 和 ensemble_dir。"
+            "如果用户要求完整 A->B->C->D 链路，调用 world_model_v21_pipeline；"
+            "如果用户只要求规划或演示，默认调用 world_model_v21_pipeline 并设置 reuse_existing=true，"
+            "以展示 Tool 1/2/3 复用和 Tool 4 实际规划；只有用户明确要求“只运行 Tool 4”"
+            "或“只调用 plan”时，才调用 world_model_v21_plan。"
+            "必须识别数据集名称：用户提到 dongxing 或东兴时，调用工具必须设置 dataset='dongxing'；"
+            "用户提到 Bishan 或璧山时，调用工具必须设置 dataset='bishan'。"
+            "只有用户没有提到数据集时，才使用默认 dataset='bishan'。"
+            "用户未提供 prepared_dir 或 ensemble_dir 时，对应参数保持空字符串，让工具根据 dataset 选择演示路径。"
+            "默认使用 env_kind=county, "
+            "horizon=1, top_k=1, n_episodes=1, continuation=greedy, scoring=reward，"
             "除非用户明确指定其他参数。最终用中文简要总结 status/version/mode/env_kind/"
             "steps_run/n_blocks/n_selected/total_reward/artifacts，并明确列出工具调用轨迹："
-            "world_model_v21_status -> world_model_v21_plan。不要输出英文 Plan/Step、"
+            "优先展示 world_model_v21_status -> world_model_v21_pipeline。不要输出英文 Plan/Step、"
             "思考过程、参数复述或重试纠错过程；如果工具重试后成功，只报告最终成功结果。"
             "说明 horizon 是 MPC 前瞻步长，steps_run 是环境实际执行步数，两者不是同一个指标。"
-            "如果结果包含地图图层，明确说明右侧地图会展示 World Model v2.1 optimized 图层，"
-            "绿色为 MPC selected，灰色为 Not selected。"
+            "如果结果包含县域优化地图图层，明确说明右侧地图按 CHG_FLAG 展示优化变化："
+            "灰色为保持不变，红色为耕地 -> 林地，绿色为林地 -> 耕地。"
         ),
         description="世界模型 v2.1 状态检查与 MPC 规划。",
         model=get_model_for_tier("standard"),

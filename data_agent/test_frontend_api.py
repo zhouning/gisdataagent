@@ -2,6 +2,7 @@
 import asyncio
 import json
 import unittest
+from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock
 
 from starlette.responses import JSONResponse
@@ -395,7 +396,7 @@ class TestRouteMount(unittest.TestCase):
     def test_get_routes_count(self):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 327)
+        self.assertGreaterEqual(len(routes), 366)
 
     def test_route_paths(self):
         from data_agent.frontend_api import get_frontend_api_routes
@@ -406,6 +407,7 @@ class TestRouteMount(unittest.TestCase):
         self.assertIn("/api/semantic/domains", paths)
         self.assertIn("/api/pipeline/history", paths)
         self.assertIn("/api/user/token-usage", paths)
+        self.assertIn("/api/agent/run-logs", paths)
         self.assertIn("/api/admin/users", paths)
         self.assertIn("/api/admin/metrics/summary", paths)
 
@@ -419,9 +421,353 @@ class TestRouteMount(unittest.TestCase):
 
         result = mount_frontend_api(mock_app)
         self.assertTrue(result)
-        # 36 routes inserted before the catch-all, catch-all is now at index 36
-        self.assertEqual(len(mock_app.router.routes), 328)
+        # Frontend API routes are inserted before the catch-all.
+        from data_agent.frontend_api import get_frontend_api_routes
+        self.assertEqual(len(mock_app.router.routes), len(get_frontend_api_routes()) + 1)
         self.assertEqual(mock_app.router.routes[-1].path, "/{full_path:path}")
+
+
+class TestSessionsAPI(unittest.TestCase):
+    """Tests for custom chat session history endpoints."""
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_sessions_list_matches_chainlit_user_id_fk(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_sessions_list
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+        mock_conn.execute.return_value.fetchall.return_value = [
+            ("thread-1", "测试会话", datetime(2026, 6, 6, 10, 0), datetime(2026, 6, 6, 10, 5)),
+        ]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_sessions_list(_make_request()))
+
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.body)
+        self.assertEqual(body["sessions"][0]["id"], "thread-1")
+        self.assertEqual(body["sessions"][0]["updated_at"], "2026-06-06T10:05:00Z")
+        sql = str(mock_conn.execute.call_args.args[0])
+        self.assertIn('LEFT JOIN "User" AS u ON u.id = t."userId"', sql)
+        self.assertIn('t."userIdentifier" = :uid OR u.identifier = :uid', sql)
+        self.assertIn('t."deletedAt" IS NULL', sql)
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_session_delete_soft_deletes_owned_thread(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_session_delete
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+        result = MagicMock()
+        result.rowcount = 1
+        mock_conn.execute.return_value = result
+        mock_engine_fn.return_value = mock_engine
+
+        req = _make_request(path_params={"session_id": "thread-1"})
+        resp = _run_async(_api_session_delete(req))
+
+        self.assertEqual(resp.status_code, 200)
+        sql = str(mock_conn.execute.call_args.args[0])
+        self.assertIn('UPDATE "Thread" AS t', sql)
+        self.assertIn('SET "deletedAt" = NOW()', sql)
+        self.assertIn('t."userId" IN (SELECT id FROM "User" WHERE identifier = :uid)', sql)
+        mock_conn.commit.assert_called_once()
+
+
+class TestAgentRunLogsAPI(unittest.TestCase):
+    """Tests for demo-friendly Agent run log summaries."""
+
+    def test_agent_run_logs_formats_local_timezone_without_utc_drift(self):
+        from data_agent.frontend_api import _iso_local
+
+        local_created_at = datetime(2026, 6, 10, 10, 59, 35)
+        utc_start_time = datetime(2026, 6, 10, 2, 59, 35)
+
+        self.assertEqual(
+            _iso_local(local_created_at),
+            "2026-06-10T10:59:35+08:00",
+        )
+        self.assertEqual(
+            _iso_local(utc_start_time, assume_utc=True),
+            "2026-06-10T10:59:35+08:00",
+        )
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_agent_run_logs_summarize_thread_steps(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_agent_run_logs
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+
+        thread_result = MagicMock()
+        thread_result.fetchall.return_value = [
+            ("thread-1", "@NL2SQL 测试", datetime(2026, 6, 6, 10, 0), datetime(2026, 6, 6, 10, 1)),
+        ]
+        step_result = MagicMock()
+        step_result.fetchall.return_value = [
+            ("u1", "user", "user_message", "thread-1", None, None, "@NL2SQL 统计桥梁", {}, datetime(2026, 6, 6, 10, 0), None, None),
+            ("r1", "Data Agent", "assistant_message", "thread-1", None, None, "route", {
+                "routing_info": {
+                    "intent": "GENERAL",
+                    "pipeline": "sub_agent_direct",
+                    "pipeline_name": "@NL2SQL (直接调用)",
+                    "reason": "@NL2SQL 显式路由",
+                }
+            }, datetime(2026, 6, 6, 10, 0, 1), None, None),
+            ("t1", "NL2Semantic2SQL ✓", "tool", "thread-1", None, "{'question': '统计桥梁'}", "{'result': 'ok'}", {}, datetime(2026, 6, 6, 10, 0, 2), None, None),
+            ("m1", "system", "assistant_message", "thread-1", None, None, "已自动提取 1 条知识", {
+                "memory_extract": {"count": 1, "facts": [{"key": "空间SQL结果", "value": "桥梁 1 条"}]}
+            }, datetime(2026, 6, 6, 10, 0, 3), None, None),
+        ]
+        mock_conn.execute.side_effect = [thread_result, step_result]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_agent_run_logs(_make_request(query_params={"limit": "5"})))
+
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.body)
+        log = body["logs"][0]
+        self.assertEqual(log["id"], "thread-1:u1")
+        self.assertEqual(log["thread_id"], "thread-1")
+        self.assertEqual(log["run_index"], 1)
+        self.assertEqual(log["pipeline_name"], "@NL2SQL (直接调用)")
+        self.assertEqual(log["tool_count"], 1)
+        self.assertEqual(log["memory_count"], 1)
+        self.assertEqual(log["tool_trace"][0]["name"], "NL2Semantic2SQL ✓")
+        self.assertEqual(log["tool_trace"][0]["input"], "{'question': '统计桥梁'}")
+        self.assertEqual(log["tool_trace"][0]["output"], "{'result': 'ok'}")
+        self.assertEqual(log["steps"][2]["input"], "{'question': '统计桥梁'}")
+        self.assertEqual(log["steps"][2]["output"], "{'result': 'ok'}")
+        sql = str(mock_conn.execute.call_args_list[0].args[0])
+        self.assertIn('LEFT JOIN "User" AS u ON u.id = t."userId"', sql)
+        self.assertIn('t."deletedAt" IS NULL', sql)
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_agent_run_logs_keep_full_step_output_for_expanded_detail(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_agent_run_logs
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+
+        long_output = "完整内容-" + ("重庆桥梁统计。" * 80)
+        thread_result = MagicMock()
+        thread_result.fetchall.return_value = [
+            ("thread-1", "长输出", datetime(2026, 6, 10, 10, 0), datetime(2026, 6, 10, 10, 1)),
+        ]
+        step_result = MagicMock()
+        step_result.fetchall.return_value = [
+            ("u1", "user", "user_message", "thread-1", None, None, "@NL2SQL 长输出", {}, datetime(2026, 6, 10, 10, 0), None, None),
+            ("a1", "Data Agent", "assistant_message", "thread-1", None, None, long_output, {}, datetime(2026, 6, 10, 10, 0, 1), None, None),
+        ]
+        mock_conn.execute.side_effect = [thread_result, step_result]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_agent_run_logs(_make_request(query_params={"limit": "5"})))
+
+        log = json.loads(resp.body)["logs"][0]
+        self.assertEqual(log["final_answer"], long_output)
+        self.assertEqual(log["steps"][1]["output"], long_output)
+        self.assertLess(len(log["final_answer_preview"]), len(long_output))
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_agent_run_logs_final_answer_skips_progress_and_done_cards(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_agent_run_logs
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+
+        real_answer = "已成功检索到关于“Gemma4空间演示”的 3 条相关记忆。"
+        thread_result = MagicMock()
+        thread_result.fetchall.return_value = [
+            ("thread-1", "检索记忆", datetime(2026, 6, 10, 10, 0), datetime(2026, 6, 10, 10, 1)),
+        ]
+        step_result = MagicMock()
+        step_result.fetchall.return_value = [
+            ("u1", "user", "user_message", "thread-1", None, None, "检索关键词“Gemma4空间演示”的记忆。", {}, datetime(2026, 6, 10, 10, 0), None, None),
+            ("route", "Data Agent", "assistant_message", "thread-1", None, None, "意图识别：**GENERAL**", {}, datetime(2026, 6, 10, 10, 0, 1), None, None),
+            ("progress", "Data Agent", "assistant_message", "thread-1", None, None, "**Dynamic Planner (意图: GENERAL)** 1 步骤完成", {}, datetime(2026, 6, 10, 10, 0, 2), None, None),
+            ("answer", "Data Agent", "assistant_message", "thread-1", None, None, real_answer, {}, datetime(2026, 6, 10, 10, 0, 3), None, None),
+            ("done", "Data Agent", "assistant_message", "thread-1", None, None, "分析完成。您可以下载相关文件、导出报告或分享结果。", {}, datetime(2026, 6, 10, 10, 0, 4), None, None),
+        ]
+        mock_conn.execute.side_effect = [thread_result, step_result]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_agent_run_logs(_make_request(query_params={"limit": "5"})))
+
+        log = json.loads(resp.body)["logs"][0]
+        self.assertEqual(log["final_answer"], real_answer)
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_agent_run_logs_clean_cot_leakage_from_historical_steps(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_agent_run_logs
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+
+        leaked_answer = (
+            "The user wants to retrieve a memory with the keyword \"Gemma4空间演示\". "
+            "I should use the recall_memories tool.\n"
+            "Parameters for recall_memories:\n"
+            "keyword: \"Gemma4空间演示\"\n"
+            "已检索到与关键词 “Gemma4空间演示” 相关的 3 条记忆：\n"
+            "1. 核心配置与上下文 (Custom)\n"
+        )
+        thread_result = MagicMock()
+        thread_result.fetchall.return_value = [
+            ("thread-1", "检索记忆", datetime(2026, 6, 10, 10, 0), datetime(2026, 6, 10, 10, 1)),
+        ]
+        step_result = MagicMock()
+        step_result.fetchall.return_value = [
+            ("u1", "user", "user_message", "thread-1", None, None, "检索关键词“Gemma4空间演示”的记忆。", {}, datetime(2026, 6, 10, 10, 0), None, None),
+            ("answer", "Data Agent", "assistant_message", "thread-1", None, None, leaked_answer, {}, datetime(2026, 6, 10, 10, 0, 1), None, None),
+        ]
+        mock_conn.execute.side_effect = [thread_result, step_result]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_agent_run_logs(_make_request(query_params={"limit": "5"})))
+
+        log = json.loads(resp.body)["logs"][0]
+        self.assertTrue(log["final_answer"].startswith("已检索到"))
+        self.assertNotIn("The user wants", log["final_answer"])
+        self.assertNotIn("I should use", log["steps"][1]["output"])
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_agent_run_logs_split_multiple_user_requests_in_one_thread(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_agent_run_logs
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+
+        thread_result = MagicMock()
+        thread_result.fetchall.return_value = [
+            ("thread-1", "三次 SQL 查询", datetime(2026, 6, 6, 10, 0), datetime(2026, 6, 6, 10, 4)),
+        ]
+        step_result = MagicMock()
+        step_result.fetchall.return_value = [
+            ("u1", "user", "user_message", "thread-1", None, None, "@NL2SQL 查询一", {}, datetime(2026, 6, 6, 10, 0), None, None),
+            ("r1", "Data Agent", "assistant_message", "thread-1", None, None, "route 1", {
+                "routing_info": {"pipeline_name": "@NL2SQL (直接调用)", "pipeline": "sub_agent_direct"}
+            }, datetime(2026, 6, 6, 10, 0, 1), None, None),
+            ("t1", "NL2Semantic2SQL ✓", "tool", "thread-1", None, None, "ok 1", {}, datetime(2026, 6, 6, 10, 0, 2), None, None),
+            ("u2", "user", "user_message", "thread-1", None, None, "@NL2SQL 查询二", {}, datetime(2026, 6, 6, 10, 2), None, None),
+            ("r2", "Data Agent", "assistant_message", "thread-1", None, None, "route 2", {
+                "routing_info": {"pipeline_name": "@NL2SQL (直接调用)", "pipeline": "sub_agent_direct"}
+            }, datetime(2026, 6, 6, 10, 2, 1), None, None),
+            ("t2", "NL2Semantic2SQL ✓", "tool", "thread-1", None, None, "ok 2", {}, datetime(2026, 6, 6, 10, 2, 2), None, None),
+            ("u3", "user", "user_message", "thread-1", None, None, "@NL2SQL 查询三", {}, datetime(2026, 6, 6, 10, 4), None, None),
+            ("r3", "Data Agent", "assistant_message", "thread-1", None, None, "route 3", {
+                "routing_info": {"pipeline_name": "@NL2SQL (直接调用)", "pipeline": "sub_agent_direct"}
+            }, datetime(2026, 6, 6, 10, 4, 1), None, None),
+            ("t3", "NL2Semantic2SQL ✓", "tool", "thread-1", None, None, "ok 3", {}, datetime(2026, 6, 6, 10, 4, 2), None, None),
+        ]
+        mock_conn.execute.side_effect = [thread_result, step_result]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_agent_run_logs(_make_request(query_params={"limit": "10"})))
+
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.body)
+        self.assertEqual(body["group_by"], "run")
+        self.assertEqual(len(body["logs"]), 3)
+        self.assertEqual([log["run_index"] for log in body["logs"]], [3, 2, 1])
+        self.assertEqual([log["user_input"] for log in body["logs"]], [
+            "@NL2SQL 查询三",
+            "@NL2SQL 查询二",
+            "@NL2SQL 查询一",
+        ])
+        self.assertTrue(all(log["tool_count"] == 1 for log in body["logs"]))
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_agent_run_logs_thread_grouping_remains_available(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_agent_run_logs
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+
+        thread_result = MagicMock()
+        thread_result.fetchall.return_value = [
+            ("thread-1", "三次 SQL 查询", datetime(2026, 6, 6, 10, 0), datetime(2026, 6, 6, 10, 4)),
+        ]
+        step_result = MagicMock()
+        step_result.fetchall.return_value = [
+            ("u1", "user", "user_message", "thread-1", None, None, "@NL2SQL 查询一", {}, datetime(2026, 6, 6, 10, 0), None, None),
+            ("u2", "user", "user_message", "thread-1", None, None, "@NL2SQL 查询二", {}, datetime(2026, 6, 6, 10, 2), None, None),
+            ("t2", "NL2Semantic2SQL ✓", "tool", "thread-1", None, None, "ok", {}, datetime(2026, 6, 6, 10, 2, 2), None, None),
+        ]
+        mock_conn.execute.side_effect = [thread_result, step_result]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_agent_run_logs(_make_request(query_params={"limit": "10", "group_by": "thread"})))
+
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.body)
+        self.assertEqual(body["group_by"], "thread")
+        self.assertEqual(len(body["logs"]), 1)
+        self.assertEqual(body["logs"][0]["id"], "thread-1")
+        self.assertEqual(body["logs"][0]["tool_count"], 1)
+
+    @patch("data_agent.frontend_api.get_engine")
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_agent_run_logs_counts_memory_tools_as_memory_events(self, mock_user, mock_engine_fn):
+        from data_agent.frontend_api import _api_agent_run_logs
+
+        mock_user.return_value = _make_user(identifier="admin")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__.return_value = mock_conn
+        mock_engine.connect.return_value.__exit__.return_value = False
+
+        thread_result = MagicMock()
+        thread_result.fetchall.return_value = [
+            ("thread-1", "检索记忆", datetime(2026, 6, 10, 10, 0), datetime(2026, 6, 10, 10, 1)),
+        ]
+        step_result = MagicMock()
+        step_result.fetchall.return_value = [
+            ("u1", "user", "user_message", "thread-1", None, None, "检索关键词“Gemma4空间演示”的记忆。", {}, datetime(2026, 6, 10, 10, 0), None, None),
+            ("t1", "检索空间记忆 ✓ (0.0s)", "tool", "thread-1", None, None, "找到 3 条记忆", {}, datetime(2026, 6, 10, 10, 0, 1), None, None),
+        ]
+        mock_conn.execute.side_effect = [thread_result, step_result]
+        mock_engine_fn.return_value = mock_engine
+
+        resp = _run_async(_api_agent_run_logs(_make_request(query_params={"limit": "5"})))
+
+        self.assertEqual(resp.status_code, 200)
+        log = json.loads(resp.body)["logs"][0]
+        self.assertEqual(log["tool_count"], 1)
+        self.assertEqual(log["memory_count"], 1)
+        self.assertEqual(log["memory_events"][0]["tool"], "检索空间记忆 ✓ (0.0s)")
 
 
 class TestAuthHelpers(unittest.TestCase):

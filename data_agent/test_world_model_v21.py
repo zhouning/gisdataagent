@@ -63,6 +63,28 @@ def test_validation_rejects_bad_ranges(tmp_path, field, value, message):
         svc.validate_plan_request(payload)
 
 
+def test_validate_plan_request_uses_fast_demo_defaults(tmp_path):
+    prepared = tmp_path / "prepared"
+    ensemble = tmp_path / "ensemble"
+    prepared.mkdir()
+    ensemble.mkdir()
+    (ensemble / "ensemble_member0.onnx").write_bytes(b"onnx")
+
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    result = svc.validate_plan_request({
+        "prepared_dir": str(prepared),
+        "ensemble_dir": str(ensemble),
+    })
+
+    assert result["horizon"] == 1
+    assert result["top_k"] == 1
+    assert result["n_episodes"] == 1
+    assert result["continuation"] == "greedy"
+    assert result["scoring"] == "reward"
+    assert result["env_kind"] == "county"
+    assert result["threads"] == 0
+
+
 def test_run_plan_calls_paper9_with_expected_args(tmp_path, monkeypatch):
     prepared = tmp_path / "prepared"
     ensemble = tmp_path / "ensemble"
@@ -114,6 +136,164 @@ def test_run_plan_calls_paper9_with_expected_args(tmp_path, monkeypatch):
     assert result["status"] == "ok"
     assert result["summary"]["total_reward"] == 12.5
     assert result["summary"]["steps_run"] == 50
+
+
+def test_run_prepare_calls_paper9_prepare_and_returns_artifacts(tmp_path, monkeypatch):
+    dltb = tmp_path / "DLTB.shp"
+    dem = tmp_path / "dem.tif"
+    prepared = tmp_path / "prepared"
+    dltb.write_bytes(b"shp")
+    dem.write_bytes(b"tif")
+    calls = {}
+
+    def fake_prepare(**kwargs):
+        calls.update(kwargs)
+        out = Path(kwargs["prepared_dir"]) / "dem_slope_analysis" / "output"
+        out.mkdir(parents=True, exist_ok=True)
+        shp = out / "DLTB_with_slope.shp"
+        shp.write_bytes(b"prepared")
+        (Path(kwargs["prepared_dir"]) / "townships.json").write_text("{}", encoding="utf-8")
+        (Path(kwargs["prepared_dir"]) / "prepare_data_summary.json").write_text(
+            json.dumps({"n_parcels": 2}), encoding="utf-8"
+        )
+        return shp
+
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    monkeypatch.setattr(svc, "_load_paper9_prepare_run", lambda: fake_prepare)
+
+    result = svc.run_prepare({
+        "dltb_path": str(dltb),
+        "dem_path": str(dem),
+        "prepared_dir": str(prepared),
+    }, user_id="pytest")
+
+    assert calls["dltb_path"] == str(dltb)
+    assert calls["dem_path"] == str(dem)
+    assert calls["prepared_dir"] == str(prepared)
+    assert result["mode"] == "tool1_prepare"
+    assert result["summary"]["n_parcels"] == 2
+    assert result["artifacts"]["townships"] == "townships.json"
+
+
+def test_run_sample_calls_paper9_sample(tmp_path, monkeypatch):
+    prepared = tmp_path / "prepared"
+    prepared.mkdir()
+    calls = {}
+
+    def fake_sample(**kwargs):
+        calls.update(kwargs)
+        out = Path(kwargs["prepared_dir"]) / "tool2"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "transitions.npz").write_bytes(b"tr")
+        (out / "pairwise.npz").write_bytes(b"pw")
+        (out / "sample_transitions_summary.json").write_text(
+            json.dumps({"transitions": {"n_transitions": 3}}), encoding="utf-8"
+        )
+        return {"transitions": {"n_transitions": 3}}
+
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    monkeypatch.setattr(svc, "_load_paper9_sample_run", lambda: fake_sample)
+
+    result = svc.run_sample({
+        "prepared_dir": str(prepared),
+        "n_transition_episodes": 2,
+        "n_pairwise_states": 4,
+        "n_pairwise_actions": 3,
+    }, user_id="pytest")
+
+    assert calls["prepared_dir"] == str(prepared)
+    assert calls["n_transition_episodes"] == 2
+    assert result["mode"] == "tool2_sample"
+    assert result["artifacts"]["transitions_npz"] == "tool2/transitions.npz"
+
+
+def test_run_train_calls_paper9_train_and_discovers_onnx(tmp_path, monkeypatch):
+    prepared = tmp_path / "prepared"
+    prepared.mkdir()
+    calls = {}
+
+    def fake_train(**kwargs):
+        calls.update(kwargs)
+        out = Path(kwargs["prepared_dir"]) / kwargs["out_subdir"]
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "ensemble_member0.onnx").write_bytes(b"onnx")
+        (out / "train_summary.json").write_text(
+            json.dumps({"members": [{"index": 0}]}), encoding="utf-8"
+        )
+        return {"members": [{"index": 0}]}
+
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    monkeypatch.setattr(svc, "_load_paper9_train_run", lambda: fake_train)
+
+    result = svc.run_train({
+        "prepared_dir": str(prepared),
+        "n_members": 1,
+        "epochs": 1,
+        "out_subdir": "ensemble_seed0",
+    }, user_id="pytest")
+
+    assert calls["n_members"] == 1
+    assert calls["epochs"] == 1
+    assert result["mode"] == "tool3_train"
+    assert result["onnx_member_count"] == 1
+    assert result["ensemble_dir"].endswith("ensemble_seed0")
+
+
+def test_map_config_styles_optimized_fgb_by_change_flag(tmp_path):
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    result = svc._build_map_config(tmp_path / "optimized_dltb.fgb")
+
+    layer = result["layers"][0]
+    assert layer["type"] == "fgb"
+    assert layer["category_column"] == "CHG_FLAG"
+    assert layer["legend_title"] == "耕地空间布局优化"
+    assert layer["category_labels"] == {
+        "0": "保持不变",
+        "1": "耕地 -> 林地",
+        "2": "林地 -> 耕地",
+    }
+    assert layer["style_map"]["0"]["fillOpacity"] < 0.2
+    assert layer["style_map"]["1"]["fillColor"] == "#DC2626"
+    assert layer["style_map"]["2"]["fillColor"] == "#16A34A"
+    assert "OPT_DLBM" in layer["tooltip_fields"]
+    assert layer["tooltip_labels"]["CHG_FLAG"] == "变化"
+
+
+def test_run_pipeline_reuses_existing_prepared_and_ensemble_then_plans(tmp_path, monkeypatch):
+    prepared = tmp_path / "prepared"
+    ensemble = tmp_path / "ensemble"
+    (prepared / "dem_slope_analysis" / "output").mkdir(parents=True)
+    (prepared / "dem_slope_analysis" / "output" / "DLTB_with_slope.shp").write_bytes(b"shp")
+    (prepared / "townships.json").write_text("{}", encoding="utf-8")
+    ensemble.mkdir()
+    (ensemble / "ensemble_member0.onnx").write_bytes(b"onnx")
+
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    monkeypatch.setattr(
+        svc,
+        "run_plan",
+        lambda payload, user_id: {
+            "status": "ok",
+            "mode": "tool4_mpc",
+            "prepared_dir": payload["prepared_dir"],
+            "ensemble_dir": payload["ensemble_dir"],
+            "summary": {"steps_run": 100},
+        },
+    )
+
+    result = svc.run_pipeline({
+        "prepared_dir": str(prepared),
+        "ensemble_dir": str(ensemble),
+        "reuse_existing": True,
+        "run_prepare": True,
+        "run_sample": False,
+        "run_train": True,
+        "run_plan": True,
+    }, user_id="pytest")
+
+    statuses = [(step["step"], step["status"]) for step in result["steps"][:2]]
+    assert statuses == [("prepare", "skipped_reused"), ("train", "skipped_reused")]
+    assert result["plan_result"]["summary"]["steps_run"] == 100
 
 
 def test_map_conversion_failure_is_warning(tmp_path):

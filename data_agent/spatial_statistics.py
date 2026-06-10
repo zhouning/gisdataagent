@@ -11,9 +11,15 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
-from libpysal.weights import Queen, KNN, DistanceBand
-from esda.moran import Moran, Moran_Local
-from esda.getisord import G_Local
+try:
+    from libpysal.weights import Queen, KNN, DistanceBand
+    from esda.moran import Moran, Moran_Local
+    from esda.getisord import G_Local
+    _PYSAL_IMPORT_ERROR = None
+except Exception as exc:  # pragma: no cover - depends on optional PySAL backend
+    Queen = KNN = DistanceBand = None
+    Moran = Moran_Local = G_Local = None
+    _PYSAL_IMPORT_ERROR = exc
 
 from .gis_processors import _generate_output_path, _resolve_path
 from .utils import _load_spatial_data, _configure_fonts
@@ -23,6 +29,21 @@ from .utils import _load_spatial_data, _configure_fonts
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def _require_pysal_backend():
+    if (
+        Queen is None
+        or KNN is None
+        or DistanceBand is None
+        or Moran is None
+        or Moran_Local is None
+        or G_Local is None
+    ):
+        raise ImportError(
+            "PySAL spatial statistics backend is unavailable. Install "
+            f"libpysal and esda to run this tool. Details: {_PYSAL_IMPORT_ERROR}"
+        )
+
+
 def _build_spatial_weights(gdf, weights_type="queen", k=8, distance_threshold=0):
     """Build spatial weights matrix; reproject to metric CRS if geographic.
 
@@ -30,6 +51,7 @@ def _build_spatial_weights(gdf, weights_type="queen", k=8, distance_threshold=0)
         Tuple of (gdf_projected, weights) where gdf_projected may be
         reprojected to EPSG:3857 if the original CRS is geographic.
     """
+    _require_pysal_backend()
     gdf_work = gdf.copy()
     if gdf_work.crs and gdf_work.crs.is_geographic:
         gdf_work = gdf_work.to_crs(epsg=3857)

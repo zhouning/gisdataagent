@@ -1,5 +1,6 @@
 """Analysis toolset: FFI calculation, DRL optimization, multi-objective Pareto."""
 import asyncio
+import json
 import os
 import traceback
 
@@ -7,15 +8,20 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import torch
-from sb3_contrib import MaskablePPO
-from stable_baselines3.common.monitor import Monitor
+try:
+    from sb3_contrib import MaskablePPO
+    from stable_baselines3.common.monitor import Monitor
+    _DRL_BACKEND_IMPORT_ERROR = None
+except Exception as exc:  # pragma: no cover - depends on optional local backend
+    MaskablePPO = None
+    Monitor = None
+    _DRL_BACKEND_IMPORT_ERROR = exc
 
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 
 from .. import drl_engine
 from ..FFI import ffi as calculate_ffi
-from ..parcel_scoring_policy import ParcelScoringPolicy
 from ..gis_processors import _generate_output_path, _resolve_path
 from ..utils import _load_spatial_data, _configure_fonts
 
@@ -55,6 +61,13 @@ def drl_model(data_path: str, scenario_id: str = "",
         pair_bonus: 配对奖励 (0.1-10.0)
     """
     try:
+        if MaskablePPO is None or Monitor is None:
+            return (
+                "Error: DRL backend is unavailable. Install sb3_contrib and "
+                f"stable_baselines3 to run drl_model. Details: {_DRL_BACKEND_IMPORT_ERROR}"
+            )
+        from ..parcel_scoring_policy import ParcelScoringPolicy
+
         res_data_path = _resolve_path(data_path)
 
         # Build scenario with optional weight overrides
@@ -211,6 +224,16 @@ def train_drl_model(data_path: str, scenario: str = "farmland_optimization",
         训练结果摘要和模型权重路径。
     """
     try:
+        if MaskablePPO is None or Monitor is None:
+            return json.dumps({
+                "status": "error",
+                "message": (
+                    "DRL backend is unavailable. Install sb3_contrib and "
+                    f"stable_baselines3 to train DRL models. Details: {_DRL_BACKEND_IMPORT_ERROR}"
+                ),
+            }, ensure_ascii=False)
+        from ..parcel_scoring_policy import ParcelScoringPolicy
+
         import torch
         res_path = _resolve_path(data_path)
         n_epochs = int(epochs)

@@ -19,6 +19,9 @@ interface MapLayer {
   category_colors?: Record<string, string>;  // value -> color mapping
   category_labels?: Record<string, string>;  // value -> display label
   style_map?: Record<string, Record<string, any>>; // value -> full style obj
+  legend_title?: string;
+  tooltip_fields?: string[];
+  tooltip_labels?: Record<string, string>;
   visible?: boolean;                         // initial visibility (default true)
   // 3D properties
   elevation_column?: string;
@@ -539,7 +542,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   );
   // Find categorized layers for legend
   const categorizedLayers = loadedLayers.filter(
-    (l) => l.type === 'categorized' && (l.category_colors || l.style_map)
+    (l) => (l.type === 'categorized' || l.type === 'fgb') && (l.category_colors || l.style_map)
   );
 
   // --- Timeline slider for temporal layers (e.g., World Model LULC predictions) ---
@@ -706,7 +709,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               : Object.entries(smap).map(([val, s]) => [val, s.fillColor || '#999'] as [string, string]);
             return (
             <div key={layer.name} style={{ marginBottom: categorizedLayers.length > 1 ? 8 : 0 }}>
-              <div className="map-legend-title">{layer.name}</div>
+              <div className="map-legend-title">{layer.legend_title || layer.name}</div>
               {entries.map(([val, color]) => (
                 <div key={val} className="map-legend-item">
                   <span className="map-legend-color" style={{ background: color as string }} />

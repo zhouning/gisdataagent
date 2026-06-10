@@ -37,6 +37,7 @@ import AlertsTab from './datapanel/AlertsTab';
 import TopologyTab from './datapanel/TopologyTab';
 import AgentsTab from './datapanel/AgentsTab';
 import MessageBusTab from './datapanel/MessageBusTab';
+import AgentRunLogsTab from './datapanel/AgentRunLogsTab';
 import MetadataPanel from './datapanel/MetadataPanel';
 import FeedbackTab from './datapanel/FeedbackTab';
 import DomainStandardsTab from './datapanel/DomainStandardsTab';
@@ -51,7 +52,7 @@ interface DataPanelProps {
   username?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'worldmodel_v21' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'worldmodel_v21' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -102,6 +103,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
     key: 'ops', label: '平台运营', icon: <Activity size={16} />,
     tabs: [
       { key: 'history', label: '历史', icon: <History size={ICON_SIZE} /> },
+      { key: 'agent_logs', label: '运行日志', icon: <FileText size={ICON_SIZE} /> },
       { key: 'feedback', label: '反馈', icon: <ThumbsUp size={ICON_SIZE} /> },
       { key: 'usage', label: '用量', icon: <Gauge size={ICON_SIZE} /> },
       { key: 'analytics', label: '分析', icon: <PieChart size={ICON_SIZE} /> },
@@ -208,6 +210,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'catalog' && <CatalogTab />}
         {activeTab === 'metadata' && <MetadataPanel />}
         {activeTab === 'history' && <HistoryTab />}
+        {activeTab === 'agent_logs' && <AgentRunLogsTab />}
         {activeTab === 'usage' && <UsageTab />}
         {activeTab === 'tools' && <ToolsTab userRole={userRole} />}
         {activeTab === 'workflows' && <WorkflowsTab />}

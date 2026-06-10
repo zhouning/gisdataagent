@@ -24,6 +24,9 @@ interface MapLayer {
   category_colors?: Record<string, string>;
   category_labels?: Record<string, string>;
   style_map?: Record<string, Record<string, any>>;
+  legend_title?: string;
+  tooltip_fields?: string[];
+  tooltip_labels?: Record<string, string>;
   visible?: boolean;
   // MVT tile properties
   tile_url?: string;
@@ -75,6 +78,11 @@ function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
   const g = parseInt(h.substring(2, 4), 16) || 100;
   const b = parseInt(h.substring(4, 6), 16) || 200;
   return [r, g, b, alpha];
+}
+
+function isCategorizedLegendLayer(layer: MapLayer) {
+  return (layer.type === 'categorized' || layer.type === 'fgb')
+    && Boolean(layer.category_colors || layer.style_map);
 }
 
 export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewProps) {
@@ -180,6 +188,33 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
       setTooltip(null);
     }
   }, []);
+
+  const onLayerHover = useCallback((info: any, layer: MapLayer) => {
+    if (!info.object) {
+      setTooltip(null);
+      return;
+    }
+    const props = info.object.properties || info.object;
+    const fields = layer.tooltip_fields || [];
+    if (fields.length > 0) {
+      const labels = layer.tooltip_labels || {};
+      const categoryLabels = layer.category_labels || {};
+      const lines = fields
+        .map((field) => {
+          if (props[field] == null) return null;
+          const raw = String(props[field]);
+          const normalized = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+          const value = field === layer.category_column
+            ? (categoryLabels[raw] || categoryLabels[normalized] || raw)
+            : raw;
+          return `${labels[field] || field}: ${value}`;
+        })
+        .filter(Boolean) as string[];
+      setTooltip({ x: info.x, y: info.y, text: lines.join('\n') });
+      return;
+    }
+    onHover(info);
+  }, [onHover]);
 
   // Build deck.gl layers from MapLayer configs
   const deckLayers = useMemo(() => {
@@ -350,13 +385,18 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
       }
 
       // Categorized layer (per-category color from category_colors/style_map).
-      // FGB layers that carry category_column/style_map also render here — the
+      // FGB layers that carry category_column/style_map also render here; the
       // fetch step above has already populated data from the FlatGeobuf buffer.
       if (layer.type === 'categorized' ||
           (layer.type === 'fgb' && (layer.category_column || layer.style_map))) {
         const catCol = layer.category_column || '';
         const catColors = layer.category_colors || {};
         const styleMap = layer.style_map || {};
+        const getCategoryStyle = (f: any) => {
+          const raw = String(f.properties?.[catCol] ?? '');
+          const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+          return styleMap[raw] || styleMap[intForm] || null;
+        };
         return new GeoJsonLayer({
           id: `layer-${idx}-${layer.name}`,
           data,
@@ -367,21 +407,21 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
           getFillColor: (f: any) => {
             const raw = String(f.properties?.[catCol] ?? '');
             const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
-            const sm = styleMap[raw] || styleMap[intForm];
+            const sm = getCategoryStyle(f);
             if (sm?.fillColor) return hexToRgba(sm.fillColor, Math.round((sm.fillOpacity ?? 0.7) * 255));
             const cc = catColors[raw] || catColors[intForm];
             if (cc) return hexToRgba(cc, Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
             return hexToRgba('#999999', 140);
           },
           getLineColor: (f: any) => {
-            const raw = String(f.properties?.[catCol] ?? '');
-            const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
-            const sm = styleMap[raw] || styleMap[intForm];
+            const sm = getCategoryStyle(f);
             if (sm?.color) return hexToRgba(sm.color, 200);
             return lineColor;
           },
-          lineWidthMinPixels: 1,
-          onHover,
+          getLineWidth: (f: any) => getCategoryStyle(f)?.weight ?? layer.style?.weight ?? 0.5,
+          lineWidthUnits: 'pixels',
+          lineWidthMinPixels: 0,
+          onHover: (info: any) => onLayerHover(info, layer),
         });
       }
 
@@ -405,7 +445,7 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
         onHover,
       });
     }).filter(Boolean);
-  }, [layers, layerData, onHover, layerVisibility]);
+  }, [layers, layerData, onHover, onLayerHover, layerVisibility]);
 
   return (
     <div className="map-3d-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -469,14 +509,14 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
       )}
 
       {/* Legend for categorized layers */}
-      {layers.some(l => l.type === 'categorized' && (l.category_colors || l.style_map) && layerVisibility[l.name] !== false) && (
+      {layers.some(l => isCategorizedLegendLayer(l) && layerVisibility[l.name] !== false) && (
         <div style={{
           position: 'absolute', bottom: 24, left: 12, zIndex: 1000,
           background: 'rgba(0,0,0,0.85)', border: '1px solid #333', borderRadius: 6,
           padding: '8px 12px', maxWidth: 220, maxHeight: 300, overflowY: 'auto',
         }}>
           {layers
-            .filter(l => l.type === 'categorized' && (l.category_colors || l.style_map) && layerVisibility[l.name] !== false)
+            .filter(l => isCategorizedLegendLayer(l) && layerVisibility[l.name] !== false)
             .map(layer => {
               const labels = layer.category_labels || {};
               const colors = layer.category_colors || {};
@@ -487,7 +527,7 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
               return (
                 <div key={layer.name} style={{ marginBottom: 6 }}>
                   <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                    {layer.name}
+                    {layer.legend_title || layer.name}
                   </div>
                   {entries.map(([val, color]) => (
                     <div key={val} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>

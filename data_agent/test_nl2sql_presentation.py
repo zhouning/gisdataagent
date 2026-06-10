@@ -62,6 +62,63 @@ def test_format_nl2sql_result_highlights_count_value_not_row_count():
     assert "已生成地图图层。" in text
 
 
+def test_format_nl2sql_result_labels_road_length_metric_not_road_count():
+    payload = {
+        "status": "ok",
+        "sql": (
+            "SELECT SUM(ST_Length(geometry::geography)) / 1000.0 AS total_length_km "
+            "FROM cq_osm_roads_2021 WHERE bridge = 'T'"
+        ),
+        "execution": {
+            "status": "ok",
+            "rows": 1,
+            "columns": ["total_length_km"],
+            "data": [{"total_length_km": 1376.5975723658505}],
+            "message": "查询成功，返回 1 行",
+        },
+        "semantic": {"candidate_tables": ["cq_osm_roads_2021"]},
+    }
+
+    text = format_nl2sql_result_for_chat(
+        json.dumps(payload, ensure_ascii=False),
+        question="统计重庆2021年道路网络中所有桥梁道路（bridge = T）的总长度，单位为公里。",
+    )
+
+    assert text is not None
+    assert "**道路总长度（公里）：1376.5975723658505**" in text
+    assert "道路数量" not in text
+
+
+def test_format_nl2sql_result_labels_poi_count_when_cte_orders_by_length():
+    payload = {
+        "status": "ok",
+        "sql": (
+            "WITH longest_bridge AS ("
+            "SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' "
+            "ORDER BY ST_LENGTH(CAST(geometry AS GEOGRAPHY)) DESC LIMIT 1"
+            ') SELECT COUNT(DISTINCT p."ID") FROM cq_amap_poi_2024 AS p, longest_bridge AS lb '
+            "WHERE ST_DWITHIN(CAST(p.geometry AS GEOGRAPHY), CAST(lb.geometry AS GEOGRAPHY), 100)"
+        ),
+        "execution": {
+            "status": "ok",
+            "rows": 1,
+            "columns": ["count"],
+            "data": [{"count": 35}],
+            "message": "查询成功，返回 1 行",
+        },
+        "semantic": {"candidate_tables": ["cq_amap_poi_2024", "cq_osm_roads_2021"]},
+    }
+
+    text = format_nl2sql_result_for_chat(
+        json.dumps(payload, ensure_ascii=False),
+        question="统计距离道路网络中最长桥梁100米范围内的高德POI数量。",
+    )
+
+    assert text is not None
+    assert "**POI数量：35**" in text
+    assert "道路总长度" not in text
+
+
 def test_bridge_building_query_detection_requires_all_spatial_clues():
     payload = _bridge_count_payload()
 

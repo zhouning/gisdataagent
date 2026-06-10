@@ -3,6 +3,9 @@ Spatial Memory System for per-user persistent preferences, regions, and analysis
 Stores memories in PostgreSQL (user_memories table) with JSONB values.
 """
 import json
+import logging
+import os
+import re
 from sqlalchemy import text
 
 from .db_engine import get_engine
@@ -12,6 +15,8 @@ from .user_context import current_user_id
 VALID_MEMORY_TYPES = ("region", "viz_preference", "analysis_result", "custom", "analysis_perspective", "auto_extract")
 
 AUTO_EXTRACT_QUOTA = 100  # max auto_extract memories per user
+
+logger = logging.getLogger("data_agent.memory")
 
 
 def ensure_memory_table():
@@ -271,8 +276,172 @@ def get_analysis_perspective() -> str:
         return ""
 
 
+def _memory_extract_model_name() -> str:
+    """Return the configured model used by Memory ETL fact extraction."""
+    explicit = os.environ.get("MEMORY_EXTRACT_MODEL", "").strip()
+    if explicit:
+        return explicit
+    try:
+        from .model_config import get_config_manager
+        return get_config_manager().get_tier_model("fast")
+    except Exception:
+        return os.environ.get("MODEL_FAST", "gemini-2.0-flash")
+
+
+def _strip_json_fences(raw: str) -> str:
+    text_value = str(raw or "").strip()
+    if text_value.startswith("```"):
+        text_value = text_value.split("\n", 1)[-1] if "\n" in text_value else text_value[3:]
+        if text_value.endswith("```"):
+            text_value = text_value[:-3].strip()
+    if not text_value.startswith("["):
+        start = text_value.find("[")
+        end = text_value.rfind("]")
+        if start >= 0 and end > start:
+            text_value = text_value[start:end + 1]
+    return text_value.strip()
+
+
+def _parse_fact_json(raw: str) -> list[dict]:
+    try:
+        facts = json.loads(_strip_json_fences(raw))
+    except Exception:
+        return []
+    if not isinstance(facts, list):
+        return []
+
+    valid = []
+    for fact in facts[:5]:
+        if not isinstance(fact, dict):
+            continue
+        key = str(fact.get("key", "")).strip()
+        value = fact.get("value", "")
+        if not key or value in ("", None):
+            continue
+        category = str(fact.get("category", "data_characteristic")).strip()
+        if category not in {"data_characteristic", "analysis_conclusion", "user_preference"}:
+            category = "data_characteristic"
+        valid.append({"key": key[:80], "value": str(value), "category": category})
+    return valid
+
+
+def _call_memory_extract_model(prompt: str) -> str:
+    """Call the configured extraction model and return raw text."""
+    model_name = _memory_extract_model_name()
+    from .model_gateway import ModelRegistry, create_model
+
+    ModelRegistry._ensure_initialized()
+    info = ModelRegistry.get_model_info(model_name)
+    backend = info.get("backend")
+
+    if backend == "gemini" or model_name.startswith("gemini"):
+        from google import genai as genai_client
+
+        client = genai_client.Client()
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+        )
+        return (response.text or "").strip()
+
+    adk_model = create_model(model_name)
+    completion_kwargs = {
+        "model": getattr(adk_model, "model", None) or info.get("model_id", model_name),
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.0,
+        "max_tokens": 768,
+    }
+
+    additional_args = getattr(adk_model, "_additional_args", {}) or {}
+    extra_body = additional_args.get("extra_body") or info.get("extra_body")
+    if extra_body:
+        completion_kwargs["extra_body"] = extra_body
+    timeout_cap = float(os.environ.get("MEMORY_EXTRACT_TIMEOUT", "90"))
+    timeout = additional_args.get("timeout") or info.get("request_timeout")
+    completion_kwargs["timeout"] = min(float(timeout), timeout_cap) if timeout else timeout_cap
+
+    import litellm
+
+    response = litellm.completion(**completion_kwargs)
+    message = response.choices[0].message
+    if isinstance(message, dict):
+        return (message.get("content") or "").strip()
+    return (getattr(message, "content", "") or "").strip()
+
+
+def _first_metric_line(text_value: str) -> str:
+    metric_re = re.compile(
+        r"^\s*([^:\n：]{2,32}(?:数量|总长度|面积|结果|奖励|收益|Reward|Blocks|Parcels)[^:\n：]*)[：:]\s*([^\n]{1,80})",
+        re.IGNORECASE,
+    )
+    for line in text_value.splitlines():
+        match = metric_re.search(line.strip())
+        if match and re.search(r"\d", match.group(2)):
+            return f"{match.group(1).strip()}：{match.group(2).strip()}"
+    return ""
+
+
+def _extract_world_model_fact(text_value: str) -> dict | None:
+    lower_text = text_value.lower()
+    if not any(token in lower_text for token in ("worldmodel", "world model", "世界模型", "mpc")):
+        return None
+
+    dataset = ""
+    if "dongxing" in lower_text or "东兴" in text_value:
+        dataset = "Dongxing"
+    elif "bishan" in lower_text or "璧山" in text_value:
+        dataset = "Bishan"
+
+    fields = []
+    for label in ("N Blocks", "N Parcels", "Steps Run", "Swaps Completed", "Total Reward"):
+        match = re.search(rf"{re.escape(label)}\s*[：:]\s*([^\n]+)", text_value, re.IGNORECASE)
+        if match:
+            fields.append(f"{label}={match.group(1).strip()}")
+    if not fields:
+        return None
+    prefix = f"{dataset} " if dataset else ""
+    return {
+        "key": f"{prefix}MPC规划",
+        "value": "; ".join(fields[:5]),
+        "category": "analysis_conclusion",
+    }
+
+
+def _extract_nl2sql_fact(text_value: str) -> dict | None:
+    if not any(token in text_value for token in ("NL2SQL", "NL2Semantic2SQL", "执行 SQL", "ST_", "候选表")):
+        return None
+    metric = _first_metric_line(text_value)
+    if not metric:
+        return None
+    return {
+        "key": "空间SQL结果",
+        "value": metric,
+        "category": "analysis_conclusion",
+    }
+
+
+def _extract_facts_rule_based(report_text: str, user_query: str) -> list[dict]:
+    """Deterministic fallback for structured GIS tool outputs."""
+    text_value = f"{user_query}\n{report_text}"
+    facts: list[dict] = []
+    for fact in (_extract_nl2sql_fact(text_value), _extract_world_model_fact(text_value)):
+        if fact:
+            facts.append(fact)
+    if facts:
+        return facts[:5]
+
+    metric = _first_metric_line(report_text)
+    if metric and len(report_text) > 120:
+        return [{
+            "key": "分析结论",
+            "value": metric,
+            "category": "analysis_conclusion",
+        }]
+    return []
+
+
 def extract_facts_from_conversation(report_text: str, user_query: str) -> list[dict]:
-    """Use Gemini 2.0 Flash to extract key facts from conversation output.
+    """Extract key facts from conversation output.
 
     Args:
         report_text: Pipeline output text (report/summary).
@@ -283,10 +452,12 @@ def extract_facts_from_conversation(report_text: str, user_query: str) -> list[d
     if not report_text or len(report_text) < 50:
         return []
 
-    try:
-        from google import genai as genai_client
+    fallback_facts = _extract_facts_rule_based(report_text, user_query)
+    llm_first = os.environ.get("MEMORY_EXTRACT_LLM_FIRST", "").strip().lower() in {"1", "true", "yes", "on"}
+    if fallback_facts and not llm_first:
+        return fallback_facts
 
-        client = genai_client.Client()
+    try:
         prompt = (
             "从以下对话中提取关键发现（数据特征、分析结论、用户偏好），返回 JSON 数组。\n"
             '每个元素包含: {"key": "短标识符(10字以内)", "value": "结构化发现内容", '
@@ -296,31 +467,11 @@ def extract_facts_from_conversation(report_text: str, user_query: str) -> list[d
             f"用户问题: {user_query[:500]}\n"
             f"分析结果: {report_text[:3000]}"
         )
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-        )
-        raw = response.text.strip()
-
-        # Strip markdown code fences if present
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[-1] if "\n" in raw else raw[3:]
-            if raw.endswith("```"):
-                raw = raw[:-3].strip()
-
-        facts = json.loads(raw)
-        if not isinstance(facts, list):
-            return []
-
-        # Validate each fact has required keys
-        valid = []
-        for f in facts[:5]:
-            if isinstance(f, dict) and "key" in f and "value" in f:
-                f.setdefault("category", "data_characteristic")
-                valid.append(f)
-        return valid
-    except Exception:
-        return []
+        llm_facts = _parse_fact_json(_call_memory_extract_model(prompt))
+        return llm_facts or fallback_facts
+    except Exception as exc:
+        logger.debug("[MemoryETL] LLM extraction failed; using fallback: %s", exc)
+        return fallback_facts
 
 
 def save_auto_extract_memories(facts: list[dict]) -> dict:

@@ -1927,7 +1927,7 @@ async def _execute_pipeline(
                         except Exception:
                             pass
                         try:
-                            if current_tool_name == "world_model_v21_plan":
+                            if current_tool_name in {"world_model_v21_plan", "world_model_v21_pipeline"}:
                                 from data_agent.world_model_v21_presentation import parse_world_model_v21_tool_response
 
                                 _parsed_wm = parse_world_model_v21_tool_response(_resp_val)
@@ -2137,12 +2137,20 @@ async def _execute_pipeline(
                 and (_agent_name == "MentionWorldModelV21" or pipeline_name.startswith("@WorldModelV21"))
             )
             if _is_world_model_v21_direct and _world_model_v21_result:
-                from data_agent.world_model_v21_presentation import format_world_model_v21_result_for_chat
+                from data_agent.world_model_v21_presentation import (
+                    format_world_model_v21_progress_for_chat,
+                    format_world_model_v21_result_for_chat,
+                )
 
                 full_response_text = format_world_model_v21_result_for_chat(
                     _world_model_v21_result,
                     tool_args=_world_model_v21_args or {},
                 )
+                progress_msg.content = format_world_model_v21_progress_for_chat(
+                    _world_model_v21_result,
+                    pipeline_label=pipeline_name,
+                )
+                await progress_msg.update()
         except Exception as _wm_present_err:
             logger.warning("[WorldModelV21Presentation] skipped: %s", _wm_present_err)
 
@@ -2176,7 +2184,7 @@ async def _execute_pipeline(
             await cl.Message(content="", metadata=meta).send()
 
         # --- CoT leakage cleanup (DeepSeek etc.) ---
-        if full_response_text and pipeline_type in ("sub_agent_direct", "general"):
+        if full_response_text and pipeline_type in ("sub_agent_direct", "general", "planner"):
             try:
                 from data_agent.pipeline_helpers import clean_cot_leakage
                 cleaned = clean_cot_leakage(full_response_text)
@@ -2557,6 +2565,7 @@ async def on_resume(thread: dict):
     cl.user_session.set("session_id", session_id)
     cl.user_session.set("user_role", role)
     get_user_upload_dir()
+    logger.info("Resuming Chainlit thread %s for user %s", session_id, user_id)
 
     try:
         adk_session = await session_service.get_session(

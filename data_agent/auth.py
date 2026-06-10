@@ -11,7 +11,25 @@ import threading
 import time
 from typing import Optional
 from sqlalchemy import text
-import chainlit as cl
+try:
+    import chainlit as cl
+except ModuleNotFoundError:  # pragma: no cover - local unit-test fallback
+    class _ChainlitStub:
+        class User:
+            def __init__(self, identifier: str, display_name: str = "", metadata: dict | None = None):
+                self.identifier = identifier
+                self.display_name = display_name
+                self.metadata = metadata or {}
+
+        @staticmethod
+        def password_auth_callback(func):
+            return func
+
+        @staticmethod
+        def oauth_callback(func):
+            return func
+
+    cl = _ChainlitStub()
 
 from .db_engine import get_engine
 from .database_tools import T_APP_USERS

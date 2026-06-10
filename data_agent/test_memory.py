@@ -268,8 +268,9 @@ class TestAutoExtract(unittest.TestCase):
         result2 = extract_facts_from_conversation("short", "query")
         self.assertEqual(result2, [])
 
+    @patch('data_agent.memory._memory_extract_model_name', return_value='gemini-2.0-flash')
     @patch('google.genai.Client')
-    def test_extract_facts_success(self, mock_client_cls):
+    def test_extract_facts_success(self, mock_client_cls, _model_name):
         """LLM returns valid JSON array."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
@@ -280,8 +281,9 @@ class TestAutoExtract(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["key"], "耕地面积")
 
+    @patch('data_agent.memory._memory_extract_model_name', return_value='gemini-2.0-flash')
     @patch('google.genai.Client')
-    def test_extract_facts_with_code_fences(self, mock_client_cls):
+    def test_extract_facts_with_code_fences(self, mock_client_cls, _model_name):
         """LLM wraps JSON in markdown code fences."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
@@ -292,14 +294,58 @@ class TestAutoExtract(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["category"], "data_characteristic")  # default
 
+    @patch('data_agent.memory._memory_extract_model_name', return_value='gemini-2.0-flash')
     @patch('google.genai.Client')
-    def test_extract_facts_parse_error(self, mock_client_cls):
+    def test_extract_facts_parse_error(self, mock_client_cls, _model_name):
         """LLM returns non-JSON -> returns empty list."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
         mock_client.models.generate_content.return_value = MagicMock(text="not json at all")
         result = extract_facts_from_conversation("A" * 100, "query")
         self.assertEqual(result, [])
+
+    @patch('data_agent.memory._memory_extract_model_name', return_value='gemma4-26b-host228')
+    @patch('data_agent.model_gateway.create_model')
+    @patch('litellm.completion')
+    def test_extract_facts_uses_configured_litellm_model(self, mock_completion, mock_create_model, _model_name):
+        """Gemma/Ollama extraction follows the configured model instead of hardcoded Gemini."""
+        mock_model = MagicMock()
+        mock_model.model = "ollama_chat/Gemma4:26b"
+        mock_model._additional_args = {"extra_body": {"think": False}, "timeout": 600}
+        mock_create_model.return_value = mock_model
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message={"content": '[{"key":"空间SQL","value":"POI数量：35","category":"analysis_conclusion"}]'})]
+        )
+
+        report = (
+            "本次分析完成了研究区耕地变化研判，模型综合比较了多个地块的连通性、坡度和用地转换潜力。"
+            "报告建议后续优先关注北部片区的耕地保护约束，并把现有规划方案作为下一轮优化的基准。"
+        )
+        result = extract_facts_from_conversation(report, "分析耕地变化趋势")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["key"], "空间SQL")
+        self.assertEqual(mock_completion.call_args.kwargs["model"], "ollama_chat/Gemma4:26b")
+        self.assertEqual(mock_completion.call_args.kwargs["extra_body"], {"think": False})
+
+    @patch('data_agent.memory._call_memory_extract_model', side_effect=RuntimeError("llm down"))
+    def test_extract_facts_rule_fallback_for_world_model(self, _mock_call):
+        """Structured WorldModel outputs still create auto_extract facts if the LLM is unavailable."""
+        report = """
+        已成功完成。
+        Status: ok
+        Mode: pipeline_a_to_d; plan=tool4_mpc
+        Prepared Dir: /app/dongxing-runs/prepared
+        N Blocks: 3711
+        N Parcels: 76377
+        Steps Run: 100
+        Swaps Completed: 466
+        Total Reward: 112.64
+        """
+        result = extract_facts_from_conversation(report, "运行 dongxing 世界模型 v2.1 MPC")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["key"], "Dongxing MPC规划")
+        self.assertIn("N Blocks=3711", result[0]["value"])
 
     @patch('data_agent.memory.get_engine', return_value=None)
     def test_save_auto_extract_no_db(self, _):

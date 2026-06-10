@@ -172,6 +172,10 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_distance_srid_transform")
 
+    rewritten, changed = _rewrite_st_length_projected_geographic_to_geography(rewritten, alias_map)
+    if changed:
+        corrections.append("semantic_length_geography")
+
     rewritten, changed = _rewrite_line_length_aggregates(question, rewritten, tables)
     if changed:
         corrections.append("semantic_length_metric")
@@ -1396,11 +1400,13 @@ def _rewrite_st_dwithin_geography(
         b = match.group("b")
         a_col = _lookup_column_ref(a, alias_map)
         b_col = _lookup_column_ref(b, alias_map)
-        if not a_col or not b_col or not a_col.is_geometry or not b_col.is_geometry:
+        if a_col and (not a_col.is_geometry or (a_col.srid and a_col.srid not in _GEOGRAPHIC_SRIDS)):
             return match.group(0)
-        if a_col.srid and a_col.srid not in _GEOGRAPHIC_SRIDS:
+        if b_col and (not b_col.is_geometry or (b_col.srid and b_col.srid not in _GEOGRAPHIC_SRIDS)):
             return match.group(0)
-        if b_col.srid and b_col.srid not in _GEOGRAPHIC_SRIDS:
+        if not a_col and not re.search(r'\.(?:"?geometry"?|"?geom"?)$', a, flags=re.IGNORECASE):
+            return match.group(0)
+        if not b_col and not re.search(r'\.(?:"?geometry"?|"?geom"?)$', b, flags=re.IGNORECASE):
             return match.group(0)
         return f"ST_DWithin({a}::geography, {b}::geography, {match.group('d')})"
 
@@ -1507,6 +1513,35 @@ def _rewrite_distance_degree_multiplier_to_geography(sql: str) -> tuple[str, boo
         pos = close + 1 + multiplier.end()
         changed = True
     return "".join(out), changed
+
+
+def _rewrite_st_length_projected_geographic_to_geography(
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    if not sql:
+        return sql, False
+    ref_re = r"(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)"
+    pattern = re.compile(
+        rf"ST_LENGTH\s*\(\s*ST_TRANSFORM\s*\(\s*(?P<geom>{ref_re})\s*,\s*(?P<srid>\d+)\s*\)\s*\)",
+        flags=re.IGNORECASE,
+    )
+
+    def repl(match: re.Match) -> str:
+        geom_ref = match.group("geom")
+        try:
+            target_srid = int(match.group("srid"))
+        except ValueError:
+            return match.group(0)
+        if target_srid not in {3857, 900913}:
+            return match.group(0)
+        col = _lookup_any_column_ref(geom_ref, alias_map)
+        if not col or not col.is_geometry or not _geometry_prefers_geography(col):
+            return match.group(0)
+        return f"ST_Length({_as_geography(geom_ref)})"
+
+    rewritten, n = pattern.subn(repl, sql)
+    return rewritten, bool(n and rewritten != sql)
 
 
 def _rewrite_line_length_aggregates(question: str, sql: str, tables: list[TableInfo]) -> tuple[str, bool]:
@@ -2148,6 +2183,8 @@ def _rewrite_distinct_entity_count(
     rewritten, changed = _rewrite_exists_spatial_count_to_distinct(sql, tables)
     if changed:
         return rewritten, True
+    if _is_singleton_cross_join_spatial_filter(sql):
+        return sql, False
     if (
         "join" not in sql_low
         or not _sql_has_spatial_join_function(sql)
@@ -2163,6 +2200,17 @@ def _rewrite_distinct_entity_count(
     expr = f'COUNT(DISTINCT {qualifier}.{ident.quoted_ref})'
     rewritten, n = re.subn(r"COUNT\s*\(\s*\*\s*\)", expr, sql, count=1, flags=re.IGNORECASE)
     return rewritten, bool(n)
+
+
+def _is_singleton_cross_join_spatial_filter(sql: str) -> bool:
+    return bool(
+        re.search(
+            r"\bCROSS\s+JOIN\s*\(\s*SELECT\b.*?\bLIMIT\s+1\b.*?\)\s+"
+            r"(?:AS\s+)?[A-Za-z_][A-Za-z0-9_]*\b.*?\bST_DWITHIN\s*\(",
+            sql or "",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+    )
 
 
 def _rewrite_exists_spatial_count_to_distinct(
@@ -2236,10 +2284,50 @@ def _rewrite_grouped_spatial_identifier_counts_to_distinct(
             return match.group(0)
         if counted.column_name.lower() != ident.column_name.lower():
             return match.group(0)
+        if _is_left_join_containment_detail_count(sql, group_body, alias):
+            return match.group(0)
         return f"COUNT(DISTINCT {ref})"
 
     rewritten, n = pattern.subn(repl, sql or "")
     return rewritten, bool(n and rewritten != sql)
+
+
+def _is_left_join_containment_detail_count(
+    sql: str,
+    group_body: str,
+    counted_alias: str,
+) -> bool:
+    if not re.search(
+        rf"\bLEFT\s+JOIN\b.*?(?:\bAS\s+)?{re.escape(counted_alias)}\b",
+        sql or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        return False
+    grouped_aliases = set(
+        re.findall(
+            r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\.",
+            group_body or "",
+            flags=re.IGNORECASE,
+        )
+    )
+    if not grouped_aliases:
+        return False
+    counted_ref = _qualifier_ref_pattern(counted_alias)
+    for group_alias in grouped_aliases:
+        group_ref = _qualifier_ref_pattern(group_alias)
+        contains_group_to_counted = re.search(
+            rf"\bST_CONTAINS\s*\(\s*(?:ST_TRANSFORM\s*\(\s*)?{group_ref}.*,\s*{counted_ref}",
+            sql or "",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        within_counted_to_group = re.search(
+            rf"\bST_WITHIN\s*\(\s*(?:ST_TRANSFORM\s*\(\s*)?{counted_ref}.*,\s*{group_ref}",
+            sql or "",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if contains_group_to_counted or within_counted_to_group:
+            return True
+    return False
 
 
 def _sql_has_spatial_join_function(sql: str) -> bool:
@@ -2707,6 +2795,28 @@ def _lookup_column_ref(ref: str, alias_map: dict[str, tuple[TableInfo, ColumnInf
         return None
     table, _ = table_entry
     return table.column_by_name(col_name)
+
+
+def _lookup_any_column_ref(
+    ref: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> ColumnInfo | None:
+    qualified = _lookup_column_ref(ref, alias_map)
+    if qualified:
+        return qualified
+    if "." in (ref or ""):
+        return None
+    col_name = _strip_identifier_quotes(ref)
+    matches: list[ColumnInfo] = []
+    seen_tables: set[str] = set()
+    for table, _ in alias_map.values():
+        if table.table_name in seen_tables:
+            continue
+        seen_tables.add(table.table_name)
+        col = table.column_by_name(col_name)
+        if col:
+            matches.append(col)
+    return matches[0] if len(matches) == 1 else None
 
 
 def _find_matching_paren(text: str, open_pos: int) -> int:

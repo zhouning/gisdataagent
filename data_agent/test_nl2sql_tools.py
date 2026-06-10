@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 
 import pandas as pd
 
@@ -34,3 +36,21 @@ def test_execute_safe_sql_allows_read_only_with_query(monkeypatch):
 
     assert result["status"] == "ok"
     assert result["data"] == [{"n": 1}]
+
+
+def test_package_level_nl2sql_toolset_import_does_not_load_analysis_toolset():
+    code = (
+        "import sys; "
+        "from data_agent.toolsets import NL2SQLToolset; "
+        "print(NL2SQLToolset.__name__); "
+        "print('data_agent.toolsets.analysis_tools' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines() == ["NL2SQLToolset", "False"]

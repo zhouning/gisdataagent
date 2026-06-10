@@ -120,7 +120,7 @@ def extract_map_update_from_tool_response(value):
         if isinstance(map_update, dict) and isinstance(map_update.get("layers"), list):
             return map_update
 
-        for key in ("result", "output", "response", "content"):
+        for key in ("plan_result", "result", "output", "response", "content"):
             if key not in value:
                 continue
             nested = extract_map_update_from_tool_response(value[key])
@@ -405,8 +405,8 @@ _COT_PATTERNS = _re.compile(
     r"(?:让我|我来|我需要|我应该|我查看|我先|根据规则|根据返回|根据 grounding|不过根据|"
     r"所以我|实际上|用户想要|用户要求|用户想|用户问|用户明确|"
     r"不过，安全|不过，|现在我来|这涉及到|"
-    r"The user wants|The user specifies|The status check|Now, I will|I will proceed|"
-    r"Ah, I made a typo|Corrected parameters|Final Summary Data|"
+    r"The user wants|The user specifies|The user provided context|The status check|Now, I will|I will proceed|"
+    r"I should use|Parameters for|Ah, I made a typo|Corrected parameters|Final Summary Data|"
     r"Step \d+:|Plan:|Call world_model|Provide a summary|Language:)"
     r"[^\n]{0,200}\n?"
     r")+",
@@ -423,15 +423,27 @@ def clean_cot_leakage(text: str) -> str:
     """Remove chain-of-thought reasoning leaked into model output."""
     if not text or len(text) < 20:
         return text
-    final_markers = ("规划已完成", "NL2SQL 查询结果", "查询成功", "已成功完成。")
+    final_markers = (
+        "规划已完成",
+        "NL2SQL 查询结果",
+        "查询成功",
+        "已成功完成。",
+        "已检索到",
+        "已成功将",
+        "已保存记忆",
+        "找到 ",
+    )
     leak_markers = (
         "The user wants",
+        "I should use",
+        "Parameters for",
         "Plan:",
         "Step 1:",
         "Ah, I made a typo",
         "Corrected parameters",
     )
-    if any(marker in text for marker in leak_markers):
+    leak_detected = any(marker in text for marker in leak_markers)
+    if leak_detected:
         marker_positions = [text.find(marker) for marker in final_markers if text.find(marker) > 0]
         if marker_positions:
             text = text[min(marker_positions):]
@@ -442,6 +454,10 @@ def clean_cot_leakage(text: str) -> str:
         "Run a fast MPC",
         "Use default",
         "Parameters:",
+        "Parameters for",
+        "keyword:",
+        "memory_type:",
+        "The user provided context",
         "env_kind:",
         "horizon:",
         "top_k:",
@@ -456,6 +472,6 @@ def clean_cot_leakage(text: str) -> str:
         if ln.strip() and not ln.strip().startswith(skip_prefixes)
     ]
     result = "\n".join(lines)
-    if len(result.strip()) < 10 and len(text.strip()) > 10:
+    if len(result.strip()) < 10 and len(text.strip()) > 10 and not leak_detected:
         return text
     return result

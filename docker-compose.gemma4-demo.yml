@@ -12,6 +12,8 @@ services:
       POSTGRES_DB: gis_agent
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      TZ: Asia/Shanghai
+    command: ["postgres", "-c", "timezone=Asia/Shanghai"]
     ports:
       - "5433:5432"
     volumes:
@@ -42,6 +44,9 @@ services:
 
   app:
     image: gis-data-agent:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -52,12 +57,14 @@ services:
       - "8000:8000"
     environment:
       PORT: "8000"
+      TZ: Asia/Shanghai
 
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: change_me_strong_password
+      PGTZ: Asia/Shanghai
       POSTGRES_ADMIN_USER: postgres
       POSTGRES_ADMIN_PASSWORD: postgres
       DATABASE_URL: postgresql://agent_user:change_me_strong_password@db:5432/gis_agent
@@ -77,19 +84,22 @@ services:
       MODEL_CONFIG_FORCE_ENV: "true"
       NL2SQL_AGENT_MODEL: gemma4-26b-ollama
       NL2SQL_LLM_SCHEMA_MAPPER_MODEL: gemma4-26b-ollama
-      EMBEDDING_MODEL: nomic-embed-text-v2-moe
-      OLLAMA_API_BASE: http://host.docker.internal:11434
+      EMBEDDING_MODEL: nomic-embed-text-v2-moe-host228
+      OLLAMA_API_BASE: http://192.168.25.228:11434
 
       PAPER9_FARMLAND_MPC_REPO: /app/paper9-demo
-      PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR: /app/paper9-demo/runs/restoration/buchanan_va/prepared_watershed
-      PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR: /app/paper9-demo/paper/checkpoints/restoration/profiles/buchanan_va/watershed/ensemble_seed0
+      PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR: /app/bishan-runs/prepared
+      PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR: /app/bishan-runs/prepared/ensemble_seed0
+      PROJ_DATA: /app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj
+      PROJ_LIB: /app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj
 
       CHAINLIT_AUTH_SECRET: local_dev_chainlit_secret_change_me_to_64_chars_minimum_xx
       DYNAMIC_PLANNER: "true"
     volumes:
       - gemma4_demo_uploads:/app/data_agent/uploads
-      - /private/tmp/paper9-demo:/app/paper9-demo:ro
+      - /Users/zhouning/arcgis-farmland-mpc:/app/paper9-demo:ro
       - /Users/zhouning/farmland_mpc_runs/bishan:/app/bishan-runs:ro
+      - /Users/zhouning/arcgis-farmland-mpc/runs/dongxing:/app/dongxing-runs:ro
     networks:
       - gemma4-demo-net
 

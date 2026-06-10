@@ -18,17 +18,20 @@ Routes are mounted before the Chainlit catch-all via mount_frontend_api().
 import json
 import os
 import re
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 from .observability import get_logger
 from .user_context import current_user_id, current_user_role
 from .db_engine import get_engine
+from .pipeline_helpers import clean_cot_leakage
 from .audit_logger import (
     record_audit,
     ACTION_MCP_SERVER_CREATE, ACTION_MCP_SERVER_UPDATE,
@@ -37,6 +40,96 @@ from .audit_logger import (
 )
 
 logger = get_logger("frontend_api")
+
+
+def _iso_utc(value) -> str | None:
+    """Format DB timestamps as UTC ISO strings for browser-local display."""
+    if not value:
+        return None
+    if isinstance(value, str):
+        return value if value.endswith(("Z", "+00:00")) else f"{value}Z"
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        else:
+            value = value.astimezone(timezone.utc)
+        return value.isoformat().replace("+00:00", "Z")
+    return str(value)
+
+
+def _local_tz():
+    tz_name = os.environ.get("TZ") or "Asia/Shanghai"
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return datetime.now().astimezone().tzinfo or timezone.utc
+
+
+def _iso_local(value, *, assume_utc: bool = False) -> str | None:
+    """Format DB timestamps with the app's local timezone offset.
+
+    Chainlit stores some columns as UTC-naive timestamps (start/end time), while
+    Postgres defaults like createdAt are local-naive after the compose TZ fix.
+    """
+    if not value:
+        return None
+    local_tz = _local_tz()
+    if isinstance(value, str):
+        raw = value.replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(raw)
+        except Exception:
+            return value
+        value = parsed
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            source_tz = timezone.utc if assume_utc else local_tz
+            value = value.replace(tzinfo=source_tz)
+        return value.astimezone(local_tz).isoformat()
+    return str(value)
+
+
+def _preview_text(value, limit: int = 240) -> str:
+    """Return a compact, single-line preview safe for UI log tables."""
+    text_value = _clean_log_text(value)
+    if not text_value:
+        return ""
+    text_value = text_value.replace("\r", " ").replace("\n", " ").strip()
+    text_value = re.sub(r"\s+", " ", text_value)
+    if len(text_value) <= limit:
+        return text_value
+    return f"{text_value[:max(0, limit - 1)]}..."
+
+
+def _clean_log_text(value) -> str:
+    if value is None:
+        return ""
+    text_value = str(value).strip()
+    try:
+        return clean_cot_leakage(text_value).strip()
+    except Exception:
+        return text_value
+
+
+def _full_text(value, limit: int = 20000) -> str:
+    text_value = _clean_log_text(value)
+    if not text_value:
+        return ""
+    if len(text_value) <= limit:
+        return text_value
+    return f"{text_value[:limit]}\n\n... 内容过长，已截断至 {limit} 字符。"
+
+
+def _metadata_dict(value) -> dict:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value:
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            return {}
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -1157,15 +1250,17 @@ async def _api_sessions_list(request: Request):
     try:
         with engine.connect() as conn:
             rows = conn.execute(text(
-                'SELECT id, name, "createdAt", "updatedAt" '
-                'FROM "Thread" '
-                'WHERE "userIdentifier" = :uid '
-                'ORDER BY "updatedAt" DESC LIMIT 50'
+                'SELECT t.id, t.name, t."createdAt", t."updatedAt" '
+                'FROM "Thread" AS t '
+                'LEFT JOIN "User" AS u ON u.id = t."userId" '
+                'WHERE t."deletedAt" IS NULL '
+                'AND (t."userIdentifier" = :uid OR u.identifier = :uid) '
+                'ORDER BY t."updatedAt" DESC NULLS LAST, t."createdAt" DESC LIMIT 50'
             ), {"uid": username}).fetchall()
         sessions = [
             {"id": r[0], "name": r[1],
-             "created_at": r[2].isoformat() if r[2] else None,
-             "updated_at": r[3].isoformat() if r[3] else None}
+             "created_at": _iso_utc(r[2]),
+             "updated_at": _iso_utc(r[3])}
             for r in rows
         ]
         return JSONResponse({"sessions": sessions})
@@ -1188,10 +1283,18 @@ async def _api_session_delete(request: Request):
 
     try:
         with engine.connect() as conn:
-            # Only delete if thread belongs to user
+            # Only hide if the thread belongs to the current user. Chainlit's
+            # data layer primarily links threads via Thread.userId -> User.id;
+            # userIdentifier is optional and may be empty on existing rows.
             result = conn.execute(text(
-                'DELETE FROM "Thread" '
-                'WHERE id = :sid AND "userIdentifier" = :uid'
+                'UPDATE "Thread" AS t '
+                'SET "deletedAt" = NOW() '
+                'WHERE t.id = :sid '
+                'AND t."deletedAt" IS NULL '
+                'AND ('
+                '  t."userIdentifier" = :uid '
+                '  OR t."userId" IN (SELECT id FROM "User" WHERE identifier = :uid)'
+                ')'
             ), {"sid": session_id, "uid": username})
             conn.commit()
         if result.rowcount == 0:
@@ -1200,6 +1303,273 @@ async def _api_session_delete(request: Request):
     except Exception as e:
         logger.warning("Failed to delete session: %s", e)
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# Agent run logs — demo-friendly Tool Calling / Memory evidence
+# ---------------------------------------------------------------------------
+
+def _summarize_step(row) -> dict:
+    metadata = _metadata_dict(row[7])
+    item = {
+        "id": row[0],
+        "name": row[1] or "",
+        "type": row[2] or "",
+        "thread_id": row[3],
+        "parent_id": row[4],
+        "created_at": _iso_local(row[8]),
+        "start_time": _iso_local(row[9], assume_utc=True),
+        "end_time": _iso_local(row[10], assume_utc=True),
+        "input": _full_text(row[5]),
+        "output": _full_text(row[6]),
+        "output_preview": _preview_text(row[6], 360),
+        "metadata_keys": sorted(metadata.keys()),
+    }
+    if metadata.get("routing_info"):
+        item["routing_info"] = metadata["routing_info"]
+    if metadata.get("memory_extract"):
+        item["memory_extract"] = metadata["memory_extract"]
+    if metadata.get("map_update"):
+        map_update = metadata["map_update"] if isinstance(metadata["map_update"], dict) else {}
+        item["map_update"] = {
+            "layer_count": len(map_update.get("layers") or []),
+            "summary": map_update.get("summary") or {},
+        }
+    if (row[2] or "").lower() == "tool":
+        item["tool_name"] = row[1] or ""
+    return item
+
+
+def _parse_iso_datetime(value) -> datetime | None:
+    if not value:
+        return None
+    local_tz = _local_tz()
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=local_tz)
+        return value.astimezone(timezone.utc)
+    if isinstance(value, str):
+        raw = value.replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(raw)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=local_tz)
+            return parsed.astimezone(timezone.utc)
+        except Exception:
+            return None
+    return None
+
+
+def _step_time(step: dict) -> datetime | None:
+    return (
+        _parse_iso_datetime(step.get("end_time"))
+        or _parse_iso_datetime(step.get("created_at"))
+        or _parse_iso_datetime(step.get("start_time"))
+    )
+
+
+def _is_memory_log_step(step: dict) -> bool:
+    if step.get("memory_extract"):
+        return True
+    if step.get("type") != "tool":
+        return False
+    name = (step.get("tool_name") or step.get("name") or "").lower()
+    return any(token in name for token in ("memory", "记忆", "recall_memories", "save_memory"))
+
+
+def _is_final_answer_candidate(text_value: str) -> bool:
+    text_value = (text_value or "").strip()
+    if not text_value:
+        return False
+    skip_prefixes = (
+        "Welcome,",
+        "意图识别：",
+        "分析完成。您可以下载相关文件",
+    )
+    if text_value.startswith(skip_prefixes):
+        return False
+    if text_value.startswith("**") and ("步骤完成" in text_value or "准备中" in text_value):
+        return False
+    return True
+
+
+def _split_thread_runs(step_rows: list[dict]) -> list[list[dict]]:
+    """Split one Chainlit thread into user-request runs.
+
+    Chainlit stores a whole chat as one Thread. For demo review, users expect
+    one run-log row per submitted question/tool workflow, so each user_message
+    starts a new run and owns the following assistant/tool/process steps until
+    the next user_message.
+    """
+    runs: list[list[dict]] = []
+    current: list[dict] = []
+    for step in step_rows:
+        step_type = step.get("type", "")
+        is_user = "user" in step_type
+        if is_user:
+            if current and any("user" in s.get("type", "") for s in current):
+                runs.append(current)
+            current = [step]
+            continue
+        if current:
+            current.append(step)
+    if current and any("user" in s.get("type", "") for s in current):
+        runs.append(current)
+    return runs
+
+
+def _summarize_agent_run(thread_row, step_rows: list[dict], run_index: int | None = None) -> dict:
+    user_steps = [s for s in step_rows if "user" in s.get("type", "")]
+    assistant_steps = [
+        s for s in step_rows
+        if "assistant" in s.get("type", "") and s.get("output_preview")
+    ]
+    tool_steps = [s for s in step_rows if s.get("type") == "tool"]
+    process_steps = [s for s in step_rows if s.get("type") == "process"]
+    memory_steps = [s for s in step_rows if _is_memory_log_step(s)]
+    map_steps = [s for s in step_rows if s.get("map_update")]
+    routing_steps = [s for s in step_rows if s.get("routing_info")]
+
+    routing = routing_steps[0].get("routing_info") if routing_steps else {}
+    final_answer = ""
+    final_answer_preview = ""
+    for step in reversed(assistant_steps):
+        text_value = step.get("output", "") or step.get("output_preview", "")
+        if _is_final_answer_candidate(text_value):
+            final_answer = text_value
+            final_answer_preview = step.get("output_preview", "") or _preview_text(text_value, 360)
+            break
+
+    run_start = _step_time(user_steps[0]) if user_steps else None
+    run_end = _step_time(step_rows[-1]) if step_rows else None
+    started = run_start or thread_row[2]
+    ended = run_end or thread_row[3]
+    duration_sec = None
+    if isinstance(started, datetime) and isinstance(ended, datetime):
+        duration_sec = round((ended - started).total_seconds(), 2)
+
+    user_input = user_steps[0].get("output_preview") if user_steps else ""
+    run_id = thread_row[0]
+    if run_index is not None and user_steps:
+        run_id = f"{thread_row[0]}:{user_steps[0].get('id') or run_index}"
+
+    return {
+        "id": run_id,
+        "thread_id": thread_row[0],
+        "thread_name": thread_row[1] or "未命名会话",
+        "run_index": run_index,
+        "name": user_input or thread_row[1] or "未命名运行",
+        "created_at": _iso_local(started),
+        "updated_at": _iso_local(ended),
+        "duration_sec": duration_sec,
+        "user_input": user_input,
+        "pipeline": routing.get("pipeline") or "",
+        "pipeline_name": routing.get("pipeline_name") or "",
+        "intent": routing.get("intent") or "",
+        "route_reason": routing.get("reason") or "",
+        "final_answer": final_answer,
+        "final_answer_preview": final_answer_preview,
+        "message_count": len(user_steps) + len(assistant_steps),
+        "tool_count": len(tool_steps),
+        "process_count": len(process_steps),
+        "memory_count": len(memory_steps),
+        "map_event_count": len(map_steps),
+        "tool_trace": [
+            {
+                "name": s.get("tool_name") or s.get("name"),
+                "created_at": s.get("created_at"),
+                "input": s.get("input"),
+                "output": s.get("output"),
+                "output_preview": s.get("output_preview"),
+            }
+            for s in tool_steps
+        ],
+        "memory_events": [
+            s.get("memory_extract") or {
+                "tool": s.get("tool_name") or s.get("name"),
+                "output_preview": s.get("output_preview"),
+            }
+            for s in memory_steps
+        ],
+        "steps": step_rows,
+    }
+
+
+async def _api_agent_run_logs(request: Request):
+    """GET /api/agent/run-logs — summarize recent Chainlit Thread/Step runs.
+
+    Defaults to group_by=run, where each user_message in a Chainlit Thread is
+    shown as one run-log row. Use group_by=thread for the old whole-conversation
+    grouping.
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    username = _user_identifier(user)
+    try:
+        limit = int(request.query_params.get("limit", "20"))
+    except Exception:
+        limit = 20
+    limit = max(1, min(limit, 50))
+    pipeline_filter = (request.query_params.get("pipeline") or "").strip()
+    group_by = (request.query_params.get("group_by") or "run").strip().lower()
+    if group_by not in {"run", "thread"}:
+        group_by = "run"
+
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"logs": []})
+
+    try:
+        with engine.connect() as conn:
+            thread_rows = conn.execute(text(
+                'SELECT t.id, t.name, t."createdAt", t."updatedAt" '
+                'FROM "Thread" AS t '
+                'LEFT JOIN "User" AS u ON u.id = t."userId" '
+                'WHERE t."deletedAt" IS NULL '
+                'AND (t."userIdentifier" = :uid OR u.identifier = :uid) '
+                'ORDER BY t."updatedAt" DESC NULLS LAST, t."createdAt" DESC '
+                'LIMIT :lim'
+            ), {"uid": username, "lim": 50}).fetchall()
+            thread_ids = [r[0] for r in thread_rows]
+            steps_by_thread: dict[str, list[dict]] = defaultdict(list)
+            if thread_ids:
+                step_stmt = text(
+                    'SELECT id, name, type, "threadId", "parentId", input, output, '
+                    'metadata, "createdAt", "startTime", "endTime" '
+                    'FROM "Step" '
+                    'WHERE "threadId" IN :thread_ids '
+                    'ORDER BY "threadId", "createdAt" ASC'
+                ).bindparams(bindparam("thread_ids", expanding=True))
+                rows = conn.execute(step_stmt, {"thread_ids": thread_ids}).fetchall()
+                for row in rows:
+                    steps_by_thread[row[3]].append(_summarize_step(row))
+
+        logs: list[dict] = []
+        if group_by == "thread":
+            logs = [_summarize_agent_run(r, steps_by_thread.get(r[0], [])) for r in thread_rows]
+        else:
+            for thread_row in thread_rows:
+                runs = _split_thread_runs(steps_by_thread.get(thread_row[0], []))
+                if not runs:
+                    continue
+                for idx, run_steps in enumerate(runs, start=1):
+                    logs.append(_summarize_agent_run(thread_row, run_steps, idx))
+
+        if pipeline_filter:
+            needle = pipeline_filter.lower()
+            logs = [
+                item for item in logs
+                if needle in (item.get("pipeline") or "").lower()
+                or needle in (item.get("pipeline_name") or "").lower()
+                or needle in (item.get("user_input") or "").lower()
+            ]
+        logs.sort(key=lambda item: item.get("updated_at") or item.get("created_at") or "", reverse=True)
+        return JSONResponse({"logs": logs[:limit], "group_by": group_by})
+    except Exception as e:
+        logger.warning("Failed to list agent run logs: %s", e)
+        return JSONResponse({"logs": []})
 
 
 # ---------------------------------------------------------------------------
@@ -3856,6 +4226,7 @@ def get_frontend_api_routes():
         Route("/api/user/drawn-features", endpoint=_api_user_drawn_features, methods=["POST"]),
         Route("/api/sessions", endpoint=_api_sessions_list, methods=["GET"]),
         Route("/api/sessions/{session_id}", endpoint=_api_session_delete, methods=["DELETE"]),
+        Route("/api/agent/run-logs", endpoint=_api_agent_run_logs, methods=["GET"]),
         # MCP Hub (S-4: delegated to api/mcp_routes.py)
         *get_mcp_routes(),
         # Workflows (v5.4)

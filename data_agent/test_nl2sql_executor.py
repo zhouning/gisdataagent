@@ -235,6 +235,34 @@ def test_extract_sql_prefers_last_corrected_select_statement():
     assert _extract_sql(text) == "SELECT SUM(ST_Length(geometry::geography)) FROM roads"
 
 
+def test_extract_sql_keeps_exists_subquery_inside_outer_statement():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    text = (
+        'SELECT COUNT(DISTINCT b."Id") FROM cq_buildings_2021 AS b '
+        "WHERE EXISTS(SELECT 1 FROM cq_osm_roads_2021 AS r "
+        "WHERE ST_Intersects(b.geometry, r.geometry) AND r.bridge = 'T')"
+    )
+
+    assert _extract_sql(text) == text
+
+
+def test_extract_sql_keeps_cte_with_final_select():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    text = (
+        "WITH longest_bridge AS ("
+        "SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' "
+        "ORDER BY ST_Length(geometry::geography) DESC LIMIT 1"
+        ") "
+        'SELECT COUNT(DISTINCT p."ID") FROM cq_amap_poi_2024 AS p '
+        "JOIN longest_bridge AS lb "
+        "ON ST_DWithin(p.geometry::geography, lb.geometry::geography, 100)"
+    )
+
+    assert _extract_sql(text) == text
+
+
 def test_safe_preview_fallback_selects_all_for_backup_request():
     from data_agent.nl2sql_executor import _build_safe_preview_sql
 
@@ -1212,4 +1240,3 @@ def test_generate_gemma_sql_retries_transient_completion_error(monkeypatch):
     assert calls[0]["extra_body"] == {"think": False}
     assert calls[0]["timeout"] == 600
     mock_sleep.assert_called_once_with(1)
-

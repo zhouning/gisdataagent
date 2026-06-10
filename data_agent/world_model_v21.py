@@ -8,6 +8,7 @@ the Paper9 repo or its optional dependencies are absent.
 from __future__ import annotations
 
 import importlib
+import json
 import os
 import re
 import subprocess
@@ -56,6 +57,7 @@ class WorldModelV21Service:
     def status(self) -> dict[str, Any]:
         """Return Paper9 source and capability status without running MPC."""
         repo_exists = self.repo_path.is_dir()
+        proj_data_dir = self._ensure_proj_data_dir()
         import_info = self._import_paper9() if repo_exists else {
             "importable": False,
             "package_version": None,
@@ -88,15 +90,253 @@ class WorldModelV21Service:
             },
             "defaults": defaults,
             "capabilities": {
+                "tool1_prepare": ready,
+                "tool2_sample": ready,
+                "tool3_train": ready,
                 "tool4_plan": ready,
-                "prepare_sample_train": False,
+                "pipeline_a_to_d": ready,
+                "prepare_sample_train": ready,
                 "onnx_inference": ready,
                 "county_env": True,
                 "restoration_env": True,
                 "cultivated_area_floor": True,
                 "baimu_area_floor": True,
             },
+            "runtime": {
+                "proj_data_dir": proj_data_dir,
+            },
             "onnx_member_count": onnx_count,
+        }
+
+    def run_prepare(self, payload: dict[str, Any], user_id: str) -> dict[str, Any]:
+        """Run Paper9 Tool 1 data preparation and return normalized JSON."""
+        self._ensure_proj_data_dir()
+        prepare_run = self._load_paper9_prepare_run()
+        dltb_path = self._required_existing_file(payload, "dltb_path")
+        dem_path = self._required_existing_file(payload, "dem_path")
+        prepared_dir = self._optional_output_dir(
+            payload,
+            "prepared_dir",
+            user_id,
+            "prepared",
+        )
+        kwargs = {
+            "dltb_path": str(dltb_path),
+            "dem_path": str(dem_path),
+            "prepared_dir": str(prepared_dir),
+            "proj_crs": str(payload.get("proj_crs") or "EPSG:32648"),
+            "dlbm_field": str(payload.get("dlbm_field") or "DLBM"),
+            "qsdwdm_field": str(payload.get("qsdwdm_field") or "QSDWDM"),
+            "bsm_field": str(payload.get("bsm_field") or "BSM"),
+            "slope_method": str(payload.get("slope_method") or "auto"),
+            "run_phase_bc": bool(payload.get("run_phase_bc", True)),
+            "min_parcels": self._int_range(payload, "min_parcels", 3, 1, 1000),
+            "min_area_ha": self._optional_float(payload, "min_area_ha") or 0.5,
+            "max_parcels": self._int_range(payload, "max_parcels", 30, 1, 5000),
+            "min_parcels_per_township": self._int_range(
+                payload, "min_parcels_per_township", 50, 1, 100000
+            ),
+            "xzq_path": payload.get("xzq_path") or None,
+            "reference_layer": payload.get("reference_layer") or None,
+        }
+        try:
+            output_path = prepare_run(**kwargs)
+        except Exception as exc:
+            raise WorldModelV21UnavailableError(str(exc)) from exc
+
+        summary = self._read_json(prepared_dir / "prepare_data_summary.json")
+        return {
+            "status": "ok",
+            "version": VERSION,
+            "source": "arcgis-farmland-mpc",
+            "mode": "tool1_prepare",
+            "prepared_dir": str(prepared_dir),
+            "output_path": str(output_path),
+            "summary": summary,
+            "artifacts": {
+                "dltb_with_slope": self._relative_to(output_path, prepared_dir),
+                "prepare_summary": "prepare_data_summary.json"
+                if (prepared_dir / "prepare_data_summary.json").exists()
+                else None,
+                "townships": "townships.json"
+                if (prepared_dir / "townships.json").exists()
+                else None,
+            },
+        }
+
+    def run_sample(self, payload: dict[str, Any], user_id: str) -> dict[str, Any]:
+        """Run Paper9 Tool 2 transition/pairwise sampling."""
+        self._ensure_proj_data_dir()
+        sample_run = self._load_paper9_sample_run()
+        prepared_dir = self._required_existing_dir(payload, "prepared_dir")
+        kwargs = {
+            "prepared_dir": str(prepared_dir),
+            "n_transition_episodes": self._int_range(
+                payload, "n_transition_episodes", 60, 1, 10000
+            ),
+            "n_pairwise_states": self._int_range(
+                payload, "n_pairwise_states", 1000, 1, 200000
+            ),
+            "n_pairwise_actions": self._int_range(
+                payload, "n_pairwise_actions", 50, 1, 10000
+            ),
+            "seed": self._int_range(payload, "seed", 0, 0, 1_000_000),
+            "proj_crs": payload.get("proj_crs") or None,
+            "env_kind": str(payload.get("env_kind") or "county").strip().lower(),
+        }
+        try:
+            summary = sample_run(**kwargs)
+        except Exception as exc:
+            raise WorldModelV21UnavailableError(str(exc)) from exc
+        tool2_dir = prepared_dir / "tool2"
+        return {
+            "status": "ok",
+            "version": VERSION,
+            "source": "arcgis-farmland-mpc",
+            "mode": "tool2_sample",
+            "prepared_dir": str(prepared_dir),
+            "out_dir": str(tool2_dir),
+            "summary": summary,
+            "artifacts": {
+                "transitions_npz": "tool2/transitions.npz"
+                if (tool2_dir / "transitions.npz").exists()
+                else None,
+                "pairwise_npz": "tool2/pairwise.npz"
+                if (tool2_dir / "pairwise.npz").exists()
+                else None,
+                "sample_summary": "tool2/sample_transitions_summary.json"
+                if (tool2_dir / "sample_transitions_summary.json").exists()
+                else None,
+                "sample_log": "tool2/sample_transitions.log"
+                if (tool2_dir / "sample_transitions.log").exists()
+                else None,
+            },
+        }
+
+    def run_train(self, payload: dict[str, Any], user_id: str) -> dict[str, Any]:
+        """Run Paper9 Tool 3 contrastive ensemble training and ONNX export."""
+        self._ensure_proj_data_dir()
+        train_run = self._load_paper9_train_run()
+        prepared_dir = self._required_existing_dir(payload, "prepared_dir")
+        out_subdir = str(payload.get("out_subdir") or "tool3").strip() or "tool3"
+        kwargs = {
+            "prepared_dir": str(prepared_dir),
+            "n_members": self._int_range(payload, "n_members", 3, 1, 20),
+            "epochs": self._int_range(payload, "epochs", 30, 1, 1000),
+            "patience": self._int_range(payload, "patience", 8, 1, 1000),
+            "lambda_rank": self._optional_float(payload, "lambda_rank")
+            if payload.get("lambda_rank") not in (None, "")
+            else 5.0,
+            "margin": self._optional_float(payload, "margin")
+            if payload.get("margin") not in (None, "")
+            else 0.1,
+            "batch_size": self._int_range(payload, "batch_size", 256, 1, 100000),
+            "n_pairs_per_state": self._int_range(
+                payload, "n_pairs_per_state", 10, 1, 10000
+            ),
+            "pw_subsample": self._int_range(payload, "pw_subsample", 100, 1, 100000),
+            "lr": self._optional_float(payload, "lr")
+            if payload.get("lr") not in (None, "")
+            else 1e-3,
+            "weight_decay": self._optional_float(payload, "weight_decay")
+            if payload.get("weight_decay") not in (None, "")
+            else 1e-5,
+            "val_split": self._optional_float(payload, "val_split")
+            if payload.get("val_split") not in (None, "")
+            else 0.1,
+            "seed_base": self._int_range(payload, "seed_base", 0, 0, 1_000_000),
+            "torch_threads": self._int_range(payload, "torch_threads", 0, 0, 128),
+            "out_subdir": out_subdir,
+        }
+        try:
+            summary = train_run(**kwargs)
+        except Exception as exc:
+            raise WorldModelV21UnavailableError(str(exc)) from exc
+        ensemble_dir = prepared_dir / out_subdir
+        return {
+            "status": "ok",
+            "version": VERSION,
+            "source": "arcgis-farmland-mpc",
+            "mode": "tool3_train",
+            "prepared_dir": str(prepared_dir),
+            "ensemble_dir": str(ensemble_dir),
+            "onnx_member_count": len(self.find_onnx_members(ensemble_dir)),
+            "summary": summary,
+            "artifacts": {
+                "train_summary": f"{out_subdir}/train_summary.json"
+                if (ensemble_dir / "train_summary.json").exists()
+                else None,
+                "train_log": f"{out_subdir}/train.log"
+                if (ensemble_dir / "train.log").exists()
+                else None,
+                "onnx_members": [
+                    f"{out_subdir}/{p.name}" for p in self.find_onnx_members(ensemble_dir)
+                ],
+            },
+        }
+
+    def run_pipeline(self, payload: dict[str, Any], user_id: str) -> dict[str, Any]:
+        """Run or reuse the A->B->C->D World Model v2.1 pipeline."""
+        reuse_existing = bool(payload.get("reuse_existing", True))
+        run_prepare = bool(payload.get("run_prepare", True))
+        run_sample = bool(payload.get("run_sample", True))
+        run_train = bool(payload.get("run_train", True))
+        run_plan = bool(payload.get("run_plan", True))
+        steps: list[dict[str, Any]] = []
+
+        prepared_dir = Path(str(payload.get("prepared_dir") or "").strip()) if payload.get("prepared_dir") else None
+        if run_prepare:
+            if reuse_existing and prepared_dir and self._prepared_ready(prepared_dir):
+                steps.append({"step": "prepare", "status": "skipped_reused", "prepared_dir": str(prepared_dir)})
+            else:
+                prepare_payload = dict(payload)
+                prepare_result = self.run_prepare(prepare_payload, user_id=user_id)
+                steps.append({"step": "prepare", **prepare_result})
+                prepared_dir = Path(prepare_result["prepared_dir"])
+        elif prepared_dir is None:
+            raise WorldModelV21ValidationError("prepared_dir is required when run_prepare=false")
+
+        assert prepared_dir is not None
+        if run_sample:
+            if reuse_existing and self._sample_ready(prepared_dir):
+                steps.append({"step": "sample", "status": "skipped_reused", "prepared_dir": str(prepared_dir)})
+            else:
+                sample_payload = dict(payload)
+                sample_payload["prepared_dir"] = str(prepared_dir)
+                steps.append({"step": "sample", **self.run_sample(sample_payload, user_id=user_id)})
+
+        ensemble_dir = Path(str(payload.get("ensemble_dir") or "").strip()) if payload.get("ensemble_dir") else None
+        if run_train:
+            if reuse_existing and ensemble_dir and self.find_onnx_members(ensemble_dir):
+                steps.append({"step": "train", "status": "skipped_reused", "ensemble_dir": str(ensemble_dir)})
+            else:
+                train_payload = dict(payload)
+                train_payload["prepared_dir"] = str(prepared_dir)
+                train_result = self.run_train(train_payload, user_id=user_id)
+                steps.append({"step": "train", **train_result})
+                ensemble_dir = Path(train_result["ensemble_dir"])
+        elif ensemble_dir is None:
+            raise WorldModelV21ValidationError("ensemble_dir is required when run_train=false")
+
+        plan_result = None
+        if run_plan:
+            if ensemble_dir is None:
+                raise WorldModelV21ValidationError("ensemble_dir is required for run_plan")
+            plan_payload = dict(payload)
+            plan_payload["prepared_dir"] = str(prepared_dir)
+            plan_payload["ensemble_dir"] = str(ensemble_dir)
+            plan_result = self.run_plan(plan_payload, user_id=user_id)
+            steps.append({"step": "plan", **plan_result})
+
+        return {
+            "status": "ok",
+            "version": VERSION,
+            "source": "arcgis-farmland-mpc",
+            "mode": "pipeline_a_to_d",
+            "prepared_dir": str(prepared_dir),
+            "ensemble_dir": str(ensemble_dir) if ensemble_dir else None,
+            "steps": steps,
+            "plan_result": plan_result,
         }
 
     def find_onnx_members(self, ensemble_dir: str | Path) -> list[Path]:
@@ -117,11 +357,11 @@ class WorldModelV21Service:
                 f"No ONNX ensemble members found under {ensemble_dir}"
             )
 
-        horizon = self._int_range(payload, "horizon", 5, 1, 20)
-        top_k = self._int_range(payload, "top_k", 50, 1, 500)
+        horizon = self._int_range(payload, "horizon", 1, 1, 20)
+        top_k = self._int_range(payload, "top_k", 1, 1, 500)
         n_episodes = self._int_range(payload, "n_episodes", 1, 1, 20)
 
-        continuation = str(payload.get("continuation", "random")).strip().lower()
+        continuation = str(payload.get("continuation", "greedy")).strip().lower()
         if continuation not in {"random", "greedy"}:
             raise WorldModelV21ValidationError(
                 "continuation must be 'random' or 'greedy'"
@@ -164,6 +404,7 @@ class WorldModelV21Service:
 
     def run_plan(self, payload: dict[str, Any], user_id: str) -> dict[str, Any]:
         """Run Paper9 Tool 4 MPC planning and return normalized JSON."""
+        self._ensure_proj_data_dir()
         cfg = self.validate_plan_request(payload)
         plan_run = self._load_paper9_plan_run()
         out_dir = self._new_output_dir(user_id)
@@ -259,11 +500,88 @@ class WorldModelV21Service:
                 "error": str(exc),
             }
 
+    def _ensure_proj_data_dir(self) -> str | None:
+        existing = os.environ.get("PROJ_DATA") or os.environ.get("PROJ_LIB")
+        if existing and (Path(existing) / "proj.db").exists():
+            os.environ["PROJ_DATA"] = existing
+            os.environ["PROJ_LIB"] = existing
+            try:
+                import pyproj
+
+                pyproj.datadir.set_data_dir(existing)
+            except Exception:
+                pass
+            return existing
+
+        pyver = f"python{sys.version_info.major}.{sys.version_info.minor}"
+        candidates = [
+            Path(sys.prefix) / "share" / "proj",
+            Path(sys.prefix)
+            / "lib"
+            / pyver
+            / "site-packages"
+            / "pyproj"
+            / "proj_dir"
+            / "share"
+            / "proj",
+            Path(sys.prefix) / "lib" / pyver / "site-packages" / "pyogrio" / "proj_data",
+            Path(sys.prefix) / "lib" / pyver / "site-packages" / "rasterio" / "proj_data",
+            Path(sys.base_prefix) / "share" / "proj",
+            Path("/usr/local/share/proj"),
+            Path("/usr/share/proj"),
+        ]
+        conda_prefix = os.environ.get("CONDA_PREFIX")
+        if conda_prefix:
+            candidates.append(Path(conda_prefix) / "share" / "proj")
+        candidates.extend([
+            Path.home() / "miniconda3" / "envs" / "farmland-mpc" / "share" / "proj",
+            Path.home() / "miniconda3" / "share" / "proj",
+        ])
+
+        for candidate in candidates:
+            if not (candidate / "proj.db").exists():
+                continue
+            value = str(candidate)
+            os.environ["PROJ_DATA"] = value
+            os.environ["PROJ_LIB"] = value
+            try:
+                import pyproj
+
+                pyproj.datadir.set_data_dir(value)
+            except Exception:
+                pass
+            return value
+        return None
+
     def _load_paper9_plan_run(self):
         info = self._import_paper9()
         if not info["importable"]:
             raise WorldModelV21UnavailableError(info["error"] or "Paper9 import failed")
         from farmland_mpc.mpc_plan import run
+
+        return run
+
+    def _load_paper9_prepare_run(self):
+        info = self._import_paper9()
+        if not info["importable"]:
+            raise WorldModelV21UnavailableError(info["error"] or "Paper9 import failed")
+        from farmland_mpc.prepare import run
+
+        return run
+
+    def _load_paper9_sample_run(self):
+        info = self._import_paper9()
+        if not info["importable"]:
+            raise WorldModelV21UnavailableError(info["error"] or "Paper9 import failed")
+        from farmland_mpc.sample import run
+
+        return run
+
+    def _load_paper9_train_run(self):
+        info = self._import_paper9()
+        if not info["importable"]:
+            raise WorldModelV21UnavailableError(info["error"] or "Paper9 import failed")
+        from farmland_mpc.train_ensemble import run
 
         return run
 
@@ -337,10 +655,8 @@ class WorldModelV21Service:
             warnings.append(f"restoration attributes not found: {attrs_path}")
             return None
         try:
-            import geopandas as gpd
             import numpy as np
             import pandas as pd
-            from shapely.geometry import box
 
             attrs = pd.read_csv(attrs_path)
             selected = np.load(land_use_npy)
@@ -358,10 +674,14 @@ class WorldModelV21Service:
             cell_lng = 0.0225
             cell_lat = 0.0180
 
-            geometries = []
-            selected_values = []
-            labels = []
-            opt_codes = []
+            def jsonable(value: Any) -> Any:
+                if pd.isna(value):
+                    return None
+                if hasattr(value, "item"):
+                    return value.item()
+                return value
+
+            features = []
             for idx, row in attrs.iterrows():
                 r = int(row["row"])
                 c = int(row["col"])
@@ -369,22 +689,42 @@ class WorldModelV21Service:
                 max_lng = min_lng + cell_lng
                 min_lat = origin_lat + (max_row - r) * cell_lat
                 max_lat = min_lat + cell_lat
-                geometries.append(box(min_lng, min_lat, max_lng, max_lat))
                 is_selected = int(selected[idx]) == 1
-                selected_values.append(1 if is_selected else 0)
-                labels.append("selected" if is_selected else "not_selected")
-                opt_codes.append("031" if is_selected else "011")
+                properties = {
+                    str(key): jsonable(value)
+                    for key, value in row.to_dict().items()
+                }
+                properties.update({
+                    "selected": 1 if is_selected else 0,
+                    "selected_label": "selected" if is_selected else "not_selected",
+                    "OPT_DLBM": "031" if is_selected else "011",
+                })
+                features.append({
+                    "type": "Feature",
+                    "properties": properties,
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[
+                            [min_lng, min_lat],
+                            [max_lng, min_lat],
+                            [max_lng, max_lat],
+                            [min_lng, max_lat],
+                            [min_lng, min_lat],
+                        ]],
+                    },
+                })
 
-            gdf = gpd.GeoDataFrame(
-                attrs.copy(),
-                geometry=geometries,
-                crs="EPSG:4326",
-            )
-            gdf["selected"] = selected_values
-            gdf["selected_label"] = labels
-            gdf["OPT_DLBM"] = opt_codes
             out_path = out_dir / "restoration_mpc_units.geojson"
-            gdf.to_file(out_path, driver="GeoJSON")
+            payload = {
+                "type": "FeatureCollection",
+                "name": "restoration_mpc_units",
+                "crs": {
+                    "type": "name",
+                    "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"},
+                },
+                "features": features,
+            }
+            out_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             return out_path
         except Exception as exc:
             warnings.append(f"restoration grid map failed: {exc}")
@@ -397,20 +737,52 @@ class WorldModelV21Service:
             layer_ref = {
                 "type": "fgb",
                 "fgb": rel_path,
-                "category_column": "OPT_DLBM",
+                "category_column": "CHG_FLAG",
+                "category_labels": {
+                    "0": "保持不变",
+                    "1": "耕地 -> 林地",
+                    "2": "林地 -> 耕地",
+                },
                 "style_map": {
-                    "011": {
-                        "fillColor": "#FFD166",
-                        "color": "#B7791F",
-                        "fillOpacity": 0.7,
-                        "weight": 0.4,
+                    "0": {
+                        "fillColor": "#CBD5E1",
+                        "color": "#94A3B8",
+                        "fillOpacity": 0.12,
+                        "weight": 0.1,
                     },
-                    "031": {
-                        "fillColor": "#2F855A",
-                        "color": "#276749",
-                        "fillOpacity": 0.7,
-                        "weight": 0.4,
+                    "1": {
+                        "fillColor": "#DC2626",
+                        "color": "#991B1B",
+                        "fillOpacity": 0.88,
+                        "weight": 0.75,
                     },
+                    "2": {
+                        "fillColor": "#16A34A",
+                        "color": "#166534",
+                        "fillOpacity": 0.88,
+                        "weight": 0.75,
+                    },
+                },
+                "legend_title": "耕地空间布局优化",
+                "tooltip_fields": [
+                    "CHG_FLAG",
+                    "ORIG_DLBM",
+                    "DLBM",
+                    "DLMC",
+                    "OPT_DLBM",
+                    "OPT_DLMC",
+                    "slope_mean",
+                    "TBMJ",
+                ],
+                "tooltip_labels": {
+                    "CHG_FLAG": "变化",
+                    "ORIG_DLBM": "原地类码",
+                    "DLBM": "当前地类码",
+                    "DLMC": "当前地类名",
+                    "OPT_DLBM": "优化后地类码",
+                    "OPT_DLMC": "优化后地类名",
+                    "slope_mean": "平均坡度",
+                    "TBMJ": "图斑面积",
                 },
             }
         else:
@@ -436,11 +808,12 @@ class WorldModelV21Service:
                         "weight": 0.25,
                     },
                 },
+                "legend_title": "生态修复单元",
             }
         return {
             "layers": [
                 {
-                    "name": "World Model v2.1 optimized",
+                    "name": "World Model v2.1 优化结果",
                     "visible": True,
                     **layer_ref,
                 }
@@ -530,6 +903,60 @@ class WorldModelV21Service:
         if not path.is_dir():
             raise WorldModelV21ValidationError(f"{key} not found: {path}")
         return path
+
+    def _required_existing_file(self, payload: dict[str, Any], key: str) -> Path:
+        raw = str(payload.get(key, "")).strip()
+        if not raw:
+            raise WorldModelV21ValidationError(f"{key} is required")
+        path = Path(raw)
+        if not path.is_file():
+            raise WorldModelV21ValidationError(f"{key} not found: {path}")
+        return path
+
+    def _optional_output_dir(
+        self,
+        payload: dict[str, Any],
+        key: str,
+        user_id: str,
+        default_leaf: str,
+    ) -> Path:
+        raw = str(payload.get(key, "")).strip()
+        if raw:
+            path = Path(raw)
+            path.mkdir(parents=True, exist_ok=True)
+            return path
+        out_dir = self._new_output_dir(user_id) / default_leaf
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return out_dir
+
+    def _read_json(self, path: Path) -> dict[str, Any]:
+        if not path.exists():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def _relative_to(self, path: str | Path, root: str | Path) -> str:
+        try:
+            return Path(path).resolve().relative_to(Path(root).resolve()).as_posix()
+        except Exception:
+            return str(path)
+
+    def _prepared_ready(self, prepared_dir: Path) -> bool:
+        return (
+            prepared_dir.is_dir()
+            and (prepared_dir / "dem_slope_analysis" / "output" / "DLTB_with_slope.shp").exists()
+            and (prepared_dir / "townships.json").exists()
+        )
+
+    def _sample_ready(self, prepared_dir: Path) -> bool:
+        tool2 = prepared_dir / "tool2"
+        return (
+            tool2.is_dir()
+            and (tool2 / "transitions.npz").exists()
+            and (tool2 / "pairwise.npz").exists()
+        )
 
     def _int_range(
         self,
