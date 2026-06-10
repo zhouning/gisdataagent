@@ -50,6 +50,24 @@
 
 该结果是固定主机部署探针，不声称统计显著优于 31B。
 
+## 研究背景与算法来源
+
+本项目的三个演示场景不是孤立的 Agent UI 示例，而是把三个独立研究工程中的领域算法封装为 Gemma 4 可调用的工具、工作流和多智能体协作链路。Gemma 4 和 ADK 负责自然语言理解、工具选择、执行编排、结果解释和记忆沉淀；真正的业务难点来自空间优化、空间 SQL 语义 grounding 和县域级世界模型规划。
+
+| 演示场景 | 研究工程 | 对应论文和投稿状态 | 在 GIS Data Agent 中的落地 |
+|---|---|---|---|
+| 耕地空间布局优化 | [zhouning/farmland-drl-optimization](https://github.com/zhouning/farmland-drl-optimization) | *Constrained Farmland Layout Optimization under Cultivated-Land Balance: A Two-Site Test of Dimension-Invariant Reinforcement Learning*，已投稿 *Land Use Policy* | 无 `@` 数据发现后自动进入 `Farmland Optimization Workflow`，调用 `drl_model` 和 `visualize_interactive_map`，输出优化后矢量、PNG、地图图层和 PDF 报告 |
+| NL2Semantic2SQL | [zhouning/nl2geosql-reproduction](https://github.com/zhouning/nl2geosql-reproduction) | *Schema-Aware Grounding Effects in PostGIS Natural-Language-to-SQL: A Subset-Decomposed Evaluation Across Eleven LLMs*，已投稿 *Computers & Geosciences* | `@NL2SQL` 触发 `run_nl2semantic2sql`，将中文空间问题映射到语义层、schema grounding、PostGIS SQL 生成和只读执行护栏 |
+| WorldModel v2.1 | [zhouning/arcgis-farmland-mpc](https://github.com/zhouning/arcgis-farmland-mpc) | *Reproducible model-based AI planning for county-scale farmland consolidation in fragmented mountain landscapes*，已投稿 Nature Portfolio 子刊 *Communications Earth & Environment* | `@WorldModelV21` 触发 `world_model_v21_status -> world_model_v21_pipeline`，把 Prepare / Sample / Train / Plan 四阶段封装为可复用的县域 MPC 规划工具链 |
+
+三个场景对应的技术难点分别是：
+
+- 耕地空间布局优化：在退坡还林、耕地占补平衡和地块连通性之间做约束优化，核心不是普通分类，而是带空间邻接结构和政策约束的地块级决策。
+- NL2Semantic2SQL：在中文自然语言、语义层、PostGIS schema、空间谓词和 `geometry/geography` 单位语义之间建立 grounding，避免大模型把空间查询降级为普通 SQL。
+- WorldModel v2.1：把县域地块状态转移学习成可用于 MPC 的世界模型，用已训练 ensemble 支撑快速规划，并通过 GIS 产物验证坡度、连通性和面积变化。
+
+这意味着比赛演示的重点不是“把一个大模型接到几个函数上”，而是验证 Gemma 4 是否能稳定调用已经具备研究深度的 GIS 算法系统，并把真实数据、空间数据库、模型推理、规划输出、可视化和报告生成串成可解释的端到端工作流。
+
 ## 核心场景
 
 ### 1. 无 @ 数据发现与耕地空间布局优化
