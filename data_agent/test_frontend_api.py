@@ -500,6 +500,29 @@ class TestAgentRunLogsAPI(unittest.TestCase):
             "2026-06-10T10:59:35+08:00",
         )
 
+    def test_agent_run_logs_do_not_shift_local_end_time_to_next_day(self):
+        from data_agent.frontend_api import _summarize_step
+
+        row = (
+            "a1",
+            "Data Agent",
+            "assistant_message",
+            "thread-1",
+            None,
+            None,
+            "完成",
+            {},
+            datetime(2026, 6, 10, 20, 0, 33),
+            datetime(2026, 6, 10, 12, 0, 33),
+            datetime(2026, 6, 10, 20, 0, 33),
+        )
+
+        step = _summarize_step(row)
+
+        self.assertEqual(step["created_at"], "2026-06-10T20:00:33+08:00")
+        self.assertEqual(step["start_time"], "2026-06-10T20:00:33+08:00")
+        self.assertEqual(step["end_time"], "2026-06-10T20:00:33+08:00")
+
     @patch("data_agent.frontend_api.get_engine")
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_agent_run_logs_summarize_thread_steps(self, mock_user, mock_engine_fn):

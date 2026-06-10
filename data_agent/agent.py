@@ -358,6 +358,80 @@ data_pipeline = SequentialAgent(
     ],
 )
 
+# Dedicated workflow for farmland/land-use layout optimization.
+# This is intentionally narrower than the generic Optimization Pipeline: the
+# analysis stage only exposes drl_model, so land-use optimization prompts cannot
+# drift into LISA/Moran diagnostic tools.
+farmland_data_agent = LlmAgent(
+    name="FarmlandDataPreparation",
+    instruction=(
+        "你是耕地空间布局优化专用数据准备智能体。你的任务是找到用户指定的数据文件，"
+        "并调用 describe_geodataframe 做快速画像。不要做 LISA、Moran、热点分析或治理审计。"
+        "如果用户只写了数据名称，例如“斑竹村10000”，请优先从用户上传目录或数据资产目录中"
+        "找到对应 .shp/.geojson/.gpkg 文件。输出必须包含一行：数据文件路径: <path>。"
+    ),
+    description="耕地优化专用数据准备",
+    model=_create_model_with_retry(MODEL_STANDARD),
+    output_key="farmland_data_profile",
+    tools=[
+        FileToolset(tool_filter=["list_user_files"]),
+        DataLakeToolset(tool_filter=_DATALAKE_READ),
+        ExplorationToolset(tool_filter=["describe_geodataframe"]),
+    ],
+)
+
+farmland_drl_agent = LlmAgent(
+    name="FarmlandDRLOptimizer",
+    instruction=(
+        "你是耕地空间布局优化专用 DRL 智能体。必须从前序输出中读取“数据文件路径”，"
+        "然后直接调用 drl_model(data_path)。禁止调用 FFI、LISA、Moran、热点分析、遥感、"
+        "因果推断或任何非 DRL 工具。输出必须逐字保留工具返回的 Conversions、Pairs、"
+        "Net Change、Result SHP 和 Visualization。"
+    ),
+    description="耕地优化专用 DRL 推理",
+    model=_create_model_with_retry(MODEL_STANDARD),
+    output_key="analysis_report",
+    tools=[AnalysisToolset(tool_filter=["drl_model"])],
+)
+
+farmland_visualization_agent = LlmAgent(
+    name="FarmlandOptimizationVisualizer",
+    instruction=(
+        "你是耕地空间布局优化专用可视化智能体。必须从前序输出中读取原始数据文件路径"
+        "和 drl_model 返回的 optimized_data_path/Result SHP，然后调用 "
+        "visualize_interactive_map(original_data_path, optimized_data_path) 生成优化前后"
+        "交互式对比地图。不要生成 LISA/Moran/热点图。"
+    ),
+    description="耕地优化专用对比地图",
+    model=_create_model_with_retry(MODEL_STANDARD),
+    output_key="visualizations",
+    tools=[VisualizationToolset(tool_filter=["visualize_interactive_map"])],
+)
+
+farmland_summary_agent = LlmAgent(
+    name="FarmlandOptimizationSummary",
+    instruction=(
+        "你是耕地空间布局优化专用总结智能体。只基于前序工具真实输出总结，不得编造"
+        "成对置换、面积守恒、坡度降低或连通性提升。必须保留 Conversions、Pairs、"
+        "Net Change 和所有产物路径。说明 drl_model 不移动地块边界，只输出优化后的"
+        "地类/类型字段。"
+    ),
+    description="耕地优化专用事实摘要",
+    model=_create_model_with_retry(MODEL_STANDARD),
+    output_key="final_summary",
+)
+
+farmland_optimization_pipeline = SequentialAgent(
+    name="FarmlandOptimizationPipeline",
+    description="耕地空间布局优化专用工作流：数据准备 → DRL 优化 → 对比地图 → 事实摘要。",
+    sub_agents=[
+        farmland_data_agent,
+        farmland_drl_agent,
+        farmland_visualization_agent,
+        farmland_summary_agent,
+    ],
+)
+
 # ============================================================================
 # Governance Pipeline
 # ============================================================================

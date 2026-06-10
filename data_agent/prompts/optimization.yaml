@@ -188,7 +188,8 @@ data_analysis_agent_instruction: |
   ## 核心职责 (Core Responsibilities)
   1.  **智能优化 (DRL Optimization)**:
       -   调用 `drl_model` 执行空间布局优化推理。
-      -   模型 (v7) 旨在通过 **成对置换 (Paired Swaps)** 策略优化布局。
+      -   模型 (v7) 的奖励函数鼓励成对置换，但**是否实际完成成对置换必须以工具返回的 `Pairs` 数值为准**。
+      -   `drl_model` 不移动地块边界，只在原始地块上输出优化后的地类/类型字段；不要写“边界移动”或“边界调整”。
   3.  **遥感分析 (Remote Sensing)**:
       -   栅格数据画像：调用 `describe_raster` 了解波段信息。
       -   NDVI计算：调用 `calculate_ndvi` 评估植被覆盖。
@@ -206,6 +207,7 @@ data_analysis_agent_instruction: |
 
   ## 输出结构
   -   如果执行了分析：展示 DRL 优化结果（优化前后地块类型变化、优化方案统计）。
+  -   必须逐字保留工具返回的 `Conversions`、`Pairs`、`Net Change`。若 `Pairs=0` 或 `Net Change` 不为 0，不得宣称“成对置换成功”“完美面积守恒”或“耕地总量平衡”。
   -   如果跳过：输出"已跳过深度分析"。
 
 data_visualization_agent_instruction: |
@@ -244,7 +246,10 @@ data_summary_agent_instruction: |
 
   ## 核心职责 (Core Responsibilities)
   1.  **方案评估**:
-      -   **场景 A**: 评估 DRL 优化效果（坡度降低 X%）。
+      -   **场景 A**: 评估 DRL 优化效果时必须引用工具返回的 `Conversions`、`Pairs`、`Net Change`，不得编造坡度降低比例、连片度提升或面积平衡结论。
+      -   如果 `Pairs=0`，必须明确写“本次运行未形成成对置换”，不能写“通过成对置换完成优化”。
+      -   如果 `Net Change` 不为 0，必须明确写“地类数量存在净变化”，不能写“完美面积守恒/总量平衡”。
+      -   `drl_model` 输出的是地类属性优化结果，不移动地块边界；不要写“地块边界移动/边界调整”。
       -   **场景 B**: 评估数据合规性（发现 X 处重叠，已修复 Y 处）。
       -   **新能力**: 如果有"图文对账"结果，必须在报告中单列一章 **"图文一致性核查"**。
   2.  **交付物清单**:
@@ -260,7 +265,7 @@ data_summary_agent_instruction: |
   ## 【必须】分析方法说明
   每份报告**必须**包含一个「分析方法」段落（放在执行摘要之后），说明：
   - 使用了什么分析方法（如 MaskablePPO 深度强化学习布局优化、拓扑检查等）
-  - 关键参数（如 DRL 训练轮次、置换策略、缓冲半径等）
+  - 关键参数和工具返回指标（如 `Conversions`、`Pairs`、`Net Change`、DRL 最大转换步数等）
   - 数据来源（如用户上传的 XX.shp、PostGIS 表 XX）
 
 quality_checker_instruction: |

@@ -399,14 +399,24 @@ def inject_context(query: str, task_type: str, user_context: dict | None = None)
 
 import re as _re
 
+_LEAK_START_RE = _re.compile(
+    r"(The user wants|The user specifies|The user provided context|The previous steps|"
+    r"The interactive map has been generated|Now I need|Key info to communicate|"
+    r"I should use|my task is|I need to|I will call|I will use|Parameters for|"
+    r"Title:|Section \d+:|Check against constraints)",
+    _re.IGNORECASE,
+)
+
 _COT_PATTERNS = _re.compile(
     r"(?:^|\n)"
     r"(?:"
     r"(?:让我|我来|我需要|我应该|我查看|我先|根据规则|根据返回|根据 grounding|不过根据|"
     r"所以我|实际上|用户想要|用户要求|用户想|用户问|用户明确|"
     r"不过，安全|不过，|现在我来|这涉及到|"
-    r"The user wants|The user specifies|The user provided context|The status check|Now, I will|I will proceed|"
-    r"I should use|Parameters for|Ah, I made a typo|Corrected parameters|Final Summary Data|"
+    r"The user wants|The user specifies|The user provided context|The previous steps|The status check|"
+    r"The interactive map has been generated|Now, I will|Now I need|I will proceed|Key info to communicate|"
+    r"I should use|my task is|I need to|I will call|I will use|Parameters for|Ah, I made a typo|"
+    r"Corrected parameters|Final Summary Data|"
     r"Step \d+:|Plan:|Call world_model|Provide a summary|Language:)"
     r"[^\n]{0,200}\n?"
     r")+",
@@ -418,6 +428,10 @@ _COT_PREFIXES = _re.compile(
     r"(?:让我|我来|我需要|我先)",
 )
 
+_FINAL_HEADER_RE = _re.compile(
+    r"(?m)^\s*(?:#{1,6}\s+\S|(?:📌\s*)?执行摘要(?:\s|$|[（(])|任务状态(?:\s|$|[:：]))"
+)
+
 
 def clean_cot_leakage(text: str) -> str:
     """Remove chain-of-thought reasoning leaked into model output."""
@@ -427,16 +441,40 @@ def clean_cot_leakage(text: str) -> str:
         "规划已完成",
         "NL2SQL 查询结果",
         "查询成功",
+        "已成功结项",
         "已成功完成。",
         "已检索到",
         "已成功将",
         "已保存记忆",
         "找到 ",
+        "📌 执行摘要",
     )
+
+    def _find_next_final_marker(search_text: str, start: int = 0) -> int:
+        marker_positions = []
+        for marker in final_markers:
+            pos = search_text.find(marker, start)
+            if pos >= start:
+                marker_positions.append(pos)
+        header_match = _FINAL_HEADER_RE.search(search_text, start)
+        if header_match:
+            marker_positions.append(header_match.start())
+        return min(marker_positions) if marker_positions else -1
+
     leak_markers = (
         "The user wants",
+        "The previous steps",
+        "The interactive map has been generated",
         "I should use",
+        "my task is",
+        "Now I need",
+        "Key info to communicate",
+        "I will call",
+        "I will use",
         "Parameters for",
+        "Title:",
+        "Section 1:",
+        "Check against constraints",
         "Plan:",
         "Step 1:",
         "Ah, I made a typo",
@@ -444,9 +482,20 @@ def clean_cot_leakage(text: str) -> str:
     )
     leak_detected = any(marker in text for marker in leak_markers)
     if leak_detected:
-        marker_positions = [text.find(marker) for marker in final_markers if text.find(marker) > 0]
-        if marker_positions:
-            text = text[min(marker_positions):]
+        while True:
+            leak_match = _LEAK_START_RE.search(text)
+            if not leak_match:
+                break
+            start = leak_match.start()
+            end = _find_next_final_marker(text, start + 1)
+            if end > start:
+                text = (text[:start].rstrip() + "\n" + text[end:].lstrip()).strip()
+            else:
+                text = text[:start].rstrip()
+                break
+        final_start = _find_next_final_marker(text, 1)
+        if final_start > 0:
+            text = text[final_start:]
     cleaned = _COT_PATTERNS.sub("\n", text)
     cleaned = _COT_PREFIXES.sub("", cleaned)
     skip_prefixes = (
@@ -475,3 +524,190 @@ def clean_cot_leakage(text: str) -> str:
     if len(result.strip()) < 10 and len(text.strip()) > 10 and not leak_detected:
         return text
     return result
+
+
+def should_force_drl_optimization(prompt: str) -> bool:
+    """Return True for land-use/farmland layout optimization requests."""
+    text = prompt or ""
+    lower = text.lower()
+    has_optimization = "优化" in text or "optimization" in lower
+    if not has_optimization:
+        return False
+    domain_markers = (
+        "耕地",
+        "农田",
+        "土地利用",
+        "地类",
+        "空间布局",
+        "布局优化",
+        "land use",
+        "farmland",
+    )
+    return any(marker in lower if marker.isascii() else marker in text for marker in domain_markers)
+
+
+def find_drl_optimization_input_path(
+    prompt: str,
+    response_text: str = "",
+    uploaded_files: list | None = None,
+) -> str:
+    """Find the best source vector dataset for mandatory DRL fallback.
+
+    The LLM may mention only a basename such as ``斑竹村10000.shp`` while the
+    real file lives in a nested upload directory. This resolver prefers user-
+    requested source datasets over generated analysis outputs such as LISA or
+    optimized shapefiles.
+    """
+    import os
+    import re
+
+    try:
+        from data_agent.gis_processors import _resolve_path
+        from data_agent.user_context import get_user_upload_dir
+    except Exception:
+        return ""
+
+    spatial_exts = (".shp", ".geojson", ".gpkg")
+    generated_prefixes = (
+        "optimized_",
+        "lisa_",
+        "moran_",
+        "hotspot_",
+        "choropleth_",
+        "interactive_",
+        "buffer_",
+        "clip_",
+    )
+    haystack = "\n".join([prompt or "", response_text or ""])
+    raw_candidates: list[str] = []
+
+    path_pattern = re.compile(
+        r"(?P<path>(?:[A-Za-z]:\\|/)?[^\s`'\"<>|?*]+?\.(?:shp|geojson|gpkg))",
+        re.IGNORECASE,
+    )
+    for match in path_pattern.finditer(haystack):
+        raw_candidates.append(match.group("path").rstrip("，。；;、)）]】"))
+
+    for item in uploaded_files or []:
+        for attr in ("path", "name"):
+            val = getattr(item, attr, None)
+            if val:
+                raw_candidates.append(str(val))
+
+    try:
+        user_dir = get_user_upload_dir()
+        for root, dirs, files in os.walk(user_dir):
+            depth = root[len(user_dir):].count(os.sep)
+            if depth >= 4:
+                dirs.clear()
+            for fname in files:
+                if fname.lower().endswith(spatial_exts):
+                    raw_candidates.append(os.path.join(root, fname))
+    except Exception:
+        user_dir = ""
+
+    prompt_tokens = []
+    for tok in re.findall(r"[\u4e00-\u9fffA-Za-z0-9_]+", prompt or ""):
+        if len(tok) >= 3:
+            prompt_tokens.append(tok.lower())
+
+    best_path = ""
+    best_score = -10_000
+    seen = set()
+    for candidate in raw_candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        if not candidate.lower().endswith(spatial_exts):
+            continue
+        resolved = _resolve_path(candidate)
+        if not (resolved and os.path.exists(resolved)):
+            continue
+
+        basename = os.path.basename(resolved)
+        stem = os.path.splitext(basename)[0]
+        comparable = resolved.lower()
+        score = 0
+        if stem and stem in (prompt or ""):
+            score += 120
+        if basename and basename in haystack:
+            score += 80
+        for token in prompt_tokens:
+            if token in comparable:
+                score += 40
+        if user_dir and os.path.realpath(resolved).startswith(os.path.realpath(user_dir) + os.sep):
+            score += 20
+        if basename.lower().startswith(generated_prefixes):
+            score -= 120
+        if re.search(r"_[0-9a-f]{8}$", stem, re.IGNORECASE):
+            score -= 20
+        if score > best_score:
+            best_score = score
+            best_path = resolved
+
+    return best_path
+
+
+def format_drl_optimization_result_for_chat(tool_result: dict, artifacts: list[str] | None = None) -> str:
+    """Build a factual chat summary from a drl_model tool response."""
+    if not isinstance(tool_result, dict):
+        return ""
+
+    summary = str(tool_result.get("summary") or "")
+    conversions = pairs = net_change = None
+    for line in summary.splitlines():
+        key, sep, value = line.partition(":")
+        if not sep:
+            continue
+        key = key.strip().lower()
+        value = value.strip()
+        if key == "conversions":
+            conversions = value
+        elif key == "pairs":
+            pairs = value
+        elif key == "net change":
+            net_change = value
+
+    optimized_path = tool_result.get("optimized_data_path") or ""
+    map_path = tool_result.get("output_path") or ""
+    html_paths = [
+        p for p in (artifacts or [])
+        if isinstance(p, str) and p.lower().endswith(".html")
+    ]
+
+    lines = [
+        "已完成耕地空间布局优化分析。",
+        "",
+        "### 分析方法",
+        "使用 `drl_model` 深度强化学习工具对输入地块进行地类属性优化。该工具在原始地块几何上输出优化后的类型字段，不移动地块边界。",
+        "",
+        "### DRL 工具实测指标",
+    ]
+    if conversions is not None:
+        lines.append(f"- Conversions: {conversions}")
+    if pairs is not None:
+        pair_note = "（本次运行未形成成对置换）" if pairs in {"0", "0.0"} else ""
+        lines.append(f"- Pairs: {pairs}{pair_note}")
+    if net_change is not None:
+        net_note = "" if net_change in {"0", "0.0", "+0"} else "（存在地类数量净变化，不代表总量平衡）"
+        lines.append(f"- Net Change: {net_change}{net_note}")
+
+    lines.extend([
+        "",
+        "### 交付物",
+    ])
+    if optimized_path:
+        lines.append(f"- 优化后矢量数据: `{optimized_path}`")
+    if map_path:
+        lines.append(f"- 优化结果 PNG: `{map_path}`")
+    for path in html_paths[:3]:
+        lines.append(f"- 交互式地图: `{path}`")
+
+    lines.extend([
+        "",
+        "### 解读口径",
+        "- 如果 `Pairs=0`，只能说明本次运行完成了地类转换，不能按配对交换结果解读。",
+        "- 如果 `Net Change` 不为 0，说明地类数量存在净变化，不能按总量平衡结果解读。",
+        "- 右侧地图和 PNG 用于查看优化前后地类属性变化。"
+    ])
+    return "\n".join(lines)

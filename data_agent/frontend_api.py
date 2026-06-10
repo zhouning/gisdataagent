@@ -89,6 +89,38 @@ def _iso_local(value, *, assume_utc: bool = False) -> str | None:
     return str(value)
 
 
+def _looks_like_utc_naive_step_time(value, created_at) -> bool:
+    """Detect Chainlit Step start/end values stored as UTC-naive timestamps.
+
+    In the Chainlit tables used here, Step.createdAt is stored as local-naive
+    time after the compose TZ fix, while Step.startTime/endTime may still be
+    UTC-naive. Some endTime values are already local-naive, so blindly adding
+    the local offset can push records into the next day.
+    """
+    if not isinstance(value, datetime) or value.tzinfo is not None:
+        return False
+    if not isinstance(created_at, datetime) or created_at.tzinfo is not None:
+        return False
+    try:
+        local_tz = _local_tz()
+        offset = created_at.replace(tzinfo=local_tz).utcoffset()
+    except Exception:
+        return False
+    if not offset:
+        return False
+    delta_seconds = (created_at - value).total_seconds()
+    offset_seconds = offset.total_seconds()
+    # Allow normal step/pipeline duration skew around the 8h UTC/local gap.
+    return abs(delta_seconds - offset_seconds) <= 4 * 60 * 60
+
+
+def _iso_step_time(value, created_at) -> str | None:
+    return _iso_local(
+        value,
+        assume_utc=_looks_like_utc_naive_step_time(value, created_at),
+    )
+
+
 def _preview_text(value, limit: int = 240) -> str:
     """Return a compact, single-line preview safe for UI log tables."""
     text_value = _clean_log_text(value)
@@ -1318,8 +1350,8 @@ def _summarize_step(row) -> dict:
         "thread_id": row[3],
         "parent_id": row[4],
         "created_at": _iso_local(row[8]),
-        "start_time": _iso_local(row[9], assume_utc=True),
-        "end_time": _iso_local(row[10], assume_utc=True),
+        "start_time": _iso_step_time(row[9], row[8]),
+        "end_time": _iso_step_time(row[10], row[8]),
         "input": _full_text(row[5]),
         "output": _full_text(row[6]),
         "output_preview": _preview_text(row[6], 360),

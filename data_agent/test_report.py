@@ -1,5 +1,6 @@
 from data_agent.report_generator import generate_word_report
 import os
+import zipfile
 
 test_md = """# 治理审计报告
 ## 1. 概述
@@ -30,3 +31,36 @@ def test():
 
 if __name__ == "__main__":
     test()
+
+
+def test_word_report_embeds_backticked_png_path(tmp_path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    image_path = tmp_path / "optimized_map_demo.png"
+    fig, ax = plt.subplots(figsize=(2, 1.5))
+    ax.plot([0, 1], [0, 1])
+    ax.set_title("demo")
+    fig.savefig(image_path, dpi=120)
+    plt.close(fig)
+
+    report_path = tmp_path / "report.docx"
+    markdown = f"""# 耕地空间布局优化分析报告
+
+优化结果 PNG: `{image_path}`
+"""
+
+    path = generate_word_report(
+        markdown,
+        str(report_path),
+        pipeline_type="farmland_optimization",
+    )
+
+    with zipfile.ZipFile(path) as docx_zip:
+        media_files = [
+            name for name in docx_zip.namelist()
+            if name.startswith("word/media/")
+        ]
+
+    assert media_files

@@ -129,6 +129,40 @@ class TestSubWorkflows(unittest.TestCase):
         self.assertIsNot(planner_explorer, wf_explorer)
 
 
+class TestFarmlandOptimizationWorkflow(unittest.TestCase):
+    """Tests for the dedicated farmland layout optimization workflow."""
+
+    def test_farmland_pipeline_structure(self):
+        from google.adk.agents import SequentialAgent
+        from data_agent.agent import farmland_optimization_pipeline
+
+        self.assertIsInstance(farmland_optimization_pipeline, SequentialAgent)
+        names = [a.name for a in farmland_optimization_pipeline.sub_agents]
+        self.assertEqual(names, [
+            "FarmlandDataPreparation",
+            "FarmlandDRLOptimizer",
+            "FarmlandOptimizationVisualizer",
+            "FarmlandOptimizationSummary",
+        ])
+
+    def test_farmland_drl_stage_only_exposes_drl_model(self):
+        from data_agent.agent import farmland_drl_agent
+        from data_agent.toolsets.analysis_tools import AnalysisToolset
+
+        self.assertEqual(len(farmland_drl_agent.tools), 1)
+        toolset = farmland_drl_agent.tools[0]
+        self.assertIsInstance(toolset, AnalysisToolset)
+        self.assertEqual(toolset.tool_filter, ["drl_model"])
+
+    def test_farmland_pipeline_excludes_spatial_statistics_toolset(self):
+        from data_agent.agent import farmland_optimization_pipeline
+        from data_agent.toolsets.spatial_statistics_tools import SpatialStatisticsToolset
+
+        for sub_agent in farmland_optimization_pipeline.sub_agents:
+            for tool in getattr(sub_agent, "tools", []):
+                self.assertNotIsInstance(tool, SpatialStatisticsToolset)
+
+
 class TestFactoryFunctions(unittest.TestCase):
     """Tests for planner agent factory functions."""
 

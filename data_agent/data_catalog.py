@@ -300,23 +300,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            result = conn.execute(text("""
-                INSERT INTO agent_data_assets
-                    (asset_name, display_name, owner_username, is_shared,
-                     technical_metadata, business_metadata,
-                     operational_metadata, lineage_metadata)
-                VALUES
-                    (:name, :display, :owner, false,
-                     CAST(:tech AS jsonb), CAST(:biz AS jsonb),
-                     CAST(:ops AS jsonb), CAST(:lineage AS jsonb))
-                ON CONFLICT (asset_name, owner_username)
-                DO UPDATE SET
-                    technical_metadata = EXCLUDED.technical_metadata,
-                    operational_metadata = EXCLUDED.operational_metadata,
-                    lineage_metadata = EXCLUDED.lineage_metadata,
-                    updated_at = NOW()
-                RETURNING id
-            """), {
+            params = {
                 "name": asset_name,
                 "display": asset_name,
                 "owner": owner,
@@ -324,8 +308,38 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                 "biz": json.dumps(business),
                 "ops": json.dumps(operational),
                 "lineage": json.dumps(lineage),
-            })
+            }
+            result = conn.execute(text("""
+                UPDATE agent_data_assets
+                SET display_name = :display,
+                    is_shared = false,
+                    technical_metadata = CAST(:tech AS jsonb),
+                    business_metadata = CAST(:biz AS jsonb),
+                    operational_metadata = CAST(:ops AS jsonb),
+                    lineage_metadata = CAST(:lineage AS jsonb),
+                    updated_at = NOW()
+                WHERE id = (
+                    SELECT id FROM agent_data_assets
+                    WHERE asset_name = :name AND owner_username = :owner
+                    ORDER BY updated_at DESC NULLS LAST, id DESC
+                    LIMIT 1
+                )
+                RETURNING id
+            """), params)
             row = result.fetchone()
+            if not row:
+                result = conn.execute(text("""
+                    INSERT INTO agent_data_assets
+                        (asset_name, display_name, owner_username, is_shared,
+                         technical_metadata, business_metadata,
+                         operational_metadata, lineage_metadata)
+                    VALUES
+                        (:name, :display, :owner, false,
+                         CAST(:tech AS jsonb), CAST(:biz AS jsonb),
+                         CAST(:ops AS jsonb), CAST(:lineage AS jsonb))
+                    RETURNING id
+                """), params)
+                row = result.fetchone()
             conn.commit()
             asset_id = row[0] if row else None
 
@@ -339,7 +353,7 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                 )
                 conn.execute(text(
                     "UPDATE agent_data_assets SET asset_code = :code "
-                    "WHERE id = :id AND asset_code IS NULL"
+                    "WHERE id = :id AND (asset_code IS NULL OR asset_code = '')"
                 ), {"code": code, "id": asset_id})
                 conn.commit()
 

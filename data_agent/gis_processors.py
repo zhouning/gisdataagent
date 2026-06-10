@@ -73,6 +73,13 @@ def _resolve_path(file_path: str) -> str:
         return os.path.abspath(file_path)
     # Check in user's upload folder first
     user_dir = get_user_upload_dir()
+    real_user_dir = os.path.realpath(user_dir)
+    user_relative_path = os.path.realpath(os.path.join(user_dir, file_path))
+    if (
+        (user_relative_path.startswith(real_user_dir + os.sep) or user_relative_path == real_user_dir)
+        and os.path.exists(user_relative_path)
+    ):
+        return user_relative_path
     user_path = os.path.join(user_dir, os.path.basename(file_path))
     if os.path.exists(user_path):
         return user_path

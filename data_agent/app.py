@@ -66,6 +66,7 @@ try:
         governance_pipeline,
         general_pipeline,
         data_pipeline,
+        farmland_optimization_pipeline,
         planner_agent,
         _load_spatial_data,
         _generate_upload_preview,
@@ -75,6 +76,7 @@ try:
     if _LITE_MODE:
         governance_pipeline = None
         data_pipeline = None
+        farmland_optimization_pipeline = None
         logger.info("[Lite] Running in Lite mode — only General Pipeline available")
     from data_agent.report_generator import generate_word_report
     from data_agent.user_context import (
@@ -115,6 +117,7 @@ except ImportError:
     governance_pipeline = agent.governance_pipeline
     general_pipeline = agent.general_pipeline
     data_pipeline = agent.data_pipeline
+    farmland_optimization_pipeline = getattr(agent, "farmland_optimization_pipeline", None)
     planner_agent = agent.planner_agent
     _load_spatial_data = agent._load_spatial_data
     _generate_upload_preview = agent._generate_upload_preview
@@ -155,8 +158,9 @@ try:
     ensure_kb_tables()
     from data_agent.user_tools import ensure_user_tools_table
     ensure_user_tools_table()
-    from data_agent.workflow_templates import ensure_workflow_template_tables
+    from data_agent.workflow_templates import ensure_workflow_template_tables, seed_builtin_templates
     ensure_workflow_template_tables()
+    seed_builtin_templates()
     from data_agent.custom_skill_bundles import ensure_skill_bundles_table
     ensure_skill_bundles_table()
     from data_agent.virtual_sources import ensure_virtual_sources_table
@@ -1168,6 +1172,10 @@ AGENT_LABELS = {
     "DataAnalysis": "空间分析与优化",
     "DataVisualization": "生成可视化",
     "DataSummary": "生成分析报告",
+    "FarmlandDataPreparation": "耕地优化数据准备",
+    "FarmlandDRLOptimizer": "DRL 布局优化",
+    "FarmlandOptimizationVisualizer": "优化对比地图",
+    "FarmlandOptimizationSummary": "生成事实摘要",
     "GovExploration": "数据质量审计",
     "GovProcessing": "数据修复",
     "GovernanceReporter": "生成治理报告",
@@ -1608,6 +1616,12 @@ PIPELINE_STAGES = {
     "optimization": [
         "DataIngestion", "DataAnalysis", "DataVisualization", "DataSummary",
     ],
+    "farmland_optimization": [
+        "FarmlandDataPreparation",
+        "FarmlandDRLOptimizer",
+        "FarmlandOptimizationVisualizer",
+        "FarmlandOptimizationSummary",
+    ],
     "governance": ["GovExploration", "GovProcessing", "GovernanceReporter"],
     "general": ["GeneralProcessing", "GeneralViz", "GeneralSummary"],
 }
@@ -1737,6 +1751,9 @@ async def _execute_pipeline(
     _final_chart_updates = []   # accumulated chart configs
     _world_model_v21_result = None
     _world_model_v21_args = None
+    _drl_optimization_result = None
+    _drl_optimization_args = None
+    _drl_comparison_map_seen = False
     current_agent_name = None
     current_agent_step = None
     current_tool_step = None
@@ -1748,6 +1765,14 @@ async def _execute_pipeline(
     _tool_step_counter = 0
     _pending_tool_call = None
     stage_timings = []
+    _buffer_text_until_clean = pipeline_type in {
+        "sub_agent_direct",
+        "general",
+        "planner",
+        "optimization",
+        "farmland_optimization",
+        "governance",
+    }
     progress_msg = cl.Message(content=_build_progress_content(
         pipeline_name, pipeline_type, stages, stage_timings))
     await progress_msg.send()
@@ -1892,6 +1917,8 @@ async def _execute_pipeline(
                                         if _mc:
                                             _pending_map_update = _mc
                                             _final_map_update = _mc
+                                            if current_tool_name == "visualize_interactive_map":
+                                                _drl_comparison_map_seen = True
                                     elif _ta['type'] == 'png':
                                         _pending_elements.append(cl.Image(path=_ta_path, name=_ta_name, display="inline"))
                                         shown_artifacts.add(_ta_path)
@@ -1924,6 +1951,8 @@ async def _execute_pipeline(
                                 _pending_map_update = _direct_mu
                                 _final_map_update = _direct_mu
                                 logger.info("[MapUpdateDirect] Injected map_update from tool: layers=%s", len(_direct_mu.get("layers", [])))
+                                if current_tool_name == "visualize_interactive_map":
+                                    _drl_comparison_map_seen = True
                         except Exception:
                             pass
                         try:
@@ -1940,6 +1969,19 @@ async def _execute_pipeline(
                                     logger.info("[WorldModelV21Presentation] Captured planning result for deterministic summary")
                         except Exception as _wm_present_capture_err:
                             logger.debug("WorldModelV21 presentation capture skipped: %s", _wm_present_capture_err)
+                        try:
+                            if current_tool_name == "drl_model" and isinstance(_resp_val, dict):
+                                _drl_optimization_result = dict(_resp_val)
+                                _drl_optimization_args = (
+                                    dict(_pending_tool_call.get("args") or {})
+                                    if _pending_tool_call else {}
+                                )
+                                logger.info("[DRLPresentation] Captured drl_model result for deterministic summary")
+                            elif current_tool_name == "visualize_interactive_map":
+                                if _final_map_update and _final_map_update.get("layers"):
+                                    _drl_comparison_map_seen = True
+                        except Exception as _drl_present_capture_err:
+                            logger.debug("DRL presentation capture skipped: %s", _drl_present_capture_err)
                         try:
                             _tool_args = _pending_tool_call.get("args", {}) if _pending_tool_call else {}
                             _sync_tool_output_to_obs(part.function_response.response, current_tool_name, tool_args=_tool_args)
@@ -1985,9 +2027,9 @@ async def _execute_pipeline(
                     pipeline_step.name = f"{pipeline_name} ({elapsed:.1f}s)"
                     await pipeline_step.update()
 
-                    # For sub_agent_direct: buffer text instead of streaming
-                    # to allow CoT cleanup before user sees it
-                    if pipeline_type != "sub_agent_direct":
+                    # Buffer text for pipelines that may emit reasoning traces,
+                    # so cleanup happens before the user sees the final answer.
+                    if not _buffer_text_until_clean:
                         if not msg_sent:
                             msg_sent = True
                             await final_msg.send()
@@ -2026,6 +2068,7 @@ async def _execute_pipeline(
                                         _cur_layers = len(_final_map_update.get('layers', [])) if _final_map_update else 0
                                         if _new_layers >= _cur_layers:
                                             _final_map_update = _mc_data
+                                            _drl_comparison_map_seen = True
                                         logger.info(f"[ArtifactHTML] Loaded mapconfig: layers={_new_layers}, _final_map_update={'UPDATED' if _new_layers >= _cur_layers else 'KEPT(had ' + str(_cur_layers) + ')'}")
                                 except Exception as _mcerr:
                                     logger.error(f"[ArtifactHTML] Failed to load mapconfig: {_mcerr}")
@@ -2053,6 +2096,212 @@ async def _execute_pipeline(
                         if _pending_elements or _flush_meta:
                             await cl.Message(content="", elements=_pending_elements, metadata=_flush_meta).send()
                             _pending_elements = []
+
+        # --- Mandatory DRL fallback for farmland layout optimization ---
+        # Gemma may choose diagnostic spatial-statistics tools (e.g. LISA) even
+        # when the user asked for layout optimization. For this demo-critical
+        # workflow, enforce the actual DRL tool and comparison map if the ADK
+        # run did not call drl_model by itself.
+        try:
+            from data_agent.pipeline_helpers import (
+                find_drl_optimization_input_path,
+                should_force_drl_optimization,
+            )
+
+            if (
+                pipeline_type in {"optimization", "farmland_optimization"}
+                and should_force_drl_optimization(full_prompt)
+            ):
+                _fallback_input_path = find_drl_optimization_input_path(
+                    full_prompt,
+                    response_text=full_response_text,
+                    uploaded_files=uploaded_files,
+                )
+                if not _fallback_input_path and _drl_optimization_args:
+                    _fallback_input_path = _drl_optimization_args.get("data_path") or ""
+
+                if _fallback_input_path and not _drl_optimization_result:
+                    from data_agent.artifact_handler import build_map_update_from_html
+                    from data_agent.observability import _infer_tool_type as _itt
+                    from data_agent.toolsets.analysis_tools import drl_model
+                    from data_agent.toolsets.visualization_tools import visualize_interactive_map
+
+                    _drl_step = cl.Step(
+                        name=t("progress.tool_running", label=TOOL_LABELS.get("drl_model", "drl_model")),
+                        type="tool",
+                        parent_id=pipeline_step.id,
+                    )
+                    _drl_step.input = _format_tool_explanation(
+                        "drl_model", {"data_path": _fallback_input_path}
+                    )
+                    await _drl_step.send()
+                    _drl_started = time.time()
+                    _drl_resp = await asyncio.to_thread(drl_model, _fallback_input_path)
+                    _drl_duration = time.time() - _drl_started
+                    _drl_step.name = f"{TOOL_LABELS.get('drl_model', 'drl_model')} ✓ ({_drl_duration:.1f}s)"
+                    if isinstance(_drl_resp, dict):
+                        _drl_optimization_result = dict(_drl_resp)
+                        _drl_step.output = str(_drl_resp.get("summary") or _drl_resp)[:500]
+                    else:
+                        _drl_step.output = str(_drl_resp)[:500]
+                    await _drl_step.update()
+
+                    _tool_step_counter += 1
+                    tool_execution_log.append({
+                        "step": _tool_step_counter,
+                        "agent_name": "SystemFallback",
+                        "tool_name": "drl_model",
+                        "args": {"data_path": _fallback_input_path},
+                        "output_path": _drl_resp.get("output_path") if isinstance(_drl_resp, dict) else None,
+                        "result_summary": str(_drl_resp.get("summary", ""))[:200] if isinstance(_drl_resp, dict) else str(_drl_resp)[:200],
+                        "duration": _drl_duration,
+                        "is_error": not isinstance(_drl_resp, dict),
+                    })
+                    tool_calls.labels(
+                        tool_name="drl_model",
+                        status="success" if isinstance(_drl_resp, dict) else "error",
+                        tool_type=_itt("drl_model"),
+                    ).inc()
+
+                    if isinstance(_drl_resp, dict):
+                        _out_png = _drl_resp.get("output_path")
+                        _out_shp = _drl_resp.get("optimized_data_path")
+                        if _out_png and os.path.exists(_out_png) and _out_png not in shown_artifacts:
+                            _pending_elements.append(cl.Image(
+                                path=_out_png,
+                                name=os.path.basename(_out_png),
+                                display="inline",
+                            ))
+                            shown_artifacts.add(_out_png)
+                        if _out_shp and os.path.exists(_out_shp):
+                            shown_artifacts.add(_out_shp)
+
+                        if _out_shp and os.path.exists(_out_shp) and not (_final_map_update and _final_map_update.get("layers")):
+                            _viz_step = cl.Step(
+                                name=t("progress.tool_running", label=TOOL_LABELS.get("visualize_interactive_map", "visualize_interactive_map")),
+                                type="tool",
+                                parent_id=pipeline_step.id,
+                            )
+                            _viz_args = {
+                                "original_data_path": _fallback_input_path,
+                                "optimized_data_path": _out_shp,
+                            }
+                            _viz_step.input = _format_tool_explanation("visualize_interactive_map", _viz_args)
+                            await _viz_step.send()
+                            _viz_started = time.time()
+                            _viz_resp = await asyncio.to_thread(
+                                visualize_interactive_map,
+                                _fallback_input_path,
+                                _out_shp,
+                            )
+                            _viz_duration = time.time() - _viz_started
+                            _viz_step.name = f"{TOOL_LABELS.get('visualize_interactive_map', 'visualize_interactive_map')} ✓ ({_viz_duration:.1f}s)"
+                            _viz_step.output = str(_viz_resp)[:500]
+                            await _viz_step.update()
+
+                            _tool_step_counter += 1
+                            _viz_paths = extract_file_paths(str(_viz_resp))
+                            _viz_output_path = _viz_paths[0]["path"] if _viz_paths else None
+                            tool_execution_log.append({
+                                "step": _tool_step_counter,
+                                "agent_name": "SystemFallback",
+                                "tool_name": "visualize_interactive_map",
+                                "args": _viz_args,
+                                "output_path": _viz_output_path,
+                                "result_summary": str(_viz_resp)[:200],
+                                "duration": _viz_duration,
+                                "is_error": str(_viz_resp).startswith("Error"),
+                            })
+                            tool_calls.labels(
+                                tool_name="visualize_interactive_map",
+                                status="error" if str(_viz_resp).startswith("Error") else "success",
+                                tool_type=_itt("visualize_interactive_map"),
+                            ).inc()
+
+                            for _artifact in _viz_paths:
+                                _path = _artifact["path"]
+                                if _path in shown_artifacts:
+                                    continue
+                                if _artifact["type"] == "html":
+                                    _pending_elements.append(cl.File(
+                                        path=_path,
+                                        name=os.path.basename(_path),
+                                    ))
+                                    shown_artifacts.add(_path)
+                                    _mc = build_map_update_from_html(_path)
+                                    if _mc:
+                                        _pending_map_update = _mc
+                                        _final_map_update = _mc
+                                        _drl_comparison_map_seen = True
+                elif (
+                    _fallback_input_path
+                    and isinstance(_drl_optimization_result, dict)
+                    and not (_final_map_update and _final_map_update.get("layers"))
+                ):
+                    from data_agent.artifact_handler import build_map_update_from_html
+                    from data_agent.observability import _infer_tool_type as _itt
+                    from data_agent.toolsets.visualization_tools import visualize_interactive_map
+
+                    _out_shp = _drl_optimization_result.get("optimized_data_path")
+                    if _out_shp and os.path.exists(_out_shp):
+                        _viz_step = cl.Step(
+                            name=t("progress.tool_running", label=TOOL_LABELS.get("visualize_interactive_map", "visualize_interactive_map")),
+                            type="tool",
+                            parent_id=pipeline_step.id,
+                        )
+                        _viz_args = {
+                            "original_data_path": _fallback_input_path,
+                            "optimized_data_path": _out_shp,
+                        }
+                        _viz_step.input = _format_tool_explanation("visualize_interactive_map", _viz_args)
+                        await _viz_step.send()
+                        _viz_started = time.time()
+                        _viz_resp = await asyncio.to_thread(
+                            visualize_interactive_map,
+                            _fallback_input_path,
+                            _out_shp,
+                        )
+                        _viz_duration = time.time() - _viz_started
+                        _viz_step.name = f"{TOOL_LABELS.get('visualize_interactive_map', 'visualize_interactive_map')} ✓ ({_viz_duration:.1f}s)"
+                        _viz_step.output = str(_viz_resp)[:500]
+                        await _viz_step.update()
+
+                        _tool_step_counter += 1
+                        _viz_paths = extract_file_paths(str(_viz_resp))
+                        _viz_output_path = _viz_paths[0]["path"] if _viz_paths else None
+                        tool_execution_log.append({
+                            "step": _tool_step_counter,
+                            "agent_name": "SystemFallback",
+                            "tool_name": "visualize_interactive_map",
+                            "args": _viz_args,
+                            "output_path": _viz_output_path,
+                            "result_summary": str(_viz_resp)[:200],
+                            "duration": _viz_duration,
+                            "is_error": str(_viz_resp).startswith("Error"),
+                        })
+                        tool_calls.labels(
+                            tool_name="visualize_interactive_map",
+                            status="error" if str(_viz_resp).startswith("Error") else "success",
+                            tool_type=_itt("visualize_interactive_map"),
+                        ).inc()
+
+                        for _artifact in _viz_paths:
+                            _path = _artifact["path"]
+                            if _path in shown_artifacts:
+                                continue
+                            if _artifact["type"] == "html":
+                                _pending_elements.append(cl.File(
+                                    path=_path,
+                                    name=os.path.basename(_path),
+                                ))
+                                shown_artifacts.add(_path)
+                                _mc = build_map_update_from_html(_path)
+                                if _mc:
+                                    _pending_map_update = _mc
+                                    _final_map_update = _mc
+                                    _drl_comparison_map_seen = True
+        except Exception as _drl_fallback_err:
+            logger.warning("[DRLFallback] skipped: %s", _drl_fallback_err)
 
         # --- Flush remaining pending artifacts after pipeline ends ---
         if _pending_elements or _pending_map_update or _pending_data_update:
@@ -2154,6 +2403,21 @@ async def _execute_pipeline(
         except Exception as _wm_present_err:
             logger.warning("[WorldModelV21Presentation] skipped: %s", _wm_present_err)
 
+        # --- DRL optimization presentation ---
+        # The LLM sometimes overstates drl_model output (for example claiming
+        # paired swaps even when Pairs=0). Use the tool JSON as the source of
+        # truth for user-facing optimization summaries.
+        try:
+            if pipeline_type in {"optimization", "farmland_optimization"} and _drl_optimization_result:
+                from data_agent.pipeline_helpers import format_drl_optimization_result_for_chat
+
+                full_response_text = format_drl_optimization_result_for_chat(
+                    _drl_optimization_result,
+                    artifacts=sorted(shown_artifacts),
+                )
+        except Exception as _drl_present_err:
+            logger.warning("[DRLPresentation] skipped: %s", _drl_present_err)
+
         # --- Inject map/data updates into final_msg metadata ---
         # This ensures the main response message carries map_update, which is
         # more reliable than sending a separate empty-content metadata message.
@@ -2184,7 +2448,14 @@ async def _execute_pipeline(
             await cl.Message(content="", metadata=meta).send()
 
         # --- CoT leakage cleanup (DeepSeek etc.) ---
-        if full_response_text and pipeline_type in ("sub_agent_direct", "general", "planner"):
+        if full_response_text and pipeline_type in (
+            "sub_agent_direct",
+            "general",
+            "planner",
+            "optimization",
+            "farmland_optimization",
+            "governance",
+        ):
             try:
                 from data_agent.pipeline_helpers import clean_cot_leakage
                 cleaned = clean_cot_leakage(full_response_text)
@@ -2193,8 +2464,8 @@ async def _execute_pipeline(
             except Exception as _cot_err:
                 logger.debug("CoT cleanup skipped: %s", _cot_err)
 
-        # For sub_agent_direct: send the buffered (and cleaned) text now
-        if pipeline_type == "sub_agent_direct" and full_response_text:
+        # For buffered pipelines: send the cleaned text now
+        if _buffer_text_until_clean and full_response_text:
             final_msg.content = full_response_text
             if not msg_sent:
                 await final_msg.send()
@@ -2220,8 +2491,11 @@ async def _execute_pipeline(
             if pipeline_type == "planner":
                 report_text = session.state.get("final_report",
                                session.state.get("planner_summary", full_response_text))
-            elif pipeline_type == "optimization":
-                report_text = session.state.get("final_summary", full_response_text)
+            elif pipeline_type in {"optimization", "farmland_optimization"}:
+                if _drl_optimization_result:
+                    report_text = full_response_text
+                else:
+                    report_text = session.state.get("final_summary", full_response_text)
             elif pipeline_type == "governance":
                 report_text = session.state.get("governance_report", full_response_text)
 
@@ -2230,6 +2504,13 @@ async def _execute_pipeline(
         # Save context for multi-turn dialogue
         user_text = cl.user_session.get("last_user_message", "")
         generated_files = [a['path'] for a in extract_file_paths(full_response_text)]
+        for artifact_path in sorted(shown_artifacts):
+            if artifact_path and os.path.exists(artifact_path) and artifact_path not in generated_files:
+                generated_files.append(artifact_path)
+        for tool_step in tool_execution_log:
+            output_path = tool_step.get("output_path")
+            if output_path and os.path.exists(output_path) and output_path not in generated_files:
+                generated_files.append(output_path)
         cl.user_session.set("last_context", {
             "pipeline": pipeline_type,
             "files": generated_files,
@@ -2543,6 +2824,20 @@ def classify_intent(text: str, previous_pipeline: str = None,
 
 def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) -> str:
     """Delegate to intent_router module (extracted for S-1 refactoring)."""
+    try:
+        from data_agent.pipeline_helpers import should_force_drl_optimization
+        if intent == "OPTIMIZATION" and should_force_drl_optimization(user_text):
+            files_info = "\n".join(f"- {f}" for f in uploaded_files) if uploaded_files else "- 使用用户指定或最近上传的空间数据"
+            return (
+                "1. 数据准备：定位用户指定的耕地/土地利用矢量数据，并执行基础数据画像。\n"
+                "2. DRL 优化：调用 `drl_model(data_path)` 运行耕地空间布局优化。\n"
+                "3. 对比地图：调用 `visualize_interactive_map(original_data_path, optimized_data_path)` "
+                "生成优化前后交互式对比地图。\n"
+                "4. 事实摘要：仅基于 DRL 工具返回的 Conversions、Pairs、Net Change 和产物路径生成报告。\n\n"
+                f"输入数据：\n{files_info}"
+            )
+    except Exception:
+        pass
     from data_agent.intent_router import generate_analysis_plan as _plan
     return _plan(user_text, intent, uploaded_files)
 
@@ -3275,14 +3570,25 @@ async def main(message: cl.Message):
             pipeline_type = "governance"
             pipeline_name = "Governance Pipeline (数据治理)"
     elif intent == "OPTIMIZATION":
-        if _LITE_MODE or data_pipeline is None:
+        try:
+            from data_agent.pipeline_helpers import should_force_drl_optimization
+            _use_farmland_workflow = should_force_drl_optimization(full_prompt)
+        except Exception:
+            _use_farmland_workflow = False
+
+        if _LITE_MODE or (data_pipeline is None and farmland_optimization_pipeline is None):
             selected_agent = general_pipeline
             pipeline_type = "general"
             pipeline_name = "General Pipeline (Lite 模式 — 优化功能不可用)"
+        elif _use_farmland_workflow and farmland_optimization_pipeline is not None:
+            selected_agent = farmland_optimization_pipeline
+            pipeline_type = "farmland_optimization"
+            pipeline_name = "Farmland Optimization Workflow (耕地空间布局优化)"
+            intent_reason = (intent_reason + "；" if intent_reason else "") + "命中耕地空间布局优化专用工作流"
         else:
             selected_agent = data_pipeline
-        pipeline_type = "optimization"
-        pipeline_name = "Optimization Pipeline (空间优化)"
+            pipeline_type = "optimization"
+            pipeline_name = "Optimization Pipeline (空间优化)"
     elif intent == "WORKFLOW":
         # Async workflow execution via natural language
         template_map = {
@@ -3622,7 +3928,9 @@ async def on_retry_pipeline(action: cl.Action):
         await cl.Message(content=t("error.retry_files_missing", count=missing)).send()
 
     # Select agent (same logic as main handler)
-    if DYNAMIC_PLANNER:
+    if pipeline_type == "farmland_optimization":
+        selected_agent = farmland_optimization_pipeline or data_pipeline
+    elif DYNAMIC_PLANNER:
         selected_agent = planner_agent
     elif intent == "GOVERNANCE":
         selected_agent = governance_pipeline
@@ -3676,8 +3984,16 @@ async def on_export_report(action: cl.Action):
         await cl.Message(content=t("report.no_content")).send()
         return
 
-    # Format and metadata
-    fmt = action.payload.get("format", "docx") if action.payload else "docx"
+    # Format and metadata. Some Chainlit versions preserve only action.value
+    # when replaying actions from persisted threads, so do not rely on payload.
+    action_payload = action.payload or {}
+    fmt = (
+        action_payload.get("format")
+        or action_payload.get("value")
+        or getattr(action, "value", None)
+        or "docx"
+    )
+    fmt = str(fmt).lower()
     pipeline_type = cl.user_session.get("pipeline_type", "general")
     cl_user = cl.user_session.get("user")
     author = cl_user.display_name if cl_user else user_id

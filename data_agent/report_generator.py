@@ -1,5 +1,8 @@
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 from datetime import date
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor, Cm
@@ -11,6 +14,7 @@ from docx.oxml import OxmlElement
 # Pipeline-specific default titles
 PIPELINE_TITLES = {
     "optimization": "空间布局优化分析报告",
+    "farmland_optimization": "耕地空间布局优化分析报告",
     "governance": "数据质量治理审计报告",
     "general": "空间数据分析报告",
 }
@@ -429,7 +433,10 @@ def generate_qc_report(
 def _render_markdown_body(doc, markdown_text):
     """Parse markdown text and render into the Word document."""
     lines = markdown_text.split('\n')
-    img_pattern = r'[^<>:"|?*\s]+\.png'
+    img_pattern = re.compile(
+        r"`?(?P<path>(?:/|[A-Za-z]:\\|[A-Za-z0-9_.-])[^\s`<>\"|?*]+?\.(?:png|jpg|jpeg))`?",
+        re.IGNORECASE,
+    )
 
     i = 0
     while i < len(lines):
@@ -476,9 +483,9 @@ def _render_markdown_body(doc, markdown_text):
             continue
 
         # --- 2. Image Handling ---
-        img_match = re.search(img_pattern, line, re.IGNORECASE)
+        img_match = img_pattern.search(line)
         if img_match:
-            img_path = img_match.group(0)
+            img_path = img_match.group("path").strip().strip("`'\"，。；;、)）]】")
             if os.path.exists(img_path):
                 try:
                     doc.add_picture(img_path, width=Inches(5.5))
@@ -579,19 +586,81 @@ def generate_pdf_report(
     docx_path = output_path.rsplit('.', 1)[0] + '.docx'
     generate_word_report(markdown_text, docx_path, title, author, logo_path, pipeline_type)
 
-    # Attempt PDF conversion
+    output_abs = os.path.abspath(output_path)
+    out_dir = os.path.dirname(output_abs) or os.getcwd()
+    os.makedirs(out_dir, exist_ok=True)
+    if os.path.exists(output_abs):
+        os.remove(output_abs)
+
+    conversion_errors = []
+
+    # Prefer LibreOffice in Docker/Linux. docx2pdf relies on desktop Word/COM
+    # integrations and silently returning DOCX is misleading for a PDF action.
+    soffice = shutil.which("libreoffice") or shutil.which("soffice")
+    if soffice:
+        try:
+            with tempfile.TemporaryDirectory(prefix="gis_report_lo_") as tmp_profile:
+                env = os.environ.copy()
+                env.setdefault("HOME", tmp_profile)
+                cmd = [
+                    soffice,
+                    "--headless",
+                    "--nologo",
+                    "--nofirststartwizard",
+                    f"-env:UserInstallation=file://{tmp_profile}/lo-profile",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    out_dir,
+                    os.path.abspath(docx_path),
+                ]
+                proc = subprocess.run(
+                    cmd,
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=120,
+                    env=env,
+                )
+                if proc.returncode != 0:
+                    raise RuntimeError((proc.stderr or proc.stdout or "").strip())
+
+                generated_pdf = os.path.join(
+                    out_dir,
+                    os.path.splitext(os.path.basename(docx_path))[0] + ".pdf",
+                )
+                if os.path.abspath(generated_pdf) != output_abs and os.path.exists(generated_pdf):
+                    os.replace(generated_pdf, output_abs)
+                if os.path.exists(output_abs):
+                    try:
+                        os.remove(docx_path)
+                    except OSError:
+                        pass
+                    return output_abs
+                raise RuntimeError(f"LibreOffice did not create PDF: {output_abs}")
+        except Exception as e:
+            conversion_errors.append(f"LibreOffice: {e}")
+
+    # Fallback for local desktop environments where docx2pdf is available.
     try:
         from docx2pdf import convert
-        convert(docx_path, output_path)
-        # Clean up temporary Word file
-        try:
-            os.remove(docx_path)
-        except OSError:
-            pass
-        return os.path.abspath(output_path)
+
+        convert(docx_path, output_abs)
+        if os.path.exists(output_abs):
+            try:
+                os.remove(docx_path)
+            except OSError:
+                pass
+            return output_abs
+        raise RuntimeError(f"docx2pdf did not create PDF: {output_abs}")
     except Exception as e:
-        print(f"[Report] PDF conversion failed ({e}). Returning Word document instead.")
-        return os.path.abspath(docx_path)
+        conversion_errors.append(f"docx2pdf: {e}")
+
+    raise RuntimeError(
+        "PDF conversion failed; intermediate DOCX kept at "
+        f"{os.path.abspath(docx_path)}. Details: {'; '.join(conversion_errors)}"
+    )
 
 
 # =====================================================================

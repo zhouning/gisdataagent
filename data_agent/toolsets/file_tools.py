@@ -24,10 +24,35 @@ def list_user_files() -> str:
 
         local_files = {}
         if os.path.exists(user_dir):
-            for f in sorted(os.listdir(user_dir)):
-                fp = os.path.join(user_dir, f)
-                if os.path.isfile(fp):
-                    local_files[f] = os.path.getsize(fp) / 1024
+            primary_exts = {
+                ".csv", ".xlsx", ".xls", ".geojson", ".json", ".gpkg",
+                ".kml", ".kmz", ".shp", ".fgb", ".tif", ".tiff", ".zip",
+                ".png", ".jpg", ".jpeg", ".html", ".pdf", ".docx",
+            }
+            sidecar_exts = {".dbf", ".shx", ".prj", ".cpg", ".sbn", ".sbx", ".qpj"}
+            for root, dirs, files in os.walk(user_dir):
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
+                depth = os.path.relpath(root, user_dir).count(os.sep)
+                if depth >= 3:
+                    dirs.clear()
+                for f in files:
+                    if f.startswith("."):
+                        continue
+                    fp = os.path.join(root, f)
+                    rel = os.path.relpath(fp, user_dir)
+                    ext = os.path.splitext(f)[1].lower()
+                    stem = os.path.splitext(f)[0]
+                    if (
+                        (ext in sidecar_exts and os.path.exists(os.path.join(root, stem + ".shp")))
+                        or (f.lower().endswith(".shp.xml") and os.path.exists(os.path.join(root, f[:-8] + ".shp")))
+                    ):
+                        continue
+                    is_top_level = root == user_dir
+                    if is_top_level or ext in primary_exts:
+                        local_files[rel] = {
+                            "size_kb": os.path.getsize(fp) / 1024,
+                            "mtime": os.path.getmtime(fp),
+                        }
 
         cloud_files = {}
         try:
@@ -35,19 +60,32 @@ def list_user_files() -> str:
             if is_obs_configured():
                 uid = current_user_id.get()
                 for obj in list_user_objects(uid):
-                    cloud_files[obj["filename"]] = obj["size"] / 1024
+                    cloud_files[obj["filename"]] = {
+                        "size_kb": obj["size"] / 1024,
+                        "mtime": 0,
+                    }
         except Exception:
             pass
 
-        all_filenames = sorted(set(list(local_files.keys()) + list(cloud_files.keys())))
+        all_filenames = sorted(
+            set(list(local_files.keys()) + list(cloud_files.keys())),
+            key=lambda name: max(
+                local_files.get(name, {}).get("mtime", 0),
+                cloud_files.get(name, {}).get("mtime", 0),
+            ),
+            reverse=True,
+        )
         if not all_filenames:
             return "您的文件目录为空。"
 
         lines = []
-        for fname in all_filenames:
+        max_items = 80
+        for fname in all_filenames[:max_items]:
             in_local = fname in local_files
             in_cloud = fname in cloud_files
-            size_kb = local_files.get(fname) or cloud_files.get(fname, 0)
+            local_meta = local_files.get(fname) or {}
+            cloud_meta = cloud_files.get(fname) or {}
+            size_kb = local_meta.get("size_kb") or cloud_meta.get("size_kb", 0)
             size_str = f"{size_kb/1024:.1f} MB" if size_kb > 1024 else f"{size_kb:.1f} KB"
 
             if in_local and in_cloud:
@@ -59,7 +97,10 @@ def list_user_files() -> str:
 
             lines.append(f"- {fname} ({size_str}){tag}")
 
-        return f"共 {len(lines)} 个文件：\n" + "\n".join(lines)
+        suffix = ""
+        if len(all_filenames) > max_items:
+            suffix = f"\n... 仅显示最近 {max_items} 个，共 {len(all_filenames)} 个。"
+        return f"共 {len(all_filenames)} 个文件：\n" + "\n".join(lines) + suffix
     except Exception as e:
         return f"Error listing files: {str(e)}"
 
