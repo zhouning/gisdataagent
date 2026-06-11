@@ -206,7 +206,7 @@ _VALUE_SEMANTICS: list[tuple[str, str, dict]] = [
             {"value": "service", "meaning": "服务道路"},
         ],
         "semantic_groups": [{
-            "aliases": ["主干道", "main road"],
+            "aliases": ["主要道路", "干线道路", "主路网", "main roads"],
             "values": ["primary", "motorway"],
         }],
     }),
@@ -301,7 +301,7 @@ _EXTRA_SYNONYMS: list[tuple[str, list[str]]] = [
     ]),
     ("cq_baidu_aoi_2024", ["AOI", "兴趣区", "商圈", "景区", "旅游景点", "评分", "消费"]),
     ("cq_osm_roads_2021", [
-        "道路", "路网", "公路", "街道", "单行路", "单行道",
+        "道路", "道路数据", "路网", "公路", "街道", "单行路", "单行道",
         "主干道", "次干道", "快速路", "高速公路", "桥梁", "隧道",
     ]),
     ("cq_district_population", [

@@ -60,8 +60,14 @@ def _cq_context(*table_names):
                 "fclass",
                 aliases=("road_class",),
                 value_semantics={
+                    "enum": [
+                        {"value": "motorway", "meaning": "\u9ad8\u901f\u516c\u8def"},
+                        {"value": "trunk", "meaning": "\u5feb\u901f\u8def"},
+                        {"value": "primary", "meaning": "\u4e3b\u5e72\u9053"},
+                        {"value": "secondary", "meaning": "\u6b21\u5e72\u9053"},
+                    ],
                     "semantic_groups": [{
-                        "aliases": ["\u4e3b\u5e72\u9053", "main road"],
+                        "aliases": ["\u4e3b\u8981\u9053\u8def", "\u5e72\u7ebf\u9053\u8def", "main roads"],
                         "values": ["primary", "motorway"],
                     }],
                 },
@@ -642,7 +648,7 @@ def test_gemma_semantic_rewrite_expands_main_roads():
         "WHERE fclass = 'primary' AND maxspeed > 100"
     )
     rewritten, corrections = apply_gemma_semantic_rewrites(
-        "统计主干道中限速大于100的道路数量",
+        "统计主要道路中限速大于100的道路数量",
         sql,
         context,
     )
@@ -668,6 +674,47 @@ def test_gemma_semantic_rewrite_preserves_explicit_primary_fclass():
     assert "fclass = 'primary'" in rewritten
     assert "motorway" not in rewritten
     assert "semantic_value_group" not in corrections
+
+
+def test_gemma_semantic_rewrite_maps_display_enum_literal_to_raw_value():
+    from data_agent.nl2sql_executor import apply_gemma_semantic_rewrites
+
+    context = _cq_context("cq_osm_roads_2021")
+    sql = (
+        "SELECT name FROM cq_osm_roads "
+        "WHERE maxspeed > 100 AND fclass = '\u4e3b\u5e72\u9053'"
+    )
+    rewritten, corrections = apply_gemma_semantic_rewrites(
+        "\u5728\u9053\u8def\u6570\u636e\u4e2d\uff0c\u5217\u51fa\u6240\u6709\u9650\u901f\u5927\u4e8e 100 \u4e14\u5c5e\u4e8e\u4e3b\u5e72\u9053\u7684\u9053\u8def\u540d\u79f0\u3002",
+        sql,
+        context,
+    )
+
+    assert "FROM cq_osm_roads_2021" in rewritten
+    assert "fclass = 'primary'" in rewritten
+    assert "\u4e3b\u5e72\u9053" not in rewritten
+    assert "semantic_table_normalized" in corrections
+    assert "semantic_enum_literal" in corrections
+
+
+def test_gemma_semantic_rewrite_maps_display_enum_like_to_raw_value():
+    from data_agent.nl2sql_executor import apply_gemma_semantic_rewrites
+
+    context = _cq_context("cq_osm_roads_2021")
+    sql = (
+        "SELECT name FROM cq_osm_roads "
+        "WHERE maxspeed > 100 AND fclass LIKE '%\u4e3b\u5e72\u9053%'"
+    )
+    rewritten, corrections = apply_gemma_semantic_rewrites(
+        "\u5728\u9053\u8def\u6570\u636e\u4e2d\uff0c\u5217\u51fa\u6240\u6709\u9650\u901f\u5927\u4e8e 100 \u4e14\u5c5e\u4e8e\u4e3b\u5e72\u9053\u7684\u9053\u8def\u540d\u79f0\u3002",
+        sql,
+        context,
+    )
+
+    assert "FROM cq_osm_roads_2021" in rewritten
+    assert "fclass = 'primary'" in rewritten
+    assert "LIKE" not in rewritten.upper()
+    assert "semantic_enum_literal" in corrections
 
 
 def test_gemma_semantic_rewrite_counts_distinct_buildings_on_road_join():
@@ -712,9 +759,9 @@ def test_run_nl2semantic2sql_builds_gemma_context_and_executes():
          patch("data_agent.nl2sql_executor.postprocess_sql", return_value=FakeResult()) as mock_postprocess, \
          patch("data_agent.nl2sql_executor.execute_safe_sql", return_value='{"status":"ok","rows":1,"data":[{"count":7}]}') as mock_exec, \
          patch("data_agent.nl2sql_executor._auto_curate"):
-        result = json.loads(nl2sql_executor.run_nl2semantic2sql("统计主干道中限速大于100的道路数量"))
+        result = json.loads(nl2sql_executor.run_nl2semantic2sql("统计主要道路中限速大于100的道路数量"))
 
-    mock_context.assert_called_once_with("统计主干道中限速大于100的道路数量", family="gemma")
+    mock_context.assert_called_once_with("统计主要道路中限速大于100的道路数量", family="gemma")
     assert "GROUNDING" in mock_generate.call_args.args[0]
     mock_postprocess.assert_called_once()
     mock_exec.assert_called_once_with(FakeResult.sql)
@@ -831,6 +878,55 @@ def test_candidate_from_described_schema_preserves_source_synonyms():
     assert "POI" in candidate["table_aliases"]
     assert "学校" in candidate["table_aliases"]
     assert "高德 POI" in candidate["table_aliases"]
+
+
+def test_augment_payload_adds_latest_versioned_sibling_for_generic_sql_ref():
+    from data_agent.nl2sql_executor import _augment_payload_with_sql_referenced_tables
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "cq_osm_roads",
+            "columns": [_col("name"), _col("fclass"), _col("maxspeed")],
+        }],
+        "_hint_injection_stats": {"candidate_tables": 1},
+    }
+    roads_schema = {
+        "status": "success",
+        "source_metadata": {
+            "display_name": "重庆OSM道路(2021)",
+            "description": "道路网络",
+            "synonyms": ["道路数据"],
+            "geometry_type": "GEOMETRY",
+            "srid": 4326,
+        },
+        "columns": [
+            {"column_name": "name", "data_type": "text"},
+            {
+                "column_name": "fclass",
+                "data_type": "text",
+                "value_semantics": {
+                    "enum": [{"value": "primary", "meaning": "主干道"}],
+                },
+            },
+            {"column_name": "maxspeed", "data_type": "integer"},
+        ],
+    }
+
+    with patch("data_agent.nl2sql_executor.list_semantic_sources", return_value={
+        "status": "success",
+        "sources": [
+            {"table_name": "cq_osm_roads_2020"},
+            {"table_name": "cq_osm_roads_2021"},
+        ],
+    }), patch("data_agent.nl2sql_executor.describe_table_semantic", return_value=roads_schema):
+        out = _augment_payload_with_sql_referenced_tables(
+            "SELECT name FROM cq_osm_roads WHERE fclass = '主干道'",
+            payload,
+        )
+
+    names = [t["table_name"] for t in out["candidate_tables"]]
+    assert names == ["cq_osm_roads", "cq_osm_roads_2021"]
+    assert out["_hint_injection_stats"]["sql_referenced_tables_added"] == 1
 
 
 def test_run_nl2semantic2sql_uses_preview_fallback_when_postprocess_rejects_all_records_request():

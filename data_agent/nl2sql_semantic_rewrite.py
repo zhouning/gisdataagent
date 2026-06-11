@@ -124,6 +124,10 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_literal_column_override")
 
+    rewritten, changed = _rewrite_enum_literal_values(rewritten, tables, alias_map)
+    if changed:
+        corrections.append("semantic_enum_literal")
+
     rewritten, changed = _rewrite_enum_filters(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_enum_filter")
@@ -719,6 +723,182 @@ def _replace_wrong_column_predicate(
         return f"{prefix}{right} = {_format_sql_literal(value)}"
 
     return _sub_outside_string_literals(pattern, repl, sql)
+
+
+def _rewrite_enum_literal_values(
+    sql: str,
+    tables: list[TableInfo],
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Rewrite display enum literals to stored enum values.
+
+    Example: fclass = '主干道' -> fclass = 'primary', driven entirely by
+    value_semantics.enum entries such as {"value": "primary", "meaning": "主干道"}.
+    """
+    rewritten = sql
+    changed = False
+    for table in tables:
+        qualifiers = _qualifiers_for_table(alias_map, table)
+        for col in table.columns:
+            literal_map = _enum_display_literal_map(col)
+            if not literal_map:
+                continue
+            for qualifier in qualifiers + [None]:
+                rewritten, n = _replace_enum_eq_literals(rewritten, qualifier, col, literal_map)
+                changed = changed or bool(n)
+                rewritten, n = _replace_enum_in_literals(rewritten, qualifier, col, literal_map)
+                changed = changed or bool(n)
+                rewritten, n = _replace_enum_like_literals(rewritten, qualifier, col, literal_map)
+                changed = changed or bool(n)
+    return rewritten, changed
+
+
+def _enum_display_literal_map(col: ColumnInfo) -> dict[str, Any]:
+    mapping: dict[str, Any] = {}
+    for item in col.value_semantics.get("enum") or []:
+        if not isinstance(item, dict) or "value" not in item:
+            continue
+        value = item.get("value")
+        probes: list[Any] = [
+            item.get("meaning"),
+            item.get("label"),
+            item.get("name"),
+        ]
+        aliases = item.get("aliases")
+        if isinstance(aliases, (list, tuple, set)):
+            probes.extend(aliases)
+        for probe in probes:
+            if probe is None:
+                continue
+            probe_text = str(probe).strip()
+            if not probe_text or probe_text == str(value):
+                continue
+            mapping[_normalize_enum_literal_key(probe_text)] = value
+    return mapping
+
+
+def _normalize_enum_literal_key(value: str) -> str:
+    return str(value or "").strip().casefold()
+
+
+def _decode_sql_string_literal_inner(value: str) -> str:
+    return str(value or "").replace("''", "'")
+
+
+def _replace_enum_eq_literals(
+    sql: str,
+    qualifier: str | None,
+    col: ColumnInfo,
+    literal_map: dict[str, Any],
+) -> tuple[str, int]:
+    refs = _column_reference_alternatives(qualifier, col)
+    pattern = re.compile(
+        rf"(?P<ref>{refs})(?P<op>\s*=\s*)'(?P<lit>(?:[^']|'')*)'",
+        flags=re.IGNORECASE,
+    )
+
+    def repl(match: re.Match) -> str:
+        literal = _decode_sql_string_literal_inner(match.group("lit"))
+        value = literal_map.get(_normalize_enum_literal_key(literal))
+        if value is None:
+            return match.group(0)
+        return f"{match.group('ref')}{match.group('op')}{_format_sql_literal(value)}"
+
+    return _sub_enum_literal_replacements(pattern, repl, sql)
+
+
+def _replace_enum_in_literals(
+    sql: str,
+    qualifier: str | None,
+    col: ColumnInfo,
+    literal_map: dict[str, Any],
+) -> tuple[str, int]:
+    refs = _column_reference_alternatives(qualifier, col)
+    pattern = re.compile(
+        rf"(?P<ref>{refs})(?P<op>\s+(?:NOT\s+)?IN\s*)\((?P<body>[^()]*)\)",
+        flags=re.IGNORECASE,
+    )
+    literal_pattern = re.compile(r"'(?P<lit>(?:[^']|'')*)'")
+
+    def repl(match: re.Match) -> str:
+        replaced = 0
+
+        def replace_literal(lit_match: re.Match) -> str:
+            nonlocal replaced
+            literal = _decode_sql_string_literal_inner(lit_match.group("lit"))
+            value = literal_map.get(_normalize_enum_literal_key(literal))
+            if value is None:
+                return lit_match.group(0)
+            replaced += 1
+            return _format_sql_literal(value)
+
+        body = literal_pattern.sub(replace_literal, match.group("body"))
+        if not replaced:
+            return match.group(0)
+        return f"{match.group('ref')}{match.group('op')}({body})"
+
+    return _sub_enum_literal_replacements(pattern, repl, sql)
+
+
+def _replace_enum_like_literals(
+    sql: str,
+    qualifier: str | None,
+    col: ColumnInfo,
+    literal_map: dict[str, Any],
+) -> tuple[str, int]:
+    refs = _column_reference_alternatives(qualifier, col)
+    pattern = re.compile(
+        rf"(?P<ref>{refs})(?P<op>\s+(?:NOT\s+)?I?LIKE\s*)'(?P<lit>(?:[^']|'')*)'",
+        flags=re.IGNORECASE,
+    )
+
+    def repl(match: re.Match) -> str:
+        literal = _decode_sql_string_literal_inner(match.group("lit"))
+        value = _enum_value_from_like_literal(literal, literal_map)
+        if value is None:
+            return match.group(0)
+        op = "<>" if "NOT" in match.group("op").upper() else "="
+        return f"{match.group('ref')} {op} {_format_sql_literal(value)}"
+
+    return _sub_enum_literal_replacements(pattern, repl, sql)
+
+
+def _enum_value_from_like_literal(literal: str, literal_map: dict[str, Any]) -> Any | None:
+    normalized = _normalize_enum_literal_key(literal)
+    stripped = _normalize_enum_literal_key(literal.replace("%", "").replace("_", ""))
+    if stripped in literal_map:
+        return literal_map[stripped]
+    matches = [
+        value
+        for key, value in literal_map.items()
+        if key and key in normalized
+    ]
+    unique = list(dict.fromkeys(matches))
+    return unique[0] if len(unique) == 1 else None
+
+
+def _sub_enum_literal_replacements(
+    pattern: re.Pattern,
+    repl,
+    sql: str,
+) -> tuple[str, int]:
+    pieces: list[str] = []
+    pos = 0
+    total = 0
+    for match in pattern.finditer(sql):
+        if _inside_single_quoted_literal(sql, match.start()):
+            continue
+        replacement = repl(match)
+        if replacement == match.group(0):
+            continue
+        pieces.append(sql[pos:match.start()])
+        pieces.append(replacement)
+        pos = match.end()
+        total += 1
+    if not total:
+        return sql, 0
+    pieces.append(sql[pos:])
+    return "".join(pieces), total
 
 
 def _rewrite_enum_filters(

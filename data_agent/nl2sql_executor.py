@@ -13,7 +13,7 @@ from .nl2sql_grounding import (
     _table_aliases_from_source,
     build_nl2sql_context,
 )
-from .semantic_layer import describe_table_semantic
+from .semantic_layer import describe_table_semantic, list_semantic_sources
 from .sql_postprocessor import postprocess_sql
 from .toolsets.nl2sql_tools import execute_safe_sql
 from .user_context import (
@@ -130,6 +130,7 @@ def _augment_payload_with_sql_referenced_tables(sql: str, payload: dict) -> dict
     added = 0
     for table_name in _referenced_sql_tables(sql):
         if table_name in existing or table_name.split(".")[-1] in existing:
+            added += _add_versioned_sibling_candidate(table_name, candidate_tables, existing)
             continue
         schema = describe_table_semantic(table_name)
         if schema.get("status") != "success" and "." in table_name:
@@ -141,11 +142,66 @@ def _augment_payload_with_sql_referenced_tables(sql: str, payload: dict) -> dict
         existing.add(table_name)
         existing.add(table_name.split(".")[-1])
         added += 1
+        added += _add_versioned_sibling_candidate(table_name, candidate_tables, existing)
     if added:
         stats = payload.setdefault("_hint_injection_stats", {})
         stats["candidate_tables"] = len(candidate_tables)
         stats["sql_referenced_tables_added"] = added
     return payload
+
+
+def _add_versioned_sibling_candidate(
+    table_name: str,
+    candidate_tables: list[dict],
+    existing: set[str],
+) -> int:
+    """Hydrate latest registered versioned sibling for a generic SQL table ref.
+
+    If the model emits FROM roads while the semantic layer also knows
+    roads_2021, adding the sibling lets the existing versioned-table
+    rewrite prefer the registered snapshot without hardcoding CQ table names.
+    """
+    sibling = _latest_registered_versioned_sibling(table_name)
+    if not sibling or sibling in existing or sibling.split(".")[-1] in existing:
+        return 0
+    schema = describe_table_semantic(sibling)
+    if schema.get("status") != "success":
+        return 0
+    candidate_tables.append(_candidate_from_described_schema(sibling, schema))
+    existing.add(sibling)
+    existing.add(sibling.split(".")[-1])
+    return 1
+
+
+def _latest_registered_versioned_sibling(table_name: str) -> str | None:
+    bare = table_name.split(".")[-1]
+    if _version_suffix_year(bare):
+        return None
+    try:
+        sources = list_semantic_sources()
+    except Exception:
+        return None
+    if sources.get("status") != "success":
+        return None
+    prefix = f"{bare}_"
+    matches: list[tuple[int, str]] = []
+    for source in sources.get("sources", []) or []:
+        source_name = str(source.get("table_name") or "")
+        source_bare = source_name.split(".")[-1]
+        if not source_bare.startswith(prefix):
+            continue
+        year = _version_suffix_year(source_bare)
+        if year:
+            matches.append((year, source_name))
+    if not matches:
+        return None
+    matches.sort(reverse=True)
+    return matches[0][1]
+
+
+def _version_suffix_year(table_name: str) -> int:
+    m = re.search(r"_(?P<year>(?:19|20)\d{2})$", table_name or "")
+    return int(m.group("year")) if m else 0
 
 
 def _find_ungrounded_sql_reference(question: str, sql: str, payload: dict) -> str:
