@@ -244,6 +244,15 @@ _VALUE_SEMANTICS: list[tuple[str, str, dict]] = [
     ("cq_amap_poi_2024", "地址", {"sql_aliases": ["address"]}),
     ("cq_amap_poi_2024", "电话", {"sql_aliases": ["phone", "tel"]}),
     ("cq_amap_poi_2024", "类型", {"sql_aliases": ["type", "category"]}),
+    ("cq_amap_poi_2024", "区域ID", {
+        "join_condition_overrides": [{
+            "other_table": "cq_district_population",
+            "other_column": "行政区划代码",
+            "self_replacement_column": "地址",
+            "other_replacement_column": "区划名称",
+            "operator": "self_like_contains_other",
+        }],
+    }),
     ("cq_amap_poi_2024", "geometry", {"sql_aliases": ["shape", "geom"]}),
     ("cq_baidu_aoi_2024", "名称", {"sql_aliases": ["name"]}),
     ("cq_baidu_aoi_2024", "类型", {"sql_aliases": ["type", "category"]}),

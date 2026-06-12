@@ -204,6 +204,14 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_distinct_not_null")
 
+    rewritten, changed = _rewrite_join_condition_overrides(rewritten, alias_map)
+    if changed:
+        corrections.append("semantic_join_condition_override")
+
+    rewritten, changed = _rewrite_grouped_count_join_order(question, rewritten)
+    if changed:
+        corrections.append("semantic_grouped_count_join_order")
+
     rewritten, changed = _rewrite_left_join_for_grouped_count(question, rewritten)
     if changed:
         corrections.append("semantic_left_join_count")
@@ -2032,6 +2040,171 @@ def _rewrite_left_join_for_grouped_count(question: str, sql: str) -> tuple[str, 
         f"WHERE {where_clause}{m.group('tail')}"
     )
     return rewritten, True
+
+
+def _rewrite_grouped_count_join_order(question: str, sql: str) -> tuple[str, bool]:
+    q_low = (question or "").lower()
+    if not any(token in q_low for token in ("count", "统计", "数量")):
+        return sql, False
+    if re.search(r"\bLEFT\s+JOIN\b", sql or "", re.IGNORECASE):
+        return sql, False
+    pattern = re.compile(
+        r"^\s*SELECT\s+(?P<select>.+?)\s+FROM\s+"
+        r"(?P<left>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<la>[A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"JOIN\s+(?P<right>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<ra>[A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"ON\s+(?P<on>.+?)\s+WHERE\s+(?P<where>.+?)(?P<tail>\s+GROUP\s+BY\s+.+)$",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    m = pattern.match(sql or "")
+    if not m:
+        return sql, False
+    select_expr = m.group("select")
+    left_alias = m.group("la")
+    right_alias = m.group("ra")
+    if not re.search(rf"\bCOUNT\s*\(\s*(?:DISTINCT\s+)?{re.escape(left_alias)}\.", select_expr, re.IGNORECASE):
+        return sql, False
+    if not _tail_groups_by_alias(m.group("tail"), right_alias):
+        return sql, False
+    where_parts = re.split(r"\s+AND\s+", m.group("where").strip(), flags=re.IGNORECASE)
+    left_parts = []
+    right_parts = []
+    for part in where_parts:
+        if re.search(rf"\b{re.escape(left_alias)}\.", part):
+            left_parts.append(part)
+        else:
+            right_parts.append(part)
+    if not left_parts or not right_parts:
+        return sql, False
+    on_clause = " AND ".join([m.group("on").strip()] + left_parts)
+    where_clause = " AND ".join(right_parts)
+    rewritten = (
+        f"SELECT {select_expr} FROM {m.group('right')} AS {right_alias} "
+        f"LEFT JOIN {m.group('left')} AS {left_alias} ON {on_clause} "
+        f"WHERE {where_clause}{m.group('tail')}"
+    )
+    return rewritten, True
+
+
+def _tail_groups_by_alias(tail: str, alias: str) -> bool:
+    m = re.search(
+        r"\bGROUP\s+BY\b(?P<body>.*?)(?=\bHAVING\b|\bORDER\s+BY\b|\bLIMIT\b|$)",
+        tail or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return bool(m and re.search(rf"\b{re.escape(alias)}\.", m.group("body")))
+
+
+def _rewrite_join_condition_overrides(
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    if not re.search(r"\bJOIN\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+
+    rewritten = sql
+    changed = False
+    join_pattern = re.compile(
+        r"(?P<head>\b(?:LEFT\s+JOIN|JOIN)\s+"
+        r"\"?[A-Za-z_][A-Za-z0-9_\.]*\"?\s+(?:AS\s+)?[A-Za-z_][A-Za-z0-9_]*\s+ON\s+)"
+        r"(?P<on>.*?)(?=\s+(?:LEFT\s+JOIN|JOIN|WHERE|GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT)\b|$)",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    def rewrite_join(match: re.Match) -> str:
+        nonlocal changed
+        on_clause, n = _rewrite_join_on_overrides(match.group("on"), alias_map)
+        if n:
+            changed = True
+        return f"{match.group('head')}{on_clause}"
+
+    rewritten = join_pattern.sub(rewrite_join, rewritten)
+    return rewritten, changed
+
+
+def _rewrite_join_on_overrides(
+    on_clause: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, int]:
+    eq_pattern = re.compile(
+        r"(?P<a1>[A-Za-z_][A-Za-z0-9_]*)\.\s*(?P<c1>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)"
+        r"\s*=\s*"
+        r"(?P<a2>[A-Za-z_][A-Za-z0-9_]*)\.\s*(?P<c2>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)",
+        flags=re.IGNORECASE,
+    )
+
+    def repl(match: re.Match) -> str:
+        side1 = _join_side_from_match(match, "a1", "c1", alias_map)
+        side2 = _join_side_from_match(match, "a2", "c2", alias_map)
+        if not side1 or not side2:
+            return match.group(0)
+        replacement = _join_override_replacement(side1, side2)
+        if replacement:
+            return replacement
+        replacement = _join_override_replacement(side2, side1)
+        return replacement or match.group(0)
+
+    rewritten, n = eq_pattern.subn(repl, on_clause)
+    return rewritten, n if rewritten != on_clause else 0
+
+
+def _join_side_from_match(
+    match: re.Match,
+    alias_group: str,
+    column_group: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> dict[str, Any] | None:
+    alias = match.group(alias_group)
+    mapped = alias_map.get(alias)
+    if not mapped:
+        return None
+    table, _ = mapped
+    column_name = _strip_identifier_quotes(match.group(column_group))
+    column = table.column_by_name(column_name)
+    if column is None:
+        return None
+    return {"alias": alias, "table": table, "column": column}
+
+
+def _join_override_replacement(self_side: dict[str, Any], other_side: dict[str, Any]) -> str | None:
+    self_table: TableInfo = self_side["table"]
+    other_table: TableInfo = other_side["table"]
+    self_col: ColumnInfo = self_side["column"]
+    other_col: ColumnInfo = other_side["column"]
+    for override in self_col.value_semantics.get("join_condition_overrides") or []:
+        if not isinstance(override, dict):
+            continue
+        if not _join_override_matches(override, other_table, other_col):
+            continue
+        self_replacement = self_table.column_by_name(str(override.get("self_replacement_column") or ""))
+        other_replacement = other_table.column_by_name(str(override.get("other_replacement_column") or ""))
+        if self_replacement is None or other_replacement is None:
+            continue
+        self_ref = f"{self_side['alias']}.{self_replacement.quoted_ref}"
+        other_ref = f"{other_side['alias']}.{other_replacement.quoted_ref}"
+        operator = str(override.get("operator") or "").lower()
+        if operator == "self_like_contains_other":
+            return f"{self_ref} LIKE '%' || {other_ref} || '%'"
+        if operator == "other_like_contains_self":
+            return f"{other_ref} LIKE '%' || {self_ref} || '%'"
+    return None
+
+
+def _join_override_matches(
+    override: dict[str, Any],
+    other_table: TableInfo,
+    other_col: ColumnInfo,
+) -> bool:
+    table_names = {
+        str(override.get("other_table") or ""),
+        str(override.get("other_table_name") or ""),
+    }
+    table_names = {name for name in table_names if name}
+    if table_names and other_table.table_name not in table_names and other_table.bare_name not in table_names:
+        return False
+    other_column = str(override.get("other_column") or override.get("other_column_name") or "")
+    if other_column and other_col.column_name.lower() != other_column.lower():
+        return False
+    return True
 
 
 def _rewrite_requested_spatial_predicate(question: str, sql: str) -> tuple[str, bool]:

@@ -874,6 +874,113 @@ def test_semantic_rewrite_count_by_left_group_uses_left_join():
     assert "semantic_left_join_count" in corrections
 
 
+def test_semantic_rewrite_join_condition_override_before_left_count():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "districts",
+                "columns": [
+                    {"column_name": "code", "quoted_ref": "code", "needs_quoting": False},
+                    {"column_name": "name", "quoted_ref": "name", "needs_quoting": False},
+                    {"column_name": "population", "quoted_ref": "population", "needs_quoting": False},
+                ],
+            },
+            {
+                "table_name": "pois",
+                "columns": [
+                    {"column_name": "id", "quoted_ref": "id", "needs_quoting": False},
+                    {"column_name": "address", "quoted_ref": "address", "needs_quoting": False},
+                    {
+                        "column_name": "region_id",
+                        "quoted_ref": "region_id",
+                        "needs_quoting": False,
+                        "value_semantics": {
+                            "join_condition_overrides": [{
+                                "other_table": "districts",
+                                "other_column": "code",
+                                "self_replacement_column": "address",
+                                "other_replacement_column": "name",
+                                "operator": "self_like_contains_other",
+                            }],
+                        },
+                    },
+                    {"column_name": "type", "quoted_ref": "type", "needs_quoting": False},
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "for districts with population over one million, count hospital POIs by district",
+        "SELECT d.name, COUNT(p.id) AS poi_count FROM districts AS d "
+        "JOIN pois AS p ON p.region_id = d.code "
+        "WHERE d.population > 100 AND p.type LIKE '%hospital%' "
+        "GROUP BY d.name ORDER BY poi_count DESC",
+        context,
+    )
+
+    assert "LEFT JOIN pois AS p ON p.address LIKE '%' || d.name || '%' AND p.type LIKE '%hospital%'" in rewritten
+    assert "WHERE d.population > 100" in rewritten
+    assert "semantic_join_condition_override" in corrections
+    assert "semantic_left_join_count" in corrections
+
+
+def test_semantic_rewrite_reorders_grouped_count_join_after_join_override():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "districts",
+                "columns": [
+                    {"column_name": "code", "quoted_ref": "code", "needs_quoting": False},
+                    {"column_name": "name", "quoted_ref": "name", "needs_quoting": False},
+                    {"column_name": "population", "quoted_ref": "population", "needs_quoting": False},
+                ],
+            },
+            {
+                "table_name": "pois",
+                "columns": [
+                    {"column_name": "id", "quoted_ref": "id", "needs_quoting": False},
+                    {"column_name": "address", "quoted_ref": "address", "needs_quoting": False},
+                    {
+                        "column_name": "region_id",
+                        "quoted_ref": "region_id",
+                        "needs_quoting": False,
+                        "value_semantics": {
+                            "join_condition_overrides": [{
+                                "other_table": "districts",
+                                "other_column": "code",
+                                "self_replacement_column": "address",
+                                "other_replacement_column": "name",
+                                "operator": "self_like_contains_other",
+                            }],
+                        },
+                    },
+                    {"column_name": "type", "quoted_ref": "type", "needs_quoting": False},
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "for districts with population over one million, count hospital POIs by district",
+        "SELECT d.name, COUNT(p.id) AS poi_count FROM pois AS p "
+        "JOIN districts AS d ON p.region_id = d.code "
+        "WHERE p.type LIKE '%hospital%' AND d.population > 100 "
+        "GROUP BY d.name ORDER BY poi_count DESC",
+        context,
+    )
+
+    assert "FROM districts AS d LEFT JOIN pois AS p" in rewritten
+    assert "ON p.address LIKE '%' || d.name || '%' AND p.type LIKE '%hospital%'" in rewritten
+    assert "WHERE d.population > 100" in rewritten
+    assert "semantic_join_condition_override" in corrections
+    assert "semantic_grouped_count_join_order" in corrections
+
+
 def test_semantic_rewrite_grouped_spatial_count_uses_right_entity_identifier():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 

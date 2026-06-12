@@ -10,6 +10,7 @@ Extracted from app.py to reduce its complexity. Handles:
 """
 import json
 import os
+import ast
 from typing import Optional
 
 try:
@@ -31,14 +32,30 @@ def extract_response_string(resp_val) -> str:
     Tries common dict keys first, then falls back to full JSON serialization.
     """
     if isinstance(resp_val, str):
+        text = resp_val.strip()
+        if text.startswith(("{", "[")):
+            try:
+                parsed = json.loads(text)
+                return extract_response_string(parsed)
+            except Exception:
+                try:
+                    parsed = ast.literal_eval(text)
+                    return extract_response_string(parsed)
+                except Exception:
+                    pass
         return resp_val
     if isinstance(resp_val, dict):
         # Try common keys that contain file paths
         parts = [
             str(resp_val.get("output_path", "")),
+            str(resp_val.get("html_path", "")),
+            str(resp_val.get("optimized_data_path", "")),
+            str(resp_val.get("summary", "")),
             str(resp_val.get("message", "")),
-            str(resp_val.get("result", "")),
         ]
+        for key in ("result", "output", "response", "content", "data"):
+            if key in resp_val:
+                parts.append(extract_response_string(resp_val[key]))
         # Also check 'files' list
         files = resp_val.get("files")
         if isinstance(files, list):

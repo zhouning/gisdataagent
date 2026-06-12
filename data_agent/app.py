@@ -1970,13 +1970,17 @@ async def _execute_pipeline(
                         except Exception as _wm_present_capture_err:
                             logger.debug("WorldModelV21 presentation capture skipped: %s", _wm_present_capture_err)
                         try:
-                            if current_tool_name == "drl_model" and isinstance(_resp_val, dict):
-                                _drl_optimization_result = dict(_resp_val)
-                                _drl_optimization_args = (
-                                    dict(_pending_tool_call.get("args") or {})
-                                    if _pending_tool_call else {}
-                                )
-                                logger.info("[DRLPresentation] Captured drl_model result for deterministic summary")
+                            if current_tool_name == "drl_model":
+                                from data_agent.pipeline_helpers import normalize_drl_tool_response
+
+                                _normalized_drl = normalize_drl_tool_response(_resp_val)
+                                if _normalized_drl:
+                                    _drl_optimization_result = _normalized_drl
+                                    _drl_optimization_args = (
+                                        dict(_pending_tool_call.get("args") or {})
+                                        if _pending_tool_call else {}
+                                    )
+                                    logger.info("[DRLPresentation] Captured normalized drl_model result for deterministic summary")
                             elif current_tool_name == "visualize_interactive_map":
                                 if _final_map_update and _final_map_update.get("layers"):
                                     _drl_comparison_map_seen = True
@@ -1994,12 +1998,23 @@ async def _execute_pipeline(
                             _out_path = None
                             _result_msg = ""
                             _is_err = False
+                            if current_tool_name == "drl_model":
+                                try:
+                                    from data_agent.pipeline_helpers import normalize_drl_tool_response
+
+                                    _normalized_drl_log = normalize_drl_tool_response(_resp)
+                                    if _normalized_drl_log:
+                                        _out_path = _normalized_drl_log.get("output_path")
+                                        _result_msg = str(_normalized_drl_log.get("summary", ""))[:200]
+                                except Exception:
+                                    pass
                             if isinstance(_resp, dict):
-                                _out_path = _resp.get("output_path")
-                                _result_msg = str(_resp.get("message", ""))[:200]
+                                _out_path = _out_path or _resp.get("output_path")
+                                _result_msg = _result_msg or str(_resp.get("message", ""))[:200]
                                 _is_err = _resp.get("status") == "error"
                             elif isinstance(_resp, str):
-                                _result_msg = _resp[:200]
+                                _result_msg = _result_msg or _resp[:200]
+                                _is_err = _resp.startswith("Error")
                             tool_execution_log.append({
                                 "step": _tool_step_counter,
                                 "agent_name": _pending_tool_call["agent_name"],
@@ -2105,6 +2120,8 @@ async def _execute_pipeline(
         try:
             from data_agent.pipeline_helpers import (
                 find_drl_optimization_input_path,
+                normalize_drl_tool_response,
+                extract_map_update_from_tool_response,
                 should_force_drl_optimization,
             )
 
@@ -2137,11 +2154,12 @@ async def _execute_pipeline(
                     await _drl_step.send()
                     _drl_started = time.time()
                     _drl_resp = await asyncio.to_thread(drl_model, _fallback_input_path)
+                    _normalized_drl_resp = normalize_drl_tool_response(_drl_resp)
                     _drl_duration = time.time() - _drl_started
                     _drl_step.name = f"{TOOL_LABELS.get('drl_model', 'drl_model')} ✓ ({_drl_duration:.1f}s)"
-                    if isinstance(_drl_resp, dict):
-                        _drl_optimization_result = dict(_drl_resp)
-                        _drl_step.output = str(_drl_resp.get("summary") or _drl_resp)[:500]
+                    if _normalized_drl_resp:
+                        _drl_optimization_result = _normalized_drl_resp
+                        _drl_step.output = str(_normalized_drl_resp.get("summary") or _normalized_drl_resp)[:500]
                     else:
                         _drl_step.output = str(_drl_resp)[:500]
                     await _drl_step.update()
@@ -2152,20 +2170,20 @@ async def _execute_pipeline(
                         "agent_name": "SystemFallback",
                         "tool_name": "drl_model",
                         "args": {"data_path": _fallback_input_path},
-                        "output_path": _drl_resp.get("output_path") if isinstance(_drl_resp, dict) else None,
-                        "result_summary": str(_drl_resp.get("summary", ""))[:200] if isinstance(_drl_resp, dict) else str(_drl_resp)[:200],
+                        "output_path": _normalized_drl_resp.get("output_path") if _normalized_drl_resp else None,
+                        "result_summary": str(_normalized_drl_resp.get("summary", ""))[:200] if _normalized_drl_resp else str(_drl_resp)[:200],
                         "duration": _drl_duration,
-                        "is_error": not isinstance(_drl_resp, dict),
+                        "is_error": not bool(_normalized_drl_resp),
                     })
                     tool_calls.labels(
                         tool_name="drl_model",
-                        status="success" if isinstance(_drl_resp, dict) else "error",
+                        status="success" if _normalized_drl_resp else "error",
                         tool_type=_itt("drl_model"),
                     ).inc()
 
-                    if isinstance(_drl_resp, dict):
-                        _out_png = _drl_resp.get("output_path")
-                        _out_shp = _drl_resp.get("optimized_data_path")
+                    if _normalized_drl_resp:
+                        _out_png = _normalized_drl_resp.get("output_path")
+                        _out_shp = _normalized_drl_resp.get("optimized_data_path")
                         if _out_png and os.path.exists(_out_png) and _out_png not in shown_artifacts:
                             _pending_elements.append(cl.Image(
                                 path=_out_png,
@@ -2200,6 +2218,11 @@ async def _execute_pipeline(
                             await _viz_step.update()
 
                             _tool_step_counter += 1
+                            _direct_viz_mu = extract_map_update_from_tool_response(_viz_resp)
+                            if _direct_viz_mu:
+                                _pending_map_update = _direct_viz_mu
+                                _final_map_update = _direct_viz_mu
+                                _drl_comparison_map_seen = True
                             _viz_paths = extract_file_paths(str(_viz_resp))
                             _viz_output_path = _viz_paths[0]["path"] if _viz_paths else None
                             tool_execution_log.append({
@@ -2242,7 +2265,8 @@ async def _execute_pipeline(
                     from data_agent.observability import _infer_tool_type as _itt
                     from data_agent.toolsets.visualization_tools import visualize_interactive_map
 
-                    _out_shp = _drl_optimization_result.get("optimized_data_path")
+                    _normalized_existing_drl = normalize_drl_tool_response(_drl_optimization_result) or _drl_optimization_result
+                    _out_shp = _normalized_existing_drl.get("optimized_data_path")
                     if _out_shp and os.path.exists(_out_shp):
                         _viz_step = cl.Step(
                             name=t("progress.tool_running", label=TOOL_LABELS.get("visualize_interactive_map", "visualize_interactive_map")),
@@ -2267,6 +2291,11 @@ async def _execute_pipeline(
                         await _viz_step.update()
 
                         _tool_step_counter += 1
+                        _direct_viz_mu = extract_map_update_from_tool_response(_viz_resp)
+                        if _direct_viz_mu:
+                            _pending_map_update = _direct_viz_mu
+                            _final_map_update = _direct_viz_mu
+                            _drl_comparison_map_seen = True
                         _viz_paths = extract_file_paths(str(_viz_resp))
                         _viz_output_path = _viz_paths[0]["path"] if _viz_paths else None
                         tool_execution_log.append({

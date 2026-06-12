@@ -47,6 +47,24 @@ def test_extract_map_update_returns_none_for_invalid_payloads():
     assert extract_map_update_from_tool_response({"result": {"status": "ok"}}) is None
 
 
+def test_extract_map_update_from_plain_html_response(tmp_path):
+    from data_agent.pipeline_helpers import extract_map_update_from_tool_response
+
+    html_path = tmp_path / "interactive_map_demo.html"
+    cfg_path = tmp_path / "interactive_map_demo.mapconfig.json"
+    html_path.write_text("<html></html>", encoding="utf-8")
+    cfg = {
+        "layers": [{"name": "优化后布局", "geojson": "interactive_map_demo_opt.geojson"}],
+        "center": [29.5, 106.5],
+        "zoom": 14,
+    }
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    response = f"Interactive comparison map saved to {html_path}"
+
+    assert extract_map_update_from_tool_response(response) == cfg
+
+
 def test_clean_cot_leakage_removes_world_model_planning_trace():
     from data_agent.pipeline_helpers import clean_cot_leakage
 
@@ -180,6 +198,46 @@ def test_format_drl_optimization_result_for_chat_uses_tool_metrics():
     assert "成对置换成功" not in text
     assert "完美面积守恒" not in text
     assert "边界移动" not in text
+
+
+def test_normalize_drl_tool_response_handles_adk_wrappers():
+    from data_agent.pipeline_helpers import normalize_drl_tool_response
+
+    summary = (
+        "Optimization Complete (v7).\n"
+        "Conversions: 200\n"
+        "Pairs: 0\n"
+        "Net Change: -130\n"
+        "Result SHP: /app/data_agent/uploads/admin/optimized_data_demo.shp\n"
+        "Visualization: /app/data_agent/uploads/admin/optimized_map_demo.png"
+    )
+    wrapped = {"result": json.dumps({"summary": summary})}
+
+    normalized = normalize_drl_tool_response(wrapped)
+
+    assert normalized["summary"] == summary
+    assert normalized["optimized_data_path"].endswith("optimized_data_demo.shp")
+    assert normalized["output_path"].endswith("optimized_map_demo.png")
+
+
+def test_format_drl_optimization_result_for_chat_handles_wrapped_tool_response():
+    from data_agent.pipeline_helpers import format_drl_optimization_result_for_chat
+
+    summary = (
+        "Optimization Complete (v7).\n"
+        "Conversions: 200\n"
+        "Pairs: 0\n"
+        "Net Change: -130\n"
+        "Result SHP: /app/data_agent/uploads/admin/optimized_data_demo.shp\n"
+        "Visualization: /app/data_agent/uploads/admin/optimized_map_demo.png"
+    )
+    text = format_drl_optimization_result_for_chat({"response": {"output": summary}})
+
+    assert "Conversions: 200" in text
+    assert "Pairs: 0（本次运行未形成成对置换）" in text
+    assert "Net Change: -130" in text
+    assert "optimized_data_demo.shp" in text
+    assert "optimized_map_demo.png" in text
 
 
 def test_should_force_drl_optimization_for_farmland_layout_request():

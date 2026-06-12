@@ -67,6 +67,11 @@ test/
 
 # IDE / editor settings
 .vscode/
+.DS_Store
+**/.DS_Store
+
+# E2E runtime screenshots
+tests/e2e/screenshots/
 
 # Local scripts
 enable-venv.ps1
@@ -373,4 +378,3 @@ scripts/test_write.txt
 scripts/nl2sql_bench_cq/_debug_enh.py
 scripts/nl2sql_bench_cq/_dryrun_ablation.py
 scripts/nl2sql_bench_cq/_fullrun_ablation.py
-

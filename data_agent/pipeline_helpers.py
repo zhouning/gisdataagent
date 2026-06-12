@@ -9,6 +9,8 @@ import os
 import time
 import json
 import logging
+import ast
+import re
 from contextvars import ContextVar
 
 logger = logging.getLogger("data_agent.pipeline_helpers")
@@ -112,7 +114,7 @@ def extract_map_update_from_tool_response(value):
         try:
             parsed = json.loads(value)
         except (json.JSONDecodeError, TypeError):
-            return None
+            return _extract_map_update_from_html_text(value)
         return extract_map_update_from_tool_response(parsed)
 
     if isinstance(value, dict):
@@ -128,6 +130,110 @@ def extract_map_update_from_tool_response(value):
                 return nested
 
     return None
+
+
+def _extract_map_update_from_html_text(text: str):
+    """Load map_update from an HTML path mentioned in a plain tool response."""
+    pattern = r'(?:[a-zA-Z]:\\|/)[^<>:"|?*]+\.html'
+    for match in re.finditer(pattern, text or "", re.IGNORECASE):
+        html_path = match.group(0)
+        cfg_path = html_path.replace(".html", ".mapconfig.json")
+        if not os.path.exists(cfg_path):
+            continue
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            if isinstance(cfg, dict) and isinstance(cfg.get("layers"), list):
+                return cfg
+        except Exception:
+            continue
+    return None
+
+
+def _parse_maybe_json_or_literal(value):
+    """Parse common ADK wrapper payloads without raising."""
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text:
+        return value
+    for parser in (json.loads, ast.literal_eval):
+        try:
+            return parser(text)
+        except (ValueError, SyntaxError, TypeError, json.JSONDecodeError):
+            continue
+    return value
+
+
+def normalize_drl_tool_response(value) -> dict | None:
+    """Normalize drl_model output from ADK wrappers into one canonical dict.
+
+    The ADK runtime can return tool payloads directly, nested under keys such as
+    ``result``/``output``/``response``, or serialized as JSON/Python literals.
+    The final presentation and map fallback must not depend on one wrapper
+    shape; otherwise metrics disappear even when the tool succeeded.
+    """
+    if value is None:
+        return None
+
+    parsed = _parse_maybe_json_or_literal(value)
+
+    if isinstance(parsed, dict):
+        candidate = dict(parsed)
+        summary = candidate.get("summary")
+        has_drl_fields = any(
+            candidate.get(key)
+            for key in ("optimized_data_path", "output_path", "summary")
+        )
+        if isinstance(summary, str) and "Optimization Complete" in summary:
+            has_drl_fields = True
+        if has_drl_fields:
+            _fill_drl_paths_from_summary(candidate)
+            return candidate
+
+        for key in (
+            "result", "output", "response", "content", "data",
+            "tool_response", "function_response",
+        ):
+            if key not in candidate:
+                continue
+            nested = normalize_drl_tool_response(candidate[key])
+            if nested:
+                return nested
+        return None
+
+    if isinstance(parsed, str):
+        summary = parsed.strip()
+        if not summary:
+            return None
+        if (
+            "Optimization Complete" not in summary
+            and "Conversions:" not in summary
+            and "Result SHP:" not in summary
+        ):
+            return None
+        result = {"summary": summary}
+        _fill_drl_paths_from_summary(result)
+        return result
+
+    return None
+
+
+def _fill_drl_paths_from_summary(result: dict) -> None:
+    """Backfill output paths from the drl_model summary text."""
+    summary = str(result.get("summary") or "")
+    if not summary:
+        return
+    patterns = {
+        "optimized_data_path": r"(?im)^\s*Result SHP:\s*(.+?)\s*$",
+        "output_path": r"(?im)^\s*Visualization:\s*(.+?)\s*$",
+    }
+    for key, pattern in patterns.items():
+        if result.get(key):
+            continue
+        match = re.search(pattern, summary)
+        if match:
+            result[key] = match.group(1).strip()
 
 
 # ---------------------------------------------------------------------------
@@ -650,10 +756,11 @@ def find_drl_optimization_input_path(
 
 def format_drl_optimization_result_for_chat(tool_result: dict, artifacts: list[str] | None = None) -> str:
     """Build a factual chat summary from a drl_model tool response."""
-    if not isinstance(tool_result, dict):
+    normalized = normalize_drl_tool_response(tool_result)
+    if not isinstance(normalized, dict):
         return ""
 
-    summary = str(tool_result.get("summary") or "")
+    summary = str(normalized.get("summary") or "")
     conversions = pairs = net_change = None
     for line in summary.splitlines():
         key, sep, value = line.partition(":")
@@ -668,8 +775,8 @@ def format_drl_optimization_result_for_chat(tool_result: dict, artifacts: list[s
         elif key == "net change":
             net_change = value
 
-    optimized_path = tool_result.get("optimized_data_path") or ""
-    map_path = tool_result.get("output_path") or ""
+    optimized_path = normalized.get("optimized_data_path") or ""
+    map_path = normalized.get("output_path") or ""
     html_paths = [
         p for p in (artifacts or [])
         if isinstance(p, str) and p.lower().endswith(".html")
