@@ -1,6 +1,7 @@
 """Data source profiling — detect type, CRS, bounds, columns, statistics."""
 import logging
 import os
+import re
 
 import geopandas as gpd
 import numpy as np
@@ -11,6 +12,52 @@ from .models import FusionSource
 from .io import _read_vector_chunked, _read_tabular_lazy, _materialize_df
 
 logger = logging.getLogger(__name__)
+
+
+RASTER_SEMANTIC_RULES = [
+    {
+        "value": "ndvi",
+        "domain": "remote_sensing",
+        "keywords": [
+            "ndvi",
+            "normalized difference vegetation index",
+            "vegetation index",
+            "vegetation_index",
+        ],
+    },
+    {
+        "value": "elevation",
+        "domain": "terrain",
+        "keywords": [
+            "dem",
+            "elevation",
+            "altitude",
+            "height",
+            "dsm",
+            "dtm",
+            "digital elevation model",
+            "digital surface model",
+            "digital terrain model",
+        ],
+    },
+    {
+        "value": "slope",
+        "domain": "terrain",
+        "keywords": ["slope", "gradient"],
+    },
+    {
+        "value": "landcover_class",
+        "domain": "land_cover",
+        "keywords": [
+            "landcover",
+            "land cover",
+            "land_cover",
+            "lulc",
+            "classification",
+            "classified",
+        ],
+    },
+]
 
 
 def _detect_data_type(file_path: str) -> str:
@@ -129,13 +176,26 @@ def _profile_raster(path: str) -> FusionSource:
             band_data = ds.read(i, window=window)
             valid = band_data[band_data != ds.nodata] if ds.nodata is not None else band_data
             band_name = f"band_{i}"
-            columns.append({"name": band_name, "dtype": str(ds.dtypes[i - 1]), "null_pct": 0})
+            band_description = ds.descriptions[i - 1] if ds.descriptions else None
+            band_tags = ds.tags(i)
+            column = {"name": band_name, "dtype": str(ds.dtypes[i - 1]), "null_pct": 0}
+            if band_description:
+                column["description"] = band_description
+            if band_tags:
+                column["tags"] = band_tags
+            columns.append(column)
             if len(valid) > 0:
                 stats[band_name] = {
                     "min": float(np.nanmin(valid)),
                     "max": float(np.nanmax(valid)),
                     "mean": float(np.nanmean(valid)),
                 }
+
+        semantic_domain, semantic_hints = _infer_raster_semantic_hints(
+            path,
+            columns,
+            stats,
+        )
 
     return FusionSource(
         file_path=path,
@@ -147,7 +207,170 @@ def _profile_raster(path: str) -> FusionSource:
         stats=stats,
         band_count=band_count,
         resolution=resolution,
+        semantic_domain=semantic_domain,
+        semantic_hints=semantic_hints,
     )
+
+
+def _infer_raster_semantic_hints(
+    path: str,
+    columns: list[dict],
+    stats: dict,
+) -> tuple[str | None, list[dict]]:
+    """Infer conservative semantic hints for common raster products."""
+    filename = os.path.splitext(os.path.basename(path))[0]
+    filename_text = _normalize_semantic_text(filename)
+    theme_by_value: dict[str, dict] = {}
+    band_hints = []
+
+    for rule in RASTER_SEMANTIC_RULES:
+        value = rule["value"]
+        filename_evidence = _keyword_evidence(
+            filename_text,
+            "filename",
+            rule["keywords"],
+        )
+        for column in columns:
+            band_name = column.get("name", "")
+            band_evidence = list(filename_evidence)
+
+            description = column.get("description")
+            if description:
+                band_evidence.extend(
+                    _keyword_evidence(
+                        _normalize_semantic_text(description),
+                        f"{band_name} description",
+                        rule["keywords"],
+                    )
+                )
+
+            tags = column.get("tags") or {}
+            if isinstance(tags, dict):
+                for key, value_text in tags.items():
+                    band_evidence.extend(
+                        _keyword_evidence(
+                            _normalize_semantic_text(value_text),
+                            f"{band_name} tag {key}",
+                            rule["keywords"],
+                        )
+                    )
+
+            if not band_evidence:
+                continue
+
+            range_evidence = _raster_range_evidence(rule["value"], band_name, stats)
+            evidence = _dedupe_preserve_order(band_evidence + range_evidence)
+            confidence = _raster_hint_confidence(
+                evidence,
+                has_filename_evidence=bool(filename_evidence),
+                has_range_evidence=bool(range_evidence),
+            )
+            band_hints.append({
+                "type": "band_semantic",
+                "field": band_name,
+                "value": value,
+                "confidence": confidence,
+                "evidence": evidence,
+            })
+
+            theme = theme_by_value.get(value)
+            if theme is None or confidence > theme["confidence"]:
+                theme_by_value[value] = {
+                    "type": "raster_theme",
+                    "value": value,
+                    "domain": rule["domain"],
+                    "confidence": confidence,
+                    "evidence": evidence,
+                }
+
+    theme_hints = sorted(
+        theme_by_value.values(),
+        key=lambda item: (
+            -float(item.get("confidence", 0)),
+            str(item.get("value", "")),
+        ),
+    )
+    semantic_domain = theme_hints[0]["domain"] if theme_hints else None
+    semantic_hints = theme_hints + band_hints
+    return semantic_domain, semantic_hints
+
+
+def _normalize_semantic_text(value: object) -> str:
+    text = "" if value is None else str(value).lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _keyword_evidence(
+    normalized_text: str,
+    label: str,
+    keywords: list[str],
+) -> list[str]:
+    evidence = []
+    for keyword in keywords:
+        normalized_keyword = _normalize_semantic_text(keyword)
+        if not normalized_keyword:
+            continue
+        if _contains_keyword(normalized_text, normalized_keyword):
+            evidence.append(f"{label} contains {_evidence_keyword(keyword, label)}")
+    return _dedupe_preserve_order(evidence)
+
+
+def _contains_keyword(normalized_text: str, normalized_keyword: str) -> bool:
+    if not normalized_text:
+        return False
+    if " " in normalized_keyword:
+        return normalized_keyword in normalized_text
+    return bool(re.search(rf"\b{re.escape(normalized_keyword)}\b", normalized_text))
+
+
+def _evidence_keyword(keyword: str, label: str) -> str:
+    if keyword.lower() == "ndvi" and "description" in label:
+        return "NDVI"
+    return _normalize_semantic_text(keyword)
+
+
+def _raster_range_evidence(rule_value: str, band_name: str, stats: dict) -> list[str]:
+    band_stats = stats.get(band_name) or {}
+    minimum = band_stats.get("min")
+    maximum = band_stats.get("max")
+    if minimum is None or maximum is None:
+        return []
+    if (
+        rule_value == "ndvi"
+        and -1.05 <= float(minimum) <= 1.05
+        and -1.05 <= float(maximum) <= 1.05
+    ):
+        return [f"{band_name} value range fits NDVI [-1, 1]"]
+    if rule_value == "slope" and 0.0 <= float(minimum) and float(maximum) <= 90.0:
+        return [f"{band_name} value range fits slope degrees [0, 90]"]
+    return []
+
+
+def _raster_hint_confidence(
+    evidence: list[str],
+    has_filename_evidence: bool,
+    has_range_evidence: bool,
+) -> float:
+    metadata_count = len(evidence)
+    confidence = 0.55 + min(metadata_count, 3) * 0.12
+    if has_filename_evidence:
+        confidence += 0.12
+    if has_range_evidence:
+        confidence += 0.08
+    return round(min(confidence, 0.99), 2)
+
+
+def _dedupe_preserve_order(items: list) -> list:
+    seen = set()
+    result = []
+    for item in items:
+        marker = str(item)
+        if marker in seen:
+            continue
+        seen.add(marker)
+        result.append(item)
+    return result
 
 
 def _profile_tabular(path: str) -> FusionSource:

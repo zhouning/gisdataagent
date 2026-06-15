@@ -55,13 +55,19 @@ def _make_tabular_fixture(tmp_dir: str, name: str = "test_attrs.csv") -> str:
     return path
 
 
-def _make_raster_fixture(tmp_dir: str, name: str = "test_raster.tif") -> str:
+def _make_raster_fixture(
+    tmp_dir: str,
+    name: str = "test_raster.tif",
+    data: np.ndarray | None = None,
+    band_description: str | None = None,
+    band_tags: dict | None = None,
+) -> str:
     """Create a small raster GeoTIFF fixture."""
     import rasterio
     from rasterio.transform import from_bounds
 
     path = os.path.join(tmp_dir, name)
-    data = np.random.rand(10, 10).astype(np.float32)
+    data = data if data is not None else np.random.rand(10, 10).astype(np.float32)
     transform = from_bounds(0, 0, 2, 2, 10, 10)
 
     with rasterio.open(
@@ -69,6 +75,10 @@ def _make_raster_fixture(tmp_dir: str, name: str = "test_raster.tif") -> str:
         count=1, dtype="float32", crs="EPSG:4326", transform=transform,
     ) as ds:
         ds.write(data, 1)
+        if band_description:
+            ds.set_band_description(1, band_description)
+        if band_tags:
+            ds.update_tags(1, **band_tags)
     return path
 
 
@@ -137,6 +147,110 @@ class TestFusionSource(unittest.TestCase):
         self.assertIsNotNone(src.crs)
         self.assertEqual(src.band_count, 1)
         self.assertIsNotNone(src.resolution)
+
+    def test_profile_raster_semantic_hints_from_filename_and_band_metadata(self):
+        from data_agent.fusion_engine import profile_source
+
+        ndvi = np.linspace(-0.2, 0.8, 100, dtype=np.float32).reshape(10, 10)
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="city_ndvi_2024.tif",
+            data=ndvi,
+            band_description="NDVI",
+            band_tags={
+                "long_name": "Normalized Difference Vegetation Index",
+                "units": "index",
+            },
+        )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.semantic_domain, "remote_sensing")
+        theme_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "raster_theme"
+        ]
+        self.assertTrue(any(hint.get("value") == "ndvi" for hint in theme_hints))
+        band_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "band_semantic" and hint.get("field") == "band_1"
+        ]
+        self.assertTrue(any(hint.get("value") == "ndvi" for hint in band_hints))
+        ndvi_hint = next(hint for hint in band_hints if hint.get("value") == "ndvi")
+        self.assertGreaterEqual(ndvi_hint["confidence"], 0.9)
+        self.assertTrue(
+            any(
+                "band_1 description contains NDVI" in item
+                for item in ndvi_hint["evidence"]
+            )
+        )
+
+    def test_profile_raster_semantic_hints_identify_terrain_dem(self):
+        from data_agent.fusion_engine import profile_source
+
+        dem = np.linspace(120.0, 340.0, 100, dtype=np.float32).reshape(10, 10)
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="mountain_dem_surface.tif",
+            data=dem,
+            band_description="Elevation",
+        )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.semantic_domain, "terrain")
+        self.assertTrue(
+            any(
+                hint.get("type") == "raster_theme"
+                and hint.get("value") == "elevation"
+                for hint in src.semantic_hints
+            )
+        )
+
+    def test_profile_raster_semantic_hints_identify_slope(self):
+        from data_agent.fusion_engine import profile_source
+
+        slope = np.linspace(0.0, 45.0, 100, dtype=np.float32).reshape(10, 10)
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="terrain_slope_degrees.tif",
+            data=slope,
+            band_description="Slope",
+        )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.semantic_domain, "terrain")
+        self.assertTrue(
+            any(
+                hint.get("type") == "raster_theme"
+                and hint.get("value") == "slope"
+                for hint in src.semantic_hints
+            )
+        )
+
+    def test_profile_raster_semantic_hints_identify_landcover_class(self):
+        from data_agent.fusion_engine import profile_source
+
+        classes = np.tile(np.array([1, 2, 3, 4, 5], dtype=np.float32), (10, 2))
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="city_lulc_landcover.tif",
+            data=classes,
+            band_description="Land cover classification",
+            band_tags={"classes": "1 built-up; 2 vegetation; 3 water"},
+        )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.semantic_domain, "land_cover")
+        self.assertTrue(
+            any(
+                hint.get("type") == "raster_theme"
+                and hint.get("value") == "landcover_class"
+                for hint in src.semantic_hints
+            )
+        )
 
     def test_profile_vector_stats(self):
         from data_agent.fusion_engine import profile_source

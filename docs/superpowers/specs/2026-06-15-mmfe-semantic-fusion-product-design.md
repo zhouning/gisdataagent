@@ -129,7 +129,8 @@ The manifest should use stable top-level keys:
       "data_type": "vector",
       "row_count": 100,
       "crs": "EPSG:4326",
-      "semantic_domain": null
+      "semantic_domain": null,
+      "semantic_hints": []
     }
   ],
   "semantic_mappings": [
@@ -384,6 +385,8 @@ If time allows, run:
 
 Implemented in:
 
+- `data_agent/fusion/models.py`
+- `data_agent/fusion/profiling.py`
 - `data_agent/fusion/semantic_product.py`
 - `data_agent/fusion/execution.py`
 - `data_agent/fusion/compatibility.py`
@@ -442,6 +445,16 @@ actions. The manifest exposes this through `ai_metadata.alignment_review`, and
 `FusionResult.semantic_summary` includes the review item count and whether human
 review is required. This turns semantic alignment quality from a passive score
 into a business/AI governance workflow input.
+
+Raster source profiling now emits evidence-backed `semantic_hints` and a
+source-level `semantic_domain` for common raster products. The current
+deterministic rule set covers NDVI/vegetation index, DEM/elevation, slope, and
+land-cover classification signals. Evidence comes from filename tokens, band
+descriptions, band tags, and conservative value-range checks where useful. The
+hints are carried into `manifest.sources[].semantic_hints`, so downstream
+business review, RAG chunking, or future vector indexing can see why a raster
+band was treated as NDVI, elevation, slope, or land-cover class. These hints are
+metadata evidence, not an irreversible classification step.
 
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector

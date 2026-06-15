@@ -1219,3 +1219,24 @@ Expected: PASS.
 - No unrelated files: Plan avoids NL2SQL files currently dirty in the worktree.
 - Type consistency: `semantic_product_path`, `semantic_summary`, `derived_fields`, and `inferred_fields` are consistently named across model, execution, and tests.
 - Backward compatibility: Engine-level semantic product is opt-in through `semantic_config`; existing `execute_fusion()` calls remain valid.
+
+---
+
+## Roadmap Progress: Raster Semantic Hints
+
+Completed as a follow-up increment after the initial semantic product contract.
+
+- Added `FusionSource.semantic_hints` as an additive field at the end of the dataclass to preserve backward-compatible positional constructors.
+- Extended raster profiling to extract evidence-backed hints from filename tokens, raster band descriptions, band tags, and conservative value ranges.
+- Covered common raster semantic themes: NDVI/vegetation index, DEM/elevation, slope, and land-cover classification.
+- Propagated source hints into `manifest.sources[].semantic_hints`, keeping them available for business review, AI retrieval, and later pgvector/LanceDB indexing jobs.
+- Added focused TDD coverage in `data_agent/test_fusion_engine.py` and `data_agent/test_fusion_semantic_product.py`.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource data_agent\test_fusion_semantic_product.py -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py data_agent\test_fusion_semantic_alignment.py data_agent\test_fusion_semantic_product.py data_agent\test_fusion_v2_semantic.py data_agent\test_fusion_v2_integration.py data_agent\test_fusion_v2_explainability.py data_agent\test_fusion_v2_conflict.py -q
+```
+
+The remaining hard part is deeper raster and point-cloud semantic extraction beyond deterministic metadata hints: STAC/ISO metadata parsing, CRS-aware pixel semantics, derived raster feature chips, point-cloud classification/intensity semantics, and a separate optional indexing publisher for pgvector/LanceDB.

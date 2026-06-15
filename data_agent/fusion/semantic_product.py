@@ -254,6 +254,7 @@ def _source_manifest(source: FusionSource) -> dict:
         "row_count": int(source.row_count or 0),
         "crs": source.crs,
         "semantic_domain": source.semantic_domain,
+        "semantic_hints": list(source.semantic_hints or []),
         "columns": [column.get("name") for column in source.columns],
     }
 

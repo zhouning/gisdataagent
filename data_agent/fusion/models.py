@@ -21,6 +21,7 @@ class FusionSource:
     # PostGIS push-down (v7.1)
     postgis_table: Optional[str] = None
     postgis_srid: Optional[int] = None
+    semantic_hints: list = field(default_factory=list)
 
 
 @dataclass

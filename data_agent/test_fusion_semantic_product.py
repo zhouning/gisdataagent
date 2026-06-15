@@ -347,6 +347,49 @@ class TestSemanticFusionProduct(unittest.TestCase):
         self.assertIn("dtype_conflict", review["items"][0]["reason_codes"])
         self.assertIn("review items: 1", manifest["ai_metadata"]["retrieval_text"])
 
+    def test_source_manifest_carries_raster_semantic_hints(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        sources = [
+            FusionSource(
+                file_path="/data/city_ndvi_2024.tif",
+                data_type="raster",
+                crs="EPSG:4326",
+                columns=[{"name": "band_1", "dtype": "float32", "null_pct": 0}],
+                semantic_domain="remote_sensing",
+                semantic_hints=[
+                    {
+                        "type": "raster_theme",
+                        "value": "ndvi",
+                        "confidence": 0.95,
+                        "evidence": [
+                            "filename contains ndvi",
+                            "band_1 description contains NDVI",
+                        ],
+                    },
+                    {
+                        "type": "band_semantic",
+                        "field": "band_1",
+                        "value": "ndvi",
+                        "confidence": 0.95,
+                        "evidence": ["band_1 tags contain vegetation index"],
+                    },
+                ],
+            )
+        ]
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            sources,
+            strategy="zonal_statistics",
+            config={"enabled": True},
+        )
+
+        source_manifest = manifest["sources"][0]
+        self.assertEqual(source_manifest["semantic_domain"], "remote_sensing")
+        self.assertEqual(source_manifest["semantic_hints"][0]["value"], "ndvi")
+        self.assertEqual(source_manifest["semantic_hints"][1]["field"], "band_1")
+
     def test_ontology_derivation_and_inference_enrich_output(self):
         from data_agent.fusion.semantic_product import build_semantic_fusion_product
 
