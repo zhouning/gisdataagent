@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import xml.etree.ElementTree as ET
 
 import geopandas as gpd
 import numpy as np
@@ -373,24 +374,37 @@ def _safe_float_or_none(value: object) -> float | None:
         return None
 
 
+def _safe_int_or_none(value: object) -> int | None:
+    try:
+        if value is None or value == "":
+            return None
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
 def _load_raster_sidecar_metadata(path: str) -> dict | None:
     stem, _ = os.path.splitext(path)
     candidates = [
-        f"{stem}.stac.json",
-        f"{stem}.metadata.json",
-        f"{stem}.json",
+        (f"{stem}.stac.json", "json"),
+        (f"{stem}.metadata.json", "json"),
+        (f"{stem}.json", "json"),
+        (f"{stem}.iso.xml", "xml"),
+        (f"{stem}.metadata.xml", "xml"),
+        (f"{stem}.xml", "xml"),
     ]
-    for candidate in candidates:
+    for candidate, sidecar_format in candidates:
         if not os.path.exists(candidate):
             continue
-        try:
-            with open(candidate, "r", encoding="utf-8") as f:
-                metadata = json.load(f)
-        except (OSError, json.JSONDecodeError):
+        if sidecar_format == "xml":
+            metadata = _parse_iso_xml_sidecar(candidate)
+        else:
+            metadata = _parse_json_sidecar(candidate)
+        if not metadata:
             continue
         if not isinstance(metadata, dict):
             continue
-        kind = "stac_sidecar" if _looks_like_stac(metadata) else "metadata_sidecar"
+        kind = _raster_sidecar_kind(metadata, sidecar_format)
         return {
             "path": candidate,
             "kind": kind,
@@ -399,12 +413,93 @@ def _load_raster_sidecar_metadata(path: str) -> dict | None:
     return None
 
 
+def _parse_json_sidecar(path: str) -> dict | None:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return metadata if isinstance(metadata, dict) else None
+
+
+def _parse_iso_xml_sidecar(path: str) -> dict | None:
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return None
+
+    title = _xml_first_text_under(root, "title")
+    abstract = _xml_first_text_under(root, "abstract")
+    date_stamp = _xml_first_text_under(root, "dateStamp")
+    lineage = _xml_first_text_under(root, "statement")
+    keywords = _xml_all_text_under(root, "keyword")
+    topics = _xml_all_text_under(root, "topicCategory")
+    is_iso = _xml_local_name(root.tag) == "MD_Metadata" or any(
+        "isotc211.org/2005/gmd" in element.tag for element in root.iter()
+    )
+
+    metadata = {
+        "title": title,
+        "abstract": abstract,
+        "datetime": date_stamp,
+        "lineage": lineage,
+        "keywords": keywords,
+        "topic_categories": topics,
+    }
+    if is_iso:
+        metadata["metadata_standard"] = "ISO 19115"
+    parsed = {key: value for key, value in metadata.items() if value}
+    if not any(key != "metadata_standard" for key in parsed):
+        return None
+    return parsed
+
+
+def _raster_sidecar_kind(metadata: dict, sidecar_format: str) -> str:
+    if sidecar_format == "xml":
+        if metadata.get("metadata_standard") == "ISO 19115":
+            return "iso19115_sidecar"
+        return "xml_metadata_sidecar"
+    return "stac_sidecar" if _looks_like_stac(metadata) else "metadata_sidecar"
+
+
 def _looks_like_stac(metadata: dict) -> bool:
     return bool(
         metadata.get("stac_version")
+        or metadata.get("stac_extensions")
         or metadata.get("type") == "Feature"
+        or metadata.get("collection")
         or metadata.get("assets")
     )
+
+
+def _xml_first_text_under(root: ET.Element, local_name: str) -> str | None:
+    values = _xml_all_text_under(root, local_name)
+    return values[0] if values else None
+
+
+def _xml_all_text_under(root: ET.Element, local_name: str) -> list[str]:
+    values = []
+    for element in root.iter():
+        if _xml_local_name(element.tag) != local_name:
+            continue
+        text = _xml_descendant_text(element)
+        if text:
+            values.append(text)
+    return _dedupe_preserve_order(values)
+
+
+def _xml_descendant_text(element: ET.Element) -> str | None:
+    texts = []
+    for item in element.iter():
+        if item.text and item.text.strip():
+            texts.append(item.text.strip())
+    if not texts:
+        return None
+    return " ".join(texts)
+
+
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
 
 
 def _apply_raster_sidecar_metadata(
@@ -506,9 +601,13 @@ def _infer_raster_semantic_hints(
             "filename",
             rule["keywords"],
         )
+        sidecar_theme_evidence = _raster_sidecar_theme_evidence(
+            sidecar_metadata,
+            rule["keywords"],
+        )
         for column in columns:
             band_name = column.get("name", "")
-            band_evidence = list(filename_evidence)
+            band_evidence = list(filename_evidence) + list(sidecar_theme_evidence)
 
             description = column.get("description")
             if description:
@@ -649,6 +748,64 @@ def _raster_grid_semantic_hints(grid: dict | None) -> list[dict]:
     }]
 
 
+def _raster_sidecar_theme_evidence(
+    sidecar_metadata: dict | None,
+    keywords: list[str],
+) -> list[str]:
+    if not sidecar_metadata:
+        return []
+    evidence = []
+    metadata = sidecar_metadata.get("metadata", {})
+    for label, value in _raster_sidecar_text_fields(metadata):
+        evidence.extend(
+            _keyword_evidence(
+                _normalize_semantic_text(value),
+                f"metadata {label}",
+                keywords,
+            )
+        )
+    return _dedupe_preserve_order(evidence)
+
+
+def _raster_sidecar_text_fields(metadata: dict) -> list[tuple[str, str]]:
+    properties = metadata.get("properties") or {}
+    fields = []
+    for label, value in [
+        ("title", metadata.get("title") or properties.get("title")),
+        (
+            "description",
+            metadata.get("description")
+            or metadata.get("abstract")
+            or properties.get("description")
+            or properties.get("abstract"),
+        ),
+        ("collection", metadata.get("collection") or properties.get("collection")),
+        ("lineage", metadata.get("lineage") or properties.get("lineage")),
+    ]:
+        if value:
+            fields.append((label, str(value)))
+    for keyword in _as_text_list(
+        metadata.get("keywords")
+        or metadata.get("keyword")
+        or properties.get("keywords")
+        or properties.get("keyword")
+    ):
+        fields.append(("keyword", keyword))
+    for topic in _as_text_list(metadata.get("topic_categories") or metadata.get("topic")):
+        fields.append(("topic", topic))
+    return fields
+
+
+def _as_text_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item) for item in value if item is not None and str(item) != ""]
+    return [str(value)]
+
+
 def _raster_sidecar_semantic_hints(sidecar_metadata: dict | None) -> list[dict]:
     if not sidecar_metadata:
         return []
@@ -671,6 +828,104 @@ def _raster_sidecar_semantic_hints(sidecar_metadata: dict | None) -> list[dict]:
             "value": str(platform),
             "confidence": 0.9,
             "evidence": [f"metadata platform is {platform}"],
+        })
+
+    collection = metadata.get("collection") or properties.get("collection")
+    if collection:
+        hints.append({
+            "type": "metadata_collection",
+            "value": str(collection),
+            "confidence": 0.88,
+            "evidence": [f"metadata collection is {collection}"],
+        })
+
+    datetime_value = (
+        properties.get("datetime")
+        or properties.get("start_datetime")
+        or metadata.get("datetime")
+        or metadata.get("date")
+    )
+    if datetime_value:
+        hints.append({
+            "type": "metadata_datetime",
+            "value": str(datetime_value),
+            "confidence": 0.86,
+            "evidence": [f"metadata datetime is {datetime_value}"],
+        })
+
+    title = metadata.get("title") or properties.get("title")
+    if title:
+        hints.append({
+            "type": "metadata_title",
+            "value": str(title),
+            "confidence": 0.84,
+            "evidence": [f"metadata title is {title}"],
+        })
+
+    description = (
+        metadata.get("description")
+        or metadata.get("abstract")
+        or properties.get("description")
+        or properties.get("abstract")
+    )
+    if description:
+        hints.append({
+            "type": "metadata_description",
+            "value": str(description),
+            "confidence": 0.82,
+            "evidence": ["metadata description/abstract is present"],
+        })
+
+    for keyword in _as_text_list(
+        metadata.get("keywords")
+        or metadata.get("keyword")
+        or properties.get("keywords")
+        or properties.get("keyword")
+    ):
+        hints.append({
+            "type": "metadata_keyword",
+            "value": keyword,
+            "confidence": 0.82,
+            "evidence": [f"metadata keyword is {keyword}"],
+        })
+
+    for topic in _as_text_list(metadata.get("topic_categories") or metadata.get("topic")):
+        hints.append({
+            "type": "metadata_topic",
+            "value": topic,
+            "confidence": 0.8,
+            "evidence": [f"metadata topic category is {topic}"],
+        })
+
+    lineage = metadata.get("lineage") or properties.get("lineage")
+    if lineage:
+        hints.append({
+            "type": "metadata_lineage",
+            "value": str(lineage),
+            "confidence": 0.82,
+            "evidence": ["metadata lineage statement is present"],
+        })
+
+    gsd = _safe_float_or_none(properties.get("gsd") or metadata.get("gsd"))
+    if gsd is not None:
+        hints.append({
+            "type": "raster_gsd",
+            "value": gsd,
+            "confidence": 0.86,
+            "evidence": [f"metadata gsd is {gsd}"],
+        })
+
+    epsg_value = _safe_int_or_none(
+        properties.get("proj:epsg")
+        or metadata.get("proj:epsg")
+        or metadata.get("epsg")
+    )
+    if epsg_value is not None:
+        hints.append({
+            "type": "projection_epsg",
+            "value": epsg_value,
+            "confidence": 0.86,
+            "evidence": [f"metadata proj:epsg is {epsg_value}"],
         })
 
     instruments = properties.get("instruments") or metadata.get("instruments") or []

@@ -424,6 +424,162 @@ class TestFusionSource(unittest.TestCase):
             )
         )
 
+    def test_profile_raster_reads_extended_stac_metadata(self):
+        from data_agent.fusion_engine import profile_source
+
+        raster = _make_raster_fixture(self.tmp, name="stac_product.tif")
+        stac_path = os.path.splitext(raster)[0] + ".stac.json"
+        with open(stac_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "stac_version": "1.0.0",
+                    "type": "Feature",
+                    "collection": "sentinel-2-l2a",
+                    "properties": {
+                        "title": "Sentinel-2 surface reflectance vegetation index",
+                        "description": (
+                            "Atmospherically corrected surface reflectance for "
+                            "vegetation monitoring"
+                        ),
+                        "datetime": "2024-05-01T10:11:12Z",
+                        "platform": "sentinel-2b",
+                        "instruments": ["msi"],
+                        "gsd": 10,
+                        "proj:epsg": 32650,
+                        "keywords": ["surface reflectance", "vegetation index"],
+                    },
+                },
+                f,
+            )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.semantic_domain, "remote_sensing")
+        self.assertTrue(
+            any(
+                hint.get("type") == "metadata_collection"
+                and hint.get("value") == "sentinel-2-l2a"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "metadata_datetime"
+                and hint.get("value") == "2024-05-01T10:11:12Z"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "raster_gsd"
+                and hint.get("value") == 10.0
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "projection_epsg"
+                and hint.get("value") == 32650
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "metadata_keyword"
+                and hint.get("value") == "vegetation index"
+                for hint in src.semantic_hints
+            )
+        )
+
+    def test_profile_raster_reads_iso_xml_sidecar_metadata(self):
+        from data_agent.fusion_engine import profile_source
+
+        raster = _make_raster_fixture(self.tmp, name="iso_product.tif")
+        iso_path = os.path.splitext(raster)[0] + ".iso.xml"
+        with open(iso_path, "w", encoding="utf-8") as f:
+            f.write(
+                """<?xml version="1.0" encoding="UTF-8"?>
+<gmd:MD_Metadata
+  xmlns:gmd="http://www.isotc211.org/2005/gmd"
+  xmlns:gco="http://www.isotc211.org/2005/gco">
+  <gmd:dateStamp><gco:Date>2024-01-31</gco:Date></gmd:dateStamp>
+  <gmd:identificationInfo>
+    <gmd:MD_DataIdentification>
+      <gmd:citation>
+        <gmd:CI_Citation>
+          <gmd:title>
+            <gco:CharacterString>Coastal land cover classification</gco:CharacterString>
+          </gmd:title>
+        </gmd:CI_Citation>
+      </gmd:citation>
+      <gmd:abstract>
+        <gco:CharacterString>Land cover classification map for coastal planning.</gco:CharacterString>
+      </gmd:abstract>
+      <gmd:descriptiveKeywords>
+        <gmd:MD_Keywords>
+          <gmd:keyword><gco:CharacterString>land cover</gco:CharacterString></gmd:keyword>
+          <gmd:keyword><gco:CharacterString>classification</gco:CharacterString></gmd:keyword>
+        </gmd:MD_Keywords>
+      </gmd:descriptiveKeywords>
+      <gmd:topicCategory>
+        <gmd:MD_TopicCategoryCode>imageryBaseMapsEarthCover</gmd:MD_TopicCategoryCode>
+      </gmd:topicCategory>
+    </gmd:MD_DataIdentification>
+  </gmd:identificationInfo>
+  <gmd:dataQualityInfo>
+    <gmd:DQ_DataQuality>
+      <gmd:lineage>
+        <gmd:LI_Lineage>
+          <gmd:statement>
+            <gco:CharacterString>Derived from supervised classification.</gco:CharacterString>
+          </gmd:statement>
+        </gmd:LI_Lineage>
+      </gmd:lineage>
+    </gmd:DQ_DataQuality>
+  </gmd:dataQualityInfo>
+</gmd:MD_Metadata>
+"""
+            )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.semantic_domain, "land_cover")
+        self.assertTrue(
+            any(
+                hint.get("type") == "metadata_source"
+                and hint.get("value") == "iso19115_sidecar"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "metadata_title"
+                and hint.get("value") == "Coastal land cover classification"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "metadata_keyword"
+                and hint.get("value") == "land cover"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "metadata_lineage"
+                and "supervised classification" in hint.get("value", "")
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "raster_theme"
+                and hint.get("value") == "landcover_class"
+                for hint in src.semantic_hints
+            )
+        )
+
     def test_profile_raster_grid_semantics_for_projected_crs(self):
         import rasterio
         from data_agent.fusion_engine import profile_source

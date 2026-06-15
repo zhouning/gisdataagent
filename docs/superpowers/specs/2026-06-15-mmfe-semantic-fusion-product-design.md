@@ -485,6 +485,16 @@ agents do not treat degree-based pixels as square metres. This closes the first
 CRS-aware pixel-semantics gap without adding automatic reprojection or zonal
 aggregation behavior.
 
+Raster sidecar parsing now handles a broader metadata evidence layer. STAC JSON
+sidecars contribute collection, datetime, title/description, keywords, GSD, and
+`proj:epsg` in addition to platform, instrument, `eo:bands`, and
+`raster:bands`. ISO 19115-style XML sidecars are parsed with the Python standard
+library for common title, abstract, keywords, topic category, date stamp, and
+lineage statements. These text fields also participate in deterministic raster
+theme inference, so a product can be recognized from authoritative metadata even
+when the filename and band description are weak. This is intentionally a
+conservative core-field parser, not a complete ISO metadata engine.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

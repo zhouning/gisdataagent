@@ -1316,4 +1316,31 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
 ```
 
-Remaining hard parts are still real: fuller STAC/ISO metadata parsing, derived raster feature chips, VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: STAC and ISO Raster Metadata Semantics
+
+Completed as a metadata-evidence increment after CRS-aware grid semantics.
+
+- Extended STAC sidecar parsing beyond platform/instrument/band metadata to
+  capture collection, datetime, title, description, keywords, GSD, and
+  `proj:epsg`.
+- Added dependency-free ISO 19115-style XML sidecar parsing for common title,
+  abstract, keywords, topic category, date stamp, and lineage statements.
+- Added `metadata_title`, `metadata_description`, `metadata_keyword`,
+  `metadata_topic`, `metadata_datetime`, `metadata_collection`,
+  `metadata_lineage`, `raster_gsd`, and `projection_epsg` semantic hints.
+- Fed normalized STAC/ISO text fields into deterministic raster theme inference,
+  so authoritative sidecar metadata can classify a weakly named product as
+  NDVI/vegetation index, elevation, slope, or land-cover classification.
+- Kept the parser intentionally conservative: it covers high-value core fields
+  without claiming complete ISO schema coverage or adding XML/STAC dependencies.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_reads_extended_stac_metadata data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_reads_iso_xml_sidecar_metadata -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+```
+
+Remaining hard parts are still real: derived raster feature chips, VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.
