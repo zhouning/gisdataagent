@@ -60,6 +60,84 @@ RASTER_SEMANTIC_RULES = [
 ]
 
 
+POINT_CLOUD_BASE_COLUMNS = [
+    {"name": "x", "dtype": "float64", "null_pct": 0},
+    {"name": "y", "dtype": "float64", "null_pct": 0},
+    {"name": "z", "dtype": "float64", "null_pct": 0},
+]
+
+POINT_CLOUD_DIMENSIONS = [
+    {
+        "name": "classification",
+        "dtype": "uint8",
+        "semantic": "asprs_classification",
+        "evidence": "classification dimension present",
+    },
+    {
+        "name": "intensity",
+        "dtype": "uint16",
+        "semantic": "return_intensity",
+        "evidence": "intensity dimension present",
+    },
+    {
+        "name": "return_number",
+        "dtype": "uint8",
+        "semantic": "lidar_return_number",
+        "evidence": "return_number dimension present",
+    },
+    {
+        "name": "number_of_returns",
+        "dtype": "uint8",
+        "semantic": "lidar_return_count",
+        "evidence": "number_of_returns dimension present",
+    },
+    {
+        "name": "red",
+        "dtype": "uint16",
+        "semantic": "rgb_color",
+        "evidence": "red color dimension present",
+    },
+    {
+        "name": "green",
+        "dtype": "uint16",
+        "semantic": "rgb_color",
+        "evidence": "green color dimension present",
+    },
+    {
+        "name": "blue",
+        "dtype": "uint16",
+        "semantic": "rgb_color",
+        "evidence": "blue color dimension present",
+    },
+    {
+        "name": "scan_angle",
+        "dtype": "float32",
+        "semantic": "scan_angle",
+        "evidence": "scan_angle dimension present",
+    },
+    {
+        "name": "scan_angle_rank",
+        "dtype": "int8",
+        "semantic": "scan_angle",
+        "evidence": "scan_angle_rank dimension present",
+    },
+]
+
+LAS_CLASSIFICATION_LABELS = {
+    0: "created_never_classified",
+    1: "unclassified",
+    2: "ground",
+    3: "low_vegetation",
+    4: "medium_vegetation",
+    5: "high_vegetation",
+    6: "building",
+    7: "low_point_noise",
+    9: "water",
+    17: "bridge_deck",
+    18: "high_noise",
+}
+
+
 def _detect_data_type(file_path: str) -> str:
     """Detect data type from file extension."""
     ext = os.path.splitext(file_path)[1].lower()
@@ -402,17 +480,24 @@ def _profile_tabular(path: str) -> FusionSource:
 
 def _profile_point_cloud(path: str) -> FusionSource:
     """Profile a point cloud (LAS/LAZ) data source — metadata only."""
+    columns = list(POINT_CLOUD_BASE_COLUMNS)
+    stats = {}
+    semantic_domain = None
+    semantic_hints = []
     try:
         import laspy
-        with laspy.read(path) as las:
-            bounds = (
-                float(las.header.x_min), float(las.header.y_min),
-                float(las.header.x_max), float(las.header.y_max),
+        las_data = laspy.read(path)
+        if hasattr(las_data, "__enter__") and hasattr(las_data, "__exit__"):
+            with las_data as las:
+                bounds, row_count, crs_str = _point_cloud_header_profile(las)
+                columns, stats, semantic_domain, semantic_hints = (
+                    _profile_point_cloud_dimensions(las, columns)
+                )
+        else:
+            bounds, row_count, crs_str = _point_cloud_header_profile(las_data)
+            columns, stats, semantic_domain, semantic_hints = (
+                _profile_point_cloud_dimensions(las_data, columns)
             )
-            row_count = las.header.point_count
-            crs_str = None
-            if hasattr(las.header, "parse_crs") and las.header.parse_crs():
-                crs_str = str(las.header.parse_crs())
     except Exception:
         bounds = None
         row_count = 0
@@ -424,11 +509,182 @@ def _profile_point_cloud(path: str) -> FusionSource:
         crs=crs_str,
         bounds=bounds,
         row_count=row_count,
-        columns=[{"name": "x", "dtype": "float64", "null_pct": 0},
-                 {"name": "y", "dtype": "float64", "null_pct": 0},
-                 {"name": "z", "dtype": "float64", "null_pct": 0}],
+        columns=columns,
         geometry_type="Point",
+        stats=stats,
+        semantic_domain=semantic_domain,
+        semantic_hints=semantic_hints,
     )
+
+
+def _point_cloud_header_profile(las: object) -> tuple[tuple, int, str | None]:
+    header = las.header
+    bounds = (
+        float(header.x_min), float(header.y_min),
+        float(header.x_max), float(header.y_max),
+    )
+    row_count = int(header.point_count)
+    crs_str = None
+    if hasattr(header, "parse_crs"):
+        crs = header.parse_crs()
+        if crs:
+            crs_str = str(crs)
+    return bounds, row_count, crs_str
+
+
+def _profile_point_cloud_dimensions(
+    las: object,
+    base_columns: list[dict],
+) -> tuple[list[dict], dict, str | None, list[dict]]:
+    """Extract LAS dimension profiles and conservative semantic hints."""
+    dimension_names = _point_cloud_dimension_names(las)
+    columns = list(base_columns)
+    stats = {}
+    semantic_hints = []
+
+    for base_name in ["x", "y", "z"]:
+        values = _safe_las_array(las, base_name, dimension_names)
+        if values is not None:
+            stats[base_name] = _numeric_array_stats(values)
+
+    for spec in POINT_CLOUD_DIMENSIONS:
+        name = spec["name"]
+        values = _safe_las_array(las, name, dimension_names)
+        if values is None:
+            continue
+        columns.append({
+            "name": name,
+            "dtype": spec["dtype"],
+            "null_pct": 0,
+        })
+        if name == "classification":
+            stats[name] = _classification_stats(values)
+            semantic_hints.extend(_classification_hints(stats[name]))
+        else:
+            stats[name] = _numeric_array_stats(values)
+        semantic_hints.append({
+            "type": "point_dimension_semantic",
+            "field": name,
+            "value": spec["semantic"],
+            "confidence": 0.92,
+            "evidence": [spec["evidence"]],
+        })
+
+    semantic_hints = _point_cloud_theme_hints(semantic_hints) + semantic_hints
+    semantic_domain = "lidar" if semantic_hints else None
+    return columns, stats, semantic_domain, semantic_hints
+
+
+def _point_cloud_dimension_names(las: object) -> set[str]:
+    names = set()
+    for owner in [las, getattr(las, "header", None)]:
+        point_format = getattr(owner, "point_format", None)
+        dimension_names = getattr(point_format, "dimension_names", None)
+        if dimension_names is None:
+            continue
+        try:
+            names.update(str(name).lower() for name in dimension_names)
+        except TypeError:
+            continue
+    return names
+
+
+def _safe_las_array(
+    las: object,
+    dimension: str,
+    dimension_names: set[str],
+) -> np.ndarray | None:
+    if dimension_names and dimension.lower() not in dimension_names:
+        return None
+    try:
+        value = getattr(las, dimension)
+    except Exception:
+        return None
+    try:
+        values = np.asarray(value)
+    except Exception:
+        return None
+    if values.size == 0:
+        return None
+    return values
+
+
+def _numeric_array_stats(values: np.ndarray) -> dict:
+    if not np.issubdtype(values.dtype, np.number):
+        return {"min": None, "max": None, "mean": None}
+    clean = values[np.isfinite(values)]
+    if clean.size == 0:
+        return {"min": None, "max": None, "mean": None}
+    return {
+        "min": float(np.nanmin(clean)),
+        "max": float(np.nanmax(clean)),
+        "mean": float(np.nanmean(clean)),
+    }
+
+
+def _classification_stats(values: np.ndarray) -> dict:
+    codes, counts = np.unique(values.astype(np.int64), return_counts=True)
+    classes = []
+    for code, count in zip(codes, counts):
+        label = LAS_CLASSIFICATION_LABELS.get(int(code), f"class_{int(code)}")
+        classes.append({
+            "code": int(code),
+            "label": label,
+            "count": int(count),
+        })
+    return {
+        "unique": len(classes),
+        "classes": classes,
+    }
+
+
+def _classification_hints(classification_stats: dict) -> list[dict]:
+    hints = []
+    for item in classification_stats.get("classes", []):
+        label = item.get("label")
+        code = item.get("code")
+        if not label:
+            continue
+        hints.append({
+            "type": "classification_class",
+            "value": label,
+            "class_code": code,
+            "confidence": 0.9,
+            "evidence": [
+                f"classification class {code} ({label}) count {item.get('count', 0)}"
+            ],
+        })
+    return hints
+
+
+def _point_cloud_theme_hints(semantic_hints: list[dict]) -> list[dict]:
+    values = {hint.get("value") for hint in semantic_hints}
+    themes = []
+    if "asprs_classification" in values:
+        themes.append({
+            "type": "point_cloud_theme",
+            "value": "classified_lidar",
+            "domain": "lidar",
+            "confidence": 0.92,
+            "evidence": ["classification dimension present"],
+        })
+    if "return_intensity" in values:
+        themes.append({
+            "type": "point_cloud_theme",
+            "value": "intensity_lidar",
+            "domain": "lidar",
+            "confidence": 0.86,
+            "evidence": ["intensity dimension present"],
+        })
+    if "rgb_color" in values:
+        themes.append({
+            "type": "point_cloud_theme",
+            "value": "colorized_lidar",
+            "domain": "lidar",
+            "confidence": 0.86,
+            "evidence": ["red/green/blue color dimensions present"],
+        })
+    return themes
 
 
 def profile_postgis_source(table_name: str) -> FusionSource:

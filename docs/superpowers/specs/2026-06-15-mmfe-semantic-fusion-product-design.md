@@ -456,6 +456,15 @@ business review, RAG chunking, or future vector indexing can see why a raster
 band was treated as NDVI, elevation, slope, or land-cover class. These hints are
 metadata evidence, not an irreversible classification step.
 
+Point-cloud profiling now emits LAS dimension-level semantic evidence when
+`laspy` can read the source. MMFE keeps the old optional-dependency fallback
+when `laspy` is unavailable, but a readable LAS/LAZ profile can now expose
+classification, intensity, return number/count, RGB color, scan angle, XYZ
+statistics, ASPRS classification counts, source-level `semantic_domain="lidar"`,
+and `semantic_hints` for classified, intensity-bearing, and colorized lidar.
+The reader accepts both context-manager style objects and ordinary `LasData`
+objects returned by `laspy.read()`.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

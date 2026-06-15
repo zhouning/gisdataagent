@@ -1239,4 +1239,24 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py data_agent\test_fusion_semantic_alignment.py data_agent\test_fusion_semantic_product.py data_agent\test_fusion_v2_semantic.py data_agent\test_fusion_v2_integration.py data_agent\test_fusion_v2_explainability.py data_agent\test_fusion_v2_conflict.py -q
 ```
 
-The remaining hard part is deeper raster and point-cloud semantic extraction beyond deterministic metadata hints: STAC/ISO metadata parsing, CRS-aware pixel semantics, derived raster feature chips, point-cloud classification/intensity semantics, and a separate optional indexing publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: Point-Cloud Semantic Hints
+
+Completed as the next hard-source increment after raster semantic hints.
+
+- Extended point-cloud profiling to extract optional LAS dimension semantics when `laspy` can read the source.
+- Added columns and statistics for classification, intensity, return number/count, RGB color, scan angle, and XYZ numeric ranges.
+- Added ASPRS classification summaries and `classification_class` hints for recognized classes such as ground, high vegetation, building, and water.
+- Added source-level `semantic_domain="lidar"` and source hints for classified lidar, intensity lidar, and colorized lidar.
+- Fixed a compatibility gap by accepting both context-manager style LAS readers and ordinary `LasData` objects returned by `laspy.read()`.
+- Preserved graceful fallback when `laspy` is not installed or a point-cloud source cannot be read.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py data_agent\test_fusion_semantic_alignment.py data_agent\test_fusion_semantic_product.py data_agent\test_fusion_v2_semantic.py data_agent\test_fusion_v2_integration.py data_agent\test_fusion_v2_explainability.py data_agent\test_fusion_v2_conflict.py -q
+```
+
+Remaining hard parts are still real: STAC/ISO metadata parsing, CRS-aware pixel semantics, derived raster feature chips, VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.

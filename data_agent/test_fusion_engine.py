@@ -109,6 +109,80 @@ def _make_point_vector(tmp_dir: str) -> str:
     return path
 
 
+class _MockLasData:
+    """Small context-manager LAS object for point-cloud profiling tests."""
+
+    def __init__(self):
+        self.x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        self.y = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
+        self.z = np.array([100.0, 102.0, 106.0, 108.0, 112.0])
+        self.classification = np.array([2, 2, 5, 6, 9], dtype=np.uint8)
+        self.intensity = np.array([120, 150, 180, 210, 240], dtype=np.uint16)
+        self.return_number = np.array([1, 1, 1, 2, 2], dtype=np.uint8)
+        self.number_of_returns = np.array([1, 1, 2, 2, 2], dtype=np.uint8)
+        self.red = np.array([1000, 1100, 1200, 1300, 1400], dtype=np.uint16)
+        self.green = np.array([900, 950, 1000, 1050, 1100], dtype=np.uint16)
+        self.blue = np.array([800, 850, 900, 950, 1000], dtype=np.uint16)
+        self.scan_angle = np.array([-5.0, -2.0, 0.0, 2.0, 5.0], dtype=np.float32)
+        dimension_names = [
+            "X",
+            "Y",
+            "Z",
+            "classification",
+            "intensity",
+            "return_number",
+            "number_of_returns",
+            "red",
+            "green",
+            "blue",
+            "scan_angle",
+        ]
+        point_format = MagicMock()
+        point_format.dimension_names = dimension_names
+        self.point_format = point_format
+        self.header = MagicMock(
+            x_min=0.0,
+            y_min=10.0,
+            x_max=4.0,
+            y_max=14.0,
+            point_count=5,
+            point_format=point_format,
+        )
+        self.header.parse_crs.return_value = "EPSG:4326"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+def _plain_mock_las_data():
+    source = _MockLasData()
+
+    class PlainLasData:
+        pass
+
+    plain = PlainLasData()
+    for name in [
+        "x",
+        "y",
+        "z",
+        "classification",
+        "intensity",
+        "return_number",
+        "number_of_returns",
+        "red",
+        "green",
+        "blue",
+        "scan_angle",
+        "point_format",
+        "header",
+    ]:
+        setattr(plain, name, getattr(source, name))
+    return plain
+
+
 # ---------------------------------------------------------------------------
 # TestFusionSource — profiling
 # ---------------------------------------------------------------------------
@@ -268,6 +342,74 @@ class TestFusionSource(unittest.TestCase):
         self.assertEqual(_detect_data_type("test.csv"), "tabular")
         self.assertEqual(_detect_data_type("test.las"), "point_cloud")
         self.assertEqual(_detect_data_type("test.unknown"), "tabular")
+
+    def test_profile_point_cloud_semantic_hints_from_las_dimensions(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.return_value = _MockLasData()
+
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud("classified_lidar.las")
+
+        self.assertEqual(src.data_type, "point_cloud")
+        self.assertEqual(src.row_count, 5)
+        self.assertEqual(src.crs, "EPSG:4326")
+        self.assertEqual(src.semantic_domain, "lidar")
+        column_names = {column["name"] for column in src.columns}
+        for expected in [
+            "x",
+            "y",
+            "z",
+            "classification",
+            "intensity",
+            "return_number",
+            "number_of_returns",
+            "red",
+            "green",
+            "blue",
+            "scan_angle",
+        ]:
+            self.assertIn(expected, column_names)
+
+        self.assertEqual(src.stats["classification"]["classes"][0]["label"], "ground")
+        self.assertIn("intensity", src.stats)
+        self.assertEqual(src.stats["intensity"]["max"], 240.0)
+        theme_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "point_cloud_theme"
+        ]
+        self.assertTrue(
+            any(hint.get("value") == "classified_lidar" for hint in theme_hints)
+        )
+        dimension_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "point_dimension_semantic"
+        ]
+        self.assertTrue(
+            any(hint.get("value") == "asprs_classification" for hint in dimension_hints)
+        )
+        self.assertTrue(
+            any(hint.get("value") == "return_intensity" for hint in dimension_hints)
+        )
+        class_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "classification_class"
+        ]
+        self.assertTrue(any(hint.get("value") == "building" for hint in class_hints))
+
+    def test_profile_point_cloud_accepts_plain_laspy_read_result(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.return_value = _plain_mock_las_data()
+
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud("plain_laspy_result.las")
+
+        self.assertEqual(src.row_count, 5)
+        self.assertEqual(src.semantic_domain, "lidar")
+        self.assertIn("classification", {column["name"] for column in src.columns})
 
 
 # ---------------------------------------------------------------------------
