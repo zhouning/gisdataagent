@@ -17,7 +17,11 @@ import pandas as pd
 
 from .explainability import COL_CONFIDENCE, _classify_quality
 from .models import FusionSource
-from .semantic_alignment import build_alignment_summary, score_semantic_alignment
+from .semantic_alignment import (
+    build_alignment_review_items,
+    build_alignment_summary,
+    score_semantic_alignment,
+)
 
 
 SEMANTIC_PRODUCT_VERSION = "1.1"
@@ -710,6 +714,12 @@ def _build_ai_metadata(
 ) -> dict:
     source_names = [os.path.basename(source.file_path) for source in sources]
     alignment_summary = build_alignment_summary(semantic_mappings)
+    review_items = build_alignment_review_items(semantic_mappings)
+    alignment_review = {
+        "requires_human_review": bool(review_items),
+        "review_item_count": len(review_items),
+        "items": review_items,
+    }
     retrieval_text = (
         f"Semantic fusion product generated with {strategy}. "
         f"Sources: {', '.join(source_names)}. "
@@ -717,7 +727,8 @@ def _build_ai_metadata(
         f"Semantic mappings: {alignment_summary['total_mappings']}; "
         f"accepted mappings: {alignment_summary['decisions']['accept']}; "
         f"review mappings: {alignment_summary['decisions']['review']}; "
-        f"rejected mappings: {alignment_summary['decisions']['reject']}."
+        f"rejected mappings: {alignment_summary['decisions']['reject']}; "
+        f"review items: {len(review_items)}."
     )
     chunks = []
     if enabled:
@@ -731,6 +742,7 @@ def _build_ai_metadata(
                     "quality_score": quality.get("score"),
                     "sources": source_names,
                     "alignment_summary": alignment_summary,
+                    "alignment_review": alignment_review,
                 },
             }
         )
@@ -753,6 +765,7 @@ def _build_ai_metadata(
         "embedding_ready": True,
         "recommended_vector_targets": ["pgvector", "lancedb"],
         "alignment_summary": alignment_summary,
+        "alignment_review": alignment_review,
     }
 
 

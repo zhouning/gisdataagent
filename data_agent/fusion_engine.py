@@ -70,6 +70,7 @@ from data_agent.fusion import (  # noqa: F401
     write_semantic_product_manifest,
     DEFAULT_ALIGNMENT_SCORING_WEIGHTS,
     alignment_decision,
+    build_alignment_review_items,
     build_alignment_summary,
     score_semantic_alignment,
 )

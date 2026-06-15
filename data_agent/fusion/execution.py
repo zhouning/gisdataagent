@@ -148,6 +148,11 @@ def execute_fusion(
             semantic_product_path = write_semantic_product_manifest(
                 semantic_manifest, output_path
             )
+            alignment_review = (
+                semantic_manifest
+                .get("ai_metadata", {})
+                .get("alignment_review", {})
+            )
             semantic_summary = {
                 "path": semantic_product_path,
                 "ai_chunks": len(
@@ -155,6 +160,12 @@ def execute_fusion(
                 ),
                 "feature_semantics": len(
                     semantic_manifest.get("feature_semantics", [])
+                ),
+                "alignment_review_items": alignment_review.get(
+                    "review_item_count", 0
+                ),
+                "requires_human_review": bool(
+                    alignment_review.get("requires_human_review", False)
                 ),
             }
             derived_field_names = [

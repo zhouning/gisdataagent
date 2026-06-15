@@ -314,6 +314,39 @@ class TestSemanticFusionProduct(unittest.TestCase):
         self.assertEqual(summary["decisions"]["reject"], 1)
         self.assertIn("accepted mappings: 1", manifest["ai_metadata"]["retrieval_text"])
 
+    def test_ai_metadata_includes_alignment_review_items(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _alignment_sources(),
+            strategy="spatial_join",
+            field_matches=[
+                {
+                    "left": "闈㈢Н",
+                    "right": "AREA",
+                    "confidence": 0.85,
+                    "match_type": "ontology",
+                    "group_id": "area",
+                },
+                {
+                    "left": "DLBM",
+                    "right": "AREA",
+                    "confidence": 0.55,
+                    "match_type": "fuzzy",
+                },
+            ],
+            config={"enabled": True},
+        )
+
+        review = manifest["ai_metadata"]["alignment_review"]
+        self.assertTrue(review["requires_human_review"])
+        self.assertEqual(review["review_item_count"], 1)
+        self.assertEqual(review["items"][0]["source_field"], "DLBM")
+        self.assertEqual(review["items"][0]["target_field"], "AREA")
+        self.assertIn("dtype_conflict", review["items"][0]["reason_codes"])
+        self.assertIn("review items: 1", manifest["ai_metadata"]["retrieval_text"])
+
     def test_ontology_derivation_and_inference_enrich_output(self):
         from data_agent.fusion.semantic_product import build_semantic_fusion_product
 

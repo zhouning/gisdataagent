@@ -188,6 +188,59 @@ class TestExecuteFusionV2(unittest.TestCase):
         output_gdf = gpd.read_file(result.output_path)
         self.assertIn("building_height", output_gdf.columns)
 
+    @patch("data_agent.fusion.db.record_operation")
+    @patch("data_agent.fusion.execution._generate_output_path")
+    def test_semantic_summary_includes_alignment_review_count(self, mock_path, mock_record):
+        """execute_fusion exposes semantic alignment review count in summary."""
+        from data_agent.fusion.execution import execute_fusion
+        from data_agent.fusion.models import CompatibilityReport, FusionSource
+
+        out_path = os.path.join(self.tmp, "out.geojson")
+        mock_path.return_value = out_path
+        gdf = gpd.GeoDataFrame(
+            {
+                "DLBM": ["0101", "0201"],
+                "AREA": [1000.0, 2000.0],
+            },
+            geometry=[Point(0, 0), Point(1, 1)],
+            crs="EPSG:4326",
+        )
+        source_a = FusionSource(
+            file_path="source_a.geojson",
+            data_type="vector",
+            crs="EPSG:4326",
+            row_count=2,
+            columns=[{"name": "DLBM", "dtype": "object", "null_pct": 0}],
+        )
+        source_b = FusionSource(
+            file_path="source_b.geojson",
+            data_type="vector",
+            crs="EPSG:4326",
+            row_count=2,
+            columns=[{"name": "AREA", "dtype": "float64", "null_pct": 0}],
+        )
+        report = CompatibilityReport(
+            field_matches=[
+                {
+                    "left": "DLBM",
+                    "right": "AREA",
+                    "confidence": 0.55,
+                    "match_type": "fuzzy",
+                }
+            ]
+        )
+
+        result = execute_fusion(
+            [("vector", gdf), ("vector", gdf.copy())],
+            "spatial_join",
+            [source_a, source_b],
+            report=report,
+            semantic_config={"enabled": True, "feature_sample_limit": 1},
+        )
+
+        self.assertEqual(result.semantic_summary["alignment_review_items"], 1)
+        self.assertTrue(result.semantic_summary["requires_human_review"])
+
 
 class TestToolsetRegistration(unittest.TestCase):
     """Verify toolset has v2 tools registered."""
@@ -268,11 +321,15 @@ class TestFusionResultModel(unittest.TestCase):
         self.assertTrue(callable(validate_semantic_product_manifest))
 
     def test_semantic_alignment_scoring_helpers_exported(self):
-        from data_agent.fusion import score_semantic_alignment
+        from data_agent.fusion import (
+            build_alignment_review_items,
+            score_semantic_alignment,
+        )
         from data_agent.fusion_engine import build_alignment_summary
 
         self.assertTrue(callable(score_semantic_alignment))
         self.assertTrue(callable(build_alignment_summary))
+        self.assertTrue(callable(build_alignment_review_items))
 
 
 # ---------------------------------------------------------------------------

@@ -435,6 +435,14 @@ definition links the source and target fields. The scoring module treats this as
 an additive support signal, so ordinary fusion runs are not penalized when no
 document context is available.
 
+Non-accepted mappings now produce actionable semantic review items.
+`build_alignment_review_items()` turns `review` and `reject` decisions into a
+compact checklist with severity, reason codes, evidence summaries, and suggested
+actions. The manifest exposes this through `ai_metadata.alignment_review`, and
+`FusionResult.semantic_summary` includes the review item count and whether human
+review is required. This turns semantic alignment quality from a passive score
+into a business/AI governance workflow input.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

@@ -80,6 +80,68 @@ class TestSemanticAlignmentScoring(unittest.TestCase):
         self.assertGreater(with_context["score"], base["score"])
         self.assertEqual(with_context["components"]["document_context_support"], 1.0)
 
+    def test_build_alignment_review_items_for_non_accepted_mappings(self):
+        from data_agent.fusion.semantic_alignment import build_alignment_review_items
+
+        review_items = build_alignment_review_items([
+            {
+                "source_field": "闈㈢Н",
+                "target_field": "AREA",
+                "confidence": 0.85,
+                "match_type": "ontology",
+                "alignment_score": {"score": 0.91, "decision": "accept"},
+                "evidence": [{"type": "ontology", "detail": "same ontology group: area"}],
+            },
+            {
+                "source_field": "DLBM",
+                "target_field": "land_use_code",
+                "confidence": 0.72,
+                "match_type": "fuzzy",
+                "alignment_score": {
+                    "score": 0.74,
+                    "decision": "review",
+                    "components": {
+                        "matcher_confidence": 0.72,
+                        "dtype_compatibility": 1.0,
+                        "document_context_support": 0.0,
+                    },
+                },
+                "evidence": [{"type": "dtype", "detail": "object -> object"}],
+            },
+            {
+                "source_field": "DLBM",
+                "target_field": "AREA",
+                "confidence": 0.55,
+                "match_type": "fuzzy",
+                "alignment_score": {
+                    "score": 0.4575,
+                    "decision": "reject",
+                    "components": {
+                        "matcher_confidence": 0.55,
+                        "dtype_compatibility": 0.0,
+                        "document_context_support": 0.0,
+                    },
+                },
+                "evidence": [
+                    {
+                        "type": "dtype",
+                        "detail": "object -> float64",
+                        "compatible": False,
+                    }
+                ],
+            },
+        ])
+
+        self.assertEqual(len(review_items), 2)
+        self.assertEqual(review_items[0]["review_id"], "alignment-review:1")
+        self.assertEqual(review_items[0]["severity"], "medium")
+        self.assertIn("missing_document_context", review_items[0]["reason_codes"])
+        self.assertEqual(review_items[0]["suggested_action"], "verify_with_domain_dictionary")
+
+        self.assertEqual(review_items[1]["severity"], "high")
+        self.assertIn("dtype_conflict", review_items[1]["reason_codes"])
+        self.assertEqual(review_items[1]["suggested_action"], "remove_or_remap_field_alignment")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -147,6 +147,7 @@ from .semantic_product import (
 from .semantic_alignment import (
     DEFAULT_ALIGNMENT_SCORING_WEIGHTS,
     alignment_decision,
+    build_alignment_review_items,
     build_alignment_summary,
     score_semantic_alignment,
 )
