@@ -259,6 +259,13 @@ class TestFusionResultModel(unittest.TestCase):
         self.assertTrue(callable(build_semantic_fusion_product))
         self.assertTrue(callable(write_semantic_product_manifest))
 
+    def test_semantic_product_schema_helpers_exported(self):
+        from data_agent.fusion import SEMANTIC_PRODUCT_SCHEMA
+        from data_agent.fusion_engine import validate_semantic_product_manifest
+
+        self.assertEqual(SEMANTIC_PRODUCT_SCHEMA["title"], "MMFE Semantic Fusion Product")
+        self.assertTrue(callable(validate_semantic_product_manifest))
+
 
 # ---------------------------------------------------------------------------
 # v2 Agent tool layer integration tests (new)

@@ -136,7 +136,10 @@ from .ontology import OntologyReasoner
 # --- Semantic Fusion Product ---
 from .semantic_product import (
     DEFAULT_SEMANTIC_PRODUCT_CONFIG,
+    SEMANTIC_PRODUCT_SCHEMA,
+    SEMANTIC_PRODUCT_VERSION,
     build_semantic_fusion_product,
+    validate_semantic_product_manifest,
     write_semantic_product_manifest,
 )
 

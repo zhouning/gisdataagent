@@ -6,6 +6,7 @@ product: enriched business columns plus an AI-ready JSON manifest.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
@@ -16,6 +17,77 @@ import pandas as pd
 
 from .explainability import COL_CONFIDENCE, _classify_quality
 from .models import FusionSource
+
+
+SEMANTIC_PRODUCT_VERSION = "1.1"
+
+SEMANTIC_PRODUCT_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "MMFE Semantic Fusion Product",
+    "type": "object",
+    "required": [
+        "product_type",
+        "version",
+        "product_id",
+        "business_output",
+        "sources",
+        "semantic_mappings",
+        "field_contracts",
+        "derived_fields",
+        "inferred_fields",
+        "feature_semantics",
+        "ai_metadata",
+        "quality",
+        "lineage",
+    ],
+    "properties": {
+        "product_type": {"type": "string"},
+        "version": {"type": "string"},
+        "product_id": {"type": "string"},
+        "created_at": {"type": "string"},
+        "business_output": {
+            "type": "object",
+            "required": ["path", "format", "row_count", "column_count", "crs"],
+            "properties": {
+                "path": {"type": "string"},
+                "format": {"type": "string"},
+                "row_count": {"type": "integer"},
+                "column_count": {"type": "integer"},
+                "crs": {"type": ["string", "null"]},
+            },
+        },
+        "sources": {"type": "array"},
+        "semantic_mappings": {"type": "array"},
+        "field_contracts": {"type": "array"},
+        "derived_fields": {"type": "array"},
+        "inferred_fields": {"type": "array"},
+        "feature_semantics": {"type": "array"},
+        "ai_metadata": {
+            "type": "object",
+            "required": [
+                "retrieval_text",
+                "chunks",
+                "embedding_ready",
+                "recommended_vector_targets",
+            ],
+            "properties": {
+                "retrieval_text": {"type": "string"},
+                "chunks": {"type": "array"},
+                "embedding_ready": {"type": "boolean"},
+                "recommended_vector_targets": {"type": "array"},
+            },
+        },
+        "quality": {
+            "type": "object",
+            "required": ["score", "warnings"],
+            "properties": {
+                "score": {"type": ["number", "null"]},
+                "warnings": {"type": "array"},
+            },
+        },
+        "lineage": {"type": "object"},
+    },
+}
 
 
 DEFAULT_SEMANTIC_PRODUCT_CONFIG = {
@@ -88,7 +160,8 @@ def build_semantic_fusion_product(
 
     manifest = {
         "product_type": "semantic_fusion_product",
-        "version": "1.0",
+        "version": SEMANTIC_PRODUCT_VERSION,
+        "product_id": _build_product_id(enriched, sources, strategy),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "business_output": {
             "path": "",
@@ -98,7 +171,14 @@ def build_semantic_fusion_product(
             "crs": str(enriched.crs) if getattr(enriched, "crs", None) else None,
         },
         "sources": [_source_manifest(source) for source in sources],
-        "semantic_mappings": _normalize_field_matches(field_matches or []),
+        "semantic_mappings": _normalize_field_matches(field_matches or [], sources),
+        "field_contracts": _build_field_contracts(
+            enriched,
+            sources,
+            derived_fields,
+            inferred_fields,
+            field_matches or [],
+        ),
         "derived_fields": derived_fields,
         "inferred_fields": inferred_fields,
         "feature_semantics": feature_semantics,
@@ -125,6 +205,11 @@ def write_semantic_product_manifest(manifest: dict, output_path: str) -> str:
     business_output = dict(manifest_to_write.get("business_output", {}))
     business_output["path"] = output_path
     manifest_to_write["business_output"] = business_output
+    errors = validate_semantic_product_manifest(manifest_to_write)
+    if errors:
+        raise ValueError(
+            "Invalid semantic fusion product manifest: " + "; ".join(errors)
+        )
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(
             manifest_to_write,
@@ -134,6 +219,18 @@ def write_semantic_product_manifest(manifest: dict, output_path: str) -> str:
             default=_json_default,
         )
     return manifest_path
+
+
+def validate_semantic_product_manifest(
+    manifest: dict,
+    schema: dict | None = None,
+) -> list[str]:
+    """Validate a manifest against the supported JSON Schema subset."""
+    return _validate_schema_subset(
+        manifest,
+        schema or SEMANTIC_PRODUCT_SCHEMA,
+        path="",
+    )
 
 
 def _source_manifest(source: FusionSource) -> dict:
@@ -147,21 +244,257 @@ def _source_manifest(source: FusionSource) -> dict:
     }
 
 
-def _normalize_field_matches(matches: list[dict]) -> list[dict]:
+def _normalize_field_matches(
+    matches: list[dict],
+    sources: list[FusionSource] | None = None,
+) -> list[dict]:
+    field_profiles = _field_profiles_by_name(sources or [])
     normalized = []
     for match in matches:
-        normalized.append(
-            {
-                "source_field": match.get("left", ""),
-                "target_field": match.get("right", ""),
-                "confidence": match.get("confidence"),
-                "match_type": match.get(
-                    "match_type",
-                    "exact" if match.get("confidence") == 1.0 else "semantic",
-                ),
-            }
+        source_field = match.get("left", "")
+        target_field = match.get("right", "")
+        confidence = match.get("confidence")
+        match_type = match.get(
+            "match_type",
+            "exact" if confidence == 1.0 else "semantic",
         )
+        source_profile = _first_field_profile(field_profiles, source_field)
+        target_profile = _first_field_profile(field_profiles, target_field)
+        evidence = _build_mapping_evidence(
+            match,
+            match_type,
+            source_profile,
+            target_profile,
+        )
+        normalized.append({
+            "source_field": source_field,
+            "target_field": target_field,
+            "confidence": confidence,
+            "confidence_band": _confidence_band(confidence),
+            "match_type": match_type,
+            "source_profile": source_profile,
+            "target_profile": target_profile,
+            "evidence": evidence,
+            "explanation": _mapping_explanation(
+                source_field,
+                target_field,
+                match_type,
+                confidence,
+                evidence,
+            ),
+        })
     return normalized
+
+
+def _field_profiles_by_name(sources: list[FusionSource]) -> dict[str, list[dict]]:
+    profiles: dict[str, list[dict]] = {}
+    for source in sources:
+        source_name = os.path.basename(source.file_path)
+        columns = source.columns or []
+        for column in columns:
+            name = column.get("name")
+            if not name:
+                continue
+            stats = source.stats.get(name, {}) if source.stats else {}
+            profile = {
+                "source": source_name,
+                "field": name,
+                "dtype": column.get("dtype", ""),
+                "null_pct": column.get("null_pct"),
+            }
+            if stats:
+                profile["stats"] = stats
+            profiles.setdefault(name.lower(), []).append(profile)
+    return profiles
+
+
+def _first_field_profile(
+    profiles: dict[str, list[dict]],
+    field_name: str,
+) -> dict:
+    matches = profiles.get(str(field_name).lower(), [])
+    return matches[0] if matches else {}
+
+
+def _build_mapping_evidence(
+    match: dict,
+    match_type: str,
+    source_profile: dict,
+    target_profile: dict,
+) -> list[dict]:
+    evidence = []
+    group_id = match.get("group_id")
+    if match_type == "ontology" and group_id:
+        evidence.append({
+            "type": "ontology",
+            "detail": f"same ontology group: {group_id}",
+        })
+    elif match_type:
+        evidence.append({
+            "type": "matcher",
+            "detail": f"matched by {match_type}",
+        })
+
+    source_dtype = source_profile.get("dtype")
+    target_dtype = target_profile.get("dtype")
+    if source_dtype and target_dtype:
+        detail = f"{source_dtype} -> {target_dtype}"
+        evidence.append({
+            "type": "dtype",
+            "detail": detail,
+            "compatible": _dtype_compatible(source_dtype, target_dtype),
+        })
+
+    if source_profile.get("stats") or target_profile.get("stats"):
+        evidence.append({
+            "type": "value_profile",
+            "detail": "source statistics available",
+        })
+
+    return evidence
+
+
+def _confidence_band(confidence: Any) -> str:
+    try:
+        score = float(confidence)
+    except (TypeError, ValueError):
+        return "unknown"
+    if score >= 0.8:
+        return "high"
+    if score >= 0.6:
+        return "medium"
+    return "low"
+
+
+def _dtype_compatible(source_dtype: str, target_dtype: str) -> bool:
+    numeric_indicators = ("int", "float", "double", "numeric", "decimal")
+    text_indicators = ("object", "str", "string", "text", "char")
+    left = source_dtype.lower()
+    right = target_dtype.lower()
+    left_numeric = any(item in left for item in numeric_indicators)
+    right_numeric = any(item in right for item in numeric_indicators)
+    left_text = any(item in left for item in text_indicators)
+    right_text = any(item in right for item in text_indicators)
+    if (left_numeric and right_text) or (left_text and right_numeric):
+        return False
+    return True
+
+
+def _mapping_explanation(
+    source_field: str,
+    target_field: str,
+    match_type: str,
+    confidence: Any,
+    evidence: list[dict],
+) -> str:
+    evidence_bits = [item["detail"] for item in evidence if item.get("detail")]
+    details = "; ".join(evidence_bits)
+    return (
+        f"{source_field} -> {target_field} matched by {match_type} "
+        f"with confidence {confidence}. {details}"
+    ).strip()
+
+
+def _build_field_contracts(
+    gdf: gpd.GeoDataFrame,
+    sources: list[FusionSource],
+    derived_fields: list[dict[str, Any]],
+    inferred_fields: list[dict[str, Any]],
+    field_matches: list[dict],
+) -> list[dict]:
+    derived_names = {item["field"] for item in derived_fields}
+    inferred_names = {item["field"] for item in inferred_fields}
+    source_columns = _source_columns_by_name(sources)
+    mapping_by_target = {}
+    for match in _normalize_field_matches(field_matches):
+        target = match.get("target_field")
+        if target:
+            mapping_by_target.setdefault(target, []).append(match)
+
+    contracts = []
+    for col in gdf.columns:
+        if col == "geometry":
+            continue
+        source_refs = source_columns.get(col.lower(), [])
+        mappings = mapping_by_target.get(col, [])
+        role = _semantic_role(col, derived_names, inferred_names, source_refs)
+        contract = {
+            "field": col,
+            "dtype": str(gdf[col].dtype),
+            "semantic_role": role,
+            "nullable_pct": round(float(gdf[col].isna().mean()), 4),
+            "source_fields": source_refs,
+            "mappings": mappings,
+            "value_profile": _build_value_profile(gdf[col]),
+        }
+        if col in derived_names:
+            contract["lineage"] = {"type": "derived"}
+        elif col in inferred_names:
+            contract["lineage"] = {"type": "inferred"}
+        elif source_refs:
+            contract["lineage"] = {"type": "source"}
+        else:
+            contract["lineage"] = {"type": "fusion_output"}
+        contracts.append(contract)
+    return contracts
+
+
+def _build_value_profile(series: pd.Series) -> dict:
+    values = series.dropna()
+    if values.empty:
+        return {"kind": "empty", "samples": []}
+
+    if pd.api.types.is_numeric_dtype(values):
+        return {
+            "kind": "numeric",
+            "min": _json_default(values.min()),
+            "max": _json_default(values.max()),
+            "mean": round(float(values.mean()), 6),
+        }
+
+    samples = []
+    for value in values.astype(str).drop_duplicates().head(5):
+        samples.append(value)
+    return {
+        "kind": "categorical",
+        "unique_count": int(values.nunique(dropna=True)),
+        "samples": samples,
+    }
+
+
+def _source_columns_by_name(sources: list[FusionSource]) -> dict[str, list[dict]]:
+    source_columns: dict[str, list[dict]] = {}
+    for source in sources:
+        source_name = os.path.basename(source.file_path)
+        for column in source.columns:
+            name = column.get("name")
+            if not name:
+                continue
+            source_columns.setdefault(name.lower(), []).append(
+                {
+                    "source": source_name,
+                    "field": name,
+                    "dtype": column.get("dtype", ""),
+                }
+            )
+    return source_columns
+
+
+def _semantic_role(
+    field: str,
+    derived_names: set[str],
+    inferred_names: set[str],
+    source_refs: list[dict],
+) -> str:
+    if field in derived_names:
+        return "derived"
+    if field in inferred_names:
+        return "inferred"
+    if field.startswith("_"):
+        return "system_metadata"
+    if source_refs:
+        return "source_attribute"
+    return "fusion_output"
 
 
 def _build_feature_semantics(
@@ -313,6 +646,18 @@ def _add_canonical_semantic_fields(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return result
 
 
+def _build_product_id(
+    gdf: gpd.GeoDataFrame,
+    sources: list[FusionSource],
+    strategy: str,
+) -> str:
+    source_part = "|".join(source.file_path for source in sources)
+    columns_part = "|".join(str(col) for col in gdf.columns if col != "geometry")
+    raw = f"{strategy}|{len(gdf)}|{source_part}|{columns_part}"
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+    return f"sfp-{digest}"
+
+
 def _derivation_description(reasoner: Any, field: str) -> str:
     rule = getattr(reasoner, "_derivation_index", {}).get(field, {})
     return rule.get("description") or f"Derived field {field}"
@@ -331,3 +676,59 @@ def _json_default(value: Any) -> Any:
     if hasattr(value, "item"):
         return value.item()
     return str(value)
+
+
+def _validate_schema_subset(instance: Any, schema: dict, path: str) -> list[str]:
+    errors: list[str] = []
+    expected_type = schema.get("type")
+    if expected_type is not None and not _type_matches(instance, expected_type):
+        label = path or "manifest"
+        errors.append(f"{label} expected type {_format_type(expected_type)}")
+        return errors
+
+    if isinstance(instance, dict):
+        for key in schema.get("required", []):
+            if key not in instance:
+                label = f"{path}." if path else ""
+                errors.append(f"{label}missing required property: {key}")
+        properties = schema.get("properties", {})
+        for key, child_schema in properties.items():
+            if key in instance:
+                child_path = f"{path}.{key}" if path else key
+                errors.extend(
+                    _validate_schema_subset(instance[key], child_schema, child_path)
+                )
+
+    return errors
+
+
+def _type_matches(value: Any, expected_type: str | list[str]) -> bool:
+    expected_types = (
+        expected_type if isinstance(expected_type, list) else [expected_type]
+    )
+    for item in expected_types:
+        if item == "null" and value is None:
+            return True
+        if item == "object" and isinstance(value, dict):
+            return True
+        if item == "array" and isinstance(value, list):
+            return True
+        if item == "string" and isinstance(value, str):
+            return True
+        if item == "boolean" and isinstance(value, bool):
+            return True
+        if item == "integer" and isinstance(value, int) and not isinstance(value, bool):
+            return True
+        if (
+            item == "number"
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
+            return True
+    return False
+
+
+def _format_type(expected_type: str | list[str]) -> str:
+    if isinstance(expected_type, list):
+        return "|".join(expected_type)
+    return expected_type

@@ -397,6 +397,21 @@ dataset, while the sidecar `.semantic.json` manifest carries semantic mappings,
 derived fields, inferred fields, lineage, quality, feature summaries, and
 embedding-ready AI chunks.
 
+Manifest v1.1 adds an explicit schema contract through
+`SEMANTIC_PRODUCT_SCHEMA` and `validate_semantic_product_manifest()`. Each
+manifest now carries a stable `product_id` and `field_contracts` section. Field
+contracts describe field role, dtype, null ratio, source mappings, lineage, and
+value profiles. Numeric fields include min/max/mean; categorical fields include
+unique counts and capped sample values. This gives both business users and AI
+retrieval/indexing layers a stronger contract than raw column names.
+
+Semantic mappings also carry deterministic alignment evidence. Each mapping can
+include source/target field profiles, confidence bands, matcher evidence,
+ontology group evidence, dtype compatibility, value-statistics availability, and
+a compact explanation string. This keeps the first semantic-alignment
+improvement local and testable while leaving a clear extension point for later
+document-context and LLM schema-alignment evidence.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

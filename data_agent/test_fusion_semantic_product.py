@@ -41,6 +41,33 @@ def _semantic_sources() -> list[FusionSource]:
     ]
 
 
+def _alignment_sources() -> list[FusionSource]:
+    return [
+        FusionSource(
+            file_path="/data/source_a.geojson",
+            data_type="vector",
+            crs="EPSG:4326",
+            row_count=2,
+            columns=[
+                {"name": "面积", "dtype": "float64", "null_pct": 0},
+                {"name": "DLBM", "dtype": "object", "null_pct": 0},
+            ],
+            stats={"面积": {"min": 1000.0, "max": 2000.0, "mean": 1500.0}},
+        ),
+        FusionSource(
+            file_path="/data/source_b.geojson",
+            data_type="vector",
+            crs="EPSG:4326",
+            row_count=2,
+            columns=[
+                {"name": "AREA", "dtype": "float64", "null_pct": 0},
+                {"name": "land_use_code", "dtype": "object", "null_pct": 0},
+            ],
+            stats={"AREA": {"min": 1000.0, "max": 2000.0, "mean": 1500.0}},
+        ),
+    ]
+
+
 class TestSemanticFusionProduct(unittest.TestCase):
     def test_build_manifest_has_stable_top_level_keys(self):
         from data_agent.fusion.semantic_product import build_semantic_fusion_product
@@ -80,6 +107,99 @@ class TestSemanticFusionProduct(unittest.TestCase):
         self.assertEqual(manifest["product_type"], "semantic_fusion_product")
         self.assertEqual(manifest["quality"]["score"], 0.91)
 
+    def test_manifest_v11_schema_and_field_contracts(self):
+        from data_agent.fusion.semantic_product import (
+            SEMANTIC_PRODUCT_SCHEMA,
+            build_semantic_fusion_product,
+            validate_semantic_product_manifest,
+        )
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _semantic_sources(),
+            strategy="spatial_join",
+            config={"enabled": True, "derive_fields": True, "infer_fields": True},
+        )
+
+        self.assertEqual(manifest["version"], "1.1")
+        self.assertTrue(manifest["product_id"].startswith("sfp-"))
+        self.assertEqual(SEMANTIC_PRODUCT_SCHEMA["title"], "MMFE Semantic Fusion Product")
+        self.assertEqual(validate_semantic_product_manifest(manifest), [])
+
+        contracts = {item["field"]: item for item in manifest["field_contracts"]}
+        self.assertEqual(contracts["area"]["semantic_role"], "source_attribute")
+        self.assertEqual(contracts["building_height"]["semantic_role"], "derived")
+        self.assertEqual(contracts["slope_class"]["semantic_role"], "inferred")
+
+    def test_manifest_validation_reports_missing_required_keys(self):
+        from data_agent.fusion.semantic_product import (
+            build_semantic_fusion_product,
+            validate_semantic_product_manifest,
+        )
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _semantic_sources(),
+            strategy="spatial_join",
+            config={"enabled": True},
+        )
+        broken = dict(manifest)
+        broken.pop("lineage")
+
+        errors = validate_semantic_product_manifest(broken)
+
+        self.assertIn("missing required property: lineage", errors)
+
+    def test_field_contracts_include_value_profiles(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _semantic_sources(),
+            strategy="spatial_join",
+            config={"enabled": True},
+        )
+
+        contracts = {item["field"]: item for item in manifest["field_contracts"]}
+        area_profile = contracts["area"]["value_profile"]
+        self.assertEqual(area_profile["kind"], "numeric")
+        self.assertEqual(area_profile["min"], 1000.0)
+        self.assertEqual(area_profile["max"], 2000.0)
+
+        parcel_profile = contracts["parcel_id"]["value_profile"]
+        self.assertEqual(parcel_profile["kind"], "categorical")
+        self.assertEqual(parcel_profile["unique_count"], 2)
+        self.assertEqual(parcel_profile["samples"], ["P1", "P2"])
+
+    def test_semantic_mappings_include_alignment_evidence(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _alignment_sources(),
+            strategy="spatial_join",
+            field_matches=[
+                {
+                    "left": "面积",
+                    "right": "AREA",
+                    "confidence": 0.85,
+                    "match_type": "ontology",
+                    "group_id": "area",
+                }
+            ],
+            config={"enabled": True},
+        )
+
+        mapping = manifest["semantic_mappings"][0]
+        self.assertEqual(mapping["confidence_band"], "high")
+        self.assertEqual(mapping["source_profile"]["dtype"], "float64")
+        self.assertEqual(mapping["target_profile"]["dtype"], "float64")
+        self.assertIn(
+            {"type": "ontology", "detail": "same ontology group: area"},
+            mapping["evidence"],
+        )
+        self.assertIn("面积 -> AREA", mapping["explanation"])
+
     def test_ontology_derivation_and_inference_enrich_output(self):
         from data_agent.fusion.semantic_product import build_semantic_fusion_product
 
@@ -114,21 +234,26 @@ class TestSemanticFusionProduct(unittest.TestCase):
         self.assertIn("nearest_join", ai_metadata["chunks"][0]["text"])
 
     def test_write_manifest_next_to_output(self):
-        from data_agent.fusion.semantic_product import write_semantic_product_manifest
+        from data_agent.fusion.semantic_product import (
+            build_semantic_fusion_product,
+            write_semantic_product_manifest,
+        )
 
         with tempfile.TemporaryDirectory() as tmp:
             output_path = os.path.join(tmp, "fused.geojson")
-            manifest = {
-                "product_type": "semantic_fusion_product",
-                "version": "1.0",
-                "business_output": {"path": output_path},
-            }
+            _, manifest = build_semantic_fusion_product(
+                _semantic_test_gdf(),
+                _semantic_sources(),
+                strategy="spatial_join",
+                config={"enabled": True},
+            )
             manifest_path = write_semantic_product_manifest(manifest, output_path)
             self.assertTrue(manifest_path.endswith(".semantic.json"))
             self.assertTrue(os.path.exists(manifest_path))
             with open(manifest_path, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
             self.assertEqual(loaded["product_type"], "semantic_fusion_product")
+            self.assertEqual(loaded["business_output"]["path"], output_path)
 
 
 if __name__ == "__main__":
