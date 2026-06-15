@@ -152,6 +152,15 @@ from .semantic_alignment import (
     score_semantic_alignment,
 )
 
+# --- AI Semantic Sidecar Contracts ---
+from .ai_semantics import (
+    AI_SEMANTIC_SIDECAR_SCHEMA,
+    build_ai_semantic_sidecar,
+    get_ai_semantic_model_catalog,
+    validate_ai_semantic_sidecar,
+    write_ai_semantic_sidecar,
+)
+
 # --- LLM Semantic Understanding (v2) ---
 from .semantic_llm import SemanticLLM
 

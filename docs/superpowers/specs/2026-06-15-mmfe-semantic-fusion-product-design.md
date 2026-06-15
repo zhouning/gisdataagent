@@ -515,6 +515,15 @@ preserve model name, version, task, confidence, target, domain, and evidence.
 This keeps the fusion engine honest: it can fuse and govern AI-derived semantics
 without pretending that metadata/statistics alone performed visual recognition.
 
+Third-party AI integration is now represented by a small sidecar contract module
+instead of direct model dependencies. `data_agent/fusion/ai_semantics.py`
+publishes a model catalog for external tools such as Prithvi EO, TerraMind,
+SAM2+GroundingDINO, RandLA-Net, and Pointcept/PTv3, and provides helpers to
+build, validate, and write `.ai.json` sidecars. This makes the integration
+boundary explicit: model runners produce normalized observations, while MMFE
+profiles, validates, fuses, and publishes those observations as semantic
+evidence.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

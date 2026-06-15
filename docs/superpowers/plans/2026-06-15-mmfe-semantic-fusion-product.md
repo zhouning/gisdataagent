@@ -1395,4 +1395,31 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
 ```
 
-Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, built-in optional AI inference adapters, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: Third-Party AI Semantic Adapter Contract
+
+Completed as the contract layer for integrating independent AI model runners.
+
+- Added `data_agent/fusion/ai_semantics.py` as a dependency-free contract module
+  for AI semantic sidecars.
+- Added a model catalog covering practical external integration targets:
+  Prithvi EO 2.0, TerraMind, SAM2+GroundingDINO, RandLA-Net, Pointcept/PTv3, and
+  custom models.
+- Added `build_ai_semantic_sidecar()` to normalize third-party observations into
+  MMFE `.ai.json` documents with `semantic_level="model_inference"`.
+- Added `validate_ai_semantic_sidecar()` so model runners can fail fast before
+  MMFE ingests low-quality or malformed inference output.
+- Added `write_ai_semantic_sidecar()` to write model outputs next to raster or
+  point-cloud sources using the same sidecar path convention already consumed by
+  profiling.
+- Re-exported the helpers from both `data_agent.fusion` and
+  `data_agent.fusion_engine` for backward-compatible use by tool wrappers.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_ai_semantics.py -q
+```
+
+Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, concrete model runner wrappers, and a separate optional publisher for pgvector/LanceDB.

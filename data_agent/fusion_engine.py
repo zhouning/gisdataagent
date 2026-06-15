@@ -73,6 +73,11 @@ from data_agent.fusion import (  # noqa: F401
     build_alignment_review_items,
     build_alignment_summary,
     score_semantic_alignment,
+    AI_SEMANTIC_SIDECAR_SCHEMA,
+    build_ai_semantic_sidecar,
+    get_ai_semantic_model_catalog,
+    validate_ai_semantic_sidecar,
+    write_ai_semantic_sidecar,
 )
 
 # Patch-target shims: these symbols were previously in fusion_engine.py's globals
