@@ -200,6 +200,72 @@ class TestSemanticFusionProduct(unittest.TestCase):
         )
         self.assertIn("面积 -> AREA", mapping["explanation"])
 
+    def test_semantic_mapping_alignment_score_decision(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _alignment_sources(),
+            strategy="spatial_join",
+            field_matches=[
+                {
+                    "left": "面积",
+                    "right": "AREA",
+                    "confidence": 0.85,
+                    "match_type": "ontology",
+                    "group_id": "area",
+                },
+                {
+                    "left": "DLBM",
+                    "right": "AREA",
+                    "confidence": 0.55,
+                    "match_type": "fuzzy",
+                },
+            ],
+            config={"enabled": True},
+        )
+
+        accepted = manifest["semantic_mappings"][0]["alignment_score"]
+        self.assertEqual(accepted["decision"], "accept")
+        self.assertGreaterEqual(accepted["score"], 0.85)
+        self.assertEqual(accepted["components"]["dtype_compatibility"], 1.0)
+
+        rejected = manifest["semantic_mappings"][1]["alignment_score"]
+        self.assertEqual(rejected["decision"], "reject")
+        self.assertLess(rejected["score"], 0.6)
+        self.assertEqual(rejected["components"]["dtype_compatibility"], 0.0)
+
+    def test_ai_metadata_summarizes_alignment_decisions(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _alignment_sources(),
+            strategy="spatial_join",
+            field_matches=[
+                {
+                    "left": "面积",
+                    "right": "AREA",
+                    "confidence": 0.85,
+                    "match_type": "ontology",
+                    "group_id": "area",
+                },
+                {
+                    "left": "DLBM",
+                    "right": "AREA",
+                    "confidence": 0.55,
+                    "match_type": "fuzzy",
+                },
+            ],
+            config={"enabled": True},
+        )
+
+        summary = manifest["ai_metadata"]["alignment_summary"]
+        self.assertEqual(summary["total_mappings"], 2)
+        self.assertEqual(summary["decisions"]["accept"], 1)
+        self.assertEqual(summary["decisions"]["reject"], 1)
+        self.assertIn("accepted mappings: 1", manifest["ai_metadata"]["retrieval_text"])
+
     def test_ontology_derivation_and_inference_enrich_output(self):
         from data_agent.fusion.semantic_product import build_semantic_fusion_product
 

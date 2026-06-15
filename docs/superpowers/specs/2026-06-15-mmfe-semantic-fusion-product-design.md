@@ -412,6 +412,13 @@ a compact explanation string. This keeps the first semantic-alignment
 improvement local and testable while leaving a clear extension point for later
 document-context and LLM schema-alignment evidence.
 
+Semantic mappings now also carry an `alignment_score` decision record. The
+current deterministic scorer combines matcher confidence, dtype compatibility,
+value-profile support, and ontology support into a normalized score with
+`accept` / `review` / `reject` decisions. AI metadata summarizes these decisions
+so downstream RAG or vector-indexing jobs can prefer accepted mappings and route
+review/reject mappings to human or LLM-assisted validation.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.
