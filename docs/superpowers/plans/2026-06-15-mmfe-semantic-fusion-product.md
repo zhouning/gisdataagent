@@ -1259,4 +1259,35 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py data_agent\test_fusion_semantic_alignment.py data_agent\test_fusion_semantic_product.py data_agent\test_fusion_v2_semantic.py data_agent\test_fusion_v2_integration.py data_agent\test_fusion_v2_explainability.py data_agent\test_fusion_v2_conflict.py -q
 ```
 
+---
+
+## Roadmap Progress: Raster Pixel Metadata and STAC Sidecar Semantics
+
+Completed as a deeper raster-source increment after the initial raster semantic
+hints.
+
+- Extended raster profiling to preserve pixel-value metadata for each readable
+  band: `nodata`, `scale`, `offset`, and `unit`.
+- Added scaled band statistics when scale/offset metadata is available, while
+  keeping original raw statistics for ordinary GIS consumers.
+- Added evidence-backed `pixel_value_semantics` hints so AI workflows can tell
+  whether a band uses scaled reflectance, nodata sentinels, physical units, or
+  other band-level value conventions.
+- Added sidecar metadata loading for `.stac.json`, `.metadata.json`, and `.json`
+  files located next to the raster.
+- Added STAC-like evidence extraction for platform, instrument, `eo:bands`, and
+  `raster:bands`, including spectral common names and per-band scale/offset/
+  nodata/unit metadata.
+- Kept sidecar parsing dependency-free and conservative. These metadata hints
+  enrich source profiles and semantic manifests, but do not force a physical
+  pixel transformation or replace later STAC/COG/GeoParquet publishing work.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_carries_pixel_semantics_from_band_metadata data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_reads_stac_sidecar_metadata -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py data_agent\test_fusion_semantic_alignment.py data_agent\test_fusion_semantic_product.py data_agent\test_fusion_v2_semantic.py data_agent\test_fusion_v2_integration.py data_agent\test_fusion_v2_explainability.py data_agent\test_fusion_v2_conflict.py -q
+```
+
 Remaining hard parts are still real: STAC/ISO metadata parsing, CRS-aware pixel semantics, derived raster feature chips, VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.

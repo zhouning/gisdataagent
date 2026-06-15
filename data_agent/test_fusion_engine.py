@@ -61,6 +61,7 @@ def _make_raster_fixture(
     data: np.ndarray | None = None,
     band_description: str | None = None,
     band_tags: dict | None = None,
+    nodata: float | None = None,
 ) -> str:
     """Create a small raster GeoTIFF fixture."""
     import rasterio
@@ -73,6 +74,7 @@ def _make_raster_fixture(
     with rasterio.open(
         path, "w", driver="GTiff", height=10, width=10,
         count=1, dtype="float32", crs="EPSG:4326", transform=transform,
+        nodata=nodata,
     ) as ds:
         ds.write(data, 1)
         if band_description:
@@ -322,6 +324,100 @@ class TestFusionSource(unittest.TestCase):
             any(
                 hint.get("type") == "raster_theme"
                 and hint.get("value") == "landcover_class"
+                for hint in src.semantic_hints
+            )
+        )
+
+    def test_profile_raster_carries_pixel_semantics_from_band_metadata(self):
+        from data_agent.fusion_engine import profile_source
+
+        data = np.linspace(0, 10000, 100, dtype=np.float32).reshape(10, 10)
+        data[0, 0] = -9999
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="surface_reflectance_ndvi.tif",
+            data=data,
+            band_description="NDVI scaled reflectance",
+            band_tags={
+                "scale_factor": "0.0001",
+                "add_offset": "0",
+                "units": "reflectance",
+            },
+            nodata=-9999,
+        )
+
+        src = profile_source(raster)
+
+        band_1 = next(column for column in src.columns if column["name"] == "band_1")
+        self.assertEqual(band_1["nodata"], -9999.0)
+        self.assertEqual(band_1["scale"], 0.0001)
+        self.assertEqual(band_1["offset"], 0.0)
+        self.assertEqual(band_1["unit"], "reflectance")
+        pixel_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "pixel_value_semantics"
+        ]
+        self.assertTrue(any(hint.get("field") == "band_1" for hint in pixel_hints))
+        band_hint = next(hint for hint in pixel_hints if hint.get("field") == "band_1")
+        self.assertEqual(band_hint["scale"], 0.0001)
+        self.assertEqual(band_hint["nodata"], -9999.0)
+        self.assertIn("band_1 unit is reflectance", band_hint["evidence"])
+
+    def test_profile_raster_reads_stac_sidecar_metadata(self):
+        from data_agent.fusion_engine import profile_source
+
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="sentinel_ndvi.tif",
+            band_description="vegetation index",
+        )
+        stac_path = os.path.splitext(raster)[0] + ".stac.json"
+        with open(stac_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "platform": "sentinel-2a",
+                        "instruments": ["msi"],
+                    },
+                    "assets": {
+                        "data": {
+                            "eo:bands": [
+                                {"name": "B08", "common_name": "nir"},
+                                {"name": "B04", "common_name": "red"},
+                            ],
+                            "raster:bands": [
+                                {
+                                    "scale": 0.0001,
+                                    "offset": 0,
+                                    "nodata": 0,
+                                    "unit": "reflectance",
+                                }
+                            ],
+                        }
+                    },
+                },
+                f,
+            )
+
+        src = profile_source(raster)
+
+        sidecar_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "metadata_source"
+        ]
+        self.assertTrue(any(hint.get("value") == "stac_sidecar" for hint in sidecar_hints))
+        self.assertTrue(
+            any(
+                hint.get("type") == "raster_platform"
+                and hint.get("value") == "sentinel-2a"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "spectral_band_semantic"
+                and hint.get("value") == "nir"
                 for hint in src.semantic_hints
             )
         )

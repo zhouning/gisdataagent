@@ -465,6 +465,17 @@ and `semantic_hints` for classified, intensity-bearing, and colorized lidar.
 The reader accepts both context-manager style objects and ordinary `LasData`
 objects returned by `laspy.read()`.
 
+Raster profiling now carries pixel-value semantics instead of stopping at
+filename and band-description hints. For each readable band, MMFE captures
+`nodata`, `scale`, `offset`, and `unit` from raster metadata or tags, and emits
+scaled statistics when scale/offset metadata is present. Nearby sidecar metadata
+files such as `.stac.json`, `.metadata.json`, or `.json` are parsed without
+adding new dependencies. STAC-like sidecars contribute evidence for platform,
+instrument, `eo:bands`, and `raster:bands`, including per-band scale, offset,
+nodata, and unit metadata. These hints remain evidence in the source profile and
+semantic manifest; they do not force a physical pixel transformation or replace
+future CRS-aware raster feature extraction.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

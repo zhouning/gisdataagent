@@ -1,4 +1,5 @@
 """Data source profiling — detect type, CRS, bounds, columns, statistics."""
+import json
 import logging
 import os
 import re
@@ -261,6 +262,18 @@ def _profile_raster(path: str) -> FusionSource:
                 column["description"] = band_description
             if band_tags:
                 column["tags"] = band_tags
+            nodata = _raster_band_nodata(ds, i)
+            scale = _raster_band_scale(ds, i, band_tags)
+            offset = _raster_band_offset(ds, i, band_tags)
+            unit = _raster_band_unit(ds, i, band_tags)
+            if nodata is not None:
+                column["nodata"] = nodata
+            if scale is not None:
+                column["scale"] = scale
+            if offset is not None:
+                column["offset"] = offset
+            if unit:
+                column["unit"] = unit
             columns.append(column)
             if len(valid) > 0:
                 stats[band_name] = {
@@ -268,11 +281,21 @@ def _profile_raster(path: str) -> FusionSource:
                     "max": float(np.nanmax(valid)),
                     "mean": float(np.nanmean(valid)),
                 }
+                if scale is not None or offset is not None:
+                    scale_value = scale if scale is not None else 1.0
+                    offset_value = offset if offset is not None else 0.0
+                    scaled = valid.astype("float64") * scale_value + offset_value
+                    stats[band_name]["scaled_min"] = float(np.nanmin(scaled))
+                    stats[band_name]["scaled_max"] = float(np.nanmax(scaled))
+                    stats[band_name]["scaled_mean"] = float(np.nanmean(scaled))
 
+        sidecar_metadata = _load_raster_sidecar_metadata(path)
+        _apply_raster_sidecar_metadata(columns, sidecar_metadata)
         semantic_domain, semantic_hints = _infer_raster_semantic_hints(
             path,
             columns,
             stats,
+            sidecar_metadata,
         )
 
     return FusionSource(
@@ -290,16 +313,157 @@ def _profile_raster(path: str) -> FusionSource:
     )
 
 
+def _raster_band_nodata(ds: object, index: int) -> float | None:
+    nodata = getattr(ds, "nodata", None)
+    if nodata is None:
+        nodatavals = getattr(ds, "nodatavals", None)
+        if nodatavals and len(nodatavals) >= index:
+            nodata = nodatavals[index - 1]
+    return _safe_float_or_none(nodata)
+
+
+def _raster_band_scale(ds: object, index: int, tags: dict) -> float | None:
+    tag_value = _first_tag_value(tags, ["scale_factor", "scale", "SCALE"])
+    if tag_value is not None:
+        return _safe_float_or_none(tag_value)
+    scales = getattr(ds, "scales", None)
+    if scales and len(scales) >= index and scales[index - 1] != 1.0:
+        return _safe_float_or_none(scales[index - 1])
+    return None
+
+
+def _raster_band_offset(ds: object, index: int, tags: dict) -> float | None:
+    tag_value = _first_tag_value(tags, ["add_offset", "offset", "OFFSET"])
+    if tag_value is not None:
+        return _safe_float_or_none(tag_value)
+    offsets = getattr(ds, "offsets", None)
+    if offsets and len(offsets) >= index and offsets[index - 1] != 0.0:
+        return _safe_float_or_none(offsets[index - 1])
+    return None
+
+
+def _raster_band_unit(ds: object, index: int, tags: dict) -> str | None:
+    tag_value = _first_tag_value(tags, ["units", "unit", "UNIT"])
+    if tag_value:
+        return str(tag_value)
+    units = getattr(ds, "units", None)
+    if units and len(units) >= index and units[index - 1]:
+        return str(units[index - 1])
+    return None
+
+
+def _first_tag_value(tags: dict, keys: list[str]) -> object | None:
+    for key in keys:
+        if key in tags:
+            return tags[key]
+    lower_tags = {str(key).lower(): value for key, value in tags.items()}
+    for key in keys:
+        value = lower_tags.get(key.lower())
+        if value is not None:
+            return value
+    return None
+
+
+def _safe_float_or_none(value: object) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _load_raster_sidecar_metadata(path: str) -> dict | None:
+    stem, _ = os.path.splitext(path)
+    candidates = [
+        f"{stem}.stac.json",
+        f"{stem}.metadata.json",
+        f"{stem}.json",
+    ]
+    for candidate in candidates:
+        if not os.path.exists(candidate):
+            continue
+        try:
+            with open(candidate, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(metadata, dict):
+            continue
+        kind = "stac_sidecar" if _looks_like_stac(metadata) else "metadata_sidecar"
+        return {
+            "path": candidate,
+            "kind": kind,
+            "metadata": metadata,
+        }
+    return None
+
+
+def _looks_like_stac(metadata: dict) -> bool:
+    return bool(
+        metadata.get("stac_version")
+        or metadata.get("type") == "Feature"
+        or metadata.get("assets")
+    )
+
+
+def _apply_raster_sidecar_metadata(
+    columns: list[dict],
+    sidecar_metadata: dict | None,
+) -> None:
+    if not sidecar_metadata:
+        return
+    raster_bands = _sidecar_raster_bands(sidecar_metadata.get("metadata", {}))
+    for index, band_metadata in enumerate(raster_bands):
+        if index >= len(columns):
+            break
+        column = columns[index]
+        for source_key, target_key in [
+            ("scale", "scale"),
+            ("scale_factor", "scale"),
+            ("offset", "offset"),
+            ("add_offset", "offset"),
+            ("nodata", "nodata"),
+        ]:
+            if target_key in column or source_key not in band_metadata:
+                continue
+            value = _safe_float_or_none(band_metadata.get(source_key))
+            if value is not None:
+                column[target_key] = value
+        unit = (
+            band_metadata.get("unit")
+            or band_metadata.get("units")
+            or band_metadata.get("data_type")
+        )
+        if unit and "unit" not in column:
+            column["unit"] = str(unit)
+
+
+def _sidecar_raster_bands(metadata: dict) -> list[dict]:
+    bands = []
+    if isinstance(metadata.get("raster:bands"), list):
+        bands.extend(item for item in metadata["raster:bands"] if isinstance(item, dict))
+    for asset in (metadata.get("assets") or {}).values():
+        if not isinstance(asset, dict):
+            continue
+        if isinstance(asset.get("raster:bands"), list):
+            bands.extend(item for item in asset["raster:bands"] if isinstance(item, dict))
+    return bands
+
+
 def _infer_raster_semantic_hints(
     path: str,
     columns: list[dict],
     stats: dict,
+    sidecar_metadata: dict | None = None,
 ) -> tuple[str | None, list[dict]]:
     """Infer conservative semantic hints for common raster products."""
     filename = os.path.splitext(os.path.basename(path))[0]
     filename_text = _normalize_semantic_text(filename)
     theme_by_value: dict[str, dict] = {}
     band_hints = []
+    metadata_hints = _raster_pixel_semantic_hints(columns)
+    metadata_hints.extend(_raster_sidecar_semantic_hints(sidecar_metadata))
 
     for rule in RASTER_SEMANTIC_RULES:
         value = rule["value"]
@@ -369,8 +533,102 @@ def _infer_raster_semantic_hints(
         ),
     )
     semantic_domain = theme_hints[0]["domain"] if theme_hints else None
-    semantic_hints = theme_hints + band_hints
+    semantic_hints = theme_hints + band_hints + metadata_hints
     return semantic_domain, semantic_hints
+
+
+def _raster_pixel_semantic_hints(columns: list[dict]) -> list[dict]:
+    hints = []
+    for column in columns:
+        field = column.get("name")
+        if not field:
+            continue
+        evidence = []
+        if column.get("scale") is not None:
+            evidence.append(f"{field} scale is {column['scale']}")
+        if column.get("offset") is not None:
+            evidence.append(f"{field} offset is {column['offset']}")
+        if column.get("nodata") is not None:
+            evidence.append(f"{field} nodata is {column['nodata']}")
+        if column.get("unit"):
+            evidence.append(f"{field} unit is {column['unit']}")
+        if not evidence:
+            continue
+        hint = {
+            "type": "pixel_value_semantics",
+            "field": field,
+            "confidence": 0.9,
+            "evidence": evidence,
+        }
+        for key in ["scale", "offset", "nodata", "unit"]:
+            if column.get(key) is not None:
+                hint[key] = column[key]
+        hints.append(hint)
+    return hints
+
+
+def _raster_sidecar_semantic_hints(sidecar_metadata: dict | None) -> list[dict]:
+    if not sidecar_metadata:
+        return []
+    metadata = sidecar_metadata.get("metadata", {})
+    sidecar_path = sidecar_metadata.get("path", "")
+    kind = sidecar_metadata.get("kind", "metadata_sidecar")
+    basename = os.path.basename(sidecar_path)
+    hints = [{
+        "type": "metadata_source",
+        "value": kind,
+        "confidence": 0.95,
+        "evidence": [f"sidecar metadata file: {basename}"],
+    }]
+
+    properties = metadata.get("properties") or {}
+    platform = properties.get("platform") or metadata.get("platform")
+    if platform:
+        hints.append({
+            "type": "raster_platform",
+            "value": str(platform),
+            "confidence": 0.9,
+            "evidence": [f"metadata platform is {platform}"],
+        })
+
+    instruments = properties.get("instruments") or metadata.get("instruments") or []
+    if isinstance(instruments, str):
+        instruments = [instruments]
+    for instrument in instruments:
+        hints.append({
+            "type": "raster_instrument",
+            "value": str(instrument),
+            "confidence": 0.86,
+            "evidence": [f"metadata instrument is {instrument}"],
+        })
+
+    for index, band in enumerate(_sidecar_eo_bands(metadata), start=1):
+        common_name = band.get("common_name") or band.get("name")
+        if not common_name:
+            continue
+        evidence = [f"metadata eo:bands[{index}] common_name is {common_name}"]
+        if band.get("name"):
+            evidence.append(f"metadata eo:bands[{index}] name is {band['name']}")
+        hints.append({
+            "type": "spectral_band_semantic",
+            "field": f"band_{index}",
+            "value": str(common_name),
+            "confidence": 0.88,
+            "evidence": evidence,
+        })
+    return hints
+
+
+def _sidecar_eo_bands(metadata: dict) -> list[dict]:
+    bands = []
+    if isinstance(metadata.get("eo:bands"), list):
+        bands.extend(item for item in metadata["eo:bands"] if isinstance(item, dict))
+    for asset in (metadata.get("assets") or {}).values():
+        if not isinstance(asset, dict):
+            continue
+        if isinstance(asset.get("eo:bands"), list):
+            bands.extend(item for item in asset["eo:bands"] if isinstance(item, dict))
+    return bands
 
 
 def _normalize_semantic_text(value: object) -> str:
