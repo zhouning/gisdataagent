@@ -388,6 +388,27 @@ def _safe_int_or_none(value: object) -> int | None:
         return None
 
 
+def _metadata_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float, bool)):
+        text = str(value).strip()
+        return text if text and not text.startswith("<") else ""
+    return ""
+
+
+def _metadata_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        return _safe_int_or_none(value)
+    return None
+
+
 def _load_ai_semantic_sidecar(path: str) -> dict | None:
     stem, _ = os.path.splitext(path)
     candidates = [
@@ -1330,6 +1351,7 @@ def _profile_point_cloud(path: str) -> FusionSource:
     stats = {}
     semantic_domain = None
     semantic_hints = []
+    laz_status = _point_cloud_laz_status(path)
     try:
         import laspy
         las_data = laspy.read(path)
@@ -1339,21 +1361,35 @@ def _profile_point_cloud(path: str) -> FusionSource:
                 columns, stats, semantic_domain, semantic_hints = (
                     _profile_point_cloud_dimensions(las, columns)
                 )
+                _add_point_cloud_header_metadata(las, stats, semantic_hints)
         else:
             bounds, row_count, crs_str = _point_cloud_header_profile(las_data)
             columns, stats, semantic_domain, semantic_hints = (
                 _profile_point_cloud_dimensions(las_data, columns)
             )
-    except Exception:
+            _add_point_cloud_header_metadata(las_data, stats, semantic_hints)
+        if laz_status:
+            laz_status.update({"readable": True, "backend_available": True})
+            stats["laz"] = laz_status
+            semantic_hints.extend(_point_cloud_laz_hints(laz_status))
+    except Exception as exc:
         bounds = None
         row_count = 0
         crs_str = None
+        if laz_status:
+            laz_status.update({
+                "readable": False,
+                "backend_available": False,
+                "error": str(exc),
+            })
+            stats["laz"] = laz_status
+            semantic_hints.extend(_point_cloud_laz_hints(laz_status))
     ai_hints = _ai_semantic_hints(
         _load_ai_semantic_sidecar(path),
         source_type="point_cloud",
     )
     semantic_hints.extend(ai_hints)
-    semantic_domain = semantic_domain or _semantic_domain_from_hints(ai_hints)
+    semantic_domain = semantic_domain or _semantic_domain_from_hints(semantic_hints)
 
     return FusionSource(
         file_path=path,
@@ -1382,6 +1418,136 @@ def _point_cloud_header_profile(las: object) -> tuple[tuple, int, str | None]:
         if crs:
             crs_str = str(crs)
     return bounds, row_count, crs_str
+
+
+def _add_point_cloud_header_metadata(
+    las: object,
+    stats: dict,
+    semantic_hints: list[dict],
+) -> None:
+    metadata = _point_cloud_las_metadata(getattr(las, "header", None))
+    if not metadata:
+        return
+    stats["las_metadata"] = metadata
+    semantic_hints.extend(_point_cloud_metadata_hints(metadata))
+
+
+def _point_cloud_las_metadata(header: object) -> dict:
+    if header is None:
+        return {}
+    vlrs = _summarize_las_records(getattr(header, "vlrs", None))
+    evlrs = _summarize_las_records(getattr(header, "evlrs", None))
+    if not vlrs and not evlrs:
+        return {}
+    metadata = {
+        "vlr_count": len(vlrs),
+        "evlr_count": len(evlrs),
+    }
+    if vlrs:
+        metadata["vlrs"] = vlrs
+    if evlrs:
+        metadata["evlrs"] = evlrs
+    return metadata
+
+
+def _summarize_las_records(records: object) -> list[dict]:
+    try:
+        record_list = list(records or [])
+    except TypeError:
+        return []
+    summaries = []
+    for record in record_list:
+        summary = {}
+        user_id = _metadata_text(getattr(record, "user_id", None))
+        record_id = _metadata_int(getattr(record, "record_id", None))
+        description = _metadata_text(getattr(record, "description", None))
+        if user_id:
+            summary["user_id"] = user_id
+        if record_id is not None:
+            summary["record_id"] = record_id
+        if description:
+            summary["description"] = description
+        data_size = _las_record_data_size(record)
+        if data_size is not None:
+            summary["record_data_bytes"] = data_size
+        if summary:
+            summaries.append(summary)
+    return summaries
+
+
+def _las_record_data_size(record: object) -> int | None:
+    for attr in ["record_data", "record_data_bytes"]:
+        value = getattr(record, attr, None)
+        if callable(value):
+            try:
+                value = value()
+            except Exception:
+                continue
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            return len(value)
+        if value is not None and not isinstance(value, (str, int, float, dict)):
+            try:
+                return len(value)
+            except TypeError:
+                continue
+    return None
+
+
+def _point_cloud_metadata_hints(metadata: dict) -> list[dict]:
+    records = []
+    for key, label in [("vlrs", "vlr"), ("evlrs", "evlr")]:
+        for record in metadata.get(key, [])[:5]:
+            parts = [label]
+            if record.get("user_id"):
+                parts.append(f"user_id {record['user_id']}")
+            if record.get("record_id") is not None:
+                parts.append(f"record_id {record['record_id']}")
+            if record.get("description"):
+                parts.append(f"description {record['description']}")
+            records.append(" ".join(parts))
+    if not records:
+        return []
+    return [{
+        "type": "point_cloud_metadata",
+        "value": "las_vlr_metadata",
+        "domain": "lidar",
+        "confidence": 0.86,
+        "evidence": records,
+    }]
+
+
+def _point_cloud_laz_status(path: str) -> dict:
+    if os.path.splitext(path)[1].lower() != ".laz":
+        return {}
+    return {
+        "compressed": True,
+        "format": "laz",
+        "readable": None,
+        "backend_available": None,
+    }
+
+
+def _point_cloud_laz_hints(status: dict) -> list[dict]:
+    if not status:
+        return []
+    if status.get("readable"):
+        return [{
+            "type": "point_cloud_capability",
+            "value": "laz_backend_available",
+            "domain": "lidar",
+            "confidence": 0.9,
+            "evidence": ["LAZ source was readable through laspy"],
+        }]
+    evidence = ["LAZ source could not be read through laspy"]
+    if status.get("error"):
+        evidence.append(f"read error: {status['error']}")
+    return [{
+        "type": "point_cloud_capability",
+        "value": "laz_backend_unavailable",
+        "domain": "lidar",
+        "confidence": 0.9,
+        "evidence": evidence,
+    }]
 
 
 def _profile_point_cloud_dimensions(

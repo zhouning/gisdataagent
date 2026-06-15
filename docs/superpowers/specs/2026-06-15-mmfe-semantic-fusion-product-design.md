@@ -465,6 +465,17 @@ and `semantic_hints` for classified, intensity-bearing, and colorized lidar.
 The reader accepts both context-manager style objects and ordinary `LasData`
 objects returned by `laspy.read()`.
 
+Point-cloud profiling now also carries a metadata/capability layer. Readable LAS
+headers contribute `stats["las_metadata"]` with VLR/EVLR counts and compact
+record summaries, including `user_id`, `record_id`, description, and
+record-data byte size. These records often carry CRS, GeoTIFF keys, waveform
+metadata, processing lineage, or vendor-specific context, so MMFE emits
+`point_cloud_metadata` hints instead of treating them as opaque bytes. For
+`.laz` sources, MMFE records `stats["laz"]` with compressed/readable/backend
+status. When no LAZ backend is available, profiling preserves the point-cloud
+source type and emits `laz_backend_unavailable` capability evidence rather than
+silently dropping the limitation.
+
 Raster profiling now carries pixel-value semantics instead of stopping at
 filename and band-description hints. For each readable band, MMFE captures
 `nodata`, `scale`, `offset`, and `unit` from raster metadata or tags, and emits

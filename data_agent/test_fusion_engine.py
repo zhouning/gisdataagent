@@ -161,6 +161,41 @@ class _MockLasData:
         return False
 
 
+class _MockLasVlr:
+    def __init__(self, user_id, record_id, description, record_data=b""):
+        self.user_id = user_id
+        self.record_id = record_id
+        self.description = description
+        self.record_data = record_data
+
+
+def _mock_las_data_with_vlrs():
+    las = _MockLasData()
+    las.header.vlrs = [
+        _MockLasVlr(
+            "LASF_Projection",
+            34735,
+            "GeoKeyDirectoryTag",
+            b"\x01\x00\x01\x00",
+        ),
+        _MockLasVlr(
+            "LASF_Projection",
+            34737,
+            "GeoAsciiParamsTag",
+            b"WGS 84 / UTM zone 50N|",
+        ),
+    ]
+    las.header.evlrs = [
+        _MockLasVlr(
+            "CUSTOM",
+            7,
+            "Processing lineage",
+            b"classified by vendor pipeline",
+        )
+    ]
+    return las
+
+
 def _plain_mock_las_data():
     source = _MockLasData()
 
@@ -825,6 +860,54 @@ class TestFusionSource(unittest.TestCase):
         self.assertEqual(src.row_count, 5)
         self.assertEqual(src.semantic_domain, "lidar")
         self.assertIn("classification", {column["name"] for column in src.columns})
+
+    def test_profile_point_cloud_extracts_vlr_and_evlr_metadata(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.return_value = _mock_las_data_with_vlrs()
+
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud("metadata_rich.las")
+
+        metadata = src.stats["las_metadata"]
+        self.assertEqual(metadata["vlr_count"], 2)
+        self.assertEqual(metadata["evlr_count"], 1)
+        self.assertEqual(metadata["vlrs"][0]["user_id"], "LASF_Projection")
+        self.assertEqual(metadata["vlrs"][0]["record_id"], 34735)
+        self.assertEqual(metadata["vlrs"][0]["description"], "GeoKeyDirectoryTag")
+        self.assertEqual(metadata["vlrs"][0]["record_data_bytes"], 4)
+        self.assertEqual(metadata["evlrs"][0]["description"], "Processing lineage")
+        self.assertTrue(
+            any(
+                hint.get("type") == "point_cloud_metadata"
+                and hint.get("value") == "las_vlr_metadata"
+                for hint in src.semantic_hints
+            )
+        )
+
+    def test_profile_laz_reports_backend_unavailable_without_losing_source_type(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.side_effect = RuntimeError("No LazBackend selected")
+
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud("compressed_scan.laz")
+
+        self.assertEqual(src.data_type, "point_cloud")
+        self.assertEqual(src.row_count, 0)
+        self.assertEqual(src.semantic_domain, "lidar")
+        self.assertEqual(src.stats["laz"]["compressed"], True)
+        self.assertEqual(src.stats["laz"]["backend_available"], False)
+        self.assertEqual(src.stats["laz"]["readable"], False)
+        self.assertTrue(
+            any(
+                hint.get("type") == "point_cloud_capability"
+                and hint.get("value") == "laz_backend_unavailable"
+                for hint in src.semantic_hints
+            )
+        )
 
     def test_profile_point_cloud_ingests_ai_object_semantic_sidecar(self):
         from data_agent.fusion_engine import _profile_point_cloud

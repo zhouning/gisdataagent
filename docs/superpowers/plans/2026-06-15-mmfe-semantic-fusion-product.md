@@ -1453,4 +1453,33 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_ai_semantics.py -q
 ```
 
-Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, concrete third-party model tool adapters/executors, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: Point-Cloud VLR/EVLR and LAZ Capability Semantics
+
+Completed as the next point-cloud hard-source increment.
+
+- Extended point-cloud profiling to extract LAS VLR and EVLR metadata summaries
+  from readable `laspy` headers.
+- Added `stats["las_metadata"]` with VLR/EVLR counts and capped record summaries
+  including `user_id`, `record_id`, description, and record-data byte size.
+- Added `point_cloud_metadata` semantic hints so downstream business review,
+  AI retrieval, and governance tools can see that CRS, GeoTIFF projection keys,
+  waveform metadata, lineage, or vendor metadata may exist in LAS records.
+- Added explicit `.laz` capability reporting under `stats["laz"]` with
+  compressed/readable/backend status.
+- Preserved source identity for unreadable LAZ files and emitted a
+  `point_cloud_capability` hint with `value="laz_backend_unavailable"` instead
+  of silently degrading to an empty profile.
+- Kept the increment dependency-free: MMFE still does not install LAZ backends
+  or invoke PDAL. It reports the capability boundary so users and future tools
+  can decide whether to provision `lazrs`, `laszip`, or a PDAL pipeline.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource::test_profile_point_cloud_extracts_vlr_and_evlr_metadata data_agent\test_fusion_engine.py::TestFusionSource::test_profile_laz_reports_backend_unavailable_without_losing_source_type -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+```
+
+Remaining hard parts are still real: very large point-cloud chunking, PDAL pipeline integration, concrete third-party model tool adapters/executors, production deployment guidance for LAZ decompression backends, and a separate optional publisher for pgvector/LanceDB.
