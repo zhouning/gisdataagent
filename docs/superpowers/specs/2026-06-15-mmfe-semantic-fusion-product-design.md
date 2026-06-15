@@ -476,6 +476,16 @@ status. When no LAZ backend is available, profiling preserves the point-cloud
 source type and emits `laz_backend_unavailable` capability evidence rather than
 silently dropping the limitation.
 
+Large point-cloud profiling now also emits `stats["chunking"]`. The plan uses
+the existing large-dataset point threshold as a recommended chunk size and marks
+chunking required when point count or file size crosses configured thresholds.
+The plan records point count, file size when available, chunk size, estimated
+chunk count, last chunk size, strategy, and trigger reasons. MMFE also emits a
+`point_cloud_processing` hint with `value="chunking_required"` so future PDAL
+pipelines, model runners, vector indexing jobs, and UI review workflows can
+route large sources to streaming execution. This is still a planning contract;
+it does not stream points, write chunk files, or run inference over chunks.
+
 Raster profiling now carries pixel-value semantics instead of stopping at
 filename and band-description hints. For each readable band, MMFE captures
 `nodata`, `scale`, `offset`, and `unit` from raster metadata or tags, and emits

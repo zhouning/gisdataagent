@@ -1482,4 +1482,33 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
 ```
 
-Remaining hard parts are still real: very large point-cloud chunking, PDAL pipeline integration, concrete third-party model tool adapters/executors, production deployment guidance for LAZ decompression backends, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: Large Point-Cloud Chunking Plan Semantics
+
+Completed as the planning layer for very large LAS/LAZ sources.
+
+- Added `stats["chunking"]` to point-cloud profiles so each LAS/LAZ source
+  carries an explicit processing plan.
+- Uses the existing large-dataset row threshold (`500,000`) as the recommended
+  point chunk size, and marks chunking required when LAS header point count or
+  file size exceeds configured large-data thresholds.
+- Records chunking strategy, source point count, recommended chunk size,
+  estimated chunk count, last chunk size, file size when available, and
+  threshold-trigger reasons.
+- Emits `point_cloud_processing` semantic hints with
+  `value="chunking_required"` so downstream PDAL pipelines, model runners,
+  indexing jobs, and business review can see why streaming/chunked execution is
+  required.
+- Keeps implementation non-executing: MMFE now plans chunking, but it does not
+  yet stream points, invoke PDAL, write chunk artifacts, or run model inference
+  over chunks.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource::test_profile_large_point_cloud_builds_chunking_plan data_agent\test_fusion_engine.py::TestFusionSource::test_profile_small_point_cloud_marks_single_pass_chunking_plan -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+```
+
+Remaining hard parts are still real: PDAL pipeline integration, actual chunked point streaming and chunk artifact materialization, concrete third-party model tool adapters/executors, production deployment guidance for LAZ decompression backends, and a separate optional publisher for pgvector/LanceDB.

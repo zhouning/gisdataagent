@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from ..gis_processors import _resolve_path
+from .constants import LARGE_FILE_MB, LARGE_ROW_THRESHOLD
 from .models import FusionSource
 from .io import _read_vector_chunked, _read_tabular_lazy, _materialize_df
 
@@ -1384,6 +1385,9 @@ def _profile_point_cloud(path: str) -> FusionSource:
             })
             stats["laz"] = laz_status
             semantic_hints.extend(_point_cloud_laz_hints(laz_status))
+    chunking_plan = _point_cloud_chunking_plan(path, row_count)
+    stats["chunking"] = chunking_plan
+    semantic_hints.extend(_point_cloud_chunking_hints(chunking_plan))
     ai_hints = _ai_semantic_hints(
         _load_ai_semantic_sidecar(path),
         source_type="point_cloud",
@@ -1548,6 +1552,64 @@ def _point_cloud_laz_hints(status: dict) -> list[dict]:
         "confidence": 0.9,
         "evidence": evidence,
     }]
+
+
+def _point_cloud_chunking_plan(path: str, point_count: int) -> dict:
+    file_size_mb = _file_size_mb_or_none(path)
+    reasons = []
+    if point_count > LARGE_ROW_THRESHOLD:
+        reasons.append(
+            f"point_count {point_count} exceeds threshold {LARGE_ROW_THRESHOLD}"
+        )
+    if file_size_mb is not None and file_size_mb > LARGE_FILE_MB:
+        reasons.append(
+            f"file_size_mb {file_size_mb} exceeds threshold {LARGE_FILE_MB}"
+        )
+
+    required = bool(reasons)
+    chunk_size = LARGE_ROW_THRESHOLD
+    if point_count > 0:
+        chunk_count = int(np.ceil(point_count / chunk_size)) if required else 1
+        last_chunk_points = point_count - (chunk_count - 1) * chunk_size
+    else:
+        chunk_count = 0
+        last_chunk_points = 0
+
+    plan = {
+        "required": required,
+        "strategy": "point_cloud_chunk_iterator" if required else "single_pass",
+        "point_count": int(point_count),
+        "chunk_size_points": chunk_size,
+        "chunk_count": chunk_count,
+        "last_chunk_points": int(last_chunk_points),
+        "reasons": reasons,
+    }
+    if file_size_mb is not None:
+        plan["file_size_mb"] = file_size_mb
+    if required:
+        plan["recommended_executor"] = "laspy_chunk_iterator_or_pdal_pipeline"
+    return plan
+
+
+def _point_cloud_chunking_hints(plan: dict) -> list[dict]:
+    if not plan.get("required"):
+        return []
+    return [{
+        "type": "point_cloud_processing",
+        "value": "chunking_required",
+        "domain": "lidar",
+        "confidence": 0.9,
+        "chunk_size_points": plan.get("chunk_size_points"),
+        "chunk_count": plan.get("chunk_count"),
+        "evidence": plan.get("reasons", []),
+    }]
+
+
+def _file_size_mb_or_none(path: str) -> float | None:
+    try:
+        return round(os.path.getsize(path) / (1024 * 1024), 3)
+    except OSError:
+        return None
 
 
 def _profile_point_cloud_dimensions(

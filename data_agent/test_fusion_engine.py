@@ -196,6 +196,12 @@ def _mock_las_data_with_vlrs():
     return las
 
 
+def _mock_large_las_data(point_count=1_250_000):
+    las = _MockLasData()
+    las.header.point_count = point_count
+    return las
+
+
 def _plain_mock_las_data():
     source = _MockLasData()
 
@@ -882,6 +888,52 @@ class TestFusionSource(unittest.TestCase):
             any(
                 hint.get("type") == "point_cloud_metadata"
                 and hint.get("value") == "las_vlr_metadata"
+                for hint in src.semantic_hints
+            )
+        )
+
+    def test_profile_large_point_cloud_builds_chunking_plan(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.return_value = _mock_large_las_data()
+
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud("large_lidar.las")
+
+        chunking = src.stats["chunking"]
+        self.assertTrue(chunking["required"])
+        self.assertEqual(chunking["strategy"], "point_cloud_chunk_iterator")
+        self.assertEqual(chunking["point_count"], 1_250_000)
+        self.assertEqual(chunking["chunk_size_points"], 500_000)
+        self.assertEqual(chunking["chunk_count"], 3)
+        self.assertEqual(chunking["last_chunk_points"], 250_000)
+        self.assertIn("point_count", chunking["reasons"][0])
+        self.assertTrue(
+            any(
+                hint.get("type") == "point_cloud_processing"
+                and hint.get("value") == "chunking_required"
+                for hint in src.semantic_hints
+            )
+        )
+
+    def test_profile_small_point_cloud_marks_single_pass_chunking_plan(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.return_value = _MockLasData()
+
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud("small_lidar.las")
+
+        chunking = src.stats["chunking"]
+        self.assertFalse(chunking["required"])
+        self.assertEqual(chunking["strategy"], "single_pass")
+        self.assertEqual(chunking["chunk_count"], 1)
+        self.assertFalse(
+            any(
+                hint.get("type") == "point_cloud_processing"
+                and hint.get("value") == "chunking_required"
                 for hint in src.semantic_hints
             )
         )
