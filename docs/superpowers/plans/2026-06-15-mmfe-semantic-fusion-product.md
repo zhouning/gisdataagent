@@ -1422,4 +1422,35 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_ai_semantics.py -q
 ```
 
-Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, concrete model runner wrappers, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: AI Semantic Runner Wrapper Contract
+
+Completed as the orchestration contract for independent model runners.
+
+- Added `AI_SEMANTIC_RUNNER_SCHEMA = "mmfe.ai_runner.v1"` to describe external
+  AI runner jobs without importing model runtimes or executing commands inside
+  MMFE.
+- Added `build_ai_semantic_runner_spec()` to normalize model id, task,
+  source path, expected `.ai.json` output path, command arguments, model
+  version, and runner parameters.
+- Added `validate_ai_semantic_runner_spec()` to reject malformed runner specs
+  and task/model mismatches before an external job is dispatched.
+- Added `validate_ai_semantic_runner_output()` to read the expected sidecar
+  file and apply the existing MMFE AI sidecar contract after a third-party
+  model runner finishes.
+- Re-exported the runner helpers from both `data_agent.fusion` and
+  `data_agent.fusion_engine` so future tool wrappers can use the contract
+  without depending on internal module paths.
+- Kept the execution boundary strict: this increment does not download models,
+  run Python scripts, invoke containers, or add Prithvi/SAM/Pointcept runtime
+  dependencies. It defines how those independent tools are configured and how
+  MMFE validates their semantic output.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_ai_semantics.py -q
+```
+
+Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, concrete third-party model tool adapters/executors, and a separate optional publisher for pgvector/LanceDB.

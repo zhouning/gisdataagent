@@ -154,9 +154,13 @@ from .semantic_alignment import (
 
 # --- AI Semantic Sidecar Contracts ---
 from .ai_semantics import (
+    AI_SEMANTIC_RUNNER_SCHEMA,
     AI_SEMANTIC_SIDECAR_SCHEMA,
+    build_ai_semantic_runner_spec,
     build_ai_semantic_sidecar,
     get_ai_semantic_model_catalog,
+    validate_ai_semantic_runner_output,
+    validate_ai_semantic_runner_spec,
     validate_ai_semantic_sidecar,
     write_ai_semantic_sidecar,
 )

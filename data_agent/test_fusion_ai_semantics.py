@@ -103,6 +103,134 @@ class TestAISemanticAdapters(unittest.TestCase):
         self.assertTrue(callable(build_ai_semantic_sidecar))
         self.assertTrue(callable(write_ai_semantic_sidecar))
 
+    def test_build_ai_semantic_runner_spec_renders_external_command(self):
+        from data_agent.fusion.ai_semantics import (
+            AI_SEMANTIC_RUNNER_SCHEMA,
+            build_ai_semantic_runner_spec,
+        )
+
+        spec = build_ai_semantic_runner_spec(
+            model_id="prithvi-eo-2",
+            source_path="imagery/field_tile.tif",
+            task="land_cover_classification",
+            command_template=[
+                "python",
+                "run_prithvi.py",
+                "--input",
+                "{source_path}",
+                "--output",
+                "{output_path}",
+                "--task",
+                "{task}",
+            ],
+            output_path="imagery/field_tile.ai.json",
+            model_version="2.0",
+            parameters={"tile_size": 512},
+        )
+
+        self.assertEqual(spec["schema"], AI_SEMANTIC_RUNNER_SCHEMA)
+        self.assertEqual(spec["integration_mode"], "external_command")
+        self.assertEqual(spec["sidecar_schema"], "mmfe.ai_semantics.v1")
+        self.assertEqual(spec["model"]["id"], "prithvi-eo-2")
+        self.assertEqual(spec["model"]["task"], "land_cover_classification")
+        self.assertEqual(spec["model"]["version"], "2.0")
+        self.assertEqual(spec["expected_output_path"], "imagery/field_tile.ai.json")
+        self.assertEqual(
+            spec["command"],
+            [
+                "python",
+                "run_prithvi.py",
+                "--input",
+                "imagery/field_tile.tif",
+                "--output",
+                "imagery/field_tile.ai.json",
+                "--task",
+                "land_cover_classification",
+            ],
+        )
+        self.assertEqual(spec["parameters"]["tile_size"], 512)
+
+    def test_validate_ai_semantic_runner_spec_reports_contract_errors(self):
+        from data_agent.fusion.ai_semantics import validate_ai_semantic_runner_spec
+
+        errors = validate_ai_semantic_runner_spec(
+            {
+                "schema": "mmfe.ai_runner.v1",
+                "model": {"id": "prithvi-eo-2", "name": "Prithvi EO 2.0", "task": "tree_detection"},
+                "source_path": "imagery/field_tile.tif",
+                "expected_output_path": "imagery/field_tile.ai.json",
+                "sidecar_schema": "mmfe.ai_semantics.v1",
+                "integration_mode": "external_command",
+                "command": ["python", "run_prithvi.py"],
+            }
+        )
+
+        self.assertTrue(any("model.task" in error for error in errors))
+
+    def test_validate_ai_semantic_runner_output_reads_and_checks_sidecar(self):
+        from data_agent.fusion.ai_semantics import (
+            build_ai_semantic_runner_spec,
+            build_ai_semantic_sidecar,
+            validate_ai_semantic_runner_output,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source_path = os.path.join(tmp, "field_tile.tif")
+            output_path = os.path.join(tmp, "field_tile.ai.json")
+            spec = build_ai_semantic_runner_spec(
+                model_id="custom-model",
+                source_path=source_path,
+                task="custom_semantic_inference",
+                command_template=["python", "runner.py", "--input", "{source_path}", "--output", "{output_path}"],
+                output_path=output_path,
+            )
+            sidecar = build_ai_semantic_sidecar(
+                model_id="custom-model",
+                observations=[
+                    {
+                        "target": "scene",
+                        "type": "land_cover_class",
+                        "value": "forest",
+                        "confidence": 0.84,
+                    }
+                ],
+                source_path=source_path,
+            )
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(sidecar, f)
+
+            result = validate_ai_semantic_runner_output(spec)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(result["observation_count"], 1)
+            self.assertEqual(result["sidecar"]["observations"][0]["value"], "forest")
+
+    def test_validate_ai_semantic_runner_output_reports_missing_file(self):
+        from data_agent.fusion.ai_semantics import (
+            build_ai_semantic_runner_spec,
+            validate_ai_semantic_runner_output,
+        )
+
+        spec = build_ai_semantic_runner_spec(
+            model_id="custom-model",
+            source_path="scan.las",
+            task="custom_semantic_inference",
+            command_template=["python", "runner.py", "--input", "{source_path}", "--output", "{output_path}"],
+        )
+
+        result = validate_ai_semantic_runner_output(spec)
+
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("expected_output_path does not exist" in error for error in result["errors"]))
+
+    def test_ai_semantic_runner_helpers_are_reexported(self):
+        from data_agent.fusion import build_ai_semantic_runner_spec
+        from data_agent.fusion_engine import validate_ai_semantic_runner_output
+
+        self.assertTrue(callable(build_ai_semantic_runner_spec))
+        self.assertTrue(callable(validate_ai_semantic_runner_output))
+
 
 if __name__ == "__main__":
     unittest.main()

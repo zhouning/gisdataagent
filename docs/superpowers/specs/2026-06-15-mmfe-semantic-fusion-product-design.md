@@ -524,6 +524,18 @@ boundary explicit: model runners produce normalized observations, while MMFE
 profiles, validates, fuses, and publishes those observations as semantic
 evidence.
 
+The same contract module now also defines an external runner wrapper contract.
+`build_ai_semantic_runner_spec()` creates an `mmfe.ai_runner.v1` job document
+with model id, model task, source path, expected `.ai.json` output path,
+rendered command arguments, model version, and runner parameters.
+`validate_ai_semantic_runner_spec()` checks the job document before dispatch,
+including task/model compatibility against the model catalog.
+`validate_ai_semantic_runner_output()` reads the expected sidecar after an
+external runner finishes and validates it with the normal AI semantic sidecar
+contract. This keeps MMFE responsible for orchestration and evidence governance,
+while Prithvi, SAM, Pointcept, PDAL/container pipelines, or customer models
+remain independent third-party tools.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.
