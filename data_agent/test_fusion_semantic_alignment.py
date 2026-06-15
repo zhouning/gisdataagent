@@ -52,6 +52,34 @@ class TestSemanticAlignmentScoring(unittest.TestCase):
         self.assertEqual(summary["decisions"]["review"], 2)
         self.assertEqual(summary["decisions"]["reject"], 1)
 
+    def test_document_context_evidence_can_promote_alignment_decision(self):
+        from data_agent.fusion.semantic_alignment import score_semantic_alignment
+
+        base_evidence = [
+            {"type": "dtype", "detail": "object -> object", "compatible": True},
+        ]
+        base = score_semantic_alignment(
+            confidence=0.72,
+            match_type="fuzzy",
+            evidence=base_evidence,
+        )
+        with_context = score_semantic_alignment(
+            confidence=0.72,
+            match_type="fuzzy",
+            evidence=base_evidence + [
+                {
+                    "type": "document_context",
+                    "detail": "data dictionary defines DLBM as land_use_code",
+                    "support": 1.0,
+                }
+            ],
+        )
+
+        self.assertEqual(base["decision"], "review")
+        self.assertEqual(with_context["decision"], "accept")
+        self.assertGreater(with_context["score"], base["score"])
+        self.assertEqual(with_context["components"]["document_context_support"], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

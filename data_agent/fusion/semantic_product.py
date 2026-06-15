@@ -98,6 +98,7 @@ DEFAULT_SEMANTIC_PRODUCT_CONFIG = {
     "infer_fields": True,
     "feature_sample_limit": 25,
     "ai_chunks": True,
+    "document_context": None,
 }
 
 
@@ -145,7 +146,12 @@ def build_semantic_fusion_product(
             semantic_warnings.append(f"semantic enrichment failed: {exc}")
 
     quality = quality or {"score": None, "warnings": []}
-    semantic_mappings = _normalize_field_matches(field_matches or [], sources)
+    document_context = cfg.get("document_context")
+    semantic_mappings = _normalize_field_matches(
+        field_matches or [],
+        sources,
+        document_context=document_context,
+    )
     feature_semantics = _build_feature_semantics(
         enriched,
         sources,
@@ -181,6 +187,7 @@ def build_semantic_fusion_product(
             derived_fields,
             inferred_fields,
             field_matches or [],
+            document_context=document_context,
         ),
         "derived_fields": derived_fields,
         "inferred_fields": inferred_fields,
@@ -250,8 +257,10 @@ def _source_manifest(source: FusionSource) -> dict:
 def _normalize_field_matches(
     matches: list[dict],
     sources: list[FusionSource] | None = None,
+    document_context: Any | None = None,
 ) -> list[dict]:
     field_profiles = _field_profiles_by_name(sources or [])
+    document_index = _build_document_context_index(document_context)
     normalized = []
     for match in matches:
         source_field = match.get("left", "")
@@ -268,6 +277,7 @@ def _normalize_field_matches(
             match_type,
             source_profile,
             target_profile,
+            document_index,
         )
         alignment_score = score_semantic_alignment(
             confidence,
@@ -330,8 +340,11 @@ def _build_mapping_evidence(
     match_type: str,
     source_profile: dict,
     target_profile: dict,
+    document_index: dict[str, list[dict]] | None = None,
 ) -> list[dict]:
     evidence = []
+    source_field = match.get("left", "")
+    target_field = match.get("right", "")
     group_id = match.get("group_id")
     if match_type == "ontology" and group_id:
         evidence.append({
@@ -360,7 +373,152 @@ def _build_mapping_evidence(
             "detail": "source statistics available",
         })
 
+    evidence.extend(
+        _document_context_evidence(source_field, target_field, document_index or {})
+    )
+
     return evidence
+
+
+def _build_document_context_index(document_context: Any | None) -> dict[str, list[dict]]:
+    if not document_context:
+        return {}
+
+    if isinstance(document_context, dict):
+        entries = document_context.get("source_metadata")
+        if entries is None:
+            entries = [document_context]
+    elif isinstance(document_context, list):
+        entries = document_context
+    else:
+        return {}
+
+    index: dict[str, list[dict]] = {}
+    for entry in entries or []:
+        if not isinstance(entry, dict):
+            continue
+        source = entry.get("file") or entry.get("source") or entry.get("path") or ""
+        definitions = entry.get("field_definitions") or []
+        if isinstance(definitions, dict):
+            iterable = [
+                {"field": field, "meaning": meaning}
+                for field, meaning in definitions.items()
+            ]
+        elif isinstance(definitions, list):
+            iterable = definitions
+        else:
+            iterable = []
+
+        for definition in iterable:
+            normalized = _normalize_document_field_definition(definition, source)
+            if not normalized:
+                continue
+            for term in normalized["terms"]:
+                index.setdefault(term, []).append(normalized)
+    return index
+
+
+def _normalize_document_field_definition(
+    definition: Any,
+    source: str,
+) -> dict | None:
+    if isinstance(definition, str):
+        field, _, meaning = definition.partition(":")
+        terms = _terms_from_values([field])
+        if not terms:
+            return None
+        return {
+            "source": source,
+            "terms": terms,
+            "meaning": meaning.strip() or definition.strip(),
+        }
+
+    if not isinstance(definition, dict):
+        return None
+
+    values: list[Any] = [
+        definition.get("field"),
+        definition.get("name"),
+        definition.get("canonical_field"),
+        definition.get("standard_field"),
+        definition.get("target_field"),
+    ]
+    aliases = definition.get("aliases", [])
+    if isinstance(aliases, str):
+        values.extend([item.strip() for item in aliases.split(",")])
+    elif isinstance(aliases, list):
+        values.extend(aliases)
+
+    terms = _terms_from_values(values)
+    if not terms:
+        return None
+
+    meaning = (
+        definition.get("meaning")
+        or definition.get("description")
+        or definition.get("definition")
+        or ""
+    )
+    return {
+        "source": source,
+        "terms": terms,
+        "meaning": str(meaning),
+    }
+
+
+def _terms_from_values(values: list[Any]) -> list[str]:
+    terms = []
+    for value in values:
+        if value is None:
+            continue
+        term = str(value).strip().lower()
+        if term and term not in terms:
+            terms.append(term)
+    return terms
+
+
+def _document_context_evidence(
+    source_field: str,
+    target_field: str,
+    document_index: dict[str, list[dict]],
+) -> list[dict]:
+    source_key = str(source_field).strip().lower()
+    target_key = str(target_field).strip().lower()
+    if not source_key or not target_key:
+        return []
+
+    candidates = document_index.get(source_key, []) + document_index.get(target_key, [])
+    seen: set[tuple[str, str]] = set()
+    for definition in candidates:
+        terms = set(definition.get("terms", []))
+        meaning = str(definition.get("meaning", ""))
+        meaning_lower = meaning.lower()
+        direct_link = source_key in terms and target_key in terms
+        meaning_link = (
+            (source_key in terms and target_key in meaning_lower)
+            or (target_key in terms and source_key in meaning_lower)
+        )
+        if not direct_link and not meaning_link:
+            continue
+
+        source = definition.get("source", "")
+        key = (source, meaning)
+        if key in seen:
+            continue
+        seen.add(key)
+        support = 1.0 if direct_link else 0.8
+        detail = f"document context links {source_field} and {target_field}"
+        if meaning:
+            detail = f"{detail}: {meaning[:160]}"
+        evidence = {
+            "type": "document_context",
+            "detail": detail,
+            "support": support,
+        }
+        if source:
+            evidence["source"] = source
+        return [evidence]
+    return []
 
 
 def _confidence_band(confidence: Any) -> str:
@@ -410,12 +568,17 @@ def _build_field_contracts(
     derived_fields: list[dict[str, Any]],
     inferred_fields: list[dict[str, Any]],
     field_matches: list[dict],
+    document_context: Any | None = None,
 ) -> list[dict]:
     derived_names = {item["field"] for item in derived_fields}
     inferred_names = {item["field"] for item in inferred_fields}
     source_columns = _source_columns_by_name(sources)
     mapping_by_target = {}
-    for match in _normalize_field_matches(field_matches):
+    for match in _normalize_field_matches(
+        field_matches,
+        sources,
+        document_context=document_context,
+    ):
         target = match.get("target_field")
         if target:
             mapping_by_target.setdefault(target, []).append(match)

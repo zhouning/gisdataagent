@@ -10,6 +10,7 @@ DEFAULT_ALIGNMENT_SCORING_WEIGHTS = {
     "dtype_compatibility": 0.20,
     "value_profile_support": 0.10,
     "ontology_support": 0.05,
+    "document_context_support": 0.10,
 }
 
 
@@ -26,6 +27,7 @@ def score_semantic_alignment(
         "dtype_compatibility": _dtype_evidence_score(evidence),
         "value_profile_support": _has_evidence(evidence, "value_profile"),
         "ontology_support": 1.0 if match_type == "ontology" else 0.0,
+        "document_context_support": _document_context_evidence_score(evidence),
     }
 
     score = 0.0
@@ -80,3 +82,16 @@ def _dtype_evidence_score(evidence: list[dict]) -> float:
 
 def _has_evidence(evidence: list[dict], evidence_type: str) -> float:
     return 1.0 if any(item.get("type") == evidence_type for item in evidence) else 0.5
+
+
+def _document_context_evidence_score(evidence: list[dict]) -> float:
+    scores = []
+    for item in evidence:
+        if item.get("type") != "document_context":
+            continue
+        try:
+            support = float(item.get("support", 1.0))
+        except (TypeError, ValueError):
+            support = 1.0
+        scores.append(min(max(support, 0.0), 1.0))
+    return max(scores) if scores else 0.0

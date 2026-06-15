@@ -426,6 +426,15 @@ The alignment scorer has been extracted to
 same scoring contract reusable by later document-context evidence, LLM schema
 alignment evidence, and indexing quality gates.
 
+Document-context evidence is now part of the semantic alignment path.
+`fuse_datasets()` accepts a `document_context` JSON string, typically the output
+from `inject_document_context()`, and forwards it through `semantic_config`.
+`semantic_product.py` indexes `source_metadata[].field_definitions` from data
+dictionaries or business documents and emits `document_context` evidence when a
+definition links the source and target fields. The scoring module treats this as
+an additive support signal, so ordinary fusion runs are not penalized when no
+document context is available.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

@@ -4,6 +4,7 @@ Covers: execution with v2 features enabled/disabled, backward compatibility,
         toolset registration, API route mounting, module imports.
 """
 
+import asyncio
 import json
 import os
 import shutil
@@ -303,6 +304,7 @@ class TestFuseDatasetsV2Params(unittest.TestCase):
         self.assertIn("conflict_strategy", param_names)
         self.assertIn("enable_explainability", param_names)
         self.assertIn("use_llm_semantic", param_names)
+        self.assertIn("document_context", param_names)
 
     def test_fuse_datasets_v2_defaults(self):
         """Check default values for v2 parameters."""
@@ -313,6 +315,7 @@ class TestFuseDatasetsV2Params(unittest.TestCase):
         self.assertEqual(sig.parameters["conflict_strategy"].default, "")
         self.assertEqual(sig.parameters["enable_explainability"].default, "true")
         self.assertEqual(sig.parameters["use_llm_semantic"].default, "false")
+        self.assertEqual(sig.parameters["document_context"].default, "")
 
     def test_fuse_datasets_has_semantic_product_param(self):
         import inspect
@@ -321,6 +324,100 @@ class TestFuseDatasetsV2Params(unittest.TestCase):
         sig = inspect.signature(fuse_datasets)
         self.assertIn("semantic_product", sig.parameters)
         self.assertEqual(sig.parameters["semantic_product"].default, "true")
+
+    def test_fuse_datasets_passes_document_context_to_semantic_config(self):
+        from data_agent.fusion.models import (
+            CompatibilityReport,
+            FusionResult,
+            FusionSource,
+        )
+        from data_agent.toolsets import fusion_tools
+
+        source_a = FusionSource(
+            file_path="a.geojson",
+            data_type="vector",
+            crs="EPSG:4326",
+            row_count=1,
+            columns=[{"name": "DLBM", "dtype": "object", "null_pct": 0}],
+        )
+        source_b = FusionSource(
+            file_path="b.geojson",
+            data_type="vector",
+            crs="EPSG:4326",
+            row_count=1,
+            columns=[{"name": "land_use_code", "dtype": "object", "null_pct": 0}],
+        )
+        document_context = {
+            "source_metadata": [
+                {
+                    "file": "land_dictionary.xlsx",
+                    "field_definitions": [
+                        {
+                            "field": "DLBM",
+                            "aliases": ["land_use_code"],
+                            "meaning": "DLBM is the land use code.",
+                        }
+                    ],
+                }
+            ]
+        }
+        captured = {}
+
+        def fake_execute_fusion(*args, **kwargs):
+            captured["semantic_config"] = kwargs.get("semantic_config")
+            return FusionResult(
+                output_path="out.geojson",
+                strategy_used="spatial_join",
+                row_count=1,
+                column_count=1,
+                quality_score=1.0,
+                duration_s=0.0,
+            )
+
+        with patch.object(fusion_tools, "_resolve_path", side_effect=lambda p: p), \
+                patch.object(
+                    fusion_tools.fusion_engine,
+                    "profile_source",
+                    side_effect=[source_a, source_b],
+                ), \
+                patch.object(
+                    fusion_tools.fusion_engine,
+                    "assess_compatibility",
+                    return_value=CompatibilityReport(
+                        field_matches=[
+                            {
+                                "left": "DLBM",
+                                "right": "land_use_code",
+                                "confidence": 0.72,
+                                "match_type": "fuzzy",
+                            }
+                        ],
+                    ),
+                ), \
+                patch.object(
+                    fusion_tools.fusion_engine,
+                    "align_sources",
+                    return_value=([("vector", object()), ("vector", object())], []),
+                ), \
+                patch.object(
+                    fusion_tools.fusion_engine,
+                    "execute_fusion",
+                    side_effect=fake_execute_fusion,
+                ), \
+                patch.object(fusion_tools.fusion_engine, "record_operation"):
+            result_text = asyncio.run(
+                fusion_tools.fuse_datasets(
+                    "a.geojson,b.geojson",
+                    document_context=json.dumps(document_context),
+                )
+            )
+
+        result = json.loads(result_text)
+        self.assertEqual(result["output_path"], "out.geojson")
+        self.assertEqual(
+            captured["semantic_config"]["document_context"],
+            document_context,
+        )
 
 
 class TestProfilingGdbRecognition(unittest.TestCase):

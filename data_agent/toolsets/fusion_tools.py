@@ -123,8 +123,12 @@ async def fuse_datasets(
     enable_explainability: str = "true",
     use_llm_semantic: str = "false",
     semantic_product: str = "true",
+    document_context: str = "",
 ) -> str:
     """融合多个数据源。支持空间连接、属性合并、分区统计等10种策略，含v2增强能力。
+
+    document_context accepts JSON returned by inject_document_context and uses it
+    as semantic field-mapping evidence.
 
     Args:
         file_paths: 逗号分隔的文件路径列表
@@ -161,6 +165,12 @@ async def fuse_datasets(
     explainability = enable_explainability.lower() == "true"
     llm_semantic = use_llm_semantic.lower() == "true"
     semantic_product_enabled = semantic_product.lower() in ("1", "true", "yes", "on")
+    document_context_payload = None
+    if document_context.strip():
+        try:
+            document_context_payload = json.loads(document_context)
+        except json.JSONDecodeError as e:
+            return f"Error: invalid document_context JSON: {e}"
 
     def _run():
         sources = []
@@ -178,6 +188,8 @@ async def fuse_datasets(
                 "feature_sample_limit": 25,
                 "ai_chunks": True,
             }
+            if document_context_payload is not None:
+                semantic_config["document_context"] = document_context_payload
 
         report = fusion_engine.assess_compatibility(
             sources,

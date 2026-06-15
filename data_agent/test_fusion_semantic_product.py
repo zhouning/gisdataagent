@@ -235,6 +235,54 @@ class TestSemanticFusionProduct(unittest.TestCase):
         self.assertLess(rejected["score"], 0.6)
         self.assertEqual(rejected["components"]["dtype_compatibility"], 0.0)
 
+    def test_semantic_mappings_include_document_context_evidence(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _alignment_sources(),
+            strategy="spatial_join",
+            field_matches=[
+                {
+                    "left": "DLBM",
+                    "right": "land_use_code",
+                    "confidence": 0.72,
+                    "match_type": "fuzzy",
+                }
+            ],
+            config={
+                "enabled": True,
+                "document_context": {
+                    "source_metadata": [
+                        {
+                            "file": "land_dictionary.xlsx",
+                            "field_definitions": [
+                                {
+                                    "field": "DLBM",
+                                    "name": "land_use_code",
+                                    "meaning": "Domain dictionary defines DLBM as the land use classification code.",
+                                    "aliases": ["land_use_code", "land code"],
+                                }
+                            ],
+                        }
+                    ]
+                },
+            },
+        )
+
+        mapping = manifest["semantic_mappings"][0]
+        doc_evidence = [
+            item for item in mapping["evidence"]
+            if item.get("type") == "document_context"
+        ]
+        self.assertEqual(len(doc_evidence), 1)
+        self.assertEqual(doc_evidence[0]["source"], "land_dictionary.xlsx")
+        self.assertEqual(
+            mapping["alignment_score"]["components"]["document_context_support"],
+            1.0,
+        )
+        self.assertEqual(mapping["alignment_score"]["decision"], "accept")
+
     def test_ai_metadata_summarizes_alignment_decisions(self):
         from data_agent.fusion.semantic_product import build_semantic_fusion_product
 
