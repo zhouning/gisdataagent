@@ -2,16 +2,16 @@
 # Used by OntologyReasoner for field matching, derivation, and inference.
 version: "1.0"
 
-# Equivalence groups — fields within a group are semantically equivalent
+# Equivalence groups: fields within a group are semantically equivalent.
 equivalences:
   - group_id: area
     fields: ["area", "面积", "mj", "zmj", "shape_area", "tbmj", "TBMJ", "AREA"]
   - group_id: perimeter
     fields: ["perimeter", "周长", "shape_length", "shape_len", "PERIMETER"]
   - group_id: land_use_code
-    fields: ["dlbm", "DLBM", "land_use_code", "地类编码", "land_code", "用地编码"]
+    fields: ["dlbm", "DLBM", "land_use_code", "地类编码", "用地编码", "land_code"]
   - group_id: land_use_name
-    fields: ["dlmc", "DLMC", "land_use_name", "地类名称", "land_name", "用地名称"]
+    fields: ["dlmc", "DLMC", "land_use_name", "地类名称", "用地名称", "land_name"]
   - group_id: elevation
     fields: ["elevation", "高程", "dem", "height", "altitude", "海拔", "gc"]
   - group_id: slope
@@ -20,10 +20,14 @@ equivalences:
     fields: ["aspect", "坡向", "px"]
   - group_id: population
     fields: ["population", "人口", "pop", "rk", "pop_count"]
-  - group_id: building_floors
-    fields: ["floors", "层数", "cs", "floor_count", "building_floors", "层高数"]
+  - group_id: floors
+    fields: ["floors", "层数", "cs", "floor_count", "building_floors"]
   - group_id: building_height
     fields: ["building_height", "建筑高度", "jzgd", "bldg_height", "height_m"]
+  - group_id: building_area
+    fields: ["building_area", "建筑面积", "jzmj", "bldg_area"]
+  - group_id: green_area
+    fields: ["green_area", "绿化面积", "lhmj"]
   - group_id: parcel_id
     fields: ["parcel_id", "地块编号", "dkbh", "DKBH", "parcel_no", "lot_id"]
   - group_id: name
@@ -35,25 +39,25 @@ equivalences:
   - group_id: ndvi
     fields: ["ndvi", "NDVI", "植被指数", "vegetation_index"]
 
-# Derivation rules — compute target from available fields
+# Derivation rules: compute target fields from available fields.
 derivations:
   - target: building_height
     formula: "floors * 3.0"
     required_fields: ["floors"]
     unit: "m"
-    description: "建筑高度 = 层数 × 层高(默认3m)"
+    description: "建筑高度 = 层数 * 默认层高3m"
 
   - target: population_density
     formula: "population / (area / 1000000)"
     required_fields: ["population", "area"]
-    unit: "人/km²"
-    description: "人口密度 = 人口 / 面积(km²)"
+    unit: "people/km2"
+    description: "人口密度 = 人口 / 面积(km2)"
 
   - target: floor_area_ratio
     formula: "building_area * floors / area"
     required_fields: ["building_area", "floors", "area"]
     unit: ""
-    description: "容积率 = 建筑面积 × 层数 / 用地面积"
+    description: "容积率 = 建筑面积 * 层数 / 用地面积"
 
   - target: building_density
     formula: "building_area / area"
@@ -77,15 +81,15 @@ derivations:
     formula: "(4 * 3.14159 * area) / (perimeter ** 2)"
     required_fields: ["perimeter", "area"]
     unit: ""
-    description: "紧凑度 = 4π×面积 / 周长²"
+    description: "紧凑度 = 4π * 面积 / 周长^2"
 
   - target: area_mu
     formula: "area / 666.67"
     required_fields: ["area"]
     unit: "亩"
-    description: "面积(亩) = 面积(m²) / 666.67"
+    description: "面积(亩) = 面积(m2) / 666.67"
 
-# Inference rules — classify features based on conditions
+# Inference rules: classify features based on conditions.
 inference_rules:
   - rule_id: high_rise_residential
     conditions:
@@ -135,7 +139,7 @@ inference_rules:
       field: slope_class
       value: "平地"
 
-# Unit conversions for the ontology
+# Unit conversions for the ontology.
 unit_conversions:
   area:
     - from: m2

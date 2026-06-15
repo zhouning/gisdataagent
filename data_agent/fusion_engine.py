@@ -62,6 +62,9 @@ from data_agent.fusion import (  # noqa: F401
     _strategy_time_snapshot,
     _strategy_height_assign,
     _strategy_raster_vectorize,
+    DEFAULT_SEMANTIC_PRODUCT_CONFIG,
+    build_semantic_fusion_product,
+    write_semantic_product_manifest,
 )
 
 # Patch-target shims: these symbols were previously in fusion_engine.py's globals

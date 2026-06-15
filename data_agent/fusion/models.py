@@ -53,3 +53,8 @@ class FusionResult:
     temporal_log: list = field(default_factory=list)
     # v17.1 asset coding
     output_asset_code: str = ""
+    # semantic fusion product
+    semantic_product_path: str = ""
+    semantic_summary: dict = field(default_factory=dict)
+    derived_fields: list = field(default_factory=list)
+    inferred_fields: list = field(default_factory=list)

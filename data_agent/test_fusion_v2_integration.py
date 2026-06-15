@@ -142,6 +142,51 @@ class TestExecuteFusionV2(unittest.TestCase):
         self.assertIn("_fusion_confidence", output_gdf.columns)
         self.assertIn("_fusion_method", output_gdf.columns)
 
+    @patch("data_agent.fusion.db.record_operation")
+    @patch("data_agent.fusion.execution._generate_output_path")
+    def test_with_semantic_product_manifest(self, mock_path, mock_record):
+        """execute_fusion writes semantic product manifest when enabled."""
+        from data_agent.fusion.execution import execute_fusion
+        from data_agent.fusion.models import FusionSource
+
+        out_path = os.path.join(self.tmp, "out.geojson")
+        mock_path.return_value = out_path
+        gdf = gpd.GeoDataFrame(
+            {
+                "parcel_id": ["P1", "P2"],
+                "floors": [5, 18],
+                "slope": [2.0, 30.0],
+                "area": [1000.0, 2000.0],
+            },
+            geometry=[Point(0, 0), Point(1, 1)],
+            crs="EPSG:4326",
+        )
+        src = FusionSource(
+            file_path="source.geojson",
+            data_type="vector",
+            crs="EPSG:4326",
+            row_count=2,
+            columns=[
+                {"name": "parcel_id", "dtype": "object", "null_pct": 0},
+                {"name": "floors", "dtype": "int64", "null_pct": 0},
+                {"name": "slope", "dtype": "float64", "null_pct": 0},
+                {"name": "area", "dtype": "float64", "null_pct": 0},
+            ],
+        )
+
+        result = execute_fusion(
+            [("vector", gdf), ("vector", gdf.copy())],
+            "spatial_join",
+            [src, src],
+            semantic_config={"enabled": True, "feature_sample_limit": 1},
+        )
+
+        self.assertTrue(result.semantic_product_path.endswith(".semantic.json"))
+        self.assertTrue(os.path.exists(result.semantic_product_path))
+        self.assertIn("building_height", result.derived_fields)
+        output_gdf = gpd.read_file(result.output_path)
+        self.assertIn("building_height", output_gdf.columns)
+
 
 class TestToolsetRegistration(unittest.TestCase):
     """Verify toolset has v2 tools registered."""
@@ -198,6 +243,22 @@ class TestFusionResultModel(unittest.TestCase):
         )
         self.assertEqual(r.explainability_path, "/tmp/heatmap.geojson")
 
+    def test_semantic_product_fields_exist(self):
+        from data_agent.fusion.models import FusionResult
+
+        r = FusionResult()
+        self.assertEqual(r.semantic_product_path, "")
+        self.assertEqual(r.semantic_summary, {})
+        self.assertEqual(r.derived_fields, [])
+        self.assertEqual(r.inferred_fields, [])
+
+    def test_semantic_product_helpers_exported(self):
+        from data_agent.fusion import build_semantic_fusion_product
+        from data_agent.fusion_engine import write_semantic_product_manifest
+
+        self.assertTrue(callable(build_semantic_fusion_product))
+        self.assertTrue(callable(write_semantic_product_manifest))
+
 
 # ---------------------------------------------------------------------------
 # v2 Agent tool layer integration tests (new)
@@ -238,6 +299,14 @@ class TestFuseDatasetsV2Params(unittest.TestCase):
         self.assertEqual(sig.parameters["conflict_strategy"].default, "")
         self.assertEqual(sig.parameters["enable_explainability"].default, "true")
         self.assertEqual(sig.parameters["use_llm_semantic"].default, "false")
+
+    def test_fuse_datasets_has_semantic_product_param(self):
+        import inspect
+        from data_agent.toolsets.fusion_tools import fuse_datasets
+
+        sig = inspect.signature(fuse_datasets)
+        self.assertIn("semantic_product", sig.parameters)
+        self.assertEqual(sig.parameters["semantic_product"].default, "true")
 
 
 class TestProfilingGdbRecognition(unittest.TestCase):

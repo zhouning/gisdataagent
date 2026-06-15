@@ -10,6 +10,7 @@ def assess_compatibility(
     sources: list[FusionSource],
     use_embedding: bool = False,
     use_llm_schema: bool = False,
+    use_ontology: bool = False,
 ) -> CompatibilityReport:
     """Assess fusion compatibility between data sources.
 
@@ -39,7 +40,10 @@ def assess_compatibility(
 
     # --- Field semantic matching ---
     field_matches = _find_field_matches(
-        sources, use_embedding=use_embedding, use_llm_schema=use_llm_schema
+        sources,
+        use_embedding=use_embedding,
+        use_llm_schema=use_llm_schema,
+        use_ontology=use_ontology,
     )
 
     # --- Recommended strategies ---

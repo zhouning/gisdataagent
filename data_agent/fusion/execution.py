@@ -29,6 +29,7 @@ def execute_fusion(
     conflict_config: Optional[dict] = None,
     enable_explainability: bool = False,
     enable_kg: bool = False,
+    semantic_config: Optional[dict] = None,
 ) -> FusionResult:
     """Execute a fusion strategy on aligned data.
 
@@ -115,6 +116,57 @@ def execute_fusion(
             output_gdf, os.path.dirname(output_path)
         )
 
+    semantic_product_path = ""
+    semantic_summary = {}
+    derived_field_names = []
+    inferred_field_names = []
+    if semantic_config:
+        try:
+            from .semantic_product import (
+                build_semantic_fusion_product,
+                write_semantic_product_manifest,
+            )
+
+            field_matches = report.field_matches if report else []
+            output_gdf, semantic_manifest = build_semantic_fusion_product(
+                output_gdf=output_gdf,
+                sources=sources,
+                strategy=strategy,
+                field_matches=field_matches,
+                quality=quality,
+                alignment_log=alignment_log,
+                temporal_log=temporal_log,
+                conflict_summary=conflict_summary,
+                config=semantic_config,
+            )
+            quality = validate_quality(output_gdf, sources)
+            semantic_manifest["quality"] = {
+                "score": quality["score"],
+                "warnings": quality["warnings"],
+            }
+            output_gdf.to_file(output_path, driver="GeoJSON")
+            semantic_product_path = write_semantic_product_manifest(
+                semantic_manifest, output_path
+            )
+            semantic_summary = {
+                "path": semantic_product_path,
+                "ai_chunks": len(
+                    semantic_manifest.get("ai_metadata", {}).get("chunks", [])
+                ),
+                "feature_semantics": len(
+                    semantic_manifest.get("feature_semantics", [])
+                ),
+            }
+            derived_field_names = [
+                item["field"] for item in semantic_manifest.get("derived_fields", [])
+            ]
+            inferred_field_names = [
+                item["field"] for item in semantic_manifest.get("inferred_fields", [])
+            ]
+        except Exception as e:
+            logger.warning("Semantic fusion product generation failed: %s", e)
+            semantic_summary = {"warning": str(e)}
+
     # v17.1: Register fusion output as a data asset with structured code
     output_asset_id = None
     output_asset_code = None
@@ -154,6 +206,10 @@ def execute_fusion(
         temporal_log=temporal_log,
         conflict_summary=conflict_summary,
         output_asset_code=output_asset_code or "",
+        semantic_product_path=semantic_product_path,
+        semantic_summary=semantic_summary,
+        derived_fields=derived_field_names,
+        inferred_fields=inferred_field_names,
     )
 
 

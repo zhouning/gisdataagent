@@ -122,6 +122,7 @@ async def fuse_datasets(
     conflict_strategy: str = "",
     enable_explainability: str = "true",
     use_llm_semantic: str = "false",
+    semantic_product: str = "true",
 ) -> str:
     """融合多个数据源。支持空间连接、属性合并、分区统计等10种策略，含v2增强能力。
 
@@ -143,6 +144,8 @@ async def fuse_datasets(
                               添加 _fusion_confidence、_fusion_sources 等字段，并生成质量热力图。
         use_llm_semantic: LLM增强语义匹配 (true/false, 默认false)。启用后使用Gemini
                          深度理解字段语义，提升跨源字段匹配准确度。
+        semantic_product: 语义融合产品 (true/false, 默认true)。启用后生成本体增强字段、
+                          AI-ready chunks 和 .semantic.json 产品清单。
 
     Returns:
         融合结果摘要，包含输出路径、行列数、质量评分、对齐日志、时序日志、冲突摘要和可解释性路径。
@@ -157,14 +160,30 @@ async def fuse_datasets(
 
     explainability = enable_explainability.lower() == "true"
     llm_semantic = use_llm_semantic.lower() == "true"
+    semantic_product_enabled = semantic_product.lower() in ("1", "true", "yes", "on")
 
     def _run():
         sources = []
         for p in paths:
             resolved = _resolve_path(p)
             sources.append(fusion_engine.profile_source(resolved))
+
+        semantic_config = None
+        if semantic_product_enabled:
+            semantic_config = {
+                "enabled": True,
+                "use_ontology": True,
+                "derive_fields": True,
+                "infer_fields": True,
+                "feature_sample_limit": 25,
+                "ai_chunks": True,
+            }
+
         report = fusion_engine.assess_compatibility(
-            sources, use_llm_schema=llm_semantic,
+            sources,
+            use_embedding=llm_semantic,
+            use_llm_schema=llm_semantic,
+            use_ontology=semantic_config is not None,
         )
         aligned, align_log = fusion_engine.align_sources(sources, report)
 
@@ -197,6 +216,7 @@ async def fuse_datasets(
             temporal_config=temporal_config,
             conflict_config=conflict_config,
             enable_explainability=explainability,
+            semantic_config=semantic_config,
         )
         fusion_engine.record_operation(
             sources=sources,
@@ -236,6 +256,11 @@ async def fuse_datasets(
             summary["explainability_path"] = result.explainability_path
         if result.output_asset_code:
             summary["asset_code"] = result.output_asset_code
+        if result.semantic_product_path:
+            summary["semantic_product_path"] = result.semantic_product_path
+            summary["semantic_summary"] = result.semantic_summary
+            summary["derived_fields"] = result.derived_fields
+            summary["inferred_fields"] = result.inferred_fields
         return json.dumps(summary, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()

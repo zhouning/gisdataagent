@@ -266,6 +266,29 @@ class TestOntologyInMatching(unittest.TestCase):
         onto_matches = [m for m in matches if m.get("match_type") == "ontology"]
         self.assertEqual(len(onto_matches), 0)
 
+    def test_assess_compatibility_accepts_ontology_flag(self):
+        from data_agent.fusion.compatibility import assess_compatibility
+        from data_agent.fusion.models import FusionSource
+
+        s1 = FusionSource(
+            file_path="a.geojson",
+            data_type="vector",
+            columns=[{"name": "面积", "dtype": "float64"}],
+        )
+        s2 = FusionSource(
+            file_path="b.geojson",
+            data_type="vector",
+            columns=[{"name": "AREA", "dtype": "float64"}],
+        )
+
+        report = assess_compatibility([s1, s2], use_ontology=True)
+        ontology_matches = [
+            m for m in report.field_matches if m.get("match_type") == "ontology"
+        ]
+        self.assertEqual(len(ontology_matches), 1)
+        self.assertEqual(ontology_matches[0]["left"], "面积")
+        self.assertEqual(ontology_matches[0]["right"], "AREA")
+
 
 if __name__ == "__main__":
     unittest.main()

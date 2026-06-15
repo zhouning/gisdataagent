@@ -133,6 +133,13 @@ from .temporal import TemporalAligner
 # --- Ontology Reasoning (v2) ---
 from .ontology import OntologyReasoner
 
+# --- Semantic Fusion Product ---
+from .semantic_product import (
+    DEFAULT_SEMANTIC_PRODUCT_CONFIG,
+    build_semantic_fusion_product,
+    write_semantic_product_manifest,
+)
+
 # --- LLM Semantic Understanding (v2) ---
 from .semantic_llm import SemanticLLM
 
