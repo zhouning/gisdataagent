@@ -495,6 +495,15 @@ plans beside intended outputs. MMFE still treats PDAL as an external execution
 tool: the contract is ready for a future runner, but this iteration does not
 invoke PDAL, install PDAL, or materialize point chunks.
 
+PDAL execution now also has a runner contract. `build_pdal_runner_spec()` turns
+a planned pipeline into an `mmfe.pdal_runner.v1` job with the command
+`pdal pipeline <spec_path>`, expected output path, timeout, task, and chunking
+metadata. `run_pdal_pipeline()` accepts an injectable executor, validates the
+process return code and expected output creation, and returns structured
+stdout/stderr/error evidence. This enables local subprocess runners, remote job
+dispatchers, or test mocks to share one contract while keeping PDAL optional in
+MMFE core.
+
 Raster profiling now carries pixel-value semantics instead of stopping at
 filename and band-description hints. For each readable band, MMFE captures
 `nodata`, `scale`, `offset`, and `unit` from raster metadata or tags, and emits

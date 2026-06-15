@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from datetime import datetime, timezone
 from typing import Any
 
 
 PDAL_PIPELINE_SCHEMA = "mmfe.pdal_pipeline.v1"
+PDAL_RUNNER_SCHEMA = "mmfe.pdal_runner.v1"
 
 
 def build_pdal_pipeline_spec(
@@ -124,6 +126,124 @@ def write_pdal_pipeline_spec(spec: dict, output_path: str) -> str:
     return spec_path
 
 
+def build_pdal_runner_spec(
+    pipeline_spec: dict,
+    pipeline_path: str,
+    pdal_binary: str = "pdal",
+    timeout_s: int = 3600,
+    metadata: dict | None = None,
+) -> dict:
+    """Build a runner contract for an external `pdal pipeline` invocation."""
+    runner = {
+        "schema": PDAL_RUNNER_SCHEMA,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "execution_mode": "external_pdal",
+        "pipeline_path": pipeline_path,
+        "expected_output_path": pipeline_spec.get("output_path", ""),
+        "pipeline_schema": pipeline_spec.get("schema"),
+        "pipeline_task": pipeline_spec.get("pipeline_task", ""),
+        "chunking": dict(pipeline_spec.get("chunking") or {}),
+        "command": [pdal_binary, "pipeline", pipeline_path],
+        "timeout_s": int(timeout_s),
+    }
+    if metadata:
+        runner["metadata"] = dict(metadata)
+    return runner
+
+
+def validate_pdal_runner_spec(runner_spec: dict) -> list[str]:
+    """Return contract errors for a PDAL runner spec."""
+    errors = []
+    if not isinstance(runner_spec, dict):
+        return ["pdal runner spec must be an object"]
+    if runner_spec.get("schema") != PDAL_RUNNER_SCHEMA:
+        errors.append(f"schema must be {PDAL_RUNNER_SCHEMA}")
+    if runner_spec.get("execution_mode") != "external_pdal":
+        errors.append("execution_mode must be external_pdal")
+    if not runner_spec.get("pipeline_path"):
+        errors.append("pipeline_path is required")
+    if not runner_spec.get("expected_output_path"):
+        errors.append("expected_output_path is required")
+    command = runner_spec.get("command")
+    if not isinstance(command, list) or len(command) < 3:
+        errors.append("command must be a list like: pdal pipeline <path>")
+    else:
+        if command[1] != "pipeline":
+            errors.append("command must invoke pdal pipeline")
+        if command[-1] != runner_spec.get("pipeline_path"):
+            errors.append("command pipeline path must match pipeline_path")
+    return errors
+
+
+def run_pdal_pipeline(
+    runner_spec: dict,
+    executor=None,
+) -> dict:
+    """Run a PDAL pipeline through an injectable executor and validate output.
+
+    This wrapper keeps PDAL optional: callers can inject an executor in tests or
+    production tool layers. The default path calls `subprocess.run`.
+    """
+    errors = validate_pdal_runner_spec(runner_spec)
+    command = runner_spec.get("command") if isinstance(runner_spec, dict) else []
+    output_path = (
+        runner_spec.get("expected_output_path")
+        if isinstance(runner_spec, dict)
+        else None
+    )
+    if errors:
+        return _pdal_runner_result(
+            command=command,
+            output_path=output_path,
+            returncode=None,
+            stdout="",
+            stderr="",
+            errors=errors,
+        )
+
+    run_executor = executor or _subprocess_executor
+    try:
+        completed = run_executor(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=runner_spec.get("timeout_s", 3600),
+        )
+    except FileNotFoundError as exc:
+        return _pdal_runner_result(
+            command=command,
+            output_path=output_path,
+            returncode=None,
+            stdout="",
+            stderr=str(exc),
+            errors=["pdal executable was not found"],
+        )
+    except subprocess.TimeoutExpired as exc:
+        return _pdal_runner_result(
+            command=command,
+            output_path=output_path,
+            returncode=None,
+            stdout=str(exc.stdout or ""),
+            stderr=str(exc.stderr or ""),
+            errors=["pdal pipeline timed out"],
+        )
+
+    result_errors = []
+    returncode = getattr(completed, "returncode", None)
+    if returncode != 0:
+        result_errors.append(f"pdal returncode was {returncode}")
+    if output_path and not os.path.exists(output_path):
+        result_errors.append(f"expected output was not created: {output_path}")
+    return _pdal_runner_result(
+        command=command,
+        output_path=output_path,
+        returncode=returncode,
+        stdout=str(getattr(completed, "stdout", "") or ""),
+        stderr=str(getattr(completed, "stderr", "") or ""),
+        errors=result_errors,
+    )
+
+
 def _source_path(source_profile: dict) -> str:
     if not isinstance(source_profile, dict):
         return ""
@@ -181,3 +301,28 @@ def _json_default(value: Any) -> object:
     if hasattr(value, "item"):
         return value.item()
     return str(value)
+
+
+def _subprocess_executor(command: list[str], **kwargs):
+    return subprocess.run(command, **kwargs)
+
+
+def _pdal_runner_result(
+    command: list | None,
+    output_path: str | None,
+    returncode: int | None,
+    stdout: str,
+    stderr: str,
+    errors: list[str],
+) -> dict:
+    output_exists = bool(output_path and os.path.exists(output_path))
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "command": command or [],
+        "expected_output_path": output_path,
+        "output_exists": output_exists,
+        "returncode": returncode,
+        "stdout": stdout,
+        "stderr": stderr,
+    }

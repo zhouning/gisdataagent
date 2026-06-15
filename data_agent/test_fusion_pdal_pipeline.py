@@ -2,8 +2,10 @@
 
 import json
 import os
+import subprocess
 import tempfile
 import unittest
+from unittest.mock import Mock
 
 
 class TestPdalPipelineContracts(unittest.TestCase):
@@ -106,6 +108,107 @@ class TestPdalPipelineContracts(unittest.TestCase):
 
         self.assertTrue(callable(build_pdal_pipeline_spec))
         self.assertTrue(callable(validate_pdal_pipeline_spec))
+
+    def test_build_pdal_runner_spec_renders_command(self):
+        from data_agent.fusion.pdal_pipeline import (
+            build_pdal_pipeline_spec,
+            build_pdal_runner_spec,
+            write_pdal_pipeline_spec,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = os.path.join(tmp, "urban_scan.copc.laz")
+            source_profile = {
+                "file_path": os.path.join(tmp, "urban_scan.laz"),
+                "stats": {"chunking": {"required": True, "chunk_count": 3}},
+            }
+            pipeline = build_pdal_pipeline_spec(source_profile, output_path=output_path)
+            pipeline_path = write_pdal_pipeline_spec(pipeline, output_path)
+
+            runner = build_pdal_runner_spec(pipeline, pipeline_path)
+
+            self.assertEqual(runner["schema"], "mmfe.pdal_runner.v1")
+            self.assertEqual(runner["execution_mode"], "external_pdal")
+            self.assertEqual(runner["pipeline_path"], pipeline_path)
+            self.assertEqual(runner["expected_output_path"], output_path)
+            self.assertEqual(runner["command"], ["pdal", "pipeline", pipeline_path])
+            self.assertEqual(runner["chunking"]["chunk_count"], 3)
+
+    def test_run_pdal_pipeline_invokes_runner_and_validates_output(self):
+        from data_agent.fusion.pdal_pipeline import (
+            build_pdal_pipeline_spec,
+            build_pdal_runner_spec,
+            run_pdal_pipeline,
+            write_pdal_pipeline_spec,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = os.path.join(tmp, "small_scan.las")
+            source_profile = {
+                "file_path": os.path.join(tmp, "small_scan_source.las"),
+                "stats": {"chunking": {"required": False, "chunk_count": 1}},
+            }
+            pipeline = build_pdal_pipeline_spec(source_profile, output_path=output_path)
+            pipeline_path = write_pdal_pipeline_spec(pipeline, output_path)
+            runner = build_pdal_runner_spec(pipeline, pipeline_path)
+            completed = subprocess.CompletedProcess(
+                runner["command"],
+                0,
+                stdout="PDAL pipeline completed",
+                stderr="",
+            )
+
+            def executor(command, **kwargs):
+                with open(output_path, "wb") as f:
+                    f.write(b"LAS")
+                return completed
+
+            result = run_pdal_pipeline(runner, executor=executor)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["returncode"], 0)
+            self.assertEqual(result["command"], runner["command"])
+            self.assertEqual(result["expected_output_path"], output_path)
+            self.assertTrue(result["output_exists"])
+            self.assertIn("PDAL pipeline completed", result["stdout"])
+
+    def test_run_pdal_pipeline_reports_process_failure(self):
+        from data_agent.fusion.pdal_pipeline import (
+            build_pdal_pipeline_spec,
+            build_pdal_runner_spec,
+            run_pdal_pipeline,
+            write_pdal_pipeline_spec,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = os.path.join(tmp, "failed_scan.las")
+            source_profile = {
+                "file_path": os.path.join(tmp, "failed_scan_source.las"),
+                "stats": {"chunking": {"required": False, "chunk_count": 1}},
+            }
+            pipeline = build_pdal_pipeline_spec(source_profile, output_path=output_path)
+            pipeline_path = write_pdal_pipeline_spec(pipeline, output_path)
+            runner = build_pdal_runner_spec(pipeline, pipeline_path)
+            completed = subprocess.CompletedProcess(
+                runner["command"],
+                2,
+                stdout="",
+                stderr="reader error",
+            )
+
+            result = run_pdal_pipeline(runner, executor=Mock(return_value=completed))
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["returncode"], 2)
+            self.assertTrue(any("returncode" in error for error in result["errors"]))
+            self.assertTrue(any("expected output was not created" in error for error in result["errors"]))
+
+    def test_pdal_runner_helpers_are_reexported(self):
+        from data_agent.fusion import build_pdal_runner_spec
+        from data_agent.fusion_engine import run_pdal_pipeline
+
+        self.assertTrue(callable(build_pdal_runner_spec))
+        self.assertTrue(callable(run_pdal_pipeline))
 
 
 if __name__ == "__main__":

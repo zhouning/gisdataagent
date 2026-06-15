@@ -83,8 +83,12 @@ from data_agent.fusion import (  # noqa: F401
     validate_ai_semantic_sidecar,
     write_ai_semantic_sidecar,
     PDAL_PIPELINE_SCHEMA,
+    PDAL_RUNNER_SCHEMA,
     build_pdal_pipeline_spec,
+    build_pdal_runner_spec,
+    run_pdal_pipeline,
     validate_pdal_pipeline_spec,
+    validate_pdal_runner_spec,
     write_pdal_pipeline_spec,
 )
 

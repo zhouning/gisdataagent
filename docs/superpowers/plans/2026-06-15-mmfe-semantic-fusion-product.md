@@ -1539,4 +1539,33 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_pdal_pipeline.py -q
 ```
 
-Remaining hard parts are still real: actual chunked point streaming and chunk artifact materialization, concrete PDAL runner execution, concrete third-party model tool adapters/executors, production deployment guidance for LAZ decompression backends, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: PDAL Runner Contract
+
+Completed as the injectable execution wrapper for planned PDAL pipelines.
+
+- Added `PDAL_RUNNER_SCHEMA = "mmfe.pdal_runner.v1"`.
+- Added `build_pdal_runner_spec()` to derive a `pdal pipeline <spec_path>`
+  command, expected output path, timeout, pipeline task, and chunking metadata
+  from a validated PDAL pipeline plan.
+- Added `validate_pdal_runner_spec()` to catch malformed runner jobs before
+  dispatch.
+- Added `run_pdal_pipeline()` with an injectable executor. Production wrappers
+  can call real `subprocess.run`; tests and future orchestration layers can
+  inject mocks or remote executors.
+- The runner validates process return code and expected output creation, and
+  returns structured `valid/errors/stdout/stderr/returncode` evidence.
+- Re-exported runner helpers from both `data_agent.fusion` and
+  `data_agent.fusion_engine`.
+- Kept PDAL optional: this increment does not install PDAL or require it during
+  MMFE tests. It defines a strict runner boundary for environments where PDAL
+  is provisioned.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_pdal_pipeline.py -q
+```
+
+Remaining hard parts are still real: actual chunked point streaming and chunk artifact materialization, production PDAL/LAZ backend provisioning, concrete third-party model tool adapters/executors, and a separate optional publisher for pgvector/LanceDB.

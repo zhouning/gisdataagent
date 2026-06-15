@@ -168,8 +168,12 @@ from .ai_semantics import (
 # --- PDAL Pipeline Contracts ---
 from .pdal_pipeline import (
     PDAL_PIPELINE_SCHEMA,
+    PDAL_RUNNER_SCHEMA,
     build_pdal_pipeline_spec,
+    build_pdal_runner_spec,
+    run_pdal_pipeline,
     validate_pdal_pipeline_spec,
+    validate_pdal_runner_spec,
     write_pdal_pipeline_spec,
 )
 
