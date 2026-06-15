@@ -476,6 +476,15 @@ nodata, and unit metadata. These hints remain evidence in the source profile and
 semantic manifest; they do not force a physical pixel transformation or replace
 future CRS-aware raster feature extraction.
 
+Raster profiling now also emits CRS-aware grid semantics. The source profile
+records raster width/height, pixel width/height, CRS unit, whether the CRS is
+geographic or projected, and metric pixel area only when the CRS is projected.
+For geographic CRS rasters, MMFE emits an explicit
+`requires_projection_for_area` warning so downstream business logic and AI
+agents do not treat degree-based pixels as square metres. This closes the first
+CRS-aware pixel-semantics gap without adding automatic reprojection or zonal
+aggregation behavior.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

@@ -62,6 +62,8 @@ def _make_raster_fixture(
     band_description: str | None = None,
     band_tags: dict | None = None,
     nodata: float | None = None,
+    crs: str = "EPSG:4326",
+    transform=None,
 ) -> str:
     """Create a small raster GeoTIFF fixture."""
     import rasterio
@@ -69,11 +71,11 @@ def _make_raster_fixture(
 
     path = os.path.join(tmp_dir, name)
     data = data if data is not None else np.random.rand(10, 10).astype(np.float32)
-    transform = from_bounds(0, 0, 2, 2, 10, 10)
+    transform = transform or from_bounds(0, 0, 2, 2, 10, 10)
 
     with rasterio.open(
         path, "w", driver="GTiff", height=10, width=10,
-        count=1, dtype="float32", crs="EPSG:4326", transform=transform,
+        count=1, dtype="float32", crs=crs, transform=transform,
         nodata=nodata,
     ) as ds:
         ds.write(data, 1)
@@ -420,6 +422,59 @@ class TestFusionSource(unittest.TestCase):
                 and hint.get("value") == "nir"
                 for hint in src.semantic_hints
             )
+        )
+
+    def test_profile_raster_grid_semantics_for_projected_crs(self):
+        import rasterio
+        from data_agent.fusion_engine import profile_source
+
+        transform = rasterio.transform.from_origin(500000, 3000000, 30, 30)
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="projected_dem_30m.tif",
+            crs="EPSG:32650",
+            transform=transform,
+        )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.stats["grid"]["crs_unit"], "metre")
+        self.assertEqual(src.stats["grid"]["pixel_width"], 30.0)
+        self.assertEqual(src.stats["grid"]["pixel_height"], 30.0)
+        self.assertEqual(src.stats["grid"]["pixel_area"], 900.0)
+        grid_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "raster_grid_semantics"
+        ]
+        self.assertTrue(
+            any(
+                hint.get("value") == "projected_metric_grid"
+                and hint.get("pixel_area") == 900.0
+                for hint in grid_hints
+            )
+        )
+
+    def test_profile_raster_grid_semantics_warn_for_geographic_crs(self):
+        from data_agent.fusion_engine import profile_source
+
+        raster = _make_raster_fixture(self.tmp, name="geographic_ndvi.tif")
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.stats["grid"]["crs_unit"], "degree")
+        self.assertEqual(src.stats["grid"]["pixel_width"], 0.2)
+        self.assertEqual(src.stats["grid"]["pixel_height"], 0.2)
+        grid_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "raster_grid_semantics"
+        ]
+        geographic_hint = next(
+            hint for hint in grid_hints
+            if hint.get("value") == "geographic_degree_grid"
+        )
+        self.assertTrue(geographic_hint["requires_projection_for_area"])
+        self.assertTrue(
+            any("pixel area is angular" in item for item in geographic_hint["evidence"])
         )
 
     def test_profile_vector_stats(self):

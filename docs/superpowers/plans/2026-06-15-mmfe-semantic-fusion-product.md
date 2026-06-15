@@ -1290,4 +1290,30 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py data_agent\test_fusion_semantic_alignment.py data_agent\test_fusion_semantic_product.py data_agent\test_fusion_v2_semantic.py data_agent\test_fusion_v2_integration.py data_agent\test_fusion_v2_explainability.py data_agent\test_fusion_v2_conflict.py -q
 ```
 
-Remaining hard parts are still real: STAC/ISO metadata parsing, CRS-aware pixel semantics, derived raster feature chips, VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: CRS-Aware Raster Grid Semantics
+
+Completed as the first dedicated CRS-aware pixel-semantics increment.
+
+- Added raster grid metadata to source profiles: raster width/height, pixel
+  width/height, CRS unit, projected/geographic CRS flags, and whether metric
+  area requires projection.
+- Added metric `pixel_area` only for projected CRS rasters, where the pixel size
+  can be interpreted in the CRS linear unit.
+- Added explicit `raster_grid_semantics` hints for projected metric grids,
+  geographic degree grids, and unknown CRS grids.
+- Added a geographic-CRS warning path so downstream business logic and AI agents
+  do not treat degree-based pixel areas as square metres.
+- Kept this increment non-transforming: MMFE records CRS-aware semantics but does
+  not automatically reproject rasters, change pixel values, or run zonal
+  aggregation.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_grid_semantics_for_projected_crs data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_grid_semantics_warn_for_geographic_crs -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+```
+
+Remaining hard parts are still real: fuller STAC/ISO metadata parsing, derived raster feature chips, VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.

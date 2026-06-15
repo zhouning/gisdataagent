@@ -250,7 +250,7 @@ def _profile_raster(path: str) -> FusionSource:
             window = None
 
         columns = []
-        stats = {}
+        stats = {"grid": _raster_grid_metadata(ds, resolution)}
         for i in range(1, min(band_count + 1, 11)):  # cap at 10 bands
             band_data = ds.read(i, window=window)
             valid = band_data[band_data != ds.nodata] if ds.nodata is not None else band_data
@@ -451,6 +451,39 @@ def _sidecar_raster_bands(metadata: dict) -> list[dict]:
     return bands
 
 
+def _raster_grid_metadata(ds: object, resolution: tuple[float, float]) -> dict:
+    crs = getattr(ds, "crs", None)
+    pixel_width = abs(float(resolution[0]))
+    pixel_height = abs(float(resolution[1]))
+    is_geographic = bool(getattr(crs, "is_geographic", False)) if crs else False
+    is_projected = bool(getattr(crs, "is_projected", False)) if crs else False
+    unit = _raster_crs_unit(crs, is_geographic=is_geographic)
+
+    grid = {
+        "width": int(getattr(ds, "width", 0) or 0),
+        "height": int(getattr(ds, "height", 0) or 0),
+        "pixel_width": pixel_width,
+        "pixel_height": pixel_height,
+        "crs_unit": unit,
+        "crs_is_geographic": is_geographic,
+        "crs_is_projected": is_projected,
+        "requires_projection_for_area": is_geographic,
+    }
+    if not is_geographic:
+        grid["pixel_area"] = pixel_width * pixel_height
+    else:
+        grid["pixel_area"] = None
+    return grid
+
+
+def _raster_crs_unit(crs: object, is_geographic: bool) -> str | None:
+    if crs is None:
+        return None
+    if is_geographic:
+        return str(getattr(crs, "angular_units", None) or "degree")
+    return str(getattr(crs, "linear_units", None) or "")
+
+
 def _infer_raster_semantic_hints(
     path: str,
     columns: list[dict],
@@ -464,6 +497,7 @@ def _infer_raster_semantic_hints(
     band_hints = []
     metadata_hints = _raster_pixel_semantic_hints(columns)
     metadata_hints.extend(_raster_sidecar_semantic_hints(sidecar_metadata))
+    metadata_hints.extend(_raster_grid_semantic_hints(stats.get("grid")))
 
     for rule in RASTER_SEMANTIC_RULES:
         value = rule["value"]
@@ -565,6 +599,54 @@ def _raster_pixel_semantic_hints(columns: list[dict]) -> list[dict]:
                 hint[key] = column[key]
         hints.append(hint)
     return hints
+
+
+def _raster_grid_semantic_hints(grid: dict | None) -> list[dict]:
+    if not grid:
+        return []
+    evidence = [
+        (
+            f"pixel size is {grid.get('pixel_width')} x "
+            f"{grid.get('pixel_height')} {grid.get('crs_unit') or 'unknown'}"
+        )
+    ]
+    if grid.get("crs_is_geographic"):
+        evidence.append("pixel area is angular and requires projection for metric area")
+        return [{
+            "type": "raster_grid_semantics",
+            "value": "geographic_degree_grid",
+            "confidence": 0.9,
+            "pixel_width": grid.get("pixel_width"),
+            "pixel_height": grid.get("pixel_height"),
+            "crs_unit": grid.get("crs_unit"),
+            "requires_projection_for_area": True,
+            "evidence": evidence,
+        }]
+    if grid.get("crs_is_projected"):
+        pixel_area = grid.get("pixel_area")
+        if pixel_area is not None:
+            evidence.append(f"pixel area is {pixel_area} square {grid.get('crs_unit')}")
+        return [{
+            "type": "raster_grid_semantics",
+            "value": "projected_metric_grid",
+            "confidence": 0.92,
+            "pixel_width": grid.get("pixel_width"),
+            "pixel_height": grid.get("pixel_height"),
+            "pixel_area": pixel_area,
+            "crs_unit": grid.get("crs_unit"),
+            "requires_projection_for_area": False,
+            "evidence": evidence,
+        }]
+    return [{
+        "type": "raster_grid_semantics",
+        "value": "unknown_crs_grid",
+        "confidence": 0.5,
+        "pixel_width": grid.get("pixel_width"),
+        "pixel_height": grid.get("pixel_height"),
+        "crs_unit": grid.get("crs_unit"),
+        "requires_projection_for_area": False,
+        "evidence": evidence,
+    }]
 
 
 def _raster_sidecar_semantic_hints(sidecar_metadata: dict | None) -> list[dict]:
