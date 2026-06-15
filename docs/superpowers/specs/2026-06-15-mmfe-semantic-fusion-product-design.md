@@ -486,6 +486,15 @@ pipelines, model runners, vector indexing jobs, and UI review workflows can
 route large sources to streaming execution. This is still a planning contract;
 it does not stream points, write chunk files, or run inference over chunks.
 
+PDAL integration now has a dependency-free planning contract. The
+`data_agent/fusion/pdal_pipeline.py` module builds `mmfe.pdal_pipeline.v1`
+documents that combine point-cloud source path, LAZ status, chunking plan,
+optional filter stages, writer options, and output path into a PDAL JSON
+pipeline. The same module validates reader/writer stages and writes `.pdal.json`
+plans beside intended outputs. MMFE still treats PDAL as an external execution
+tool: the contract is ready for a future runner, but this iteration does not
+invoke PDAL, install PDAL, or materialize point chunks.
+
 Raster profiling now carries pixel-value semantics instead of stopping at
 filename and band-description hints. For each readable band, MMFE captures
 `nodata`, `scale`, `offset`, and `unit` from raster metadata or tags, and emits

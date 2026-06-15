@@ -1511,4 +1511,32 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
 ```
 
-Remaining hard parts are still real: PDAL pipeline integration, actual chunked point streaming and chunk artifact materialization, concrete third-party model tool adapters/executors, production deployment guidance for LAZ decompression backends, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: PDAL Pipeline Planning Contract
+
+Completed as the external PDAL orchestration contract.
+
+- Added `data_agent/fusion/pdal_pipeline.py` with
+  `PDAL_PIPELINE_SCHEMA = "mmfe.pdal_pipeline.v1"`.
+- Added `build_pdal_pipeline_spec()` to transform a point-cloud source profile,
+  chunking plan, LAZ capability metadata, filters, writer options, and output
+  path into a PDAL JSON pipeline document.
+- Added `validate_pdal_pipeline_spec()` so tool wrappers can fail fast when a
+  pipeline lacks a source path, reader/writer stages, output path, or valid
+  chunking metadata.
+- Added `write_pdal_pipeline_spec()` to persist the planned pipeline beside the
+  intended point-cloud output as `.pdal.json`.
+- Re-exported the helpers from both `data_agent.fusion` and
+  `data_agent.fusion_engine`.
+- Kept the boundary explicit: MMFE still does not invoke `pdal`, install PDAL,
+  stream point chunks, or write chunk artifacts in this increment. The output is
+  a validated execution contract for an external PDAL runner.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_pdal_pipeline.py -q
+```
+
+Remaining hard parts are still real: actual chunked point streaming and chunk artifact materialization, concrete PDAL runner execution, concrete third-party model tool adapters/executors, production deployment guidance for LAZ decompression backends, and a separate optional publisher for pgvector/LanceDB.

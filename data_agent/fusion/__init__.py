@@ -165,6 +165,14 @@ from .ai_semantics import (
     write_ai_semantic_sidecar,
 )
 
+# --- PDAL Pipeline Contracts ---
+from .pdal_pipeline import (
+    PDAL_PIPELINE_SCHEMA,
+    build_pdal_pipeline_spec,
+    validate_pdal_pipeline_spec,
+    write_pdal_pipeline_spec,
+)
+
 # --- LLM Semantic Understanding (v2) ---
 from .semantic_llm import SemanticLLM
 
