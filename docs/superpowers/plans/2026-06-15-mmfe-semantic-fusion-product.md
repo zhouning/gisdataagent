@@ -1343,4 +1343,29 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
 ```
 
-Remaining hard parts are still real: derived raster feature chips, VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: Raster Feature Chip Summaries
+
+Completed as the first raster-derived feature summary increment.
+
+- Added deterministic center-window feature chip summaries to raster source
+  profiles under `stats["feature_chips"]`.
+- Added per-band chip min/max/mean/std and valid pixel counts.
+- Added scaled chip statistics when band scale/offset metadata is available, so
+  AI consumers can reason over physical/semantic values rather than only raw
+  stored pixel values.
+- Added dominant value summaries for low-cardinality classification chips,
+  making land-cover/class rasters more useful for semantic review and retrieval.
+- Added `raster_feature_chip` semantic hints marked as embedding-ready evidence.
+- Kept this increment lightweight and dependency-free: it does not write chip
+  image files, generate embeddings, or add a vision model runtime.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_builds_feature_chip_summary data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_feature_chip_summarizes_categorical_values -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+```
+
+Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.

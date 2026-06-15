@@ -292,6 +292,7 @@ def _profile_raster(path: str) -> FusionSource:
 
         sidecar_metadata = _load_raster_sidecar_metadata(path)
         _apply_raster_sidecar_metadata(columns, sidecar_metadata)
+        stats["feature_chips"] = _raster_feature_chip_summaries(ds, columns)
         semantic_domain, semantic_hints = _infer_raster_semantic_hints(
             path,
             columns,
@@ -579,6 +580,141 @@ def _raster_crs_unit(crs: object, is_geographic: bool) -> str | None:
     return str(getattr(crs, "linear_units", None) or "")
 
 
+def _raster_feature_chip_summaries(
+    ds: object,
+    columns: list[dict],
+    chip_size: int = 4,
+) -> list[dict]:
+    if not columns:
+        return []
+    window = _raster_center_chip_window(
+        int(getattr(ds, "width", 0) or 0),
+        int(getattr(ds, "height", 0) or 0),
+        chip_size,
+    )
+    if not window:
+        return []
+
+    chip = {
+        "chip_id": "center",
+        "sampling_strategy": "center_window",
+        "window": window,
+        "bounds": _raster_window_bounds(ds, window),
+        "bands": {},
+    }
+    for index, column in enumerate(columns, start=1):
+        field = column.get("name") or f"band_{index}"
+        band_stats = _raster_chip_band_summary(ds, index, column, window)
+        if band_stats:
+            chip["bands"][field] = band_stats
+    return [chip] if chip["bands"] else []
+
+
+def _raster_center_chip_window(
+    width: int,
+    height: int,
+    chip_size: int,
+) -> dict | None:
+    if width <= 0 or height <= 0:
+        return None
+    win_width = min(chip_size, width)
+    win_height = min(chip_size, height)
+    return {
+        "row_off": max(0, (height - win_height) // 2),
+        "col_off": max(0, (width - win_width) // 2),
+        "height": win_height,
+        "width": win_width,
+    }
+
+
+def _raster_window_bounds(ds: object, window: dict) -> tuple | None:
+    try:
+        from rasterio.windows import Window
+
+        raster_window = Window(
+            window["col_off"],
+            window["row_off"],
+            window["width"],
+            window["height"],
+        )
+        return tuple(float(value) for value in ds.window_bounds(raster_window))
+    except Exception:
+        return None
+
+
+def _raster_chip_band_summary(
+    ds: object,
+    index: int,
+    column: dict,
+    window: dict,
+) -> dict:
+    try:
+        from rasterio.windows import Window
+
+        raster_window = Window(
+            window["col_off"],
+            window["row_off"],
+            window["width"],
+            window["height"],
+        )
+        data = ds.read(index, window=raster_window)
+    except Exception:
+        return {}
+
+    nodata = column.get("nodata")
+    if nodata is None:
+        nodata = _raster_band_nodata(ds, index)
+    valid = _raster_valid_pixels(data, nodata)
+    if len(valid) == 0:
+        return {}
+
+    summary = {
+        "min": float(np.nanmin(valid)),
+        "max": float(np.nanmax(valid)),
+        "mean": float(np.nanmean(valid)),
+        "std": float(np.nanstd(valid)),
+        "valid_count": int(len(valid)),
+    }
+    scale = column.get("scale")
+    offset = column.get("offset")
+    if scale is not None or offset is not None:
+        scale_value = float(scale) if scale is not None else 1.0
+        offset_value = float(offset) if offset is not None else 0.0
+        scaled = valid.astype("float64") * scale_value + offset_value
+        summary["scaled_min"] = float(np.nanmin(scaled))
+        summary["scaled_max"] = float(np.nanmax(scaled))
+        summary["scaled_mean"] = float(np.nanmean(scaled))
+        summary["scaled_std"] = float(np.nanstd(scaled))
+
+    top_values = _raster_chip_top_values(valid)
+    if top_values:
+        summary["top_values"] = top_values
+    return summary
+
+
+def _raster_valid_pixels(data: np.ndarray, nodata: object | None) -> np.ndarray:
+    flat = np.asarray(data).reshape(-1)
+    valid = flat[np.isfinite(flat)]
+    nodata_value = _safe_float_or_none(nodata)
+    if nodata_value is not None:
+        valid = valid[valid != nodata_value]
+    return valid
+
+
+def _raster_chip_top_values(valid: np.ndarray) -> list[dict]:
+    unique, counts = np.unique(valid, return_counts=True)
+    if len(unique) == 0 or len(unique) > min(10, max(3, len(valid) // 2)):
+        return []
+    pairs = sorted(
+        zip(unique, counts),
+        key=lambda item: (-int(item[1]), float(item[0])),
+    )
+    return [
+        {"value": float(value), "count": int(count)}
+        for value, count in pairs[:5]
+    ]
+
+
 def _infer_raster_semantic_hints(
     path: str,
     columns: list[dict],
@@ -593,6 +729,7 @@ def _infer_raster_semantic_hints(
     metadata_hints = _raster_pixel_semantic_hints(columns)
     metadata_hints.extend(_raster_sidecar_semantic_hints(sidecar_metadata))
     metadata_hints.extend(_raster_grid_semantic_hints(stats.get("grid")))
+    metadata_hints.extend(_raster_feature_chip_semantic_hints(stats.get("feature_chips")))
 
     for rule in RASTER_SEMANTIC_RULES:
         value = rule["value"]
@@ -746,6 +883,42 @@ def _raster_grid_semantic_hints(grid: dict | None) -> list[dict]:
         "requires_projection_for_area": False,
         "evidence": evidence,
     }]
+
+
+def _raster_feature_chip_semantic_hints(chips: list[dict] | None) -> list[dict]:
+    if not chips:
+        return []
+    hints = []
+    for chip in chips:
+        chip_id = chip.get("chip_id", "chip")
+        window = chip.get("window") or {}
+        evidence = [
+            (
+                f"{chip_id} chip covers "
+                f"{window.get('width')}x{window.get('height')} pixels"
+            )
+        ]
+        for field, band_stats in (chip.get("bands") or {}).items():
+            if band_stats.get("mean") is not None:
+                evidence.append(f"{chip_id} {field} mean is {band_stats['mean']}")
+            if band_stats.get("scaled_mean") is not None:
+                evidence.append(
+                    f"{chip_id} {field} scaled mean is {band_stats['scaled_mean']}"
+                )
+            if band_stats.get("top_values"):
+                evidence.append(
+                    f"{chip_id} {field} dominant values are {band_stats['top_values']}"
+                )
+        hints.append({
+            "type": "raster_feature_chip",
+            "value": "summary_window",
+            "chip_id": chip_id,
+            "sampling_strategy": chip.get("sampling_strategy"),
+            "embedding_ready": True,
+            "confidence": 0.82,
+            "evidence": _dedupe_preserve_order(evidence),
+        })
+    return hints
 
 
 def _raster_sidecar_theme_evidence(

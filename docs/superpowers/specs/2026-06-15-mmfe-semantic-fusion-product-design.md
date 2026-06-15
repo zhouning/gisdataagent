@@ -495,6 +495,15 @@ theme inference, so a product can be recognized from authoritative metadata even
 when the filename and band description are weak. This is intentionally a
 conservative core-field parser, not a complete ISO metadata engine.
 
+Raster profiling now derives lightweight feature-chip summaries for AI-facing
+inspection without writing chip image files. MMFE samples a deterministic center
+window, records per-band min/max/mean/std, carries scaled statistics when
+scale/offset metadata is available, and summarizes dominant values for
+low-cardinality classification rasters. The same summaries emit
+`raster_feature_chip` semantic hints marked as embedding-ready evidence. This
+creates a future handoff point for actual chip export, vision embeddings, or
+LanceDB indexing while keeping the current runtime dependency-free.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

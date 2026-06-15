@@ -633,6 +633,73 @@ class TestFusionSource(unittest.TestCase):
             any("pixel area is angular" in item for item in geographic_hint["evidence"])
         )
 
+    def test_profile_raster_builds_feature_chip_summary(self):
+        from data_agent.fusion_engine import profile_source
+
+        data = np.arange(100, dtype=np.float32).reshape(10, 10)
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="reflectance_chip.tif",
+            data=data,
+            band_tags={"scale_factor": "0.0001", "units": "reflectance"},
+        )
+
+        src = profile_source(raster)
+
+        chips = src.stats["feature_chips"]
+        center = next(chip for chip in chips if chip["chip_id"] == "center")
+        self.assertEqual(center["window"], {
+            "row_off": 3,
+            "col_off": 3,
+            "height": 4,
+            "width": 4,
+        })
+        band_stats = center["bands"]["band_1"]
+        self.assertEqual(band_stats["min"], 33.0)
+        self.assertEqual(band_stats["max"], 66.0)
+        self.assertEqual(band_stats["mean"], 49.5)
+        self.assertAlmostEqual(band_stats["scaled_mean"], 0.00495)
+        chip_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("type") == "raster_feature_chip"
+        ]
+        self.assertTrue(
+            any(
+                hint.get("chip_id") == "center"
+                and hint.get("embedding_ready")
+                for hint in chip_hints
+            )
+        )
+
+    def test_profile_raster_feature_chip_summarizes_categorical_values(self):
+        from data_agent.fusion_engine import profile_source
+
+        data = np.ones((10, 10), dtype=np.float32)
+        data[3:7, 3:7] = 5
+        raster = _make_raster_fixture(
+            self.tmp,
+            name="landcover_chip.tif",
+            data=data,
+            band_description="Land cover classification",
+        )
+
+        src = profile_source(raster)
+
+        center = next(
+            chip for chip in src.stats["feature_chips"]
+            if chip["chip_id"] == "center"
+        )
+        top_values = center["bands"]["band_1"]["top_values"]
+        self.assertEqual(top_values[0]["value"], 5.0)
+        self.assertEqual(top_values[0]["count"], 16)
+        self.assertTrue(
+            any(
+                hint.get("type") == "raster_feature_chip"
+                and any("dominant values" in item for item in hint["evidence"])
+                for hint in src.semantic_hints
+            )
+        )
+
     def test_profile_vector_stats(self):
         from data_agent.fusion_engine import profile_source
         path = _make_vector_fixture(self.tmp)
