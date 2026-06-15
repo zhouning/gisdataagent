@@ -68,6 +68,10 @@ from data_agent.fusion import (  # noqa: F401
     build_semantic_fusion_product,
     validate_semantic_product_manifest,
     write_semantic_product_manifest,
+    DEFAULT_ALIGNMENT_SCORING_WEIGHTS,
+    alignment_decision,
+    build_alignment_summary,
+    score_semantic_alignment,
 )
 
 # Patch-target shims: these symbols were previously in fusion_engine.py's globals

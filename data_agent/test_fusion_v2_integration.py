@@ -266,6 +266,13 @@ class TestFusionResultModel(unittest.TestCase):
         self.assertEqual(SEMANTIC_PRODUCT_SCHEMA["title"], "MMFE Semantic Fusion Product")
         self.assertTrue(callable(validate_semantic_product_manifest))
 
+    def test_semantic_alignment_scoring_helpers_exported(self):
+        from data_agent.fusion import score_semantic_alignment
+        from data_agent.fusion_engine import build_alignment_summary
+
+        self.assertTrue(callable(score_semantic_alignment))
+        self.assertTrue(callable(build_alignment_summary))
+
 
 # ---------------------------------------------------------------------------
 # v2 Agent tool layer integration tests (new)

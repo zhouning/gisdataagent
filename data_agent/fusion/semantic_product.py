@@ -17,6 +17,7 @@ import pandas as pd
 
 from .explainability import COL_CONFIDENCE, _classify_quality
 from .models import FusionSource
+from .semantic_alignment import build_alignment_summary, score_semantic_alignment
 
 
 SEMANTIC_PRODUCT_VERSION = "1.1"
@@ -268,7 +269,7 @@ def _normalize_field_matches(
             source_profile,
             target_profile,
         )
-        alignment_score = _score_semantic_alignment(
+        alignment_score = score_semantic_alignment(
             confidence,
             match_type,
             evidence,
@@ -360,67 +361,6 @@ def _build_mapping_evidence(
         })
 
     return evidence
-
-
-def _score_semantic_alignment(
-    confidence: Any,
-    match_type: str,
-    evidence: list[dict],
-) -> dict:
-    matcher_confidence = _confidence_value(confidence)
-    dtype_compatibility = _dtype_evidence_score(evidence)
-    value_profile_support = _has_evidence(evidence, "value_profile")
-    ontology_support = 1.0 if match_type == "ontology" else 0.0
-
-    score = (
-        matcher_confidence * 0.65
-        + dtype_compatibility * 0.20
-        + value_profile_support * 0.10
-        + ontology_support * 0.05
-    )
-    score = round(min(max(score, 0.0), 1.0), 4)
-    return {
-        "score": score,
-        "decision": _alignment_decision(score),
-        "components": {
-            "matcher_confidence": matcher_confidence,
-            "dtype_compatibility": dtype_compatibility,
-            "value_profile_support": value_profile_support,
-            "ontology_support": ontology_support,
-        },
-        "weights": {
-            "matcher_confidence": 0.65,
-            "dtype_compatibility": 0.20,
-            "value_profile_support": 0.10,
-            "ontology_support": 0.05,
-        },
-    }
-
-
-def _confidence_value(confidence: Any) -> float:
-    try:
-        return round(min(max(float(confidence), 0.0), 1.0), 4)
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def _dtype_evidence_score(evidence: list[dict]) -> float:
-    for item in evidence:
-        if item.get("type") == "dtype":
-            return 1.0 if item.get("compatible", True) else 0.0
-    return 0.5
-
-
-def _has_evidence(evidence: list[dict], evidence_type: str) -> float:
-    return 1.0 if any(item.get("type") == evidence_type for item in evidence) else 0.5
-
-
-def _alignment_decision(score: float) -> str:
-    if score >= 0.8:
-        return "accept"
-    if score >= 0.6:
-        return "review"
-    return "reject"
 
 
 def _confidence_band(confidence: Any) -> str:
@@ -606,7 +546,7 @@ def _build_ai_metadata(
     enabled: bool,
 ) -> dict:
     source_names = [os.path.basename(source.file_path) for source in sources]
-    alignment_summary = _build_alignment_summary(semantic_mappings)
+    alignment_summary = build_alignment_summary(semantic_mappings)
     retrieval_text = (
         f"Semantic fusion product generated with {strategy}. "
         f"Sources: {', '.join(source_names)}. "
@@ -650,19 +590,6 @@ def _build_ai_metadata(
         "embedding_ready": True,
         "recommended_vector_targets": ["pgvector", "lancedb"],
         "alignment_summary": alignment_summary,
-    }
-
-
-def _build_alignment_summary(semantic_mappings: list[dict]) -> dict:
-    decisions = {"accept": 0, "review": 0, "reject": 0}
-    for mapping in semantic_mappings:
-        decision = mapping.get("alignment_score", {}).get("decision", "review")
-        if decision not in decisions:
-            decision = "review"
-        decisions[decision] += 1
-    return {
-        "total_mappings": len(semantic_mappings),
-        "decisions": decisions,
     }
 
 

@@ -143,6 +143,14 @@ from .semantic_product import (
     write_semantic_product_manifest,
 )
 
+# --- Semantic Alignment Scoring ---
+from .semantic_alignment import (
+    DEFAULT_ALIGNMENT_SCORING_WEIGHTS,
+    alignment_decision,
+    build_alignment_summary,
+    score_semantic_alignment,
+)
+
 # --- LLM Semantic Understanding (v2) ---
 from .semantic_llm import SemanticLLM
 

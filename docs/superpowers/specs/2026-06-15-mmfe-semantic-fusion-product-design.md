@@ -419,6 +419,13 @@ value-profile support, and ontology support into a normalized score with
 so downstream RAG or vector-indexing jobs can prefer accepted mappings and route
 review/reject mappings to human or LLM-assisted validation.
 
+The alignment scorer has been extracted to
+`data_agent/fusion/semantic_alignment.py` and re-exported from both
+`data_agent.fusion` and `data_agent.fusion_engine`. This keeps
+`semantic_product.py` focused on building the fusion product while making the
+same scoring contract reusable by later document-context evidence, LLM schema
+alignment evidence, and indexing quality gates.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.
