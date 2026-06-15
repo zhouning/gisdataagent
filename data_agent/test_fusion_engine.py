@@ -700,6 +700,47 @@ class TestFusionSource(unittest.TestCase):
             )
         )
 
+    def test_profile_raster_ingests_ai_model_semantic_sidecar(self):
+        from data_agent.fusion_engine import profile_source
+
+        raster = _make_raster_fixture(self.tmp, name="weak_name.tif")
+        ai_path = os.path.splitext(raster)[0] + ".ai.json"
+        with open(ai_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "model": {
+                        "name": "landcover-unet",
+                        "version": "2026.06",
+                        "task": "land_cover_classification",
+                    },
+                    "observations": [
+                        {
+                            "target": "scene",
+                            "type": "land_cover_class",
+                            "value": "cropland",
+                            "confidence": 0.91,
+                            "domain": "land_cover",
+                            "evidence": ["model majority vote over raster chip"],
+                        }
+                    ],
+                },
+                f,
+            )
+
+        src = profile_source(raster)
+
+        self.assertEqual(src.semantic_domain, "land_cover")
+        ai_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("semantic_level") == "model_inference"
+        ]
+        self.assertEqual(len(ai_hints), 1)
+        self.assertEqual(ai_hints[0]["value"], "cropland")
+        self.assertEqual(ai_hints[0]["model"], "landcover-unet")
+        self.assertEqual(ai_hints[0]["model_version"], "2026.06")
+        self.assertEqual(ai_hints[0]["task"], "land_cover_classification")
+        self.assertIn("model majority vote over raster chip", ai_hints[0]["evidence"])
+
     def test_profile_vector_stats(self):
         from data_agent.fusion_engine import profile_source
         path = _make_vector_fixture(self.tmp)
@@ -784,6 +825,56 @@ class TestFusionSource(unittest.TestCase):
         self.assertEqual(src.row_count, 5)
         self.assertEqual(src.semantic_domain, "lidar")
         self.assertIn("classification", {column["name"] for column in src.columns})
+
+    def test_profile_point_cloud_ingests_ai_object_semantic_sidecar(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        las_path = os.path.join(self.tmp, "urban_scan.las")
+        with open(las_path, "wb") as f:
+            f.write(b"")
+        ai_path = os.path.splitext(las_path)[0] + ".ai.json"
+        with open(ai_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "model": {
+                        "name": "pointnet-building-tree",
+                        "version": "1.2.0",
+                        "task": "point_cloud_object_detection",
+                    },
+                    "observations": [
+                        {
+                            "target": "object:17",
+                            "type": "object_class",
+                            "value": "tree",
+                            "confidence": 0.88,
+                            "domain": "lidar",
+                            "evidence": ["cluster crown geometry and height"],
+                        },
+                        {
+                            "target": "object:42",
+                            "type": "object_class",
+                            "value": "building",
+                            "confidence": 0.93,
+                            "domain": "lidar",
+                            "evidence": ["planar roof cluster"],
+                        },
+                    ],
+                },
+                f,
+            )
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.return_value = _plain_mock_las_data()
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud(las_path)
+
+        ai_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("semantic_level") == "model_inference"
+        ]
+        self.assertEqual([hint["value"] for hint in ai_hints], ["tree", "building"])
+        self.assertTrue(all(hint["model"] == "pointnet-building-tree" for hint in ai_hints))
+        self.assertTrue(all(hint["task"] == "point_cloud_object_detection" for hint in ai_hints))
 
 
 # ---------------------------------------------------------------------------

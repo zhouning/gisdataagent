@@ -504,6 +504,17 @@ low-cardinality classification rasters. The same summaries emit
 creates a future handoff point for actual chip export, vision embeddings, or
 LanceDB indexing while keeping the current runtime dependency-free.
 
+MMFE now distinguishes deterministic semantic evidence from AI model inference.
+Metadata, band tags, CRS/grid facts, feature-chip summaries, and LAS dimensions
+are deterministic source-profile evidence. Labels such as cropland, forest,
+tree, or building generally require a trained image or point-cloud model unless
+they are already present in authoritative metadata/classification dimensions.
+For that higher semantic layer, MMFE can ingest sidecar model outputs such as
+`.ai.json`, normalize each observation as a `model_inference` semantic hint, and
+preserve model name, version, task, confidence, target, domain, and evidence.
+This keeps the fusion engine honest: it can fuse and govern AI-derived semantics
+without pretending that metadata/statistics alone performed visual recognition.
+
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.

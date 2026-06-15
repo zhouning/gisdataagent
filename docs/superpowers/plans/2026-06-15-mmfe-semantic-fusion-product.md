@@ -1368,4 +1368,31 @@ Verification used for this increment:
 .\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
 ```
 
-Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, and a separate optional publisher for pgvector/LanceDB.
+---
+
+## Roadmap Progress: AI Model Inference Semantic Sidecars
+
+Completed as the first explicit bridge between deterministic MMFE semantics and
+AI perception semantics.
+
+- Added `.ai.json`, `.model.json`, and `.inference.json` sidecar ingestion for
+  raster and point-cloud sources.
+- Added a generic `model_inference` semantic level for labels produced by
+  external AI models, such as cropland/forest from imagery or tree/building from
+  point clouds.
+- Preserved AI provenance in each semantic hint: model name, model version,
+  model task, target, confidence, semantic domain, and evidence text.
+- Allowed AI model observations to fill `semantic_domain` when deterministic
+  metadata does not already provide one.
+- Kept the boundary explicit: MMFE does not run remote-sensing classifiers,
+  object detectors, or point-cloud segmentation models in this increment; it
+  ingests and governs their outputs as semantic evidence.
+
+Verification used for this increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource::test_profile_raster_ingests_ai_model_semantic_sidecar data_agent\test_fusion_engine.py::TestFusionSource::test_profile_point_cloud_ingests_ai_object_semantic_sidecar -q
+.\.venv\Scripts\python.exe -m pytest data_agent\test_fusion_engine.py::TestFusionSource -q
+```
+
+Remaining hard parts are still real: VLR/EVLR LAS metadata extraction, LAZ backend handling, very large point-cloud chunking, PDAL pipeline integration, built-in optional AI inference adapters, and a separate optional publisher for pgvector/LanceDB.

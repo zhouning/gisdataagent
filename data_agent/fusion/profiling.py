@@ -293,12 +293,16 @@ def _profile_raster(path: str) -> FusionSource:
         sidecar_metadata = _load_raster_sidecar_metadata(path)
         _apply_raster_sidecar_metadata(columns, sidecar_metadata)
         stats["feature_chips"] = _raster_feature_chip_summaries(ds, columns)
+        ai_metadata = _load_ai_semantic_sidecar(path)
         semantic_domain, semantic_hints = _infer_raster_semantic_hints(
             path,
             columns,
             stats,
             sidecar_metadata,
         )
+        ai_hints = _ai_semantic_hints(ai_metadata, source_type="raster")
+        semantic_hints.extend(ai_hints)
+        semantic_domain = semantic_domain or _semantic_domain_from_hints(ai_hints)
 
     return FusionSource(
         file_path=path,
@@ -382,6 +386,80 @@ def _safe_int_or_none(value: object) -> int | None:
         return int(float(value))
     except (TypeError, ValueError):
         return None
+
+
+def _load_ai_semantic_sidecar(path: str) -> dict | None:
+    stem, _ = os.path.splitext(path)
+    candidates = [
+        f"{stem}.ai.json",
+        f"{stem}.model.json",
+        f"{stem}.inference.json",
+    ]
+    for candidate in candidates:
+        if not os.path.exists(candidate):
+            continue
+        metadata = _parse_json_sidecar(candidate)
+        if not metadata:
+            continue
+        observations = metadata.get("observations") or metadata.get("semantic_observations")
+        if isinstance(observations, list):
+            return {
+                "path": candidate,
+                "metadata": metadata,
+            }
+    return None
+
+
+def _ai_semantic_hints(
+    ai_metadata: dict | None,
+    source_type: str,
+) -> list[dict]:
+    if not ai_metadata:
+        return []
+    metadata = ai_metadata.get("metadata", {})
+    model = metadata.get("model") or {}
+    model_name = model.get("name") or metadata.get("model_name") or "unknown_model"
+    model_version = model.get("version") or metadata.get("model_version")
+    task = model.get("task") or metadata.get("task")
+    observations = metadata.get("observations") or metadata.get("semantic_observations") or []
+    hints = []
+    for observation in observations:
+        if not isinstance(observation, dict):
+            continue
+        value = observation.get("value") or observation.get("label")
+        if value is None:
+            continue
+        evidence = _as_text_list(observation.get("evidence"))
+        evidence.append(f"AI semantic sidecar: {os.path.basename(ai_metadata.get('path', ''))}")
+        hint = {
+            "type": observation.get("type") or "model_semantic_observation",
+            "value": str(value),
+            "target": observation.get("target") or source_type,
+            "semantic_level": "model_inference",
+            "source_type": source_type,
+            "confidence": _safe_float_or_none(observation.get("confidence")) or 0.0,
+            "model": str(model_name),
+            "evidence": _dedupe_preserve_order(evidence),
+        }
+        if model_version:
+            hint["model_version"] = str(model_version)
+        if task:
+            hint["task"] = str(task)
+        if observation.get("domain"):
+            hint["domain"] = str(observation["domain"])
+        if observation.get("bbox") is not None:
+            hint["bbox"] = observation["bbox"]
+        if observation.get("geometry") is not None:
+            hint["geometry"] = observation["geometry"]
+        hints.append(hint)
+    return hints
+
+
+def _semantic_domain_from_hints(hints: list[dict]) -> str | None:
+    for hint in hints:
+        if hint.get("domain"):
+            return str(hint["domain"])
+    return None
 
 
 def _load_raster_sidecar_metadata(path: str) -> dict | None:
@@ -1270,6 +1348,12 @@ def _profile_point_cloud(path: str) -> FusionSource:
         bounds = None
         row_count = 0
         crs_str = None
+    ai_hints = _ai_semantic_hints(
+        _load_ai_semantic_sidecar(path),
+        source_type="point_cloud",
+    )
+    semantic_hints.extend(ai_hints)
+    semantic_domain = semantic_domain or _semantic_domain_from_hints(ai_hints)
 
     return FusionSource(
         file_path=path,
