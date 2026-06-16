@@ -166,6 +166,7 @@ from .semantic_publisher import (
 # --- Analytical Lakehouse Publisher Contracts ---
 from .lakehouse_publisher import (
     ICEBERG_PUBLISH_SCHEMA,
+    apply_iceberg_manifest_patch,
     build_iceberg_publish_spec,
     build_iceberg_publisher,
     run_iceberg_publish,

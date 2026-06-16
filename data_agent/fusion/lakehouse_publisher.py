@@ -6,6 +6,7 @@ spatial engines such as Apache Sedona without importing those runtimes.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 
@@ -155,6 +156,21 @@ def build_iceberg_publisher(executor=None):
     return publisher
 
 
+def apply_iceberg_manifest_patch(manifest: dict, patch: dict) -> dict:
+    """Return a copy of a semantic product manifest with Iceberg lineage merged."""
+    updated = deepcopy(manifest)
+    lakehouse_patch = patch.get("lakehouse") if isinstance(patch, dict) else None
+    if not isinstance(lakehouse_patch, dict):
+        return updated
+    lakehouse = dict(updated.get("lakehouse") or {})
+    if isinstance(lakehouse_patch.get("iceberg"), dict):
+        existing = dict(lakehouse.get("iceberg") or {})
+        existing.update(lakehouse_patch["iceberg"])
+        lakehouse["iceberg"] = existing
+    updated["lakehouse"] = lakehouse
+    return updated
+
+
 def _iceberg_publish_result(
     spec: dict,
     errors: list[str],
@@ -166,6 +182,9 @@ def _iceberg_publish_result(
         rows_written = _safe_int(business_output.get("row_count"), 0)
         if isinstance(backend_result, dict) and backend_result.get("rows_written") is not None:
             rows_written = _safe_int(backend_result.get("rows_written"), rows_written)
+    manifest_patch = {}
+    if not errors:
+        manifest_patch = _iceberg_manifest_patch(spec, backend_result)
     return {
         "valid": not errors,
         "errors": errors,
@@ -179,7 +198,31 @@ def _iceberg_publish_result(
         "table_identifier": spec.get("table_identifier"),
         "product_id": spec.get("product_id"),
         "rows_written": rows_written,
+        "manifest_patch": manifest_patch,
         "backend_result": backend_result,
+    }
+
+
+def _iceberg_manifest_patch(spec: dict, backend_result: Any) -> dict:
+    backend = backend_result if isinstance(backend_result, dict) else {}
+    iceberg = {
+        "storage_layer": "analytical_lakehouse",
+        "object_store": spec.get("object_store"),
+        "catalog": spec.get("catalog"),
+        "namespace": spec.get("namespace"),
+        "table": spec.get("table"),
+        "table_identifier": spec.get("table_identifier"),
+        "warehouse_uri": spec.get("warehouse_uri"),
+        "spatial_engine": spec.get("spatial_engine"),
+    }
+    if backend.get("snapshot_id") is not None:
+        iceberg["snapshot_id"] = backend.get("snapshot_id")
+    if isinstance(backend.get("partition"), dict):
+        iceberg["partition"] = dict(backend["partition"])
+    return {
+        "lakehouse": {
+            "iceberg": {key: value for key, value in iceberg.items() if value not in ("", None, {})}
+        }
     }
 
 

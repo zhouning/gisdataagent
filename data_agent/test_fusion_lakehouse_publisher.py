@@ -114,6 +114,77 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertEqual(calls[0]["lineage"]["operation"], "spatial_join")
         self.assertEqual(result["backend_result"]["snapshot_id"], "snap-001")
 
+    def test_run_iceberg_publish_returns_manifest_patch_for_dual_lake_lineage(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_iceberg_publish_spec,
+            build_iceberg_publisher,
+            run_iceberg_publish,
+        )
+
+        spec = build_iceberg_publish_spec(
+            _semantic_manifest(),
+            catalog="prod",
+            namespace="gis.fusion",
+            table="semantic_products",
+            warehouse_uri="s3://geo-lake/warehouse",
+            spatial_engine="sedona",
+            partition_by=["product_id"],
+        )
+        publisher = build_iceberg_publisher(
+            executor=lambda payload: {
+                "committed": True,
+                "snapshot_id": "snap-001",
+                "rows_written": payload["row_count"],
+                "partition": {"product_id": payload["product_id"]},
+            }
+        )
+
+        result = run_iceberg_publish(spec, publisher=publisher)
+
+        self.assertTrue(result["valid"])
+        patch = result["manifest_patch"]
+        iceberg = patch["lakehouse"]["iceberg"]
+        self.assertEqual(iceberg["storage_layer"], "analytical_lakehouse")
+        self.assertEqual(iceberg["object_store"], "s3")
+        self.assertEqual(iceberg["catalog"], "prod")
+        self.assertEqual(iceberg["namespace"], "gis.fusion")
+        self.assertEqual(iceberg["table"], "semantic_products")
+        self.assertEqual(iceberg["table_identifier"], "prod.gis.fusion.semantic_products")
+        self.assertEqual(iceberg["warehouse_uri"], "s3://geo-lake/warehouse")
+        self.assertEqual(iceberg["snapshot_id"], "snap-001")
+        self.assertEqual(iceberg["partition"], {"product_id": "sfp-lakehouse-test"})
+        self.assertEqual(iceberg["spatial_engine"], "sedona")
+
+    def test_apply_iceberg_manifest_patch_merges_without_mutating_original(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            apply_iceberg_manifest_patch,
+            build_iceberg_publish_spec,
+            build_iceberg_publisher,
+            run_iceberg_publish,
+        )
+
+        manifest = _semantic_manifest()
+        spec = build_iceberg_publish_spec(
+            manifest,
+            catalog="prod",
+            namespace="gis.fusion",
+            table="semantic_products",
+            warehouse_uri="s3://geo-lake/warehouse",
+        )
+        result = run_iceberg_publish(
+            spec,
+            publisher=build_iceberg_publisher(
+                executor=lambda payload: {"snapshot_id": "snap-001", "rows_written": payload["row_count"]}
+            ),
+        )
+
+        updated = apply_iceberg_manifest_patch(manifest, result["manifest_patch"])
+
+        self.assertNotIn("lakehouse", manifest)
+        self.assertEqual(updated["lakehouse"]["iceberg"]["snapshot_id"], "snap-001")
+        self.assertEqual(updated["lakehouse"]["iceberg"]["table_identifier"], "prod.gis.fusion.semantic_products")
+        self.assertEqual(updated["product_id"], "sfp-lakehouse-test")
+
     def test_iceberg_publish_requires_executor_and_valid_spec(self):
         from data_agent.fusion.lakehouse_publisher import (
             build_iceberg_publish_spec,
@@ -156,16 +227,20 @@ class TestLakehousePublisher(unittest.TestCase):
 
     def test_lakehouse_publisher_helpers_are_reexported(self):
         from data_agent.fusion import (
+            apply_iceberg_manifest_patch,
             build_iceberg_publish_spec,
             build_iceberg_publisher,
             run_iceberg_publish,
         )
         from data_agent.fusion_engine import (
+            apply_iceberg_manifest_patch as proxy_apply_iceberg_manifest_patch,
             build_iceberg_publish_spec as proxy_build_iceberg_publish_spec,
             build_iceberg_publisher as proxy_build_iceberg_publisher,
             run_iceberg_publish as proxy_run_iceberg_publish,
         )
 
+        self.assertTrue(callable(apply_iceberg_manifest_patch))
+        self.assertTrue(callable(proxy_apply_iceberg_manifest_patch))
         self.assertTrue(callable(build_iceberg_publish_spec))
         self.assertTrue(callable(build_iceberg_publisher))
         self.assertTrue(callable(run_iceberg_publish))

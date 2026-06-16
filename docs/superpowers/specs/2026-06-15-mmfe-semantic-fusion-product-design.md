@@ -661,6 +661,12 @@ executes an injected publisher adapter, while `build_iceberg_publisher()` builds
 a pure executor payload without importing Spark, Iceberg, Sedona, pyiceberg, or
 S3 clients. This keeps Iceberg/Sedona production wiring outside MMFE core while
 making the authoritative analytical lakehouse boundary explicit.
+Successful Iceberg publish results also return a `manifest_patch` containing
+`lakehouse.iceberg`, including the table identity and backend-reported snapshot
+or partition metadata when available. `apply_iceberg_manifest_patch()` merges
+that patch into a copy of the semantic product manifest without mutating the
+original, giving callers a clean handoff from analytical lakehouse publishing to
+AI vector publishing.
 
 Vector publishing now preserves that boundary in AI retrieval records. When a
 semantic product manifest includes `lakehouse.iceberg`, the semantic vector

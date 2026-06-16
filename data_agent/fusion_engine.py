@@ -81,6 +81,7 @@ from data_agent.fusion import (  # noqa: F401
     run_semantic_vector_publish,
     validate_semantic_vector_publish_spec,
     ICEBERG_PUBLISH_SCHEMA,
+    apply_iceberg_manifest_patch,
     build_iceberg_publish_spec,
     build_iceberg_publisher,
     run_iceberg_publish,
