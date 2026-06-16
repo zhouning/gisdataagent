@@ -628,9 +628,12 @@ product metadata, target store, collection name, and embedding model metadata.
 adds vectors, embedding model, and dimension metadata to the records before
 publishing. `run_semantic_vector_publish()` executes an injected publisher
 adapter for targets such as `pgvector` or `lancedb` and returns structured
-publish results. MMFE still does not add pgvector, LanceDB, embedding
-generation, or database drivers as required runtime dependencies; those remain
-backend adapters behind the publisher contract.
+publish results. `build_pgvector_publisher()` provides the first backend
+adapter contract: it validates embedded records and builds a pure upsert payload
+for an injected pgvector executor, without opening database connections itself.
+MMFE still does not add pgvector, LanceDB, embedding generation, or database
+drivers as required runtime dependencies; those remain backend adapters behind
+the publisher contract.
 
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,

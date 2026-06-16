@@ -147,6 +147,53 @@ def run_semantic_vector_publish(
     return _publish_result(spec, [], backend_result)
 
 
+def build_pgvector_publisher(
+    table: str = "agent_mmfe_semantic_vectors",
+    executor=None,
+):
+    """Build a pgvector publisher adapter backed by an injected executor."""
+    def publisher(records: list[dict], **kwargs) -> dict:
+        if executor is None:
+            raise ValueError("pgvector executor is required")
+        if kwargs.get("target") != "pgvector":
+            raise ValueError("pgvector publisher requires target=pgvector")
+
+        rows = []
+        for index, record in enumerate(records):
+            embedding = record.get("embedding")
+            if not isinstance(embedding, list) or not embedding:
+                raise ValueError(f"records[{index}].embedding is required")
+            rows.append({
+                "record_id": record.get("record_id"),
+                "product_id": kwargs.get("product_id"),
+                "collection": kwargs.get("collection"),
+                "text": record.get("text", ""),
+                "embedding": embedding,
+                "metadata": dict(record.get("metadata") or {}),
+            })
+
+        payload = {
+            "target": "pgvector",
+            "table": table,
+            "collection": kwargs.get("collection"),
+            "embedding_model": kwargs.get("embedding_model"),
+            "product_id": kwargs.get("product_id"),
+            "source_manifest": kwargs.get("source_manifest"),
+            "metadata": dict(kwargs.get("metadata") or {}),
+            "rows": rows,
+        }
+        result = executor(payload)
+        if isinstance(result, dict):
+            output = dict(result)
+            output.setdefault("published_count", _safe_int(output.get("upserted"), len(rows)))
+            output.setdefault("target", "pgvector")
+            output.setdefault("collection", kwargs.get("collection"))
+            return output
+        return {"published_count": len(rows), "target": "pgvector", "collection": kwargs.get("collection")}
+
+    return publisher
+
+
 def _records_from_chunks(product_id: str, chunks: list[dict]) -> list[dict]:
     records = []
     for index, chunk in enumerate(chunks):
@@ -240,3 +287,10 @@ def _embedding_result(
         "embedded_count": embedded_count,
         "spec": spec,
     }
+
+
+def _safe_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default

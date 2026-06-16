@@ -109,6 +109,77 @@ class TestSemanticVectorPublisher(unittest.TestCase):
         self.assertEqual(result["collection"], "mmfe_products")
         self.assertEqual(result["backend_result"]["record_ids"][0], "sfp-test:fusion:product")
 
+    def test_build_pgvector_publisher_upserts_embedded_records(self):
+        from data_agent.fusion.semantic_publisher import (
+            build_pgvector_publisher,
+            build_semantic_vector_publish_spec,
+            embed_semantic_vector_records,
+            run_semantic_vector_publish,
+        )
+
+        spec = build_semantic_vector_publish_spec(
+            _semantic_manifest(),
+            target="pgvector",
+            collection="mmfe_semantic_products",
+            embedding_model="mock-embedder",
+        )
+        embedded = embed_semantic_vector_records(
+            spec,
+            embedder=lambda texts, **kwargs: [[1.0, 0.0], [0.0, 1.0]],
+        )["spec"]
+        calls = []
+
+        def executor(payload):
+            calls.append(payload)
+            return {"upserted": len(payload["rows"]), "table": payload["table"]}
+
+        publisher = build_pgvector_publisher(
+            table="agent_mmfe_semantic_vectors",
+            executor=executor,
+        )
+
+        result = run_semantic_vector_publish(embedded, publisher=publisher)
+
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["published_count"], 2)
+        self.assertEqual(calls[0]["table"], "agent_mmfe_semantic_vectors")
+        self.assertEqual(calls[0]["collection"], "mmfe_semantic_products")
+        self.assertEqual(calls[0]["rows"][0]["record_id"], "sfp-test:fusion:product")
+        self.assertEqual(calls[0]["rows"][0]["embedding"], [1.0, 0.0])
+        self.assertEqual(calls[0]["rows"][0]["metadata"]["chunk_id"], "fusion:product")
+        self.assertEqual(result["backend_result"]["upserted"], 2)
+
+    def test_pgvector_publisher_requires_executor_and_embeddings(self):
+        from data_agent.fusion.semantic_publisher import (
+            build_pgvector_publisher,
+            build_semantic_vector_publish_spec,
+            run_semantic_vector_publish,
+        )
+
+        spec = build_semantic_vector_publish_spec(
+            _semantic_manifest(),
+            target="pgvector",
+            collection="mmfe_semantic_products",
+        )
+        publisher = build_pgvector_publisher(table="agent_mmfe_semantic_vectors")
+
+        result = run_semantic_vector_publish(spec, publisher=publisher)
+
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("executor is required" in error for error in result["errors"]))
+
+        publisher_with_executor = build_pgvector_publisher(
+            table="agent_mmfe_semantic_vectors",
+            executor=lambda payload: {"upserted": len(payload["rows"])},
+        )
+        missing_embedding = run_semantic_vector_publish(
+            spec,
+            publisher=publisher_with_executor,
+        )
+
+        self.assertFalse(missing_embedding["valid"])
+        self.assertTrue(any("embedding" in error for error in missing_embedding["errors"]))
+
     def test_embed_semantic_vector_records_uses_injected_embedder(self):
         from data_agent.fusion.semantic_publisher import (
             build_semantic_vector_publish_spec,
@@ -165,14 +236,18 @@ class TestSemanticVectorPublisher(unittest.TestCase):
 
     def test_semantic_vector_publisher_helpers_are_reexported(self):
         from data_agent.fusion import (
+            build_pgvector_publisher,
             build_semantic_vector_publish_spec,
             embed_semantic_vector_records,
         )
         from data_agent.fusion_engine import (
+            build_pgvector_publisher as proxy_build_pgvector_publisher,
             embed_semantic_vector_records as proxy_embed_semantic_vector_records,
             run_semantic_vector_publish,
         )
 
+        self.assertTrue(callable(build_pgvector_publisher))
+        self.assertTrue(callable(proxy_build_pgvector_publisher))
         self.assertTrue(callable(build_semantic_vector_publish_spec))
         self.assertTrue(callable(embed_semantic_vector_records))
         self.assertTrue(callable(proxy_embed_semantic_vector_records))
