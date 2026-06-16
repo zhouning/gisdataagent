@@ -84,12 +84,16 @@ from data_agent.fusion import (  # noqa: F401
     write_ai_semantic_sidecar,
     PDAL_PIPELINE_SCHEMA,
     PDAL_RUNNER_SCHEMA,
+    POINT_CLOUD_CHUNK_ARTIFACT_SCHEMA,
     build_pdal_pipeline_spec,
     build_pdal_runner_spec,
+    build_point_cloud_chunk_artifact_manifest,
     run_pdal_pipeline,
     validate_pdal_pipeline_spec,
     validate_pdal_runner_spec,
+    validate_point_cloud_chunk_artifact_manifest,
     write_pdal_pipeline_spec,
+    write_point_cloud_chunk_artifact_manifest,
 )
 
 # Patch-target shims: these symbols were previously in fusion_engine.py's globals

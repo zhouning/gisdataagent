@@ -169,12 +169,16 @@ from .ai_semantics import (
 from .pdal_pipeline import (
     PDAL_PIPELINE_SCHEMA,
     PDAL_RUNNER_SCHEMA,
+    POINT_CLOUD_CHUNK_ARTIFACT_SCHEMA,
     build_pdal_pipeline_spec,
     build_pdal_runner_spec,
+    build_point_cloud_chunk_artifact_manifest,
     run_pdal_pipeline,
     validate_pdal_pipeline_spec,
     validate_pdal_runner_spec,
+    validate_point_cloud_chunk_artifact_manifest,
     write_pdal_pipeline_spec,
+    write_point_cloud_chunk_artifact_manifest,
 )
 
 # --- LLM Semantic Understanding (v2) ---

@@ -15,6 +15,116 @@ from typing import Any
 
 PDAL_PIPELINE_SCHEMA = "mmfe.pdal_pipeline.v1"
 PDAL_RUNNER_SCHEMA = "mmfe.pdal_runner.v1"
+POINT_CLOUD_CHUNK_ARTIFACT_SCHEMA = "mmfe.point_cloud_chunks.v1"
+
+
+def build_point_cloud_chunk_artifact_manifest(
+    source_profile: dict,
+    artifact_dir: str,
+    output_format: str = "las",
+    metadata: dict | None = None,
+) -> dict:
+    """Build a manifest for planned point-cloud chunk artifacts.
+
+    The manifest is a dependency-free bridge between profiling chunk plans and
+    future streaming/PDAL jobs. It records what chunks should be materialized,
+    but does not read point data or create chunk files.
+    """
+    source_path = _source_path(source_profile)
+    stats = source_profile.get("stats") if isinstance(source_profile, dict) else {}
+    stats = stats if isinstance(stats, dict) else {}
+    chunking = _normalize_chunking(dict(stats.get("chunking") or {}))
+    laz_status = dict(stats.get("laz") or {})
+    chunks = _planned_chunk_artifacts(chunking, artifact_dir, output_format)
+
+    source = {
+        "path": source_path,
+        "format": os.path.splitext(source_path)[1].lower().lstrip(".") or "unknown",
+        "compressed": bool(laz_status.get("compressed")),
+    }
+    if isinstance(source_profile, dict) and source_profile.get("crs"):
+        source["crs"] = source_profile["crs"]
+    if laz_status:
+        source["laz"] = laz_status
+
+    manifest = {
+        "schema": POINT_CLOUD_CHUNK_ARTIFACT_SCHEMA,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "artifact_type": "point_cloud_chunk_manifest",
+        "source": source,
+        "artifact_dir": artifact_dir,
+        "output_format": output_format,
+        "chunking": chunking,
+        "chunks": chunks,
+        "embedding_ready": True,
+        "semantic_hints": _point_cloud_chunk_artifact_hints(chunking, output_format),
+    }
+    if metadata:
+        manifest["metadata"] = dict(metadata)
+    return manifest
+
+
+def validate_point_cloud_chunk_artifact_manifest(manifest: dict) -> list[str]:
+    """Return contract errors for a point-cloud chunk artifact manifest."""
+    errors = []
+    if not isinstance(manifest, dict):
+        return ["point-cloud chunk artifact manifest must be an object"]
+    if manifest.get("schema") != POINT_CLOUD_CHUNK_ARTIFACT_SCHEMA:
+        errors.append(f"schema must be {POINT_CLOUD_CHUNK_ARTIFACT_SCHEMA}")
+
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        errors.append("source must be an object")
+        source = {}
+    if not source.get("path"):
+        errors.append("source.path is required")
+    if not manifest.get("artifact_dir"):
+        errors.append("artifact_dir is required")
+    if not manifest.get("output_format"):
+        errors.append("output_format is required")
+
+    chunking = manifest.get("chunking")
+    if not isinstance(chunking, dict):
+        errors.append("chunking must be an object")
+        chunking = {}
+    chunk_count = _safe_int(chunking.get("chunk_count"), 0)
+    if chunk_count < 1:
+        errors.append("chunking.chunk_count must be positive")
+
+    chunks = manifest.get("chunks")
+    if not isinstance(chunks, list):
+        errors.append("chunks must be a list")
+        chunks = []
+    if chunk_count > 0 and len(chunks) != chunk_count:
+        errors.append("chunks length must match chunking.chunk_count")
+    for i, chunk in enumerate(chunks):
+        if not isinstance(chunk, dict):
+            errors.append(f"chunks[{i}] must be an object")
+            continue
+        if not chunk.get("chunk_id"):
+            errors.append(f"chunks[{i}].chunk_id is required")
+        if not chunk.get("artifact_path"):
+            errors.append(f"chunks[{i}].artifact_path is required")
+        if _safe_int(chunk.get("point_start"), -1) < 0:
+            errors.append(f"chunks[{i}].point_start must be non-negative")
+        if _safe_int(chunk.get("point_count"), 0) < 1:
+            errors.append(f"chunks[{i}].point_count must be positive")
+    return errors
+
+
+def write_point_cloud_chunk_artifact_manifest(
+    manifest: dict,
+    manifest_path: str | None = None,
+) -> str:
+    """Write a point-cloud chunk artifact manifest and return its path."""
+    errors = validate_point_cloud_chunk_artifact_manifest(manifest)
+    if errors:
+        raise ValueError("; ".join(errors))
+    path = manifest_path or os.path.join(manifest["artifact_dir"], "manifest.chunks.json")
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2, default=_json_default)
+    return path
 
 
 def build_pdal_pipeline_spec(
@@ -268,7 +378,78 @@ def _normalize_chunking(chunking: dict) -> dict:
     normalized.setdefault("required", False)
     normalized.setdefault("strategy", "single_pass")
     normalized.setdefault("chunk_count", 1)
+    normalized["chunk_count"] = _safe_int(normalized.get("chunk_count"), 1)
     return normalized
+
+
+def _planned_chunk_artifacts(
+    chunking: dict,
+    artifact_dir: str,
+    output_format: str,
+) -> list[dict]:
+    chunk_count = max(_safe_int(chunking.get("chunk_count"), 1), 1)
+    point_count = _safe_int(chunking.get("point_count"), 0)
+    chunk_size = _safe_int(chunking.get("chunk_size_points"), 0)
+    if chunk_size <= 0:
+        chunk_size = point_count if point_count > 0 else 0
+    if chunk_size <= 0:
+        chunk_size = 1
+
+    chunks = []
+    extension = _chunk_artifact_extension(output_format)
+    for index in range(chunk_count):
+        point_start = index * chunk_size
+        planned_count = chunk_size
+        if point_count > 0:
+            remaining = max(point_count - point_start, 0)
+            planned_count = min(chunk_size, remaining)
+        if index == chunk_count - 1 and chunking.get("last_chunk_points"):
+            planned_count = _safe_int(chunking.get("last_chunk_points"), planned_count)
+        planned_count = max(planned_count, 1)
+        chunk_id = f"chunk-{index + 1:06d}"
+        chunks.append({
+            "chunk_id": chunk_id,
+            "ordinal": index + 1,
+            "point_start": point_start,
+            "point_count": planned_count,
+            "artifact_path": os.path.join(artifact_dir, f"{chunk_id}{extension}"),
+            "status": "planned",
+        })
+    return chunks
+
+
+def _chunk_artifact_extension(output_format: str) -> str:
+    normalized = str(output_format or "las").lower().replace(".", "_")
+    if normalized in {"copc_laz", "copc"}:
+        return ".copc.laz"
+    if normalized == "laz":
+        return ".laz"
+    if normalized == "las":
+        return ".las"
+    return f".{normalized.replace('_', '.')}"
+
+
+def _point_cloud_chunk_artifact_hints(chunking: dict, output_format: str) -> list[dict]:
+    evidence = list(chunking.get("reasons") or [])
+    if not evidence:
+        evidence = [
+            f"{chunking.get('chunk_count', 1)} planned chunk artifact(s)",
+            f"output_format={output_format}",
+        ]
+    return [{
+        "type": "point_cloud_processing",
+        "value": "chunk_artifacts_planned",
+        "domain": "lidar",
+        "confidence": 0.88,
+        "evidence": evidence,
+    }]
+
+
+def _safe_int(value, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _pdal_pipeline_hints(chunking: dict, laz_status: dict) -> list[dict]:

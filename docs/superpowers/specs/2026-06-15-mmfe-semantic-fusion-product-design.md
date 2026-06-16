@@ -504,6 +504,17 @@ stdout/stderr/error evidence. This enables local subprocess runners, remote job
 dispatchers, or test mocks to share one contract while keeping PDAL optional in
 MMFE core.
 
+Point-cloud chunk artifact planning now has its own manifest contract.
+`build_point_cloud_chunk_artifact_manifest()` turns a profiling
+`stats["chunking"]` plan into an `mmfe.point_cloud_chunks.v1` document with
+source metadata, artifact directory, output format, per-chunk point offsets,
+planned point counts, artifact paths, status, and semantic processing hints.
+`write_point_cloud_chunk_artifact_manifest()` writes the manifest as
+`manifest.chunks.json` in the artifact directory. This is still a planning and
+audit artifact: MMFE records exactly what chunk files should be materialized,
+but it does not yet stream LAS/LAZ points, write physical chunk files, or
+schedule per-chunk PDAL/model jobs.
+
 Raster profiling now carries pixel-value semantics instead of stopping at
 filename and band-description hints. For each readable band, MMFE captures
 `nodata`, `scale`, `offset`, and `unit` from raster metadata or tags, and emits
