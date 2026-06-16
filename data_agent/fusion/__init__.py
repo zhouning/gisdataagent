@@ -163,6 +163,15 @@ from .semantic_publisher import (
     validate_semantic_vector_publish_spec,
 )
 
+# --- Analytical Lakehouse Publisher Contracts ---
+from .lakehouse_publisher import (
+    ICEBERG_PUBLISH_SCHEMA,
+    build_iceberg_publish_spec,
+    build_iceberg_publisher,
+    run_iceberg_publish,
+    validate_iceberg_publish_spec,
+)
+
 # --- AI Semantic Sidecar Contracts ---
 from .ai_semantics import (
     AI_SEMANTIC_RUNNER_SCHEMA,

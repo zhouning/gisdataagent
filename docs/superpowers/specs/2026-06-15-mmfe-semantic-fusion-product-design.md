@@ -64,7 +64,7 @@ The main gap is that these pieces do not yet converge into a durable semantic pr
    Ontology, deterministic derivations, field contracts, and explainability are the default foundation. LLM and embedding paths remain optional and degrade cleanly.
 
 3. Make AI consumption explicit.
-   The pipeline should emit a JSON manifest with stable keys that agent memory, RAG, pgvector, LanceDB, or future STAC/GeoParquet publishers can consume.
+   The pipeline should emit a JSON manifest with stable keys that agent memory, RAG, pgvector, LanceDB, Iceberg, or future STAC/GeoParquet publishers can consume.
 
 4. Preserve compatibility.
    Existing imports and existing simple `execute_fusion()` calls should keep working.
@@ -641,6 +641,26 @@ themselves.
 MMFE still does not add pgvector, LanceDB, embedding generation, or database
 drivers as required runtime dependencies; those remain backend adapters behind
 the publisher contract.
+
+MMFE now treats storage as a dual-lake architecture. S3-backed Iceberg tables
+are the authoritative analytical geospatial lakehouse for governed business
+outputs, SQL analytics, and spatial engines such as Apache Sedona.
+Lance/LanceDB is the AI-native multimodal lakehouse for semantic chunks,
+embeddings, model outputs, image chips, point-cloud feature vectors, and
+retrieval/training views. The two layers are linked through stable product ids,
+source paths, table identifiers, snapshot metadata, and lineage in the semantic
+manifest; LanceDB records should reference authoritative Iceberg/S3 assets
+instead of becoming a second source of truth for business data.
+
+Analytical lakehouse publishing now has a dependency-free Iceberg contract.
+`build_iceberg_publish_spec()` converts a semantic product manifest into
+`mmfe.iceberg_publish.v1` with catalog, namespace, table, S3 warehouse URI,
+business output path, CRS, row count, lineage, quality, partition hints, and
+the intended spatial compute engine such as `sedona`. `run_iceberg_publish()`
+executes an injected publisher adapter, while `build_iceberg_publisher()` builds
+a pure executor payload without importing Spark, Iceberg, Sedona, pyiceberg, or
+S3 clients. This keeps Iceberg/Sedona production wiring outside MMFE core while
+making the authoritative analytical lakehouse boundary explicit.
 
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,
