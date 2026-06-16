@@ -28,6 +28,13 @@ contract is semantic evidence, entity/attribute/relation/event alignment,
 lineage, confidence, conflict governance, and AI-ready product generation across
 all modalities.
 
+Implementation note: the first contract-level step is to carry universal source
+metadata alongside existing adapter-specific fields. `FusionSource` now supports
+`modality`, `media_type`, and `adapter_family` so current geospatial adapters
+and future generic adapters can share one semantic product manifest contract.
+Existing `data_type` values remain for backward compatibility and strategy
+selection.
+
 ## Current State
 
 The existing MMFE implementation is concentrated in:
@@ -611,3 +618,13 @@ remain independent third-party tools.
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
 stores, but it does not add LanceDB as a required runtime dependency.
+
+MMFE now carries universal modality metadata through the source profile and
+semantic product manifest. `FusionSource` includes additive `modality`,
+`media_type`, and `adapter_family` fields. Current profiling adapters populate
+them for geospatial vector, geospatial raster, point-cloud, and structured table
+sources, while manually constructed sources can represent generic document,
+text, image, audio, video, graph, event, or model-output modalities. This keeps
+the existing geospatial strategies stable while moving the public semantic
+contract toward the broader "universal multimodal semantic fusion engine with
+geospatial-specialized adapters" principle.

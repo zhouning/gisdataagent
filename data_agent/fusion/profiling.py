@@ -220,6 +220,9 @@ def _profile_vector(path: str) -> FusionSource:
         columns=columns,
         geometry_type=geom_type,
         stats=stats,
+        modality="geospatial_vector",
+        media_type="application/vnd.geo+vector",
+        adapter_family="geospatial",
     )
 
 
@@ -317,6 +320,9 @@ def _profile_raster(path: str) -> FusionSource:
         resolution=resolution,
         semantic_domain=semantic_domain,
         semantic_hints=semantic_hints,
+        modality="geospatial_raster",
+        media_type="image/tiff; application=geotiff",
+        adapter_family="geospatial",
     )
 
 
@@ -1343,7 +1349,21 @@ def _profile_tabular(path: str) -> FusionSource:
         row_count=len(df),
         columns=columns,
         stats=stats,
+        modality="structured_table",
+        media_type=_tabular_media_type(path),
+        adapter_family="generic",
     )
+
+
+def _tabular_media_type(path: str) -> str:
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".csv":
+        return "text/csv"
+    if ext in {".xlsx", ".xls"}:
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    if ext == ".json":
+        return "application/json"
+    return "application/octet-stream"
 
 
 def _profile_point_cloud(path: str) -> FusionSource:
@@ -1406,7 +1426,17 @@ def _profile_point_cloud(path: str) -> FusionSource:
         stats=stats,
         semantic_domain=semantic_domain,
         semantic_hints=semantic_hints,
+        modality="point_cloud",
+        media_type=_point_cloud_media_type(path),
+        adapter_family="geospatial",
     )
+
+
+def _point_cloud_media_type(path: str) -> str:
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".laz":
+        return "application/vnd.laz"
+    return "application/vnd.las"
 
 
 def _point_cloud_header_profile(las: object) -> tuple[tuple, int, str | None]:

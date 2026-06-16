@@ -243,6 +243,9 @@ class TestFusionSource(unittest.TestCase):
         path = _make_vector_fixture(self.tmp)
         src = profile_source(path)
         self.assertEqual(src.data_type, "vector")
+        self.assertEqual(src.modality, "geospatial_vector")
+        self.assertEqual(src.media_type, "application/vnd.geo+vector")
+        self.assertEqual(src.adapter_family, "geospatial")
         self.assertEqual(src.row_count, 3)
         self.assertIsNotNone(src.crs)
         self.assertIsNotNone(src.bounds)
@@ -254,6 +257,9 @@ class TestFusionSource(unittest.TestCase):
         path = _make_tabular_fixture(self.tmp)
         src = profile_source(path)
         self.assertEqual(src.data_type, "tabular")
+        self.assertEqual(src.modality, "structured_table")
+        self.assertEqual(src.media_type, "text/csv")
+        self.assertEqual(src.adapter_family, "generic")
         self.assertEqual(src.row_count, 3)
         self.assertIsNone(src.crs)
         self.assertEqual(len(src.columns), 3)
@@ -263,6 +269,9 @@ class TestFusionSource(unittest.TestCase):
         raster = _make_raster_fixture(self.tmp)
         src = profile_source(raster)
         self.assertEqual(src.data_type, "raster")
+        self.assertEqual(src.modality, "geospatial_raster")
+        self.assertEqual(src.media_type, "image/tiff; application=geotiff")
+        self.assertEqual(src.adapter_family, "geospatial")
         self.assertIsNotNone(src.crs)
         self.assertEqual(src.band_count, 1)
         self.assertIsNotNone(src.resolution)
@@ -937,6 +946,19 @@ class TestFusionSource(unittest.TestCase):
                 for hint in src.semantic_hints
             )
         )
+
+    def test_profile_point_cloud_carries_universal_modality_metadata(self):
+        from data_agent.fusion_engine import _profile_point_cloud
+
+        mock_laspy = MagicMock()
+        mock_laspy.read.return_value = _MockLasData()
+
+        with patch.dict("sys.modules", {"laspy": mock_laspy}):
+            src = _profile_point_cloud("classified_lidar.las")
+
+        self.assertEqual(src.modality, "point_cloud")
+        self.assertEqual(src.media_type, "application/vnd.las")
+        self.assertEqual(src.adapter_family, "geospatial")
 
     def test_profile_laz_reports_backend_unavailable_without_losing_source_type(self):
         from data_agent.fusion_engine import _profile_point_cloud

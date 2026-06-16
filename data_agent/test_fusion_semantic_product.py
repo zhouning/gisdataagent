@@ -68,6 +68,30 @@ def _alignment_sources() -> list[FusionSource]:
     ]
 
 
+def _document_semantic_source() -> FusionSource:
+    return FusionSource(
+        file_path="/docs/project_brief.md",
+        data_type="document",
+        row_count=1,
+        columns=[
+            {"name": "title", "dtype": "text", "null_pct": 0},
+            {"name": "body", "dtype": "text", "null_pct": 0},
+        ],
+        semantic_domain="project_knowledge",
+        semantic_hints=[
+            {
+                "type": "document_theme",
+                "value": "major_project",
+                "confidence": 0.82,
+                "evidence": ["title mentions major project"],
+            }
+        ],
+        modality="text",
+        media_type="text/markdown",
+        adapter_family="generic",
+    )
+
+
 class TestSemanticFusionProduct(unittest.TestCase):
     def test_build_manifest_has_stable_top_level_keys(self):
         from data_agent.fusion.semantic_product import build_semantic_fusion_product
@@ -106,6 +130,23 @@ class TestSemanticFusionProduct(unittest.TestCase):
             self.assertIn(key, manifest)
         self.assertEqual(manifest["product_type"], "semantic_fusion_product")
         self.assertEqual(manifest["quality"]["score"], 0.91)
+
+    def test_source_manifest_preserves_universal_modality_metadata(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            [_document_semantic_source()],
+            strategy="semantic_context_join",
+            config={"enabled": True, "use_ontology": False},
+        )
+
+        source = manifest["sources"][0]
+        self.assertEqual(source["data_type"], "document")
+        self.assertEqual(source["modality"], "text")
+        self.assertEqual(source["media_type"], "text/markdown")
+        self.assertEqual(source["adapter_family"], "generic")
+        self.assertEqual(source["semantic_hints"][0]["value"], "major_project")
 
     def test_manifest_v11_schema_and_field_contracts(self):
         from data_agent.fusion.semantic_product import (

@@ -251,6 +251,9 @@ def _source_manifest(source: FusionSource) -> dict:
     return {
         "path": source.file_path,
         "data_type": source.data_type,
+        "modality": source.modality or source.data_type,
+        "media_type": source.media_type,
+        "adapter_family": source.adapter_family or "generic",
         "row_count": int(source.row_count or 0),
         "crs": source.crs,
         "semantic_domain": source.semantic_domain,

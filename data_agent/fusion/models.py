@@ -22,6 +22,9 @@ class FusionSource:
     postgis_table: Optional[str] = None
     postgis_srid: Optional[int] = None
     semantic_hints: list = field(default_factory=list)
+    modality: Optional[str] = None
+    media_type: Optional[str] = None
+    adapter_family: Optional[str] = None
 
 
 @dataclass
