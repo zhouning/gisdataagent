@@ -1417,6 +1417,15 @@ def _profile_generic_source(path: str, data_type: str) -> FusionSource:
                 _semantic_domain_from_hints(document_profile["semantic_hints"])
                 or semantic_domain
             )
+    elif data_type == "graph":
+        graph_profile = _graph_profile(path)
+        if graph_profile:
+            stats["graph"] = graph_profile["stats"]
+            semantic_hints.extend(graph_profile["semantic_hints"])
+            semantic_domain = (
+                _semantic_domain_from_hints(graph_profile["semantic_hints"])
+                or semantic_domain
+            )
     columns = _generic_columns(data_type)
     return FusionSource(
         file_path=path,
@@ -1485,6 +1494,67 @@ def _text_document_profile(path: str) -> dict | None:
         })
     hints.extend(_text_document_keyword_hints(text))
     return {"stats": stats, "semantic_hints": hints}
+
+
+def _graph_profile(path: str) -> dict | None:
+    ext = os.path.splitext(path)[1].lower()
+    if ext != ".graphml" or not os.path.exists(path):
+        return None
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return None
+
+    graph_elements = [
+        element for element in root.iter()
+        if _xml_local_name(element.tag) == "graph"
+    ]
+    node_count = sum(
+        1 for element in root.iter()
+        if _xml_local_name(element.tag) == "node"
+    )
+    edge_count = sum(
+        1 for element in root.iter()
+        if _xml_local_name(element.tag) == "edge"
+    )
+    edge_defaults = [
+        str(element.attrib.get("edgedefault", "")).lower()
+        for element in graph_elements
+    ]
+    directed = None
+    if "directed" in edge_defaults:
+        directed = True
+    elif "undirected" in edge_defaults:
+        directed = False
+
+    stats = {
+        "format": "graphml",
+        "graph_count": len(graph_elements),
+        "node_count": node_count,
+        "edge_count": edge_count,
+    }
+    if directed is not None:
+        stats["directed"] = directed
+
+    hint = {
+        "type": "graph_topology",
+        "value": "graphml_topology",
+        "domain": "knowledge_graph",
+        "confidence": 0.86,
+        "node_count": node_count,
+        "edge_count": edge_count,
+        "graph_count": len(graph_elements),
+        "evidence": [
+            f"GraphML contains {node_count} nodes and {edge_count} edges"
+        ],
+    }
+    if directed is not None:
+        hint["directed"] = directed
+        hint["evidence"].append(
+            "GraphML edgedefault is directed"
+            if directed else "GraphML edgedefault is undirected"
+        )
+    return {"stats": stats, "semantic_hints": [hint]}
 
 
 def _text_document_title(lines: list[str], path: str) -> str:

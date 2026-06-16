@@ -635,9 +635,10 @@ output sidecars, and unknown binary artifacts instead of forcing every unknown
 source through the tabular adapter. The generic profiler records file-level
 metadata, modality, media type, adapter family, a minimal logical column, and a
 `generic_modality` semantic hint. This is intentionally shallow: it does not yet
-extract PDF text, image embeddings, audio transcripts, video keyframes, graph
-topology, or model-output observations. Those are future modality-specific
-adapters built on top of the same `FusionSource` and semantic product contract.
+extract PDF text, image embeddings, audio transcripts, video keyframes, full
+graph structure, or domain-specific binary semantics. Those are future
+modality-specific adapters built on top of the same `FusionSource` and semantic
+product contract.
 
 Direct AI/model-output profiling now reads `.ai.json`, `.model.json`, and
 `.inference.json` files as first-class generic sources. When those files contain
@@ -656,3 +657,11 @@ preview in `stats["document"]`, then emits `document_title` and conservative
 not full document understanding and does not cover PDF/DOCX extraction yet; it
 creates the first deterministic text-document evidence layer for semantic
 fusion, retrieval, and later entity/relation extraction.
+
+GraphML profiling now extracts a shallow topology layer without adding graph
+runtime dependencies. For `.graphml` files, MMFE parses XML with the standard
+library, records graph count, node count, edge count, and directed/undirected
+status when `edgedefault` is present in `stats["graph"]`, then emits a
+`graph_topology` semantic hint. This is a graph-source evidence contract, not a
+full graph database, RDF reasoner, network-analysis engine, or topology
+materializer.

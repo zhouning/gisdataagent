@@ -306,6 +306,46 @@ class TestFusionSource(unittest.TestCase):
             )
         )
 
+    def test_profile_graphml_extracts_shallow_topology(self):
+        from data_agent.fusion_engine import profile_source
+
+        path = os.path.join(self.tmp, "utility_network.graphml")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(
+                """<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <graph id="G" edgedefault="directed">
+    <node id="substation_a" />
+    <node id="substation_b" />
+    <node id="substation_c" />
+    <edge id="e1" source="substation_a" target="substation_b" />
+    <edge id="e2" source="substation_b" target="substation_c" />
+  </graph>
+</graphml>
+"""
+            )
+
+        src = profile_source(path)
+
+        self.assertEqual(src.data_type, "graph")
+        self.assertEqual(src.modality, "graph")
+        self.assertEqual(src.media_type, "application/graphml+xml")
+        self.assertEqual(src.adapter_family, "generic")
+        self.assertEqual(src.row_count, 1)
+        self.assertEqual(src.stats["graph"]["format"], "graphml")
+        self.assertEqual(src.stats["graph"]["node_count"], 3)
+        self.assertEqual(src.stats["graph"]["edge_count"], 2)
+        self.assertEqual(src.stats["graph"]["directed"], True)
+        self.assertTrue(
+            any(
+                hint.get("type") == "graph_topology"
+                and hint.get("value") == "graphml_topology"
+                and hint.get("node_count") == 3
+                and hint.get("edge_count") == 2
+                for hint in src.semantic_hints
+            )
+        )
+
     def test_profile_model_output_reads_ai_observations_as_semantic_hints(self):
         from data_agent.fusion_engine import profile_source
 
