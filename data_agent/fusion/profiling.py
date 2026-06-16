@@ -1408,6 +1408,15 @@ def _profile_generic_source(path: str, data_type: str) -> FusionSource:
                 _semantic_domain_from_hints(model_profile["semantic_hints"])
                 or semantic_domain
             )
+    elif data_type == "document":
+        document_profile = _text_document_profile(path)
+        if document_profile:
+            stats["document"] = document_profile["stats"]
+            semantic_hints.extend(document_profile["semantic_hints"])
+            semantic_domain = (
+                _semantic_domain_from_hints(document_profile["semantic_hints"])
+                or semantic_domain
+            )
     columns = _generic_columns(data_type)
     return FusionSource(
         file_path=path,
@@ -1443,6 +1452,75 @@ def _model_output_profile(path: str) -> dict | None:
         source_type="model_output",
     )
     return {"stats": stats, "semantic_hints": hints}
+
+
+def _text_document_profile(path: str) -> dict | None:
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in {".txt", ".md", ".markdown", ".rst"} or not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read(65536)
+    except UnicodeDecodeError:
+        return None
+    normalized_lines = [line.strip() for line in text.splitlines()]
+    non_empty_lines = [line for line in normalized_lines if line]
+    title = _text_document_title(non_empty_lines, path)
+    preview = " ".join(non_empty_lines)[:500]
+    stats = {
+        "title": title,
+        "line_count": len(normalized_lines),
+        "non_empty_line_count": len(non_empty_lines),
+        "word_count": len(re.findall(r"\b\w+\b", text)),
+        "content_preview": preview,
+    }
+    hints = []
+    if title:
+        hints.append({
+            "type": "document_title",
+            "value": title,
+            "domain": "document",
+            "confidence": 0.9,
+            "evidence": ["first heading or non-empty line"],
+        })
+    hints.extend(_text_document_keyword_hints(text))
+    return {"stats": stats, "semantic_hints": hints}
+
+
+def _text_document_title(lines: list[str], path: str) -> str:
+    for line in lines:
+        cleaned = line.lstrip("#").strip()
+        if cleaned:
+            return cleaned[:160]
+    return os.path.splitext(os.path.basename(path))[0]
+
+
+def _text_document_keyword_hints(text: str) -> list[dict]:
+    rules = [
+        ("major_project", "project_knowledge", ["major project", "重大项目"]),
+        ("land_acquisition", "land_management", ["land acquisition", "征地"]),
+        ("planning", "planning", ["planning", "规划"]),
+        ("risk", "risk_management", ["risk", "风险"]),
+        ("approval", "governance", ["approval", "审批"]),
+    ]
+    hints = []
+    normalized = _normalize_semantic_text(text)
+    for value, domain, keywords in rules:
+        evidence = [
+            f"document text contains {keyword}"
+            for keyword in keywords
+            if _contains_keyword(normalized, _normalize_semantic_text(keyword))
+        ]
+        if not evidence:
+            continue
+        hints.append({
+            "type": "document_keyword",
+            "value": value,
+            "domain": domain,
+            "confidence": 0.78,
+            "evidence": evidence,
+        })
+    return hints
 
 
 def _generic_file_stats(path: str) -> dict:

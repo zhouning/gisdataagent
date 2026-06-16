@@ -647,3 +647,12 @@ AI semantic sidecar normalization to emit `model_inference` semantic hints. This
 does not run models or validate task-specific output quality; it brings
 model-produced semantics into the same evidence layer used by geospatial
 sources, documents, and future multimodal adapters.
+
+Text and Markdown document profiling now extracts lightweight document evidence
+without new parser dependencies. For UTF-8 `.txt`, `.md`, `.markdown`, and
+`.rst` files, MMFE records title, line counts, word count, and a capped content
+preview in `stats["document"]`, then emits `document_title` and conservative
+`document_keyword` semantic hints for common governance/project terms. This is
+not full document understanding and does not cover PDF/DOCX extraction yet; it
+creates the first deterministic text-document evidence layer for semantic
+fusion, retrieval, and later entity/relation extraction.

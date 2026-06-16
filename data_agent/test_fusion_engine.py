@@ -280,10 +280,28 @@ class TestFusionSource(unittest.TestCase):
         self.assertEqual(src.row_count, 1)
         self.assertEqual(src.columns[0]["name"], "content")
         self.assertEqual(src.stats["file"]["size_bytes"], os.path.getsize(path))
+        self.assertEqual(src.stats["document"]["title"], "Project Brief")
+        self.assertEqual(src.stats["document"]["line_count"], 3)
+        self.assertEqual(src.stats["document"]["word_count"], 8)
+        self.assertIn("major project", src.stats["document"]["content_preview"])
         self.assertTrue(
             any(
                 hint.get("type") == "generic_modality"
                 and hint.get("value") == "text"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "document_title"
+                and hint.get("value") == "Project Brief"
+                for hint in src.semantic_hints
+            )
+        )
+        self.assertTrue(
+            any(
+                hint.get("type") == "document_keyword"
+                and hint.get("value") == "major_project"
                 for hint in src.semantic_hints
             )
         )
