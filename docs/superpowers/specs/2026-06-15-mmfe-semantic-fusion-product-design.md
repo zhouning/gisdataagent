@@ -6,6 +6,28 @@ Upgrade the Multi-Modal Fusion Engine (MMFE) from a file-level fusion tool into 
 
 The intent is not to replace PostGIS/GeoPandas or introduce a new storage stack in this iteration. The intent is to make the existing fusion pipeline produce deeper, explicit semantic artifacts instead of only a merged GeoJSON plus a quality score.
 
+## Foundational Principle
+
+MMFE is a universal multimodal semantic fusion engine with geospatial-specialized
+adapters. It must support semantic fusion across arbitrary data types, including
+structured tables, semi-structured documents, text, images, audio, video, time
+series, event logs, graphs, model inference outputs, binary/domain-specific
+artifacts, and geospatial data.
+
+Geospatial data is a critical modality family, not the boundary of MMFE. Its
+special status comes from CRS, geometry, topology, spatial scale, resolution,
+projection, spatial indexing, and raster/vector/point-cloud/trajectory/network/
+3D transformations. These spatial constraints should be implemented as
+specialized profiling, alignment, validation, execution, and publishing adapters
+on top of the common semantic fusion core.
+
+Therefore, future roadmap and implementation work should avoid treating
+`vector`, `raster`, `tabular`, `point_cloud`, or `stream` as the complete
+universe of MMFE data types. Those are current adapter categories. The durable
+contract is semantic evidence, entity/attribute/relation/event alignment,
+lineage, confidence, conflict governance, and AI-ready product generation across
+all modalities.
+
 ## Current State
 
 The existing MMFE implementation is concentrated in:
