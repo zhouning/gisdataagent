@@ -85,7 +85,8 @@ class TestToolsetCounts(unittest.TestCase):
         names = [t.name for t in tools]
         self.assertIn("list_user_files", names)
         self.assertIn("delete_user_file", names)
-        self.assertEqual(len(tools), 2)
+        self.assertIn("convert_format", names)
+        self.assertEqual(len(tools), 3)
 
     def test_memory_toolset(self):
         from data_agent.toolsets.memory_tools import MemoryToolset
@@ -177,6 +178,16 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("download_cloud_asset", names)
         self.assertEqual(len(tools), 9)
 
+    def test_fusion_toolset(self):
+        from data_agent.toolsets.fusion_tools import FusionToolset
+        ts = FusionToolset()
+        tools = self._run(ts.get_tools())
+        names = [t.name for t in tools]
+        self.assertIn("profile_fusion_sources", names)
+        self.assertIn("fuse_datasets", names)
+        self.assertIn("plan_semantic_product_publish", names)
+        self.assertEqual(len(tools), 8)
+
 
 class TestToolFilter(unittest.TestCase):
     """Verify tool_filter correctly restricts tool sets."""
@@ -187,6 +198,8 @@ class TestToolFilter(unittest.TestCase):
             return loop.run_until_complete(coro)
         finally:
             loop.close()
+
+    def test_exploration_filter_two_tools(self):
         from data_agent.toolsets.exploration_tools import ExplorationToolset
         ts = ExplorationToolset(tool_filter=["describe_geodataframe", "check_topology"])
         tools = self._run(ts.get_tools())

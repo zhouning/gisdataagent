@@ -253,7 +253,8 @@ class TestToolsetRegistration(unittest.TestCase):
         # Original tools still present
         self.assertIn("profile_fusion_sources", func_names)
         self.assertIn("fuse_datasets", func_names)
-        self.assertEqual(len(_ALL_FUNCS), 7)
+        self.assertIn("plan_semantic_product_publish", func_names)
+        self.assertEqual(len(_ALL_FUNCS), 8)
 
 
 class TestAPIRoutes(unittest.TestCase):

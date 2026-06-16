@@ -554,6 +554,163 @@ async def inject_document_context(
 
 # ---------------------------------------------------------------------------
 
+
+async def plan_semantic_product_publish(
+    manifest_json: str = "",
+    manifest_path: str = "",
+    targets: str = "iceberg,stac,lancedb",
+    iceberg_catalog: str = "",
+    iceberg_namespace: str = "",
+    iceberg_table: str = "",
+    iceberg_warehouse_uri: str = "",
+    iceberg_object_store: str = "s3",
+    iceberg_spatial_engine: str = "sedona",
+    iceberg_partition_by: str = "",
+    stac_collection: str = "",
+    stac_catalog_uri: str = "",
+    stac_item_datetime: str = "",
+    vector_target: str = "lancedb",
+    vector_collection: str = "mmfe_semantic_products",
+    embedding_model: str = "",
+    iceberg_publisher_configured: str = "false",
+    stac_publisher_configured: str = "false",
+    vector_publisher_configured: str = "false",
+    embedder_configured: str = "false",
+) -> str:
+    """Build a dry-run MMFE semantic product publish plan without executing backends.
+
+    Args:
+        manifest_json: Semantic product manifest JSON. Used before manifest_path when provided.
+        manifest_path: Path to a `.semantic.json` manifest when manifest_json is empty.
+        targets: Comma-separated publish targets: iceberg, stac, pgvector, lancedb.
+        iceberg_catalog: Iceberg catalog name for the authoritative analytical lakehouse.
+        iceberg_namespace: Iceberg namespace/database.
+        iceberg_table: Iceberg table name.
+        iceberg_warehouse_uri: S3-backed Iceberg warehouse URI.
+        iceberg_object_store: Object store type; currently s3.
+        iceberg_spatial_engine: Spatial compute engine; sedona or none.
+        iceberg_partition_by: Comma-separated Iceberg partition hints.
+        stac_collection: STAC collection for discovery catalog publishing.
+        stac_catalog_uri: STAC catalog or API base URI.
+        stac_item_datetime: Optional STAC item datetime.
+        vector_target: Vector target used when targets contains `vector`.
+        vector_collection: pgvector/LanceDB collection or table grouping name.
+        embedding_model: Embedding model identifier for vector publish specs.
+        iceberg_publisher_configured: true when an Iceberg publisher adapter is configured.
+        stac_publisher_configured: true when a STAC publisher adapter is configured.
+        vector_publisher_configured: true when a vector publisher adapter is configured.
+        embedder_configured: true when an embedding adapter is configured.
+
+    Returns:
+        JSON dry-run plan with target specs, dependency edges, validation errors,
+        and adapter configuration flags.
+    """
+    try:
+        manifest = await asyncio.to_thread(_load_semantic_manifest, manifest_json, manifest_path)
+        requested_targets = _parse_publish_targets(targets, vector_target=vector_target)
+
+        iceberg_config = {
+            "catalog": iceberg_catalog,
+            "namespace": iceberg_namespace,
+            "table": iceberg_table,
+            "warehouse_uri": iceberg_warehouse_uri,
+            "object_store": iceberg_object_store,
+            "spatial_engine": iceberg_spatial_engine,
+            "partition_by": _parse_csv_list(iceberg_partition_by),
+            "publisher": object() if _truthy(iceberg_publisher_configured) else None,
+        }
+        stac_config = {
+            "collection": stac_collection,
+            "catalog_uri": stac_catalog_uri,
+            "publisher": object() if _truthy(stac_publisher_configured) else None,
+        }
+        if stac_item_datetime:
+            stac_config["item_datetime"] = stac_item_datetime
+
+        vector_config = {
+            "collection": vector_collection,
+            "embedding_model": embedding_model or None,
+            "embedder": object() if _truthy(embedder_configured) else None,
+            "publisher": object() if _truthy(vector_publisher_configured) else None,
+        }
+
+        plan = fusion_engine.build_semantic_product_publish_plan(
+            manifest,
+            targets=requested_targets,
+            iceberg=iceberg_config,
+            stac=stac_config,
+            vector=vector_config,
+        )
+        result = {
+            "status": "ok",
+            "summary": _publish_plan_summary(plan),
+            "plan": plan,
+        }
+        return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+    except ValueError as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+def _load_semantic_manifest(manifest_json: str, manifest_path: str) -> dict:
+    if manifest_json.strip():
+        try:
+            manifest = json.loads(manifest_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"invalid manifest_json: {exc}") from exc
+    elif manifest_path.strip():
+        resolved = _resolve_path(manifest_path.strip())
+        try:
+            with open(resolved, "r", encoding="utf-8") as fh:
+                manifest = json.load(fh)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"invalid manifest_path JSON: {exc}") from exc
+        except OSError as exc:
+            raise ValueError(f"cannot read manifest_path: {exc}") from exc
+    else:
+        raise ValueError("manifest_json or manifest_path is required")
+
+    if not isinstance(manifest, dict):
+        raise ValueError("semantic product manifest must be a JSON object")
+    return manifest
+
+
+def _parse_publish_targets(targets: str, vector_target: str = "lancedb") -> list[str]:
+    parsed = []
+    vector_fallback = (vector_target or "lancedb").strip().lower()
+    for target in _parse_csv_list(targets):
+        normalized = target.lower()
+        if normalized == "vector":
+            normalized = vector_fallback
+        parsed.append(normalized)
+    return parsed
+
+
+def _parse_csv_list(value: str) -> list[str]:
+    return [part.strip() for part in str(value or "").split(",") if part.strip()]
+
+
+def _truthy(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _publish_plan_summary(plan: dict) -> dict:
+    steps = plan.get("steps") if isinstance(plan.get("steps"), list) else []
+    invalid_steps = [step for step in steps if isinstance(step, dict) and not step.get("valid")]
+    return {
+        "valid": bool(plan.get("valid")),
+        "target_count": len(plan.get("targets") or []),
+        "step_count": len(steps),
+        "valid_step_count": len(steps) - len(invalid_steps),
+        "invalid_step_count": len(invalid_steps),
+        "error_count": sum(len(error.get("errors") or []) for error in plan.get("errors") or [] if isinstance(error, dict)),
+    }
+
+
+# ---------------------------------------------------------------------------
+
 _ALL_FUNCS = [
     profile_fusion_sources,
     assess_fusion_compatibility,
@@ -562,6 +719,7 @@ _ALL_FUNCS = [
     standardize_timestamps,
     validate_temporal_consistency,
     inject_document_context,
+    plan_semantic_product_publish,
 ]
 
 

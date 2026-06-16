@@ -722,6 +722,16 @@ errors, and whether required publishers or embedders have been configured. This
 gives operators and future tool/API routes a cheap preflight check before
 launching production publishing jobs.
 
+The dry-run publish plan is now exposed through the ADK FusionToolset as
+`plan_semantic_product_publish()`. The tool accepts either an inline semantic
+product manifest JSON string or a manifest path, plus Iceberg/STAC/vector target
+configuration and adapter-configured flags. It returns structured JSON with
+`status`, a compact summary, target specs, dependency edges, validation errors,
+and backend readiness without executing any publish, embedding, Spark, database,
+or object-store operation. This makes the dual-lake publication preflight
+reachable from agent workflows while keeping real backend adapters optional and
+external to MMFE core.
+
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,
 `media_type`, and `adapter_family` fields. Current profiling adapters populate
