@@ -700,6 +700,19 @@ discovery/catalog layer: it should help users and services find published
 products, while Iceberg/S3 remains the authoritative analytical asset and
 LanceDB/pgvector remain optional AI retrieval/indexing targets.
 
+Semantic product publishing now also has a small orchestration contract.
+`publish_semantic_product()` routes one semantic product manifest through
+requested targets such as `iceberg`, `stac`, `pgvector`, or `lancedb` using the
+existing dependency-free target contracts and injected publishers. When Iceberg
+publishing succeeds, the orchestration applies the returned manifest patch
+before running STAC or vector publishing, so catalog items and AI retrieval rows
+refer to the authoritative Iceberg/S3 table, snapshot, and business output. A
+target failure returns structured per-target errors and stops dependent targets
+instead of silently publishing inconsistent downstream records. This is the
+backend-neutral foundation for a future `publish_semantic_product()` tool or API
+route; it still does not import Spark, Iceberg, STAC, pgvector, LanceDB,
+embedding, or object-store clients in MMFE core.
+
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,
 `media_type`, and `adapter_family` fields. Current profiling adapters populate

@@ -89,6 +89,7 @@ from data_agent.fusion import (  # noqa: F401
     build_sedona_iceberg_runner_spec,
     build_stac_publish_spec,
     build_stac_publisher,
+    publish_semantic_product,
     run_iceberg_publish,
     run_sedona_iceberg_job,
     run_stac_publish,

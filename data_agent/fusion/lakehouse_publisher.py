@@ -338,6 +338,53 @@ def run_iceberg_publish(
     return _iceberg_publish_result(spec, [], backend_result)
 
 
+def publish_semantic_product(
+    manifest: dict,
+    targets: list[str] | None = None,
+    iceberg: dict | None = None,
+    stac: dict | None = None,
+    vector: dict | None = None,
+) -> dict:
+    """Publish a semantic product through optional dependency-free target contracts."""
+    requested_targets = list(targets or [])
+    current_manifest = deepcopy(manifest)
+    results = {}
+    errors = []
+
+    for target in requested_targets:
+        if target == "iceberg":
+            result = _publish_orchestrated_iceberg(current_manifest, iceberg or {})
+            results[target] = result
+            if not result.get("valid"):
+                errors.append({"target": target, "errors": list(result.get("errors") or [])})
+                break
+            current_manifest = apply_iceberg_manifest_patch(current_manifest, result.get("manifest_patch") or {})
+        elif target == "stac":
+            result = _publish_orchestrated_stac(current_manifest, stac or {})
+            if not result.get("valid"):
+                errors.append({"target": target, "errors": list(result.get("errors") or [])})
+                break
+            results[target] = result
+            current_manifest = _apply_catalog_manifest_patch(current_manifest, result.get("manifest_patch") or {})
+        elif target in ("pgvector", "lancedb"):
+            result = _publish_orchestrated_vector(current_manifest, target, vector or {})
+            if not result.get("valid"):
+                errors.append({"target": target, "errors": list(result.get("errors") or [])})
+                break
+            results[target] = result
+        else:
+            errors.append({"target": target, "errors": [f"unsupported publish target: {target}"]})
+            break
+
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "targets": requested_targets,
+        "results": results,
+        "manifest": current_manifest,
+    }
+
+
 def build_stac_publisher(executor=None):
     """Build a STAC publisher adapter backed by an injected executor."""
     def publisher(spec: dict) -> dict:
@@ -436,6 +483,83 @@ def apply_iceberg_manifest_patch(manifest: dict, patch: dict) -> dict:
         existing.update(lakehouse_patch["iceberg"])
         lakehouse["iceberg"] = existing
     updated["lakehouse"] = lakehouse
+    return updated
+
+
+def _publish_orchestrated_iceberg(manifest: dict, config: dict) -> dict:
+    spec = build_iceberg_publish_spec(
+        manifest,
+        catalog=config.get("catalog", ""),
+        namespace=config.get("namespace", ""),
+        table=config.get("table", ""),
+        warehouse_uri=config.get("warehouse_uri", ""),
+        object_store=config.get("object_store", "s3"),
+        spatial_engine=config.get("spatial_engine", "sedona"),
+        partition_by=config.get("partition_by"),
+        metadata=config.get("metadata"),
+    )
+    return run_iceberg_publish(spec, publisher=config.get("publisher"))
+
+
+def _publish_orchestrated_stac(manifest: dict, config: dict) -> dict:
+    spec = build_stac_publish_spec(
+        manifest,
+        collection=config.get("collection", ""),
+        catalog_uri=config.get("catalog_uri", ""),
+        item_datetime=config.get("item_datetime"),
+        bbox=config.get("bbox"),
+        geometry=config.get("geometry"),
+        media_type=config.get("media_type"),
+        metadata=config.get("metadata"),
+    )
+    return run_stac_publish(spec, publisher=config.get("publisher"))
+
+
+def _publish_orchestrated_vector(manifest: dict, target: str, config: dict) -> dict:
+    from .semantic_publisher import (
+        build_semantic_vector_publish_spec,
+        embed_semantic_vector_records,
+        run_semantic_vector_publish,
+    )
+
+    spec = build_semantic_vector_publish_spec(
+        manifest,
+        target=config.get("target", target),
+        collection=config.get("collection", "mmfe_semantic_products"),
+        embedding_model=config.get("embedding_model"),
+        metadata=config.get("metadata"),
+    )
+    embedded = embed_semantic_vector_records(spec, embedder=config.get("embedder"))
+    if not embedded.get("valid"):
+        return {
+            "valid": False,
+            "errors": list(embedded.get("errors") or []),
+            "schema": spec.get("schema"),
+            "target": target,
+            "collection": spec.get("collection"),
+            "product_id": spec.get("product_id"),
+            "record_count": len(spec.get("records") or []),
+            "published_count": 0,
+            "embedding_result": embedded,
+            "backend_result": None,
+        }
+    result = run_semantic_vector_publish(embedded["spec"], publisher=config.get("publisher"))
+    if isinstance(result, dict):
+        result.setdefault("embedding_result", embedded)
+    return result
+
+
+def _apply_catalog_manifest_patch(manifest: dict, patch: dict) -> dict:
+    updated = deepcopy(manifest)
+    catalog_patch = patch.get("catalog") if isinstance(patch, dict) else None
+    if not isinstance(catalog_patch, dict):
+        return updated
+    catalog = dict(updated.get("catalog") or {})
+    if isinstance(catalog_patch.get("stac"), dict):
+        existing = dict(catalog.get("stac") or {})
+        existing.update(catalog_patch["stac"])
+        catalog["stac"] = existing
+    updated["catalog"] = catalog
     return updated
 
 

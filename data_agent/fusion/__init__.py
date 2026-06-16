@@ -174,6 +174,7 @@ from .lakehouse_publisher import (
     build_sedona_iceberg_runner_spec,
     build_stac_publish_spec,
     build_stac_publisher,
+    publish_semantic_product,
     run_iceberg_publish,
     run_sedona_iceberg_job,
     run_stac_publish,

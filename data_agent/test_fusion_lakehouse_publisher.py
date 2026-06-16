@@ -533,6 +533,116 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertTrue(callable(proxy_run_stac_publish))
         self.assertTrue(callable(proxy_validate_stac_publish_spec))
 
+    def test_publish_semantic_product_routes_lakehouse_catalog_and_vector_targets(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_iceberg_publisher,
+            build_stac_publisher,
+            publish_semantic_product,
+        )
+        from data_agent.fusion.semantic_publisher import build_lancedb_publisher
+
+        calls = []
+
+        def iceberg_executor(payload):
+            calls.append(("iceberg", payload))
+            return {
+                "rows_written": payload["row_count"],
+                "snapshot_id": "snap-003",
+                "partition": {"product_id": payload["product_id"]},
+            }
+
+        def stac_executor(payload):
+            calls.append(("stac", payload))
+            return {"item_href": f"{payload['catalog_uri']}/{payload['collection']}/{payload['item_id']}.json"}
+
+        def lancedb_executor(payload):
+            calls.append(("lancedb", payload))
+            return {"inserted": len(payload["rows"])}
+
+        result = publish_semantic_product(
+            _semantic_manifest(),
+            targets=["iceberg", "stac", "lancedb"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/warehouse",
+                "publisher": build_iceberg_publisher(executor=iceberg_executor),
+            },
+            stac={
+                "collection": "mmfe-fusion-products",
+                "catalog_uri": "s3://geo-lake/catalog/stac",
+                "item_datetime": "2026-06-16T00:00:00Z",
+                "bbox": [100.0, 20.0, 101.0, 21.0],
+                "publisher": build_stac_publisher(executor=stac_executor),
+            },
+            vector={
+                "target": "lancedb",
+                "collection": "mmfe_products",
+                "embedding_model": "mock-embedder",
+                "embedder": lambda texts, **kwargs: [[1.0, 0.0] for _ in texts],
+                "publisher": build_lancedb_publisher(
+                    dataset_uri="file:///tmp/mmfe_vectors.lance",
+                    table="semantic_products",
+                    executor=lancedb_executor,
+                ),
+            },
+        )
+
+        self.assertTrue(result["valid"])
+        self.assertEqual([name for name, _ in calls], ["iceberg", "stac", "lancedb"])
+        self.assertEqual(result["targets"], ["iceberg", "stac", "lancedb"])
+        self.assertEqual(result["results"]["iceberg"]["manifest_patch"]["lakehouse"]["iceberg"]["snapshot_id"], "snap-003")
+        self.assertEqual(result["manifest"]["lakehouse"]["iceberg"]["snapshot_id"], "snap-003")
+        self.assertEqual(result["manifest"]["catalog"]["stac"]["collection"], "mmfe-fusion-products")
+        self.assertEqual(
+            calls[1][1]["properties"]["mmfe:authoritative_lakehouse"]["table_identifier"],
+            "prod.gis.fusion.semantic_products",
+        )
+        self.assertEqual(
+            calls[2][1]["rows"][0]["metadata"]["authoritative_lakehouse"]["snapshot_id"],
+            "snap-003",
+        )
+        self.assertEqual(result["results"]["lancedb"]["published_count"], 1)
+        self.assertFalse(result["errors"])
+
+    def test_publish_semantic_product_reports_target_errors_without_running_dependents(self):
+        from data_agent.fusion.lakehouse_publisher import publish_semantic_product
+
+        result = publish_semantic_product(
+            _semantic_manifest(),
+            targets=["iceberg", "stac", "pgvector"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/warehouse",
+            },
+            stac={
+                "collection": "mmfe-fusion-products",
+                "catalog_uri": "s3://geo-lake/catalog/stac",
+            },
+            vector={
+                "target": "pgvector",
+                "collection": "mmfe_products",
+            },
+        )
+
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["targets"], ["iceberg", "stac", "pgvector"])
+        self.assertIn("iceberg", result["results"])
+        self.assertNotIn("stac", result["results"])
+        self.assertNotIn("pgvector", result["results"])
+        self.assertTrue(any(error["target"] == "iceberg" for error in result["errors"]))
+        self.assertTrue(any("publisher is required" in message for error in result["errors"] for message in error["errors"]))
+
+    def test_publish_semantic_product_helpers_are_reexported(self):
+        from data_agent.fusion import publish_semantic_product
+        from data_agent.fusion_engine import publish_semantic_product as proxy_publish_semantic_product
+
+        self.assertTrue(callable(publish_semantic_product))
+        self.assertTrue(callable(proxy_publish_semantic_product))
+
 
 if __name__ == "__main__":
     unittest.main()
