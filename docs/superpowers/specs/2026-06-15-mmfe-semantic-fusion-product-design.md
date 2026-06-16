@@ -662,6 +662,16 @@ a pure executor payload without importing Spark, Iceberg, Sedona, pyiceberg, or
 S3 clients. This keeps Iceberg/Sedona production wiring outside MMFE core while
 making the authoritative analytical lakehouse boundary explicit.
 
+Vector publishing now preserves that boundary in AI retrieval records. When a
+semantic product manifest includes `lakehouse.iceberg`, the semantic vector
+publisher copies a normalized `authoritative_lakehouse` reference into
+`source_manifest` and every chunk record's metadata before embedding or
+LanceDB/pgvector publishing. The reference carries Iceberg table identity,
+S3-backed business output path, optional snapshot id, partition metadata, and
+the spatial engine. This makes LanceDB and pgvector retrieval records point back
+to authoritative Iceberg/S3 assets instead of becoming separate business-data
+authorities.
+
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,
 `media_type`, and `adapter_family` fields. Current profiling adapters populate

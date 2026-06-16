@@ -34,6 +34,32 @@ def _semantic_manifest() -> dict:
     }
 
 
+def _semantic_manifest_with_lakehouse() -> dict:
+    manifest = _semantic_manifest()
+    manifest["business_output"] = {
+        "path": "s3://geo-lake/curated/fusion/run-001/fused.parquet",
+        "format": "GeoParquet",
+        "row_count": 2,
+        "column_count": 4,
+        "crs": "EPSG:4326",
+    }
+    manifest["lakehouse"] = {
+        "iceberg": {
+            "storage_layer": "analytical_lakehouse",
+            "object_store": "s3",
+            "catalog": "prod",
+            "namespace": "gis.fusion",
+            "table": "semantic_products",
+            "table_identifier": "prod.gis.fusion.semantic_products",
+            "warehouse_uri": "s3://geo-lake/warehouse",
+            "snapshot_id": "snap-001",
+            "partition": {"product_id": "sfp-test"},
+            "spatial_engine": "sedona",
+        }
+    }
+    return manifest
+
+
 class TestSemanticVectorPublisher(unittest.TestCase):
     def test_build_semantic_vector_publish_spec_from_manifest_chunks(self):
         from data_agent.fusion.semantic_publisher import (
@@ -62,6 +88,25 @@ class TestSemanticVectorPublisher(unittest.TestCase):
         self.assertEqual(spec["records"][0]["metadata"]["product_id"], "sfp-test")
         self.assertTrue(spec["embedding_required"])
         self.assertEqual(spec["metadata"]["run_id"], "publish-test")
+
+    def test_build_semantic_vector_publish_spec_carries_authoritative_lakehouse_lineage(self):
+        from data_agent.fusion.semantic_publisher import build_semantic_vector_publish_spec
+
+        spec = build_semantic_vector_publish_spec(
+            _semantic_manifest_with_lakehouse(),
+            target="lancedb",
+            collection="mmfe_products",
+        )
+
+        authoritative = spec["source_manifest"]["authoritative_lakehouse"]
+        self.assertEqual(authoritative["target"], "iceberg")
+        self.assertEqual(authoritative["storage_layer"], "analytical_lakehouse")
+        self.assertEqual(authoritative["object_store"], "s3")
+        self.assertEqual(authoritative["table_identifier"], "prod.gis.fusion.semantic_products")
+        self.assertEqual(authoritative["snapshot_id"], "snap-001")
+        self.assertEqual(authoritative["business_output_path"], "s3://geo-lake/curated/fusion/run-001/fused.parquet")
+        self.assertEqual(authoritative["spatial_engine"], "sedona")
+        self.assertEqual(spec["records"][0]["metadata"]["authoritative_lakehouse"], authoritative)
 
     def test_validate_semantic_vector_publish_spec_reports_errors(self):
         from data_agent.fusion.semantic_publisher import validate_semantic_vector_publish_spec
@@ -223,6 +268,41 @@ class TestSemanticVectorPublisher(unittest.TestCase):
         self.assertEqual(calls[0]["rows"][0]["embedding"], [1.0, 0.0])
         self.assertEqual(calls[0]["rows"][0]["metadata"]["chunk_id"], "fusion:product")
         self.assertEqual(result["backend_result"]["inserted"], 2)
+
+    def test_lancedb_publisher_payload_preserves_authoritative_lakehouse_lineage(self):
+        from data_agent.fusion.semantic_publisher import (
+            build_lancedb_publisher,
+            build_semantic_vector_publish_spec,
+            embed_semantic_vector_records,
+            run_semantic_vector_publish,
+        )
+
+        spec = build_semantic_vector_publish_spec(
+            _semantic_manifest_with_lakehouse(),
+            target="lancedb",
+            collection="mmfe_products",
+            embedding_model="mock-embedder",
+        )
+        embedded = embed_semantic_vector_records(
+            spec,
+            embedder=lambda texts, **kwargs: [[1.0, 0.0], [0.0, 1.0]],
+        )["spec"]
+        calls = []
+
+        publisher = build_lancedb_publisher(
+            dataset_uri="file:///tmp/mmfe_vectors.lance",
+            table="semantic_products",
+            executor=lambda payload: calls.append(payload) or {"inserted": len(payload["rows"])},
+        )
+
+        result = run_semantic_vector_publish(embedded, publisher=publisher)
+
+        self.assertTrue(result["valid"])
+        authoritative = calls[0]["rows"][0]["metadata"]["authoritative_lakehouse"]
+        self.assertEqual(authoritative["target"], "iceberg")
+        self.assertEqual(authoritative["table_identifier"], "prod.gis.fusion.semantic_products")
+        self.assertEqual(authoritative["snapshot_id"], "snap-001")
+        self.assertEqual(authoritative["business_output_path"], "s3://geo-lake/curated/fusion/run-001/fused.parquet")
 
     def test_lancedb_publisher_requires_executor_and_embeddings(self):
         from data_agent.fusion.semantic_publisher import (

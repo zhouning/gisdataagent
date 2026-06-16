@@ -25,7 +25,19 @@ def build_semantic_vector_publish_spec(
     product_id = str(manifest.get("product_id") or "")
     business_output = manifest.get("business_output") or {}
     ai_metadata = manifest.get("ai_metadata") or {}
-    records = _records_from_chunks(product_id, ai_metadata.get("chunks") or [])
+    authoritative_lakehouse = _authoritative_lakehouse_from_manifest(manifest)
+    records = _records_from_chunks(
+        product_id,
+        ai_metadata.get("chunks") or [],
+        authoritative_lakehouse=authoritative_lakehouse,
+    )
+    source_manifest = {
+        "product_type": manifest.get("product_type"),
+        "version": manifest.get("version"),
+        "business_output_path": business_output.get("path", ""),
+    }
+    if authoritative_lakehouse:
+        source_manifest["authoritative_lakehouse"] = authoritative_lakehouse
     spec = {
         "schema": SEMANTIC_VECTOR_PUBLISH_SCHEMA,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -34,11 +46,7 @@ def build_semantic_vector_publish_spec(
         "embedding_model": embedding_model,
         "embedding_required": True,
         "product_id": product_id,
-        "source_manifest": {
-            "product_type": manifest.get("product_type"),
-            "version": manifest.get("version"),
-            "business_output_path": business_output.get("path", ""),
-        },
+        "source_manifest": source_manifest,
         "records": records,
     }
     if metadata:
@@ -243,7 +251,11 @@ def build_lancedb_publisher(
     return publisher
 
 
-def _records_from_chunks(product_id: str, chunks: list[dict]) -> list[dict]:
+def _records_from_chunks(
+    product_id: str,
+    chunks: list[dict],
+    authoritative_lakehouse: dict | None = None,
+) -> list[dict]:
     records = []
     for index, chunk in enumerate(chunks):
         if not isinstance(chunk, dict):
@@ -256,12 +268,40 @@ def _records_from_chunks(product_id: str, chunks: list[dict]) -> list[dict]:
             "chunk_id": chunk_id,
             "chunk_index": index,
         })
+        if authoritative_lakehouse:
+            metadata["authoritative_lakehouse"] = dict(authoritative_lakehouse)
         records.append({
             "record_id": f"{product_id}:{chunk_id}",
             "text": text,
             "metadata": metadata,
         })
     return records
+
+
+def _authoritative_lakehouse_from_manifest(manifest: dict) -> dict:
+    business_output = manifest.get("business_output") or {}
+    lakehouse = manifest.get("lakehouse") or {}
+    iceberg = lakehouse.get("iceberg") if isinstance(lakehouse, dict) else None
+    if not isinstance(iceberg, dict):
+        return {}
+
+    authoritative = {
+        "target": "iceberg",
+        "storage_layer": iceberg.get("storage_layer", "analytical_lakehouse"),
+        "object_store": iceberg.get("object_store", "s3"),
+        "catalog": iceberg.get("catalog", ""),
+        "namespace": iceberg.get("namespace", ""),
+        "table": iceberg.get("table", ""),
+        "table_identifier": iceberg.get("table_identifier", ""),
+        "warehouse_uri": iceberg.get("warehouse_uri", ""),
+        "snapshot_id": iceberg.get("snapshot_id", ""),
+        "business_output_path": business_output.get("path", ""),
+        "business_output_format": business_output.get("format", ""),
+        "spatial_engine": iceberg.get("spatial_engine", ""),
+    }
+    if isinstance(iceberg.get("partition"), dict):
+        authoritative["partition"] = dict(iceberg["partition"])
+    return {key: value for key, value in authoritative.items() if value not in ("", None, {})}
 
 
 def _publish_result(
