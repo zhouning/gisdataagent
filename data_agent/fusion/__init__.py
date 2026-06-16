@@ -152,6 +152,14 @@ from .semantic_alignment import (
     score_semantic_alignment,
 )
 
+# --- Semantic Vector Publisher Contracts ---
+from .semantic_publisher import (
+    SEMANTIC_VECTOR_PUBLISH_SCHEMA,
+    build_semantic_vector_publish_spec,
+    run_semantic_vector_publish,
+    validate_semantic_vector_publish_spec,
+)
+
 # --- AI Semantic Sidecar Contracts ---
 from .ai_semantics import (
     AI_SEMANTIC_RUNNER_SCHEMA,

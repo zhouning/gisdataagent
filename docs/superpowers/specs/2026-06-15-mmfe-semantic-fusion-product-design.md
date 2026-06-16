@@ -620,9 +620,15 @@ outside the current process. This keeps MMFE responsible for orchestration and
 evidence governance, while Prithvi, SAM, Pointcept, PDAL/container pipelines,
 or customer models remain independent third-party tools.
 
-LanceDB remains a future indexing target in this iteration. MMFE emits
-`ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector
-stores, but it does not add LanceDB as a required runtime dependency.
+Semantic product publishing now has a dependency-free vector-index contract.
+`build_semantic_vector_publish_spec()` converts `ai_metadata.chunks` into
+`mmfe.semantic_vector_publish.v1` records with stable record ids, chunk text,
+product metadata, target store, collection name, and embedding model metadata.
+`run_semantic_vector_publish()` executes an injected publisher adapter for
+targets such as `pgvector` or `lancedb` and returns structured publish results.
+MMFE still does not add pgvector, LanceDB, embedding generation, or database
+drivers as required runtime dependencies; those remain backend adapters behind
+the publisher contract.
 
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,
