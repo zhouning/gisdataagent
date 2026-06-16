@@ -288,6 +288,52 @@ class TestFusionSource(unittest.TestCase):
             )
         )
 
+    def test_profile_model_output_reads_ai_observations_as_semantic_hints(self):
+        from data_agent.fusion_engine import profile_source
+
+        path = os.path.join(self.tmp, "urban_scan.ai.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "model": {
+                        "name": "custom-detector",
+                        "version": "2.1",
+                        "task": "asset_detection",
+                    },
+                    "observations": [
+                        {
+                            "type": "asset_observation",
+                            "label": "substation",
+                            "target": "image",
+                            "confidence": 0.91,
+                            "domain": "infrastructure",
+                            "evidence": ["detected from tile 12"],
+                        },
+                        {
+                            "label": "power_line",
+                            "target": "image",
+                            "confidence": 0.84,
+                        },
+                    ],
+                },
+                f,
+            )
+
+        src = profile_source(path)
+
+        self.assertEqual(src.data_type, "model_output")
+        self.assertEqual(src.semantic_domain, "infrastructure")
+        self.assertEqual(src.stats["model_output"]["observation_count"], 2)
+        model_hints = [
+            hint for hint in src.semantic_hints
+            if hint.get("semantic_level") == "model_inference"
+        ]
+        self.assertEqual(len(model_hints), 2)
+        self.assertEqual(model_hints[0]["value"], "substation")
+        self.assertEqual(model_hints[0]["model"], "custom-detector")
+        self.assertEqual(model_hints[0]["model_version"], "2.1")
+        self.assertEqual(model_hints[0]["task"], "asset_detection")
+
     def test_profile_raster(self):
         from data_agent.fusion_engine import profile_source
         raster = _make_raster_fixture(self.tmp)

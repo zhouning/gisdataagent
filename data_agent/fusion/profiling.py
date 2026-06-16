@@ -1397,19 +1397,52 @@ def _profile_generic_source(path: str, data_type: str) -> FusionSource:
         "confidence": 0.8,
         "evidence": [f"file extension classified as {data_type}"],
     }]
+    stats = {"file": file_stats}
+    semantic_domain = _generic_semantic_domain(data_type)
+    if data_type == "model_output":
+        model_profile = _model_output_profile(path)
+        if model_profile:
+            stats["model_output"] = model_profile["stats"]
+            semantic_hints.extend(model_profile["semantic_hints"])
+            semantic_domain = (
+                _semantic_domain_from_hints(model_profile["semantic_hints"])
+                or semantic_domain
+            )
     columns = _generic_columns(data_type)
     return FusionSource(
         file_path=path,
         data_type=data_type,
         row_count=1 if os.path.exists(path) else 0,
         columns=columns,
-        stats={"file": file_stats},
-        semantic_domain=_generic_semantic_domain(data_type),
+        stats=stats,
+        semantic_domain=semantic_domain,
         semantic_hints=semantic_hints,
         modality=modality,
         media_type=media_type,
         adapter_family="generic",
     )
+
+
+def _model_output_profile(path: str) -> dict | None:
+    metadata = _parse_json_sidecar(path)
+    if not metadata:
+        return None
+    observations = metadata.get("observations") or metadata.get("semantic_observations")
+    if not isinstance(observations, list):
+        observations = []
+    model = metadata.get("model") if isinstance(metadata.get("model"), dict) else {}
+    stats = {
+        "observation_count": len(observations),
+        "model_name": model.get("name") or metadata.get("model_name"),
+        "model_version": model.get("version") or metadata.get("model_version"),
+        "task": model.get("task") or metadata.get("task"),
+    }
+    stats = {key: value for key, value in stats.items() if value is not None}
+    hints = _ai_semantic_hints(
+        {"path": path, "metadata": metadata},
+        source_type="model_output",
+    )
+    return {"stats": stats, "semantic_hints": hints}
 
 
 def _generic_file_stats(path: str) -> dict:

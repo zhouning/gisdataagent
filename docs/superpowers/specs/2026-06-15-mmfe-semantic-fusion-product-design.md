@@ -638,3 +638,12 @@ metadata, modality, media type, adapter family, a minimal logical column, and a
 extract PDF text, image embeddings, audio transcripts, video keyframes, graph
 topology, or model-output observations. Those are future modality-specific
 adapters built on top of the same `FusionSource` and semantic product contract.
+
+Direct AI/model-output profiling now reads `.ai.json`, `.model.json`, and
+`.inference.json` files as first-class generic sources. When those files contain
+`observations` or `semantic_observations`, MMFE records model name, version,
+task, and observation count in `stats["model_output"]`, then reuses the existing
+AI semantic sidecar normalization to emit `model_inference` semantic hints. This
+does not run models or validate task-specific output quality; it brings
+model-produced semantics into the same evidence layer used by geospatial
+sources, documents, and future multimodal adapters.
