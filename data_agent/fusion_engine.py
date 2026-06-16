@@ -88,6 +88,7 @@ from data_agent.fusion import (  # noqa: F401
     build_pdal_pipeline_spec,
     build_pdal_runner_spec,
     build_point_cloud_chunk_artifact_manifest,
+    materialize_point_cloud_chunk_artifacts,
     run_pdal_pipeline,
     validate_pdal_pipeline_spec,
     validate_pdal_runner_spec,

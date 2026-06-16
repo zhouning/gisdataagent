@@ -539,10 +539,13 @@ Point-cloud chunk artifact planning now has its own manifest contract.
 source metadata, artifact directory, output format, per-chunk point offsets,
 planned point counts, artifact paths, status, and semantic processing hints.
 `write_point_cloud_chunk_artifact_manifest()` writes the manifest as
-`manifest.chunks.json` in the artifact directory. This is still a planning and
-audit artifact: MMFE records exactly what chunk files should be materialized,
-but it does not yet stream LAS/LAZ points, write physical chunk files, or
-schedule per-chunk PDAL/model jobs.
+`manifest.chunks.json` in the artifact directory. MMFE now also has
+`materialize_point_cloud_chunk_artifacts()`, a runner contract that executes an
+injected writer per planned chunk, verifies that each artifact path was created,
+records file size, materialization metadata, per-chunk success/failure status,
+and writes the updated manifest back to disk. The default core still does not
+split LAS/LAZ bytes by itself; real chunk materialization must come from a
+laspy, PDAL, container, remote job, or test writer supplied by the caller.
 
 Raster profiling now carries pixel-value semantics instead of stopping at
 filename and band-description hints. For each readable band, MMFE captures

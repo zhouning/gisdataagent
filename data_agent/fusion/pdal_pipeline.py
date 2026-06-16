@@ -127,6 +127,89 @@ def write_point_cloud_chunk_artifact_manifest(
     return path
 
 
+def materialize_point_cloud_chunk_artifacts(
+    manifest: dict,
+    writer=None,
+    manifest_path: str | None = None,
+    writer_options: dict | None = None,
+) -> dict:
+    """Materialize planned point-cloud chunk artifacts with an injected writer.
+
+    MMFE core does not split LAS/LAZ bytes by itself. Callers provide a writer
+    backed by laspy, PDAL, a remote job, or a test double. The writer receives
+    ``source_path``, the chunk record, the target ``artifact_path``, and keyword
+    context, then must create the artifact file.
+    """
+    errors = validate_point_cloud_chunk_artifact_manifest(manifest)
+    if errors:
+        return _chunk_materialization_result(
+            manifest=manifest if isinstance(manifest, dict) else {},
+            chunks=[],
+            manifest_path=None,
+            errors=errors,
+        )
+
+    updated_manifest = dict(manifest)
+    chunks = [dict(chunk) for chunk in manifest.get("chunks", [])]
+    updated_manifest["chunks"] = chunks
+    source_path = manifest["source"]["path"]
+    output_format = manifest.get("output_format", "las")
+    options = dict(writer_options or {})
+
+    materialization_errors = []
+    if writer is None:
+        error = "writer is required to materialize point-cloud chunks"
+        materialization_errors.append(error)
+        for chunk in chunks:
+            chunk["status"] = "failed"
+            chunk["errors"] = [error]
+    else:
+        for chunk in chunks:
+            artifact_path = chunk.get("artifact_path", "")
+            try:
+                os.makedirs(os.path.dirname(artifact_path) or ".", exist_ok=True)
+                metadata = writer(
+                    source_path,
+                    chunk,
+                    artifact_path,
+                    output_format=output_format,
+                    manifest=updated_manifest,
+                    **options,
+                )
+                if not os.path.exists(artifact_path):
+                    raise FileNotFoundError(
+                        f"writer did not create artifact: {artifact_path}"
+                    )
+                chunk["status"] = "materialized"
+                chunk["artifact_size_bytes"] = int(os.path.getsize(artifact_path))
+                chunk["materialized_at"] = datetime.now(timezone.utc).isoformat()
+                if isinstance(metadata, dict):
+                    chunk["materialization"] = dict(metadata)
+            except Exception as exc:
+                error = str(exc)
+                materialization_errors.append(error)
+                chunk["status"] = "failed"
+                chunk["errors"] = [error]
+
+    materialized_count = sum(1 for chunk in chunks if chunk.get("status") == "materialized")
+    failed_count = sum(1 for chunk in chunks if chunk.get("status") == "failed")
+    updated_manifest["materialization_summary"] = {
+        "materialized_count": materialized_count,
+        "failed_count": failed_count,
+        "valid": failed_count == 0 and not materialization_errors,
+    }
+    written_manifest_path = write_point_cloud_chunk_artifact_manifest(
+        updated_manifest,
+        manifest_path=manifest_path,
+    )
+    return _chunk_materialization_result(
+        manifest=updated_manifest,
+        chunks=chunks,
+        manifest_path=written_manifest_path,
+        errors=materialization_errors,
+    )
+
+
 def build_pdal_pipeline_spec(
     source_profile: dict,
     output_path: str,
@@ -506,4 +589,29 @@ def _pdal_runner_result(
         "returncode": returncode,
         "stdout": stdout,
         "stderr": stderr,
+    }
+
+
+def _chunk_materialization_result(
+    manifest: dict,
+    chunks: list[dict],
+    manifest_path: str | None,
+    errors: list[str],
+) -> dict:
+    materialized_count = sum(
+        1 for chunk in chunks if chunk.get("status") == "materialized"
+    )
+    failed_count = sum(1 for chunk in chunks if chunk.get("status") == "failed")
+    return {
+        "valid": not errors and failed_count == 0,
+        "errors": errors,
+        "manifest_path": manifest_path,
+        "schema": manifest.get("schema"),
+        "source_path": (manifest.get("source") or {}).get("path"),
+        "artifact_dir": manifest.get("artifact_dir"),
+        "output_format": manifest.get("output_format"),
+        "materialized_count": materialized_count,
+        "failed_count": failed_count,
+        "chunks": chunks,
+        "manifest": manifest,
     }

@@ -120,11 +120,88 @@ class TestPdalPipelineContracts(unittest.TestCase):
             self.assertEqual(loaded["schema"], "mmfe.point_cloud_chunks.v1")
             self.assertEqual(loaded["chunks"][0]["point_count"], 12)
 
+    def test_materialize_point_cloud_chunk_artifacts_uses_injected_writer(self):
+        from data_agent.fusion.pdal_pipeline import (
+            build_point_cloud_chunk_artifact_manifest,
+            materialize_point_cloud_chunk_artifacts,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source_profile = {
+                "file_path": os.path.join(tmp, "large_scan.las"),
+                "stats": {
+                    "chunking": {
+                        "required": True,
+                        "point_count": 5,
+                        "chunk_size_points": 2,
+                        "chunk_count": 3,
+                        "last_chunk_points": 1,
+                    }
+                },
+            }
+            manifest = build_point_cloud_chunk_artifact_manifest(
+                source_profile,
+                artifact_dir=os.path.join(tmp, "large_scan_chunks"),
+                output_format="las",
+            )
+            calls = []
+
+            def writer(source_path, chunk, artifact_path, **kwargs):
+                calls.append((source_path, chunk["chunk_id"], kwargs["output_format"]))
+                with open(artifact_path, "wb") as f:
+                    f.write(f"{chunk['chunk_id']}:{chunk['point_count']}".encode("utf-8"))
+                return {"backend": "mock-laspy", "bytes_written": os.path.getsize(artifact_path)}
+
+            result = materialize_point_cloud_chunk_artifacts(manifest, writer=writer)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["materialized_count"], 3)
+            self.assertEqual(result["failed_count"], 0)
+            self.assertEqual(len(calls), 3)
+            self.assertEqual(calls[0][1], "chunk-000001")
+            self.assertTrue(os.path.exists(result["manifest_path"]))
+            self.assertEqual(result["chunks"][0]["status"], "materialized")
+            self.assertGreater(result["chunks"][0]["artifact_size_bytes"], 0)
+            self.assertEqual(result["chunks"][0]["materialization"]["backend"], "mock-laspy")
+            self.assertTrue(os.path.exists(result["chunks"][2]["artifact_path"]))
+
+    def test_materialize_point_cloud_chunk_artifacts_requires_writer(self):
+        from data_agent.fusion.pdal_pipeline import (
+            build_point_cloud_chunk_artifact_manifest,
+            materialize_point_cloud_chunk_artifacts,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = build_point_cloud_chunk_artifact_manifest(
+                {
+                    "file_path": os.path.join(tmp, "source.las"),
+                    "stats": {"chunking": {"required": False, "chunk_count": 1}},
+                },
+                artifact_dir=os.path.join(tmp, "source_chunks"),
+            )
+
+            result = materialize_point_cloud_chunk_artifacts(manifest)
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["materialized_count"], 0)
+            self.assertEqual(result["failed_count"], 1)
+            self.assertTrue(any("writer is required" in error for error in result["errors"]))
+            self.assertEqual(result["chunks"][0]["status"], "failed")
+            self.assertTrue(any("writer is required" in error for error in result["chunks"][0]["errors"]))
+
     def test_point_cloud_chunk_artifact_helpers_are_reexported(self):
-        from data_agent.fusion import build_point_cloud_chunk_artifact_manifest
-        from data_agent.fusion_engine import validate_point_cloud_chunk_artifact_manifest
+        from data_agent.fusion import (
+            build_point_cloud_chunk_artifact_manifest,
+            materialize_point_cloud_chunk_artifacts,
+        )
+        from data_agent.fusion_engine import (
+            materialize_point_cloud_chunk_artifacts as proxy_materialize,
+            validate_point_cloud_chunk_artifact_manifest,
+        )
 
         self.assertTrue(callable(build_point_cloud_chunk_artifact_manifest))
+        self.assertTrue(callable(materialize_point_cloud_chunk_artifacts))
+        self.assertTrue(callable(proxy_materialize))
         self.assertTrue(callable(validate_point_cloud_chunk_artifact_manifest))
 
     def test_build_pdal_pipeline_spec_uses_chunking_and_laz_metadata(self):
