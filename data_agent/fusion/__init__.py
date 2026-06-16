@@ -166,11 +166,15 @@ from .semantic_publisher import (
 # --- Analytical Lakehouse Publisher Contracts ---
 from .lakehouse_publisher import (
     ICEBERG_PUBLISH_SCHEMA,
+    SEDONA_ICEBERG_RUNNER_SCHEMA,
     apply_iceberg_manifest_patch,
     build_iceberg_publish_spec,
     build_iceberg_publisher,
+    build_sedona_iceberg_runner_spec,
     run_iceberg_publish,
+    run_sedona_iceberg_job,
     validate_iceberg_publish_spec,
+    validate_sedona_iceberg_runner_spec,
 )
 
 # --- AI Semantic Sidecar Contracts ---

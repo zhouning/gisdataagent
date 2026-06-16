@@ -12,6 +12,7 @@ from typing import Any
 
 
 ICEBERG_PUBLISH_SCHEMA = "mmfe.iceberg_publish.v1"
+SEDONA_ICEBERG_RUNNER_SCHEMA = "mmfe.sedona_iceberg_runner.v1"
 SUPPORTED_OBJECT_STORES = {"s3"}
 SUPPORTED_SPATIAL_ENGINES = {"sedona", "none"}
 
@@ -90,6 +91,87 @@ def validate_iceberg_publish_spec(spec: dict) -> list[str]:
     if not isinstance(spec.get("partition_by", []), list):
         errors.append("partition_by must be a list")
     return errors
+
+
+def build_sedona_iceberg_runner_spec(
+    task: str,
+    catalog: str,
+    warehouse_uri: str,
+    input_tables: list[str],
+    output_table: str,
+    sql: str,
+    spatial_engine: str = "sedona",
+    spark_conf: dict | None = None,
+    metadata: dict | None = None,
+) -> dict:
+    """Build a dependency-free Sedona-on-Iceberg runner spec."""
+    spec = {
+        "schema": SEDONA_ICEBERG_RUNNER_SCHEMA,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "target": "iceberg",
+        "storage_layer": "analytical_lakehouse",
+        "spatial_engine": spatial_engine,
+        "task": task,
+        "catalog": catalog,
+        "warehouse_uri": warehouse_uri,
+        "input_tables": list(input_tables or []),
+        "output_table": output_table,
+        "sql": sql,
+        "spark_conf": dict(spark_conf or {}),
+    }
+    if metadata:
+        spec["metadata"] = dict(metadata)
+    return spec
+
+
+def validate_sedona_iceberg_runner_spec(spec: dict) -> list[str]:
+    """Return contract errors for a Sedona-on-Iceberg runner spec."""
+    errors = []
+    if not isinstance(spec, dict):
+        return ["sedona iceberg runner spec must be an object"]
+    if spec.get("schema") != SEDONA_ICEBERG_RUNNER_SCHEMA:
+        errors.append(f"schema must be {SEDONA_ICEBERG_RUNNER_SCHEMA}")
+    if spec.get("target") != "iceberg":
+        errors.append("target must be iceberg")
+    if spec.get("storage_layer", "analytical_lakehouse") != "analytical_lakehouse":
+        errors.append("storage_layer must be analytical_lakehouse")
+    if spec.get("spatial_engine") != "sedona":
+        errors.append("spatial_engine must be sedona")
+    for field in ("task", "catalog", "warehouse_uri", "output_table", "sql"):
+        if not spec.get(field):
+            errors.append(f"{field} is required")
+    input_tables = spec.get("input_tables")
+    if not isinstance(input_tables, list) or not input_tables:
+        errors.append("input_tables must be a non-empty list")
+    elif not all(isinstance(table, str) and table for table in input_tables):
+        errors.append("input_tables must contain non-empty table identifiers")
+    if not isinstance(spec.get("spark_conf", {}), dict):
+        errors.append("spark_conf must be an object")
+    return errors
+
+
+def run_sedona_iceberg_job(
+    spec: dict,
+    executor=None,
+) -> dict:
+    """Run a Sedona-on-Iceberg job through an injected executor."""
+    errors = validate_sedona_iceberg_runner_spec(spec)
+    if errors:
+        return _sedona_iceberg_result(spec if isinstance(spec, dict) else {}, errors, None)
+    if executor is None:
+        return _sedona_iceberg_result(spec, ["executor is required"], None)
+
+    try:
+        backend_result = executor(dict(spec))
+    except Exception as exc:
+        return _sedona_iceberg_result(spec, [str(exc)], None)
+
+    run_errors = []
+    if isinstance(backend_result, dict):
+        returncode = _safe_int(backend_result.get("returncode"), 0)
+        if returncode != 0:
+            run_errors.append(f"executor returned non-zero status {returncode}")
+    return _sedona_iceberg_result(spec, run_errors, backend_result)
 
 
 def run_iceberg_publish(
@@ -223,6 +305,33 @@ def _iceberg_manifest_patch(spec: dict, backend_result: Any) -> dict:
         "lakehouse": {
             "iceberg": {key: value for key, value in iceberg.items() if value not in ("", None, {})}
         }
+    }
+
+
+def _sedona_iceberg_result(
+    spec: dict,
+    errors: list[str],
+    backend_result: Any,
+) -> dict:
+    backend = backend_result if isinstance(backend_result, dict) else {}
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "schema": spec.get("schema"),
+        "target": spec.get("target"),
+        "storage_layer": spec.get("storage_layer"),
+        "spatial_engine": spec.get("spatial_engine"),
+        "task": spec.get("task"),
+        "catalog": spec.get("catalog"),
+        "warehouse_uri": spec.get("warehouse_uri"),
+        "input_tables": spec.get("input_tables") if isinstance(spec.get("input_tables"), list) else [],
+        "output_table": spec.get("output_table"),
+        "rows_written": _safe_int(backend.get("rows_written"), 0),
+        "snapshot_id": backend.get("snapshot_id"),
+        "returncode": _safe_int(backend.get("returncode"), 0) if backend_result is not None else None,
+        "stdout": backend.get("stdout", ""),
+        "stderr": backend.get("stderr", ""),
+        "backend_result": backend_result,
     }
 
 

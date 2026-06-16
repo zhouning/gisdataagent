@@ -668,6 +668,15 @@ that patch into a copy of the semantic product manifest without mutating the
 original, giving callers a clean handoff from analytical lakehouse publishing to
 AI vector publishing.
 
+Sedona-on-Iceberg spatial execution now has a dependency-free runner contract.
+`build_sedona_iceberg_runner_spec()` creates `mmfe.sedona_iceberg_runner.v1`
+jobs that describe the task, Iceberg catalog, S3 warehouse URI, input table
+identifiers, output table, SQL, Spark configuration, and metadata.
+`run_sedona_iceberg_job()` validates the job and executes an injected executor,
+then normalizes return code, stdout/stderr, rows written, and snapshot id. MMFE
+does not import Spark, Sedona, Iceberg, or S3 clients; those remain production
+adapters behind the runner contract.
+
 Vector publishing now preserves that boundary in AI retrieval records. When a
 semantic product manifest includes `lakehouse.iceberg`, the semantic vector
 publisher copies a normalized `authoritative_lakehouse` reference into
