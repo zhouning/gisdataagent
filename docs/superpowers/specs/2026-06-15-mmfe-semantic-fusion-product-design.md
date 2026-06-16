@@ -624,11 +624,13 @@ Semantic product publishing now has a dependency-free vector-index contract.
 `build_semantic_vector_publish_spec()` converts `ai_metadata.chunks` into
 `mmfe.semantic_vector_publish.v1` records with stable record ids, chunk text,
 product metadata, target store, collection name, and embedding model metadata.
-`run_semantic_vector_publish()` executes an injected publisher adapter for
-targets such as `pgvector` or `lancedb` and returns structured publish results.
-MMFE still does not add pgvector, LanceDB, embedding generation, or database
-drivers as required runtime dependencies; those remain backend adapters behind
-the publisher contract.
+`embed_semantic_vector_records()` executes an injected embedding adapter and
+adds vectors, embedding model, and dimension metadata to the records before
+publishing. `run_semantic_vector_publish()` executes an injected publisher
+adapter for targets such as `pgvector` or `lancedb` and returns structured
+publish results. MMFE still does not add pgvector, LanceDB, embedding
+generation, or database drivers as required runtime dependencies; those remain
+backend adapters behind the publisher contract.
 
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,

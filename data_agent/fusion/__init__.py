@@ -156,6 +156,7 @@ from .semantic_alignment import (
 from .semantic_publisher import (
     SEMANTIC_VECTOR_PUBLISH_SCHEMA,
     build_semantic_vector_publish_spec,
+    embed_semantic_vector_records,
     run_semantic_vector_publish,
     validate_semantic_vector_publish_spec,
 )

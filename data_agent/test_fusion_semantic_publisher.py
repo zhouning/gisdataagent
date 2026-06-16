@@ -109,6 +109,46 @@ class TestSemanticVectorPublisher(unittest.TestCase):
         self.assertEqual(result["collection"], "mmfe_products")
         self.assertEqual(result["backend_result"]["record_ids"][0], "sfp-test:fusion:product")
 
+    def test_embed_semantic_vector_records_uses_injected_embedder(self):
+        from data_agent.fusion.semantic_publisher import (
+            build_semantic_vector_publish_spec,
+            embed_semantic_vector_records,
+        )
+
+        spec = build_semantic_vector_publish_spec(
+            _semantic_manifest(),
+            target="pgvector",
+            embedding_model="mock-embedder",
+        )
+
+        def embedder(texts, **kwargs):
+            return [[float(index), float(len(text))] for index, text in enumerate(texts)]
+
+        result = embed_semantic_vector_records(spec, embedder=embedder)
+
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["embedded_count"], 2)
+        self.assertEqual(result["embedding_model"], "mock-embedder")
+        self.assertEqual(result["spec"]["records"][0]["embedding"], [0.0, 52.0])
+        self.assertEqual(result["spec"]["records"][1]["embedding"], [1.0, 36.0])
+        self.assertFalse(result["spec"]["embedding_required"])
+        self.assertEqual(result["spec"]["embedding_dimension"], 2)
+        self.assertEqual(result["spec"]["records"][0]["metadata"]["embedding_model"], "mock-embedder")
+
+    def test_embed_semantic_vector_records_requires_embedder(self):
+        from data_agent.fusion.semantic_publisher import (
+            build_semantic_vector_publish_spec,
+            embed_semantic_vector_records,
+        )
+
+        spec = build_semantic_vector_publish_spec(_semantic_manifest(), target="pgvector")
+
+        result = embed_semantic_vector_records(spec)
+
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["embedded_count"], 0)
+        self.assertTrue(any("embedder is required" in error for error in result["errors"]))
+
     def test_run_semantic_vector_publish_requires_publisher(self):
         from data_agent.fusion.semantic_publisher import (
             build_semantic_vector_publish_spec,
@@ -124,10 +164,18 @@ class TestSemanticVectorPublisher(unittest.TestCase):
         self.assertTrue(any("publisher is required" in error for error in result["errors"]))
 
     def test_semantic_vector_publisher_helpers_are_reexported(self):
-        from data_agent.fusion import build_semantic_vector_publish_spec
-        from data_agent.fusion_engine import run_semantic_vector_publish
+        from data_agent.fusion import (
+            build_semantic_vector_publish_spec,
+            embed_semantic_vector_records,
+        )
+        from data_agent.fusion_engine import (
+            embed_semantic_vector_records as proxy_embed_semantic_vector_records,
+            run_semantic_vector_publish,
+        )
 
         self.assertTrue(callable(build_semantic_vector_publish_spec))
+        self.assertTrue(callable(embed_semantic_vector_records))
+        self.assertTrue(callable(proxy_embed_semantic_vector_records))
         self.assertTrue(callable(run_semantic_vector_publish))
 
 
