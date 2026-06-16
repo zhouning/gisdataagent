@@ -612,11 +612,13 @@ with model id, model task, source path, expected `.ai.json` output path,
 rendered command arguments, model version, and runner parameters.
 `validate_ai_semantic_runner_spec()` checks the job document before dispatch,
 including task/model compatibility against the model catalog.
-`validate_ai_semantic_runner_output()` reads the expected sidecar after an
-external runner finishes and validates it with the normal AI semantic sidecar
-contract. This keeps MMFE responsible for orchestration and evidence governance,
-while Prithvi, SAM, Pointcept, PDAL/container pipelines, or customer models
-remain independent third-party tools.
+`run_ai_semantic_runner()` executes the rendered command through an injectable
+executor, captures stdout/stderr/return code, checks the expected output file,
+and validates the produced sidecar with the normal AI semantic sidecar contract.
+`validate_ai_semantic_runner_output()` remains available for runners executed
+outside the current process. This keeps MMFE responsible for orchestration and
+evidence governance, while Prithvi, SAM, Pointcept, PDAL/container pipelines,
+or customer models remain independent third-party tools.
 
 LanceDB remains a future indexing target in this iteration. MMFE emits
 `ai_metadata.chunks` and recommends `pgvector`/`lancedb` as downstream vector

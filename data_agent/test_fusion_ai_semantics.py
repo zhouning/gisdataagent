@@ -2,8 +2,10 @@
 
 import json
 import os
+import subprocess
 import tempfile
 import unittest
+from unittest.mock import Mock
 
 
 class TestAISemanticAdapters(unittest.TestCase):
@@ -224,11 +226,97 @@ class TestAISemanticAdapters(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertTrue(any("expected_output_path does not exist" in error for error in result["errors"]))
 
+    def test_run_ai_semantic_runner_invokes_executor_and_validates_sidecar(self):
+        from data_agent.fusion.ai_semantics import (
+            build_ai_semantic_runner_spec,
+            build_ai_semantic_sidecar,
+            run_ai_semantic_runner,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source_path = os.path.join(tmp, "field_tile.tif")
+            output_path = os.path.join(tmp, "field_tile.ai.json")
+            spec = build_ai_semantic_runner_spec(
+                model_id="custom-model",
+                source_path=source_path,
+                task="custom_semantic_inference",
+                command_template=["python", "runner.py", "--output", "{output_path}"],
+                output_path=output_path,
+            )
+            sidecar = build_ai_semantic_sidecar(
+                model_id="custom-model",
+                observations=[
+                    {
+                        "target": "scene",
+                        "type": "land_cover_class",
+                        "value": "orchard",
+                        "confidence": 0.82,
+                    }
+                ],
+                source_path=source_path,
+            )
+            completed = subprocess.CompletedProcess(
+                spec["command"],
+                0,
+                stdout="AI sidecar written",
+                stderr="",
+            )
+
+            def executor(command, **kwargs):
+                with open(output_path, "w", encoding="utf-8") as f:
+                    json.dump(sidecar, f)
+                return completed
+
+            result = run_ai_semantic_runner(spec, executor=executor)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["returncode"], 0)
+            self.assertEqual(result["command"], spec["command"])
+            self.assertTrue(result["output_exists"])
+            self.assertEqual(result["observation_count"], 1)
+            self.assertEqual(result["sidecar"]["observations"][0]["value"], "orchard")
+            self.assertIn("AI sidecar written", result["stdout"])
+
+    def test_run_ai_semantic_runner_reports_process_failure(self):
+        from data_agent.fusion.ai_semantics import (
+            build_ai_semantic_runner_spec,
+            run_ai_semantic_runner,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = os.path.join(tmp, "failed.ai.json")
+            spec = build_ai_semantic_runner_spec(
+                model_id="custom-model",
+                source_path=os.path.join(tmp, "field_tile.tif"),
+                task="custom_semantic_inference",
+                command_template=["python", "runner.py", "--output", "{output_path}"],
+                output_path=output_path,
+            )
+            completed = subprocess.CompletedProcess(
+                spec["command"],
+                2,
+                stdout="",
+                stderr="model failed",
+            )
+
+            result = run_ai_semantic_runner(spec, executor=Mock(return_value=completed))
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["returncode"], 2)
+            self.assertFalse(result["output_exists"])
+            self.assertTrue(any("returncode" in error for error in result["errors"]))
+            self.assertTrue(any("expected_output_path does not exist" in error for error in result["errors"]))
+
     def test_ai_semantic_runner_helpers_are_reexported(self):
-        from data_agent.fusion import build_ai_semantic_runner_spec
-        from data_agent.fusion_engine import validate_ai_semantic_runner_output
+        from data_agent.fusion import build_ai_semantic_runner_spec, run_ai_semantic_runner
+        from data_agent.fusion_engine import (
+            run_ai_semantic_runner as proxy_run_ai_semantic_runner,
+            validate_ai_semantic_runner_output,
+        )
 
         self.assertTrue(callable(build_ai_semantic_runner_spec))
+        self.assertTrue(callable(run_ai_semantic_runner))
+        self.assertTrue(callable(proxy_run_ai_semantic_runner))
         self.assertTrue(callable(validate_ai_semantic_runner_output))
 
 

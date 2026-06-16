@@ -159,6 +159,7 @@ from .ai_semantics import (
     build_ai_semantic_runner_spec,
     build_ai_semantic_sidecar,
     get_ai_semantic_model_catalog,
+    run_ai_semantic_runner,
     validate_ai_semantic_runner_output,
     validate_ai_semantic_runner_spec,
     validate_ai_semantic_sidecar,

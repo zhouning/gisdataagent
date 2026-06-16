@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from datetime import datetime, timezone
 from typing import Any
 
@@ -229,6 +230,64 @@ def validate_ai_semantic_runner_output(spec: dict) -> dict:
     }
 
 
+def run_ai_semantic_runner(
+    spec: dict,
+    executor=None,
+) -> dict:
+    """Run an external AI semantic command and validate its `.ai.json` output."""
+    errors = validate_ai_semantic_runner_spec(spec)
+    command = spec.get("command") if isinstance(spec, dict) else []
+    output_path = spec.get("expected_output_path") if isinstance(spec, dict) else None
+    if errors:
+        return _ai_runner_result(
+            command=command,
+            output_path=output_path,
+            returncode=None,
+            stdout="",
+            stderr="",
+            validation={"valid": False, "errors": errors, "observation_count": 0, "sidecar": None},
+            process_errors=errors,
+        )
+
+    run_executor = executor or _subprocess_executor
+    try:
+        completed = run_executor(
+            command,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        return _ai_runner_result(
+            command=command,
+            output_path=output_path,
+            returncode=None,
+            stdout="",
+            stderr=str(exc),
+            validation={
+                "valid": False,
+                "errors": ["AI semantic runner executable was not found"],
+                "observation_count": 0,
+                "sidecar": None,
+            },
+            process_errors=["AI semantic runner executable was not found"],
+        )
+
+    process_errors = []
+    returncode = getattr(completed, "returncode", None)
+    if returncode != 0:
+        process_errors.append(f"AI semantic runner returncode was {returncode}")
+    validation = validate_ai_semantic_runner_output(spec)
+    return _ai_runner_result(
+        command=command,
+        output_path=output_path,
+        returncode=returncode,
+        stdout=str(getattr(completed, "stdout", "") or ""),
+        stderr=str(getattr(completed, "stderr", "") or ""),
+        validation=validation,
+        process_errors=process_errors,
+    )
+
+
 def build_ai_semantic_sidecar(
     model_id: str,
     observations: list[dict],
@@ -382,3 +441,34 @@ def _json_default(value: object) -> object:
     if hasattr(value, "item"):
         return value.item()
     return str(value)
+
+
+def _subprocess_executor(command: list[str], **kwargs):
+    return subprocess.run(command, **kwargs)
+
+
+def _ai_runner_result(
+    command: list | None,
+    output_path: str | None,
+    returncode: int | None,
+    stdout: str,
+    stderr: str,
+    validation: dict,
+    process_errors: list[str],
+) -> dict:
+    validation_errors = list(validation.get("errors") or [])
+    errors = process_errors + [
+        error for error in validation_errors if error not in process_errors
+    ]
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "command": command or [],
+        "expected_output_path": output_path,
+        "output_exists": bool(output_path and os.path.exists(output_path)),
+        "returncode": returncode,
+        "stdout": stdout,
+        "stderr": stderr,
+        "observation_count": int(validation.get("observation_count") or 0),
+        "sidecar": validation.get("sidecar"),
+    }
