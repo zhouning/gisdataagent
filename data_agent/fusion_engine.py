@@ -74,6 +74,7 @@ from data_agent.fusion import (  # noqa: F401
     build_alignment_summary,
     score_semantic_alignment,
     SEMANTIC_VECTOR_PUBLISH_SCHEMA,
+    build_lancedb_publisher,
     build_pgvector_publisher,
     build_semantic_vector_publish_spec,
     embed_semantic_vector_records,

@@ -194,6 +194,55 @@ def build_pgvector_publisher(
     return publisher
 
 
+def build_lancedb_publisher(
+    dataset_uri: str = "",
+    table: str = "mmfe_semantic_products",
+    executor=None,
+):
+    """Build a LanceDB publisher adapter backed by an injected executor."""
+    def publisher(records: list[dict], **kwargs) -> dict:
+        if executor is None:
+            raise ValueError("lancedb executor is required")
+        if kwargs.get("target") != "lancedb":
+            raise ValueError("lancedb publisher requires target=lancedb")
+
+        rows = []
+        for index, record in enumerate(records):
+            embedding = record.get("embedding")
+            if not isinstance(embedding, list) or not embedding:
+                raise ValueError(f"records[{index}].embedding is required")
+            rows.append({
+                "record_id": record.get("record_id"),
+                "product_id": kwargs.get("product_id"),
+                "collection": kwargs.get("collection"),
+                "text": record.get("text", ""),
+                "embedding": embedding,
+                "metadata": dict(record.get("metadata") or {}),
+            })
+
+        payload = {
+            "target": "lancedb",
+            "dataset_uri": dataset_uri,
+            "table": table,
+            "collection": kwargs.get("collection"),
+            "embedding_model": kwargs.get("embedding_model"),
+            "product_id": kwargs.get("product_id"),
+            "source_manifest": kwargs.get("source_manifest"),
+            "metadata": dict(kwargs.get("metadata") or {}),
+            "rows": rows,
+        }
+        result = executor(payload)
+        if isinstance(result, dict):
+            output = dict(result)
+            output.setdefault("published_count", _safe_int(output.get("inserted"), len(rows)))
+            output.setdefault("target", "lancedb")
+            output.setdefault("collection", kwargs.get("collection"))
+            return output
+        return {"published_count": len(rows), "target": "lancedb", "collection": kwargs.get("collection")}
+
+    return publisher
+
+
 def _records_from_chunks(product_id: str, chunks: list[dict]) -> list[dict]:
     records = []
     for index, chunk in enumerate(chunks):

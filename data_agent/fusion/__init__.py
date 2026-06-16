@@ -155,6 +155,7 @@ from .semantic_alignment import (
 # --- Semantic Vector Publisher Contracts ---
 from .semantic_publisher import (
     SEMANTIC_VECTOR_PUBLISH_SCHEMA,
+    build_lancedb_publisher,
     build_pgvector_publisher,
     build_semantic_vector_publish_spec,
     embed_semantic_vector_records,

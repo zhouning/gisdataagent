@@ -219,7 +219,9 @@ The manifest should use stable top-level keys:
 }
 ```
 
-The `recommended_vector_targets` field is informational. This iteration does not implement LanceDB writing. It makes the intended AI storage boundary explicit.
+The `recommended_vector_targets` field is informational. MMFE exposes optional
+publisher adapter contracts for vector targets such as pgvector and LanceDB,
+while keeping the actual storage clients outside the fusion core.
 
 ## FusionResult Changes
 
@@ -299,7 +301,9 @@ Return text should include:
 - inferred field count
 - quality score
 
-Do not expose LanceDB as a required parameter yet. A future `publish_semantic_product()` or `index_semantic_product()` tool can route manifests to pgvector, LanceDB, STAC, or GeoParquet.
+Do not expose LanceDB as a required fusion parameter. A future
+`publish_semantic_product()` or `index_semantic_product()` tool can route
+manifests to pgvector, LanceDB, STAC, or GeoParquet through optional adapters.
 
 ## Ontology YAML Fix
 
@@ -339,7 +343,9 @@ Not appropriate for this iteration:
 - Replacing GeoJSON/GeoParquet business exports.
 - Becoming a mandatory runtime dependency for ordinary data fusion.
 
-This iteration should emit `ai_metadata.chunks` and mark the product as `embedding_ready`. That gives a clean handoff point for pgvector or LanceDB later.
+MMFE emits `ai_metadata.chunks` and marks the product as `embedding_ready`.
+That gives a clean handoff point for pgvector or LanceDB publisher adapters
+without adding those stores to the core fusion runtime.
 
 ## Testing Strategy
 
@@ -386,11 +392,11 @@ If time allows, run:
 3. Ontology matching is reachable through `assess_compatibility()`.
 4. Ontology derivation and inference can enrich fused outputs deterministically.
 5. Existing MMFE tests remain compatible.
-6. Lance/LanceDB is documented as a future AI indexing target, not added as a required dependency.
+6. Lance/LanceDB is available through an optional publisher contract, not added as a required dependency.
 
 ## Non-Goals
 
-- No new LanceDB implementation in this iteration.
+- No LanceDB runtime client or database connection implementation in this iteration.
 - No STAC or GeoParquet publisher in this iteration.
 - No new frontend visualization tab in this iteration.
 - No model training or MGIM-style self-supervised representation learning.
@@ -628,9 +634,10 @@ product metadata, target store, collection name, and embedding model metadata.
 adds vectors, embedding model, and dimension metadata to the records before
 publishing. `run_semantic_vector_publish()` executes an injected publisher
 adapter for targets such as `pgvector` or `lancedb` and returns structured
-publish results. `build_pgvector_publisher()` provides the first backend
-adapter contract: it validates embedded records and builds a pure upsert payload
-for an injected pgvector executor, without opening database connections itself.
+publish results. `build_pgvector_publisher()` and `build_lancedb_publisher()`
+provide backend adapter contracts: they validate embedded records and build pure
+payloads for injected executors, without opening database connections
+themselves.
 MMFE still does not add pgvector, LanceDB, embedding generation, or database
 drivers as required runtime dependencies; those remain backend adapters behind
 the publisher contract.
