@@ -397,7 +397,7 @@ If time allows, run:
 ## Non-Goals
 
 - No LanceDB runtime client or database connection implementation in this iteration.
-- No STAC or GeoParquet publisher in this iteration.
+- No GeoParquet publisher in this iteration.
 - No new frontend visualization tab in this iteration.
 - No model training or MGIM-style self-supervised representation learning.
 - No broad refactor of unrelated semantic layer or NL2SQL modules.
@@ -686,6 +686,19 @@ S3-backed business output path, optional snapshot id, partition metadata, and
 the spatial engine. This makes LanceDB and pgvector retrieval records point back
 to authoritative Iceberg/S3 assets instead of becoming separate business-data
 authorities.
+
+Geospatial discovery publishing now has a dependency-free STAC catalog
+contract. `build_stac_publish_spec()` converts a semantic product manifest into
+`mmfe.stac_publish.v1`, including a STAC Item-shaped payload with collection,
+datetime, bbox/geometry when supplied, business output asset, CRS EPSG metadata,
+quality score, lineage, and an authoritative Iceberg/S3 lakehouse reference
+when present. `run_stac_publish()` executes an injected publisher adapter, and
+`build_stac_publisher()` builds a pure executor payload for static STAC writers,
+STAC API clients, object-store writers, or platform catalog services. MMFE does
+not import `pystac`, STAC API clients, or object-store SDKs in core. STAC is a
+discovery/catalog layer: it should help users and services find published
+products, while Iceberg/S3 remains the authoritative analytical asset and
+LanceDB/pgvector remain optional AI retrieval/indexing targets.
 
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,

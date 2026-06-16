@@ -40,6 +40,24 @@ def _semantic_manifest() -> dict:
     }
 
 
+def _semantic_manifest_with_lakehouse() -> dict:
+    manifest = _semantic_manifest()
+    manifest["lakehouse"] = {
+        "iceberg": {
+            "storage_layer": "analytical_lakehouse",
+            "object_store": "s3",
+            "catalog": "prod",
+            "namespace": "gis.fusion",
+            "table": "semantic_products",
+            "table_identifier": "prod.gis.fusion.semantic_products",
+            "warehouse_uri": "s3://geo-lake/warehouse",
+            "snapshot_id": "snap-001",
+            "spatial_engine": "sedona",
+        }
+    }
+    return manifest
+
+
 class TestLakehousePublisher(unittest.TestCase):
     def test_build_iceberg_publish_spec_from_semantic_manifest(self):
         from data_agent.fusion.lakehouse_publisher import (
@@ -364,6 +382,156 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertTrue(callable(proxy_build_iceberg_publish_spec))
         self.assertTrue(callable(proxy_build_iceberg_publisher))
         self.assertTrue(callable(proxy_run_iceberg_publish))
+
+    def test_build_stac_publish_spec_from_semantic_manifest(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            STAC_PUBLISH_SCHEMA,
+            build_stac_publish_spec,
+        )
+
+        spec = build_stac_publish_spec(
+            _semantic_manifest_with_lakehouse(),
+            collection="mmfe-fusion-products",
+            catalog_uri="s3://geo-lake/catalog/stac",
+            item_datetime="2026-06-16T00:00:00Z",
+            bbox=[100.0, 20.0, 101.0, 21.0],
+            geometry={
+                "type": "Polygon",
+                "coordinates": [
+                    [[100.0, 20.0], [101.0, 20.0], [101.0, 21.0], [100.0, 21.0], [100.0, 20.0]]
+                ],
+            },
+            metadata={"run_id": "stac-test"},
+        )
+
+        self.assertEqual(spec["schema"], STAC_PUBLISH_SCHEMA)
+        self.assertEqual(spec["target"], "stac")
+        self.assertEqual(spec["storage_layer"], "discovery_catalog")
+        self.assertEqual(spec["collection"], "mmfe-fusion-products")
+        self.assertEqual(spec["catalog_uri"], "s3://geo-lake/catalog/stac")
+        self.assertEqual(spec["product_id"], "sfp-lakehouse-test")
+        self.assertEqual(spec["metadata"]["run_id"], "stac-test")
+
+        item = spec["item"]
+        self.assertEqual(item["type"], "Feature")
+        self.assertEqual(item["stac_version"], "1.0.0")
+        self.assertEqual(item["id"], "sfp-lakehouse-test")
+        self.assertEqual(item["collection"], "mmfe-fusion-products")
+        self.assertEqual(item["bbox"], [100.0, 20.0, 101.0, 21.0])
+        self.assertEqual(item["geometry"]["type"], "Polygon")
+        self.assertEqual(item["properties"]["datetime"], "2026-06-16T00:00:00Z")
+        self.assertEqual(item["properties"]["mmfe:product_type"], "semantic_fusion_product")
+        self.assertEqual(item["properties"]["mmfe:product_version"], "1.1")
+        self.assertEqual(item["properties"]["proj:epsg"], 4326)
+        self.assertEqual(item["properties"]["mmfe:quality_score"], 0.97)
+        self.assertEqual(item["assets"]["data"]["href"], "s3://geo-lake/curated/fusion/run-001/fused.parquet")
+        self.assertEqual(item["assets"]["data"]["type"], "application/vnd.apache.parquet")
+        self.assertEqual(item["assets"]["data"]["roles"], ["data"])
+        self.assertEqual(item["properties"]["mmfe:authoritative_lakehouse"]["target"], "iceberg")
+        self.assertEqual(
+            item["properties"]["mmfe:authoritative_lakehouse"]["table_identifier"],
+            "prod.gis.fusion.semantic_products",
+        )
+
+    def test_run_stac_publish_uses_injected_executor(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_stac_publish_spec,
+            build_stac_publisher,
+            run_stac_publish,
+        )
+
+        spec = build_stac_publish_spec(
+            _semantic_manifest_with_lakehouse(),
+            collection="mmfe-fusion-products",
+            catalog_uri="s3://geo-lake/catalog/stac",
+            item_datetime="2026-06-16T00:00:00Z",
+            bbox=[100.0, 20.0, 101.0, 21.0],
+        )
+        calls = []
+
+        def executor(payload):
+            calls.append(payload)
+            return {
+                "published": True,
+                "item_href": "s3://geo-lake/catalog/stac/mmfe-fusion-products/sfp-lakehouse-test.json",
+            }
+
+        result = run_stac_publish(spec, publisher=build_stac_publisher(executor=executor))
+
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["target"], "stac")
+        self.assertEqual(result["collection"], "mmfe-fusion-products")
+        self.assertEqual(result["item_id"], "sfp-lakehouse-test")
+        self.assertEqual(result["published_count"], 1)
+        self.assertEqual(calls[0]["target"], "stac")
+        self.assertEqual(calls[0]["catalog_uri"], "s3://geo-lake/catalog/stac")
+        self.assertEqual(calls[0]["collection"], "mmfe-fusion-products")
+        self.assertEqual(calls[0]["item"]["id"], "sfp-lakehouse-test")
+        self.assertEqual(calls[0]["assets"]["data"]["href"], "s3://geo-lake/curated/fusion/run-001/fused.parquet")
+        self.assertEqual(calls[0]["properties"]["mmfe:authoritative_lakehouse"]["snapshot_id"], "snap-001")
+        self.assertEqual(
+            result["manifest_patch"]["catalog"]["stac"]["item_href"],
+            "s3://geo-lake/catalog/stac/mmfe-fusion-products/sfp-lakehouse-test.json",
+        )
+
+    def test_stac_publish_requires_executor_and_valid_spec(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_stac_publish_spec,
+            build_stac_publisher,
+            run_stac_publish,
+            validate_stac_publish_spec,
+        )
+
+        errors = validate_stac_publish_spec(
+            {
+                "schema": "mmfe.stac_publish.v1",
+                "target": "stac",
+                "collection": "",
+                "product_id": "",
+                "item": {"type": "Feature", "assets": {}},
+            }
+        )
+
+        self.assertTrue(any("collection" in error for error in errors))
+        self.assertTrue(any("product_id" in error for error in errors))
+        self.assertTrue(any("item.id" in error for error in errors))
+        self.assertTrue(any("assets" in error for error in errors))
+
+        spec = build_stac_publish_spec(
+            _semantic_manifest(),
+            collection="mmfe-fusion-products",
+            catalog_uri="s3://geo-lake/catalog/stac",
+        )
+        result = run_stac_publish(spec, publisher=build_stac_publisher())
+
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("executor is required" in error for error in result["errors"]))
+
+    def test_stac_publisher_helpers_are_reexported(self):
+        from data_agent.fusion import (
+            STAC_PUBLISH_SCHEMA,
+            build_stac_publish_spec,
+            build_stac_publisher,
+            run_stac_publish,
+            validate_stac_publish_spec,
+        )
+        from data_agent.fusion_engine import (
+            STAC_PUBLISH_SCHEMA as proxy_stac_publish_schema,
+            build_stac_publish_spec as proxy_build_stac_publish_spec,
+            build_stac_publisher as proxy_build_stac_publisher,
+            run_stac_publish as proxy_run_stac_publish,
+            validate_stac_publish_spec as proxy_validate_stac_publish_spec,
+        )
+
+        self.assertEqual(STAC_PUBLISH_SCHEMA, proxy_stac_publish_schema)
+        self.assertTrue(callable(build_stac_publish_spec))
+        self.assertTrue(callable(build_stac_publisher))
+        self.assertTrue(callable(run_stac_publish))
+        self.assertTrue(callable(validate_stac_publish_spec))
+        self.assertTrue(callable(proxy_build_stac_publish_spec))
+        self.assertTrue(callable(proxy_build_stac_publisher))
+        self.assertTrue(callable(proxy_run_stac_publish))
+        self.assertTrue(callable(proxy_validate_stac_publish_spec))
 
 
 if __name__ == "__main__":
