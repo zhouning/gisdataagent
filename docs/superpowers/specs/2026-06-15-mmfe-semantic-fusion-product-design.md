@@ -713,6 +713,15 @@ backend-neutral foundation for a future `publish_semantic_product()` tool or API
 route; it still does not import Spark, Iceberg, STAC, pgvector, LanceDB,
 embedding, or object-store clients in MMFE core.
 
+The same layer now exposes a publish-plan dry run contract.
+`build_semantic_product_publish_plan()` builds the Iceberg, STAC, pgvector, or
+LanceDB target specs without executing any publisher, embedder, database, Spark
+job, or object-store write. The plan records target order, dependency edges
+such as STAC/vector publishing depending on Iceberg lineage, target validation
+errors, and whether required publishers or embedders have been configured. This
+gives operators and future tool/API routes a cheap preflight check before
+launching production publishing jobs.
+
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,
 `media_type`, and `adapter_family` fields. Current profiling adapters populate

@@ -171,6 +171,7 @@ from .lakehouse_publisher import (
     apply_iceberg_manifest_patch,
     build_iceberg_publish_spec,
     build_iceberg_publisher,
+    build_semantic_product_publish_plan,
     build_sedona_iceberg_runner_spec,
     build_stac_publish_spec,
     build_stac_publisher,

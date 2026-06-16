@@ -385,6 +385,93 @@ def publish_semantic_product(
     }
 
 
+def build_semantic_product_publish_plan(
+    manifest: dict,
+    targets: list[str] | None = None,
+    iceberg: dict | None = None,
+    stac: dict | None = None,
+    vector: dict | None = None,
+) -> dict:
+    """Build a dry-run publish plan without executing backend adapters."""
+    requested_targets = list(targets or [])
+    steps = []
+    errors = []
+    iceberg_config = iceberg or {}
+    stac_config = stac or {}
+    vector_config = vector or {}
+    manifest_for_downstream = deepcopy(manifest)
+
+    for target in requested_targets:
+        if target == "iceberg":
+            spec = build_iceberg_publish_spec(
+                manifest_for_downstream,
+                catalog=iceberg_config.get("catalog", ""),
+                namespace=iceberg_config.get("namespace", ""),
+                table=iceberg_config.get("table", ""),
+                warehouse_uri=iceberg_config.get("warehouse_uri", ""),
+                object_store=iceberg_config.get("object_store", "s3"),
+                spatial_engine=iceberg_config.get("spatial_engine", "sedona"),
+                partition_by=iceberg_config.get("partition_by"),
+                metadata=iceberg_config.get("metadata"),
+            )
+            step_errors = validate_iceberg_publish_spec(spec)
+            if iceberg_config.get("publisher") is None:
+                step_errors.append("publisher is required")
+            steps.append(_publish_plan_step(target, spec, [], step_errors, publisher=iceberg_config.get("publisher")))
+            if step_errors:
+                errors.append({"target": target, "errors": step_errors})
+            else:
+                manifest_for_downstream = apply_iceberg_manifest_patch(
+                    manifest_for_downstream,
+                    _iceberg_manifest_patch(spec, {}),
+                )
+        elif target == "stac":
+            spec = build_stac_publish_spec(
+                manifest_for_downstream,
+                collection=stac_config.get("collection", ""),
+                catalog_uri=stac_config.get("catalog_uri", ""),
+                item_datetime=stac_config.get("item_datetime"),
+                bbox=stac_config.get("bbox"),
+                geometry=stac_config.get("geometry"),
+                media_type=stac_config.get("media_type"),
+                metadata=stac_config.get("metadata"),
+            )
+            step_errors = validate_stac_publish_spec(spec)
+            if stac_config.get("publisher") is None:
+                step_errors.append("publisher is required")
+            steps.append(_publish_plan_step(target, spec, _publish_dependencies(target), step_errors, publisher=stac_config.get("publisher")))
+            if step_errors:
+                errors.append({"target": target, "errors": step_errors})
+        elif target in ("pgvector", "lancedb"):
+            spec = _build_vector_publish_spec_for_plan(manifest_for_downstream, target, vector_config)
+            step_errors = _validate_vector_publish_spec_for_plan(spec)
+            if vector_config.get("embedder") is None:
+                step_errors.append("embedder is required")
+            if vector_config.get("publisher") is None:
+                step_errors.append("publisher is required")
+            steps.append(
+                _publish_plan_step(
+                    target,
+                    spec,
+                    _publish_dependencies(target),
+                    step_errors,
+                    publisher=vector_config.get("publisher"),
+                    embedder=vector_config.get("embedder"),
+                )
+            )
+            if step_errors:
+                errors.append({"target": target, "errors": step_errors})
+        else:
+            errors.append({"target": target, "errors": [f"unsupported publish target: {target}"]})
+
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "targets": requested_targets,
+        "steps": steps,
+    }
+
+
 def build_stac_publisher(executor=None):
     """Build a STAC publisher adapter backed by an injected executor."""
     def publisher(spec: dict) -> dict:
@@ -547,6 +634,54 @@ def _publish_orchestrated_vector(manifest: dict, target: str, config: dict) -> d
     if isinstance(result, dict):
         result.setdefault("embedding_result", embedded)
     return result
+
+
+def _build_vector_publish_spec_for_plan(manifest: dict, target: str, config: dict) -> dict:
+    from .semantic_publisher import build_semantic_vector_publish_spec
+
+    return build_semantic_vector_publish_spec(
+        manifest,
+        target=config.get("target", target),
+        collection=config.get("collection", "mmfe_semantic_products"),
+        embedding_model=config.get("embedding_model"),
+        metadata=config.get("metadata"),
+    )
+
+
+def _validate_vector_publish_spec_for_plan(spec: dict) -> list[str]:
+    from .semantic_publisher import validate_semantic_vector_publish_spec
+
+    return validate_semantic_vector_publish_spec(spec)
+
+
+def _publish_plan_step(
+    target: str,
+    spec: dict,
+    depends_on: list[str],
+    errors: list[str],
+    publisher=None,
+    embedder=None,
+) -> dict:
+    execution = {
+        "publisher_configured": publisher is not None,
+    }
+    if target in ("pgvector", "lancedb"):
+        execution["embedder_configured"] = embedder is not None
+    return {
+        "target": target,
+        "schema": spec.get("schema"),
+        "depends_on": list(depends_on),
+        "valid": not errors,
+        "errors": list(errors),
+        "execution": execution,
+        "spec": spec,
+    }
+
+
+def _publish_dependencies(target: str) -> list[str]:
+    if target in ("stac", "pgvector", "lancedb"):
+        return ["iceberg"]
+    return []
 
 
 def _apply_catalog_manifest_patch(manifest: dict, patch: dict) -> dict:

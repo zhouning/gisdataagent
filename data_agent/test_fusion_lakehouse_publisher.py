@@ -643,6 +643,83 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertTrue(callable(publish_semantic_product))
         self.assertTrue(callable(proxy_publish_semantic_product))
 
+    def test_build_semantic_product_publish_plan_describes_specs_and_dependencies(self):
+        from data_agent.fusion.lakehouse_publisher import build_semantic_product_publish_plan
+
+        plan = build_semantic_product_publish_plan(
+            _semantic_manifest(),
+            targets=["iceberg", "stac", "lancedb"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/warehouse",
+                "publisher": object(),
+            },
+            stac={
+                "collection": "mmfe-fusion-products",
+                "catalog_uri": "s3://geo-lake/catalog/stac",
+                "item_datetime": "2026-06-16T00:00:00Z",
+                "bbox": [100.0, 20.0, 101.0, 21.0],
+                "publisher": object(),
+            },
+            vector={
+                "target": "lancedb",
+                "collection": "mmfe_products",
+                "embedding_model": "mock-embedder",
+                "embedder": object(),
+                "publisher": object(),
+            },
+        )
+
+        self.assertTrue(plan["valid"])
+        self.assertEqual(plan["targets"], ["iceberg", "stac", "lancedb"])
+        self.assertFalse(plan["errors"])
+        self.assertEqual([step["target"] for step in plan["steps"]], ["iceberg", "stac", "lancedb"])
+        self.assertEqual(plan["steps"][0]["depends_on"], [])
+        self.assertEqual(plan["steps"][1]["depends_on"], ["iceberg"])
+        self.assertEqual(plan["steps"][2]["depends_on"], ["iceberg"])
+        self.assertEqual(plan["steps"][0]["schema"], "mmfe.iceberg_publish.v1")
+        self.assertEqual(plan["steps"][1]["schema"], "mmfe.stac_publish.v1")
+        self.assertEqual(plan["steps"][2]["schema"], "mmfe.semantic_vector_publish.v1")
+        self.assertEqual(plan["steps"][0]["spec"]["table_identifier"], "prod.gis.fusion.semantic_products")
+        self.assertEqual(plan["steps"][1]["spec"]["item"]["collection"], "mmfe-fusion-products")
+        self.assertEqual(plan["steps"][2]["spec"]["target"], "lancedb")
+        self.assertTrue(plan["steps"][0]["execution"]["publisher_configured"])
+        self.assertTrue(plan["steps"][1]["execution"]["publisher_configured"])
+        self.assertTrue(plan["steps"][2]["execution"]["publisher_configured"])
+        self.assertTrue(plan["steps"][2]["execution"]["embedder_configured"])
+
+    def test_build_semantic_product_publish_plan_reports_missing_configuration(self):
+        from data_agent.fusion.lakehouse_publisher import build_semantic_product_publish_plan
+
+        plan = build_semantic_product_publish_plan(
+            _semantic_manifest(),
+            targets=["iceberg", "stac", "pgvector", "unsupported"],
+            iceberg={"catalog": "prod"},
+            stac={},
+            vector={"target": "pgvector"},
+        )
+
+        self.assertFalse(plan["valid"])
+        self.assertEqual(plan["targets"], ["iceberg", "stac", "pgvector", "unsupported"])
+        self.assertEqual([step["target"] for step in plan["steps"]], ["iceberg", "stac", "pgvector"])
+        self.assertTrue(any(error["target"] == "iceberg" for error in plan["errors"]))
+        self.assertTrue(any(error["target"] == "stac" for error in plan["errors"]))
+        self.assertTrue(any(error["target"] == "pgvector" for error in plan["errors"]))
+        self.assertTrue(any(error["target"] == "unsupported" for error in plan["errors"]))
+        self.assertTrue(any("publisher is required" in message for error in plan["errors"] for message in error["errors"]))
+        self.assertTrue(any("embedder is required" in message for error in plan["errors"] for message in error["errors"]))
+
+    def test_semantic_product_publish_plan_helpers_are_reexported(self):
+        from data_agent.fusion import build_semantic_product_publish_plan
+        from data_agent.fusion_engine import (
+            build_semantic_product_publish_plan as proxy_build_semantic_product_publish_plan,
+        )
+
+        self.assertTrue(callable(build_semantic_product_publish_plan))
+        self.assertTrue(callable(proxy_build_semantic_product_publish_plan))
+
 
 if __name__ == "__main__":
     unittest.main()
