@@ -264,6 +264,30 @@ class TestFusionSource(unittest.TestCase):
         self.assertIsNone(src.crs)
         self.assertEqual(len(src.columns), 3)
 
+    def test_profile_text_document_as_generic_multimodal_source(self):
+        from data_agent.fusion_engine import profile_source
+
+        path = os.path.join(self.tmp, "project_brief.md")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("# Project Brief\n\nThis major project includes land acquisition.")
+
+        src = profile_source(path)
+
+        self.assertEqual(src.data_type, "document")
+        self.assertEqual(src.modality, "text")
+        self.assertEqual(src.media_type, "text/markdown")
+        self.assertEqual(src.adapter_family, "generic")
+        self.assertEqual(src.row_count, 1)
+        self.assertEqual(src.columns[0]["name"], "content")
+        self.assertEqual(src.stats["file"]["size_bytes"], os.path.getsize(path))
+        self.assertTrue(
+            any(
+                hint.get("type") == "generic_modality"
+                and hint.get("value") == "text"
+                for hint in src.semantic_hints
+            )
+        )
+
     def test_profile_raster(self):
         from data_agent.fusion_engine import profile_source
         raster = _make_raster_fixture(self.tmp)
@@ -806,7 +830,13 @@ class TestFusionSource(unittest.TestCase):
         self.assertEqual(_detect_data_type("test.tif"), "raster")
         self.assertEqual(_detect_data_type("test.csv"), "tabular")
         self.assertEqual(_detect_data_type("test.las"), "point_cloud")
-        self.assertEqual(_detect_data_type("test.unknown"), "tabular")
+        self.assertEqual(_detect_data_type("brief.md"), "document")
+        self.assertEqual(_detect_data_type("photo.jpg"), "image")
+        self.assertEqual(_detect_data_type("interview.mp3"), "audio")
+        self.assertEqual(_detect_data_type("inspection.mp4"), "video")
+        self.assertEqual(_detect_data_type("network.graphml"), "graph")
+        self.assertEqual(_detect_data_type("inference.ai.json"), "model_output")
+        self.assertEqual(_detect_data_type("test.unknown"), "artifact")
 
     def test_profile_point_cloud_semantic_hints_from_las_dimensions(self):
         from data_agent.fusion_engine import _profile_point_cloud

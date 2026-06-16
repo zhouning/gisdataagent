@@ -143,11 +143,20 @@ LAS_CLASSIFICATION_LABELS = {
 
 def _detect_data_type(file_path: str) -> str:
     """Detect data type from file extension."""
+    name = os.path.basename(file_path).lower()
     ext = os.path.splitext(file_path)[1].lower()
     vector_exts = {".shp", ".geojson", ".gpkg", ".kml", ".kmz", ".json", ".gdb"}
     raster_exts = {".tif", ".tiff", ".img", ".nc", ".hdf", ".jp2"}
     tabular_exts = {".csv", ".xlsx", ".xls", ".tsv"}
     point_cloud_exts = {".las", ".laz"}
+    document_exts = {".txt", ".md", ".markdown", ".rst", ".docx", ".pdf"}
+    image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+    audio_exts = {".mp3", ".wav", ".flac", ".m4a", ".ogg"}
+    video_exts = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+    graph_exts = {".graphml", ".gexf", ".ttl", ".rdf", ".nt"}
+
+    if name.endswith((".ai.json", ".model.json", ".inference.json")):
+        return "model_output"
 
     if ext in vector_exts:
         return "vector"
@@ -157,8 +166,18 @@ def _detect_data_type(file_path: str) -> str:
         return "tabular"
     elif ext in point_cloud_exts:
         return "point_cloud"
+    elif ext in document_exts:
+        return "document"
+    elif ext in image_exts:
+        return "image"
+    elif ext in audio_exts:
+        return "audio"
+    elif ext in video_exts:
+        return "video"
+    elif ext in graph_exts:
+        return "graph"
     else:
-        return "tabular"  # default fallback
+        return "artifact"
 
 
 def profile_source(file_path: str) -> FusionSource:
@@ -182,7 +201,7 @@ def profile_source(file_path: str) -> FusionSource:
     elif data_type == "point_cloud":
         return _profile_point_cloud(resolved)
     else:
-        return FusionSource(file_path=resolved, data_type="tabular")
+        return _profile_generic_source(resolved, data_type)
 
 
 def _profile_vector(path: str) -> FusionSource:
@@ -1362,6 +1381,110 @@ def _tabular_media_type(path: str) -> str:
     if ext in {".xlsx", ".xls"}:
         return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     if ext == ".json":
+        return "application/json"
+    return "application/octet-stream"
+
+
+def _profile_generic_source(path: str, data_type: str) -> FusionSource:
+    """Profile a generic non-spatial source without heavy parsing."""
+    file_stats = _generic_file_stats(path)
+    modality = _generic_modality(data_type)
+    media_type = _generic_media_type(path, data_type)
+    semantic_hints = [{
+        "type": "generic_modality",
+        "value": modality,
+        "domain": "generic",
+        "confidence": 0.8,
+        "evidence": [f"file extension classified as {data_type}"],
+    }]
+    columns = _generic_columns(data_type)
+    return FusionSource(
+        file_path=path,
+        data_type=data_type,
+        row_count=1 if os.path.exists(path) else 0,
+        columns=columns,
+        stats={"file": file_stats},
+        semantic_domain=_generic_semantic_domain(data_type),
+        semantic_hints=semantic_hints,
+        modality=modality,
+        media_type=media_type,
+        adapter_family="generic",
+    )
+
+
+def _generic_file_stats(path: str) -> dict:
+    stats = {
+        "name": os.path.basename(path),
+        "extension": os.path.splitext(path)[1].lower(),
+        "exists": os.path.exists(path),
+    }
+    if os.path.exists(path):
+        stats["size_bytes"] = int(os.path.getsize(path))
+    return stats
+
+
+def _generic_modality(data_type: str) -> str:
+    return {
+        "document": "text",
+        "image": "image",
+        "audio": "audio",
+        "video": "video",
+        "graph": "graph",
+        "model_output": "model_output",
+        "artifact": "artifact",
+    }.get(data_type, data_type)
+
+
+def _generic_semantic_domain(data_type: str) -> str:
+    return {
+        "model_output": "ai_inference",
+        "graph": "knowledge_graph",
+    }.get(data_type, "generic")
+
+
+def _generic_columns(data_type: str) -> list[dict]:
+    if data_type == "document":
+        return [{"name": "content", "dtype": "text", "null_pct": 0}]
+    if data_type in {"image", "audio", "video"}:
+        return [{"name": "binary", "dtype": "bytes", "null_pct": 0}]
+    if data_type == "graph":
+        return [{"name": "graph", "dtype": "graph", "null_pct": 0}]
+    if data_type == "model_output":
+        return [{"name": "observations", "dtype": "json", "null_pct": 0}]
+    return [{"name": "artifact", "dtype": "binary", "null_pct": 0}]
+
+
+def _generic_media_type(path: str, data_type: str) -> str:
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".md" or ext == ".markdown":
+        return "text/markdown"
+    if ext == ".txt":
+        return "text/plain"
+    if ext == ".pdf":
+        return "application/pdf"
+    if ext == ".docx":
+        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    if ext in {".jpg", ".jpeg"}:
+        return "image/jpeg"
+    if ext == ".png":
+        return "image/png"
+    if ext == ".gif":
+        return "image/gif"
+    if ext == ".webp":
+        return "image/webp"
+    if ext == ".mp3":
+        return "audio/mpeg"
+    if ext == ".wav":
+        return "audio/wav"
+    if ext == ".mp4":
+        return "video/mp4"
+    if ext == ".mov":
+        return "video/quicktime"
+    if ext == ".graphml":
+        return "application/graphml+xml"
+    if ext in {".ttl", ".rdf", ".nt"}:
+        return "application/rdf+xml" if ext == ".rdf" else "text/turtle"
+    if data_type == "model_output":
         return "application/json"
     return "application/octet-stream"
 

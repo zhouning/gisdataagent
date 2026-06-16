@@ -628,3 +628,13 @@ text, image, audio, video, graph, event, or model-output modalities. This keeps
 the existing geospatial strategies stable while moving the public semantic
 contract toward the broader "universal multimodal semantic fusion engine with
 geospatial-specialized adapters" principle.
+
+MMFE now also has a lightweight generic multimodal profiling path. Extension
+detection recognizes documents, images, audio, video, graph files, AI/model
+output sidecars, and unknown binary artifacts instead of forcing every unknown
+source through the tabular adapter. The generic profiler records file-level
+metadata, modality, media type, adapter family, a minimal logical column, and a
+`generic_modality` semantic hint. This is intentionally shallow: it does not yet
+extract PDF text, image embeddings, audio transcripts, video keyframes, graph
+topology, or model-output observations. Those are future modality-specific
+adapters built on top of the same `FusionSource` and semantic product contract.
