@@ -1,0 +1,1093 @@
+{
+  "dataset_id": "twm_one_map_village_standard_sample",
+  "dataset_alias_zh": "自然资源一张图村规划标准结构样例包",
+  "version": "2026-06-16",
+  "created_at": "2026-06-16T09:36:30.056637+00:00",
+  "not_for_production": true,
+  "description_zh": "自然资源一张图村规划汇交样例转换形成的 TWM 标准结构兼容性测试包。",
+  "data_positioning_zh": "该包用于验证标准字段、角色绑定、关系表、规则证据链和未来真实数据替换能力；其中源样例层为 source_sample=true，缺失权威角色由 synthetic=true 的契约测试替身补齐。",
+  "inputs": {
+    "source_root": ".tmp/twm_standard_1128/自然资源一张图数据库标准1128/规划院提供数据样例及Demo系统功能演示建议/01数据样例/07规划编制相关数据/村规划",
+    "villages": [
+      "和平村",
+      "斑竹村"
+    ],
+    "project_crs": "EPSG:4523"
+  },
+  "layers": {
+    "parcel_current": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/parcel_current.geojson",
+      "rows": 2217,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "TBBH",
+        "XZQDM",
+        "XZQMC",
+        "XZDLDM",
+        "XZDLMC",
+        "DLDM",
+        "DLMC",
+        "QSDWDM",
+        "QSDWMC",
+        "ZLDWDM",
+        "ZLDWMC",
+        "PDJB",
+        "QSXZ",
+        "TKXS",
+        "TBMJ",
+        "XZDWMJ",
+        "LXDWMJ",
+        "TKMJ",
+        "TBDLMJ",
+        "DLBZ",
+        "PZWH",
+        "SM",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "JQDLMC",
+        "bsm_norm",
+        "DLBM",
+        "SJNF",
+        "MSSM",
+        "category",
+        "admin9",
+        "tbmj_area_rel_error",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "source_dataset",
+        "qa_use_for_rules"
+      ],
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "bounds": [
+        106.111844,
+        29.581748,
+        106.162628,
+        29.643949
+      ],
+      "alias_zh": "村规划现状地类图斑样例",
+      "synthetic_counts": {
+        "False": 2217
+      }
+    },
+    "synthetic_pbf": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_pbf.geojson",
+      "rows": 274,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "TBBH",
+        "XZQDM",
+        "XZQMC",
+        "XZDLDM",
+        "XZDLMC",
+        "DLDM",
+        "DLMC",
+        "QSDWDM",
+        "QSDWMC",
+        "ZLDWDM",
+        "ZLDWMC",
+        "PDJB",
+        "QSXZ",
+        "TKXS",
+        "TBMJ",
+        "XZDWMJ",
+        "LXDWMJ",
+        "TKMJ",
+        "TBDLMJ",
+        "DLBZ",
+        "PZWH",
+        "SM",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "JQDLMC",
+        "bsm_norm",
+        "DLBM",
+        "SJNF",
+        "MSSM",
+        "category",
+        "admin9",
+        "tbmj_area_rel_error",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "source_dataset",
+        "qa_use_for_rules",
+        "YJJBNTTBBH",
+        "YJJBNTTBMJ",
+        "YJJBNTMJ",
+        "BHKSSJ",
+        "BHJSSJ",
+        "WDGD",
+        "control_id",
+        "control_name",
+        "control_type",
+        "control_grade",
+        "control_area_m2",
+        "synthetic_method"
+      ],
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "bounds": [
+        106.117148,
+        29.581748,
+        106.160661,
+        29.638267
+      ],
+      "alias_zh": "契约测试永久基本农田替身",
+      "synthetic_counts": {
+        "True": 274
+      }
+    },
+    "synthetic_eco_redline": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_eco_redline.geojson",
+      "rows": 1,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "JSMJ",
+        "GZMC",
+        "SM",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "XJXZQDM",
+        "XJXZQMC",
+        "LHLX",
+        "MJ",
+        "XJXZQHDM",
+        "LXDM",
+        "MC",
+        "QYMJ",
+        "SLSJ",
+        "GKCS",
+        "redline_id",
+        "redline_name",
+        "protection_level",
+        "ecological_function",
+        "redline_area_m2",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "source_dataset",
+        "qa_use_for_rules"
+      ],
+      "geometry_types": [
+        "MultiPolygon"
+      ],
+      "bounds": [
+        106.116477,
+        29.601796,
+        106.135603,
+        29.643949
+      ],
+      "alias_zh": "村规划生态保护红线样例",
+      "synthetic_counts": {
+        "False": 1
+      }
+    },
+    "admin_units": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/admin_units.geojson",
+      "rows": 2,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "KZMJ",
+        "JSMJ",
+        "MS",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "OBJECTID",
+        "村名",
+        "Shape_Leng",
+        "Shape_Area",
+        "admin_code",
+        "admin_name",
+        "admin_level",
+        "admin_parent_code",
+        "admin_level_rank",
+        "admin_source_level",
+        "matched_admin9_values",
+        "matched_parcel_count",
+        "overlap_area_m2",
+        "overlap_ratio_to_parcels",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "qa_use_for_rules"
+      ],
+      "geometry_types": [
+        "Polygon"
+      ],
+      "bounds": [
+        106.111943,
+        29.581889,
+        106.162452,
+        29.643949
+      ],
+      "alias_zh": "村规划范围样例",
+      "synthetic_counts": {
+        "False": 2
+      }
+    },
+    "synthetic_annual_change": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_annual_change.geojson",
+      "rows": 260,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "TBBH",
+        "JQDLDM",
+        "JQDLMC",
+        "GHDLDM",
+        "GHDLMC",
+        "CGHDLDM",
+        "CGHDLMC",
+        "QSDWDM",
+        "QSDWMC",
+        "ZLDWDM",
+        "ZLDWMC",
+        "QSXZ",
+        "TBMJ",
+        "XZDWMJ",
+        "LXDWMJ",
+        "TKMJ",
+        "GHDLMJ",
+        "TKXS",
+        "XMMC",
+        "XMXZ",
+        "XMLX",
+        "SM",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "source_GHDLDM",
+        "source_GHDLMC",
+        "GHFQDM",
+        "GHFQMC",
+        "MJ",
+        "plan_zone_id",
+        "plan_zone_type",
+        "plan_zone_name",
+        "plan_rule",
+        "zone_area_m2",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "source_dataset",
+        "qa_use_for_rules",
+        "change_id",
+        "from_dlbm",
+        "from_dlmc",
+        "to_dlbm",
+        "to_dlmc",
+        "OPT_DLBM",
+        "OPT_DLMC",
+        "ORIG_DLBM",
+        "CHG_FLAG",
+        "change_type",
+        "change_year",
+        "event_date",
+        "temporal_stage",
+        "evidence_confidence",
+        "source_feature_id"
+      ],
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "bounds": [
+        106.118316,
+        29.582419,
+        106.15836,
+        29.642082
+      ],
+      "alias_zh": "村规划现状-规划差异图斑",
+      "synthetic_counts": {
+        "False": 260
+      }
+    },
+    "synthetic_projects": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_projects.geojson",
+      "rows": 36,
+      "columns": [
+        "YSDM",
+        "XMDM",
+        "DZJGH",
+        "AJBH",
+        "XMMC",
+        "SZXZQDM",
+        "SZXZQMC",
+        "YDMJ",
+        "SQDW",
+        "XMPZLX",
+        "HYFLBM",
+        "HYFLMC",
+        "TDYTDM",
+        "TDYTMC",
+        "ZYNYDMJ",
+        "ZYGDMJ",
+        "SJSTHXMJ",
+        "ZYJSYDMJ",
+        "ZYWLDMJ",
+        "SQRQ",
+        "GXRQ",
+        "project_id",
+        "project_name",
+        "project_type",
+        "approval_status",
+        "risk_scenario",
+        "review_priority",
+        "planned_start",
+        "planned_end",
+        "planned_area_m2",
+        "source_feature_id",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "synthetic_method",
+        "source_dataset",
+        "qa_use_for_rules",
+        "BSM",
+        "admin9"
+      ],
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "bounds": [
+        106.118316,
+        29.58677,
+        106.146835,
+        29.642082
+      ],
+      "alias_zh": "契约测试建设项目范围替身",
+      "synthetic_counts": {
+        "True": 36
+      }
+    },
+    "synthetic_planning_zones": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_planning_zones.geojson",
+      "rows": 2457,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "TBBH",
+        "JQDLDM",
+        "JQDLMC",
+        "GHDLDM",
+        "GHDLMC",
+        "CGHDLDM",
+        "CGHDLMC",
+        "QSDWDM",
+        "QSDWMC",
+        "ZLDWDM",
+        "ZLDWMC",
+        "QSXZ",
+        "TBMJ",
+        "XZDWMJ",
+        "LXDWMJ",
+        "TKMJ",
+        "GHDLMJ",
+        "TKXS",
+        "XMMC",
+        "XMXZ",
+        "XMLX",
+        "SM",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "source_GHDLDM",
+        "source_GHDLMC",
+        "GHFQDM",
+        "GHFQMC",
+        "MJ",
+        "plan_zone_id",
+        "plan_zone_type",
+        "plan_zone_name",
+        "plan_rule",
+        "zone_area_m2",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "source_dataset",
+        "qa_use_for_rules"
+      ],
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "bounds": [
+        106.111844,
+        29.581748,
+        106.162628,
+        29.643951
+      ],
+      "alias_zh": "村规划土地规划地类样例",
+      "synthetic_counts": {
+        "False": 2457
+      }
+    },
+    "synthetic_urban_boundary": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_urban_boundary.geojson",
+      "rows": 194,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "GZQLXDM",
+        "GZQMJ",
+        "SM",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "GHFQDM",
+        "GHFQMC",
+        "MJ",
+        "CZMC",
+        "XJXZQHDM",
+        "CZKFMJ",
+        "SLSJ",
+        "boundary_id",
+        "boundary_type",
+        "boundary_name",
+        "boundary_area_m2",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "source_dataset",
+        "qa_use_for_rules"
+      ],
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "bounds": [
+        106.111844,
+        29.581748,
+        106.162628,
+        29.643951
+      ],
+      "alias_zh": "村规划建设用地管制区样例",
+      "synthetic_counts": {
+        "False": 194
+      }
+    },
+    "synthetic_remote_sensing_tiles": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_remote_sensing_tiles.geojson",
+      "rows": 12,
+      "columns": [
+        "tile_id",
+        "modality",
+        "sensor",
+        "acquisition_date",
+        "band_set",
+        "cloud_cover_pct",
+        "image_uri",
+        "raster_product_id",
+        "raster_uri",
+        "tile_area_m2",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "synthetic_method",
+        "source_dataset",
+        "qa_use_for_rules"
+      ],
+      "geometry_types": [
+        "Polygon"
+      ],
+      "bounds": [
+        106.111688,
+        29.581545,
+        106.163085,
+        29.644106
+      ],
+      "alias_zh": "契约测试遥感瓦片索引",
+      "synthetic_counts": {
+        "True": 12
+      }
+    },
+    "sensitive_areas": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/sensitive_areas.geojson",
+      "rows": 20,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "JSMJ",
+        "GZMC",
+        "SM",
+        "geom_area_m2",
+        "source_village",
+        "source_layer",
+        "source_path",
+        "source_BSM",
+        "constraint_id",
+        "constraint_type",
+        "constraint_name",
+        "constraint_area_m2",
+        "source_sample",
+        "derived_from_source_sample",
+        "synthetic",
+        "not_for_production",
+        "qa_use_for_rules"
+      ],
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "bounds": [
+        106.120458,
+        29.610946,
+        106.138328,
+        29.643949
+      ],
+      "alias_zh": "村规划空间管制敏感要素样例",
+      "synthetic_counts": {
+        "False": 20
+      }
+    }
+  },
+  "relations": {
+    "project_parcel_rel": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/relations/project_parcel_rel.csv",
+      "rows": 110,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "bsm_norm",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "project_pbf_rel": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/relations/project_pbf_rel.csv",
+      "rows": 39,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "control_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "project_eco_rel": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/relations/project_eco_rel.csv",
+      "rows": 2,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "redline_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "project_planning_rel": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/relations/project_planning_rel.csv",
+      "rows": 36,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "plan_zone_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "project_urban_boundary_rel": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/relations/project_urban_boundary_rel.csv",
+      "rows": 36,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "boundary_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "project_rs_tile_rel": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/relations/project_rs_tile_rel.csv",
+      "rows": 43,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "tile_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "change_parcel_rel": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/relations/change_parcel_rel.csv",
+      "rows": 507,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "change_id",
+        "bsm_norm",
+        "match_type",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    }
+  },
+  "tables": {
+    "rule_evaluation": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/rule_evaluation.csv",
+      "rows": 108,
+      "columns": [
+        "rule_eval_id",
+        "project_id",
+        "rule_id",
+        "rule_name_zh",
+        "severity",
+        "finding_status",
+        "finding_basis",
+        "metric_value",
+        "metric_unit",
+        "standard_version",
+        "legal_basis",
+        "event_date",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "approval_records": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/approval_records.csv",
+      "rows": 36,
+      "columns": [
+        "YSDM",
+        "DKBH",
+        "DKMC",
+        "DKMJ",
+        "DKXZQDM",
+        "DKXZQMC",
+        "DKYTDM",
+        "DKYTMC",
+        "DKZT",
+        "DZJGH",
+        "AJBH",
+        "XZQDM",
+        "XZQMC",
+        "ZYZMJ",
+        "ZDZMJ",
+        "QZNYDMJ",
+        "QZGDMJ",
+        "XZYDZMJ",
+        "approval_id",
+        "project_id",
+        "application_date",
+        "decision_date",
+        "approval_status",
+        "decision_result",
+        "approved_area_m2",
+        "reviewing_department",
+        "legal_basis",
+        "standard_version",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "enforcement_events": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/enforcement_events.csv",
+      "rows": 24,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "WFXWZJ",
+        "WFDKXH",
+        "YGTBZJ",
+        "XZQDM",
+        "JCSDQ",
+        "JCSDH",
+        "JCMJ",
+        "TDZL",
+        "TBLX",
+        "ND",
+        "QSSJ",
+        "ZZSJ",
+        "GXZT",
+        "enforcement_id",
+        "project_id",
+        "rule_eval_id",
+        "event_type",
+        "event_date",
+        "event_status",
+        "severity",
+        "assigned_department",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "review_tasks": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/review_tasks.csv",
+      "rows": 24,
+      "columns": [
+        "review_task_id",
+        "enforcement_id",
+        "project_id",
+        "rule_eval_id",
+        "task_status",
+        "reviewer_role",
+        "due_date",
+        "review_result",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "state_snapshots": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/state_snapshots.csv",
+      "rows": 11,
+      "columns": [
+        "snapshot_year",
+        "temporal_stage",
+        "land_space_type",
+        "feature_count",
+        "area_m2",
+        "area_delta_m2",
+        "source_dataset",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "standard_field_catalog": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/standard_field_catalog.csv",
+      "rows": 130,
+      "columns": [
+        "field_name",
+        "field_alias_zh",
+        "lifecycle_status",
+        "introduced_version",
+        "deprecated_version",
+        "replacement_field",
+        "standard_version",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "metadata_vector": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/metadata_vector.csv",
+      "rows": 10,
+      "columns": [
+        "data_id",
+        "resource_id",
+        "data_name",
+        "data_alias",
+        "data_des",
+        "data_format",
+        "data_type",
+        "data_size",
+        "cover_range_coor",
+        "cover_range",
+        "security_order",
+        "is_multilayer",
+        "layer_count",
+        "layer_name",
+        "layer_field",
+        "geometry_type",
+        "is_shareable",
+        "share_type",
+        "is_opentosociety",
+        "receive_mode",
+        "receive_batch",
+        "import_time",
+        "wkid",
+        "geodetic_datum",
+        "projection",
+        "coordinate_unit",
+        "product_date",
+        "update_date",
+        "update_cycle",
+        "release_date",
+        "producer",
+        "pro_unit_name",
+        "source_type",
+        "source_currency",
+        "integrity",
+        "score",
+        "quality_check_date",
+        "check_unit_name",
+        "quality_evaluation",
+        "quality_des",
+        "synthetic",
+        "not_for_production"
+      ]
+    },
+    "multimodal_evidence_index": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/multimodal_evidence_index.csv",
+      "rows": 51,
+      "columns": [
+        "evidence_id",
+        "evidence_type",
+        "evidence_uri",
+        "linked_object_id",
+        "linked_object_type",
+        "observed_date",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ]
+    }
+  },
+  "rasters": {
+    "synthetic_ndvi_2026": {
+      "product_id": "RASTER-NDVI-2026",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/rasters/synthetic_ndvi_2026.tif",
+      "relative_path": "rasters/synthetic_ndvi_2026.tif",
+      "alias_zh": "合成NDVI观测栅格",
+      "description_zh": "由村规划样例地类派生的归一化植被指数测试栅格。",
+      "stats": {
+        "valid_pixels": 22604,
+        "min": 0.12,
+        "mean": 0.66006,
+        "max": 0.82
+      },
+      "crs": "EPSG:4523",
+      "width": 256,
+      "height": 256,
+      "bounds": [
+        35607575.093,
+        3274154.385,
+        35612762.183,
+        3281317.756
+      ],
+      "transform": [
+        20.262070209,
+        0.0,
+        35607575.09322005,
+        0.0,
+        -27.981919606,
+        3281317.756242676
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change"
+      ]
+    },
+    "synthetic_change_intensity_2026": {
+      "product_id": "RASTER-CHANGE-2026",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/rasters/synthetic_change_intensity_2026.tif",
+      "relative_path": "rasters/synthetic_change_intensity_2026.tif",
+      "alias_zh": "合成变化强度栅格",
+      "description_zh": "由村规划现状-规划差异派生的变化强度测试栅格。",
+      "stats": {
+        "valid_pixels": 22604,
+        "min": 0.05,
+        "mean": 0.093399,
+        "max": 0.55
+      },
+      "crs": "EPSG:4523",
+      "width": 256,
+      "height": 256,
+      "bounds": [
+        35607575.093,
+        3274154.385,
+        35612762.183,
+        3281317.756
+      ],
+      "transform": [
+        20.262070209,
+        0.0,
+        35607575.09322005,
+        0.0,
+        -27.981919606,
+        3281317.756242676
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change"
+      ]
+    }
+  },
+  "raster_manifest": {
+    "path": "data_agent/test_data/twm_one_map_village_standard_sample/raster_manifest.json",
+    "product_count": 2
+  },
+  "standard_contracts": {
+    "standard_id": "NR_ONE_MAP_TWM_CORE_2026",
+    "files": {
+      "one_map_role_contracts.zh.json": {
+        "path": "data_agent/test_data/twm_one_map_village_standard_sample/standards/one_map_role_contracts.zh.json",
+        "exists": true
+      },
+      "one_map_field_aliases.zh.json": {
+        "path": "data_agent/test_data/twm_one_map_village_standard_sample/standards/one_map_field_aliases.zh.json",
+        "exists": true
+      },
+      "one_map_value_domains.zh.json": {
+        "path": "data_agent/test_data/twm_one_map_village_standard_sample/standards/one_map_value_domains.zh.json",
+        "exists": true
+      }
+    }
+  },
+  "documents": {
+    "project_documents_zh": {
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/documents/project_documents.zh.jsonl",
+      "format": "jsonl"
+    }
+  },
+  "standard_rules": {
+    "path": "data_agent/test_data/twm_one_map_village_standard_sample/standard_rules.lifecycle.json",
+    "rules": 3,
+    "lifecycle_versions": 1
+  },
+  "quality_reports": {
+    "json": "data_agent/test_data/twm_one_map_village_standard_sample/data_quality_report.json",
+    "markdown": "data_agent/test_data/twm_one_map_village_standard_sample/data_quality_report.md",
+    "generator": "scripts/qa_twm_demo_data.py"
+  },
+  "preview": {
+    "html": "data_agent/test_data/twm_one_map_village_standard_sample/preview/index.html",
+    "geopackage": "data_agent/test_data/twm_one_map_village_standard_sample/preview/twm_one_map_village_standard_sample_layers.gpkg",
+    "generator": "scripts/preview_twm_demo_data.py"
+  },
+  "recommended_layer_bindings": [
+    {
+      "role": "parcel_current",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/parcel_current.geojson"
+    },
+    {
+      "role": "pbf",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_pbf.geojson"
+    },
+    {
+      "role": "eco_redline",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_eco_redline.geojson"
+    },
+    {
+      "role": "planning_zone",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_planning_zones.geojson"
+    },
+    {
+      "role": "urban_boundary",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_urban_boundary.geojson"
+    },
+    {
+      "role": "project",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/synthetic_projects.geojson"
+    },
+    {
+      "role": "approval",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/approval_records.csv"
+    },
+    {
+      "role": "enforcement",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/enforcement_events.csv"
+    },
+    {
+      "role": "metadata_vector",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/tables/metadata_vector.csv"
+    }
+  ],
+  "known_limitations": [
+    "村规划样例只覆盖和平村、斑竹村，不代表全域权威自然资源库。",
+    "永久基本农田、项目、审批、执法和遥感瓦片为契约测试替身，不能用于生产结论。",
+    "该包重点验证标准结构兼容性；真实生产环境应替换为权威管控线、审批、执法和影像数据。"
+  ],
+  "optimization_dataset": {
+    "path": "data_agent/test_data/twm_one_map_village_standard_sample/optimization",
+    "objective_catalog": "data_agent/test_data/twm_one_map_village_standard_sample/optimization/objective_catalog.csv",
+    "scenario_candidates": "data_agent/test_data/twm_one_map_village_standard_sample/optimization/scenario_candidates.csv",
+    "scenario_feasibility": "data_agent/test_data/twm_one_map_village_standard_sample/optimization/scenario_feasibility.csv",
+    "scenario_metrics": "data_agent/test_data/twm_one_map_village_standard_sample/optimization/scenario_metrics.csv",
+    "constraint_masks": "data_agent/test_data/twm_one_map_village_standard_sample/optimization/constraint_masks.geojson",
+    "action_space": "data_agent/test_data/twm_one_map_village_standard_sample/optimization/action_space.geojson",
+    "pareto_summary": "data_agent/test_data/twm_one_map_village_standard_sample/optimization/pareto_summary.json",
+    "objective_count": 13,
+    "scenario_count": 7,
+    "legal_feasible_scenario_count": 1,
+    "blocked_scenario_count": 6,
+    "not_for_production": true
+  }
+}

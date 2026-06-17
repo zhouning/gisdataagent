@@ -405,6 +405,79 @@ class TestPdalPipelineContracts(unittest.TestCase):
         self.assertTrue(callable(build_pdal_runner_spec))
         self.assertTrue(callable(run_pdal_pipeline))
 
+    def test_build_docker_pdal_runner_spec_mounts_workspace_and_rewrites_pipeline_path(self):
+        from data_agent.fusion.pdal_pipeline import (
+            build_docker_pdal_runner_spec,
+            build_pdal_pipeline_spec,
+            build_pdal_runner_spec,
+            write_pdal_pipeline_spec,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = os.path.join(tmp, "urban_scan.las")
+            source_profile = {
+                "file_path": os.path.join(tmp, "urban_scan_source.las"),
+                "stats": {"chunking": {"required": False, "chunk_count": 1}},
+            }
+            pipeline = build_pdal_pipeline_spec(source_profile, output_path=output_path)
+            pipeline_path = write_pdal_pipeline_spec(pipeline, output_path)
+            runner = build_pdal_runner_spec(pipeline, pipeline_path)
+
+            docker_runner = build_docker_pdal_runner_spec(
+                runner,
+                image="pdal/pdal:latest",
+                workspace_dir=tmp,
+            )
+
+            self.assertEqual(docker_runner["schema"], "mmfe.pdal_docker_runner.v1")
+            command = docker_runner["docker_command"]
+            self.assertEqual(command[:3], ["docker", "run", "--rm"])
+            self.assertIn(f"{os.path.abspath(tmp)}:/workspace", command)
+            self.assertIn("pdal/pdal:latest", command)
+            self.assertEqual(command[-3:-1], ["pdal", "pipeline"])
+            self.assertEqual(command[-1], "/workspace/urban_scan.pdal.json")
+
+    def test_build_docker_pdal_executor_runs_containerized_command(self):
+        from data_agent.fusion.pdal_pipeline import build_docker_pdal_executor
+
+        with tempfile.TemporaryDirectory() as tmp:
+            calls = []
+
+            def fake_run(command, **kwargs):
+                calls.append((command, kwargs))
+                return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+            original_run = subprocess.run
+            try:
+                subprocess.run = fake_run
+                executor = build_docker_pdal_executor(
+                    image="pdal/pdal:latest",
+                    workspace_dir=tmp,
+                )
+                completed = executor(
+                    ["pdal", "pipeline", os.path.join(tmp, "pipeline.json")],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+            finally:
+                subprocess.run = original_run
+
+            self.assertEqual(completed.returncode, 0)
+            self.assertEqual(len(calls), 1)
+            command, kwargs = calls[0]
+            self.assertEqual(command[:3], ["docker", "run", "--rm"])
+            self.assertIn("pdal/pdal:latest", command)
+            self.assertEqual(command[-1], "/workspace/pipeline.json")
+            self.assertEqual(kwargs["timeout"], 60)
+
+    def test_docker_pdal_helpers_are_reexported(self):
+        from data_agent.fusion import build_docker_pdal_executor
+        from data_agent.fusion_engine import build_docker_pdal_runner_spec
+
+        self.assertTrue(callable(build_docker_pdal_executor))
+        self.assertTrue(callable(build_docker_pdal_runner_spec))
+
 
 if __name__ == "__main__":
     unittest.main()

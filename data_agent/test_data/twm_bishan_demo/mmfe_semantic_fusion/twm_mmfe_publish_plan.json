@@ -1,0 +1,159 @@
+{
+  "valid": true,
+  "targets": [
+    "iceberg",
+    "stac",
+    "pgvector"
+  ],
+  "steps": [
+    {
+      "target": "iceberg",
+      "schema": "mmfe.iceberg_publish.v1",
+      "depends_on": [],
+      "valid": true,
+      "spec": {
+        "catalog": "local",
+        "namespace": "gis.fusion",
+        "table": "twm_mmfe_semantic_products",
+        "warehouse_uri": "s3://gis-agent-lakehouse/warehouse",
+        "table_identifier": "local.gis.fusion.twm_mmfe_semantic_products",
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "business_output": {
+          "path": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_business_view.csv",
+          "format": "CSV",
+          "row_count": 1,
+          "column_count": 18,
+          "crs": "EPSG:4326"
+        },
+        "spatial_engine": "sedona",
+        "partition_by": [
+          "product_id"
+        ]
+      }
+    },
+    {
+      "target": "stac",
+      "schema": "mmfe.stac_publish.v1",
+      "depends_on": [
+        "iceberg"
+      ],
+      "valid": true,
+      "spec": {
+        "type": "Feature",
+        "stac_version": "1.0.0",
+        "id": "sfp-twm-dc2a707aabda0c01",
+        "collection": "twm-mmfe-semantic-products",
+        "bbox": [
+          106.158522,
+          29.741099,
+          106.413305,
+          29.999621
+        ],
+        "geometry": null,
+        "properties": {
+          "datetime": "2026-06-17T08:28:11.047403+00:00",
+          "mmfe:product_type": "semantic_fusion_product",
+          "mmfe:product_version": "1.1-twm-mmfe-bundle",
+          "mmfe:layer_count": 9,
+          "mmfe:rule_eval_count": 240,
+          "mmfe:evidence_count": 173,
+          "twm:recommended_input": "semantic_fusion_product",
+          "twm:not_for_production": true
+        },
+        "assets": {
+          "business_view": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_business_view.csv",
+            "type": "text/csv",
+            "roles": [
+              "data",
+              "summary"
+            ]
+          },
+          "field_semantics": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_field_semantics.csv",
+            "type": "text/csv",
+            "roles": [
+              "metadata",
+              "semantic-fields"
+            ]
+          },
+          "value_domain_audit": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_value_domain_audit.csv",
+            "type": "text/csv",
+            "roles": [
+              "metadata",
+              "value-domain-audit"
+            ]
+          },
+          "standard_sources": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_standard_sources.csv",
+            "type": "text/csv",
+            "roles": [
+              "metadata",
+              "standard-sources"
+            ]
+          },
+          "semantic_relations": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_semantic_relations.csv",
+            "type": "text/csv",
+            "roles": [
+              "metadata",
+              "semantic-relations"
+            ]
+          },
+          "twm_input_contract": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_state_input_contract.json",
+            "type": "application/json",
+            "roles": [
+              "metadata",
+              "twm-input-contract"
+            ]
+          },
+          "twm_state_input": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_state_input.json",
+            "type": "application/json",
+            "roles": [
+              "data",
+              "twm-state-input"
+            ]
+          },
+          "semantic_graph": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_semantic_graph.json",
+            "type": "application/json",
+            "roles": [
+              "metadata",
+              "semantic-graph"
+            ]
+          },
+          "semantic_trace_cards": {
+            "href": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_semantic_trace_cards.json",
+            "type": "application/json",
+            "roles": [
+              "metadata",
+              "semantic-trace-cards"
+            ]
+          },
+          "semantic_product": {
+            "href": "twm_mmfe_semantic_product.json",
+            "type": "application/json",
+            "roles": [
+              "metadata",
+              "semantic-product"
+            ]
+          }
+        },
+        "links": []
+      }
+    },
+    {
+      "target": "pgvector",
+      "schema": "mmfe.semantic_vector_publish.v1",
+      "depends_on": [
+        "iceberg"
+      ],
+      "valid": true,
+      "collection": "twm_mmfe_semantic_fusion",
+      "record_count": 16
+    }
+  ]
+}

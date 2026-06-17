@@ -1,0 +1,859 @@
+{
+  "schema": "mmfe.semantic_vector_publish.v1",
+  "created_at": "2026-06-17T08:28:11.092604+00:00",
+  "target": "pgvector",
+  "collection": "twm_mmfe_semantic_fusion",
+  "embedding_model": "deterministic-or-configured-embedder",
+  "embedding_required": true,
+  "product_id": "sfp-twm-dc2a707aabda0c01",
+  "source_manifest": {
+    "product_type": "semantic_fusion_product",
+    "version": "1.1-twm-mmfe-bundle",
+    "business_output_path": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_business_view.csv"
+  },
+  "records": [
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:product",
+      "text": "国土空间世界模型璧山演示数据包 的 MMFE 语义融合产品。融合了 9 个空间/证据图层、266 个标准字段、240 条规则评估、173 条多模态证据、7 个优化方案、274 条字段级语义映射、728 条空间/多模态语义关系。TWM 推荐消费方式：semantic_fusion_product。",
+      "metadata": {
+        "strategy": "twm_multimodal_semantic_bundle",
+        "dataset_id": "twm_bishan_demo",
+        "layer_count": 9,
+        "standard_active_field_count": 266,
+        "rule_eval_count": 240,
+        "evidence_count": 173,
+        "scenario_count": 7,
+        "field_semantic_count": 274,
+        "alignment_accept_count": 120,
+        "alignment_review_required": 154,
+        "semantic_relation_count": 728,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:product",
+        "chunk_index": 0,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:admin_units",
+      "text": "乡镇行政区边界 (admin_units)：从乡镇行政区边界数据中按演示区叠加筛选得到的行政边界参考层。 标准角色：admin_unit；业务角色：区域汇总与项目范围。字段数 22，质量分 85.0。",
+      "metadata": {
+        "role": "admin_units",
+        "standard_role": "admin_unit",
+        "alias_zh": "乡镇行政区边界",
+        "modality": "geospatial_vector",
+        "synthetic": false,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:admin_units",
+        "chunk_index": 1,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:parcel_current",
+      "text": "现状地类图斑 (parcel_current)：从璧山 DLTB 坡度增强数据抽样得到的现状地类图斑。 标准角色：parcel_current；业务角色：状态对象底板。字段数 46，质量分 85.0。",
+      "metadata": {
+        "role": "parcel_current",
+        "standard_role": "parcel_current",
+        "alias_zh": "现状地类图斑",
+        "modality": "geospatial_vector",
+        "synthetic": false,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:parcel_current",
+        "chunk_index": 2,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:synthetic_annual_change",
+      "text": "合成年度变化图斑 (synthetic_annual_change)：从 WorldModel v2.1 优化结果的 ORIG_DLBM 到 OPT_DLBM 派生的变化图斑。 标准角色：parcel_current；业务角色：状态变化与时序证据。字段数 21，质量分 85.0。",
+      "metadata": {
+        "role": "synthetic_annual_change",
+        "standard_role": "parcel_current",
+        "alias_zh": "合成年度变化图斑",
+        "modality": "geospatial_vector",
+        "synthetic": true,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:synthetic_annual_change",
+        "chunk_index": 3,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:synthetic_eco_redline",
+      "text": "合成生态保护红线 (synthetic_eco_redline)：基于林地、水域、高坡度图斑并局部缓冲合成的生态保护红线演示层。 标准角色：eco_redline；业务角色：生态保护硬约束。字段数 35，质量分 85.0。",
+      "metadata": {
+        "role": "synthetic_eco_redline",
+        "standard_role": "eco_redline",
+        "alias_zh": "合成生态保护红线",
+        "modality": "geospatial_vector",
+        "synthetic": true,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:synthetic_eco_redline",
+        "chunk_index": 4,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:synthetic_pbf",
+      "text": "合成永久基本农田 (synthetic_pbf)：基于低坡度、较大面积耕地图斑合成的永久基本农田演示层。 标准角色：pbf；业务角色：耕地保护硬约束。字段数 48，质量分 85.0。",
+      "metadata": {
+        "role": "synthetic_pbf",
+        "standard_role": "pbf",
+        "alias_zh": "合成永久基本农田",
+        "modality": "geospatial_vector",
+        "synthetic": true,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:synthetic_pbf",
+        "chunk_index": 5,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:synthetic_planning_zones",
+      "text": "合成用途管制分区 (synthetic_planning_zones)：由现状地类归并并 dissolve 得到的用途管制分区演示层。 标准角色：planning_zone；业务角色：规划一致性约束。字段数 21，质量分 85.0。",
+      "metadata": {
+        "role": "synthetic_planning_zones",
+        "standard_role": "planning_zone",
+        "alias_zh": "合成用途管制分区",
+        "modality": "geospatial_vector",
+        "synthetic": true,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:synthetic_planning_zones",
+        "chunk_index": 6,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:synthetic_projects",
+      "text": "合成建设项目范围 (synthetic_projects)：按多类业务场景合成的拟建/调整项目范围，用于触线风险和审批一致性演示。 标准角色：project；业务角色：项目约束校验主体。字段数 39，质量分 85.0。",
+      "metadata": {
+        "role": "synthetic_projects",
+        "standard_role": "project",
+        "alias_zh": "合成建设项目范围",
+        "modality": "geospatial_vector",
+        "synthetic": true,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:synthetic_projects",
+        "chunk_index": 7,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:synthetic_remote_sensing_tiles",
+      "text": "合成遥感影像瓦片索引 (synthetic_remote_sensing_tiles)：覆盖演示区的合成遥感影像瓦片索引，用于 MMFE 多模态证据链测试。 标准角色：remote_sensing_evidence；业务角色：多模态观测证据。字段数 17，质量分 85.0。",
+      "metadata": {
+        "role": "synthetic_remote_sensing_tiles",
+        "standard_role": "remote_sensing_evidence",
+        "alias_zh": "合成遥感影像瓦片索引",
+        "modality": "remote_sensing_index",
+        "synthetic": true,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:synthetic_remote_sensing_tiles",
+        "chunk_index": 8,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:layer:synthetic_urban_boundary",
+      "text": "合成城镇开发边界 (synthetic_urban_boundary)：由建设用地图斑聚合、缓冲、简化得到的城镇开发边界演示层。 标准角色：urban_boundary；业务角色：城镇开发边界约束。字段数 25，质量分 85.0。",
+      "metadata": {
+        "role": "synthetic_urban_boundary",
+        "standard_role": "urban_boundary",
+        "alias_zh": "合成城镇开发边界",
+        "modality": "geospatial_vector",
+        "synthetic": true,
+        "not_for_production": true,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:layer:synthetic_urban_boundary",
+        "chunk_index": 9,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:rules",
+      "text": "TWM 规则评估共 240 条，需要复核 92 条，critical/high 命中 62 条。",
+      "metadata": {
+        "rule_eval_count": 240,
+        "pass_count": 148,
+        "hit_requires_review_count": 92,
+        "critical_or_high_hit_count": 62,
+        "status_distribution": {
+          "hit_requires_review": 92,
+          "pass": 148
+        },
+        "severity_distribution": {
+          "high": 34,
+          "info": 148,
+          "medium": 30,
+          "critical": 28
+        },
+        "rule_distribution": {
+          "TWM-FARM-001": 60,
+          "TWM-ECO-001": 60,
+          "TWM-PLAN-001": 60,
+          "TWM-URBAN-001": 60
+        },
+        "top_review_examples": [
+          {
+            "project_id": "PRJ-DEMO-0000",
+            "rule_id": "TWM-FARM-001",
+            "rule_name_zh": "永久基本农田占用审查",
+            "severity": "high",
+            "basis": "永久基本农田占用审查 metric=91110.995 m2; project_area=91142.908 m2"
+          },
+          {
+            "project_id": "PRJ-DEMO-0001",
+            "rule_id": "TWM-FARM-001",
+            "rule_name_zh": "永久基本农田占用审查",
+            "severity": "high",
+            "basis": "永久基本农田占用审查 metric=66329.99 m2; project_area=167224.705 m2"
+          },
+          {
+            "project_id": "PRJ-DEMO-0002",
+            "rule_id": "TWM-ECO-001",
+            "rule_name_zh": "生态保护红线触碰审查",
+            "severity": "critical",
+            "basis": "生态保护红线触碰审查 metric=70959.658 m2; project_area=163116.304 m2"
+          },
+          {
+            "project_id": "PRJ-DEMO-0003",
+            "rule_id": "TWM-FARM-001",
+            "rule_name_zh": "永久基本农田占用审查",
+            "severity": "high",
+            "basis": "永久基本农田占用审查 metric=10178.367 m2; project_area=86799.143 m2"
+          },
+          {
+            "project_id": "PRJ-DEMO-0003",
+            "rule_id": "TWM-ECO-001",
+            "rule_name_zh": "生态保护红线触碰审查",
+            "severity": "critical",
+            "basis": "生态保护红线触碰审查 metric=86799.143 m2; project_area=86799.143 m2"
+          }
+        ],
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:rules",
+        "chunk_index": 10,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:field-semantics",
+      "text": "字段语义融合共 274 条映射，来源包括标准字段目录、中文字段别名、值域规则、角色契约 required/recommended 字段和 TWM 状态绑定键。自动接受 120 条，需复核 154 条。",
+      "metadata": {
+        "field_semantic_count": 274,
+        "alignment_summary": {
+          "total_mappings": 274,
+          "decisions": {
+            "accept": 120,
+            "review": 154,
+            "reject": 0
+          },
+          "match_type_distribution": {
+            "standard_field_catalog": 274
+          },
+          "requirement_distribution": {
+            "observed": 154,
+            "required": 73,
+            "recommended": 47
+          },
+          "review_required": 154,
+          "missing_value_domains": {},
+          "loaded_value_domains": {
+            "gb_t_21010_2017_land_use_code": 1,
+            "ownership_nature_code": 1,
+            "eco_redline_type_code": 1,
+            "yes_no_code": 1,
+            "planning_space_partition_code": 1,
+            "urban_planning_partition_code": 1
+          }
+        },
+        "standard_catalog_match_count": 274,
+        "local_extension_count": 0,
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:field-semantics",
+        "chunk_index": 11,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:standard-sources",
+      "text": "标准来源登记共 7 项，官方已核验 1 项，全文可在线预览/下载或已下载 1 项，仍待补齐官方发布源 6 项。该清单用于把 MMFE 字段、值域、本体和规则语义追溯到标准来源。",
+      "metadata": {
+        "standard_source_registry_schema": "mmfe.standard_source_registry.v1",
+        "summary": {
+          "source_count": 7,
+          "official_verified_count": 1,
+          "fulltext_available_or_downloaded_count": 1,
+          "pending_official_source_count": 6,
+          "retrieval_status_distribution": {
+            "local_expert_material_available": 6,
+            "official_fulltext_available": 1
+          },
+          "access_mode_distribution": {
+            "local_package": 6,
+            "online_preview_and_download": 1
+          },
+          "officially_verified_identifiers": [
+            "GB/T 21010-2017"
+          ],
+          "production_gap_zh": "当前已把标准来源纳入可审计清单。GB/T 21010-2017 已核验官方全文公开入口；自然资源一张图数据库体系结构系列当前仍以专家材料包为工程契约，生产前需要补齐主管部门公开发布源、正式版本号和全文抽取证据。"
+        },
+        "entries": [
+          {
+            "standard_identifier": "NR-ONE-MAP-DB-ARCH-02-SURVEY-MONITORING",
+            "title_zh": "自然资源“一张图”数据库体系结构（2）统一调查监测1126",
+            "authority": "自然资源领域专家材料 / 待对齐自然资源主管部门公开发布源",
+            "official_platform": "待核验自然资源主管部门或标准公开平台",
+            "retrieval_status": "local_expert_material_available",
+            "access_mode": "local_package",
+            "retrieval_method": "local_source_package",
+            "used_for": [
+              "parcel_current_role_contract",
+              "monitoring_layer_contracts"
+            ],
+            "evidence_note_zh": "当前来自用户提供的自然资源一张图数据库标准包，用于工程语义契约；生产前应补充公开正式发布源或主管部门标准库引用。",
+            "official_url": "",
+            "search_url": "",
+            "title_en": "",
+            "standard_type": "",
+            "status": "",
+            "publication_date": "",
+            "implementation_date": "",
+            "ccs": "",
+            "ics": "",
+            "department": "",
+            "technical_committee": "",
+            "publisher": "",
+            "hcno": "",
+            "can_download": false,
+            "can_online_preview": false,
+            "not_for_production_gap": true,
+            "source_name": "自然资源“一张图”数据库体系结构（2）统一调查监测1126"
+          },
+          {
+            "standard_identifier": "NR-ONE-MAP-DB-ARCH-04-PLANNING",
+            "title_zh": "自然资源“一张图”数据库体系结构（4）统一规划1126",
+            "authority": "自然资源领域专家材料 / 待对齐自然资源主管部门公开发布源",
+            "official_platform": "待核验自然资源主管部门或标准公开平台",
+            "retrieval_status": "local_expert_material_available",
+            "access_mode": "local_package",
+            "retrieval_method": "local_source_package",
+            "used_for": [
+              "planning_zone_contracts",
+              "urban_boundary_contracts"
+            ],
+            "evidence_note_zh": "当前来自用户提供的自然资源一张图数据库标准包，生产前需补充官方发布源。",
+            "official_url": "",
+            "search_url": "",
+            "title_en": "",
+            "standard_type": "",
+            "status": "",
+            "publication_date": "",
+            "implementation_date": "",
+            "ccs": "",
+            "ics": "",
+            "department": "",
+            "technical_committee": "",
+            "publisher": "",
+            "hcno": "",
+            "can_download": false,
+            "can_online_preview": false,
+            "not_for_production_gap": true,
+            "source_name": "自然资源“一张图”数据库体系结构（4）统一规划1126"
+          },
+          {
+            "standard_identifier": "NR-ONE-MAP-DB-ARCH-05-SAFETY-BASELINE",
+            "title_zh": "自然资源“一张图”数据库体系结构（5）底线安全1126",
+            "authority": "自然资源领域专家材料 / 待对齐自然资源主管部门公开发布源",
+            "official_platform": "待核验自然资源主管部门或标准公开平台",
+            "retrieval_status": "local_expert_material_available",
+            "access_mode": "local_package",
+            "retrieval_method": "local_source_package",
+            "used_for": [
+              "pbf_contracts",
+              "ecological_redline_contracts"
+            ],
+            "evidence_note_zh": "当前来自用户提供的自然资源一张图数据库标准包，生产前需补充官方发布源。",
+            "official_url": "",
+            "search_url": "",
+            "title_en": "",
+            "standard_type": "",
+            "status": "",
+            "publication_date": "",
+            "implementation_date": "",
+            "ccs": "",
+            "ics": "",
+            "department": "",
+            "technical_committee": "",
+            "publisher": "",
+            "hcno": "",
+            "can_download": false,
+            "can_online_preview": false,
+            "not_for_production_gap": true,
+            "source_name": "自然资源“一张图”数据库体系结构（5）底线安全1126"
+          },
+          {
+            "standard_identifier": "NR-ONE-MAP-DB-ARCH-06-USE-CONTROL",
+            "title_zh": "自然资源“一张图”数据库体系结构（6）用途管制1128V2",
+            "authority": "自然资源领域专家材料 / 待对齐自然资源主管部门公开发布源",
+            "official_platform": "待核验自然资源主管部门或标准公开平台",
+            "retrieval_status": "local_expert_material_available",
+            "access_mode": "local_package",
+            "retrieval_method": "local_source_package",
+            "used_for": [
+              "project_contracts",
+              "use_control_rules"
+            ],
+            "evidence_note_zh": "当前来自用户提供的自然资源一张图数据库标准包，生产前需补充官方发布源。",
+            "official_url": "",
+            "search_url": "",
+            "title_en": "",
+            "standard_type": "",
+            "status": "",
+            "publication_date": "",
+            "implementation_date": "",
+            "ccs": "",
+            "ics": "",
+            "department": "",
+            "technical_committee": "",
+            "publisher": "",
+            "hcno": "",
+            "can_download": false,
+            "can_online_preview": false,
+            "not_for_production_gap": true,
+            "source_name": "自然资源“一张图”数据库体系结构（6）用途管制1128V2"
+          },
+          {
+            "standard_identifier": "NR-ONE-MAP-DB-ARCH-08-LAW-ENFORCEMENT",
+            "title_zh": "自然资源“一张图”数据库体系结构（8）执法督察0922",
+            "authority": "自然资源领域专家材料 / 待对齐自然资源主管部门公开发布源",
+            "official_platform": "待核验自然资源主管部门或标准公开平台",
+            "retrieval_status": "local_expert_material_available",
+            "access_mode": "local_package",
+            "retrieval_method": "local_source_package",
+            "used_for": [
+              "review_tasks",
+              "rule_evidence_contracts"
+            ],
+            "evidence_note_zh": "当前来自用户提供的自然资源一张图数据库标准包，生产前需补充官方发布源。",
+            "official_url": "",
+            "search_url": "",
+            "title_en": "",
+            "standard_type": "",
+            "status": "",
+            "publication_date": "",
+            "implementation_date": "",
+            "ccs": "",
+            "ics": "",
+            "department": "",
+            "technical_committee": "",
+            "publisher": "",
+            "hcno": "",
+            "can_download": false,
+            "can_online_preview": false,
+            "not_for_production_gap": true,
+            "source_name": "自然资源“一张图”数据库体系结构（8）执法督察0922"
+          },
+          {
+            "standard_identifier": "NR-ONE-MAP-DB-ARCH-10-METADATA",
+            "title_zh": "自然资源“一张图”数据库体系结构（10）元数据0907",
+            "authority": "自然资源领域专家材料 / 待对齐自然资源主管部门公开发布源",
+            "official_platform": "待核验自然资源主管部门或标准公开平台",
+            "retrieval_status": "local_expert_material_available",
+            "access_mode": "local_package",
+            "retrieval_method": "local_source_package",
+            "used_for": [
+              "metadata_vector",
+              "source_lineage_contracts"
+            ],
+            "evidence_note_zh": "当前来自用户提供的自然资源一张图数据库标准包，生产前需补充官方发布源。",
+            "official_url": "",
+            "search_url": "",
+            "title_en": "",
+            "standard_type": "",
+            "status": "",
+            "publication_date": "",
+            "implementation_date": "",
+            "ccs": "",
+            "ics": "",
+            "department": "",
+            "technical_committee": "",
+            "publisher": "",
+            "hcno": "",
+            "can_download": false,
+            "can_online_preview": false,
+            "not_for_production_gap": true,
+            "source_name": "自然资源“一张图”数据库体系结构（10）元数据0907"
+          },
+          {
+            "standard_identifier": "GB/T 21010-2017",
+            "title_zh": "土地利用现状分类",
+            "title_en": "Current land use classification",
+            "standard_type": "推荐性国家标准",
+            "status": "现行",
+            "publication_date": "2017-11-01",
+            "implementation_date": "2017-11-01",
+            "ccs": "A76",
+            "ics": "07.040",
+            "authority": "国家市场监督管理总局 / 国家标准化管理委员会",
+            "department": "自然资源部（国土）",
+            "technical_committee": "自然资源部（国土）",
+            "publisher": "中华人民共和国国家质量监督检验检疫总局、中国国家标准化管理委员会",
+            "official_platform": "国家标准全文公开系统",
+            "official_url": "https://openstd.samr.gov.cn/bzgk/gb/newGbInfo?hcno=224BF9DA69F053DA22AC758AAAADEEAA",
+            "search_url": "https://openstd.samr.gov.cn/bzgk/std/std_list?p.p1=0&p.p90=circulation_date&p.p91=desc&p.p2=GB/T%2021010-2017",
+            "hcno": "224BF9DA69F053DA22AC758AAAADEEAA",
+            "retrieval_status": "official_fulltext_available",
+            "access_mode": "online_preview_and_download",
+            "retrieval_method": "official_platform_metadata_verified",
+            "local_path": "",
+            "can_download": true,
+            "can_online_preview": true,
+            "used_for": [
+              "land_use_code_value_domain",
+              "parcel_current_land_use_semantics"
+            ],
+            "evidence_note_zh": "已在国家标准全文公开系统核验题录详情，详情页提供在线预览与下载标准按钮；当前测试夹具只登记官方入口和元数据，不内置标准全文。",
+            "not_for_production_gap": false,
+            "source_name": "GB/T 21010-2017 土地利用现状分类"
+          }
+        ],
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:standard-sources",
+        "chunk_index": 12,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:value-domain-audit",
+      "text": "标准值域审计共 6 个字段值域，需复核 0 个。该审计把字段语义绑定进一步推进到值级标准覆盖率检查。",
+      "metadata": {
+        "audit_count": 6,
+        "status_distribution": {
+          "valid": 6
+        },
+        "domain_distribution": {
+          "gb_t_21010_2017_land_use_code": 1,
+          "ownership_nature_code": 1,
+          "eco_redline_type_code": 1,
+          "yes_no_code": 1,
+          "planning_space_partition_code": 1,
+          "urban_planning_partition_code": 1
+        },
+        "requires_review_count": 0,
+        "top_review_items": [],
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:value-domain-audit",
+        "chunk_index": 13,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:optimization",
+      "text": "多目标优化含 13 个目标和 7 个方案；合法可行方案 2 个，硬约束阻断 5 个。",
+      "metadata": {
+        "method": "hard_constraint_filter_then_normalized_weighted_score_and_non_dominated_sorting",
+        "objective_count": 13,
+        "scenario_count": 7,
+        "legal_feasible_scenario_count": 2,
+        "blocked_scenario_count": 5,
+        "comparison_scope": "legal_feasible_space",
+        "non_dominated_scenarios": [
+          {
+            "scenario_id": "SCN-BALANCED",
+            "scenario_name_zh": "均衡治理方案",
+            "hard_constraint_status": "legal_feasible",
+            "optimization_scope": "legal_feasible_space",
+            "hard_constraint_violation_m2": 0.0,
+            "weighted_score": 0.769724
+          },
+          {
+            "scenario_id": "SCN-BASELINE-CURRENT",
+            "scenario_name_zh": "现状基线",
+            "hard_constraint_status": "legal_feasible",
+            "optimization_scope": "legal_feasible_space",
+            "hard_constraint_violation_m2": 0.0,
+            "weighted_score": 0.786667
+          }
+        ],
+        "ranked_scenarios": [
+          {
+            "rank": 1,
+            "scenario_id": "SCN-BASELINE-CURRENT",
+            "scenario_name_zh": "现状基线",
+            "hard_constraint_status": "legal_feasible",
+            "optimization_scope": "legal_feasible_space",
+            "hard_constraint_violation_m2": 0.0,
+            "weighted_score": 0.786667
+          },
+          {
+            "rank": 2,
+            "scenario_id": "SCN-BALANCED",
+            "scenario_name_zh": "均衡治理方案",
+            "hard_constraint_status": "legal_feasible",
+            "optimization_scope": "legal_feasible_space",
+            "hard_constraint_violation_m2": 0.0,
+            "weighted_score": 0.769724
+          }
+        ],
+        "feasibility_distribution": {
+          "legal_feasible": 2,
+          "blocked_by_hard_constraint": 5
+        },
+        "hard_constraint_policy_zh": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+        "objectives": [
+          {
+            "objective_id": "pbf_overlap_m2",
+            "objective_name_zh": "永久基本农田占用最小化",
+            "category": "hard_constraint",
+            "direction": "min",
+            "unit": "m2",
+            "weight": 1.0,
+            "hard_constraint": true,
+            "description_zh": "候选方案与永久基本农田保护范围的正面积叠置，应优先为 0。"
+          },
+          {
+            "objective_id": "eco_overlap_m2",
+            "objective_name_zh": "生态保护红线触碰最小化",
+            "category": "hard_constraint",
+            "direction": "min",
+            "unit": "m2",
+            "weight": 1.0,
+            "hard_constraint": true,
+            "description_zh": "候选方案与生态保护红线的正面积叠置，应优先为 0。"
+          },
+          {
+            "objective_id": "planning_conflict_m2",
+            "objective_name_zh": "用途管制冲突最小化",
+            "category": "planning_consistency",
+            "direction": "min",
+            "unit": "m2",
+            "weight": 0.8,
+            "hard_constraint": false,
+            "description_zh": "候选方案与规划分区或用途管制规则不一致的面积。"
+          },
+          {
+            "objective_id": "farmland_loss_m2",
+            "objective_name_zh": "耕地损失最小化",
+            "category": "resource_protection",
+            "direction": "min",
+            "unit": "m2",
+            "weight": 0.9,
+            "hard_constraint": false,
+            "description_zh": "候选方案或推演变化造成的耕地面积减少。"
+          },
+          {
+            "objective_id": "farmland_gain_m2",
+            "objective_name_zh": "耕地补充最大化",
+            "category": "resource_protection",
+            "direction": "max",
+            "unit": "m2",
+            "weight": 0.55,
+            "hard_constraint": false,
+            "description_zh": "候选方案或推演变化带来的耕地补充面积。"
+          },
+          {
+            "objective_id": "development_area_m2",
+            "objective_name_zh": "建设承载能力最大化",
+            "category": "development",
+            "direction": "max",
+            "unit": "m2",
+            "weight": 0.45,
+            "hard_constraint": false,
+            "description_zh": "在合法可行空间内可承载的项目或建设调整面积。"
+          },
+          {
+            "objective_id": "compactness_score",
+            "objective_name_zh": "空间紧凑性最大化",
+            "category": "spatial_form",
+            "direction": "max",
+            "unit": "score",
+            "weight": 0.5,
+            "hard_constraint": false,
+            "description_zh": "基于 4*pi*area/perimeter^2 的面积加权紧凑度近似指标。"
+          },
+          {
+            "objective_id": "adjustment_cost_proxy",
+            "objective_name_zh": "调整成本最小化",
+            "category": "cost",
+            "direction": "min",
+            "unit": "proxy",
+            "weight": 0.55,
+            "hard_constraint": false,
+            "description_zh": "用调整面积、硬约束触碰和规划冲突构造的工程测试成本代理指标。"
+          },
+          {
+            "objective_id": "admin_fairness_cv",
+            "objective_name_zh": "行政区负担均衡",
+            "category": "fairness",
+            "direction": "min",
+            "unit": "cv",
+            "weight": 0.35,
+            "hard_constraint": false,
+            "description_zh": "方案面积在行政单元间分布的变异系数，越低代表越均衡。"
+          },
+          {
+            "objective_id": "robustness_score",
+            "objective_name_zh": "方案稳健性最大化",
+            "category": "uncertainty",
+            "direction": "max",
+            "unit": "score",
+            "weight": 0.45,
+            "hard_constraint": false,
+            "description_zh": "基于硬约束风险、复核负荷和 WorldModel episode 稳定性的稳健性近似指标。"
+          },
+          {
+            "objective_id": "review_load_count",
+            "objective_name_zh": "人工复核负荷最小化",
+            "category": "governance",
+            "direction": "min",
+            "unit": "count",
+            "weight": 0.35,
+            "hard_constraint": false,
+            "description_zh": "候选方案触发需人工复核的规则命中数量。"
+          },
+          {
+            "objective_id": "slope_improvement_pct",
+            "objective_name_zh": "坡度适宜性改善最大化",
+            "category": "dynamic_projection",
+            "direction": "max",
+            "unit": "pct",
+            "weight": 0.3,
+            "hard_constraint": false,
+            "description_zh": "来自 WorldModel/MPC 摘要的坡度改善信号；负坡度变化按改善处理。"
+          },
+          {
+            "objective_id": "contiguity_gain",
+            "objective_name_zh": "空间连片度提升最大化",
+            "category": "dynamic_projection",
+            "direction": "max",
+            "unit": "score",
+            "weight": 0.3,
+            "hard_constraint": false,
+            "description_zh": "来自 WorldModel/MPC 摘要的连片度变化信号。"
+          }
+        ],
+        "hard_constraint_objectives": [
+          "pbf_overlap_m2",
+          "eco_overlap_m2"
+        ],
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:optimization",
+        "chunk_index": 14,
+        "twm_validation_scaffold": true
+      }
+    },
+    {
+      "record_id": "sfp-twm-dc2a707aabda0c01:fusion:semantic-relations",
+      "text": "空间/多模态语义关系共 728 条，其中需规则复核关系 225 条。关系类型覆盖项目-图斑、项目-永久基本农田、项目-生态红线、项目-用途管制分区、项目-城镇开发边界、项目-遥感瓦片和年度变化-图斑。",
+      "metadata": {
+        "semantic_relation_count": 728,
+        "relation_type_distribution": {
+          "annual_change_of_parcel": 78,
+          "project_overlaps_ecological_redline": 28,
+          "project_overlaps_parcel": 354,
+          "project_overlaps_permanent_basic_farmland": 39,
+          "project_overlaps_planning_zone": 151,
+          "project_observed_by_remote_sensing_tile": 71,
+          "project_overlaps_urban_development_boundary": 7
+        },
+        "target_role_distribution": {
+          "parcel_current": 432,
+          "eco_redline": 28,
+          "pbf": 39,
+          "planning_zone": 151,
+          "remote_sensing_evidence": 71,
+          "urban_boundary": 7
+        },
+        "twm_usage_distribution": {
+          "dynamic_state_transition": 78,
+          "hard_constraint_eco_overlap": 28,
+          "state_builder_project_parcel_impact": 354,
+          "hard_constraint_pbf_overlap": 39,
+          "planning_consistency_assessment": 151,
+          "multimodal_observation_evidence": 71,
+          "urban_boundary_consistency": 7
+        },
+        "rule_review_relation_count": 225,
+        "top_rule_review_examples": [
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000000",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0002",
+            "target_object_id": "ECO-DEMO-00002",
+            "metric_value": 70959.658,
+            "rule_id": "TWM-ECO-001"
+          },
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000001",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0003",
+            "target_object_id": "ECO-DEMO-00003",
+            "metric_value": 86799.143,
+            "rule_id": "TWM-ECO-001"
+          },
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000002",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0007",
+            "target_object_id": "ECO-DEMO-00007",
+            "metric_value": 13348.526,
+            "rule_id": "TWM-ECO-001"
+          },
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000003",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0010",
+            "target_object_id": "ECO-DEMO-00000",
+            "metric_value": 180552.326,
+            "rule_id": "TWM-ECO-001"
+          },
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000004",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0011",
+            "target_object_id": "ECO-DEMO-00001",
+            "metric_value": 101134.823,
+            "rule_id": "TWM-ECO-001"
+          },
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000005",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0015",
+            "target_object_id": "ECO-DEMO-00005",
+            "metric_value": 26408.214,
+            "rule_id": "TWM-ECO-001"
+          },
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000006",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0016",
+            "target_object_id": "ECO-DEMO-00003",
+            "metric_value": 1356.383,
+            "rule_id": "TWM-ECO-001"
+          },
+          {
+            "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000007",
+            "semantic_relation_type": "project_overlaps_ecological_redline",
+            "source_object_id": "PRJ-DEMO-0018",
+            "target_object_id": "ECO-DEMO-00008",
+            "metric_value": 7576.663,
+            "rule_id": "TWM-ECO-001"
+          }
+        ],
+        "product_id": "sfp-twm-dc2a707aabda0c01",
+        "chunk_id": "fusion:semantic-relations",
+        "chunk_index": 15,
+        "twm_validation_scaffold": true
+      }
+    }
+  ]
+}

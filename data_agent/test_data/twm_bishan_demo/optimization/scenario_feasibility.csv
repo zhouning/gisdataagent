@@ -1,0 +1,8 @@
+scenario_id,hard_constraint_violation_m2,pbf_overlap_m2,eco_overlap_m2,hard_constraint_status,optimization_scope,requires_legal_review,excluded_from_recommendation,feasibility_reason_zh
+SCN-BALANCED,0.0,0.0,0.0,legal_feasible,legal_feasible_space,False,False,硬约束触碰面积低于工程容差，可进入合法可行空间比选。
+SCN-BASELINE-CURRENT,0.0,0.0,0.0,legal_feasible,legal_feasible_space,False,False,硬约束触碰面积低于工程容差，可进入合法可行空间比选。
+SCN-DEVELOPMENT-PRIORITY,1722850.995,622589.149,1100261.846,blocked_by_hard_constraint,stress_test_only,True,True,触碰永久基本农田或生态保护红线，不能进入合法可推荐方案空间。
+SCN-ECOLOGICAL-PRIORITY,132.861,132.861,0.0,blocked_by_hard_constraint,stress_test_only,True,True,触碰永久基本农田或生态保护红线，不能进入合法可推荐方案空间。
+SCN-LOW-RISK,27408.052,27311.166,96.886,blocked_by_hard_constraint,stress_test_only,True,True,触碰永久基本农田或生态保护红线，不能进入合法可推荐方案空间。
+SCN-REVIEW-FOCUS,1187487.013,594598.963,592888.05,blocked_by_hard_constraint,stress_test_only,True,True,触碰永久基本农田或生态保护红线，不能进入合法可推荐方案空间。
+SCN-WM-V21-REFERENCE,512937.534,94081.79,418855.744,blocked_by_hard_constraint,stress_test_only,True,True,触碰永久基本农田或生态保护红线，不能进入合法可推荐方案空间。

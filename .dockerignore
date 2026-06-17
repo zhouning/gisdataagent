@@ -1,4 +1,15 @@
 .venv/
+.tmp/*
+!.tmp/ivy2/
+.tmp/ivy2/*
+!.tmp/ivy2/jars/
+.tmp/ivy2/jars/*
+!.tmp/ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar
+!.tmp/ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar
+!.tmp/ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar
+!.tmp/ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.12-1.6.1.jar
+!.tmp/ivy2/jars/org.apache.sedona_sedona-spark-shaded-3.5_2.12-1.9.0.jar
+!.tmp/ivy2/jars/org.datasyslab_geotools-wrapper-1.9.0-33.5.jar
 __pycache__/
 *.pyc
 .git/

@@ -1,0 +1,2513 @@
+{
+  "dataset_id": "twm_bishan_demo",
+  "dataset_alias_zh": "国土空间世界模型璧山演示数据包",
+  "description_zh": "面向国土空间世界模型工程验证的璧山演示数据包，含现状图斑、合成控制线、合成变化和合成项目范围。",
+  "not_for_production": true,
+  "layers": {
+    "parcel_current": {
+      "alias_zh": "现状地类图斑",
+      "description_zh": "从璧山 DLTB 坡度增强数据抽样得到的现状地类图斑。",
+      "business_role_zh": "状态对象底板",
+      "style_hint": {
+        "fill": "#c7c7c7",
+        "stroke": "#777777"
+      }
+    },
+    "synthetic_pbf": {
+      "alias_zh": "合成永久基本农田",
+      "description_zh": "基于低坡度、较大面积耕地图斑合成的永久基本农田演示层。",
+      "business_role_zh": "耕地保护硬约束",
+      "style_hint": {
+        "fill": "#2ca25f",
+        "stroke": "#006d2c"
+      }
+    },
+    "synthetic_eco_redline": {
+      "alias_zh": "合成生态保护红线",
+      "description_zh": "基于林地、水域、高坡度图斑并局部缓冲合成的生态保护红线演示层。",
+      "business_role_zh": "生态保护硬约束",
+      "style_hint": {
+        "fill": "#dd1c77",
+        "stroke": "#980043"
+      }
+    },
+    "admin_units": {
+      "alias_zh": "乡镇行政区边界",
+      "description_zh": "从乡镇行政区边界数据中按演示区叠加筛选得到的行政边界参考层。",
+      "business_role_zh": "区域汇总与项目范围",
+      "style_hint": {
+        "fill": "transparent",
+        "stroke": "#756bb1"
+      }
+    },
+    "synthetic_annual_change": {
+      "alias_zh": "合成年度变化图斑",
+      "description_zh": "从 WorldModel v2.1 优化结果的 ORIG_DLBM 到 OPT_DLBM 派生的变化图斑。",
+      "business_role_zh": "状态变化与时序证据",
+      "style_hint": {
+        "fill": "#fb6a4a",
+        "stroke": "#a50f15"
+      }
+    },
+    "synthetic_projects": {
+      "alias_zh": "合成建设项目范围",
+      "description_zh": "按多类业务场景合成的拟建/调整项目范围，用于触线风险和审批一致性演示。",
+      "business_role_zh": "项目约束校验主体",
+      "style_hint": {
+        "fill": "transparent",
+        "stroke": "#f16913"
+      }
+    },
+    "synthetic_planning_zones": {
+      "alias_zh": "合成用途管制分区",
+      "description_zh": "由现状地类归并并 dissolve 得到的用途管制分区演示层。",
+      "business_role_zh": "规划一致性约束",
+      "style_hint": {
+        "fill": "#9ecae1",
+        "stroke": "#2171b5"
+      }
+    },
+    "synthetic_urban_boundary": {
+      "alias_zh": "合成城镇开发边界",
+      "description_zh": "由建设用地图斑聚合、缓冲、简化得到的城镇开发边界演示层。",
+      "business_role_zh": "城镇开发边界约束",
+      "style_hint": {
+        "fill": "transparent",
+        "stroke": "#54278f"
+      }
+    },
+    "synthetic_remote_sensing_tiles": {
+      "alias_zh": "合成遥感影像瓦片索引",
+      "description_zh": "覆盖演示区的合成遥感影像瓦片索引，用于 MMFE 多模态证据链测试。",
+      "business_role_zh": "多模态观测证据",
+      "style_hint": {
+        "fill": "transparent",
+        "stroke": "#08519c"
+      }
+    },
+    "optimization": {
+      "alias_zh": "多目标优化方案比选数据",
+      "description_zh": "面向 TWM 动态推演、多目标优化、硬约束过滤和方案比选的工程测试数据目录。",
+      "business_role_zh": "动态推演与多目标方案比选"
+    }
+  },
+  "fields": {
+    "BSM": {
+      "alias_zh": "标识码",
+      "description_zh": "原始地类图斑唯一标识。"
+    },
+    "bsm_norm": {
+      "alias_zh": "规范化标识码",
+      "description_zh": "去除浮点后缀后的稳定图斑标识。"
+    },
+    "YSDM": {
+      "alias_zh": "要素代码",
+      "description_zh": "自然资源调查监测要素代码。"
+    },
+    "DLBM": {
+      "alias_zh": "地类编码",
+      "description_zh": "土地利用分类编码。"
+    },
+    "DLMC": {
+      "alias_zh": "地类名称",
+      "description_zh": "土地利用分类中文名称。"
+    },
+    "QSDWDM": {
+      "alias_zh": "权属单位代码",
+      "description_zh": "图斑权属单位代码。"
+    },
+    "QSDWMC": {
+      "alias_zh": "权属单位名称",
+      "description_zh": "图斑权属单位中文名称。"
+    },
+    "ZLDWDM": {
+      "alias_zh": "坐落单位代码",
+      "description_zh": "图斑坐落单位代码。"
+    },
+    "ZLDWMC": {
+      "alias_zh": "坐落单位名称",
+      "description_zh": "图斑坐落单位中文名称。"
+    },
+    "TBMJ": {
+      "alias_zh": "图斑面积",
+      "description_zh": "原始图斑面积，单位通常为平方米。"
+    },
+    "SHAPE_Length": {
+      "alias_zh": "几何周长",
+      "description_zh": "源数据中的系统几何周长字段。"
+    },
+    "SHAPE_Area": {
+      "alias_zh": "几何面积",
+      "description_zh": "源数据中的系统几何面积字段。"
+    },
+    "category": {
+      "alias_zh": "归并地类",
+      "description_zh": "为 WorldModel 使用归并后的地类类别。"
+    },
+    "slope_mean": {
+      "alias_zh": "平均坡度",
+      "description_zh": "图斑范围内 DEM 派生平均坡度。"
+    },
+    "slope_max": {
+      "alias_zh": "最大坡度",
+      "description_zh": "图斑范围内 DEM 派生最大坡度。"
+    },
+    "slope_pixel_count": {
+      "alias_zh": "坡度像元数",
+      "description_zh": "参与坡度统计的像元数量。"
+    },
+    "demo_role": {
+      "alias_zh": "演示角色",
+      "description_zh": "该要素在 TWM demo 中承担的角色。"
+    },
+    "demo_sample": {
+      "alias_zh": "演示抽样标记",
+      "description_zh": "标记该要素是否来自演示抽样。"
+    },
+    "synthetic": {
+      "alias_zh": "是否合成",
+      "description_zh": "true 表示该要素由脚本合成。"
+    },
+    "not_for_production": {
+      "alias_zh": "禁止生产使用",
+      "description_zh": "true 表示只能用于工程测试和演示。"
+    },
+    "synthetic_method": {
+      "alias_zh": "合成方法",
+      "description_zh": "生成该图层或要素的合成方法。"
+    },
+    "source_dataset": {
+      "alias_zh": "来源数据集",
+      "description_zh": "生成该要素所依据的源文件。"
+    },
+    "control_id": {
+      "alias_zh": "管控区编号",
+      "description_zh": "合成永久基本农田管控区编号。"
+    },
+    "control_type": {
+      "alias_zh": "管控区类型",
+      "description_zh": "管控区业务类型。"
+    },
+    "redline_id": {
+      "alias_zh": "红线区编号",
+      "description_zh": "合成生态保护红线编号。"
+    },
+    "zone_type": {
+      "alias_zh": "分区类型",
+      "description_zh": "生态或规划分区类型。"
+    },
+    "admin_code": {
+      "alias_zh": "行政单元代码",
+      "description_zh": "行政管理单元代码或稳定标识。"
+    },
+    "admin_name": {
+      "alias_zh": "行政单元名称",
+      "description_zh": "行政管理单元名称。"
+    },
+    "admin_level": {
+      "alias_zh": "行政层级",
+      "description_zh": "行政单元层级。"
+    },
+    "admin_parent_code": {
+      "alias_zh": "上级行政单元代码",
+      "description_zh": "该行政管理单元的上级代码。"
+    },
+    "admin_level_rank": {
+      "alias_zh": "行政层级序号",
+      "description_zh": "用于排序的行政层级序号。"
+    },
+    "admin_source_level": {
+      "alias_zh": "行政来源层级",
+      "description_zh": "从权属单位代码截取或汇总形成的来源层级。"
+    },
+    "province_name": {
+      "alias_zh": "省级名称",
+      "description_zh": "乡镇边界数据中的省级行政名称。"
+    },
+    "city_name": {
+      "alias_zh": "市级名称",
+      "description_zh": "乡镇边界数据中的市级行政名称。"
+    },
+    "county_name": {
+      "alias_zh": "县区名称",
+      "description_zh": "乡镇边界数据中的县区行政名称。"
+    },
+    "township_name": {
+      "alias_zh": "乡镇街道名称",
+      "description_zh": "乡镇边界数据中的乡镇或街道名称。"
+    },
+    "city_county_name": {
+      "alias_zh": "市县组合名",
+      "description_zh": "乡镇边界数据中的市县组合名称。"
+    },
+    "province_county_name": {
+      "alias_zh": "省县组合名",
+      "description_zh": "乡镇边界数据中的省县组合名称。"
+    },
+    "matched_admin9_values": {
+      "alias_zh": "匹配九位行政前缀",
+      "description_zh": "该乡镇边界与演示图斑叠加匹配到的 admin9 前缀集合。"
+    },
+    "matched_parcel_count": {
+      "alias_zh": "匹配图斑数量",
+      "description_zh": "与该乡镇边界发生正面积叠加的演示图斑数量。"
+    },
+    "overlap_area_m2": {
+      "alias_zh": "叠加面积",
+      "description_zh": "行政边界与演示图斑并集的正面积叠加面积，单位平方米。"
+    },
+    "overlap_ratio_to_parcels": {
+      "alias_zh": "图斑覆盖比例",
+      "description_zh": "行政边界叠加面积占演示图斑并集面积比例。"
+    },
+    "change_id": {
+      "alias_zh": "变化编号",
+      "description_zh": "合成年度变化事件编号。"
+    },
+    "from_dlbm": {
+      "alias_zh": "变化前地类编码",
+      "description_zh": "变化前土地利用分类编码。"
+    },
+    "to_dlbm": {
+      "alias_zh": "变化后地类编码",
+      "description_zh": "变化后土地利用分类编码。"
+    },
+    "change_type": {
+      "alias_zh": "变化类型",
+      "description_zh": "来自 WorldModel 输出的变化类型标记。"
+    },
+    "change_year": {
+      "alias_zh": "变化年份",
+      "description_zh": "合成变化所属年份。"
+    },
+    "event_date": {
+      "alias_zh": "事件日期",
+      "description_zh": "变化、审批、执法或复核事件发生日期。"
+    },
+    "temporal_stage": {
+      "alias_zh": "时序阶段",
+      "description_zh": "基期、现状、预测或复核等时序阶段。"
+    },
+    "evidence_confidence": {
+      "alias_zh": "证据置信度",
+      "description_zh": "合成证据链置信度。"
+    },
+    "source_feature_id": {
+      "alias_zh": "来源要素编号",
+      "description_zh": "来源图斑、项目或规则结果编号。"
+    },
+    "OPT_DLBM": {
+      "alias_zh": "优化后地类编码",
+      "description_zh": "WorldModel v2.1 输出的优化后地类编码。"
+    },
+    "OPT_DLMC": {
+      "alias_zh": "优化后地类名称",
+      "description_zh": "WorldModel v2.1 输出的优化后地类名称。"
+    },
+    "ORIG_DLBM": {
+      "alias_zh": "原始地类编码",
+      "description_zh": "WorldModel v2.1 输出中的原始地类编码。"
+    },
+    "CHG_FLAG": {
+      "alias_zh": "变化标记",
+      "description_zh": "WorldModel v2.1 输出中的变化标记。"
+    },
+    "project_id": {
+      "alias_zh": "项目编号",
+      "description_zh": "合成建设项目编号。"
+    },
+    "project_name": {
+      "alias_zh": "项目名称",
+      "description_zh": "合成建设项目名称。"
+    },
+    "project_type": {
+      "alias_zh": "项目类型",
+      "description_zh": "合成项目业务类型。"
+    },
+    "approval_status": {
+      "alias_zh": "审批状态",
+      "description_zh": "合成项目审批状态。"
+    },
+    "scenario_id": {
+      "alias_zh": "方案编号",
+      "description_zh": "项目关联的 WorldModel 方案编号。"
+    },
+    "admin9": {
+      "alias_zh": "九位行政前缀",
+      "description_zh": "从权属单位代码截取的九位行政区划/乡镇前缀。"
+    },
+    "qa_geometry_fixed": {
+      "alias_zh": "几何修复标记",
+      "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+    },
+    "geom_area_m2": {
+      "alias_zh": "投影几何面积",
+      "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+    },
+    "area_source_m2": {
+      "alias_zh": "源属性面积",
+      "description_zh": "源数据面积字段，优先来自 TBMJ，单位平方米。"
+    },
+    "tbmj_area_rel_error": {
+      "alias_zh": "面积相对误差",
+      "description_zh": "投影几何面积与源属性面积的相对误差。"
+    },
+    "qa_area_warning": {
+      "alias_zh": "面积异常标记",
+      "description_zh": "true 表示几何面积与源属性面积偏差超过 QA 阈值。"
+    },
+    "qa_use_for_rules": {
+      "alias_zh": "可用于规则计算",
+      "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+    },
+    "control_name": {
+      "alias_zh": "管控区名称",
+      "description_zh": "合成管控区中文名称。"
+    },
+    "control_grade": {
+      "alias_zh": "管控区等级",
+      "description_zh": "合成永久基本农田保护等级。"
+    },
+    "control_area_m2": {
+      "alias_zh": "管控区面积",
+      "description_zh": "合成永久基本农田面对象面积，单位平方米。"
+    },
+    "source_bsm_count": {
+      "alias_zh": "来源图斑数量",
+      "description_zh": "合成面对象覆盖或派生自的源图斑数量。"
+    },
+    "source_bsms": {
+      "alias_zh": "来源图斑标识集合",
+      "description_zh": "合成对象关联的源图斑标识，多个值用竖线分隔。"
+    },
+    "source_bsms_sample": {
+      "alias_zh": "来源图斑样例",
+      "description_zh": "合成对象关联源图斑的截断样例。"
+    },
+    "effective_date": {
+      "alias_zh": "生效日期",
+      "description_zh": "合成规则或管控边界的生效日期。"
+    },
+    "redline_name": {
+      "alias_zh": "红线区名称",
+      "description_zh": "合成生态保护红线区中文名称。"
+    },
+    "protection_level": {
+      "alias_zh": "保护等级",
+      "description_zh": "合成生态保护红线保护等级。"
+    },
+    "ecological_function": {
+      "alias_zh": "生态功能",
+      "description_zh": "合成生态红线主要生态功能。"
+    },
+    "redline_area_m2": {
+      "alias_zh": "红线区面积",
+      "description_zh": "合成生态保护红线面对象面积，单位平方米。"
+    },
+    "plan_zone_id": {
+      "alias_zh": "用途分区编号",
+      "description_zh": "合成用途管制分区编号。"
+    },
+    "plan_zone_type": {
+      "alias_zh": "用途分区类型",
+      "description_zh": "合成用途管制分区类型。"
+    },
+    "plan_zone_name": {
+      "alias_zh": "用途分区名称",
+      "description_zh": "合成用途管制分区中文名称。"
+    },
+    "plan_rule": {
+      "alias_zh": "用途管制规则",
+      "description_zh": "该分区对应的合成用途准入规则。"
+    },
+    "zone_area_m2": {
+      "alias_zh": "分区面积",
+      "description_zh": "用途管制分区面积，单位平方米。"
+    },
+    "boundary_id": {
+      "alias_zh": "边界编号",
+      "description_zh": "合成城镇开发边界编号。"
+    },
+    "boundary_type": {
+      "alias_zh": "边界类型",
+      "description_zh": "城镇开发边界或其他边界类型。"
+    },
+    "boundary_name": {
+      "alias_zh": "边界名称",
+      "description_zh": "合成城镇开发边界中文名称。"
+    },
+    "boundary_area_m2": {
+      "alias_zh": "边界面积",
+      "description_zh": "合成城镇开发边界面积，单位平方米。"
+    },
+    "tile_id": {
+      "alias_zh": "影像瓦片编号",
+      "description_zh": "合成遥感影像瓦片索引编号。"
+    },
+    "modality": {
+      "alias_zh": "模态类型",
+      "description_zh": "数据模态，例如 remote_sensing、vector、text。"
+    },
+    "sensor": {
+      "alias_zh": "传感器",
+      "description_zh": "合成影像瓦片对应的传感器名称。"
+    },
+    "acquisition_date": {
+      "alias_zh": "采集日期",
+      "description_zh": "合成影像瓦片采集日期。"
+    },
+    "band_set": {
+      "alias_zh": "波段组合",
+      "description_zh": "合成影像瓦片可用波段说明。"
+    },
+    "cloud_cover_pct": {
+      "alias_zh": "云量百分比",
+      "description_zh": "合成影像瓦片云量百分比。"
+    },
+    "image_uri": {
+      "alias_zh": "影像资源地址",
+      "description_zh": "影像文件或对象存储 URI。"
+    },
+    "raster_product_id": {
+      "alias_zh": "栅格产品编号",
+      "description_zh": "瓦片关联的合成栅格观测产品编号。"
+    },
+    "raster_uri": {
+      "alias_zh": "栅格资源地址",
+      "description_zh": "瓦片关联的 GeoTIFF 栅格资源相对路径。"
+    },
+    "tile_area_m2": {
+      "alias_zh": "瓦片覆盖面积",
+      "description_zh": "合成遥感瓦片覆盖面积，单位平方米。"
+    },
+    "risk_scenario": {
+      "alias_zh": "风险场景",
+      "description_zh": "项目用于测试的规则风险场景。"
+    },
+    "review_priority": {
+      "alias_zh": "复核优先级",
+      "description_zh": "项目规则复核优先级。"
+    },
+    "planned_start": {
+      "alias_zh": "计划开始日期",
+      "description_zh": "合成项目计划开始日期。"
+    },
+    "planned_end": {
+      "alias_zh": "计划结束日期",
+      "description_zh": "合成项目计划结束日期。"
+    },
+    "planned_area_m2": {
+      "alias_zh": "项目计划面积",
+      "description_zh": "合成项目范围投影面积，单位平方米。"
+    },
+    "related_change_ids": {
+      "alias_zh": "关联变化编号集合",
+      "description_zh": "项目关联的年度变化编号，多个值用竖线分隔。"
+    },
+    "approval_id": {
+      "alias_zh": "审批编号",
+      "description_zh": "合成项目审批记录编号。"
+    },
+    "application_date": {
+      "alias_zh": "申请日期",
+      "description_zh": "合成项目审批申请日期。"
+    },
+    "decision_date": {
+      "alias_zh": "决定日期",
+      "description_zh": "合成审批决定日期。"
+    },
+    "decision_result": {
+      "alias_zh": "审批决定",
+      "description_zh": "批准、退回、补正或审查中等审批结果。"
+    },
+    "approved_area_m2": {
+      "alias_zh": "批准面积",
+      "description_zh": "合成审批批准面积，单位平方米。"
+    },
+    "reviewing_department": {
+      "alias_zh": "审查部门",
+      "description_zh": "合成审批或复核的责任部门。"
+    },
+    "legal_basis": {
+      "alias_zh": "法规依据",
+      "description_zh": "规则或审批依据的合成条款。"
+    },
+    "standard_version": {
+      "alias_zh": "标准版本",
+      "description_zh": "规则或字段所属标准版本。"
+    },
+    "rule_eval_id": {
+      "alias_zh": "规则评估编号",
+      "description_zh": "项目规则评估结果编号。"
+    },
+    "rule_id": {
+      "alias_zh": "规则编号",
+      "description_zh": "TWM 演示规则编号。"
+    },
+    "rule_name_zh": {
+      "alias_zh": "规则中文名",
+      "description_zh": "规则中文名称。"
+    },
+    "severity": {
+      "alias_zh": "严重程度",
+      "description_zh": "规则命中严重程度。"
+    },
+    "finding_status": {
+      "alias_zh": "判定状态",
+      "description_zh": "规则评估结果状态。"
+    },
+    "finding_basis": {
+      "alias_zh": "判定依据",
+      "description_zh": "规则命中的证据和面积依据。"
+    },
+    "metric_value": {
+      "alias_zh": "指标值",
+      "description_zh": "规则评估使用的数值指标。"
+    },
+    "metric_unit": {
+      "alias_zh": "指标单位",
+      "description_zh": "规则评估指标单位。"
+    },
+    "enforcement_id": {
+      "alias_zh": "执法事件编号",
+      "description_zh": "合成执法督察事件编号。"
+    },
+    "event_type": {
+      "alias_zh": "事件类型",
+      "description_zh": "执法、预警、复核等事件类型。"
+    },
+    "event_status": {
+      "alias_zh": "事件状态",
+      "description_zh": "事件办理状态。"
+    },
+    "assigned_department": {
+      "alias_zh": "承办部门",
+      "description_zh": "合成执法或复核任务承办部门。"
+    },
+    "review_task_id": {
+      "alias_zh": "复核任务编号",
+      "description_zh": "合成人工复核任务编号。"
+    },
+    "task_status": {
+      "alias_zh": "任务状态",
+      "description_zh": "复核任务处理状态。"
+    },
+    "reviewer_role": {
+      "alias_zh": "复核角色",
+      "description_zh": "复核任务责任角色。"
+    },
+    "due_date": {
+      "alias_zh": "截止日期",
+      "description_zh": "复核任务截止日期。"
+    },
+    "review_result": {
+      "alias_zh": "复核结论",
+      "description_zh": "合成人工复核结论。"
+    },
+    "snapshot_year": {
+      "alias_zh": "快照年份",
+      "description_zh": "状态摘要所属年份。"
+    },
+    "land_space_type": {
+      "alias_zh": "国土空间类型",
+      "description_zh": "地类归并后的国土空间类型。"
+    },
+    "feature_count": {
+      "alias_zh": "要素数量",
+      "description_zh": "摘要中的要素数量。"
+    },
+    "area_m2": {
+      "alias_zh": "面积",
+      "description_zh": "摘要或关系中的面积，单位平方米。"
+    },
+    "area_delta_m2": {
+      "alias_zh": "面积变化量",
+      "description_zh": "相对上一期的面积变化量，单位平方米。"
+    },
+    "field_name": {
+      "alias_zh": "字段名",
+      "description_zh": "数据标准字段英文名。"
+    },
+    "field_alias_zh": {
+      "alias_zh": "字段中文别名",
+      "description_zh": "数据标准字段中文显示名。"
+    },
+    "lifecycle_status": {
+      "alias_zh": "生命周期状态",
+      "description_zh": "标准字段或规则的生命周期状态。"
+    },
+    "introduced_version": {
+      "alias_zh": "引入版本",
+      "description_zh": "字段或规则首次引入的标准版本。"
+    },
+    "deprecated_version": {
+      "alias_zh": "废止版本",
+      "description_zh": "字段或规则废止版本。"
+    },
+    "replacement_field": {
+      "alias_zh": "替代字段",
+      "description_zh": "字段废止后的替代字段。"
+    },
+    "evidence_id": {
+      "alias_zh": "证据编号",
+      "description_zh": "多模态证据索引编号。"
+    },
+    "evidence_type": {
+      "alias_zh": "证据类型",
+      "description_zh": "矢量、影像、文本、标准或规则评估证据类型。"
+    },
+    "evidence_uri": {
+      "alias_zh": "证据地址",
+      "description_zh": "证据文件、URI 或关系表引用。"
+    },
+    "linked_object_id": {
+      "alias_zh": "关联对象编号",
+      "description_zh": "证据关联的项目、图斑、规则或瓦片编号。"
+    },
+    "linked_object_type": {
+      "alias_zh": "关联对象类型",
+      "description_zh": "证据关联对象类型。"
+    },
+    "observed_date": {
+      "alias_zh": "观测日期",
+      "description_zh": "证据观测或生成日期。"
+    },
+    "confidence": {
+      "alias_zh": "置信度",
+      "description_zh": "关系或证据置信度。"
+    },
+    "TBYBH": {
+      "alias_zh": "图斑预编号",
+      "description_zh": "自然资源一张图标准字段：图斑预编号。"
+    },
+    "TBBH": {
+      "alias_zh": "图斑编号",
+      "description_zh": "自然资源一张图标准字段：图斑编号。"
+    },
+    "QSXZ": {
+      "alias_zh": "权属性质",
+      "description_zh": "自然资源一张图标准字段：权属性质。"
+    },
+    "KCDLBM": {
+      "alias_zh": "扣除地类编码",
+      "description_zh": "自然资源一张图标准字段：扣除地类编码。"
+    },
+    "KCXS": {
+      "alias_zh": "扣除系数",
+      "description_zh": "自然资源一张图标准字段：扣除系数。"
+    },
+    "KCMJ": {
+      "alias_zh": "扣除面积",
+      "description_zh": "自然资源一张图标准字段：扣除面积。"
+    },
+    "TBDLMJ": {
+      "alias_zh": "图斑地类面积",
+      "description_zh": "自然资源一张图标准字段：图斑地类面积。"
+    },
+    "GDLX": {
+      "alias_zh": "耕地类型",
+      "description_zh": "自然资源一张图标准字段：耕地类型。"
+    },
+    "GDPDJB": {
+      "alias_zh": "耕地坡度级别",
+      "description_zh": "自然资源一张图标准字段：耕地坡度级别。"
+    },
+    "TBXHDM": {
+      "alias_zh": "图斑细化代码",
+      "description_zh": "自然资源一张图标准字段：图斑细化代码。"
+    },
+    "TBXHMC": {
+      "alias_zh": "图斑细化名称",
+      "description_zh": "自然资源一张图标准字段：图斑细化名称。"
+    },
+    "ZZSXDM": {
+      "alias_zh": "种植属性代码",
+      "description_zh": "自然资源一张图标准字段：种植属性代码。"
+    },
+    "ZZSXMC": {
+      "alias_zh": "种植属性名称",
+      "description_zh": "自然资源一张图标准字段：种植属性名称。"
+    },
+    "CZCSXM": {
+      "alias_zh": "城镇村属性码",
+      "description_zh": "自然资源一张图标准字段：城镇村属性码。"
+    },
+    "SJNF": {
+      "alias_zh": "数据年份",
+      "description_zh": "自然资源一张图标准字段：数据年份。"
+    },
+    "MSSM": {
+      "alias_zh": "描述说明",
+      "description_zh": "自然资源一张图标准字段：描述说明。"
+    },
+    "GXSJ": {
+      "alias_zh": "更新时间",
+      "description_zh": "自然资源一张图标准字段：更新时间。"
+    },
+    "BZ": {
+      "alias_zh": "备注",
+      "description_zh": "自然资源一张图标准字段：备注。"
+    },
+    "XZQDM": {
+      "alias_zh": "行政区代码",
+      "description_zh": "自然资源一张图标准字段：行政区代码。"
+    },
+    "XZQMC": {
+      "alias_zh": "行政区名称",
+      "description_zh": "自然资源一张图标准字段：行政区名称。"
+    },
+    "XJXZQDM": {
+      "alias_zh": "县级行政区代码",
+      "description_zh": "自然资源一张图标准字段：县级行政区代码。"
+    },
+    "XJXZQMC": {
+      "alias_zh": "县级行政区名称",
+      "description_zh": "自然资源一张图标准字段：县级行政区名称。"
+    },
+    "XJXZQHDM": {
+      "alias_zh": "县级行政区划代码",
+      "description_zh": "自然资源一张图标准字段：县级行政区划代码。"
+    },
+    "YJJBNTTBBH": {
+      "alias_zh": "永久基本农田图斑编号",
+      "description_zh": "自然资源一张图标准字段：永久基本农田图斑编号。"
+    },
+    "YJJBNTTBMJ": {
+      "alias_zh": "永久基本农田图斑面积",
+      "description_zh": "自然资源一张图标准字段：永久基本农田图斑面积。"
+    },
+    "YJJBNTMJ": {
+      "alias_zh": "永久基本农田面积",
+      "description_zh": "自然资源一张图标准字段：永久基本农田面积。"
+    },
+    "BHKSSJ": {
+      "alias_zh": "保护开始时间",
+      "description_zh": "自然资源一张图标准字段：保护开始时间。"
+    },
+    "BHJSSJ": {
+      "alias_zh": "保护结束时间",
+      "description_zh": "自然资源一张图标准字段：保护结束时间。"
+    },
+    "WDGD": {
+      "alias_zh": "稳定利用耕地标识",
+      "description_zh": "自然资源一张图标准字段：稳定利用耕地标识。"
+    },
+    "GDZZSXDM": {
+      "alias_zh": "耕地种植属性代码",
+      "description_zh": "自然资源一张图标准字段：耕地种植属性代码。"
+    },
+    "GDZZSXMC": {
+      "alias_zh": "耕地种植属性名称",
+      "description_zh": "自然资源一张图标准字段：耕地种植属性名称。"
+    },
+    "CFZR": {
+      "alias_zh": "承包方责任人",
+      "description_zh": "自然资源一张图标准字段：承包方责任人。"
+    },
+    "ZRRMC": {
+      "alias_zh": "责任人名称",
+      "description_zh": "自然资源一张图标准字段：责任人名称。"
+    },
+    "SJBH": {
+      "alias_zh": "数据编号",
+      "description_zh": "自然资源一张图标准字段：数据编号。"
+    },
+    "SJMC": {
+      "alias_zh": "数据名称",
+      "description_zh": "自然资源一张图标准字段：数据名称。"
+    },
+    "LHLX": {
+      "alias_zh": "陆海类型",
+      "description_zh": "自然资源一张图标准字段：陆海类型。"
+    },
+    "LXDM": {
+      "alias_zh": "类型代码",
+      "description_zh": "自然资源一张图标准字段：类型代码。"
+    },
+    "SLDM": {
+      "alias_zh": "分类代码",
+      "description_zh": "自然资源一张图标准字段：分类代码。"
+    },
+    "MC": {
+      "alias_zh": "名称",
+      "description_zh": "自然资源一张图标准字段：名称。"
+    },
+    "MJ": {
+      "alias_zh": "面积",
+      "description_zh": "自然资源一张图标准字段：面积。"
+    },
+    "QYMJ": {
+      "alias_zh": "区域面积",
+      "description_zh": "自然资源一张图标准字段：区域面积。"
+    },
+    "SLSJ": {
+      "alias_zh": "收录时间",
+      "description_zh": "自然资源一张图标准字段：收录时间。"
+    },
+    "GKCS": {
+      "alias_zh": "管控措施",
+      "description_zh": "自然资源一张图标准字段：管控措施。"
+    },
+    "RKSL": {
+      "alias_zh": "人口数量",
+      "description_zh": "自然资源一张图标准字段：人口数量。"
+    },
+    "STGNYBHMB": {
+      "alias_zh": "生态功能预保护目标",
+      "description_zh": "自然资源一张图标准字段：生态功能预保护目标。"
+    },
+    "STXTYZBLX": {
+      "alias_zh": "生态系统因子斑类型",
+      "description_zh": "自然资源一张图标准字段：生态系统因子斑类型。"
+    },
+    "RWHDLX": {
+      "alias_zh": "人为活动类型",
+      "description_zh": "自然资源一张图标准字段：人为活动类型。"
+    },
+    "STHJWT": {
+      "alias_zh": "生态环境问题",
+      "description_zh": "自然资源一张图标准字段：生态环境问题。"
+    },
+    "CZMC": {
+      "alias_zh": "城镇名称",
+      "description_zh": "自然资源一张图标准字段：城镇名称。"
+    },
+    "CZKFMJ": {
+      "alias_zh": "城镇开发面积",
+      "description_zh": "自然资源一张图标准字段：城镇开发面积。"
+    },
+    "GHFQDM": {
+      "alias_zh": "规划分区代码",
+      "description_zh": "自然资源一张图标准字段：规划分区代码。"
+    },
+    "GHFQMC": {
+      "alias_zh": "规划分区名称",
+      "description_zh": "自然资源一张图标准字段：规划分区名称。"
+    },
+    "XMDM": {
+      "alias_zh": "项目代码",
+      "description_zh": "自然资源一张图标准字段：项目代码。"
+    },
+    "DZJGH": {
+      "alias_zh": "电子监管号",
+      "description_zh": "自然资源一张图标准字段：电子监管号。"
+    },
+    "AJBH": {
+      "alias_zh": "案卷编号",
+      "description_zh": "自然资源一张图标准字段：案卷编号。"
+    },
+    "XMMC": {
+      "alias_zh": "项目名称",
+      "description_zh": "自然资源一张图标准字段：项目名称。"
+    },
+    "SQDW": {
+      "alias_zh": "申请单位",
+      "description_zh": "自然资源一张图标准字段：申请单位。"
+    },
+    "SZXZQDM": {
+      "alias_zh": "所在行政区代码",
+      "description_zh": "自然资源一张图标准字段：所在行政区代码。"
+    },
+    "SZXZQMC": {
+      "alias_zh": "所在行政区名称",
+      "description_zh": "自然资源一张图标准字段：所在行政区名称。"
+    },
+    "YDMJ": {
+      "alias_zh": "用地面积",
+      "description_zh": "自然资源一张图标准字段：用地面积。"
+    },
+    "ZYNYDMJ": {
+      "alias_zh": "占用农用地面积",
+      "description_zh": "自然资源一张图标准字段：占用农用地面积。"
+    },
+    "ZYGDMJ": {
+      "alias_zh": "占用耕地面积",
+      "description_zh": "自然资源一张图标准字段：占用耕地面积。"
+    },
+    "SJSTHXMJ": {
+      "alias_zh": "涉及生态红线面积",
+      "description_zh": "自然资源一张图标准字段：涉及生态红线面积。"
+    },
+    "ZYJSYDMJ": {
+      "alias_zh": "占用建设用地面积",
+      "description_zh": "自然资源一张图标准字段：占用建设用地面积。"
+    },
+    "ZYWLDMJ": {
+      "alias_zh": "占用未利用地面积",
+      "description_zh": "自然资源一张图标准字段：占用未利用地面积。"
+    },
+    "SQRQ": {
+      "alias_zh": "申请日期",
+      "description_zh": "自然资源一张图标准字段：申请日期。"
+    },
+    "GXRQ": {
+      "alias_zh": "更新日期",
+      "description_zh": "自然资源一张图标准字段：更新日期。"
+    },
+    "XMPZLX": {
+      "alias_zh": "项目批准类型",
+      "description_zh": "自然资源一张图标准字段：项目批准类型。"
+    },
+    "HYFLBM": {
+      "alias_zh": "行业分类编码",
+      "description_zh": "自然资源一张图标准字段：行业分类编码。"
+    },
+    "HYFLMC": {
+      "alias_zh": "行业分类名称",
+      "description_zh": "自然资源一张图标准字段：行业分类名称。"
+    },
+    "TDYTDM": {
+      "alias_zh": "土地用途代码",
+      "description_zh": "自然资源一张图标准字段：土地用途代码。"
+    },
+    "TDYTMC": {
+      "alias_zh": "土地用途名称",
+      "description_zh": "自然资源一张图标准字段：土地用途名称。"
+    },
+    "DKBH": {
+      "alias_zh": "地块编号",
+      "description_zh": "自然资源一张图标准字段：地块编号。"
+    },
+    "DKMC": {
+      "alias_zh": "地块名称",
+      "description_zh": "自然资源一张图标准字段：地块名称。"
+    },
+    "DKMJ": {
+      "alias_zh": "地块面积",
+      "description_zh": "自然资源一张图标准字段：地块面积。"
+    },
+    "DKXZQDM": {
+      "alias_zh": "地块行政区代码",
+      "description_zh": "自然资源一张图标准字段：地块行政区代码。"
+    },
+    "DKXZQMC": {
+      "alias_zh": "地块行政区名称",
+      "description_zh": "自然资源一张图标准字段：地块行政区名称。"
+    },
+    "DKYTDM": {
+      "alias_zh": "地块用途代码",
+      "description_zh": "自然资源一张图标准字段：地块用途代码。"
+    },
+    "DKYTMC": {
+      "alias_zh": "地块用途名称",
+      "description_zh": "自然资源一张图标准字段：地块用途名称。"
+    },
+    "DKZT": {
+      "alias_zh": "地块状态",
+      "description_zh": "自然资源一张图标准字段：地块状态。"
+    },
+    "ZYZMJ": {
+      "alias_zh": "转用总面积",
+      "description_zh": "自然资源一张图标准字段：转用总面积。"
+    },
+    "ZDZMJ": {
+      "alias_zh": "征地总面积",
+      "description_zh": "自然资源一张图标准字段：征地总面积。"
+    },
+    "QZNYDMJ": {
+      "alias_zh": "其中农用地面积",
+      "description_zh": "自然资源一张图标准字段：其中农用地面积。"
+    },
+    "QZGDMJ": {
+      "alias_zh": "其中耕地面积",
+      "description_zh": "自然资源一张图标准字段：其中耕地面积。"
+    },
+    "XZYDZMJ": {
+      "alias_zh": "新增用地总面积",
+      "description_zh": "自然资源一张图标准字段：新增用地总面积。"
+    },
+    "WFXWZJ": {
+      "alias_zh": "违法行为主键",
+      "description_zh": "自然资源一张图标准字段：违法行为主键。"
+    },
+    "WFDKXH": {
+      "alias_zh": "违法地块序号",
+      "description_zh": "自然资源一张图标准字段：违法地块序号。"
+    },
+    "YGTBZJ": {
+      "alias_zh": "遥感图斑主键",
+      "description_zh": "自然资源一张图标准字段：遥感图斑主键。"
+    },
+    "JCSDQ": {
+      "alias_zh": "监测时段起",
+      "description_zh": "自然资源一张图标准字段：监测时段起。"
+    },
+    "JCSDH": {
+      "alias_zh": "监测时段后",
+      "description_zh": "自然资源一张图标准字段：监测时段后。"
+    },
+    "JCMJ": {
+      "alias_zh": "监测面积",
+      "description_zh": "自然资源一张图标准字段：监测面积。"
+    },
+    "TDZL": {
+      "alias_zh": "土地坐落",
+      "description_zh": "自然资源一张图标准字段：土地坐落。"
+    },
+    "TBLX": {
+      "alias_zh": "图斑类型",
+      "description_zh": "自然资源一张图标准字段：图斑类型。"
+    },
+    "ND": {
+      "alias_zh": "年度",
+      "description_zh": "自然资源一张图标准字段：年度。"
+    },
+    "QSSJ": {
+      "alias_zh": "起始时间",
+      "description_zh": "自然资源一张图标准字段：起始时间。"
+    },
+    "ZZSJ": {
+      "alias_zh": "终止时间",
+      "description_zh": "自然资源一张图标准字段：终止时间。"
+    },
+    "GXZT": {
+      "alias_zh": "更新状态",
+      "description_zh": "自然资源一张图标准字段：更新状态。"
+    },
+    "data_id": {
+      "alias_zh": "数据唯一编码",
+      "description_zh": "自然资源一张图标准字段：数据唯一编码。"
+    },
+    "resource_id": {
+      "alias_zh": "资源唯一编码",
+      "description_zh": "自然资源一张图标准字段：资源唯一编码。"
+    },
+    "data_name": {
+      "alias_zh": "数据名称",
+      "description_zh": "自然资源一张图标准字段：数据名称。"
+    },
+    "data_alias": {
+      "alias_zh": "数据别名",
+      "description_zh": "自然资源一张图标准字段：数据别名。"
+    },
+    "data_format": {
+      "alias_zh": "数据格式",
+      "description_zh": "自然资源一张图标准字段：数据格式。"
+    },
+    "geometry_type": {
+      "alias_zh": "几何类型",
+      "description_zh": "自然资源一张图标准字段：几何类型。"
+    },
+    "wkid": {
+      "alias_zh": "坐标系 WKID",
+      "description_zh": "自然资源一张图标准字段：坐标系 WKID。"
+    },
+    "coordinate_unit": {
+      "alias_zh": "坐标单位",
+      "description_zh": "自然资源一张图标准字段：坐标单位。"
+    },
+    "source_currency": {
+      "alias_zh": "数据现势性",
+      "description_zh": "自然资源一张图标准字段：数据现势性。"
+    },
+    "integrity": {
+      "alias_zh": "完整性",
+      "description_zh": "自然资源一张图标准字段：完整性。"
+    },
+    "score": {
+      "alias_zh": "质量分数",
+      "description_zh": "自然资源一张图标准字段：质量分数。"
+    },
+    "quality_evaluation": {
+      "alias_zh": "质量评价",
+      "description_zh": "自然资源一张图标准字段：质量评价。"
+    },
+    "data_des": {
+      "alias_zh": "数据描述",
+      "description_zh": "自然资源一张图标准字段：数据描述。"
+    },
+    "cover_range_coor": {
+      "alias_zh": "覆盖范围坐标",
+      "description_zh": "自然资源一张图标准字段：覆盖范围坐标。"
+    },
+    "cover_range": {
+      "alias_zh": "覆盖范围",
+      "description_zh": "自然资源一张图标准字段：覆盖范围。"
+    },
+    "security_order": {
+      "alias_zh": "密级",
+      "description_zh": "自然资源一张图标准字段：密级。"
+    },
+    "layer_name": {
+      "alias_zh": "图层名称",
+      "description_zh": "自然资源一张图标准字段：图层名称。"
+    },
+    "layer_field": {
+      "alias_zh": "图层字段",
+      "description_zh": "自然资源一张图标准字段：图层字段。"
+    },
+    "product_date": {
+      "alias_zh": "生产日期",
+      "description_zh": "自然资源一张图标准字段：生产日期。"
+    },
+    "update_date": {
+      "alias_zh": "更新日期",
+      "description_zh": "自然资源一张图标准字段：更新日期。"
+    },
+    "producer": {
+      "alias_zh": "生产单位",
+      "description_zh": "自然资源一张图标准字段：生产单位。"
+    },
+    "quality_check_date": {
+      "alias_zh": "质检日期",
+      "description_zh": "自然资源一张图标准字段：质检日期。"
+    },
+    "quality_des": {
+      "alias_zh": "质量说明",
+      "description_zh": "自然资源一张图标准字段：质量说明。"
+    },
+    "objective_id": {
+      "alias_zh": "目标编号",
+      "description_zh": "多目标优化指标的稳定编号。"
+    },
+    "objective_name_zh": {
+      "alias_zh": "目标中文名称",
+      "description_zh": "多目标优化指标的中文显示名。"
+    },
+    "direction": {
+      "alias_zh": "优化方向",
+      "description_zh": "min 表示越小越优，max 表示越大越优。"
+    },
+    "unit": {
+      "alias_zh": "计量单位",
+      "description_zh": "指标值的计量单位。"
+    },
+    "weight": {
+      "alias_zh": "目标权重",
+      "description_zh": "工程测试中的归一化加权评分权重。"
+    },
+    "hard_constraint": {
+      "alias_zh": "是否硬约束",
+      "description_zh": "true 表示该目标属于法定硬约束过滤条件。"
+    },
+    "description_zh": {
+      "alias_zh": "中文说明",
+      "description_zh": "目标、方案或字段的中文解释。"
+    },
+    "action_id": {
+      "alias_zh": "动作编号",
+      "description_zh": "候选优化动作的稳定编号。"
+    },
+    "action_type": {
+      "alias_zh": "动作类型",
+      "description_zh": "候选动作类型，例如项目范围或调整图斑。"
+    },
+    "action_area_m2": {
+      "alias_zh": "动作面积",
+      "description_zh": "候选动作范围面积，单位平方米。"
+    },
+    "pbf_overlap_m2": {
+      "alias_zh": "永久基本农田叠置面积",
+      "description_zh": "方案或动作与永久基本农田的正面积叠置。"
+    },
+    "eco_overlap_m2": {
+      "alias_zh": "生态红线叠置面积",
+      "description_zh": "方案或动作与生态保护红线的正面积叠置。"
+    },
+    "planning_conflict_m2": {
+      "alias_zh": "规划冲突面积",
+      "description_zh": "方案或动作与用途管制规则不一致的面积。"
+    },
+    "urban_inside_m2": {
+      "alias_zh": "城镇边界内面积",
+      "description_zh": "动作范围落入城镇开发边界内的面积。"
+    },
+    "urban_outside_m2": {
+      "alias_zh": "城镇边界外面积",
+      "description_zh": "动作范围落在城镇开发边界外的面积。"
+    },
+    "hard_constraint_violation_m2": {
+      "alias_zh": "硬约束触碰面积",
+      "description_zh": "永久基本农田和生态红线触碰面积合计。"
+    },
+    "review_hit_count": {
+      "alias_zh": "复核命中数量",
+      "description_zh": "候选动作触发需人工复核规则的次数。"
+    },
+    "compactness_score": {
+      "alias_zh": "空间紧凑性得分",
+      "description_zh": "基于面积和周长的紧凑度近似指标。"
+    },
+    "feasibility_class": {
+      "alias_zh": "动作可行性类别",
+      "description_zh": "候选动作的硬约束和复核风险分类。"
+    },
+    "constraint_id": {
+      "alias_zh": "约束编号",
+      "description_zh": "约束掩码或约束违规项编号。"
+    },
+    "constraint_name_zh": {
+      "alias_zh": "约束中文名称",
+      "description_zh": "约束条件的中文显示名。"
+    },
+    "optimization_role": {
+      "alias_zh": "优化作用",
+      "description_zh": "约束掩码在优化中的作用，例如硬约束、偏好或统计单元。"
+    },
+    "legal_strength": {
+      "alias_zh": "约束强度",
+      "description_zh": "约束的法定或工程强度，例如 hard、soft、aggregation。"
+    },
+    "source_layer": {
+      "alias_zh": "来源图层",
+      "description_zh": "约束掩码来源图层。"
+    },
+    "scenario_name_zh": {
+      "alias_zh": "方案中文名称",
+      "description_zh": "候选方案的中文显示名。"
+    },
+    "scenario_type": {
+      "alias_zh": "方案类型",
+      "description_zh": "方案类型，例如基线、动态推演、项目组合或压力测试。"
+    },
+    "source": {
+      "alias_zh": "方案来源",
+      "description_zh": "方案由现状、动作空间或 WorldModel 输出派生。"
+    },
+    "project_count": {
+      "alias_zh": "项目数量",
+      "description_zh": "方案包含的候选项目数量。"
+    },
+    "change_count": {
+      "alias_zh": "变化图斑数量",
+      "description_zh": "方案关联的年度变化图斑数量。"
+    },
+    "status": {
+      "alias_zh": "数据状态",
+      "description_zh": "数据对象状态，例如 engineering_fixture。"
+    },
+    "optimization_scope": {
+      "alias_zh": "优化比较范围",
+      "description_zh": "legal_feasible_space 表示进入合法可行空间比选；stress_test_only 表示仅用于压力测试。"
+    },
+    "hard_constraint_status": {
+      "alias_zh": "硬约束状态",
+      "description_zh": "方案通过或被法定硬约束阻断的状态。"
+    },
+    "requires_legal_review": {
+      "alias_zh": "需法定复核",
+      "description_zh": "true 表示方案触发硬约束法定复核。"
+    },
+    "excluded_from_recommendation": {
+      "alias_zh": "排除推荐",
+      "description_zh": "true 表示该方案不能进入可推荐方案空间。"
+    },
+    "feasibility_reason_zh": {
+      "alias_zh": "可行性原因",
+      "description_zh": "方案硬约束可行性分层的中文解释。"
+    },
+    "selection_order": {
+      "alias_zh": "选择序号",
+      "description_zh": "项目在方案组合中的选择顺序。"
+    },
+    "inclusion_weight": {
+      "alias_zh": "纳入权重",
+      "description_zh": "项目被纳入方案组合的权重。"
+    },
+    "metric_source": {
+      "alias_zh": "指标来源",
+      "description_zh": "指标由现状、动作空间、规则结果或 WorldModel 输出计算。"
+    },
+    "normalized_score": {
+      "alias_zh": "归一化得分",
+      "description_zh": "按目标方向归一化后的 0-1 得分。"
+    },
+    "weighted_score": {
+      "alias_zh": "加权得分",
+      "description_zh": "归一化得分乘以目标权重后的得分。"
+    },
+    "violation_value": {
+      "alias_zh": "违规值",
+      "description_zh": "约束违规面积、数量或其他计量值。"
+    },
+    "requires_review": {
+      "alias_zh": "需要复核",
+      "description_zh": "true 表示该违规项需要人工或法定复核。"
+    }
+  },
+  "roles": {
+    "parcel": "用于构建国土空间状态对象的现状图斑底板。",
+    "pbf": "用于永久基本农田保护类硬约束校验。",
+    "eco_redline": "用于生态保护红线触碰风险校验。",
+    "admin_unit": "用于区域汇总、行政范围过滤和地图背景。",
+    "annual_change": "用于模拟年度变化调查和状态转移证据。",
+    "project": "用于模拟建设项目或规划调整范围。",
+    "planning_zone": "用于用途准入、规划一致性和国土空间格局约束测试。",
+    "urban_boundary": "用于城镇开发边界内外合规性判断。",
+    "remote_sensing_tile": "用于连接影像观测、图斑和文本说明的多模态语义融合测试。",
+    "raster_observation": "用于验证矢量、文本、规则和栅格观测之间的 MMFE 证据链。"
+  },
+  "layer_fields": {
+    "parcel_current": {
+      "alias_zh": "现状地类图斑",
+      "fields": {
+        "BSM": {
+          "alias_zh": "标识码",
+          "description_zh": "原始地类图斑唯一标识。"
+        },
+        "YSDM": {
+          "alias_zh": "要素代码",
+          "description_zh": "自然资源调查监测要素代码。"
+        },
+        "DLBM": {
+          "alias_zh": "地类编码",
+          "description_zh": "土地利用分类编码。"
+        },
+        "DLMC": {
+          "alias_zh": "地类名称",
+          "description_zh": "土地利用分类中文名称。"
+        },
+        "QSDWDM": {
+          "alias_zh": "权属单位代码",
+          "description_zh": "图斑权属单位代码。"
+        },
+        "QSDWMC": {
+          "alias_zh": "权属单位名称",
+          "description_zh": "图斑权属单位中文名称。"
+        },
+        "ZLDWDM": {
+          "alias_zh": "坐落单位代码",
+          "description_zh": "图斑坐落单位代码。"
+        },
+        "ZLDWMC": {
+          "alias_zh": "坐落单位名称",
+          "description_zh": "图斑坐落单位中文名称。"
+        },
+        "TBMJ": {
+          "alias_zh": "图斑面积",
+          "description_zh": "原始图斑面积，单位通常为平方米。"
+        },
+        "SHAPE_Length": {
+          "alias_zh": "几何周长",
+          "description_zh": "源数据中的系统几何周长字段。"
+        },
+        "SHAPE_Area": {
+          "alias_zh": "几何面积",
+          "description_zh": "源数据中的系统几何面积字段。"
+        },
+        "category": {
+          "alias_zh": "归并地类",
+          "description_zh": "为 WorldModel 使用归并后的地类类别。"
+        },
+        "slope_mean": {
+          "alias_zh": "平均坡度",
+          "description_zh": "图斑范围内 DEM 派生平均坡度。"
+        },
+        "slope_max": {
+          "alias_zh": "最大坡度",
+          "description_zh": "图斑范围内 DEM 派生最大坡度。"
+        },
+        "slope_pixel_count": {
+          "alias_zh": "坡度像元数",
+          "description_zh": "参与坡度统计的像元数量。"
+        },
+        "bsm_norm": {
+          "alias_zh": "规范化标识码",
+          "description_zh": "去除浮点后缀后的稳定图斑标识。"
+        },
+        "admin9": {
+          "alias_zh": "九位行政前缀",
+          "description_zh": "从权属单位代码截取的九位行政区划/乡镇前缀。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "area_source_m2": {
+          "alias_zh": "源属性面积",
+          "description_zh": "源数据面积字段，优先来自 TBMJ，单位平方米。"
+        },
+        "tbmj_area_rel_error": {
+          "alias_zh": "面积相对误差",
+          "description_zh": "投影几何面积与源属性面积的相对误差。"
+        },
+        "qa_area_warning": {
+          "alias_zh": "面积异常标记",
+          "description_zh": "true 表示几何面积与源属性面积偏差超过 QA 阈值。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        },
+        "demo_role": {
+          "alias_zh": "演示角色",
+          "description_zh": "该要素在 TWM demo 中承担的角色。"
+        },
+        "demo_sample": {
+          "alias_zh": "演示抽样标记",
+          "description_zh": "标记该要素是否来自演示抽样。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "TBYBH": {
+          "alias_zh": "图斑预编号",
+          "description_zh": "自然资源一张图标准字段：图斑预编号。"
+        },
+        "TBBH": {
+          "alias_zh": "图斑编号",
+          "description_zh": "自然资源一张图标准字段：图斑编号。"
+        },
+        "QSXZ": {
+          "alias_zh": "权属性质",
+          "description_zh": "自然资源一张图标准字段：权属性质。"
+        },
+        "KCDLBM": {
+          "alias_zh": "扣除地类编码",
+          "description_zh": "自然资源一张图标准字段：扣除地类编码。"
+        },
+        "KCXS": {
+          "alias_zh": "扣除系数",
+          "description_zh": "自然资源一张图标准字段：扣除系数。"
+        },
+        "KCMJ": {
+          "alias_zh": "扣除面积",
+          "description_zh": "自然资源一张图标准字段：扣除面积。"
+        },
+        "TBDLMJ": {
+          "alias_zh": "图斑地类面积",
+          "description_zh": "自然资源一张图标准字段：图斑地类面积。"
+        },
+        "GDLX": {
+          "alias_zh": "耕地类型",
+          "description_zh": "自然资源一张图标准字段：耕地类型。"
+        },
+        "GDPDJB": {
+          "alias_zh": "耕地坡度级别",
+          "description_zh": "自然资源一张图标准字段：耕地坡度级别。"
+        },
+        "TBXHDM": {
+          "alias_zh": "图斑细化代码",
+          "description_zh": "自然资源一张图标准字段：图斑细化代码。"
+        },
+        "TBXHMC": {
+          "alias_zh": "图斑细化名称",
+          "description_zh": "自然资源一张图标准字段：图斑细化名称。"
+        },
+        "ZZSXDM": {
+          "alias_zh": "种植属性代码",
+          "description_zh": "自然资源一张图标准字段：种植属性代码。"
+        },
+        "ZZSXMC": {
+          "alias_zh": "种植属性名称",
+          "description_zh": "自然资源一张图标准字段：种植属性名称。"
+        },
+        "CZCSXM": {
+          "alias_zh": "城镇村属性码",
+          "description_zh": "自然资源一张图标准字段：城镇村属性码。"
+        },
+        "SJNF": {
+          "alias_zh": "数据年份",
+          "description_zh": "自然资源一张图标准字段：数据年份。"
+        },
+        "MSSM": {
+          "alias_zh": "描述说明",
+          "description_zh": "自然资源一张图标准字段：描述说明。"
+        },
+        "GXSJ": {
+          "alias_zh": "更新时间",
+          "description_zh": "自然资源一张图标准字段：更新时间。"
+        },
+        "BZ": {
+          "alias_zh": "备注",
+          "description_zh": "自然资源一张图标准字段：备注。"
+        }
+      }
+    },
+    "synthetic_pbf": {
+      "alias_zh": "合成永久基本农田",
+      "fields": {
+        "BSM": {
+          "alias_zh": "标识码",
+          "description_zh": "原始地类图斑唯一标识。"
+        },
+        "YSDM": {
+          "alias_zh": "要素代码",
+          "description_zh": "自然资源调查监测要素代码。"
+        },
+        "XZQDM": {
+          "alias_zh": "行政区代码",
+          "description_zh": "自然资源一张图标准字段：行政区代码。"
+        },
+        "XZQMC": {
+          "alias_zh": "行政区名称",
+          "description_zh": "自然资源一张图标准字段：行政区名称。"
+        },
+        "YJJBNTTBBH": {
+          "alias_zh": "永久基本农田图斑编号",
+          "description_zh": "自然资源一张图标准字段：永久基本农田图斑编号。"
+        },
+        "TBBH": {
+          "alias_zh": "图斑编号",
+          "description_zh": "自然资源一张图标准字段：图斑编号。"
+        },
+        "DLBM": {
+          "alias_zh": "地类编码",
+          "description_zh": "土地利用分类编码。"
+        },
+        "DLMC": {
+          "alias_zh": "地类名称",
+          "description_zh": "土地利用分类中文名称。"
+        },
+        "QSXZ": {
+          "alias_zh": "权属性质",
+          "description_zh": "自然资源一张图标准字段：权属性质。"
+        },
+        "QSDWDM": {
+          "alias_zh": "权属单位代码",
+          "description_zh": "图斑权属单位代码。"
+        },
+        "QSDWMC": {
+          "alias_zh": "权属单位名称",
+          "description_zh": "图斑权属单位中文名称。"
+        },
+        "ZLDWDM": {
+          "alias_zh": "坐落单位代码",
+          "description_zh": "图斑坐落单位代码。"
+        },
+        "ZLDWMC": {
+          "alias_zh": "坐落单位名称",
+          "description_zh": "图斑坐落单位中文名称。"
+        },
+        "YJJBNTTBMJ": {
+          "alias_zh": "永久基本农田图斑面积",
+          "description_zh": "自然资源一张图标准字段：永久基本农田图斑面积。"
+        },
+        "YJJBNTMJ": {
+          "alias_zh": "永久基本农田面积",
+          "description_zh": "自然资源一张图标准字段：永久基本农田面积。"
+        },
+        "SJNF": {
+          "alias_zh": "数据年份",
+          "description_zh": "自然资源一张图标准字段：数据年份。"
+        },
+        "BHKSSJ": {
+          "alias_zh": "保护开始时间",
+          "description_zh": "自然资源一张图标准字段：保护开始时间。"
+        },
+        "BHJSSJ": {
+          "alias_zh": "保护结束时间",
+          "description_zh": "自然资源一张图标准字段：保护结束时间。"
+        },
+        "WDGD": {
+          "alias_zh": "稳定利用耕地标识",
+          "description_zh": "自然资源一张图标准字段：稳定利用耕地标识。"
+        },
+        "GDPDJB": {
+          "alias_zh": "耕地坡度级别",
+          "description_zh": "自然资源一张图标准字段：耕地坡度级别。"
+        },
+        "KCDLBM": {
+          "alias_zh": "扣除地类编码",
+          "description_zh": "自然资源一张图标准字段：扣除地类编码。"
+        },
+        "KCXS": {
+          "alias_zh": "扣除系数",
+          "description_zh": "自然资源一张图标准字段：扣除系数。"
+        },
+        "KCMJ": {
+          "alias_zh": "扣除面积",
+          "description_zh": "自然资源一张图标准字段：扣除面积。"
+        },
+        "GDLX": {
+          "alias_zh": "耕地类型",
+          "description_zh": "自然资源一张图标准字段：耕地类型。"
+        },
+        "TBXHDM": {
+          "alias_zh": "图斑细化代码",
+          "description_zh": "自然资源一张图标准字段：图斑细化代码。"
+        },
+        "TBXHMC": {
+          "alias_zh": "图斑细化名称",
+          "description_zh": "自然资源一张图标准字段：图斑细化名称。"
+        },
+        "GDZZSXDM": {
+          "alias_zh": "耕地种植属性代码",
+          "description_zh": "自然资源一张图标准字段：耕地种植属性代码。"
+        },
+        "GDZZSXMC": {
+          "alias_zh": "耕地种植属性名称",
+          "description_zh": "自然资源一张图标准字段：耕地种植属性名称。"
+        },
+        "CFZR": {
+          "alias_zh": "承包方责任人",
+          "description_zh": "自然资源一张图标准字段：承包方责任人。"
+        },
+        "ZRRMC": {
+          "alias_zh": "责任人名称",
+          "description_zh": "自然资源一张图标准字段：责任人名称。"
+        },
+        "SJBH": {
+          "alias_zh": "数据编号",
+          "description_zh": "自然资源一张图标准字段：数据编号。"
+        },
+        "SJMC": {
+          "alias_zh": "数据名称",
+          "description_zh": "自然资源一张图标准字段：数据名称。"
+        },
+        "BZ": {
+          "alias_zh": "备注",
+          "description_zh": "自然资源一张图标准字段：备注。"
+        },
+        "control_id": {
+          "alias_zh": "管控区编号",
+          "description_zh": "合成永久基本农田管控区编号。"
+        },
+        "control_name": {
+          "alias_zh": "管控区名称",
+          "description_zh": "合成管控区中文名称。"
+        },
+        "control_type": {
+          "alias_zh": "管控区类型",
+          "description_zh": "管控区业务类型。"
+        },
+        "control_grade": {
+          "alias_zh": "管控区等级",
+          "description_zh": "合成永久基本农田保护等级。"
+        },
+        "control_area_m2": {
+          "alias_zh": "管控区面积",
+          "description_zh": "合成永久基本农田面对象面积，单位平方米。"
+        },
+        "source_bsm_count": {
+          "alias_zh": "来源图斑数量",
+          "description_zh": "合成面对象覆盖或派生自的源图斑数量。"
+        },
+        "source_bsms_sample": {
+          "alias_zh": "来源图斑样例",
+          "description_zh": "合成对象关联源图斑的截断样例。"
+        },
+        "effective_date": {
+          "alias_zh": "生效日期",
+          "description_zh": "合成规则或管控边界的生效日期。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    },
+    "synthetic_eco_redline": {
+      "alias_zh": "合成生态保护红线",
+      "fields": {
+        "BSM": {
+          "alias_zh": "标识码",
+          "description_zh": "原始地类图斑唯一标识。"
+        },
+        "YSDM": {
+          "alias_zh": "要素代码",
+          "description_zh": "自然资源调查监测要素代码。"
+        },
+        "XJXZQDM": {
+          "alias_zh": "县级行政区代码",
+          "description_zh": "自然资源一张图标准字段：县级行政区代码。"
+        },
+        "XJXZQMC": {
+          "alias_zh": "县级行政区名称",
+          "description_zh": "自然资源一张图标准字段：县级行政区名称。"
+        },
+        "LHLX": {
+          "alias_zh": "陆海类型",
+          "description_zh": "自然资源一张图标准字段：陆海类型。"
+        },
+        "MJ": {
+          "alias_zh": "面积",
+          "description_zh": "自然资源一张图标准字段：面积。"
+        },
+        "XJXZQHDM": {
+          "alias_zh": "县级行政区划代码",
+          "description_zh": "自然资源一张图标准字段：县级行政区划代码。"
+        },
+        "LXDM": {
+          "alias_zh": "类型代码",
+          "description_zh": "自然资源一张图标准字段：类型代码。"
+        },
+        "SLDM": {
+          "alias_zh": "分类代码",
+          "description_zh": "自然资源一张图标准字段：分类代码。"
+        },
+        "MC": {
+          "alias_zh": "名称",
+          "description_zh": "自然资源一张图标准字段：名称。"
+        },
+        "QYMJ": {
+          "alias_zh": "区域面积",
+          "description_zh": "自然资源一张图标准字段：区域面积。"
+        },
+        "SLSJ": {
+          "alias_zh": "收录时间",
+          "description_zh": "自然资源一张图标准字段：收录时间。"
+        },
+        "GKCS": {
+          "alias_zh": "管控措施",
+          "description_zh": "自然资源一张图标准字段：管控措施。"
+        },
+        "RKSL": {
+          "alias_zh": "人口数量",
+          "description_zh": "自然资源一张图标准字段：人口数量。"
+        },
+        "STGNYBHMB": {
+          "alias_zh": "生态功能预保护目标",
+          "description_zh": "自然资源一张图标准字段：生态功能预保护目标。"
+        },
+        "STXTYZBLX": {
+          "alias_zh": "生态系统因子斑类型",
+          "description_zh": "自然资源一张图标准字段：生态系统因子斑类型。"
+        },
+        "RWHDLX": {
+          "alias_zh": "人为活动类型",
+          "description_zh": "自然资源一张图标准字段：人为活动类型。"
+        },
+        "STHJWT": {
+          "alias_zh": "生态环境问题",
+          "description_zh": "自然资源一张图标准字段：生态环境问题。"
+        },
+        "BZ": {
+          "alias_zh": "备注",
+          "description_zh": "自然资源一张图标准字段：备注。"
+        },
+        "redline_id": {
+          "alias_zh": "红线区编号",
+          "description_zh": "合成生态保护红线编号。"
+        },
+        "redline_name": {
+          "alias_zh": "红线区名称",
+          "description_zh": "合成生态保护红线区中文名称。"
+        },
+        "zone_type": {
+          "alias_zh": "分区类型",
+          "description_zh": "生态或规划分区类型。"
+        },
+        "protection_level": {
+          "alias_zh": "保护等级",
+          "description_zh": "合成生态保护红线保护等级。"
+        },
+        "ecological_function": {
+          "alias_zh": "生态功能",
+          "description_zh": "合成生态红线主要生态功能。"
+        },
+        "redline_area_m2": {
+          "alias_zh": "红线区面积",
+          "description_zh": "合成生态保护红线面对象面积，单位平方米。"
+        },
+        "source_bsm_count": {
+          "alias_zh": "来源图斑数量",
+          "description_zh": "合成面对象覆盖或派生自的源图斑数量。"
+        },
+        "source_bsms_sample": {
+          "alias_zh": "来源图斑样例",
+          "description_zh": "合成对象关联源图斑的截断样例。"
+        },
+        "effective_date": {
+          "alias_zh": "生效日期",
+          "description_zh": "合成规则或管控边界的生效日期。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    },
+    "admin_units": {
+      "alias_zh": "乡镇行政区边界",
+      "fields": {
+        "admin_code": {
+          "alias_zh": "行政单元代码",
+          "description_zh": "行政管理单元代码或稳定标识。"
+        },
+        "admin_name": {
+          "alias_zh": "行政单元名称",
+          "description_zh": "行政管理单元名称。"
+        },
+        "admin_level": {
+          "alias_zh": "行政层级",
+          "description_zh": "行政单元层级。"
+        },
+        "admin_level_rank": {
+          "alias_zh": "行政层级序号",
+          "description_zh": "用于排序的行政层级序号。"
+        },
+        "admin_source_level": {
+          "alias_zh": "行政来源层级",
+          "description_zh": "从权属单位代码截取或汇总形成的来源层级。"
+        },
+        "province_name": {
+          "alias_zh": "省级名称",
+          "description_zh": "乡镇边界数据中的省级行政名称。"
+        },
+        "city_name": {
+          "alias_zh": "市级名称",
+          "description_zh": "乡镇边界数据中的市级行政名称。"
+        },
+        "county_name": {
+          "alias_zh": "县区名称",
+          "description_zh": "乡镇边界数据中的县区行政名称。"
+        },
+        "township_name": {
+          "alias_zh": "乡镇街道名称",
+          "description_zh": "乡镇边界数据中的乡镇或街道名称。"
+        },
+        "city_county_name": {
+          "alias_zh": "市县组合名",
+          "description_zh": "乡镇边界数据中的市县组合名称。"
+        },
+        "province_county_name": {
+          "alias_zh": "省县组合名",
+          "description_zh": "乡镇边界数据中的省县组合名称。"
+        },
+        "matched_admin9_values": {
+          "alias_zh": "匹配九位行政前缀",
+          "description_zh": "该乡镇边界与演示图斑叠加匹配到的 admin9 前缀集合。"
+        },
+        "matched_parcel_count": {
+          "alias_zh": "匹配图斑数量",
+          "description_zh": "与该乡镇边界发生正面积叠加的演示图斑数量。"
+        },
+        "overlap_area_m2": {
+          "alias_zh": "叠加面积",
+          "description_zh": "行政边界与演示图斑并集的正面积叠加面积，单位平方米。"
+        },
+        "overlap_ratio_to_parcels": {
+          "alias_zh": "图斑覆盖比例",
+          "description_zh": "行政边界叠加面积占演示图斑并集面积比例。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    },
+    "synthetic_annual_change": {
+      "alias_zh": "合成年度变化图斑",
+      "fields": {
+        "change_id": {
+          "alias_zh": "变化编号",
+          "description_zh": "合成年度变化事件编号。"
+        },
+        "BSM": {
+          "alias_zh": "标识码",
+          "description_zh": "原始地类图斑唯一标识。"
+        },
+        "bsm_norm": {
+          "alias_zh": "规范化标识码",
+          "description_zh": "去除浮点后缀后的稳定图斑标识。"
+        },
+        "from_dlbm": {
+          "alias_zh": "变化前地类编码",
+          "description_zh": "变化前土地利用分类编码。"
+        },
+        "to_dlbm": {
+          "alias_zh": "变化后地类编码",
+          "description_zh": "变化后土地利用分类编码。"
+        },
+        "change_type": {
+          "alias_zh": "变化类型",
+          "description_zh": "来自 WorldModel 输出的变化类型标记。"
+        },
+        "change_year": {
+          "alias_zh": "变化年份",
+          "description_zh": "合成变化所属年份。"
+        },
+        "OPT_DLBM": {
+          "alias_zh": "优化后地类编码",
+          "description_zh": "WorldModel v2.1 输出的优化后地类编码。"
+        },
+        "OPT_DLMC": {
+          "alias_zh": "优化后地类名称",
+          "description_zh": "WorldModel v2.1 输出的优化后地类名称。"
+        },
+        "ORIG_DLBM": {
+          "alias_zh": "原始地类编码",
+          "description_zh": "WorldModel v2.1 输出中的原始地类编码。"
+        },
+        "CHG_FLAG": {
+          "alias_zh": "变化标记",
+          "description_zh": "WorldModel v2.1 输出中的变化标记。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "area_source_m2": {
+          "alias_zh": "源属性面积",
+          "description_zh": "源数据面积字段，优先来自 TBMJ，单位平方米。"
+        },
+        "tbmj_area_rel_error": {
+          "alias_zh": "面积相对误差",
+          "description_zh": "投影几何面积与源属性面积的相对误差。"
+        },
+        "qa_area_warning": {
+          "alias_zh": "面积异常标记",
+          "description_zh": "true 表示几何面积与源属性面积偏差超过 QA 阈值。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    },
+    "synthetic_projects": {
+      "alias_zh": "合成建设项目范围",
+      "fields": {
+        "YSDM": {
+          "alias_zh": "要素代码",
+          "description_zh": "自然资源调查监测要素代码。"
+        },
+        "XMDM": {
+          "alias_zh": "项目代码",
+          "description_zh": "自然资源一张图标准字段：项目代码。"
+        },
+        "DZJGH": {
+          "alias_zh": "电子监管号",
+          "description_zh": "自然资源一张图标准字段：电子监管号。"
+        },
+        "AJBH": {
+          "alias_zh": "案卷编号",
+          "description_zh": "自然资源一张图标准字段：案卷编号。"
+        },
+        "XMMC": {
+          "alias_zh": "项目名称",
+          "description_zh": "自然资源一张图标准字段：项目名称。"
+        },
+        "SQDW": {
+          "alias_zh": "申请单位",
+          "description_zh": "自然资源一张图标准字段：申请单位。"
+        },
+        "SZXZQDM": {
+          "alias_zh": "所在行政区代码",
+          "description_zh": "自然资源一张图标准字段：所在行政区代码。"
+        },
+        "SZXZQMC": {
+          "alias_zh": "所在行政区名称",
+          "description_zh": "自然资源一张图标准字段：所在行政区名称。"
+        },
+        "YDMJ": {
+          "alias_zh": "用地面积",
+          "description_zh": "自然资源一张图标准字段：用地面积。"
+        },
+        "ZYNYDMJ": {
+          "alias_zh": "占用农用地面积",
+          "description_zh": "自然资源一张图标准字段：占用农用地面积。"
+        },
+        "ZYGDMJ": {
+          "alias_zh": "占用耕地面积",
+          "description_zh": "自然资源一张图标准字段：占用耕地面积。"
+        },
+        "SJSTHXMJ": {
+          "alias_zh": "涉及生态红线面积",
+          "description_zh": "自然资源一张图标准字段：涉及生态红线面积。"
+        },
+        "ZYJSYDMJ": {
+          "alias_zh": "占用建设用地面积",
+          "description_zh": "自然资源一张图标准字段：占用建设用地面积。"
+        },
+        "ZYWLDMJ": {
+          "alias_zh": "占用未利用地面积",
+          "description_zh": "自然资源一张图标准字段：占用未利用地面积。"
+        },
+        "SQRQ": {
+          "alias_zh": "申请日期",
+          "description_zh": "自然资源一张图标准字段：申请日期。"
+        },
+        "GXRQ": {
+          "alias_zh": "更新日期",
+          "description_zh": "自然资源一张图标准字段：更新日期。"
+        },
+        "XMPZLX": {
+          "alias_zh": "项目批准类型",
+          "description_zh": "自然资源一张图标准字段：项目批准类型。"
+        },
+        "HYFLBM": {
+          "alias_zh": "行业分类编码",
+          "description_zh": "自然资源一张图标准字段：行业分类编码。"
+        },
+        "HYFLMC": {
+          "alias_zh": "行业分类名称",
+          "description_zh": "自然资源一张图标准字段：行业分类名称。"
+        },
+        "TDYTDM": {
+          "alias_zh": "土地用途代码",
+          "description_zh": "自然资源一张图标准字段：土地用途代码。"
+        },
+        "TDYTMC": {
+          "alias_zh": "土地用途名称",
+          "description_zh": "自然资源一张图标准字段：土地用途名称。"
+        },
+        "project_id": {
+          "alias_zh": "项目编号",
+          "description_zh": "合成建设项目编号。"
+        },
+        "project_name": {
+          "alias_zh": "项目名称",
+          "description_zh": "合成建设项目名称。"
+        },
+        "project_type": {
+          "alias_zh": "项目类型",
+          "description_zh": "合成项目业务类型。"
+        },
+        "approval_status": {
+          "alias_zh": "审批状态",
+          "description_zh": "合成项目审批状态。"
+        },
+        "risk_scenario": {
+          "alias_zh": "风险场景",
+          "description_zh": "项目用于测试的规则风险场景。"
+        },
+        "review_priority": {
+          "alias_zh": "复核优先级",
+          "description_zh": "项目规则复核优先级。"
+        },
+        "scenario_id": {
+          "alias_zh": "方案编号",
+          "description_zh": "项目关联的 WorldModel 方案编号。"
+        },
+        "planned_start": {
+          "alias_zh": "计划开始日期",
+          "description_zh": "合成项目计划开始日期。"
+        },
+        "planned_end": {
+          "alias_zh": "计划结束日期",
+          "description_zh": "合成项目计划结束日期。"
+        },
+        "planned_area_m2": {
+          "alias_zh": "项目计划面积",
+          "description_zh": "合成项目范围投影面积，单位平方米。"
+        },
+        "related_change_ids": {
+          "alias_zh": "关联变化编号集合",
+          "description_zh": "项目关联的年度变化编号，多个值用竖线分隔。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    },
+    "synthetic_planning_zones": {
+      "alias_zh": "合成用途管制分区",
+      "fields": {
+        "BSM": {
+          "alias_zh": "标识码",
+          "description_zh": "原始地类图斑唯一标识。"
+        },
+        "YSDM": {
+          "alias_zh": "要素代码",
+          "description_zh": "自然资源调查监测要素代码。"
+        },
+        "XZQDM": {
+          "alias_zh": "行政区代码",
+          "description_zh": "自然资源一张图标准字段：行政区代码。"
+        },
+        "XZQMC": {
+          "alias_zh": "行政区名称",
+          "description_zh": "自然资源一张图标准字段：行政区名称。"
+        },
+        "GHFQDM": {
+          "alias_zh": "规划分区代码",
+          "description_zh": "自然资源一张图标准字段：规划分区代码。"
+        },
+        "GHFQMC": {
+          "alias_zh": "规划分区名称",
+          "description_zh": "自然资源一张图标准字段：规划分区名称。"
+        },
+        "MJ": {
+          "alias_zh": "面积",
+          "description_zh": "自然资源一张图标准字段：面积。"
+        },
+        "plan_zone_id": {
+          "alias_zh": "用途分区编号",
+          "description_zh": "合成用途管制分区编号。"
+        },
+        "plan_zone_type": {
+          "alias_zh": "用途分区类型",
+          "description_zh": "合成用途管制分区类型。"
+        },
+        "plan_zone_name": {
+          "alias_zh": "用途分区名称",
+          "description_zh": "合成用途管制分区中文名称。"
+        },
+        "plan_rule": {
+          "alias_zh": "用途管制规则",
+          "description_zh": "该分区对应的合成用途准入规则。"
+        },
+        "zone_area_m2": {
+          "alias_zh": "分区面积",
+          "description_zh": "用途管制分区面积，单位平方米。"
+        },
+        "source_bsm_count": {
+          "alias_zh": "来源图斑数量",
+          "description_zh": "合成面对象覆盖或派生自的源图斑数量。"
+        },
+        "source_bsms_sample": {
+          "alias_zh": "来源图斑样例",
+          "description_zh": "合成对象关联源图斑的截断样例。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    },
+    "synthetic_urban_boundary": {
+      "alias_zh": "合成城镇开发边界",
+      "fields": {
+        "BSM": {
+          "alias_zh": "标识码",
+          "description_zh": "原始地类图斑唯一标识。"
+        },
+        "YSDM": {
+          "alias_zh": "要素代码",
+          "description_zh": "自然资源调查监测要素代码。"
+        },
+        "XZQDM": {
+          "alias_zh": "行政区代码",
+          "description_zh": "自然资源一张图标准字段：行政区代码。"
+        },
+        "XZQMC": {
+          "alias_zh": "行政区名称",
+          "description_zh": "自然资源一张图标准字段：行政区名称。"
+        },
+        "GHFQDM": {
+          "alias_zh": "规划分区代码",
+          "description_zh": "自然资源一张图标准字段：规划分区代码。"
+        },
+        "GHFQMC": {
+          "alias_zh": "规划分区名称",
+          "description_zh": "自然资源一张图标准字段：规划分区名称。"
+        },
+        "MJ": {
+          "alias_zh": "面积",
+          "description_zh": "自然资源一张图标准字段：面积。"
+        },
+        "CZMC": {
+          "alias_zh": "城镇名称",
+          "description_zh": "自然资源一张图标准字段：城镇名称。"
+        },
+        "XJXZQHDM": {
+          "alias_zh": "县级行政区划代码",
+          "description_zh": "自然资源一张图标准字段：县级行政区划代码。"
+        },
+        "CZKFMJ": {
+          "alias_zh": "城镇开发面积",
+          "description_zh": "自然资源一张图标准字段：城镇开发面积。"
+        },
+        "SLSJ": {
+          "alias_zh": "收录时间",
+          "description_zh": "自然资源一张图标准字段：收录时间。"
+        },
+        "boundary_id": {
+          "alias_zh": "边界编号",
+          "description_zh": "合成城镇开发边界编号。"
+        },
+        "boundary_type": {
+          "alias_zh": "边界类型",
+          "description_zh": "城镇开发边界或其他边界类型。"
+        },
+        "boundary_name": {
+          "alias_zh": "边界名称",
+          "description_zh": "合成城镇开发边界中文名称。"
+        },
+        "boundary_area_m2": {
+          "alias_zh": "边界面积",
+          "description_zh": "合成城镇开发边界面积，单位平方米。"
+        },
+        "source_bsm_count": {
+          "alias_zh": "来源图斑数量",
+          "description_zh": "合成面对象覆盖或派生自的源图斑数量。"
+        },
+        "source_bsms_sample": {
+          "alias_zh": "来源图斑样例",
+          "description_zh": "合成对象关联源图斑的截断样例。"
+        },
+        "effective_date": {
+          "alias_zh": "生效日期",
+          "description_zh": "合成规则或管控边界的生效日期。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    },
+    "synthetic_remote_sensing_tiles": {
+      "alias_zh": "合成遥感影像瓦片索引",
+      "fields": {
+        "tile_id": {
+          "alias_zh": "影像瓦片编号",
+          "description_zh": "合成遥感影像瓦片索引编号。"
+        },
+        "modality": {
+          "alias_zh": "模态类型",
+          "description_zh": "数据模态，例如 remote_sensing、vector、text。"
+        },
+        "sensor": {
+          "alias_zh": "传感器",
+          "description_zh": "合成影像瓦片对应的传感器名称。"
+        },
+        "acquisition_date": {
+          "alias_zh": "采集日期",
+          "description_zh": "合成影像瓦片采集日期。"
+        },
+        "band_set": {
+          "alias_zh": "波段组合",
+          "description_zh": "合成影像瓦片可用波段说明。"
+        },
+        "cloud_cover_pct": {
+          "alias_zh": "云量百分比",
+          "description_zh": "合成影像瓦片云量百分比。"
+        },
+        "image_uri": {
+          "alias_zh": "影像资源地址",
+          "description_zh": "影像文件或对象存储 URI。"
+        },
+        "raster_product_id": {
+          "alias_zh": "栅格产品编号",
+          "description_zh": "瓦片关联的合成栅格观测产品编号。"
+        },
+        "raster_uri": {
+          "alias_zh": "栅格资源地址",
+          "description_zh": "瓦片关联的 GeoTIFF 栅格资源相对路径。"
+        },
+        "tile_area_m2": {
+          "alias_zh": "瓦片覆盖面积",
+          "description_zh": "合成遥感瓦片覆盖面积，单位平方米。"
+        },
+        "synthetic": {
+          "alias_zh": "是否合成",
+          "description_zh": "true 表示该要素由脚本合成。"
+        },
+        "synthetic_method": {
+          "alias_zh": "合成方法",
+          "description_zh": "生成该图层或要素的合成方法。"
+        },
+        "source_dataset": {
+          "alias_zh": "来源数据集",
+          "description_zh": "生成该要素所依据的源文件。"
+        },
+        "not_for_production": {
+          "alias_zh": "禁止生产使用",
+          "description_zh": "true 表示只能用于工程测试和演示。"
+        },
+        "qa_geometry_fixed": {
+          "alias_zh": "几何修复标记",
+          "description_zh": "true 表示生成时对源几何做过有效性修复或面提取。"
+        },
+        "geom_area_m2": {
+          "alias_zh": "投影几何面积",
+          "description_zh": "按项目投影坐标系重新计算的几何面积，单位平方米。"
+        },
+        "qa_use_for_rules": {
+          "alias_zh": "可用于规则计算",
+          "description_zh": "true 表示该要素通过基础质量门槛，可参与规则和合成数据生成。"
+        }
+      }
+    }
+  },
+  "tables": {
+    "optimization/objective_catalog.csv": {
+      "alias_zh": "优化目标目录",
+      "description_zh": "定义 TWM 多目标优化使用的硬约束、软约束、收益、成本、公平性和稳健性指标。"
+    },
+    "optimization/scenario_candidates.csv": {
+      "alias_zh": "候选方案清单",
+      "description_zh": "记录现状基线、WorldModel 参考推演、项目组合和压力测试方案。"
+    },
+    "optimization/scenario_feasibility.csv": {
+      "alias_zh": "方案硬约束可行性",
+      "description_zh": "记录方案是否进入合法可行空间，或仅作为压力测试和复核样本保留。"
+    },
+    "optimization/scenario_project_membership.csv": {
+      "alias_zh": "方案项目组成",
+      "description_zh": "记录每个项目组合方案纳入的候选项目和选择顺序。"
+    },
+    "optimization/scenario_metrics.csv": {
+      "alias_zh": "方案多目标指标",
+      "description_zh": "记录每个方案在各优化目标上的原始值、归一化得分和加权得分。"
+    },
+    "optimization/scenario_constraint_violations.csv": {
+      "alias_zh": "方案约束违规清单",
+      "description_zh": "记录方案触发的硬约束、用途管制和复核负荷问题。"
+    },
+    "optimization/pareto_summary.json": {
+      "alias_zh": "Pareto 比选摘要",
+      "description_zh": "硬约束过滤后的 Pareto 非支配集合、加权排序和被阻断方案列表。"
+    }
+  }
+}

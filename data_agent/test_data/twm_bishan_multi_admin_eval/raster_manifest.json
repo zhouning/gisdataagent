@@ -1,0 +1,90 @@
+{
+  "dataset_id": "twm_bishan_multi_admin_eval",
+  "created_at": "2026-06-16T08:35:19.996547+00:00",
+  "not_for_production": true,
+  "synthetic": true,
+  "products": {
+    "synthetic_ndvi_2026": {
+      "product_id": "RASTER-NDVI-2026",
+      "path": "data_agent/test_data/twm_bishan_multi_admin_eval/rasters/synthetic_ndvi_2026.tif",
+      "relative_path": "rasters/synthetic_ndvi_2026.tif",
+      "alias_zh": "合成NDVI观测栅格",
+      "description_zh": "由现状地类、坡度和合成管控区派生的归一化植被指数。",
+      "crs": "EPSG:32648",
+      "width": 384,
+      "height": 384,
+      "bounds": [
+        611084.893,
+        3282250.858,
+        632509.504,
+        3307332.953
+      ],
+      "transform": [
+        55.793257906,
+        0.0,
+        611084.892553425,
+        0.0,
+        -65.317955286,
+        3307332.952990941
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "stats": {
+        "valid_pixels": 64753,
+        "min": 0.046608,
+        "mean": 0.583423,
+        "max": 0.85571
+      },
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change",
+        "synthetic_pbf",
+        "synthetic_eco_redline"
+      ]
+    },
+    "synthetic_change_intensity_2026": {
+      "product_id": "RASTER-CHANGE-2026",
+      "path": "data_agent/test_data/twm_bishan_multi_admin_eval/rasters/synthetic_change_intensity_2026.tif",
+      "relative_path": "rasters/synthetic_change_intensity_2026.tif",
+      "alias_zh": "合成变化强度栅格",
+      "description_zh": "由 WorldModel 年度变化图斑派生的变化强度观测。",
+      "crs": "EPSG:32648",
+      "width": 384,
+      "height": 384,
+      "bounds": [
+        611084.893,
+        3282250.858,
+        632509.504,
+        3307332.953
+      ],
+      "transform": [
+        55.793257906,
+        0.0,
+        611084.892553425,
+        0.0,
+        -65.317955286,
+        3307332.952990941
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "stats": {
+        "valid_pixels": 64753,
+        "min": 0.05,
+        "mean": 0.058148,
+        "max": 0.55
+      },
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change",
+        "synthetic_pbf",
+        "synthetic_eco_redline"
+      ]
+    }
+  }
+}

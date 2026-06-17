@@ -11,12 +11,16 @@ from datetime import datetime, timezone
 import re
 from typing import Any
 
+from .lakehouse_config import build_lakehouse_infrastructure_preflight
+
 
 ICEBERG_PUBLISH_SCHEMA = "mmfe.iceberg_publish.v1"
 SEDONA_ICEBERG_RUNNER_SCHEMA = "mmfe.sedona_iceberg_runner.v1"
 STAC_PUBLISH_SCHEMA = "mmfe.stac_publish.v1"
+PRODUCTION_GATE_SCHEMA = "mmfe.production_publish_gate.v1"
 SUPPORTED_OBJECT_STORES = {"s3"}
 SUPPORTED_SPATIAL_ENGINES = {"sedona", "none"}
+PUBLISH_ENVIRONMENTS = {"production", "validation", "development"}
 
 
 def build_iceberg_publish_spec(
@@ -159,6 +163,7 @@ def build_stac_publish_spec(
     item_datetime: str | None = None,
     bbox: list[float] | None = None,
     geometry: dict | None = None,
+    asset_href: str | None = None,
     media_type: str | None = None,
     metadata: dict | None = None,
 ) -> dict:
@@ -188,6 +193,7 @@ def build_stac_publish_spec(
         properties["mmfe:authoritative_lakehouse"] = authoritative_lakehouse
 
     output_path = business_output.get("path", "")
+    data_href = asset_href or output_path
     item = {
         "type": "Feature",
         "stac_version": "1.0.0",
@@ -198,8 +204,8 @@ def build_stac_publish_spec(
         "properties": {key: value for key, value in properties.items() if value not in ("", None, {}, [])},
         "assets": {
             "data": {
-                "href": output_path,
-                "type": media_type or _media_type_for_output(business_output.get("format"), output_path),
+                "href": data_href,
+                "type": media_type or _media_type_for_output(business_output.get("format"), data_href),
                 "roles": ["data"],
                 "title": "MMFE business output",
             }
@@ -344,30 +350,63 @@ def publish_semantic_product(
     iceberg: dict | None = None,
     stac: dict | None = None,
     vector: dict | None = None,
+    publish_environment: str = "production",
+    require_production_ready: bool | None = None,
+    infrastructure: dict | None = None,
 ) -> dict:
     """Publish a semantic product through optional dependency-free target contracts."""
     requested_targets = list(targets or [])
     current_manifest = deepcopy(manifest)
     results = {}
     errors = []
+    iceberg_config = iceberg or {}
+    stac_config = stac or {}
+    vector_config = vector or {}
+    gate = build_production_publish_gate(
+        current_manifest,
+        publish_environment=publish_environment,
+        require_production_ready=require_production_ready,
+    )
+    if not gate.get("valid"):
+        errors.append({"target": "production_gate", "errors": list(gate.get("errors") or [])})
+    infrastructure_preflight = build_lakehouse_infrastructure_preflight(
+        infrastructure or _infrastructure_config_from_publish_configs(iceberg_config, stac_config),
+        environment=gate.get("publish_environment") or publish_environment,
+    )
+    if not infrastructure_preflight.get("valid"):
+        errors.append({
+            "target": "infrastructure_preflight",
+            "errors": _preflight_error_messages(infrastructure_preflight),
+        })
+    if errors:
+        return {
+            "valid": False,
+            "errors": errors,
+            "targets": requested_targets,
+            "publish_environment": gate.get("publish_environment"),
+            "production_gate": gate,
+            "infrastructure_preflight": infrastructure_preflight,
+            "results": results,
+            "manifest": current_manifest,
+        }
 
     for target in requested_targets:
         if target == "iceberg":
-            result = _publish_orchestrated_iceberg(current_manifest, iceberg or {})
+            result = _publish_orchestrated_iceberg(current_manifest, iceberg_config)
             results[target] = result
             if not result.get("valid"):
                 errors.append({"target": target, "errors": list(result.get("errors") or [])})
                 break
             current_manifest = apply_iceberg_manifest_patch(current_manifest, result.get("manifest_patch") or {})
         elif target == "stac":
-            result = _publish_orchestrated_stac(current_manifest, stac or {})
+            result = _publish_orchestrated_stac(current_manifest, stac_config)
             if not result.get("valid"):
                 errors.append({"target": target, "errors": list(result.get("errors") or [])})
                 break
             results[target] = result
             current_manifest = _apply_catalog_manifest_patch(current_manifest, result.get("manifest_patch") or {})
         elif target in ("pgvector", "lancedb"):
-            result = _publish_orchestrated_vector(current_manifest, target, vector or {})
+            result = _publish_orchestrated_vector(current_manifest, target, vector_config)
             if not result.get("valid"):
                 errors.append({"target": target, "errors": list(result.get("errors") or [])})
                 break
@@ -380,6 +419,9 @@ def publish_semantic_product(
         "valid": not errors,
         "errors": errors,
         "targets": requested_targets,
+        "publish_environment": gate.get("publish_environment"),
+        "production_gate": gate,
+        "infrastructure_preflight": infrastructure_preflight,
         "results": results,
         "manifest": current_manifest,
     }
@@ -391,6 +433,9 @@ def build_semantic_product_publish_plan(
     iceberg: dict | None = None,
     stac: dict | None = None,
     vector: dict | None = None,
+    infrastructure: dict | None = None,
+    publish_environment: str = "production",
+    require_production_ready: bool | None = None,
 ) -> dict:
     """Build a dry-run publish plan without executing backend adapters."""
     requested_targets = list(targets or [])
@@ -400,6 +445,24 @@ def build_semantic_product_publish_plan(
     stac_config = stac or {}
     vector_config = vector or {}
     manifest_for_downstream = deepcopy(manifest)
+    gate = build_production_publish_gate(
+        manifest_for_downstream,
+        publish_environment=publish_environment,
+        require_production_ready=require_production_ready,
+    )
+    steps.append(_production_gate_plan_step(gate))
+    if not gate.get("valid"):
+        errors.append({"target": "production_gate", "errors": list(gate.get("errors") or [])})
+    infrastructure_preflight = build_lakehouse_infrastructure_preflight(
+        infrastructure or _infrastructure_config_from_publish_configs(iceberg_config, stac_config),
+        environment=gate.get("publish_environment") or publish_environment,
+    )
+    steps.append(_infrastructure_preflight_plan_step(infrastructure_preflight))
+    if not infrastructure_preflight.get("valid"):
+        errors.append({
+            "target": "infrastructure_preflight",
+            "errors": _preflight_error_messages(infrastructure_preflight),
+        })
 
     for target in requested_targets:
         if target == "iceberg":
@@ -433,6 +496,7 @@ def build_semantic_product_publish_plan(
                 item_datetime=stac_config.get("item_datetime"),
                 bbox=stac_config.get("bbox"),
                 geometry=stac_config.get("geometry"),
+                asset_href=stac_config.get("asset_href"),
                 media_type=stac_config.get("media_type"),
                 metadata=stac_config.get("metadata"),
             )
@@ -468,7 +532,55 @@ def build_semantic_product_publish_plan(
         "valid": not errors,
         "errors": errors,
         "targets": requested_targets,
+        "publish_environment": gate.get("publish_environment"),
+        "production_gate": gate,
+        "infrastructure_preflight": infrastructure_preflight,
         "steps": steps,
+    }
+
+
+def build_production_publish_gate(
+    manifest: dict,
+    *,
+    publish_environment: str = "production",
+    require_production_ready: bool | None = None,
+) -> dict:
+    """Build a publish gate from MMFE semantic-product readiness diagnostics."""
+    environment = str(publish_environment or "production").strip().lower()
+    if environment not in PUBLISH_ENVIRONMENTS:
+        environment = "production"
+    strict = (environment == "production") if require_production_ready is None else bool(require_production_ready)
+    diagnostic = _diagnostic_from_manifest(manifest)
+    summary = diagnostic.get("summary") if isinstance(diagnostic, dict) else {}
+    top_gaps = diagnostic.get("top_gaps") if isinstance(diagnostic, dict) else []
+    production_ready = bool(summary.get("production_ready")) if isinstance(summary, dict) else False
+    validation_ready = bool(summary.get("validation_ready")) if isinstance(summary, dict) else False
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not diagnostic:
+        message = "semantic product diagnostic is required for production publish planning"
+        if strict:
+            errors.append(message)
+        else:
+            warnings.append(message)
+    elif strict and not production_ready:
+        errors.append("semantic product is not production_ready")
+    elif not strict and not validation_ready:
+        errors.append("semantic product is not validation_ready")
+
+    if diagnostic and not production_ready:
+        warnings.extend(_production_gap_messages(top_gaps))
+
+    return {
+        "schema": PRODUCTION_GATE_SCHEMA,
+        "publish_environment": environment,
+        "require_production_ready": strict,
+        "valid": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "diagnostic_summary": dict(summary or {}),
+        "top_gaps": list(top_gaps or []),
     }
 
 
@@ -596,6 +708,7 @@ def _publish_orchestrated_stac(manifest: dict, config: dict) -> dict:
         item_datetime=config.get("item_datetime"),
         bbox=config.get("bbox"),
         geometry=config.get("geometry"),
+        asset_href=config.get("asset_href"),
         media_type=config.get("media_type"),
         metadata=config.get("metadata"),
     )
@@ -678,10 +791,114 @@ def _publish_plan_step(
     }
 
 
+def _production_gate_plan_step(gate: dict) -> dict:
+    return {
+        "target": "production_gate",
+        "schema": gate.get("schema"),
+        "depends_on": [],
+        "valid": bool(gate.get("valid")),
+        "errors": list(gate.get("errors") or []),
+        "warnings": list(gate.get("warnings") or []),
+        "execution": {"publisher_configured": True},
+        "spec": gate,
+    }
+
+
+def _infrastructure_preflight_plan_step(preflight: dict) -> dict:
+    return {
+        "target": "infrastructure_preflight",
+        "schema": preflight.get("schema"),
+        "depends_on": ["production_gate"],
+        "valid": bool(preflight.get("valid")),
+        "errors": _preflight_error_messages(preflight),
+        "warnings": _preflight_warning_messages(preflight),
+        "execution": {"publisher_configured": True},
+        "spec": preflight,
+    }
+
+
 def _publish_dependencies(target: str) -> list[str]:
     if target in ("stac", "pgvector", "lancedb"):
         return ["iceberg"]
     return []
+
+
+def _infrastructure_config_from_publish_configs(iceberg_config: dict, stac_config: dict) -> dict:
+    endpoint = ((iceberg_config.get("metadata") or {}).get("object_store_endpoint") or "https://s3.amazonaws.com")
+    lakehouse_bucket = ((iceberg_config.get("metadata") or {}).get("lakehouse_bucket") or "")
+    if not lakehouse_bucket:
+        lakehouse_bucket = _bucket_from_s3_uri(
+            iceberg_config.get("warehouse_uri") or stac_config.get("catalog_uri") or ""
+        )
+    if not lakehouse_bucket:
+        lakehouse_bucket = "mmfe-lakehouse"
+    iceberg_warehouse_uri = iceberg_config.get("warehouse_uri") or f"s3://{lakehouse_bucket}/warehouse"
+    stac_catalog_uri = stac_config.get("catalog_uri") or f"s3://{lakehouse_bucket}/catalog/stac"
+    access_key_id = (iceberg_config.get("metadata") or {}).get("access_key_id", "configured")
+    secret_access_key = (iceberg_config.get("metadata") or {}).get("secret_access_key", "configured")
+    object_store = {
+        "object_store": iceberg_config.get("object_store", "s3"),
+        "provider": "aws",
+        "endpoint_url": endpoint,
+        "uploads_bucket": lakehouse_bucket,
+        "lakehouse_bucket": lakehouse_bucket,
+        "warehouse_uri": iceberg_warehouse_uri,
+        "stac_catalog_uri": stac_catalog_uri,
+        "path_style_access": bool((iceberg_config.get("metadata") or {}).get("path_style_access", True)),
+        "credentials_configured": True,
+        "access_key_id": access_key_id,
+        "secret_access_key": secret_access_key,
+    }
+    return {
+        "object_store": object_store,
+        "iceberg": {
+            "catalog": iceberg_config.get("catalog") or "default",
+            "namespace": iceberg_config.get("namespace") or "gis.fusion",
+            "table": iceberg_config.get("table") or "semantic_products",
+            "warehouse_uri": iceberg_warehouse_uri,
+            "object_store": iceberg_config.get("object_store", "s3"),
+            "spatial_engine": iceberg_config.get("spatial_engine", "sedona"),
+            "partition_by": list(iceberg_config.get("partition_by") or []),
+            "metadata": dict(iceberg_config.get("metadata") or {}),
+        },
+        "stac": {
+            "collection": stac_config.get("collection") or "mmfe-fusion-products",
+            "catalog_uri": stac_catalog_uri,
+            "metadata": dict(stac_config.get("metadata") or {}),
+        },
+        "sedona_spark_conf": {
+            "spark.hadoop.fs.s3a.endpoint": endpoint,
+            "spark.hadoop.fs.s3a.path.style.access": str(object_store["path_style_access"]).lower(),
+            "spark.hadoop.fs.s3a.connection.ssl.enabled": "true" if endpoint.startswith("https://") else "false",
+            "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+            "spark.hadoop.fs.s3a.aws.credentials.provider": (
+                "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
+            ),
+            "spark.hadoop.fs.s3a.access.key": access_key_id,
+            "spark.hadoop.fs.s3a.secret.key": secret_access_key,
+        },
+    }
+
+
+def _preflight_error_messages(preflight: dict) -> list[str]:
+    return [
+        f"{check.get('check_id')}: {check.get('message')}"
+        for check in preflight.get("checks") or []
+        if isinstance(check, dict) and check.get("status") == "fail"
+    ]
+
+
+def _preflight_warning_messages(preflight: dict) -> list[str]:
+    return [
+        f"{check.get('check_id')}: {check.get('message')}"
+        for check in preflight.get("checks") or []
+        if isinstance(check, dict) and check.get("status") == "warn"
+    ]
+
+
+def _bucket_from_s3_uri(uri: str) -> str:
+    match = re.match(r"^s3://([^/]+)", str(uri or ""))
+    return match.group(1) if match else ""
 
 
 def _apply_catalog_manifest_patch(manifest: dict, patch: dict) -> dict:
@@ -696,6 +913,39 @@ def _apply_catalog_manifest_patch(manifest: dict, patch: dict) -> dict:
         catalog["stac"] = existing
     updated["catalog"] = catalog
     return updated
+
+
+def _diagnostic_from_manifest(manifest: dict) -> dict:
+    if not isinstance(manifest, dict):
+        return {}
+    mmfe_bundle = manifest.get("mmfe_bundle") if isinstance(manifest.get("mmfe_bundle"), dict) else {}
+    diagnostic = mmfe_bundle.get("semantic_diagnostic")
+    if isinstance(diagnostic, dict):
+        return diagnostic
+    summary = mmfe_bundle.get("semantic_diagnostic_summary")
+    if isinstance(summary, dict):
+        return {
+            "schema": "mmfe.semantic_product_diagnostic.v1",
+            "product_id": manifest.get("product_id"),
+            "summary": dict(summary),
+            "top_gaps": list(mmfe_bundle.get("semantic_diagnostic_top_gaps") or []),
+            "recommendations_zh": list(mmfe_bundle.get("semantic_diagnostic_recommendations_zh") or []),
+        }
+    return {}
+
+
+def _production_gap_messages(top_gaps: list[dict]) -> list[str]:
+    messages = []
+    for gap in top_gaps:
+        if not isinstance(gap, dict):
+            continue
+        check_id = gap.get("check_id")
+        message = gap.get("message_zh") or gap.get("message") or ""
+        if check_id:
+            messages.append(f"{check_id}: {message}")
+        elif message:
+            messages.append(str(message))
+    return messages
 
 
 def _iceberg_publish_result(

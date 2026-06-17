@@ -6,11 +6,13 @@ as pgvector or LanceDB without importing either runtime.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
 
 SEMANTIC_VECTOR_PUBLISH_SCHEMA = "mmfe.semantic_vector_publish.v1"
+SEMANTIC_VECTOR_QUERY_SCHEMA = "mmfe.semantic_vector_query.v1"
 SUPPORTED_VECTOR_TARGETS = {"pgvector", "lancedb"}
 
 
@@ -22,13 +24,15 @@ def build_semantic_vector_publish_spec(
     metadata: dict | None = None,
 ) -> dict:
     """Build a dependency-free publish spec from semantic product chunks."""
-    product_id = str(manifest.get("product_id") or "")
+    product_id = str(manifest.get("product_id") or "") or _stable_product_id(manifest)
     business_output = manifest.get("business_output") or {}
     ai_metadata = manifest.get("ai_metadata") or {}
     authoritative_lakehouse = _authoritative_lakehouse_from_manifest(manifest)
     records = _records_from_chunks(
         product_id,
         ai_metadata.get("chunks") or [],
+        retrieval_text=ai_metadata.get("retrieval_text"),
+        manifest=manifest,
         authoritative_lakehouse=authoritative_lakehouse,
     )
     source_manifest = {
@@ -155,6 +159,150 @@ def run_semantic_vector_publish(
     return _publish_result(spec, [], backend_result)
 
 
+def build_semantic_vector_query_spec(
+    query_text: str,
+    target: str = "pgvector",
+    collection: str = "mmfe_semantic_products",
+    embedding_model: str | None = None,
+    top_k: int = 5,
+    product_id: str | None = None,
+    filters: dict | None = None,
+    metadata: dict | None = None,
+) -> dict:
+    """Build a dependency-free query spec for semantic vector retrieval."""
+    spec = {
+        "schema": SEMANTIC_VECTOR_QUERY_SCHEMA,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "target": target,
+        "collection": collection,
+        "embedding_model": embedding_model,
+        "embedding_required": True,
+        "query_text": str(query_text or ""),
+        "top_k": _safe_int(top_k, 5),
+        "filters": dict(filters or {}),
+    }
+    if product_id:
+        spec["product_id"] = str(product_id)
+    if metadata:
+        spec["metadata"] = dict(metadata)
+    return spec
+
+
+def validate_semantic_vector_query_spec(spec: dict) -> list[str]:
+    """Return contract errors for a semantic vector query spec."""
+    errors = []
+    if not isinstance(spec, dict):
+        return ["semantic vector query spec must be an object"]
+    if spec.get("schema") != SEMANTIC_VECTOR_QUERY_SCHEMA:
+        errors.append(f"schema must be {SEMANTIC_VECTOR_QUERY_SCHEMA}")
+    if spec.get("target") not in SUPPORTED_VECTOR_TARGETS:
+        errors.append("target must be one of: pgvector, lancedb")
+    if not spec.get("collection"):
+        errors.append("collection is required")
+    if not spec.get("query_text"):
+        errors.append("query_text is required")
+    if _safe_int(spec.get("top_k"), 0) <= 0:
+        errors.append("top_k must be greater than 0")
+    if not isinstance(spec.get("filters", {}), dict):
+        errors.append("filters must be an object")
+    if spec.get("embedding_required") is False:
+        embedding = spec.get("query_embedding")
+        if not isinstance(embedding, list) or not embedding:
+            errors.append("query_embedding is required when embedding_required is false")
+        else:
+            for index, value in enumerate(embedding):
+                if not isinstance(value, (int, float)):
+                    errors.append(f"query_embedding[{index}] must be numeric")
+                    break
+    return errors
+
+
+def embed_semantic_vector_query(
+    spec: dict,
+    embedder=None,
+) -> dict:
+    """Embed a semantic vector query through an injected embedding adapter."""
+    errors = validate_semantic_vector_query_spec(spec)
+    if errors:
+        return _query_embedding_result(spec if isinstance(spec, dict) else {}, errors)
+    if embedder is None:
+        return _query_embedding_result(spec, ["embedder is required"])
+
+    try:
+        embeddings = embedder(
+            [spec.get("query_text", "")],
+            embedding_model=spec.get("embedding_model"),
+            target=spec.get("target"),
+            collection=spec.get("collection"),
+            product_id=spec.get("product_id"),
+        )
+    except Exception as exc:
+        return _query_embedding_result(spec, [str(exc)])
+
+    normalized, embedding_errors = _normalize_embeddings(embeddings, 1)
+    if embedding_errors:
+        return _query_embedding_result(spec, embedding_errors)
+
+    embedded_spec = dict(spec)
+    embedded_spec["query_embedding"] = normalized[0]
+    embedded_spec["embedding_required"] = False
+    embedded_spec["embedding_dimension"] = len(normalized[0])
+    return _query_embedding_result(embedded_spec, [])
+
+
+def run_semantic_vector_query(
+    spec: dict,
+    querier=None,
+) -> dict:
+    """Query semantic vector records through an injected backend adapter."""
+    errors = validate_semantic_vector_query_spec(spec)
+    if errors:
+        return _query_result(spec if isinstance(spec, dict) else {}, errors, None)
+    if spec.get("embedding_required", True):
+        return _query_result(spec, ["query embedding is required"], None)
+    if querier is None:
+        return _query_result(spec, ["querier is required"], None)
+
+    try:
+        backend_result = querier(dict(spec))
+    except Exception as exc:
+        return _query_result(spec, [str(exc)], None)
+    return _query_result(spec, [], backend_result)
+
+
+def build_pgvector_querier(
+    table: str = "agent_mmfe_semantic_vectors",
+    executor=None,
+):
+    """Build a pgvector semantic query adapter backed by an injected executor."""
+    def querier(spec: dict) -> dict:
+        if executor is None:
+            raise ValueError("pgvector query executor is required")
+        if spec.get("target") != "pgvector":
+            raise ValueError("pgvector querier requires target=pgvector")
+        payload = _vector_query_payload(spec, table=table)
+        return executor(payload)
+
+    return querier
+
+
+def build_lancedb_querier(
+    dataset_uri: str = "",
+    table: str = "mmfe_semantic_products",
+    executor=None,
+):
+    """Build a LanceDB semantic query adapter backed by an injected executor."""
+    def querier(spec: dict) -> dict:
+        if executor is None:
+            raise ValueError("lancedb query executor is required")
+        if spec.get("target") != "lancedb":
+            raise ValueError("lancedb querier requires target=lancedb")
+        payload = _vector_query_payload(spec, dataset_uri=dataset_uri, table=table)
+        return executor(payload)
+
+    return querier
+
+
 def build_pgvector_publisher(
     table: str = "agent_mmfe_semantic_vectors",
     executor=None,
@@ -254,10 +402,27 @@ def build_lancedb_publisher(
 def _records_from_chunks(
     product_id: str,
     chunks: list[dict],
+    retrieval_text: str | None = None,
+    manifest: dict | None = None,
     authoritative_lakehouse: dict | None = None,
 ) -> list[dict]:
     records = []
-    for index, chunk in enumerate(chunks):
+    normalized_chunks = list(chunks or [])
+    if not normalized_chunks and retrieval_text:
+        business_output = (manifest or {}).get("business_output") or {}
+        normalized_chunks.append(
+            {
+                "chunk_id": "fusion:product",
+                "text": str(retrieval_text),
+                "metadata": {
+                    "strategy": ((manifest or {}).get("lineage") or {}).get("strategy", ""),
+                    "row_count": business_output.get("row_count"),
+                    "business_output_path": business_output.get("path", ""),
+                    "fallback_chunk": True,
+                },
+            }
+        )
+    for index, chunk in enumerate(normalized_chunks):
         if not isinstance(chunk, dict):
             continue
         chunk_id = str(chunk.get("chunk_id") or f"chunk:{index}")
@@ -276,6 +441,21 @@ def _records_from_chunks(
             "metadata": metadata,
         })
     return records
+
+
+def _stable_product_id(manifest: dict) -> str:
+    business_output = manifest.get("business_output") or {}
+    basis = "|".join(
+        [
+            str(manifest.get("product_type") or "semantic_fusion_product"),
+            str(manifest.get("version") or ""),
+            str(business_output.get("path") or ""),
+            str(business_output.get("row_count") or ""),
+            str(business_output.get("column_count") or ""),
+        ]
+    )
+    digest = hashlib.sha1(basis.encode("utf-8")).hexdigest()[:16]
+    return f"sfp-{digest}"
 
 
 def _authoritative_lakehouse_from_manifest(manifest: dict) -> dict:
@@ -332,6 +512,67 @@ def _publish_result(
         "published_count": published_count,
         "backend_result": backend_result,
     }
+
+
+def _query_embedding_result(
+    spec: dict,
+    errors: list[str],
+) -> dict:
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "schema": spec.get("schema"),
+        "target": spec.get("target"),
+        "collection": spec.get("collection"),
+        "product_id": spec.get("product_id"),
+        "embedding_model": spec.get("embedding_model"),
+        "embedding_dimension": spec.get("embedding_dimension"),
+        "embedded_count": 0 if errors else 1,
+        "spec": spec,
+    }
+
+
+def _query_result(
+    spec: dict,
+    errors: list[str],
+    backend_result: Any,
+) -> dict:
+    matches = []
+    if not errors:
+        if isinstance(backend_result, dict) and isinstance(backend_result.get("matches"), list):
+            matches = list(backend_result["matches"])
+        elif isinstance(backend_result, list):
+            matches = list(backend_result)
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "schema": spec.get("schema"),
+        "target": spec.get("target"),
+        "collection": spec.get("collection"),
+        "product_id": spec.get("product_id"),
+        "query_text": spec.get("query_text"),
+        "top_k": _safe_int(spec.get("top_k"), 5),
+        "match_count": len(matches),
+        "matches": matches,
+        "backend_result": backend_result,
+    }
+
+
+def _vector_query_payload(spec: dict, **target_kwargs) -> dict:
+    payload = {
+        "target": spec.get("target"),
+        "collection": spec.get("collection"),
+        "product_id": spec.get("product_id"),
+        "query_text": spec.get("query_text"),
+        "query_embedding": list(spec.get("query_embedding") or []),
+        "embedding_model": spec.get("embedding_model"),
+        "embedding_dimension": spec.get("embedding_dimension"),
+        "top_k": _safe_int(spec.get("top_k"), 5),
+        "filters": dict(spec.get("filters") or {}),
+        "metadata": dict(spec.get("metadata") or {}),
+    }
+    payload.update({key: value for key, value in target_kwargs.items() if value not in ("", None)})
+    return payload
 
 
 def _normalize_embeddings(

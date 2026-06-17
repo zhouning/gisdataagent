@@ -1,0 +1,239 @@
+{
+  "created_at": "2026-06-16T10:42:18.157153+00:00",
+  "method": "hard_constraint_filter_then_normalized_weighted_score_and_non_dominated_sorting",
+  "not_for_production": true,
+  "hard_constraint_tolerance_m2": 1.0,
+  "hard_constraint_policy_zh": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+  "objective_count": 13,
+  "scenario_count": 7,
+  "legal_feasible_scenario_count": 3,
+  "blocked_scenario_count": 4,
+  "comparison_scope": "legal_feasible_space",
+  "non_dominated_scenarios": [
+    {
+      "scenario_id": "SCN-BALANCED",
+      "scenario_name_zh": "均衡治理方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    },
+    {
+      "scenario_id": "SCN-BASELINE-CURRENT",
+      "scenario_name_zh": "现状基线",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.786667
+    },
+    {
+      "scenario_id": "SCN-ECOLOGICAL-PRIORITY",
+      "scenario_name_zh": "生态约束优先方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    }
+  ],
+  "ranked_scenarios": [
+    {
+      "rank": 1,
+      "scenario_id": "SCN-BASELINE-CURRENT",
+      "scenario_name_zh": "现状基线",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.786667
+    },
+    {
+      "rank": 2,
+      "scenario_id": "SCN-BALANCED",
+      "scenario_name_zh": "均衡治理方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    },
+    {
+      "rank": 3,
+      "scenario_id": "SCN-ECOLOGICAL-PRIORITY",
+      "scenario_name_zh": "生态约束优先方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    }
+  ],
+  "blocked_scenarios": [
+    {
+      "scenario_id": "SCN-DEVELOPMENT-PRIORITY",
+      "scenario_name_zh": "建设承载优先方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 2292759.248,
+      "weighted_score": 0.284973
+    },
+    {
+      "scenario_id": "SCN-LOW-RISK",
+      "scenario_name_zh": "低风险优先方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 149388.94,
+      "weighted_score": 0.69598
+    },
+    {
+      "scenario_id": "SCN-REVIEW-FOCUS",
+      "scenario_name_zh": "复核压力测试方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 2085767.925,
+      "weighted_score": 0.337526
+    },
+    {
+      "scenario_id": "SCN-WM-V21-REFERENCE",
+      "scenario_name_zh": "WorldModel v2.1 参考推演",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 201255.93,
+      "weighted_score": 0.691191
+    }
+  ],
+  "all_scenario_ranked": [
+    {
+      "rank": 1,
+      "scenario_id": "SCN-BASELINE-CURRENT",
+      "scenario_name_zh": "现状基线",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.786667
+    },
+    {
+      "rank": 2,
+      "scenario_id": "SCN-BALANCED",
+      "scenario_name_zh": "均衡治理方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    },
+    {
+      "rank": 3,
+      "scenario_id": "SCN-ECOLOGICAL-PRIORITY",
+      "scenario_name_zh": "生态约束优先方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    },
+    {
+      "rank": 4,
+      "scenario_id": "SCN-LOW-RISK",
+      "scenario_name_zh": "低风险优先方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 149388.94,
+      "weighted_score": 0.69598
+    },
+    {
+      "rank": 5,
+      "scenario_id": "SCN-WM-V21-REFERENCE",
+      "scenario_name_zh": "WorldModel v2.1 参考推演",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 201255.93,
+      "weighted_score": 0.691191
+    },
+    {
+      "rank": 6,
+      "scenario_id": "SCN-REVIEW-FOCUS",
+      "scenario_name_zh": "复核压力测试方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 2085767.925,
+      "weighted_score": 0.337526
+    },
+    {
+      "rank": 7,
+      "scenario_id": "SCN-DEVELOPMENT-PRIORITY",
+      "scenario_name_zh": "建设承载优先方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 2292759.248,
+      "weighted_score": 0.284973
+    }
+  ],
+  "all_scenario_non_dominated": [
+    {
+      "scenario_id": "SCN-BALANCED",
+      "scenario_name_zh": "均衡治理方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    },
+    {
+      "scenario_id": "SCN-BASELINE-CURRENT",
+      "scenario_name_zh": "现状基线",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.786667
+    },
+    {
+      "scenario_id": "SCN-DEVELOPMENT-PRIORITY",
+      "scenario_name_zh": "建设承载优先方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 2292759.248,
+      "weighted_score": 0.284973
+    },
+    {
+      "scenario_id": "SCN-ECOLOGICAL-PRIORITY",
+      "scenario_name_zh": "生态约束优先方案",
+      "hard_constraint_status": "legal_feasible",
+      "optimization_scope": "legal_feasible_space",
+      "hard_constraint_violation_m2": 0.0,
+      "weighted_score": 0.76898
+    },
+    {
+      "scenario_id": "SCN-LOW-RISK",
+      "scenario_name_zh": "低风险优先方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 149388.94,
+      "weighted_score": 0.69598
+    },
+    {
+      "scenario_id": "SCN-REVIEW-FOCUS",
+      "scenario_name_zh": "复核压力测试方案",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 2085767.925,
+      "weighted_score": 0.337526
+    },
+    {
+      "scenario_id": "SCN-WM-V21-REFERENCE",
+      "scenario_name_zh": "WorldModel v2.1 参考推演",
+      "hard_constraint_status": "blocked_by_hard_constraint",
+      "optimization_scope": "stress_test_only",
+      "hard_constraint_violation_m2": 201255.93,
+      "weighted_score": 0.691191
+    }
+  ],
+  "dominance": {
+    "SCN-BALANCED": [],
+    "SCN-BASELINE-CURRENT": [],
+    "SCN-ECOLOGICAL-PRIORITY": []
+  },
+  "all_scenario_dominance": {
+    "SCN-BALANCED": [],
+    "SCN-BASELINE-CURRENT": [],
+    "SCN-DEVELOPMENT-PRIORITY": [],
+    "SCN-ECOLOGICAL-PRIORITY": [],
+    "SCN-LOW-RISK": [],
+    "SCN-REVIEW-FOCUS": [],
+    "SCN-WM-V21-REFERENCE": []
+  },
+  "interpretation_zh": "该 Pareto 摘要用于 TWM 工程测试。主排序只比较通过硬约束过滤的合法可行空间，被硬约束阻断的方案只用于压力测试、证据链和人工复核能力验证；所有结果均不是生产级行政决策或审批结论。"
+}

@@ -1,0 +1,39 @@
+---
+type: "MMFE Semantic Relation"
+title: "落入用途管制分区: PRJ-DEMO-0011 -> PLAN-DEMO-002"
+description: "建设项目与用途管制分区存在空间叠置，可用于规划一致性、冲突面积和方案解释。"
+tags: ["relation", "planning_zone", "planning_consistency_assessment"]
+timestamp: "2026-06-17T08:28:31.856176+00:00"
+relation_id: "PROJECT_OVERLAPS_PLANNING_ZONE-000027"
+semantic_relation_type: "project_overlaps_planning_zone"
+source_object_type: "project"
+target_object_type: "planning_zone"
+rule_id: "TWM-PLAN-001"
+objective_id: "planning_conflict_m2"
+---
+
+# Semantic Relation
+
+| Property | Value |
+| --- | --- |
+| Relation ID | `PROJECT_OVERLAPS_PLANNING_ZONE-000027` |
+| Relation type | `project_overlaps_planning_zone` |
+| Predicate | 落入用途管制分区 |
+| Source object | `project` / `PRJ-DEMO-0011` |
+| Target object | `planning_zone` / `PLAN-DEMO-002` |
+| Target standard role | `planning_zone` |
+| TWM usage | `planning_consistency_assessment` |
+| Metric | `overlap_area_m2` = 27554.162 |
+| Overlap area m2 | 27554.162 |
+| Left overlap ratio | 0.27245 |
+| Right overlap ratio | 0.005485 |
+| Confidence | 0.99 |
+| Semantic strength | `strong` |
+| Requires rule review | `True` |
+| Rule | `TWM-PLAN-001` |
+| Objective | `planning_conflict_m2` |
+| Evidence source | `relations/project_planning_rel.csv` |
+
+# Business Meaning
+
+建设项目与用途管制分区存在空间叠置，可用于规划一致性、冲突面积和方案解释。

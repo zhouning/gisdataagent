@@ -1,0 +1,1466 @@
+{
+  "data_dir": "data_agent/test_data/twm_bishan_demo",
+  "project_crs": "EPSG:32648",
+  "layers": {
+    "parcel_current": {
+      "rows": 4900,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 63629824.312,
+      "area_m2_min": 0.383,
+      "area_m2_p50": 2591.412,
+      "area_m2_p95": 45045.111,
+      "area_m2_max": 2155077.927,
+      "bbox_coverage_ratio": 0.4394,
+      "null_counts": {},
+      "duplicate_counts": {
+        "bsm_norm": 0,
+        "BSM": 0
+      },
+      "synthetic": {
+        "False": 4900
+      },
+      "not_for_production": {
+        "True": 4900
+      },
+      "qa_use_for_rules": {
+        "True": 4841,
+        "False": 59
+      },
+      "qa_area_warning": {
+        "False": 4836,
+        "True": 64
+      },
+      "connectedness": {
+        "connected_components": 6,
+        "largest_component_features": 4893,
+        "largest_component_ratio": 0.9986
+      }
+    },
+    "synthetic_pbf": {
+      "rows": 14,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 23275420.423,
+      "area_m2_min": 12736.98,
+      "area_m2_p50": 36053.829,
+      "area_m2_p95": 9721329.059,
+      "area_m2_max": 16721372.618,
+      "bbox_coverage_ratio": 0.282,
+      "null_counts": {},
+      "duplicate_counts": {
+        "BSM": 0,
+        "control_id": 0
+      },
+      "synthetic": {
+        "True": 14
+      },
+      "not_for_production": {
+        "True": 14
+      },
+      "qa_use_for_rules": {
+        "True": 14
+      }
+    },
+    "synthetic_eco_redline": {
+      "rows": 10,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 19866857.796,
+      "area_m2_min": 76442.987,
+      "area_m2_p50": 207187.292,
+      "area_m2_p95": 8010541.327,
+      "area_m2_max": 10614688.995,
+      "bbox_coverage_ratio": 0.1394,
+      "null_counts": {},
+      "duplicate_counts": {
+        "BSM": 0,
+        "redline_id": 0
+      },
+      "synthetic": {
+        "True": 10
+      },
+      "not_for_production": {
+        "True": 10
+      },
+      "qa_use_for_rules": {
+        "True": 10
+      }
+    },
+    "admin_units": {
+      "rows": 5,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 330784536.588,
+      "area_m2_min": 58687035.609,
+      "area_m2_p50": 64418853.619,
+      "area_m2_p95": 77360443.683,
+      "area_m2_max": 79309501.984,
+      "bbox_coverage_ratio": 0.4685,
+      "null_counts": {},
+      "duplicate_counts": {
+        "admin_code": 0
+      },
+      "synthetic": {
+        "False": 5
+      },
+      "not_for_production": {
+        "False": 5
+      },
+      "qa_use_for_rules": {
+        "True": 5
+      }
+    },
+    "synthetic_annual_change": {
+      "rows": 78,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 1405899.77,
+      "area_m2_min": 144.503,
+      "area_m2_p50": 4925.379,
+      "area_m2_p95": 59662.403,
+      "area_m2_max": 306972.94,
+      "bbox_coverage_ratio": 0.0296,
+      "null_counts": {},
+      "duplicate_counts": {
+        "bsm_norm": 0,
+        "BSM": 0,
+        "change_id": 0
+      },
+      "synthetic": {
+        "True": 78
+      },
+      "not_for_production": {
+        "True": 78
+      },
+      "qa_use_for_rules": {
+        "True": 77,
+        "False": 1
+      },
+      "qa_area_warning": {
+        "False": 77,
+        "True": 1
+      }
+    },
+    "synthetic_projects": {
+      "rows": 60,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 2340404.353,
+      "area_m2_min": 1362.156,
+      "area_m2_p50": 13320.769,
+      "area_m2_p95": 168123.973,
+      "area_m2_max": 185210.052,
+      "bbox_coverage_ratio": 0.0201,
+      "null_counts": {},
+      "duplicate_counts": {
+        "project_id": 0
+      },
+      "synthetic": {
+        "True": 60
+      },
+      "not_for_production": {
+        "True": 60
+      },
+      "qa_use_for_rules": {
+        "True": 60
+      }
+    },
+    "synthetic_planning_zones": {
+      "rows": 5,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "MultiPolygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 60443629.555,
+      "area_m2_min": 1087575.045,
+      "area_m2_p50": 5023619.784,
+      "area_m2_p95": 28946482.798,
+      "area_m2_max": 31529688.803,
+      "bbox_coverage_ratio": 0.4225,
+      "null_counts": {},
+      "duplicate_counts": {
+        "BSM": 0,
+        "plan_zone_id": 0
+      },
+      "synthetic": {
+        "True": 5
+      },
+      "not_for_production": {
+        "True": 5
+      },
+      "qa_use_for_rules": {
+        "True": 5
+      }
+    },
+    "synthetic_urban_boundary": {
+      "rows": 5,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 850358.743,
+      "area_m2_min": 61517.328,
+      "area_m2_p50": 69095.179,
+      "area_m2_p95": 469508.289,
+      "area_m2_max": 564109.49,
+      "bbox_coverage_ratio": 0.1213,
+      "null_counts": {},
+      "duplicate_counts": {
+        "BSM": 0,
+        "boundary_id": 0
+      },
+      "synthetic": {
+        "True": 5
+      },
+      "not_for_production": {
+        "True": 5
+      },
+      "qa_use_for_rules": {
+        "True": 5
+      }
+    },
+    "synthetic_remote_sensing_tiles": {
+      "rows": 11,
+      "crs": "EPSG:4326",
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "invalid_geometries": 0,
+      "empty_geometries": 0,
+      "area_m2_sum": 63629982.916,
+      "area_m2_min": 66820.509,
+      "area_m2_p50": 5439207.787,
+      "area_m2_p95": 11792634.028,
+      "area_m2_max": 12004076.648,
+      "bbox_coverage_ratio": 0.4394,
+      "null_counts": {},
+      "duplicate_counts": {
+        "tile_id": 0
+      },
+      "synthetic": {
+        "True": 11
+      },
+      "not_for_production": {
+        "True": 11
+      },
+      "qa_use_for_rules": {
+        "True": 11
+      }
+    }
+  },
+  "relations": {
+    "change_parcel_rel": {
+      "rows": 78,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "change_id",
+        "bsm_norm",
+        "match_type",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 0
+    },
+    "project_eco_rel": {
+      "rows": 28,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "redline_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 28
+    },
+    "project_parcel_rel": {
+      "rows": 354,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "bsm_norm",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 60
+    },
+    "project_pbf_rel": {
+      "rows": 39,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "control_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 34
+    },
+    "project_planning_rel": {
+      "rows": 151,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "plan_zone_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 60
+    },
+    "project_rs_tile_rel": {
+      "rows": 71,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "tile_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 60
+    },
+    "project_urban_boundary_rel": {
+      "rows": 7,
+      "columns": [
+        "relation_id",
+        "relation_type",
+        "project_id",
+        "boundary_id",
+        "right_role",
+        "overlap_area_m2",
+        "overlap_ratio_left",
+        "overlap_ratio_right",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 7
+    }
+  },
+  "tables": {
+    "approval_records": {
+      "rows": 60,
+      "columns": [
+        "YSDM",
+        "DKBH",
+        "DKMC",
+        "DKMJ",
+        "DKXZQDM",
+        "DKXZQMC",
+        "DKYTDM",
+        "DKYTMC",
+        "DKZT",
+        "DZJGH",
+        "AJBH",
+        "XZQDM",
+        "XZQMC",
+        "ZYZMJ",
+        "ZDZMJ",
+        "QZNYDMJ",
+        "QZGDMJ",
+        "XZYDZMJ",
+        "approval_id",
+        "project_id",
+        "application_date",
+        "decision_date",
+        "approval_status",
+        "decision_result",
+        "approved_area_m2",
+        "reviewing_department",
+        "legal_basis",
+        "standard_version",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 60
+    },
+    "enforcement_events": {
+      "rows": 92,
+      "columns": [
+        "BSM",
+        "YSDM",
+        "WFXWZJ",
+        "WFDKXH",
+        "YGTBZJ",
+        "XZQDM",
+        "JCSDQ",
+        "JCSDH",
+        "JCMJ",
+        "TDZL",
+        "TBLX",
+        "ND",
+        "QSSJ",
+        "ZZSJ",
+        "GXZT",
+        "enforcement_id",
+        "project_id",
+        "rule_eval_id",
+        "event_type",
+        "event_date",
+        "event_status",
+        "severity",
+        "assigned_department",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 51
+    },
+    "metadata_vector": {
+      "rows": 9,
+      "columns": [
+        "data_id",
+        "resource_id",
+        "data_name",
+        "data_alias",
+        "data_des",
+        "data_format",
+        "data_type",
+        "data_size",
+        "cover_range_coor",
+        "cover_range",
+        "security_order",
+        "is_multilayer",
+        "layer_count",
+        "layer_name",
+        "layer_field",
+        "geometry_type",
+        "is_shareable",
+        "share_type",
+        "is_opentosociety",
+        "receive_mode",
+        "receive_batch",
+        "import_time",
+        "wkid",
+        "geodetic_datum",
+        "projection",
+        "coordinate_unit",
+        "product_date",
+        "update_date",
+        "update_cycle",
+        "release_date",
+        "producer",
+        "pro_unit_name",
+        "source_type",
+        "source_currency",
+        "integrity",
+        "score",
+        "quality_check_date",
+        "check_unit_name",
+        "quality_evaluation",
+        "quality_des",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 0
+    },
+    "multimodal_evidence_index": {
+      "rows": 173,
+      "columns": [
+        "evidence_id",
+        "evidence_type",
+        "evidence_uri",
+        "linked_object_id",
+        "linked_object_type",
+        "observed_date",
+        "confidence",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 0,
+      "evidence_types": {
+        "rule_evaluation": 92,
+        "text_project_document": 60,
+        "remote_sensing_tile_index": 11,
+        "observed_remote_sensing": 4,
+        "raster_observation": 2,
+        "standard_rule_lifecycle": 1,
+        "optimization_scenario_set": 1,
+        "optimization_pareto_summary": 1,
+        "world_model_optimization_summary": 1
+      }
+    },
+    "review_tasks": {
+      "rows": 92,
+      "columns": [
+        "review_task_id",
+        "enforcement_id",
+        "project_id",
+        "rule_eval_id",
+        "task_status",
+        "reviewer_role",
+        "due_date",
+        "review_result",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 51
+    },
+    "rule_evaluation": {
+      "rows": 240,
+      "columns": [
+        "rule_eval_id",
+        "project_id",
+        "rule_id",
+        "rule_name_zh",
+        "severity",
+        "finding_status",
+        "finding_basis",
+        "metric_value",
+        "metric_unit",
+        "standard_version",
+        "legal_basis",
+        "event_date",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 60,
+      "unique_rules": 4
+    },
+    "standard_field_catalog": {
+      "rows": 267,
+      "columns": [
+        "field_name",
+        "field_alias_zh",
+        "lifecycle_status",
+        "introduced_version",
+        "deprecated_version",
+        "replacement_field",
+        "standard_version",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 0
+    },
+    "state_snapshots": {
+      "rows": 10,
+      "columns": [
+        "snapshot_year",
+        "temporal_stage",
+        "land_space_type",
+        "feature_count",
+        "area_m2",
+        "area_delta_m2",
+        "source_dataset",
+        "synthetic",
+        "not_for_production"
+      ],
+      "unique_projects": 0,
+      "snapshot_years": [
+        2025,
+        2026
+      ]
+    }
+  },
+  "admin_coverage": {
+    "has_admin9": true,
+    "unique_admin9": 1,
+    "admin9_counts": {
+      "500227100": 4900
+    }
+  },
+  "rasters": {
+    "missing_raster_manifest": false,
+    "products": {
+      "synthetic_ndvi_2026": {
+        "exists": true,
+        "path": "data_agent/test_data/twm_bishan_demo/rasters/synthetic_ndvi_2026.tif",
+        "crs": "EPSG:32648",
+        "width": 256,
+        "height": 256,
+        "count": 1,
+        "dtype": "float32",
+        "nodata": -9999.0,
+        "bounds": [
+          620417.475,
+          3294228.877,
+          632332.489,
+          3307155.938
+        ],
+        "band_description": "由现状地类、坡度和合成管控区派生的归一化植被指数。",
+        "stats": {
+          "valid_pixels": 27078,
+          "min": 0.071345,
+          "mean": 0.628087,
+          "max": 0.913488
+        },
+        "tags": {
+          "dataset_id": "twm_bishan_demo",
+          "not_for_production": "true",
+          "product_id": "RASTER-NDVI-2026",
+          "synthetic": "true",
+          "synthetic_method": "vector_semantic_fixture_rasterization",
+          "AREA_OR_POINT": "Area"
+        }
+      },
+      "synthetic_change_intensity_2026": {
+        "exists": true,
+        "path": "data_agent/test_data/twm_bishan_demo/rasters/synthetic_change_intensity_2026.tif",
+        "crs": "EPSG:32648",
+        "width": 256,
+        "height": 256,
+        "count": 1,
+        "dtype": "float32",
+        "nodata": -9999.0,
+        "bounds": [
+          620417.475,
+          3294228.877,
+          632332.489,
+          3307155.938
+        ],
+        "band_description": "由 WorldModel 年度变化图斑派生的变化强度观测。",
+        "stats": {
+          "valid_pixels": 27078,
+          "min": 0.05,
+          "mean": 0.060754,
+          "max": 0.55
+        },
+        "tags": {
+          "dataset_id": "twm_bishan_demo",
+          "not_for_production": "true",
+          "product_id": "RASTER-CHANGE-2026",
+          "synthetic": "true",
+          "synthetic_method": "vector_semantic_fixture_rasterization",
+          "AREA_OR_POINT": "Area"
+        }
+      }
+    },
+    "warnings": [],
+    "blockers": []
+  },
+  "real_imagery": {
+    "missing_real_imagery_manifest": false,
+    "products": {
+      "sentinel2_l2a_reflectance_stack": {
+        "exists": true,
+        "path": "data_agent/test_data/twm_bishan_demo/real_imagery/sentinel2_l2a_reflectance_stack.tif",
+        "crs": "EPSG:32648",
+        "width": 197,
+        "height": 214,
+        "count": 4,
+        "dtype": "float32",
+        "bounds": [
+          620485.733,
+          3294297.135,
+          632264.23,
+          3307087.68
+        ],
+        "band_stats": [
+          {
+            "band": 1,
+            "valid_pixels": 42158,
+            "min": -0.082389,
+            "mean": -0.057872,
+            "max": 0.173138
+          },
+          {
+            "band": 2,
+            "valid_pixels": 42158,
+            "min": -0.066754,
+            "mean": -0.031062,
+            "max": 0.212205
+          },
+          {
+            "band": 3,
+            "valid_pixels": 42158,
+            "min": -0.082553,
+            "mean": -0.046536,
+            "max": 0.228688
+          },
+          {
+            "band": 4,
+            "valid_pixels": 42158,
+            "min": -0.060933,
+            "mean": 0.208888,
+            "max": 0.410272
+          }
+        ],
+        "manifest_type": "reflectance_stack",
+        "manifest_band_order": [
+          "blue",
+          "green",
+          "red",
+          "nir"
+        ]
+      },
+      "sentinel2_l2a_rgb": {
+        "exists": true,
+        "path": "data_agent/test_data/twm_bishan_demo/real_imagery/sentinel2_l2a_rgb.tif",
+        "crs": "EPSG:32648",
+        "width": 197,
+        "height": 214,
+        "count": 3,
+        "dtype": "uint8",
+        "bounds": [
+          620485.733,
+          3294297.135,
+          632264.23,
+          3307087.68
+        ],
+        "band_stats": [
+          {
+            "band": 1,
+            "valid_pixels": 41195,
+            "min": 1.0,
+            "mean": 89.426848,
+            "max": 255.0
+          },
+          {
+            "band": 2,
+            "valid_pixels": 41273,
+            "min": 1.0,
+            "mean": 103.453275,
+            "max": 255.0
+          },
+          {
+            "band": 3,
+            "valid_pixels": 41227,
+            "min": 1.0,
+            "mean": 80.183254,
+            "max": 255.0
+          }
+        ],
+        "manifest_type": "visual_rgb",
+        "manifest_band_order": []
+      },
+      "sentinel2_l2a_ndvi": {
+        "exists": true,
+        "path": "data_agent/test_data/twm_bishan_demo/real_imagery/sentinel2_l2a_ndvi.tif",
+        "crs": "EPSG:32648",
+        "width": 197,
+        "height": 214,
+        "count": 1,
+        "dtype": "float32",
+        "bounds": [
+          620485.733,
+          3294297.135,
+          632264.23,
+          3307087.68
+        ],
+        "band_stats": [
+          {
+            "band": 1,
+            "valid_pixels": 1828,
+            "min": -0.94803,
+            "mean": 0.774765,
+            "max": 0.999818
+          }
+        ],
+        "manifest_type": "spectral_index",
+        "manifest_band_order": []
+      },
+      "sentinel2_l2a_scl": {
+        "exists": true,
+        "path": "data_agent/test_data/twm_bishan_demo/real_imagery/sentinel2_l2a_scl.tif",
+        "crs": "EPSG:32648",
+        "width": 197,
+        "height": 214,
+        "count": 1,
+        "dtype": "uint8",
+        "bounds": [
+          620485.733,
+          3294297.135,
+          632264.23,
+          3307087.68
+        ],
+        "band_stats": [
+          {
+            "band": 1,
+            "valid_pixels": 42158,
+            "min": 2.0,
+            "mean": 4.057996,
+            "max": 7.0
+          }
+        ],
+        "manifest_type": "scene_classification",
+        "manifest_band_order": []
+      }
+    },
+    "warnings": [],
+    "blockers": [],
+    "stac": {
+      "endpoint": "https://earth-search.aws.element84.com/v1",
+      "collection": "sentinel-2-l2a",
+      "datetime": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+      "cloud_cover_max": 20.0,
+      "matched_items": 50,
+      "selected_date": "2025-08-03",
+      "coverage_ratio_estimate": 1.0,
+      "avg_cloud_cover": 0.087723,
+      "selected_items": [
+        {
+          "id": "S2C_48RXU_20250803_0_L2A",
+          "datetime": "2025-08-03T03:50:03.848000Z",
+          "cloud_cover": 0.05672,
+          "grid": "MGRS-48RXU",
+          "bbox": [
+            106.034119,
+            29.735248,
+            106.775827,
+            30.728858
+          ]
+        },
+        {
+          "id": "S2C_48RXT_20250803_0_L2A",
+          "datetime": "2025-08-03T03:50:17.836000Z",
+          "cloud_cover": 0.118727,
+          "grid": "MGRS-48RXT",
+          "bbox": [
+            106.025066,
+            28.835798,
+            106.516331,
+            29.826404
+          ]
+        }
+      ]
+    },
+    "target_grid": {
+      "crs": "EPSG:32648",
+      "resolution_m": 60.0,
+      "product_set": "core",
+      "width": 197,
+      "height": 214,
+      "transform": [
+        59.789326377,
+        0.0,
+        620485.733067192,
+        0.0,
+        -59.768899144,
+        3307087.679765264
+      ]
+    },
+    "source_errors": []
+  },
+  "optimization": {
+    "exists": true,
+    "files": {
+      "objective_catalog.csv": {
+        "exists": true
+      },
+      "action_space.geojson": {
+        "exists": true
+      },
+      "constraint_masks.geojson": {
+        "exists": true
+      },
+      "scenario_candidates.csv": {
+        "exists": true
+      },
+      "scenario_feasibility.csv": {
+        "exists": true
+      },
+      "scenario_project_membership.csv": {
+        "exists": true
+      },
+      "scenario_metrics.csv": {
+        "exists": true
+      },
+      "scenario_constraint_violations.csv": {
+        "exists": true
+      },
+      "pareto_summary.json": {
+        "exists": true
+      }
+    },
+    "warnings": [],
+    "blockers": [],
+    "counts": {
+      "objectives": 13,
+      "scenarios": 7,
+      "feasibility_rows": 7,
+      "memberships": 91,
+      "metrics": 91,
+      "violations": 18
+    },
+    "checks": {
+      "missing_scenario_feasibility": [],
+      "legal_feasible_scenarios": 2,
+      "blocked_scenarios": 5,
+      "expected_metric_rows": 91
+    },
+    "pareto": {
+      "method": "hard_constraint_filter_then_normalized_weighted_score_and_non_dominated_sorting",
+      "comparison_scope": "legal_feasible_space",
+      "objective_count": 13,
+      "scenario_count": 7,
+      "legal_feasible_scenario_count": 2,
+      "blocked_scenario_count": 5,
+      "ranked_count": 2,
+      "blocked_count": 5
+    },
+    "evidence": {
+      "missing_evidence_types": []
+    }
+  },
+  "dictionary_coverage": {
+    "missing_dictionary": false,
+    "missing_layer_aliases": [],
+    "unknown_fields": {}
+  },
+  "manifest": {
+    "missing_manifest": false,
+    "dataset_id": "twm_bishan_demo",
+    "not_for_production": true,
+    "absolute_input_paths": {
+      "parcel_current": "/Users/zhouning/Downloads/bishan/DLTB_with_slope.gpkg",
+      "scenario_candidate": "/Users/zhouning/farmland_mpc_runs/bishan/mpc_output/optimized.shp",
+      "world_model_summary": "/Users/zhouning/farmland_mpc_runs/bishan/mpc_output/mpc_summary.json",
+      "admin_boundaries": "/Users/zhouning/Downloads/shp/xiangzhen.shp"
+    },
+    "layer_count": 9,
+    "relation_count": 7,
+    "table_count": 8,
+    "has_standard_rules": true,
+    "has_project_documents": true,
+    "quality_gate": {
+      "geometry_repair": "shapely.make_valid_and_polygonal_extraction",
+      "min_rule_area_m2": 10.0,
+      "area_warning_threshold": 0.05,
+      "area_block_threshold": 0.1,
+      "rule_inputs": "synthetic layers are built from qa_use_for_rules=true features"
+    }
+  },
+  "distributions": {
+    "parcel_current": {
+      "DLBM": {
+        "203": 1972,
+        "013": 1050,
+        "011": 801,
+        "031": 434,
+        "021": 232,
+        "114": 203,
+        "127": 66,
+        "043": 26,
+        "033": 24,
+        "022": 18,
+        "111": 13,
+        "204": 13,
+        "202": 13,
+        "122": 12,
+        "032": 8,
+        "205": 8,
+        "023": 3,
+        "113": 2,
+        "104": 2
+      },
+      "DLMC": {
+        "村庄": 1972,
+        "旱地": 1050,
+        "水田": 801,
+        "有林地": 434,
+        "果园": 232,
+        "坑塘水面": 203,
+        "裸地": 66,
+        "其他草地": 26,
+        "其他林地": 24,
+        "茶园": 18,
+        "河流水面": 13,
+        "采矿用地": 13,
+        "建制镇": 13,
+        "设施农用地": 12,
+        "灌木林地": 8,
+        "风景名胜及特殊用地": 8,
+        "其他园地": 3,
+        "水库水面": 2,
+        "农村道路": 2
+      }
+    },
+    "synthetic_pbf": {
+      "DLBM": {
+        "0101": 14
+      },
+      "DLMC": {
+        "水田": 14
+      }
+    },
+    "synthetic_annual_change": {
+      "from_dlbm": {
+        "031": 37,
+        "011": 20,
+        "013": 19,
+        "033": 2
+      },
+      "to_dlbm": {
+        "011": 39,
+        "031": 39
+      },
+      "change_type": {
+        "2": 39,
+        "1": 39
+      }
+    },
+    "synthetic_projects": {
+      "project_type": {
+        "construction_expansion": 8,
+        "rural_road": 8,
+        "tourism_facility": 8,
+        "mining_remediation": 8,
+        "public_service": 7,
+        "rural_infrastructure": 7,
+        "industrial_site": 7,
+        "ecological_restoration": 7
+      },
+      "approval_status": {
+        "approved": 21,
+        "proposed": 15,
+        "in_review": 8,
+        "supplement_required": 8,
+        "returned": 8
+      },
+      "risk_scenario": {
+        "pbf_full_overlap": 8,
+        "pbf_partial_overlap": 8,
+        "eco_partial_overlap": 8,
+        "eco_full_overlap": 8,
+        "urban_inside_low_risk": 7,
+        "outside_control_low_risk": 7,
+        "planning_agricultural_conflict": 7,
+        "ecological_restoration": 7
+      },
+      "review_priority": {
+        "high": 31,
+        "medium": 14,
+        "critical": 8,
+        "low": 7
+      }
+    },
+    "synthetic_planning_zones": {
+      "plan_zone_type": {
+        "agricultural_space": 1,
+        "ecological_space": 1,
+        "other_space": 1,
+        "urban_space": 1,
+        "water_space": 1
+      }
+    },
+    "synthetic_remote_sensing_tiles": {
+      "sensor": {
+        "Sentinel-2 MSI": 4,
+        "Gaofen-2 PMS": 4,
+        "Synthetic UAV RGB": 3
+      }
+    }
+  },
+  "domain_integrity": {
+    "checks": {
+      "rule_evaluation_project_coverage": {
+        "expected_projects": 60,
+        "covered_projects": 60,
+        "missing_projects": []
+      },
+      "approval_records_project_coverage": {
+        "expected_projects": 60,
+        "covered_projects": 60,
+        "missing_projects": []
+      },
+      "rule_hits": {
+        "hit_requires_review": 92,
+        "rows": 240
+      },
+      "enforcement_review_chain": {
+        "enforcement_events": 92,
+        "reviewed_events": 92,
+        "missing_review": []
+      },
+      "state_snapshot_years": [
+        2025,
+        2026
+      ],
+      "standard_field_catalog": {
+        "rows": 267,
+        "deprecated_fields": 1
+      },
+      "project_text_evidence_coverage": {
+        "expected_projects": 60,
+        "covered_projects": 60,
+        "missing_projects": []
+      },
+      "raster_observation_evidence": {
+        "rows": 2,
+        "linked_products": [
+          "RASTER-CHANGE-2026",
+          "RASTER-NDVI-2026"
+        ]
+      },
+      "observed_remote_sensing_evidence": {
+        "expected_products": 4,
+        "rows": 4,
+        "linked_products": [
+          "REAL-S2-L2A-NDVI",
+          "REAL-S2-L2A-REFLECTANCE",
+          "REAL-S2-L2A-RGB",
+          "REAL-S2-L2A-SCL"
+        ]
+      }
+    },
+    "warnings": [],
+    "blockers": []
+  },
+  "standard_contracts": {
+    "contract_path": "data_agent/test_data/twm_bishan_demo/standards/one_map_role_contracts.zh.json",
+    "standard_id": "NR_ONE_MAP_TWM_CORE_2026",
+    "version": "2026-06-16-draft",
+    "roles": {
+      "parcel_current": {
+        "target": "parcel_current",
+        "kind": "layer",
+        "rows": 4900,
+        "required_count": 14,
+        "present_required_count": 14,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "DLBM": {
+            "checked_rows": 4900
+          },
+          "QSXZ": {
+            "checked_rows": 4900
+          },
+          "TBMJ": {
+            "checked_rows": 4900,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "TBDLMJ": {
+            "checked_rows": 4900,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "SJNF": {
+            "checked_rows": 4900,
+            "pattern_mismatch": 0
+          }
+        }
+      },
+      "pbf": {
+        "target": "synthetic_pbf",
+        "kind": "layer",
+        "rows": 14,
+        "required_count": 19,
+        "present_required_count": 19,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "YJJBNTTBMJ": {
+            "checked_rows": 14,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "YJJBNTMJ": {
+            "checked_rows": 14,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "BHKSSJ": {
+            "checked_rows": 14,
+            "pattern_mismatch": 0
+          },
+          "BHJSSJ": {
+            "checked_rows": 14,
+            "pattern_mismatch": 0
+          },
+          "WDGD": {
+            "checked_rows": 14
+          }
+        }
+      },
+      "eco_redline": {
+        "target": "synthetic_eco_redline",
+        "kind": "layer",
+        "rows": 10,
+        "required_count": 12,
+        "present_required_count": 12,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "MJ": {
+            "checked_rows": 10,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "QYMJ": {
+            "checked_rows": 10,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "SLSJ": {
+            "checked_rows": 10,
+            "pattern_mismatch": 0
+          },
+          "LXDM": {
+            "checked_rows": 10
+          }
+        }
+      },
+      "urban_boundary": {
+        "target": "synthetic_urban_boundary",
+        "kind": "layer",
+        "rows": 5,
+        "required_count": 11,
+        "present_required_count": 11,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "GHFQDM": {
+            "checked_rows": 5
+          },
+          "MJ": {
+            "checked_rows": 5,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "CZKFMJ": {
+            "checked_rows": 5,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "SLSJ": {
+            "checked_rows": 5,
+            "pattern_mismatch": 0
+          }
+        }
+      },
+      "planning_zone": {
+        "target": "synthetic_planning_zones",
+        "kind": "layer",
+        "rows": 5,
+        "required_count": 7,
+        "present_required_count": 7,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "GHFQDM": {
+            "checked_rows": 5
+          },
+          "MJ": {
+            "checked_rows": 5,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          }
+        }
+      },
+      "project": {
+        "target": "synthetic_projects",
+        "kind": "layer",
+        "rows": 60,
+        "required_count": 8,
+        "present_required_count": 8,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "YDMJ": {
+            "checked_rows": 60,
+            "non_numeric": 0,
+            "lte_min_exclusive": 0
+          },
+          "SQRQ": {
+            "checked_rows": 60,
+            "pattern_mismatch": 0
+          },
+          "GXRQ": {
+            "checked_rows": 60,
+            "pattern_mismatch": 0
+          }
+        }
+      },
+      "approval": {
+        "target": "approval_records",
+        "kind": "table",
+        "rows": 60,
+        "required_count": 8,
+        "present_required_count": 8,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "DKMJ": {
+            "checked_rows": 60,
+            "non_numeric": 0,
+            "lt_min": 0
+          }
+        }
+      },
+      "enforcement": {
+        "target": "enforcement_events",
+        "kind": "table",
+        "rows": 92,
+        "required_count": 15,
+        "present_required_count": 15,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "JCMJ": {
+            "checked_rows": 92,
+            "non_numeric": 0,
+            "lt_min": 0
+          },
+          "ND": {
+            "checked_rows": 92,
+            "pattern_mismatch": 0
+          },
+          "QSSJ": {
+            "checked_rows": 92,
+            "pattern_mismatch": 0
+          },
+          "ZZSJ": {
+            "checked_rows": 92,
+            "pattern_mismatch": 0
+          }
+        }
+      },
+      "metadata_vector": {
+        "target": "metadata_vector",
+        "kind": "table",
+        "rows": 9,
+        "required_count": 12,
+        "present_required_count": 12,
+        "missing_required_fields": [],
+        "null_required_counts": {},
+        "field_rule_checks": {
+          "score": {
+            "checked_rows": 9,
+            "non_numeric": 0,
+            "lt_min": 0,
+            "gt_max": 0
+          },
+          "quality_evaluation": {
+            "checked_rows": 9
+          }
+        }
+      }
+    },
+    "warnings": [],
+    "blockers": []
+  },
+  "parcel_area_consistency": {
+    "compared": 4900,
+    "median_abs_rel_error": 0.000407,
+    "p95_abs_rel_error": 0.000432,
+    "max_abs_rel_error": 0.999953,
+    "count_gt_5pct": 64,
+    "count_gt_10pct": 59
+  },
+  "parcel_internal_overlaps": {
+    "pairs_gt_threshold": 0,
+    "total_overlap_area_m2": 0.0,
+    "examples": []
+  },
+  "parcel_union": {
+    "union_type": "MultiPolygon",
+    "union_parts": 6,
+    "interior_ring_count": 0,
+    "union_area_m2": 63629824.312
+  },
+  "overlays": {
+    "project_pbf": {
+      "raw_intersections": 39,
+      "touch_or_lt_threshold": 0,
+      "positive_intersections": 39,
+      "unique_left": 34,
+      "unique_right": 14,
+      "mean_overlap_ratio_left": 0.483445,
+      "p50_overlap_ratio_left": 0.459701,
+      "gt_99pct_left": 8,
+      "partial_gt_1pct_left": 31
+    },
+    "project_eco": {
+      "raw_intersections": 28,
+      "touch_or_lt_threshold": 0,
+      "positive_intersections": 28,
+      "unique_left": 28,
+      "unique_right": 10,
+      "mean_overlap_ratio_left": 0.76613,
+      "p50_overlap_ratio_left": 0.971153,
+      "gt_99pct_left": 12,
+      "partial_gt_1pct_left": 16
+    },
+    "project_planning": {
+      "raw_intersections": 151,
+      "touch_or_lt_threshold": 0,
+      "positive_intersections": 151,
+      "unique_left": 60,
+      "unique_right": 5,
+      "mean_overlap_ratio_left": 0.38462,
+      "p50_overlap_ratio_left": 0.286137,
+      "gt_99pct_left": 12,
+      "partial_gt_1pct_left": 125
+    },
+    "pbf_eco": {
+      "raw_intersections": 9,
+      "touch_or_lt_threshold": 0,
+      "positive_intersections": 9,
+      "unique_left": 8,
+      "unique_right": 5,
+      "mean_overlap_ratio_left": 0.20444,
+      "p50_overlap_ratio_left": 0.115221,
+      "gt_99pct_left": 0,
+      "partial_gt_1pct_left": 6
+    }
+  },
+  "quality_gate": {
+    "status": "pass",
+    "blockers": [],
+    "warnings": [
+      "parcel_current: 59 features exceed 10% area mismatch"
+    ]
+  }
+}

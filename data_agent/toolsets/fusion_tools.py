@@ -4,9 +4,12 @@ v7.1: All tool functions are async — CPU-intensive work offloaded to thread po
 via asyncio.to_thread() to avoid blocking the ASGI event loop.
 """
 import asyncio
+from copy import deepcopy
 import os
 import json
 import traceback
+from pathlib import Path
+from urllib.parse import urlparse
 
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
@@ -572,6 +575,9 @@ async def plan_semantic_product_publish(
     vector_target: str = "lancedb",
     vector_collection: str = "mmfe_semantic_products",
     embedding_model: str = "",
+    use_lakehouse_env_defaults: str = "true",
+    publish_environment: str = "production",
+    require_production_ready: str = "auto",
     iceberg_publisher_configured: str = "false",
     stac_publisher_configured: str = "false",
     vector_publisher_configured: str = "false",
@@ -596,6 +602,11 @@ async def plan_semantic_product_publish(
         vector_target: Vector target used when targets contains `vector`.
         vector_collection: pgvector/LanceDB collection or table grouping name.
         embedding_model: Embedding model identifier for vector publish specs.
+        use_lakehouse_env_defaults: true to fill missing Iceberg/STAC values
+            from MMFE_LAKEHOUSE_* and AWS_* environment variables.
+        publish_environment: production, validation, or development.
+        require_production_ready: true/false/auto. auto requires production
+            readiness only when publish_environment=production.
         iceberg_publisher_configured: true when an Iceberg publisher adapter is configured.
         stac_publisher_configured: true when a STAC publisher adapter is configured.
         vector_publisher_configured: true when a vector publisher adapter is configured.
@@ -607,21 +618,41 @@ async def plan_semantic_product_publish(
     """
     try:
         manifest = await asyncio.to_thread(_load_semantic_manifest, manifest_json, manifest_path)
+        manifest_for_plan = await asyncio.to_thread(
+            _attach_semantic_diagnostic_for_publish_plan,
+            manifest,
+            manifest_json,
+            manifest_path,
+        )
         requested_targets = _parse_publish_targets(targets, vector_target=vector_target)
+        env_defaults = (
+            fusion_engine.build_lakehouse_publish_defaults()
+            if _truthy(use_lakehouse_env_defaults)
+            else {}
+        )
+        env_defaults = _normalize_lakehouse_env_defaults(
+            env_defaults,
+            iceberg_warehouse_uri=iceberg_warehouse_uri,
+            stac_catalog_uri=stac_catalog_uri,
+        )
+        default_iceberg = env_defaults.get("iceberg", {}) if isinstance(env_defaults, dict) else {}
+        default_stac = env_defaults.get("stac", {}) if isinstance(env_defaults, dict) else {}
 
         iceberg_config = {
-            "catalog": iceberg_catalog,
-            "namespace": iceberg_namespace,
-            "table": iceberg_table,
-            "warehouse_uri": iceberg_warehouse_uri,
-            "object_store": iceberg_object_store,
-            "spatial_engine": iceberg_spatial_engine,
-            "partition_by": _parse_csv_list(iceberg_partition_by),
+            "catalog": iceberg_catalog or default_iceberg.get("catalog", ""),
+            "namespace": iceberg_namespace or default_iceberg.get("namespace", ""),
+            "table": iceberg_table or default_iceberg.get("table", ""),
+            "warehouse_uri": iceberg_warehouse_uri or default_iceberg.get("warehouse_uri", ""),
+            "object_store": iceberg_object_store or default_iceberg.get("object_store", "s3"),
+            "spatial_engine": iceberg_spatial_engine or default_iceberg.get("spatial_engine", "sedona"),
+            "partition_by": _parse_csv_list(iceberg_partition_by) or list(default_iceberg.get("partition_by") or []),
+            "metadata": default_iceberg.get("metadata"),
             "publisher": object() if _truthy(iceberg_publisher_configured) else None,
         }
         stac_config = {
-            "collection": stac_collection,
-            "catalog_uri": stac_catalog_uri,
+            "collection": stac_collection or default_stac.get("collection", ""),
+            "catalog_uri": stac_catalog_uri or default_stac.get("catalog_uri", ""),
+            "metadata": default_stac.get("metadata"),
             "publisher": object() if _truthy(stac_publisher_configured) else None,
         }
         if stac_item_datetime:
@@ -635,11 +666,13 @@ async def plan_semantic_product_publish(
         }
 
         plan = fusion_engine.build_semantic_product_publish_plan(
-            manifest,
+            manifest_for_plan,
             targets=requested_targets,
             iceberg=iceberg_config,
             stac=stac_config,
             vector=vector_config,
+            publish_environment=publish_environment,
+            require_production_ready=_parse_optional_bool(require_production_ready),
         )
         result = {
             "status": "ok",
@@ -647,6 +680,346 @@ async def plan_semantic_product_publish(
             "plan": plan,
         }
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+    except ValueError as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+async def preflight_mmfe_lakehouse_infrastructure(
+    config_json: str = "",
+    environment: str = "development",
+    env_json: str = "",
+) -> str:
+    """Build an MMFE lakehouse infrastructure preflight report without executing backends.
+
+    Args:
+        config_json: Optional full lakehouse config JSON with object_store,
+            iceberg, stac, and sedona_spark_conf sections. When provided it is
+            used directly instead of environment defaults.
+        environment: production, validation, or development. Production fails
+            local MinIO endpoints and local default credentials.
+        env_json: Optional JSON object of environment-variable overrides used
+            to build defaults when config_json is empty.
+
+    Returns:
+        JSON containing status, summary, errors, warnings, and the
+        mmfe.infrastructure_preflight.v1 contract.
+    """
+    try:
+        if config_json.strip():
+            config = _parse_json_object(config_json, "config_json")
+        else:
+            env = _parse_string_mapping_json(env_json, "env_json") if env_json.strip() else None
+            config = fusion_engine.build_lakehouse_publish_defaults(env)
+        preflight = fusion_engine.build_lakehouse_infrastructure_preflight(
+            config,
+            environment=environment,
+        )
+        validation = fusion_engine.validate_lakehouse_infrastructure_preflight(preflight)
+        summary = _infrastructure_preflight_summary(preflight)
+        result = {
+            "status": "ok" if validation.get("valid") else "error",
+            "summary": summary,
+            "errors": summary["errors"] + list(validation.get("errors") or []),
+            "warnings": summary["warnings"],
+            "preflight": preflight,
+        }
+        return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+    except ValueError as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+async def export_semantic_product_okf(
+    manifest_json: str = "",
+    manifest_path: str = "",
+    out_dir: str = "",
+) -> str:
+    """Export an MMFE semantic product as an OKF Markdown sidecar bundle.
+
+    The semantic product JSON remains the machine contract. This tool creates
+    a human- and agent-readable OKF review/exchange layer from that contract.
+
+    Args:
+        manifest_json: Semantic product manifest JSON. Used before manifest_path.
+        manifest_path: Path to a semantic product manifest JSON when manifest_json is empty.
+        out_dir: Output directory for the OKF bundle. Defaults to `okf_bundle`
+            beside manifest_path, or `okf_bundle` in the current working directory
+            when manifest_json is used.
+
+    Returns:
+        JSON export summary with validation status and generated entry paths.
+    """
+    try:
+        manifest = await asyncio.to_thread(_load_semantic_manifest, manifest_json, manifest_path)
+        result = await asyncio.to_thread(
+            _export_semantic_product_okf,
+            manifest,
+            manifest_json,
+            manifest_path,
+            out_dir,
+        )
+        return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
+    except ValueError as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+async def build_twm_state_input(
+    manifest_json: str = "",
+    manifest_path: str = "",
+    out_path: str = "",
+) -> str:
+    """Build a TWM state-input JSON artifact from an MMFE semantic product.
+
+    This derives a downstream state-builder input from MMFE role bindings,
+    semantic relations, standard readiness, hard constraints and optimization
+    objectives. It does not run TWM simulation or optimization.
+
+    Args:
+        manifest_json: Semantic product manifest JSON. Used before manifest_path.
+        manifest_path: Path to a semantic product manifest JSON when manifest_json is empty.
+        out_path: Optional output JSON path. Defaults to `twm_state_input.json`
+            beside manifest_path, or `twm_state_input.json` in the current
+            working directory when manifest_json is used.
+
+    Returns:
+        JSON summary with validation status and generated state-input path.
+    """
+    try:
+        manifest = await asyncio.to_thread(_load_semantic_manifest, manifest_json, manifest_path)
+        result = await asyncio.to_thread(
+            _build_twm_state_input_sidecar,
+            manifest,
+            manifest_json,
+            manifest_path,
+            out_path,
+        )
+        return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
+    except ValueError as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+async def build_mmfe_semantic_ontology(
+    manifest_json: str = "",
+    manifest_path: str = "",
+    out_path: str = "",
+) -> str:
+    """Build a compact MMFE semantic ontology sidecar from a semantic product.
+
+    The ontology sidecar normalizes standard roles, object types, fields, TWM
+    semantic keys, value domains, standard sources, semantic relation types,
+    rules and optimization objectives into a JSON-only concept package.
+
+    Args:
+        manifest_json: Semantic product manifest JSON. Used before manifest_path.
+        manifest_path: Path to a semantic product manifest JSON when manifest_json is empty.
+        out_path: Optional output JSON path. Defaults to
+            `mmfe_semantic_ontology.json` beside manifest_path, or in the
+            current working directory when manifest_json is used.
+
+    Returns:
+        JSON summary with validation status and generated ontology path.
+    """
+    try:
+        manifest = await asyncio.to_thread(_load_semantic_manifest, manifest_json, manifest_path)
+        result = await asyncio.to_thread(
+            _build_mmfe_semantic_ontology_sidecar,
+            manifest,
+            manifest_json,
+            manifest_path,
+            out_path,
+        )
+        return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
+    except ValueError as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+async def query_semantic_vectors(
+    query_text: str,
+    target: str = "lancedb",
+    collection: str = "mmfe_semantic_products",
+    top_k: str = "5",
+    product_id: str = "",
+    embedding_model: str = "",
+    query_embedding_json: str = "",
+    filters_json: str = "",
+    execute_query: str = "false",
+    lancedb_dataset_uri: str = "",
+    lancedb_table: str = "semantic_products",
+    pgvector_table: str = "agent_mmfe_semantic_vectors",
+) -> str:
+    """Build or execute an MMFE semantic vector retrieval query.
+
+    This tool does not call an external embedding service by itself. To execute
+    a query, pass `query_embedding_json` produced by the same embedding model
+    used at publish time. Without an embedding it returns a validated query
+    spec that can be embedded by a caller.
+
+    Args:
+        query_text: Natural-language query text.
+        target: Retrieval backend: lancedb or pgvector.
+        collection: Vector collection/table grouping.
+        top_k: Maximum number of matches.
+        product_id: Optional semantic product id filter.
+        embedding_model: Embedding model identifier used for traceability.
+        query_embedding_json: JSON numeric vector for direct backend execution.
+        filters_json: Optional JSON object for future metadata filters.
+        execute_query: true to execute against the configured backend.
+        lancedb_dataset_uri: Local LanceDB database directory when target=lancedb.
+        lancedb_table: LanceDB table name.
+        pgvector_table: PostgreSQL pgvector table name.
+
+    Returns:
+        JSON query spec or retrieval result with normalized matches.
+    """
+    try:
+        filters = _parse_json_object(filters_json, "filters_json") if filters_json.strip() else {}
+        spec = fusion_engine.build_semantic_vector_query_spec(
+            query_text=query_text,
+            target=(target or "").strip().lower(),
+            collection=collection,
+            embedding_model=embedding_model or None,
+            top_k=_safe_positive_int(top_k, 5),
+            product_id=product_id or None,
+            filters=filters,
+        )
+        if query_embedding_json.strip():
+            spec = _attach_query_embedding(spec, query_embedding_json)
+
+        validation_errors = fusion_engine.validate_semantic_vector_query_spec(spec)
+        if validation_errors:
+            return json.dumps(
+                {"status": "error", "message": "invalid semantic vector query", "errors": validation_errors, "spec": spec},
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        if not _truthy(execute_query):
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "mode": "plan",
+                    "requires_query_embedding": bool(spec.get("embedding_required", True)),
+                    "spec": spec,
+                },
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+
+        if spec.get("embedding_required", True):
+            raise ValueError("query_embedding_json is required when execute_query=true")
+
+        result = await asyncio.to_thread(
+            _execute_semantic_vector_query,
+            spec,
+            lancedb_dataset_uri,
+            lancedb_table,
+            pgvector_table,
+        )
+        return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
+    except ValueError as e:
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+async def trace_mmfe_semantics(
+    node_id: str = "",
+    layer_role: str = "",
+    field_name: str = "",
+    manifest_json: str = "",
+    manifest_path: str = "",
+    graph_path: str = "",
+    trace_cards_path: str = "",
+    max_depth: str = "4",
+    max_paths: str = "8",
+) -> str:
+    """Explain one MMFE semantic graph node and trace it to standards/evidence.
+
+    Args:
+        node_id: Exact semantic graph node id, such as `field:parcel_current.DLBM`.
+        layer_role: Layer role used with field_name when node_id is empty.
+        field_name: Field name used with layer_role when node_id is empty.
+        manifest_json: Semantic product manifest JSON. Used to find embedded or
+            referenced semantic graph sidecars when graph_path is empty.
+        manifest_path: Semantic product manifest path. For the TWM bundle this
+            automatically loads sibling graph and trace-card sidecars.
+        graph_path: Explicit semantic graph JSON path.
+        trace_cards_path: Optional precomputed semantic trace-card bundle path.
+        max_depth: Maximum graph traversal depth.
+        max_paths: Maximum paths per target type.
+
+    Returns:
+        JSON explanation with direct relationships and paths to value domains,
+        standard sources, rules, objectives and evidence indexes.
+    """
+    try:
+        result = await asyncio.to_thread(
+            _trace_mmfe_semantics,
+            node_id,
+            layer_role,
+            field_name,
+            manifest_json,
+            manifest_path,
+            graph_path,
+            trace_cards_path,
+            _safe_positive_int(max_depth, 4),
+            _safe_positive_int(max_paths, 8),
+        )
+        return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
+    except (ValueError, KeyError) as e:
+        message = e.args[0] if getattr(e, "args", None) else str(e)
+        return json.dumps({"status": "error", "message": str(message)}, ensure_ascii=False, indent=2)
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+
+
+async def diagnose_mmfe_semantic_product(
+    manifest_json: str = "",
+    manifest_path: str = "",
+) -> str:
+    """Diagnose whether an MMFE semantic product is ready for Agent/TWM use.
+
+    The diagnostic separates validation-scaffold readiness from production
+    readiness. A product can be useful for MMFE/TWM development while still
+    carrying explicit production gaps such as synthetic data or pending official
+    standard sources.
+
+    Args:
+        manifest_json: Semantic product manifest JSON. Used before manifest_path.
+        manifest_path: Semantic product manifest path. For the TWM bundle this
+            automatically loads sibling value-domain, standard, graph, trace,
+            relation and state-input sidecars.
+
+    Returns:
+        JSON readiness diagnostic with capability summary, checks, top gaps and
+        Chinese recommendations.
+    """
+    try:
+        manifest = await asyncio.to_thread(_load_semantic_manifest, manifest_json, manifest_path)
+        result = await asyncio.to_thread(
+            _diagnose_mmfe_semantic_product,
+            manifest,
+            manifest_json,
+            manifest_path,
+        )
+        return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
         return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
     except Exception as e:
@@ -677,6 +1050,458 @@ def _load_semantic_manifest(manifest_json: str, manifest_path: str) -> dict:
     return manifest
 
 
+def _attach_semantic_diagnostic_for_publish_plan(
+    manifest: dict,
+    manifest_json: str,
+    manifest_path: str,
+) -> dict:
+    updated = dict(manifest)
+    bundle = dict(updated.get("mmfe_bundle") or {})
+    if bundle.get("semantic_diagnostic") or bundle.get("semantic_diagnostic_summary"):
+        updated["mmfe_bundle"] = bundle
+        return updated
+    resolved_manifest_path = ""
+    if manifest_path.strip() and not manifest_json.strip():
+        resolved_manifest_path = _resolve_path(manifest_path.strip())
+    sidecars = _load_okf_sidecars(resolved_manifest_path)
+    diagnostic = sidecars.get("semantic_diagnostic")
+    if not diagnostic and sidecars:
+        diagnostic = fusion_engine.diagnose_semantic_product_readiness(
+            updated,
+            value_domain_audits=sidecars.get("value_domain_audits"),
+            standard_sources=sidecars.get("standard_sources"),
+            semantic_relations=sidecars.get("semantic_relations"),
+            state_input=sidecars.get("state_input"),
+            semantic_graph=sidecars.get("semantic_graph"),
+            semantic_trace_cards=sidecars.get("semantic_trace_cards"),
+        )
+    if diagnostic:
+        bundle["semantic_diagnostic"] = diagnostic
+        bundle["semantic_diagnostic_summary"] = diagnostic.get("summary") or {}
+        bundle["semantic_diagnostic_top_gaps"] = diagnostic.get("top_gaps") or []
+        bundle["semantic_diagnostic_recommendations_zh"] = diagnostic.get("recommendations_zh") or []
+        updated["mmfe_bundle"] = bundle
+    return updated
+
+
+def _execute_semantic_vector_query(
+    spec: dict,
+    lancedb_dataset_uri: str,
+    lancedb_table: str,
+    pgvector_table: str,
+) -> dict:
+    target = spec.get("target")
+    if target == "lancedb":
+        if not lancedb_dataset_uri.strip():
+            raise ValueError("lancedb_dataset_uri is required when target=lancedb and execute_query=true")
+        executor = fusion_engine.build_local_lancedb_query_executor(lancedb_dataset_uri.strip())
+        querier = fusion_engine.build_lancedb_querier(
+            dataset_uri=lancedb_dataset_uri.strip(),
+            table=lancedb_table,
+            executor=executor,
+        )
+    elif target == "pgvector":
+        executor = fusion_engine.build_pgvector_query_executor(table=pgvector_table)
+        querier = fusion_engine.build_pgvector_querier(table=pgvector_table, executor=executor)
+    else:
+        raise ValueError("target must be one of: pgvector, lancedb")
+    return fusion_engine.run_semantic_vector_query(spec, querier=querier)
+
+
+def _trace_mmfe_semantics(
+    node_id: str,
+    layer_role: str,
+    field_name: str,
+    manifest_json: str,
+    manifest_path: str,
+    graph_path: str,
+    trace_cards_path: str,
+    max_depth: int,
+    max_paths: int,
+) -> dict:
+    resolved_node_id = _resolve_trace_node_id(node_id, layer_role, field_name)
+    if not resolved_node_id:
+        raise ValueError("node_id or both layer_role and field_name are required")
+
+    manifest = None
+    resolved_manifest_path = ""
+    if manifest_json.strip() or manifest_path.strip():
+        manifest = _load_semantic_manifest(manifest_json, manifest_path)
+        if manifest_path.strip() and not manifest_json.strip():
+            resolved_manifest_path = _resolve_path(manifest_path.strip())
+
+    graph, graph_source = _load_semantic_graph_for_trace(
+        manifest=manifest,
+        manifest_path=resolved_manifest_path,
+        graph_path=graph_path,
+    )
+    trace_cards, trace_cards_source = _load_semantic_trace_cards_for_trace(
+        manifest=manifest,
+        manifest_path=resolved_manifest_path,
+        trace_cards_path=trace_cards_path,
+    )
+    precomputed_card = _find_semantic_trace_card(trace_cards, resolved_node_id)
+
+    if graph:
+        trace = fusion_engine.trace_semantic_graph_node(
+            graph,
+            resolved_node_id,
+            max_depth=max_depth,
+            max_paths=max_paths,
+        )
+        source_mode = "computed_from_semantic_graph"
+    elif precomputed_card:
+        trace = precomputed_card
+        source_mode = "precomputed_trace_card"
+    else:
+        raise ValueError("semantic graph is required when no matching precomputed trace card is available")
+
+    counts = _semantic_trace_path_counts(trace)
+    return {
+        "schema": "mmfe.semantic_trace_tool.v1",
+        "node_id": resolved_node_id,
+        "source_mode": source_mode,
+        "graph_source": graph_source,
+        "trace_cards_source": trace_cards_source,
+        "precomputed_trace_card_found": bool(precomputed_card),
+        "summary": trace.get("summary_zh", ""),
+        **counts,
+        "trace": trace,
+        "precomputed_trace_card": precomputed_card,
+    }
+
+
+def _diagnose_mmfe_semantic_product(
+    manifest: dict,
+    manifest_json: str,
+    manifest_path: str,
+) -> dict:
+    resolved_manifest_path = ""
+    if manifest_path.strip() and not manifest_json.strip():
+        resolved_manifest_path = _resolve_path(manifest_path.strip())
+
+    sidecars = _load_okf_sidecars(resolved_manifest_path)
+    diagnostic = fusion_engine.diagnose_semantic_product_readiness(
+        manifest,
+        value_domain_audits=sidecars.get("value_domain_audits"),
+        standard_sources=sidecars.get("standard_sources"),
+        semantic_relations=sidecars.get("semantic_relations"),
+        state_input=sidecars.get("state_input"),
+        semantic_graph=sidecars.get("semantic_graph"),
+        semantic_trace_cards=sidecars.get("semantic_trace_cards"),
+    )
+    validation = fusion_engine.validate_semantic_product_diagnostic(diagnostic)
+    return {
+        **diagnostic,
+        "valid": validation["valid"],
+        "errors": validation["errors"],
+        "sidecar_sources": _diagnostic_sidecar_sources(resolved_manifest_path, sidecars),
+    }
+
+
+def _attach_query_embedding(spec: dict, query_embedding_json: str) -> dict:
+    try:
+        embedding = json.loads(query_embedding_json)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid query_embedding_json: {exc}") from exc
+    if not isinstance(embedding, list) or not embedding:
+        raise ValueError("query_embedding_json must be a non-empty numeric JSON array")
+    try:
+        values = [float(value) for value in embedding]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("query_embedding_json must contain only numbers") from exc
+    updated = dict(spec)
+    updated["query_embedding"] = values
+    updated["embedding_required"] = False
+    updated["embedding_dimension"] = len(values)
+    return updated
+
+
+def _diagnostic_sidecar_sources(manifest_path: str, sidecars: dict) -> dict:
+    if not manifest_path:
+        return {}
+    root = Path(manifest_path).parent
+    conventional = {
+        "value_domain_audits": root / "twm_mmfe_value_domain_audit.csv",
+        "standard_sources": root / "twm_mmfe_standard_sources.csv",
+        "semantic_relations": root / "twm_mmfe_semantic_relations.csv",
+        "state_input": root / "twm_state_input.json",
+        "semantic_graph": root / "twm_mmfe_semantic_graph.json",
+        "semantic_trace_cards": root / "twm_mmfe_semantic_trace_cards.json",
+        "semantic_ontology": root / "twm_mmfe_semantic_ontology.json",
+    }
+    return {
+        key: str(path)
+        for key, path in conventional.items()
+        if sidecars.get(key) is not None or path.exists()
+    }
+
+
+def _resolve_trace_node_id(node_id: str, layer_role: str, field_name: str) -> str:
+    if node_id.strip():
+        return node_id.strip()
+    role = layer_role.strip()
+    field = field_name.strip()
+    if role and field:
+        return f"field:{role}.{field}"
+    return ""
+
+
+def _load_semantic_graph_for_trace(
+    *,
+    manifest: dict | None,
+    manifest_path: str,
+    graph_path: str,
+) -> tuple[dict | None, str]:
+    if graph_path.strip():
+        resolved = _resolve_semantic_sidecar_path(graph_path.strip(), manifest_path)
+        return _read_json_sidecar(resolved, "graph_path"), resolved
+
+    if manifest_path:
+        sidecars = _load_okf_sidecars(manifest_path)
+        graph = sidecars.get("semantic_graph")
+        if graph:
+            return graph, str(Path(manifest_path).parent / "twm_mmfe_semantic_graph.json")
+        inferred = Path(manifest_path).parent / "twm_mmfe_semantic_graph.json"
+        if inferred.exists():
+            return _read_json_sidecar(str(inferred), "semantic graph sidecar"), str(inferred)
+
+    if manifest:
+        embedded = (manifest.get("mmfe_bundle") or {}).get("semantic_graph")
+        if isinstance(embedded, dict):
+            return embedded, "manifest.mmfe_bundle.semantic_graph"
+        ref = (manifest.get("business_outputs") or {}).get("semantic_graph")
+        if ref:
+            resolved = _resolve_semantic_sidecar_path(str(ref), manifest_path)
+            return _read_json_sidecar(resolved, "manifest business_outputs.semantic_graph"), resolved
+
+    return None, ""
+
+
+def _load_semantic_trace_cards_for_trace(
+    *,
+    manifest: dict | None,
+    manifest_path: str,
+    trace_cards_path: str,
+) -> tuple[dict | None, str]:
+    if trace_cards_path.strip():
+        resolved = _resolve_semantic_sidecar_path(trace_cards_path.strip(), manifest_path)
+        return _read_json_sidecar(resolved, "trace_cards_path"), resolved
+
+    if manifest_path:
+        sidecars = _load_okf_sidecars(manifest_path)
+        cards = sidecars.get("semantic_trace_cards")
+        if cards:
+            return cards, str(Path(manifest_path).parent / "twm_mmfe_semantic_trace_cards.json")
+        inferred = Path(manifest_path).parent / "twm_mmfe_semantic_trace_cards.json"
+        if inferred.exists():
+            return _read_json_sidecar(str(inferred), "semantic trace-card sidecar"), str(inferred)
+
+    if manifest:
+        embedded = (manifest.get("mmfe_bundle") or {}).get("semantic_trace_cards")
+        if isinstance(embedded, dict):
+            return embedded, "manifest.mmfe_bundle.semantic_trace_cards"
+        ref = (manifest.get("business_outputs") or {}).get("semantic_trace_cards")
+        if ref:
+            resolved = _resolve_semantic_sidecar_path(str(ref), manifest_path)
+            return _read_json_sidecar(resolved, "manifest business_outputs.semantic_trace_cards"), resolved
+
+    return None, ""
+
+
+def _resolve_semantic_sidecar_path(path_value: str, manifest_path: str) -> str:
+    raw = Path(path_value).expanduser()
+    if raw.is_absolute() and raw.exists():
+        return str(raw)
+    if raw.exists():
+        return str(raw.resolve())
+    if manifest_path:
+        sibling = Path(manifest_path).parent / path_value
+        if sibling.exists():
+            return str(sibling)
+    return _resolve_path(path_value)
+
+
+def _read_json_sidecar(path: str, label: str) -> dict:
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid {label} JSON: {exc}") from exc
+    except OSError as exc:
+        raise ValueError(f"cannot read {label}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return payload
+
+
+def _find_semantic_trace_card(trace_cards: dict | None, node_id: str) -> dict | None:
+    if not isinstance(trace_cards, dict):
+        return None
+    for card in trace_cards.get("cards") or []:
+        if not isinstance(card, dict):
+            continue
+        node = card.get("node") or {}
+        if node.get("id") == node_id:
+            return card
+    return None
+
+
+def _semantic_trace_path_counts(trace: dict) -> dict:
+    return {
+        "standard_source_path_count": len(trace.get("standard_source_paths") or []),
+        "value_domain_path_count": len(trace.get("value_domain_paths") or []),
+        "rule_path_count": len(trace.get("rule_paths") or []),
+        "objective_path_count": len(trace.get("objective_paths") or []),
+        "evidence_path_count": len(trace.get("evidence_paths") or []),
+        "direct_relationship_count": len(trace.get("direct_relationships") or []),
+    }
+
+
+def _export_semantic_product_okf(
+    manifest: dict,
+    manifest_json: str,
+    manifest_path: str,
+    out_dir: str,
+) -> dict:
+    resolved_manifest_path = ""
+    if manifest_path.strip() and not manifest_json.strip():
+        resolved_manifest_path = _resolve_path(manifest_path.strip())
+
+    sidecars = _load_okf_sidecars(resolved_manifest_path)
+    output_dir = _resolve_okf_out_dir(out_dir, resolved_manifest_path)
+    return fusion_engine.export_semantic_product_okf_bundle(
+        manifest,
+        output_dir,
+        field_semantics=sidecars.get("field_semantics"),
+        value_domain_audits=sidecars.get("value_domain_audits"),
+        standard_sources=sidecars.get("standard_sources"),
+        semantic_relations=sidecars.get("semantic_relations"),
+        input_contract=sidecars.get("input_contract"),
+        state_input=sidecars.get("state_input"),
+        semantic_graph=sidecars.get("semantic_graph"),
+        semantic_trace_cards=sidecars.get("semantic_trace_cards"),
+        semantic_ontology=sidecars.get("semantic_ontology"),
+    )
+
+
+def _build_twm_state_input_sidecar(
+    manifest: dict,
+    manifest_json: str,
+    manifest_path: str,
+    out_path: str,
+) -> dict:
+    resolved_manifest_path = ""
+    if manifest_path.strip() and not manifest_json.strip():
+        resolved_manifest_path = _resolve_path(manifest_path.strip())
+
+    sidecars = _load_okf_sidecars(resolved_manifest_path)
+    payload = fusion_engine.build_twm_state_input_from_semantic_product(
+        manifest,
+        semantic_relations=sidecars.get("semantic_relations"),
+        input_contract=sidecars.get("input_contract"),
+    )
+    validation = fusion_engine.validate_twm_state_input(payload)
+    output_path = _resolve_twm_state_input_out_path(out_path, resolved_manifest_path)
+    fusion_engine.write_twm_state_input(payload, output_path)
+    return {
+        "schema": payload["schema"],
+        "version": payload["version"],
+        "valid": validation["valid"],
+        "errors": validation["errors"],
+        "out_path": output_path,
+        "product_id": payload["source_product"]["product_id"],
+        "role_count": len(payload["object_role_registry"]),
+        "relation_count": payload["semantic_relation_summary"]["total_relation_count"],
+        "relation_type_count": payload["semantic_relation_summary"]["registered_relation_type_count"],
+        "hard_constraint_relation_count": payload["state_components"]["hard_constraints"]["relation_count"],
+        "objective_binding_count": len(payload["optimization_interface"]["objective_bindings"]),
+        "warning_count": len(payload["warnings"]),
+    }
+
+
+def _build_mmfe_semantic_ontology_sidecar(
+    manifest: dict,
+    manifest_json: str,
+    manifest_path: str,
+    out_path: str,
+) -> dict:
+    resolved_manifest_path = ""
+    if manifest_path.strip() and not manifest_json.strip():
+        resolved_manifest_path = _resolve_path(manifest_path.strip())
+
+    sidecars = _load_okf_sidecars(resolved_manifest_path)
+    payload = fusion_engine.build_semantic_ontology_package(
+        manifest,
+        field_semantics=sidecars.get("field_semantics"),
+        value_domain_audits=sidecars.get("value_domain_audits"),
+        standard_sources=sidecars.get("standard_sources"),
+        semantic_relations=sidecars.get("semantic_relations"),
+        state_input=sidecars.get("state_input"),
+    )
+    validation = fusion_engine.validate_semantic_ontology_package(payload)
+    output_path = _resolve_semantic_ontology_out_path(out_path, resolved_manifest_path)
+    fusion_engine.write_semantic_ontology_package(payload, output_path)
+    summary = payload.get("summary") or {}
+    return {
+        "schema": payload["schema"],
+        "version": payload["version"],
+        "valid": validation["valid"],
+        "errors": validation["errors"],
+        "out_path": output_path,
+        "product_id": payload["source_product"]["product_id"],
+        "summary": summary,
+    }
+
+
+def _load_okf_sidecars(manifest_path: str) -> dict:
+    if not manifest_path:
+        return {}
+    root = Path(manifest_path).parent
+    if Path(manifest_path).name == "twm_mmfe_semantic_product.json":
+        try:
+            inputs = fusion_engine.load_semantic_product_okf_inputs(root)
+            return {
+                "field_semantics": inputs.get("field_semantics"),
+                "value_domain_audits": inputs.get("value_domain_audits"),
+                "standard_sources": inputs.get("standard_sources"),
+                "semantic_relations": inputs.get("semantic_relations"),
+                "input_contract": inputs.get("input_contract"),
+                "state_input": inputs.get("state_input"),
+                "semantic_graph": inputs.get("semantic_graph"),
+                "semantic_trace_cards": inputs.get("semantic_trace_cards"),
+                "semantic_ontology": inputs.get("semantic_ontology"),
+                "semantic_diagnostic": inputs.get("semantic_diagnostic"),
+            }
+        except OSError:
+            return {}
+    return {}
+
+
+def _resolve_okf_out_dir(out_dir: str, manifest_path: str) -> str:
+    if out_dir.strip():
+        return str(Path(out_dir.strip()).expanduser())
+    if manifest_path:
+        return str(Path(manifest_path).parent / "okf_bundle")
+    return "okf_bundle"
+
+
+def _resolve_twm_state_input_out_path(out_path: str, manifest_path: str) -> str:
+    if out_path.strip():
+        return str(Path(out_path.strip()).expanduser())
+    if manifest_path:
+        return str(Path(manifest_path).parent / "twm_state_input.json")
+    return "twm_state_input.json"
+
+
+def _resolve_semantic_ontology_out_path(out_path: str, manifest_path: str) -> str:
+    if out_path.strip():
+        return str(Path(out_path.strip()).expanduser())
+    if manifest_path:
+        return str(Path(manifest_path).parent / "mmfe_semantic_ontology.json")
+    return "mmfe_semantic_ontology.json"
+
+
 def _parse_publish_targets(targets: str, vector_target: str = "lancedb") -> list[str]:
     parsed = []
     vector_fallback = (vector_target or "lancedb").strip().lower()
@@ -688,8 +1513,88 @@ def _parse_publish_targets(targets: str, vector_target: str = "lancedb") -> list
     return parsed
 
 
+def _normalize_lakehouse_env_defaults(
+    env_defaults: dict,
+    *,
+    iceberg_warehouse_uri: str = "",
+    stac_catalog_uri: str = "",
+) -> dict:
+    if not isinstance(env_defaults, dict) or not env_defaults:
+        return env_defaults
+    normalized = deepcopy(env_defaults)
+    object_store = normalized.get("object_store") if isinstance(normalized.get("object_store"), dict) else {}
+    iceberg = normalized.get("iceberg") if isinstance(normalized.get("iceberg"), dict) else {}
+    stac = normalized.get("stac") if isinstance(normalized.get("stac"), dict) else {}
+
+    warehouse_bucket = _s3_bucket(iceberg_warehouse_uri)
+    if iceberg_warehouse_uri:
+        object_store["warehouse_uri"] = iceberg_warehouse_uri
+        iceberg["warehouse_uri"] = iceberg_warehouse_uri
+    if warehouse_bucket:
+        object_store["lakehouse_bucket"] = warehouse_bucket
+        metadata = dict(iceberg.get("metadata") or {})
+        metadata["lakehouse_bucket"] = warehouse_bucket
+        iceberg["metadata"] = metadata
+        if not stac_catalog_uri:
+            default_stac_catalog_uri = f"s3://{warehouse_bucket}/catalog/stac"
+            object_store["stac_catalog_uri"] = default_stac_catalog_uri
+            stac["catalog_uri"] = default_stac_catalog_uri
+    if stac_catalog_uri:
+        object_store["stac_catalog_uri"] = stac_catalog_uri
+        stac["catalog_uri"] = stac_catalog_uri
+
+    if object_store:
+        normalized["object_store"] = object_store
+    if iceberg:
+        normalized["iceberg"] = iceberg
+    if stac:
+        normalized["stac"] = stac
+    return normalized
+
+
 def _parse_csv_list(value: str) -> list[str]:
     return [part.strip() for part in str(value or "").split(",") if part.strip()]
+
+
+def _parse_json_object(value: str, field_name: str) -> dict:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid {field_name}: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(f"{field_name} must be a JSON object")
+    return parsed
+
+
+def _parse_string_mapping_json(value: str, field_name: str) -> dict[str, str]:
+    parsed = _parse_json_object(value, field_name)
+    return {str(key): str(val) for key, val in parsed.items() if val is not None}
+
+
+def _s3_bucket(value: object) -> str:
+    parsed = urlparse(str(value or ""))
+    if parsed.scheme != "s3":
+        return ""
+    return parsed.netloc
+
+
+def _safe_positive_int(value: str, default: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(parsed, 1)
+
+
+def _parse_optional_bool(value: str) -> bool | None:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"", "auto", "default"}:
+        return None
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    return None
 
 
 def _truthy(value: str) -> bool:
@@ -701,11 +1606,46 @@ def _publish_plan_summary(plan: dict) -> dict:
     invalid_steps = [step for step in steps if isinstance(step, dict) and not step.get("valid")]
     return {
         "valid": bool(plan.get("valid")),
+        "publish_environment": plan.get("publish_environment"),
+        "production_gate_valid": bool((plan.get("production_gate") or {}).get("valid")),
+        "infrastructure_preflight_valid": bool((plan.get("infrastructure_preflight") or {}).get("valid")),
+        "production_ready": bool(
+            ((plan.get("production_gate") or {}).get("diagnostic_summary") or {}).get("production_ready")
+        ),
+        "validation_ready": bool(
+            ((plan.get("production_gate") or {}).get("diagnostic_summary") or {}).get("validation_ready")
+        ),
         "target_count": len(plan.get("targets") or []),
         "step_count": len(steps),
         "valid_step_count": len(steps) - len(invalid_steps),
         "invalid_step_count": len(invalid_steps),
         "error_count": sum(len(error.get("errors") or []) for error in plan.get("errors") or [] if isinstance(error, dict)),
+    }
+
+
+def _infrastructure_preflight_summary(preflight: dict) -> dict:
+    checks = preflight.get("checks") if isinstance(preflight.get("checks"), list) else []
+    errors = [
+        f"{check.get('check_id')}: {check.get('message')}"
+        for check in checks
+        if isinstance(check, dict) and check.get("status") == "fail"
+    ]
+    warnings = [
+        f"{check.get('check_id')}: {check.get('message')}"
+        for check in checks
+        if isinstance(check, dict) and check.get("status") == "warn"
+    ]
+    raw_summary = preflight.get("summary") if isinstance(preflight.get("summary"), dict) else {}
+    return {
+        "valid": bool(preflight.get("valid")),
+        "environment": preflight.get("environment"),
+        "check_count": int(raw_summary.get("check_count") or len(checks)),
+        "pass_count": int(raw_summary.get("pass_count") or 0),
+        "warn_count": int(raw_summary.get("warn_count") or 0),
+        "fail_count": int(raw_summary.get("fail_count") or 0),
+        "critical_fail_count": int(raw_summary.get("critical_fail_count") or 0),
+        "errors": errors,
+        "warnings": warnings,
     }
 
 
@@ -719,7 +1659,14 @@ _ALL_FUNCS = [
     standardize_timestamps,
     validate_temporal_consistency,
     inject_document_context,
+    preflight_mmfe_lakehouse_infrastructure,
     plan_semantic_product_publish,
+    export_semantic_product_okf,
+    build_twm_state_input,
+    build_mmfe_semantic_ontology,
+    query_semantic_vectors,
+    trace_mmfe_semantics,
+    diagnose_mmfe_semantic_product,
 ]
 
 

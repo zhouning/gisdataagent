@@ -1,0 +1,1478 @@
+{
+  "schema": "mmfe.twm_state_input.v1",
+  "version": "0.1",
+  "created_at": "2026-06-17T08:28:11.091858+00:00",
+  "source_product": {
+    "product_id": "sfp-twm-dc2a707aabda0c01",
+    "product_type": "semantic_fusion_product",
+    "product_version": "1.1-twm-mmfe-bundle",
+    "created_at": "2026-06-17T08:28:11.047403+00:00",
+    "business_outputs": {
+      "summary_view": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_business_view.csv",
+      "field_semantics": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_field_semantics.csv",
+      "value_domain_audit": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_value_domain_audit.csv",
+      "standard_sources": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_standard_sources.csv",
+      "semantic_relations": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_semantic_relations.csv",
+      "twm_input_contract": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_state_input_contract.json",
+      "twm_state_input": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_state_input.json",
+      "semantic_graph": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_semantic_graph.json",
+      "semantic_trace_cards": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion/twm_mmfe_semantic_trace_cards.json"
+    },
+    "quality_score": 0.85
+  },
+  "state_builder_policy": "load_semantic_product_then_dereference_raw_sources",
+  "raw_data_usage": "source_of_truth_geometry_and_attributes",
+  "semantic_product_usage": "role_binding_quality_lineage_evidence_and_ai_grounding",
+  "production_policy": {
+    "contains_synthetic_sources": true,
+    "not_for_production": true,
+    "authoritative_data_required_for_production": true,
+    "policy_zh": "该状态输入用于验证 MMFE 到 TWM 的数据契约。几何和属性事实仍以源数据为准，语义角色、字段绑定、关系、规则、证据和优化目标以 MMFE 语义融合成果为准；进入生产时必须替换为真实权威自然资源数据。"
+  },
+  "object_role_registry": [
+    {
+      "role": "admin_units",
+      "standard_role": "admin_unit",
+      "role_alias_zh": "乡镇行政区边界",
+      "object_type": "admin_unit",
+      "business_role_zh": "区域汇总与项目范围",
+      "source_path": "admin_units.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {},
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": false,
+      "not_for_production": true
+    },
+    {
+      "role": "parcel_current",
+      "standard_role": "parcel_current",
+      "role_alias_zh": "现状地类图斑",
+      "object_type": "parcel",
+      "business_role_zh": "状态对象底板",
+      "source_path": "parcel_current.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {
+        "object_id": "BSM",
+        "land_use_code": "DLBM",
+        "land_use_name": "DLMC",
+        "admin_code": "QSDWDM",
+        "admin_name": "QSDWMC",
+        "area_m2": "TBMJ",
+        "temporal_key": "SJNF"
+      },
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": false,
+      "not_for_production": true
+    },
+    {
+      "role": "synthetic_annual_change",
+      "standard_role": "parcel_current",
+      "role_alias_zh": "现状地类图斑",
+      "object_type": "parcel",
+      "business_role_zh": "状态变化与时序证据",
+      "source_path": "synthetic_annual_change.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {
+        "object_id": "BSM"
+      },
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": true,
+      "not_for_production": true
+    },
+    {
+      "role": "synthetic_eco_redline",
+      "standard_role": "eco_redline",
+      "role_alias_zh": "生态保护红线",
+      "object_type": "control_boundary",
+      "business_role_zh": "生态保护硬约束",
+      "source_path": "synthetic_eco_redline.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {
+        "object_id": "BSM",
+        "admin_code": "XJXZQDM",
+        "admin_name": "XJXZQMC",
+        "area_m2": "MJ",
+        "name": "MC",
+        "area_km2": "QYMJ"
+      },
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": true,
+      "not_for_production": true
+    },
+    {
+      "role": "synthetic_pbf",
+      "standard_role": "pbf",
+      "role_alias_zh": "永久基本农田",
+      "object_type": "control_boundary",
+      "business_role_zh": "耕地保护硬约束",
+      "source_path": "synthetic_pbf.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "object_id": "YJJBNTTBBH",
+        "source_parcel_id": "TBBH",
+        "land_use_code": "DLBM",
+        "area_m2": "YJJBNTMJ"
+      },
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": true,
+      "not_for_production": true
+    },
+    {
+      "role": "synthetic_planning_zones",
+      "standard_role": "planning_zone",
+      "role_alias_zh": "国土空间用途管制分区",
+      "object_type": "planning_zone",
+      "business_role_zh": "规划一致性约束",
+      "source_path": "synthetic_planning_zones.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {
+        "object_id": "BSM",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ"
+      },
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": true,
+      "not_for_production": true
+    },
+    {
+      "role": "synthetic_projects",
+      "standard_role": "project",
+      "role_alias_zh": "建设项目空间范围",
+      "object_type": "project",
+      "business_role_zh": "项目约束校验主体",
+      "source_path": "synthetic_projects.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {
+        "object_id": "XMDM",
+        "case_id": "AJBH",
+        "project_name": "project_name",
+        "admin_code": "SZXZQDM",
+        "admin_name": "SZXZQMC",
+        "area_m2": "YDMJ"
+      },
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": true,
+      "not_for_production": true
+    },
+    {
+      "role": "synthetic_remote_sensing_tiles",
+      "standard_role": "remote_sensing_evidence",
+      "role_alias_zh": "合成遥感影像瓦片索引",
+      "object_type": "remote_sensing_evidence",
+      "business_role_zh": "多模态观测证据",
+      "source_path": "synthetic_remote_sensing_tiles.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {},
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": true,
+      "not_for_production": true
+    },
+    {
+      "role": "synthetic_urban_boundary",
+      "standard_role": "urban_boundary",
+      "role_alias_zh": "城镇开发边界",
+      "object_type": "control_boundary",
+      "business_role_zh": "城镇开发边界约束",
+      "source_path": "synthetic_urban_boundary.geojson",
+      "quality_score": 85.0,
+      "twm_binding": {
+        "object_id": "BSM",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ"
+      },
+      "semantic_readiness": "ready_for_state_builder",
+      "synthetic": true,
+      "not_for_production": true
+    }
+  ],
+  "canonical_object_type_registry": [
+    {
+      "object_type": "admin_unit",
+      "roles": [
+        "admin_units"
+      ],
+      "standard_roles": [
+        "admin_unit"
+      ],
+      "source_count": 1
+    },
+    {
+      "object_type": "control_boundary",
+      "roles": [
+        "synthetic_eco_redline",
+        "synthetic_pbf",
+        "synthetic_urban_boundary"
+      ],
+      "standard_roles": [
+        "eco_redline",
+        "pbf",
+        "urban_boundary"
+      ],
+      "source_count": 3
+    },
+    {
+      "object_type": "parcel",
+      "roles": [
+        "parcel_current",
+        "synthetic_annual_change"
+      ],
+      "standard_roles": [
+        "parcel_current"
+      ],
+      "source_count": 2
+    },
+    {
+      "object_type": "planning_zone",
+      "roles": [
+        "synthetic_planning_zones"
+      ],
+      "standard_roles": [
+        "planning_zone"
+      ],
+      "source_count": 1
+    },
+    {
+      "object_type": "project",
+      "roles": [
+        "synthetic_projects"
+      ],
+      "standard_roles": [
+        "project"
+      ],
+      "source_count": 1
+    },
+    {
+      "object_type": "remote_sensing_evidence",
+      "roles": [
+        "synthetic_remote_sensing_tiles"
+      ],
+      "standard_roles": [
+        "remote_sensing_evidence"
+      ],
+      "source_count": 1
+    }
+  ],
+  "field_binding_registry": [
+    {
+      "role": "admin_units",
+      "standard_role": "admin_unit",
+      "object_type": "admin_unit",
+      "source_path": "admin_units.geojson",
+      "bindings": {},
+      "binding_count": 0
+    },
+    {
+      "role": "parcel_current",
+      "standard_role": "parcel_current",
+      "object_type": "parcel",
+      "source_path": "parcel_current.geojson",
+      "bindings": {
+        "object_id": "BSM",
+        "land_use_code": "DLBM",
+        "land_use_name": "DLMC",
+        "admin_code": "QSDWDM",
+        "admin_name": "QSDWMC",
+        "area_m2": "TBMJ",
+        "temporal_key": "SJNF"
+      },
+      "binding_count": 7
+    },
+    {
+      "role": "synthetic_annual_change",
+      "standard_role": "parcel_current",
+      "object_type": "parcel",
+      "source_path": "synthetic_annual_change.geojson",
+      "bindings": {
+        "object_id": "BSM"
+      },
+      "binding_count": 1
+    },
+    {
+      "role": "synthetic_eco_redline",
+      "standard_role": "eco_redline",
+      "object_type": "control_boundary",
+      "source_path": "synthetic_eco_redline.geojson",
+      "bindings": {
+        "object_id": "BSM",
+        "admin_code": "XJXZQDM",
+        "admin_name": "XJXZQMC",
+        "area_m2": "MJ",
+        "name": "MC",
+        "area_km2": "QYMJ"
+      },
+      "binding_count": 6
+    },
+    {
+      "role": "synthetic_pbf",
+      "standard_role": "pbf",
+      "object_type": "control_boundary",
+      "source_path": "synthetic_pbf.geojson",
+      "bindings": {
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "object_id": "YJJBNTTBBH",
+        "source_parcel_id": "TBBH",
+        "land_use_code": "DLBM",
+        "area_m2": "YJJBNTMJ"
+      },
+      "binding_count": 6
+    },
+    {
+      "role": "synthetic_planning_zones",
+      "standard_role": "planning_zone",
+      "object_type": "planning_zone",
+      "source_path": "synthetic_planning_zones.geojson",
+      "bindings": {
+        "object_id": "BSM",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ"
+      },
+      "binding_count": 6
+    },
+    {
+      "role": "synthetic_projects",
+      "standard_role": "project",
+      "object_type": "project",
+      "source_path": "synthetic_projects.geojson",
+      "bindings": {
+        "object_id": "XMDM",
+        "case_id": "AJBH",
+        "project_name": "project_name",
+        "admin_code": "SZXZQDM",
+        "admin_name": "SZXZQMC",
+        "area_m2": "YDMJ"
+      },
+      "binding_count": 6
+    },
+    {
+      "role": "synthetic_remote_sensing_tiles",
+      "standard_role": "remote_sensing_evidence",
+      "object_type": "remote_sensing_evidence",
+      "source_path": "synthetic_remote_sensing_tiles.geojson",
+      "bindings": {},
+      "binding_count": 0
+    },
+    {
+      "role": "synthetic_urban_boundary",
+      "standard_role": "urban_boundary",
+      "object_type": "control_boundary",
+      "source_path": "synthetic_urban_boundary.geojson",
+      "bindings": {
+        "object_id": "BSM",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ"
+      },
+      "binding_count": 6
+    }
+  ],
+  "semantic_relation_summary": {
+    "total_relation_count": 728,
+    "relation_type_distribution": {
+      "annual_change_of_parcel": 78,
+      "project_overlaps_ecological_redline": 28,
+      "project_overlaps_parcel": 354,
+      "project_overlaps_permanent_basic_farmland": 39,
+      "project_overlaps_planning_zone": 151,
+      "project_observed_by_remote_sensing_tile": 71,
+      "project_overlaps_urban_development_boundary": 7
+    },
+    "twm_usage_distribution": {
+      "dynamic_state_transition": 78,
+      "hard_constraint_eco_overlap": 28,
+      "state_builder_project_parcel_impact": 354,
+      "hard_constraint_pbf_overlap": 39,
+      "planning_consistency_assessment": 151,
+      "multimodal_observation_evidence": 71,
+      "urban_boundary_consistency": 7
+    },
+    "target_role_distribution": {
+      "parcel_current": 432,
+      "eco_redline": 28,
+      "pbf": 39,
+      "planning_zone": 151,
+      "remote_sensing_evidence": 71,
+      "urban_boundary": 7
+    },
+    "rule_review_relation_count": 225,
+    "registered_relation_type_count": 7
+  },
+  "semantic_relation_registry": [
+    {
+      "semantic_relation_type": "annual_change_of_parcel",
+      "relation_count": 78,
+      "twm_usages": [
+        "dynamic_state_transition"
+      ],
+      "source_object_types": [
+        "annual_change"
+      ],
+      "target_object_types": [
+        "parcel"
+      ],
+      "target_standard_roles": [
+        "parcel_current"
+      ],
+      "objective_ids": [
+        "farmland_gain_m2"
+      ],
+      "rule_ids": [],
+      "evidence_types": [
+        "identifier_link"
+      ],
+      "requires_rule_review_count": 0,
+      "source_object_count": 78,
+      "target_object_count": 78,
+      "metric_sums_by_name": {
+        "match_confidence": 78.0
+      },
+      "max_metric_value": 1.0,
+      "sample_relations": [
+        {
+          "relation_id": "CHG-PARCEL-000000",
+          "source_object_id": "CHG-DEMO-00000",
+          "target_object_id": "791740",
+          "predicate_zh": "年度变化关联现状图斑",
+          "twm_usage": "dynamic_state_transition",
+          "objective_id": "farmland_gain_m2",
+          "rule_id": "",
+          "metric_name": "match_confidence",
+          "metric_value": 1.0,
+          "confidence": 1.0
+        },
+        {
+          "relation_id": "CHG-PARCEL-000001",
+          "source_object_id": "CHG-DEMO-00001",
+          "target_object_id": "791406",
+          "predicate_zh": "年度变化关联现状图斑",
+          "twm_usage": "dynamic_state_transition",
+          "objective_id": "farmland_gain_m2",
+          "rule_id": "",
+          "metric_name": "match_confidence",
+          "metric_value": 1.0,
+          "confidence": 1.0
+        },
+        {
+          "relation_id": "CHG-PARCEL-000002",
+          "source_object_id": "CHG-DEMO-00002",
+          "target_object_id": "792345",
+          "predicate_zh": "年度变化关联现状图斑",
+          "twm_usage": "dynamic_state_transition",
+          "objective_id": "farmland_gain_m2",
+          "rule_id": "",
+          "metric_name": "match_confidence",
+          "metric_value": 1.0,
+          "confidence": 1.0
+        },
+        {
+          "relation_id": "CHG-PARCEL-000003",
+          "source_object_id": "CHG-DEMO-00003",
+          "target_object_id": "791565",
+          "predicate_zh": "年度变化关联现状图斑",
+          "twm_usage": "dynamic_state_transition",
+          "objective_id": "farmland_gain_m2",
+          "rule_id": "",
+          "metric_name": "match_confidence",
+          "metric_value": 1.0,
+          "confidence": 1.0
+        },
+        {
+          "relation_id": "CHG-PARCEL-000004",
+          "source_object_id": "CHG-DEMO-00004",
+          "target_object_id": "791484",
+          "predicate_zh": "年度变化关联现状图斑",
+          "twm_usage": "dynamic_state_transition",
+          "objective_id": "farmland_gain_m2",
+          "rule_id": "",
+          "metric_name": "match_confidence",
+          "metric_value": 1.0,
+          "confidence": 1.0
+        }
+      ]
+    },
+    {
+      "semantic_relation_type": "project_observed_by_remote_sensing_tile",
+      "relation_count": 71,
+      "twm_usages": [
+        "multimodal_observation_evidence"
+      ],
+      "source_object_types": [
+        "project"
+      ],
+      "target_object_types": [
+        "remote_sensing_tile"
+      ],
+      "target_standard_roles": [
+        "remote_sensing_evidence"
+      ],
+      "objective_ids": [
+        "robustness_score"
+      ],
+      "rule_ids": [
+        "TWM-EVD-001"
+      ],
+      "evidence_types": [
+        "remote_sensing_coverage"
+      ],
+      "requires_rule_review_count": 0,
+      "source_object_count": 60,
+      "target_object_count": 9,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 2266712.43
+      },
+      "max_metric_value": 143131.899,
+      "sample_relations": [
+        {
+          "relation_id": "PROJECT_OBSERVED_BY_RS_TILE-000000",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "RS-DEMO-0005",
+          "predicate_zh": "被遥感瓦片观测覆盖",
+          "twm_usage": "multimodal_observation_evidence",
+          "objective_id": "robustness_score",
+          "rule_id": "TWM-EVD-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 91142.908,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OBSERVED_BY_RS_TILE-000001",
+          "source_object_id": "PRJ-DEMO-0001",
+          "target_object_id": "RS-DEMO-0006",
+          "predicate_zh": "被遥感瓦片观测覆盖",
+          "twm_usage": "multimodal_observation_evidence",
+          "objective_id": "robustness_score",
+          "rule_id": "TWM-EVD-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 138437.976,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OBSERVED_BY_RS_TILE-000002",
+          "source_object_id": "PRJ-DEMO-0002",
+          "target_object_id": "RS-DEMO-0010",
+          "predicate_zh": "被遥感瓦片观测覆盖",
+          "twm_usage": "multimodal_observation_evidence",
+          "objective_id": "robustness_score",
+          "rule_id": "TWM-EVD-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 93426.223,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OBSERVED_BY_RS_TILE-000003",
+          "source_object_id": "PRJ-DEMO-0002",
+          "target_object_id": "RS-DEMO-0009",
+          "predicate_zh": "被遥感瓦片观测覆盖",
+          "twm_usage": "multimodal_observation_evidence",
+          "objective_id": "robustness_score",
+          "rule_id": "TWM-EVD-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 53713.333,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OBSERVED_BY_RS_TILE-000004",
+          "source_object_id": "PRJ-DEMO-0003",
+          "target_object_id": "RS-DEMO-0006",
+          "predicate_zh": "被遥感瓦片观测覆盖",
+          "twm_usage": "multimodal_observation_evidence",
+          "objective_id": "robustness_score",
+          "rule_id": "TWM-EVD-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 86799.143,
+          "confidence": 0.99
+        }
+      ]
+    },
+    {
+      "semantic_relation_type": "project_overlaps_ecological_redline",
+      "relation_count": 28,
+      "twm_usages": [
+        "hard_constraint_eco_overlap"
+      ],
+      "source_object_types": [
+        "project"
+      ],
+      "target_object_types": [
+        "ecological_redline"
+      ],
+      "target_standard_roles": [
+        "eco_redline"
+      ],
+      "objective_ids": [
+        "eco_overlap_m2"
+      ],
+      "rule_ids": [
+        "TWM-ECO-001"
+      ],
+      "evidence_types": [
+        "spatial_overlay"
+      ],
+      "requires_rule_review_count": 28,
+      "source_object_count": 28,
+      "target_object_count": 10,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 1181619.154
+      },
+      "max_metric_value": 180552.326,
+      "sample_relations": [
+        {
+          "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000000",
+          "source_object_id": "PRJ-DEMO-0002",
+          "target_object_id": "ECO-DEMO-00002",
+          "predicate_zh": "触碰生态保护红线",
+          "twm_usage": "hard_constraint_eco_overlap",
+          "objective_id": "eco_overlap_m2",
+          "rule_id": "TWM-ECO-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 70959.658,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000001",
+          "source_object_id": "PRJ-DEMO-0003",
+          "target_object_id": "ECO-DEMO-00003",
+          "predicate_zh": "触碰生态保护红线",
+          "twm_usage": "hard_constraint_eco_overlap",
+          "objective_id": "eco_overlap_m2",
+          "rule_id": "TWM-ECO-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 86799.143,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000002",
+          "source_object_id": "PRJ-DEMO-0007",
+          "target_object_id": "ECO-DEMO-00007",
+          "predicate_zh": "触碰生态保护红线",
+          "twm_usage": "hard_constraint_eco_overlap",
+          "objective_id": "eco_overlap_m2",
+          "rule_id": "TWM-ECO-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 13348.526,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000003",
+          "source_object_id": "PRJ-DEMO-0010",
+          "target_object_id": "ECO-DEMO-00000",
+          "predicate_zh": "触碰生态保护红线",
+          "twm_usage": "hard_constraint_eco_overlap",
+          "objective_id": "eco_overlap_m2",
+          "rule_id": "TWM-ECO-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 180552.326,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_ECO_REDLINE-000004",
+          "source_object_id": "PRJ-DEMO-0011",
+          "target_object_id": "ECO-DEMO-00001",
+          "predicate_zh": "触碰生态保护红线",
+          "twm_usage": "hard_constraint_eco_overlap",
+          "objective_id": "eco_overlap_m2",
+          "rule_id": "TWM-ECO-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 101134.823,
+          "confidence": 0.99
+        }
+      ]
+    },
+    {
+      "semantic_relation_type": "project_overlaps_parcel",
+      "relation_count": 354,
+      "twm_usages": [
+        "state_builder_project_parcel_impact"
+      ],
+      "source_object_types": [
+        "project"
+      ],
+      "target_object_types": [
+        "parcel"
+      ],
+      "target_standard_roles": [
+        "parcel_current"
+      ],
+      "objective_ids": [
+        "farmland_loss_m2"
+      ],
+      "rule_ids": [],
+      "evidence_types": [
+        "spatial_overlay"
+      ],
+      "requires_rule_review_count": 0,
+      "source_object_count": 60,
+      "target_object_count": 267,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 2266704.774
+      },
+      "max_metric_value": 167826.248,
+      "sample_relations": [
+        {
+          "relation_id": "PROJECT_OVERLAPS_PARCEL-000000",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "791409",
+          "predicate_zh": "占用现状图斑",
+          "twm_usage": "state_builder_project_parcel_impact",
+          "objective_id": "farmland_loss_m2",
+          "rule_id": "",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 321.09,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PARCEL-000001",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "791392",
+          "predicate_zh": "占用现状图斑",
+          "twm_usage": "state_builder_project_parcel_impact",
+          "objective_id": "farmland_loss_m2",
+          "rule_id": "",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 627.835,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PARCEL-000002",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "791391",
+          "predicate_zh": "占用现状图斑",
+          "twm_usage": "state_builder_project_parcel_impact",
+          "objective_id": "farmland_loss_m2",
+          "rule_id": "",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 20728.69,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PARCEL-000003",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "791154",
+          "predicate_zh": "占用现状图斑",
+          "twm_usage": "state_builder_project_parcel_impact",
+          "objective_id": "farmland_loss_m2",
+          "rule_id": "",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 52718.004,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PARCEL-000004",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "5328875",
+          "predicate_zh": "占用现状图斑",
+          "twm_usage": "state_builder_project_parcel_impact",
+          "objective_id": "farmland_loss_m2",
+          "rule_id": "",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 7647.101,
+          "confidence": 0.99
+        }
+      ]
+    },
+    {
+      "semantic_relation_type": "project_overlaps_permanent_basic_farmland",
+      "relation_count": 39,
+      "twm_usages": [
+        "hard_constraint_pbf_overlap"
+      ],
+      "source_object_types": [
+        "project"
+      ],
+      "target_object_types": [
+        "permanent_basic_farmland"
+      ],
+      "target_standard_roles": [
+        "pbf"
+      ],
+      "objective_ids": [
+        "pbf_overlap_m2"
+      ],
+      "rule_ids": [
+        "TWM-FARM-001"
+      ],
+      "evidence_types": [
+        "spatial_overlay"
+      ],
+      "requires_rule_review_count": 39,
+      "source_object_count": 34,
+      "target_object_count": 14,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 683096.116
+      },
+      "max_metric_value": 143439.309,
+      "sample_relations": [
+        {
+          "relation_id": "PROJECT_OVERLAPS_PBF-000000",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "PBF-DEMO-00000",
+          "predicate_zh": "触碰永久基本农田",
+          "twm_usage": "hard_constraint_pbf_overlap",
+          "objective_id": "pbf_overlap_m2",
+          "rule_id": "TWM-FARM-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 91110.995,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PBF-000001",
+          "source_object_id": "PRJ-DEMO-0001",
+          "target_object_id": "PBF-DEMO-00001",
+          "predicate_zh": "触碰永久基本农田",
+          "twm_usage": "hard_constraint_pbf_overlap",
+          "objective_id": "pbf_overlap_m2",
+          "rule_id": "TWM-FARM-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 66329.99,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PBF-000002",
+          "source_object_id": "PRJ-DEMO-0003",
+          "target_object_id": "PBF-DEMO-00002",
+          "predicate_zh": "触碰永久基本农田",
+          "twm_usage": "hard_constraint_pbf_overlap",
+          "objective_id": "pbf_overlap_m2",
+          "rule_id": "TWM-FARM-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 10178.367,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PBF-000003",
+          "source_object_id": "PRJ-DEMO-0006",
+          "target_object_id": "PBF-DEMO-00003",
+          "predicate_zh": "触碰永久基本农田",
+          "twm_usage": "hard_constraint_pbf_overlap",
+          "objective_id": "pbf_overlap_m2",
+          "rule_id": "TWM-FARM-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 7360.201,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PBF-000004",
+          "source_object_id": "PRJ-DEMO-0008",
+          "target_object_id": "PBF-DEMO-00008",
+          "predicate_zh": "触碰永久基本农田",
+          "twm_usage": "hard_constraint_pbf_overlap",
+          "objective_id": "pbf_overlap_m2",
+          "rule_id": "TWM-FARM-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 2400.19,
+          "confidence": 0.99
+        }
+      ]
+    },
+    {
+      "semantic_relation_type": "project_overlaps_planning_zone",
+      "relation_count": 151,
+      "twm_usages": [
+        "planning_consistency_assessment"
+      ],
+      "source_object_types": [
+        "project"
+      ],
+      "target_object_types": [
+        "planning_zone"
+      ],
+      "target_standard_roles": [
+        "planning_zone"
+      ],
+      "objective_ids": [
+        "planning_conflict_m2"
+      ],
+      "rule_ids": [
+        "TWM-PLAN-001"
+      ],
+      "evidence_types": [
+        "spatial_overlay"
+      ],
+      "requires_rule_review_count": 151,
+      "source_object_count": 60,
+      "target_object_count": 5,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 2149266.277
+      },
+      "max_metric_value": 171120.597,
+      "sample_relations": [
+        {
+          "relation_id": "PROJECT_OVERLAPS_PLANNING_ZONE-000000",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "PLAN-DEMO-003",
+          "predicate_zh": "落入用途管制分区",
+          "twm_usage": "planning_consistency_assessment",
+          "objective_id": "planning_conflict_m2",
+          "rule_id": "TWM-PLAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 629.966,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PLANNING_ZONE-000001",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "PLAN-DEMO-000",
+          "predicate_zh": "落入用途管制分区",
+          "twm_usage": "planning_consistency_assessment",
+          "objective_id": "planning_conflict_m2",
+          "rule_id": "TWM-PLAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 90352.435,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PLANNING_ZONE-000002",
+          "source_object_id": "PRJ-DEMO-0000",
+          "target_object_id": "PLAN-DEMO-001",
+          "predicate_zh": "落入用途管制分区",
+          "twm_usage": "planning_consistency_assessment",
+          "objective_id": "planning_conflict_m2",
+          "rule_id": "TWM-PLAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 124.474,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PLANNING_ZONE-000003",
+          "source_object_id": "PRJ-DEMO-0001",
+          "target_object_id": "PLAN-DEMO-003",
+          "predicate_zh": "落入用途管制分区",
+          "twm_usage": "planning_consistency_assessment",
+          "objective_id": "planning_conflict_m2",
+          "rule_id": "TWM-PLAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 14046.302,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_PLANNING_ZONE-000004",
+          "source_object_id": "PRJ-DEMO-0001",
+          "target_object_id": "PLAN-DEMO-000",
+          "predicate_zh": "落入用途管制分区",
+          "twm_usage": "planning_consistency_assessment",
+          "objective_id": "planning_conflict_m2",
+          "rule_id": "TWM-PLAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 76358.368,
+          "confidence": 0.99
+        }
+      ]
+    },
+    {
+      "semantic_relation_type": "project_overlaps_urban_development_boundary",
+      "relation_count": 7,
+      "twm_usages": [
+        "urban_boundary_consistency"
+      ],
+      "source_object_types": [
+        "project"
+      ],
+      "target_object_types": [
+        "urban_development_boundary"
+      ],
+      "target_standard_roles": [
+        "urban_boundary"
+      ],
+      "objective_ids": [
+        "development_area_m2"
+      ],
+      "rule_ids": [
+        "TWM-URBAN-001"
+      ],
+      "evidence_types": [
+        "spatial_overlay"
+      ],
+      "requires_rule_review_count": 7,
+      "source_object_count": 7,
+      "target_object_count": 5,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 46789.326
+      },
+      "max_metric_value": 27127.802,
+      "sample_relations": [
+        {
+          "relation_id": "PROJECT_OVERLAPS_URBAN_BOUNDARY-000000",
+          "source_object_id": "PRJ-DEMO-0004",
+          "target_object_id": "URBAN-DEMO-0004",
+          "predicate_zh": "触碰城镇开发边界",
+          "twm_usage": "urban_boundary_consistency",
+          "objective_id": "development_area_m2",
+          "rule_id": "TWM-URBAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 2901.5,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_URBAN_BOUNDARY-000001",
+          "source_object_id": "PRJ-DEMO-0012",
+          "target_object_id": "URBAN-DEMO-0002",
+          "predicate_zh": "触碰城镇开发边界",
+          "twm_usage": "urban_boundary_consistency",
+          "objective_id": "development_area_m2",
+          "rule_id": "TWM-URBAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 3258.914,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_URBAN_BOUNDARY-000002",
+          "source_object_id": "PRJ-DEMO-0020",
+          "target_object_id": "URBAN-DEMO-0000",
+          "predicate_zh": "触碰城镇开发边界",
+          "twm_usage": "urban_boundary_consistency",
+          "objective_id": "development_area_m2",
+          "rule_id": "TWM-URBAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 27127.802,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_URBAN_BOUNDARY-000003",
+          "source_object_id": "PRJ-DEMO-0028",
+          "target_object_id": "URBAN-DEMO-0003",
+          "predicate_zh": "触碰城镇开发边界",
+          "twm_usage": "urban_boundary_consistency",
+          "objective_id": "development_area_m2",
+          "rule_id": "TWM-URBAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 3043.748,
+          "confidence": 0.99
+        },
+        {
+          "relation_id": "PROJECT_OVERLAPS_URBAN_BOUNDARY-000004",
+          "source_object_id": "PRJ-DEMO-0036",
+          "target_object_id": "URBAN-DEMO-0001",
+          "predicate_zh": "触碰城镇开发边界",
+          "twm_usage": "urban_boundary_consistency",
+          "objective_id": "development_area_m2",
+          "rule_id": "TWM-URBAN-001",
+          "metric_name": "overlap_area_m2",
+          "metric_value": 4296.948,
+          "confidence": 0.99
+        }
+      ]
+    }
+  ],
+  "state_components": {
+    "project_parcel_impacts": {
+      "relation_count": 354,
+      "relation_types": [
+        "project_overlaps_parcel"
+      ],
+      "twm_usages": [
+        "state_builder_project_parcel_impact"
+      ],
+      "objective_ids": [
+        "farmland_loss_m2"
+      ],
+      "rule_ids": [],
+      "target_standard_roles": [
+        "parcel_current"
+      ],
+      "requires_rule_review_count": 0,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 2266704.774
+      },
+      "hard_constraint": false
+    },
+    "hard_constraints": {
+      "relation_count": 67,
+      "relation_types": [
+        "project_overlaps_ecological_redline",
+        "project_overlaps_permanent_basic_farmland"
+      ],
+      "twm_usages": [
+        "hard_constraint_eco_overlap",
+        "hard_constraint_pbf_overlap"
+      ],
+      "objective_ids": [
+        "eco_overlap_m2",
+        "pbf_overlap_m2"
+      ],
+      "rule_ids": [
+        "TWM-ECO-001",
+        "TWM-FARM-001"
+      ],
+      "target_standard_roles": [
+        "eco_redline",
+        "pbf"
+      ],
+      "requires_rule_review_count": 67,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 1864715.27
+      },
+      "hard_constraint": true
+    },
+    "planning_consistency": {
+      "relation_count": 158,
+      "relation_types": [
+        "project_overlaps_planning_zone",
+        "project_overlaps_urban_development_boundary"
+      ],
+      "twm_usages": [
+        "planning_consistency_assessment",
+        "urban_boundary_consistency"
+      ],
+      "objective_ids": [
+        "development_area_m2",
+        "planning_conflict_m2"
+      ],
+      "rule_ids": [
+        "TWM-PLAN-001",
+        "TWM-URBAN-001"
+      ],
+      "target_standard_roles": [
+        "planning_zone",
+        "urban_boundary"
+      ],
+      "requires_rule_review_count": 158,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 2196055.603
+      },
+      "hard_constraint": false
+    },
+    "remote_sensing_evidence": {
+      "relation_count": 71,
+      "relation_types": [
+        "project_observed_by_remote_sensing_tile"
+      ],
+      "twm_usages": [
+        "multimodal_observation_evidence"
+      ],
+      "objective_ids": [
+        "robustness_score"
+      ],
+      "rule_ids": [
+        "TWM-EVD-001"
+      ],
+      "target_standard_roles": [
+        "remote_sensing_evidence"
+      ],
+      "requires_rule_review_count": 0,
+      "metric_sums_by_name": {
+        "overlap_area_m2": 2266712.43
+      },
+      "hard_constraint": false
+    },
+    "dynamic_transitions": {
+      "relation_count": 78,
+      "relation_types": [
+        "annual_change_of_parcel"
+      ],
+      "twm_usages": [
+        "dynamic_state_transition"
+      ],
+      "objective_ids": [
+        "farmland_gain_m2"
+      ],
+      "rule_ids": [],
+      "target_standard_roles": [
+        "parcel_current"
+      ],
+      "requires_rule_review_count": 0,
+      "metric_sums_by_name": {
+        "match_confidence": 78.0
+      },
+      "hard_constraint": false
+    }
+  },
+  "optimization_interface": {
+    "method": "hard_constraint_filter_then_normalized_weighted_score_and_non_dominated_sorting",
+    "objective_count": 13,
+    "scenario_count": 7,
+    "legal_feasible_scenario_count": 2,
+    "blocked_scenario_count": 5,
+    "comparison_scope": "legal_feasible_space",
+    "hard_constraint_policy_zh": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+    "hard_constraint_objectives": [
+      "eco_overlap_m2",
+      "pbf_overlap_m2"
+    ],
+    "objective_bindings": [
+      {
+        "objective_id": "pbf_overlap_m2",
+        "objective_name_zh": "永久基本农田占用最小化",
+        "category": "hard_constraint",
+        "direction": "min",
+        "unit": "m2",
+        "weight": 1.0,
+        "hard_constraint": true,
+        "relation_types": [
+          "project_overlaps_permanent_basic_farmland"
+        ],
+        "relation_count": 39,
+        "rule_ids": [
+          "TWM-FARM-001"
+        ],
+        "twm_usages": [
+          "hard_constraint_pbf_overlap"
+        ]
+      },
+      {
+        "objective_id": "eco_overlap_m2",
+        "objective_name_zh": "生态保护红线触碰最小化",
+        "category": "hard_constraint",
+        "direction": "min",
+        "unit": "m2",
+        "weight": 1.0,
+        "hard_constraint": true,
+        "relation_types": [
+          "project_overlaps_ecological_redline"
+        ],
+        "relation_count": 28,
+        "rule_ids": [
+          "TWM-ECO-001"
+        ],
+        "twm_usages": [
+          "hard_constraint_eco_overlap"
+        ]
+      },
+      {
+        "objective_id": "planning_conflict_m2",
+        "objective_name_zh": "用途管制冲突最小化",
+        "category": "planning_consistency",
+        "direction": "min",
+        "unit": "m2",
+        "weight": 0.8,
+        "hard_constraint": false,
+        "relation_types": [
+          "project_overlaps_planning_zone"
+        ],
+        "relation_count": 151,
+        "rule_ids": [
+          "TWM-PLAN-001"
+        ],
+        "twm_usages": [
+          "planning_consistency_assessment"
+        ]
+      },
+      {
+        "objective_id": "farmland_loss_m2",
+        "objective_name_zh": "耕地损失最小化",
+        "category": "resource_protection",
+        "direction": "min",
+        "unit": "m2",
+        "weight": 0.9,
+        "hard_constraint": false,
+        "relation_types": [
+          "project_overlaps_parcel"
+        ],
+        "relation_count": 354,
+        "rule_ids": [],
+        "twm_usages": [
+          "state_builder_project_parcel_impact"
+        ]
+      },
+      {
+        "objective_id": "farmland_gain_m2",
+        "objective_name_zh": "耕地补充最大化",
+        "category": "resource_protection",
+        "direction": "max",
+        "unit": "m2",
+        "weight": 0.55,
+        "hard_constraint": false,
+        "relation_types": [
+          "annual_change_of_parcel"
+        ],
+        "relation_count": 78,
+        "rule_ids": [],
+        "twm_usages": [
+          "dynamic_state_transition"
+        ]
+      },
+      {
+        "objective_id": "development_area_m2",
+        "objective_name_zh": "建设承载能力最大化",
+        "category": "development",
+        "direction": "max",
+        "unit": "m2",
+        "weight": 0.45,
+        "hard_constraint": false,
+        "relation_types": [
+          "project_overlaps_urban_development_boundary"
+        ],
+        "relation_count": 7,
+        "rule_ids": [
+          "TWM-URBAN-001"
+        ],
+        "twm_usages": [
+          "urban_boundary_consistency"
+        ]
+      },
+      {
+        "objective_id": "compactness_score",
+        "objective_name_zh": "空间紧凑性最大化",
+        "category": "spatial_form",
+        "direction": "max",
+        "unit": "score",
+        "weight": 0.5,
+        "hard_constraint": false,
+        "relation_types": [],
+        "relation_count": 0,
+        "rule_ids": [],
+        "twm_usages": []
+      },
+      {
+        "objective_id": "adjustment_cost_proxy",
+        "objective_name_zh": "调整成本最小化",
+        "category": "cost",
+        "direction": "min",
+        "unit": "proxy",
+        "weight": 0.55,
+        "hard_constraint": false,
+        "relation_types": [],
+        "relation_count": 0,
+        "rule_ids": [],
+        "twm_usages": []
+      },
+      {
+        "objective_id": "admin_fairness_cv",
+        "objective_name_zh": "行政区负担均衡",
+        "category": "fairness",
+        "direction": "min",
+        "unit": "cv",
+        "weight": 0.35,
+        "hard_constraint": false,
+        "relation_types": [],
+        "relation_count": 0,
+        "rule_ids": [],
+        "twm_usages": []
+      },
+      {
+        "objective_id": "robustness_score",
+        "objective_name_zh": "方案稳健性最大化",
+        "category": "uncertainty",
+        "direction": "max",
+        "unit": "score",
+        "weight": 0.45,
+        "hard_constraint": false,
+        "relation_types": [
+          "project_observed_by_remote_sensing_tile"
+        ],
+        "relation_count": 71,
+        "rule_ids": [
+          "TWM-EVD-001"
+        ],
+        "twm_usages": [
+          "multimodal_observation_evidence"
+        ]
+      },
+      {
+        "objective_id": "review_load_count",
+        "objective_name_zh": "人工复核负荷最小化",
+        "category": "governance",
+        "direction": "min",
+        "unit": "count",
+        "weight": 0.35,
+        "hard_constraint": false,
+        "relation_types": [],
+        "relation_count": 0,
+        "rule_ids": [],
+        "twm_usages": []
+      },
+      {
+        "objective_id": "slope_improvement_pct",
+        "objective_name_zh": "坡度适宜性改善最大化",
+        "category": "dynamic_projection",
+        "direction": "max",
+        "unit": "pct",
+        "weight": 0.3,
+        "hard_constraint": false,
+        "relation_types": [],
+        "relation_count": 0,
+        "rule_ids": [],
+        "twm_usages": []
+      },
+      {
+        "objective_id": "contiguity_gain",
+        "objective_name_zh": "空间连片度提升最大化",
+        "category": "dynamic_projection",
+        "direction": "max",
+        "unit": "score",
+        "weight": 0.3,
+        "hard_constraint": false,
+        "relation_types": [],
+        "relation_count": 0,
+        "rule_ids": [],
+        "twm_usages": []
+      }
+    ]
+  },
+  "standard_readiness": {
+    "field_semantic_count": 274,
+    "alignment_decisions": {
+      "accept": 120,
+      "review": 154,
+      "reject": 0
+    },
+    "alignment_review_required": 154,
+    "missing_value_domains": {},
+    "loaded_value_domains": {
+      "gb_t_21010_2017_land_use_code": 1,
+      "ownership_nature_code": 1,
+      "eco_redline_type_code": 1,
+      "yes_no_code": 1,
+      "planning_space_partition_code": 1,
+      "urban_planning_partition_code": 1
+    },
+    "value_domain_audit": {
+      "audit_count": 6,
+      "status_distribution": {
+        "valid": 6
+      },
+      "domain_distribution": {
+        "gb_t_21010_2017_land_use_code": 1,
+        "ownership_nature_code": 1,
+        "eco_redline_type_code": 1,
+        "yes_no_code": 1,
+        "planning_space_partition_code": 1,
+        "urban_planning_partition_code": 1
+      },
+      "requires_review_count": 0,
+      "top_review_items": []
+    },
+    "standard_sources": {
+      "source_count": 7,
+      "official_verified_count": 1,
+      "fulltext_available_or_downloaded_count": 1,
+      "pending_official_source_count": 6,
+      "retrieval_status_distribution": {
+        "local_expert_material_available": 6,
+        "official_fulltext_available": 1
+      },
+      "access_mode_distribution": {
+        "local_package": 6,
+        "online_preview_and_download": 1
+      },
+      "officially_verified_identifiers": [
+        "GB/T 21010-2017"
+      ],
+      "production_gap_zh": "当前已把标准来源纳入可审计清单。GB/T 21010-2017 已核验官方全文公开入口；自然资源一张图数据库体系结构系列当前仍以专家材料包为工程契约，生产前需要补齐主管部门公开发布源、正式版本号和全文抽取证据。"
+    }
+  },
+  "ai_grounding": {
+    "chunk_count": 16,
+    "embedding_ready": true,
+    "recommended_vector_targets": [
+      "pgvector",
+      "lancedb"
+    ]
+  },
+  "warnings": [
+    "TWM validation scaffold: not for production use.",
+    "TWM state input is a validation scaffold and is not for production decisions."
+  ]
+}

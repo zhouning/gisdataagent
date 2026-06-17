@@ -58,6 +58,49 @@ def _semantic_manifest_with_lakehouse() -> dict:
     return manifest
 
 
+def _production_ready_semantic_manifest() -> dict:
+    manifest = _semantic_manifest()
+    manifest["mmfe_bundle"] = {
+        "semantic_diagnostic_summary": {
+            "readiness_score": 1.0,
+            "validation_ready": True,
+            "production_ready": True,
+            "status": "production_ready",
+            "check_count": 1,
+            "pass_count": 1,
+            "warn_count": 0,
+            "fail_count": 0,
+        },
+        "semantic_diagnostic_top_gaps": [],
+    }
+    return manifest
+
+
+def _validation_only_semantic_manifest() -> dict:
+    manifest = _semantic_manifest()
+    manifest["mmfe_bundle"] = {
+        "semantic_diagnostic_summary": {
+            "readiness_score": 0.9,
+            "validation_ready": True,
+            "production_ready": False,
+            "status": "validation_ready_with_production_gaps",
+            "check_count": 2,
+            "pass_count": 1,
+            "warn_count": 1,
+            "fail_count": 0,
+        },
+        "semantic_diagnostic_top_gaps": [
+            {
+                "check_id": "production_authority",
+                "status": "warn",
+                "severity": "critical",
+                "message_zh": "进入生产时必须替换为真实权威自然资源数据。",
+            }
+        ],
+    }
+    return manifest
+
+
 class TestLakehousePublisher(unittest.TestCase):
     def test_build_iceberg_publish_spec_from_semantic_manifest(self):
         from data_agent.fusion.lakehouse_publisher import (
@@ -433,6 +476,22 @@ class TestLakehousePublisher(unittest.TestCase):
             "prod.gis.fusion.semantic_products",
         )
 
+    def test_build_stac_publish_spec_can_point_to_materialized_s3_asset(self):
+        from data_agent.fusion.lakehouse_publisher import build_stac_publish_spec
+
+        spec = build_stac_publish_spec(
+            _semantic_manifest(),
+            collection="mmfe-fusion-products",
+            catalog_uri="s3://geo-lake/catalog/stac",
+            asset_href="s3://geo-lake/curated/mmfe/sfp-lakehouse-test/fused.parquet",
+        )
+
+        self.assertEqual(
+            spec["item"]["assets"]["data"]["href"],
+            "s3://geo-lake/curated/mmfe/sfp-lakehouse-test/fused.parquet",
+        )
+        self.assertEqual(spec["item"]["assets"]["data"]["type"], "application/vnd.apache.parquet")
+
     def test_run_stac_publish_uses_injected_executor(self):
         from data_agent.fusion.lakehouse_publisher import (
             build_stac_publish_spec,
@@ -507,18 +566,55 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertTrue(any("executor is required" in error for error in result["errors"]))
 
+    def test_stac_publish_can_use_s3_executor_adapter(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_stac_publish_spec,
+            build_stac_publisher,
+            run_stac_publish,
+        )
+
+        spec = build_stac_publish_spec(
+            _semantic_manifest_with_lakehouse(),
+            collection="mmfe-fusion-products",
+            catalog_uri="s3://gis-agent-lakehouse/catalog/stac",
+            item_datetime="2026-06-16T00:00:00Z",
+        )
+
+        def s3_executor(payload):
+            return {
+                "published": True,
+                "published_count": 1,
+                "item_href": f"{payload['catalog_uri']}/{payload['collection']}/{payload['item_id']}.json",
+                "bucket": "gis-agent-lakehouse",
+                "key": f"catalog/stac/{payload['collection']}/{payload['item_id']}.json",
+            }
+
+        result = run_stac_publish(spec, publisher=build_stac_publisher(executor=s3_executor))
+
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["published_count"], 1)
+        self.assertEqual(
+            result["manifest_patch"]["catalog"]["stac"]["item_href"],
+            "s3://gis-agent-lakehouse/catalog/stac/mmfe-fusion-products/sfp-lakehouse-test.json",
+        )
+        self.assertEqual(result["backend_result"]["bucket"], "gis-agent-lakehouse")
+
     def test_stac_publisher_helpers_are_reexported(self):
         from data_agent.fusion import (
             STAC_PUBLISH_SCHEMA,
+            build_s3_stac_executor,
             build_stac_publish_spec,
             build_stac_publisher,
+            publish_stac_payload_to_s3,
             run_stac_publish,
             validate_stac_publish_spec,
         )
         from data_agent.fusion_engine import (
             STAC_PUBLISH_SCHEMA as proxy_stac_publish_schema,
+            build_s3_stac_executor as proxy_build_s3_stac_executor,
             build_stac_publish_spec as proxy_build_stac_publish_spec,
             build_stac_publisher as proxy_build_stac_publisher,
+            publish_stac_payload_to_s3 as proxy_publish_stac_payload_to_s3,
             run_stac_publish as proxy_run_stac_publish,
             validate_stac_publish_spec as proxy_validate_stac_publish_spec,
         )
@@ -526,10 +622,14 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertEqual(STAC_PUBLISH_SCHEMA, proxy_stac_publish_schema)
         self.assertTrue(callable(build_stac_publish_spec))
         self.assertTrue(callable(build_stac_publisher))
+        self.assertTrue(callable(build_s3_stac_executor))
+        self.assertTrue(callable(publish_stac_payload_to_s3))
         self.assertTrue(callable(run_stac_publish))
         self.assertTrue(callable(validate_stac_publish_spec))
         self.assertTrue(callable(proxy_build_stac_publish_spec))
         self.assertTrue(callable(proxy_build_stac_publisher))
+        self.assertTrue(callable(proxy_build_s3_stac_executor))
+        self.assertTrue(callable(proxy_publish_stac_payload_to_s3))
         self.assertTrue(callable(proxy_run_stac_publish))
         self.assertTrue(callable(proxy_validate_stac_publish_spec))
 
@@ -560,7 +660,7 @@ class TestLakehousePublisher(unittest.TestCase):
             return {"inserted": len(payload["rows"])}
 
         result = publish_semantic_product(
-            _semantic_manifest(),
+            _production_ready_semantic_manifest(),
             targets=["iceberg", "stac", "lancedb"],
             iceberg={
                 "catalog": "prod",
@@ -590,6 +690,10 @@ class TestLakehousePublisher(unittest.TestCase):
         )
 
         self.assertTrue(result["valid"])
+        self.assertEqual(result["publish_environment"], "production")
+        self.assertTrue(result["production_gate"]["valid"])
+        self.assertTrue(result["production_gate"]["diagnostic_summary"]["production_ready"])
+        self.assertTrue(result["infrastructure_preflight"]["valid"])
         self.assertEqual([name for name, _ in calls], ["iceberg", "stac", "lancedb"])
         self.assertEqual(result["targets"], ["iceberg", "stac", "lancedb"])
         self.assertEqual(result["results"]["iceberg"]["manifest_patch"]["lakehouse"]["iceberg"]["snapshot_id"], "snap-003")
@@ -606,11 +710,194 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertEqual(result["results"]["lancedb"]["published_count"], 1)
         self.assertFalse(result["errors"])
 
+    def test_publish_semantic_product_includes_valid_infrastructure_preflight(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_iceberg_publisher,
+            publish_semantic_product,
+        )
+
+        calls = []
+
+        def iceberg_executor(payload):
+            calls.append(payload)
+            return {"rows_written": payload["row_count"], "snapshot_id": "snap-infra-valid"}
+
+        result = publish_semantic_product(
+            _production_ready_semantic_manifest(),
+            targets=["iceberg"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/warehouse",
+                "publisher": build_iceberg_publisher(executor=iceberg_executor),
+            },
+            publish_environment="production",
+        )
+
+        self.assertTrue(result["valid"])
+        self.assertTrue(result["infrastructure_preflight"]["valid"])
+        self.assertEqual(result["infrastructure_preflight"]["schema"], "mmfe.infrastructure_preflight.v1")
+        self.assertEqual(result["infrastructure_preflight"]["environment"], "production")
+        self.assertEqual(len(calls), 1)
+
+    def test_publish_semantic_product_blocks_local_infrastructure_in_production(self):
+        from data_agent.fusion.lakehouse_config import build_lakehouse_publish_defaults
+        from data_agent.fusion.lakehouse_publisher import (
+            build_iceberg_publisher,
+            publish_semantic_product,
+        )
+
+        calls = []
+
+        def iceberg_executor(payload):
+            calls.append(payload)
+            return {"rows_written": payload["row_count"], "snapshot_id": "should-not-run"}
+
+        result = publish_semantic_product(
+            _production_ready_semantic_manifest(),
+            targets=["iceberg"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://gis-agent-lakehouse/warehouse",
+                "publisher": build_iceberg_publisher(executor=iceberg_executor),
+            },
+            infrastructure=build_lakehouse_publish_defaults(
+                {
+                    "AWS_ENDPOINT_URL": "http://minio:9000",
+                    "AWS_ACCESS_KEY_ID": "minio_admin",
+                    "AWS_SECRET_ACCESS_KEY": "local_dev_minio_secret",
+                    "MMFE_LAKEHOUSE_BUCKET": "gis-agent-lakehouse",
+                }
+            ),
+            publish_environment="production",
+        )
+
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["infrastructure_preflight"]["valid"])
+        self.assertTrue(
+            any(error["target"] == "infrastructure_preflight" for error in result["errors"])
+        )
+        self.assertFalse(result["results"])
+        self.assertEqual(calls, [])
+
+    def test_publish_semantic_product_allows_local_infrastructure_in_validation(self):
+        from data_agent.fusion.lakehouse_config import build_lakehouse_publish_defaults
+        from data_agent.fusion.lakehouse_publisher import (
+            build_iceberg_publisher,
+            publish_semantic_product,
+        )
+
+        calls = []
+
+        def iceberg_executor(payload):
+            calls.append(payload)
+            return {"rows_written": payload["row_count"], "snapshot_id": "validation-local-snap"}
+
+        result = publish_semantic_product(
+            _validation_only_semantic_manifest(),
+            targets=["iceberg"],
+            iceberg={
+                "catalog": "dev",
+                "namespace": "gis.validation",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://gis-agent-lakehouse/warehouse",
+                "publisher": build_iceberg_publisher(executor=iceberg_executor),
+            },
+            infrastructure=build_lakehouse_publish_defaults(
+                {
+                    "AWS_ENDPOINT_URL": "http://minio:9000",
+                    "AWS_ACCESS_KEY_ID": "minio_admin",
+                    "AWS_SECRET_ACCESS_KEY": "local_dev_minio_secret",
+                    "MMFE_LAKEHOUSE_BUCKET": "gis-agent-lakehouse",
+                }
+            ),
+            publish_environment="validation",
+        )
+
+        self.assertTrue(result["valid"])
+        self.assertTrue(result["infrastructure_preflight"]["valid"])
+        self.assertTrue(result["infrastructure_preflight"]["summary"]["warn_count"])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(
+            result["results"]["iceberg"]["manifest_patch"]["lakehouse"]["iceberg"]["snapshot_id"],
+            "validation-local-snap",
+        )
+
+    def test_publish_semantic_product_blocks_validation_only_product_in_production(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_iceberg_publisher,
+            publish_semantic_product,
+        )
+
+        calls = []
+
+        def iceberg_executor(payload):
+            calls.append(payload)
+            return {"rows_written": payload["row_count"]}
+
+        result = publish_semantic_product(
+            _validation_only_semantic_manifest(),
+            targets=["iceberg"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/warehouse",
+                "publisher": build_iceberg_publisher(executor=iceberg_executor),
+            },
+        )
+
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["publish_environment"], "production")
+        self.assertFalse(result["production_gate"]["valid"])
+        self.assertTrue(result["infrastructure_preflight"]["valid"])
+        self.assertIn("semantic product is not production_ready", result["production_gate"]["errors"])
+        self.assertTrue(any(error["target"] == "production_gate" for error in result["errors"]))
+        self.assertFalse(result["results"])
+        self.assertEqual(calls, [])
+
+    def test_publish_semantic_product_allows_validation_environment_with_warnings(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            build_iceberg_publisher,
+            publish_semantic_product,
+        )
+
+        calls = []
+
+        def iceberg_executor(payload):
+            calls.append(payload)
+            return {"rows_written": payload["row_count"], "snapshot_id": "validation-snap"}
+
+        result = publish_semantic_product(
+            _validation_only_semantic_manifest(),
+            targets=["iceberg"],
+            publish_environment="validation",
+            iceberg={
+                "catalog": "dev",
+                "namespace": "gis.validation",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/validation-warehouse",
+                "publisher": build_iceberg_publisher(executor=iceberg_executor),
+            },
+        )
+
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["publish_environment"], "validation")
+        self.assertTrue(result["production_gate"]["valid"])
+        self.assertFalse(result["production_gate"]["diagnostic_summary"]["production_ready"])
+        self.assertTrue(result["production_gate"]["warnings"])
+        self.assertTrue(result["infrastructure_preflight"]["valid"])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(result["results"]["iceberg"]["manifest_patch"]["lakehouse"]["iceberg"]["snapshot_id"], "validation-snap")
+
     def test_publish_semantic_product_reports_target_errors_without_running_dependents(self):
         from data_agent.fusion.lakehouse_publisher import publish_semantic_product
 
         result = publish_semantic_product(
-            _semantic_manifest(),
+            _production_ready_semantic_manifest(),
             targets=["iceberg", "stac", "pgvector"],
             iceberg={
                 "catalog": "prod",
@@ -647,7 +934,7 @@ class TestLakehousePublisher(unittest.TestCase):
         from data_agent.fusion.lakehouse_publisher import build_semantic_product_publish_plan
 
         plan = build_semantic_product_publish_plan(
-            _semantic_manifest(),
+            _production_ready_semantic_manifest(),
             targets=["iceberg", "stac", "lancedb"],
             iceberg={
                 "catalog": "prod",
@@ -675,20 +962,114 @@ class TestLakehousePublisher(unittest.TestCase):
         self.assertTrue(plan["valid"])
         self.assertEqual(plan["targets"], ["iceberg", "stac", "lancedb"])
         self.assertFalse(plan["errors"])
-        self.assertEqual([step["target"] for step in plan["steps"]], ["iceberg", "stac", "lancedb"])
+        self.assertEqual(plan["publish_environment"], "production")
+        self.assertTrue(plan["production_gate"]["valid"])
+        self.assertTrue(plan["production_gate"]["diagnostic_summary"]["production_ready"])
+        self.assertTrue(plan["infrastructure_preflight"]["valid"])
+        self.assertEqual(
+            [step["target"] for step in plan["steps"]],
+            ["production_gate", "infrastructure_preflight", "iceberg", "stac", "lancedb"],
+        )
         self.assertEqual(plan["steps"][0]["depends_on"], [])
-        self.assertEqual(plan["steps"][1]["depends_on"], ["iceberg"])
-        self.assertEqual(plan["steps"][2]["depends_on"], ["iceberg"])
-        self.assertEqual(plan["steps"][0]["schema"], "mmfe.iceberg_publish.v1")
-        self.assertEqual(plan["steps"][1]["schema"], "mmfe.stac_publish.v1")
-        self.assertEqual(plan["steps"][2]["schema"], "mmfe.semantic_vector_publish.v1")
-        self.assertEqual(plan["steps"][0]["spec"]["table_identifier"], "prod.gis.fusion.semantic_products")
-        self.assertEqual(plan["steps"][1]["spec"]["item"]["collection"], "mmfe-fusion-products")
-        self.assertEqual(plan["steps"][2]["spec"]["target"], "lancedb")
-        self.assertTrue(plan["steps"][0]["execution"]["publisher_configured"])
-        self.assertTrue(plan["steps"][1]["execution"]["publisher_configured"])
+        self.assertEqual(plan["steps"][1]["depends_on"], ["production_gate"])
+        self.assertEqual(plan["steps"][2]["depends_on"], [])
+        self.assertEqual(plan["steps"][3]["depends_on"], ["iceberg"])
+        self.assertEqual(plan["steps"][4]["depends_on"], ["iceberg"])
+        self.assertEqual(plan["steps"][0]["schema"], "mmfe.production_publish_gate.v1")
+        self.assertEqual(plan["steps"][1]["schema"], "mmfe.infrastructure_preflight.v1")
+        self.assertEqual(plan["steps"][2]["schema"], "mmfe.iceberg_publish.v1")
+        self.assertEqual(plan["steps"][3]["schema"], "mmfe.stac_publish.v1")
+        self.assertEqual(plan["steps"][4]["schema"], "mmfe.semantic_vector_publish.v1")
+        self.assertEqual(plan["steps"][2]["spec"]["table_identifier"], "prod.gis.fusion.semantic_products")
+        self.assertEqual(plan["steps"][3]["spec"]["item"]["collection"], "mmfe-fusion-products")
+        self.assertEqual(plan["steps"][4]["spec"]["target"], "lancedb")
         self.assertTrue(plan["steps"][2]["execution"]["publisher_configured"])
-        self.assertTrue(plan["steps"][2]["execution"]["embedder_configured"])
+        self.assertTrue(plan["steps"][3]["execution"]["publisher_configured"])
+        self.assertTrue(plan["steps"][4]["execution"]["publisher_configured"])
+        self.assertTrue(plan["steps"][4]["execution"]["embedder_configured"])
+
+    def test_build_semantic_product_publish_plan_blocks_validation_only_product_in_production(self):
+        from data_agent.fusion.lakehouse_publisher import build_semantic_product_publish_plan
+
+        plan = build_semantic_product_publish_plan(
+            _validation_only_semantic_manifest(),
+            targets=["iceberg"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/warehouse",
+                "publisher": object(),
+            },
+        )
+
+        self.assertFalse(plan["valid"])
+        self.assertEqual(plan["production_gate"]["publish_environment"], "production")
+        self.assertFalse(plan["production_gate"]["valid"])
+        self.assertIn("semantic product is not production_ready", plan["production_gate"]["errors"])
+        self.assertTrue(
+            any(error["target"] == "production_gate" for error in plan["errors"])
+        )
+
+    def test_build_semantic_product_publish_plan_allows_validation_environment_with_warnings(self):
+        from data_agent.fusion.lakehouse_publisher import build_semantic_product_publish_plan
+
+        plan = build_semantic_product_publish_plan(
+            _validation_only_semantic_manifest(),
+            targets=["iceberg"],
+            publish_environment="validation",
+            iceberg={
+                "catalog": "dev",
+                "namespace": "gis.validation",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://geo-lake/validation-warehouse",
+                "publisher": object(),
+            },
+        )
+
+        self.assertTrue(plan["valid"])
+        self.assertEqual(plan["production_gate"]["publish_environment"], "validation")
+        self.assertTrue(plan["production_gate"]["valid"])
+        self.assertFalse(plan["production_gate"]["diagnostic_summary"]["production_ready"])
+        self.assertTrue(plan["production_gate"]["warnings"])
+        self.assertTrue(plan["infrastructure_preflight"]["valid"])
+
+    def test_build_semantic_product_publish_plan_blocks_local_infrastructure_in_production(self):
+        from data_agent.fusion.lakehouse_config import build_lakehouse_publish_defaults
+        from data_agent.fusion.lakehouse_publisher import build_semantic_product_publish_plan
+
+        plan = build_semantic_product_publish_plan(
+            _production_ready_semantic_manifest(),
+            targets=["iceberg"],
+            iceberg={
+                "catalog": "prod",
+                "namespace": "gis.fusion",
+                "table": "semantic_products",
+                "warehouse_uri": "s3://gis-agent-lakehouse/warehouse",
+                "publisher": object(),
+            },
+            infrastructure=build_lakehouse_publish_defaults(
+                {
+                    "AWS_ENDPOINT_URL": "http://minio:9000",
+                    "AWS_ACCESS_KEY_ID": "minio_admin",
+                    "AWS_SECRET_ACCESS_KEY": "local_dev_minio_secret",
+                    "MMFE_LAKEHOUSE_BUCKET": "gis-agent-lakehouse",
+                }
+            ),
+            publish_environment="production",
+        )
+
+        self.assertFalse(plan["valid"])
+        self.assertFalse(plan["infrastructure_preflight"]["valid"])
+        self.assertTrue(
+            any(error["target"] == "infrastructure_preflight" for error in plan["errors"])
+        )
+        preflight_checks = {
+            check["check_id"]: check
+            for check in plan["infrastructure_preflight"]["checks"]
+        }
+        self.assertEqual(preflight_checks["production_endpoint"]["status"], "fail")
+        self.assertEqual(preflight_checks["production_credentials"]["status"], "fail")
 
     def test_build_semantic_product_publish_plan_reports_missing_configuration(self):
         from data_agent.fusion.lakehouse_publisher import build_semantic_product_publish_plan
@@ -699,11 +1080,15 @@ class TestLakehousePublisher(unittest.TestCase):
             iceberg={"catalog": "prod"},
             stac={},
             vector={"target": "pgvector"},
+            publish_environment="validation",
         )
 
         self.assertFalse(plan["valid"])
         self.assertEqual(plan["targets"], ["iceberg", "stac", "pgvector", "unsupported"])
-        self.assertEqual([step["target"] for step in plan["steps"]], ["iceberg", "stac", "pgvector"])
+        self.assertEqual(
+            [step["target"] for step in plan["steps"]],
+            ["production_gate", "infrastructure_preflight", "iceberg", "stac", "pgvector"],
+        )
         self.assertTrue(any(error["target"] == "iceberg" for error in plan["errors"]))
         self.assertTrue(any(error["target"] == "stac" for error in plan["errors"]))
         self.assertTrue(any(error["target"] == "pgvector" for error in plan["errors"]))

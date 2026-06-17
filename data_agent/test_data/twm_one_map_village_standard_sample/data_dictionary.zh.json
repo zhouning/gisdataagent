@@ -1,0 +1,1362 @@
+{
+  "dataset_id": "twm_one_map_village_standard_sample",
+  "dataset_alias_zh": "自然资源一张图村规划标准结构样例包",
+  "description_zh": "用于验证自然资源一张图村规划标准结构与 TWM 角色契约兼容性的工程测试数据包。",
+  "not_for_production": true,
+  "layers": {
+    "parcel_current": {
+      "alias_zh": "村规划现状地类图斑样例",
+      "business_role_zh": "状态对象底板",
+      "description_zh": "来自村规划汇交样例 JQDLTB 的现状地类图斑，保留源字段并补齐 TWM 标准契约字段。"
+    },
+    "synthetic_pbf": {
+      "alias_zh": "契约测试永久基本农田替身",
+      "business_role_zh": "耕地保护硬约束",
+      "description_zh": "由村规划现状耕地图斑派生的永久基本农田契约测试层，不代表真实永久基本农田。"
+    },
+    "synthetic_eco_redline": {
+      "alias_zh": "村规划生态保护红线样例",
+      "business_role_zh": "生态保护硬约束",
+      "description_zh": "来自村规划汇交样例 STBHHX 的生态保护红线要素，补齐 TWM 标准契约字段。"
+    },
+    "admin_units": {
+      "alias_zh": "村规划范围样例",
+      "business_role_zh": "区域汇总与项目范围",
+      "description_zh": "来自村规划汇交样例 GHFW 的村级规划范围。"
+    },
+    "synthetic_annual_change": {
+      "alias_zh": "村规划现状-规划差异图斑",
+      "business_role_zh": "状态变化与时序证据",
+      "description_zh": "由 TDGHDL 中近期地类与规划地类差异派生的变化图斑，用于 TWM 时序状态测试。"
+    },
+    "synthetic_projects": {
+      "alias_zh": "契约测试建设项目范围替身",
+      "business_role_zh": "项目约束校验主体",
+      "description_zh": "从村规划差异和规划地类中派生的建设项目范围契约测试层，不代表真实审批项目。"
+    },
+    "synthetic_planning_zones": {
+      "alias_zh": "村规划土地规划地类样例",
+      "business_role_zh": "规划一致性约束",
+      "description_zh": "来自村规划汇交样例 TDGHDL 的规划地类，用于用途管制分区角色兼容性验证。"
+    },
+    "synthetic_urban_boundary": {
+      "alias_zh": "村规划建设用地管制区样例",
+      "business_role_zh": "城镇开发边界/建设管制约束",
+      "description_zh": "来自村规划汇交样例 JSYDGZQ 的建设用地管制区，映射为 TWM 开发边界角色。"
+    },
+    "synthetic_remote_sensing_tiles": {
+      "alias_zh": "契约测试遥感瓦片索引",
+      "business_role_zh": "多模态观测证据",
+      "description_zh": "覆盖村规划样例范围的合成遥感瓦片索引，用于 MMFE 证据链结构测试。"
+    },
+    "sensitive_areas": {
+      "alias_zh": "村规划空间管制敏感要素样例",
+      "business_role_zh": "辅助约束与敏感区证据",
+      "description_zh": "来自 YBD、EJYSLD、LSWH、STHFQ 等空间管制要素的辅助约束样例。"
+    },
+    "optimization": {
+      "alias_zh": "多目标优化方案比选数据",
+      "description_zh": "面向 TWM 动态推演、多目标优化、硬约束过滤和方案比选的工程测试数据目录。",
+      "business_role_zh": "动态推演与多目标方案比选"
+    }
+  },
+  "fields": {
+    "BSM": {
+      "alias_zh": "标识码",
+      "description_zh": "标识码。"
+    },
+    "YSDM": {
+      "alias_zh": "要素代码",
+      "description_zh": "要素代码。"
+    },
+    "TBBH": {
+      "alias_zh": "图斑编号",
+      "description_zh": "图斑编号。"
+    },
+    "XZQDM": {
+      "alias_zh": "行政区代码",
+      "description_zh": "行政区代码。"
+    },
+    "XZQMC": {
+      "alias_zh": "行政区名称",
+      "description_zh": "行政区名称。"
+    },
+    "XZDLDM": {
+      "alias_zh": "XZDLDM",
+      "description_zh": "XZDLDM。"
+    },
+    "XZDLMC": {
+      "alias_zh": "XZDLMC",
+      "description_zh": "XZDLMC。"
+    },
+    "DLDM": {
+      "alias_zh": "DLDM",
+      "description_zh": "DLDM。"
+    },
+    "DLMC": {
+      "alias_zh": "地类名称",
+      "description_zh": "地类名称。"
+    },
+    "QSDWDM": {
+      "alias_zh": "权属单位代码",
+      "description_zh": "权属单位代码。"
+    },
+    "QSDWMC": {
+      "alias_zh": "权属单位名称",
+      "description_zh": "权属单位名称。"
+    },
+    "ZLDWDM": {
+      "alias_zh": "坐落单位代码",
+      "description_zh": "坐落单位代码。"
+    },
+    "ZLDWMC": {
+      "alias_zh": "坐落单位名称",
+      "description_zh": "坐落单位名称。"
+    },
+    "PDJB": {
+      "alias_zh": "PDJB",
+      "description_zh": "PDJB。"
+    },
+    "QSXZ": {
+      "alias_zh": "权属性质",
+      "description_zh": "权属性质。"
+    },
+    "TKXS": {
+      "alias_zh": "TKXS",
+      "description_zh": "TKXS。"
+    },
+    "TBMJ": {
+      "alias_zh": "图斑面积",
+      "description_zh": "图斑面积。"
+    },
+    "XZDWMJ": {
+      "alias_zh": "XZDWMJ",
+      "description_zh": "XZDWMJ。"
+    },
+    "LXDWMJ": {
+      "alias_zh": "LXDWMJ",
+      "description_zh": "LXDWMJ。"
+    },
+    "TKMJ": {
+      "alias_zh": "TKMJ",
+      "description_zh": "TKMJ。"
+    },
+    "TBDLMJ": {
+      "alias_zh": "图斑地类面积",
+      "description_zh": "图斑地类面积。"
+    },
+    "DLBZ": {
+      "alias_zh": "DLBZ",
+      "description_zh": "DLBZ。"
+    },
+    "PZWH": {
+      "alias_zh": "PZWH",
+      "description_zh": "PZWH。"
+    },
+    "SM": {
+      "alias_zh": "SM",
+      "description_zh": "SM。"
+    },
+    "geom_area_m2": {
+      "alias_zh": "投影几何面积",
+      "description_zh": "投影几何面积。"
+    },
+    "source_village": {
+      "alias_zh": "来源村",
+      "description_zh": "来源村。"
+    },
+    "source_layer": {
+      "alias_zh": "来源图层",
+      "description_zh": "来源图层。"
+    },
+    "source_path": {
+      "alias_zh": "来源文件",
+      "description_zh": "来源文件。"
+    },
+    "source_BSM": {
+      "alias_zh": "源标识码",
+      "description_zh": "源标识码。"
+    },
+    "JQDLMC": {
+      "alias_zh": "JQDLMC",
+      "description_zh": "JQDLMC。"
+    },
+    "bsm_norm": {
+      "alias_zh": "bsm_norm",
+      "description_zh": "bsm_norm。"
+    },
+    "DLBM": {
+      "alias_zh": "地类编码",
+      "description_zh": "地类编码。"
+    },
+    "SJNF": {
+      "alias_zh": "数据年份",
+      "description_zh": "数据年份。"
+    },
+    "MSSM": {
+      "alias_zh": "描述说明",
+      "description_zh": "描述说明。"
+    },
+    "category": {
+      "alias_zh": "归并地类",
+      "description_zh": "归并地类。"
+    },
+    "admin9": {
+      "alias_zh": "admin9",
+      "description_zh": "admin9。"
+    },
+    "tbmj_area_rel_error": {
+      "alias_zh": "图斑面积相对误差",
+      "description_zh": "图斑面积相对误差。"
+    },
+    "source_sample": {
+      "alias_zh": "是否来源样例",
+      "description_zh": "是否来源样例。"
+    },
+    "derived_from_source_sample": {
+      "alias_zh": "是否由样例派生",
+      "description_zh": "是否由样例派生。"
+    },
+    "synthetic": {
+      "alias_zh": "是否合成",
+      "description_zh": "是否合成。"
+    },
+    "not_for_production": {
+      "alias_zh": "禁止生产使用",
+      "description_zh": "禁止生产使用。"
+    },
+    "source_dataset": {
+      "alias_zh": "来源数据集",
+      "description_zh": "来源数据集。"
+    },
+    "qa_use_for_rules": {
+      "alias_zh": "可用于规则计算",
+      "description_zh": "可用于规则计算。"
+    },
+    "YJJBNTTBBH": {
+      "alias_zh": "永久基本农田图斑编号",
+      "description_zh": "永久基本农田图斑编号。"
+    },
+    "YJJBNTTBMJ": {
+      "alias_zh": "永久基本农田图斑面积",
+      "description_zh": "永久基本农田图斑面积。"
+    },
+    "YJJBNTMJ": {
+      "alias_zh": "永久基本农田面积",
+      "description_zh": "永久基本农田面积。"
+    },
+    "BHKSSJ": {
+      "alias_zh": "保护开始时间",
+      "description_zh": "保护开始时间。"
+    },
+    "BHJSSJ": {
+      "alias_zh": "保护结束时间",
+      "description_zh": "保护结束时间。"
+    },
+    "WDGD": {
+      "alias_zh": "稳定利用耕地标识",
+      "description_zh": "稳定利用耕地标识。"
+    },
+    "control_id": {
+      "alias_zh": "管控区编号",
+      "description_zh": "管控区编号。"
+    },
+    "control_name": {
+      "alias_zh": "管控区名称",
+      "description_zh": "管控区名称。"
+    },
+    "control_type": {
+      "alias_zh": "管控区类型",
+      "description_zh": "管控区类型。"
+    },
+    "control_grade": {
+      "alias_zh": "管控区等级",
+      "description_zh": "管控区等级。"
+    },
+    "control_area_m2": {
+      "alias_zh": "管控区面积",
+      "description_zh": "管控区面积。"
+    },
+    "synthetic_method": {
+      "alias_zh": "合成方法",
+      "description_zh": "合成方法。"
+    },
+    "JSMJ": {
+      "alias_zh": "JSMJ",
+      "description_zh": "JSMJ。"
+    },
+    "GZMC": {
+      "alias_zh": "GZMC",
+      "description_zh": "GZMC。"
+    },
+    "XJXZQDM": {
+      "alias_zh": "县级行政区代码",
+      "description_zh": "县级行政区代码。"
+    },
+    "XJXZQMC": {
+      "alias_zh": "县级行政区名称",
+      "description_zh": "县级行政区名称。"
+    },
+    "LHLX": {
+      "alias_zh": "陆海类型",
+      "description_zh": "陆海类型。"
+    },
+    "MJ": {
+      "alias_zh": "面积",
+      "description_zh": "面积。"
+    },
+    "XJXZQHDM": {
+      "alias_zh": "县级行政区划代码",
+      "description_zh": "县级行政区划代码。"
+    },
+    "LXDM": {
+      "alias_zh": "类型代码",
+      "description_zh": "类型代码。"
+    },
+    "MC": {
+      "alias_zh": "名称",
+      "description_zh": "名称。"
+    },
+    "QYMJ": {
+      "alias_zh": "区域面积",
+      "description_zh": "区域面积。"
+    },
+    "SLSJ": {
+      "alias_zh": "收录时间",
+      "description_zh": "收录时间。"
+    },
+    "GKCS": {
+      "alias_zh": "管控措施",
+      "description_zh": "管控措施。"
+    },
+    "redline_id": {
+      "alias_zh": "红线区编号",
+      "description_zh": "红线区编号。"
+    },
+    "redline_name": {
+      "alias_zh": "红线区名称",
+      "description_zh": "红线区名称。"
+    },
+    "protection_level": {
+      "alias_zh": "保护等级",
+      "description_zh": "保护等级。"
+    },
+    "ecological_function": {
+      "alias_zh": "生态功能",
+      "description_zh": "生态功能。"
+    },
+    "redline_area_m2": {
+      "alias_zh": "红线区面积",
+      "description_zh": "红线区面积。"
+    },
+    "KZMJ": {
+      "alias_zh": "KZMJ",
+      "description_zh": "KZMJ。"
+    },
+    "MS": {
+      "alias_zh": "MS",
+      "description_zh": "MS。"
+    },
+    "OBJECTID": {
+      "alias_zh": "OBJECTID",
+      "description_zh": "OBJECTID。"
+    },
+    "村名": {
+      "alias_zh": "村名",
+      "description_zh": "村名。"
+    },
+    "Shape_Leng": {
+      "alias_zh": "Shape_Leng",
+      "description_zh": "Shape_Leng。"
+    },
+    "Shape_Area": {
+      "alias_zh": "Shape_Area",
+      "description_zh": "Shape_Area。"
+    },
+    "admin_code": {
+      "alias_zh": "admin_code",
+      "description_zh": "admin_code。"
+    },
+    "admin_name": {
+      "alias_zh": "admin_name",
+      "description_zh": "admin_name。"
+    },
+    "admin_level": {
+      "alias_zh": "admin_level",
+      "description_zh": "admin_level。"
+    },
+    "admin_parent_code": {
+      "alias_zh": "admin_parent_code",
+      "description_zh": "admin_parent_code。"
+    },
+    "admin_level_rank": {
+      "alias_zh": "admin_level_rank",
+      "description_zh": "admin_level_rank。"
+    },
+    "admin_source_level": {
+      "alias_zh": "admin_source_level",
+      "description_zh": "admin_source_level。"
+    },
+    "matched_admin9_values": {
+      "alias_zh": "matched_admin9_values",
+      "description_zh": "matched_admin9_values。"
+    },
+    "matched_parcel_count": {
+      "alias_zh": "matched_parcel_count",
+      "description_zh": "matched_parcel_count。"
+    },
+    "overlap_area_m2": {
+      "alias_zh": "overlap_area_m2",
+      "description_zh": "overlap_area_m2。"
+    },
+    "overlap_ratio_to_parcels": {
+      "alias_zh": "overlap_ratio_to_parcels",
+      "description_zh": "overlap_ratio_to_parcels。"
+    },
+    "JQDLDM": {
+      "alias_zh": "JQDLDM",
+      "description_zh": "JQDLDM。"
+    },
+    "GHDLDM": {
+      "alias_zh": "GHDLDM",
+      "description_zh": "GHDLDM。"
+    },
+    "GHDLMC": {
+      "alias_zh": "GHDLMC",
+      "description_zh": "GHDLMC。"
+    },
+    "CGHDLDM": {
+      "alias_zh": "CGHDLDM",
+      "description_zh": "CGHDLDM。"
+    },
+    "CGHDLMC": {
+      "alias_zh": "CGHDLMC",
+      "description_zh": "CGHDLMC。"
+    },
+    "GHDLMJ": {
+      "alias_zh": "GHDLMJ",
+      "description_zh": "GHDLMJ。"
+    },
+    "XMMC": {
+      "alias_zh": "项目名称",
+      "description_zh": "项目名称。"
+    },
+    "XMXZ": {
+      "alias_zh": "XMXZ",
+      "description_zh": "XMXZ。"
+    },
+    "XMLX": {
+      "alias_zh": "XMLX",
+      "description_zh": "XMLX。"
+    },
+    "source_GHDLDM": {
+      "alias_zh": "source_GHDLDM",
+      "description_zh": "source_GHDLDM。"
+    },
+    "source_GHDLMC": {
+      "alias_zh": "source_GHDLMC",
+      "description_zh": "source_GHDLMC。"
+    },
+    "GHFQDM": {
+      "alias_zh": "规划分区代码",
+      "description_zh": "规划分区代码。"
+    },
+    "GHFQMC": {
+      "alias_zh": "规划分区名称",
+      "description_zh": "规划分区名称。"
+    },
+    "plan_zone_id": {
+      "alias_zh": "用途分区编号",
+      "description_zh": "用途分区编号。"
+    },
+    "plan_zone_type": {
+      "alias_zh": "用途分区类型",
+      "description_zh": "用途分区类型。"
+    },
+    "plan_zone_name": {
+      "alias_zh": "用途分区名称",
+      "description_zh": "用途分区名称。"
+    },
+    "plan_rule": {
+      "alias_zh": "用途管制规则",
+      "description_zh": "用途管制规则。"
+    },
+    "zone_area_m2": {
+      "alias_zh": "分区面积",
+      "description_zh": "分区面积。"
+    },
+    "change_id": {
+      "alias_zh": "变化编号",
+      "description_zh": "变化编号。"
+    },
+    "from_dlbm": {
+      "alias_zh": "变化前地类编码",
+      "description_zh": "变化前地类编码。"
+    },
+    "from_dlmc": {
+      "alias_zh": "变化前地类名称",
+      "description_zh": "变化前地类名称。"
+    },
+    "to_dlbm": {
+      "alias_zh": "变化后地类编码",
+      "description_zh": "变化后地类编码。"
+    },
+    "to_dlmc": {
+      "alias_zh": "变化后地类名称",
+      "description_zh": "变化后地类名称。"
+    },
+    "OPT_DLBM": {
+      "alias_zh": "OPT_DLBM",
+      "description_zh": "OPT_DLBM。"
+    },
+    "OPT_DLMC": {
+      "alias_zh": "OPT_DLMC",
+      "description_zh": "OPT_DLMC。"
+    },
+    "ORIG_DLBM": {
+      "alias_zh": "ORIG_DLBM",
+      "description_zh": "ORIG_DLBM。"
+    },
+    "CHG_FLAG": {
+      "alias_zh": "CHG_FLAG",
+      "description_zh": "CHG_FLAG。"
+    },
+    "change_type": {
+      "alias_zh": "变化类型",
+      "description_zh": "变化类型。"
+    },
+    "change_year": {
+      "alias_zh": "变化年份",
+      "description_zh": "变化年份。"
+    },
+    "event_date": {
+      "alias_zh": "事件日期",
+      "description_zh": "事件日期。"
+    },
+    "temporal_stage": {
+      "alias_zh": "时序阶段",
+      "description_zh": "时序阶段。"
+    },
+    "evidence_confidence": {
+      "alias_zh": "证据置信度",
+      "description_zh": "证据置信度。"
+    },
+    "source_feature_id": {
+      "alias_zh": "来源要素编号",
+      "description_zh": "来源要素编号。"
+    },
+    "XMDM": {
+      "alias_zh": "项目代码",
+      "description_zh": "项目代码。"
+    },
+    "DZJGH": {
+      "alias_zh": "电子监管号",
+      "description_zh": "电子监管号。"
+    },
+    "AJBH": {
+      "alias_zh": "案卷编号",
+      "description_zh": "案卷编号。"
+    },
+    "SZXZQDM": {
+      "alias_zh": "所在行政区代码",
+      "description_zh": "所在行政区代码。"
+    },
+    "SZXZQMC": {
+      "alias_zh": "所在行政区名称",
+      "description_zh": "所在行政区名称。"
+    },
+    "YDMJ": {
+      "alias_zh": "用地面积",
+      "description_zh": "用地面积。"
+    },
+    "SQDW": {
+      "alias_zh": "申请单位",
+      "description_zh": "申请单位。"
+    },
+    "XMPZLX": {
+      "alias_zh": "项目批准类型",
+      "description_zh": "项目批准类型。"
+    },
+    "HYFLBM": {
+      "alias_zh": "行业分类编码",
+      "description_zh": "行业分类编码。"
+    },
+    "HYFLMC": {
+      "alias_zh": "行业分类名称",
+      "description_zh": "行业分类名称。"
+    },
+    "TDYTDM": {
+      "alias_zh": "土地用途代码",
+      "description_zh": "土地用途代码。"
+    },
+    "TDYTMC": {
+      "alias_zh": "土地用途名称",
+      "description_zh": "土地用途名称。"
+    },
+    "ZYNYDMJ": {
+      "alias_zh": "占用农用地面积",
+      "description_zh": "占用农用地面积。"
+    },
+    "ZYGDMJ": {
+      "alias_zh": "占用耕地面积",
+      "description_zh": "占用耕地面积。"
+    },
+    "SJSTHXMJ": {
+      "alias_zh": "涉及生态红线面积",
+      "description_zh": "涉及生态红线面积。"
+    },
+    "ZYJSYDMJ": {
+      "alias_zh": "占用建设用地面积",
+      "description_zh": "占用建设用地面积。"
+    },
+    "ZYWLDMJ": {
+      "alias_zh": "占用未利用地面积",
+      "description_zh": "占用未利用地面积。"
+    },
+    "SQRQ": {
+      "alias_zh": "申请日期",
+      "description_zh": "申请日期。"
+    },
+    "GXRQ": {
+      "alias_zh": "更新日期",
+      "description_zh": "更新日期。"
+    },
+    "project_id": {
+      "alias_zh": "项目编号",
+      "description_zh": "项目编号。"
+    },
+    "project_name": {
+      "alias_zh": "项目名称",
+      "description_zh": "项目名称。"
+    },
+    "project_type": {
+      "alias_zh": "项目类型",
+      "description_zh": "项目类型。"
+    },
+    "approval_status": {
+      "alias_zh": "审批状态",
+      "description_zh": "审批状态。"
+    },
+    "risk_scenario": {
+      "alias_zh": "风险场景",
+      "description_zh": "风险场景。"
+    },
+    "review_priority": {
+      "alias_zh": "复核优先级",
+      "description_zh": "复核优先级。"
+    },
+    "planned_start": {
+      "alias_zh": "计划开始日期",
+      "description_zh": "计划开始日期。"
+    },
+    "planned_end": {
+      "alias_zh": "计划结束日期",
+      "description_zh": "计划结束日期。"
+    },
+    "planned_area_m2": {
+      "alias_zh": "项目计划面积",
+      "description_zh": "项目计划面积。"
+    },
+    "GZQLXDM": {
+      "alias_zh": "GZQLXDM",
+      "description_zh": "GZQLXDM。"
+    },
+    "GZQMJ": {
+      "alias_zh": "GZQMJ",
+      "description_zh": "GZQMJ。"
+    },
+    "CZMC": {
+      "alias_zh": "城镇名称",
+      "description_zh": "城镇名称。"
+    },
+    "CZKFMJ": {
+      "alias_zh": "城镇开发面积",
+      "description_zh": "城镇开发面积。"
+    },
+    "boundary_id": {
+      "alias_zh": "边界编号",
+      "description_zh": "边界编号。"
+    },
+    "boundary_type": {
+      "alias_zh": "边界类型",
+      "description_zh": "边界类型。"
+    },
+    "boundary_name": {
+      "alias_zh": "边界名称",
+      "description_zh": "边界名称。"
+    },
+    "boundary_area_m2": {
+      "alias_zh": "边界面积",
+      "description_zh": "边界面积。"
+    },
+    "tile_id": {
+      "alias_zh": "影像瓦片编号",
+      "description_zh": "影像瓦片编号。"
+    },
+    "modality": {
+      "alias_zh": "模态类型",
+      "description_zh": "模态类型。"
+    },
+    "sensor": {
+      "alias_zh": "传感器",
+      "description_zh": "传感器。"
+    },
+    "acquisition_date": {
+      "alias_zh": "采集日期",
+      "description_zh": "采集日期。"
+    },
+    "band_set": {
+      "alias_zh": "波段组合",
+      "description_zh": "波段组合。"
+    },
+    "cloud_cover_pct": {
+      "alias_zh": "云量百分比",
+      "description_zh": "云量百分比。"
+    },
+    "image_uri": {
+      "alias_zh": "影像资源地址",
+      "description_zh": "影像资源地址。"
+    },
+    "raster_product_id": {
+      "alias_zh": "栅格产品编号",
+      "description_zh": "栅格产品编号。"
+    },
+    "raster_uri": {
+      "alias_zh": "栅格资源地址",
+      "description_zh": "栅格资源地址。"
+    },
+    "tile_area_m2": {
+      "alias_zh": "瓦片覆盖面积",
+      "description_zh": "瓦片覆盖面积。"
+    },
+    "constraint_id": {
+      "alias_zh": "约束编号",
+      "description_zh": "约束编号。"
+    },
+    "constraint_type": {
+      "alias_zh": "约束类型",
+      "description_zh": "约束类型。"
+    },
+    "constraint_name": {
+      "alias_zh": "约束名称",
+      "description_zh": "约束名称。"
+    },
+    "constraint_area_m2": {
+      "alias_zh": "约束面积",
+      "description_zh": "约束面积。"
+    },
+    "objective_id": {
+      "alias_zh": "目标编号",
+      "description_zh": "多目标优化指标的稳定编号。"
+    },
+    "objective_name_zh": {
+      "alias_zh": "目标中文名称",
+      "description_zh": "多目标优化指标的中文显示名。"
+    },
+    "direction": {
+      "alias_zh": "优化方向",
+      "description_zh": "min 表示越小越优，max 表示越大越优。"
+    },
+    "unit": {
+      "alias_zh": "计量单位",
+      "description_zh": "指标值的计量单位。"
+    },
+    "weight": {
+      "alias_zh": "目标权重",
+      "description_zh": "工程测试中的归一化加权评分权重。"
+    },
+    "hard_constraint": {
+      "alias_zh": "是否硬约束",
+      "description_zh": "true 表示该目标属于法定硬约束过滤条件。"
+    },
+    "description_zh": {
+      "alias_zh": "中文说明",
+      "description_zh": "目标、方案或字段的中文解释。"
+    },
+    "action_id": {
+      "alias_zh": "动作编号",
+      "description_zh": "候选优化动作的稳定编号。"
+    },
+    "action_type": {
+      "alias_zh": "动作类型",
+      "description_zh": "候选动作类型，例如项目范围或调整图斑。"
+    },
+    "action_area_m2": {
+      "alias_zh": "动作面积",
+      "description_zh": "候选动作范围面积，单位平方米。"
+    },
+    "pbf_overlap_m2": {
+      "alias_zh": "永久基本农田叠置面积",
+      "description_zh": "方案或动作与永久基本农田的正面积叠置。"
+    },
+    "eco_overlap_m2": {
+      "alias_zh": "生态红线叠置面积",
+      "description_zh": "方案或动作与生态保护红线的正面积叠置。"
+    },
+    "planning_conflict_m2": {
+      "alias_zh": "规划冲突面积",
+      "description_zh": "方案或动作与用途管制规则不一致的面积。"
+    },
+    "urban_inside_m2": {
+      "alias_zh": "城镇边界内面积",
+      "description_zh": "动作范围落入城镇开发边界内的面积。"
+    },
+    "urban_outside_m2": {
+      "alias_zh": "城镇边界外面积",
+      "description_zh": "动作范围落在城镇开发边界外的面积。"
+    },
+    "hard_constraint_violation_m2": {
+      "alias_zh": "硬约束触碰面积",
+      "description_zh": "永久基本农田和生态红线触碰面积合计。"
+    },
+    "review_hit_count": {
+      "alias_zh": "复核命中数量",
+      "description_zh": "候选动作触发需人工复核规则的次数。"
+    },
+    "compactness_score": {
+      "alias_zh": "空间紧凑性得分",
+      "description_zh": "基于面积和周长的紧凑度近似指标。"
+    },
+    "feasibility_class": {
+      "alias_zh": "动作可行性类别",
+      "description_zh": "候选动作的硬约束和复核风险分类。"
+    },
+    "constraint_name_zh": {
+      "alias_zh": "约束中文名称",
+      "description_zh": "约束条件的中文显示名。"
+    },
+    "optimization_role": {
+      "alias_zh": "优化作用",
+      "description_zh": "约束掩码在优化中的作用，例如硬约束、偏好或统计单元。"
+    },
+    "legal_strength": {
+      "alias_zh": "约束强度",
+      "description_zh": "约束的法定或工程强度，例如 hard、soft、aggregation。"
+    },
+    "scenario_id": {
+      "alias_zh": "方案编号",
+      "description_zh": "候选方案或情景的稳定编号。"
+    },
+    "scenario_name_zh": {
+      "alias_zh": "方案中文名称",
+      "description_zh": "候选方案的中文显示名。"
+    },
+    "scenario_type": {
+      "alias_zh": "方案类型",
+      "description_zh": "方案类型，例如基线、动态推演、项目组合或压力测试。"
+    },
+    "source": {
+      "alias_zh": "方案来源",
+      "description_zh": "方案由现状、动作空间或 WorldModel 输出派生。"
+    },
+    "project_count": {
+      "alias_zh": "项目数量",
+      "description_zh": "方案包含的候选项目数量。"
+    },
+    "change_count": {
+      "alias_zh": "变化图斑数量",
+      "description_zh": "方案关联的年度变化图斑数量。"
+    },
+    "status": {
+      "alias_zh": "数据状态",
+      "description_zh": "数据对象状态，例如 engineering_fixture。"
+    },
+    "optimization_scope": {
+      "alias_zh": "优化比较范围",
+      "description_zh": "legal_feasible_space 表示进入合法可行空间比选；stress_test_only 表示仅用于压力测试。"
+    },
+    "hard_constraint_status": {
+      "alias_zh": "硬约束状态",
+      "description_zh": "方案通过或被法定硬约束阻断的状态。"
+    },
+    "requires_legal_review": {
+      "alias_zh": "需法定复核",
+      "description_zh": "true 表示方案触发硬约束法定复核。"
+    },
+    "excluded_from_recommendation": {
+      "alias_zh": "排除推荐",
+      "description_zh": "true 表示该方案不能进入可推荐方案空间。"
+    },
+    "feasibility_reason_zh": {
+      "alias_zh": "可行性原因",
+      "description_zh": "方案硬约束可行性分层的中文解释。"
+    },
+    "selection_order": {
+      "alias_zh": "选择序号",
+      "description_zh": "项目在方案组合中的选择顺序。"
+    },
+    "inclusion_weight": {
+      "alias_zh": "纳入权重",
+      "description_zh": "项目被纳入方案组合的权重。"
+    },
+    "metric_value": {
+      "alias_zh": "指标值",
+      "description_zh": "某方案在某优化目标上的原始指标值。"
+    },
+    "metric_source": {
+      "alias_zh": "指标来源",
+      "description_zh": "指标由现状、动作空间、规则结果或 WorldModel 输出计算。"
+    },
+    "normalized_score": {
+      "alias_zh": "归一化得分",
+      "description_zh": "按目标方向归一化后的 0-1 得分。"
+    },
+    "weighted_score": {
+      "alias_zh": "加权得分",
+      "description_zh": "归一化得分乘以目标权重后的得分。"
+    },
+    "severity": {
+      "alias_zh": "严重程度",
+      "description_zh": "约束违规严重程度。"
+    },
+    "violation_value": {
+      "alias_zh": "违规值",
+      "description_zh": "约束违规面积、数量或其他计量值。"
+    },
+    "requires_review": {
+      "alias_zh": "需要复核",
+      "description_zh": "true 表示该违规项需要人工或法定复核。"
+    }
+  },
+  "roles": {
+    "parcel_current": "parcel_current",
+    "pbf": "synthetic_pbf",
+    "eco_redline": "synthetic_eco_redline",
+    "planning_zone": "synthetic_planning_zones",
+    "urban_boundary": "synthetic_urban_boundary",
+    "project": "synthetic_projects"
+  },
+  "layer_fields": {
+    "parcel_current": [
+      "BSM",
+      "YSDM",
+      "TBBH",
+      "XZQDM",
+      "XZQMC",
+      "XZDLDM",
+      "XZDLMC",
+      "DLDM",
+      "DLMC",
+      "QSDWDM",
+      "QSDWMC",
+      "ZLDWDM",
+      "ZLDWMC",
+      "PDJB",
+      "QSXZ",
+      "TKXS",
+      "TBMJ",
+      "XZDWMJ",
+      "LXDWMJ",
+      "TKMJ",
+      "TBDLMJ",
+      "DLBZ",
+      "PZWH",
+      "SM",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "JQDLMC",
+      "bsm_norm",
+      "DLBM",
+      "SJNF",
+      "MSSM",
+      "category",
+      "admin9",
+      "tbmj_area_rel_error",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "source_dataset",
+      "qa_use_for_rules"
+    ],
+    "synthetic_pbf": [
+      "BSM",
+      "YSDM",
+      "TBBH",
+      "XZQDM",
+      "XZQMC",
+      "XZDLDM",
+      "XZDLMC",
+      "DLDM",
+      "DLMC",
+      "QSDWDM",
+      "QSDWMC",
+      "ZLDWDM",
+      "ZLDWMC",
+      "PDJB",
+      "QSXZ",
+      "TKXS",
+      "TBMJ",
+      "XZDWMJ",
+      "LXDWMJ",
+      "TKMJ",
+      "TBDLMJ",
+      "DLBZ",
+      "PZWH",
+      "SM",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "JQDLMC",
+      "bsm_norm",
+      "DLBM",
+      "SJNF",
+      "MSSM",
+      "category",
+      "admin9",
+      "tbmj_area_rel_error",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "source_dataset",
+      "qa_use_for_rules",
+      "YJJBNTTBBH",
+      "YJJBNTTBMJ",
+      "YJJBNTMJ",
+      "BHKSSJ",
+      "BHJSSJ",
+      "WDGD",
+      "control_id",
+      "control_name",
+      "control_type",
+      "control_grade",
+      "control_area_m2",
+      "synthetic_method"
+    ],
+    "synthetic_eco_redline": [
+      "BSM",
+      "YSDM",
+      "XZQDM",
+      "XZQMC",
+      "JSMJ",
+      "GZMC",
+      "SM",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "XJXZQDM",
+      "XJXZQMC",
+      "LHLX",
+      "MJ",
+      "XJXZQHDM",
+      "LXDM",
+      "MC",
+      "QYMJ",
+      "SLSJ",
+      "GKCS",
+      "redline_id",
+      "redline_name",
+      "protection_level",
+      "ecological_function",
+      "redline_area_m2",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "source_dataset",
+      "qa_use_for_rules"
+    ],
+    "admin_units": [
+      "BSM",
+      "YSDM",
+      "XZQDM",
+      "XZQMC",
+      "KZMJ",
+      "JSMJ",
+      "MS",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "OBJECTID",
+      "村名",
+      "Shape_Leng",
+      "Shape_Area",
+      "admin_code",
+      "admin_name",
+      "admin_level",
+      "admin_parent_code",
+      "admin_level_rank",
+      "admin_source_level",
+      "matched_admin9_values",
+      "matched_parcel_count",
+      "overlap_area_m2",
+      "overlap_ratio_to_parcels",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "qa_use_for_rules"
+    ],
+    "synthetic_annual_change": [
+      "BSM",
+      "YSDM",
+      "XZQDM",
+      "XZQMC",
+      "TBBH",
+      "JQDLDM",
+      "JQDLMC",
+      "GHDLDM",
+      "GHDLMC",
+      "CGHDLDM",
+      "CGHDLMC",
+      "QSDWDM",
+      "QSDWMC",
+      "ZLDWDM",
+      "ZLDWMC",
+      "QSXZ",
+      "TBMJ",
+      "XZDWMJ",
+      "LXDWMJ",
+      "TKMJ",
+      "GHDLMJ",
+      "TKXS",
+      "XMMC",
+      "XMXZ",
+      "XMLX",
+      "SM",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "source_GHDLDM",
+      "source_GHDLMC",
+      "GHFQDM",
+      "GHFQMC",
+      "MJ",
+      "plan_zone_id",
+      "plan_zone_type",
+      "plan_zone_name",
+      "plan_rule",
+      "zone_area_m2",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "source_dataset",
+      "qa_use_for_rules",
+      "change_id",
+      "from_dlbm",
+      "from_dlmc",
+      "to_dlbm",
+      "to_dlmc",
+      "OPT_DLBM",
+      "OPT_DLMC",
+      "ORIG_DLBM",
+      "CHG_FLAG",
+      "change_type",
+      "change_year",
+      "event_date",
+      "temporal_stage",
+      "evidence_confidence",
+      "source_feature_id"
+    ],
+    "synthetic_projects": [
+      "YSDM",
+      "XMDM",
+      "DZJGH",
+      "AJBH",
+      "XMMC",
+      "SZXZQDM",
+      "SZXZQMC",
+      "YDMJ",
+      "SQDW",
+      "XMPZLX",
+      "HYFLBM",
+      "HYFLMC",
+      "TDYTDM",
+      "TDYTMC",
+      "ZYNYDMJ",
+      "ZYGDMJ",
+      "SJSTHXMJ",
+      "ZYJSYDMJ",
+      "ZYWLDMJ",
+      "SQRQ",
+      "GXRQ",
+      "project_id",
+      "project_name",
+      "project_type",
+      "approval_status",
+      "risk_scenario",
+      "review_priority",
+      "planned_start",
+      "planned_end",
+      "planned_area_m2",
+      "source_feature_id",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "synthetic_method",
+      "source_dataset",
+      "qa_use_for_rules",
+      "BSM",
+      "admin9"
+    ],
+    "synthetic_planning_zones": [
+      "BSM",
+      "YSDM",
+      "XZQDM",
+      "XZQMC",
+      "TBBH",
+      "JQDLDM",
+      "JQDLMC",
+      "GHDLDM",
+      "GHDLMC",
+      "CGHDLDM",
+      "CGHDLMC",
+      "QSDWDM",
+      "QSDWMC",
+      "ZLDWDM",
+      "ZLDWMC",
+      "QSXZ",
+      "TBMJ",
+      "XZDWMJ",
+      "LXDWMJ",
+      "TKMJ",
+      "GHDLMJ",
+      "TKXS",
+      "XMMC",
+      "XMXZ",
+      "XMLX",
+      "SM",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "source_GHDLDM",
+      "source_GHDLMC",
+      "GHFQDM",
+      "GHFQMC",
+      "MJ",
+      "plan_zone_id",
+      "plan_zone_type",
+      "plan_zone_name",
+      "plan_rule",
+      "zone_area_m2",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "source_dataset",
+      "qa_use_for_rules"
+    ],
+    "synthetic_urban_boundary": [
+      "BSM",
+      "YSDM",
+      "XZQDM",
+      "XZQMC",
+      "GZQLXDM",
+      "GZQMJ",
+      "SM",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "GHFQDM",
+      "GHFQMC",
+      "MJ",
+      "CZMC",
+      "XJXZQHDM",
+      "CZKFMJ",
+      "SLSJ",
+      "boundary_id",
+      "boundary_type",
+      "boundary_name",
+      "boundary_area_m2",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "source_dataset",
+      "qa_use_for_rules"
+    ],
+    "synthetic_remote_sensing_tiles": [
+      "tile_id",
+      "modality",
+      "sensor",
+      "acquisition_date",
+      "band_set",
+      "cloud_cover_pct",
+      "image_uri",
+      "raster_product_id",
+      "raster_uri",
+      "tile_area_m2",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "synthetic_method",
+      "source_dataset",
+      "qa_use_for_rules"
+    ],
+    "sensitive_areas": [
+      "BSM",
+      "YSDM",
+      "XZQDM",
+      "XZQMC",
+      "JSMJ",
+      "GZMC",
+      "SM",
+      "geom_area_m2",
+      "source_village",
+      "source_layer",
+      "source_path",
+      "source_BSM",
+      "constraint_id",
+      "constraint_type",
+      "constraint_name",
+      "constraint_area_m2",
+      "source_sample",
+      "derived_from_source_sample",
+      "synthetic",
+      "not_for_production",
+      "qa_use_for_rules"
+    ]
+  },
+  "tables": {
+    "optimization/objective_catalog.csv": {
+      "alias_zh": "优化目标目录",
+      "description_zh": "定义 TWM 多目标优化使用的硬约束、软约束、收益、成本、公平性和稳健性指标。"
+    },
+    "optimization/scenario_candidates.csv": {
+      "alias_zh": "候选方案清单",
+      "description_zh": "记录现状基线、WorldModel 参考推演、项目组合和压力测试方案。"
+    },
+    "optimization/scenario_feasibility.csv": {
+      "alias_zh": "方案硬约束可行性",
+      "description_zh": "记录方案是否进入合法可行空间，或仅作为压力测试和复核样本保留。"
+    },
+    "optimization/scenario_project_membership.csv": {
+      "alias_zh": "方案项目组成",
+      "description_zh": "记录每个项目组合方案纳入的候选项目和选择顺序。"
+    },
+    "optimization/scenario_metrics.csv": {
+      "alias_zh": "方案多目标指标",
+      "description_zh": "记录每个方案在各优化目标上的原始值、归一化得分和加权得分。"
+    },
+    "optimization/scenario_constraint_violations.csv": {
+      "alias_zh": "方案约束违规清单",
+      "description_zh": "记录方案触发的硬约束、用途管制和复核负荷问题。"
+    },
+    "optimization/pareto_summary.json": {
+      "alias_zh": "Pareto 比选摘要",
+      "description_zh": "硬约束过滤后的 Pareto 非支配集合、加权排序和被阻断方案列表。"
+    }
+  }
+}

@@ -203,15 +203,19 @@ _BACKENDS = {
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_embeddings(texts: list[str]) -> list[list[float]]:
+def get_embeddings(texts: list[str], model_name: Optional[str] = None) -> list[list[float]]:
     """Unified embedding entry point — dispatches to active backend.
 
     Returns empty list on failure (graceful degradation).
     """
     if not texts:
         return []
-    model_name = EmbeddingRegistry.get_active_model()
-    info = EmbeddingRegistry.get_model_info(model_name)
+    selected_model = model_name or EmbeddingRegistry.get_active_model()
+    info = EmbeddingRegistry.get_model_info(selected_model)
+    if not info:
+        logger.warning("[Embedding] Unknown model '%s', falling back to active model", selected_model)
+        selected_model = EmbeddingRegistry.get_active_model()
+        info = EmbeddingRegistry.get_model_info(selected_model)
     backend = info.get("backend", "gemini")
     fn = _BACKENDS.get(backend)
     if not fn:
@@ -221,7 +225,7 @@ def get_embeddings(texts: list[str]) -> list[list[float]]:
         result = fn(texts, info)
         return result
     except Exception as e:
-        logger.warning("[Embedding] %s/%s failed: %s", backend, model_name, e)
+        logger.warning("[Embedding] %s/%s failed: %s", backend, selected_model, e)
         return []
 
 

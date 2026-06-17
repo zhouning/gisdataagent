@@ -1,6 +1,8 @@
 """Tests for MMFE semantic vector publisher contracts."""
 
+import json
 import unittest
+from pathlib import Path
 
 
 def _semantic_manifest() -> dict:
@@ -88,6 +90,94 @@ class TestSemanticVectorPublisher(unittest.TestCase):
         self.assertEqual(spec["records"][0]["metadata"]["product_id"], "sfp-test")
         self.assertTrue(spec["embedding_required"])
         self.assertEqual(spec["metadata"]["run_id"], "publish-test")
+
+    def test_build_semantic_vector_publish_spec_falls_back_to_retrieval_text(self):
+        from data_agent.fusion.semantic_publisher import build_semantic_vector_publish_spec
+
+        manifest = {
+            "product_type": "semantic_fusion_product",
+            "version": "1.0-demo-wrapper",
+            "business_output": {
+                "path": "data_agent/test_data/twm_bishan_demo/parcel_current.geojson",
+                "format": "GeoJSON",
+                "row_count": 4900,
+                "column_count": 46,
+                "crs": "EPSG:4326",
+            },
+            "ai_metadata": {
+                "retrieval_text": "Demo semantic wrapper for TWM role parcel_current.",
+                "chunks": [],
+                "embedding_ready": False,
+            },
+            "lineage": {"strategy": "demo_wrapper"},
+        }
+
+        spec = build_semantic_vector_publish_spec(
+            manifest,
+            target="lancedb",
+            collection="twm_validation_scaffold",
+        )
+
+        self.assertTrue(spec["product_id"].startswith("sfp-"))
+        self.assertEqual(len(spec["records"]), 1)
+        self.assertEqual(spec["records"][0]["text"], "Demo semantic wrapper for TWM role parcel_current.")
+        self.assertEqual(spec["records"][0]["metadata"]["fallback_chunk"], True)
+        self.assertEqual(spec["records"][0]["metadata"]["strategy"], "demo_wrapper")
+        self.assertEqual(
+            spec["records"][0]["metadata"]["business_output_path"],
+            "data_agent/test_data/twm_bishan_demo/parcel_current.geojson",
+        )
+
+    def test_twm_semantic_wrappers_are_publishable_validation_fixtures(self):
+        from data_agent.fusion.semantic_publisher import (
+            build_semantic_vector_publish_spec,
+            embed_semantic_vector_records,
+            validate_semantic_vector_publish_spec,
+        )
+
+        manifest_paths = sorted(Path("data_agent/test_data").glob("twm_*/*.semantic.json"))
+        self.assertEqual(len(manifest_paths), 4)
+
+        product_ids = set()
+        for manifest_path in manifest_paths:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            spec = build_semantic_vector_publish_spec(
+                manifest,
+                target="pgvector",
+                collection="twm_validation_scaffold",
+                embedding_model="deterministic-test-3d",
+                metadata={
+                    "fixture_package": manifest_path.parent.name,
+                    "fixture_manifest": manifest_path.name,
+                    "usage": "mmfe_regression_validation",
+                },
+            )
+
+            self.assertEqual(validate_semantic_vector_publish_spec(spec), [])
+            self.assertEqual(spec["target"], "pgvector")
+            self.assertEqual(spec["collection"], "twm_validation_scaffold")
+            self.assertTrue(spec["product_id"].startswith("sfp-"))
+            self.assertNotIn(spec["product_id"], product_ids)
+            product_ids.add(spec["product_id"])
+            self.assertEqual(len(spec["records"]), 1)
+            self.assertEqual(spec["records"][0]["metadata"]["fallback_chunk"], True)
+            self.assertEqual(
+                spec["records"][0]["metadata"]["business_output_path"],
+                manifest["business_output"]["path"],
+            )
+            self.assertIn("TWM role", spec["records"][0]["text"])
+
+            embedded = embed_semantic_vector_records(
+                spec,
+                embedder=lambda texts, **kwargs: [
+                    [float(len(text)), float(sum(ord(ch) for ch in text) % 997), 1.0]
+                    for text in texts
+                ],
+            )
+            self.assertTrue(embedded["valid"], embedded["errors"])
+            self.assertEqual(embedded["embedded_count"], 1)
+            self.assertEqual(embedded["embedding_dimension"], 3)
+            self.assertFalse(embedded["spec"]["embedding_required"])
 
     def test_build_semantic_vector_publish_spec_carries_authoritative_lakehouse_lineage(self):
         from data_agent.fusion.semantic_publisher import build_semantic_vector_publish_spec
@@ -389,27 +479,124 @@ class TestSemanticVectorPublisher(unittest.TestCase):
         self.assertEqual(result["published_count"], 0)
         self.assertTrue(any("publisher is required" in error for error in result["errors"]))
 
+    def test_semantic_vector_query_contract_embeds_and_runs_with_injected_querier(self):
+        from data_agent.fusion.semantic_publisher import (
+            SEMANTIC_VECTOR_QUERY_SCHEMA,
+            build_lancedb_querier,
+            build_semantic_vector_query_spec,
+            embed_semantic_vector_query,
+            run_semantic_vector_query,
+            validate_semantic_vector_query_spec,
+        )
+
+        spec = build_semantic_vector_query_spec(
+            "永久基本农田占用",
+            target="lancedb",
+            collection="mmfe_products",
+            top_k=3,
+            product_id="sfp-test",
+        )
+
+        self.assertEqual(spec["schema"], SEMANTIC_VECTOR_QUERY_SCHEMA)
+        self.assertEqual(validate_semantic_vector_query_spec(spec), [])
+
+        embedded = embed_semantic_vector_query(
+            spec,
+            embedder=lambda texts, **kwargs: [[float(len(texts[0])), 1.0, 0.0]],
+        )
+        self.assertTrue(embedded["valid"], embedded["errors"])
+        self.assertEqual(embedded["embedded_count"], 1)
+        self.assertFalse(embedded["spec"]["embedding_required"])
+
+        def executor(payload):
+            self.assertEqual(payload["target"], "lancedb")
+            self.assertEqual(payload["collection"], "mmfe_products")
+            self.assertEqual(payload["product_id"], "sfp-test")
+            self.assertEqual(payload["top_k"], 3)
+            return {
+                "matches": [
+                    {
+                        "record_id": "sfp-test:fusion:rules",
+                        "text": "永久基本农田占用审查",
+                        "score": 0.91,
+                        "metadata": {"rule_id": "TWM-FARM-001"},
+                    }
+                ]
+            }
+
+        result = run_semantic_vector_query(
+            embedded["spec"],
+            querier=build_lancedb_querier(dataset_uri="/tmp/mmfe_vectors", executor=executor),
+        )
+
+        self.assertTrue(result["valid"], result["errors"])
+        self.assertEqual(result["match_count"], 1)
+        self.assertEqual(result["matches"][0]["metadata"]["rule_id"], "TWM-FARM-001")
+
+    def test_run_semantic_vector_query_requires_embedding_and_querier(self):
+        from data_agent.fusion.semantic_publisher import (
+            build_semantic_vector_query_spec,
+            run_semantic_vector_query,
+        )
+
+        spec = build_semantic_vector_query_spec("test", target="pgvector")
+        result = run_semantic_vector_query(spec, querier=lambda payload: {"matches": []})
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("query embedding is required" in error for error in result["errors"]))
+
+        spec["query_embedding"] = [1.0, 0.0]
+        spec["embedding_required"] = False
+        result = run_semantic_vector_query(spec)
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("querier is required" in error for error in result["errors"]))
+
     def test_semantic_vector_publisher_helpers_are_reexported(self):
         from data_agent.fusion import (
+            build_lancedb_querier,
             build_lancedb_publisher,
+            build_pgvector_executor,
+            build_pgvector_querier,
             build_pgvector_publisher,
+            build_semantic_vector_query_spec,
             build_semantic_vector_publish_spec,
+            embed_semantic_vector_query,
             embed_semantic_vector_records,
+            publish_payload_to_pgvector,
+            run_semantic_vector_query,
         )
         from data_agent.fusion_engine import (
+            build_lancedb_querier as proxy_build_lancedb_querier,
             build_lancedb_publisher as proxy_build_lancedb_publisher,
+            build_pgvector_executor as proxy_build_pgvector_executor,
+            build_pgvector_querier as proxy_build_pgvector_querier,
             build_pgvector_publisher as proxy_build_pgvector_publisher,
+            embed_semantic_vector_query as proxy_embed_semantic_vector_query,
             embed_semantic_vector_records as proxy_embed_semantic_vector_records,
+            publish_payload_to_pgvector as proxy_publish_payload_to_pgvector,
+            run_semantic_vector_query as proxy_run_semantic_vector_query,
             run_semantic_vector_publish,
         )
 
+        self.assertTrue(callable(build_lancedb_querier))
+        self.assertTrue(callable(proxy_build_lancedb_querier))
         self.assertTrue(callable(build_lancedb_publisher))
         self.assertTrue(callable(proxy_build_lancedb_publisher))
+        self.assertTrue(callable(build_pgvector_querier))
+        self.assertTrue(callable(proxy_build_pgvector_querier))
         self.assertTrue(callable(build_pgvector_publisher))
         self.assertTrue(callable(proxy_build_pgvector_publisher))
+        self.assertTrue(callable(build_pgvector_executor))
+        self.assertTrue(callable(proxy_build_pgvector_executor))
+        self.assertTrue(callable(publish_payload_to_pgvector))
+        self.assertTrue(callable(proxy_publish_payload_to_pgvector))
+        self.assertTrue(callable(build_semantic_vector_query_spec))
         self.assertTrue(callable(build_semantic_vector_publish_spec))
+        self.assertTrue(callable(embed_semantic_vector_query))
+        self.assertTrue(callable(proxy_embed_semantic_vector_query))
         self.assertTrue(callable(embed_semantic_vector_records))
         self.assertTrue(callable(proxy_embed_semantic_vector_records))
+        self.assertTrue(callable(run_semantic_vector_query))
+        self.assertTrue(callable(proxy_run_semantic_vector_query))
         self.assertTrue(callable(run_semantic_vector_publish))
 
 

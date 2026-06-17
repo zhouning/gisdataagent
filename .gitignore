@@ -79,6 +79,7 @@ math_test.py
 test.py
 
 # Temporary/generated data files
+.tmp/
 simple_test.docx
 test_governance_report.docx
 Analysis_Report*.docx

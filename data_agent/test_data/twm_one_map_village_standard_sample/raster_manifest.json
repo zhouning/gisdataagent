@@ -1,0 +1,85 @@
+{
+  "dataset_id": "twm_one_map_village_standard_sample",
+  "created_at": "2026-06-16T09:36:30.055422+00:00",
+  "products": {
+    "synthetic_ndvi_2026": {
+      "product_id": "RASTER-NDVI-2026",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/rasters/synthetic_ndvi_2026.tif",
+      "relative_path": "rasters/synthetic_ndvi_2026.tif",
+      "alias_zh": "合成NDVI观测栅格",
+      "description_zh": "由村规划样例地类派生的归一化植被指数测试栅格。",
+      "stats": {
+        "valid_pixels": 22604,
+        "min": 0.12,
+        "mean": 0.66006,
+        "max": 0.82
+      },
+      "crs": "EPSG:4523",
+      "width": 256,
+      "height": 256,
+      "bounds": [
+        35607575.093,
+        3274154.385,
+        35612762.183,
+        3281317.756
+      ],
+      "transform": [
+        20.262070209,
+        0.0,
+        35607575.09322005,
+        0.0,
+        -27.981919606,
+        3281317.756242676
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change"
+      ]
+    },
+    "synthetic_change_intensity_2026": {
+      "product_id": "RASTER-CHANGE-2026",
+      "path": "data_agent/test_data/twm_one_map_village_standard_sample/rasters/synthetic_change_intensity_2026.tif",
+      "relative_path": "rasters/synthetic_change_intensity_2026.tif",
+      "alias_zh": "合成变化强度栅格",
+      "description_zh": "由村规划现状-规划差异派生的变化强度测试栅格。",
+      "stats": {
+        "valid_pixels": 22604,
+        "min": 0.05,
+        "mean": 0.093399,
+        "max": 0.55
+      },
+      "crs": "EPSG:4523",
+      "width": 256,
+      "height": 256,
+      "bounds": [
+        35607575.093,
+        3274154.385,
+        35612762.183,
+        3281317.756
+      ],
+      "transform": [
+        20.262070209,
+        0.0,
+        35607575.09322005,
+        0.0,
+        -27.981919606,
+        3281317.756242676
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change"
+      ]
+    }
+  },
+  "not_for_production": true
+}

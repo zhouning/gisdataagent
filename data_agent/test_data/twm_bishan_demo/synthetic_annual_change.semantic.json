@@ -1,0 +1,70 @@
+{
+  "product_type": "semantic_fusion_product",
+  "version": "1.0-demo-wrapper",
+  "created_at": "2026-06-16T08:35:05.962395+00:00",
+  "business_output": {
+    "path": "data_agent/test_data/twm_bishan_demo/synthetic_annual_change.geojson",
+    "format": "GeoJSON",
+    "row_count": 78,
+    "column_count": 21,
+    "crs": "EPSG:4326"
+  },
+  "sources": [
+    {
+      "path": "/Users/zhouning/farmland_mpc_runs/bishan/mpc_output/optimized.shp",
+      "data_type": "vector",
+      "row_count": 78,
+      "semantic_domain": "annual_change"
+    }
+  ],
+  "semantic_mappings": [
+    {
+      "source_field": "BSM",
+      "target_field": "parcel_id",
+      "confidence": 1.0,
+      "match_type": "explicit"
+    },
+    {
+      "source_field": "ORIG_DLBM",
+      "target_field": "from_land_use_code",
+      "confidence": 1.0,
+      "match_type": "explicit"
+    },
+    {
+      "source_field": "OPT_DLBM",
+      "target_field": "to_land_use_code",
+      "confidence": 1.0,
+      "match_type": "explicit"
+    },
+    {
+      "source_field": "CHG_FLAG",
+      "target_field": "change_type",
+      "confidence": 0.95,
+      "match_type": "explicit"
+    }
+  ],
+  "derived_fields": [],
+  "inferred_fields": [],
+  "feature_semantics": [],
+  "ai_metadata": {
+    "retrieval_text": "Demo semantic wrapper for TWM role annual_change; generated from local data.",
+    "chunks": [],
+    "embedding_ready": false,
+    "recommended_vector_targets": [
+      "pgvector"
+    ]
+  },
+  "quality": {
+    "score": 0.85,
+    "warnings": [
+      "Generated as a minimal semantic wrapper, not by an MMFE run.",
+      "Demo dataset is not for production use."
+    ]
+  },
+  "lineage": {
+    "strategy": "demo_wrapper",
+    "alignment_steps": [],
+    "temporal_alignment": [],
+    "conflict_resolution": {}
+  }
+}

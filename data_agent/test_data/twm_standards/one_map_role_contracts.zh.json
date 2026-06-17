@@ -1,0 +1,603 @@
+{
+  "standard_id": "NR_ONE_MAP_TWM_CORE_2026",
+  "standard_name_zh": "自然资源一张图 TWM 核心角色标准契约",
+  "version": "2026-06-16-draft",
+  "status": "engineering_contract",
+  "not_for_production": true,
+  "source_package": "/Users/zhouning/Downloads/自然资源一张图数据库标准1128 (2).zip",
+  "source_documents": [
+    "自然资源“一张图”数据库体系结构（2）统一调查监测1126",
+    "自然资源“一张图”数据库体系结构（4）统一规划1126",
+    "自然资源“一张图”数据库体系结构（5）底线安全1126",
+    "自然资源“一张图”数据库体系结构（6）用途管制1128V2",
+    "自然资源“一张图”数据库体系结构（8）执法督察0922",
+    "自然资源“一张图”数据库体系结构（10）元数据0907",
+    "GB/T 21010-2017 土地利用现状分类"
+  ],
+  "principle_zh": "当前数据是生产数据适配测试集，不是生产权威数据。TWM 必须按角色和标准契约绑定数据，不能依赖 synthetic_pbf.geojson 等演示文件名。真实权威数据接入时，应优先复用这些角色契约、字段映射、值域规则和 QA gate。",
+  "roles": {
+    "parcel_current": {
+      "role_alias_zh": "现状地类图斑",
+      "standard_tables": [
+        {
+          "module": "统一调查监测",
+          "table_code": "DLTB",
+          "table_alias_zh": "地类图斑"
+        }
+      ],
+      "geometry_type": "Polygon",
+      "layer_candidates": [
+        "parcel_current.geojson",
+        "JQDLTB.shp",
+        "DLTB"
+      ],
+      "required_fields": [
+        "BSM",
+        "YSDM",
+        "TBBH",
+        "DLBM",
+        "DLMC",
+        "QSXZ",
+        "QSDWDM",
+        "QSDWMC",
+        "ZLDWDM",
+        "ZLDWMC",
+        "TBMJ",
+        "TBDLMJ",
+        "SJNF",
+        "MSSM"
+      ],
+      "recommended_fields": [
+        "TBYBH",
+        "KCDLBM",
+        "KCXS",
+        "KCMJ",
+        "GDLX",
+        "GDPDJB",
+        "TBXHDM",
+        "TBXHMC",
+        "ZZSXDM",
+        "ZZSXMC",
+        "CZCSXM",
+        "GXSJ",
+        "BZ"
+      ],
+      "field_rules": {
+        "DLBM": {
+          "domain": "gb_t_21010_2017_land_use_code"
+        },
+        "QSXZ": {
+          "domain": "ownership_nature_code"
+        },
+        "TBMJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "TBDLMJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "SJNF": {
+          "pattern": "^[0-9]{4}$"
+        }
+      },
+      "twm_binding": {
+        "object_id": "BSM",
+        "land_use_code": "DLBM",
+        "land_use_name": "DLMC",
+        "area_m2": "TBMJ",
+        "admin_code": "QSDWDM",
+        "admin_name": "QSDWMC",
+        "temporal_key": "SJNF"
+      }
+    },
+    "pbf": {
+      "role_alias_zh": "永久基本农田",
+      "standard_tables": [
+        {
+          "module": "底线安全",
+          "table_code": "YJJBNTTB",
+          "table_alias_zh": "永久基本农田保护图斑"
+        },
+        {
+          "module": "统一规划",
+          "table_code": "YJJBNT",
+          "table_alias_zh": "永久基本农田"
+        }
+      ],
+      "geometry_type": "Polygon",
+      "layer_candidates": [
+        "synthetic_pbf.geojson",
+        "YJJBNTTB",
+        "YJJBNT"
+      ],
+      "required_fields": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "YJJBNTTBBH",
+        "TBBH",
+        "DLBM",
+        "DLMC",
+        "QSXZ",
+        "QSDWDM",
+        "QSDWMC",
+        "ZLDWDM",
+        "ZLDWMC",
+        "YJJBNTTBMJ",
+        "YJJBNTMJ",
+        "SJNF",
+        "BHKSSJ",
+        "BHJSSJ",
+        "WDGD"
+      ],
+      "recommended_fields": [
+        "GDPDJB",
+        "KCDLBM",
+        "KCXS",
+        "KCMJ",
+        "GDLX",
+        "TBXHDM",
+        "TBXHMC",
+        "GDZZSXDM",
+        "GDZZSXMC",
+        "CFZR",
+        "ZRRMC",
+        "SJBH",
+        "SJMC",
+        "BZ"
+      ],
+      "field_rules": {
+        "YJJBNTTBMJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "YJJBNTMJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "BHKSSJ": {
+          "pattern": "^[0-9]{8}$"
+        },
+        "BHJSSJ": {
+          "pattern": "^[0-9]{8}$"
+        },
+        "WDGD": {
+          "domain": "yes_no_code"
+        }
+      },
+      "twm_binding": {
+        "object_id": "YJJBNTTBBH",
+        "source_parcel_id": "TBBH",
+        "land_use_code": "DLBM",
+        "area_m2": "YJJBNTMJ",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC"
+      }
+    },
+    "eco_redline": {
+      "role_alias_zh": "生态保护红线",
+      "standard_tables": [
+        {
+          "module": "统一调查监测",
+          "table_code": "STBHHX",
+          "table_alias_zh": "生态保护红线"
+        },
+        {
+          "module": "统一规划",
+          "table_code": "STBHHX",
+          "table_alias_zh": "生态保护红线"
+        }
+      ],
+      "geometry_type": "Polygon",
+      "layer_candidates": [
+        "synthetic_eco_redline.geojson",
+        "STBHHX"
+      ],
+      "required_fields": [
+        "BSM",
+        "YSDM",
+        "XJXZQDM",
+        "XJXZQMC",
+        "LHLX",
+        "MJ",
+        "XJXZQHDM",
+        "LXDM",
+        "MC",
+        "QYMJ",
+        "SLSJ",
+        "GKCS"
+      ],
+      "recommended_fields": [
+        "SLDM",
+        "RKSL",
+        "STGNYBHMB",
+        "STXTYZBLX",
+        "RWHDLX",
+        "STHJWT",
+        "BZ"
+      ],
+      "field_rules": {
+        "MJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "QYMJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "km2"
+        },
+        "SLSJ": {
+          "pattern": "^[0-9]{8}$"
+        },
+        "LXDM": {
+          "domain": "eco_redline_type_code"
+        }
+      },
+      "twm_binding": {
+        "object_id": "BSM",
+        "name": "MC",
+        "area_m2": "MJ",
+        "area_km2": "QYMJ",
+        "admin_code": "XJXZQDM",
+        "admin_name": "XJXZQMC"
+      }
+    },
+    "urban_boundary": {
+      "role_alias_zh": "城镇开发边界",
+      "standard_tables": [
+        {
+          "module": "统一调查监测",
+          "table_code": "CZKFBJ",
+          "table_alias_zh": "城镇开发边界"
+        },
+        {
+          "module": "统一规划",
+          "table_code": "CZKFBJ",
+          "table_alias_zh": "城镇开发边界"
+        }
+      ],
+      "geometry_type": "Polygon",
+      "layer_candidates": [
+        "synthetic_urban_boundary.geojson",
+        "CZKFBJ",
+        "JSYDGZQ.shp"
+      ],
+      "required_fields": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "GHFQDM",
+        "GHFQMC",
+        "MJ",
+        "CZMC",
+        "XJXZQHDM",
+        "CZKFMJ",
+        "SLSJ"
+      ],
+      "field_rules": {
+        "GHFQDM": {
+          "domain": "urban_planning_partition_code"
+        },
+        "MJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "CZKFMJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "SLSJ": {
+          "pattern": "^[0-9]{8}$"
+        }
+      },
+      "twm_binding": {
+        "object_id": "BSM",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC"
+      }
+    },
+    "planning_zone": {
+      "role_alias_zh": "国土空间用途管制分区",
+      "standard_tables": [
+        {
+          "module": "统一规划",
+          "table_code": "CZKFBJ",
+          "table_alias_zh": "城镇开发边界规划分区"
+        }
+      ],
+      "geometry_type": "Polygon",
+      "layer_candidates": [
+        "synthetic_planning_zones.geojson",
+        "TDGHDL.shp",
+        "JSYDGZQ.shp"
+      ],
+      "required_fields": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "GHFQDM",
+        "GHFQMC",
+        "MJ"
+      ],
+      "field_rules": {
+        "GHFQDM": {
+          "domain": "planning_space_partition_code"
+        },
+        "MJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        }
+      },
+      "twm_binding": {
+        "object_id": "BSM",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC"
+      }
+    },
+    "project": {
+      "role_alias_zh": "建设项目空间范围",
+      "standard_tables": [
+        {
+          "module": "用途管制",
+          "table_code": "XS_XMKJFW",
+          "table_alias_zh": "项目占地范围"
+        },
+        {
+          "module": "用途管制",
+          "table_code": "LSYD_XMZDFW",
+          "table_alias_zh": "临时用地项目占地范围"
+        }
+      ],
+      "geometry_type": "Polygon",
+      "layer_candidates": [
+        "synthetic_projects.geojson",
+        "XS_XMKJFW",
+        "LSYD_XMZDFW"
+      ],
+      "required_fields": [
+        "YSDM",
+        "XMDM",
+        "DZJGH",
+        "AJBH",
+        "XMMC",
+        "SZXZQDM",
+        "SZXZQMC",
+        "YDMJ"
+      ],
+      "recommended_fields": [
+        "SQDW",
+        "XMPZLX",
+        "HYFLBM",
+        "HYFLMC",
+        "TDYTDM",
+        "TDYTMC",
+        "ZYNYDMJ",
+        "ZYGDMJ",
+        "SJSTHXMJ",
+        "ZYJSYDMJ",
+        "ZYWLDMJ",
+        "SQRQ",
+        "GXRQ"
+      ],
+      "field_rules": {
+        "YDMJ": {
+          "type": "number",
+          "min_exclusive": 0,
+          "unit": "m2"
+        },
+        "SQRQ": {
+          "pattern": "^[0-9]{8}$"
+        },
+        "GXRQ": {
+          "pattern": "^[0-9]{8}$"
+        }
+      },
+      "twm_binding": {
+        "object_id": "XMDM",
+        "case_id": "AJBH",
+        "project_name": "XMMC",
+        "area_m2": "YDMJ",
+        "admin_code": "SZXZQDM",
+        "admin_name": "SZXZQMC"
+      }
+    },
+    "approval": {
+      "role_alias_zh": "用途管制审批记录",
+      "standard_tables": [
+        {
+          "module": "用途管制",
+          "table_code": "ZZ_NYDZYFW",
+          "table_alias_zh": "农用地转用范围"
+        },
+        {
+          "module": "用途管制",
+          "table_code": "ZZ_TDZSFW",
+          "table_alias_zh": "土地征收范围"
+        }
+      ],
+      "geometry_type": "Table",
+      "layer_candidates": [
+        "approval_records.csv",
+        "ZZ_NYDZYFW",
+        "ZZ_TDZSFW"
+      ],
+      "required_fields": [
+        "YSDM",
+        "DKBH",
+        "DKMC",
+        "DKMJ",
+        "DZJGH",
+        "AJBH",
+        "XZQDM",
+        "XZQMC"
+      ],
+      "recommended_fields": [
+        "DKXZQDM",
+        "DKXZQMC",
+        "DKYTDM",
+        "DKYTMC",
+        "DKZT",
+        "ZYZMJ",
+        "ZDZMJ",
+        "QZNYDMJ",
+        "QZGDMJ",
+        "XZYDZMJ"
+      ],
+      "field_rules": {
+        "DKMJ": {
+          "type": "number",
+          "min": 0,
+          "unit": "m2"
+        }
+      },
+      "twm_binding": {
+        "object_id": "DKBH",
+        "case_id": "AJBH",
+        "regulatory_number": "DZJGH",
+        "area_m2": "DKMJ",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC"
+      }
+    },
+    "enforcement": {
+      "role_alias_zh": "执法督察事件",
+      "standard_tables": [
+        {
+          "module": "执法督察",
+          "table_code": "WFDK",
+          "table_alias_zh": "违法地块"
+        },
+        {
+          "module": "执法督察",
+          "table_code": "YGYSXZJSYDTB",
+          "table_alias_zh": "遥感疑似新增建设用地图斑"
+        }
+      ],
+      "geometry_type": "Table",
+      "layer_candidates": [
+        "enforcement_events.csv",
+        "WFDK",
+        "YGYSXZJSYDTB"
+      ],
+      "required_fields": [
+        "BSM",
+        "YSDM",
+        "WFXWZJ",
+        "WFDKXH",
+        "YGTBZJ",
+        "XZQDM",
+        "JCSDQ",
+        "JCSDH",
+        "JCMJ",
+        "TDZL",
+        "TBLX",
+        "ND",
+        "QSSJ",
+        "ZZSJ",
+        "GXZT"
+      ],
+      "field_rules": {
+        "JCMJ": {
+          "type": "number",
+          "min": 0,
+          "unit": "m2"
+        },
+        "ND": {
+          "pattern": "^[0-9]{4}$"
+        },
+        "QSSJ": {
+          "pattern": "^[0-9]{8}$"
+        },
+        "ZZSJ": {
+          "pattern": "^[0-9]{8}$"
+        }
+      },
+      "twm_binding": {
+        "object_id": "WFDKXH",
+        "remote_sensing_id": "YGTBZJ",
+        "case_id": "WFXWZJ",
+        "area_m2": "JCMJ",
+        "admin_code": "XZQDM",
+        "temporal_key": "ND"
+      }
+    },
+    "metadata_vector": {
+      "role_alias_zh": "矢量数据元数据",
+      "standard_tables": [
+        {
+          "module": "元数据",
+          "table_code": "meta_VectorData",
+          "table_alias_zh": "矢量数据元数据表"
+        }
+      ],
+      "geometry_type": "Table",
+      "layer_candidates": [
+        "metadata_vector.csv",
+        "meta_VectorData"
+      ],
+      "required_fields": [
+        "data_id",
+        "resource_id",
+        "data_name",
+        "data_alias",
+        "data_format",
+        "geometry_type",
+        "wkid",
+        "coordinate_unit",
+        "source_currency",
+        "integrity",
+        "score",
+        "quality_evaluation"
+      ],
+      "recommended_fields": [
+        "data_des",
+        "cover_range_coor",
+        "cover_range",
+        "security_order",
+        "layer_name",
+        "layer_field",
+        "product_date",
+        "update_date",
+        "producer",
+        "quality_check_date",
+        "quality_des"
+      ],
+      "field_rules": {
+        "score": {
+          "type": "number",
+          "min": 0,
+          "max": 100
+        },
+        "quality_evaluation": {
+          "domain": "quality_evaluation_level"
+        }
+      },
+      "twm_binding": {
+        "object_id": "data_id",
+        "asset_id": "resource_id",
+        "name": "data_name",
+        "alias": "data_alias",
+        "crs": "wkid",
+        "quality_score": "score"
+      }
+    }
+  }
+}

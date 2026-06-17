@@ -1,0 +1,89 @@
+{
+  "dataset": "twm_standard_rules_demo",
+  "version": "2026-06-16-demo",
+  "not_for_production": true,
+  "lifecycle": [
+    {
+      "standard_id": "TWM-STD-BASE-2026",
+      "standard_name_zh": "国土空间世界模型演示数据标准",
+      "version": "0.1-draft",
+      "status": "draft",
+      "effective_date": "2026-01-01",
+      "supersedes": ""
+    },
+    {
+      "standard_id": "TWM-STD-BASE-2026",
+      "standard_name_zh": "国土空间世界模型演示数据标准",
+      "version": "0.2-demo-release",
+      "status": "released_for_engineering_test",
+      "effective_date": "2026-06-15",
+      "supersedes": "0.1-draft"
+    },
+    {
+      "standard_id": "TWM-STD-BASE-2026",
+      "standard_name_zh": "国土空间世界模型演示数据标准",
+      "version": "0.3-governance-loop",
+      "status": "released_for_engineering_test",
+      "effective_date": "2026-06-16",
+      "supersedes": "0.2-demo-release"
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "TWM-FARM-001",
+      "rule_name_zh": "永久基本农田占用审查",
+      "target_layer": "synthetic_projects",
+      "constraint_layer": "synthetic_pbf",
+      "logic": "flag if project_pbf_rel.overlap_area_m2 > 1",
+      "severity": "high"
+    },
+    {
+      "rule_id": "TWM-ECO-001",
+      "rule_name_zh": "生态保护红线触碰审查",
+      "target_layer": "synthetic_projects",
+      "constraint_layer": "synthetic_eco_redline",
+      "logic": "flag if project_eco_rel.overlap_area_m2 > 1",
+      "severity": "critical"
+    },
+    {
+      "rule_id": "TWM-PLAN-001",
+      "rule_name_zh": "用途管制分区一致性审查",
+      "target_layer": "synthetic_projects",
+      "constraint_layer": "synthetic_planning_zones",
+      "logic": "compare project_type with dominant plan_zone_type",
+      "severity": "medium"
+    },
+    {
+      "rule_id": "TWM-URBAN-001",
+      "rule_name_zh": "城镇开发边界内外审查",
+      "target_layer": "synthetic_projects",
+      "constraint_layer": "synthetic_urban_boundary",
+      "logic": "flag construction projects outside urban boundary for review",
+      "severity": "medium"
+    },
+    {
+      "rule_id": "TWM-DQ-001",
+      "rule_name_zh": "空间数据质量门槛",
+      "target_layer": "all_vector_layers",
+      "constraint_layer": "",
+      "logic": "invalid geometries must be zero and rule input features must pass qa_use_for_rules",
+      "severity": "blocking"
+    },
+    {
+      "rule_id": "TWM-GOV-001",
+      "rule_name_zh": "规则命中项目审批一致性审查",
+      "target_layer": "approval_records",
+      "constraint_layer": "rule_evaluation",
+      "logic": "high or critical rule hits require in_review, returned, supplement_required, or conditional approval",
+      "severity": "high"
+    },
+    {
+      "rule_id": "TWM-EVD-001",
+      "rule_name_zh": "多模态证据完整性审查",
+      "target_layer": "synthetic_projects",
+      "constraint_layer": "multimodal_evidence_index",
+      "logic": "each project should have text evidence and at least one remote sensing tile relation",
+      "severity": "medium"
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "recommended_twm_input": "semantic_fusion_product",
+  "raw_data_usage": "source_of_truth_geometry_and_attributes",
+  "semantic_product_usage": "role_binding_quality_lineage_evidence_and_ai_grounding",
+  "state_builder_policy": "load_semantic_product_then_dereference_raw_sources",
+  "role_bindings": [
+    {
+      "role": "admin_units",
+      "standard_role": "admin_unit",
+      "role_alias_zh": "乡镇行政区边界",
+      "object_type": "admin_unit",
+      "field_count": 22,
+      "quality_score": 85.0,
+      "business_role_zh": "区域汇总与项目范围",
+      "source_path": "admin_units.geojson",
+      "twm_binding": {},
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "parcel_current",
+      "standard_role": "parcel_current",
+      "role_alias_zh": "现状地类图斑",
+      "object_type": "parcel",
+      "field_count": 46,
+      "quality_score": 85.0,
+      "business_role_zh": "状态对象底板",
+      "source_path": "parcel_current.geojson",
+      "twm_binding": {
+        "object_id": "BSM",
+        "land_use_code": "DLBM",
+        "land_use_name": "DLMC",
+        "admin_code": "QSDWDM",
+        "admin_name": "QSDWMC",
+        "area_m2": "TBMJ",
+        "temporal_key": "SJNF"
+      },
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "synthetic_annual_change",
+      "standard_role": "parcel_current",
+      "role_alias_zh": "现状地类图斑",
+      "object_type": "parcel",
+      "field_count": 21,
+      "quality_score": 85.0,
+      "business_role_zh": "状态变化与时序证据",
+      "source_path": "synthetic_annual_change.geojson",
+      "twm_binding": {
+        "object_id": "BSM"
+      },
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "synthetic_eco_redline",
+      "standard_role": "eco_redline",
+      "role_alias_zh": "生态保护红线",
+      "object_type": "control_boundary",
+      "field_count": 35,
+      "quality_score": 85.0,
+      "business_role_zh": "生态保护硬约束",
+      "source_path": "synthetic_eco_redline.geojson",
+      "twm_binding": {
+        "object_id": "BSM",
+        "admin_code": "XJXZQDM",
+        "admin_name": "XJXZQMC",
+        "area_m2": "MJ",
+        "name": "MC",
+        "area_km2": "QYMJ"
+      },
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "synthetic_pbf",
+      "standard_role": "pbf",
+      "role_alias_zh": "永久基本农田",
+      "object_type": "control_boundary",
+      "field_count": 48,
+      "quality_score": 85.0,
+      "business_role_zh": "耕地保护硬约束",
+      "source_path": "synthetic_pbf.geojson",
+      "twm_binding": {
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "object_id": "YJJBNTTBBH",
+        "source_parcel_id": "TBBH",
+        "land_use_code": "DLBM",
+        "area_m2": "YJJBNTMJ"
+      },
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "synthetic_planning_zones",
+      "standard_role": "planning_zone",
+      "role_alias_zh": "国土空间用途管制分区",
+      "object_type": "planning_zone",
+      "field_count": 21,
+      "quality_score": 85.0,
+      "business_role_zh": "规划一致性约束",
+      "source_path": "synthetic_planning_zones.geojson",
+      "twm_binding": {
+        "object_id": "BSM",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ"
+      },
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "synthetic_projects",
+      "standard_role": "project",
+      "role_alias_zh": "建设项目空间范围",
+      "object_type": "project",
+      "field_count": 39,
+      "quality_score": 85.0,
+      "business_role_zh": "项目约束校验主体",
+      "source_path": "synthetic_projects.geojson",
+      "twm_binding": {
+        "object_id": "XMDM",
+        "case_id": "AJBH",
+        "project_name": "project_name",
+        "admin_code": "SZXZQDM",
+        "admin_name": "SZXZQMC",
+        "area_m2": "YDMJ"
+      },
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "synthetic_remote_sensing_tiles",
+      "standard_role": "remote_sensing_evidence",
+      "role_alias_zh": "合成遥感影像瓦片索引",
+      "object_type": "remote_sensing_evidence",
+      "field_count": 17,
+      "quality_score": 85.0,
+      "business_role_zh": "多模态观测证据",
+      "source_path": "synthetic_remote_sensing_tiles.geojson",
+      "twm_binding": {},
+      "semantic_readiness": "ready_for_state_builder"
+    },
+    {
+      "role": "synthetic_urban_boundary",
+      "standard_role": "urban_boundary",
+      "role_alias_zh": "城镇开发边界",
+      "object_type": "control_boundary",
+      "field_count": 25,
+      "quality_score": 85.0,
+      "business_role_zh": "城镇开发边界约束",
+      "source_path": "synthetic_urban_boundary.geojson",
+      "twm_binding": {
+        "object_id": "BSM",
+        "admin_code": "XZQDM",
+        "admin_name": "XZQMC",
+        "zone_code": "GHFQDM",
+        "zone_name": "GHFQMC",
+        "area_m2": "MJ"
+      },
+      "semantic_readiness": "ready_for_state_builder"
+    }
+  ],
+  "state_builder_inputs": {
+    "object_roles": [
+      "admin_units",
+      "parcel_current",
+      "synthetic_annual_change",
+      "synthetic_eco_redline",
+      "synthetic_pbf",
+      "synthetic_planning_zones",
+      "synthetic_projects",
+      "synthetic_remote_sensing_tiles",
+      "synthetic_urban_boundary"
+    ],
+    "standard_roles": [
+      "admin_unit",
+      "eco_redline",
+      "parcel_current",
+      "pbf",
+      "planning_zone",
+      "project",
+      "remote_sensing_evidence",
+      "urban_boundary"
+    ],
+    "standard_active_field_count": 266,
+    "field_semantic_count": 274,
+    "alignment_decisions": {
+      "accept": 120,
+      "review": 154,
+      "reject": 0
+    },
+    "alignment_review_required": 154,
+    "semantic_relation_count": 728,
+    "semantic_relation_types": [
+      "annual_change_of_parcel",
+      "project_observed_by_remote_sensing_tile",
+      "project_overlaps_ecological_redline",
+      "project_overlaps_parcel",
+      "project_overlaps_permanent_basic_farmland",
+      "project_overlaps_planning_zone",
+      "project_overlaps_urban_development_boundary"
+    ],
+    "rule_review_relation_count": 225,
+    "rule_eval_count": 240,
+    "optimization_scenario_count": 7,
+    "optimization_objectives": [
+      "pbf_overlap_m2",
+      "eco_overlap_m2",
+      "planning_conflict_m2",
+      "farmland_loss_m2",
+      "farmland_gain_m2",
+      "development_area_m2",
+      "compactness_score",
+      "adjustment_cost_proxy",
+      "admin_fairness_cv",
+      "robustness_score",
+      "review_load_count",
+      "slope_improvement_pct",
+      "contiguity_gain"
+    ],
+    "hard_constraint_objectives": [
+      "pbf_overlap_m2",
+      "eco_overlap_m2"
+    ]
+  },
+  "guidance_zh": "后续 TWM 不应只直接读取原始数据文件。原始数据仍作为几何和属性事实源，但状态构建、规则解释、证据链、AI 检索和优化输入应优先读取 MMFE 语义融合成果。"
+}

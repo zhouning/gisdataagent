@@ -1,0 +1,11 @@
+snapshot_year,temporal_stage,land_space_type,feature_count,area_m2,area_delta_m2,source_dataset,synthetic,not_for_production
+2025,baseline_current,agricultural_space,8530,124865903.472,0.0,parcel_current,False,True
+2025,baseline_current,ecological_space,2561,72360499.356,0.0,parcel_current,False,True
+2025,baseline_current,other_space,965,11064307.301,0.0,parcel_current,False,True
+2025,baseline_current,urban_space,8228,21325526.788,0.0,parcel_current,False,True
+2025,baseline_current,water_space,934,6451371.524,0.0,parcel_current,False,True
+2026,scenario_after_world_model,agricultural_space,8530,122843806.258,-2022097.214,synthetic_annual_change,True,True
+2026,scenario_after_world_model,ecological_space,2561,74382596.57,2022097.214,synthetic_annual_change,True,True
+2026,scenario_after_world_model,other_space,965,11064307.301,0.0,synthetic_annual_change,True,True
+2026,scenario_after_world_model,urban_space,8228,21325526.788,0.0,synthetic_annual_change,True,True
+2026,scenario_after_world_model,water_space,934,6451371.524,0.0,synthetic_annual_change,True,True

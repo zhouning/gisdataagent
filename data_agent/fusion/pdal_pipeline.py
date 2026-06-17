@@ -437,6 +437,72 @@ def run_pdal_pipeline(
     )
 
 
+def build_docker_pdal_executor(
+    image: str = "pdal/pdal:latest",
+    workspace_dir: str | None = None,
+    docker_binary: str = "docker",
+    network: str | None = None,
+    remove: bool = True,
+) -> Any:
+    """Build an executor that runs a PDAL command inside a Docker container.
+
+    The executor matches ``subprocess.run`` enough for ``run_pdal_pipeline``:
+    it accepts the original PDAL command list and returns a CompletedProcess.
+    Paths in the command must live under ``workspace_dir`` so they can be
+    mounted into the container without granting arbitrary host access.
+    """
+    workspace = os.path.abspath(workspace_dir or os.getcwd())
+
+    def executor(command: list[str], **kwargs):
+        container_command = _containerize_pdal_command(command, workspace)
+        docker_command = [docker_binary, "run"]
+        if remove:
+            docker_command.append("--rm")
+        if network:
+            docker_command.extend(["--network", network])
+        docker_command.extend([
+            "-v",
+            f"{workspace}:/workspace",
+            "-w",
+            "/workspace",
+            image,
+        ])
+        docker_command.extend(container_command)
+        return subprocess.run(docker_command, **kwargs)
+
+    return executor
+
+
+def build_docker_pdal_runner_spec(
+    runner_spec: dict,
+    image: str = "pdal/pdal:latest",
+    workspace_dir: str | None = None,
+    docker_binary: str = "docker",
+    network: str | None = None,
+    remove: bool = True,
+) -> dict:
+    """Return a serializable Docker execution companion for a PDAL runner."""
+    workspace = os.path.abspath(workspace_dir or os.getcwd())
+    command = runner_spec.get("command") if isinstance(runner_spec, dict) else []
+    return {
+        "schema": "mmfe.pdal_docker_runner.v1",
+        "runner_schema": runner_spec.get("schema") if isinstance(runner_spec, dict) else None,
+        "image": image,
+        "workspace_dir": workspace,
+        "docker_binary": docker_binary,
+        "network": network,
+        "remove": bool(remove),
+        "docker_command": _docker_pdal_command(
+            command,
+            image=image,
+            workspace_dir=workspace,
+            docker_binary=docker_binary,
+            network=network,
+            remove=remove,
+        ),
+    }
+
+
 def _source_path(source_profile: dict) -> str:
     if not isinstance(source_profile, dict):
         return ""
@@ -569,6 +635,64 @@ def _json_default(value: Any) -> object:
 
 def _subprocess_executor(command: list[str], **kwargs):
     return subprocess.run(command, **kwargs)
+
+
+def _docker_pdal_command(
+    command: list[str],
+    image: str,
+    workspace_dir: str,
+    docker_binary: str = "docker",
+    network: str | None = None,
+    remove: bool = True,
+) -> list[str]:
+    docker_command = [docker_binary, "run"]
+    if remove:
+        docker_command.append("--rm")
+    if network:
+        docker_command.extend(["--network", network])
+    docker_command.extend([
+        "-v",
+        f"{os.path.abspath(workspace_dir)}:/workspace",
+        "-w",
+        "/workspace",
+        image,
+    ])
+    docker_command.extend(_containerize_pdal_command(command, os.path.abspath(workspace_dir)))
+    return docker_command
+
+
+def _containerize_pdal_command(command: list[str], workspace_dir: str) -> list[str]:
+    if not isinstance(command, list) or not command:
+        return []
+    converted = list(command)
+    for index, value in enumerate(converted):
+        if isinstance(value, str) and _looks_like_path(value):
+            converted[index] = _path_for_container(value, workspace_dir)
+    return converted
+
+
+def _looks_like_path(value: str) -> bool:
+    if not value:
+        return False
+    return (
+        value.startswith("/")
+        or value.startswith(".")
+        or os.sep in value
+        or (os.altsep is not None and os.altsep in value)
+    )
+
+
+def _path_for_container(path: str, workspace_dir: str) -> str:
+    absolute = os.path.abspath(path)
+    try:
+        rel = os.path.relpath(absolute, workspace_dir)
+    except ValueError:
+        rel = ".."
+    if rel == ".":
+        return "/workspace"
+    if rel.startswith(".."):
+        raise ValueError(f"PDAL path is outside workspace_dir: {path}")
+    return "/workspace/" + rel.replace(os.sep, "/")
 
 
 def _pdal_runner_result(

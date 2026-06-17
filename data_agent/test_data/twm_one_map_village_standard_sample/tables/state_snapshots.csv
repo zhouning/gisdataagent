@@ -1,0 +1,12 @@
+snapshot_year,temporal_stage,land_space_type,feature_count,area_m2,area_delta_m2,source_dataset,synthetic,not_for_production
+2020,current,Built,653,1121859.039,0.0,JQDLTB,False,True
+2020,current,Farmland,1007,6442346.477,0.0,JQDLTB,False,True
+2020,current,Forest,174,2458178.449,0.0,JQDLTB,False,True
+2020,current,Orchard,266,2398277.072,0.0,JQDLTB,False,True
+2020,current,Other,34,145116.35,0.0,JQDLTB,False,True
+2020,current,Water,83,250885.075,0.0,JQDLTB,False,True
+2035,planning_target,其他国土空间,510,1094585.464,0.0,TDGHDL,False,True
+2035,planning_target,农业生产空间,1651,8879388.417,0.0,TDGHDL,False,True
+2035,planning_target,城镇建设空间,26,45682.329,0.0,TDGHDL,False,True
+2035,planning_target,水域保护空间,79,319101.695,0.0,TDGHDL,False,True
+2035,planning_target,生态保护空间,191,2477892.085,0.0,TDGHDL,False,True

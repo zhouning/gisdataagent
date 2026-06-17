@@ -253,8 +253,12 @@ class TestToolsetRegistration(unittest.TestCase):
         # Original tools still present
         self.assertIn("profile_fusion_sources", func_names)
         self.assertIn("fuse_datasets", func_names)
+        self.assertIn("preflight_mmfe_lakehouse_infrastructure", func_names)
         self.assertIn("plan_semantic_product_publish", func_names)
-        self.assertEqual(len(_ALL_FUNCS), 8)
+        self.assertIn("export_semantic_product_okf", func_names)
+        self.assertIn("build_mmfe_semantic_ontology", func_names)
+        self.assertIn("query_semantic_vectors", func_names)
+        self.assertEqual(len(_ALL_FUNCS), 15)
 
 
 class TestAPIRoutes(unittest.TestCase):

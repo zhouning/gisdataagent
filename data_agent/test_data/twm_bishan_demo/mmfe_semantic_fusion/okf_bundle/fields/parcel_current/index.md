@@ -1,0 +1,29 @@
+# Fields/Parcel Current
+
+* [标识码](bsm.md) - BSM field in parcel_current.
+* [备注](bz.md) - BZ field in parcel_current.
+* [城镇村属性码](czcsxm.md) - CZCSXM field in parcel_current.
+* [地类编码](dlbm.md) - DLBM field in parcel_current.
+* [地类名称](dlmc.md) - DLMC field in parcel_current.
+* [耕地类型](gdlx.md) - GDLX field in parcel_current.
+* [耕地坡度级别](gdpdjb.md) - GDPDJB field in parcel_current.
+* [更新时间](gxsj.md) - GXSJ field in parcel_current.
+* [扣除地类编码](kcdlbm.md) - KCDLBM field in parcel_current.
+* [扣除面积](kcmj.md) - KCMJ field in parcel_current.
+* [扣除系数](kcxs.md) - KCXS field in parcel_current.
+* [描述说明](mssm.md) - MSSM field in parcel_current.
+* [权属单位代码](qsdwdm.md) - QSDWDM field in parcel_current.
+* [权属单位名称](qsdwmc.md) - QSDWMC field in parcel_current.
+* [权属性质](qsxz.md) - QSXZ field in parcel_current.
+* [数据年份](sjnf.md) - SJNF field in parcel_current.
+* [图斑编号](tbbh.md) - TBBH field in parcel_current.
+* [图斑地类面积](tbdlmj.md) - TBDLMJ field in parcel_current.
+* [图斑面积](tbmj.md) - TBMJ field in parcel_current.
+* [图斑细化代码](tbxhdm.md) - TBXHDM field in parcel_current.
+* [图斑细化名称](tbxhmc.md) - TBXHMC field in parcel_current.
+* [图斑预编号](tbybh.md) - TBYBH field in parcel_current.
+* [要素代码](ysdm.md) - YSDM field in parcel_current.
+* [坐落单位代码](zldwdm.md) - ZLDWDM field in parcel_current.
+* [坐落单位名称](zldwmc.md) - ZLDWMC field in parcel_current.
+* [种植属性代码](zzsxdm.md) - ZZSXDM field in parcel_current.
+* [种植属性名称](zzsxmc.md) - ZZSXMC field in parcel_current.

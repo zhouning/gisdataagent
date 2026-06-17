@@ -1575,7 +1575,7 @@ class TestFusionToolset(unittest.TestCase):
         from data_agent.toolsets.fusion_tools import FusionToolset
         toolset = FusionToolset()
         tools = self._run_async(toolset.get_tools())
-        self.assertEqual(len(tools), 8)
+        self.assertEqual(len(tools), 15)
 
     def test_tool_names(self):
         from data_agent.toolsets.fusion_tools import FusionToolset
@@ -1585,7 +1585,11 @@ class TestFusionToolset(unittest.TestCase):
         expected = {"profile_fusion_sources", "assess_fusion_compatibility",
                     "fuse_datasets", "validate_fusion_quality",
                     "standardize_timestamps", "validate_temporal_consistency",
-                    "inject_document_context", "plan_semantic_product_publish"}
+                    "inject_document_context", "preflight_mmfe_lakehouse_infrastructure",
+                    "plan_semantic_product_publish",
+                    "export_semantic_product_okf", "build_twm_state_input",
+                    "build_mmfe_semantic_ontology", "query_semantic_vectors",
+                    "trace_mmfe_semantics", "diagnose_mmfe_semantic_product"}
         self.assertEqual(names, expected)
 
     def test_tool_filter_works(self):

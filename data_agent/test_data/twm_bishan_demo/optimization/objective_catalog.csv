@@ -1,0 +1,14 @@
+objective_id,objective_name_zh,category,direction,unit,weight,hard_constraint,description_zh
+pbf_overlap_m2,永久基本农田占用最小化,hard_constraint,min,m2,1.0,True,候选方案与永久基本农田保护范围的正面积叠置，应优先为 0。
+eco_overlap_m2,生态保护红线触碰最小化,hard_constraint,min,m2,1.0,True,候选方案与生态保护红线的正面积叠置，应优先为 0。
+planning_conflict_m2,用途管制冲突最小化,planning_consistency,min,m2,0.8,False,候选方案与规划分区或用途管制规则不一致的面积。
+farmland_loss_m2,耕地损失最小化,resource_protection,min,m2,0.9,False,候选方案或推演变化造成的耕地面积减少。
+farmland_gain_m2,耕地补充最大化,resource_protection,max,m2,0.55,False,候选方案或推演变化带来的耕地补充面积。
+development_area_m2,建设承载能力最大化,development,max,m2,0.45,False,在合法可行空间内可承载的项目或建设调整面积。
+compactness_score,空间紧凑性最大化,spatial_form,max,score,0.5,False,基于 4*pi*area/perimeter^2 的面积加权紧凑度近似指标。
+adjustment_cost_proxy,调整成本最小化,cost,min,proxy,0.55,False,用调整面积、硬约束触碰和规划冲突构造的工程测试成本代理指标。
+admin_fairness_cv,行政区负担均衡,fairness,min,cv,0.35,False,方案面积在行政单元间分布的变异系数，越低代表越均衡。
+robustness_score,方案稳健性最大化,uncertainty,max,score,0.45,False,基于硬约束风险、复核负荷和 WorldModel episode 稳定性的稳健性近似指标。
+review_load_count,人工复核负荷最小化,governance,min,count,0.35,False,候选方案触发需人工复核的规则命中数量。
+slope_improvement_pct,坡度适宜性改善最大化,dynamic_projection,max,pct,0.3,False,来自 WorldModel/MPC 摘要的坡度改善信号；负坡度变化按改善处理。
+contiguity_gain,空间连片度提升最大化,dynamic_projection,max,score,0.3,False,来自 WorldModel/MPC 摘要的连片度变化信号。

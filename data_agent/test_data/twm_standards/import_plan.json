@@ -1,0 +1,3337 @@
+{
+  "doc_code": "NR_ONE_MAP_TWM_CORE_2026",
+  "title": "自然资源一张图 TWM 核心角色标准契约",
+  "version_label": "2026-06-16-draft",
+  "standard_id": "NR_ONE_MAP_TWM_CORE_2026",
+  "source_contract": "data_agent/test_data/twm_standards/one_map_role_contracts.zh.json",
+  "source_aliases": "data_agent/test_data/twm_standards/one_map_field_aliases.zh.json",
+  "source_domains": "data_agent/test_data/twm_standards/one_map_value_domains.zh.json",
+  "counts": {
+    "roles": 9,
+    "clauses": 9,
+    "data_elements": 174,
+    "value_domains": 29,
+    "value_domain_items": 53
+  },
+  "clauses": [
+    {
+      "code": "ROLE.parcel_current",
+      "ordinal_path": "1",
+      "heading": "parcel_current / 现状地类图斑",
+      "body_md": "TWM role `parcel_current` maps to One Map tables DLTB and runtime target `parcel_current`.",
+      "source_origin": {
+        "role": "parcel_current",
+        "standard_tables": [
+          {
+            "module": "统一调查监测",
+            "table_code": "DLTB",
+            "table_alias_zh": "地类图斑"
+          }
+        ],
+        "layer_candidates": [
+          "parcel_current.geojson",
+          "JQDLTB.shp",
+          "DLTB"
+        ],
+        "twm_binding": {
+          "object_id": "BSM",
+          "land_use_code": "DLBM",
+          "land_use_name": "DLMC",
+          "area_m2": "TBMJ",
+          "admin_code": "QSDWDM",
+          "admin_name": "QSDWMC",
+          "temporal_key": "SJNF"
+        }
+      }
+    },
+    {
+      "code": "ROLE.pbf",
+      "ordinal_path": "2",
+      "heading": "pbf / 永久基本农田",
+      "body_md": "TWM role `pbf` maps to One Map tables YJJBNTTB, YJJBNT and runtime target `synthetic_pbf`.",
+      "source_origin": {
+        "role": "pbf",
+        "standard_tables": [
+          {
+            "module": "底线安全",
+            "table_code": "YJJBNTTB",
+            "table_alias_zh": "永久基本农田保护图斑"
+          },
+          {
+            "module": "统一规划",
+            "table_code": "YJJBNT",
+            "table_alias_zh": "永久基本农田"
+          }
+        ],
+        "layer_candidates": [
+          "synthetic_pbf.geojson",
+          "YJJBNTTB",
+          "YJJBNT"
+        ],
+        "twm_binding": {
+          "object_id": "YJJBNTTBBH",
+          "source_parcel_id": "TBBH",
+          "land_use_code": "DLBM",
+          "area_m2": "YJJBNTMJ",
+          "admin_code": "XZQDM",
+          "admin_name": "XZQMC"
+        }
+      }
+    },
+    {
+      "code": "ROLE.eco_redline",
+      "ordinal_path": "3",
+      "heading": "eco_redline / 生态保护红线",
+      "body_md": "TWM role `eco_redline` maps to One Map tables STBHHX, STBHHX and runtime target `synthetic_eco_redline`.",
+      "source_origin": {
+        "role": "eco_redline",
+        "standard_tables": [
+          {
+            "module": "统一调查监测",
+            "table_code": "STBHHX",
+            "table_alias_zh": "生态保护红线"
+          },
+          {
+            "module": "统一规划",
+            "table_code": "STBHHX",
+            "table_alias_zh": "生态保护红线"
+          }
+        ],
+        "layer_candidates": [
+          "synthetic_eco_redline.geojson",
+          "STBHHX"
+        ],
+        "twm_binding": {
+          "object_id": "BSM",
+          "name": "MC",
+          "area_m2": "MJ",
+          "area_km2": "QYMJ",
+          "admin_code": "XJXZQDM",
+          "admin_name": "XJXZQMC"
+        }
+      }
+    },
+    {
+      "code": "ROLE.urban_boundary",
+      "ordinal_path": "4",
+      "heading": "urban_boundary / 城镇开发边界",
+      "body_md": "TWM role `urban_boundary` maps to One Map tables CZKFBJ, CZKFBJ and runtime target `synthetic_urban_boundary`.",
+      "source_origin": {
+        "role": "urban_boundary",
+        "standard_tables": [
+          {
+            "module": "统一调查监测",
+            "table_code": "CZKFBJ",
+            "table_alias_zh": "城镇开发边界"
+          },
+          {
+            "module": "统一规划",
+            "table_code": "CZKFBJ",
+            "table_alias_zh": "城镇开发边界"
+          }
+        ],
+        "layer_candidates": [
+          "synthetic_urban_boundary.geojson",
+          "CZKFBJ",
+          "JSYDGZQ.shp"
+        ],
+        "twm_binding": {
+          "object_id": "BSM",
+          "zone_code": "GHFQDM",
+          "zone_name": "GHFQMC",
+          "area_m2": "MJ",
+          "admin_code": "XZQDM",
+          "admin_name": "XZQMC"
+        }
+      }
+    },
+    {
+      "code": "ROLE.planning_zone",
+      "ordinal_path": "5",
+      "heading": "planning_zone / 国土空间用途管制分区",
+      "body_md": "TWM role `planning_zone` maps to One Map tables CZKFBJ and runtime target `synthetic_planning_zones`.",
+      "source_origin": {
+        "role": "planning_zone",
+        "standard_tables": [
+          {
+            "module": "统一规划",
+            "table_code": "CZKFBJ",
+            "table_alias_zh": "城镇开发边界规划分区"
+          }
+        ],
+        "layer_candidates": [
+          "synthetic_planning_zones.geojson",
+          "TDGHDL.shp",
+          "JSYDGZQ.shp"
+        ],
+        "twm_binding": {
+          "object_id": "BSM",
+          "zone_code": "GHFQDM",
+          "zone_name": "GHFQMC",
+          "area_m2": "MJ",
+          "admin_code": "XZQDM",
+          "admin_name": "XZQMC"
+        }
+      }
+    },
+    {
+      "code": "ROLE.project",
+      "ordinal_path": "6",
+      "heading": "project / 建设项目空间范围",
+      "body_md": "TWM role `project` maps to One Map tables XS_XMKJFW, LSYD_XMZDFW and runtime target `synthetic_projects`.",
+      "source_origin": {
+        "role": "project",
+        "standard_tables": [
+          {
+            "module": "用途管制",
+            "table_code": "XS_XMKJFW",
+            "table_alias_zh": "项目占地范围"
+          },
+          {
+            "module": "用途管制",
+            "table_code": "LSYD_XMZDFW",
+            "table_alias_zh": "临时用地项目占地范围"
+          }
+        ],
+        "layer_candidates": [
+          "synthetic_projects.geojson",
+          "XS_XMKJFW",
+          "LSYD_XMZDFW"
+        ],
+        "twm_binding": {
+          "object_id": "XMDM",
+          "case_id": "AJBH",
+          "project_name": "XMMC",
+          "area_m2": "YDMJ",
+          "admin_code": "SZXZQDM",
+          "admin_name": "SZXZQMC"
+        }
+      }
+    },
+    {
+      "code": "ROLE.approval",
+      "ordinal_path": "7",
+      "heading": "approval / 用途管制审批记录",
+      "body_md": "TWM role `approval` maps to One Map tables ZZ_NYDZYFW, ZZ_TDZSFW and runtime target `approval_records`.",
+      "source_origin": {
+        "role": "approval",
+        "standard_tables": [
+          {
+            "module": "用途管制",
+            "table_code": "ZZ_NYDZYFW",
+            "table_alias_zh": "农用地转用范围"
+          },
+          {
+            "module": "用途管制",
+            "table_code": "ZZ_TDZSFW",
+            "table_alias_zh": "土地征收范围"
+          }
+        ],
+        "layer_candidates": [
+          "approval_records.csv",
+          "ZZ_NYDZYFW",
+          "ZZ_TDZSFW"
+        ],
+        "twm_binding": {
+          "object_id": "DKBH",
+          "case_id": "AJBH",
+          "regulatory_number": "DZJGH",
+          "area_m2": "DKMJ",
+          "admin_code": "XZQDM",
+          "admin_name": "XZQMC"
+        }
+      }
+    },
+    {
+      "code": "ROLE.enforcement",
+      "ordinal_path": "8",
+      "heading": "enforcement / 执法督察事件",
+      "body_md": "TWM role `enforcement` maps to One Map tables WFDK, YGYSXZJSYDTB and runtime target `enforcement_events`.",
+      "source_origin": {
+        "role": "enforcement",
+        "standard_tables": [
+          {
+            "module": "执法督察",
+            "table_code": "WFDK",
+            "table_alias_zh": "违法地块"
+          },
+          {
+            "module": "执法督察",
+            "table_code": "YGYSXZJSYDTB",
+            "table_alias_zh": "遥感疑似新增建设用地图斑"
+          }
+        ],
+        "layer_candidates": [
+          "enforcement_events.csv",
+          "WFDK",
+          "YGYSXZJSYDTB"
+        ],
+        "twm_binding": {
+          "object_id": "WFDKXH",
+          "remote_sensing_id": "YGTBZJ",
+          "case_id": "WFXWZJ",
+          "area_m2": "JCMJ",
+          "admin_code": "XZQDM",
+          "temporal_key": "ND"
+        }
+      }
+    },
+    {
+      "code": "ROLE.metadata_vector",
+      "ordinal_path": "9",
+      "heading": "metadata_vector / 矢量数据元数据",
+      "body_md": "TWM role `metadata_vector` maps to One Map tables meta_VectorData and runtime target `metadata_vector`.",
+      "source_origin": {
+        "role": "metadata_vector",
+        "standard_tables": [
+          {
+            "module": "元数据",
+            "table_code": "meta_VectorData",
+            "table_alias_zh": "矢量数据元数据表"
+          }
+        ],
+        "layer_candidates": [
+          "metadata_vector.csv",
+          "meta_VectorData"
+        ],
+        "twm_binding": {
+          "object_id": "data_id",
+          "asset_id": "resource_id",
+          "name": "data_name",
+          "alias": "data_alias",
+          "crs": "wkid",
+          "quality_score": "score"
+        }
+      }
+    }
+  ],
+  "value_domains": [
+    {
+      "code": "ownership_nature_code",
+      "name": "ownership_nature_code",
+      "kind": "enumeration",
+      "items": [
+        {
+          "code": "10",
+          "name_zh": "国有土地"
+        },
+        {
+          "code": "20",
+          "name_zh": "集体土地"
+        },
+        {
+          "code": "30",
+          "name_zh": "国有土地使用权"
+        },
+        {
+          "code": "40",
+          "name_zh": "集体土地使用权"
+        },
+        {
+          "code": "50",
+          "name_zh": "国有建设用地使用权"
+        },
+        {
+          "code": "60",
+          "name_zh": "集体建设用地使用权"
+        },
+        {
+          "code": "70",
+          "name_zh": "宅基地使用权"
+        },
+        {
+          "code": "80",
+          "name_zh": "土地承包经营权"
+        },
+        {
+          "code": "90",
+          "name_zh": "林地使用权"
+        },
+        {
+          "code": "99",
+          "name_zh": "其他"
+        }
+      ]
+    },
+    {
+      "code": "parcel_current.TBMJ.range",
+      "name": "图斑面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "parcel_current.TBDLMJ.range",
+      "name": "图斑地类面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "parcel_current.SJNF.pattern",
+      "name": "数据年份格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{4}$",
+          "name_zh": "^[0-9]{4}$"
+        }
+      ]
+    },
+    {
+      "code": "pbf.YJJBNTTBMJ.range",
+      "name": "永久基本农田图斑面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "pbf.YJJBNTMJ.range",
+      "name": "永久基本农田面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "pbf.BHKSSJ.pattern",
+      "name": "保护开始时间格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "pbf.BHJSSJ.pattern",
+      "name": "保护结束时间格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "yes_no_code",
+      "name": "yes_no_code",
+      "kind": "enumeration",
+      "items": [
+        {
+          "code": "1",
+          "name_zh": "是"
+        },
+        {
+          "code": "0",
+          "name_zh": "否"
+        }
+      ]
+    },
+    {
+      "code": "eco_redline.MJ.range",
+      "name": "面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "eco_redline_type_code",
+      "name": "eco_redline_type_code",
+      "kind": "enumeration",
+      "items": [
+        {
+          "code": "01",
+          "name_zh": "生态功能重要区"
+        },
+        {
+          "code": "02",
+          "name_zh": "生态环境敏感脆弱区"
+        },
+        {
+          "code": "03",
+          "name_zh": "禁止开发区域"
+        },
+        {
+          "code": "99",
+          "name_zh": "其他生态保护红线"
+        }
+      ]
+    },
+    {
+      "code": "eco_redline.QYMJ.range",
+      "name": "区域面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "eco_redline.SLSJ.pattern",
+      "name": "收录时间格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "urban_planning_partition_code",
+      "name": "urban_planning_partition_code",
+      "kind": "enumeration",
+      "items": [
+        {
+          "code": "01",
+          "name_zh": "城镇集中建设区"
+        },
+        {
+          "code": "02",
+          "name_zh": "城镇弹性发展区"
+        },
+        {
+          "code": "03",
+          "name_zh": "特别用途区"
+        },
+        {
+          "code": "99",
+          "name_zh": "其他城镇开发边界分区"
+        }
+      ]
+    },
+    {
+      "code": "urban_boundary.MJ.range",
+      "name": "面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "urban_boundary.CZKFMJ.range",
+      "name": "城镇开发面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "urban_boundary.SLSJ.pattern",
+      "name": "收录时间格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "planning_space_partition_code",
+      "name": "planning_space_partition_code",
+      "kind": "enumeration",
+      "items": [
+        {
+          "code": "01",
+          "name_zh": "农业生产空间"
+        },
+        {
+          "code": "02",
+          "name_zh": "生态保护空间"
+        },
+        {
+          "code": "03",
+          "name_zh": "城镇建设空间"
+        },
+        {
+          "code": "04",
+          "name_zh": "水域保护空间"
+        },
+        {
+          "code": "99",
+          "name_zh": "其他国土空间"
+        }
+      ]
+    },
+    {
+      "code": "planning_zone.MJ.range",
+      "name": "面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "project.YDMJ.range",
+      "name": "用地面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min_exclusive:0",
+          "name_zh": "min_exclusive=0"
+        }
+      ]
+    },
+    {
+      "code": "project.SQRQ.pattern",
+      "name": "申请日期格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "project.GXRQ.pattern",
+      "name": "更新日期格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "approval.DKMJ.range",
+      "name": "地块面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min:0",
+          "name_zh": "min=0"
+        }
+      ]
+    },
+    {
+      "code": "enforcement.JCMJ.range",
+      "name": "监测面积数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min:0",
+          "name_zh": "min=0"
+        }
+      ]
+    },
+    {
+      "code": "enforcement.ND.pattern",
+      "name": "年度格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{4}$",
+          "name_zh": "^[0-9]{4}$"
+        }
+      ]
+    },
+    {
+      "code": "enforcement.QSSJ.pattern",
+      "name": "起始时间格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "enforcement.ZZSJ.pattern",
+      "name": "终止时间格式",
+      "kind": "pattern",
+      "items": [
+        {
+          "code": "^[0-9]{8}$",
+          "name_zh": "^[0-9]{8}$"
+        }
+      ]
+    },
+    {
+      "code": "metadata_vector.score.range",
+      "name": "质量分数数值范围",
+      "kind": "range",
+      "items": [
+        {
+          "code": "min:0",
+          "name_zh": "min=0"
+        },
+        {
+          "code": "max:100",
+          "name_zh": "max=100"
+        }
+      ]
+    },
+    {
+      "code": "quality_evaluation_level",
+      "name": "quality_evaluation_level",
+      "kind": "enumeration",
+      "items": [
+        {
+          "code": "优",
+          "name_zh": "优"
+        },
+        {
+          "code": "良",
+          "name_zh": "良"
+        },
+        {
+          "code": "中",
+          "name_zh": "中"
+        },
+        {
+          "code": "差",
+          "name_zh": "差"
+        }
+      ]
+    }
+  ],
+  "data_elements": [
+    {
+      "code": "parcel_current.BSM",
+      "role": "parcel_current",
+      "field": "BSM",
+      "name_zh": "标识码",
+      "definition": "现状地类图斑.标识码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "BSM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.YSDM",
+      "role": "parcel_current",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "现状地类图斑.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.TBBH",
+      "role": "parcel_current",
+      "field": "TBBH",
+      "name_zh": "图斑编号",
+      "definition": "现状地类图斑.图斑编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "TBBH",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.DLBM",
+      "role": "parcel_current",
+      "field": "DLBM",
+      "name_zh": "地类编码",
+      "definition": "现状地类图斑.地类编码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "gb_t_21010_2017_land_use_code",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "DLBM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.DLMC",
+      "role": "parcel_current",
+      "field": "DLMC",
+      "name_zh": "地类名称",
+      "definition": "现状地类图斑.地类名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "DLMC",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.QSXZ",
+      "role": "parcel_current",
+      "field": "QSXZ",
+      "name_zh": "权属性质",
+      "definition": "现状地类图斑.权属性质",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "ownership_nature_code",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "QSXZ",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.QSDWDM",
+      "role": "parcel_current",
+      "field": "QSDWDM",
+      "name_zh": "权属单位代码",
+      "definition": "现状地类图斑.权属单位代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "QSDWDM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.QSDWMC",
+      "role": "parcel_current",
+      "field": "QSDWMC",
+      "name_zh": "权属单位名称",
+      "definition": "现状地类图斑.权属单位名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "QSDWMC",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.ZLDWDM",
+      "role": "parcel_current",
+      "field": "ZLDWDM",
+      "name_zh": "坐落单位代码",
+      "definition": "现状地类图斑.坐落单位代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "ZLDWDM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.ZLDWMC",
+      "role": "parcel_current",
+      "field": "ZLDWMC",
+      "name_zh": "坐落单位名称",
+      "definition": "现状地类图斑.坐落单位名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "ZLDWMC",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.TBMJ",
+      "role": "parcel_current",
+      "field": "TBMJ",
+      "name_zh": "图斑面积",
+      "definition": "现状地类图斑.图斑面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "parcel_current.TBMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "TBMJ",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.TBDLMJ",
+      "role": "parcel_current",
+      "field": "TBDLMJ",
+      "name_zh": "图斑地类面积",
+      "definition": "现状地类图斑.图斑地类面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "parcel_current.TBDLMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "TBDLMJ",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.SJNF",
+      "role": "parcel_current",
+      "field": "SJNF",
+      "name_zh": "数据年份",
+      "definition": "现状地类图斑.数据年份",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "parcel_current.SJNF.pattern",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "SJNF",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.MSSM",
+      "role": "parcel_current",
+      "field": "MSSM",
+      "name_zh": "描述说明",
+      "definition": "现状地类图斑.描述说明",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "parcel_current",
+      "bound_column": "MSSM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.TBYBH",
+      "role": "parcel_current",
+      "field": "TBYBH",
+      "name_zh": "图斑预编号",
+      "definition": "现状地类图斑.图斑预编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "TBYBH",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.KCDLBM",
+      "role": "parcel_current",
+      "field": "KCDLBM",
+      "name_zh": "扣除地类编码",
+      "definition": "现状地类图斑.扣除地类编码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "KCDLBM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.KCXS",
+      "role": "parcel_current",
+      "field": "KCXS",
+      "name_zh": "扣除系数",
+      "definition": "现状地类图斑.扣除系数",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "KCXS",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.KCMJ",
+      "role": "parcel_current",
+      "field": "KCMJ",
+      "name_zh": "扣除面积",
+      "definition": "现状地类图斑.扣除面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "KCMJ",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.GDLX",
+      "role": "parcel_current",
+      "field": "GDLX",
+      "name_zh": "耕地类型",
+      "definition": "现状地类图斑.耕地类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "GDLX",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.GDPDJB",
+      "role": "parcel_current",
+      "field": "GDPDJB",
+      "name_zh": "耕地坡度级别",
+      "definition": "现状地类图斑.耕地坡度级别",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "GDPDJB",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.TBXHDM",
+      "role": "parcel_current",
+      "field": "TBXHDM",
+      "name_zh": "图斑细化代码",
+      "definition": "现状地类图斑.图斑细化代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "TBXHDM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.TBXHMC",
+      "role": "parcel_current",
+      "field": "TBXHMC",
+      "name_zh": "图斑细化名称",
+      "definition": "现状地类图斑.图斑细化名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "TBXHMC",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.ZZSXDM",
+      "role": "parcel_current",
+      "field": "ZZSXDM",
+      "name_zh": "种植属性代码",
+      "definition": "现状地类图斑.种植属性代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "ZZSXDM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.ZZSXMC",
+      "role": "parcel_current",
+      "field": "ZZSXMC",
+      "name_zh": "种植属性名称",
+      "definition": "现状地类图斑.种植属性名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "ZZSXMC",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.CZCSXM",
+      "role": "parcel_current",
+      "field": "CZCSXM",
+      "name_zh": "城镇村属性码",
+      "definition": "现状地类图斑.城镇村属性码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "CZCSXM",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.GXSJ",
+      "role": "parcel_current",
+      "field": "GXSJ",
+      "name_zh": "更新时间",
+      "definition": "现状地类图斑.更新时间",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "GXSJ",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "parcel_current.BZ",
+      "role": "parcel_current",
+      "field": "BZ",
+      "name_zh": "备注",
+      "definition": "现状地类图斑.备注",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "parcel_current",
+      "bound_column": "BZ",
+      "defined_by_clause_code": "ROLE.parcel_current"
+    },
+    {
+      "code": "pbf.BSM",
+      "role": "pbf",
+      "field": "BSM",
+      "name_zh": "标识码",
+      "definition": "永久基本农田.标识码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "BSM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.YSDM",
+      "role": "pbf",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "永久基本农田.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.XZQDM",
+      "role": "pbf",
+      "field": "XZQDM",
+      "name_zh": "行政区代码",
+      "definition": "永久基本农田.行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "XZQDM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.XZQMC",
+      "role": "pbf",
+      "field": "XZQMC",
+      "name_zh": "行政区名称",
+      "definition": "永久基本农田.行政区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "XZQMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.YJJBNTTBBH",
+      "role": "pbf",
+      "field": "YJJBNTTBBH",
+      "name_zh": "永久基本农田图斑编号",
+      "definition": "永久基本农田.永久基本农田图斑编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "YJJBNTTBBH",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.TBBH",
+      "role": "pbf",
+      "field": "TBBH",
+      "name_zh": "图斑编号",
+      "definition": "永久基本农田.图斑编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "TBBH",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.DLBM",
+      "role": "pbf",
+      "field": "DLBM",
+      "name_zh": "地类编码",
+      "definition": "永久基本农田.地类编码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "DLBM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.DLMC",
+      "role": "pbf",
+      "field": "DLMC",
+      "name_zh": "地类名称",
+      "definition": "永久基本农田.地类名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "DLMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.QSXZ",
+      "role": "pbf",
+      "field": "QSXZ",
+      "name_zh": "权属性质",
+      "definition": "永久基本农田.权属性质",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "QSXZ",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.QSDWDM",
+      "role": "pbf",
+      "field": "QSDWDM",
+      "name_zh": "权属单位代码",
+      "definition": "永久基本农田.权属单位代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "QSDWDM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.QSDWMC",
+      "role": "pbf",
+      "field": "QSDWMC",
+      "name_zh": "权属单位名称",
+      "definition": "永久基本农田.权属单位名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "QSDWMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.ZLDWDM",
+      "role": "pbf",
+      "field": "ZLDWDM",
+      "name_zh": "坐落单位代码",
+      "definition": "永久基本农田.坐落单位代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "ZLDWDM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.ZLDWMC",
+      "role": "pbf",
+      "field": "ZLDWMC",
+      "name_zh": "坐落单位名称",
+      "definition": "永久基本农田.坐落单位名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "ZLDWMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.YJJBNTTBMJ",
+      "role": "pbf",
+      "field": "YJJBNTTBMJ",
+      "name_zh": "永久基本农田图斑面积",
+      "definition": "永久基本农田.永久基本农田图斑面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "pbf.YJJBNTTBMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "YJJBNTTBMJ",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.YJJBNTMJ",
+      "role": "pbf",
+      "field": "YJJBNTMJ",
+      "name_zh": "永久基本农田面积",
+      "definition": "永久基本农田.永久基本农田面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "pbf.YJJBNTMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "YJJBNTMJ",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.SJNF",
+      "role": "pbf",
+      "field": "SJNF",
+      "name_zh": "数据年份",
+      "definition": "永久基本农田.数据年份",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "SJNF",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.BHKSSJ",
+      "role": "pbf",
+      "field": "BHKSSJ",
+      "name_zh": "保护开始时间",
+      "definition": "永久基本农田.保护开始时间",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "pbf.BHKSSJ.pattern",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "BHKSSJ",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.BHJSSJ",
+      "role": "pbf",
+      "field": "BHJSSJ",
+      "name_zh": "保护结束时间",
+      "definition": "永久基本农田.保护结束时间",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "pbf.BHJSSJ.pattern",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "BHJSSJ",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.WDGD",
+      "role": "pbf",
+      "field": "WDGD",
+      "name_zh": "稳定利用耕地标识",
+      "definition": "永久基本农田.稳定利用耕地标识",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "yes_no_code",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "WDGD",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.GDPDJB",
+      "role": "pbf",
+      "field": "GDPDJB",
+      "name_zh": "耕地坡度级别",
+      "definition": "永久基本农田.耕地坡度级别",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "GDPDJB",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.KCDLBM",
+      "role": "pbf",
+      "field": "KCDLBM",
+      "name_zh": "扣除地类编码",
+      "definition": "永久基本农田.扣除地类编码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "KCDLBM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.KCXS",
+      "role": "pbf",
+      "field": "KCXS",
+      "name_zh": "扣除系数",
+      "definition": "永久基本农田.扣除系数",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "KCXS",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.KCMJ",
+      "role": "pbf",
+      "field": "KCMJ",
+      "name_zh": "扣除面积",
+      "definition": "永久基本农田.扣除面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "KCMJ",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.GDLX",
+      "role": "pbf",
+      "field": "GDLX",
+      "name_zh": "耕地类型",
+      "definition": "永久基本农田.耕地类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "GDLX",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.TBXHDM",
+      "role": "pbf",
+      "field": "TBXHDM",
+      "name_zh": "图斑细化代码",
+      "definition": "永久基本农田.图斑细化代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "TBXHDM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.TBXHMC",
+      "role": "pbf",
+      "field": "TBXHMC",
+      "name_zh": "图斑细化名称",
+      "definition": "永久基本农田.图斑细化名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "TBXHMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.GDZZSXDM",
+      "role": "pbf",
+      "field": "GDZZSXDM",
+      "name_zh": "耕地种植属性代码",
+      "definition": "永久基本农田.耕地种植属性代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "GDZZSXDM",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.GDZZSXMC",
+      "role": "pbf",
+      "field": "GDZZSXMC",
+      "name_zh": "耕地种植属性名称",
+      "definition": "永久基本农田.耕地种植属性名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "GDZZSXMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.CFZR",
+      "role": "pbf",
+      "field": "CFZR",
+      "name_zh": "承包方责任人",
+      "definition": "永久基本农田.承包方责任人",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "CFZR",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.ZRRMC",
+      "role": "pbf",
+      "field": "ZRRMC",
+      "name_zh": "责任人名称",
+      "definition": "永久基本农田.责任人名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "ZRRMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.SJBH",
+      "role": "pbf",
+      "field": "SJBH",
+      "name_zh": "数据编号",
+      "definition": "永久基本农田.数据编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "SJBH",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.SJMC",
+      "role": "pbf",
+      "field": "SJMC",
+      "name_zh": "数据名称",
+      "definition": "永久基本农田.数据名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "SJMC",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "pbf.BZ",
+      "role": "pbf",
+      "field": "BZ",
+      "name_zh": "备注",
+      "definition": "永久基本农田.备注",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_pbf",
+      "bound_column": "BZ",
+      "defined_by_clause_code": "ROLE.pbf"
+    },
+    {
+      "code": "eco_redline.BSM",
+      "role": "eco_redline",
+      "field": "BSM",
+      "name_zh": "标识码",
+      "definition": "生态保护红线.标识码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "BSM",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.YSDM",
+      "role": "eco_redline",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "生态保护红线.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.XJXZQDM",
+      "role": "eco_redline",
+      "field": "XJXZQDM",
+      "name_zh": "县级行政区代码",
+      "definition": "生态保护红线.县级行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "XJXZQDM",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.XJXZQMC",
+      "role": "eco_redline",
+      "field": "XJXZQMC",
+      "name_zh": "县级行政区名称",
+      "definition": "生态保护红线.县级行政区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "XJXZQMC",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.LHLX",
+      "role": "eco_redline",
+      "field": "LHLX",
+      "name_zh": "陆海类型",
+      "definition": "生态保护红线.陆海类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "LHLX",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.MJ",
+      "role": "eco_redline",
+      "field": "MJ",
+      "name_zh": "面积",
+      "definition": "生态保护红线.面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "eco_redline.MJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "MJ",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.XJXZQHDM",
+      "role": "eco_redline",
+      "field": "XJXZQHDM",
+      "name_zh": "县级行政区划代码",
+      "definition": "生态保护红线.县级行政区划代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "XJXZQHDM",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.LXDM",
+      "role": "eco_redline",
+      "field": "LXDM",
+      "name_zh": "类型代码",
+      "definition": "生态保护红线.类型代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "eco_redline_type_code",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "LXDM",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.MC",
+      "role": "eco_redline",
+      "field": "MC",
+      "name_zh": "名称",
+      "definition": "生态保护红线.名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "MC",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.QYMJ",
+      "role": "eco_redline",
+      "field": "QYMJ",
+      "name_zh": "区域面积",
+      "definition": "生态保护红线.区域面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "km2",
+      "value_domain_code": "eco_redline.QYMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "QYMJ",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.SLSJ",
+      "role": "eco_redline",
+      "field": "SLSJ",
+      "name_zh": "收录时间",
+      "definition": "生态保护红线.收录时间",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "eco_redline.SLSJ.pattern",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "SLSJ",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.GKCS",
+      "role": "eco_redline",
+      "field": "GKCS",
+      "name_zh": "管控措施",
+      "definition": "生态保护红线.管控措施",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "GKCS",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.SLDM",
+      "role": "eco_redline",
+      "field": "SLDM",
+      "name_zh": "分类代码",
+      "definition": "生态保护红线.分类代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "SLDM",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.RKSL",
+      "role": "eco_redline",
+      "field": "RKSL",
+      "name_zh": "人口数量",
+      "definition": "生态保护红线.人口数量",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "RKSL",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.STGNYBHMB",
+      "role": "eco_redline",
+      "field": "STGNYBHMB",
+      "name_zh": "生态功能预保护目标",
+      "definition": "生态保护红线.生态功能预保护目标",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "STGNYBHMB",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.STXTYZBLX",
+      "role": "eco_redline",
+      "field": "STXTYZBLX",
+      "name_zh": "生态系统因子斑类型",
+      "definition": "生态保护红线.生态系统因子斑类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "STXTYZBLX",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.RWHDLX",
+      "role": "eco_redline",
+      "field": "RWHDLX",
+      "name_zh": "人为活动类型",
+      "definition": "生态保护红线.人为活动类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "RWHDLX",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.STHJWT",
+      "role": "eco_redline",
+      "field": "STHJWT",
+      "name_zh": "生态环境问题",
+      "definition": "生态保护红线.生态环境问题",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "STHJWT",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "eco_redline.BZ",
+      "role": "eco_redline",
+      "field": "BZ",
+      "name_zh": "备注",
+      "definition": "生态保护红线.备注",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_eco_redline",
+      "bound_column": "BZ",
+      "defined_by_clause_code": "ROLE.eco_redline"
+    },
+    {
+      "code": "urban_boundary.BSM",
+      "role": "urban_boundary",
+      "field": "BSM",
+      "name_zh": "标识码",
+      "definition": "城镇开发边界.标识码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "BSM",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.YSDM",
+      "role": "urban_boundary",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "城镇开发边界.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.XZQDM",
+      "role": "urban_boundary",
+      "field": "XZQDM",
+      "name_zh": "行政区代码",
+      "definition": "城镇开发边界.行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "XZQDM",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.XZQMC",
+      "role": "urban_boundary",
+      "field": "XZQMC",
+      "name_zh": "行政区名称",
+      "definition": "城镇开发边界.行政区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "XZQMC",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.GHFQDM",
+      "role": "urban_boundary",
+      "field": "GHFQDM",
+      "name_zh": "规划分区代码",
+      "definition": "城镇开发边界.规划分区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "urban_planning_partition_code",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "GHFQDM",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.GHFQMC",
+      "role": "urban_boundary",
+      "field": "GHFQMC",
+      "name_zh": "规划分区名称",
+      "definition": "城镇开发边界.规划分区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "GHFQMC",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.MJ",
+      "role": "urban_boundary",
+      "field": "MJ",
+      "name_zh": "面积",
+      "definition": "城镇开发边界.面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "urban_boundary.MJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "MJ",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.CZMC",
+      "role": "urban_boundary",
+      "field": "CZMC",
+      "name_zh": "城镇名称",
+      "definition": "城镇开发边界.城镇名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "CZMC",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.XJXZQHDM",
+      "role": "urban_boundary",
+      "field": "XJXZQHDM",
+      "name_zh": "县级行政区划代码",
+      "definition": "城镇开发边界.县级行政区划代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "XJXZQHDM",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.CZKFMJ",
+      "role": "urban_boundary",
+      "field": "CZKFMJ",
+      "name_zh": "城镇开发面积",
+      "definition": "城镇开发边界.城镇开发面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "urban_boundary.CZKFMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "CZKFMJ",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "urban_boundary.SLSJ",
+      "role": "urban_boundary",
+      "field": "SLSJ",
+      "name_zh": "收录时间",
+      "definition": "城镇开发边界.收录时间",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "urban_boundary.SLSJ.pattern",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_urban_boundary",
+      "bound_column": "SLSJ",
+      "defined_by_clause_code": "ROLE.urban_boundary"
+    },
+    {
+      "code": "planning_zone.BSM",
+      "role": "planning_zone",
+      "field": "BSM",
+      "name_zh": "标识码",
+      "definition": "国土空间用途管制分区.标识码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_planning_zones",
+      "bound_column": "BSM",
+      "defined_by_clause_code": "ROLE.planning_zone"
+    },
+    {
+      "code": "planning_zone.YSDM",
+      "role": "planning_zone",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "国土空间用途管制分区.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_planning_zones",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.planning_zone"
+    },
+    {
+      "code": "planning_zone.XZQDM",
+      "role": "planning_zone",
+      "field": "XZQDM",
+      "name_zh": "行政区代码",
+      "definition": "国土空间用途管制分区.行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_planning_zones",
+      "bound_column": "XZQDM",
+      "defined_by_clause_code": "ROLE.planning_zone"
+    },
+    {
+      "code": "planning_zone.XZQMC",
+      "role": "planning_zone",
+      "field": "XZQMC",
+      "name_zh": "行政区名称",
+      "definition": "国土空间用途管制分区.行政区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_planning_zones",
+      "bound_column": "XZQMC",
+      "defined_by_clause_code": "ROLE.planning_zone"
+    },
+    {
+      "code": "planning_zone.GHFQDM",
+      "role": "planning_zone",
+      "field": "GHFQDM",
+      "name_zh": "规划分区代码",
+      "definition": "国土空间用途管制分区.规划分区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "planning_space_partition_code",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_planning_zones",
+      "bound_column": "GHFQDM",
+      "defined_by_clause_code": "ROLE.planning_zone"
+    },
+    {
+      "code": "planning_zone.GHFQMC",
+      "role": "planning_zone",
+      "field": "GHFQMC",
+      "name_zh": "规划分区名称",
+      "definition": "国土空间用途管制分区.规划分区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_planning_zones",
+      "bound_column": "GHFQMC",
+      "defined_by_clause_code": "ROLE.planning_zone"
+    },
+    {
+      "code": "planning_zone.MJ",
+      "role": "planning_zone",
+      "field": "MJ",
+      "name_zh": "面积",
+      "definition": "国土空间用途管制分区.面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "planning_zone.MJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_planning_zones",
+      "bound_column": "MJ",
+      "defined_by_clause_code": "ROLE.planning_zone"
+    },
+    {
+      "code": "project.YSDM",
+      "role": "project",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "建设项目空间范围.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.XMDM",
+      "role": "project",
+      "field": "XMDM",
+      "name_zh": "项目代码",
+      "definition": "建设项目空间范围.项目代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "XMDM",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.DZJGH",
+      "role": "project",
+      "field": "DZJGH",
+      "name_zh": "电子监管号",
+      "definition": "建设项目空间范围.电子监管号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "DZJGH",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.AJBH",
+      "role": "project",
+      "field": "AJBH",
+      "name_zh": "案卷编号",
+      "definition": "建设项目空间范围.案卷编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "AJBH",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.XMMC",
+      "role": "project",
+      "field": "XMMC",
+      "name_zh": "项目名称",
+      "definition": "建设项目空间范围.项目名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "XMMC",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.SZXZQDM",
+      "role": "project",
+      "field": "SZXZQDM",
+      "name_zh": "所在行政区代码",
+      "definition": "建设项目空间范围.所在行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "SZXZQDM",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.SZXZQMC",
+      "role": "project",
+      "field": "SZXZQMC",
+      "name_zh": "所在行政区名称",
+      "definition": "建设项目空间范围.所在行政区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "SZXZQMC",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.YDMJ",
+      "role": "project",
+      "field": "YDMJ",
+      "name_zh": "用地面积",
+      "definition": "建设项目空间范围.用地面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "project.YDMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "synthetic_projects",
+      "bound_column": "YDMJ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.SQDW",
+      "role": "project",
+      "field": "SQDW",
+      "name_zh": "申请单位",
+      "definition": "建设项目空间范围.申请单位",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "SQDW",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.XMPZLX",
+      "role": "project",
+      "field": "XMPZLX",
+      "name_zh": "项目批准类型",
+      "definition": "建设项目空间范围.项目批准类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "XMPZLX",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.HYFLBM",
+      "role": "project",
+      "field": "HYFLBM",
+      "name_zh": "行业分类编码",
+      "definition": "建设项目空间范围.行业分类编码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "HYFLBM",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.HYFLMC",
+      "role": "project",
+      "field": "HYFLMC",
+      "name_zh": "行业分类名称",
+      "definition": "建设项目空间范围.行业分类名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "HYFLMC",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.TDYTDM",
+      "role": "project",
+      "field": "TDYTDM",
+      "name_zh": "土地用途代码",
+      "definition": "建设项目空间范围.土地用途代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "TDYTDM",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.TDYTMC",
+      "role": "project",
+      "field": "TDYTMC",
+      "name_zh": "土地用途名称",
+      "definition": "建设项目空间范围.土地用途名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "TDYTMC",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.ZYNYDMJ",
+      "role": "project",
+      "field": "ZYNYDMJ",
+      "name_zh": "占用农用地面积",
+      "definition": "建设项目空间范围.占用农用地面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "ZYNYDMJ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.ZYGDMJ",
+      "role": "project",
+      "field": "ZYGDMJ",
+      "name_zh": "占用耕地面积",
+      "definition": "建设项目空间范围.占用耕地面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "ZYGDMJ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.SJSTHXMJ",
+      "role": "project",
+      "field": "SJSTHXMJ",
+      "name_zh": "涉及生态红线面积",
+      "definition": "建设项目空间范围.涉及生态红线面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "SJSTHXMJ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.ZYJSYDMJ",
+      "role": "project",
+      "field": "ZYJSYDMJ",
+      "name_zh": "占用建设用地面积",
+      "definition": "建设项目空间范围.占用建设用地面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "ZYJSYDMJ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.ZYWLDMJ",
+      "role": "project",
+      "field": "ZYWLDMJ",
+      "name_zh": "占用未利用地面积",
+      "definition": "建设项目空间范围.占用未利用地面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "ZYWLDMJ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.SQRQ",
+      "role": "project",
+      "field": "SQRQ",
+      "name_zh": "申请日期",
+      "definition": "建设项目空间范围.申请日期",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "project.SQRQ.pattern",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "SQRQ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "project.GXRQ",
+      "role": "project",
+      "field": "GXRQ",
+      "name_zh": "更新日期",
+      "definition": "建设项目空间范围.更新日期",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "project.GXRQ.pattern",
+      "obligation": "optional",
+      "bound_table": "synthetic_projects",
+      "bound_column": "GXRQ",
+      "defined_by_clause_code": "ROLE.project"
+    },
+    {
+      "code": "approval.YSDM",
+      "role": "approval",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "用途管制审批记录.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKBH",
+      "role": "approval",
+      "field": "DKBH",
+      "name_zh": "地块编号",
+      "definition": "用途管制审批记录.地块编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "DKBH",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKMC",
+      "role": "approval",
+      "field": "DKMC",
+      "name_zh": "地块名称",
+      "definition": "用途管制审批记录.地块名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "DKMC",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKMJ",
+      "role": "approval",
+      "field": "DKMJ",
+      "name_zh": "地块面积",
+      "definition": "用途管制审批记录.地块面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "approval.DKMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "DKMJ",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DZJGH",
+      "role": "approval",
+      "field": "DZJGH",
+      "name_zh": "电子监管号",
+      "definition": "用途管制审批记录.电子监管号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "DZJGH",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.AJBH",
+      "role": "approval",
+      "field": "AJBH",
+      "name_zh": "案卷编号",
+      "definition": "用途管制审批记录.案卷编号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "AJBH",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.XZQDM",
+      "role": "approval",
+      "field": "XZQDM",
+      "name_zh": "行政区代码",
+      "definition": "用途管制审批记录.行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "XZQDM",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.XZQMC",
+      "role": "approval",
+      "field": "XZQMC",
+      "name_zh": "行政区名称",
+      "definition": "用途管制审批记录.行政区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "approval_records",
+      "bound_column": "XZQMC",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKXZQDM",
+      "role": "approval",
+      "field": "DKXZQDM",
+      "name_zh": "地块行政区代码",
+      "definition": "用途管制审批记录.地块行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "DKXZQDM",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKXZQMC",
+      "role": "approval",
+      "field": "DKXZQMC",
+      "name_zh": "地块行政区名称",
+      "definition": "用途管制审批记录.地块行政区名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "DKXZQMC",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKYTDM",
+      "role": "approval",
+      "field": "DKYTDM",
+      "name_zh": "地块用途代码",
+      "definition": "用途管制审批记录.地块用途代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "DKYTDM",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKYTMC",
+      "role": "approval",
+      "field": "DKYTMC",
+      "name_zh": "地块用途名称",
+      "definition": "用途管制审批记录.地块用途名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "DKYTMC",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.DKZT",
+      "role": "approval",
+      "field": "DKZT",
+      "name_zh": "地块状态",
+      "definition": "用途管制审批记录.地块状态",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "DKZT",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.ZYZMJ",
+      "role": "approval",
+      "field": "ZYZMJ",
+      "name_zh": "转用总面积",
+      "definition": "用途管制审批记录.转用总面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "ZYZMJ",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.ZDZMJ",
+      "role": "approval",
+      "field": "ZDZMJ",
+      "name_zh": "征地总面积",
+      "definition": "用途管制审批记录.征地总面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "ZDZMJ",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.QZNYDMJ",
+      "role": "approval",
+      "field": "QZNYDMJ",
+      "name_zh": "其中农用地面积",
+      "definition": "用途管制审批记录.其中农用地面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "QZNYDMJ",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.QZGDMJ",
+      "role": "approval",
+      "field": "QZGDMJ",
+      "name_zh": "其中耕地面积",
+      "definition": "用途管制审批记录.其中耕地面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "QZGDMJ",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "approval.XZYDZMJ",
+      "role": "approval",
+      "field": "XZYDZMJ",
+      "name_zh": "新增用地总面积",
+      "definition": "用途管制审批记录.新增用地总面积",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "approval_records",
+      "bound_column": "XZYDZMJ",
+      "defined_by_clause_code": "ROLE.approval"
+    },
+    {
+      "code": "enforcement.BSM",
+      "role": "enforcement",
+      "field": "BSM",
+      "name_zh": "标识码",
+      "definition": "执法督察事件.标识码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "BSM",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.YSDM",
+      "role": "enforcement",
+      "field": "YSDM",
+      "name_zh": "要素代码",
+      "definition": "执法督察事件.要素代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "YSDM",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.WFXWZJ",
+      "role": "enforcement",
+      "field": "WFXWZJ",
+      "name_zh": "违法行为主键",
+      "definition": "执法督察事件.违法行为主键",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "WFXWZJ",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.WFDKXH",
+      "role": "enforcement",
+      "field": "WFDKXH",
+      "name_zh": "违法地块序号",
+      "definition": "执法督察事件.违法地块序号",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "WFDKXH",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.YGTBZJ",
+      "role": "enforcement",
+      "field": "YGTBZJ",
+      "name_zh": "遥感图斑主键",
+      "definition": "执法督察事件.遥感图斑主键",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "YGTBZJ",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.XZQDM",
+      "role": "enforcement",
+      "field": "XZQDM",
+      "name_zh": "行政区代码",
+      "definition": "执法督察事件.行政区代码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "XZQDM",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.JCSDQ",
+      "role": "enforcement",
+      "field": "JCSDQ",
+      "name_zh": "监测时段起",
+      "definition": "执法督察事件.监测时段起",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "JCSDQ",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.JCSDH",
+      "role": "enforcement",
+      "field": "JCSDH",
+      "name_zh": "监测时段后",
+      "definition": "执法督察事件.监测时段后",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "JCSDH",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.JCMJ",
+      "role": "enforcement",
+      "field": "JCMJ",
+      "name_zh": "监测面积",
+      "definition": "执法督察事件.监测面积",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "m2",
+      "value_domain_code": "enforcement.JCMJ.range",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "JCMJ",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.TDZL",
+      "role": "enforcement",
+      "field": "TDZL",
+      "name_zh": "土地坐落",
+      "definition": "执法督察事件.土地坐落",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "TDZL",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.TBLX",
+      "role": "enforcement",
+      "field": "TBLX",
+      "name_zh": "图斑类型",
+      "definition": "执法督察事件.图斑类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "TBLX",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.ND",
+      "role": "enforcement",
+      "field": "ND",
+      "name_zh": "年度",
+      "definition": "执法督察事件.年度",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "enforcement.ND.pattern",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "ND",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.QSSJ",
+      "role": "enforcement",
+      "field": "QSSJ",
+      "name_zh": "起始时间",
+      "definition": "执法督察事件.起始时间",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "enforcement.QSSJ.pattern",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "QSSJ",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.ZZSJ",
+      "role": "enforcement",
+      "field": "ZZSJ",
+      "name_zh": "终止时间",
+      "definition": "执法督察事件.终止时间",
+      "representation_class": "datetime",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "enforcement.ZZSJ.pattern",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "ZZSJ",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "enforcement.GXZT",
+      "role": "enforcement",
+      "field": "GXZT",
+      "name_zh": "更新状态",
+      "definition": "执法督察事件.更新状态",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "enforcement_events",
+      "bound_column": "GXZT",
+      "defined_by_clause_code": "ROLE.enforcement"
+    },
+    {
+      "code": "metadata_vector.data_id",
+      "role": "metadata_vector",
+      "field": "data_id",
+      "name_zh": "数据唯一编码",
+      "definition": "矢量数据元数据.数据唯一编码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "data_id",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.resource_id",
+      "role": "metadata_vector",
+      "field": "resource_id",
+      "name_zh": "资源唯一编码",
+      "definition": "矢量数据元数据.资源唯一编码",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "resource_id",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.data_name",
+      "role": "metadata_vector",
+      "field": "data_name",
+      "name_zh": "数据名称",
+      "definition": "矢量数据元数据.数据名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "data_name",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.data_alias",
+      "role": "metadata_vector",
+      "field": "data_alias",
+      "name_zh": "数据别名",
+      "definition": "矢量数据元数据.数据别名",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "data_alias",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.data_format",
+      "role": "metadata_vector",
+      "field": "data_format",
+      "name_zh": "数据格式",
+      "definition": "矢量数据元数据.数据格式",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "data_format",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.geometry_type",
+      "role": "metadata_vector",
+      "field": "geometry_type",
+      "name_zh": "几何类型",
+      "definition": "矢量数据元数据.几何类型",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "geometry_type",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.wkid",
+      "role": "metadata_vector",
+      "field": "wkid",
+      "name_zh": "坐标系 WKID",
+      "definition": "矢量数据元数据.坐标系 WKID",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "wkid",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.coordinate_unit",
+      "role": "metadata_vector",
+      "field": "coordinate_unit",
+      "name_zh": "坐标单位",
+      "definition": "矢量数据元数据.坐标单位",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "coordinate_unit",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.source_currency",
+      "role": "metadata_vector",
+      "field": "source_currency",
+      "name_zh": "数据现势性",
+      "definition": "矢量数据元数据.数据现势性",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "source_currency",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.integrity",
+      "role": "metadata_vector",
+      "field": "integrity",
+      "name_zh": "完整性",
+      "definition": "矢量数据元数据.完整性",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "integrity",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.score",
+      "role": "metadata_vector",
+      "field": "score",
+      "name_zh": "质量分数",
+      "definition": "矢量数据元数据.质量分数",
+      "representation_class": "decimal",
+      "datatype": "numeric",
+      "unit": "",
+      "value_domain_code": "metadata_vector.score.range",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "score",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.quality_evaluation",
+      "role": "metadata_vector",
+      "field": "quality_evaluation",
+      "name_zh": "质量评价",
+      "definition": "矢量数据元数据.质量评价",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "quality_evaluation_level",
+      "obligation": "mandatory",
+      "bound_table": "metadata_vector",
+      "bound_column": "quality_evaluation",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.data_des",
+      "role": "metadata_vector",
+      "field": "data_des",
+      "name_zh": "数据描述",
+      "definition": "矢量数据元数据.数据描述",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "data_des",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.cover_range_coor",
+      "role": "metadata_vector",
+      "field": "cover_range_coor",
+      "name_zh": "覆盖范围坐标",
+      "definition": "矢量数据元数据.覆盖范围坐标",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "cover_range_coor",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.cover_range",
+      "role": "metadata_vector",
+      "field": "cover_range",
+      "name_zh": "覆盖范围",
+      "definition": "矢量数据元数据.覆盖范围",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "cover_range",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.security_order",
+      "role": "metadata_vector",
+      "field": "security_order",
+      "name_zh": "密级",
+      "definition": "矢量数据元数据.密级",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "security_order",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.layer_name",
+      "role": "metadata_vector",
+      "field": "layer_name",
+      "name_zh": "图层名称",
+      "definition": "矢量数据元数据.图层名称",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "layer_name",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.layer_field",
+      "role": "metadata_vector",
+      "field": "layer_field",
+      "name_zh": "图层字段",
+      "definition": "矢量数据元数据.图层字段",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "layer_field",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.product_date",
+      "role": "metadata_vector",
+      "field": "product_date",
+      "name_zh": "生产日期",
+      "definition": "矢量数据元数据.生产日期",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "product_date",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.update_date",
+      "role": "metadata_vector",
+      "field": "update_date",
+      "name_zh": "更新日期",
+      "definition": "矢量数据元数据.更新日期",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "update_date",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.producer",
+      "role": "metadata_vector",
+      "field": "producer",
+      "name_zh": "生产单位",
+      "definition": "矢量数据元数据.生产单位",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "producer",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.quality_check_date",
+      "role": "metadata_vector",
+      "field": "quality_check_date",
+      "name_zh": "质检日期",
+      "definition": "矢量数据元数据.质检日期",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "quality_check_date",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    },
+    {
+      "code": "metadata_vector.quality_des",
+      "role": "metadata_vector",
+      "field": "quality_des",
+      "name_zh": "质量说明",
+      "definition": "矢量数据元数据.质量说明",
+      "representation_class": "text",
+      "datatype": "string",
+      "unit": "",
+      "value_domain_code": "",
+      "obligation": "optional",
+      "bound_table": "metadata_vector",
+      "bound_column": "quality_des",
+      "defined_by_clause_code": "ROLE.metadata_vector"
+    }
+  ]
+}

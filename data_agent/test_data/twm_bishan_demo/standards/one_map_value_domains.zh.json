@@ -1,0 +1,241 @@
+{
+  "standard_id": "NR_ONE_MAP_TWM_CORE_2026",
+  "version": "2026-06-16-draft",
+  "domains": {
+    "gb_t_21010_2017_land_use_code": [
+      {
+        "code": "0101",
+        "name_zh": "水田",
+        "source_note_zh": "TWM 工程验证值域，生产应替换为权威 GB/T 21010-2017 完整值域。"
+      },
+      {
+        "code": "0102",
+        "name_zh": "水浇地",
+        "source_note_zh": "TWM 工程验证值域，生产应替换为权威 GB/T 21010-2017 完整值域。"
+      },
+      {
+        "code": "0103",
+        "name_zh": "旱地",
+        "source_note_zh": "TWM 工程验证值域，生产应替换为权威 GB/T 21010-2017 完整值域。"
+      },
+      {
+        "code": "011",
+        "name_zh": "水田",
+        "source_note_zh": "TWM 工程验证兼容三位 DLTB 编码。"
+      },
+      {
+        "code": "012",
+        "name_zh": "水浇地",
+        "source_note_zh": "TWM 工程验证兼容三位 DLTB 编码。"
+      },
+      {
+        "code": "013",
+        "name_zh": "旱地",
+        "source_note_zh": "TWM 工程验证兼容三位 DLTB 编码。"
+      },
+      {
+        "code": "021",
+        "name_zh": "果园"
+      },
+      {
+        "code": "022",
+        "name_zh": "茶园"
+      },
+      {
+        "code": "023",
+        "name_zh": "橡胶园"
+      },
+      {
+        "code": "031",
+        "name_zh": "乔木林地"
+      },
+      {
+        "code": "032",
+        "name_zh": "竹林地"
+      },
+      {
+        "code": "033",
+        "name_zh": "灌木林地"
+      },
+      {
+        "code": "043",
+        "name_zh": "其他草地"
+      },
+      {
+        "code": "104",
+        "name_zh": "农村道路"
+      },
+      {
+        "code": "111",
+        "name_zh": "河流水面"
+      },
+      {
+        "code": "113",
+        "name_zh": "水库水面"
+      },
+      {
+        "code": "114",
+        "name_zh": "坑塘水面"
+      },
+      {
+        "code": "122",
+        "name_zh": "设施农用地"
+      },
+      {
+        "code": "127",
+        "name_zh": "裸土地"
+      },
+      {
+        "code": "202",
+        "name_zh": "城镇住宅用地"
+      },
+      {
+        "code": "203",
+        "name_zh": "村庄"
+      },
+      {
+        "code": "204",
+        "name_zh": "采矿用地"
+      },
+      {
+        "code": "205",
+        "name_zh": "风景名胜及特殊用地"
+      }
+    ],
+    "ownership_nature_code": [
+      {
+        "code": "10",
+        "name_zh": "国有土地"
+      },
+      {
+        "code": "20",
+        "name_zh": "集体土地"
+      },
+      {
+        "code": "30",
+        "name_zh": "国有土地使用权"
+      },
+      {
+        "code": "40",
+        "name_zh": "集体土地使用权"
+      },
+      {
+        "code": "50",
+        "name_zh": "国有建设用地使用权"
+      },
+      {
+        "code": "60",
+        "name_zh": "集体建设用地使用权"
+      },
+      {
+        "code": "70",
+        "name_zh": "宅基地使用权"
+      },
+      {
+        "code": "80",
+        "name_zh": "土地承包经营权"
+      },
+      {
+        "code": "90",
+        "name_zh": "林地使用权"
+      },
+      {
+        "code": "99",
+        "name_zh": "其他"
+      }
+    ],
+    "yes_no_code": [
+      {
+        "code": "1",
+        "name_zh": "是"
+      },
+      {
+        "code": "0",
+        "name_zh": "否"
+      }
+    ],
+    "eco_redline_type_code": [
+      {
+        "code": "01",
+        "name_zh": "生态功能重要区"
+      },
+      {
+        "code": "02",
+        "name_zh": "生态环境敏感脆弱区"
+      },
+      {
+        "code": "03",
+        "name_zh": "禁止开发区域"
+      },
+      {
+        "code": "99",
+        "name_zh": "其他生态保护红线"
+      }
+    ],
+    "urban_planning_partition_code": [
+      {
+        "code": "01",
+        "name_zh": "城镇集中建设区"
+      },
+      {
+        "code": "02",
+        "name_zh": "城镇弹性发展区"
+      },
+      {
+        "code": "03",
+        "name_zh": "特别用途区"
+      },
+      {
+        "code": "99",
+        "name_zh": "其他城镇开发边界分区"
+      }
+    ],
+    "planning_space_partition_code": [
+      {
+        "code": "01",
+        "name_zh": "农业生产空间"
+      },
+      {
+        "code": "02",
+        "name_zh": "生态保护空间"
+      },
+      {
+        "code": "03",
+        "name_zh": "城镇建设空间"
+      },
+      {
+        "code": "04",
+        "name_zh": "水域保护空间"
+      },
+      {
+        "code": "99",
+        "name_zh": "其他国土空间"
+      }
+    ],
+    "quality_evaluation_level": [
+      {
+        "code": "优",
+        "name_zh": "优"
+      },
+      {
+        "code": "良",
+        "name_zh": "良"
+      },
+      {
+        "code": "中",
+        "name_zh": "中"
+      },
+      {
+        "code": "差",
+        "name_zh": "差"
+      }
+    ]
+  },
+  "format_rules": {
+    "date_yyyymmdd": "^[0-9]{8}$",
+    "year_yyyy": "^[0-9]{4}$",
+    "non_empty_text": "^.+$",
+    "positive_number": "value > 0",
+    "non_negative_number": "value >= 0"
+  }
+}

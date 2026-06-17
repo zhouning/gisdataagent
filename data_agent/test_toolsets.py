@@ -185,8 +185,14 @@ class TestToolsetCounts(unittest.TestCase):
         names = [t.name for t in tools]
         self.assertIn("profile_fusion_sources", names)
         self.assertIn("fuse_datasets", names)
+        self.assertIn("preflight_mmfe_lakehouse_infrastructure", names)
         self.assertIn("plan_semantic_product_publish", names)
-        self.assertEqual(len(tools), 8)
+        self.assertIn("export_semantic_product_okf", names)
+        self.assertIn("build_mmfe_semantic_ontology", names)
+        self.assertIn("query_semantic_vectors", names)
+        self.assertIn("trace_mmfe_semantics", names)
+        self.assertIn("diagnose_mmfe_semantic_product", names)
+        self.assertEqual(len(tools), 15)
 
 
 class TestToolFilter(unittest.TestCase):

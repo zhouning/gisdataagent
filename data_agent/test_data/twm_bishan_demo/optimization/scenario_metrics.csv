@@ -1,0 +1,92 @@
+scenario_id,objective_id,metric_value,unit,direction,weight,hard_constraint,metric_source,synthetic,not_for_production,normalized_score,weighted_score
+SCN-BASELINE-CURRENT,pbf_overlap_m2,0.0,m2,min,1.0,True,parcel_current,True,True,1.0,1.0
+SCN-BASELINE-CURRENT,eco_overlap_m2,0.0,m2,min,1.0,True,parcel_current,True,True,1.0,1.0
+SCN-BASELINE-CURRENT,planning_conflict_m2,0.0,m2,min,0.8,False,parcel_current,True,True,1.0,0.8
+SCN-BASELINE-CURRENT,farmland_loss_m2,0.0,m2,min,0.9,False,parcel_current,True,True,1.0,0.9
+SCN-BASELINE-CURRENT,farmland_gain_m2,0.0,m2,max,0.55,False,parcel_current,True,True,0.0,0.0
+SCN-BASELINE-CURRENT,development_area_m2,0.0,m2,max,0.45,False,parcel_current,True,True,0.0,0.0
+SCN-BASELINE-CURRENT,compactness_score,1.0,score,max,0.5,False,parcel_current,True,True,1.0,0.5
+SCN-BASELINE-CURRENT,adjustment_cost_proxy,0.0,proxy,min,0.55,False,parcel_current,True,True,1.0,0.55
+SCN-BASELINE-CURRENT,admin_fairness_cv,0.0,cv,min,0.35,False,parcel_current,True,True,1.0,0.35
+SCN-BASELINE-CURRENT,robustness_score,1.0,score,max,0.45,False,parcel_current,True,True,1.0,0.45
+SCN-BASELINE-CURRENT,review_load_count,0.0,count,min,0.35,False,parcel_current,True,True,1.0,0.35
+SCN-BASELINE-CURRENT,slope_improvement_pct,0.0,pct,max,0.3,False,parcel_current,True,True,0.0,0.0
+SCN-BASELINE-CURRENT,contiguity_gain,0.0,score,max,0.3,False,parcel_current,True,True,0.0,0.0
+SCN-WM-V21-REFERENCE,pbf_overlap_m2,94081.79,m2,min,1.0,True,world_model_summary + synthetic_annual_change,True,True,0.848886,0.848886
+SCN-WM-V21-REFERENCE,eco_overlap_m2,418855.744,m2,min,1.0,True,world_model_summary + synthetic_annual_change,True,True,0.619313,0.619313
+SCN-WM-V21-REFERENCE,planning_conflict_m2,0.0,m2,min,0.8,False,world_model_summary + synthetic_annual_change,True,True,1.0,0.8
+SCN-WM-V21-REFERENCE,farmland_loss_m2,1153702.444,m2,min,0.9,False,world_model_summary + synthetic_annual_change,True,True,0.0,0.0
+SCN-WM-V21-REFERENCE,farmland_gain_m2,252197.329,m2,max,0.55,False,world_model_summary + synthetic_annual_change,True,True,1.0,0.55
+SCN-WM-V21-REFERENCE,development_area_m2,0.0,m2,max,0.45,False,world_model_summary + synthetic_annual_change,True,True,0.0,0.0
+SCN-WM-V21-REFERENCE,compactness_score,0.195716,score,max,0.5,False,world_model_summary + synthetic_annual_change,True,True,0.0,0.0
+SCN-WM-V21-REFERENCE,adjustment_cost_proxy,2431774.838,proxy,min,0.55,False,world_model_summary + synthetic_annual_change,True,True,0.626391,0.344515
+SCN-WM-V21-REFERENCE,admin_fairness_cv,0.0,cv,min,0.35,False,world_model_summary + synthetic_annual_change,True,True,1.0,0.35
+SCN-WM-V21-REFERENCE,robustness_score,0.716176,score,max,0.45,False,world_model_summary + synthetic_annual_change,True,True,0.648755,0.29194
+SCN-WM-V21-REFERENCE,review_load_count,0.0,count,min,0.35,False,world_model_summary + synthetic_annual_change,True,True,1.0,0.35
+SCN-WM-V21-REFERENCE,slope_improvement_pct,2.039151,pct,max,0.3,False,world_model_summary + synthetic_annual_change,True,True,1.0,0.3
+SCN-WM-V21-REFERENCE,contiguity_gain,0.011099,score,max,0.3,False,world_model_summary + synthetic_annual_change,True,True,1.0,0.3
+SCN-LOW-RISK,pbf_overlap_m2,27311.166,m2,min,1.0,True,action_space,True,True,0.956133,0.956133
+SCN-LOW-RISK,eco_overlap_m2,96.886,m2,min,1.0,True,action_space,True,True,0.999912,0.999912
+SCN-LOW-RISK,planning_conflict_m2,140690.262,m2,min,0.8,False,action_space,True,True,0.926687,0.74135
+SCN-LOW-RISK,farmland_loss_m2,25337.472,m2,min,0.9,False,action_space,True,True,0.978038,0.880234
+SCN-LOW-RISK,farmland_gain_m2,0.0,m2,max,0.55,False,action_space,True,True,0.0,0.0
+SCN-LOW-RISK,development_area_m2,147287.717,m2,max,0.45,False,action_space,True,True,0.070015,0.031507
+SCN-LOW-RISK,compactness_score,0.884009,score,max,0.5,False,action_space,True,True,0.855784,0.427892
+SCN-LOW-RISK,adjustment_cost_proxy,272448.952,proxy,min,0.55,False,action_space,True,True,0.958142,0.526978
+SCN-LOW-RISK,admin_fairness_cv,0.0,cv,min,0.35,False,action_space,True,True,1.0,0.35
+SCN-LOW-RISK,robustness_score,0.372289,score,max,0.45,False,action_space,True,True,0.22318,0.100431
+SCN-LOW-RISK,review_load_count,30.0,count,min,0.35,False,action_space,True,True,0.538462,0.188462
+SCN-LOW-RISK,slope_improvement_pct,0.0,pct,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-LOW-RISK,contiguity_gain,0.0,score,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-BALANCED,pbf_overlap_m2,0.0,m2,min,1.0,True,action_space,True,True,1.0,1.0
+SCN-BALANCED,eco_overlap_m2,0.0,m2,min,1.0,True,action_space,True,True,1.0,1.0
+SCN-BALANCED,planning_conflict_m2,86876.544,m2,min,0.8,False,action_space,True,True,0.954729,0.763783
+SCN-BALANCED,farmland_loss_m2,7473.351,m2,min,0.9,False,action_space,True,True,0.993522,0.89417
+SCN-BALANCED,farmland_gain_m2,0.0,m2,max,0.55,False,action_space,True,True,0.0,0.0
+SCN-BALANCED,development_area_m2,93416.889,m2,max,0.45,False,action_space,True,True,0.044407,0.019983
+SCN-BALANCED,compactness_score,0.849692,score,max,0.5,False,action_space,True,True,0.813116,0.406558
+SCN-BALANCED,adjustment_cost_proxy,136855.161,proxy,min,0.55,False,action_space,True,True,0.978974,0.538436
+SCN-BALANCED,admin_fairness_cv,0.0,cv,min,0.35,False,action_space,True,True,1.0,0.35
+SCN-BALANCED,robustness_score,1.0,score,max,0.45,False,action_space,True,True,1.0,0.45
+SCN-BALANCED,review_load_count,0.0,count,min,0.35,False,action_space,True,True,1.0,0.35
+SCN-BALANCED,slope_improvement_pct,0.0,pct,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-BALANCED,contiguity_gain,0.0,score,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-DEVELOPMENT-PRIORITY,pbf_overlap_m2,622589.149,m2,min,1.0,True,action_space,True,True,0.0,0.0
+SCN-DEVELOPMENT-PRIORITY,eco_overlap_m2,1100261.846,m2,min,1.0,True,action_space,True,True,0.0,0.0
+SCN-DEVELOPMENT-PRIORITY,planning_conflict_m2,1919036.299,m2,min,0.8,False,action_space,True,True,0.0,0.0
+SCN-DEVELOPMENT-PRIORITY,farmland_loss_m2,442095.323,m2,min,0.9,False,action_space,True,True,0.616803,0.555123
+SCN-DEVELOPMENT-PRIORITY,farmland_gain_m2,0.0,m2,max,0.55,False,action_space,True,True,0.0,0.0
+SCN-DEVELOPMENT-PRIORITY,development_area_m2,2103652.188,m2,max,0.45,False,action_space,True,True,1.0,0.45
+SCN-DEVELOPMENT-PRIORITY,compactness_score,0.893085,score,max,0.5,False,action_space,True,True,0.867068,0.433534
+SCN-DEVELOPMENT-PRIORITY,adjustment_cost_proxy,6508872.3275,proxy,min,0.55,False,action_space,True,True,0.0,0.0
+SCN-DEVELOPMENT-PRIORITY,admin_fairness_cv,0.0,cv,min,0.35,False,action_space,True,True,1.0,0.35
+SCN-DEVELOPMENT-PRIORITY,robustness_score,0.276321,score,max,0.45,False,action_space,True,True,0.104415,0.046987
+SCN-DEVELOPMENT-PRIORITY,review_load_count,36.0,count,min,0.35,False,action_space,True,True,0.446154,0.156154
+SCN-DEVELOPMENT-PRIORITY,slope_improvement_pct,0.0,pct,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-DEVELOPMENT-PRIORITY,contiguity_gain,0.0,score,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-ECOLOGICAL-PRIORITY,pbf_overlap_m2,132.861,m2,min,1.0,True,action_space,True,True,0.999787,0.999787
+SCN-ECOLOGICAL-PRIORITY,eco_overlap_m2,0.0,m2,min,1.0,True,action_space,True,True,1.0,1.0
+SCN-ECOLOGICAL-PRIORITY,planning_conflict_m2,90255.674,m2,min,0.8,False,action_space,True,True,0.952968,0.762374
+SCN-ECOLOGICAL-PRIORITY,farmland_loss_m2,7743.642,m2,min,0.9,False,action_space,True,True,0.993288,0.893959
+SCN-ECOLOGICAL-PRIORITY,farmland_gain_m2,0.0,m2,max,0.55,False,action_space,True,True,0.0,0.0
+SCN-ECOLOGICAL-PRIORITY,development_area_m2,96795.531,m2,max,0.45,False,action_space,True,True,0.046013,0.020706
+SCN-ECOLOGICAL-PRIORITY,compactness_score,0.852733,score,max,0.5,False,action_space,True,True,0.816897,0.408448
+SCN-ECOLOGICAL-PRIORITY,adjustment_cost_proxy,142189.09,proxy,min,0.55,False,action_space,True,True,0.978155,0.537985
+SCN-ECOLOGICAL-PRIORITY,admin_fairness_cv,0.0,cv,min,0.35,False,action_space,True,True,1.0,0.35
+SCN-ECOLOGICAL-PRIORITY,robustness_score,0.951138,score,max,0.45,False,action_space,True,True,0.939531,0.422789
+SCN-ECOLOGICAL-PRIORITY,review_load_count,1.0,count,min,0.35,False,action_space,True,True,0.984615,0.344615
+SCN-ECOLOGICAL-PRIORITY,slope_improvement_pct,0.0,pct,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-ECOLOGICAL-PRIORITY,contiguity_gain,0.0,score,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-REVIEW-FOCUS,pbf_overlap_m2,594598.963,m2,min,1.0,True,action_space,True,True,0.044958,0.044958
+SCN-REVIEW-FOCUS,eco_overlap_m2,592888.05,m2,min,1.0,True,action_space,True,True,0.461139,0.461139
+SCN-REVIEW-FOCUS,planning_conflict_m2,1237505.282,m2,min,0.8,False,action_space,True,True,0.355142,0.284114
+SCN-REVIEW-FOCUS,farmland_loss_m2,330558.963,m2,min,0.9,False,action_space,True,True,0.71348,0.642132
+SCN-REVIEW-FOCUS,farmland_gain_m2,0.0,m2,max,0.55,False,action_space,True,True,0.0,0.0
+SCN-REVIEW-FOCUS,development_area_m2,1237291.033,m2,max,0.45,False,action_space,True,True,0.588163,0.264673
+SCN-REVIEW-FOCUS,compactness_score,0.923011,score,max,0.5,False,action_space,True,True,0.904276,0.452138
+SCN-REVIEW-FOCUS,adjustment_cost_proxy,4231017.7,proxy,min,0.55,False,action_space,True,True,0.349961,0.192479
+SCN-REVIEW-FOCUS,admin_fairness_cv,0.0,cv,min,0.35,False,action_space,True,True,1.0,0.35
+SCN-REVIEW-FOCUS,robustness_score,0.191948,score,max,0.45,False,action_space,True,True,0.0,0.0
+SCN-REVIEW-FOCUS,review_load_count,65.0,count,min,0.35,False,action_space,True,True,0.0,0.0
+SCN-REVIEW-FOCUS,slope_improvement_pct,0.0,pct,max,0.3,False,action_space,True,True,0.0,0.0
+SCN-REVIEW-FOCUS,contiguity_gain,0.0,score,max,0.3,False,action_space,True,True,0.0,0.0

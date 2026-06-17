@@ -1,0 +1,100 @@
+{
+  "config": {
+    "horizon": 5,
+    "top_k": 50,
+    "gamma": 0.99,
+    "continuation": "greedy",
+    "scoring": "reward",
+    "n_episodes": 5,
+    "threads": 0,
+    "max_steps": 100,
+    "n_blocks": 2640,
+    "n_parcels": 53004,
+    "prepared_dir": "/Users/zhouning/farmland_mpc_runs/bishan/prepared",
+    "proj_crs": "EPSG:32648",
+    "reward_overrides": {}
+  },
+  "ensemble": {
+    "n_members": 3,
+    "paths": [
+      "ensemble_member0.onnx",
+      "ensemble_member1.onnx",
+      "ensemble_member2.onnx"
+    ]
+  },
+  "results": [
+    {
+      "episode": 0,
+      "seed": 0,
+      "slope_change_pct": -2.039594826161326,
+      "cont_change": 0.010977337110481766,
+      "baimu_count_change": 7,
+      "baimu_area_change_ha": -499.1984195071936,
+      "total_reward": 86.75970881275157,
+      "steps_run": 100,
+      "mean_step_time_s": 2.9859267115592956,
+      "total_time_s": 300.41367077827454
+    },
+    {
+      "episode": 1,
+      "seed": 1,
+      "slope_change_pct": -2.0373737123863775,
+      "cont_change": 0.01158437879401042,
+      "baimu_count_change": 6,
+      "baimu_area_change_ha": -498.81508410432934,
+      "total_reward": 81.90367240677396,
+      "steps_run": 100,
+      "mean_step_time_s": 3.8430164885520934,
+      "total_time_s": 386.1473331451416
+    },
+    {
+      "episode": 2,
+      "seed": 2,
+      "slope_change_pct": -2.039594826161326,
+      "cont_change": 0.010977337110481766,
+      "baimu_count_change": 7,
+      "baimu_area_change_ha": -499.1984195071936,
+      "total_reward": 86.87992851558455,
+      "steps_run": 100,
+      "mean_step_time_s": 2.933637807369232,
+      "total_time_s": 295.1236672401428
+    },
+    {
+      "episode": 3,
+      "seed": 3,
+      "slope_change_pct": -2.039594826161326,
+      "cont_change": 0.010977337110481766,
+      "baimu_count_change": 7,
+      "baimu_area_change_ha": -499.1984195071936,
+      "total_reward": 86.87992851558454,
+      "steps_run": 100,
+      "mean_step_time_s": 2.9283445024490358,
+      "total_time_s": 294.5985858440399
+    },
+    {
+      "episode": 4,
+      "seed": 4,
+      "slope_change_pct": -2.039594826161326,
+      "cont_change": 0.010977337110481766,
+      "baimu_count_change": 7,
+      "baimu_area_change_ha": -499.1984195071936,
+      "total_reward": 86.87992851558455,
+      "steps_run": 100,
+      "mean_step_time_s": 2.948395483493805,
+      "total_time_s": 296.6054699420929
+    }
+  ],
+  "aggregate": {
+    "slope_pct_mean": -2.0391506034063362,
+    "slope_pct_std": 0.0009933122773092488,
+    "cont_mean": 0.011098745447187497,
+    "baimu_ha_mean": -499.1217524266208
+  },
+  "shapefile_output": {
+    "n_input": 101657,
+    "n_in_env": 53004,
+    "n_farm_to_forest": 426,
+    "n_forest_to_farm": 426,
+    "n_unchanged": 52152
+  }
+}

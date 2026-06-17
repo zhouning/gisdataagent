@@ -29,6 +29,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# MMFE runtime adapters — keep heavy/vector/lakehouse clients out of lite mode
+mmfe = [
+    "boto3>=1.42",
+    "lancedb>=0.33",
+    "pyarrow==20.0.0",
+    "psycopg2-binary>=2.9",
+    "rasterio>=1.3",
+    "sqlalchemy>=2.0",
+]
+
 # Full deployment — PostGIS + DRL + World Model + Remote Sensing + all toolsets
 full = [
     # PostGIS / async DB

@@ -1,0 +1,17 @@
+scenario_id,constraint_id,constraint_name_zh,objective_id,severity,violation_value,unit,requires_review,synthetic,not_for_production
+SCN-WM-V21-REFERENCE,CONSTRAINT-PBF,永久基本农田保护,pbf_overlap_m2,critical,10920.36,m2,True,True,True
+SCN-LOW-RISK,CONSTRAINT-PBF,永久基本农田保护,pbf_overlap_m2,critical,105881.715,m2,True,True,True
+SCN-DEVELOPMENT-PRIORITY,CONSTRAINT-PBF,永久基本农田保护,pbf_overlap_m2,critical,1366777.813,m2,True,True,True
+SCN-REVIEW-FOCUS,CONSTRAINT-PBF,永久基本农田保护,pbf_overlap_m2,critical,1666842.611,m2,True,True,True
+SCN-WM-V21-REFERENCE,CONSTRAINT-ECO,生态保护红线,eco_overlap_m2,critical,190335.57,m2,True,True,True
+SCN-LOW-RISK,CONSTRAINT-ECO,生态保护红线,eco_overlap_m2,critical,43507.225,m2,True,True,True
+SCN-DEVELOPMENT-PRIORITY,CONSTRAINT-ECO,生态保护红线,eco_overlap_m2,critical,925981.435,m2,True,True,True
+SCN-REVIEW-FOCUS,CONSTRAINT-ECO,生态保护红线,eco_overlap_m2,critical,418925.314,m2,True,True,True
+SCN-LOW-RISK,CONSTRAINT-PLANNING,用途管制分区,planning_conflict_m2,major,909604.225,m2,True,True,True
+SCN-BALANCED,CONSTRAINT-PLANNING,用途管制分区,planning_conflict_m2,major,483945.995,m2,True,True,True
+SCN-DEVELOPMENT-PRIORITY,CONSTRAINT-PLANNING,用途管制分区,planning_conflict_m2,major,4446486.828,m2,True,True,True
+SCN-ECOLOGICAL-PRIORITY,CONSTRAINT-PLANNING,用途管制分区,planning_conflict_m2,major,483945.995,m2,True,True,True
+SCN-REVIEW-FOCUS,CONSTRAINT-PLANNING,用途管制分区,planning_conflict_m2,major,3172402.652,m2,True,True,True
+SCN-LOW-RISK,CONSTRAINT-REVIEW,人工复核负荷,review_load_count,minor,14.0,count,False,True,True
+SCN-DEVELOPMENT-PRIORITY,CONSTRAINT-REVIEW,人工复核负荷,review_load_count,minor,47.0,count,False,True,True
+SCN-REVIEW-FOCUS,CONSTRAINT-REVIEW,人工复核负荷,review_load_count,minor,76.0,count,False,True,True

@@ -1,0 +1,35 @@
+# Fields/Synthetic Pbf
+
+* [保护结束时间](bhjssj.md) - BHJSSJ field in synthetic_pbf.
+* [保护开始时间](bhkssj.md) - BHKSSJ field in synthetic_pbf.
+* [标识码](bsm.md) - BSM field in synthetic_pbf.
+* [备注](bz.md) - BZ field in synthetic_pbf.
+* [承包方责任人](cfzr.md) - CFZR field in synthetic_pbf.
+* [地类编码](dlbm.md) - DLBM field in synthetic_pbf.
+* [地类名称](dlmc.md) - DLMC field in synthetic_pbf.
+* [耕地类型](gdlx.md) - GDLX field in synthetic_pbf.
+* [耕地坡度级别](gdpdjb.md) - GDPDJB field in synthetic_pbf.
+* [耕地种植属性代码](gdzzsxdm.md) - GDZZSXDM field in synthetic_pbf.
+* [耕地种植属性名称](gdzzsxmc.md) - GDZZSXMC field in synthetic_pbf.
+* [扣除地类编码](kcdlbm.md) - KCDLBM field in synthetic_pbf.
+* [扣除面积](kcmj.md) - KCMJ field in synthetic_pbf.
+* [扣除系数](kcxs.md) - KCXS field in synthetic_pbf.
+* [权属单位代码](qsdwdm.md) - QSDWDM field in synthetic_pbf.
+* [权属单位名称](qsdwmc.md) - QSDWMC field in synthetic_pbf.
+* [权属性质](qsxz.md) - QSXZ field in synthetic_pbf.
+* [数据编号](sjbh.md) - SJBH field in synthetic_pbf.
+* [数据名称](sjmc.md) - SJMC field in synthetic_pbf.
+* [数据年份](sjnf.md) - SJNF field in synthetic_pbf.
+* [图斑编号](tbbh.md) - TBBH field in synthetic_pbf.
+* [图斑细化代码](tbxhdm.md) - TBXHDM field in synthetic_pbf.
+* [图斑细化名称](tbxhmc.md) - TBXHMC field in synthetic_pbf.
+* [稳定利用耕地标识](wdgd.md) - WDGD field in synthetic_pbf.
+* [行政区代码](xzqdm.md) - XZQDM field in synthetic_pbf.
+* [行政区名称](xzqmc.md) - XZQMC field in synthetic_pbf.
+* [永久基本农田面积](yjjbntmj.md) - YJJBNTMJ field in synthetic_pbf.
+* [永久基本农田图斑编号](yjjbnttbbh.md) - YJJBNTTBBH field in synthetic_pbf.
+* [永久基本农田图斑面积](yjjbnttbmj.md) - YJJBNTTBMJ field in synthetic_pbf.
+* [要素代码](ysdm.md) - YSDM field in synthetic_pbf.
+* [坐落单位代码](zldwdm.md) - ZLDWDM field in synthetic_pbf.
+* [坐落单位名称](zldwmc.md) - ZLDWMC field in synthetic_pbf.
+* [责任人名称](zrrmc.md) - ZRRMC field in synthetic_pbf.

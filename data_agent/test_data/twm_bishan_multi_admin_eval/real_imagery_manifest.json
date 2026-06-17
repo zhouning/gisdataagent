@@ -1,0 +1,311 @@
+{
+  "dataset_id": "twm_bishan_multi_admin_eval",
+  "created_at": "2026-06-16T04:08:32.792262+00:00",
+  "source_type": "observed_remote_sensing",
+  "synthetic": false,
+  "not_for_production": false,
+  "stac": {
+    "endpoint": "https://earth-search.aws.element84.com/v1",
+    "collection": "sentinel-2-l2a",
+    "datetime": "2025-01-01T00:00:00Z/2025-12-31T23:59:59Z",
+    "cloud_cover_max": 20.0,
+    "matched_items": 50,
+    "selected_date": "2025-08-03",
+    "coverage_ratio_estimate": 1.0,
+    "avg_cloud_cover": 0.087723,
+    "selected_items": [
+      {
+        "id": "S2C_48RXU_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:03.848000Z",
+        "cloud_cover": 0.05672,
+        "grid": "MGRS-48RXU",
+        "bbox": [
+          106.034119,
+          29.735248,
+          106.775827,
+          30.728858
+        ]
+      },
+      {
+        "id": "S2C_48RXT_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:17.836000Z",
+        "cloud_cover": 0.118727,
+        "grid": "MGRS-48RXT",
+        "bbox": [
+          106.025066,
+          28.835798,
+          106.516331,
+          29.826404
+        ]
+      }
+    ]
+  },
+  "aoi": {
+    "parcels_path": "data_agent/test_data/twm_bishan_multi_admin_eval/parcel_current.geojson",
+    "bbox_wgs84": [
+      106.1504506196095,
+      29.66544846328302,
+      106.36974620249141,
+      29.88939403323218
+    ],
+    "bbox_projected": [
+      611330.165779103,
+      3282496.131386746,
+      632264.2303635012,
+      3307087.6797652636
+    ],
+    "parcel_bounds_wgs84": [
+      106.15218221100008,
+      29.66751860900007,
+      106.36753971400003,
+      29.886844144000065
+    ],
+    "feature_count": 21218
+  },
+  "target_grid": {
+    "crs": "EPSG:32648",
+    "resolution_m": 60.0,
+    "product_set": "core",
+    "width": 349,
+    "height": 410,
+    "transform": [
+      59.982993079,
+      0.0,
+      611330.165779103,
+      0.0,
+      -59.979386289,
+      3307087.679765264
+    ]
+  },
+  "masking": {
+    "scl_mask_applied": true,
+    "scl_masked_classes": [
+      0,
+      1,
+      3,
+      8,
+      9,
+      10,
+      11
+    ]
+  },
+  "products": {
+    "sentinel2_l2a_reflectance_stack": {
+      "product_id": "REAL-S2-L2A-REFLECTANCE",
+      "path": "data_agent/test_data/twm_bishan_multi_admin_eval/real_imagery/sentinel2_l2a_reflectance_stack.tif",
+      "relative_path": "real_imagery/sentinel2_l2a_reflectance_stack.tif",
+      "type": "reflectance_stack",
+      "band_order": [
+        "blue",
+        "green",
+        "red",
+        "nir"
+      ],
+      "stats": {
+        "blue": {
+          "valid_pixels": 143090,
+          "min": -0.083713,
+          "mean": -0.054532,
+          "max": 0.888457
+        },
+        "green": {
+          "valid_pixels": 143090,
+          "min": -0.067065,
+          "mean": -0.028205,
+          "max": 0.955055
+        },
+        "red": {
+          "valid_pixels": 143090,
+          "min": -0.082743,
+          "mean": -0.041863,
+          "max": 1.02681
+        },
+        "nir": {
+          "valid_pixels": 143090,
+          "min": -0.071102,
+          "mean": 0.203798,
+          "max": 0.961141
+        }
+      }
+    },
+    "sentinel2_l2a_rgb": {
+      "product_id": "REAL-S2-L2A-RGB",
+      "path": "data_agent/test_data/twm_bishan_multi_admin_eval/real_imagery/sentinel2_l2a_rgb.tif",
+      "relative_path": "real_imagery/sentinel2_l2a_rgb.tif",
+      "type": "visual_rgb",
+      "stats": {
+        "red": {
+          "valid_pixels": 139668,
+          "min": 1.0,
+          "mean": 73.73233,
+          "max": 255.0
+        },
+        "green": {
+          "valid_pixels": 140073,
+          "min": 1.0,
+          "mean": 83.921091,
+          "max": 255.0
+        },
+        "blue": {
+          "valid_pixels": 139876,
+          "min": 1.0,
+          "mean": 66.587263,
+          "max": 255.0
+        }
+      }
+    },
+    "sentinel2_l2a_ndvi": {
+      "product_id": "REAL-S2-L2A-NDVI",
+      "path": "data_agent/test_data/twm_bishan_multi_admin_eval/real_imagery/sentinel2_l2a_ndvi.tif",
+      "relative_path": "real_imagery/sentinel2_l2a_ndvi.tif",
+      "type": "spectral_index",
+      "formula": "NDVI=(NIR-Red)/(NIR+Red)",
+      "stats": {
+        "valid_pixels": 11739,
+        "min": -0.99059,
+        "mean": 0.64549,
+        "max": 0.999984
+      }
+    },
+    "sentinel2_l2a_scl": {
+      "product_id": "REAL-S2-L2A-SCL",
+      "path": "data_agent/test_data/twm_bishan_multi_admin_eval/real_imagery/sentinel2_l2a_scl.tif",
+      "relative_path": "real_imagery/sentinel2_l2a_scl.tif",
+      "type": "scene_classification",
+      "stats": {
+        "valid_pixels": 143090,
+        "min": 2.0,
+        "mean": 4.105458,
+        "max": 8.0
+      },
+      "masked_classes": [
+        0,
+        1,
+        3,
+        8,
+        9,
+        10,
+        11
+      ]
+    }
+  },
+  "sources": {
+    "blue": [
+      {
+        "item_id": "S2C_48RXU_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:03.848000Z",
+        "asset": "blue",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XU/2025/8/S2C_48RXU_20250803_0_L2A/B02.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      },
+      {
+        "item_id": "S2C_48RXT_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:17.836000Z",
+        "asset": "blue",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XT/2025/8/S2C_48RXT_20250803_0_L2A/B02.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      }
+    ],
+    "green": [
+      {
+        "item_id": "S2C_48RXU_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:03.848000Z",
+        "asset": "green",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XU/2025/8/S2C_48RXU_20250803_0_L2A/B03.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      },
+      {
+        "item_id": "S2C_48RXT_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:17.836000Z",
+        "asset": "green",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XT/2025/8/S2C_48RXT_20250803_0_L2A/B03.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      }
+    ],
+    "red": [
+      {
+        "item_id": "S2C_48RXU_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:03.848000Z",
+        "asset": "red",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XU/2025/8/S2C_48RXU_20250803_0_L2A/B04.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      },
+      {
+        "item_id": "S2C_48RXT_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:17.836000Z",
+        "asset": "red",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XT/2025/8/S2C_48RXT_20250803_0_L2A/B04.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      }
+    ],
+    "nir": [
+      {
+        "item_id": "S2C_48RXU_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:03.848000Z",
+        "asset": "nir",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XU/2025/8/S2C_48RXU_20250803_0_L2A/B08.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      },
+      {
+        "item_id": "S2C_48RXT_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:17.836000Z",
+        "asset": "nir",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XT/2025/8/S2C_48RXT_20250803_0_L2A/B08.tif",
+        "scale": 0.0001,
+        "offset": -0.1
+      }
+    ],
+    "scl": [
+      {
+        "item_id": "S2C_48RXU_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:03.848000Z",
+        "asset": "scl",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XU/2025/8/S2C_48RXU_20250803_0_L2A/SCL.tif",
+        "scale": 1.0,
+        "offset": 0.0
+      },
+      {
+        "item_id": "S2C_48RXT_20250803_0_L2A",
+        "datetime": "2025-08-03T03:50:17.836000Z",
+        "asset": "scl",
+        "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XT/2025/8/S2C_48RXT_20250803_0_L2A/SCL.tif",
+        "scale": 1.0,
+        "offset": 0.0
+      }
+    ]
+  },
+  "synthetic_fallback": "data_agent/test_data/twm_bishan_multi_admin_eval/raster_manifest.json",
+  "known_limitations": [
+    "Sentinel-2 10m imagery is useful for regional evidence and spectral indices, but not parcel-boundary-grade legal proof.",
+    "SCL cloud/shadow masking is used as an engineering QA mask; manual visual review is still required for critical cases."
+  ],
+  "processing_history": [
+    {
+      "time": "2026-06-16T04:10:23.556044+00:00",
+      "step": "refresh_products_from_local_stack",
+      "note": "Regenerated RGB and NDVI from local reflectance stack without remote reads."
+    },
+    {
+      "time": "2026-06-16T07:42:22.041221+00:00",
+      "step": "refresh_products_from_local_stack",
+      "note": "Regenerated RGB and NDVI from local reflectance stack without remote reads."
+    },
+    {
+      "time": "2026-06-16T07:49:15.284159+00:00",
+      "step": "refresh_products_from_local_stack",
+      "note": "Regenerated RGB and NDVI from local reflectance stack without remote reads."
+    },
+    {
+      "time": "2026-06-16T09:25:43.524144+00:00",
+      "step": "refresh_products_from_local_stack",
+      "note": "Regenerated RGB and NDVI from local reflectance stack without remote reads."
+    }
+  ]
+}

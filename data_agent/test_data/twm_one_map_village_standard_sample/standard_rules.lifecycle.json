@@ -1,0 +1,27 @@
+{
+  "standard_version": "NR_ONE_MAP_TWM_CORE_2026@2026-06-16-draft",
+  "rules": [
+    {
+      "rule_id": "TWM-FARM-001",
+      "name_zh": "永久基本农田占用检查",
+      "role": "pbf"
+    },
+    {
+      "rule_id": "TWM-ECO-001",
+      "name_zh": "生态保护红线占用检查",
+      "role": "eco_redline"
+    },
+    {
+      "rule_id": "TWM-PLAN-001",
+      "name_zh": "规划用途一致性检查",
+      "role": "planning_zone"
+    }
+  ],
+  "lifecycle_versions": [
+    {
+      "version": "2026-06-16-draft",
+      "status": "released_for_engineering_test"
+    }
+  ],
+  "not_for_production": true
+}

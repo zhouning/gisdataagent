@@ -641,6 +641,12 @@ themselves.
 MMFE still does not add pgvector, LanceDB, embedding generation, or database
 drivers as required runtime dependencies; those remain backend adapters behind
 the publisher contract.
+For pgvector, embedding dimension is a table-column contract, not just record
+metadata: a table created as `vector(768)` cannot accept 16-dimensional smoke
+vectors, and a `vector(16)` smoke table cannot accept real 768-dimensional
+model embeddings. Production deployments should isolate pgvector tables by
+embedding model or dimension, or recreate the table during controlled
+migrations.
 
 MMFE now treats storage as a dual-lake architecture. S3-backed Iceberg tables
 are the authoritative analytical geospatial lakehouse for governed business
@@ -703,15 +709,49 @@ LanceDB/pgvector remain optional AI retrieval/indexing targets.
 Semantic product publishing now also has a small orchestration contract.
 `publish_semantic_product()` routes one semantic product manifest through
 requested targets such as `iceberg`, `stac`, `pgvector`, or `lancedb` using the
-existing dependency-free target contracts and injected publishers. When Iceberg
-publishing succeeds, the orchestration applies the returned manifest patch
-before running STAC or vector publishing, so catalog items and AI retrieval rows
-refer to the authoritative Iceberg/S3 table, snapshot, and business output. A
-target failure returns structured per-target errors and stops dependent targets
-instead of silently publishing inconsistent downstream records. This is the
-backend-neutral foundation for a future `publish_semantic_product()` tool or API
-route; it still does not import Spark, Iceberg, STAC, pgvector, LanceDB,
-embedding, or object-store clients in MMFE core.
+existing dependency-free target contracts and injected publishers. The same
+production readiness gate used by dry-run planning is now enforced before any
+backend adapter is called: production publishing requires
+`production_ready=true`, while validation/development publishing can flow with
+`validation_ready=true` and preserved production-gap warnings. The same runtime
+orchestration also runs the lakehouse infrastructure preflight before backend
+execution and returns the preflight report alongside the gate result. When
+Iceberg publishing succeeds, the orchestration applies the returned manifest
+patch before running STAC or vector publishing, so catalog items and AI
+retrieval rows refer to the authoritative Iceberg/S3 table, snapshot, and
+business output. A gate failure, infrastructure preflight failure, or target
+failure returns structured errors and stops dependent targets instead of
+silently publishing inconsistent downstream records. This is the backend-neutral
+foundation for a future `publish_semantic_product()` tool or API route; it still
+does not import Spark, Iceberg, STAC, pgvector, LanceDB, embedding, or
+object-store clients in MMFE core.
+
+Production-readiness metadata is now a first-class MMFE contract rather than a
+free-text warning. `mmfe.production_readiness.v1` records source-level
+authority, authority level, license/access rights, update date, lineage, CRS,
+scale or resolution, official standard version, security classification, and
+synthetic/not-for-production flags. `diagnose_semantic_product_readiness()`
+consumes that contract through `production_metadata_contract`: production
+metadata must be present and complete before the broader `production_authority`
+check can pass. The TWM validation bundle emits
+`twm_mmfe_production_readiness.json`, publishes it as a STAC asset, embeds the
+summary in the semantic product, and intentionally marks the current validation
+sources as blocked for production so operators can see exactly which metadata
+must be replaced by authoritative release records.
+
+Enriched standard-source registries now feed the same production-readiness
+contract. `standard_source_production_metadata_from_registry()` maps archived
+and extracted official standards into `standard_source` metadata rows with
+archive URI, checksum, access rights, citation-anchor counts, extraction status,
+and production blocking flags. The TWM bundle appends those rows to
+`twm_mmfe_production_readiness.json`, so standard-source ingestion completion is
+visible in the same gate that checks authoritative data-source metadata.
+`production_readiness_from_manifest()` now derives this contract from
+`mmfe_bundle.source_production_metadata`, source metadata records, and
+`mmfe_bundle.standard_source_registry`, deduplicating explicit rows and registry
+rows. `source_production_metadata_from_records()` turns authoritative metadata
+tables or platform API responses into the same source metadata rows without
+binding MMFE core to a database, platform service, or network client.
 
 The same layer now exposes a publish-plan dry run contract.
 `build_semantic_product_publish_plan()` builds the Iceberg, STAC, pgvector, or
@@ -722,15 +762,45 @@ errors, and whether required publishers or embedders have been configured. This
 gives operators and future tool/API routes a cheap preflight check before
 launching production publishing jobs.
 
-The dry-run publish plan is now exposed through the ADK FusionToolset as
-`plan_semantic_product_publish()`. The tool accepts either an inline semantic
-product manifest JSON string or a manifest path, plus Iceberg/STAC/vector target
-configuration and adapter-configured flags. It returns structured JSON with
-`status`, a compact summary, target specs, dependency edges, validation errors,
-and backend readiness without executing any publish, embedding, Spark, database,
-or object-store operation. This makes the dual-lake publication preflight
-reachable from agent workflows while keeping real backend adapters optional and
-external to MMFE core.
+Publish planning now includes an infrastructure preflight contract.
+`mmfe.infrastructure_preflight.v1` checks the lakehouse object-store endpoint,
+bucket and URI shape, Iceberg warehouse/table identity, STAC catalog location,
+Spark S3A settings, credential presence, and production-environment risk such
+as local MinIO endpoints or local default credentials. It also checks
+cross-component consistency so the object-store warehouse URI, Iceberg
+warehouse URI, lakehouse bucket, STAC catalog URI, Spark S3A endpoint, Spark
+credentials, path-style access flag, and SSL flag do not silently point to
+different lakehouse locations or incompatible runtime settings. For the simple
+S3A credentials provider, Spark access and secret keys must be configured. The
+preflight report redacts secret values in its sanitized config.
+It also emits a stable SHA-256 `config_fingerprint` over non-secret lakehouse
+configuration material so operators can compare publish plans, runtime publish
+results, and direct agent preflight checks without exposing access keys or
+secret keys.
+`build_semantic_product_publish_plan()` adds this as an
+`infrastructure_preflight` step after the production gate, and
+`publish_semantic_product()` enforces the same preflight before any injected
+backend publisher is called. Production runs with local MinIO endpoints, local
+default credentials, missing Spark S3A credentials, or inconsistent lakehouse
+wiring fail at the preflight layer; validation and development runs can continue
+with warnings for local smoke testing.
+
+The infrastructure preflight is also exposed directly through the ADK
+FusionToolset as `preflight_mmfe_lakehouse_infrastructure()`. The tool accepts a
+full config JSON or environment-variable override JSON, returns the sanitized
+`mmfe.infrastructure_preflight.v1` contract plus compact errors and warnings,
+and never performs object-store, Spark, database, or network work. The dry-run
+publish plan is exposed through `plan_semantic_product_publish()`. That tool
+accepts either an inline semantic product manifest JSON string or a manifest
+path, plus Iceberg/STAC/vector target configuration and adapter-configured
+flags. When a caller overrides the Iceberg warehouse URI while using environment
+defaults, the tool normalizes the derived lakehouse bucket and default STAC
+catalog URI to that explicit warehouse bucket before running preflight. It
+returns structured JSON with `status`, a compact summary, target specs,
+dependency edges, validation errors, and backend readiness without
+executing any publish, embedding, Spark, database, or object-store operation.
+This makes the dual-lake publication preflight reachable from agent workflows
+while keeping real backend adapters optional and external to MMFE core.
 
 MMFE now carries universal modality metadata through the source profile and
 semantic product manifest. `FusionSource` includes additive `modality`,
@@ -778,3 +848,279 @@ status when `edgedefault` is present in `stats["graph"]`, then emits a
 `graph_topology` semantic hint. This is a graph-source evidence contract, not a
 full graph database, RDF reasoner, network-analysis engine, or topology
 materializer.
+
+Derived raster asset publishing now has a validated geospatial multimodal path
+over the TWM validation dataset. Sedona-on-Spark reads the real Sentinel-2 NDVI
+GeoTIFF, transforms TWM project polygons from EPSG:4326 to EPSG:32648, computes
+project-level NDVI zonal relations, clips project-level NDVI rasters with
+`RS_Clip`, writes GeoTIFF assets to the MinIO lakehouse through S3A, and
+publishes STAC discovery items for those derived raster artifacts. A host-side
+optional raster publishing smoke then rewrites the Sedona-derived clips as
+Cloud-Optimized GeoTIFFs with rasterio, validates COG layout, tiling, CRS, and
+shape/type preservation, uploads the `.cog.tif` assets to MinIO, verifies
+read-back checksums, and registers a separate STAC collection with the `cog`
+asset role. The same adapter can publish a static STAC root `catalog.json` and
+collection `collection.json` to object storage, linking the derived COG STAC
+items through standard `rel=item` links. This is static catalog indexing, not a
+full STAC API or concurrent catalog governance service. MMFE core remains
+dependency-free: Spark/Sedona/S3A, boto3, and rasterio stay adapter/runtime
+concerns rather than imports required by the semantic product contract.
+
+GeoParquet lakehouse materialization is validated at the optional S3 adapter
+boundary. `scripts/smoke_mmfe_minio_materialize.py --include-geoparquet`
+generates a minimal GeoParquet artifact with GeoPandas/PyArrow, uploads it to
+the MMFE curated MinIO prefix, marks the object as
+`application/vnd.apache.parquet`, and verifies read-back SHA-256. This confirms
+object-store transport and media-type handling for GeoParquet assets; production
+GeoParquet generation, partitioning, and catalog governance remain separate
+publisher/runtime responsibilities.
+
+Standard-grounded semantic field alignment is now part of MMFE core. The
+alignment module can turn role contracts, standard field catalogs, Chinese field
+aliases, value-domain references, and TWM semantic binding keys into
+JSON-compatible alignment decisions without importing GeoPandas, Spark, S3,
+vector databases, or raster runtimes. Each field alignment now carries the
+resolved standard field, match type, confidence, `accept` / `review` / `reject`
+decision, evidence list, standard reference, optional TWM semantic key, and
+whether human review is required. This moves MMFE beyond name-based matching:
+the semantic basis is explicit and auditable.
+
+The TWM validation bundle now consumes this standard-grounded alignment path.
+`twm_mmfe_field_semantics.csv` includes alignment score, decision, evidence JSON,
+standard reference JSON, value-domain code, and value-domain loading status.
+`twm_mmfe_semantic_product.json` carries an `alignment_summary` under
+`mmfe_bundle`, and the TWM state input contract exposes alignment decision
+counts for the state builder. Current fixture output contains 274 field-level
+semantic mappings: 120 accepted, 154 routed to review, and 0 rejected. Required
+and recommended TWM role-contract fields such as `parcel_current.DLBM`,
+`synthetic_projects.YDMJ`, `synthetic_projects.ZYGDMJ`, and
+`synthetic_projects.SJSTHXMJ` are accepted with standard/role/binding evidence,
+while fields only present in the broad catalog but not backed by a role contract
+remain review items.
+
+Value-domain readiness is intentionally separated from field semantic binding.
+For example, `DLBM` can be accepted as the TWM `land_use_code` field because the
+role contract, alias, standard catalog, and TWM binding agree. MMFE now also has
+a value-domain audit path: `build_value_domain_catalog()`,
+`audit_field_value_domain()`, and `build_value_domain_audit_summary()` normalize
+domain items and check observed field values against the referenced domain. The
+TWM bundle emits `twm_mmfe_value_domain_audit.csv`, carries
+`value_domain_audit_summary` in the semantic product, exposes the audit summary
+in `twm_state_input.json`, publishes it as a STAC asset, and exports an OKF
+`standards/value_domain_audit.md` concept.
+
+The current engineering fixture now loads a validation-domain version of
+`gb_t_21010_2017_land_use_code` plus ownership, ecological-redline, planning,
+urban-boundary, and yes/no domains. The value-domain audit currently covers 6
+field/domain pairs, all valid, including `parcel_current.DLBM` with 4,900
+observed values, 19 distinct land-use codes, 0 unknown values, and 100%
+coverage. This closes the value-level semantic loop for the demo scaffold.
+It still does not claim to be the authoritative production GB/T 21010-2017 value
+domain: production deployments must replace the validation domain items with
+the standards-platform or government-source value-domain release.
+
+OKF export now exposes the same alignment evidence in field concept documents:
+field docs include the resolved standard field, alignment score, alignment
+decision, review flag, value-domain status, and evidence JSON. This makes the
+semantic fusion product usable both as a machine contract and as a human/agent
+review artifact.
+
+Remaining hard-core MMFE work is now narrower and clearer:
+
+- enrich the semantic ontology package with production standards-platform
+  releases, extracted clauses, data elements, and authoritative value domains;
+- convert spatial and multimodal relations such as project-parcel overlap,
+  project-PBF conflict, project-planning-zone conflict, and project-NDVI
+  evidence into first-class semantic graph edges with confidence, metric,
+  source asset, and rule/standard references;
+- replace validation value-domain items with authoritative standards-platform
+  value-domain releases, especially for `gb_t_21010_2017_land_use_code`, so
+  demo-valid value coverage becomes production-valid value coverage;
+- harden the future TWM state builder implementation that consumes
+  `twm_state_input.json` and dereferences raw sources through role/binding
+  contracts, instead of hard-coding demo file names or raw column names.
+
+The first spatial/multimodal semantic relation layer is now implemented for the
+TWM validation bundle. Existing `relations/*.csv` spatial and evidence bridge
+tables are normalized into `twm_mmfe_semantic_relations.csv` with stable
+semantic relation types, source/target object types, source/target object ids,
+Chinese predicates, business meaning, TWM usage, rule ids, optimization
+objective ids, metric names/values, overlap ratios, confidence, semantic
+strength, evidence source, and review flags. The current fixture emits 728
+semantic relations:
+
+- 354 `project_overlaps_parcel` relations for project-state impact building;
+- 39 `project_overlaps_permanent_basic_farmland` relations for the
+  `pbf_overlap_m2` hard constraint and `TWM-FARM-001`;
+- 28 `project_overlaps_ecological_redline` relations for the `eco_overlap_m2`
+  hard constraint and `TWM-ECO-001`;
+- 151 `project_overlaps_planning_zone` relations for planning consistency and
+  `planning_conflict_m2`;
+- 7 `project_overlaps_urban_development_boundary` relations for urban-boundary
+  consistency;
+- 71 `project_observed_by_remote_sensing_tile` relations for multimodal remote
+  sensing evidence;
+- 78 `annual_change_of_parcel` relations for dynamic state transitions.
+
+These relations are now part of the semantic product, the TWM state input
+contract, the STAC asset list, the AI chunk set, the OKF sidecar, and the
+lightweight semantic graph. The graph now materializes relation nodes and edges
+that connect object ids to rules, objectives, and evidence context. This is a
+meaningful MMFE step because TWM no longer has to infer semantics directly from
+raw relation CSV filenames or column names: the relation layer explicitly tells
+TWM whether a metric is a hard constraint, a planning-consistency signal, a
+remote-sensing evidence bridge, or a dynamic-transition relation.
+
+The first TWM downstream state-input handoff is now implemented without turning
+MMFE into the TWM model itself. `data_agent/fusion/twm_state_input.py` builds
+`mmfe.twm_state_input.v1` artifacts from the semantic product, the relation
+table, and the state-input contract. The generated `twm_state_input.json`
+contains source product metadata, role registries, canonical object-type
+registries, field-binding registries, relation registries, state components,
+standard readiness, AI grounding metadata, production-use warnings, and
+optimization objective bindings. For the current TWM fixture it records 9 object
+roles, 728 semantic relations, 67 hard-constraint relations, 71 remote-sensing
+evidence relations, 78 dynamic-transition relations, and 13 optimization
+objective bindings. The hard-constraint component links `pbf_overlap_m2` and
+`eco_overlap_m2` to `TWM-FARM-001` and `TWM-ECO-001`; planning, urban-boundary,
+remote-sensing, and annual-change components are kept as separate state
+components.
+
+This state-input artifact is the concrete MMFE-to-TWM interface: raw vector and
+raster files remain the source of truth for geometry and attributes, while MMFE
+supplies the semantics, standard bindings, relation meanings, rule references,
+evidence hooks, and optimization objective bindings. It deliberately does not
+run TWM dynamic projection, Pareto search, DRL/MPC, or policy decisions. Those
+remain downstream TWM or paper-validation responsibilities.
+
+The standard-source evidence chain is now explicit. `data_agent/fusion/
+standard_sources.py` builds an auditable registry from the TWM role-contract
+`source_documents`, and the bundle emits `twm_mmfe_standard_sources.csv`,
+`mmfe_bundle.standard_source_registry`, a `fusion:standard-sources` AI chunk,
+a STAC `standard_sources` asset, TWM `standard_readiness.standard_sources`, and
+an OKF `standards/source_registry.md` concept.
+
+The registry now has an execution-facing acquisition contract:
+`mmfe.standard_source_ingestion_plan.v1`. The plan turns each registered
+standard source into an auditable task with official URL/search URL, retrieval
+status, required actions, download/checksum requirements, full-text extraction
+status, and blocking reasons such as `official_source_missing`,
+`checksum_missing`, `fulltext_extraction_missing`, or `production_gap`. The TWM
+bundle emits `twm_mmfe_standard_source_ingestion_plan.json`, publishes it as a
+STAC asset, embeds it in `mmfe_bundle`, and surfaces the readiness summary in
+diagnostics/README. This is still a plan contract, not a network downloader or
+PDF parser; it gives the production ingestion job a stable checklist and gives
+the publish gate a machine-readable reason why standard-source evidence is not
+production-ready.
+
+The same standard-source layer now has a dependency-free runner surface:
+`mmfe.standard_source_ingestion_run.v1`. `run_standard_source_ingestion_plan()`
+executes ingestion tasks through injected `fetcher`, `archiver`, and `extractor`
+adapters, returning per-task archive URI, SHA-256 checksum, extraction status,
+and citation-anchor counts. Without injected adapters it returns structured
+errors instead of attempting network or PDF work in MMFE core. This establishes
+the production job boundary: platform-specific download, object-store archive,
+and PDF/DOCX extraction implementations can plug into a stable MMFE contract.
+
+The first concrete standard-source adapter path is now implemented for local
+and offline production rehearsal. `build_local_standard_source_fetcher()` reads
+task-local or identifier-mapped source files, `build_local_standard_source_archiver()`
+writes archived bytes with SHA-256 checksums and stable archive URIs, and
+`build_local_standard_source_extractor()` emits
+`mmfe.standard_source_citation_anchors.v1` JSON sidecars from UTF-8-readable
+text/CSV/JSON source material and dependency-free `.docx` files parsed through
+the OOXML `word/document.xml` package. The sidecar records task id, standard
+identifier, archive URI, source path, checksum, extraction status, extraction
+method, and normalized citation anchors. Binary PDF and legacy `.doc`
+extraction plus official network download policy remain external adapter
+responsibilities.
+
+The standard-source fetch/archive path can now cover authorized official HTTP
+retrieval and S3-compatible persistence when explicitly injected.
+`build_http_standard_source_fetcher()` reads an official or download URL through
+`urllib`, supports an allowlist of official domains, records HTTP status,
+content type, byte count, source URL, and SHA-256 checksum, and can be tested
+with an injected opener without real network calls. `build_s3_standard_source_archiver()`
+wraps `archive_standard_source_bytes_to_s3()`, imports `boto3` only when the
+adapter runs, writes to a configured `s3://...` prefix, records bucket/key,
+endpoint, content type, byte count, SHA-256 checksum, and returns the archive
+URI to the same `mmfe.standard_source_ingestion_run.v1` result. This closes the
+first official-fetch/object-store persistence adapter path while keeping
+download authorization policy and PDF/legacy-DOC extraction outside MMFE core.
+
+Successful ingestion runs can now be folded back into the auditable registry.
+`apply_standard_source_ingestion_run()` copies successful task evidence into
+matching registry entries: archive URI, local path, checksum, byte counts,
+`downloaded_fulltext` retrieval status, `archived_fulltext` access mode,
+extraction status, citation-anchor counts, sidecar schema/path, and extraction
+method. Rebuilding `mmfe.standard_source_ingestion_plan.v1` from the enriched
+registry turns completed sources from blocked tasks into ready tasks, while
+failed task results are ignored so they cannot pollute source evidence.
+
+For the current fixture the registry contains 7 standard sources. `GB/T
+21010-2017 土地利用现状分类` has been verified against the official National
+Standard Full Text Disclosure System entry
+`https://openstd.samr.gov.cn/bzgk/gb/newGbInfo?hcno=224BF9DA69F053DA22AC758AAAADEEAA`.
+The official page records standard number `GB/T 21010-2017`, Chinese name
+`土地利用现状分类`, English name `Current land use classification`, status `现行`,
+CCS `A76`, ICS `07.040`, publication date `2017-11-01`, implementation date
+`2017-11-01`,主管/归口部门 `自然资源部（国土）`, and exposes online preview and
+download actions. The registry therefore marks it as
+`official_fulltext_available` with `online_preview_and_download` access.
+
+The six natural-resource One Map database-architecture documents from the
+local expert package remain marked as `local_expert_material_available`. They
+are useful engineering scaffolds for MMFE semantic contracts, but not yet
+production-grade authoritative source evidence. Production MMFE/TWM deployment
+must replace or enrich these entries with official release URLs, formal version
+identifiers, downloaded/archived full texts where permitted, and extracted
+clause/data-element/value-domain evidence in the standards platform.
+
+The semantic graph now consumes that standard-source registry instead of
+leaving it as sidecar metadata. `twm_mmfe_semantic_graph.json` materializes
+`standard_source` nodes for the 7 registered sources and `value_domain` nodes
+for the loaded value domains. Field nodes with standard value domains now emit
+`uses_value_domain` edges, roles emit `supported_by_standard_source` edges, and
+`gb_t_21010_2017_land_use_code` emits `grounded_by_standard_source` to the
+official `GB/T 21010-2017` node. The current graph has 1,424 nodes and 3,547
+edges, including 7 standard-source nodes, 7 value-domain nodes, 6
+field-to-value-domain edges, and the GB/T 21010-2017 value-domain grounding
+edge. This is a concrete step from "field mapping table" toward a traversable
+MMFE ontology surface: an agent can now walk from `parcel_current.DLBM` to its
+land-use value domain, then to the official standard source that grounds that
+domain.
+
+The first graph-consumption layer is also implemented. `data_agent/fusion/
+semantic_graph_trace.py` indexes the MMFE semantic graph and builds compact
+trace cards for selected fields, value domains, standards, rules, and
+objectives. The TWM bundle now emits `twm_mmfe_semantic_trace_cards.json`,
+includes it in `business_outputs`, publishes it as a STAC asset, carries it in
+`mmfe_bundle.semantic_trace_cards`, and exports an OKF
+`graphs/semantic_trace_cards.md` concept. The current bundle creates 14 trace
+cards. The `field:parcel_current.DLBM` trace card contains the path
+`地类编码 -> gb_t_21010_2017_land_use_code -> 土地利用现状分类`, with relationships
+`uses_value_domain` and `grounded_by_standard_source`. This gives downstream
+agents a stable way to answer "why does this field mean this?" without scanning
+the entire graph or raw sidecar tables.
+
+MMFE now also emits a compact semantic ontology package independent of heavy
+geospatial runtimes. `data_agent/fusion/semantic_ontology.py` builds
+`mmfe.semantic_ontology.v1` from a semantic product plus optional sidecars:
+field semantics, value-domain audits, standard-source rows, semantic relations,
+and TWM state input. The package normalizes standard roles, object types,
+fields, TWM semantic keys, value domains, standard sources, relation types,
+rules, and optimization objectives into stable concept arrays plus explicit
+concept relationships. `build_mmfe_semantic_ontology()` exposes this through
+the FusionToolset and writes `mmfe_semantic_ontology.json` beside a TWM semantic
+product by default. The TWM bundle builder now emits
+`twm_mmfe_semantic_ontology.json`, records it in `business_outputs`, carries its
+summary under `mmfe_bundle.semantic_ontology_summary`, publishes it as a STAC
+`semantic_ontology` asset, and exports it as the OKF
+`graphs/semantic_ontology.md` concept. For the current TWM fixture, the package
+records 9 standard roles, 6 object types, 274 fields, 14 semantic keys, 6
+audited value domains, 7 standard sources, 7 relation types, 7 rules, 13
+optimization objectives, and 2,319 concept relationships. This closes the
+earlier gap between field-level standard alignment and a machine-consumable
+ontology surface; it still depends on validation-domain items and local One Map
+standard-package evidence until production standards-platform releases replace
+those scaffold inputs.

@@ -1,0 +1,90 @@
+{
+  "dataset_id": "twm_bishan_demo",
+  "created_at": "2026-06-16T08:35:05.753110+00:00",
+  "not_for_production": true,
+  "synthetic": true,
+  "products": {
+    "synthetic_ndvi_2026": {
+      "product_id": "RASTER-NDVI-2026",
+      "path": "data_agent/test_data/twm_bishan_demo/rasters/synthetic_ndvi_2026.tif",
+      "relative_path": "rasters/synthetic_ndvi_2026.tif",
+      "alias_zh": "合成NDVI观测栅格",
+      "description_zh": "由现状地类、坡度和合成管控区派生的归一化植被指数。",
+      "crs": "EPSG:32648",
+      "width": 256,
+      "height": 256,
+      "bounds": [
+        620417.475,
+        3294228.877,
+        632332.489,
+        3307155.938
+      ],
+      "transform": [
+        46.543021988,
+        0.0,
+        620417.47490094,
+        0.0,
+        -50.496331052,
+        3307155.937931516
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "stats": {
+        "valid_pixels": 27078,
+        "min": 0.071345,
+        "mean": 0.628087,
+        "max": 0.913488
+      },
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change",
+        "synthetic_pbf",
+        "synthetic_eco_redline"
+      ]
+    },
+    "synthetic_change_intensity_2026": {
+      "product_id": "RASTER-CHANGE-2026",
+      "path": "data_agent/test_data/twm_bishan_demo/rasters/synthetic_change_intensity_2026.tif",
+      "relative_path": "rasters/synthetic_change_intensity_2026.tif",
+      "alias_zh": "合成变化强度栅格",
+      "description_zh": "由 WorldModel 年度变化图斑派生的变化强度观测。",
+      "crs": "EPSG:32648",
+      "width": 256,
+      "height": 256,
+      "bounds": [
+        620417.475,
+        3294228.877,
+        632332.489,
+        3307155.938
+      ],
+      "transform": [
+        46.543021988,
+        0.0,
+        620417.47490094,
+        0.0,
+        -50.496331052,
+        3307155.937931516
+      ],
+      "nodata": -9999.0,
+      "dtype": "float32",
+      "stats": {
+        "valid_pixels": 27078,
+        "min": 0.05,
+        "mean": 0.060754,
+        "max": 0.55
+      },
+      "synthetic": true,
+      "not_for_production": true,
+      "synthetic_method": "vector_semantic_fixture_rasterization",
+      "source_layers": [
+        "parcel_current",
+        "synthetic_annual_change",
+        "synthetic_pbf",
+        "synthetic_eco_redline"
+      ]
+    }
+  }
+}

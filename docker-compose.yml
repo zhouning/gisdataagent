@@ -36,6 +36,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     environment:
@@ -61,6 +65,18 @@ services:
       # Dynamic Planner
       DYNAMIC_PLANNER: ${DYNAMIC_PLANNER:-true}
       # Optional services
+      CLOUD_STORAGE_PROVIDER: ${CLOUD_STORAGE_PROVIDER:-aws}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://minio:9000}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minio_admin}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-local_dev_minio_secret}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-gis-agent-uploads}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      MMFE_LAKEHOUSE_BUCKET: ${MMFE_LAKEHOUSE_BUCKET:-gis-agent-lakehouse}
+      MMFE_LAKEHOUSE_WAREHOUSE_URI: ${MMFE_LAKEHOUSE_WAREHOUSE_URI:-s3://gis-agent-lakehouse/warehouse}
+      MMFE_STAC_CATALOG_URI: ${MMFE_STAC_CATALOG_URI:-s3://gis-agent-lakehouse/catalog/stac}
+      MMFE_ICEBERG_CATALOG: ${MMFE_ICEBERG_CATALOG:-local}
+      MMFE_ICEBERG_NAMESPACE: ${MMFE_ICEBERG_NAMESPACE:-gis.fusion}
+      MMFE_ICEBERG_TABLE: ${MMFE_ICEBERG_TABLE:-semantic_products}
       HUAWEI_OBS_AK: ${HUAWEI_OBS_AK:-}
       HUAWEI_OBS_SK: ${HUAWEI_OBS_SK:-}
       HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-}
@@ -95,6 +111,53 @@ services:
       - worldpop_cache:/app/data_agent/uploads/.worldpop_cache
       # Optional: mount Google service account credentials
       # - ./secrets/service-account.json:/app/secrets/service-account.json:ro
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # MinIO S3-compatible Object Storage (local data lake / uploads)
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local_dev_minio_secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agent-net
+
+  minio-bucket-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local_dev_minio_secret}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-gis-agent-uploads}
+      MMFE_LAKEHOUSE_BUCKET: ${MMFE_LAKEHOUSE_BUCKET:-gis-agent-lakehouse}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing local/"$$AWS_S3_BUCKET"
+        mc mb --ignore-existing local/"$$MMFE_LAKEHOUSE_BUCKET"
+        mc anonymous set none local/"$$AWS_S3_BUCKET" || true
+        mc anonymous set none local/"$$MMFE_LAKEHOUSE_BUCKET" || true
+        echo "[bucket-init] buckets ready: $$AWS_S3_BUCKET $$MMFE_LAKEHOUSE_BUCKET"
     networks:
       - agent-net
 
@@ -250,6 +313,7 @@ volumes:
   uploads:
   worldpop_cache:
   redis-data:
+  minio-data:
   cv-models:
   cad-uploads:
 
