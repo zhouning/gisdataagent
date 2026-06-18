@@ -50,7 +50,7 @@
 - Create: `data_agent/test_fusion_semantic_product.py`
 - No production code changes in this task.
 
-- [ ] **Step 1: Write the failing test file**
+- [x] **Step 1: Write the failing test file**
 
 Create `data_agent/test_fusion_semantic_product.py` with:
 
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: Run the new test to verify it fails**
+- [x] **Step 2: Run the new test to verify it fails**
 
 Run:
 
@@ -210,7 +210,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'data_agent.fusion.sem
 - Create: `data_agent/fusion/semantic_product.py`
 - Test: `data_agent/test_fusion_semantic_product.py`
 
-- [ ] **Step 1: Add minimal implementation**
+- [x] **Step 1: Add minimal implementation**
 
 Create `data_agent/fusion/semantic_product.py` with:
 
@@ -498,7 +498,7 @@ def _json_default(value):
     return str(value)
 ```
 
-- [ ] **Step 2: Run semantic product tests**
+- [x] **Step 2: Run semantic product tests**
 
 Run:
 
@@ -516,7 +516,7 @@ Expected: PASS.
 - Modify: `data_agent/standards/gis_ontology.yaml`
 - Test: `data_agent/test_fusion_v2_semantic.py`
 
-- [ ] **Step 1: Replace ontology YAML with valid UTF-8**
+- [x] **Step 1: Replace ontology YAML with valid UTF-8**
 
 Replace `data_agent/standards/gis_ontology.yaml` with:
 
@@ -674,7 +674,7 @@ unit_conversions:
       factor: 0.001
 ```
 
-- [ ] **Step 2: Run existing semantic v2 tests and inspect failures**
+- [x] **Step 2: Run existing semantic v2 tests and inspect failures**
 
 Run:
 
@@ -684,7 +684,7 @@ Run:
 
 Expected: Some existing assertions may fail because they currently assert mojibake strings. Update those assertions in the next step.
 
-- [ ] **Step 3: Update ontology assertions to valid UTF-8**
+- [x] **Step 3: Update ontology assertions to valid UTF-8**
 
 In `data_agent/test_fusion_v2_semantic.py`, update assertions:
 
@@ -701,7 +701,7 @@ mocked JSON values should use "面积", "m2", "地块面积", "同义"
 
 Keep the same test intent and replace only corrupted string literals.
 
-- [ ] **Step 4: Re-run semantic v2 tests**
+- [x] **Step 4: Re-run semantic v2 tests**
 
 Run:
 
@@ -719,7 +719,7 @@ Expected: PASS.
 - Modify: `data_agent/fusion/compatibility.py`
 - Modify: `data_agent/test_fusion_v2_semantic.py`
 
-- [ ] **Step 1: Add failing compatibility test**
+- [x] **Step 1: Add failing compatibility test**
 
 Append to `TestOntologyInMatching` in `data_agent/test_fusion_v2_semantic.py`:
 
@@ -748,7 +748,7 @@ Append to `TestOntologyInMatching` in `data_agent/test_fusion_v2_semantic.py`:
         self.assertEqual(ontology_matches[0]["right"], "AREA")
 ```
 
-- [ ] **Step 2: Run targeted failing test**
+- [x] **Step 2: Run targeted failing test**
 
 Run:
 
@@ -758,7 +758,7 @@ Run:
 
 Expected: FAIL with `TypeError: assess_compatibility() got an unexpected keyword argument 'use_ontology'`.
 
-- [ ] **Step 3: Implement compatibility parameter**
+- [x] **Step 3: Implement compatibility parameter**
 
 Change `data_agent/fusion/compatibility.py`:
 
@@ -782,7 +782,7 @@ field_matches = _find_field_matches(
 )
 ```
 
-- [ ] **Step 4: Run targeted test**
+- [x] **Step 4: Run targeted test**
 
 Run:
 
@@ -802,7 +802,7 @@ Expected: PASS.
 - Modify: `data_agent/fusion_engine.py`
 - Modify: `data_agent/test_fusion_v2_integration.py`
 
-- [ ] **Step 1: Add failing model export assertions**
+- [x] **Step 1: Add failing model export assertions**
 
 In `TestFusionResultModel` in `data_agent/test_fusion_v2_integration.py`, add:
 
@@ -824,7 +824,7 @@ In `TestFusionResultModel` in `data_agent/test_fusion_v2_integration.py`, add:
         self.assertTrue(callable(write_semantic_product_manifest))
 ```
 
-- [ ] **Step 2: Run targeted tests to verify failure**
+- [x] **Step 2: Run targeted tests to verify failure**
 
 Run:
 
@@ -834,7 +834,7 @@ Run:
 
 Expected: FAIL because new fields and/or exports are missing.
 
-- [ ] **Step 3: Add FusionResult fields**
+- [x] **Step 3: Add FusionResult fields**
 
 In `data_agent/fusion/models.py`, add to `FusionResult`:
 
@@ -846,7 +846,7 @@ In `data_agent/fusion/models.py`, add to `FusionResult`:
     inferred_fields: list = field(default_factory=list)
 ```
 
-- [ ] **Step 4: Re-export helpers**
+- [x] **Step 4: Re-export helpers**
 
 In `data_agent/fusion/__init__.py`, add:
 
@@ -866,7 +866,7 @@ In `data_agent/fusion_engine.py`, add these names to the explicit import list:
     write_semantic_product_manifest,
 ```
 
-- [ ] **Step 5: Run targeted model/export tests**
+- [x] **Step 5: Run targeted model/export tests**
 
 Run:
 
@@ -884,7 +884,7 @@ Expected: PASS.
 - Modify: `data_agent/fusion/execution.py`
 - Modify: `data_agent/test_fusion_v2_integration.py`
 
-- [ ] **Step 1: Add failing integration test**
+- [x] **Step 1: Add failing integration test**
 
 In `TestExecuteFusionV2` in `data_agent/test_fusion_v2_integration.py`, add:
 
@@ -935,7 +935,7 @@ In `TestExecuteFusionV2` in `data_agent/test_fusion_v2_integration.py`, add:
         self.assertIn("building_height", output_gdf.columns)
 ```
 
-- [ ] **Step 2: Run targeted failing test**
+- [x] **Step 2: Run targeted failing test**
 
 Run:
 
@@ -945,7 +945,7 @@ Run:
 
 Expected: FAIL with `TypeError: execute_fusion() got an unexpected keyword argument 'semantic_config'`.
 
-- [ ] **Step 3: Add semantic_config to execute_fusion signature**
+- [x] **Step 3: Add semantic_config to execute_fusion signature**
 
 In `data_agent/fusion/execution.py`, add parameter:
 
@@ -953,7 +953,7 @@ In `data_agent/fusion/execution.py`, add parameter:
     semantic_config: Optional[dict] = None,
 ```
 
-- [ ] **Step 4: Move quality validation before final save and add semantic product call**
+- [x] **Step 4: Move quality validation before final save and add semantic product call**
 
 In `execute_fusion()`, after conflict resolution and before final return, adjust flow to:
 
@@ -1010,7 +1010,7 @@ output_gdf.to_file(output_path, driver="GeoJSON")
 
 Keep explainability behavior intact. If explainability currently runs after validation, preserve that behavior or run semantic product after explainability so `_fusion_confidence` is available in feature summaries.
 
-- [ ] **Step 5: Populate new FusionResult fields**
+- [x] **Step 5: Populate new FusionResult fields**
 
 Add to returned `FusionResult`:
 
@@ -1021,7 +1021,7 @@ Add to returned `FusionResult`:
         inferred_fields=inferred_field_names,
 ```
 
-- [ ] **Step 6: Run targeted integration test**
+- [x] **Step 6: Run targeted integration test**
 
 Run:
 
@@ -1039,7 +1039,7 @@ Expected: PASS.
 - Modify: `data_agent/toolsets/fusion_tools.py`
 - Modify: `data_agent/test_fusion_v2_integration.py`
 
-- [ ] **Step 1: Add failing signature/default test**
+- [x] **Step 1: Add failing signature/default test**
 
 In `TestFuseDatasetsV2Params` in `data_agent/test_fusion_v2_integration.py`, add:
 
@@ -1053,7 +1053,7 @@ In `TestFuseDatasetsV2Params` in `data_agent/test_fusion_v2_integration.py`, add
         self.assertEqual(sig.parameters["semantic_product"].default, "true")
 ```
 
-- [ ] **Step 2: Run targeted failing test**
+- [x] **Step 2: Run targeted failing test**
 
 Run:
 
@@ -1063,7 +1063,7 @@ Run:
 
 Expected: FAIL because parameter is missing.
 
-- [ ] **Step 3: Add parameter to fuse_datasets signature**
+- [x] **Step 3: Add parameter to fuse_datasets signature**
 
 In `data_agent/toolsets/fusion_tools.py`, change signature:
 
@@ -1080,7 +1080,7 @@ async def fuse_datasets(
 ) -> str:
 ```
 
-- [ ] **Step 4: Pass semantic_config into execute_fusion**
+- [x] **Step 4: Pass semantic_config into execute_fusion**
 
 Inside `fuse_datasets()`, before calling `fusion_engine.execute_fusion`, build:
 
@@ -1116,7 +1116,7 @@ report = fusion_engine.assess_compatibility(
 
 If the current call site has different variable names, preserve existing behavior and only add these parameters.
 
-- [ ] **Step 5: Include manifest in tool return text**
+- [x] **Step 5: Include manifest in tool return text**
 
 Add lines to the success response:
 
@@ -1127,7 +1127,7 @@ if result.semantic_product_path:
     lines.append(f"推理字段: {len(result.inferred_fields)} 个")
 ```
 
-- [ ] **Step 6: Run targeted signature test**
+- [x] **Step 6: Run targeted signature test**
 
 Run:
 
@@ -1144,7 +1144,7 @@ Expected: PASS.
 **Files:**
 - Modify only files touched by prior tasks if failures require fixes.
 
-- [ ] **Step 1: Run focused semantic/fusion tests**
+- [x] **Step 1: Run focused semantic/fusion tests**
 
 Run:
 
@@ -1154,7 +1154,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 2: If failures occur, fix production code or tests according to behavior**
+- [x] **Step 2: If failures occur, fix production code or tests according to behavior**
 
 Common likely fixes:
 
@@ -1163,7 +1163,7 @@ Common likely fixes:
 - If `execute_fusion()` semantic enrichment runs before explainability and feature quality is always high, this is acceptable for this iteration unless tests assert otherwise.
 - If Chinese string assertions fail due console encoding only, inspect file with `Get-Content -Encoding UTF8`.
 
-- [ ] **Step 3: Run broader MMFE regression**
+- [x] **Step 3: Run broader MMFE regression**
 
 Run:
 
@@ -1180,7 +1180,7 @@ Expected: PASS.
 **Files:**
 - Modify: `docs/semantic_fusion_engine_technical_spec.md` or add a short section to `docs/superpowers/specs/2026-06-15-mmfe-semantic-fusion-product-design.md`
 
-- [ ] **Step 1: Add implementation note after tests pass**
+- [x] **Step 1: Add implementation note after tests pass**
 
 Append to the design spec:
 
@@ -1201,7 +1201,7 @@ The semantic fusion product is opt-in at the engine layer through
 iteration emits embedding-ready chunks but does not add a LanceDB dependency.
 ```
 
-- [ ] **Step 2: Run final focused tests again**
+- [x] **Step 2: Run final focused tests again**
 
 Run:
 
@@ -1569,3 +1569,46 @@ Verification used for this increment:
 ```
 
 Remaining hard parts are still real: actual chunked point streaming and chunk artifact materialization, production PDAL/LAZ backend provisioning, concrete third-party model tool adapters/executors, and a separate optional publisher for pgvector/LanceDB.
+
+---
+
+## Roadmap Progress: MMFE Readiness API and Product Panel
+
+Completed as the UI-facing readiness contract for the local TWM/MMFE semantic
+fusion product.
+
+- Added `GET /api/fusion/mmfe/readiness` to expose the same structured
+  semantic-product diagnostic that was previously only practical to inspect from
+  command-line tests.
+- The endpoint reads the fixed local `twm_bishan_demo/mmfe_semantic_fusion`
+  bundle and returns a compact API payload with:
+  - summary readiness status and score;
+  - core semantic surfaces: standard source registry, value-domain audit,
+    semantic graph, trace cards, TWM state input, relations, hard constraints,
+    and multi-objective interface;
+  - production gates: authority, production metadata contract, standard gaps,
+    and standard-source ingestion;
+  - top gaps and Chinese recommendations.
+- Added the MMFE readiness summary to the existing Fusion Quality product panel
+  so manual validation can see `validation_ready=true` and
+  `production_ready=false` directly in the browser.
+- Extended the Playwright MMFE fusion-quality test to assert the readiness panel,
+  the new API response, the core surfaces, and the existing real fusion quality
+  record.
+
+Verification used for this increment:
+
+```bash
+PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj \
+  .venv/bin/python -m pytest \
+  data_agent/test_fusion_v2_integration.py \
+  data_agent/test_fusion_semantic_product_diagnostics.py -q
+
+docker compose build app
+docker compose up -d app
+
+node /Users/zhouning/node_modules/playwright/cli.js test \
+  mmfe_fusion_quality.spec.ts \
+  --config=tests/e2e/playwright.mmfe.config.ts \
+  --project=chromium
+```

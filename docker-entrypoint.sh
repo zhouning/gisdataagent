@@ -49,12 +49,11 @@ else
 fi
 
 # -----------------------------------------------------------------------
-# 3. Generate data_agent/.env if it does not exist
+# 3. Generate data_agent/.env from current container environment
 # -----------------------------------------------------------------------
 ENV_FILE="/app/data_agent/.env"
-if [ ! -f "$ENV_FILE" ]; then
-    echo "[ENV] Generating $ENV_FILE from environment variables..."
-    cat > "$ENV_FILE" <<ENVEOF
+echo "[ENV] Writing $ENV_FILE from environment variables..."
+cat > "$ENV_FILE" <<ENVEOF
 export POSTGRES_HOST="${POSTGRES_HOST:-db}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 export POSTGRES_DATABASE="${POSTGRES_DATABASE:-gis_agent}"
@@ -64,43 +63,49 @@ GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-}
 GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
 GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-global}
 GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+ROUTER_MODEL=${ROUTER_MODEL:-}
+MODEL_FAST=${MODEL_FAST:-}
+MODEL_STANDARD=${MODEL_STANDARD:-}
+MODEL_PREMIUM=${MODEL_PREMIUM:-}
+MODEL_CONFIG_FORCE_ENV=${MODEL_CONFIG_FORCE_ENV:-}
+OLLAMA_API_BASE=${OLLAMA_API_BASE:-}
+NL2SQL_AGENT_MODEL=${NL2SQL_AGENT_MODEL:-}
+NL2SQL_LLM_SCHEMA_MAPPER_MODEL=${NL2SQL_LLM_SCHEMA_MAPPER_MODEL:-}
+EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
 export GAODE_API_KEY=${GAODE_API_KEY:-}
 CHAINLIT_AUTH_SECRET="${CHAINLIT_AUTH_SECRET}"
 export DYNAMIC_PLANNER=${DYNAMIC_PLANNER:-true}
 ENVEOF
 
-    # Optional: Huawei OBS
-    if [ -n "$HUAWEI_OBS_AK" ]; then
-        cat >> "$ENV_FILE" <<OBSEOF
+# Optional: Huawei OBS
+if [ -n "$HUAWEI_OBS_AK" ]; then
+    cat >> "$ENV_FILE" <<OBSEOF
 export HUAWEI_OBS_AK="${HUAWEI_OBS_AK}"
 export HUAWEI_OBS_SK="${HUAWEI_OBS_SK}"
 export HUAWEI_OBS_SERVER="${HUAWEI_OBS_SERVER}"
 export HUAWEI_OBS_BUCKET="${HUAWEI_OBS_BUCKET}"
 OBSEOF
-    fi
+fi
 
-    # Optional: OAuth
-    if [ -n "$OAUTH_GOOGLE_CLIENT_ID" ]; then
-        cat >> "$ENV_FILE" <<OAEOF
+# Optional: OAuth
+if [ -n "$OAUTH_GOOGLE_CLIENT_ID" ]; then
+    cat >> "$ENV_FILE" <<OAEOF
 OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
 OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
 OAEOF
-    fi
-
-    # Optional: Tianditu
-    if [ -n "$TIANDITU_TOKEN" ]; then
-        echo "TIANDITU_TOKEN=${TIANDITU_TOKEN}" >> "$ENV_FILE"
-    fi
-
-    # Optional: Usage limits
-    [ -n "$DAILY_ANALYSIS_LIMIT" ] && echo "DAILY_ANALYSIS_LIMIT=${DAILY_ANALYSIS_LIMIT}" >> "$ENV_FILE"
-    [ -n "$MONTHLY_TOKEN_LIMIT" ] && echo "MONTHLY_TOKEN_LIMIT=${MONTHLY_TOKEN_LIMIT}" >> "$ENV_FILE"
-    [ -n "$AUDIT_LOG_RETENTION_DAYS" ] && echo "AUDIT_LOG_RETENTION_DAYS=${AUDIT_LOG_RETENTION_DAYS}" >> "$ENV_FILE"
-
-    echo "[ENV] Generated."
-else
-    echo "[ENV] $ENV_FILE already exists, skipping generation."
 fi
+
+# Optional: Tianditu
+if [ -n "$TIANDITU_TOKEN" ]; then
+    echo "TIANDITU_TOKEN=${TIANDITU_TOKEN}" >> "$ENV_FILE"
+fi
+
+# Optional: Usage limits
+[ -n "$DAILY_ANALYSIS_LIMIT" ] && echo "DAILY_ANALYSIS_LIMIT=${DAILY_ANALYSIS_LIMIT}" >> "$ENV_FILE"
+[ -n "$MONTHLY_TOKEN_LIMIT" ] && echo "MONTHLY_TOKEN_LIMIT=${MONTHLY_TOKEN_LIMIT}" >> "$ENV_FILE"
+[ -n "$AUDIT_LOG_RETENTION_DAYS" ] && echo "AUDIT_LOG_RETENTION_DAYS=${AUDIT_LOG_RETENTION_DAYS}" >> "$ENV_FILE"
+
+echo "[ENV] Generated."
 
 # -----------------------------------------------------------------------
 # 4. Start Chainlit

@@ -323,6 +323,32 @@ class TestProductionReadiness(unittest.TestCase):
         self.assertEqual(contract["summary"]["blocked_source_count"], 1)
         self.assertIn("not_for_production", contract["findings"][0]["invalid_fields"])
 
+    def test_standard_source_registry_with_failed_anchor_quality_is_blocked(self):
+        from data_agent.fusion.production_readiness import (
+            build_production_readiness_contract,
+            standard_source_production_metadata_from_registry,
+        )
+
+        registry = _ready_standard_source_registry()
+        registry["entries"][0]["citation_anchor_quality"] = {
+            "status": "fail",
+            "coverage_score": 0.2,
+            "anchor_count": 1,
+            "weak_anchor_count": 1,
+        }
+
+        rows = standard_source_production_metadata_from_registry(registry)
+        contract = build_production_readiness_contract(
+            _manifest(),
+            sources=rows,
+            timestamp="2026-06-17T00:00:00+00:00",
+        )
+
+        self.assertTrue(rows[0]["not_for_production"])
+        self.assertEqual(rows[0]["citation_anchor_quality"]["status"], "fail")
+        self.assertFalse(contract["summary"]["production_metadata_ready"])
+        self.assertIn("not_for_production", contract["findings"][0]["invalid_fields"])
+
     def test_api_is_exported_through_fusion_engine_proxy(self):
         from data_agent import fusion_engine
 

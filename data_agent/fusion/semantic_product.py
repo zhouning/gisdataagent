@@ -208,6 +208,9 @@ def build_semantic_fusion_product(
             "conflict_resolution": conflict_summary or {},
         },
     }
+    mmfe_bundle = _build_optional_mmfe_bundle(cfg)
+    if mmfe_bundle:
+        manifest["mmfe_bundle"] = mmfe_bundle
     return enriched, manifest
 
 
@@ -260,6 +263,43 @@ def _source_manifest(source: FusionSource) -> dict:
         "semantic_hints": list(source.semantic_hints or []),
         "columns": [column.get("name") for column in source.columns],
     }
+
+
+def _build_optional_mmfe_bundle(config: dict) -> dict:
+    """Carry optional MMFE sidecar contracts into the semantic product."""
+    bundle = {}
+    configured_bundle = config.get("mmfe_bundle")
+    if isinstance(configured_bundle, dict):
+        bundle.update(dict(configured_bundle))
+
+    for key in (
+        "standard_source_registry",
+        "standard_source_ingestion_plan",
+        "standard_source_ingestion_run",
+        "production_readiness",
+        "semantic_graph",
+        "semantic_trace_cards",
+        "semantic_ontology",
+        "semantic_diagnostic",
+        "twm_consumption",
+        "twm_state_input",
+    ):
+        value = config.get(key)
+        if isinstance(value, dict):
+            bundle[key] = value
+
+    list_mappings = {
+        "field_semantics": "field_semantics",
+        "value_domain_audits": "value_domain_audits",
+        "standard_source_rows": "standard_source_rows",
+        "semantic_relations": "semantic_relations",
+    }
+    for config_key, bundle_key in list_mappings.items():
+        value = config.get(config_key)
+        if isinstance(value, list):
+            bundle[bundle_key] = list(value)
+
+    return bundle
 
 
 def _normalize_field_matches(

@@ -1,6 +1,7 @@
 """Tests for the MMFE semantic vector retrieval smoke script."""
 
 import argparse
+import json
 import sys
 import types
 import unittest
@@ -16,6 +17,7 @@ class TestMMFESemanticVectorRetrievalSmoke(unittest.TestCase):
             "twm_mmfe_semantic_product.json"
         )
         self.assertTrue(manifest.exists(), f"missing fixture: {manifest}")
+        expected_count = _manifest_chunk_count(manifest)
 
         published_records = []
 
@@ -66,12 +68,13 @@ class TestMMFESemanticVectorRetrievalSmoke(unittest.TestCase):
 
         self.assertEqual(summary["status"], "ok")
         self.assertEqual(summary["target"], "pgvector")
-        self.assertEqual(summary["published_count"], 13)
+        self.assertEqual(summary["published_count"], expected_count)
         self.assertEqual(summary["match_count"], 1)
         self.assertEqual(summary["embedding_backend"], "deterministic")
         self.assertEqual(summary["embedding_dimension"], 16)
         self.assertTrue(summary["expectation_ok"])
-        self.assertEqual(len(published_records), 13)
+        self.assertEqual(len(published_records), expected_count)
+        self.assertTrue(any("永久基本农田" in record["text"] for record in published_records))
 
     def test_run_smoke_gateway_backend_passes_explicit_embedding_model(self):
         manifest = Path(
@@ -134,6 +137,11 @@ class TestMMFESemanticVectorRetrievalSmoke(unittest.TestCase):
         self.assertEqual(summary["status"], "ok")
         self.assertEqual(summary["embedding_model"], "unit-test-embedder")
         self.assertEqual(seen_models, ["unit-test-embedder", "unit-test-embedder"])
+
+
+def _manifest_chunk_count(path: Path) -> int:
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    return len((manifest.get("ai_metadata") or {}).get("chunks") or [])
 
 
 if __name__ == "__main__":

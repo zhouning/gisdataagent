@@ -18,8 +18,10 @@ class _FakeHttpResponse:
         self.status = status
         self.url = url
 
-    def read(self):
-        return self._body
+    def read(self, size: int | None = None):
+        if size is None or size < 0:
+            return self._body
+        return self._body[:size]
 
     def __enter__(self):
         return self
@@ -45,6 +47,35 @@ def _write_minimal_docx(path: Path, paragraphs: list[str]) -> None:
     )
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr("word/document.xml", document_xml)
+
+
+def _write_minimal_pdf(path: Path, lines: list[str]) -> None:
+    from pypdf import PdfWriter
+    from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=612, height=792)
+    font = DictionaryObject({
+        NameObject("/Type"): NameObject("/Font"),
+        NameObject("/Subtype"): NameObject("/Type1"),
+        NameObject("/BaseFont"): NameObject("/Helvetica"),
+    })
+    font_ref = writer._add_object(font)
+    page[NameObject("/Resources")] = DictionaryObject({
+        NameObject("/Font"): DictionaryObject({NameObject("/F1"): font_ref})
+    })
+    stream = DecodedStreamObject()
+    stream_lines = ["BT /F1 12 Tf 72 720 Td"]
+    for index, line in enumerate(lines):
+        escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        if index:
+            stream_lines.append("0 -18 Td")
+        stream_lines.append(f"({escaped}) Tj")
+    stream_lines.append("ET")
+    stream.set_data("\n".join(stream_lines).encode("latin-1"))
+    page[NameObject("/Contents")] = writer._add_object(stream)
+    with path.open("wb") as f:
+        writer.write(f)
 
 
 class TestFusionStandardSources(unittest.TestCase):
@@ -259,6 +290,138 @@ class TestFusionStandardSources(unittest.TestCase):
         self.assertEqual(task_result["status"], "ingested")
         self.assertEqual(task_result["archive_uri"], "s3://standards-archive/GB/T 21010-2017.pdf")
         self.assertEqual(len(task_result["checksum_sha256"]), 64)
+        self.assertEqual(task_result["citation_anchor_quality"]["status"], "fail")
+        self.assertEqual(result["summary"]["citation_anchor_quality_fail_count"], 1)
+
+    def test_ingestion_runner_derives_quality_for_external_extractor_anchors(self):
+        from data_agent.fusion.standard_sources import run_standard_source_ingestion_plan
+
+        plan = {
+            "schema": "mmfe.standard_source_ingestion_plan.v1",
+            "summary": {"ready": False},
+            "tasks": [
+                {
+                    "task_id": "standard-source-ingest-1",
+                    "standard_identifier": "GB/T 21010-2017",
+                    "source_name": "GB/T 21010-2017 土地利用现状分类",
+                    "official_url": "https://openstd.samr.gov.cn/bzgk/gb/newGbInfo",
+                    "download_required": True,
+                    "required_actions": [
+                        "download_or_archive_fulltext_and_record_checksum",
+                        "extract_clauses_fields_value_domains_and_citation_anchors",
+                    ],
+                }
+            ],
+        }
+
+        def fetcher(task):
+            return {"body": b"standard body"}
+
+        def extractor(task, body, archive):
+            return {
+                "extraction_status": "extracted",
+                "anchors": [
+                    {
+                        "citation": "GB/T 21010-2017 §1",
+                        "clause": "1",
+                        "text": "1 范围",
+                    },
+                    {
+                        "citation": "GB/T 21010-2017 §2",
+                        "clause": "2",
+                        "text": "2 术语和定义",
+                    },
+                ],
+            }
+
+        result = run_standard_source_ingestion_plan(
+            plan,
+            fetcher=fetcher,
+            extractor=extractor,
+            timestamp="2026-06-17T00:00:00+00:00",
+        )
+        task_result = result["task_results"][0]
+
+        self.assertTrue(result["valid"], result["errors"])
+        self.assertEqual(task_result["citation_anchor_count"], 2)
+        self.assertEqual(task_result["citation_anchor_quality"]["status"], "pass")
+        self.assertEqual(result["summary"]["citation_anchor_quality_pass_count"], 1)
+
+    def test_ingestion_run_validator_rejects_inconsistent_audit_contract(self):
+        from data_agent.fusion.standard_sources import validate_standard_source_ingestion_run
+
+        payload = {
+            "schema": "mmfe.standard_source_ingestion_run.v1",
+            "valid": True,
+            "errors": [{"task_id": "standard-source-ingest-1", "errors": ["failed"]}],
+            "task_count": 2,
+            "summary": {
+                "ingested_task_count": 99,
+                "citation_anchor_count": 7,
+                "citation_anchor_quality_pass_count": 1,
+            },
+            "task_results": [
+                {
+                    "task_id": "standard-source-ingest-1",
+                    "standard_identifier": "GB/T 21010-2017",
+                    "valid": True,
+                    "http_status": 200,
+                    "bytes_fetched": 10,
+                    "bytes_archived": 10,
+                    "citation_anchor_count": 2,
+                    "fetch_policy": {
+                        "allowed_domains": "openstd.samr.gov.cn",
+                        "require_https": "yes",
+                        "max_bytes": -1,
+                    },
+                    "citation_anchor_quality": {
+                        "schema": "mmfe.standard_source_citation_anchor_quality.v1",
+                        "status": "ok",
+                        "coverage_score": 1.2,
+                        "anchor_count": 1,
+                        "clause_anchor_count": 1,
+                        "page_anchor_count": 0,
+                        "text_anchor_count": 1,
+                        "field_anchor_count": 0,
+                        "value_domain_anchor_count": 0,
+                        "duplicate_citation_count": 0,
+                        "weak_anchor_count": 0,
+                    },
+                }
+            ],
+        }
+
+        validation = validate_standard_source_ingestion_run(payload)
+
+        self.assertFalse(validation["valid"])
+        self.assertIn("valid must equal whether errors is empty", validation["errors"])
+        self.assertIn("task_count must equal task_results length", validation["errors"])
+        self.assertIn("summary.ingested_task_count must equal 1", validation["errors"])
+        self.assertIn("summary.citation_anchor_count must equal 2", validation["errors"])
+        self.assertIn(
+            "task_results[0].fetch_policy.allowed_domains must be a list",
+            validation["errors"],
+        )
+        self.assertIn(
+            "task_results[0].fetch_policy.require_https must be boolean",
+            validation["errors"],
+        )
+        self.assertIn(
+            "task_results[0].fetch_policy.max_bytes must be a non-negative integer",
+            validation["errors"],
+        )
+        self.assertIn(
+            "task_results[0].citation_anchor_quality.status must be one of pass, warn, fail",
+            validation["errors"],
+        )
+        self.assertIn(
+            "task_results[0].citation_anchor_quality.anchor_count must equal 2",
+            validation["errors"],
+        )
+        self.assertIn(
+            "task_results[0].citation_anchor_quality.coverage_score must be between 0 and 1",
+            validation["errors"],
+        )
 
     def test_citation_anchor_sidecar_builder_validates_and_writes_contract(self):
         from data_agent.fusion.standard_sources import (
@@ -300,6 +463,37 @@ class TestFusionStandardSources(unittest.TestCase):
 
         self.assertEqual(loaded["schema"], STANDARD_SOURCE_CITATION_ANCHORS_SCHEMA)
         self.assertEqual(loaded["anchors"][0]["citation"], "GB/T 21010-2017 §1")
+
+    def test_citation_anchor_sidecar_validator_rejects_bad_quality_contract(self):
+        from data_agent.fusion.standard_sources import (
+            build_standard_source_citation_anchor_sidecar,
+            validate_standard_source_citation_anchor_sidecar,
+        )
+
+        sidecar = build_standard_source_citation_anchor_sidecar(
+            {
+                "task_id": "standard-source-ingest-1",
+                "standard_identifier": "GB/T 21010-2017",
+            },
+            anchors=[{"anchor_id": "a1", "citation": "GB/T 21010-2017 §1", "text": "1 范围"}],
+        )
+        sidecar["quality"] = {
+            "schema": "wrong",
+            "status": "unknown",
+            "coverage_score": "not-a-number",
+            "anchor_count": 2,
+        }
+
+        validation = validate_standard_source_citation_anchor_sidecar(sidecar)
+
+        self.assertFalse(validation["valid"])
+        self.assertIn(
+            "quality.schema must be mmfe.standard_source_citation_anchor_quality.v1",
+            validation["errors"],
+        )
+        self.assertIn("quality.status must be one of pass, warn, fail", validation["errors"])
+        self.assertIn("quality.anchor_count must equal 1", validation["errors"])
+        self.assertIn("quality.coverage_score must be numeric", validation["errors"])
 
     def test_local_standard_source_adapters_archive_and_write_citation_sidecar(self):
         from data_agent.fusion.standard_sources import (
@@ -374,6 +568,9 @@ class TestFusionStandardSources(unittest.TestCase):
         self.assertEqual(sidecar["schema"], STANDARD_SOURCE_CITATION_ANCHORS_SCHEMA)
         self.assertEqual(sidecar["archive_uri"], task_result["archive_uri"])
         self.assertGreaterEqual(sidecar["citation_anchor_count"], 3)
+        self.assertEqual(sidecar["quality"]["status"], "pass")
+        self.assertEqual(task_result["citation_anchor_quality"]["status"], "pass")
+        self.assertEqual(result["summary"]["citation_anchor_quality_pass_count"], 1)
         self.assertTrue(validate_standard_source_citation_anchor_sidecar(sidecar)["valid"])
 
     def test_local_standard_source_extractor_reports_unsupported_binary_as_failed_task(self):
@@ -486,9 +683,71 @@ class TestFusionStandardSources(unittest.TestCase):
         self.assertTrue(result["valid"], result["errors"])
         self.assertEqual(task_result["extraction_status"], "extracted")
         self.assertEqual(task_result["citation_anchor_count"], 6)
+        self.assertEqual(task_result["citation_anchor_quality"]["status"], "pass")
         self.assertEqual(sidecar["schema"], STANDARD_SOURCE_CITATION_ANCHORS_SCHEMA)
         self.assertEqual(sidecar["citation_anchor_count"], 6)
+        self.assertEqual(sidecar["quality"]["status"], "pass")
         self.assertIn("1 范围", sidecar["anchors"][0]["text"])
+
+    def test_local_standard_source_extractor_reads_pdf_and_writes_page_anchors(self):
+        from data_agent.fusion.standard_sources import (
+            STANDARD_SOURCE_CITATION_ANCHORS_SCHEMA,
+            build_local_standard_source_archiver,
+            build_local_standard_source_extractor,
+            build_local_standard_source_fetcher,
+            run_standard_source_ingestion_plan,
+        )
+
+        plan = {
+            "schema": "mmfe.standard_source_ingestion_plan.v1",
+            "summary": {"ready": False},
+            "tasks": [
+                {
+                    "task_id": "standard-source-ingest-1",
+                    "standard_identifier": "GB/T 21010-2017",
+                    "source_name": "GB/T 21010-2017 土地利用现状分类",
+                    "official_url": "https://openstd.samr.gov.cn/bzgk/gb/newGbInfo",
+                    "download_required": True,
+                    "required_actions": [
+                        "download_or_archive_fulltext_and_record_checksum",
+                        "extract_clauses_fields_value_domains_and_citation_anchors",
+                    ],
+                }
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            source = tmp_path / "GB_T_21010_2017.pdf"
+            _write_minimal_pdf(
+                source,
+                [
+                    "1 Scope",
+                    "This standard defines land use categories.",
+                    "2 Terms and definitions",
+                ],
+            )
+            result = run_standard_source_ingestion_plan(
+                plan,
+                fetcher=build_local_standard_source_fetcher(
+                    sources_by_identifier={"GB/T 21010-2017": source}
+                ),
+                archiver=build_local_standard_source_archiver(tmp_path / "archive"),
+                extractor=build_local_standard_source_extractor(tmp_path / "sidecars"),
+                timestamp="2026-06-17T00:00:00+00:00",
+            )
+            task_result = result["task_results"][0]
+            sidecar = json.loads(Path(task_result["extraction_result"]["sidecar_path"]).read_text(encoding="utf-8"))
+
+        self.assertTrue(result["valid"], result["errors"])
+        self.assertEqual(task_result["extraction_status"], "extracted")
+        self.assertGreaterEqual(task_result["citation_anchor_count"], 3)
+        self.assertEqual(task_result["extraction_result"]["extraction_method"], "local_pdf_text_clause_anchor_extractor")
+        self.assertEqual(sidecar["schema"], STANDARD_SOURCE_CITATION_ANCHORS_SCHEMA)
+        self.assertEqual(sidecar["anchors"][0]["page"], 1)
+        self.assertIn(sidecar["quality"]["status"], {"pass", "warn"})
+        self.assertIn(task_result["citation_anchor_quality"]["status"], {"pass", "warn"})
+        self.assertIn("1 Scope", sidecar["anchors"][0]["text"])
 
     def test_apply_ingestion_run_updates_registry_and_makes_next_plan_ready(self):
         from data_agent.fusion.standard_sources import (
@@ -551,11 +810,68 @@ class TestFusionStandardSources(unittest.TestCase):
         self.assertEqual(entry["extraction_status"], "extracted")
         self.assertEqual(entry["citation_anchor_count"], 3)
         self.assertEqual(entry["clause_anchor_count"], 3)
+        self.assertEqual(entry["citation_anchor_quality"]["status"], "pass")
         self.assertTrue(entry["citation_anchor_sidecar_path"].endswith(".citation_anchors.json"))
         self.assertEqual(updated["last_ingestion_run"]["summary"]["ingested_task_count"], 1)
         self.assertTrue(next_plan["summary"]["ready"], next_plan)
         self.assertEqual(next_plan["tasks"][0]["status"], "ready")
         self.assertEqual(next_plan["tasks"][0]["blocking_reasons"], [])
+
+    def test_apply_ingestion_run_persists_fetch_audit_metadata(self):
+        from data_agent.fusion.standard_sources import apply_standard_source_ingestion_run
+
+        registry = {
+            "schema": "mmfe.standard_source_registry.v1",
+            "entries": [
+                {
+                    "source_name": "GB/T 21010-2017 土地利用现状分类",
+                    "standard_identifier": "GB/T 21010-2017",
+                    "retrieval_status": "official_fulltext_available",
+                    "access_mode": "online_preview_and_download",
+                    "official_url": "https://openstd.samr.gov.cn/bzgk/gb/newGbInfo",
+                }
+            ],
+        }
+        run = {
+            "schema": "mmfe.standard_source_ingestion_run.v1",
+            "valid": True,
+            "errors": [],
+            "summary": {"ingested_task_count": 1},
+            "task_results": [
+                {
+                    "task_id": "standard-source-ingest-1",
+                    "standard_identifier": "GB/T 21010-2017",
+                    "valid": True,
+                    "status": "ingested",
+                    "source_url": "https://openstd.samr.gov.cn/bzgk/gb/download?hcno=abc",
+                    "http_status": 200,
+                    "content_type": "application/pdf",
+                    "base_content_type": "application/pdf",
+                    "fetch_policy": {
+                        "allowed_domains": ["openstd.samr.gov.cn"],
+                        "require_https": True,
+                        "allowed_content_types": ["application/pdf"],
+                        "max_bytes": 10485760,
+                    },
+                    "archive_uri": "s3://standards-archive/gbt21010.pdf",
+                    "checksum_sha256": "a" * 64,
+                    "bytes_fetched": 1024,
+                    "bytes_archived": 1024,
+                    "extraction_status": "extracted",
+                    "citation_anchor_count": 2,
+                }
+            ],
+        }
+
+        updated = apply_standard_source_ingestion_run(registry, run)
+        entry = updated["entries"][0]
+
+        self.assertEqual(entry["retrieval_source_url"], "https://openstd.samr.gov.cn/bzgk/gb/download?hcno=abc")
+        self.assertEqual(entry["retrieval_http_status"], 200)
+        self.assertEqual(entry["retrieval_content_type"], "application/pdf")
+        self.assertEqual(entry["retrieval_base_content_type"], "application/pdf")
+        self.assertEqual(entry["retrieval_fetch_policy"]["require_https"], True)
+        self.assertEqual(entry["retrieval_fetch_policy"]["max_bytes"], 10485760)
 
     def test_apply_ingestion_run_ignores_failed_task_results(self):
         from data_agent.fusion.standard_sources import apply_standard_source_ingestion_run
@@ -649,6 +965,153 @@ class TestFusionStandardSources(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not allowed"):
             fetcher({"official_url": "https://example.com/standard.pdf"})
         self.assertFalse(called)
+
+    def test_http_standard_source_fetcher_enforces_production_policy_before_archive(self):
+        from data_agent.fusion.standard_sources import build_http_standard_source_fetcher
+
+        calls = []
+
+        def opener(request, timeout):
+            calls.append({"request": request, "timeout": timeout})
+            return _FakeHttpResponse(
+                b"%PDF-1.7\nstandard body\n",
+                content_type="application/pdf; charset=binary",
+                status=200,
+                url=request.full_url,
+            )
+
+        fetcher = build_http_standard_source_fetcher(
+            allowed_domains=["openstd.samr.gov.cn"],
+            require_https=True,
+            allowed_content_types=["application/pdf", "text/plain"],
+            max_bytes=1024,
+            authorization_header="Bearer test-token",
+            extra_headers={"X-MMFE-Policy": "production"},
+            opener=opener,
+        )
+        result = fetcher({
+            "official_url": "https://openstd.samr.gov.cn/bzgk/gb/download?hcno=abc",
+            "standard_identifier": "GB/T 21010-2017",
+        })
+
+        request = calls[0]["request"]
+        self.assertEqual(request.headers["Authorization"], "Bearer test-token")
+        self.assertEqual(request.headers["X-mmfe-policy"], "production")
+        self.assertEqual(result["base_content_type"], "application/pdf")
+        self.assertEqual(result["fetch_policy"]["require_https"], True)
+        self.assertEqual(result["fetch_policy"]["max_bytes"], 1024)
+        self.assertIn("application/pdf", result["fetch_policy"]["allowed_content_types"])
+
+    def test_ingestion_runner_carries_http_fetch_audit_metadata(self):
+        from data_agent.fusion.standard_sources import (
+            build_http_standard_source_fetcher,
+            run_standard_source_ingestion_plan,
+        )
+
+        def opener(request, timeout):
+            return _FakeHttpResponse(
+                b"1 Scope\n2 Terms\n",
+                content_type="text/plain; charset=utf-8",
+                status=200,
+                url=request.full_url,
+            )
+
+        plan = {
+            "schema": "mmfe.standard_source_ingestion_plan.v1",
+            "summary": {"ready": False},
+            "tasks": [
+                {
+                    "task_id": "standard-source-ingest-1",
+                    "standard_identifier": "GB/T 21010-2017",
+                    "source_name": "GB/T 21010-2017 土地利用现状分类",
+                    "official_url": "https://openstd.samr.gov.cn/bzgk/gb/download?hcno=abc",
+                    "download_required": True,
+                    "required_actions": [
+                        "download_or_archive_fulltext_and_record_checksum",
+                    ],
+                }
+            ],
+        }
+        result = run_standard_source_ingestion_plan(
+            plan,
+            fetcher=build_http_standard_source_fetcher(
+                allowed_domains=["openstd.samr.gov.cn"],
+                require_https=True,
+                allowed_content_types=["text/plain"],
+                max_bytes=1024,
+                opener=opener,
+            ),
+            timestamp="2026-06-17T00:00:00+00:00",
+        )
+        task_result = result["task_results"][0]
+
+        self.assertTrue(result["valid"], result["errors"])
+        self.assertEqual(task_result["source_url"], "https://openstd.samr.gov.cn/bzgk/gb/download?hcno=abc")
+        self.assertEqual(task_result["http_status"], 200)
+        self.assertEqual(task_result["content_type"], "text/plain")
+        self.assertEqual(task_result["base_content_type"], "text/plain")
+        self.assertEqual(task_result["fetch_policy"]["require_https"], True)
+        self.assertEqual(task_result["fetch_policy"]["max_bytes"], 1024)
+
+    def test_http_standard_source_fetcher_rejects_http_when_https_required(self):
+        from data_agent.fusion.standard_sources import build_http_standard_source_fetcher
+
+        called = False
+
+        def opener(request, timeout):
+            nonlocal called
+            called = True
+            return _FakeHttpResponse(b"body")
+
+        fetcher = build_http_standard_source_fetcher(
+            allowed_domains=["openstd.samr.gov.cn"],
+            require_https=True,
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(ValueError, "requires https"):
+            fetcher({"official_url": "http://openstd.samr.gov.cn/bzgk/gb/newGbInfo"})
+        self.assertFalse(called)
+
+    def test_http_standard_source_fetcher_rejects_unapproved_content_type(self):
+        from data_agent.fusion.standard_sources import build_http_standard_source_fetcher
+
+        def opener(request, timeout):
+            return _FakeHttpResponse(
+                b"<html>login page</html>",
+                content_type="text/html",
+                status=200,
+                url=request.full_url,
+            )
+
+        fetcher = build_http_standard_source_fetcher(
+            allowed_domains=["openstd.samr.gov.cn"],
+            allowed_content_types=["application/pdf", "text/plain"],
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(ValueError, "content type is not allowed"):
+            fetcher({"official_url": "https://openstd.samr.gov.cn/bzgk/gb/newGbInfo"})
+
+    def test_http_standard_source_fetcher_rejects_oversized_response(self):
+        from data_agent.fusion.standard_sources import build_http_standard_source_fetcher
+
+        def opener(request, timeout):
+            return _FakeHttpResponse(
+                b"0123456789",
+                content_type="text/plain",
+                status=200,
+                url=request.full_url,
+            )
+
+        fetcher = build_http_standard_source_fetcher(
+            allowed_domains=["openstd.samr.gov.cn"],
+            max_bytes=4,
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(ValueError, "exceeds max_bytes=4"):
+            fetcher({"official_url": "https://openstd.samr.gov.cn/bzgk/gb/newGbInfo"})
 
     def test_s3_standard_source_archiver_uploads_bytes_and_returns_archive_metadata(self):
         from data_agent.fusion.standard_sources import archive_standard_source_bytes_to_s3

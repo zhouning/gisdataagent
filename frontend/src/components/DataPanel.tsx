@@ -45,6 +45,7 @@ import StandardsTab from './datapanel/StandardsTab';
 import IntakeTab from './datapanel/IntakeTab';
 import SemanticLayerTab from './datapanel/SemanticLayerTab';
 import ClassificationTab from './datapanel/ClassificationTab';
+import FusionQualityTab from './datapanel/FusionQualityTab';
 
 interface DataPanelProps {
   dataFile: string | null;
@@ -52,7 +53,7 @@ interface DataPanelProps {
   username?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'worldmodel_v21' | 'causal' | 'optimization' | 'qcmonitor' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'worldmodel_v21' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -110,6 +111,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'governance', label: '治理', icon: <Shield size={ICON_SIZE} /> },
       { key: 'classification', label: '分级', icon: <Shield size={ICON_SIZE} /> },
       { key: 'qcmonitor', label: '质检', icon: <ClipboardCheck size={ICON_SIZE} /> },
+      { key: 'fusion_quality', label: '融合质量', icon: <GitBranch size={ICON_SIZE} /> },
       { key: 'alerts', label: '告警', icon: <Bell size={ICON_SIZE} /> },
       { key: 'observability', label: '追踪', icon: <Activity size={ICON_SIZE} /> },
       { key: 'messagebus', label: '消息总线', icon: <Radio size={ICON_SIZE} /> },
@@ -234,6 +236,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'causal' && <CausalReasoningTab />}
         {activeTab === 'optimization' && <OptimizationTab />}
         {activeTab === 'qcmonitor' && <QcMonitorTab />}
+        {activeTab === 'fusion_quality' && <FusionQualityTab />}
         {activeTab === 'alerts' && <AlertsTab />}
         {activeTab === 'messagebus' && <MessageBusTab />}
         {activeTab === 'feedback' && <FeedbackTab />}

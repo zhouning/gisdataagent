@@ -4455,18 +4455,14 @@ def get_frontend_api_routes():
 
 
 def mount_frontend_api(app) -> bool:
-    """Insert frontend API routes before Chainlit catch-all."""
+    """Insert frontend API routes before Chainlit's greedy frontend router."""
     routes = get_frontend_api_routes()
-    inserted = False
-    for route in routes:
-        for i, r in enumerate(app.router.routes):
-            if hasattr(r, "path") and r.path == "/{full_path:path}":
-                app.router.routes.insert(i, route)
-                inserted = True
-                break
-        else:
-            app.router.routes.append(route)
-            inserted = True
-    if inserted:
-        logger.info("Frontend API routes mounted (%d endpoints)", len(routes))
-    return inserted
+    insert_at = len(app.router.routes)
+    for i, existing in enumerate(app.router.routes):
+        path = getattr(existing, "path", None)
+        if path == "/{full_path:path}" or type(existing).__name__ == "_IncludedRouter":
+            insert_at = i
+            break
+    app.router.routes[insert_at:insert_at] = routes
+    logger.info("Frontend API routes mounted (%d endpoints)", len(routes))
+    return True

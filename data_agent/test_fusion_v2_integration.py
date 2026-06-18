@@ -267,12 +267,13 @@ class TestAPIRoutes(unittest.TestCase):
     def test_fusion_v2_routes_list(self):
         from data_agent.api.fusion_v2_routes import get_fusion_v2_routes
         routes = get_fusion_v2_routes()
-        self.assertEqual(len(routes), 5)
+        self.assertEqual(len(routes), 6)
         paths = [r.path for r in routes]
         self.assertIn("/api/fusion/quality/{operation_id:int}", paths)
         self.assertIn("/api/fusion/lineage/{operation_id:int}", paths)
         self.assertIn("/api/fusion/conflicts/{operation_id:int}", paths)
         self.assertIn("/api/fusion/operations", paths)
+        self.assertIn("/api/fusion/mmfe/readiness", paths)
         self.assertIn("/api/fusion/temporal-preview", paths)
 
     def test_routes_in_frontend_api(self):
@@ -281,6 +282,40 @@ class TestAPIRoutes(unittest.TestCase):
         routes = get_frontend_api_routes()
         paths = [r.path for r in routes]
         self.assertIn("/api/fusion/operations", paths)
+
+    def test_json_value_accepts_jsonb_decoded_objects(self):
+        from data_agent.api.fusion_v2_routes import _json_value
+
+        self.assertEqual(_json_value({"warnings": ["x"]}, {}), {"warnings": ["x"]})
+        self.assertEqual(_json_value(["a", "b"], []), ["a", "b"])
+        self.assertEqual(_json_value('{"quality": 0.65}', {}), {"quality": 0.65})
+        self.assertEqual(_json_value("not-json", {"raw": "not-json"}), {"raw": "not-json"})
+        self.assertEqual(_json_value(None, {}), {})
+
+    def test_mmfe_readiness_payload_reports_core_surfaces_and_production_gate(self):
+        from data_agent.api.fusion_v2_routes import build_mmfe_readiness_payload
+
+        payload = build_mmfe_readiness_payload()
+
+        self.assertEqual(payload["schema"], "mmfe.readiness_api.v1")
+        self.assertEqual(payload["product_id"], "sfp-twm-dc2a707aabda0c01")
+        self.assertTrue(payload["diagnostic_valid"], payload["diagnostic_errors"])
+        self.assertTrue(payload["summary"]["validation_ready"])
+        self.assertFalse(payload["summary"]["production_ready"])
+        self.assertEqual(payload["summary"]["status"], "validation_ready_with_production_gaps")
+
+        core = {item["check_id"]: item for item in payload["core_surfaces"]}
+        for check_id in [
+            "standard_source_registry",
+            "value_domain_audit",
+            "semantic_graph",
+            "twm_state_input",
+        ]:
+            self.assertEqual(core[check_id]["status"], "pass")
+
+        production = {item["check_id"]: item for item in payload["production_gates"]}
+        self.assertEqual(production["production_authority"]["status"], "warn")
+        self.assertEqual(production["production_metadata_contract"]["status"], "warn")
 
 
 class TestFusionResultModel(unittest.TestCase):

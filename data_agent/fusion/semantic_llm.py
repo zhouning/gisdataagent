@@ -5,6 +5,7 @@ and semantic field matching between data sources.
 """
 import json
 import logging
+import re
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -43,11 +44,14 @@ class SemanticLLM:
         )
         text = await self._call_gemini(prompt)
         if not text:
-            return {"semantic_type": "unknown", "unit": "", "description": "", "equivalent_terms": []}
+            return _fallback_field_semantics(field_name, sample_values, context)
         try:
-            return json.loads(text)
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return _normalize_semantic_type_payload(parsed, field_name)
         except (json.JSONDecodeError, TypeError):
-            return {"semantic_type": "unknown", "unit": "", "description": text, "equivalent_terms": []}
+            return _fallback_field_semantics(field_name, sample_values, context, description=text)
+        return _fallback_field_semantics(field_name, sample_values, context)
 
     async def infer_derivable_fields(
         self,
@@ -69,14 +73,14 @@ class SemanticLLM:
         )
         text = await self._call_gemini(prompt)
         if not text:
-            return None
+            return _fallback_derivable_formula(available_fields, target_field)
         try:
             result = json.loads(text)
             if result.get("derivable"):
                 return result.get("formula")
         except (json.JSONDecodeError, TypeError):
             pass
-        return None
+        return _fallback_derivable_formula(available_fields, target_field)
 
     async def match_fields_semantically(
         self,
@@ -115,14 +119,23 @@ class SemanticLLM:
         )
         text = await self._call_gemini(prompt)
         if not text:
-            return []
+            return _fallback_field_matches(source_fields, target_fields)
         try:
             matches = json.loads(text)
             if isinstance(matches, list):
-                return matches
+                normalized = []
+                for match in matches:
+                    if isinstance(match, dict) and match.get("left") and match.get("right"):
+                        normalized.append({
+                            "left": match["left"],
+                            "right": match["right"],
+                            "confidence": _safe_float(match.get("confidence"), 0.0),
+                            "reasoning": str(match.get("reasoning") or match.get("reason") or ""),
+                        })
+                return normalized or _fallback_field_matches(source_fields, target_fields)
         except (json.JSONDecodeError, TypeError):
             pass
-        return []
+        return _fallback_field_matches(source_fields, target_fields)
 
     async def detect_semantic_types(
         self,
@@ -152,14 +165,14 @@ class SemanticLLM:
         )
         text = await self._call_gemini(prompt)
         if not text:
-            return {}
+            return _fallback_semantic_types(columns)
         try:
             result = json.loads(text)
             if isinstance(result, dict):
-                return result
+                return _normalize_semantic_types_map(result, columns)
         except (json.JSONDecodeError, TypeError):
             pass
-        return {}
+        return _fallback_semantic_types(columns)
 
     async def _call_gemini(self, prompt: str) -> str:
         """Call Gemini API with graceful degradation.
@@ -181,3 +194,163 @@ class SemanticLLM:
         except Exception as e:
             logger.warning("Gemini API call failed: %s", e)
             return ""
+
+
+def _fallback_field_semantics(field_name: str, sample_values: list, context: str, description: str = "") -> dict:
+    name = str(field_name or "")
+    lname = name.lower()
+    samples = [value for value in sample_values if value is not None][:10]
+    semantic_type = _guess_semantic_type(name, samples, context)
+    unit = _guess_unit(name, samples)
+    if not description:
+        description = _fallback_description(name, semantic_type, context)
+    return {
+        "semantic_type": semantic_type,
+        "unit": unit,
+        "description": description,
+        "equivalent_terms": _equivalent_terms(name, semantic_type),
+    }
+
+
+def _fallback_derivable_formula(available_fields: list[str], target_field: str) -> Optional[str]:
+    available = {str(field).lower() for field in available_fields}
+    target = str(target_field or "").lower()
+    if target in {"building_height", "height"} and "floors" in available:
+        return "floors * 3.0"
+    if target in {"area", "mj", "tbmj"} and {"length", "width"}.issubset(available):
+        return "length * width"
+    return None
+
+
+def _fallback_field_matches(source_fields: list[dict], target_fields: list[dict]) -> list[dict]:
+    matches = []
+    used_targets = set()
+    for src in source_fields:
+        src_name = str(src.get("name") or "")
+        src_type = _guess_semantic_type(src_name, src.get("sample_values") or [], "")
+        src_norm = _normalize_name(src_name)
+        for tgt in target_fields:
+            tgt_name = str(tgt.get("name") or "")
+            tgt_norm = _normalize_name(tgt_name)
+            if not tgt_norm or tgt_norm in used_targets:
+                continue
+            if src_norm == tgt_norm or _names_semantically_equivalent(src_norm, tgt_norm, src_type):
+                matches.append({
+                    "left": src_name,
+                    "right": tgt_name,
+                    "confidence": 0.9 if src_norm == tgt_norm else 0.82,
+                    "reasoning": "offline semantic fallback",
+                })
+                used_targets.add(tgt_norm)
+                break
+    return matches
+
+
+def _fallback_semantic_types(columns: list[dict]) -> dict[str, str]:
+    result = {}
+    for column in columns:
+        name = str(column.get("name") or "")
+        if not name:
+            continue
+        result[name] = _guess_semantic_type(name, column.get("sample_values") or [], "")
+    return result
+
+
+def _normalize_semantic_type_payload(payload: dict, field_name: str) -> dict:
+    semantic_type = str(payload.get("semantic_type") or payload.get("type") or "unknown")
+    unit = str(payload.get("unit") or "")
+    description = str(payload.get("description") or "")
+    equivalent_terms = payload.get("equivalent_terms")
+    if not isinstance(equivalent_terms, list):
+        equivalent_terms = []
+    return {
+        "semantic_type": semantic_type,
+        "unit": unit,
+        "description": description,
+        "equivalent_terms": [str(item) for item in equivalent_terms if item],
+    }
+
+
+def _normalize_semantic_types_map(payload: dict, columns: list[dict]) -> dict[str, str]:
+    allowed = {}
+    names = {str(column.get("name") or "") for column in columns if column.get("name")}
+    for key, value in payload.items():
+        if key in names:
+            allowed[key] = str(value or "unknown")
+    return allowed or _fallback_semantic_types(columns)
+
+
+def _guess_semantic_type(field_name: str, sample_values: list, context: str) -> str:
+    text = " ".join([field_name, context, " ".join(str(v) for v in sample_values[:5])]).lower()
+    if any(token in text for token in ("面积", "area", "mj", "tbmj", "shape_area")):
+        return "area"
+    if any(token in text for token in ("高程", "elev", "elevation", "altitude", "dem", "height")):
+        return "elevation"
+    if any(token in text for token in ("坡度", "slope", "gradient")):
+        return "slope"
+    if any(token in text for token in ("人口", "population", "pop")):
+        return "population"
+    if any(token in text for token in ("楼层", "floors", "floor", "cs")):
+        return "building"
+    if any(token in text for token in ("地类", "land_use", "dlbm", "用地")):
+        return "land_use"
+    if any(token in text for token in ("日期", "time", "date", "updated", "created")):
+        return "date"
+    if any(token in text for token in ("id", "编号", "编码", "code", "parcel", "object")):
+        return "id"
+    return "unknown"
+
+
+def _guess_unit(field_name: str, sample_values: list) -> str:
+    text = str(field_name).lower()
+    if any(token in text for token in ("area", "mj", "tbmj")):
+        return "m²"
+    if any(token in text for token in ("height", "elev", "elevation")):
+        return "m"
+    return ""
+
+
+def _fallback_description(field_name: str, semantic_type: str, context: str) -> str:
+    if semantic_type == "unknown":
+        return f"字段 {field_name} 的语义类型未知"
+    if semantic_type == "area":
+        return f"字段 {field_name} 表示面积"
+    if semantic_type == "land_use":
+        return f"字段 {field_name} 表示地类或用地类型"
+    if semantic_type == "building":
+        return f"字段 {field_name} 表示建筑相关信息"
+    if semantic_type == "date":
+        return f"字段 {field_name} 表示时间或日期"
+    return f"字段 {field_name} 的语义类型为 {semantic_type}"
+
+
+def _equivalent_terms(field_name: str, semantic_type: str) -> list[str]:
+    mapping = {
+        "area": ["面积", "AREA", "MJ", "TBMJ"],
+        "elevation": ["高程", "elev", "elevation", "altitude", "DEM"],
+        "slope": ["坡度", "slope"],
+        "population": ["人口", "population", "pop"],
+        "building": ["楼层", "floors", "floor", "层数"],
+        "land_use": ["地类", "用地", "land_use", "DLBM"],
+        "date": ["日期", "时间", "date", "time"],
+        "id": ["编号", "编码", "id", "code"],
+    }
+    return mapping.get(semantic_type, [])
+
+
+def _names_semantically_equivalent(a: str, b: str, semantic_type: str) -> bool:
+    if a == b:
+        return True
+    terms = {_normalize_name(term) for term in _equivalent_terms("", semantic_type)}
+    return a in terms and b in terms
+
+
+def _normalize_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", str(value or "").lower())
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default

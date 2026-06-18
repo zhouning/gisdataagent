@@ -163,6 +163,80 @@ class TestSemanticProductDiagnostics(unittest.TestCase):
         self.assertEqual(checks["production_authority"]["status"], "pass")
         self.assertTrue(checks["production_metadata_contract"]["evidence"]["contract_present"])
 
+    def test_standard_source_ingestion_run_quality_can_clear_ingestion_check(self):
+        from data_agent.fusion.semantic_product_diagnostics import diagnose_semantic_product_readiness
+
+        manifest = {
+            "product_type": "semantic_fusion_product",
+            "product_id": "sfp-standard-ingestion-quality-test",
+            "version": "1.1",
+            "business_output": {"path": "s3://lake/curated/fused.parquet"},
+            "quality": {"score": 1.0, "warnings": []},
+            "ai_metadata": {"chunks": [{"chunk_id": "c1", "text": "ready"}], "embedding_ready": True},
+            "mmfe_bundle": {
+                "value_domain_audit_summary": {"audit_count": 1, "requires_review_count": 0},
+                "standard_source_registry": {
+                    "summary": {
+                        "source_count": 1,
+                        "official_verified_count": 1,
+                        "pending_official_source_count": 0,
+                    }
+                },
+                "standard_source_ingestion_plan": {
+                    "summary": {
+                        "ready": True,
+                        "ready_task_count": 1,
+                        "blocked_task_count": 0,
+                        "official_source_missing_count": 0,
+                        "checksum_missing_count": 0,
+                        "fulltext_extraction_missing_count": 0,
+                    }
+                },
+                "standard_source_ingestion_run": {
+                    "valid": True,
+                    "summary": {
+                        "ingested_task_count": 1,
+                        "extracted_task_count": 1,
+                        "citation_anchor_count": 3,
+                        "citation_anchor_quality_pass_count": 1,
+                        "citation_anchor_quality_warn_count": 0,
+                    },
+                },
+            },
+        }
+        state_input = {
+            "schema": "mmfe.twm_state_input.v1",
+            "production_policy": {"contains_synthetic_sources": True},
+            "semantic_relation_summary": {"total_relation_count": 1, "registered_relation_type_count": 1},
+            "state_components": {"hard_constraints": {"relation_count": 1, "hard_constraint": True}},
+            "optimization_interface": {
+                "objective_count": 1,
+                "objective_bindings": [{"objective_id": "hard", "relation_count": 1}],
+            },
+        }
+
+        diagnostic = diagnose_semantic_product_readiness(
+            manifest,
+            value_domain_audits=[{"field": "DLBM"}],
+            standard_sources=[{"standard_identifier": "GB/T 21010-2017", "not_for_production_gap": False}],
+            semantic_relations=[{"relation_type": "project_overlaps_pbf"}],
+            state_input=state_input,
+            semantic_graph={
+                "nodes": [
+                    {"id": "standard", "type": "standard_source"},
+                    {"id": "domain", "type": "value_domain"},
+                ],
+                "edges": [{"source": "domain", "target": "standard"}],
+            },
+            semantic_trace_cards={"trace_card_count": 1, "standard_source_path_count": 1, "cards": [{}]},
+            timestamp="2026-06-17T00:00:00+00:00",
+        )
+
+        checks = {item["check_id"]: item for item in diagnostic["checks"]}
+        self.assertEqual(checks["standard_source_ingestion"]["status"], "pass")
+        self.assertEqual(checks["standard_source_ingestion"]["evidence"]["run_valid"], True)
+        self.assertEqual(checks["standard_source_ingestion"]["evidence"]["citation_anchor_quality_pass_count"], 1)
+
     def test_api_is_exported_through_fusion_engine_proxy(self):
         from data_agent import fusion_engine
 

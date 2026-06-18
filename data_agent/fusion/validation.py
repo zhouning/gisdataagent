@@ -77,7 +77,7 @@ def validate_quality(
 
     # 5. v5.6: Attribute value range validation
     # Detect absurd numeric values that may indicate unit mismatch
-    numeric_cols = [c for c in non_geom if pd.api.types.is_numeric_dtype(data[c])]
+    numeric_cols = [c for c in non_geom if _is_statistical_numeric(data[c])]
     outlier_cols = []
     for col in numeric_cols[:20]:  # cap at 20 columns
         valid = data[col].dropna()
@@ -159,7 +159,7 @@ def validate_quality(
             for src in sources:
                 for col_info in src.columns[:10]:  # cap at 10 columns per source
                     col_name = col_info["name"]
-                    if col_name in data.columns and pd.api.types.is_numeric_dtype(data[col_name]):
+                    if col_name in data.columns and _is_statistical_numeric(data[col_name]):
                         src_stats = src.stats.get(col_name, {})
                         if "mean" in src_stats and "min" in src_stats and "max" in src_stats:
                             output_vals = data[col_name].dropna()
@@ -184,3 +184,11 @@ def validate_quality(
 
     score = max(round(score, 2), 0.0)
     return {"score": score, "warnings": warnings, "details": details}
+
+
+def _is_statistical_numeric(series: pd.Series) -> bool:
+    """Return true for numeric columns that support arithmetic statistics."""
+    return (
+        pd.api.types.is_numeric_dtype(series)
+        and not pd.api.types.is_bool_dtype(series)
+    )

@@ -35,6 +35,7 @@ from data_agent.observability import (
 )
 setup_logging()
 logger = get_logger("app")
+from data_agent.model_requirements import configured_models_require_google_cloud_project
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -3082,7 +3083,7 @@ async def main(message: cl.Message):
     trace_id = _set_user_context(user_id, session_id, role)
     logger.info("[Trace:%s] Message received user=%s role=%s", trace_id, user_id, role)
 
-    if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+    if configured_models_require_google_cloud_project() and not os.environ.get("GOOGLE_CLOUD_PROJECT"):
         await cl.Message(content="Error: `GOOGLE_CLOUD_PROJECT` not found.").send()
         return
 

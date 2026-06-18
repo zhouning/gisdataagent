@@ -41,6 +41,7 @@ def diagnose_semantic_product_readiness(
     value_audits = list(value_domain_audits or mmfe_bundle.get("value_domain_audits") or [])
     sources = list(standard_sources or mmfe_bundle.get("standard_source_rows") or [])
     standard_ingestion = mmfe_bundle.get("standard_source_ingestion_plan") or {}
+    standard_ingestion_run = mmfe_bundle.get("standard_source_ingestion_run") or {}
     relations = list(semantic_relations or mmfe_bundle.get("semantic_relations") or [])
     graph = semantic_graph or mmfe_bundle.get("semantic_graph") or {}
     trace_cards = semantic_trace_cards or mmfe_bundle.get("semantic_trace_cards") or {}
@@ -48,7 +49,7 @@ def diagnose_semantic_product_readiness(
 
     checks = []
     checks.extend(_manifest_checks(manifest))
-    checks.extend(_standard_checks(mmfe_bundle, value_audits, sources, state, standard_ingestion))
+    checks.extend(_standard_checks(mmfe_bundle, value_audits, sources, state, standard_ingestion, standard_ingestion_run))
     checks.extend(_graph_checks(graph, trace_cards))
     checks.extend(_twm_checks(mmfe_bundle, relations, state))
     checks.extend(_ai_grounding_checks(manifest))
@@ -138,6 +139,7 @@ def _standard_checks(
     standard_sources: list[dict],
     state_input: dict,
     standard_ingestion: dict | None = None,
+    standard_ingestion_run: dict | None = None,
 ) -> list[dict]:
     standard_readiness = state_input.get("standard_readiness") or {}
     source_summary = (
@@ -160,6 +162,25 @@ def _standard_checks(
         else {}
     )
     ingestion_ready = bool(ingestion_summary.get("ready"))
+    ingestion_run_summary = (
+        standard_ingestion_run.get("summary")
+        if isinstance(standard_ingestion_run, dict) and isinstance(standard_ingestion_run.get("summary"), dict)
+        else {}
+    )
+    ingestion_run_valid = bool(isinstance(standard_ingestion_run, dict) and standard_ingestion_run.get("valid"))
+    ingested_task_count = _safe_int(ingestion_run_summary.get("ingested_task_count"), 0)
+    extracted_task_count = _safe_int(ingestion_run_summary.get("extracted_task_count"), 0)
+    citation_anchor_count = _safe_int(ingestion_run_summary.get("citation_anchor_count"), 0)
+    quality_pass_count = _safe_int(ingestion_run_summary.get("citation_anchor_quality_pass_count"), 0)
+    quality_warn_count = _safe_int(ingestion_run_summary.get("citation_anchor_quality_warn_count"), 0)
+    quality_ok_count = quality_pass_count + quality_warn_count
+    ingestion_quality_ready = (
+        ingestion_run_valid
+        and ingested_task_count > 0
+        and extracted_task_count > 0
+        and citation_anchor_count > 0
+        and quality_ok_count > 0
+    )
 
     return [
         _check(
@@ -202,7 +223,7 @@ def _standard_checks(
         _check(
             "standard_source_ingestion",
             "标准来源采集抽取计划",
-            "pass" if ingestion_ready else "warn",
+            "pass" if ingestion_ready and ingestion_quality_ready else "warn",
             "high",
             "生产前应把标准来源登记推进为可审计采集、归档、校验和条款/字段/值域抽取任务。",
             evidence={
@@ -215,6 +236,12 @@ def _standard_checks(
                 "fulltext_extraction_missing_count": ingestion_summary.get(
                     "fulltext_extraction_missing_count", 0
                 ),
+                "run_valid": ingestion_run_valid,
+                "ingested_task_count": ingested_task_count,
+                "extracted_task_count": extracted_task_count,
+                "citation_anchor_count": citation_anchor_count,
+                "citation_anchor_quality_pass_count": quality_pass_count,
+                "citation_anchor_quality_warn_count": quality_warn_count,
             },
         ),
     ]

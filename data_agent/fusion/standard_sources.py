@@ -338,10 +338,90 @@ def validate_standard_source_ingestion_run(payload: dict) -> dict:
         return {"valid": False, "errors": ["payload must be a JSON object"]}
     if payload.get("schema") != STANDARD_SOURCE_INGESTION_RUN_SCHEMA:
         errors.append(f"schema must be {STANDARD_SOURCE_INGESTION_RUN_SCHEMA}")
-    if not isinstance(payload.get("task_results"), list):
+    task_results = payload.get("task_results")
+    if not isinstance(task_results, list):
         errors.append("task_results must be a list")
-    if not isinstance(payload.get("errors"), list):
+        task_results = []
+    run_errors = payload.get("errors")
+    if not isinstance(run_errors, list):
         errors.append("errors must be a list")
+        run_errors = []
+    else:
+        for index, item in enumerate(run_errors):
+            if not isinstance(item, dict):
+                errors.append(f"errors[{index}] must be an object")
+                continue
+            if "errors" in item and not isinstance(item.get("errors"), list):
+                errors.append(f"errors[{index}].errors must be a list")
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        errors.append("summary must be an object")
+        summary = {}
+    if "valid" in payload:
+        if not isinstance(payload.get("valid"), bool):
+            errors.append("valid must be boolean")
+        elif bool(payload.get("valid")) != (not run_errors):
+            errors.append("valid must equal whether errors is empty")
+    if "task_count" in payload and _safe_int(payload.get("task_count"), -1) != len(task_results):
+        errors.append("task_count must equal task_results length")
+
+    quality_counts = Counter()
+    for index, result in enumerate(task_results):
+        if not isinstance(result, dict):
+            errors.append(f"task_results[{index}] must be an object")
+            quality_counts["missing"] += 1
+            continue
+        if "valid" in result and not isinstance(result.get("valid"), bool):
+            errors.append(f"task_results[{index}].valid must be boolean")
+        for field in ("http_status", "bytes_fetched", "bytes_archived", "citation_anchor_count"):
+            if result.get(field) is not None and _safe_int(result.get(field), -1) < 0:
+                errors.append(f"task_results[{index}].{field} must be a non-negative integer")
+        if result.get("fetch_policy"):
+            _validate_fetch_policy_contract(
+                result.get("fetch_policy"),
+                f"task_results[{index}].fetch_policy",
+                errors,
+            )
+        quality = result.get("citation_anchor_quality")
+        if quality:
+            _validate_citation_anchor_quality_contract(
+                quality,
+                f"task_results[{index}].citation_anchor_quality",
+                errors,
+                expected_anchor_count=_safe_int(result.get("citation_anchor_count"), 0),
+            )
+        quality_counts[(quality or {}).get("status") or "missing"] += 1
+        extraction_result = result.get("extraction_result")
+        if isinstance(extraction_result, dict) and extraction_result.get("citation_anchor_quality"):
+            _validate_citation_anchor_quality_contract(
+                extraction_result.get("citation_anchor_quality"),
+                f"task_results[{index}].extraction_result.citation_anchor_quality",
+                errors,
+                expected_anchor_count=_safe_int(extraction_result.get("citation_anchor_count"), 0),
+            )
+
+    computed_summary = {
+        "ingested_task_count": sum(1 for item in task_results if isinstance(item, dict) and item.get("valid")),
+        "failed_task_count": sum(1 for item in task_results if isinstance(item, dict) and not item.get("valid")),
+        "checksum_recorded_count": sum(1 for item in task_results if isinstance(item, dict) and item.get("checksum_sha256")),
+        "extracted_task_count": sum(
+            1
+            for item in task_results
+            if isinstance(item, dict) and item.get("extraction_status") == "extracted"
+        ),
+        "citation_anchor_count": sum(
+            _safe_int(item.get("citation_anchor_count"), 0)
+            for item in task_results
+            if isinstance(item, dict)
+        ),
+        "citation_anchor_quality_pass_count": quality_counts.get("pass", 0),
+        "citation_anchor_quality_warn_count": quality_counts.get("warn", 0),
+        "citation_anchor_quality_fail_count": quality_counts.get("fail", 0),
+        "citation_anchor_quality_missing_count": quality_counts.get("missing", 0),
+    }
+    for key, expected in computed_summary.items():
+        if key in summary and _safe_int(summary.get(key), -1) != expected:
+            errors.append(f"summary.{key} must equal {expected}")
     return {"valid": not errors, "errors": errors}
 
 
@@ -431,8 +511,13 @@ def build_local_standard_source_fetcher(
 def build_http_standard_source_fetcher(
     *,
     allowed_domains: list[str] | tuple[str, ...] | set[str] | None = None,
+    require_https: bool = False,
+    allowed_content_types: list[str] | tuple[str, ...] | set[str] | None = None,
+    max_bytes: int | None = None,
     timeout_seconds: float = 30.0,
     user_agent: str = "gisdataagent-mmfe-standard-source-fetcher/1.0",
+    authorization_header: str | None = None,
+    extra_headers: dict[str, str] | None = None,
     opener=None,
 ):
     """Build an explicit HTTP(S) fetcher for official standard-source URLs.
@@ -441,6 +526,12 @@ def build_http_standard_source_fetcher(
     not call it by default, and tests can inject ``opener`` to avoid networking.
     """
     allowed = {str(domain).lower() for domain in (allowed_domains or []) if domain}
+    allowed_types = {
+        _base_content_type(str(content_type))
+        for content_type in (allowed_content_types or [])
+        if content_type
+    }
+    byte_limit = int(max_bytes) if max_bytes is not None else 0
 
     def fetcher(task: dict) -> dict[str, Any]:
         url = str(task.get("download_url") or task.get("official_url") or task.get("url") or "")
@@ -449,29 +540,50 @@ def build_http_standard_source_fetcher(
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("standard-source HTTP fetch requires an absolute http(s) URL")
+        if require_https and parsed.scheme != "https":
+            raise ValueError("production standard-source HTTP fetch requires https")
         host = parsed.hostname or ""
         if allowed and not _domain_allowed(host, allowed):
             raise ValueError(f"standard-source host is not allowed: {host}")
 
-        request = Request(url, headers={"User-Agent": user_agent})
+        headers = {"User-Agent": user_agent}
+        if extra_headers:
+            headers.update({str(key): str(value) for key, value in extra_headers.items()})
+        if authorization_header:
+            headers["Authorization"] = authorization_header
+        request = Request(url, headers=headers)
         open_func = opener or urlopen
         try:
             response = open_func(request, timeout=timeout_seconds)
         except TypeError:
             response = open_func(request)
         with response:
-            body = response.read()
             headers = getattr(response, "headers", {}) or {}
             status = getattr(response, "status", getattr(response, "code", 200))
             final_url = getattr(response, "url", url)
-        content_type = _response_content_type(headers) or _guess_source_content_type(Path(parsed.path))
+            content_type = _response_content_type(headers) or _guess_source_content_type(Path(parsed.path))
+            base_content_type = _base_content_type(content_type)
+            if allowed_types and base_content_type not in allowed_types:
+                raise ValueError(f"standard-source content type is not allowed: {content_type}")
+            body = _read_http_response_body(response, max_bytes=byte_limit)
+        if byte_limit and len(body) > byte_limit:
+            raise ValueError(f"standard-source response exceeds max_bytes={byte_limit}")
+        if not body:
+            raise ValueError("standard-source response body is empty")
         return {
             "body": body,
             "bytes_fetched": len(body),
             "sha256": hashlib.sha256(body).hexdigest(),
             "content_type": content_type,
+            "base_content_type": base_content_type,
             "source_url": final_url,
             "http_status": _safe_int(status, 0),
+            "fetch_policy": {
+                "allowed_domains": sorted(allowed),
+                "require_https": bool(require_https),
+                "allowed_content_types": sorted(allowed_types),
+                "max_bytes": byte_limit,
+            },
         }
 
     return fetcher
@@ -584,9 +696,10 @@ def build_local_standard_source_extractor(
 ):
     """Build a lightweight local extractor that writes citation-anchor sidecars.
 
-    The extractor handles plain text, JSON, CSV, UTF-8-readable files, and
-    dependency-free DOCX text extraction. PDF and legacy DOC parsing stay
-    outside MMFE core; unsupported binaries record a structured
+    The extractor handles plain text, JSON, CSV, UTF-8-readable files,
+    dependency-free DOCX text extraction, and PDF text extraction when the
+    optional pypdf dependency is installed. Legacy DOC parsing stays outside
+    MMFE core; unsupported binaries record a structured
     ``unsupported_fulltext_format`` status.
     """
     output_root = Path(sidecar_dir)
@@ -595,13 +708,23 @@ def build_local_standard_source_extractor(
         output_root.mkdir(parents=True, exist_ok=True)
         archive_uri = str(archive.get("archive_uri") or "")
         source_path = str(archive.get("local_path") or task.get("local_path") or "")
-        text = _decode_standard_source_body(body, source_path=source_path)
+        content_type = str(
+            archive.get("content_type")
+            or task.get("content_type")
+            or ""
+        )
+        text = _decode_standard_source_body(
+            body,
+            source_path=source_path,
+            content_type=content_type,
+        )
         anchors = _extract_citation_anchors_from_text(
             task,
             text,
             max_anchor_count=max_anchor_count,
         ) if text else []
         status = "extracted" if anchors else ("unsupported_fulltext_format" if body else "empty_fulltext")
+        extraction_method = _extraction_method_for_source(source_path, content_type)
         sidecar = build_standard_source_citation_anchor_sidecar(
             task,
             anchors=anchors,
@@ -609,17 +732,18 @@ def build_local_standard_source_extractor(
             source_path=source_path,
             checksum_sha256=str(archive.get("sha256") or ""),
             extraction_status=status,
-            extraction_method="local_text_clause_anchor_extractor",
+            extraction_method=extraction_method,
         )
         sidecar_path = output_root / f"{_safe_filename(task.get('standard_identifier') or task.get('task_id') or 'standard-source')}.citation_anchors.json"
         write_standard_source_citation_anchor_sidecar(sidecar, sidecar_path)
         return {
             "extraction_status": status,
             "citation_anchor_count": len(anchors),
+            "citation_anchor_quality": sidecar.get("quality") or {},
             "anchors": anchors,
             "sidecar_path": str(sidecar_path),
             "sidecar_schema": STANDARD_SOURCE_CITATION_ANCHORS_SCHEMA,
-            "extraction_method": "local_text_clause_anchor_extractor",
+            "extraction_method": extraction_method,
         }
 
     return extractor
@@ -642,6 +766,7 @@ def build_standard_source_citation_anchor_sidecar(
         for index, anchor in enumerate(anchors)
         if isinstance(anchor, dict)
     ]
+    quality = _citation_anchor_quality_summary(normalized_anchors)
     return {
         "schema": STANDARD_SOURCE_CITATION_ANCHORS_SCHEMA,
         "created_at": timestamp or datetime.now(timezone.utc).isoformat(),
@@ -654,6 +779,7 @@ def build_standard_source_citation_anchor_sidecar(
         "extraction_status": extraction_status,
         "extraction_method": extraction_method,
         "citation_anchor_count": len(normalized_anchors),
+        "quality": quality,
         "anchors": normalized_anchors,
     }
 
@@ -681,6 +807,12 @@ def validate_standard_source_citation_anchor_sidecar(payload: dict) -> dict:
                 errors.append(f"anchors[{index}].citation is required")
     if _safe_int(payload.get("citation_anchor_count"), -1) != len(anchors or []):
         errors.append("citation_anchor_count must equal anchors length")
+    _validate_citation_anchor_quality_contract(
+        payload.get("quality"),
+        "quality",
+        errors,
+        expected_anchor_count=len(anchors or []),
+    )
     return {"valid": not errors, "errors": errors}
 
 
@@ -839,6 +971,18 @@ def _run_standard_source_ingestion_task(
     )
     extraction_status = extracted.get("extraction_status") or ("extracted" if extracted else task.get("extraction_status"))
     citation_anchor_count = _safe_int(extracted.get("citation_anchor_count"), 0)
+    citation_anchor_quality = extracted.get("citation_anchor_quality") or {}
+    extracted_anchors = extracted.get("anchors") if isinstance(extracted.get("anchors"), list) else []
+    if extracted_anchors and not citation_anchor_quality:
+        normalized_anchors = [
+            _normalize_citation_anchor(anchor, index + 1, task_context)
+            for index, anchor in enumerate(extracted_anchors)
+            if isinstance(anchor, dict)
+        ]
+        citation_anchor_quality = _citation_anchor_quality_summary(normalized_anchors)
+        extracted["citation_anchor_quality"] = citation_anchor_quality
+        if not citation_anchor_count:
+            citation_anchor_count = len(normalized_anchors)
     if extraction_required and extracted and extraction_status not in {"extracted", "not_required"}:
         errors.append(f"extractor did not complete extraction: {extraction_status}")
     valid = not errors
@@ -849,6 +993,13 @@ def _run_standard_source_ingestion_task(
         "status": "ingested" if valid else "error",
         "errors": errors,
         "official_url": task.get("official_url", ""),
+        "source_url": fetched.get("source_url") or task.get("official_url", ""),
+        "http_status": _safe_int(fetched.get("http_status"), 0),
+        "content_type": archived.get("content_type") or fetched.get("content_type") or task_context.get("content_type") or "",
+        "base_content_type": fetched.get("base_content_type") or _base_content_type(
+            archived.get("content_type") or fetched.get("content_type") or task_context.get("content_type") or ""
+        ),
+        "fetch_policy": fetched.get("fetch_policy") or {},
         "archive_uri": archived.get("archive_uri") or fetched.get("archive_uri") or "",
         "local_path": archived.get("local_path") or fetched.get("local_path") or task.get("local_path") or "",
         "bytes_fetched": _safe_int(fetched.get("bytes_fetched"), len(body)),
@@ -856,6 +1007,7 @@ def _run_standard_source_ingestion_task(
         "checksum_sha256": checksum or "",
         "extraction_status": extraction_status or "",
         "citation_anchor_count": citation_anchor_count,
+        "citation_anchor_quality": citation_anchor_quality,
         "extraction_result": extracted,
     }
 
@@ -867,6 +1019,10 @@ def _standard_source_ingestion_run_result(
     *,
     timestamp: str | None = None,
 ) -> dict:
+    quality_counts = Counter(
+        (item.get("citation_anchor_quality") or {}).get("status") or "missing"
+        for item in task_results
+    )
     return {
         "schema": STANDARD_SOURCE_INGESTION_RUN_SCHEMA,
         "created_at": timestamp or datetime.now(timezone.utc).isoformat(),
@@ -880,6 +1036,10 @@ def _standard_source_ingestion_run_result(
             "checksum_recorded_count": sum(1 for item in task_results if item.get("checksum_sha256")),
             "extracted_task_count": sum(1 for item in task_results if item.get("extraction_status") == "extracted"),
             "citation_anchor_count": sum(_safe_int(item.get("citation_anchor_count"), 0) for item in task_results),
+            "citation_anchor_quality_pass_count": quality_counts.get("pass", 0),
+            "citation_anchor_quality_warn_count": quality_counts.get("warn", 0),
+            "citation_anchor_quality_fail_count": quality_counts.get("fail", 0),
+            "citation_anchor_quality_missing_count": quality_counts.get("missing", 0),
         },
         "task_results": task_results,
     }
@@ -901,12 +1061,24 @@ def _apply_ingestion_result_to_entry(entry: dict, result: dict) -> None:
         entry["archived_bytes"] = _safe_int(result.get("bytes_fetched"), 0)
     if result.get("bytes_fetched"):
         entry["bytes_fetched"] = _safe_int(result.get("bytes_fetched"), 0)
+    if result.get("source_url"):
+        entry["retrieval_source_url"] = result["source_url"]
+    if result.get("http_status"):
+        entry["retrieval_http_status"] = _safe_int(result.get("http_status"), 0)
+    if result.get("content_type"):
+        entry["retrieval_content_type"] = result["content_type"]
+    if result.get("base_content_type"):
+        entry["retrieval_base_content_type"] = result["base_content_type"]
+    if isinstance(result.get("fetch_policy"), dict) and result.get("fetch_policy"):
+        entry["retrieval_fetch_policy"] = dict(result["fetch_policy"])
     if result.get("extraction_status"):
         entry["extraction_status"] = result["extraction_status"]
     citation_anchor_count = _safe_int(result.get("citation_anchor_count"), 0)
     if citation_anchor_count:
         entry["citation_anchor_count"] = citation_anchor_count
         entry["clause_anchor_count"] = citation_anchor_count
+    if isinstance(result.get("citation_anchor_quality"), dict) and result.get("citation_anchor_quality"):
+        entry["citation_anchor_quality"] = dict(result["citation_anchor_quality"])
     extraction_result = result.get("extraction_result") or {}
     if isinstance(extraction_result, dict):
         if extraction_result.get("sidecar_path"):
@@ -915,6 +1087,8 @@ def _apply_ingestion_result_to_entry(entry: dict, result: dict) -> None:
             entry["citation_anchor_sidecar_schema"] = extraction_result["sidecar_schema"]
         if extraction_result.get("extraction_method"):
             entry["extraction_method"] = extraction_result["extraction_method"]
+        if isinstance(extraction_result.get("citation_anchor_quality"), dict):
+            entry["citation_anchor_quality"] = dict(extraction_result["citation_anchor_quality"])
     if result.get("valid"):
         entry["not_for_production_gap"] = bool(
             entry.get("not_for_production_gap")
@@ -1042,12 +1216,23 @@ def _response_content_type(headers: Any) -> str:
     return ""
 
 
+def _read_http_response_body(response: Any, *, max_bytes: int = 0) -> bytes:
+    if not max_bytes:
+        return response.read()
+    body = response.read(max_bytes + 1)
+    if len(body) > max_bytes:
+        return body
+    return body
+
+
 def _guess_source_content_type(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix == ".pdf":
         return "application/pdf"
-    if suffix in {".docx", ".doc"}:
+    if suffix == ".docx":
         return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    if suffix == ".doc":
+        return "application/msword"
     if suffix == ".json":
         return "application/json"
     if suffix == ".csv":
@@ -1070,7 +1255,12 @@ def _suffix_from_content_type(content_type: str) -> str:
     return ""
 
 
-def _decode_standard_source_body(body: bytes, *, source_path: str = "") -> str:
+def _decode_standard_source_body(
+    body: bytes,
+    *,
+    source_path: str = "",
+    content_type: str = "",
+) -> str:
     if not body and source_path:
         path = Path(source_path)
         if path.exists() and path.is_file():
@@ -1080,7 +1270,9 @@ def _decode_standard_source_body(body: bytes, *, source_path: str = "") -> str:
     suffix = Path(source_path).suffix.lower() if source_path else ""
     if suffix == ".docx":
         return _extract_docx_text(body)
-    if suffix in {".pdf", ".doc"}:
+    if suffix == ".pdf" or _base_content_type(content_type) == "application/pdf":
+        return _extract_pdf_text(body)
+    if suffix == ".doc" or _base_content_type(content_type) == "application/msword":
         return ""
     for encoding in ["utf-8", "utf-8-sig", "gb18030"]:
         try:
@@ -1088,6 +1280,29 @@ def _decode_standard_source_body(body: bytes, *, source_path: str = "") -> str:
         except UnicodeDecodeError:
             continue
     return ""
+
+
+def _extract_pdf_text(body: bytes) -> str:
+    try:
+        from io import BytesIO
+        from pypdf import PdfReader
+    except Exception:
+        return ""
+
+    try:
+        reader = PdfReader(BytesIO(body))
+    except Exception:
+        return ""
+
+    pages = []
+    for page_index, page in enumerate(reader.pages, start=1):
+        try:
+            text = page.extract_text() or ""
+        except Exception:
+            text = ""
+        if text.strip():
+            pages.append(f"[[page:{page_index}]]\n{text.strip()}")
+    return "\n".join(pages)
 
 
 def _extract_docx_text(body: bytes) -> str:
@@ -1125,11 +1340,16 @@ def _extract_citation_anchors_from_text(
     standard_identifier = str(task.get("standard_identifier") or "")
     source_name = str(task.get("source_name") or task.get("title_zh") or standard_identifier)
     lines = [line.strip() for line in text.splitlines()]
+    current_page = 0
     anchors = []
     for line_number, line in enumerate(lines, start=1):
         if len(anchors) >= max_anchor_count:
             break
         if not line:
+            continue
+        page_match = re.match(r"^\[\[page:(\d+)\]\]$", line)
+        if page_match:
+            current_page = _safe_int(page_match.group(1), 0)
             continue
         clause = _clause_label(line)
         if not clause and len(line) < 12:
@@ -1143,6 +1363,7 @@ def _extract_citation_anchors_from_text(
             "source_name": source_name,
             "clause": clause,
             "line_number": line_number,
+            "page": current_page or None,
             "text": line[:500],
         })
     return anchors
@@ -1158,6 +1379,21 @@ def _citation_text(standard_identifier: str, clause: str, anchor_index: int) -> 
     if clause:
         return f"{base} §{clause}"
     return f"{base} anchor {anchor_index}"
+
+
+def _extraction_method_for_source(source_path: str, content_type: str) -> str:
+    suffix = Path(source_path).suffix.lower() if source_path else ""
+    if suffix == ".docx":
+        return "local_docx_text_clause_anchor_extractor"
+    if suffix == ".pdf" or _base_content_type(content_type) == "application/pdf":
+        return "local_pdf_text_clause_anchor_extractor"
+    if suffix == ".doc" or _base_content_type(content_type) == "application/msword":
+        return "unsupported_legacy_doc_fulltext"
+    return "local_text_clause_anchor_extractor"
+
+
+def _base_content_type(content_type: str) -> str:
+    return str(content_type or "").split(";", 1)[0].strip().lower()
 
 
 def _normalize_citation_anchor(anchor: dict, index: int, task: dict) -> dict:
@@ -1183,6 +1419,123 @@ def _normalize_citation_anchor(anchor: dict, index: int, task: dict) -> dict:
     if anchor.get("value_domain"):
         normalized["value_domain"] = str(anchor.get("value_domain"))
     return normalized
+
+
+def _citation_anchor_quality_summary(anchors: list[dict]) -> dict:
+    anchor_count = len(anchors)
+    clause_count = sum(1 for anchor in anchors if anchor.get("clause"))
+    page_count = sum(1 for anchor in anchors if _safe_int(anchor.get("page"), 0) > 0)
+    text_count = sum(1 for anchor in anchors if str(anchor.get("text") or "").strip())
+    field_count = sum(1 for anchor in anchors if anchor.get("field_name"))
+    value_domain_count = sum(1 for anchor in anchors if anchor.get("value_domain"))
+    unique_citations = len({anchor.get("citation") for anchor in anchors if anchor.get("citation")})
+    duplicate_citation_count = max(anchor_count - unique_citations, 0)
+    weak_anchor_count = sum(
+        1
+        for anchor in anchors
+        if not anchor.get("clause") and len(str(anchor.get("text") or "").strip()) < 12
+    )
+    usable_anchor_count = max(anchor_count - weak_anchor_count, 0)
+    coverage_score = 0.0
+    if anchor_count:
+        coverage_score = round(
+            (
+                0.35 * clause_count / anchor_count
+                + 0.25 * text_count / anchor_count
+                + 0.15 * unique_citations / anchor_count
+                + 0.15 * usable_anchor_count / anchor_count
+                + 0.10 * (1.0 if page_count else 0.0)
+            ),
+            4,
+        )
+    has_traceable_anchors = (
+        anchor_count > 0
+        and text_count == anchor_count
+        and unique_citations == anchor_count
+        and usable_anchor_count == anchor_count
+        and clause_count > 0
+    )
+    if anchor_count == 0:
+        status = "fail"
+    elif has_traceable_anchors or (coverage_score >= 0.75 and duplicate_citation_count == 0):
+        status = "pass"
+    elif coverage_score >= 0.45:
+        status = "warn"
+    else:
+        status = "fail"
+    return {
+        "schema": "mmfe.standard_source_citation_anchor_quality.v1",
+        "status": status,
+        "coverage_score": coverage_score,
+        "anchor_count": anchor_count,
+        "clause_anchor_count": clause_count,
+        "page_anchor_count": page_count,
+        "text_anchor_count": text_count,
+        "field_anchor_count": field_count,
+        "value_domain_anchor_count": value_domain_count,
+        "duplicate_citation_count": duplicate_citation_count,
+        "weak_anchor_count": weak_anchor_count,
+    }
+
+
+def _validate_citation_anchor_quality_contract(
+    quality: Any,
+    path: str,
+    errors: list[str],
+    *,
+    expected_anchor_count: int | None = None,
+) -> None:
+    if not isinstance(quality, dict):
+        errors.append(f"{path} must be an object")
+        return
+    if quality.get("schema") != "mmfe.standard_source_citation_anchor_quality.v1":
+        errors.append(f"{path}.schema must be mmfe.standard_source_citation_anchor_quality.v1")
+    if quality.get("status") not in {"pass", "warn", "fail"}:
+        errors.append(f"{path}.status must be one of pass, warn, fail")
+    numeric_fields = (
+        "anchor_count",
+        "clause_anchor_count",
+        "page_anchor_count",
+        "text_anchor_count",
+        "field_anchor_count",
+        "value_domain_anchor_count",
+        "duplicate_citation_count",
+        "weak_anchor_count",
+    )
+    for field in numeric_fields:
+        if field not in quality:
+            errors.append(f"{path}.{field} is required")
+        elif _safe_int(quality.get(field), -1) < 0:
+            errors.append(f"{path}.{field} must be a non-negative integer")
+    if expected_anchor_count is not None and quality.get("anchor_count") is not None:
+        if _safe_int(quality.get("anchor_count"), -1) != expected_anchor_count:
+            errors.append(f"{path}.anchor_count must equal {expected_anchor_count}")
+    try:
+        score = float(quality.get("coverage_score"))
+    except (TypeError, ValueError):
+        errors.append(f"{path}.coverage_score must be numeric")
+    else:
+        if score < 0 or score > 1:
+            errors.append(f"{path}.coverage_score must be between 0 and 1")
+
+
+def _validate_fetch_policy_contract(policy: Any, path: str, errors: list[str]) -> None:
+    if not isinstance(policy, dict):
+        errors.append(f"{path} must be an object")
+        return
+    for field in ("allowed_domains", "allowed_content_types"):
+        value = policy.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, list):
+            errors.append(f"{path}.{field} must be a list")
+            continue
+        if any(not isinstance(item, str) for item in value):
+            errors.append(f"{path}.{field} must contain only strings")
+    if "require_https" in policy and not isinstance(policy.get("require_https"), bool):
+        errors.append(f"{path}.require_https must be boolean")
+    if "max_bytes" in policy and _safe_int(policy.get("max_bytes"), -1) < 0:
+        errors.append(f"{path}.max_bytes must be a non-negative integer")
 
 
 def _build_source_entry(doc_name: str, standards_dir: str | Path | None = None) -> dict:

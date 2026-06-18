@@ -43,6 +43,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      PORT: "8000"
       # PostgreSQL connection
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
@@ -56,8 +57,17 @@ services:
       GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-AIzaSy-LOCAL-PLACEHOLDER-not-used-with-ollama-router}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      ROUTER_MODEL: ${ROUTER_MODEL:-gemma4-26b-ollama}
+      MODEL_FAST: ${MODEL_FAST:-gemma4-26b-ollama}
+      MODEL_STANDARD: ${MODEL_STANDARD:-gemma4-26b-ollama}
+      MODEL_PREMIUM: ${MODEL_PREMIUM:-gemma4-26b-ollama}
+      MODEL_CONFIG_FORCE_ENV: ${MODEL_CONFIG_FORCE_ENV:-true}
+      OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
+      NL2SQL_AGENT_MODEL: ${NL2SQL_AGENT_MODEL:-gemma4-26b-ollama}
+      NL2SQL_LLM_SCHEMA_MAPPER_MODEL: ${NL2SQL_LLM_SCHEMA_MAPPER_MODEL:-gemma4-26b-ollama}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text-v2-moe}
       # Gaode Maps API
       GAODE_API_KEY: ${GAODE_API_KEY:-}
       # Chainlit

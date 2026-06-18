@@ -173,6 +173,35 @@ class TestSemanticLLM(unittest.TestCase):
         result = asyncio.run(_run())
         self.assertEqual(result["面积"], "area")
 
+    def test_semantic_llm_fallbacks_without_gemini(self):
+        from data_agent.fusion.semantic_llm import SemanticLLM
+
+        llm = SemanticLLM()
+
+        async def _run():
+            llm._call_gemini = AsyncMock(return_value="")
+            semantics = await llm.understand_field_semantics("TBMJ", [1000.0, 1200.5])
+            formula = await llm.infer_derivable_fields(["floors"], "building_height")
+            matches = await llm.match_fields_semantically(
+                [{"name": "面积", "dtype": "float64", "sample_values": [100.0]}],
+                [{"name": "AREA", "dtype": "float64", "sample_values": [200.0]}],
+            )
+            types = await llm.detect_semantic_types([
+                {"name": "面积", "sample_values": [100.0]},
+                {"name": "ID", "sample_values": [1]},
+            ])
+            return semantics, formula, matches, types
+
+        semantics, formula, matches, types = asyncio.run(_run())
+
+        self.assertEqual(semantics["semantic_type"], "area")
+        self.assertEqual(formula, "floors * 3.0")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["left"], "面积")
+        self.assertEqual(matches[0]["right"], "AREA")
+        self.assertEqual(types["面积"], "area")
+        self.assertEqual(types["ID"], "id")
+
 
 class TestKGIntegration(unittest.TestCase):
     """Test KGIntegration with mocked KG."""

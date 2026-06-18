@@ -148,6 +148,62 @@ class TestSemanticFusionProduct(unittest.TestCase):
         self.assertEqual(source["adapter_family"], "generic")
         self.assertEqual(source["semantic_hints"][0]["value"], "major_project")
 
+    def test_manifest_can_embed_mmfe_standard_source_evidence_bundle(self):
+        from data_agent.fusion.semantic_product import build_semantic_fusion_product
+
+        registry = {
+            "schema": "mmfe.standard_source_registry.v1",
+            "summary": {"source_count": 1, "official_verified_count": 1},
+            "entries": [
+                {
+                    "standard_identifier": "GB/T 21010-2017",
+                    "official_url": "https://openstd.samr.gov.cn/bzgk/gb/newGbInfo",
+                    "archive_uri": "s3://standards/gbt21010.pdf",
+                    "checksum_sha256": "a" * 64,
+                    "extraction_status": "extracted",
+                    "citation_anchor_count": 3,
+                    "citation_anchor_quality": {"status": "pass", "anchor_count": 3},
+                }
+            ],
+        }
+        ingestion_plan = {
+            "schema": "mmfe.standard_source_ingestion_plan.v1",
+            "summary": {"ready": True, "ready_task_count": 1, "blocked_task_count": 0},
+            "tasks": [{"task_id": "standard-source-ingest-1"}],
+        }
+        ingestion_run = {
+            "schema": "mmfe.standard_source_ingestion_run.v1",
+            "valid": True,
+            "summary": {
+                "ingested_task_count": 1,
+                "extracted_task_count": 1,
+                "citation_anchor_count": 3,
+                "citation_anchor_quality_pass_count": 1,
+            },
+            "task_results": [{"task_id": "standard-source-ingest-1", "valid": True}],
+            "errors": [],
+        }
+
+        _, manifest = build_semantic_fusion_product(
+            _semantic_test_gdf(),
+            _semantic_sources(),
+            strategy="spatial_join",
+            config={
+                "enabled": True,
+                "standard_source_registry": registry,
+                "standard_source_ingestion_plan": ingestion_plan,
+                "standard_source_ingestion_run": ingestion_run,
+            },
+        )
+
+        bundle = manifest["mmfe_bundle"]
+        self.assertEqual(bundle["standard_source_registry"]["summary"]["source_count"], 1)
+        self.assertTrue(bundle["standard_source_ingestion_plan"]["summary"]["ready"])
+        self.assertEqual(
+            bundle["standard_source_ingestion_run"]["summary"]["citation_anchor_quality_pass_count"],
+            1,
+        )
+
     def test_manifest_v11_schema_and_field_contracts(self):
         from data_agent.fusion.semantic_product import (
             SEMANTIC_PRODUCT_SCHEMA,

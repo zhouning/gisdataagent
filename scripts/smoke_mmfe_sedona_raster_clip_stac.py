@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import importlib.machinery
 import importlib.util
 import json
 import os
 import sys
+import types
 from pathlib import Path
 from typing import Any
 
@@ -33,17 +35,39 @@ DEFAULT_CATALOG_URI = "s3://gis-agent-lakehouse/catalog/stac"
 DEFAULT_COLLECTION = "mmfe-derived-raster-assets"
 
 
-def _load_module(name: str, path: Path) -> Any:
-    spec = importlib.util.spec_from_file_location(name, path)
+def _ensure_package_stub(name: str, path: Path) -> None:
+    existing = sys.modules.get(name)
+    if existing is not None and hasattr(existing, "__path__"):
+        paths = list(getattr(existing, "__path__", []))
+        if str(path) not in paths:
+            paths.append(str(path))
+            existing.__path__ = paths
+        return
+    module = types.ModuleType(name)
+    module.__path__ = [str(path)]
+    module.__package__ = name
+    module.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, is_package=True)
+    sys.modules[name] = module
+
+
+def _load_fusion_submodule(module_name: str) -> Any:
+    _ensure_package_stub("data_agent", REPO_ROOT / "data_agent")
+    _ensure_package_stub("data_agent.fusion", REPO_ROOT / "data_agent/fusion")
+    qualified_name = f"data_agent.fusion.{module_name}"
+    if qualified_name in sys.modules:
+        return sys.modules[qualified_name]
+    path = REPO_ROOT / "data_agent/fusion" / f"{module_name}.py"
+    spec = importlib.util.spec_from_file_location(qualified_name, path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load module {name} from {path}")
+        raise ImportError(f"cannot load module {qualified_name} from {path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[qualified_name] = module
     spec.loader.exec_module(module)
     return module
 
 
-_lakehouse_publisher = _load_module("mmfe_lakehouse_publisher", REPO_ROOT / "data_agent/fusion/lakehouse_publisher.py")
-_s3_stac_adapter = _load_module("mmfe_s3_stac_adapter", REPO_ROOT / "data_agent/fusion/s3_stac_adapter.py")
+_lakehouse_publisher = _load_fusion_submodule("lakehouse_publisher")
+_s3_stac_adapter = _load_fusion_submodule("s3_stac_adapter")
 build_stac_publisher = _lakehouse_publisher.build_stac_publisher
 run_stac_publish = _lakehouse_publisher.run_stac_publish
 build_s3_stac_executor = _s3_stac_adapter.build_s3_stac_executor

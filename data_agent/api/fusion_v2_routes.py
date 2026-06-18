@@ -1,11 +1,108 @@
 """Fusion v2.0 API routes — quality heatmap, lineage, conflicts, temporal preview."""
 
 import json
+from pathlib import Path
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
+
+
+DEFAULT_TWM_MMFE_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "test_data"
+    / "twm_bishan_demo"
+    / "mmfe_semantic_fusion"
+)
+
+
+def _json_value(value, default):
+    """Return JSON-compatible DB values from either JSONB-decoded objects or text."""
+    if value is None:
+        return default
+    if isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        if not value.strip():
+            return default
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return default
+    return default
+
+
+def _compact_check(check: dict, *, label_zh: str | None = None) -> dict:
+    """Return a frontend-friendly diagnostic check record."""
+    return {
+        "check_id": check.get("check_id", ""),
+        "label_zh": label_zh or check.get("name_zh", ""),
+        "status": check.get("status", "fail"),
+        "severity": check.get("severity", "medium"),
+        "required_for_validation": bool(check.get("required_for_validation")),
+        "message_zh": check.get("message_zh", ""),
+        "evidence": check.get("evidence") or {},
+    }
+
+
+def build_mmfe_readiness_payload(mmfe_dir: str | Path = DEFAULT_TWM_MMFE_DIR) -> dict:
+    """Build the fixed local TWM/MMFE semantic-product readiness payload."""
+    from .. import fusion_engine
+
+    root = Path(mmfe_dir)
+    inputs = fusion_engine.load_semantic_product_okf_inputs(root)
+    diagnostic = fusion_engine.diagnose_semantic_product_readiness(
+        inputs["manifest"],
+        value_domain_audits=inputs["value_domain_audits"],
+        standard_sources=inputs["standard_sources"],
+        semantic_relations=inputs["semantic_relations"],
+        state_input=inputs["state_input"],
+        semantic_graph=inputs["semantic_graph"],
+        semantic_trace_cards=inputs["semantic_trace_cards"],
+    )
+    validation = fusion_engine.validate_semantic_product_diagnostic(diagnostic)
+    checks = {item["check_id"]: item for item in diagnostic.get("checks", [])}
+
+    core_map = [
+        ("standard_source_registry", "标准源"),
+        ("value_domain_audit", "值域审计"),
+        ("semantic_graph", "语义图谱"),
+        ("semantic_trace_cards", "语义溯源"),
+        ("twm_state_input", "TWM 状态输入"),
+        ("semantic_relations", "语义关系"),
+        ("hard_constraints", "硬约束"),
+        ("multi_objective_interface", "多目标接口"),
+    ]
+    production_map = [
+        ("production_authority", "生产权威数据"),
+        ("production_metadata_contract", "生产元数据合同"),
+        ("production_standard_gaps", "生产标准缺口"),
+        ("standard_source_ingestion", "标准来源采集"),
+    ]
+
+    return {
+        "schema": "mmfe.readiness_api.v1",
+        "bundle_id": "twm_bishan_demo",
+        "bundle_dir": str(root),
+        "product_id": diagnostic.get("product_id"),
+        "summary": diagnostic.get("summary") or {},
+        "capabilities": diagnostic.get("capabilities") or {},
+        "core_surfaces": [
+            _compact_check(checks[check_id], label_zh=label)
+            for check_id, label in core_map
+            if check_id in checks
+        ],
+        "production_gates": [
+            _compact_check(checks[check_id], label_zh=label)
+            for check_id, label in production_map
+            if check_id in checks
+        ],
+        "top_gaps": diagnostic.get("top_gaps") or [],
+        "recommendations_zh": diagnostic.get("recommendations_zh") or [],
+        "diagnostic_valid": bool(validation.get("valid")),
+        "diagnostic_errors": validation.get("errors") or [],
+    }
 
 
 async def fusion_quality_detail(request: Request):
@@ -29,12 +126,11 @@ async def fusion_quality_detail(request: Request):
             ), {"id": operation_id}).fetchone()
         if not row:
             return JSONResponse({"error": "Not found"}, status_code=404)
-        meta = json.loads(row[0]) if row[0] else {}
         return JSONResponse({
             "operation_id": operation_id,
             "quality_score": row[1],
-            "quality_report": json.loads(row[2]) if row[2] else {},
-            "explainability": meta,
+            "quality_report": _json_value(row[2], {}),
+            "explainability": _json_value(row[0], {}),
         })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -64,9 +160,9 @@ async def fusion_lineage_detail(request: Request):
             return JSONResponse({"error": "Not found"}, status_code=404)
         return JSONResponse({
             "operation_id": operation_id,
-            "sources": json.loads(row[0]) if row[0] else [],
+            "sources": _json_value(row[0], []),
             "strategy": row[1],
-            "parameters": json.loads(row[2]) if row[2] else {},
+            "parameters": _json_value(row[2], {}),
             "duration_s": row[3],
             "temporal_log": row[4],
             "semantic_log": row[5],
@@ -96,10 +192,7 @@ async def fusion_conflicts_detail(request: Request):
         if not row:
             return JSONResponse({"error": "Not found"}, status_code=404)
         log_text = row[0] or "{}"
-        try:
-            log_data = json.loads(log_text)
-        except (json.JSONDecodeError, TypeError):
-            log_data = {"raw": log_text}
+        log_data = _json_value(log_text, {"raw": log_text})
         return JSONResponse({"operation_id": operation_id, "conflict_log": log_data})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -150,6 +243,21 @@ async def fusion_operations_list(request: Request):
                 },
             })
         return JSONResponse({"items": items, "total": len(items)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def fusion_mmfe_readiness(request: Request):
+    """GET /api/fusion/mmfe/readiness — TWM/MMFE semantic-product readiness."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        return JSONResponse(build_mmfe_readiness_payload())
+    except FileNotFoundError as e:
+        return JSONResponse({"error": f"MMFE bundle not found: {e}"}, status_code=404)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -205,5 +313,6 @@ def get_fusion_v2_routes() -> list:
         Route("/api/fusion/lineage/{operation_id:int}", fusion_lineage_detail, methods=["GET"]),
         Route("/api/fusion/conflicts/{operation_id:int}", fusion_conflicts_detail, methods=["GET"]),
         Route("/api/fusion/operations", fusion_operations_list, methods=["GET"]),
+        Route("/api/fusion/mmfe/readiness", fusion_mmfe_readiness, methods=["GET"]),
         Route("/api/fusion/temporal-preview", fusion_temporal_preview, methods=["POST"]),
     ]

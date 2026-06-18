@@ -1991,6 +1991,26 @@ class TestEnhancedQualityValidation(unittest.TestCase):
         # Should detect outlier columns
         self.assertIn("outlier_columns", result["details"])
 
+    def test_boolean_numeric_columns_do_not_break_quantiles(self):
+        """Boolean QA columns should not be treated as statistical numerics."""
+        from data_agent.fusion_engine import validate_quality
+
+        gdf = gpd.GeoDataFrame(
+            {
+                "qa_use_for_rules": [True, False, True, True, False, True],
+                "flag": [False, False, True, True, False, True],
+                "value": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+            },
+            geometry=[Point(i, 0) for i in range(6)],
+            crs="EPSG:4326",
+        )
+
+        result = validate_quality(gdf)
+        self.assertIn("score", result)
+        self.assertIn("details", result)
+        self.assertNotIn("qa_use_for_rules", result["details"].get("outlier_columns", []))
+        self.assertNotIn("flag", result["details"].get("outlier_columns", []))
+
     def test_micro_polygon_detection(self):
         """Detect sliver/micro polygons in output."""
         from data_agent.fusion_engine import validate_quality
@@ -2907,7 +2927,10 @@ class TestLargeDatasetHandling(unittest.TestCase):
     def test_materialize_df_dask(self):
         """Dask DataFrame is computed to pandas by _materialize_df."""
         from data_agent.fusion_engine import _materialize_df
-        import dask.dataframe as dd
+        try:
+            import dask.dataframe as dd
+        except ModuleNotFoundError:
+            self.skipTest("dask is not installed in this environment")
         df = pd.DataFrame({"a": [1, 2, 3]})
         ddf = dd.from_pandas(df, npartitions=1)
         result = _materialize_df(ddf)

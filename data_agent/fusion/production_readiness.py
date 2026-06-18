@@ -253,6 +253,10 @@ def _standard_source_metadata_row(entry: dict, index: int) -> dict:
         "checksum_sha256": entry.get("checksum_sha256") or "",
         "extraction_status": entry.get("extraction_status") or "",
         "citation_anchor_count": entry.get("citation_anchor_count") or entry.get("clause_anchor_count") or 0,
+        "citation_anchor_quality": dict(entry.get("citation_anchor_quality") or {}),
+        "retrieval_source_url": entry.get("retrieval_source_url") or "",
+        "retrieval_http_status": entry.get("retrieval_http_status") or "",
+        "retrieval_content_type": entry.get("retrieval_content_type") or "",
     }
 
 
@@ -322,11 +326,15 @@ def _standard_source_lineage(entry: dict) -> str:
 def _standard_source_not_for_production(entry: dict) -> bool:
     if _to_bool(entry.get("not_for_production_gap")):
         return True
+    quality = entry.get("citation_anchor_quality") if isinstance(entry.get("citation_anchor_quality"), dict) else {}
+    if quality and quality.get("status") not in {"pass", "warn"}:
+        return True
     return not (
         entry.get("official_url")
         and entry.get("archive_uri")
         and entry.get("checksum_sha256")
         and entry.get("extraction_status") == "extracted"
+        and _safe_int(entry.get("citation_anchor_count") or entry.get("clause_anchor_count"), 0) > 0
     )
 
 
@@ -467,6 +475,13 @@ def _evaluate_source(source: dict) -> dict:
 
 def _blank(value: Any) -> bool:
     return value is None or str(value).strip() == ""
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
 
 
 def _looks_like_date(value: Any) -> bool:
