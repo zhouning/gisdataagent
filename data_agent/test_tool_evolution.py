@@ -207,6 +207,14 @@ class TestSuggestTools:
         tools = {r["tool"] for r in result["recommended"]}
         assert "calculate_spectral_index" in tools or "recommend_indices" in tools
 
+    def test_stac_satellite_search_task(self):
+        result = json.loads(self.engine.suggest_tools_for_task(
+            "search Sentinel-2 STAC imagery with cloud cover below 10 percent"
+        ))
+        assert result["status"] == "success"
+        tools = {r["tool"] for r in result["recommended"]}
+        assert "stac_search" in tools
+
     def test_hotspot_task(self):
         result = json.loads(self.engine.suggest_tools_for_task("hotspot analysis clustering"))
         assert result["status"] == "success"

@@ -63,6 +63,9 @@ TOOL_CATEGORIES: dict[str, frozenset[str]] = {
     "remote_sensing": frozenset({
         "describe_raster", "calculate_ndvi", "raster_band_math",
         "classify_raster", "visualize_raster", "download_lulc", "download_dem",
+        "calculate_spectral_index", "list_spectral_indices", "recommend_indices",
+        "assess_cloud_cover", "search_rs_experience", "list_satellite_presets",
+        "stac_search", "stac_list_collections",
         "extract_watershed", "extract_stream_network", "compute_flow_accumulation",
         "idw_interpolation", "kriging_interpolation", "gwr_analysis",
         "spatial_change_detection", "viewshed_analysis",

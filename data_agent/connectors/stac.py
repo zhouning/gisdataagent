@@ -8,6 +8,23 @@ from . import BaseConnector, ConnectorRegistry, build_auth_headers, HTTP_TIMEOUT
 logger = logging.getLogger(__name__)
 
 
+def _client_kwargs(auth_config: dict, default_timeout: float = HTTP_TIMEOUT) -> dict:
+    config = auth_config or {}
+    timeout = config.get("timeout_seconds", default_timeout)
+    try:
+        timeout = float(timeout)
+    except (TypeError, ValueError):
+        timeout = default_timeout
+    if timeout <= 0:
+        timeout = default_timeout
+
+    kwargs: dict = {"timeout": int(timeout) if timeout.is_integer() else timeout}
+    proxy_url = (config.get("proxy_url") or "").strip()
+    if proxy_url:
+        kwargs["proxy"] = proxy_url
+    return kwargs
+
+
 class StacConnector(BaseConnector):
     SOURCE_TYPE = "stac"
 
@@ -39,7 +56,7 @@ class StacConnector(BaseConnector):
         if dt:
             body["datetime"] = dt
 
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(**_client_kwargs(auth_config)) as client:
             resp = await client.post(search_url, json=body, headers=headers)
             resp.raise_for_status()
 
@@ -66,7 +83,7 @@ class StacConnector(BaseConnector):
         import httpx
         headers = build_auth_headers(auth_config)
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(**_client_kwargs(auth_config, default_timeout=10)) as client:
                 resp = await client.get(endpoint_url, headers=headers)
                 resp.raise_for_status()
             return {"health": "healthy", "message": "OK"}
@@ -78,7 +95,7 @@ class StacConnector(BaseConnector):
     async def get_capabilities(self, endpoint_url: str, auth_config: dict) -> dict:
         import httpx
         headers = build_auth_headers(auth_config)
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(**_client_kwargs(auth_config)) as client:
             resp = await client.get(
                 endpoint_url.rstrip("/") + "/collections",
                 headers=headers,

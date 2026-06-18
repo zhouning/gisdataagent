@@ -245,6 +245,24 @@ class TestSatellitePresets:
         names = {p["name"] for p in result["presets"]}
         assert "sentinel2_l2a" in names
 
+    def test_planetary_computer_sentinel2_preset(self):
+        from data_agent.toolsets.remote_sensing_tools import list_satellite_presets
+        result = json.loads(list_satellite_presets())
+        presets = {p["name"]: p for p in result["presets"]}
+        preset = presets["planetary_computer_sentinel2_l2a"]
+        assert preset["source_type"] == "stac"
+        assert preset["resolution_m"] == 10
+
+    def test_stac_preset_exposes_endpoint_and_collection(self):
+        from data_agent.toolsets.remote_sensing_tools import list_satellite_presets
+        result = json.loads(list_satellite_presets())
+        presets = {p["name"]: p for p in result["presets"]}
+        preset = presets["planetary_computer_sentinel2_l2a"]
+
+        assert preset["endpoint_url"] == "https://planetarycomputer.microsoft.com/api/stac/v1"
+        assert preset["collection"] == "sentinel-2-l2a"
+        assert preset["default_cloud_cover"] == 20
+
     def test_preset_has_required_fields(self):
         from data_agent.toolsets.remote_sensing_tools import list_satellite_presets
         result = json.loads(list_satellite_presets())
@@ -260,6 +278,127 @@ class TestSatellitePresets:
         result = json.loads(list_satellite_presets())
         sar = [p for p in result["presets"] if "sentinel1" in p["name"]]
         assert len(sar) >= 1
+
+
+# ---------------------------------------------------------------------------
+# STAC discovery tools
+# ---------------------------------------------------------------------------
+
+class TestStacTools:
+    @patch("data_agent.connectors.stac.StacConnector.query")
+    def test_stac_search_uses_preset_and_filters_cloud_cover(self, mock_query):
+        from data_agent.toolsets.remote_sensing_tools import stac_search
+
+        async def fake_query(*args, **kwargs):
+            return [
+                {"id": "clear", "cloud_cover": 5, "collection": "sentinel-2-l2a"},
+                {"id": "cloudy", "cloud_cover": 80, "collection": "sentinel-2-l2a"},
+            ]
+
+        mock_query.side_effect = fake_query
+        result = json.loads(stac_search(
+            bbox="116,39,117,40",
+            datetime="2024-01-01/2024-02-01",
+            cloud_cover=20,
+            preset_name="sentinel2_l2a",
+            limit=5,
+        ))
+
+        assert result["status"] == "success"
+        assert result["endpoint_url"] == "https://earth-search.aws.element84.com/v1"
+        assert result["collection"] == "sentinel-2-l2a"
+        assert result["count"] == 1
+        assert result["items"][0]["id"] == "clear"
+        _, _, query_config = mock_query.call_args.args[:3]
+        assert query_config["collection_id"] == "sentinel-2-l2a"
+        assert mock_query.call_args.kwargs["bbox"] == [116.0, 39.0, 117.0, 40.0]
+        assert mock_query.call_args.kwargs["filter_expr"] == "2024-01-01/2024-02-01"
+        assert mock_query.call_args.kwargs["limit"] == 5
+
+    @patch("data_agent.connectors.stac.StacConnector.get_capabilities")
+    def test_stac_list_collections_uses_endpoint(self, mock_caps):
+        from data_agent.toolsets.remote_sensing_tools import stac_list_collections
+
+        async def fake_caps(*args, **kwargs):
+            return {
+                "service": "STAC",
+                "layers": [{"name": "sentinel-2-l2a", "title": "Sentinel-2"}],
+            }
+
+        mock_caps.side_effect = fake_caps
+        result = json.loads(stac_list_collections(
+            endpoint_url="https://example.com/stac",
+        ))
+
+        assert result["status"] == "success"
+        assert result["endpoint_url"] == "https://example.com/stac"
+        assert result["count"] == 1
+        assert result["collections"][0]["name"] == "sentinel-2-l2a"
+
+    def test_stac_search_rejects_custom_preset(self):
+        from data_agent.toolsets.remote_sensing_tools import stac_search
+
+        result = json.loads(stac_search(preset_name="esri_lulc_10m"))
+
+        assert result["status"] == "error"
+        assert "not a STAC source" in result["message"]
+
+    @patch("data_agent.connectors.stac.StacConnector.query")
+    def test_stac_search_passes_timeout_and_proxy_config(self, mock_query):
+        from data_agent.toolsets.remote_sensing_tools import stac_search
+
+        async def fake_query(*args, **kwargs):
+            return []
+
+        mock_query.side_effect = fake_query
+        result = json.loads(stac_search(
+            bbox="116,39,117,40",
+            timeout_seconds=12,
+            proxy_url="http://proxy.example:8080",
+        ))
+
+        assert result["status"] == "success"
+        auth_config = mock_query.call_args.args[1]
+        assert auth_config["timeout_seconds"] == 12
+        assert auth_config["proxy_url"] == "http://proxy.example:8080"
+
+    @patch("data_agent.connectors.stac.StacConnector.get_capabilities")
+    def test_stac_list_collections_passes_timeout_and_proxy_config(self, mock_caps):
+        from data_agent.toolsets.remote_sensing_tools import stac_list_collections
+
+        async def fake_caps(*args, **kwargs):
+            return {"service": "STAC", "layers": []}
+
+        mock_caps.side_effect = fake_caps
+        result = json.loads(stac_list_collections(
+            endpoint_url="https://example.com/stac",
+            timeout_seconds=9,
+            proxy_url="http://proxy.example:8080",
+        ))
+
+        assert result["status"] == "success"
+        auth_config = mock_caps.call_args.args[1]
+        assert auth_config["timeout_seconds"] == 9
+        assert auth_config["proxy_url"] == "http://proxy.example:8080"
+
+    @patch.dict(os.environ, {
+        "GIS_AGENT_STAC_TIMEOUT_SECONDS": "7",
+        "GIS_AGENT_STAC_PROXY_URL": "http://env-proxy.example:8080",
+    })
+    @patch("data_agent.connectors.stac.StacConnector.query")
+    def test_stac_search_uses_env_timeout_and_proxy_defaults(self, mock_query):
+        from data_agent.toolsets.remote_sensing_tools import stac_search
+
+        async def fake_query(*args, **kwargs):
+            return []
+
+        mock_query.side_effect = fake_query
+        result = json.loads(stac_search(bbox="116,39,117,40"))
+
+        assert result["status"] == "success"
+        auth_config = mock_query.call_args.args[1]
+        assert auth_config["timeout_seconds"] == 7
+        assert auth_config["proxy_url"] == "http://env-proxy.example:8080"
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +418,8 @@ class TestRemoteSensingToolset:
         assert "assess_cloud_cover" in tool_names
         assert "search_rs_experience" in tool_names
         assert "list_satellite_presets" in tool_names
+        assert "stac_search" in tool_names
+        assert "stac_list_collections" in tool_names
 
     def test_toolset_retains_original_tools(self):
         import asyncio
@@ -296,4 +437,22 @@ class TestRemoteSensingToolset:
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
         ts = RemoteSensingToolset()
         tools = asyncio.get_event_loop().run_until_complete(ts.get_tools())
-        assert len(tools) == 13  # 7 original + 6 new
+        assert len(tools) == 15  # 7 original + 8 new
+
+    def test_stac_search_tool_signature(self):
+        import asyncio
+        from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
+
+        ts = RemoteSensingToolset(tool_filter=["stac_search"])
+        tools = asyncio.get_event_loop().run_until_complete(ts.get_tools())
+        assert len(tools) == 1
+        assert tools[0].name == "stac_search"
+
+    def test_stac_list_collections_tool_signature(self):
+        import asyncio
+        from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
+
+        ts = RemoteSensingToolset(tool_filter=["stac_list_collections"])
+        tools = asyncio.get_event_loop().run_until_complete(ts.get_tools())
+        assert len(tools) == 1
+        assert tools[0].name == "stac_list_collections"

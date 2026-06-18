@@ -35,6 +35,10 @@ metadata:
 - B05-B07 (Red Edge) / B08 (NIR, 842nm)
 - B11 (SWIR1, 1610nm) / B12 (SWIR2, 2190nm)
 
+**可用 STAC 预设**：
+- `sentinel2_l2a` — AWS Earth Search
+- `planetary_computer_sentinel2_l2a` — Microsoft Planetary Computer
+
 ### Landsat 8/9 (光学多光谱)
 
 | 属性 | 值 |
@@ -94,10 +98,11 @@ metadata:
 ```
 1. list_satellite_presets    → 查看可用卫星数据源及参数
 2. search_rs_experience      → 查找相似场景的数据选择经验
-3. download_lulc / download_dem → 下载数据
-4. describe_raster           → 检查下载数据质量
-5. assess_cloud_cover        → 评估光学影像质量
-6. calculate_spectral_index  → 计算目标光谱指数
+3. stac_list_collections / stac_search → 检索可用卫星影像条目
+4. download_lulc / download_dem → 下载数据
+5. describe_raster           → 检查下载数据质量
+6. assess_cloud_cover        → 评估光学影像质量
+7. calculate_spectral_index  → 计算目标光谱指数
 ```
 
 ### STAC 数据检索
@@ -109,6 +114,15 @@ metadata:
 - `datetime`：时间范围 "2024-01-01/2024-12-31"
 - `cloud_cover`：最大云覆盖率 (%)
 - `collection`：数据集名称
+- `limit`：返回条目上限
+- `endpoint_url`：STAC API 根地址；为空时使用预设源或默认 Earth Search
+- `preset_name`：预置源名称，如 `sentinel2_l2a`、`landsat8_c2_l2`
+- `timeout_seconds`：可选请求超时；为空时读取 `GIS_AGENT_STAC_TIMEOUT_SECONDS`
+- `proxy_url`：可选 HTTP 代理；为空时读取 `GIS_AGENT_STAC_PROXY_URL`
+
+**工具签名**：
+- `stac_search(bbox, datetime, cloud_cover, collection, limit, endpoint_url, preset_name, timeout_seconds, proxy_url)` — 按空间、时间、云量和数据集检索 STAC 影像条目
+- `stac_list_collections(endpoint_url, preset_name, timeout_seconds, proxy_url)` — 列出 STAC 端点暴露的数据集/collection
 
 ## 多源数据集成
 
@@ -140,11 +154,14 @@ metadata:
 ## 可用工具
 
 - `list_satellite_presets` — 列出预置卫星数据源模板（分辨率、重访周期、波段）
+- 预设源条目包含 `endpoint_url`、`collection` 和 `default_cloud_cover`，可直接传给 STAC 检索工具
 - `download_lulc` — 下载指定范围/年份的 LULC 土地利用数据
 - `download_dem` — 下载 Copernicus DEM 高程数据
 - `describe_raster` — 栅格数据概况（波段/CRS/统计/NoData）
 - `assess_cloud_cover` — 影像云覆盖率评估和质量门控
 - `search_rs_experience` — 检索经验池中的数据选择建议
+- `stac_search` — 按 bbox/datetime/cloud_cover/collection/limit 检索 STAC 影像条目，支持超时和代理配置
+- `stac_list_collections` — 列出指定 STAC endpoint 或卫星预设源的数据集，支持超时和代理配置
 - `calculate_spectral_index` — 计算光谱指数
 - `list_spectral_indices` — 列出所有可用光谱指数
 - `classify_raster` — 栅格分类（K-Means/ISODATA）

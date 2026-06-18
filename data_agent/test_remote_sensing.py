@@ -267,7 +267,7 @@ class TestRemoteSensingToolset(unittest.TestCase):
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
         ts = RemoteSensingToolset()
         tools = self._run(ts.get_tools())
-        self.assertEqual(len(tools), 13)
+        self.assertEqual(len(tools), 15)
 
     def test_tool_names(self):
         from data_agent.toolsets.remote_sensing_tools import RemoteSensingToolset
@@ -281,6 +281,7 @@ class TestRemoteSensingToolset(unittest.TestCase):
             "calculate_spectral_index", "list_spectral_indices",
             "recommend_indices", "assess_cloud_cover",
             "search_rs_experience", "list_satellite_presets",
+            "stac_search", "stac_list_collections",
         })
 
     def test_filter(self):

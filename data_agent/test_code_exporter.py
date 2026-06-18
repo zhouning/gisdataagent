@@ -45,6 +45,14 @@ class TestToolImportMap(unittest.TestCase):
         # Should have at least 30 tools mapped
         self.assertGreaterEqual(len(TOOL_IMPORT_MAP), 30)
 
+    def test_stac_tools_in_map(self):
+        expected = {
+            "stac_search": "from data_agent.toolsets.remote_sensing_tools import stac_search",
+            "stac_list_collections": "from data_agent.toolsets.remote_sensing_tools import stac_list_collections",
+        }
+        for tool_name, import_stmt in expected.items():
+            self.assertEqual(TOOL_IMPORT_MAP.get(tool_name), import_stmt)
+
 
 class TestNonExportableTools(unittest.TestCase):
     """Verify NON_EXPORTABLE_TOOLS constant."""
@@ -194,6 +202,33 @@ class TestGenerateScript(unittest.TestCase):
         }]
         script = generate_python_script(tool_log=log, tool_descriptions=descs)
         self.assertIn("空间聚类分析", script)
+        ast.parse(script)
+
+    def test_stac_search_export_generates_parseable_script(self):
+        log = [{
+            "step": 1,
+            "agent_name": "RemoteSensing",
+            "tool_name": "stac_search",
+            "args": {
+                "bbox": "116,39,117,40",
+                "datetime": "2024-01-01/2024-02-01",
+                "cloud_cover": 20,
+                "collection": "sentinel-2-l2a",
+                "limit": 5,
+                "endpoint_url": "https://earth-search.aws.element84.com/v1",
+                "preset_name": "sentinel2_l2a",
+            },
+            "output_path": None,
+            "result_summary": "",
+            "duration": 1.0,
+            "is_error": False,
+        }]
+        script = generate_python_script(tool_log=log)
+
+        self.assertIn("from data_agent.toolsets.remote_sensing_tools import stac_search", script)
+        self.assertIn("result_1 = stac_search(", script)
+        self.assertIn("bbox='116,39,117,40'", script)
+        self.assertIn("cloud_cover=20", script)
         ast.parse(script)
 
 

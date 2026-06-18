@@ -20,6 +20,25 @@ presets:
       scl: SCL
     description: "欧空局 Sentinel-2 地表反射率产品，10m 分辨率，5 天重访"
 
+  - name: planetary_computer_sentinel2_l2a
+    display_name: "Microsoft Planetary Computer Sentinel-2 L2A (Optical, 10-20m)"
+    source_type: stac
+    endpoint_url: "https://planetarycomputer.microsoft.com/api/stac/v1"
+    collection: "sentinel-2-l2a"
+    default_cloud_cover: 20
+    resolution_m: 10
+    revisit_days: 5
+    bands:
+      blue: B02
+      green: B03
+      red: B04
+      rededge: B05
+      nir: B08
+      swir1: B11
+      swir2: B12
+      scl: SCL
+    description: "Microsoft Planetary Computer hosted Sentinel-2 L2A STAC collection."
+
   - name: landsat8_c2_l2
     display_name: "Landsat 8/9 C2 L2 (光学, 30m)"
     source_type: stac
