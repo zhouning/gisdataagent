@@ -1,0 +1,104 @@
+# TWM metadata-only references
+
+- `sutton1991dyna` (1991) Dyna, an integrated architecture for learning, planning, and reacting
+  - status: open_pdf_known
+  - url: https://doi.org/10.1145/122344.122377
+- `ha2018worldmodels` (2018) Recurrent world models facilitate policy evolution
+  - status: open_pdf_known
+  - url: https://worldmodels.github.io/
+- `schrittwieser2020muzero` (2020) Mastering Atari, Go, chess and shogi by planning with a learned model
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1038/s41586-020-03051-4
+- `chua2018pets` (2018) Deep reinforcement learning in a handful of trials using probabilistic dynamics models
+  - status: open_pdf_known
+  - url: https://papers.nips.cc/paper/2018/hash/3de568f8597b94bda53149c7d7f5958c-Abstract.html
+- `janner2019mbpo` (2019) When to trust your model: Model-based policy optimization
+  - status: open_pdf_known
+  - url: https://papers.nips.cc/paper/2019/hash/5faf461eff3099671ad63c6f3f094f7f-Abstract.html
+- `hansen2022tdmpc` (2022) Temporal Difference Learning for Model Predictive Control
+  - status: open_pdf_known
+  - url: https://proceedings.mlr.press/v162/hansen22a.html
+- `camacho2013mpc` (2013) Model Predictive Control
+  - status: metadata_only_book
+  - url: https://doi.org/10.1007/978-0-85729-398-5
+- `rawlings2017mpc` (2017) Model Predictive Control: Theory, Computation, and Design
+  - status: metadata_only_book
+  - url: https://sites.engineering.ucsb.edu/~jbraw/mpc/
+- `williams2017mppi` (2017) Model predictive path integral control: From theory to parallel computation
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.2514/1.G001921
+- `rubin1974causal` (1974) Estimating causal effects of treatments in randomized and nonrandomized studies
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1037/h0037350
+- `rosenbaum1983propensity` (1983) The central role of the propensity score in observational studies for causal effects
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1093/biomet/70.1.41
+- `pearl2009causality` (2009) Causality: Models, Reasoning, and Inference
+  - status: metadata_only_book
+  - url: https://www.cambridge.org/core/books/causality/3A9714D7B07946B52BE2D9F6FE51A5B1
+- `imbens2015causal` (2015) Causal Inference for Statistics, Social, and Biomedical Sciences: An Introduction
+  - status: metadata_only_book
+  - url: https://doi.org/10.1017/CBO9781139025751
+- `athey2016recursive` (2016) Recursive partitioning for heterogeneous causal effects
+  - status: open_pdf_known
+  - url: https://doi.org/10.1073/pnas.1510489113
+- `sutton1999options` (1999) Between MDPs and semi-MDPs: A framework for temporal abstraction in reinforcement learning
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1016/S0004-3702(99)00052-1
+- `dietterich2000maxq` (2000) Hierarchical reinforcement learning with the MAXQ value function decomposition
+  - status: open_pdf_known
+  - url: https://doi.org/10.1613/jair.639
+- `bacon2017optioncritic` (2017) The Option-Critic Architecture
+  - status: open_pdf_known
+  - url: https://ojs.aaai.org/index.php/AAAI/article/view/10916
+- `rashid2018qmix` (2018) QMIX: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning
+  - status: open_pdf_known
+  - url: https://proceedings.mlr.press/v80/rashid18a.html
+- `reed2023scalemae` (2023) Scale-MAE: A Scale-Aware Masked Autoencoder for Multiscale Geospatial Representation Learning
+  - status: open_pdf_known
+  - url: https://openaccess.thecvf.com/content/ICCV2023/html/Reed_Scale-MAE_A_Scale-Aware_Masked_Autoencoder_for_Multiscale_Geospatial_Representation_Learning_ICCV_2023_paper.html
+- `assran2023ijepa` (2023) Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture
+  - status: open_pdf_known
+  - url: https://openaccess.thecvf.com/content/CVPR2023/html/Assran_Self-Supervised_Learning_From_Images_With_a_Joint-Embedding_Predictive_Architecture_CVPR_2023_paper.html
+- `guo2017calibration` (2017) On Calibration of Modern Neural Networks
+  - status: open_pdf_known
+  - url: https://proceedings.mlr.press/v70/guo17a.html
+- `lakshminarayanan2017deepensembles` (2017) Simple and scalable predictive uncertainty estimation using deep ensembles
+  - status: open_pdf_known
+  - url: https://papers.nips.cc/paper/2017/hash/9ef2ed4b7fd2c810847ffa5fa85bce38-Abstract.html
+- `ovadia2019uncertaintyshift` (2019) Can You Trust Your Model's Uncertainty? Evaluating Predictive Uncertainty Under Dataset Shift
+  - status: open_pdf_known
+  - url: https://papers.nips.cc/paper/2019/hash/8558cb408c1d76621371888657d2eb1d-Abstract.html
+- `geifman2017selective` (2017) Selective Classification for Deep Neural Networks
+  - status: open_pdf_known
+  - url: https://arxiv.org/abs/1705.08500
+- `geifman2019selectivenet` (2019) SelectiveNet: A Deep Neural Network with an Integrated Reject Option
+  - status: open_pdf_known
+  - url: https://proceedings.mlr.press/v97/geifman19a.html
+- `mitchell2019modelcards` (2019) Model Cards for Model Reporting
+  - status: open_pdf_may_require_publisher_access
+  - url: https://doi.org/10.1145/3287560.3287596
+- `w3c2013provdm` (2013) PROV-DM: The PROV Data Model
+  - status: metadata_only_standard
+  - url: https://www.w3.org/TR/prov-dm/
+- `moreau2011opm` (2011) The Open Provenance Model core specification (v1.1)
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1016/j.future.2010.07.005
+- `iso19115` (2014) ISO 19115 Geographic information - Metadata
+  - status: metadata_only_standard
+  - url: https://www.iso.org/standard/53798.html
+- `iso19157` (2013) ISO 19157 Geographic information - Data quality
+  - status: metadata_only_standard
+  - url: https://www.iso.org/standard/32575.html
+- `clarke1997sleuth` (1997) A self-modifying cellular automaton model of historical urbanization in the San Francisco Bay area
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1068/b240247
+- `verburg2002clues` (2002) Modeling the spatial dynamics of regional land use: The CLUE-S model
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1007/s00267-002-2630-x
+- `liu2017flus` (2017) A future land use simulation model (FLUS) for simulating multiple land use scenarios by coupling human and natural effects
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1016/j.landurbplan.2017.09.019
+- `liang2021plus` (2021) Understanding the drivers of sustainable land expansion using a patch-generating land use simulation (PLUS) model: A case study in Wuhan, China
+  - status: metadata_only_paywalled_or_no_stable_open_pdf
+  - url: https://doi.org/10.1016/j.compenvurbsys.2020.101569

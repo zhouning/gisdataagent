@@ -1,0 +1,803 @@
+TY  - JOUR
+AU  - Sutton, Richard S.
+TI  - Dyna, an integrated architecture for learning, planning, and reacting
+JO  - ACM SIGART Bulletin
+PY  - 1991
+VL  - 2
+IS  - 4
+SP  - 160--163
+DO  - 10.1145/122344.122377
+UR  - https://doi.org/10.1145/122344.122377
+ER  -
+
+TY  - CONF
+AU  - Ha, David
+AU  - Schmidhuber, J{\"u}rgen
+TI  - Recurrent world models facilitate policy evolution
+T2  - Advances in Neural Information Processing Systems
+PY  - 2018
+VL  - 31
+UR  - https://worldmodels.github.io/
+ER  -
+
+TY  - CONF
+AU  - Hafner, Danijar
+AU  - Lillicrap, Timothy
+AU  - Fischer, Ian
+AU  - Villegas, Ruben
+AU  - Ha, David
+AU  - others
+TI  - Learning latent dynamics for planning from pixels
+T2  - International Conference on Machine Learning
+PY  - 2019
+VL  - 97
+SP  - 2555--2565
+UR  - https://proceedings.mlr.press/v97/hafner19a.html
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Hafner_2019_hafner2019planet.pdf
+ER  -
+
+TY  - CONF
+AU  - Hafner, Danijar
+AU  - Lillicrap, Timothy
+AU  - Ba, Jimmy
+AU  - Norouzi, Mohammad
+TI  - Dream to Control: Learning Behaviors by Latent Imagination
+T2  - International Conference on Learning Representations
+PY  - 2020
+UR  - https://openreview.net/forum?id=S1lOTC4tDS
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Hafner_2020_hafner2020dreamer.pdf
+ER  -
+
+TY  - JOUR
+AU  - Schrittwieser, Julian
+AU  - Antonoglou, Ioannis
+AU  - Hubert, Thomas
+AU  - Simonyan, Karen
+AU  - Sifre, Laurent
+AU  - Schmitt, Simon
+AU  - Guez, Arthur
+AU  - Lockhart, Edward
+AU  - Hassabis, Demis
+AU  - Graepel, Thore
+AU  - Lillicrap, Timothy
+AU  - Silver, David
+TI  - Mastering Atari, Go, chess and shogi by planning with a learned model
+JO  - Nature
+PY  - 2020
+VL  - 588
+IS  - 7839
+SP  - 604--609
+DO  - 10.1038/s41586-020-03051-4
+UR  - https://doi.org/10.1038/s41586-020-03051-4
+ER  -
+
+TY  - CONF
+AU  - Chua, Kurtland
+AU  - Calandra, Roberto
+AU  - McAllister, Rowan
+AU  - Levine, Sergey
+TI  - Deep reinforcement learning in a handful of trials using probabilistic dynamics models
+T2  - Advances in Neural Information Processing Systems
+PY  - 2018
+VL  - 31
+UR  - https://papers.nips.cc/paper/2018/hash/3de568f8597b94bda53149c7d7f5958c-Abstract.html
+ER  -
+
+TY  - CONF
+AU  - Janner, Michael
+AU  - Fu, Justin
+AU  - Zhang, Marvin
+AU  - Levine, Sergey
+TI  - When to trust your model: Model-based policy optimization
+T2  - Advances in Neural Information Processing Systems
+PY  - 2019
+VL  - 32
+UR  - https://papers.nips.cc/paper/2019/hash/5faf461eff3099671ad63c6f3f094f7f-Abstract.html
+ER  -
+
+TY  - CONF
+AU  - Hansen, Nicklas
+AU  - Wang, Xiaolong
+AU  - Su, Hao
+TI  - Temporal Difference Learning for Model Predictive Control
+T2  - International Conference on Machine Learning
+PY  - 2022
+UR  - https://proceedings.mlr.press/v162/hansen22a.html
+N1  - Represents TD-MPC in the source row 'TD-MPC / TD-MPC2'.
+ER  -
+
+TY  - CONF
+AU  - Hansen, Nicklas
+AU  - Su, Hao
+AU  - Wang, Xiaolong
+TI  - TD-MPC2: Scalable, robust world models for continuous control
+T2  - International Conference on Learning Representations (ICLR)
+PY  - 2024
+UR  - https://openreview.net/forum?id=Oxh5CstDJU
+N1  - Represents TD-MPC2 in the source row 'TD-MPC / TD-MPC2'.
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Hansen_2024_hansen2024tdmpc2.pdf
+ER  -
+
+TY  - BOOK
+AU  - Camacho, Eduardo F.
+AU  - Bordons, Carlos
+TI  - Model Predictive Control
+T2  - Springer
+PY  - 2013
+DO  - 10.1007/978-0-85729-398-5
+UR  - https://doi.org/10.1007/978-0-85729-398-5
+ER  -
+
+TY  - BOOK
+AU  - Rawlings, James B.
+AU  - Mayne, David Q.
+AU  - Diehl, Moritz M.
+TI  - Model Predictive Control: Theory, Computation, and Design
+T2  - Nob Hill Publishing
+PY  - 2017
+UR  - https://sites.engineering.ucsb.edu/~jbraw/mpc/
+ER  -
+
+TY  - JOUR
+AU  - Williams, Grady
+AU  - Drews, Paul
+AU  - Goldfain, Brian
+AU  - Rehg, James M.
+AU  - Theodorou, Evangelos A.
+TI  - Model predictive path integral control: From theory to parallel computation
+JO  - Journal of Guidance, Control, and Dynamics
+PY  - 2017
+VL  - 40
+IS  - 2
+SP  - 344--357
+DO  - 10.2514/1.G001921
+UR  - https://doi.org/10.2514/1.G001921
+ER  -
+
+TY  - CONF
+AU  - Amos, Brandon
+AU  - Kolter, J. Zico
+TI  - OptNet: Differentiable Optimization as a Layer in Neural Networks
+T2  - Proceedings of the 34th International Conference on Machine Learning
+PY  - 2017
+VL  - 70
+SP  - 136--145
+UR  - https://proceedings.mlr.press/v70/amos17a.html
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Amos_2017_amos2017optnet.pdf
+ER  -
+
+TY  - JOUR
+AU  - Rubin, Donald B.
+TI  - Estimating causal effects of treatments in randomized and nonrandomized studies
+JO  - Journal of Educational Psychology
+PY  - 1974
+VL  - 66
+IS  - 5
+SP  - 688--701
+DO  - 10.1037/h0037350
+UR  - https://doi.org/10.1037/h0037350
+ER  -
+
+TY  - JOUR
+AU  - Rosenbaum, Paul R.
+AU  - Rubin, Donald B.
+TI  - The central role of the propensity score in observational studies for causal effects
+JO  - Biometrika
+PY  - 1983
+VL  - 70
+IS  - 1
+SP  - 41--55
+DO  - 10.1093/biomet/70.1.41
+UR  - https://doi.org/10.1093/biomet/70.1.41
+ER  -
+
+TY  - BOOK
+AU  - Pearl, Judea
+TI  - Causality: Models, Reasoning, and Inference
+T2  - Cambridge University Press
+PY  - 2009
+UR  - https://www.cambridge.org/core/books/causality/3A9714D7B07946B52BE2D9F6FE51A5B1
+ER  -
+
+TY  - BOOK
+AU  - Imbens, Guido W.
+AU  - Rubin, Donald B.
+TI  - Causal Inference for Statistics, Social, and Biomedical Sciences: An Introduction
+T2  - Cambridge University Press
+PY  - 2015
+DO  - 10.1017/CBO9781139025751
+UR  - https://doi.org/10.1017/CBO9781139025751
+ER  -
+
+TY  - JOUR
+AU  - Athey, Susan
+AU  - Imbens, Guido
+TI  - Recursive partitioning for heterogeneous causal effects
+JO  - Proceedings of the National Academy of Sciences
+PY  - 2016
+VL  - 113
+IS  - 27
+SP  - 7353--7360
+DO  - 10.1073/pnas.1510489113
+UR  - https://doi.org/10.1073/pnas.1510489113
+ER  -
+
+TY  - JOUR
+AU  - Wager, Stefan
+AU  - Athey, Susan
+TI  - Estimation and inference of heterogeneous treatment effects using random forests
+JO  - Journal of the American Statistical Association
+PY  - 2018
+VL  - 113
+IS  - 523
+SP  - 1228--1242
+DO  - 10.1080/01621459.2017.1319839
+UR  - https://doi.org/10.1080/01621459.2017.1319839
+AN  - arXiv:1510.04342
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Wager_2018_wager2018causalforest.pdf
+ER  -
+
+TY  - JOUR
+AU  - Chernozhukov, Victor
+AU  - Chetverikov, Denis
+AU  - Demirer, Mert
+AU  - Duflo, Esther
+AU  - Hansen, Christian
+AU  - Newey, Whitney
+AU  - Robins, James
+TI  - Double/debiased machine learning for treatment and structural parameters
+JO  - The Econometrics Journal
+PY  - 2018
+VL  - 21
+IS  - 1
+SP  - C1--C68
+DO  - 10.1111/ectj.12097
+UR  - https://doi.org/10.1111/ectj.12097
+AN  - arXiv:1608.00060
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Chernozhukov_2018_chernozhukov2018doubleml.pdf
+ER  -
+
+TY  - JOUR
+AU  - Battaglia, Peter W.
+AU  - Hamrick, Jessica B.
+AU  - Bapst, Victor
+AU  - Sanchez-Gonzalez, Alvaro
+AU  - Zambaldi, Vinicius
+AU  - Malinowski, Mateusz
+AU  - Tacchetti, Andrea
+AU  - Raposo, David
+AU  - Santoro, Adam
+AU  - Faulkner, Ryan
+AU  - Gulcehre, Caglar
+AU  - Song, Francis
+AU  - Ballard, Andrew
+AU  - Gilmer, Justin
+AU  - Dahl, George
+AU  - Vaswani, Ashish
+AU  - Allen, Kelsey
+AU  - Nash, Charles
+AU  - Langston, Victoria
+AU  - Dyer, Chris
+AU  - Heess, Nicolas
+AU  - Wierstra, Daan
+AU  - Kohli, Pushmeet
+AU  - Botvinick, Matthew
+AU  - Vinyals, Oriol
+AU  - Li, Yujia
+AU  - Pascanu, Razvan
+TI  - Relational inductive biases, deep learning, and graph networks
+JO  - arXiv preprint arXiv:1806.01261
+PY  - 2018
+UR  - https://arxiv.org/abs/1806.01261
+AN  - arXiv:1806.01261
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Battaglia_2018_battaglia2018graphnetworks.pdf
+ER  -
+
+TY  - CONF
+AU  - Kipf, Thomas N.
+AU  - Welling, Max
+TI  - Semi-Supervised Classification with Graph Convolutional Networks
+T2  - International Conference on Learning Representations
+PY  - 2017
+UR  - https://openreview.net/forum?id=SJU4ayYgl
+AN  - arXiv:1609.02907
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Kipf_2017_kipf2017gcn.pdf
+ER  -
+
+TY  - CONF
+AU  - Velickovic, Petar
+AU  - Cucurull, Guillem
+AU  - Casanova, Arantxa
+AU  - Romero, Adriana
+AU  - Lio, Pietro
+AU  - Bengio, Yoshua
+TI  - Graph Attention Networks
+T2  - International Conference on Learning Representations
+PY  - 2018
+UR  - https://openreview.net/forum?id=rJXMpikCZ
+AN  - arXiv:1710.10903
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Velickovic_2018_velickovic2018gat.pdf
+ER  -
+
+TY  - JOUR
+AU  - Bronstein, Michael M.
+AU  - Bruna, Joan
+AU  - Cohen, Taco
+AU  - Velickovic, Petar
+TI  - Geometric Deep Learning: Grids, Groups, Graphs, Geodesics, and Gauges
+JO  - arXiv preprint arXiv:2104.13478
+PY  - 2021
+UR  - https://arxiv.org/abs/2104.13478
+AN  - arXiv:2104.13478
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Bronstein_2021_bronstein2021geometric.pdf
+ER  -
+
+TY  - JOUR
+AU  - Sutton, Richard S.
+AU  - Precup, Doina
+AU  - Singh, Satinder
+TI  - Between MDPs and semi-MDPs: A framework for temporal abstraction in reinforcement learning
+JO  - Artificial Intelligence
+PY  - 1999
+VL  - 112
+IS  - 1-2
+SP  - 181--211
+DO  - 10.1016/S0004-3702(99)00052-1
+UR  - https://doi.org/10.1016/S0004-3702(99)00052-1
+ER  -
+
+TY  - JOUR
+AU  - Dietterich, Thomas G.
+TI  - Hierarchical reinforcement learning with the MAXQ value function decomposition
+JO  - Journal of Artificial Intelligence Research
+PY  - 2000
+VL  - 13
+SP  - 227--303
+DO  - 10.1613/jair.639
+UR  - https://doi.org/10.1613/jair.639
+ER  -
+
+TY  - CONF
+AU  - Bacon, Pierre-Luc
+AU  - Harb, Jean
+AU  - Precup, Doina
+TI  - The Option-Critic Architecture
+T2  - Proceedings of the AAAI Conference on Artificial Intelligence
+PY  - 2017
+VL  - 31
+IS  - 1
+UR  - https://ojs.aaai.org/index.php/AAAI/article/view/10916
+ER  -
+
+TY  - CONF
+AU  - Lowe, Ryan
+AU  - Wu, Yi
+AU  - Tamar, Aviv
+AU  - Harb, Jean
+AU  - Abbeel, Pieter
+AU  - Mordatch, Igor
+TI  - Multi-Agent Actor-Critic for Mixed Cooperative-Competitive Environments
+T2  - Advances in Neural Information Processing Systems
+PY  - 2017
+VL  - 30
+UR  - https://arxiv.org/abs/1706.02275
+AN  - arXiv:1706.02275
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Lowe_2017_lowe2017maddpg.pdf
+ER  -
+
+TY  - CONF
+AU  - Rashid, Tabish
+AU  - Samvelyan, Mikayel
+AU  - Schroeder, Christian
+AU  - Farquhar, Gregory
+AU  - Foerster, Jakob
+AU  - Whiteson, Shimon
+TI  - QMIX: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning
+T2  - Proceedings of the 35th International Conference on Machine Learning
+PY  - 2018
+VL  - 80
+SP  - 4295--4304
+UR  - https://proceedings.mlr.press/v80/rashid18a.html
+ER  -
+
+TY  - JOUR
+AU  - Yu, Chao
+AU  - Velu, Akash
+AU  - Vinitsky, Eugene
+AU  - Gao, Yu
+AU  - Wang, Yu
+AU  - Bayen, Alexandre
+AU  - Wu, Yi
+TI  - The Surprising Effectiveness of PPO in Cooperative Multi-Agent Games
+JO  - Advances in Neural Information Processing Systems
+PY  - 2022
+VL  - 35
+UR  - https://arxiv.org/abs/2103.01955
+AN  - arXiv:2103.01955
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Yu_2022_yu2022mappo.pdf
+ER  -
+
+TY  - JOUR
+AU  - Zhang, Kaiqing
+AU  - Yang, Zhuoran
+AU  - Basar, Tamer
+TI  - Multi-Agent Reinforcement Learning: A Selective Overview of Theories and Algorithms
+JO  - Handbook of Reinforcement Learning and Control
+PY  - 2021
+SP  - 321--384
+DO  - 10.1007/978-3-030-60990-0_12
+UR  - https://doi.org/10.1007/978-3-030-60990-0_12
+AN  - arXiv:1911.10635
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Zhang_2021_zhang2021marlselective.pdf
+ER  -
+
+TY  - CONF
+AU  - He, Kaiming
+AU  - Chen, Xinlei
+AU  - Xie, Saining
+AU  - Li, Yanghao
+AU  - Doll{\'a}r, Piotr
+AU  - Girshick, Ross
+TI  - Masked Autoencoders Are Scalable Vision Learners
+T2  - IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)
+PY  - 2022
+SP  - 16000--16009
+UR  - https://openaccess.thecvf.com/content/CVPR2022/html/He_Masked_Autoencoders_Are_Scalable_Vision_Learners_CVPR_2022_paper.html
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/He_2022_he2022mae.pdf
+ER  -
+
+TY  - CONF
+AU  - Cong, Yezhen
+AU  - Khanna, Samar
+AU  - Meng, Chenlin
+AU  - Liu, Patrick
+AU  - Rozi, Erik
+AU  - He, Yutong
+AU  - Burke, Marshall
+AU  - Lobell, David B.
+AU  - Ermon, Stefano
+TI  - SatMAE: Pre-training Transformers for Temporal and Multi-Spectral Satellite Imagery
+T2  - Advances in Neural Information Processing Systems (NeurIPS)
+PY  - 2022
+VL  - 35
+UR  - https://arxiv.org/abs/2207.08051
+AN  - arXiv:2207.08051
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Cong_2022_cong2022satmae.pdf
+ER  -
+
+TY  - JOUR
+AU  - Jakubik, Johannes
+AU  - Roy, Sujit
+AU  - Phillips, C. E.
+AU  - Fraccaro, Paolo
+AU  - Godwin, Denys
+AU  - Zadrozny, Bianca
+AU  - Szwarcman, Daniela
+AU  - Gomes, Carlos
+AU  - Nyirjesy, Gabriel
+AU  - Edwards, Blair
+AU  - others
+TI  - Foundation Models for Generalist Geospatial Artificial Intelligence
+JO  - arXiv preprint arXiv:2310.18660
+PY  - 2023
+UR  - https://arxiv.org/abs/2310.18660
+AN  - arXiv:2310.18660
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Jakubik_2023_jakubik2023prithvi.pdf
+ER  -
+
+TY  - CONF
+AU  - Reed, Colorado J.
+AU  - Gupta, Ritwik
+AU  - Li, Shufan
+AU  - Brockman, Sarah
+AU  - Funk, Christopher
+AU  - Clipp, Brian
+AU  - Keutzer, Kurt
+AU  - Candido, Salvatore
+AU  - Uyttendaele, Matt
+AU  - Darrell, Trevor
+TI  - Scale-MAE: A Scale-Aware Masked Autoencoder for Multiscale Geospatial Representation Learning
+T2  - IEEE/CVF International Conference on Computer Vision (ICCV)
+PY  - 2023
+UR  - https://openaccess.thecvf.com/content/ICCV2023/html/Reed_Scale-MAE_A_Scale-Aware_Masked_Autoencoder_for_Multiscale_Geospatial_Representation_Learning_ICCV_2023_paper.html
+ER  -
+
+TY  - JOUR
+AU  - Hong, Danfeng
+AU  - Zhang, Bing
+AU  - Li, Xuyang
+AU  - Li, Yuxuan
+AU  - Li, Chenyu
+AU  - Yao, Jing
+AU  - Yokoya, Naoto
+AU  - Li, Hao
+AU  - Ghamisi, Pedram
+AU  - Jia, Xiuping
+AU  - others
+TI  - SpectralGPT: Spectral Remote Sensing Foundation Model
+JO  - IEEE Transactions on Pattern Analysis and Machine Intelligence
+PY  - 2024
+DO  - 10.1109/TPAMI.2024.3362475
+UR  - https://doi.org/10.1109/TPAMI.2024.3362475
+AN  - arXiv:2311.07113
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Hong_2024_hong2024spectralgpt.pdf
+ER  -
+
+TY  - CONF
+AU  - Assran, Mahmoud
+AU  - Duval, Quentin
+AU  - Misra, Ishan
+AU  - Bojanowski, Piotr
+AU  - Vincent, Pascal
+AU  - Rabbat, Michael
+AU  - LeCun, Yann
+AU  - Ballas, Nicolas
+TI  - Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture
+T2  - Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)
+PY  - 2023
+SP  - 15619--15629
+DO  - 10.1109/CVPR52729.2023.01499
+UR  - https://openaccess.thecvf.com/content/CVPR2023/html/Assran_Self-Supervised_Learning_From_Images_With_a_Joint-Embedding_Predictive_Architecture_CVPR_2023_paper.html
+ER  -
+
+TY  - CONF
+AU  - Bardes, Adrien
+AU  - Garrido, Quentin
+AU  - Ponce, Jean
+AU  - Chen, Xinlei
+AU  - Rabbat, Michael
+AU  - LeCun, Yann
+AU  - Assran, Mahmoud
+AU  - Ballas, Nicolas
+TI  - Revisiting Feature Prediction for Learning Visual Representations from Video
+T2  - arXiv preprint arXiv:2404.08471
+PY  - 2024
+UR  - https://arxiv.org/abs/2404.08471
+AN  - arXiv:2404.08471
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Bardes_2024_bardes2024vjepa.pdf
+ER  -
+
+TY  - CONF
+AU  - Guo, Chuan
+AU  - Pleiss, Geoff
+AU  - Sun, Yu
+AU  - Weinberger, Kilian Q.
+TI  - On Calibration of Modern Neural Networks
+T2  - Proceedings of the 34th International Conference on Machine Learning
+PY  - 2017
+VL  - 70
+SP  - 1321--1330
+UR  - https://proceedings.mlr.press/v70/guo17a.html
+ER  -
+
+TY  - CONF
+AU  - Lakshminarayanan, Balaji
+AU  - Pritzel, Alexander
+AU  - Blundell, Charles
+TI  - Simple and scalable predictive uncertainty estimation using deep ensembles
+T2  - Advances in Neural Information Processing Systems
+PY  - 2017
+VL  - 30
+UR  - https://papers.nips.cc/paper/2017/hash/9ef2ed4b7fd2c810847ffa5fa85bce38-Abstract.html
+ER  -
+
+TY  - CONF
+AU  - Ovadia, Yaniv
+AU  - Fertig, Emily
+AU  - Ren, Jie
+AU  - Nado, Zachary
+AU  - Sculley, D.
+AU  - Nowozin, Sebastian
+AU  - Dillon, Joshua V.
+AU  - Lakshminarayanan, Balaji
+AU  - Snoek, Jasper
+TI  - Can You Trust Your Model's Uncertainty? Evaluating Predictive Uncertainty Under Dataset Shift
+T2  - Advances in Neural Information Processing Systems
+PY  - 2019
+VL  - 32
+UR  - https://papers.nips.cc/paper/2019/hash/8558cb408c1d76621371888657d2eb1d-Abstract.html
+ER  -
+
+TY  - JOUR
+AU  - Angelopoulos, Anastasios N.
+AU  - Bates, Stephen
+TI  - A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification
+JO  - arXiv preprint arXiv:2107.07511
+PY  - 2021
+UR  - https://arxiv.org/abs/2107.07511
+AN  - arXiv:2107.07511
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Angelopoulos_2021_angelopoulos2021conformal.pdf
+ER  -
+
+TY  - JOUR
+AU  - Geifman, Yonatan
+AU  - El-Yaniv, Ran
+TI  - Selective Classification for Deep Neural Networks
+JO  - arXiv preprint arXiv:1705.08500
+PY  - 2017
+UR  - https://arxiv.org/abs/1705.08500
+AN  - arXiv:1705.08500
+ER  -
+
+TY  - CONF
+AU  - Geifman, Yonatan
+AU  - El-Yaniv, Ran
+TI  - SelectiveNet: A Deep Neural Network with an Integrated Reject Option
+T2  - Proceedings of the 36th International Conference on Machine Learning
+PY  - 2019
+VL  - 97
+SP  - 2151--2159
+UR  - https://proceedings.mlr.press/v97/geifman19a.html
+ER  -
+
+TY  - CONF
+AU  - Mitchell, Margaret
+AU  - Wu, Simone
+AU  - Zaldivar, Andrew
+AU  - Barnes, Parker
+AU  - Vasserman, Lucy
+AU  - Hutchinson, Ben
+AU  - Spitzer, Elena
+AU  - Raji, Inioluwa Deborah
+AU  - Gebru, Timnit
+TI  - Model Cards for Model Reporting
+T2  - Proceedings of the Conference on Fairness, Accountability, and Transparency
+PY  - 2019
+SP  - 220--229
+DO  - 10.1145/3287560.3287596
+UR  - https://doi.org/10.1145/3287560.3287596
+ER  -
+
+TY  - JOUR
+AU  - Gebru, Timnit
+AU  - Morgenstern, Jamie
+AU  - Vecchione, Briana
+AU  - Vaughan, Jennifer Wortman
+AU  - Wallach, Hanna
+AU  - Daume III, Hal
+AU  - Crawford, Kate
+TI  - Datasheets for Datasets
+JO  - Communications of the ACM
+PY  - 2021
+VL  - 64
+IS  - 12
+SP  - 86--92
+DO  - 10.1145/3458723
+UR  - https://doi.org/10.1145/3458723
+AN  - arXiv:1803.09010
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Gebru_2021_gebru2021datasheets.pdf
+ER  -
+
+TY  - JOUR
+AU  - Wilkinson, Mark D.
+AU  - Dumontier, Michel
+AU  - Aalbersberg, IJsbrand Jan
+AU  - Appleton, Gabrielle
+AU  - Axton, Myles
+AU  - Baak, Arie
+AU  - Blomberg, Niklas
+AU  - Boiten, Jan-Willem
+AU  - da Silva Santos, Luiz Bonino
+AU  - Bourne, Philip E.
+TI  - The FAIR Guiding Principles for scientific data management and stewardship
+JO  - Scientific Data
+PY  - 2016
+VL  - 3
+SP  - 160018
+DO  - 10.1038/sdata.2016.18
+UR  - https://doi.org/10.1038/sdata.2016.18
+L1  - /Users/zhouning/Zotero/storage/TWM_AUTHORITATIVE_REFERENCES/Wilkinson_2016_wilkinson2016fair.pdf
+ER  -
+
+TY  - GEN
+AU  - Moreau, Luc
+AU  - Missier, Paolo
+TI  - PROV-DM: The PROV Data Model
+T2  - W3C Recommendation
+PY  - 2013
+UR  - https://www.w3.org/TR/prov-dm/
+ER  -
+
+TY  - JOUR
+AU  - Moreau, Luc
+AU  - Clifford, Ben
+AU  - Freire, Juliana
+AU  - Futrelle, Joe
+AU  - Gil, Yolanda
+AU  - Groth, Paul
+AU  - Kwasnikowska, Natalia
+AU  - Miles, Simon
+AU  - Missier, Paolo
+AU  - Myers, Jim
+AU  - Plale, Beth
+AU  - Simmhan, Yogesh
+AU  - Stephan, Eric
+AU  - Van den Bussche, Jan
+TI  - The Open Provenance Model core specification (v1.1)
+JO  - Future Generation Computer Systems
+PY  - 2011
+VL  - 27
+IS  - 6
+SP  - 743--756
+DO  - 10.1016/j.future.2010.07.005
+UR  - https://doi.org/10.1016/j.future.2010.07.005
+ER  -
+
+TY  - STD
+AU  - International Organization for Standardization
+TI  - ISO 19115 Geographic information - Metadata
+T2  - ISO 19115-1:2014
+PY  - 2014
+UR  - https://www.iso.org/standard/53798.html
+ER  -
+
+TY  - STD
+AU  - International Organization for Standardization
+TI  - ISO 19157 Geographic information - Data quality
+T2  - ISO 19157:2013
+PY  - 2013
+UR  - https://www.iso.org/standard/32575.html
+ER  -
+
+TY  - JOUR
+AU  - Clarke, Keith C.
+AU  - Hoppen, Stacy
+AU  - Gaydos, Leonard
+TI  - A self-modifying cellular automaton model of historical urbanization in the San Francisco Bay area
+JO  - Environment and Planning B: Planning and Design
+PY  - 1997
+VL  - 24
+IS  - 2
+SP  - 247--261
+DO  - 10.1068/b240247
+UR  - https://doi.org/10.1068/b240247
+ER  -
+
+TY  - JOUR
+AU  - Verburg, Peter H.
+AU  - Soepboer, Welmoed
+AU  - Veldkamp, A.
+AU  - Limpiada, R.
+AU  - Espaldon, V.
+AU  - Mastura, S. S. A.
+TI  - Modeling the spatial dynamics of regional land use: The CLUE-S model
+JO  - Environmental Management
+PY  - 2002
+VL  - 30
+IS  - 3
+SP  - 391--405
+DO  - 10.1007/s00267-002-2630-x
+UR  - https://doi.org/10.1007/s00267-002-2630-x
+ER  -
+
+TY  - JOUR
+AU  - Liu, Xiaoping
+AU  - Liang, Xia
+AU  - Li, Xia
+AU  - Xu, Xiaocong
+AU  - Ou, Jianfeng
+AU  - Chen, Yong
+TI  - A future land use simulation model (FLUS) for simulating multiple land use scenarios by coupling human and natural effects
+JO  - Landscape and Urban Planning
+PY  - 2017
+VL  - 168
+SP  - 94--116
+DO  - 10.1016/j.landurbplan.2017.09.019
+UR  - https://doi.org/10.1016/j.landurbplan.2017.09.019
+ER  -
+
+TY  - JOUR
+AU  - Liang, Xia
+AU  - Guan, Qingfeng
+AU  - Clarke, Keith C.
+AU  - Liu, Sai
+AU  - Wang, Bing
+AU  - Yao, Yong
+TI  - Understanding the drivers of sustainable land expansion using a patch-generating land use simulation (PLUS) model: A case study in Wuhan, China
+JO  - Computers, Environment and Urban Systems
+PY  - 2021
+VL  - 85
+SP  - 101569
+DO  - 10.1016/j.compenvurbsys.2020.101569
+UR  - https://doi.org/10.1016/j.compenvurbsys.2020.101569
+ER  -

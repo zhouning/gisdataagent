@@ -38,6 +38,7 @@ TOOLSET_NAMES: set[str] = {
     "DreamerToolset",
     "ToolEvolutionToolset",
     "DomainStandardToolset",
+    "TerritoryWorldModelToolset",
     "NL2SQLEnhancedToolset",
 }
 
@@ -58,6 +59,7 @@ def _get_toolset_registry() -> dict[str, type]:
         DataLakeToolset, McpHubToolset, FusionToolset,
         KnowledgeGraphToolset, KnowledgeBaseToolset,
         AdvancedAnalysisToolset, NL2SQLEnhancedToolset,
+        TerritoryWorldModelToolset,
     )
     from .toolsets.spatial_analysis_tier2_tools import SpatialAnalysisTier2Toolset
     from .toolsets.watershed_tools import WatershedToolset
@@ -70,6 +72,7 @@ def _get_toolset_registry() -> dict[str, type]:
     from .toolsets.dreamer_tools import DreamerToolset
     from .toolsets.domain_standard_tools import DomainStandardToolset
     from .toolsets.nl2sql_enhanced_tools import NL2SQLEnhancedToolset
+    from .toolsets.territory_world_model_tools import TerritoryWorldModelToolset
     _toolset_registry_cache = {
         "ExplorationToolset": ExplorationToolset,
         "GeoProcessingToolset": GeoProcessingToolset,
@@ -102,6 +105,7 @@ def _get_toolset_registry() -> dict[str, type]:
         "DreamerToolset": DreamerToolset,
         "DomainStandardToolset": DomainStandardToolset,
         "NL2SQLEnhancedToolset": NL2SQLEnhancedToolset,
+        "TerritoryWorldModelToolset": TerritoryWorldModelToolset,
     }
     return _toolset_registry_cache
 

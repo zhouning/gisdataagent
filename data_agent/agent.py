@@ -72,6 +72,7 @@ from .toolsets.capability_qa_tools import CapabilityQAToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 from .toolsets.world_model_v2_tools import WorldModelV2Toolset
 from .toolsets.world_model_v21_tools import WorldModelV21Toolset
+from .toolsets.territory_world_model_tools import TerritoryWorldModelToolset
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
 from .toolsets.geo_processing_tools import (
@@ -558,6 +559,7 @@ general_processing_agent = LlmAgent(
         WorldModelToolset(tool_filter=intent_tool_predicate),
         CausalWorldModelToolset(tool_filter=intent_tool_predicate),
         LLMCausalToolset(tool_filter=intent_tool_predicate),
+        TerritoryWorldModelToolset(tool_filter=intent_tool_predicate),
         WorldModelV2Toolset(tool_filter=intent_tool_predicate),
         WorldModelV21Toolset(tool_filter=intent_tool_predicate),
         GovernanceToolset(),
@@ -831,6 +833,7 @@ def _make_analyst(name: str, **overrides) -> LlmAgent:
             LLMCausalToolset(),
             WorldModelToolset(),
             CausalWorldModelToolset(),
+            TerritoryWorldModelToolset(),
             WorldModelV21Toolset(),
             DreamerToolset(),
         ],
@@ -1027,6 +1030,23 @@ def _build_mention_world_model_v21_agent():
     )
 
 
+def _build_mention_territory_world_model_agent():
+    return LlmAgent(
+        name="MentionTerritoryWorldModel",
+        instruction=(
+            "你是 Territory World Model（TWM）入口代理，专注于状态构建、规则评估、证据审计与规划推演。"
+            "优先使用 twm_* 工具完成项目创建、图层绑定、状态构建、规则评估、审计报告和预测。"
+            "如果用户提供 MMFE/TWM 数据包目录，先构建状态再评估规则；如果用户要求规划或反事实推演，先评估规则再调用 forecast。"
+            "输出必须直接给出可执行结果，不要描述内部思路。"
+        ),
+        description="TWM 状态构建、规则评估与规划推演。",
+        model=get_model_for_tier("standard"),
+        output_key="analysis_result",
+        disallow_transfer_to_peers=True,
+        tools=[TerritoryWorldModelToolset()],
+    )
+
+
 # --- Direct sub-agent lookup for @mention routing (v24.0) ---
 _AGENT_MAP = {
     "DataExploration": lambda: _make_planner_explorer("MentionExploration"),
@@ -1053,6 +1073,7 @@ _AGENT_MAP = {
     "GeneralViz": lambda: _make_planner_visualizer("MentionGeneralViz"),
     "NL2SQL": _build_mention_nl2sql_agent,
     "WorldModelV21": _build_mention_world_model_v21_agent,
+    "TerritoryWorldModel": _build_mention_territory_world_model_agent,
 }
 
 

@@ -45,6 +45,7 @@ _EXPORTS = {
     "StreamingToolset": ".streaming_tools",
     "TeamToolset": ".team_tools",
     "ToolEvolutionToolset": ".evolution_tools",
+    "TerritoryWorldModelToolset": ".territory_world_model_tools",
     "UserToolset": ".user_tools_toolset",
     "VirtualSourceToolset": ".virtual_source_tools",
     "VisualizationToolset": ".visualization_tools",
