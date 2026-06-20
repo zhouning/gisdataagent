@@ -13,6 +13,36 @@ from .listings import ensure_listing_table
 
 ASSET_TYPES = ("clauses", "data_elements", "terms", "value_domains")
 ZERO_COUNTS = {"added": 0, "removed": 0, "changed": 0, "unchanged": 0}
+FIELD_LABELS = {
+    "clauses": {
+        "heading": "Heading",
+        "kind": "Clause type",
+        "body_md": "Body",
+    },
+    "data_elements": {
+        "name_zh": "Chinese name",
+        "name_en": "English name",
+        "definition": "Definition",
+        "representation_class": "Representation class",
+        "datatype": "Data type",
+        "unit": "Unit",
+        "obligation": "Obligation",
+        "cardinality": "Cardinality",
+        "data_classification": "Data classification",
+        "bound_table": "Bound table",
+        "bound_column": "Bound column",
+    },
+    "terms": {
+        "name_zh": "Chinese name",
+        "name_en": "English name",
+        "definition": "Definition",
+        "aliases": "Aliases",
+    },
+    "value_domains": {
+        "name": "Name",
+        "kind": "Value domain type",
+    },
+}
 
 
 def list_market_standards(
@@ -144,6 +174,12 @@ def version_diff(source_version_id: str, target_version_id: str) -> dict[str, An
         "removed": sum(v["removed"] for v in by_asset_type.values()),
         "changed": sum(v["changed"] for v in by_asset_type.values()),
         "unchanged": sum(v["unchanged"] for v in by_asset_type.values()),
+        "field_changes": sum(
+            int(change.get("field_change_count") or 0)
+            for change in changes
+        ),
+        "changed_fields_by_asset_type": _changed_fields_by_asset_type(changes),
+        "review_hints": _review_hints(changes),
         "by_asset_type": by_asset_type,
     }
     return {
@@ -320,20 +356,109 @@ def _diff_asset_maps(
             change_type = "unchanged"
         counts[change_type] += 1
         if change_type != "unchanged":
-            changes.append({
+            field_changes = []
+            if change_type == "changed" and source_item and target_item:
+                field_changes = _field_changes(
+                    asset_type,
+                    source_item["content"],
+                    target_item["content"],
+                )
+            change = {
                 "asset_type": asset_type,
                 "key": key,
                 "change_type": change_type,
                 "source_label": source_item["label"] if source_item else None,
                 "target_label": target_item["label"] if target_item else None,
-            })
+            }
+            if field_changes:
+                change["field_changes"] = field_changes
+                change["field_change_count"] = len(field_changes)
+            changes.append(change)
     return counts, changes
+
+
+def _field_changes(
+    asset_type: str,
+    source_content: dict[str, Any],
+    target_content: dict[str, Any],
+) -> list[dict[str, Any]]:
+    labels = FIELD_LABELS.get(asset_type, {})
+    changes: list[dict[str, Any]] = []
+    for field in sorted(set(source_content) | set(target_content)):
+        source_value = source_content.get(field)
+        target_value = target_content.get(field)
+        if _stable_value(source_value) == _stable_value(target_value):
+            continue
+        changes.append({
+            "field": field,
+            "label": labels.get(field, field),
+            "source_value": source_value,
+            "target_value": target_value,
+        })
+    return changes
+
+
+def _changed_fields_by_asset_type(
+    changes: list[dict[str, Any]],
+) -> dict[str, dict[str, int]]:
+    by_type: dict[str, dict[str, int]] = {asset_type: {} for asset_type in ASSET_TYPES}
+    for change in changes:
+        asset_type = change.get("asset_type")
+        if asset_type not in by_type:
+            continue
+        for field_change in change.get("field_changes") or []:
+            field = str(field_change.get("field") or "")
+            if not field:
+                continue
+            by_type[asset_type][field] = by_type[asset_type].get(field, 0) + 1
+    return by_type
+
+
+def _review_hints(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    hints: list[dict[str, Any]] = []
+    breaking_fields = {
+        "datatype",
+        "obligation",
+        "cardinality",
+        "bound_table",
+        "bound_column",
+        "kind",
+    }
+    removed_or_changed = [
+        change for change in changes
+        if change.get("change_type") in {"removed", "changed"}
+    ]
+    if removed_or_changed:
+        hints.append({
+            "level": "review",
+            "code": "asset_removal_or_change",
+            "message": "Removed or changed assets require subscriber compatibility review.",
+            "count": len(removed_or_changed),
+        })
+    breaking_count = 0
+    for change in changes:
+        for field_change in change.get("field_changes") or []:
+            if field_change.get("field") in breaking_fields:
+                breaking_count += 1
+    if breaking_count:
+        hints.append({
+            "level": "high",
+            "code": "contract_field_changed",
+            "message": "Contract fields changed and may affect downstream derivations.",
+            "count": breaking_count,
+        })
+    return hints
 
 
 def _digest(content: dict[str, Any]) -> str:
     payload = json.dumps(content, ensure_ascii=False, sort_keys=True,
                          separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _stable_value(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":"))
 
 
 def _jsonable(value: Any) -> Any:

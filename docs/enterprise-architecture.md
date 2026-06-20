@@ -538,7 +538,7 @@ flowchart LR
 | 服务 | 镜像 | 端口 | 用途 |
 |------|------|------|------|
 | app | 自构建 | 8000 | 应用服务器 |
-| db | postgis/postgis:16-3.4 | 5433 | 数据库 |
+| db | gis-postgis-pgvector:16-3.4 | 5433 | 数据库 |
 | redis | redis:7-alpine | 6379 | 实时流（可选） |
 | db-backup | 自构建 | - | 每日备份（7 天保留） |
 

@@ -2539,8 +2539,10 @@ body {
 
 .admin-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-left: auto;
+  justify-content: flex-end;
 }
 .admin-nav button {
   padding: 6px 16px;
@@ -2759,6 +2761,420 @@ body {
 .status-badge.error { background: rgba(239,68,68,0.10); color: #EF4444; }
 .status-badge.failure { background: rgba(239,68,68,0.10); color: #EF4444; }
 .status-badge.warning { background: var(--accent-light); color: var(--accent); }
+.status-badge.proposed { background: var(--primary-light); color: var(--primary); }
+.status-badge.applied { background: #d1fae5; color: #047857; }
+.status-badge.failed { background: rgba(239,68,68,0.10); color: #EF4444; }
+.status-badge.dismissed { background: var(--surface); color: var(--text-secondary); }
+
+/* --- Self Evolution Admin Section --- */
+.self-evolution-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.self-evolution-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.self-evolution-review-reminder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.self-evolution-review-reminder.has-pending {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.self-evolution-reminder-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.self-evolution-reminder-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.self-evolution-reminder-head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.self-evolution-reminder-head span {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.self-evolution-reminder-stats,
+.self-evolution-reminder-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.self-evolution-reminder-stats span {
+  padding: 4px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
+
+.self-evolution-reminder-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.self-evolution-reminder-list button:hover {
+  border-color: var(--primary);
+}
+
+.self-evolution-priority {
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  font-size: 10.5px;
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.self-evolution-priority.high {
+  background: rgba(239,68,68,0.10);
+  color: #EF4444;
+}
+
+.self-evolution-priority.medium {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.self-evolution-scheduler-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.self-evolution-scheduler-card > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.self-evolution-scheduler-card strong {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.self-evolution-scheduler-card span,
+.self-evolution-scheduler-card small {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.self-evolution-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.self-evolution-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 110px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.self-evolution-controls input,
+.self-evolution-controls select {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font);
+}
+
+.self-evolution-controls .self-evolution-check {
+  flex-direction: row;
+  align-items: center;
+  min-height: 30px;
+  min-width: 140px;
+}
+
+.self-evolution-check input {
+  min-height: auto;
+  width: 14px;
+  height: 14px;
+}
+
+.self-evolution-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.self-evolution-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+}
+
+.self-evolution-message {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.self-evolution-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.self-evolution-list,
+.self-evolution-detail {
+  min-width: 0;
+}
+
+.self-evolution-list .data-table-container {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.selected-row {
+  background: var(--primary-light);
+}
+
+.self-evolution-list tbody tr {
+  cursor: pointer;
+}
+
+.self-evolution-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.self-evolution-summary-grid > div {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  background: var(--surface);
+}
+
+.self-evolution-summary-grid span {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.self-evolution-summary-grid strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 16px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.self-evolution-detail-block {
+  margin-top: 14px;
+}
+
+.self-evolution-detail-block h4 {
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.self-evolution-detail-block p {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.self-evolution-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.self-evolution-action-row strong {
+  font-size: 12px;
+  color: var(--primary);
+  overflow-wrap: anywhere;
+}
+
+.self-evolution-action-row span {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.self-evolution-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.self-evolution-pill-row span {
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.self-evolution-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.self-evolution-review-actions button {
+  min-height: 30px;
+}
+
+.self-evolution-prompt-diff {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.self-evolution-prompt-diff summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.self-evolution-diff-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.self-evolution-diff-grid strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.self-evolution-diff-grid pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.self-evolution-change-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.self-evolution-change-list span {
+  padding: 3px 7px;
+  border-radius: var(--radius-full);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 11px;
+}
+
+.self-evolution-json {
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+.self-evolution-json summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.self-evolution-json pre {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px) {
+  .self-evolution-layout {
+    grid-template-columns: 1fr;
+  }
+  .self-evolution-diff-grid {
+    grid-template-columns: 1fr;
+  }
+  .self-evolution-scheduler-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .self-evolution-reminder-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
 
 /* ============================================================
    Usage View (DataPanel)

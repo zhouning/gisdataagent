@@ -109,6 +109,62 @@ def tool_evolution_report() -> str:
     return get_evolution_engine().get_evolution_report()
 
 
+def run_self_evolution_cycle(
+    limit: int = 50,
+    days: int = 7,
+    min_score: float = 0.5,
+    include_prompt_suggestions: str = "false",
+    apply: str = "false",
+    environment: str = "dev",
+    persist: str = "true",
+    triggered_by: str = "",
+    trigger_source: str = "tool",
+) -> str:
+    """运行一次自主进化周期，汇总反馈、失败、评测坏例并生成改进提案。
+
+    默认 dry-run：只观察、分析和提出建议，不自动修改 prompt、工具或评测集。
+    默认记录周期报告，便于后续人工审批和审计。
+
+    Args:
+        limit: 每类学习信号最多读取数量，范围 1-100。
+        days: 反馈和失败窗口天数，范围 1-90。
+        min_score: eval_history 中低于该分数的评测记录会进入坏例。
+        include_prompt_suggestions: true 时生成 prompt 改进建议。
+        apply: true 时才把 prompt 建议写入指定 environment。
+        environment: prompt 写入环境，默认 dev。
+        persist: true 时把进化周期报告保存到 agent_self_evolution_cycles。
+        triggered_by: 触发人或系统标识，写入审计记录。
+        trigger_source: 触发来源，如 tool / scheduler / api。
+    Returns:
+        JSON: 自主进化周期报告与待审改进提案。
+    """
+    import asyncio
+    from ..self_evolution import SelfEvolutionEngine
+
+    async def _run():
+        return await SelfEvolutionEngine().run_cycle(
+            limit=limit,
+            days=days,
+            min_score=min_score,
+            include_prompt_suggestions=include_prompt_suggestions,
+            apply=apply,
+            environment=environment,
+            persist=persist,
+            triggered_by=triggered_by,
+            trigger_source=trigger_source,
+        )
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        result = asyncio.run(_run())
+    else:
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            result = executor.submit(lambda: asyncio.run(_run())).result()
+    return json.dumps(result, ensure_ascii=False, default=str)
+
+
 _ALL_FUNCS = [
     get_tool_metadata,
     list_tools,
@@ -118,6 +174,7 @@ _ALL_FUNCS = [
     deactivate_tool,
     get_failure_suggestions,
     tool_evolution_report,
+    run_self_evolution_cycle,
 ]
 
 

@@ -220,6 +220,7 @@ class TestMentionTargetsAPI(unittest.TestCase):
         self.assertIn("General", handles)
         self.assertIn("DataVisualization", handles)
         self.assertIn("WorldModelV21", handles)
+        self.assertIn("TerritoryWorldModel", handles)
 
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_viewer_sees_allowed_flag(self, mock_user):

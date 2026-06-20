@@ -114,6 +114,8 @@ def test_market_diff_happy_path(monkeypatch, engine):
         assert body["source_version_id"] == source
         assert body["target_version_id"] == target
         assert body["summary"]["changed"] == 1
+        assert body["summary"]["field_changes"] == 1
         assert body["changes"][0]["change_type"] == "changed"
+        assert body["changes"][0]["field_changes"][0]["field"] == "body_md"
     finally:
         _delete_document(engine, doc_id)

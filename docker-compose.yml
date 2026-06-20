@@ -8,7 +8,9 @@ services:
   # PostGIS Database
   # ---------------------------------------------------------------------------
   db:
-    image: postgis/postgis:16-3.4
+    # Build locally first with:
+    #   docker build -t gis-postgis-pgvector:16-3.4 docker/postgis-pgvector
+    image: "${POSTGIS_IMAGE:-gis-postgis-pgvector:16-3.4}"
     restart: unless-stopped
     environment:
       POSTGRES_DB: gis_agent
@@ -17,7 +19,9 @@ services:
     ports:
       - "5433:5432"        # Expose on 5433 to avoid conflicts with host PostgreSQL
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Keep ARM data separate from the old postgis/postgis amd64 volume. Do
+      # not point this at an existing cross-architecture PostgreSQL PGDATA.
+      - pgdata-arm64:/var/lib/postgresql/data
       - ./docker-db-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -319,7 +323,7 @@ services:
       - agent-net
 
 volumes:
-  pgdata:
+  pgdata-arm64:
   uploads:
   worldpop_cache:
   redis-data:

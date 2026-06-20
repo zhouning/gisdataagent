@@ -11,7 +11,9 @@
 
 services:
   db-staging:
-    image: postgis/postgis:16-3.4
+    # Build locally first with:
+    #   docker build -t gis-postgis-pgvector:16-3.4 docker/postgis-pgvector
+    image: "${POSTGIS_IMAGE:-gis-postgis-pgvector:16-3.4}"
     restart: unless-stopped
     environment:
       POSTGRES_DB: gis_agent_staging
@@ -20,7 +22,8 @@ services:
     ports:
       - "5434:5432"  # Different port from prod (5433) and dev
     volumes:
-      - pgdata-staging:/var/lib/postgresql/data
+      # Keep ARM data separate from any old postgis/postgis amd64 staging data.
+      - pgdata-staging-arm64:/var/lib/postgresql/data
       - ./docker-db-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -113,7 +116,7 @@ services:
       - eval  # Only run with: docker compose --profile eval up eval-runner
 
 volumes:
-  pgdata-staging:
+  pgdata-staging-arm64:
   uploads-staging:
 
 networks:

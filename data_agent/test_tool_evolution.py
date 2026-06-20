@@ -406,11 +406,11 @@ class TestSingleton:
 # ---------------------------------------------------------------------------
 
 class TestToolEvolutionToolset:
-    def test_toolset_has_8_tools(self):
+    def test_toolset_has_9_tools(self):
         from data_agent.toolsets.evolution_tools import ToolEvolutionToolset
         ts = ToolEvolutionToolset()
         tools = asyncio.get_event_loop().run_until_complete(ts.get_tools())
-        assert len(tools) == 8
+        assert len(tools) == 9
 
     def test_tool_names(self):
         from data_agent.toolsets.evolution_tools import ToolEvolutionToolset
@@ -421,6 +421,7 @@ class TestToolEvolutionToolset:
             "get_tool_metadata", "list_tools", "suggest_tools_for_task",
             "analyze_tool_failures", "register_tool", "deactivate_tool",
             "get_failure_suggestions", "tool_evolution_report",
+            "run_self_evolution_cycle",
         }
         assert expected == names
 

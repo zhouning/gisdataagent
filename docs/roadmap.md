@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-06 &nbsp;|&nbsp; **Current version**: v25.11 &nbsp;|&nbsp; **Next**: P5 remaining (diff 深化) &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-19 &nbsp;|&nbsp; **Current version**: v25.20 &nbsp;|&nbsp; **Next**: P5 remaining (影响范围联动 + 订阅更新提醒增强) + Self-Evolution regression gate &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -135,6 +135,118 @@
 - [x] **测试覆盖** — 新增 market org access repository + API tests；market focused `45 passed`，standards_platform 全套 `443 passed, 1 skipped`，前端 `npm run build` 通过。
 
 > P5 标准市场已完成目录、diff first slice、订阅、审核与组织级访问控制。P5 剩余主线：diff 深化（字段级差异解释、影响范围联动、订阅更新提醒增强）。
+
+---
+
+## v25.12 — Standards Platform P5 Diff Deepening First Slice (已完成, 2026-06-18)
+
+- [x] **Field-level market diff** — `GET /api/std/market/diff` 在 changed 资产上返回 `field_changes` 与 `field_change_count`，按 clause / data_element / term / value_domain 的内容字段生成确定性差异。
+- [x] **Diff review hints** — diff summary 新增 `field_changes`、`changed_fields_by_asset_type` 和 `review_hints`；对删除/修改项提示兼容性复核，对 datatype / obligation / cardinality / bound_table / bound_column / kind 等契约字段变化标高风险。
+- [x] **Market UI field detail** — 市场页 diff 表增加字段差异计数、复核提示和 source/target 字段值对比行，保留原 added / removed / changed / unchanged 视图。
+- [x] **测试覆盖** — market repository + API focused tests 通过；前端 `npm run build` 通过。
+
+> P5 diff 深化已完成字段级解释 first slice。剩余主线：影响范围联动（接 `std_impact` / 派生链）和订阅更新提醒增强。
+
+---
+
+## v25.13 — Self-Evolution Orchestration First Slice (已完成, 2026-06-18)
+
+- [x] **SelfEvolutionEngine** — 新增 `data_agent/self_evolution.py`，把 v16 `ToolEvolution`、v19 `FeedbackLoop`、`FailureAnalyzer`、工具失败学习表和 failure-to-eval 串成 `observe -> analyze -> propose` 的可审计进化周期。
+- [x] **Dry-run first** — 默认只生成改进提案，不自动修改 prompt、工具或评测集；显式 `apply=true` 时才把 prompt 建议写入指定 environment，默认 `dev`。
+- [x] **Agent tool entry** — `ToolEvolutionToolset` 新增 `run_self_evolution_cycle`，Planner 可直接触发自主进化周期，返回反馈统计、失败模式、工具替代建议、prompt 目标、评测候选和下一步动作。
+- [x] **测试覆盖** — 新增 self-evolution unit tests，更新 ToolEvolutionToolset 注册测试。
+
+> 这一步把 roadmap 里已有的“工具演化 + 反馈飞轮 + 失败分析”从分散能力升级为可运行的自主进化闭环。后续可继续补：进化周期持久化、人工审批 UI、评测候选一键入库、prompt 建议 diff 视图。
+
+---
+
+## v25.14 — Self-Evolution Persistence First Slice (已完成, 2026-06-18)
+
+- [x] **Cycle audit table** — 新增 `agent_self_evolution_cycles`（migration 089），持久化一次 `observe -> analyze -> propose` 周期的 summary / analysis / proposals / safeguards / full report，支持 proposed / applied / failed / dismissed 审计状态。
+- [x] **Runtime persistence API** — `data_agent/self_evolution.py` 增加 `ensure_self_evolution_tables()`、`record_cycle()`、`list_cycles()`、`get_cycle()`；数据库不可用时不会阻断自主进化周期，只返回 persistence skipped。
+- [x] **Agent tool persistence options** — `run_self_evolution_cycle` 新增 `persist`、`triggered_by`、`trigger_source` 参数；默认记录 dry-run 报告，显式关闭时只返回一次性报告。
+- [x] **Startup initialization** — Chainlit app 启动时初始化 self-evolution audit table，与 feedback / failure learning 表保持同一容错初始化路径。
+- [x] **测试覆盖** — 新增持久化、状态判定、查询解码、tool wrapper 参数透传单测。
+
+> 自主进化从“能跑一轮”推进到“能留下可审计候选记录”。后续主线：人工审批 UI、prompt 建议 diff 视图、eval candidates 一键入库、周期定时调度。
+
+---
+
+## v25.15 — Self-Evolution Admin API First Slice (已完成, 2026-06-18)
+
+- [x] **Admin run endpoint** — 新增 `POST /api/self-evolution/run`，admin 可从 REST 触发一次自主进化周期；默认 dry-run + persist，`triggered_by` 默认当前 admin，`trigger_source=api`。
+- [x] **Cycle review endpoints** — 新增 `GET /api/self-evolution/cycles` 与 `GET /api/self-evolution/cycles/{id}`，可查看已持久化的进化候选列表与完整报告。
+- [x] **Existing RBAC integration** — 路由复用 `api.helpers._require_admin`，统一接入现有 JWT + admin role 鉴权；非 admin 不能触发或查看进化审计记录。
+- [x] **Frontend API mount** — 自主进化 API 挂入 `get_frontend_api_routes()`，与现有 React/Chainlit 前端 API 共用路由装载机制。
+- [x] **测试覆盖** — 增加 route registration、列表、详情、运行端点 focused tests。
+
+> 自主进化现在具备 Agent tool 和 Admin REST 两个入口。后续主线：审批 UI、prompt 建议 diff 视图、eval candidates 一键入库。
+
+---
+
+## v25.16 — Self-Evolution Admin Review UI First Slice (已完成, 2026-06-18)
+
+- [x] **Admin dashboard entry** — 管理后台新增「自主进化」页签，作为 admin-only 的进化审计入口，不暴露给普通数据面板用户。
+- [x] **Dry-run cycle runner** — UI 可配置窗口天数、读取上限、低分阈值、是否生成 prompt 建议，并通过 `POST /api/self-evolution/run` 触发 dry-run + persist 周期。
+- [x] **Cycle audit list** — 展示周期 ID、时间、状态、模式、触发来源、坏例数、工具建议数与评测候选数，支持状态过滤和刷新。
+- [x] **Review detail preview** — 详情区展示 summary 指标、下一步动作、工具/prompt/eval 候选数量，并提供完整 JSON 报告展开查看。
+- [x] **Human-control boundary** — UI 暂不提供自动应用按钮；所有 prompt 变更、eval 入库和工具路由调整仍需后续审批动作实现。
+- [x] **验证** — 前端 `npm run build` 通过，保留既有 Vite loaders.gl/browser external 与大 chunk 警告。
+
+> 自主进化已从后端闭环推进到可人工查看的管理台。后续主线：审批动作 API、prompt diff 视图、eval candidates 一键入库。
+
+---
+
+## v25.17 — Self-Evolution Approval Actions First Slice (已完成, 2026-06-18)
+
+- [x] **Review action API** — 新增 `POST /api/self-evolution/cycles/{id}/review`，支持 `approve_eval_candidates`、`approve_prompt_suggestions`、`dismiss` 三类 admin 审批动作。
+- [x] **Eval candidate promotion** — `approve_eval_candidates` 将周期报告中的 `eval_candidates` 写入 `agent_eval_datasets`，scenario=`self_evolution`，形成可回归评测的数据集候选。
+- [x] **Prompt dev version creation** — `approve_prompt_suggestions` 仅创建 `dev` 环境 prompt version，不直接部署到 prod；审批记录写入 cycle report。
+- [x] **Cycle approval audit** — 所有审批动作写回 `report.approvals` / `last_approval`，并更新 cycle status 为 `applied`、`dismissed` 或 `failed`。
+- [x] **Prompt diff preview** — 自主进化报告保留 `original_prompt` 与 `suggested_prompt`；管理后台可展开查看当前/建议 prompt 对照和 changes 列表。
+- [x] **Review UI actions** — 管理后台「自主进化」页签增加「入库评测候选」「创建 dev prompt 版本」「驳回候选」按钮，按钮按候选可用性禁用。
+- [x] **测试覆盖** — 新增审批动作单测和 `/review` API focused test；前端 `npm run build` 通过。
+
+> 自主进化已具备“提出候选 -> 持久化审计 -> 管理台查看 -> 人工审批生成改进资产”的闭环。仍未自动生产部署；下一步可做定时调度、审批队列提醒和 prod 部署门禁。
+
+---
+
+## v25.18 — Self-Evolution Scheduler First Slice (已完成, 2026-06-18)
+
+- [x] **Lightweight interval scheduler** — 新增 `SelfEvolutionScheduler`，基于当前 asyncio event loop 运行单个后台任务，无新增调度依赖；默认关闭。
+- [x] **Conservative scheduled cycle** — 定时周期只运行 dry-run + persist，`trigger_source=scheduler`，不会自动应用 prompt、不会自动写 eval dataset、不会部署到 prod。
+- [x] **Environment controls** — `.env.example` 增加 `SELF_EVOLUTION_SCHEDULER_ENABLED`、`INTERVAL_SECONDS`、`DAYS`、`LIMIT`、`MIN_SCORE`、`INCLUDE_PROMPTS` 配置。
+- [x] **App startup integration** — Chainlit 首次会话启动时按配置启动调度器，和 workflow scheduler 一样延迟到 async context，避免 import 阶段创建任务。
+- [x] **Admin scheduler API** — 新增 `GET/POST /api/self-evolution/scheduler`，支持查看状态、启动、停止和 `run_once` 手动触发调度器周期。
+- [x] **Admin dashboard controls** — 「自主进化」页签显示调度器状态、最近周期、运行间隔，并提供启动/停止、立即运行按钮。
+- [x] **测试覆盖** — 新增 scheduler run-once、默认关闭、scheduler API focused tests；前端 `npm run build` 通过。
+
+> 自主进化主链路已完成“定时发现 -> 候选审计 -> 人工审批 -> 改进资产生成”的 first slice。审批提醒已在 v25.19 补齐；后续仍需 prod prompt 发布门禁，以及 P5 标准市场影响范围联动和订阅提醒增强。
+
+---
+
+## v25.19 — Self-Evolution Approval Reminders First Slice (已完成, 2026-06-18)
+
+- [x] **Pending review summary** — 新增 `get_review_summary()`，基于 `agent_self_evolution_cycles.status='proposed'` 生成待审候选数、待审 eval / prompt / tool 建议数、高优先级计数和最近提醒列表。
+- [x] **Review priority heuristics** — 对同时包含 eval 候选与 prompt/tool 建议的周期、集中坏例/差评/工具失败信号标记 high priority；其余改进资产候选标记 medium，低信号周期保留 low。
+- [x] **Admin reminder API** — 新增 admin-only `GET /api/self-evolution/review-summary`，复用现有 `_require_admin` 鉴权，不暴露给普通用户。
+- [x] **Admin dashboard reminder panel** — 「自主进化」页签顶部增加审批提醒面板，展示待审数量、候选类型数量、最近待审周期快捷入口；运行周期、调度器立即运行和审批动作后自动刷新提醒。
+- [x] **测试覆盖** — 新增 review summary 聚合单测、API focused test 和路由注册断言。
+
+> 自主进化现在具备“定时/手动发现 -> 候选审计 -> 审批提醒 -> 人工审批 -> 改进资产生成”的主线闭环。prod prompt 发布门禁已在 v25.20 补齐；下一步是发布前回归评测门禁。
+
+---
+
+## v25.20 — Self-Evolution Prod Prompt Gate First Slice (已完成, 2026-06-19)
+
+- [x] **Two-step prompt promotion** — `approve_prompt_suggestions` 只允许创建 dev/staging prompt version；直接把自主进化建议写入 prod 会被拒绝，避免绕过生产发布门禁。
+- [x] **Cycle-scoped prod deployment action** — 新增 `deploy_prompt_versions_to_prod` 审批动作，只部署该 cycle 审批记录中已经创建的非 prod prompt version，并把 source / target version 写入 cycle audit。
+- [x] **Duplicate deployment guard** — 已经通过该 cycle 发布过 prod 的 source version 不会重复部署；没有可发布 dev version 时返回可审计错误。
+- [x] **Admin API integration** — `/api/self-evolution/cycles/{id}/review` 支持 `target_environment=prod`，仍复用 admin-only 鉴权和 cycle 审计写回。
+- [x] **Admin UI control** — 「自主进化」详情页新增「发布 prod prompt」按钮，只有已有 dev prompt version 且尚未 prod 发布时可用，并显示审批记录摘要。
+- [x] **测试覆盖** — 新增 prod 绕过阻断、cycle-scoped prod 部署、重复部署阻断和 API 参数透传测试。
+
+> 自主进化现在支持“先生成 dev prompt 版本，再由管理员显式发布 prod”的生产门禁。仍不会自动部署生产 prompt；后续需要把发布前回归评测和阈值门禁接入该动作。
 
 ---
 

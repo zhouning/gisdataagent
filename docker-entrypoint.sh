@@ -24,10 +24,14 @@ if ! pg_isready -h "${POSTGRES_HOST:-db}" -p "${POSTGRES_PORT:-5432}" -q; then
 fi
 
 # -----------------------------------------------------------------------
-# 2. Run database migrations (if admin credentials provided)
+# 2. Legacy raw SQL migrations (opt-in)
 # -----------------------------------------------------------------------
-if [ -n "$POSTGRES_ADMIN_USER" ] && [ -n "$POSTGRES_ADMIN_PASSWORD" ]; then
-    echo "[MIGRATE] Running SQL migrations..."
+# The Python migration runner tracks schema_migrations and is the normal path.
+# This legacy loop replays every SQL file unconditionally, which creates noisy
+# duplicate-object errors on restored databases. Keep it available only for
+# one-off recovery of old deployments.
+if [ "${RUN_LEGACY_SQL_MIGRATIONS:-false}" = "true" ] && [ -n "$POSTGRES_ADMIN_USER" ] && [ -n "$POSTGRES_ADMIN_PASSWORD" ]; then
+    echo "[MIGRATE] Running legacy raw SQL migrations..."
     export PGPASSWORD="$POSTGRES_ADMIN_PASSWORD"
     MIGRATION_DIR="/app/data_agent/migrations"
     if [ -d "$MIGRATION_DIR" ]; then
@@ -41,11 +45,11 @@ if [ -n "$POSTGRES_ADMIN_USER" ] && [ -n "$POSTGRES_ADMIN_PASSWORD" ]; then
                      -q 2>/dev/null || true
             fi
         done
-        echo "[MIGRATE] Done."
+        echo "[MIGRATE] Legacy SQL migration pass done."
     fi
     unset PGPASSWORD
 else
-    echo "[MIGRATE] Skipped (POSTGRES_ADMIN_USER not set)."
+    echo "[MIGRATE] Legacy raw SQL migrations skipped."
 fi
 
 # -----------------------------------------------------------------------

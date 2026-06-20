@@ -40,7 +40,7 @@ services:
   # Database Backup (daily cron)
   # ---------------------------------------------------------------------------
   db-backup:
-    image: postgis/postgis:16-3.4
+    image: "${POSTGIS_IMAGE:-gis-postgis-pgvector:16-3.4}"
     restart: unless-stopped
     depends_on:
       db:

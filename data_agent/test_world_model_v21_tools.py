@@ -302,7 +302,23 @@ def test_world_model_category_includes_v21_tools():
     assert "world_model_v21_pipeline" in TOOL_CATEGORIES["world_model"]
 
 
-def test_general_and_analyst_agents_include_world_model_v21_toolset():
+def test_world_model_category_includes_twm_tools():
+    from data_agent.tool_filter import TOOL_CATEGORIES
+
+    expected = {
+        "twm_status",
+        "twm_create_project",
+        "twm_build_state",
+        "twm_evaluate_rules",
+        "twm_generate_audit_report",
+        "twm_forecast",
+        "twm_list_rule_hits",
+    }
+
+    assert expected.issubset(TOOL_CATEGORIES["world_model"])
+
+
+def test_general_and_analyst_agents_include_world_model_toolsets():
     from data_agent.agent import analyst_agent, general_processing_agent
 
     general_names = [type(toolset).__name__ for toolset in general_processing_agent.tools]
@@ -310,6 +326,8 @@ def test_general_and_analyst_agents_include_world_model_v21_toolset():
 
     assert "WorldModelV21Toolset" in general_names
     assert "WorldModelV21Toolset" in analyst_names
+    assert "TerritoryWorldModelToolset" in general_names
+    assert "TerritoryWorldModelToolset" in analyst_names
 
 
 def test_world_model_v21_agent_is_directly_mentionable():
@@ -336,3 +354,14 @@ def test_world_model_v21_agent_instruction_uses_fast_defaults():
     assert "dataset='bishan'" in instruction
     assert "CHG_FLAG" in instruction
     assert "红色为耕地 -> 林地" in instruction
+
+
+def test_territory_world_model_agent_is_directly_mentionable():
+    from data_agent.agent import _make_agent_by_name
+
+    agent = _make_agent_by_name("TerritoryWorldModel")
+    toolset_names = [type(toolset).__name__ for toolset in agent.tools]
+
+    assert agent.name == "MentionTerritoryWorldModel"
+    assert toolset_names == ["TerritoryWorldModelToolset"]
+    assert "twm_*" in agent.instruction

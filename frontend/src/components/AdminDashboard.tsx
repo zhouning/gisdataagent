@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Bell, Play, RefreshCw } from 'lucide-react';
 
 interface MetricsSummary {
   audit_stats: {
@@ -29,12 +30,46 @@ interface AuditEntry {
   created_at: string;
 }
 
+interface SelfEvolutionCycle {
+  id: number;
+  triggered_by: string;
+  trigger_source: string;
+  mode: string;
+  status: string;
+  summary: Record<string, any>;
+  analysis?: Record<string, any>;
+  proposals?: Record<string, any>;
+  safeguards?: Record<string, any>;
+  report?: Record<string, any>;
+  created_at: string;
+}
+
+interface SelfEvolutionReviewSummary {
+  pending_count: number;
+  pending_eval_candidates: number;
+  pending_prompt_suggestions: number;
+  pending_tool_suggestions: number;
+  high_priority_count: number;
+  latest_created_at?: string | null;
+  oldest_created_at?: string | null;
+  reminders: Array<{
+    id: number;
+    created_at?: string | null;
+    trigger_source: string;
+    triggered_by: string;
+    priority: string;
+    reasons: string[];
+    counts: Record<string, number>;
+  }>;
+  recommended_actions: string[];
+}
+
 interface AdminDashboardProps {
   onBack: () => void;
 }
 
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'bots' | 'a2a' | 'models' | 'costguard'>('metrics');
+  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'bots' | 'a2a' | 'models' | 'costguard' | 'selfevolution'>('metrics');
 
   return (
     <div className="admin-dashboard">
@@ -54,6 +89,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
             onClick={() => setActiveSection('models')}>模型配置</button>
           <button className={activeSection === 'costguard' ? 'active' : ''}
             onClick={() => setActiveSection('costguard')}>成本控制</button>
+          <button className={activeSection === 'selfevolution' ? 'active' : ''}
+            onClick={() => setActiveSection('selfevolution')}>自主进化</button>
           <button className={activeSection === 'users' ? 'active' : ''}
             onClick={() => setActiveSection('users')}>用户管理</button>
           <button className={activeSection === 'audit' ? 'active' : ''}
@@ -67,6 +104,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         {activeSection === 'a2a' && <A2ASection />}
         {activeSection === 'models' && <ModelsSection />}
         {activeSection === 'costguard' && <CostGuardSection />}
+        {activeSection === 'selfevolution' && <SelfEvolutionSection />}
         {activeSection === 'users' && <UsersSection />}
         {activeSection === 'audit' && <AuditSection />}
       </div>
@@ -731,6 +769,460 @@ function CostGuardSection() {
           {saving ? '保存中...' : '保存'}
         </button>
         {msg && <span style={{ color: msg.includes('成功') ? '#4caf50' : '#f44336', fontSize: 13 }}>{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+function SelfEvolutionSection() {
+  const [cycles, setCycles] = useState<SelfEvolutionCycle[]>([]);
+  const [selected, setSelected] = useState<SelfEvolutionCycle | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [limit, setLimit] = useState(30);
+  const [days, setDays] = useState(7);
+  const [minScore, setMinScore] = useState(0.5);
+  const [includePrompts, setIncludePrompts] = useState(false);
+  const [reviewing, setReviewing] = useState('');
+  const [schedulerStatus, setSchedulerStatus] = useState<Record<string, any> | null>(null);
+  const [schedulerBusy, setSchedulerBusy] = useState('');
+  const [reviewSummary, setReviewSummary] = useState<SelfEvolutionReviewSummary | null>(null);
+  const [msg, setMsg] = useState('');
+
+  const loadCycles = () => {
+    setLoading(true);
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (statusFilter) params.set('status', statusFilter);
+    fetch(`/api/self-evolution/cycles?${params.toString()}`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(data => {
+        const next = data.cycles || [];
+        setCycles(next);
+        if (!selected && next.length) setSelected(next[0]);
+      })
+      .catch(() => setMsg('无法加载自主进化审计记录'))
+      .finally(() => setLoading(false));
+  };
+
+  const loadSchedulerStatus = () => {
+    fetch('/api/self-evolution/scheduler', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(setSchedulerStatus)
+      .catch(() => {});
+  };
+
+  const loadReviewSummary = () => {
+    fetch('/api/self-evolution/review-summary?limit=5', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(setReviewSummary)
+      .catch(() => {});
+  };
+
+  useEffect(() => { loadCycles(); loadSchedulerStatus(); loadReviewSummary(); }, [statusFilter]);
+
+  const loadCycleDetail = (id: number) => {
+    fetch(`/api/self-evolution/cycles/${id}`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(setSelected)
+      .catch(() => setMsg(`无法加载周期 #${id}`));
+  };
+
+  const runCycle = async () => {
+    setRunning(true);
+    setMsg('');
+    try {
+      const resp = await fetch('/api/self-evolution/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          limit,
+          days,
+          min_score: minScore,
+          include_prompt_suggestions: includePrompts,
+          apply: false,
+          persist: true,
+          trigger_source: 'ui',
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'run failed');
+      setMsg(data.cycle_id ? `已生成候选周期 #${data.cycle_id}` : '已完成运行，未写入审计记录');
+      loadCycles();
+      loadReviewSummary();
+      if (data.cycle_id) loadCycleDetail(data.cycle_id);
+    } catch (err: any) {
+      setMsg(`运行失败: ${err.message || '未知错误'}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const reviewCycle = async (action: string) => {
+    if (!selected) return;
+    setReviewing(action);
+    setMsg('');
+    try {
+      const resp = await fetch(`/api/self-evolution/cycles/${selected.id}/review`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          environment: 'dev',
+          target_environment: 'prod',
+          dataset_name: `self-evolution-cycle-${selected.id}`,
+          notes: 'reviewed in admin dashboard',
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'review failed');
+      setMsg(`审批动作完成: ${action}`);
+      loadCycles();
+      loadReviewSummary();
+      loadCycleDetail(selected.id);
+    } catch (err: any) {
+      setMsg(`审批失败: ${err.message || '未知错误'}`);
+    } finally {
+      setReviewing('');
+    }
+  };
+
+  const controlScheduler = async (action: string) => {
+    setSchedulerBusy(action);
+    setMsg('');
+    try {
+      const resp = await fetch('/api/self-evolution/scheduler', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'scheduler action failed');
+      setSchedulerStatus(data.scheduler || data);
+      if (action === 'run_once') {
+        const cycleId = data.result?.cycle_id;
+        setMsg(cycleId ? `调度器已生成候选周期 #${cycleId}` : '调度器运行完成');
+        loadCycles();
+        loadReviewSummary();
+        if (cycleId) loadCycleDetail(cycleId);
+      } else {
+        setMsg(action === 'start' ? '调度器已启动' : '调度器已停止');
+      }
+    } catch (err: any) {
+      setMsg(`调度器操作失败: ${err.message || '未知错误'}`);
+    } finally {
+      setSchedulerBusy('');
+    }
+  };
+
+  const statusCounts = cycles.reduce((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const summary = selected?.summary || {};
+  const proposals = selected?.proposals || selected?.report?.proposals || {};
+  const actions = proposals.next_actions || [];
+  const promptSuggestions = proposals.prompt_suggestions || [];
+  const toolSuggestions = proposals.tool_suggestions || [];
+  const evalCandidates = proposals.eval_candidates || [];
+  const pendingCount = reviewSummary?.pending_count ?? statusCounts.proposed ?? 0;
+  const approvals = selected?.report?.approvals || [];
+  const hasPromptDevVersions = approvals.some((approval: any) =>
+    (approval?.result?.created_versions || []).some((version: any) =>
+      version?.version_id && !['prod', 'production'].includes(String(version.environment || '').toLowerCase())
+    )
+  );
+  const hasProdPromptDeployment = approvals.some((approval: any) =>
+    (approval?.result?.deployed_versions || []).some((version: any) =>
+      ['prod', 'production'].includes(String(version.target_environment || '').toLowerCase())
+    )
+  );
+
+  return (
+    <div className="self-evolution-section">
+      <div className="metrics-cards">
+        <div className="metric-card">
+          <div className="metric-value">{cycles.length}</div>
+          <div className="metric-label">审计记录</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{pendingCount}</div>
+          <div className="metric-label">待审候选</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{reviewSummary?.high_priority_count ?? '-'}</div>
+          <div className="metric-label">高优先级提醒</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-value">{reviewSummary?.pending_eval_candidates ?? '-'}</div>
+          <div className="metric-label">待审评测候选</div>
+        </div>
+      </div>
+
+      <div className={`self-evolution-review-reminder ${pendingCount ? 'has-pending' : ''}`}>
+        <div className="self-evolution-reminder-head">
+          <div>
+            <strong><Bell size={14} /> 审批提醒</strong>
+            <span>
+              {pendingCount
+                ? `有 ${pendingCount} 个自主进化候选等待人工复核`
+                : '当前没有待审批的自主进化候选'}
+            </span>
+          </div>
+          <button className="btn-secondary" onClick={loadReviewSummary}>
+            <RefreshCw size={13} /> 刷新提醒
+          </button>
+        </div>
+        {pendingCount > 0 && (
+          <>
+            <div className="self-evolution-reminder-stats">
+              <span>评测候选 {reviewSummary?.pending_eval_candidates ?? 0}</span>
+              <span>Prompt 建议 {reviewSummary?.pending_prompt_suggestions ?? 0}</span>
+              <span>工具建议 {reviewSummary?.pending_tool_suggestions ?? 0}</span>
+              {reviewSummary?.latest_created_at && (
+                <span>最新 {new Date(reviewSummary.latest_created_at).toLocaleString()}</span>
+              )}
+            </div>
+            <div className="self-evolution-reminder-list">
+              {(reviewSummary?.reminders || []).map(item => (
+                <button key={item.id} type="button" onClick={() => loadCycleDetail(item.id)}>
+                  <strong>#{item.id}</strong>
+                  <span className={`self-evolution-priority ${item.priority}`}>{item.priority}</span>
+                  <span>评测 {item.counts.eval_candidates || 0}</span>
+                  <span>Prompt {item.counts.prompt_suggestions || 0}</span>
+                  <span>工具 {item.counts.tool_suggestions || 0}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="metrics-chart-section self-evolution-toolbar">
+        <div className="self-evolution-scheduler-card">
+          <div>
+            <strong>调度器</strong>
+            <span>
+              {schedulerStatus?.active ? '运行中' : schedulerStatus?.enabled ? '已启用未运行' : '未启用'}
+              {schedulerStatus?.interval_seconds ? ` · 间隔 ${Math.round(schedulerStatus.interval_seconds / 60)} 分钟` : ''}
+            </span>
+            <small>
+              最近周期 {schedulerStatus?.last_cycle_id ? `#${schedulerStatus.last_cycle_id}` : '-'}
+              {schedulerStatus?.last_run_at ? ` · ${new Date(schedulerStatus.last_run_at).toLocaleString()}` : ''}
+            </small>
+          </div>
+          <div className="self-evolution-actions">
+            <button className="btn-secondary" onClick={loadSchedulerStatus}>刷新状态</button>
+            <button className="btn-secondary"
+              disabled={Boolean(schedulerBusy)}
+              onClick={() => controlScheduler(schedulerStatus?.active ? 'stop' : 'start')}>
+              {schedulerBusy === 'start' || schedulerBusy === 'stop'
+                ? '处理中'
+                : schedulerStatus?.active ? '停止调度' : '启动调度'}
+            </button>
+            <button className="btn-primary"
+              disabled={Boolean(schedulerBusy)}
+              onClick={() => controlScheduler('run_once')}>
+              {schedulerBusy === 'run_once' ? '运行中' : '调度器立即运行'}
+            </button>
+          </div>
+        </div>
+
+        <div className="self-evolution-controls">
+          <label>窗口天数
+            <input type="number" min={1} max={90} value={days}
+              onChange={e => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 7)))} />
+          </label>
+          <label>读取上限
+            <input type="number" min={1} max={100} value={limit}
+              onChange={e => setLimit(Math.max(1, Math.min(100, Number(e.target.value) || 30)))} />
+          </label>
+          <label>低分阈值
+            <input type="number" min={0} max={1} step={0.05} value={minScore}
+              onChange={e => setMinScore(Math.max(0, Math.min(1, Number(e.target.value) || 0)))} />
+          </label>
+          <label>状态
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="">全部</option>
+              <option value="proposed">proposed</option>
+              <option value="applied">applied</option>
+              <option value="failed">failed</option>
+              <option value="dismissed">dismissed</option>
+            </select>
+          </label>
+          <label className="self-evolution-check">
+            <input type="checkbox" checked={includePrompts}
+              onChange={e => setIncludePrompts(e.target.checked)} />
+            生成 prompt 建议
+          </label>
+        </div>
+        <div className="self-evolution-actions">
+          <button className="btn-primary" onClick={runCycle} disabled={running}>
+            <Play size={13} /> {running ? '运行中' : '运行 dry-run'}
+          </button>
+          <button className="btn-secondary" onClick={loadCycles} disabled={loading}>
+            <RefreshCw size={13} /> 刷新
+          </button>
+        </div>
+        {msg && <div className="self-evolution-message">{msg}</div>}
+      </div>
+
+      <div className="self-evolution-layout">
+        <div className="metrics-chart-section self-evolution-list">
+          <h3>进化周期</h3>
+          {loading ? (
+            <div className="admin-loading">加载中...</div>
+          ) : (
+            <div className="data-table-container">
+              <table className="data-table admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>时间</th>
+                    <th>状态</th>
+                    <th>模式</th>
+                    <th>触发</th>
+                    <th>坏例</th>
+                    <th>工具建议</th>
+                    <th>评测候选</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cycles.map(c => (
+                    <tr key={c.id}
+                      className={selected?.id === c.id ? 'selected-row' : ''}
+                      onClick={() => loadCycleDetail(c.id)}>
+                      <td>#{c.id}</td>
+                      <td>{c.created_at ? new Date(c.created_at).toLocaleString() : '-'}</td>
+                      <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                      <td>{c.mode}</td>
+                      <td>{c.trigger_source || '-'} / {c.triggered_by || '-'}</td>
+                      <td>{c.summary?.bad_cases ?? 0}</td>
+                      <td>{c.summary?.tool_suggestions ?? 0}</td>
+                      <td>{c.summary?.eval_candidates ?? 0}</td>
+                    </tr>
+                  ))}
+                  {!cycles.length && (
+                    <tr><td colSpan={8} style={{ textAlign: 'center', color: '#888' }}>暂无记录</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="metrics-chart-section self-evolution-detail">
+          <h3>{selected ? `周期 #${selected.id}` : '周期详情'}</h3>
+          {!selected ? (
+            <div className="admin-loading">选择一条记录</div>
+          ) : (
+            <>
+              <div className="self-evolution-summary-grid">
+                {Object.entries(summary).map(([k, v]) => (
+                  <div key={k}>
+                    <span>{k}</span>
+                    <strong>{String(v)}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className="self-evolution-detail-block">
+                <h4>下一步动作</h4>
+                {actions.length ? actions.map((a: any, idx: number) => (
+                  <div key={`${a.action || idx}`} className="self-evolution-action-row">
+                    <strong>{a.action || '-'}</strong>
+                    <span>{a.reason || ''}</span>
+                  </div>
+                )) : <p>无待处理动作</p>}
+              </div>
+
+              <div className="self-evolution-detail-block">
+                <h4>候选汇总</h4>
+                <div className="self-evolution-pill-row">
+                  <span>工具建议 {toolSuggestions.length}</span>
+                  <span>Prompt 建议 {promptSuggestions.length}</span>
+                  <span>评测候选 {evalCandidates.length}</span>
+                </div>
+              </div>
+
+              <div className="self-evolution-detail-block">
+                <h4>人工审批</h4>
+                <div className="self-evolution-review-actions">
+                  <button className="btn-primary"
+                    disabled={!evalCandidates.length || Boolean(reviewing)}
+                    onClick={() => reviewCycle('approve_eval_candidates')}>
+                    {reviewing === 'approve_eval_candidates' ? '处理中' : '入库评测候选'}
+                  </button>
+                  <button className="btn-secondary"
+                    disabled={!promptSuggestions.some((p: any) => p.suggested_prompt) || Boolean(reviewing)}
+                    onClick={() => reviewCycle('approve_prompt_suggestions')}>
+                    {reviewing === 'approve_prompt_suggestions' ? '处理中' : '创建 dev prompt 版本'}
+                  </button>
+                  <button className="btn-secondary"
+                    disabled={!hasPromptDevVersions || hasProdPromptDeployment || Boolean(reviewing)}
+                    onClick={() => reviewCycle('deploy_prompt_versions_to_prod')}>
+                    {reviewing === 'deploy_prompt_versions_to_prod' ? '处理中' : '发布 prod prompt'}
+                  </button>
+                  <button className="btn-secondary btn-danger"
+                    disabled={Boolean(reviewing)}
+                    onClick={() => reviewCycle('dismiss')}>
+                    {reviewing === 'dismiss' ? '处理中' : '驳回候选'}
+                  </button>
+                </div>
+              </div>
+
+              {approvals.length > 0 && (
+                <div className="self-evolution-detail-block">
+                  <h4>审批记录</h4>
+                  {approvals.map((approval: any, idx: number) => (
+                    <div key={`${approval.action || idx}-${idx}`} className="self-evolution-action-row">
+                      <strong>{approval.action || '-'}</strong>
+                      <span>
+                        {approval.status || '-'}
+                        {approval.reviewed_by ? ` / ${approval.reviewed_by}` : ''}
+                        {approval.reviewed_at ? ` / ${new Date(approval.reviewed_at).toLocaleString()}` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {promptSuggestions.length > 0 && (
+                <div className="self-evolution-detail-block">
+                  <h4>Prompt 建议预览</h4>
+                  {promptSuggestions.map((p: any, idx: number) => (
+                    <details key={`${p.domain}/${p.prompt_key}/${idx}`} className="self-evolution-prompt-diff">
+                      <summary>{p.domain}/{p.prompt_key}</summary>
+                      <div className="self-evolution-diff-grid">
+                        <div>
+                          <strong>当前 prompt</strong>
+                          <pre>{p.original_prompt || '未包含原文'}</pre>
+                        </div>
+                        <div>
+                          <strong>建议 prompt</strong>
+                          <pre>{p.suggested_prompt || '未生成建议文本'}</pre>
+                        </div>
+                      </div>
+                      {p.changes?.length > 0 && (
+                        <div className="self-evolution-change-list">
+                          {p.changes.map((change: string, i: number) => <span key={i}>{change}</span>)}
+                        </div>
+                      )}
+                    </details>
+                  ))}
+                </div>
+              )}
+
+              <details className="self-evolution-json">
+                <summary>完整报告 JSON</summary>
+                <pre>{JSON.stringify(selected.report || selected, null, 2)}</pre>
+              </details>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -153,6 +153,8 @@ try:
     ensure_knowledge_graph_tables()
     from data_agent.failure_learning import ensure_failure_table
     ensure_failure_table()
+    from data_agent.self_evolution import ensure_self_evolution_tables
+    ensure_self_evolution_tables()
     from data_agent.custom_skills import ensure_custom_skills_table
     ensure_custom_skills_table()
     from data_agent.knowledge_base import ensure_kb_tables
@@ -1066,6 +1068,16 @@ try:
     _workflow_scheduler = WorkflowScheduler()
 except Exception as _wf_sched_err:
     logger.warning("Workflow scheduler init failed: %s", _wf_sched_err)
+
+# --- Self-Evolution Scheduler (v25.18) ---
+_self_evolution_scheduler = None
+_self_evolution_scheduler_started = False
+_self_evolution_scheduler_lock = asyncio.Lock()
+try:
+    from data_agent.self_evolution_scheduler import get_self_evolution_scheduler
+    _self_evolution_scheduler = get_self_evolution_scheduler()
+except Exception as _se_sched_err:
+    logger.warning("Self-evolution scheduler init failed: %s", _se_sched_err)
 
 # --- Startup Diagnostics Banner ---
 logger.info("\n%s", format_startup_summary(session_svc=session_service))
@@ -3000,6 +3012,14 @@ async def start():
             if not _workflow_scheduler_started:
                 _workflow_scheduler.start()
                 _workflow_scheduler_started = True
+
+    # Start Self-Evolution Scheduler if enabled (deferred to async context)
+    global _self_evolution_scheduler_started
+    if not _self_evolution_scheduler_started and _self_evolution_scheduler is not None:
+        async with _self_evolution_scheduler_lock:
+            if not _self_evolution_scheduler_started:
+                _self_evolution_scheduler.start()
+                _self_evolution_scheduler_started = True
 
     # Get authenticated user from Chainlit (set by auth callbacks in auth.py)
     cl_user = cl.user_session.get("user")

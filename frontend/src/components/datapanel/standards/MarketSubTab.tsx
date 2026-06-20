@@ -507,7 +507,28 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                   <Chip label="删除" value={diff.summary.removed}/>
                   <Chip label="变化" value={diff.summary.changed}/>
                   <Chip label="不变" value={diff.summary.unchanged}/>
+                  <Chip label="字段差异" value={diff.summary.field_changes || 0}/>
                 </div>
+                {(diff.summary.review_hints || []).length > 0 && (
+                  <div style={{
+                    display: "grid", gap: 6, marginBottom: 10,
+                    fontSize: 12,
+                  }}>
+                    {(diff.summary.review_hints || []).map(hint => (
+                      <div
+                        key={hint.code}
+                        style={{
+                          border: "1px solid #fde68a",
+                          background: hint.level === "high" ? "#fef2f2" : "#fffbeb",
+                          borderRadius: 4,
+                          padding: "6px 8px",
+                          color: "#7c2d12",
+                        }}>
+                        {hint.message} ({hint.count})
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{
                   border: "1px solid #e5e7eb", borderRadius: 4,
                   overflow: "hidden",
@@ -529,19 +550,43 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                     </div>
                   )}
                   {diff.changes.map((change, idx) => (
-                    <div
-                      key={`${change.asset_type}-${change.key}-${idx}`}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "120px 90px 1fr 1fr",
-                        borderTop: "1px solid #e5e7eb",
-                        fontSize: 12,
-                      }}>
-                      <Cell>{change.asset_type}<br/>{change.key}</Cell>
-                      <Cell>{change.change_type}</Cell>
-                      <Cell>{change.source_label || "-"}</Cell>
-                      <Cell>{change.target_label || "-"}</Cell>
-                    </div>
+                    <React.Fragment key={`${change.asset_type}-${change.key}-${idx}`}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "120px 90px 1fr 1fr",
+                          borderTop: "1px solid #e5e7eb",
+                          fontSize: 12,
+                        }}>
+                        <Cell>{change.asset_type}<br/>{change.key}</Cell>
+                        <Cell>
+                          {change.change_type}
+                          {!!change.field_change_count && (
+                            <div style={{color: "#6b7280", marginTop: 4}}>
+                              {change.field_change_count} fields
+                            </div>
+                          )}
+                        </Cell>
+                        <Cell>{change.source_label || "-"}</Cell>
+                        <Cell>{change.target_label || "-"}</Cell>
+                      </div>
+                      {(change.field_changes || []).map(field => (
+                        <div
+                          key={`${change.asset_type}-${change.key}-${field.field}`}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "120px 90px 1fr 1fr",
+                            borderTop: "1px solid #f3f4f6",
+                            background: "#fcfcfd",
+                            fontSize: 12,
+                          }}>
+                          <Cell></Cell>
+                          <Cell>{field.label}</Cell>
+                          <Cell>{formatDiffValue(field.source_value)}</Cell>
+                          <Cell>{formatDiffValue(field.target_value)}</Cell>
+                        </div>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </div>
               </>
@@ -622,7 +667,7 @@ function Field({label, value, onChange}: {
   );
 }
 
-function Cell({children}: {children: React.ReactNode}) {
+function Cell({children}: {children?: React.ReactNode}) {
   return (
     <div style={{
       padding: "8px 10px", minWidth: 0, overflowWrap: "anywhere",
@@ -631,6 +676,13 @@ function Cell({children}: {children: React.ReactNode}) {
       {children}
     </div>
   );
+}
+
+function formatDiffValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "-";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 const mutedStyle: React.CSSProperties = {

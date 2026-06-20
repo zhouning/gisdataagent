@@ -162,11 +162,12 @@ For environments without internet access:
 ### 5.1 Export Images (on connected machine)
 
 ```bash
-# Pull and save images
-docker pull postgis/postgis:16-3.4
+# Build the local multi-arch PostGIS + pgvector image, or pull the same tag
+# from your internal registry if you publish it there.
+docker build -t gis-postgis-pgvector:16-3.4 docker/postgis-pgvector
 docker pull gis-data-agent:latest
 
-docker save postgis/postgis:16-3.4 -o postgis-16-3.4.tar
+docker save gis-postgis-pgvector:16-3.4 -o gis-postgis-pgvector-16-3.4.tar
 docker save gis-data-agent:latest -o gis-data-agent.tar
 ```
 
@@ -174,7 +175,7 @@ docker save gis-data-agent:latest -o gis-data-agent.tar
 
 ```bash
 # Load images
-docker load -i postgis-16-3.4.tar
+docker load -i gis-postgis-pgvector-16-3.4.tar
 docker load -i gis-data-agent.tar
 
 # Start services

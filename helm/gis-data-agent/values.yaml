@@ -33,7 +33,7 @@ autoscaling:
 
 postgresql:
   enabled: true
-  image: postgis/postgis:16-3.4
+  image: gis-postgis-pgvector:16-3.4
   storage: 10Gi
   auth:
     database: gis_agent

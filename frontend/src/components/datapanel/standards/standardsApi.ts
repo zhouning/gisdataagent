@@ -653,6 +653,23 @@ export interface MarketDiffAssetCounts {
 
 export interface MarketDiffSummary extends MarketDiffAssetCounts {
   by_asset_type: Record<string, MarketDiffAssetCounts>;
+  field_changes?: number;
+  changed_fields_by_asset_type?: Record<string, Record<string, number>>;
+  review_hints?: MarketDiffReviewHint[];
+}
+
+export interface MarketDiffReviewHint {
+  level: "review" | "high" | string;
+  code: string;
+  message: string;
+  count: number;
+}
+
+export interface MarketDiffFieldChange {
+  field: string;
+  label: string;
+  source_value: unknown;
+  target_value: unknown;
 }
 
 export interface MarketDiffChange {
@@ -661,6 +678,8 @@ export interface MarketDiffChange {
   change_type: "added" | "removed" | "changed";
   source_label: string | null;
   target_label: string | null;
+  field_changes?: MarketDiffFieldChange[];
+  field_change_count?: number;
 }
 
 export interface MarketDiffVersionMeta {

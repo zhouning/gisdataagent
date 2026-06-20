@@ -206,6 +206,14 @@ def test_market_diff_reports_structural_changes(engine):
         assert diff["summary"]["removed"] == 2
         assert diff["summary"]["changed"] == 2
         assert diff["summary"]["unchanged"] == 2
+        assert diff["summary"]["field_changes"] == 2
+        assert diff["summary"]["changed_fields_by_asset_type"]["clauses"] == {
+            "body_md": 1,
+        }
+        assert diff["summary"]["changed_fields_by_asset_type"]["data_elements"] == {
+            "definition": 1,
+        }
+        assert diff["summary"]["review_hints"][0]["code"] == "asset_removal_or_change"
         assert {
             (change["asset_type"], change["key"], change["change_type"])
             for change in diff["changes"]
@@ -215,6 +223,47 @@ def test_market_diff_reports_structural_changes(engine):
             ("clauses", "4", "added"),
             ("data_elements", "DE-B", "changed"),
         }
+        changed_clause = next(
+            change for change in diff["changes"]
+            if change["asset_type"] == "clauses" and change["key"] == "2"
+        )
+        assert changed_clause["field_change_count"] == 1
+        assert changed_clause["field_changes"] == [{
+            "field": "body_md",
+            "label": "Body",
+            "source_value": "old",
+            "target_value": "new",
+        }]
+    finally:
+        _delete_document(engine, doc_id)
+
+
+def test_market_diff_flags_contract_field_changes(engine):
+    token = f"diff-contract-{uuid.uuid4().hex[:8]}"
+    doc_id = _seed_document(engine, token)
+    source = _seed_version(engine, doc_id, label="v1.0", status="released")
+    target = _seed_version(engine, doc_id, label="v1.1", status="released")
+    _seed_data_element(engine, source, "DE-X", name="合同字段",
+                       definition="same", datatype="text")
+    _seed_data_element(engine, target, "DE-X", name="合同字段",
+                       definition="same", datatype="integer")
+    try:
+        diff = catalog.version_diff(source, target)
+
+        assert diff["summary"]["changed"] == 1
+        assert diff["summary"]["field_changes"] == 1
+        assert diff["summary"]["changed_fields_by_asset_type"]["data_elements"] == {
+            "datatype": 1,
+        }
+        assert {
+            hint["code"]: hint for hint in diff["summary"]["review_hints"]
+        }["contract_field_changed"]["count"] == 1
+        assert diff["changes"][0]["field_changes"] == [{
+            "field": "datatype",
+            "label": "Data type",
+            "source_value": "text",
+            "target_value": "integer",
+        }]
     finally:
         _delete_document(engine, doc_id)
 
