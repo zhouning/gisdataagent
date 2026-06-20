@@ -154,6 +154,8 @@ def validate_twm_state_input(payload: dict) -> dict:
         errors.append("object_role_registry must be a list")
     if not isinstance(payload.get("semantic_relation_registry"), list):
         errors.append("semantic_relation_registry must be a list")
+    if payload.get("canonical_object_type_registry") is not None and not isinstance(payload.get("canonical_object_type_registry"), list):
+        errors.append("canonical_object_type_registry must be a list")
 
     relation_summary = payload.get("semantic_relation_summary") or {}
     relation_registry = payload.get("semantic_relation_registry") or []
@@ -165,7 +167,84 @@ def validate_twm_state_input(payload: dict) -> dict:
     components = payload.get("state_components") or {}
     if not isinstance(components, dict):
         errors.append("state_components must be an object")
+        components = {}
+    if isinstance(payload.get("object_role_registry"), list):
+        errors.extend(_validate_role_type_closure(payload))
+    if isinstance(relation_registry, list):
+        errors.extend(_validate_component_reference_closure(payload, components, relation_registry))
     return {"valid": not errors, "errors": errors}
+
+
+def _validate_role_type_closure(payload: dict) -> list[str]:
+    errors: list[str] = []
+    role_registry = [row for row in payload.get("object_role_registry") or [] if isinstance(row, dict)]
+    canonical_registry = [row for row in payload.get("canonical_object_type_registry") or [] if isinstance(row, dict)]
+    canonical_types = {str(row.get("object_type")) for row in canonical_registry if row.get("object_type")}
+    seen_roles: set[str] = set()
+    for idx, row in enumerate(role_registry):
+        role = str(row.get("role") or "")
+        standard_role = str(row.get("standard_role") or "")
+        object_type = str(row.get("object_type") or "")
+        if not role:
+            errors.append(f"object_role_registry[{idx}].role is required")
+        elif role in seen_roles:
+            errors.append(f"object_role_registry role is duplicated: {role}")
+        seen_roles.add(role)
+        if not standard_role:
+            errors.append(f"object_role_registry[{idx}].standard_role is required")
+        if not object_type:
+            errors.append(f"object_role_registry[{idx}].object_type is required")
+        elif canonical_types and object_type not in canonical_types:
+            errors.append(f"object_role_registry[{idx}].object_type is not in canonical_object_type_registry: {object_type}")
+    for idx, row in enumerate(canonical_registry):
+        object_type = row.get("object_type")
+        if not object_type:
+            errors.append(f"canonical_object_type_registry[{idx}].object_type is required")
+    return errors
+
+
+def _validate_component_reference_closure(payload: dict, components: dict, relation_registry: list[dict]) -> list[str]:
+    errors: list[str] = []
+    relation_rule_ids = {
+        str(rule_id)
+        for row in relation_registry
+        if isinstance(row, dict)
+        for rule_id in row.get("rule_ids") or []
+        if rule_id
+    }
+    relation_objective_ids = {
+        str(objective_id)
+        for row in relation_registry
+        if isinstance(row, dict)
+        for objective_id in row.get("objective_ids") or []
+        if objective_id
+    }
+    optimization_interface = payload.get("optimization_interface") or {}
+    objective_bindings = optimization_interface.get("objective_bindings") or []
+    bound_objective_ids = {
+        str(row.get("objective_id"))
+        for row in objective_bindings
+        if isinstance(row, dict) and row.get("objective_id")
+    }
+    known_objective_ids = relation_objective_ids | bound_objective_ids
+
+    for component_name, component in components.items():
+        if not isinstance(component, dict):
+            errors.append(f"state_components.{component_name} must be an object")
+            continue
+        for rule_id in component.get("rule_ids") or []:
+            if rule_id and str(rule_id) not in relation_rule_ids:
+                errors.append(f"state_components.{component_name}.rule_ids references unknown semantic relation rule_id: {rule_id}")
+        for objective_id in component.get("objective_ids") or []:
+            if objective_id and str(objective_id) not in known_objective_ids:
+                errors.append(f"state_components.{component_name}.objective_ids references unknown objective_id: {objective_id}")
+
+    hard_constraints = components.get("hard_constraints") or {}
+    if isinstance(hard_constraints, dict):
+        for objective_id in hard_constraints.get("objective_ids") or []:
+            if objective_id and str(objective_id) not in bound_objective_ids:
+                errors.append(f"state_components.hard_constraints.objective_ids is not bound in optimization_interface: {objective_id}")
+    return errors
 
 
 def write_twm_state_input(payload: dict, out_path: str | Path) -> str:

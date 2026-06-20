@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from starlette.requests import Request
 
-from data_agent.territory_world_model import TerritoryWorldModelService, TwmRepository
+from data_agent.territory_world_model import TerritoryWorldModelService, TwmRepository, TwmStateVersion
 from data_agent.api import territory_world_model_routes as routes
 
 
@@ -538,11 +538,71 @@ def test_beam_plan_ranks_candidate_actions_with_dynamics_backend_and_gate():
     )
 
     assert report["schema"] == "territory_world_model.beam_plan_report.v1"
+    assert report["ranking_policy"]["schema"] == "territory_world_model.beam_ranking_policy.v1"
+    assert report["ranking_policy"]["weights"]["confidence"] == 0.1
     assert report["ranking"][0]["candidate_id"] == "a1"
+    assert report["ranking"][0]["ranking_policy_id"] == "utility_risk_confidence_v1"
     assert report["selected"]["candidate_id"] == "a1"
+    assert report["selected"]["ranking_policy_id"] == "utility_risk_confidence_v1"
     assert report["selected"]["forecast"]["planning_utility_delta"] == 0.42
     assert report["evidence_gate"]["candidate_count"] == 3
     assert report["candidates"][-1]["candidate_id"] == "a2"
+
+
+def test_beam_plan_accepts_custom_ranking_policy_for_experimental_selection():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    candidate = {
+        "schema": "territory_world_model.dynamics_fit_report.v1",
+        "status": "pass",
+        "candidate": {"model_name": "beam_candidate_policy"},
+        "predictions": {
+            "candidate:0": {
+                "constraint_violation_probability": 0.2,
+                "planning_utility_delta": 0.5,
+                "uncertainty": {"confidence": 0.1},
+            },
+            "candidate:1": {
+                "constraint_violation_probability": 0.2,
+                "planning_utility_delta": 0.35,
+                "uncertainty": {"confidence": 0.95},
+            },
+        },
+        "evaluation": {"status": "pass", "evidence_gate": {"status": "pass"}},
+        "evidence_gate": {"status": "pass"},
+    }
+    payload = {
+        "scenario": "beam_candidate_policy",
+        "evidence_coverage": 0.72,
+        "dynamics_candidate_report": candidate,
+        "actions": [
+            {"candidate_id": "utility_first", "action_type": "inspect", "target_role": "project"},
+            {"candidate_id": "confidence_first", "action_type": "protect", "target_role": "project"},
+        ],
+    }
+
+    default_report = svc.beam_plan(state_id, payload)
+    custom_report = svc.beam_plan(
+        state_id,
+        {
+            **payload,
+            "ranking_policy": {
+                "policy_id": "confidence_sensitive_policy",
+                "weights": {"utility": 1.0, "risk": 1.0, "confidence": 0.5},
+                "penalties": {"blocked": 1.0, "review": 0.15},
+            },
+        },
+    )
+
+    assert default_report["selected"]["candidate_id"] == "utility_first"
+    assert default_report["ranking_policy"]["source"] == "default"
+    assert custom_report["selected"]["candidate_id"] == "confidence_first"
+    assert custom_report["ranking_policy"]["source"] == "payload"
+    assert custom_report["ranking_policy"]["weights"]["confidence"] == 0.5
+    assert custom_report["selected"]["ranking_policy_id"] == "confidence_sensitive_policy"
 
 
 def test_state_contract_report_exposes_hierarchical_token_boundary():
@@ -1240,6 +1300,8 @@ def test_train_dynamics_candidate_supports_neural_multi_head_trainer_contract():
     assert report["objective"]["schema"] == "territory_world_model.training_objective_report.v1"
     assert report["candidate_report"]["candidate"]["is_scaffold_trainer"] is False
     assert report["learned_parameters"]["training_diagnostics"]["prediction_count"] >= 1
+    assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
+    assert "action_mask_context.risk_proxy" in report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
     assert report["evidence_gate"]["status"] in {"pass", "review", "blocked"}
 
 
@@ -1290,8 +1352,10 @@ def test_train_dynamics_candidate_supports_hierarchical_graph_token_trainer_cont
     assert {"parcel", "block", "township", "county"}.issubset(set(report["learned_parameters"]["architecture"]["token_groups"]))
     assert report["learned_parameters"]["architecture"]["temporal_message_passing"] is True
     assert report["learned_parameters"]["architecture"]["temporal_feature_count"] >= 1
+    assert report["learned_parameters"]["architecture"]["action_mask_context_feature_count"] >= 1
     assert report["learned_parameters"]["feature_contract"]["flat_vector_allowed"] is False
     assert report["learned_parameters"]["feature_contract"]["temporal_feature_names"]
+    assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
     assert report["learned_parameters"]["feature_contract"]["normalization"]["temporal_stats"]["mean"]
     assert report["learned_parameters"]["training_diagnostics"]["prediction_count"] >= 1
     assert report["backend_report"]["schema"] == "territory_world_model.dynamics_backend_report.v1"
@@ -1322,6 +1386,7 @@ def test_train_dynamics_candidate_supports_spatiotemporal_transformer_trainer_co
                 "epochs": 6,
                 "hidden_dim": 16,
                 "learning_rate": 0.02,
+                "constraint_risk_calibration_weight": 0.55,
                 "seed": 13,
             },
             "thresholds": {
@@ -1348,8 +1413,12 @@ def test_train_dynamics_candidate_supports_spatiotemporal_transformer_trainer_co
     assert architecture["uses_attention_backbone"] is True
     assert architecture["temporal_token_present"] is True
     assert architecture["sequence_token_count"] >= 9
+    assert architecture["action_mask_context_feature_count"] >= 1
     assert report["learned_parameters"]["feature_contract"]["flat_vector_allowed"] is False
     assert "temporal" in report["learned_parameters"]["feature_contract"]["sequence_feature_names"]
+    assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
+    assert report["learned_parameters"]["training_config"]["constraint_risk_calibration_weight"] == 0.55
+    assert report["learned_parameters"]["training_diagnostics"]["constraint_risk_calibration_weight"] == 0.55
     assert report["learned_parameters"]["training_diagnostics"]["prediction_count"] >= 1
     first_prediction = next(iter(report["predictions"].values()))
     assert first_prediction["hierarchical_token_summary"]["attention_backbone"] is True
@@ -1378,6 +1447,9 @@ def test_geofm_ablation_gate_defaults_to_review_without_explicit_downstream_metr
     assert report["baseline"]["variant_id"] == "B0"
     assert report["augmented"]["variant_id"] == "B1"
     assert report["augmented"]["provenance"]["vector_inventory"]["available"] is True
+    assert report["evidence"]["architecture_audit"]["schema"] == "territory_world_model.geofm_architecture_audit.v1"
+    assert report["evidence"]["architecture_audit"]["status"] == "review"
+    assert "adapter_type" in report["evidence"]["architecture_audit"]["missing"]
     assert report["gate_status"] == "review"
     assert report["decision"] == "review_required"
     assert any("explicit B0/B1" in item for item in report["recommendations"])
@@ -1415,6 +1487,514 @@ def test_geofm_ablation_gate_retains_only_when_planning_lift_passes():
     assert report["decision"] == "retain_geofm_for_downstream_planning"
     assert report["deltas"]["planning_lift_delta"] >= report["thresholds"]["min_planning_lift_delta"]
     assert report["deltas"]["constraint_risk_delta"] <= report["thresholds"]["max_constraint_risk_delta"]
+
+
+def test_geofm_ablation_gate_retains_when_required_architecture_audit_passes():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    report = svc.geofm_ablation_gate(
+        state_id,
+        {
+            "scenario": "geofm_gate_architecture_pass",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_architecture_audit": True,
+            },
+            "baseline_metrics": {
+                "planning_lift": 0.24,
+                "constraint_risk": 0.32,
+                "confidence": 0.58,
+            },
+            "augmented_metrics": {
+                "planning_lift": 0.31,
+                "constraint_risk": 0.31,
+                "confidence": 0.60,
+            },
+            "geofm_architecture_audit": {
+                "backbone": {
+                    "name": "Prithvi-100M",
+                    "fused_qkv": True,
+                    "input_modalities": ["sentinel-2", "dem", "explicit_gis_features"],
+                },
+                "adapter": {
+                    "type": "lora",
+                    "target_modules": ["encoder.blocks.*.attn.q_proj", "encoder.blocks.*.attn.v_proj"],
+                    "capacity_score": 0.62,
+                    "trainable_parameter_ratio": 0.028,
+                },
+                "validation": {
+                    "geographic_split": True,
+                    "temporal_holdout": True,
+                    "production_labels": True,
+                    "domain_shift_score": 0.14,
+                    "label_quality": 0.82,
+                },
+            },
+        },
+    )
+
+    audit = report["evidence"]["architecture_audit"]
+    assert report["gate_status"] == "pass"
+    assert report["decision"] == "retain_geofm_for_downstream_planning"
+    assert audit["required"] is True
+    assert audit["status"] == "pass"
+    assert audit["backbone"]["architecture"] == "vision_transformer"
+    assert audit["adapter"]["target_modules"]
+
+
+def test_geofm_ablation_gate_blocks_required_fused_qkv_lora_without_target_modules():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    report = svc.geofm_ablation_gate(
+        state_id,
+        {
+            "scenario": "geofm_gate_architecture_blocked",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_architecture_audit": True,
+            },
+            "baseline_metrics": {
+                "planning_lift": 0.24,
+                "constraint_risk": 0.32,
+                "confidence": 0.58,
+            },
+            "augmented_metrics": {
+                "planning_lift": 0.31,
+                "constraint_risk": 0.31,
+                "confidence": 0.60,
+            },
+            "geofm_architecture_audit": {
+                "backbone": {
+                    "name": "Prithvi-100M",
+                    "fused_qkv": True,
+                    "input_modalities": ["sentinel-2", "dem"],
+                },
+                "adapter": {
+                    "type": "lora",
+                    "capacity_score": 0.62,
+                    "trainable_parameter_ratio": 0.028,
+                },
+                "validation": {
+                    "geographic_split": True,
+                    "temporal_holdout": True,
+                    "production_labels": True,
+                    "domain_shift_score": 0.14,
+                    "label_quality": 0.82,
+                },
+            },
+        },
+    )
+
+    audit = report["evidence"]["architecture_audit"]
+    assert report["gate_status"] == "blocked"
+    assert report["decision"] == "gate_out_geofm"
+    assert audit["status"] == "blocked"
+    assert "fused_qkv_adapter_target_modules" in audit["failed"]
+    assert any("fused-QKV" in item for item in report["recommendations"])
+
+
+def test_geofm_ablation_gate_retains_when_required_extended_validation_passes():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    report = svc.geofm_ablation_gate(
+        state_id,
+        {
+            "scenario": "geofm_gate_extended_pass",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_extended_validation": True,
+            },
+            "baseline_metrics": {
+                "planning_lift": 0.24,
+                "constraint_risk": 0.32,
+                "confidence": 0.58,
+            },
+            "augmented_metrics": {
+                "planning_lift": 0.31,
+                "constraint_risk": 0.31,
+                "confidence": 0.60,
+            },
+            "extended_validation": {
+                "D2": {
+                    "sample_count": 8,
+                    "planning_lift_delta": 0.06,
+                    "constraint_risk_delta": -0.01,
+                    "ranking_score_delta": 0.05,
+                },
+                "D3": {
+                    "regions": [
+                        {"region": "county-a", "planning_lift_delta": 0.04, "constraint_risk_delta": 0.00},
+                        {"region": "county-b", "planning_lift_delta": 0.03, "constraint_risk_delta": 0.01},
+                    ],
+                },
+                "D4": {
+                    "domain_shift_score": 0.18,
+                    "holdout_regret_delta": 0.01,
+                    "temporal_holdout_confidence": 0.62,
+                    "production_label_quality": 0.78,
+                },
+            },
+        },
+    )
+
+    extended = report["evidence"]["extended_validation"]
+    assert report["gate_status"] == "pass"
+    assert report["decision"] == "retain_geofm_for_downstream_planning"
+    assert extended["schema"] == "territory_world_model.geofm_extended_validation.v1"
+    assert extended["required"] is True
+    assert extended["status"] == "pass"
+    assert extended["checks"]["D2"]["status"] == "pass"
+    assert extended["checks"]["D3"]["region_count"] == 2
+    assert extended["checks"]["D4"]["status"] == "pass"
+
+
+def test_geofm_ablation_gate_gates_out_when_required_cross_region_validation_fails():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    report = svc.geofm_ablation_gate(
+        state_id,
+        {
+            "scenario": "geofm_gate_extended_failed",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_extended_validation": True,
+            },
+            "baseline_metrics": {
+                "planning_lift": 0.24,
+                "constraint_risk": 0.32,
+                "confidence": 0.58,
+            },
+            "augmented_metrics": {
+                "planning_lift": 0.31,
+                "constraint_risk": 0.31,
+                "confidence": 0.60,
+            },
+            "extended_validation": {
+                "D2": {
+                    "sample_count": 8,
+                    "planning_lift_delta": 0.06,
+                    "constraint_risk_delta": -0.01,
+                    "ranking_score_delta": 0.05,
+                },
+                "D3": {
+                    "regions": [
+                        {"region": "county-a", "planning_lift_delta": 0.04, "constraint_risk_delta": 0.00},
+                        {"region": "county-b", "planning_lift_delta": 0.00, "constraint_risk_delta": 0.01},
+                    ],
+                },
+                "D4": {
+                    "domain_shift_score": 0.18,
+                    "holdout_regret_delta": 0.01,
+                    "temporal_holdout_confidence": 0.62,
+                    "production_label_quality": 0.78,
+                },
+            },
+        },
+    )
+
+    extended = report["evidence"]["extended_validation"]
+    assert report["gate_status"] == "blocked"
+    assert report["decision"] == "gate_out_geofm"
+    assert extended["status"] == "blocked"
+    assert extended["failed"] == ["D3"]
+    assert extended["checks"]["D3"]["regions"][1]["status"] == "blocked"
+    assert any("D3 cross-region" in item for item in report["recommendations"])
+
+
+def test_geofm_ablation_gate_infers_extended_validation_from_holdout_predictions():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "geofm_auto_validation_seed",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+        },
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    holdout_regions = ["county-a", "county-b"]
+    holdout_idx = 0
+    for item in dataset["examples"]:
+        if item["split"] == "holdout":
+            item["provenance"]["region_code"] = holdout_regions[holdout_idx]
+            holdout_idx += 1
+        else:
+            item["provenance"]["region_code"] = "train-county"
+
+    baseline_predictions = {}
+    augmented_predictions = {}
+    for item in dataset["examples"]:
+        target_lift = item["targets"]["planning_utility_delta"]
+        target_risk = item["targets"]["constraint_violation_probability"]
+        baseline_predictions[item["id"]] = {
+            "planning_utility_delta": round(target_lift - 0.04, 4),
+            "constraint_violation_probability": round(target_risk + 0.02, 4),
+            "uncertainty": {"confidence": 0.61},
+        }
+        augmented_predictions[item["id"]] = {
+            "planning_utility_delta": round(target_lift + 0.02, 4),
+            "constraint_violation_probability": target_risk,
+            "uncertainty": {"confidence": 0.76},
+        }
+
+    report = svc.geofm_ablation_gate(
+        state_id,
+        {
+            "scenario": "geofm_auto_validation",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_extended_validation": True,
+            },
+            "baseline_metrics": {
+                "planning_lift": 0.24,
+                "constraint_risk": 0.32,
+                "confidence": 0.58,
+            },
+            "augmented_metrics": {
+                "planning_lift": 0.31,
+                "constraint_risk": 0.31,
+                "confidence": 0.60,
+            },
+            "dataset": dataset,
+            "baseline_predictions": baseline_predictions,
+            "augmented_predictions": augmented_predictions,
+        },
+    )
+
+    extended = report["evidence"]["extended_validation"]
+    assert report["gate_status"] == "pass"
+    assert report["decision"] == "retain_geofm_for_downstream_planning"
+    assert extended["auto_inferred"] is True
+    assert extended["source"] == "auto_inferred"
+    assert "dataset_holdout_prediction_comparison" in extended["inference_sources"]
+    assert extended["checks"]["D2"]["status"] == "pass"
+    assert extended["checks"]["D2"]["sample_count"] == 2
+    assert extended["checks"]["D3"]["status"] == "pass"
+    assert extended["checks"]["D3"]["region_count"] == 2
+    assert extended["checks"]["D4"]["status"] == "pass"
+    assert extended["checks"]["D4"]["metrics"]["production_label_quality"] == 1.0
+
+
+def test_geofm_downstream_experiment_report_wraps_auto_inferred_evidence_and_gate():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "geofm_experiment_seed",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+        },
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    holdout_regions = ["county-a", "county-b"]
+    holdout_idx = 0
+    for item in dataset["examples"]:
+        if item["split"] == "holdout":
+            item["provenance"]["region_code"] = holdout_regions[holdout_idx]
+            holdout_idx += 1
+        else:
+            item["provenance"]["region_code"] = "train-county"
+
+    baseline_predictions = {}
+    augmented_predictions = {}
+    for item in dataset["examples"]:
+        target_lift = item["targets"]["planning_utility_delta"]
+        target_risk = item["targets"]["constraint_violation_probability"]
+        baseline_predictions[item["id"]] = {
+            "planning_utility_delta": round(target_lift - 0.04, 4),
+            "constraint_violation_probability": round(target_risk + 0.02, 4),
+            "uncertainty": {"confidence": 0.61},
+        }
+        augmented_predictions[item["id"]] = {
+            "planning_utility_delta": round(target_lift + 0.02, 4),
+            "constraint_violation_probability": target_risk,
+            "uncertainty": {"confidence": 0.76},
+        }
+
+    report = svc.geofm_downstream_experiment_report(
+        state_id,
+        {
+            "scenario": "geofm_experiment_auto",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_extended_validation": True,
+            },
+            "baseline_metrics": {
+                "planning_lift": 0.24,
+                "constraint_risk": 0.32,
+                "confidence": 0.58,
+            },
+            "augmented_metrics": {
+                "planning_lift": 0.31,
+                "constraint_risk": 0.31,
+                "confidence": 0.60,
+            },
+            "dataset": dataset,
+            "baseline_predictions": baseline_predictions,
+            "augmented_predictions": augmented_predictions,
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.geofm_downstream_experiment_report.v1"
+    assert report["status"] == "pass"
+    assert report["experiment"]["comparison"].startswith("B0 GIS-only")
+    assert report["variants"]["deltas"]["planning_lift_delta"] >= 0.03
+    assert report["evidence"]["extended_validation"]["auto_inferred"] is True
+    assert report["evidence"]["comparison_summary"]["holdout_row_count"] == 2
+    assert report["evidence"]["comparison_summary"]["region_count"] == 2
+    assert report["gate_report"]["schema"] == "territory_world_model.geofm_ablation_gate.v1"
+    assert report["gate_report"]["decision"] == "retain_geofm_for_downstream_planning"
+
+
+def test_geofm_downstream_experiment_report_auto_generates_review_only_prediction_scaffold():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "geofm_experiment_scaffold_seed",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+        },
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    holdout_regions = ["county-a", "county-b"]
+    holdout_idx = 0
+    for item in dataset["examples"]:
+        if item["split"] == "holdout":
+            item["provenance"]["region_code"] = holdout_regions[holdout_idx]
+            holdout_idx += 1
+        else:
+            item["provenance"]["region_code"] = "train-county"
+
+    report = svc.geofm_downstream_experiment_report(
+        state_id,
+        {
+            "scenario": "geofm_experiment_scaffold",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_extended_validation": True,
+            },
+            "dataset": dataset,
+        },
+    )
+
+    prediction_evidence = report["evidence"]["prediction_evidence"]
+    assert report["schema"] == "territory_world_model.geofm_downstream_experiment_report.v1"
+    assert report["status"] == "review"
+    assert prediction_evidence["prediction_source"] == "deterministic_experiment_scaffold"
+    assert prediction_evidence["auto_generated"] is True
+    assert prediction_evidence["baseline_prediction_count"] == len(dataset["examples"])
+    assert report["evidence"]["extended_validation"]["auto_inferred"] is True
+    assert report["evidence"]["comparison_summary"]["holdout_row_count"] == 2
+    assert report["gate_report"]["gate_status"] == "pass"
+    assert any("replace deterministic B0/B1 scaffold predictions" in item for item in report["recommendations"])
+
+
+def test_geofm_ablation_gate_blocks_auto_inferred_poor_production_holdout_quality():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "geofm_auto_validation_bad_seed",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+        },
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    for idx, item in enumerate(dataset["examples"]):
+        item["provenance"]["region_code"] = "county-a" if idx % 2 == 0 else "county-b"
+        if item["split"] == "holdout":
+            item["not_for_training_reasons"] = ["not_for_production_holdout"]
+            item["provenance"]["not_for_production"] = True
+
+    baseline_predictions = {}
+    augmented_predictions = {}
+    for item in dataset["examples"]:
+        target_lift = item["targets"]["planning_utility_delta"]
+        target_risk = item["targets"]["constraint_violation_probability"]
+        baseline_predictions[item["id"]] = {
+            "planning_utility_delta": round(target_lift - 0.04, 4),
+            "constraint_violation_probability": round(target_risk + 0.02, 4),
+            "uncertainty": {"confidence": 0.61},
+        }
+        augmented_predictions[item["id"]] = {
+            "planning_utility_delta": round(target_lift + 0.02, 4),
+            "constraint_violation_probability": target_risk,
+            "uncertainty": {"confidence": 0.76},
+        }
+
+    report = svc.geofm_ablation_gate(
+        state_id,
+        {
+            "scenario": "geofm_auto_validation_bad",
+            "evidence_coverage": 0.72,
+            "thresholds": {
+                "allow_not_for_production_vectors": True,
+                "require_extended_validation": True,
+            },
+            "baseline_metrics": {
+                "planning_lift": 0.24,
+                "constraint_risk": 0.32,
+                "confidence": 0.58,
+            },
+            "augmented_metrics": {
+                "planning_lift": 0.31,
+                "constraint_risk": 0.31,
+                "confidence": 0.60,
+            },
+            "dataset": dataset,
+            "baseline_predictions": baseline_predictions,
+            "augmented_predictions": augmented_predictions,
+        },
+    )
+
+    extended = report["evidence"]["extended_validation"]
+    assert report["gate_status"] == "blocked"
+    assert report["decision"] == "gate_out_geofm"
+    assert extended["auto_inferred"] is True
+    assert extended["status"] == "blocked"
+    assert extended["failed"] == ["D4"]
+    assert extended["checks"]["D4"]["metrics"]["production_label_quality"] == 0.0
+    assert "production_label_quality" in extended["checks"]["D4"]["failed"]
 
 
 def test_geofm_ablation_gate_gates_out_when_lift_fails():
@@ -1489,8 +2069,313 @@ def test_causal_calibration_report_passes_with_balanced_observations():
     assert report["estimate"]["overlap"]["status"] == "pass"
     assert report["estimate"]["balance"]["status"] == "pass"
     assert report["estimate"]["spatial"]["status"] == "not_applicable"
+    assert report["estimate"]["spatial_estimator"]["status"] == "not_applicable"
     assert report["calibration"]["calibration_factor"] > 1.0
     assert report["evidence_gate"]["status"] == "pass"
+
+
+def test_causal_calibration_report_uses_observed_approval_history_before_state_objects():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    observed_history = []
+    for idx in range(6):
+        covariates = {"area_m2": 1000 + idx * 10, "quality_score": 0.82 + idx * 0.01}
+        observed_history.append(
+            {
+                "approval_id": f"OBS-C-{idx}",
+                "project_id": f"OBS-PRJ-C-{idx}",
+                "approval_status": "in_review",
+                "outcome": 0.10 + idx * 0.005,
+                "stratum": "observed-county",
+                "cluster": f"observed-pair-{idx}",
+                "covariates": covariates,
+                "synthetic": False,
+                "not_for_production": False,
+            }
+        )
+        observed_history.append(
+            {
+                "approval_id": f"OBS-T-{idx}",
+                "project_id": f"OBS-PRJ-T-{idx}",
+                "approval_status": "approved",
+                "outcome": 0.20 + idx * 0.005,
+                "stratum": "observed-county",
+                "cluster": f"observed-pair-{idx}",
+                "covariates": covariates,
+                "synthetic": False,
+                "not_for_production": False,
+            }
+        )
+
+    report = svc.causal_calibration_report(
+        state_id,
+        {
+            "treatment": "approval_intervention",
+            "outcome": "planning_utility_delta",
+            "model_effect": 0.05,
+            "observed_history": observed_history,
+            "thresholds": {
+                "min_records": 10,
+                "min_treated": 5,
+                "min_control": 5,
+                "max_neighbor_exposure_gap": 1.0,
+                "max_spatial_residual_moran": 1.0,
+            },
+        },
+    )
+
+    assert report["status"] == "pass"
+    assert report["provenance"]["record_source"] == "observed_approval_review_history"
+    assert report["provenance"]["record_count"] == 12
+    inventory = report["provenance"]["record_inventory"]
+    assert inventory["schema"] == "territory_world_model.causal_record_inventory.v1"
+    assert inventory["record_count"] == 12
+    assert inventory["source_count"] == 1
+    assert inventory["treated_count"] == 6
+    assert inventory["control_count"] == 6
+    assert inventory["cluster_count"] == 6
+    assert inventory["spatial_support"]["has_clusters"] is True
+    assert inventory["synthetic_record_count"] == 0
+    assert inventory["not_for_production_record_count"] == 0
+    assert report["estimate"]["raw_record_count"] == 12
+    assert report["estimate"]["usable_record_count"] == 12
+    assert report["estimate"]["treated_count"] == 6
+    assert report["estimate"]["control_count"] == 6
+    assert report["estimate"]["att"] > 0
+    assert report["evidence_gate"]["synthetic_record_count"] == 0
+    assert report["evidence_gate"]["not_for_production_record_count"] == 0
+    assert report["evidence_gate"]["record_source"] == "observed_approval_review_history"
+    assert "synthetic_records" not in report["evidence_gate"]["missing"]
+    assert "not_for_production_records" not in report["evidence_gate"]["missing"]
+
+
+def test_causal_calibration_report_loads_observed_approval_history_csv(tmp_path):
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    history_path = tmp_path / "observed_approval_history.csv"
+    rows = ["approval_id,project_id,approval_status,outcome,stratum,area_m2,quality_score,synthetic,not_for_production"]
+    for idx in range(6):
+        rows.append(f"CSV-C-{idx},CSV-PRJ-C-{idx},in_review,{0.10 + idx * 0.005:.3f},csv-county,{1000 + idx * 10},{0.82 + idx * 0.01:.3f},False,False")
+        rows.append(f"CSV-T-{idx},CSV-PRJ-T-{idx},approved,{0.20 + idx * 0.005:.3f},csv-county,{1000 + idx * 10},{0.82 + idx * 0.01:.3f},False,False")
+    history_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    report = svc.causal_calibration_report(
+        state_id,
+        {
+            "model_effect": 0.05,
+            "observed_history_path": str(history_path),
+            "thresholds": {
+                "min_records": 10,
+                "min_treated": 5,
+                "min_control": 5,
+            },
+        },
+    )
+
+    assert report["status"] == "pass"
+    assert report["provenance"]["record_source"] == "observed_approval_review_history"
+    assert report["provenance"]["record_count"] == 12
+    inventory = report["provenance"]["record_inventory"]
+    assert inventory["source_path_count"] == 1
+    assert inventory["source_paths"] == [str(history_path)]
+    assert inventory["treated_count"] == 6
+    assert inventory["control_count"] == 6
+    assert report["estimate"]["usable_record_count"] == 12
+    assert report["evidence_gate"]["status"] == "pass"
+
+
+def test_causal_calibration_report_maps_observed_history_admin_code_to_cluster(tmp_path):
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    history_path = tmp_path / "observed_approval_history_admin.csv"
+    rows = ["approval_id,project_id,approval_status,outcome,stratum,DKXZQDM,DKMJ,synthetic,not_for_production"]
+    for idx in range(6):
+        rows.append(f"ADM-C-{idx},ADM-PRJ-C-{idx},in_review,{0.10 + idx * 0.005:.3f},admin-county,500227,{1000 + idx * 10},False,False")
+        rows.append(f"ADM-T-{idx},ADM-PRJ-T-{idx},approved,{0.20 + idx * 0.005:.3f},admin-county,500227,{1000 + idx * 10},False,False")
+    history_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    report = svc.causal_calibration_report(
+        state_id,
+        {
+            "model_effect": 0.05,
+            "observed_history_path": str(history_path),
+            "thresholds": {
+                "min_records": 10,
+                "min_treated": 5,
+                "min_control": 5,
+            },
+        },
+    )
+
+    inventory = report["provenance"]["record_inventory"]
+    assert report["provenance"]["record_source"] == "observed_approval_review_history"
+    assert inventory["cluster_count"] == 1
+    assert inventory["clusters"] == ["500227"]
+    assert inventory["spatial_support"]["has_clusters"] is True
+    assert inventory["spatial_support"]["spatial_record_count"] == 12
+
+
+def test_causal_calibration_report_uses_observed_history_spatial_support():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    observed_history = []
+    for idx in range(6):
+        covariates = {"area_m2": 1000 + idx * 10, "quality_score": 0.82 + idx * 0.01}
+        control_id = f"OBS-SP-C-{idx}"
+        treated_id = f"OBS-SP-T-{idx}"
+        observed_history.append(
+            {
+                "unit_id": control_id,
+                "approval_id": control_id,
+                "project_id": f"OBS-SP-PRJ-C-{idx}",
+                "approval_status": "in_review",
+                "outcome": 0.10 + idx * 0.005,
+                "stratum": "observed-county",
+                "cluster": f"observed-block-{idx}",
+                "neighbors": [treated_id],
+                "x": 106.20 + idx * 0.01,
+                "y": 29.60 + idx * 0.01,
+                "covariates": covariates,
+                "synthetic": False,
+                "not_for_production": False,
+            }
+        )
+        observed_history.append(
+            {
+                "unit_id": treated_id,
+                "approval_id": treated_id,
+                "project_id": f"OBS-SP-PRJ-T-{idx}",
+                "approval_status": "approved",
+                "outcome": 0.20 + idx * 0.005,
+                "stratum": "observed-county",
+                "cluster": f"observed-block-{idx}",
+                "neighbors": [control_id],
+                "x": 106.205 + idx * 0.01,
+                "y": 29.605 + idx * 0.01,
+                "covariates": covariates,
+                "synthetic": False,
+                "not_for_production": False,
+            }
+        )
+
+    report = svc.causal_calibration_report(
+        state_id,
+        {
+            "model_effect": 0.05,
+            "observed_history": observed_history,
+            "thresholds": {
+                "min_records": 10,
+                "min_treated": 5,
+                "min_control": 5,
+                "max_neighbor_exposure_gap": 1.0,
+                "max_spatial_residual_moran": 1.0,
+            },
+        },
+    )
+
+    inventory = report["provenance"]["record_inventory"]
+    assert report["status"] == "pass"
+    assert report["provenance"]["record_source"] == "observed_approval_review_history"
+    assert inventory["cluster_count"] == 6
+    assert inventory["neighbor_record_count"] == 12
+    assert inventory["coordinate_record_count"] == 12
+    assert inventory["spatial_support"]["has_clusters"] is True
+    assert inventory["spatial_support"]["has_neighbor_links"] is True
+    assert inventory["spatial_support"]["has_coordinates"] is True
+    assert inventory["spatial_support"]["spatial_record_count"] == 12
+    assert report["estimate"]["estimator"]["primary"] == "spatial_fixed_effect_neighbor_adapter"
+    assert report["estimate"]["spatial"]["neighbor_edge_count"] == 6
+    assert report["estimate"]["spatial_estimator"]["status"] == "pass"
+    assert report["estimate"]["spatial_estimator"]["support"]["mixed_spatial_unit_count"] == 6
+    assert "spatial_estimator" not in report["evidence_gate"]["missing"]
+
+
+def test_causal_calibration_report_loads_observed_history_csv_spatial_support(tmp_path):
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    history_path = tmp_path / "observed_approval_history_spatial.csv"
+    rows = [
+        "unit_id,approval_id,project_id,approval_status,outcome,stratum,cluster,neighbors,x,y,area_m2,quality_score,synthetic,not_for_production"
+    ]
+    for idx in range(6):
+        control_id = f"CSV-SP-C-{idx}"
+        treated_id = f"CSV-SP-T-{idx}"
+        rows.append(
+            f"{control_id},{control_id},CSV-SP-PRJ-C-{idx},in_review,{0.10 + idx * 0.005:.3f},csv-county,csv-block-{idx},{treated_id},{106.20 + idx * 0.01:.4f},{29.60 + idx * 0.01:.4f},{1000 + idx * 10},{0.82 + idx * 0.01:.3f},False,False"
+        )
+        rows.append(
+            f"{treated_id},{treated_id},CSV-SP-PRJ-T-{idx},approved,{0.20 + idx * 0.005:.3f},csv-county,csv-block-{idx},{control_id},{106.205 + idx * 0.01:.4f},{29.605 + idx * 0.01:.4f},{1000 + idx * 10},{0.82 + idx * 0.01:.3f},False,False"
+        )
+    history_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    report = svc.causal_calibration_report(
+        state_id,
+        {
+            "model_effect": 0.05,
+            "observed_history_path": str(history_path),
+            "thresholds": {
+                "min_records": 10,
+                "min_treated": 5,
+                "min_control": 5,
+                "max_neighbor_exposure_gap": 1.0,
+                "max_spatial_residual_moran": 1.0,
+            },
+        },
+    )
+
+    inventory = report["provenance"]["record_inventory"]
+    assert report["status"] == "pass"
+    assert report["provenance"]["record_source"] == "observed_approval_review_history"
+    assert inventory["source_paths"] == [str(history_path)]
+    assert inventory["cluster_count"] == 6
+    assert inventory["neighbor_record_count"] == 12
+    assert inventory["coordinate_record_count"] == 12
+    assert inventory["spatial_support"]["spatial_record_count"] == 12
+    assert report["estimate"]["estimator"]["primary"] == "spatial_fixed_effect_neighbor_adapter"
+    assert report["estimate"]["spatial"]["neighbor_edge_count"] == 6
+    assert report["estimate"]["spatial_estimator"]["status"] == "pass"
+    assert report["estimate"]["spatial_estimator"]["support"]["cross_treatment_neighbor_edge_count"] == 6
+    assert "spatial_estimator" not in report["evidence_gate"]["missing"]
+
+
+def test_causal_record_inventory_requires_complete_coordinate_pair_for_spatial_support():
+    svc = _build_service()
+
+    inventory = svc._causal_record_inventory(
+        [
+            {"unit_id": "x-only", "treatment": 0, "outcome": 0.10, "x": 106.20},
+            {"unit_id": "y-only", "treatment": 1, "outcome": 0.20, "y": 29.60},
+            {"unit_id": "xy", "treatment": 1, "outcome": 0.21, "x": 106.21, "y": 29.61},
+            {"unit_id": "cluster", "treatment": 0, "outcome": 0.11, "cluster": "block-a"},
+            {"unit_id": "neighbor", "treatment": 1, "outcome": 0.22, "neighbors": ["cluster"]},
+        ]
+    )
+
+    assert inventory["coordinate_record_count"] == 1
+    assert inventory["neighbor_record_count"] == 1
+    assert inventory["cluster_count"] == 1
+    assert inventory["spatial_support"]["has_coordinates"] is True
+    assert inventory["spatial_support"]["spatial_record_count"] == 3
 
 
 def test_causal_calibration_report_reviews_poor_overlap_even_with_balanced_counts():
@@ -1547,7 +2432,7 @@ def test_causal_calibration_report_reviews_poor_overlap_even_with_balanced_count
     assert any("overlap" in item for item in report["recommendations"])
 
 
-def test_causal_calibration_report_tracks_spatial_diagnostics_when_supported():
+def test_causal_calibration_report_uses_spatial_estimator_with_balanced_units():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
     state_id = state["state_version"]["id"]
@@ -1598,10 +2483,83 @@ def test_causal_calibration_report_tracks_spatial_diagnostics_when_supported():
     )
 
     assert report["status"] == "pass"
+    assert report["estimate"]["estimator"]["primary"] == "spatial_fixed_effect_neighbor_adapter"
     assert report["estimate"]["spatial"]["status"] == "pass"
     assert report["estimate"]["spatial"]["neighbor_edge_count"] == 6
     assert report["estimate"]["spatial"]["spatial_cluster_count"] == 6
+    assert report["estimate"]["spatial_estimator"]["schema"] == "territory_world_model.spatial_causal_estimator.v1"
+    assert report["estimate"]["spatial_estimator"]["status"] == "pass"
+    assert report["estimate"]["spatial_estimator"]["support"]["mixed_spatial_unit_count"] == 6
+    assert report["estimate"]["spatial_estimator"]["support"]["cross_treatment_neighbor_edge_count"] == 6
+    assert report["estimate"]["spatial_estimator"]["effect"] > 0
+    assert report["estimate"]["spatial_estimator"]["uncertainty"]["spatial_block_bootstrap"]["status"] == "pass"
+    assert report["estimate"]["spatial_estimator"]["uncertainty"]["geographic_holdout"]["status"] == "pass"
     assert "spatial_interference" not in report["evidence_gate"]["missing"]
+    assert "spatial_estimator" not in report["evidence_gate"]["missing"]
+
+
+def test_causal_calibration_report_reviews_unstable_geographic_holdout():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    records = []
+    effects = [0.10, 0.10, 0.10, 0.10, 0.10, -0.35]
+    for idx, effect in enumerate(effects):
+        covariates = {"area_m2": 1000 + idx * 10, "quality_score": 0.82 + idx * 0.01}
+        base = 0.10 + idx * 0.005
+        records.append(
+            {
+                "unit_id": f"unstable-c-{idx}",
+                "treatment": 0,
+                "outcome": base,
+                "stratum": "project",
+                "cluster": f"unstable-pair-{idx}",
+                "neighbors": [f"unstable-t-{idx}"],
+                "covariates": covariates,
+            }
+        )
+        records.append(
+            {
+                "unit_id": f"unstable-t-{idx}",
+                "treatment": 1,
+                "outcome": base + effect,
+                "stratum": "project",
+                "cluster": f"unstable-pair-{idx}",
+                "neighbors": [f"unstable-c-{idx}"],
+                "covariates": covariates,
+            }
+        )
+
+    report = svc.causal_calibration_report(
+        state_id,
+        {
+            "treatment": "farmland_protection",
+            "outcome": "planning_utility_delta",
+            "model_effect": 0.05,
+            "records": records,
+            "thresholds": {
+                "min_records": 10,
+                "min_treated": 5,
+                "min_control": 5,
+                "max_neighbor_exposure_gap": 1.0,
+                "max_spatial_residual_moran": 1.0,
+                "max_spatial_effect_gap": 1.0,
+                "max_spatial_bootstrap_interval_width": 1.0,
+                "max_spatial_holdout_delta": 0.05,
+            },
+        },
+    )
+
+    assert report["status"] == "review"
+    estimator = report["estimate"]["spatial_estimator"]
+    assert estimator["status"] == "review"
+    assert estimator["uncertainty"]["geographic_holdout"]["status"] == "review"
+    assert "geographic_holdout_instability" in estimator["review_reasons"]
+    assert "spatial_estimator" in report["evidence_gate"]["missing"]
+    assert any("geographic holdout" in item for item in report["recommendations"])
 
 
 def test_causal_calibration_report_reviews_spatial_interference():
@@ -1656,11 +2614,14 @@ def test_causal_calibration_report_reviews_spatial_interference():
     assert report["status"] == "review"
     assert report["estimate"]["spatial"]["status"] == "review"
     assert report["estimate"]["spatial"]["cluster_balance"]["max_abs_treatment_share_gap"] == 0.5
+    assert report["estimate"]["spatial_estimator"]["status"] == "review"
+    assert "spatial_treatment_concentration" in report["estimate"]["spatial_estimator"]["review_reasons"]
     assert "spatial_interference" in report["evidence_gate"]["missing"]
+    assert "spatial_estimator" in report["evidence_gate"]["missing"]
     assert any("spatial spillover" in item for item in report["recommendations"])
 
 
-def test_causal_calibration_report_reviews_scaffold_or_unbalanced_support():
+def test_causal_calibration_report_uses_state_object_observations_before_scaffold():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
     state_id = state["state_version"]["id"]
@@ -1669,6 +2630,49 @@ def test_causal_calibration_report_reviews_scaffold_or_unbalanced_support():
 
     report = svc.causal_calibration_report(
         state_id,
+        {
+            "scenario": "causal_scaffold_review",
+            "evidence_coverage": 0.72,
+            "model_effect": 0.05,
+        },
+    )
+
+    assert report["status"] == "review"
+    assert report["evidence_gate"]["status"] == "review"
+    assert report["provenance"]["record_source"] == "state_object_observations"
+    assert report["provenance"]["record_count"] == 60
+    assert report["estimate"]["raw_record_count"] == 60
+    assert report["estimate"]["usable_record_count"] == 0
+    assert report["evidence_gate"]["synthetic_record_count"] == 60
+    assert report["evidence_gate"]["not_for_production_record_count"] == 60
+    assert "synthetic_records" in report["evidence_gate"]["missing"]
+    assert "not_for_production_records" in report["evidence_gate"]["missing"]
+    assert any("not_for_production" in item for item in report["recommendations"])
+
+
+def test_causal_calibration_report_falls_back_to_scaffold_without_state_object_observations():
+    svc = _build_service()
+    project = svc.create_project(
+        {
+            "name": "Empty TWM Causal Test",
+            "region_code": "500227",
+            "business_scenario": "planning_supervision",
+        },
+        username="tester",
+    )
+    state = TwmStateVersion(
+        project_id=project["id"],
+        label="empty causal fallback",
+        object_count=0,
+        relation_count=0,
+        quality_summary={},
+        build_status="ready",
+        summary={"object_counts_by_role": {}, "relation_counts_by_type": {}},
+    )
+    svc.repository.save_state_version(state)
+
+    report = svc.causal_calibration_report(
+        state.id,
         {
             "scenario": "causal_scaffold_review",
             "evidence_coverage": 0.72,
@@ -1808,6 +2812,8 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_fit_dynamics_candidate_async" in names
     assert "twm_geofm_ablation_gate" in names
     assert "twm_geofm_ablation_gate_async" in names
+    assert "twm_geofm_downstream_experiment_report" in names
+    assert "twm_geofm_downstream_experiment_report_async" in names
     assert "twm_causal_calibration_report" in names
     assert "twm_causal_calibration_report_async" in names
 
@@ -2117,6 +3123,48 @@ def test_twm_routes_create_list_and_forecast(monkeypatch):
     geofm_payload = json.loads(geofm_resp.body)
     assert geofm_payload["schema"] == "territory_world_model.geofm_ablation_gate.v1"
     assert geofm_payload["decision"] == "retain_geofm_for_downstream_planning"
+
+    geofm_experiment_req = _fake_request(
+        "POST",
+        json.dumps(
+            {
+                "scenario": "route_geofm_experiment",
+                "evidence_coverage": 0.7,
+                "thresholds": {
+                    "allow_not_for_production_vectors": True,
+                    "require_extended_validation": True,
+                },
+                "baseline_metrics": {"planning_lift": 0.2, "constraint_risk": 0.31, "confidence": 0.56},
+                "augmented_metrics": {"planning_lift": 0.25, "constraint_risk": 0.3, "confidence": 0.58},
+                "extended_validation": {
+                    "D2": {
+                        "sample_count": 2,
+                        "planning_lift_delta": 0.05,
+                        "constraint_risk_delta": -0.01,
+                        "ranking_score_delta": 0.04,
+                    },
+                    "D3": {
+                        "regions": [
+                            {"region": "route-a", "planning_lift_delta": 0.03, "constraint_risk_delta": 0.0},
+                            {"region": "route-b", "planning_lift_delta": 0.03, "constraint_risk_delta": 0.0},
+                        ],
+                    },
+                    "D4": {
+                        "domain_shift_score": 0.1,
+                        "holdout_regret_delta": 0.01,
+                        "temporal_holdout_confidence": 0.65,
+                        "production_label_quality": 0.8,
+                    },
+                },
+            }
+        ).encode("utf-8"),
+        path_params={"id": state["state_version"]["id"]},
+    )
+    geofm_experiment_resp = asyncio.run(routes.twm_geofm_downstream_experiment_report(geofm_experiment_req))
+    assert geofm_experiment_resp.status_code == 200
+    geofm_experiment_payload = json.loads(geofm_experiment_resp.body)
+    assert geofm_experiment_payload["schema"] == "territory_world_model.geofm_downstream_experiment_report.v1"
+    assert geofm_experiment_payload["gate_report"]["decision"] == "retain_geofm_for_downstream_planning"
 
     calibration_req = _fake_request(
         "POST",

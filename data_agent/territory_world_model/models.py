@@ -585,6 +585,7 @@ class TwmBeamPlanReport:
     schema: str = "territory_world_model.beam_plan_report.v1"
     scenario: str = "baseline"
     status: str = "review"
+    ranking_policy: dict[str, Any] = field(default_factory=dict)
     candidates: list[dict[str, Any]] = field(default_factory=list)
     ranking: list[dict[str, Any]] = field(default_factory=list)
     selected: dict[str, Any] = field(default_factory=dict)
@@ -621,6 +622,23 @@ class TwmGeoFMGateReport:
     deltas: dict[str, Any] = field(default_factory=dict)
     thresholds: dict[str, Any] = field(default_factory=dict)
     evidence: dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
+    created_at: str = field(default_factory=now_utc_iso)
+
+    def to_dict(self) -> dict[str, Any]:
+        return jsonable(self)
+
+
+@dataclass
+class TwmGeoFMDownstreamExperimentReport:
+    state_version_id: str = ""
+    project_id: str = ""
+    schema: str = "territory_world_model.geofm_downstream_experiment_report.v1"
+    status: str = "review"
+    experiment: dict[str, Any] = field(default_factory=dict)
+    variants: dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
+    gate_report: dict[str, Any] = field(default_factory=dict)
     recommendations: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=now_utc_iso)
 

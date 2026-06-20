@@ -175,6 +175,62 @@ class TestTwmStateInput(unittest.TestCase):
             ["project_overlaps_permanent_basic_farmland"],
         )
 
+    def test_validation_rejects_role_type_registry_break(self):
+        from data_agent.fusion.twm_state_input import (
+            build_twm_state_input_from_semantic_product,
+            validate_twm_state_input,
+        )
+
+        manifest = json.loads((MMFE_DIR / "twm_mmfe_semantic_product.json").read_text(encoding="utf-8"))
+        relations = _read_csv(MMFE_DIR / "twm_mmfe_semantic_relations.csv")
+        contract = json.loads((MMFE_DIR / "twm_state_input_contract.json").read_text(encoding="utf-8"))
+        payload = build_twm_state_input_from_semantic_product(
+            manifest,
+            semantic_relations=relations,
+            input_contract=contract,
+        )
+        payload["canonical_object_type_registry"] = [
+            row for row in payload["canonical_object_type_registry"] if row.get("object_type") != "project"
+        ]
+
+        validation = validate_twm_state_input(payload)
+
+        self.assertFalse(validation["valid"])
+        self.assertTrue(
+            any("object_type is not in canonical_object_type_registry: project" in error for error in validation["errors"]),
+            validation["errors"],
+        )
+
+    def test_validation_rejects_unknown_hard_constraint_references(self):
+        from data_agent.fusion.twm_state_input import (
+            build_twm_state_input_from_semantic_product,
+            validate_twm_state_input,
+        )
+
+        manifest = json.loads((MMFE_DIR / "twm_mmfe_semantic_product.json").read_text(encoding="utf-8"))
+        relations = _read_csv(MMFE_DIR / "twm_mmfe_semantic_relations.csv")
+        contract = json.loads((MMFE_DIR / "twm_state_input_contract.json").read_text(encoding="utf-8"))
+        payload = build_twm_state_input_from_semantic_product(
+            manifest,
+            semantic_relations=relations,
+            input_contract=contract,
+        )
+        hard_constraints = payload["state_components"]["hard_constraints"]
+        hard_constraints["rule_ids"] = list(hard_constraints["rule_ids"]) + ["TWM-MISSING-999"]
+        hard_constraints["objective_ids"] = list(hard_constraints["objective_ids"]) + ["missing_overlap_m2"]
+
+        validation = validate_twm_state_input(payload)
+
+        self.assertFalse(validation["valid"])
+        self.assertTrue(
+            any("unknown semantic relation rule_id: TWM-MISSING-999" in error for error in validation["errors"]),
+            validation["errors"],
+        )
+        self.assertTrue(
+            any("unknown objective_id: missing_overlap_m2" in error for error in validation["errors"]),
+            validation["errors"],
+        )
+
     def test_script_writes_state_input_sidecar(self):
         self.assertTrue(SCRIPT.exists(), f"missing script: {SCRIPT}")
         with tempfile.TemporaryDirectory() as tmp:

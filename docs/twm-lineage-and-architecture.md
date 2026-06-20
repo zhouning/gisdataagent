@@ -447,6 +447,7 @@ TWM 至少输出以下头：
 | `planning_utility_delta` | 动作相对 baseline 的规划效用变化 | candidate ranking、MPC regret、planning lift |
 | `uncertainty` | aleatoric、epistemic、calibration gap、confidence | uncertainty calibration、coverage-risk curve |
 | `calibration` | treatment effect、scenario bias、risk pressure | causal calibration audit |
+| `action_mask.allowed` | 动作是否可被 planner 消费，以及 required review / hard block 原因 | false_allow/false_block、mixed-risk context holdout |
 | `evidence_gate` | 证据是否足以升级 claim | claim-evidence map、manual review |
 
 注意：`evidence_gate` 不是模型预测头，而是 claim boundary 控制器。它决定某个 forecast/rollout 是否可被写入报告，或只能进入人工复核。
@@ -461,6 +462,8 @@ L =
   + lambda_constraint * L_constraint
   + lambda_ranking * L_planning_ranking
   + lambda_causal * L_causal_calibration
+  + lambda_action_mask * L_action_feasibility
+  + lambda_risk_calibration * L_constraint_risk_calibration
   + lambda_uncertainty * L_uncertainty_calibration
   + lambda_evidence * L_evidence_consistency
   + lambda_gate * L_geofm_gate
@@ -472,6 +475,8 @@ L =
 - `L_constraint`：规则违背、硬约束触碰、审批冲突等的分类/概率损失。
 - `L_planning_ranking`：候选方案排序损失，服务 MPC/beam search 的下游选择。
 - `L_causal_calibration`：使 utility/reward 与 treatment-effect 估计一致。
+- `L_action_feasibility`：动作可行性与 review/block 预测损失，重点惩罚 false_allow，同时监控 false_block 的过度保守。
+- `L_constraint_risk_calibration`：约束风险头的概率校准损失，避免高风险可允许动作被风险头系统性高估而误挡。
 - `L_uncertainty_calibration`：NLL、ECE、Brier、conformal coverage 等。
 - `L_evidence_consistency`：模型 claim 与证据覆盖、数据质量、复核结果一致。
 - `L_geofm_gate`：防止 GeoFM embedding 在无 downstream lift 时被过度依赖。
@@ -606,22 +611,24 @@ TWM 验证必须按以下顺序推进：
 | dynamics candidate evaluation | 已补充 scaffold | 对候选 dynamics 的 future latent、constraint、utility ranking、uncertainty、action mask 输出做 holdout 评估；缺真实 ground truth 时不升级 claim |
 | dynamics candidate fit | 已补充 scaffold | 在 readiness gate 通过后拟合透明 hierarchical baseline dynamics，产出 candidate manifest、learned parameters、predictions，并自动进入 evaluation gate |
 | dynamics forecast backend adapter | 已补充 scaffold | forecast、counterfactual rollout 和 validation consumer 可消费通过 gate 的 dynamics candidate report 并覆盖多头输出；review/blocked candidate 只进入 evidence gate，不升级预测 claim |
-| constrained beam planning consumer | 已补充 scaffold | 多候选 action 逐个经过 forecast/dynamics/action-mask/evidence gate，按 utility-risk-confidence 排序，并输出可审计 ranking 与 selected candidate |
+| constrained beam planning consumer | 已补充 scaffold，并显式化 ranking policy | 多候选 action 逐个经过 forecast/dynamics/action-mask/evidence gate，按可配置 utility/risk/confidence ranking policy 排序；默认保持 `utility - risk + 0.1 * confidence` 及 blocked/review penalty，但报告中显式输出 `ranking_policy`，可被 holdout 实验覆盖 |
 | hierarchical state contract report | 已补充 scaffold | 新增 `state_contract_report`，把 parcel/block/township/county token、explicit GIS feature、constraint channel、history delta、GeoFM gate 和 claim boundary 固化为统一输入契约；当前 township 仍可能停留在 review-level proxy |
 | dynamics backend contract/adapter report | 已补充 scaffold | 新增 `dynamics_backend_report`，检查 backend 是否 action-conditioned、多头输出、证据门通过且可被 forecast/rollout/beam 消费；通过后包装为 candidate report，未通过时保持 review/blocked claim |
 | training objective / multi-head loss report | 已补充 scaffold | 新增 `training_objective_report`，对 transition、constraint、ranking、calibration、uncertainty、action-mask、evidence-consistency 各损失项做覆盖度与 scaffold 数值审计，为后续 trainable dynamics trainer 提供统一 loss contract |
 | trainable dynamics trainer scaffold | 已补充 scaffold | 新增 `train_dynamics_candidate`，消费 readiness、training objective 和 dataset，输出 trainable candidate report、backend report 与 objective report；当前仍是透明统计 trainer scaffold，不是最终神经世界模型 |
-| trainable neural dynamics | 已补充三级候选后端 scaffold | 已接入本地 `torch_multi_head_mlp`、`torch_hierarchical_graph` 与 `torch_spatiotemporal_transformer` 三条 action-conditioned 多头 trainable candidate；graph 后端按 parcel/block/township/county token 分组编码并显式消费 history_delta/temporal transition 特征，进行轻量 relation + temporal message mixing；transformer 后端把 parcel/block/township/county、relation、temporal、action、scenario、context 编成固定语义 token 序列并做 self-attention 融合；三者均可通过 `train_dynamics_candidate` 输出 candidate/backend/objective 合同；但这些仍是小型候选实现，不是最终大规模 production graph/transformer 层级时空 dynamics 主干 |
+| trainable neural dynamics | 已补充三级候选后端 scaffold，并完成混合 action-mask、结构性风险头与 rollout 对比 | 已接入本地 `torch_multi_head_mlp`、`torch_hierarchical_graph` 与 `torch_spatiotemporal_transformer` 三条 action-conditioned 多头 trainable candidate；graph 后端按 parcel/block/township/county token 分组编码并显式消费 history_delta/temporal transition 特征，进行轻量 relation + temporal message mixing；transformer 后端把 parcel/block/township/county、relation、temporal、action、scenario、context 编成固定语义 token 序列并做 self-attention 融合；三者均可通过 `train_dynamics_candidate` 输出 candidate/backend/objective 合同；已在 8-period/4-step holdout synthetic foundation 上比较 MLP/graph/transformer 与 raw/action-type/context action-mask calibration variants，并新增 candidate-split transformer constraint-risk calibration；当前 transformer 已新增 `context_residual` 约束风险头，它在共享 6-head 输出合同之外，让 constraint-risk logit 显式读取 pooled transformer state 以及 action/context/temporal token embeddings；`transformer_risk_head_probe` 显示 shared head 最优 weight `1.2` 时 raw mean constraint error `0.155325`、candidate-split MAE before affine calibration `0.17825`，而 context-residual head 最优 weight `0.0` 时 raw mean constraint error `0.040459`、candidate-split MAE before affine calibration `0.026218`；当前完整比较包含 13 个候选，`torch_spatiotemporal_transformer_constraint_risk_context_action_mask_calibrated` rank 1，rank score `3.802079`，mean constraint error `0.034328`，false_allow `0`、false_block `0`，planner exact-match `1.0`，planner mean regret `0.0`，rollout mean cumulative regret `0.0`；`torch_spatiotemporal_transformer_context_action_mask_calibrated` rank 2，`torch_hierarchical_graph_context_action_mask_calibrated` rank 3；这表明主要收益来自让模拟器风险头结构性消费 action/context/temporal token，而不是继续提高标量 calibration loss；当前仍保留 post-hoc affine calibration，下一步是判断其边际收益并逐步替换为 learned risk-head calibration；这些仍是小型候选实现，不是最终大规模 production graph/transformer 层级时空 dynamics 主干 |
 | planning ranking loss | 部分完成 | 已有 training objective scaffold 与 ranking diagnostics；真正的训练优化和 learned ranking 仍未实现 |
 | causal calibration backend | 已补充本地 estimator scaffold | 已新增本地 observational causal calibration backend，输出 stratified ATT、IPW、augmented IPW、overlap diagnostics、covariate balance diagnostics，以及空间邻域暴露/空间簇处理集中度/残差空间自相关等 spatial interference diagnostics，并由 evidence gate 控制是否可进入 forecast/planning 的 utility/scenario scale；当前仍是观测校准 scaffold，不是随机试验级因果识别，也尚未接 paper 6/7 的外部空间因果 estimator 服务 |
-| GeoFM gate | 已补充 scaffold | 已有 B0/B1 downstream planning lift gate；仍需要扩展到 D2/D3/D4 和真实跨区实验管线 |
+| GeoFM gate | 已补充 architecture-aware scaffold | 已有 B0/B1 downstream planning lift gate、D2 holdout、D3 geographic split、D4 domain-shift/temporal/label-quality validation、dataset+prediction map 自动推断，以及 paper 12 要求的 backbone/adapter/fused-QKV/input modality/capacity/label/domain-shift 架构审计；仍需要真实跨区 downstream 实验管线和生产级 GeoFM adapter 训练记录 |
 | GIS 部署闭环 | 部分完成 | API/toolset/audit 已有，ArcGIS/前端深度集成需继续 |
+
+补充说明：2026-06-20 技术评审中关于 `validate_twm_state_input` 校验过浅的判断已采纳。当前校验已经覆盖 role/type 与 `canonical_object_type_registry` 的闭包、重复/缺失 role 字段、state component 的 rule/objective 引用闭包，以及 hard-constraint objective 是否绑定到 `optimization_interface`。这加强的是 renderer/data-foundation 到 simulator 输入之间的契约完整性，不改变 TWM 的核心 simulator 边界。
 
 ### 4.15 下一阶段实现优先级
 
 1. 增强 training dataset builder：从更多历史状态、方案、规则命中、审批/复核和遥感变化生成可训练样本。
-2. 将当前 `torch_hierarchical_graph` 与 `torch_spatiotemporal_transformer` 的轻量 token/message mixing 继续升级为真正的大规模图/Transformer 层级时空 dynamics optimizer，并保留现有 backend/objective/evidence gate 合同。
-3. 扩展 GeoFM gate：显式 GIS-only baseline 已有 scaffold，后续补 D2/D3/D4 与真实 downstream 实验。
+2. 将当前 post-hoc context action-mask calibration 推进为 learned context-sensitive action-mask head，保留当前 transformer risk+context variant 的 false_allow `0` / false_block `0` 数据验证结果；同时继续把 post-hoc transformer affine risk calibration 替换为 learned risk-head calibration，当前 context-residual risk head 已把 pre-calibration candidate-split MAE 降到 `0.026218`。
+3. 扩展 GeoFM gate：B0/B1、D2/D3/D4 与 architecture-aware audit 已有 scaffold，后续补真实跨区 downstream 实验、生产级 GeoFM adapter 训练记录和显式 GeoFM 预测图。
 4. 升级 causal estimator：当前已有本地 augmented-IPW/stratified observational calibration backend 和 spatial interference diagnostics；下一步把 paper 6/7 的空间 treatment-effect estimator 接成可调用服务，并把地理邻近、空间干扰和跨区稳健性诊断从规则型 scaffold 升级为真实估计与显著性分析。
 5. 扩展 planning consumer：多候选 beam scaffold 已有，后续补 latent MPC、空间 action mask 搜索与硬约束中止。
 6. 做分层验证报告：future prediction、counterfactual、planning lift、GIS deployability 分开输出。

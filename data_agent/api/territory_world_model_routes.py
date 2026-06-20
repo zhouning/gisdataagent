@@ -525,6 +525,26 @@ async def twm_geofm_ablation_gate(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=400)
 
 
+async def twm_geofm_downstream_experiment_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.geofm_downstream_experiment_report(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 async def twm_causal_calibration_report(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -573,6 +593,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/states/{id}/fit-dynamics-candidate", endpoint=twm_fit_dynamics_candidate, methods=["POST"]),
         Route("/api/twm/states/{id}/train-dynamics-candidate", endpoint=twm_train_dynamics_candidate, methods=["POST"]),
         Route("/api/twm/states/{id}/geofm-ablation-gate", endpoint=twm_geofm_ablation_gate, methods=["POST"]),
+        Route("/api/twm/states/{id}/geofm-downstream-experiment-report", endpoint=twm_geofm_downstream_experiment_report, methods=["POST"]),
         Route("/api/twm/states/{id}/causal-calibration-report", endpoint=twm_causal_calibration_report, methods=["POST"]),
         Route("/api/twm/scenarios", endpoint=twm_scenarios, methods=["GET", "POST"]),
         Route("/api/twm/scenarios/{id}/compare", endpoint=twm_scenario_compare, methods=["GET", "POST"]),

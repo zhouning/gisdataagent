@@ -1,0 +1,1 @@
+unit_id,approval_id,project_id,approval_status,outcome,approved_area_m2,area_m2,stratum,cluster,neighbors,x,y,quality_score,baseline_risk_score,risk_score,rule_hit_count,review_task_count,propensity_score,evidence_weight,synthetic,not_for_production,source_path

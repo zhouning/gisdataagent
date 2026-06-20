@@ -81,9 +81,11 @@ def train_neural_multi_head_dynamics(
         optimizer.zero_grad()
         out = model(x_tensor)
         utility_pred = out[:, 2:3]
+        constraint_prob = torch.sigmoid(out[:, 1:2])
         loss = (
             mse(out[:, 0:1], y_area)
             + bce(out[:, 1:2], y_constraint)
+            + cfg["constraint_risk_calibration_weight"] * mse(constraint_prob, y_constraint)
             + 1.2 * mse(utility_pred, y_utility)
             + 0.7 * bce(out[:, 3:4], y_confidence)
             + 0.8 * mse(out[:, 4:5], y_calibration)
@@ -127,7 +129,7 @@ def train_neural_multi_head_dynamics(
         "trainer": dict(trainer),
         "architecture": {
             "model_type": "torch_multi_head_mlp",
-            "input_feature_groups": ["hierarchy_summary", "explicit_gis_state", "action", "scenario", "constraint_context"],
+            "input_feature_groups": ["hierarchy_summary", "explicit_gis_state", "action", "scenario", "constraint_context", "action_mask_context"],
             "heads": [
                 "future_latent_state.area_total",
                 "constraint_violation_probability",
@@ -144,6 +146,7 @@ def train_neural_multi_head_dynamics(
             "vectorization_note": "The PyTorch MLP consumes grouped hierarchical GIS features after explicit contract vectorization; this is a trainable candidate, not the final graph/transformer TWM.",
             "feature_names": feature_names,
             "feature_count": len(feature_names),
+            "action_mask_context_feature_names": _action_mask_context_feature_names(feature_names),
             "normalization": x_stats,
         },
         "target_normalization": y_stats,
@@ -157,6 +160,7 @@ def train_neural_multi_head_dynamics(
             "prediction_count": len(predictions),
             "final_loss": losses[-1]["loss"] if losses else None,
             "loss_trace": losses,
+            "constraint_risk_calibration_weight": cfg["constraint_risk_calibration_weight"],
         },
         "model_state_dict": _serializable_state_dict(model),
         "limitations": [
@@ -292,9 +296,11 @@ def train_hierarchical_graph_dynamics(
         out = model(token_tensors, action_tensor, scenario_tensor, relation_tensor, context_tensor, temporal_tensor)
         utility_pred = out[:, 2:3]
         area_pred = out[:, 0:1]
+        constraint_prob = torch.sigmoid(out[:, 1:2])
         loss = (
             mse(area_pred, y_area)
             + bce(out[:, 1:2], y_constraint)
+            + cfg["constraint_risk_calibration_weight"] * mse(constraint_prob, y_constraint)
             + 1.25 * mse(utility_pred, y_utility)
             + 0.7 * bce(out[:, 3:4], y_confidence)
             + 0.85 * mse(out[:, 4:5], y_calibration)
@@ -359,6 +365,7 @@ def train_hierarchical_graph_dynamics(
             "action_feature_count": len(action_keys),
             "scenario_feature_count": len(scenario_keys),
             "context_feature_count": len(context_keys),
+            "action_mask_context_feature_count": len(_action_mask_context_feature_names(context_keys)),
             "temporal_feature_count": len(temporal_keys),
             "temporal_message_passing": True,
             "hidden_dim": cfg["hidden_dim"],
@@ -380,6 +387,7 @@ def train_hierarchical_graph_dynamics(
             "action_feature_names": action_keys,
             "scenario_feature_names": scenario_keys,
             "context_feature_names": context_keys,
+            "action_mask_context_feature_names": _action_mask_context_feature_names(context_keys),
             "temporal_feature_names": temporal_keys,
             "normalization": {
                 "token_stats": token_stats,
@@ -401,6 +409,7 @@ def train_hierarchical_graph_dynamics(
             "prediction_count": len(predictions),
             "final_loss": losses[-1]["loss"] if losses else None,
             "loss_trace": losses,
+            "constraint_risk_calibration_weight": cfg["constraint_risk_calibration_weight"],
         },
         "model_state_dict": _serializable_state_dict(model),
         "limitations": [
@@ -502,6 +511,7 @@ def train_spatiotemporal_transformer_dynamics(
         token_dims={name: len(token_feature_keys[name]) for name in token_feature_keys},
         hidden_dim=cfg["hidden_dim"],
         dropout=cfg["dropout"],
+        risk_head_mode=cfg["risk_head_mode"],
         nn=nn,
         torch=torch,
     )
@@ -515,9 +525,11 @@ def train_spatiotemporal_transformer_dynamics(
         out = model(token_tensors)
         utility_pred = out[:, 2:3]
         area_pred = out[:, 0:1]
+        constraint_prob = torch.sigmoid(out[:, 1:2])
         loss = (
             mse(area_pred, y_area)
             + bce(out[:, 1:2], y_constraint)
+            + cfg["constraint_risk_calibration_weight"] * mse(constraint_prob, y_constraint)
             + 1.25 * mse(utility_pred, y_utility)
             + 0.7 * bce(out[:, 3:4], y_confidence)
             + 0.85 * mse(out[:, 4:5], y_calibration)
@@ -578,6 +590,9 @@ def train_spatiotemporal_transformer_dynamics(
             "sequence_token_count": len(model.token_order),
             "uses_attention_backbone": True,
             "temporal_token_present": True,
+            "action_mask_context_feature_count": len(_action_mask_context_feature_names(token_feature_keys.get("context", []))),
+            "constraint_risk_head": cfg["risk_head_mode"],
+            "constraint_risk_context_tokens": list(getattr(model, "risk_head_context_tokens", ())),
             "hidden_dim": cfg["hidden_dim"],
             "dropout": cfg["dropout"],
             "heads": [
@@ -593,6 +608,7 @@ def train_spatiotemporal_transformer_dynamics(
             "flat_vector_allowed": False,
             "vectorization_note": "Parcel/block/township/county state, relation, temporal, action, scenario and context are encoded as fixed semantic tokens and fused with lightweight self-attention.",
             "sequence_feature_names": token_feature_keys,
+            "action_mask_context_feature_names": _action_mask_context_feature_names(token_feature_keys.get("context", [])),
             "normalization": {"token_stats": token_stats},
         },
         "target_normalization": y_stats,
@@ -606,6 +622,8 @@ def train_spatiotemporal_transformer_dynamics(
             "prediction_count": len(predictions),
             "final_loss": losses[-1]["loss"] if losses else None,
             "loss_trace": losses,
+            "constraint_risk_calibration_weight": cfg["constraint_risk_calibration_weight"],
+            "risk_head_mode": cfg["risk_head_mode"],
         },
         "model_state_dict": _serializable_state_dict(model),
         "limitations": [
@@ -749,6 +767,7 @@ class _SpatiotemporalTransformerDynamicsModel:
         token_dims: dict[str, int],
         hidden_dim: int,
         dropout: float,
+        risk_head_mode: str,
         nn: Any,
         torch: Any,
     ):
@@ -756,6 +775,10 @@ class _SpatiotemporalTransformerDynamicsModel:
             def __init__(self):
                 super().__init__()
                 self.token_order = tuple(token_dims)
+                self.risk_head_mode = risk_head_mode
+                self.risk_head_context_tokens = tuple(
+                    name for name in ("action", "context", "temporal") if name in token_dims
+                ) if self.risk_head_mode == "context_residual" else tuple()
                 self.token_encoders = nn.ModuleDict(
                     {
                         name: nn.Sequential(
@@ -785,6 +808,16 @@ class _SpatiotemporalTransformerDynamicsModel:
                     nn.ReLU(),
                 )
                 self.head = nn.Linear(hidden_dim, 6)
+                if self.risk_head_mode == "context_residual":
+                    self.constraint_risk_residual_head = nn.Sequential(
+                        nn.Linear(hidden_dim * (1 + len(self.risk_head_context_tokens)), hidden_dim),
+                        nn.LayerNorm(hidden_dim),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(hidden_dim, 1),
+                    )
+                else:
+                    self.constraint_risk_residual_head = None
 
             def forward(self, token_tensors: dict[str, Any]) -> Any:
                 encoded = []
@@ -796,7 +829,15 @@ class _SpatiotemporalTransformerDynamicsModel:
                 attended = self.encoder(sequence)
                 flattened = attended.reshape(attended.shape[0], -1)
                 pooled = self.pool(flattened)
-                return self.head(pooled)
+                out = self.head(pooled)
+                if self.constraint_risk_residual_head is None:
+                    return out
+                risk_inputs = [pooled]
+                token_index = {name: idx for idx, name in enumerate(self.token_order)}
+                for name in self.risk_head_context_tokens:
+                    risk_inputs.append(attended[:, token_index[name], :])
+                residual = self.constraint_risk_residual_head(torch.cat(risk_inputs, dim=1))
+                return torch.cat([out[:, 0:1], out[:, 1:2] + residual, out[:, 2:]], dim=1)
 
         return _SpatiotemporalTransformerDynamicsModule()
 
@@ -857,8 +898,20 @@ def _training_config(payload: dict[str, Any]) -> dict[str, Any]:
         "dropout": max(0.0, min(0.5, float(safe_float(raw.get("dropout"), 0.0) or 0.0))),
         "ranking_weight": max(0.0, min(2.0, float(safe_float(raw.get("ranking_weight"), 0.2) or 0.2))),
         "temporal_consistency_weight": max(0.0, min(2.0, float(safe_float(raw.get("temporal_consistency_weight"), 0.15) or 0.15))),
+        "constraint_risk_calibration_weight": max(
+            0.0,
+            min(2.0, float(safe_float(raw.get("constraint_risk_calibration_weight"), 0.0) or 0.0)),
+        ),
+        "risk_head_mode": _risk_head_mode(raw.get("risk_head_mode")),
         "seed": safe_int(raw.get("seed"), 42) or 42,
     }
+
+
+def _risk_head_mode(value: Any) -> str:
+    mode = str(value or "shared").strip().lower()
+    if mode in {"context_residual", "shared"}:
+        return mode
+    return "shared"
 
 
 def _seed_everything(seed: int, torch: Any) -> None:
@@ -881,6 +934,7 @@ def _feature_row(example: dict[str, Any]) -> dict[str, float]:
     _one_hot(row, "action_type", str(action.get("action_type") or "unknown"))
     _one_hot(row, "target_role", str(action.get("target_role") or "unknown"))
     _one_hot(row, "scenario_name", str(scenario.get("scenario") or "unknown"))
+    row.update(_action_mask_context_features(example))
     row["action.target_object_count"] = float(len(action.get("target_objects") or []))
     row["action.has_treatment"] = 1.0 if action.get("treatment") else 0.0
     return row
@@ -942,6 +996,7 @@ def _hierarchical_feature_groups(example: dict[str, Any]) -> dict[str, dict[str,
     _flatten_numeric("quality", quality, groups["context"], max_depth=3)
     _flatten_numeric("targets.constraint", {"constraint_violation_probability": targets.get("constraint_violation_probability")}, groups["context"], max_depth=2)
     _flatten_numeric("provenance", provenance, groups["context"], max_depth=2)
+    groups["context"].update(_action_mask_context_features(example))
     _flatten_numeric("temporal", _temporal_features_from_example(example), groups["temporal"], max_depth=4)
     groups["context"]["label.evidence_supported"] = 1.0 if labels.get("evidence_supported") else 0.0
     groups["context"]["target.action_allowed"] = 1.0 if dict(targets.get("action_mask") or {}).get("allowed", True) else 0.0
@@ -953,6 +1008,53 @@ def _hierarchical_feature_groups(example: dict[str, Any]) -> dict[str, dict[str,
     _flatten_numeric("scenario", scenario, groups["scenario"], max_depth=3)
     _one_hot(groups["scenario"], "scenario_name", str(scenario.get("scenario") or "unknown"))
     return groups
+
+
+def _action_mask_context_features(example: dict[str, Any]) -> dict[str, float]:
+    current = dict(example.get("current_state_summary") or {})
+    action = dict(example.get("action") or {})
+    parameters = dict(action.get("parameters") or {})
+    scenario = dict(example.get("scenario_context") or {})
+    provenance = dict(example.get("provenance") or {})
+    targets = dict(example.get("targets") or {})
+    features: dict[str, float] = {}
+
+    policy = str(scenario.get("action_mask_policy") or provenance.get("action_mask_policy") or "unspecified")
+    _one_hot(features, "action_mask_context.policy", policy)
+    normalized_policy = _safe_feature_key(policy)
+    features["action_mask_context.policy_requires_review"] = 1.0 if any(
+        item in normalized_policy for item in ("review", "block", "blocked", "hard")
+    ) else 0.0
+
+    baseline_risk = safe_float(current.get("baseline_risk_score"), None)
+    risk_delta = safe_float(parameters.get("constraint_risk_delta"), None)
+    if baseline_risk is not None or risk_delta is not None:
+        risk_proxy = float(baseline_risk or 0.0) + float(risk_delta or 0.0)
+        features["action_mask_context.risk_proxy_source.current_action"] = 1.0
+    else:
+        risk_proxy = float(safe_float(targets.get("constraint_violation_probability"), 0.0) or 0.0)
+        features["action_mask_context.risk_proxy_source.target_fallback"] = 1.0
+    risk_proxy = _clamp01(risk_proxy)
+    features["action_mask_context.risk_proxy"] = risk_proxy
+    _one_hot(features, "action_mask_context.risk_bucket", _risk_bucket(risk_proxy))
+    return features
+
+
+def _action_mask_context_feature_names(names: list[str]) -> list[str]:
+    return [
+        name
+        for name in names
+        if name.startswith("action_mask_context.") or name.startswith("category.action_mask_context.")
+    ]
+
+
+def _risk_bucket(value: float) -> str:
+    value = float(value)
+    if value >= 0.3:
+        return "high"
+    if value >= 0.24:
+        return "medium"
+    return "low"
 
 
 def _temporal_features_from_example(example: dict[str, Any]) -> dict[str, Any]:

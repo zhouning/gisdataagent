@@ -439,6 +439,24 @@ async def twm_geofm_ablation_gate_async(state_version_id: str, payload_json: str
     return await asyncio.to_thread(twm_geofm_ablation_gate, state_version_id, payload_json)
 
 
+def twm_geofm_downstream_experiment_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().geofm_downstream_experiment_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_geofm_downstream_experiment_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_geofm_downstream_experiment_report, state_version_id, payload_json)
+
+
 def twm_causal_calibration_report(state_version_id: str, payload_json: str = "") -> str:
     payload: dict[str, Any] = {}
     if payload_json:
@@ -490,6 +508,7 @@ _SYNC_FUNCS = [
     twm_fit_dynamics_candidate,
     twm_train_dynamics_candidate,
     twm_geofm_ablation_gate,
+    twm_geofm_downstream_experiment_report,
     twm_causal_calibration_report,
     twm_list_rule_hits,
     twm_status_detail,
@@ -513,6 +532,7 @@ _LONG_RUNNING_FUNCS = [
     twm_fit_dynamics_candidate_async,
     twm_train_dynamics_candidate_async,
     twm_geofm_ablation_gate_async,
+    twm_geofm_downstream_experiment_report_async,
     twm_causal_calibration_report_async,
 ]
 

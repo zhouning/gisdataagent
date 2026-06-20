@@ -21,6 +21,7 @@ from .models import (
     TwmDynamicsTrainingDataset,
     TwmDynamicsTrainingExample,
     TwmEvidenceItem,
+    TwmGeoFMDownstreamExperimentReport,
     TwmGeoFMGateReport,
     TwmGeoFMGateVariant,
     TwmLayerBinding,
@@ -48,6 +49,7 @@ from .models import (
     now_utc_iso,
 )
 from .causal_calibration import estimate_observational_treatment_effect
+from .spatial_causal_estimator import SPATIAL_CAUSAL_ESTIMATOR_SCHEMA
 from .neural_dynamics import (
     HIERARCHICAL_GRAPH_DYNAMICS_SCHEMA,
     NEURAL_DYNAMICS_SCHEMA,
@@ -60,7 +62,7 @@ from .planner import TerritoryWorldModelPlanner
 from .repository import TwmRepository, get_twm_repository
 from .rule_evaluator import RuleEvaluator, evaluate_rules
 from .state_builder import StateBuilder, build_state_from_bundle
-from .utils import read_csv, safe_float, safe_int, truthy
+from .utils import compact_text, read_csv, safe_float, safe_int, truthy
 
 
 _INSTANCE_LOCK = threading.Lock()
@@ -99,6 +101,7 @@ class TerritoryWorldModelService:
                 "reviews": True,
                 "planning": True,
                 "geofm_ablation_gate": True,
+                "geofm_downstream_experiment": True,
                 "causal_calibration": True,
                 "action_mask": True,
                 "dynamics_readiness": True,
@@ -812,6 +815,7 @@ class TerritoryWorldModelService:
         state = self.repository.get_state_version(state_version_id)
         if state is None or self.repository.get_state_bundle(state_version_id) is None:
             raise LookupError(f"state not found: {state_version_id}")
+        ranking_policy = self._beam_ranking_policy(payload)
         raw_actions = payload.get("actions") or payload.get("candidate_actions") or []
         if isinstance(raw_actions, dict):
             raw_actions = [raw_actions]
@@ -834,7 +838,7 @@ class TerritoryWorldModelService:
             if payload.get("dynamics_candidate_report") and "dynamics_prediction_id" not in action_payload:
                 action_payload["dynamics_prediction_id"] = str(raw_action.get("prediction_id") or f"candidate:{idx}")
             forecast_plan = self.forecast(state_version_id, action_payload)
-            candidate = self._beam_candidate_from_forecast(idx, action_payload, forecast_plan)
+            candidate = self._beam_candidate_from_forecast(idx, action_payload, forecast_plan, ranking_policy)
             candidates.append(candidate)
         candidates.sort(key=lambda item: (item["rank_score"], item["confidence"]), reverse=True)
         limit = max(1, int(payload.get("limit") or payload.get("beam_width") or len(candidates) or 1))
@@ -850,6 +854,7 @@ class TerritoryWorldModelService:
                     "utility": candidate["utility"],
                     "risk": candidate["risk"],
                     "confidence": candidate["confidence"],
+                    "ranking_policy_id": ranking_policy.get("policy_id"),
                     "evidence_gate_status": candidate["evidence_gate"].get("status"),
                     "claim_status": candidate["claim_status"],
                 }
@@ -864,6 +869,7 @@ class TerritoryWorldModelService:
             project_id=state.project_id,
             scenario=str(payload.get("scenario") or "beam_plan"),
             status=status,
+            ranking_policy=ranking_policy,
             candidates=candidates,
             ranking=ranking,
             selected=selected,
@@ -1057,7 +1063,7 @@ class TerritoryWorldModelService:
                 core_algorithm={
                     "role_in_taxonomy": "planner",
                     "algorithm_family": "constrained action ranking and rollout consumption",
-                    "core_algorithm": "evidence-gated constrained beam search over candidate actions using planning_utility_delta - constraint_risk + confidence ranking, with action-mask filtering and optional dynamics candidate consumption",
+                    "core_algorithm": "evidence-gated constrained beam search over candidate actions using a configurable utility/risk/confidence ranking policy, with action-mask filtering and optional dynamics candidate consumption",
                     "current_implementation": [
                         "beam-plan candidate ranking",
                         "action-mask gating",
@@ -1495,6 +1501,12 @@ class TerritoryWorldModelService:
             thresholds=thresholds,
         )
         deltas = self._geofm_metric_deltas(baseline_metrics, augmented_metrics)
+        extended_validation = self._geofm_extended_validation(payload=payload, thresholds=thresholds, deltas=deltas)
+        architecture_audit = self._geofm_architecture_audit(
+            payload=payload,
+            vector_inventory=vector_inventory,
+            thresholds=thresholds,
+        )
         gate_status, decision, recommendations = self._geofm_gate_decision(
             deltas=deltas,
             baseline_gate=baseline_gate,
@@ -1502,6 +1514,8 @@ class TerritoryWorldModelService:
             thresholds=thresholds,
             vector_inventory=vector_inventory,
             explicit_metrics=bool(payload.get("baseline_metrics") and (payload.get("augmented_metrics") or payload.get("geofm_metrics"))),
+            extended_validation=extended_validation,
+            architecture_audit=architecture_audit,
         )
 
         report = TwmGeoFMGateReport(
@@ -1532,16 +1546,113 @@ class TerritoryWorldModelService:
                     "source": "payload_or_deterministic_twm",
                     "geofm_used": True,
                     "vector_inventory": vector_inventory,
+                    "architecture_audit_status": architecture_audit.get("status"),
                 },
             ),
             deltas=deltas,
             thresholds=thresholds,
             evidence={
                 "vector_inventory": vector_inventory,
+                "architecture_audit": architecture_audit,
                 "evidence_coverage": evidence_coverage,
                 "rule_hit_count": len(self.repository.list_rule_hits(state_version_id=state_version_id)),
+                "extended_validation": extended_validation,
                 "note": "GeoFM is retained only when downstream planning lift and evidence gates pass.",
             },
+            recommendations=recommendations,
+        )
+        return report.to_dict()
+
+    def geofm_downstream_experiment_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state_bundle = self.repository.get_state_bundle(state_version_id)
+        state = self.repository.get_state_version(state_version_id)
+        if state_bundle is None or state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+
+        thresholds = self._geofm_gate_thresholds(payload)
+        vector_inventory = self._geofm_vector_inventory(state)
+        scenario = str(payload.get("scenario") or "geofm_downstream_experiment").strip() or "geofm_downstream_experiment"
+        evidence_coverage = payload.get("evidence_coverage")
+        if evidence_coverage is None:
+            evidence_coverage = (state.quality_summary or {}).get("evidence_coverage")
+
+        payload, prediction_evidence = self._geofm_payload_with_experiment_predictions(payload)
+        baseline_metrics = self._variant_metrics_from_payload(payload.get("baseline_metrics"))
+        augmented_metrics = self._variant_metrics_from_payload(payload.get("augmented_metrics") or payload.get("geofm_metrics"))
+        prediction_metrics = self._geofm_variant_metrics_from_prediction_maps(payload)
+        baseline_metrics = baseline_metrics or prediction_metrics.get("baseline_metrics", {})
+        augmented_metrics = augmented_metrics or prediction_metrics.get("augmented_metrics", {})
+        if not baseline_metrics or not augmented_metrics:
+            inferred = self._infer_geofm_gate_metrics(
+                state=state,
+                state_bundle=state_bundle,
+                scenario=scenario,
+                evidence_coverage=evidence_coverage,
+                vector_inventory=vector_inventory,
+                payload=payload,
+            )
+            baseline_metrics = baseline_metrics or inferred["baseline_metrics"]
+            augmented_metrics = augmented_metrics or inferred["augmented_metrics"]
+        deltas = self._geofm_metric_deltas(baseline_metrics, augmented_metrics)
+        extended_validation = self._geofm_extended_validation(payload=payload, thresholds=thresholds, deltas=deltas)
+        gate_payload = {
+            **payload,
+            "scenario": scenario,
+            "evidence_coverage": evidence_coverage,
+            "baseline_metrics": baseline_metrics,
+            "augmented_metrics": augmented_metrics,
+            "extended_validation": self._geofm_extended_validation_payload_for_gate(extended_validation),
+            "thresholds": {
+                **dict(payload.get("thresholds") or {}),
+                "require_extended_validation": True,
+            },
+        }
+        gate_report = self.geofm_ablation_gate(state_version_id, gate_payload)
+        rows = self._geofm_experiment_comparison_rows(payload)
+        architecture_audit = dict(((gate_report.get("evidence") or {}).get("architecture_audit") or {}))
+        evidence = {
+            "extended_validation": extended_validation,
+            "architecture_audit": architecture_audit,
+            "comparison_summary": self._geofm_experiment_comparison_summary(rows),
+            "prediction_evidence": prediction_evidence,
+            "vector_inventory": vector_inventory,
+            "evidence_coverage": evidence_coverage,
+            "claim_boundary": "geofm_candidate_evidence_not_core_twm",
+        }
+        recommendations = self._geofm_experiment_recommendations(gate_report, extended_validation, rows, prediction_evidence)
+        report = TwmGeoFMDownstreamExperimentReport(
+            state_version_id=state_version_id,
+            project_id=state.project_id,
+            status=self._geofm_experiment_status(gate_report, prediction_evidence),
+            experiment={
+                "scenario": scenario,
+                "experiment_id": str(payload.get("experiment_id") or f"{state_version_id}:{scenario}"),
+                "comparison": "B0 GIS-only hierarchical state vs B1 GIS plus gated GeoFM embedding",
+                "renderer_simulator_planner_boundary": {
+                    "renderer": "hierarchical GIS object/relation/rule/evidence state is rendered as structured TWM state, not imagery",
+                    "simulator": "action-conditioned dynamics are evaluated through downstream holdout prediction comparisons",
+                    "planner": "beam/MPC/ArcGIS planners consume retained signals but are not the TWM core",
+                },
+            },
+            variants={
+                "baseline": {
+                    "variant_id": "B0",
+                    "label": "GIS-only hierarchical state",
+                    "uses_geofm": False,
+                    "metrics": baseline_metrics,
+                },
+                "augmented": {
+                    "variant_id": "B1",
+                    "label": "GIS state plus gated GeoFM embedding",
+                    "uses_geofm": True,
+                    "metrics": augmented_metrics,
+                    "vector_inventory": vector_inventory,
+                },
+                "deltas": deltas,
+            },
+            evidence=evidence,
+            gate_report=gate_report,
             recommendations=recommendations,
         )
         return report.to_dict()
@@ -1595,6 +1706,7 @@ class TerritoryWorldModelService:
                 "record_source": record_source,
                 "record_count": len(records),
                 "rule_hit_count": len(self.repository.list_rule_hits(state_version_id=state_version_id)),
+                "record_inventory": self._causal_record_inventory(records),
                 "method_note": "primary estimator comes from the local causal calibration backend and remains observational rather than randomized identification",
             },
             recommendations=recommendations,
@@ -2065,7 +2177,58 @@ class TerritoryWorldModelService:
             },
         }
 
-    def _beam_candidate_from_forecast(self, idx: int, action_payload: dict[str, Any], forecast_plan: dict[str, Any]) -> dict[str, Any]:
+    def _beam_ranking_policy(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw_policy = payload.get("ranking_policy")
+        if not isinstance(raw_policy, dict):
+            raw_policy = payload.get("planner_ranking_weights")
+        if not isinstance(raw_policy, dict):
+            raw_policy = {}
+        weights = dict(raw_policy.get("weights") or raw_policy)
+        penalties = dict(raw_policy.get("penalties") or raw_policy)
+        policy = {
+            "policy_id": str(raw_policy.get("policy_id") or raw_policy.get("id") or "utility_risk_confidence_v1"),
+            "schema": "territory_world_model.beam_ranking_policy.v1",
+            "formula": (
+                "utility_weight * utility - risk_weight * risk + confidence_weight * confidence "
+                "- blocked_penalty(if blocked) - review_penalty(if evidence gate not pass)"
+            ),
+            "weights": {
+                "utility": float(safe_float(weights.get("utility", weights.get("utility_weight")), 1.0) or 0.0),
+                "risk": float(safe_float(weights.get("risk", weights.get("risk_weight")), 1.0) or 0.0),
+                "confidence": float(safe_float(weights.get("confidence", weights.get("confidence_weight")), 0.1) or 0.0),
+            },
+            "penalties": {
+                "blocked": float(safe_float(penalties.get("blocked", penalties.get("blocked_penalty")), 1.0) or 0.0),
+                "review": float(safe_float(penalties.get("review", penalties.get("review_penalty")), 0.15) or 0.0),
+            },
+            "source": "payload" if raw_policy else "default",
+        }
+        return policy
+
+    def _beam_rank_score(
+        self,
+        *,
+        utility: float,
+        risk: float,
+        confidence: float,
+        blocked: bool,
+        evidence_status: str,
+        ranking_policy: dict[str, Any],
+    ) -> float:
+        weights = dict(ranking_policy.get("weights") or {})
+        penalties = dict(ranking_policy.get("penalties") or {})
+        rank_score = (
+            float(safe_float(weights.get("utility"), 1.0) or 0.0) * utility
+            - float(safe_float(weights.get("risk"), 1.0) or 0.0) * risk
+            + float(safe_float(weights.get("confidence"), 0.1) or 0.0) * confidence
+        )
+        if blocked:
+            rank_score -= float(safe_float(penalties.get("blocked"), 1.0) or 0.0)
+        if evidence_status != "pass":
+            rank_score -= float(safe_float(penalties.get("review"), 0.15) or 0.0)
+        return round(rank_score, 6)
+
+    def _beam_candidate_from_forecast(self, idx: int, action_payload: dict[str, Any], forecast_plan: dict[str, Any], ranking_policy: dict[str, Any]) -> dict[str, Any]:
         forecast = dict(forecast_plan.get("forecast") or {})
         evidence_gate = dict(forecast.get("evidence_gate") or {})
         uncertainty = dict(forecast.get("uncertainty") or {})
@@ -2078,11 +2241,14 @@ class TerritoryWorldModelService:
             or bool(action_mask.get("hard_blocks"))
             or not action_mask.get("allowed", True)
         )
-        rank_score = round(utility - risk + confidence * 0.1, 6)
-        if blocked:
-            rank_score = round(rank_score - 1.0, 6)
-        if evidence_gate.get("status") != "pass":
-            rank_score = round(rank_score - 0.15, 6)
+        rank_score = self._beam_rank_score(
+            utility=utility,
+            risk=risk,
+            confidence=confidence,
+            blocked=blocked,
+            evidence_status=str(evidence_gate.get("status") or "review"),
+            ranking_policy=ranking_policy,
+        )
         return {
             "candidate_id": str(action_payload.get("candidate_id") or action_payload.get("id") or f"candidate:{idx}"),
             "rank": None,
@@ -2098,6 +2264,7 @@ class TerritoryWorldModelService:
             "risk": round(risk, 6),
             "confidence": round(confidence, 6),
             "rank_score": rank_score,
+            "ranking_policy_id": ranking_policy.get("policy_id"),
             "evidence_gate": evidence_gate,
             "claim_status": "claim_supported" if evidence_gate.get("status") == "pass" and not blocked else "review_required",
         }
@@ -2776,6 +2943,14 @@ class TerritoryWorldModelService:
         if isinstance(raw_records, list) and raw_records:
             return [dict(item) for item in raw_records if isinstance(item, dict)], "payload_observations"
 
+        observed_history_records = self._causal_records_from_observed_history_payload(payload)
+        if observed_history_records:
+            return observed_history_records, "observed_approval_review_history"
+
+        state_records = self._causal_records_from_state_objects(state_version_id)
+        if state_records:
+            return state_records, "state_object_observations"
+
         dataset = self.dynamics_training_examples(
             state_version_id,
             {
@@ -2804,8 +2979,607 @@ class TerritoryWorldModelService:
                     "not_for_production": bool(example.get("not_for_training_reasons")),
                     "source": labels.get("supervision_source") or "dynamics_training_examples",
                 }
-            )
+        )
         return records, "dynamics_training_examples_scaffold"
+
+    def _causal_record_inventory(self, records: list[dict[str, Any]]) -> dict[str, Any]:
+        source_paths = sorted({str(row.get("source_path")) for row in records if row.get("source_path")})
+        source_names = sorted({str(row.get("source")) for row in records if row.get("source")})
+        clusters = sorted({str(row.get("cluster") or row.get("spatial_cluster")) for row in records if row.get("cluster") or row.get("spatial_cluster")})
+        strata = sorted({str(row.get("stratum")) for row in records if row.get("stratum")})
+        treated_count = 0
+        control_count = 0
+        invalid_treatment_count = 0
+        outcome_count = 0
+        covariate_keys: set[str] = set()
+        neighbor_record_count = 0
+        coordinate_record_count = 0
+        spatial_record_count = 0
+        model_effect_count = 0
+        for row in records:
+            treatment = self._binary_treatment(row.get("treatment"))
+            if treatment == 1:
+                treated_count += 1
+            elif treatment == 0:
+                control_count += 1
+            else:
+                invalid_treatment_count += 1
+            if safe_float(row.get("outcome"), None) is not None:
+                outcome_count += 1
+            if safe_float(row.get("model_effect"), None) is not None:
+                model_effect_count += 1
+            raw_covariates = row.get("covariates")
+            if isinstance(raw_covariates, dict):
+                covariate_keys.update(str(key) for key, value in raw_covariates.items() if safe_float(value, None) is not None)
+            neighbors = row.get("neighbors") or row.get("neighbor_unit_ids") or []
+            has_neighbors = False
+            if isinstance(neighbors, (list, tuple, set)) and neighbors:
+                neighbor_record_count += 1
+                has_neighbors = True
+            if isinstance(neighbors, str) and neighbors.strip():
+                neighbor_record_count += 1
+                has_neighbors = True
+            x = safe_float(row.get("x"), safe_float(row.get("lon"), safe_float(row.get("longitude"), None)))
+            y = safe_float(row.get("y"), safe_float(row.get("lat"), safe_float(row.get("latitude"), None)))
+            has_coordinates = x is not None and y is not None
+            has_cluster = bool(row.get("cluster") or row.get("spatial_cluster"))
+            if x is not None and y is not None:
+                coordinate_record_count += 1
+            if has_cluster or has_neighbors or has_coordinates:
+                spatial_record_count += 1
+        record_count = len(records)
+        return {
+            "schema": "territory_world_model.causal_record_inventory.v1",
+            "record_count": record_count,
+            "source_count": len(source_names),
+            "sources": source_names[:12],
+            "source_path_count": len(source_paths),
+            "source_paths": source_paths[:12],
+            "treated_count": treated_count,
+            "control_count": control_count,
+            "invalid_treatment_count": invalid_treatment_count,
+            "outcome_count": outcome_count,
+            "model_effect_count": model_effect_count,
+            "synthetic_record_count": sum(1 for row in records if truthy(row.get("synthetic"))),
+            "not_for_production_record_count": sum(1 for row in records if truthy(row.get("not_for_production"))),
+            "cluster_count": len(clusters),
+            "clusters": clusters[:12],
+            "stratum_count": len(strata),
+            "strata": strata[:12],
+            "neighbor_record_count": neighbor_record_count,
+            "coordinate_record_count": coordinate_record_count,
+            "spatial_support": {
+                "has_clusters": bool(clusters),
+                "has_neighbor_links": neighbor_record_count > 0,
+                "has_coordinates": coordinate_record_count > 0,
+                "spatial_record_count": spatial_record_count,
+            },
+            "covariate_count": len(covariate_keys),
+            "covariate_keys": sorted(covariate_keys)[:24],
+        }
+
+    def _causal_records_from_observed_history_payload(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        raw = (
+            payload.get("observed_history")
+            or payload.get("approval_review_history")
+            or payload.get("approval_history")
+            or payload.get("observed_approval_history")
+        )
+        if isinstance(raw, list):
+            rows.extend({**dict(item), "_source": "payload_observed_history"} for item in raw if isinstance(item, dict))
+        elif isinstance(raw, dict):
+            for key in ("records", "observations", "approval_records", "approval_review_history", "rows"):
+                values = raw.get(key)
+                if isinstance(values, list):
+                    rows.extend({**dict(item), "_source": f"payload_observed_history.{key}"} for item in values if isinstance(item, dict))
+
+        for path_key in ("observed_history_path", "approval_review_history_path", "approval_history_path", "observed_approval_history_path"):
+            path_value = payload.get(path_key)
+            if not path_value:
+                continue
+            path = Path(str(path_value)).expanduser()
+            for item in read_csv(path):
+                rows.append({**dict(item), "_source": path_key, "_source_path": str(path)})
+
+        return self._causal_records_from_observed_history_rows(rows)
+
+    def _causal_records_from_observed_history_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        records: list[dict[str, Any]] = []
+        for idx, row in enumerate(rows):
+            treatment, treatment_source = self._causal_history_treatment(row)
+            if treatment is None:
+                continue
+            outcome, outcome_source, outcome_components = self._causal_history_outcome(row, treatment=treatment)
+            if outcome is None:
+                continue
+            project_id = compact_text(self._mapping_attr(row, "project_id", "XMDM", "xmdm", "project_code"))
+            approval_id = compact_text(self._mapping_attr(row, "approval_id", "record_id", "id", "AJBH", "approval_no", "approval_code"))
+            unit_id = (
+                compact_text(self._mapping_attr(row, "unit_id", "causal_unit_id", "sample_id"))
+                or project_id
+                or approval_id
+                or f"observed-history:{idx}"
+            )
+            source_path = compact_text(self._mapping_attr(row, "_source_path", "source_path"))
+            risk_score = safe_float(outcome_components.get("risk_score"), safe_float(self._mapping_attr(row, "risk_score"), 0.0)) or 0.0
+            covariates = self._causal_history_covariates(row)
+            if risk_score and "baseline_risk_score" not in covariates:
+                covariates.setdefault("risk_score", float(risk_score))
+            record: dict[str, Any] = {
+                "unit_id": unit_id,
+                "treatment": treatment,
+                "outcome": outcome,
+                "model_effect": safe_float(self._mapping_attr(row, "model_effect", "expected_model_effect", "rollout_effect"), None),
+                "stratum": compact_text(self._mapping_attr(row, "stratum", "region_code", "county_code", "DKXZQDM", "XZQDM")) or "observed_approval_history",
+                "cluster": compact_text(
+                    self._mapping_attr(row, "cluster", "spatial_cluster", "block_id", "township_id", "region_code", "county_code", "DKXZQDM", "XZQDM")
+                ),
+                "covariates": covariates,
+                "evidence_weight": max(0.0, float(safe_float(self._mapping_attr(row, "evidence_weight", "weight"), 0.95) or 0.95)),
+                "synthetic": truthy(self._mapping_attr(row, "synthetic")),
+                "not_for_production": truthy(self._mapping_attr(row, "not_for_production", "not_for_prod")),
+                "source": "observed_approval_review_history",
+                "record_source": "observed_approval_review_history",
+                "source_path": source_path,
+                "source_row_index": idx,
+                "source_record_id": approval_id or unit_id,
+                "project_id": project_id,
+                "approval_id": approval_id,
+                "treatment_source": treatment_source,
+                "outcome_source": outcome_source,
+                "outcome_components": outcome_components,
+            }
+            propensity = safe_float(self._mapping_attr(row, "propensity_score", "treatment_probability"), None)
+            if propensity is not None:
+                record["propensity_score"] = float(propensity)
+            x = safe_float(self._mapping_attr(row, "x", "lon", "longitude"), None)
+            y = safe_float(self._mapping_attr(row, "y", "lat", "latitude"), None)
+            if x is not None and y is not None:
+                record["x"] = float(x)
+                record["y"] = float(y)
+            neighbors = self._causal_history_neighbors(row)
+            if neighbors:
+                record["neighbors"] = neighbors
+            records.append(record)
+        return records
+
+    def _causal_history_treatment(self, row: dict[str, Any]) -> tuple[int | None, str]:
+        explicit = self._binary_treatment(self._mapping_attr(row, "treatment", "treated", "intervention"))
+        if explicit is not None:
+            return explicit, "observed_history.treatment"
+        status = compact_text(
+            self._mapping_attr(row, "approval_status", "decision_result", "DKZT", "status", "task_status", "review_result")
+        ).lower()
+        treated = {
+            "approved",
+            "approved_with_conditions",
+            "conditional_approval",
+            "conditional",
+            "granted",
+            "pass",
+            "passed",
+        }
+        control = {
+            "proposed",
+            "in_review",
+            "pending",
+            "open",
+            "returned",
+            "rejected",
+            "denied",
+            "supplement_required",
+            "requires_supplementary_evidence",
+            "hit_requires_review",
+        }
+        if status in treated:
+            return 1, "observed_history.approval_status"
+        if status in control:
+            return 0, "observed_history.approval_status"
+        approved_area = safe_float(self._mapping_attr(row, "approved_area_m2", "ZDZMJ"), None)
+        if approved_area is not None:
+            return (1 if float(approved_area) > 0 else 0), "observed_history.approved_area_m2"
+        return None, "missing"
+
+    def _causal_history_outcome(self, row: dict[str, Any], *, treatment: int) -> tuple[float | None, str, dict[str, Any]]:
+        for field_name in (
+            "outcome",
+            "planning_utility_delta",
+            "utility_delta",
+            "ranking_score",
+            "observed_utility_delta",
+            "reviewed_planning_utility_delta",
+        ):
+            value = safe_float(self._mapping_attr(row, field_name), None)
+            if value is not None:
+                return round(float(value), 6), f"observed_history.{field_name}", self._causal_history_outcome_components(row)
+
+        area = safe_float(self._mapping_attr(row, "area_m2", "planned_area_m2", "DKMJ", "ZYZMJ", "geom_area_m2"), None)
+        approved_area = safe_float(self._mapping_attr(row, "approved_area_m2", "ZDZMJ"), None)
+        if approved_area is None:
+            approved_area = float(area or 0.0) if treatment else 0.0
+        approved_ratio = 1.0 if treatment and not area else 0.0
+        if area is not None and float(area) > 0:
+            approved_ratio = max(0.0, min(1.0, float(approved_area or 0.0) / max(1.0, float(area))))
+        risk_score = self._causal_history_risk_score(row)
+        review_penalty = self._causal_history_review_penalty(row)
+        utility = 0.18 + 0.42 * approved_ratio + 0.18 * treatment - 0.50 * risk_score - 0.12 * review_penalty
+        components = self._causal_history_outcome_components(row)
+        components.update(
+            {
+                "approved_area_ratio": round(approved_ratio, 6),
+                "risk_score": round(risk_score, 6),
+                "review_penalty": round(review_penalty, 6),
+            }
+        )
+        return round(max(-1.0, min(1.0, utility)), 6), "observed_history.approval_area_rule_risk_review_proxy", components
+
+    def _causal_history_outcome_components(self, row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "risk_score": round(self._causal_history_risk_score(row), 6),
+            "review_penalty": round(self._causal_history_review_penalty(row), 6),
+            "rule_hit_count": safe_int(self._mapping_attr(row, "rule_hit_count", "high_risk_hit_count"), 0),
+            "rule_eval_count": safe_int(self._mapping_attr(row, "rule_eval_count"), 0),
+            "review_task_count": safe_int(self._mapping_attr(row, "review_task_count"), 0),
+        }
+
+    def _causal_history_covariates(self, row: dict[str, Any]) -> dict[str, float]:
+        covariates: dict[str, float] = {}
+        raw = row.get("covariates")
+        if isinstance(raw, dict):
+            for key, value in raw.items():
+                numeric = safe_float(value, None)
+                if numeric is not None:
+                    covariates[str(key)] = float(numeric)
+        for key in (
+            "area_m2",
+            "planned_area_m2",
+            "DKMJ",
+            "quality_score",
+            "baseline_outcome",
+            "baseline_risk_score",
+            "risk_score",
+            "evidence_coverage",
+            "rule_hit_count",
+            "review_task_count",
+        ):
+            numeric = safe_float(self._mapping_attr(row, key), None)
+            if numeric is not None:
+                covariates[key] = float(numeric)
+        return covariates
+
+    def _causal_history_risk_score(self, row: dict[str, Any]) -> float:
+        explicit = safe_float(
+            self._mapping_attr(row, "risk_score", "constraint_risk", "constraint_violation_probability", "violation_probability"),
+            None,
+        )
+        if explicit is not None:
+            return max(0.0, min(1.0, float(explicit)))
+        severity = compact_text(self._mapping_attr(row, "severity")).lower()
+        severity_weight = {
+            "blocking": 1.0,
+            "critical": 0.9,
+            "high": 0.75,
+            "medium": 0.45,
+            "low": 0.2,
+            "info": 0.08,
+        }.get(severity, 0.0)
+        finding = compact_text(self._mapping_attr(row, "finding_status", "review_result")).lower()
+        if finding in {"pass", "passed", "no_hit", "clear", "dismissed"}:
+            return min(0.12, severity_weight or 0.12)
+        if finding in {"hit_requires_review", "open", "violation", "failed", "requires_review", "suspected_violation_confirmed"}:
+            return max(0.25, severity_weight)
+        return severity_weight
+
+    def _causal_history_review_penalty(self, row: dict[str, Any]) -> float:
+        status = compact_text(self._mapping_attr(row, "task_status", "review_status", "status")).lower()
+        decision = compact_text(self._mapping_attr(row, "review_result", "decision")).lower()
+        if decision in {"suspected_violation_confirmed", "violation_confirmed", "confirmed"}:
+            return 1.0
+        if decision in {"requires_supplementary_evidence", "needs_supplement", "supplement_required"}:
+            return 0.65
+        if status in {"open", "pending", "in_review"} or decision in {"pending"}:
+            return 0.45
+        if decision in {"dismissed", "approved", "resolved", "no_issue"} or status in {"closed", "resolved", "completed"}:
+            return 0.15
+        return 0.0
+
+    def _causal_history_neighbors(self, row: dict[str, Any]) -> list[str]:
+        raw = self._mapping_attr(row, "neighbors", "neighbor_unit_ids")
+        if isinstance(raw, (list, tuple, set)):
+            return [str(item) for item in raw if str(item)]
+        if isinstance(raw, str):
+            return [item.strip() for item in raw.replace(";", ",").split(",") if item.strip()]
+        return []
+
+    def _mapping_attr(self, mapping: dict[str, Any], *names: str) -> Any:
+        sources: list[dict[str, Any]] = [mapping]
+        for nested_key in ("raw_fields", "canonical_fields"):
+            nested = mapping.get(nested_key)
+            if isinstance(nested, dict):
+                sources.append(nested)
+        wanted = {str(name) for name in names if name}
+        wanted_lower = {name.lower() for name in wanted}
+        for source in sources:
+            for name in wanted:
+                if name in source and source.get(name) not in (None, ""):
+                    return source.get(name)
+            for key, value in source.items():
+                if str(key).lower() in wanted_lower and value not in (None, ""):
+                    return value
+        return None
+
+    def _causal_records_from_state_objects(self, state_version_id: str) -> list[dict[str, Any]]:
+        objects = self.repository.list_state_objects(state_version_id)
+        if not objects:
+            return []
+
+        object_by_id = {obj.id: obj for obj in objects}
+        rule_hits = self.repository.list_rule_hits(state_version_id=state_version_id)
+        review_tasks = self.repository.list_review_tasks(state_version_id=state_version_id)
+        project_evidence = self._causal_project_evidence_from_state_objects(objects, object_by_id, rule_hits, review_tasks)
+        approval_objects = [
+            obj
+            for obj in objects
+            if {obj.canonical_role, obj.source_role, obj.object_type}.intersection({"approval_record", "approval_records"})
+        ]
+        records: list[dict[str, Any]] = []
+        for idx, obj in enumerate(approval_objects):
+            treatment = self._causal_approval_treatment(obj)
+            if treatment is None:
+                continue
+            project_id = self._state_object_project_key(obj) or f"approval:{obj.object_code or obj.id}"
+            evidence = project_evidence.get(project_id, {})
+            outcome, outcome_components = self._causal_approval_outcome(obj, evidence, treatment=treatment)
+            synthetic = bool(obj.synthetic or truthy(self._state_object_attr(obj, "synthetic")))
+            not_for_production = bool(obj.not_for_production or truthy(self._state_object_attr(obj, "not_for_production")))
+            source_roles = set(evidence.get("source_roles") or [])
+            if any(str(item).endswith(":synthetic") for item in source_roles):
+                synthetic = True
+            if any(str(item).endswith(":not_for_production") for item in source_roles):
+                not_for_production = True
+            area_m2 = safe_float(
+                self._state_object_attr(obj, "area_m2", "planned_area_m2", "DKMJ", "ZYZMJ", "geom_area_m2"),
+                None,
+            )
+            approved_area_m2 = safe_float(self._state_object_attr(obj, "approved_area_m2", "ZDZMJ"), None)
+            covariates = {
+                "area_m2": float(area_m2 or 0.0),
+                "approved_area_m2": float(approved_area_m2 or 0.0),
+                "approved_area_ratio": float(outcome_components.get("approved_area_ratio") or 0.0),
+                "risk_score": float(evidence.get("risk_score") or 0.0),
+                "rule_eval_count": float(evidence.get("rule_eval_count") or 0),
+                "rule_hit_count": float(evidence.get("rule_hit_count") or 0),
+                "review_task_count": float(evidence.get("review_task_count") or 0),
+                "quality_score": float(safe_float(obj.quality_score, 0.0) or 0.0),
+            }
+            district = compact_text(self._state_object_attr(obj, "DKXZQDM", "XZQDM", "region_code", "county_code"))
+            records.append(
+                {
+                    "unit_id": project_id or obj.id or f"state-object:{idx}",
+                    "treatment": treatment,
+                    "outcome": outcome,
+                    "stratum": district or "approval_record",
+                    "cluster": district or project_id,
+                    "covariates": covariates,
+                    "evidence_weight": 0.35 if synthetic or not_for_production else 0.85,
+                    "synthetic": synthetic,
+                    "not_for_production": not_for_production,
+                    "source": "state_object_observations",
+                    "record_source": "state_object_observations",
+                    "source_object_id": obj.id,
+                    "source_object_code": obj.object_code,
+                    "source_feature_id": obj.source_feature_id,
+                    "source_role": obj.source_role,
+                    "canonical_role": obj.canonical_role,
+                    "source_path": obj.source_path,
+                    "project_id": project_id,
+                    "treatment_source": "approval_status_or_approved_area",
+                    "outcome_source": "approval_area_rule_risk_review_proxy",
+                    "outcome_components": outcome_components,
+                    "supporting_rule_eval_ids": list(evidence.get("rule_eval_ids") or [])[:12],
+                    "supporting_rule_hit_ids": list(evidence.get("rule_hit_ids") or [])[:12],
+                    "supporting_review_task_ids": list(evidence.get("review_task_ids") or [])[:12],
+                }
+            )
+        return records
+
+    def _causal_project_evidence_from_state_objects(
+        self,
+        objects: list[TwmStateObject],
+        object_by_id: dict[str, TwmStateObject],
+        rule_hits: list[TwmRuleHit],
+        review_tasks: list[TwmReviewTask],
+    ) -> dict[str, dict[str, Any]]:
+        evidence: dict[str, dict[str, Any]] = {}
+
+        def bucket(project_id: str) -> dict[str, Any]:
+            return evidence.setdefault(
+                project_id,
+                {
+                    "risk_scores": [],
+                    "review_penalties": [],
+                    "rule_eval_ids": [],
+                    "rule_hit_ids": [],
+                    "review_task_ids": [],
+                    "rule_eval_count": 0,
+                    "rule_hit_count": 0,
+                    "review_task_count": 0,
+                    "source_roles": set(),
+                },
+            )
+
+        for obj in objects:
+            role = obj.canonical_role or obj.source_role or obj.object_type
+            if role not in {"rule_evaluation", "review_task", "review_tasks"}:
+                continue
+            project_id = self._state_object_project_key(obj)
+            if not project_id:
+                continue
+            item = bucket(project_id)
+            item["source_roles"].add(role)
+            if obj.synthetic:
+                item["source_roles"].add(f"{role}:synthetic")
+            if obj.not_for_production:
+                item["source_roles"].add(f"{role}:not_for_production")
+            if role == "rule_evaluation":
+                item["rule_eval_count"] += 1
+                item["rule_eval_ids"].append(obj.object_code or obj.source_feature_id or obj.id)
+                item["risk_scores"].append(self._causal_rule_eval_risk(obj))
+            else:
+                item["review_task_count"] += 1
+                item["review_task_ids"].append(obj.object_code or obj.source_feature_id or obj.id)
+                item["review_penalties"].append(self._causal_review_task_penalty(obj))
+
+        review_by_hit: dict[str, list[TwmReviewTask]] = {}
+        for task in review_tasks:
+            if task.rule_hit_id:
+                review_by_hit.setdefault(task.rule_hit_id, []).append(task)
+        for hit in rule_hits:
+            subject = object_by_id.get(hit.subject_object_id or "")
+            target = object_by_id.get(hit.target_object_id or "") if hit.target_object_id else None
+            project_id = self._state_object_project_key(subject) if subject is not None else ""
+            if not project_id and target is not None:
+                project_id = self._state_object_project_key(target)
+            if not project_id:
+                continue
+            item = bucket(project_id)
+            item["rule_hit_count"] += 1
+            item["rule_hit_ids"].append(hit.id)
+            item["risk_scores"].append(self._causal_rule_hit_risk(hit))
+            for task in review_by_hit.get(hit.id, []):
+                item["review_task_count"] += 1
+                item["review_task_ids"].append(task.id)
+                item["review_penalties"].append(self._causal_review_task_penalty(task))
+
+        for item in evidence.values():
+            risk_scores = [float(value) for value in item.get("risk_scores") or [] if value is not None]
+            review_penalties = [float(value) for value in item.get("review_penalties") or [] if value is not None]
+            item["risk_score"] = round(max(risk_scores) if risk_scores else 0.0, 6)
+            item["mean_risk_score"] = round(self._mean(risk_scores), 6) if risk_scores else 0.0
+            item["review_penalty"] = round(max(review_penalties) if review_penalties else 0.0, 6)
+            item["source_roles"] = sorted(str(value) for value in item.get("source_roles") or [])
+        return evidence
+
+    def _state_object_attr(self, obj: TwmStateObject, *names: str) -> Any:
+        return self._mapping_attr(dict(obj.attributes or {}), *names)
+
+    def _state_object_project_key(self, obj: TwmStateObject | None) -> str:
+        if obj is None:
+            return ""
+        value = self._state_object_attr(obj, "project_id", "XMDM", "xmdm", "project_code", "linked_object_id")
+        if value not in (None, ""):
+            return compact_text(value)
+        if obj.canonical_role == "project":
+            return compact_text(obj.object_code or obj.source_feature_id or obj.id)
+        return ""
+
+    def _causal_approval_treatment(self, obj: TwmStateObject) -> int | None:
+        raw_status = self._state_object_attr(obj, "approval_status", "decision_result", "DKZT", "status", "task_status")
+        status = compact_text(raw_status).lower()
+        treated = {
+            "approved",
+            "approved_with_conditions",
+            "conditional_approval",
+            "conditional",
+            "granted",
+            "pass",
+        }
+        control = {
+            "proposed",
+            "in_review",
+            "pending",
+            "open",
+            "returned",
+            "rejected",
+            "denied",
+            "supplement_required",
+            "requires_supplementary_evidence",
+            "hit_requires_review",
+        }
+        if status in treated:
+            return 1
+        if status in control:
+            return 0
+        approved_area = safe_float(self._state_object_attr(obj, "approved_area_m2", "ZDZMJ"), None)
+        if approved_area is not None:
+            return 1 if float(approved_area) > 0 else 0
+        return None
+
+    def _causal_approval_outcome(self, obj: TwmStateObject, evidence: dict[str, Any], *, treatment: int) -> tuple[float, dict[str, Any]]:
+        area = safe_float(self._state_object_attr(obj, "area_m2", "planned_area_m2", "DKMJ", "ZYZMJ", "geom_area_m2"), None)
+        approved_area = safe_float(self._state_object_attr(obj, "approved_area_m2", "ZDZMJ"), None)
+        if approved_area is None:
+            approved_area = float(area or 0.0) if treatment else 0.0
+        approved_ratio = 0.0
+        if area is not None and float(area) > 0:
+            approved_ratio = max(0.0, min(1.0, float(approved_area or 0.0) / max(1.0, float(area))))
+        elif treatment:
+            approved_ratio = 1.0
+        risk_score = max(0.0, min(1.0, float(evidence.get("risk_score") or 0.0)))
+        review_penalty = max(0.0, min(1.0, float(evidence.get("review_penalty") or 0.0)))
+        utility = 0.18 + 0.42 * approved_ratio + 0.18 * treatment - 0.50 * risk_score - 0.12 * review_penalty
+        components = {
+            "approved_area_ratio": round(approved_ratio, 6),
+            "risk_score": round(risk_score, 6),
+            "review_penalty": round(review_penalty, 6),
+            "rule_eval_count": int(evidence.get("rule_eval_count") or 0),
+            "rule_hit_count": int(evidence.get("rule_hit_count") or 0),
+            "review_task_count": int(evidence.get("review_task_count") or 0),
+        }
+        return round(max(-1.0, min(1.0, utility)), 6), components
+
+    def _causal_rule_eval_risk(self, obj: TwmStateObject) -> float:
+        status = compact_text(self._state_object_attr(obj, "finding_status", "status")).lower()
+        severity = compact_text(self._state_object_attr(obj, "severity")).lower()
+        severity_weight = {
+            "blocking": 1.0,
+            "critical": 0.9,
+            "high": 0.75,
+            "medium": 0.45,
+            "low": 0.2,
+            "info": 0.08,
+        }.get(severity, 0.25)
+        if status in {"pass", "passed", "no_hit", "clear"}:
+            return round(min(0.12, severity_weight), 6)
+        if status in {"hit_requires_review", "open", "violation", "failed", "requires_review"}:
+            return round(severity_weight, 6)
+        metric = safe_float(self._state_object_attr(obj, "metric_value"), None)
+        if metric is not None and float(metric) > 0:
+            return round(max(0.18, severity_weight), 6)
+        return round(severity_weight * 0.5, 6)
+
+    def _causal_rule_hit_risk(self, hit: TwmRuleHit) -> float:
+        explicit = safe_float(hit.risk_score, None)
+        severity = compact_text(hit.severity).lower()
+        severity_weight = {
+            "blocking": 1.0,
+            "critical": 0.9,
+            "high": 0.75,
+            "medium": 0.45,
+            "low": 0.2,
+            "info": 0.08,
+        }.get(severity, 0.25)
+        if explicit is None:
+            return severity_weight
+        return round(max(0.0, min(1.0, max(float(explicit), severity_weight * 0.5))), 6)
+
+    def _causal_review_task_penalty(self, task: TwmStateObject | TwmReviewTask) -> float:
+        if isinstance(task, TwmStateObject):
+            status = compact_text(self._state_object_attr(task, "task_status", "status")).lower()
+            decision = compact_text(self._state_object_attr(task, "review_result", "decision")).lower()
+        else:
+            status = compact_text(task.status).lower()
+            decision = compact_text(task.decision).lower()
+        if decision in {"suspected_violation_confirmed", "violation_confirmed", "confirmed"}:
+            return 1.0
+        if decision in {"requires_supplementary_evidence", "needs_supplement", "supplement_required"}:
+            return 0.65
+        if status in {"open", "pending", "in_review"} or decision in {"pending", ""}:
+            return 0.45
+        if decision in {"dismissed", "approved", "resolved", "no_issue"} or status in {"closed", "resolved", "completed"}:
+            return 0.15
+        return 0.3
 
     def _causal_calibration_thresholds(self, payload: dict[str, Any]) -> dict[str, Any]:
         raw = dict(payload.get("thresholds") or {})
@@ -2821,6 +3595,19 @@ class TerritoryWorldModelService:
             "max_spatial_cluster_treatment_gap": float(raw.get("max_spatial_cluster_treatment_gap", 0.45)),
             "max_spatial_residual_moran": float(raw.get("max_spatial_residual_moran", 0.35)),
             "spatial_neighbor_distance": safe_float(raw.get("spatial_neighbor_distance"), None),
+            "enable_spatial_estimator": bool(raw.get("enable_spatial_estimator", True)),
+            "min_spatial_units": int(raw.get("min_spatial_units", 3)),
+            "min_spatial_unit_pairs": int(raw.get("min_spatial_unit_pairs", 3)),
+            "min_cross_treatment_edges": int(raw.get("min_cross_treatment_edges", 3)),
+            "max_spatial_estimator_standard_error": float(raw.get("max_spatial_estimator_standard_error", raw.get("max_standard_error", 0.25))),
+            "max_spatial_effect_gap": float(raw.get("max_spatial_effect_gap", 0.25)),
+            "spatial_bootstrap_samples": int(raw.get("spatial_bootstrap_samples", 64)),
+            "min_spatial_bootstrap_units": int(raw.get("min_spatial_bootstrap_units", raw.get("min_spatial_units", 3))),
+            "max_spatial_bootstrap_interval_width": float(raw.get("max_spatial_bootstrap_interval_width", 0.35)),
+            "min_spatial_bootstrap_sign_stability": float(raw.get("min_spatial_bootstrap_sign_stability", 0.8)),
+            "min_spatial_holdout_units": int(raw.get("min_spatial_holdout_units", raw.get("min_spatial_units", 3))),
+            "max_spatial_holdout_delta": float(raw.get("max_spatial_holdout_delta", 0.2)),
+            "min_spatial_holdout_sign_agreement": float(raw.get("min_spatial_holdout_sign_agreement", 0.8)),
             "min_evidence_coverage": float(raw.get("min_evidence_coverage", 0.55)),
             "allow_synthetic": bool(raw.get("allow_synthetic", False)),
             "allow_not_for_production": bool(raw.get("allow_not_for_production", False)),
@@ -2884,6 +3671,13 @@ class TerritoryWorldModelService:
         spatial = dict(estimate.get("spatial") or {})
         if spatial.get("status") == "review":
             missing.append("spatial_interference")
+        spatial_estimator = dict(estimate.get("spatial_estimator") or {})
+        if (
+            spatial_estimator.get("schema") == SPATIAL_CAUSAL_ESTIMATOR_SCHEMA
+            and spatial_estimator.get("status") == "review"
+            and spatial_estimator.get("support", {}).get("spatial_record_count", 0)
+        ):
+            missing.append("spatial_estimator")
         if calibration.get("status") != "pass":
             missing.append("model_effect")
         synthetic_count = sum(1 for row in records if truthy(row.get("synthetic")))
@@ -2926,6 +3720,13 @@ class TerritoryWorldModelService:
             recommendations.append("reduce treated/control covariate imbalance or add better adjustment covariates before upgrading causal claims")
         if "spatial_interference" in (evidence_gate.get("missing") or []):
             recommendations.append("spatial spillover or clustered treatment concentration is too strong; add spatial adjustment or redefine causal units before upgrading claims")
+        if "spatial_estimator" in (evidence_gate.get("missing") or []):
+            recommendations.append("spatial treatment-effect estimator did not pass support or uncertainty checks; keep causal scaling in review")
+            reasons = set((estimate.get("spatial_estimator") or {}).get("review_reasons") or [])
+            if "spatial_bootstrap_uncertainty" in reasons:
+                recommendations.append("spatial block bootstrap interval is too wide or sign stability is weak; collect more mixed spatial units")
+            if "geographic_holdout_instability" in reasons:
+                recommendations.append("leave-one-spatial-unit-out estimates are unstable; validate against geographic holdout before upgrading claims")
         if record_source.endswith("scaffold"):
             recommendations.append("scaffold-derived calibration is review-only; use payload observations or a causal backend for claims")
         if abs(float(estimate.get("att") or 0.0)) < float(estimate.get("standard_error") or 0.0):
@@ -2981,16 +3782,30 @@ class TerritoryWorldModelService:
             "min_evidence_coverage": float(raw.get("min_evidence_coverage", 0.55)),
             "require_explicit_downstream_metrics": bool(raw.get("require_explicit_downstream_metrics", True)),
             "allow_not_for_production_vectors": bool(raw.get("allow_not_for_production_vectors", False)),
+            "require_extended_validation": bool(raw.get("require_extended_validation", False)),
+            "min_holdout_planning_lift_delta": float(raw.get("min_holdout_planning_lift_delta", raw.get("min_planning_lift_delta", 0.03))),
+            "min_holdout_ranking_score_delta": float(raw.get("min_holdout_ranking_score_delta", 0.02)),
+            "min_cross_region_planning_lift_delta": float(raw.get("min_cross_region_planning_lift_delta", 0.02)),
+            "min_cross_region_count": safe_int(raw.get("min_cross_region_count"), 2) or 2,
+            "max_domain_shift_score": float(raw.get("max_domain_shift_score", 0.25)),
+            "max_holdout_regret_delta": float(raw.get("max_holdout_regret_delta", 0.02)),
+            "min_temporal_holdout_confidence": float(raw.get("min_temporal_holdout_confidence", 0.55)),
+            "min_production_label_quality": float(raw.get("min_production_label_quality", 0.70)),
+            "require_architecture_audit": bool(raw.get("require_architecture_audit", False)),
+            "min_adapter_capacity_score": float(raw.get("min_adapter_capacity_score", 0.35)),
+            "min_architecture_label_quality": float(raw.get("min_architecture_label_quality", raw.get("min_production_label_quality", 0.70))),
+            "max_architecture_domain_shift_score": float(raw.get("max_architecture_domain_shift_score", raw.get("max_domain_shift_score", 0.25))),
         }
 
     def _variant_metrics_from_payload(self, value: Any) -> dict[str, Any]:
         if not isinstance(value, dict):
             return {}
         metrics = dict(value)
+        uncertainty = dict(metrics.get("uncertainty") or {}) if isinstance(metrics.get("uncertainty"), dict) else {}
         normalized = {
             "planning_lift": float(safe_float(metrics.get("planning_lift"), safe_float(metrics.get("planning_utility_delta"), 0.0)) or 0.0),
             "constraint_risk": float(safe_float(metrics.get("constraint_risk"), safe_float(metrics.get("constraint_violation_probability"), 0.0)) or 0.0),
-            "confidence": float(safe_float(metrics.get("confidence"), 0.0) or 0.0),
+            "confidence": float(safe_float(metrics.get("confidence"), safe_float(uncertainty.get("confidence"), 0.0)) or 0.0),
             "calibration_gap": float(safe_float(metrics.get("calibration_gap"), 0.0) or 0.0),
             "ranking_score": float(safe_float(metrics.get("ranking_score"), 0.0) or 0.0),
         }
@@ -3134,6 +3949,997 @@ class TerritoryWorldModelService:
             "calibration_gap_delta": round(calibration_gap_delta, 4),
         }
 
+    def _geofm_architecture_audit(
+        self,
+        *,
+        payload: dict[str, Any],
+        vector_inventory: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        raw = (
+            payload.get("architecture_audit")
+            or payload.get("geofm_architecture_audit")
+            or payload.get("adapter_audit")
+            or {}
+        )
+        raw = dict(raw) if isinstance(raw, dict) else {}
+        adapter = (
+            raw.get("adapter")
+            or raw.get("adapter_config")
+            or payload.get("geofm_adapter")
+            or payload.get("adapter_config")
+            or {}
+        )
+        adapter = dict(adapter) if isinstance(adapter, dict) else {}
+        backbone = (
+            raw.get("backbone")
+            or raw.get("backbone_config")
+            or payload.get("geofm_backbone")
+            or payload.get("backbone_config")
+            or {}
+        )
+        backbone = dict(backbone) if isinstance(backbone, dict) else {}
+        validation = (
+            raw.get("validation")
+            or raw.get("data_validation")
+            or payload.get("geofm_data_validation")
+            or {}
+        )
+        validation = dict(validation) if isinstance(validation, dict) else {}
+
+        backbone_name = str(
+            backbone.get("name")
+            or raw.get("backbone_name")
+            or payload.get("geofm_backbone_name")
+            or vector_inventory.get("embedding_model")
+            or ""
+        )
+        architecture = str(
+            backbone.get("architecture")
+            or raw.get("architecture")
+            or payload.get("geofm_architecture")
+            or self._infer_geofm_backbone_architecture(backbone_name)
+        )
+        fused_qkv = self._geofm_truthy(
+            backbone.get("fused_qkv", raw.get("fused_qkv", payload.get("fused_qkv")))
+        )
+        adapter_type = str(
+            adapter.get("type")
+            or adapter.get("adapter_type")
+            or raw.get("adapter_type")
+            or payload.get("geofm_adapter_type")
+            or ""
+        )
+        target_modules = self._geofm_string_list(
+            adapter.get("target_modules") or raw.get("target_modules") or payload.get("geofm_adapter_target_modules")
+        )
+        input_modalities = self._geofm_string_list(
+            raw.get("input_modalities")
+            or backbone.get("input_modalities")
+            or payload.get("geofm_input_modalities")
+            or []
+        )
+        capacity_score = safe_float(
+            adapter.get("capacity_score", raw.get("adapter_capacity_score", payload.get("adapter_capacity_score"))),
+            None,
+        )
+        trainable_parameter_ratio = safe_float(
+            adapter.get("trainable_parameter_ratio", raw.get("trainable_parameter_ratio")),
+            None,
+        )
+        domain_shift_score = safe_float(
+            validation.get("domain_shift_score", raw.get("domain_shift_score", payload.get("domain_shift_score"))),
+            None,
+        )
+        label_quality = safe_float(
+            validation.get(
+                "label_quality",
+                validation.get("production_label_quality", raw.get("label_quality", payload.get("label_quality"))),
+            ),
+            None,
+        )
+        geographic_split = self._geofm_truthy(
+            validation.get("geographic_split", raw.get("geographic_split", payload.get("geographic_split")))
+        )
+        temporal_holdout = self._geofm_truthy(
+            validation.get("temporal_holdout", raw.get("temporal_holdout", payload.get("temporal_holdout")))
+        )
+        production_labels = self._geofm_truthy(
+            validation.get("production_labels", raw.get("production_labels", payload.get("production_labels")))
+        )
+        if capacity_score is None and trainable_parameter_ratio is not None:
+            capacity_score = max(0.0, min(1.0, float(trainable_parameter_ratio) * 10.0))
+
+        missing: list[str] = []
+        failed: list[str] = []
+        warnings: list[str] = []
+        recommendations: list[str] = []
+        if not vector_inventory.get("available"):
+            missing.append("geofm_vector_inventory")
+        if not backbone_name:
+            missing.append("backbone_name")
+        if not architecture:
+            missing.append("backbone_architecture")
+        if not adapter_type:
+            missing.append("adapter_type")
+        if adapter_type.lower() in {"lora", "qlora"} and fused_qkv and not target_modules:
+            failed.append("fused_qkv_adapter_target_modules")
+            recommendations.append("inspect fused-QKV projection names and bind explicit adapter target modules before retaining LoRA/QLoRA GeoFM features")
+        if adapter_type.lower() in {"lora", "qlora"} and fused_qkv:
+            warnings.append("fused_qkv_requires_architecture_aware_adapter_binding")
+        if capacity_score is None:
+            missing.append("adapter_capacity_score")
+        elif capacity_score < float(thresholds["min_adapter_capacity_score"]):
+            failed.append("adapter_capacity_score")
+        if domain_shift_score is None:
+            missing.append("domain_shift_score")
+        elif domain_shift_score > float(thresholds["max_architecture_domain_shift_score"]):
+            failed.append("domain_shift_score")
+        if label_quality is None:
+            missing.append("label_quality")
+        elif label_quality < float(thresholds["min_architecture_label_quality"]):
+            failed.append("label_quality")
+        if not geographic_split:
+            missing.append("geographic_split")
+        if not input_modalities:
+            missing.append("input_modalities")
+        if temporal_holdout is False:
+            warnings.append("temporal_holdout_not_confirmed")
+        if production_labels is False:
+            warnings.append("production_labels_not_confirmed")
+
+        if missing:
+            recommendations.append("complete GeoFM architecture audit before promoting embeddings beyond gated enhancement")
+        if "adapter_capacity_score" in failed:
+            recommendations.append("increase adapter capacity or keep GeoFM disabled for this downstream planning task")
+        if "domain_shift_score" in failed:
+            recommendations.append("rerun GeoFM validation under geographic/domain shift before retaining B1")
+        if "label_quality" in failed:
+            recommendations.append("improve production-label quality before using GeoFM features in simulator training")
+
+        status = "blocked" if failed else ("review" if missing else "pass")
+        return {
+            "schema": "territory_world_model.geofm_architecture_audit.v1",
+            "status": status,
+            "required": bool(thresholds.get("require_architecture_audit")),
+            "passed": status == "pass",
+            "backbone": {
+                "name": backbone_name,
+                "architecture": architecture,
+                "fused_qkv": fused_qkv,
+                "input_modalities": input_modalities,
+                "embedding_model": vector_inventory.get("embedding_model", ""),
+                "vector_collection": vector_inventory.get("collection", ""),
+            },
+            "adapter": {
+                "type": adapter_type,
+                "target_modules": target_modules,
+                "capacity_score": round(float(capacity_score), 4) if capacity_score is not None else None,
+                "trainable_parameter_ratio": round(float(trainable_parameter_ratio), 6) if trainable_parameter_ratio is not None else None,
+            },
+            "validation": {
+                "geographic_split": geographic_split,
+                "temporal_holdout": temporal_holdout,
+                "production_labels": production_labels,
+                "domain_shift_score": round(float(domain_shift_score), 4) if domain_shift_score is not None else None,
+                "label_quality": round(float(label_quality), 4) if label_quality is not None else None,
+            },
+            "missing": missing,
+            "failed": failed,
+            "warnings": warnings,
+            "thresholds": {
+                "min_adapter_capacity_score": thresholds["min_adapter_capacity_score"],
+                "max_architecture_domain_shift_score": thresholds["max_architecture_domain_shift_score"],
+                "min_architecture_label_quality": thresholds["min_architecture_label_quality"],
+            },
+            "claim_boundary": "architecture_audit_required_before_geofm_default_use",
+            "recommendations": recommendations,
+        }
+
+    def _infer_geofm_backbone_architecture(self, name: str) -> str:
+        lowered = name.lower()
+        if "prithvi" in lowered:
+            return "vision_transformer"
+        if "alphaearth" in lowered or "alpha_earth" in lowered:
+            return "earth_foundation_embedding"
+        if "geojepa" in lowered or "jepa" in lowered:
+            return "joint_embedding_predictive_architecture"
+        if "clip" in lowered:
+            return "contrastive_vision_language"
+        return ""
+
+    def _geofm_truthy(self, value: Any) -> bool | None:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            text = value.strip().lower()
+            if text in {"1", "true", "yes", "y", "pass", "passed", "enabled", "available"}:
+                return True
+            if text in {"0", "false", "no", "n", "fail", "failed", "disabled", "missing"}:
+                return False
+        return bool(value)
+
+    def _geofm_string_list(self, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, (list, tuple, set)):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return [str(value).strip()] if str(value).strip() else []
+
+    def _geofm_extended_validation(
+        self,
+        *,
+        payload: dict[str, Any],
+        thresholds: dict[str, Any],
+        deltas: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        raw = payload.get("extended_validation")
+        if not isinstance(raw, dict):
+            raw = {}
+        inferred = self._infer_geofm_extended_validation_payload(payload=payload, thresholds=thresholds, deltas=deltas or {})
+        raw = self._merge_geofm_extended_validation_payload(inferred, raw)
+        required = bool(thresholds.get("require_extended_validation") or raw.get("required") or raw.get("enforced"))
+        requested = bool(raw) or required
+        if not requested:
+            return {
+                "schema": "territory_world_model.geofm_extended_validation.v1",
+                "requested": False,
+                "required": False,
+                "status": "not_required",
+                "passed": True,
+                "checks": {},
+                "missing": [],
+                "failed": [],
+                "recommendations": [],
+                "source": "not_requested",
+                "auto_inferred": False,
+            }
+
+        d2 = self._geofm_d2_holdout_check(raw, payload, thresholds)
+        d3 = self._geofm_d3_cross_region_check(raw, payload, thresholds)
+        d4 = self._geofm_d4_domain_shift_check(raw, payload, thresholds)
+        checks = {"D2": d2, "D3": d3, "D4": d4}
+        missing: list[str] = []
+        failed: list[str] = []
+        recommendations: list[str] = []
+        for code, check in checks.items():
+            for item in check.get("missing") or []:
+                missing.append(f"{code}:{item}")
+            if check.get("status") == "blocked":
+                failed.append(code)
+            recommendations.extend(check.get("recommendations") or [])
+
+        if failed:
+            status = "blocked"
+        elif missing:
+            status = "review"
+        else:
+            status = "pass"
+
+        return {
+            "schema": "territory_world_model.geofm_extended_validation.v1",
+            "requested": True,
+            "required": required,
+            "status": status,
+            "passed": status == "pass",
+            "checks": checks,
+            "missing": missing,
+            "failed": failed,
+            "recommendations": recommendations,
+            "source": raw.get("source") or "payload",
+            "auto_inferred": bool(raw.get("auto_inferred")),
+            "inference_sources": list(raw.get("inference_sources") or []),
+        }
+
+    def _merge_geofm_extended_validation_payload(self, inferred: dict[str, Any], explicit: dict[str, Any]) -> dict[str, Any]:
+        if not inferred:
+            return dict(explicit)
+        merged = dict(inferred)
+        for key, value in explicit.items():
+            if key in {"D2", "d2", "downstream_holdout", "planning_holdout", "holdout_metrics", "planning_holdout_metrics"}:
+                merged.pop("D2", None)
+            if key in {"D3", "d3", "cross_region", "cross_region_metrics"}:
+                merged.pop("D3", None)
+            if key in {"D4", "d4", "domain_shift", "domain_shift_validation", "production_validation"}:
+                merged.pop("D4", None)
+            merged[key] = value
+        if inferred and not explicit.get("source"):
+            merged["source"] = inferred.get("source") or "auto_inferred"
+        merged["auto_inferred"] = bool(inferred)
+        sources = list(inferred.get("inference_sources") or [])
+        sources.extend(item for item in explicit.get("inference_sources") or [] if item not in sources)
+        if sources:
+            merged["inference_sources"] = sources
+        return merged
+
+    def _infer_geofm_extended_validation_payload(
+        self,
+        *,
+        payload: dict[str, Any],
+        thresholds: dict[str, Any],
+        deltas: dict[str, Any],
+    ) -> dict[str, Any]:
+        inferred: dict[str, Any] = {}
+        sources: list[str] = []
+        dataset = self._geofm_validation_dataset(payload)
+        baseline_predictions = self._geofm_prediction_map(payload, "baseline")
+        augmented_predictions = self._geofm_prediction_map(payload, "augmented")
+        if dataset and baseline_predictions and augmented_predictions:
+            rows = self._geofm_prediction_comparison_rows(
+                dataset=dataset,
+                baseline_predictions=baseline_predictions,
+                augmented_predictions=augmented_predictions,
+            )
+            holdout_rows = [row for row in rows if row.get("split") == "holdout"]
+            if holdout_rows:
+                inferred["D2"] = {
+                    **self._geofm_aggregate_prediction_comparison(holdout_rows),
+                    "source": "dataset_holdout_prediction_comparison",
+                }
+                sources.append("dataset_holdout_prediction_comparison")
+                region_groups: dict[str, list[dict[str, Any]]] = {}
+                for row in holdout_rows:
+                    region = str(row.get("region") or "")
+                    if region:
+                        region_groups.setdefault(region, []).append(row)
+                if region_groups:
+                    inferred["D3"] = {
+                        "source": "dataset_holdout_prediction_comparison_by_region",
+                        "regions": [
+                            {
+                                "region": region,
+                                **self._geofm_aggregate_prediction_comparison(region_rows),
+                            }
+                            for region, region_rows in sorted(region_groups.items())
+                        ],
+                    }
+                    sources.append("dataset_holdout_prediction_comparison_by_region")
+                d4 = self._geofm_d4_from_dataset_prediction_comparison(dataset=dataset, rows=rows, thresholds=thresholds)
+                if d4:
+                    inferred["D4"] = d4
+                    sources.append("dataset_holdout_domain_shift")
+
+        evaluation_report = self._geofm_evaluation_report(payload)
+        if evaluation_report and "D4" not in inferred:
+            d4 = self._geofm_d4_from_evaluation_report(evaluation_report)
+            if d4:
+                inferred["D4"] = d4
+                sources.append("dynamics_evaluation_report")
+
+        if inferred:
+            inferred["source"] = "auto_inferred"
+            inferred["auto_inferred"] = True
+            inferred["inference_sources"] = sources
+            if deltas and "D2" not in inferred and evaluation_report.get("status") == "pass":
+                inferred["D2"] = {
+                    **deltas,
+                    "sample_count": safe_int((evaluation_report.get("sample_inventory") or {}).get("holdout_example_count"), 0) or 0,
+                    "source": "b0_b1_deltas_with_passed_dynamics_evaluation",
+                }
+                inferred["inference_sources"].append("b0_b1_deltas_with_passed_dynamics_evaluation")
+        return inferred
+
+    def _geofm_validation_dataset(self, payload: dict[str, Any]) -> dict[str, Any]:
+        value = payload.get("dataset") or payload.get("dynamics_training_dataset")
+        return dict(value) if isinstance(value, dict) else {}
+
+    def _geofm_evaluation_report(self, payload: dict[str, Any]) -> dict[str, Any]:
+        for key in ("geofm_dynamics_evaluation_report", "augmented_dynamics_evaluation_report", "dynamics_evaluation_report"):
+            value = payload.get(key)
+            if isinstance(value, dict):
+                return dict(value)
+        candidate = payload.get("augmented_dynamics_candidate_report") or payload.get("geofm_candidate_report")
+        if isinstance(candidate, dict) and isinstance(candidate.get("evaluation"), dict):
+            return dict(candidate.get("evaluation") or {})
+        return {}
+
+    def _geofm_prediction_map(self, payload: dict[str, Any], variant: str) -> dict[str, dict[str, Any]]:
+        if variant == "baseline":
+            keys = ("baseline_predictions", "b0_predictions", "baseline_dynamics_predictions")
+            report_keys = ("baseline_dynamics_candidate_report", "b0_candidate_report")
+        else:
+            keys = ("augmented_predictions", "geofm_predictions", "b1_predictions", "augmented_dynamics_predictions")
+            report_keys = ("augmented_dynamics_candidate_report", "geofm_candidate_report", "b1_candidate_report")
+        for key in keys:
+            value = payload.get(key)
+            result = self._normalize_prediction_map(value)
+            if result:
+                return result
+        for key in report_keys:
+            report = payload.get(key)
+            if isinstance(report, dict):
+                result = self._normalize_prediction_map(report.get("predictions"))
+                if result:
+                    return result
+        return {}
+
+    def _geofm_payload_with_experiment_predictions(self, payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        payload = dict(payload)
+        dataset = self._geofm_validation_dataset(payload)
+        baseline_predictions = self._geofm_prediction_map(payload, "baseline")
+        augmented_predictions = self._geofm_prediction_map(payload, "augmented")
+        explicit_predictions = bool(baseline_predictions and augmented_predictions)
+        if dataset and not explicit_predictions and bool(payload.get("auto_generate_predictions", True)):
+            generated = self._geofm_generate_scaffold_prediction_maps(dataset)
+            baseline_predictions = generated["baseline_predictions"]
+            augmented_predictions = generated["augmented_predictions"]
+            payload["baseline_predictions"] = baseline_predictions
+            payload["augmented_predictions"] = augmented_predictions
+            prediction_source = "deterministic_experiment_scaffold"
+        else:
+            prediction_source = "explicit_prediction_maps" if explicit_predictions else "missing_prediction_maps"
+        return payload, {
+            "schema": "territory_world_model.geofm_experiment_prediction_evidence.v1",
+            "prediction_source": prediction_source,
+            "explicit_prediction_maps": explicit_predictions,
+            "baseline_prediction_count": len(baseline_predictions),
+            "augmented_prediction_count": len(augmented_predictions),
+            "auto_generated": prediction_source == "deterministic_experiment_scaffold",
+            "claim_boundary": (
+                "review_only_scaffold_predictions"
+                if prediction_source == "deterministic_experiment_scaffold"
+                else "explicit_downstream_predictions"
+                if prediction_source == "explicit_prediction_maps"
+                else "missing_downstream_predictions"
+            ),
+        }
+
+    def _geofm_generate_scaffold_prediction_maps(self, dataset: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
+        baseline_predictions: dict[str, dict[str, Any]] = {}
+        augmented_predictions: dict[str, dict[str, Any]] = {}
+        for example in dataset.get("examples") or []:
+            if not isinstance(example, dict):
+                continue
+            example_id = str(example.get("id") or "")
+            if not example_id:
+                continue
+            targets = dict(example.get("targets") or {})
+            target_lift = float(safe_float(targets.get("planning_utility_delta"), 0.0) or 0.0)
+            target_risk = float(safe_float(targets.get("constraint_violation_probability"), 0.0) or 0.0)
+            target_uncertainty = dict(targets.get("uncertainty") or {})
+            target_confidence = float(safe_float(target_uncertainty.get("confidence"), 0.60) or 0.60)
+            baseline_predictions[example_id] = {
+                "planning_utility_delta": round(target_lift - 0.04, 4),
+                "constraint_violation_probability": round(target_risk + 0.02, 4),
+                "uncertainty": {"confidence": round(max(0.0, min(1.0, target_confidence - 0.08)), 4)},
+                "source": "deterministic_b0_experiment_scaffold",
+            }
+            augmented_predictions[example_id] = {
+                "planning_utility_delta": round(target_lift + 0.02, 4),
+                "constraint_violation_probability": round(target_risk, 4),
+                "uncertainty": {"confidence": round(max(0.0, min(1.0, target_confidence + 0.04)), 4)},
+                "source": "deterministic_b1_geofm_candidate_scaffold",
+            }
+        return {
+            "baseline_predictions": baseline_predictions,
+            "augmented_predictions": augmented_predictions,
+        }
+
+    def _geofm_variant_metrics_from_prediction_maps(self, payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        baseline_predictions = self._geofm_prediction_map(payload, "baseline")
+        augmented_predictions = self._geofm_prediction_map(payload, "augmented")
+        if not baseline_predictions or not augmented_predictions:
+            return {}
+        baseline_metrics = self._geofm_mean_metrics([self._variant_metrics_from_payload(item) for item in baseline_predictions.values()])
+        augmented_metrics = self._geofm_mean_metrics([self._variant_metrics_from_payload(item) for item in augmented_predictions.values()])
+        baseline_metrics["source"] = "baseline_prediction_map_mean"
+        augmented_metrics["source"] = "augmented_prediction_map_mean"
+        return {
+            "baseline_metrics": baseline_metrics,
+            "augmented_metrics": augmented_metrics,
+        }
+
+    def _normalize_prediction_map(self, value: Any) -> dict[str, dict[str, Any]]:
+        if isinstance(value, dict):
+            return {str(key): dict(item) for key, item in value.items() if isinstance(item, dict)}
+        if isinstance(value, list):
+            result: dict[str, dict[str, Any]] = {}
+            for item in value:
+                if not isinstance(item, dict):
+                    continue
+                key = str(item.get("example_id") or item.get("id") or "")
+                prediction = item.get("prediction") if isinstance(item.get("prediction"), dict) else item
+                if key and isinstance(prediction, dict):
+                    result[key] = dict(prediction)
+            return result
+        return {}
+
+    def _geofm_prediction_comparison_rows(
+        self,
+        *,
+        dataset: dict[str, Any],
+        baseline_predictions: dict[str, dict[str, Any]],
+        augmented_predictions: dict[str, dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for example in dataset.get("examples") or []:
+            if not isinstance(example, dict):
+                continue
+            example_id = str(example.get("id") or "")
+            if not example_id:
+                continue
+            baseline = self._variant_metrics_from_payload(baseline_predictions.get(example_id))
+            augmented = self._variant_metrics_from_payload(augmented_predictions.get(example_id))
+            if not baseline or not augmented:
+                continue
+            targets = dict(example.get("targets") or {})
+            labels = dict(example.get("labels") or {})
+            provenance = dict(example.get("provenance") or {})
+            reasons = list(example.get("not_for_training_reasons") or [])
+            target_metrics = self._variant_metrics_from_payload(
+                {
+                    "planning_utility_delta": targets.get("planning_utility_delta"),
+                    "constraint_violation_probability": targets.get("constraint_violation_probability"),
+                    "ranking_score": labels.get("ranking_score"),
+                    "uncertainty": targets.get("uncertainty"),
+                }
+            )
+            rows.append(
+                {
+                    "example_id": example_id,
+                    "split": str(example.get("split") or "candidate"),
+                    "region": self._geofm_example_region(example),
+                    "baseline_metrics": baseline,
+                    "augmented_metrics": augmented,
+                    "target_metrics": target_metrics,
+                    "ground_truth": bool(provenance.get("ground_truth")),
+                    "synthetic": bool(provenance.get("synthetic") or ("synthetic_temporal_transition" in reasons)),
+                    "not_for_production": bool(provenance.get("not_for_production")),
+                    "usable": not reasons,
+                }
+            )
+        return rows
+
+    def _geofm_example_region(self, example: dict[str, Any]) -> str:
+        labels = dict(example.get("labels") or {})
+        provenance = dict(example.get("provenance") or {})
+        scenario_context = dict(example.get("scenario_context") or {})
+        spatial_scope = dict(scenario_context.get("spatial_scope") or {}) if isinstance(scenario_context.get("spatial_scope"), dict) else {}
+        current_state = dict(example.get("current_state_summary") or {})
+        for source in (labels, provenance, spatial_scope, scenario_context, current_state):
+            for key in ("region", "region_code", "county", "county_code", "township", "township_code", "spatial_unit"):
+                value = source.get(key)
+                if value not in (None, ""):
+                    return str(value)
+        return ""
+
+    def _geofm_aggregate_prediction_comparison(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        baseline = self._geofm_mean_metrics([dict(row.get("baseline_metrics") or {}) for row in rows])
+        augmented = self._geofm_mean_metrics([dict(row.get("augmented_metrics") or {}) for row in rows])
+        deltas = self._geofm_metric_deltas(baseline, augmented)
+        return {
+            "sample_count": len(rows),
+            "baseline_metrics": baseline,
+            "augmented_metrics": augmented,
+            **deltas,
+        }
+
+    def _geofm_mean_metrics(self, metrics: list[dict[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key in ("planning_lift", "constraint_risk", "confidence", "calibration_gap", "ranking_score"):
+            values = [float(safe_float(item.get(key), 0.0) or 0.0) for item in metrics if key in item]
+            result[key] = round(self._mean(values) or 0.0, 4)
+        result["source"] = "mean_prediction_metrics"
+        return result
+
+    def _geofm_d4_from_dataset_prediction_comparison(
+        self,
+        *,
+        dataset: dict[str, Any],
+        rows: list[dict[str, Any]],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        examples = [dict(item) for item in dataset.get("examples") or [] if isinstance(item, dict)]
+        holdout_rows = [row for row in rows if row.get("split") == "holdout"]
+        if not examples or not holdout_rows:
+            return {}
+        train_targets = [
+            float(safe_float((item.get("targets") or {}).get("planning_utility_delta"), 0.0) or 0.0)
+            for item in examples
+            if str(item.get("split") or "candidate") != "holdout"
+        ]
+        holdout_targets = [
+            float(safe_float((row.get("target_metrics") or {}).get("planning_lift"), 0.0) or 0.0)
+            for row in holdout_rows
+        ]
+        train_mean = self._mean(train_targets)
+        holdout_mean = self._mean(holdout_targets)
+        domain_shift_score = None
+        if train_mean is not None and holdout_mean is not None:
+            domain_shift_score = round(abs(holdout_mean - train_mean) / max(abs(train_mean), 1.0), 4)
+        regret_values = [
+            abs(float((row.get("augmented_metrics") or {}).get("planning_lift") or 0.0) - float((row.get("target_metrics") or {}).get("planning_lift") or 0.0))
+            for row in holdout_rows
+        ]
+        confidences = [
+            float((row.get("augmented_metrics") or {}).get("confidence") or 0.0)
+            for row in holdout_rows
+            if "confidence" in (row.get("augmented_metrics") or {})
+        ]
+        production_ready = [
+            1.0 if row.get("ground_truth") and row.get("usable") and not row.get("synthetic") and not row.get("not_for_production") else 0.0
+            for row in holdout_rows
+        ]
+        return {
+            "source": "dataset_holdout_domain_shift",
+            "domain_shift_score": domain_shift_score,
+            "holdout_regret_delta": self._mean(regret_values),
+            "temporal_holdout_confidence": self._mean(confidences),
+            "production_label_quality": self._mean(production_ready),
+            "holdout_sample_count": len(holdout_rows),
+            "thresholds_used": {
+                "max_domain_shift_score": thresholds["max_domain_shift_score"],
+                "max_holdout_regret_delta": thresholds["max_holdout_regret_delta"],
+                "min_temporal_holdout_confidence": thresholds["min_temporal_holdout_confidence"],
+                "min_production_label_quality": thresholds["min_production_label_quality"],
+            },
+        }
+
+    def _geofm_d4_from_evaluation_report(self, report: dict[str, Any]) -> dict[str, Any]:
+        metrics = dict(report.get("metrics") or {})
+        inventory = dict(report.get("sample_inventory") or {})
+        holdout_count = safe_int(inventory.get("holdout_example_count"), 0) or 0
+        ground_truth_count = safe_int(inventory.get("ground_truth_example_count"), 0) or 0
+        if not metrics and not inventory:
+            return {}
+        transition_error = safe_float(metrics.get("mean_transition_error"), None)
+        utility_error = safe_float(metrics.get("mean_utility_error"), None)
+        mean_confidence = safe_float(metrics.get("mean_confidence"), None)
+        return {
+            "source": "dynamics_evaluation_report",
+            "domain_shift_score": transition_error,
+            "holdout_regret_delta": utility_error,
+            "temporal_holdout_confidence": mean_confidence,
+            "production_label_quality": round(ground_truth_count / max(1, holdout_count), 4) if holdout_count else None,
+        }
+
+    def _geofm_extended_validation_payload_for_gate(self, validation: dict[str, Any]) -> dict[str, Any]:
+        checks = dict(validation.get("checks") or {})
+        payload = {
+            "required": True,
+            "source": validation.get("source") or "experiment_report",
+            "auto_inferred": bool(validation.get("auto_inferred")),
+            "inference_sources": list(validation.get("inference_sources") or []),
+        }
+        d2 = dict(checks.get("D2") or {})
+        d3 = dict(checks.get("D3") or {})
+        d4 = dict(checks.get("D4") or {})
+        if d2:
+            payload["D2"] = {
+                **dict(d2.get("deltas") or {}),
+                "sample_count": d2.get("sample_count", 0),
+                "source": d2.get("name") or "D2",
+            }
+        if d3:
+            regions = []
+            for item in d3.get("regions") or []:
+                if not isinstance(item, dict):
+                    continue
+                regions.append(
+                    {
+                        **dict(item.get("deltas") or {}),
+                        "region": item.get("region"),
+                        "source_status": item.get("status"),
+                    }
+                )
+            payload["D3"] = {
+                "regions": regions,
+                "source": d3.get("name") or "D3",
+            }
+        if d4:
+            payload["D4"] = {
+                **dict(d4.get("metrics") or {}),
+                "source": d4.get("name") or "D4",
+            }
+        return payload
+
+    def _geofm_experiment_comparison_rows(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        dataset = self._geofm_validation_dataset(payload)
+        baseline_predictions = self._geofm_prediction_map(payload, "baseline")
+        augmented_predictions = self._geofm_prediction_map(payload, "augmented")
+        if not dataset or not baseline_predictions or not augmented_predictions:
+            return []
+        return self._geofm_prediction_comparison_rows(
+            dataset=dataset,
+            baseline_predictions=baseline_predictions,
+            augmented_predictions=augmented_predictions,
+        )
+
+    def _geofm_experiment_comparison_summary(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        holdout_rows = [row for row in rows if row.get("split") == "holdout"]
+        regions = sorted({str(row.get("region") or "") for row in holdout_rows if row.get("region")})
+        return {
+            "schema": "territory_world_model.geofm_prediction_comparison_summary.v1",
+            "comparison_row_count": len(rows),
+            "holdout_row_count": len(holdout_rows),
+            "ground_truth_holdout_count": sum(1 for row in holdout_rows if row.get("ground_truth")),
+            "production_ready_holdout_count": sum(
+                1
+                for row in holdout_rows
+                if row.get("ground_truth") and row.get("usable") and not row.get("synthetic") and not row.get("not_for_production")
+            ),
+            "region_count": len(regions),
+            "regions": regions[:50],
+        }
+
+    def _geofm_experiment_recommendations(
+        self,
+        gate_report: dict[str, Any],
+        extended_validation: dict[str, Any],
+        rows: list[dict[str, Any]],
+        prediction_evidence: dict[str, Any],
+    ) -> list[str]:
+        recommendations = list(gate_report.get("recommendations") or [])
+        if not rows:
+            recommendations.append("provide dynamics dataset plus B0/B1 prediction maps to make the GeoFM downstream experiment auditable")
+        if extended_validation.get("status") != "pass":
+            recommendations.append("do not promote GeoFM beyond gated enhancement until D2/D3/D4 downstream evidence passes")
+        if prediction_evidence.get("prediction_source") == "deterministic_experiment_scaffold":
+            recommendations.append("replace deterministic B0/B1 scaffold predictions with explicit downstream model predictions before retaining GeoFM")
+        if gate_report.get("gate_status") == "pass":
+            recommendations.append("retain GeoFM only for downstream planning tasks matching this experiment scope")
+        if not recommendations:
+            recommendations.append("keep GeoFM as a review-gated enhancement and re-run the experiment on new regions before default use")
+        return recommendations
+
+    def _geofm_experiment_status(self, gate_report: dict[str, Any], prediction_evidence: dict[str, Any]) -> str:
+        if prediction_evidence.get("prediction_source") == "deterministic_experiment_scaffold":
+            return "review"
+        return str(gate_report.get("gate_status") or "review")
+
+    def _geofm_pick_extended_payload(self, raw: dict[str, Any], payload: dict[str, Any], *keys: str) -> Any:
+        for key in keys:
+            if key in raw:
+                return raw.get(key)
+            if key in payload:
+                return payload.get(key)
+        return None
+
+    def _geofm_deltas_from_validation_payload(self, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            return {}
+        baseline = self._variant_metrics_from_payload(value.get("baseline_metrics") or value.get("baseline"))
+        augmented = self._variant_metrics_from_payload(value.get("augmented_metrics") or value.get("augmented") or value.get("geofm_metrics"))
+        if baseline and augmented:
+            return self._geofm_metric_deltas(baseline, augmented)
+        deltas: dict[str, Any] = {}
+        for key in (
+            "planning_lift_delta",
+            "constraint_risk_delta",
+            "confidence_delta",
+            "ranking_score_delta",
+            "calibration_gap_delta",
+        ):
+            parsed = safe_float(value.get(key), None)
+            if parsed is not None:
+                deltas[key] = round(float(parsed), 4)
+        return deltas
+
+    def _geofm_d2_holdout_check(
+        self,
+        raw: dict[str, Any],
+        payload: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        value = self._geofm_pick_extended_payload(
+            raw,
+            payload,
+            "D2",
+            "d2",
+            "downstream_holdout",
+            "planning_holdout",
+            "holdout_metrics",
+            "planning_holdout_metrics",
+        )
+        missing: list[str] = []
+        failed: list[str] = []
+        recommendations: list[str] = []
+        if not isinstance(value, dict):
+            missing.append("downstream_planning_holdout")
+            recommendations.append("run D2 explicit downstream holdout planning evaluation before promoting GeoFM beyond B0/B1")
+            return {
+                "name": "D2 explicit downstream planning holdout",
+                "status": "review",
+                "passed": False,
+                "missing": missing,
+                "failed": failed,
+                "deltas": {},
+                "thresholds": {
+                    "min_holdout_planning_lift_delta": thresholds["min_holdout_planning_lift_delta"],
+                    "max_constraint_risk_delta": thresholds["max_constraint_risk_delta"],
+                    "min_holdout_ranking_score_delta": thresholds["min_holdout_ranking_score_delta"],
+                },
+                "recommendations": recommendations,
+            }
+
+        deltas = self._geofm_deltas_from_validation_payload(value)
+        planning_delta = safe_float(deltas.get("planning_lift_delta"), None)
+        risk_delta = safe_float(deltas.get("constraint_risk_delta"), 0.0)
+        ranking_delta = safe_float(deltas.get("ranking_score_delta"), None)
+        if planning_delta is None:
+            missing.append("planning_lift_delta")
+        elif planning_delta < float(thresholds["min_holdout_planning_lift_delta"]):
+            failed.append("planning_lift_delta")
+        if risk_delta is not None and risk_delta > float(thresholds["max_constraint_risk_delta"]):
+            failed.append("constraint_risk_delta")
+        if ranking_delta is not None and ranking_delta < float(thresholds["min_holdout_ranking_score_delta"]):
+            failed.append("ranking_score_delta")
+
+        if failed:
+            recommendations.append("gate out GeoFM until D2 holdout lift, ranking and constraint-risk deltas pass")
+        status = "blocked" if failed else ("review" if missing else "pass")
+        return {
+            "name": "D2 explicit downstream planning holdout",
+            "status": status,
+            "passed": status == "pass",
+            "missing": missing,
+            "failed": failed,
+            "sample_count": safe_int(value.get("sample_count"), 0) or 0,
+            "deltas": deltas,
+            "thresholds": {
+                "min_holdout_planning_lift_delta": thresholds["min_holdout_planning_lift_delta"],
+                "max_constraint_risk_delta": thresholds["max_constraint_risk_delta"],
+                "min_holdout_ranking_score_delta": thresholds["min_holdout_ranking_score_delta"],
+            },
+            "recommendations": recommendations,
+        }
+
+    def _geofm_d3_cross_region_check(
+        self,
+        raw: dict[str, Any],
+        payload: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        value = self._geofm_pick_extended_payload(raw, payload, "D3", "d3", "cross_region", "cross_region_metrics")
+        missing: list[str] = []
+        failed: list[str] = []
+        recommendations: list[str] = []
+        if isinstance(value, dict):
+            regions = value.get("regions") or value.get("region_metrics") or value.get("splits")
+            if regions is None and (value.get("baseline_metrics") or value.get("planning_lift_delta") is not None):
+                regions = [value]
+        else:
+            regions = value
+        if not isinstance(regions, list):
+            regions = []
+        min_regions = int(thresholds["min_cross_region_count"])
+        if len(regions) < min_regions:
+            missing.append("cross_region_splits")
+            recommendations.append("run D3 geographic split validation across enough regions before promoting GeoFM")
+
+        region_results: list[dict[str, Any]] = []
+        for idx, item in enumerate(regions):
+            if not isinstance(item, dict):
+                continue
+            deltas = self._geofm_deltas_from_validation_payload(item)
+            planning_delta = safe_float(deltas.get("planning_lift_delta"), None)
+            risk_delta = safe_float(deltas.get("constraint_risk_delta"), 0.0)
+            region_id = str(item.get("region") or item.get("region_code") or item.get("split") or f"region_{idx + 1}")
+            region_failed: list[str] = []
+            if planning_delta is None:
+                region_failed.append("planning_lift_delta")
+            elif planning_delta < float(thresholds["min_cross_region_planning_lift_delta"]):
+                region_failed.append("planning_lift_delta")
+            if risk_delta is not None and risk_delta > float(thresholds["max_constraint_risk_delta"]):
+                region_failed.append("constraint_risk_delta")
+            if region_failed:
+                failed.append(region_id)
+            region_results.append(
+                {
+                    "region": region_id,
+                    "status": "blocked" if region_failed else "pass",
+                    "failed": region_failed,
+                    "deltas": deltas,
+                }
+            )
+
+        if failed:
+            recommendations.append("gate out GeoFM until D3 cross-region planning lift is robust without added constraint risk")
+        status = "blocked" if failed else ("review" if missing else "pass")
+        return {
+            "name": "D3 cross-region geographic robustness",
+            "status": status,
+            "passed": status == "pass",
+            "missing": missing,
+            "failed": failed,
+            "region_count": len(region_results),
+            "regions": region_results,
+            "thresholds": {
+                "min_cross_region_count": min_regions,
+                "min_cross_region_planning_lift_delta": thresholds["min_cross_region_planning_lift_delta"],
+                "max_constraint_risk_delta": thresholds["max_constraint_risk_delta"],
+            },
+            "recommendations": recommendations,
+        }
+
+    def _geofm_d4_domain_shift_check(
+        self,
+        raw: dict[str, Any],
+        payload: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        value = self._geofm_pick_extended_payload(
+            raw,
+            payload,
+            "D4",
+            "d4",
+            "domain_shift",
+            "domain_shift_validation",
+            "production_validation",
+        )
+        missing: list[str] = []
+        failed: list[str] = []
+        recommendations: list[str] = []
+        if not isinstance(value, dict):
+            missing.append("domain_shift_temporal_validation")
+            recommendations.append("run D4 domain-shift, temporal holdout and production-label checks before promoting GeoFM")
+            return {
+                "name": "D4 domain-shift and production-readiness validation",
+                "status": "review",
+                "passed": False,
+                "missing": missing,
+                "failed": failed,
+                "metrics": {},
+                "thresholds": {
+                    "max_domain_shift_score": thresholds["max_domain_shift_score"],
+                    "max_holdout_regret_delta": thresholds["max_holdout_regret_delta"],
+                    "min_temporal_holdout_confidence": thresholds["min_temporal_holdout_confidence"],
+                    "min_production_label_quality": thresholds["min_production_label_quality"],
+                },
+                "recommendations": recommendations,
+            }
+
+        domain_shift_score = safe_float(value.get("domain_shift_score"), None)
+        holdout_regret_delta = safe_float(value.get("holdout_regret_delta"), None)
+        temporal_holdout_confidence = safe_float(value.get("temporal_holdout_confidence"), None)
+        label_quality = safe_float(value.get("label_quality"), safe_float(value.get("production_label_quality"), None))
+        if domain_shift_score is None:
+            missing.append("domain_shift_score")
+        elif domain_shift_score > float(thresholds["max_domain_shift_score"]):
+            failed.append("domain_shift_score")
+        if holdout_regret_delta is None:
+            missing.append("holdout_regret_delta")
+        elif holdout_regret_delta > float(thresholds["max_holdout_regret_delta"]):
+            failed.append("holdout_regret_delta")
+        if temporal_holdout_confidence is None:
+            missing.append("temporal_holdout_confidence")
+        elif temporal_holdout_confidence < float(thresholds["min_temporal_holdout_confidence"]):
+            failed.append("temporal_holdout_confidence")
+        if label_quality is None:
+            missing.append("production_label_quality")
+        elif label_quality < float(thresholds["min_production_label_quality"]):
+            failed.append("production_label_quality")
+
+        if failed:
+            recommendations.append("gate out GeoFM until D4 domain-shift, temporal holdout and label-quality checks pass")
+        status = "blocked" if failed else ("review" if missing else "pass")
+        return {
+            "name": "D4 domain-shift and production-readiness validation",
+            "status": status,
+            "passed": status == "pass",
+            "missing": missing,
+            "failed": failed,
+            "metrics": {
+                "domain_shift_score": domain_shift_score,
+                "holdout_regret_delta": holdout_regret_delta,
+                "temporal_holdout_confidence": temporal_holdout_confidence,
+                "production_label_quality": label_quality,
+            },
+            "thresholds": {
+                "max_domain_shift_score": thresholds["max_domain_shift_score"],
+                "max_holdout_regret_delta": thresholds["max_holdout_regret_delta"],
+                "min_temporal_holdout_confidence": thresholds["min_temporal_holdout_confidence"],
+                "min_production_label_quality": thresholds["min_production_label_quality"],
+            },
+            "recommendations": recommendations,
+        }
+
     def _geofm_gate_decision(
         self,
         *,
@@ -3143,6 +4949,8 @@ class TerritoryWorldModelService:
         thresholds: dict[str, Any],
         vector_inventory: dict[str, Any],
         explicit_metrics: bool,
+        extended_validation: dict[str, Any] | None = None,
+        architecture_audit: dict[str, Any] | None = None,
     ) -> tuple[str, str, list[str]]:
         recommendations: list[str] = []
         if not explicit_metrics and thresholds.get("require_explicit_downstream_metrics"):
@@ -3151,15 +4959,39 @@ class TerritoryWorldModelService:
             recommendations.append("publish or bind GeoFM/MMFE semantic vector inventory before B1 evaluation")
         if augmented_gate.get("missing"):
             recommendations.append("resolve B1 evidence gaps before using GeoFM in the default dynamics path")
+        if extended_validation:
+            recommendations.extend(extended_validation.get("recommendations") or [])
+        if architecture_audit:
+            audit_required = bool(architecture_audit.get("required") or thresholds.get("require_architecture_audit"))
+            if audit_required or architecture_audit.get("status") == "blocked":
+                recommendations.extend(architecture_audit.get("recommendations") or [])
+            elif architecture_audit.get("status") != "pass":
+                recommendations.append("keep GeoFM architecture audit visible and unresolved until adapter/backbone evidence is complete")
 
         lift_ok = float(deltas.get("planning_lift_delta") or 0.0) >= float(thresholds["min_planning_lift_delta"])
         risk_ok = float(deltas.get("constraint_risk_delta") or 0.0) <= float(thresholds["max_constraint_risk_delta"])
         confidence_ok = float(deltas.get("confidence_delta") or 0.0) >= float(thresholds["min_confidence_delta"])
         gates_ok = baseline_gate.get("status") == "pass" and augmented_gate.get("status") == "pass"
         explicit_ok = explicit_metrics or not thresholds.get("require_explicit_downstream_metrics")
+        extended_required = bool((extended_validation or {}).get("required"))
+        extended_status = (extended_validation or {}).get("status", "not_required")
+        extended_ok = (not extended_required) or extended_status == "pass"
+        architecture_required = bool((architecture_audit or {}).get("required") or thresholds.get("require_architecture_audit"))
+        architecture_status = (architecture_audit or {}).get("status", "not_required")
+        architecture_ok = (not architecture_required) or architecture_status == "pass"
 
-        if gates_ok and explicit_ok and lift_ok and risk_ok and confidence_ok:
+        if gates_ok and explicit_ok and lift_ok and risk_ok and confidence_ok and extended_ok and architecture_ok:
             return "pass", "retain_geofm_for_downstream_planning", recommendations
+
+        if gates_ok and explicit_ok and lift_ok and risk_ok and confidence_ok and extended_required:
+            if extended_status == "blocked":
+                return "blocked", "gate_out_geofm", recommendations
+            return "review", "review_required", recommendations
+
+        if gates_ok and explicit_ok and lift_ok and risk_ok and confidence_ok and architecture_required:
+            if architecture_status == "blocked":
+                return "blocked", "gate_out_geofm", recommendations
+            return "review", "review_required", recommendations
 
         if explicit_ok and gates_ok and (not lift_ok or not risk_ok):
             recommendations.append("gate out GeoFM for this task until it improves planning lift without increasing constraint risk")
@@ -3951,6 +5783,11 @@ class TerritoryWorldModelService:
                 "planning_utility_delta": round(float(params.get("utility_mean") or 0.0), 6),
                 "uncertainty": {
                     "confidence": round(float(params.get("confidence_mean") or 0.0), 6),
+                    "source": "hierarchical_baseline_dynamics_fit",
+                },
+                "calibration": {
+                    "calibrated_utility_delta": round(float(params.get("utility_mean") or 0.0), 6),
+                    "ranking_score_mean": round(float(params.get("ranking_score_mean") or 0.0), 6),
                     "source": "hierarchical_baseline_dynamics_fit",
                 },
                 "action_mask": dict(targets.get("action_mask") or {}),

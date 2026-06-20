@@ -17,6 +17,7 @@ from .models import (
     TwmDynamicsTrainingExample,
     TwmAuditReport,
     TwmEvidenceItem,
+    TwmGeoFMDownstreamExperimentReport,
     TwmGeoFMGateReport,
     TwmGeoFMGateVariant,
     TwmLayerBinding,
@@ -51,6 +52,7 @@ from .repository import TwmRepository, get_twm_repository, reset_twm_repository
 from .rule_dsl import normalize_rule_body, validate_rule_body
 from .rule_evaluator import RuleEvaluator, evaluate_rules
 from .service import TerritoryWorldModelService, get_territory_world_model_service, reset_territory_world_model_service
+from .spatial_causal_estimator import SpatialCausalEstimatorAdapter, estimate_spatial_treatment_effect
 from .state_builder import StateBuilder, build_state_from_bundle, load_state_source
 
 __all__ = [
@@ -70,6 +72,7 @@ __all__ = [
     "TwmDynamicsTrainingDataset",
     "TwmDynamicsTrainingExample",
     "TwmEvidenceItem",
+    "TwmGeoFMDownstreamExperimentReport",
     "TwmGeoFMGateReport",
     "TwmGeoFMGateVariant",
     "TwmLayerBinding",
@@ -99,11 +102,13 @@ __all__ = [
     "TwmWorldModelProfile",
     "RuleEvaluator",
     "StateBuilder",
+    "SpatialCausalEstimatorAdapter",
     "TerritoryWorldModelService",
     "build_evidence_chain",
     "build_state_from_bundle",
     "evidence_checksum",
     "evaluate_rules",
+    "estimate_spatial_treatment_effect",
     "get_territory_world_model_service",
     "get_twm_repository",
     "jsonable",

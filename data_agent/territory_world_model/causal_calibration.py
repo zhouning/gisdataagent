@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from .spatial_causal_estimator import build_neighbor_edges, estimate_spatial_treatment_effect
 from .utils import safe_float, truthy
 
 
@@ -30,7 +31,15 @@ def estimate_observational_treatment_effect(records: list[dict[str, Any]], *, th
     aipw_effect, aipw_se, influence = _augmented_ipw_ate(usable)
     balance = _covariate_balance(usable)
     overlap = _overlap_diagnostics(usable, thresholds)
-    spatial = _spatial_interference_diagnostics(usable, influence, thresholds)
+    neighbor_edges = build_neighbor_edges(usable, thresholds)
+    spatial = _spatial_interference_diagnostics(usable, influence, thresholds, neighbor_edges=neighbor_edges)
+    spatial_estimator = estimate_spatial_treatment_effect(
+        usable,
+        thresholds=thresholds,
+        neighbor_edges=neighbor_edges,
+        observational_effect=aipw_effect,
+        observational_standard_error=aipw_se,
+    )
 
     primary_name, primary_effect, primary_se = _primary_estimator(
         naive_effect=naive_effect,
@@ -45,6 +54,7 @@ def estimate_observational_treatment_effect(records: list[dict[str, Any]], *, th
         control_count=len(control),
         thresholds=thresholds,
         overlap=overlap,
+        spatial_estimator=spatial_estimator,
     )
     model_effects = [safe_float(row.get("model_effect"), None) for row in usable]
     model_effects = [float(item) for item in model_effects if item is not None]
@@ -85,6 +95,7 @@ def estimate_observational_treatment_effect(records: list[dict[str, Any]], *, th
         "overlap": overlap,
         "balance": balance,
         "spatial": spatial,
+        "spatial_estimator": spatial_estimator,
     }
 
 
@@ -249,7 +260,21 @@ def _primary_estimator(
     control_count: int,
     thresholds: dict[str, Any],
     overlap: dict[str, Any],
+    spatial_estimator: dict[str, Any] | None = None,
 ) -> tuple[str, float, float]:
+    if (
+        spatial_estimator
+        and spatial_estimator.get("status") == "pass"
+        and usable_count >= int(thresholds.get("min_records", 8))
+        and treated_count >= int(thresholds.get("min_treated", 3))
+        and control_count >= int(thresholds.get("min_control", 3))
+        and overlap.get("status") == "pass"
+    ):
+        return (
+            "spatial_fixed_effect_neighbor_adapter",
+            float(spatial_estimator.get("effect") or 0.0),
+            float(spatial_estimator.get("standard_error") or 0.0),
+        )
     if (
         usable_count >= int(thresholds.get("min_records", 8))
         and treated_count >= int(thresholds.get("min_treated", 3))
@@ -312,7 +337,13 @@ def _overlap_diagnostics(usable: list[dict[str, Any]], thresholds: dict[str, Any
     }
 
 
-def _spatial_interference_diagnostics(usable: list[dict[str, Any]], influence: list[float], thresholds: dict[str, Any]) -> dict[str, Any]:
+def _spatial_interference_diagnostics(
+    usable: list[dict[str, Any]],
+    influence: list[float],
+    thresholds: dict[str, Any],
+    *,
+    neighbor_edges: list[tuple[int, int, float]] | None = None,
+) -> dict[str, Any]:
     spatial_rows = [row for row in usable if row.get("spatial")]
     if not spatial_rows:
         return {
@@ -323,7 +354,7 @@ def _spatial_interference_diagnostics(usable: list[dict[str, Any]], influence: l
             "note": "no spatial coordinates, cluster ids or neighbor links supplied",
         }
 
-    neighbor_edges = _neighbor_edges(usable, thresholds)
+    neighbor_edges = list(neighbor_edges or [])
     cluster_summary = _spatial_cluster_summary(usable)
     exposure = _neighborhood_exposure(usable, neighbor_edges)
     moran = _moran_like_residual_correlation(usable, influence, neighbor_edges)
@@ -366,34 +397,18 @@ def _spatial_attributes(row: dict[str, Any]) -> dict[str, Any]:
     cluster = row.get("spatial_cluster") or row.get("cluster") or row.get("block_id") or row.get("township_id")
     if cluster is not None:
         spatial["cluster"] = str(cluster)
-    neighbors = row.get("neighbors") or row.get("neighbor_unit_ids") or []
-    if isinstance(neighbors, (list, tuple, set)) and neighbors:
-        spatial["neighbors"] = [str(item) for item in neighbors]
+    neighbors = _neighbor_ids(row.get("neighbors") or row.get("neighbor_unit_ids") or [])
+    if neighbors:
+        spatial["neighbors"] = neighbors
     return spatial
 
 
-def _neighbor_edges(usable: list[dict[str, Any]], thresholds: dict[str, Any]) -> list[tuple[int, int, float]]:
-    index_by_id = {str(row.get("unit_id") or idx): idx for idx, row in enumerate(usable)}
-    edges: dict[tuple[int, int], float] = {}
-    for idx, row in enumerate(usable):
-        spatial = dict(row.get("spatial") or {})
-        for neighbor_id in spatial.get("neighbors") or []:
-            other = index_by_id.get(str(neighbor_id))
-            if other is None or other == idx:
-                continue
-            pair = tuple(sorted((idx, other)))
-            edges[pair] = 1.0
-
-    distance_threshold = safe_float(thresholds.get("spatial_neighbor_distance"), None)
-    coordinate_rows = [(idx, dict(row.get("spatial") or {})) for idx, row in enumerate(usable) if "x" in dict(row.get("spatial") or {}) and "y" in dict(row.get("spatial") or {})]
-    if distance_threshold is not None and distance_threshold > 0 and len(coordinate_rows) > 1:
-        for pos, (idx, left) in enumerate(coordinate_rows):
-            for other, right in coordinate_rows[pos + 1 :]:
-                distance = math.sqrt((float(left["x"]) - float(right["x"])) ** 2 + (float(left["y"]) - float(right["y"])) ** 2)
-                if distance <= float(distance_threshold):
-                    pair = tuple(sorted((idx, other)))
-                    edges[pair] = 1.0 / max(distance, 1e-9)
-    return [(left, right, weight) for (left, right), weight in sorted(edges.items())]
+def _neighbor_ids(value: Any) -> list[str]:
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        return [item.strip() for item in value.replace(";", ",").split(",") if item.strip()]
+    return []
 
 
 def _spatial_cluster_summary(usable: list[dict[str, Any]]) -> dict[str, Any]:
