@@ -6,8 +6,8 @@ requires-python = ">=3.11"
 
 # Core dependencies — minimal set for Lite mode (General Pipeline + DuckDB)
 dependencies = [
-    "google-adk>=1.27",
-    "google-genai>=1.0",
+    "google-adk==2.3.0",
+    "google-genai>=2.8,<3",
     "chainlit>=2.0",
     "geopandas>=0.14",
     "shapely>=2.0",
@@ -89,3 +89,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["data_agent*"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:BaseAgentConfig is deprecated.*:DeprecationWarning",
+]

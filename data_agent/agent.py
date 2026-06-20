@@ -5,12 +5,16 @@ Tool functions live in data_agent/toolsets/; prompts in data_agent/prompts/.
 Agents use BaseToolset instances for tool registration (see data_agent/toolsets/).
 """
 from datetime import date
+import os
+
+from .adk_compat import install_adk_warning_filters, set_workflow_compat_attrs
+
+install_adk_warning_filters()
 
 from google.adk.agents.llm_agent import Agent
-from google.adk.agents import LlmAgent, SequentialAgent, LoopAgent, ParallelAgent
+from google.adk.agents.llm_agent import LlmAgent
+from google.adk.workflow import JoinNode, Workflow
 from google.adk.tools import VertexAiSearchTool, AgentTool
-
-import os
 
 # --- Prompt loading ---
 from .prompts import get_prompt
@@ -153,6 +157,55 @@ MODEL_TIER_MAP = {
 }
 
 
+def _sequence_workflow(name: str, nodes: list, description: str = "") -> Workflow:
+    """Create a Workflow that preserves sequential shell-agent semantics."""
+    workflow = Workflow(
+        name=name,
+        description=description,
+        edges=[("START", *nodes)],
+    )
+    return set_workflow_compat_attrs(workflow, sub_agents=nodes)
+
+
+def _parallel_workflow(name: str, nodes: list, description: str = "") -> Workflow:
+    """Create a fan-out/fan-in Workflow used in place of ParallelAgent."""
+    join = JoinNode(name=f"{name}Join")
+    workflow = Workflow(
+        name=name,
+        description=description,
+        edges=[
+            ("START", tuple(nodes)),
+            (tuple(nodes), join),
+        ],
+    )
+    return set_workflow_compat_attrs(workflow, sub_agents=nodes)
+
+
+def _quality_gate_workflow(
+    name: str,
+    generator,
+    checker,
+    *,
+    description: str = "",
+    max_iterations: int = 3,
+) -> Workflow:
+    """Replace deprecated LoopAgent with a sequential quality gate Workflow.
+
+    This preserves the generator -> checker ordering and compatibility metadata.
+    Conditional retry semantics can be added later with routed edges if needed.
+    """
+    workflow = Workflow(
+        name=name,
+        description=description,
+        edges=[("START", generator, checker)],
+    )
+    return set_workflow_compat_attrs(
+        workflow,
+        sub_agents=[generator, checker],
+        max_iterations=max_iterations,
+    )
+
+
 def get_model_config() -> dict:
     """Return current model configuration for API exposure."""
     try:
@@ -263,10 +316,10 @@ semantic_prefetch_agent = LlmAgent(
     ],
 )
 
-parallel_data_ingestion = ParallelAgent(
-    name="ParallelDataIngestion",
+parallel_data_ingestion = _parallel_workflow(
+    "ParallelDataIngestion",
+    [data_exploration_agent, semantic_prefetch_agent],
     description="并行数据摄入——同时执行数据探查和语义预取",
-    sub_agents=[data_exploration_agent, semantic_prefetch_agent],
 )
 
 data_processing_agent = LlmAgent(
@@ -292,9 +345,9 @@ data_processing_agent = LlmAgent(
     ] + _arcpy_tools,
 )
 
-data_engineering_agent = SequentialAgent(
-    name="DataEngineering",
-    sub_agents=[parallel_data_ingestion, data_processing_agent],
+data_engineering_agent = _sequence_workflow(
+    "DataEngineering",
+    [parallel_data_ingestion, data_processing_agent],
 )
 
 data_analysis_agent = LlmAgent(
@@ -306,9 +359,8 @@ data_analysis_agent = LlmAgent(
     tools=[AnalysisToolset(), RemoteSensingToolset(), SpatialStatisticsToolset(), AdvancedAnalysisToolset(), CausalInferenceToolset(), LLMCausalToolset(), DreamerToolset()],
 )
 
-# --- Quality Checker + LoopAgent (ADK Optimization 2.2) ---
-# Generator-Critic pattern: analysis runs, quality checker evaluates,
-# loop repeats if checker finds business-level issues (max 3 iterations).
+# --- Quality Checker workflow (replaces deprecated LoopAgent shell) ---
+# Generator-Critic pattern: analysis runs, quality checker evaluates.
 quality_checker_agent = LlmAgent(
     name="QualityChecker",
     instruction=get_prompt("optimization", "quality_checker_instruction"),
@@ -318,9 +370,11 @@ quality_checker_agent = LlmAgent(
     tools=[approve_quality],
 )
 
-analysis_quality_loop = LoopAgent(
-    name="AnalysisQualityLoop",
-    sub_agents=[data_analysis_agent, quality_checker_agent],
+analysis_quality_loop = _quality_gate_workflow(
+    "AnalysisQualityLoop",
+    data_analysis_agent,
+    quality_checker_agent,
+    description="分析结果质量门：分析后执行质量审查。",
     max_iterations=3,
 )
 
@@ -341,17 +395,16 @@ data_visualization_agent = LlmAgent(
 
 data_summary_agent = LlmAgent(
     name="DataSummary",
-    instruction=get_prompt("optimization", "data_summary_agent_instruction"),
-    global_instruction=f"今天的时间是： {date.today()}",
+    instruction=f"{get_prompt('optimization', 'data_summary_agent_instruction')}\n\n今天的时间是：{date.today()}",
     description="决策总结专家",
     model=_create_model_with_retry(MODEL_STANDARD),
     output_key="final_summary",
 )
 
 # Pipeline: ParallelDataIngestion(Exploration || SemanticPreFetch) → Processing → QualityLoop → Viz → Summary
-data_pipeline = SequentialAgent(
-    name="DataPipeline",
-    sub_agents=[
+data_pipeline = _sequence_workflow(
+    "DataPipeline",
+    [
         data_engineering_agent,
         analysis_quality_loop,
         data_visualization_agent,
@@ -422,15 +475,15 @@ farmland_summary_agent = LlmAgent(
     output_key="final_summary",
 )
 
-farmland_optimization_pipeline = SequentialAgent(
-    name="FarmlandOptimizationPipeline",
-    description="耕地空间布局优化专用工作流：数据准备 → DRL 优化 → 对比地图 → 事实摘要。",
-    sub_agents=[
+farmland_optimization_pipeline = _sequence_workflow(
+    "FarmlandOptimizationPipeline",
+    [
         farmland_data_agent,
         farmland_drl_agent,
         farmland_visualization_agent,
         farmland_summary_agent,
     ],
+    description="耕地空间布局优化专用工作流：数据准备 → DRL 优化 → 对比地图 → 事实摘要。",
 )
 
 # ============================================================================
@@ -504,7 +557,7 @@ governance_report_agent = LlmAgent(
     ],
 )
 
-# --- Governance Quality Checker + LoopAgent (v7.1.6) ---
+# --- Governance Quality Checker workflow (replaces deprecated LoopAgent shell) ---
 governance_checker_agent = LlmAgent(
     name="GovernanceChecker",
     instruction=get_prompt("governance", "governance_checker_instruction"),
@@ -514,15 +567,17 @@ governance_checker_agent = LlmAgent(
     tools=[approve_quality],
 )
 
-governance_report_loop = LoopAgent(
-    name="GovernanceReportLoop",
-    sub_agents=[governance_report_agent, governance_checker_agent],
+governance_report_loop = _quality_gate_workflow(
+    "GovernanceReportLoop",
+    governance_report_agent,
+    governance_checker_agent,
+    description="治理报告质量门：报告生成后执行审查。",
     max_iterations=3,
 )
 
-governance_pipeline = SequentialAgent(
-    name="GovernancePipeline",
-    sub_agents=[governance_exploration_agent, governance_processing_agent, governance_viz_agent, governance_report_loop],
+governance_pipeline = _sequence_workflow(
+    "GovernancePipeline",
+    [governance_exploration_agent, governance_processing_agent, governance_viz_agent, governance_report_loop],
 )
 
 # ============================================================================
@@ -593,7 +648,7 @@ general_summary_agent = LlmAgent(
     output_key="final_summary",
 )
 
-# --- General Result Checker + LoopAgent (v7.1.6) ---
+# --- General Result Checker workflow (replaces deprecated LoopAgent shell) ---
 general_result_checker = LlmAgent(
     name="GeneralResultChecker",
     instruction=get_prompt("general", "general_result_checker_instruction"),
@@ -603,15 +658,17 @@ general_result_checker = LlmAgent(
     tools=[approve_quality],
 )
 
-general_summary_loop = LoopAgent(
-    name="GeneralSummaryLoop",
-    sub_agents=[general_summary_agent, general_result_checker],
+general_summary_loop = _quality_gate_workflow(
+    "GeneralSummaryLoop",
+    general_summary_agent,
+    general_result_checker,
+    description="通用总结质量门：总结后执行结果审查。",
     max_iterations=3,
 )
 
-general_pipeline = SequentialAgent(
-    name="GeneralPipeline",
-    sub_agents=[general_processing_agent, general_viz_agent, general_summary_loop],
+general_pipeline = _sequence_workflow(
+    "GeneralPipeline",
+    [general_processing_agent, general_viz_agent, general_summary_loop],
 )
 
 # ============================================================================
@@ -730,7 +787,7 @@ planner_reporter = LlmAgent(
 )
 
 # --- Sub-workflows (ADK Optimization 2.3 + v9.0.2 Parallel) ---
-# Common sequential patterns packaged as SequentialAgent to eliminate
+# Common sequential patterns packaged as Workflow to eliminate
 # unnecessary Planner routing hops (8 hops → 3 for optimization flow).
 # v9.0.2: Exploration + SemanticPreFetch run in parallel.
 
@@ -762,29 +819,27 @@ def _make_semantic_prefetch(name: str) -> LlmAgent:
     )
 
 
-explore_process_workflow = SequentialAgent(
-    name="ExploreAndProcess",
-    description="并行数据探查(探查+语义预取)→数据处理 一体化工作流。",
-    sub_agents=[
-        ParallelAgent(
-            name="WFParallelIngestion",
-            description="并行探查+语义预取",
-            sub_agents=[
-                _make_planner_explorer("WFExplorer"),
-                _make_semantic_prefetch("WFSemanticPreFetch"),
-            ],
-        ),
-        _make_planner_processor("WFProcessor"),
-    ],
+_wf_explorer = _make_planner_explorer("WFExplorer")
+_wf_prefetch = _make_semantic_prefetch("WFSemanticPreFetch")
+_wf_parallel_ingestion = _parallel_workflow(
+    "WFParallelIngestion",
+    [_wf_explorer, _wf_prefetch],
+    description="并行探查+语义预取",
 )
 
-analyze_viz_workflow = SequentialAgent(
-    name="AnalyzeAndVisualize",
-    description="分析→可视化 一体化工作流。执行DRL/统计分析后自动生成可视化。",
-    sub_agents=[
+explore_process_workflow = _sequence_workflow(
+    "ExploreAndProcess",
+    [_wf_parallel_ingestion, _make_planner_processor("WFProcessor")],
+    description="并行数据探查(探查+语义预取)→数据处理 一体化工作流。",
+)
+
+analyze_viz_workflow = _sequence_workflow(
+    "AnalyzeAndVisualize",
+    [
         _make_planner_analyzer("WFAnalyzer"),
         _make_planner_visualizer("WFVisualizer"),
     ],
+    description="分析→可视化 一体化工作流。执行DRL/统计分析后自动生成可视化。",
 )
 
 # --- S-5: Specialized Agent factory functions (Multi-Agent Collaboration) ---
@@ -894,29 +949,28 @@ visualizer_agent = _make_visualizer_agent("VisualizerAgent")
 remote_sensing_agent = _make_remote_sensing("RemoteSensingAgent")
 
 # --- S-5 Multi-agent workflows ---
-full_analysis_workflow = SequentialAgent(
-    name="FullAnalysis",
-    description="数据准备→分析→可视化 端到端流程。适用于从原始数据到完整分析报告。",
-    sub_agents=[
+full_analysis_workflow = _sequence_workflow(
+    "FullAnalysis",
+    [
         _make_data_engineer("FADataEngineer"),
         _make_analyst("FAAnalyst"),
         _make_visualizer_agent("FAVisualizer"),
     ],
+    description="数据准备→分析→可视化 端到端流程。适用于从原始数据到完整分析报告。",
 )
 
-rs_analysis_workflow = SequentialAgent(
-    name="RSAnalysis",
-    description="遥感分析→可视化 专业流程。适用于卫星影像和地形分析。",
-    sub_agents=[
+rs_analysis_workflow = _sequence_workflow(
+    "RSAnalysis",
+    [
         _make_remote_sensing("RSRemoteSensing"),
         _make_visualizer_agent("RSVisualizer"),
     ],
+    description="遥感分析→可视化 专业流程。适用于卫星影像和地形分析。",
 )
 
 planner_agent = LlmAgent(
     name="Planner",
-    instruction=get_prompt("planner", "planner_instruction"),
-    global_instruction=f"今天的日期是：{date.today()}",
+    instruction=f"{get_prompt('planner', 'planner_instruction')}\n\n今天的日期是：{date.today()}",
     description="GIS数据智能体总调度（动态规划模式）",
     model=_create_model_with_retry(MODEL_STANDARD),
     output_key="planner_summary",

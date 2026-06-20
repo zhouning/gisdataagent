@@ -14,6 +14,8 @@ from unittest.mock import patch
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
+from google.adk.agents.llm_agent import LlmAgent
+
 
 def _model_name(model):
     """Extract model name string from a Gemini object or pass through strings."""
@@ -39,14 +41,12 @@ class TestPlannerHierarchy(unittest.TestCase):
         })
 
     def test_peers_transfer_disabled(self):
-        from google.adk.agents import LlmAgent
         for agent in self.planner.sub_agents:
             if isinstance(agent, LlmAgent):
                 self.assertTrue(agent.disallow_transfer_to_peers,
                                 f"{agent.name} should have disallow_transfer_to_peers=True")
 
     def test_output_keys(self):
-        from google.adk.agents import LlmAgent
         expected = {"data_profile", "processed_data", "analysis_report",
                     "visualizations", "final_report"}
         actual = {a.output_key for a in self.planner.sub_agents if isinstance(a, LlmAgent)}
@@ -296,44 +296,42 @@ class TestReflectionLoops(unittest.TestCase):
 
     def test_governance_has_report_loop(self):
         from data_agent.agent import governance_pipeline
-        from google.adk.agents import LoopAgent
-        loop_agents = [a for a in governance_pipeline.sub_agents if isinstance(a, LoopAgent)]
+        from google.adk.workflow import Workflow
+        loop_agents = [a for a in governance_pipeline.sub_agents if a.name == "GovernanceReportLoop"]
         self.assertEqual(len(loop_agents), 1)
         self.assertEqual(loop_agents[0].name, "GovernanceReportLoop")
+        self.assertIsInstance(loop_agents[0], Workflow)
 
     def test_governance_loop_contains_checker(self):
         from data_agent.agent import governance_pipeline
-        from google.adk.agents import LoopAgent
-        loop = [a for a in governance_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        loop = [a for a in governance_pipeline.sub_agents if a.name == "GovernanceReportLoop"][0]
         names = [a.name for a in loop.sub_agents]
         self.assertIn("GovernanceReporter", names)
         self.assertIn("GovernanceChecker", names)
 
     def test_governance_loop_max_iterations(self):
         from data_agent.agent import governance_pipeline
-        from google.adk.agents import LoopAgent
-        loop = [a for a in governance_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        loop = [a for a in governance_pipeline.sub_agents if a.name == "GovernanceReportLoop"][0]
         self.assertEqual(loop.max_iterations, 3)
 
     def test_general_has_summary_loop(self):
         from data_agent.agent import general_pipeline
-        from google.adk.agents import LoopAgent
-        loop_agents = [a for a in general_pipeline.sub_agents if isinstance(a, LoopAgent)]
+        from google.adk.workflow import Workflow
+        loop_agents = [a for a in general_pipeline.sub_agents if a.name == "GeneralSummaryLoop"]
         self.assertEqual(len(loop_agents), 1)
         self.assertEqual(loop_agents[0].name, "GeneralSummaryLoop")
+        self.assertIsInstance(loop_agents[0], Workflow)
 
     def test_general_loop_contains_checker(self):
         from data_agent.agent import general_pipeline
-        from google.adk.agents import LoopAgent
-        loop = [a for a in general_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        loop = [a for a in general_pipeline.sub_agents if a.name == "GeneralSummaryLoop"][0]
         names = [a.name for a in loop.sub_agents]
         self.assertIn("GeneralSummary", names)
         self.assertIn("GeneralResultChecker", names)
 
     def test_general_loop_max_iterations(self):
         from data_agent.agent import general_pipeline
-        from google.adk.agents import LoopAgent
-        loop = [a for a in general_pipeline.sub_agents if isinstance(a, LoopAgent)][0]
+        loop = [a for a in general_pipeline.sub_agents if a.name == "GeneralSummaryLoop"][0]
         self.assertEqual(loop.max_iterations, 3)
 
     def test_checker_prompts_exist(self):
@@ -344,16 +342,15 @@ class TestReflectionLoops(unittest.TestCase):
         self.assertIn("approve_quality", gen)
 
     def test_all_three_pipelines_have_loops(self):
-        """All 3 pipelines (optimization, governance, general) should have LoopAgent."""
+        """All 3 pipelines should have workflow quality gates."""
         from data_agent.agent import data_pipeline, governance_pipeline, general_pipeline
-        from google.adk.agents import LoopAgent
 
-        def has_loop(pipeline):
-            return any(isinstance(a, LoopAgent) for a in pipeline.sub_agents)
+        def has_gate(pipeline, name):
+            return any(a.name == name for a in pipeline.sub_agents)
 
-        self.assertTrue(has_loop(data_pipeline), "Optimization pipeline missing LoopAgent")
-        self.assertTrue(has_loop(governance_pipeline), "Governance pipeline missing LoopAgent")
-        self.assertTrue(has_loop(general_pipeline), "General pipeline missing LoopAgent")
+        self.assertTrue(has_gate(data_pipeline, "AnalysisQualityLoop"), "Optimization pipeline missing quality gate")
+        self.assertTrue(has_gate(governance_pipeline, "GovernanceReportLoop"), "Governance pipeline missing quality gate")
+        self.assertTrue(has_gate(general_pipeline, "GeneralSummaryLoop"), "General pipeline missing quality gate")
 
 
 if __name__ == "__main__":

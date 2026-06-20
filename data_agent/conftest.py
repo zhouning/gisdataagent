@@ -6,9 +6,19 @@ duplication across 68+ test files.
 """
 
 import asyncio
+import warnings
 from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
+from data_agent.adk_compat import configure_proj_data_dir
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"BaseAgentConfig is deprecated.*",
+    category=DeprecationWarning,
+)
+
+configure_proj_data_dir()
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,8 @@ import os
 import unittest
 from unittest.mock import MagicMock, AsyncMock
 
+from google.adk.agents.llm_agent import LlmAgent
+from google.adk.workflow import Workflow
 from google.genai import types
 
 
@@ -213,7 +215,6 @@ class TestHallucinationGuard(unittest.IsolatedAsyncioTestCase):
 class TestAttachGuardrails(unittest.TestCase):
 
     def test_attaches_to_llm_agent(self):
-        from google.adk.agents import LlmAgent
         from data_agent.guardrails import attach_guardrails
 
         agent = LlmAgent(name="TestAgent", instruction="Test", model="gemini-2.0-flash")
@@ -227,7 +228,6 @@ class TestAttachGuardrails(unittest.TestCase):
         self.assertEqual(len(agent.after_agent_callback), 2)  # 2 output guards
 
     def test_preserves_existing_callbacks(self):
-        from google.adk.agents import LlmAgent
         from data_agent.guardrails import attach_guardrails
 
         async def existing_before(**kwargs):
@@ -253,16 +253,16 @@ class TestAttachGuardrails(unittest.TestCase):
         self.assertIn(existing_after, agent.after_agent_callback)
 
     def test_recurses_into_sub_agents(self):
-        from google.adk.agents import LlmAgent, SequentialAgent
+        from data_agent.adk_compat import set_workflow_compat_attrs
         from data_agent.guardrails import attach_guardrails
 
         sub1 = LlmAgent(name="Sub1", instruction="Test", model="gemini-2.0-flash")
         sub2 = LlmAgent(name="Sub2", instruction="Test", model="gemini-2.0-flash")
-        parent = SequentialAgent(name="Parent", sub_agents=[sub1, sub2])
+        parent = set_workflow_compat_attrs(Workflow(name="Parent", edges=[]), sub_agents=[sub1, sub2])
 
         attach_guardrails(parent)
 
-        # Parent (SequentialAgent) should not have callbacks
+        # Parent workflow should not have callbacks
         self.assertIsNone(getattr(parent, "before_agent_callback", None))
         self.assertIsNone(getattr(parent, "after_agent_callback", None))
 
@@ -273,7 +273,6 @@ class TestAttachGuardrails(unittest.TestCase):
         self.assertIsNotNone(sub2.after_agent_callback)
 
     def test_disabled_via_env(self):
-        from google.adk.agents import LlmAgent
         import importlib
         import data_agent.guardrails
 

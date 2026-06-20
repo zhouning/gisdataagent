@@ -1140,7 +1140,7 @@ class TestContextCacheConfig(unittest.TestCase):
     def test_app_accepts_cache_config(self):
         from google.adk.apps import App
         from google.adk.agents.context_cache_config import ContextCacheConfig
-        from google.adk.agents import LlmAgent
+        from google.adk.agents.llm_agent import LlmAgent
         agent = LlmAgent(name="test", model="gemini-2.0-flash")
         config = ContextCacheConfig(ttl_seconds=600)
         app = App(name="test_app", root_agent=agent, context_cache_config=config)

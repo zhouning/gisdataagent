@@ -3385,7 +3385,7 @@ async def main(message: cl.Message):
                 _mention_target = None
         elif _mt_type == "adk_skill":
             from data_agent.toolsets.skill_bundles import build_skill_toolset
-            from google.adk.agents import LlmAgent as _LlmAgent
+            from google.adk.agents.llm_agent import LlmAgent as _LlmAgent
             from data_agent.agent import get_model_for_tier
             _skill_ts = build_skill_toolset(_mention_target["handle"])
             selected_agent = _LlmAgent(

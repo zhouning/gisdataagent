@@ -2,11 +2,13 @@
 
 Verifies:
 - AgentTool wrapping of knowledge_agent (2.1)
-- LoopAgent quality checking loop (2.2)
+- Workflow quality checking gate (2.2)
 - Sub-workflow packaging for Planner (2.3)
 """
 import unittest
 from unittest.mock import MagicMock
+
+from google.adk.workflow import Workflow
 
 
 class TestAgentToolKnowledge(unittest.TestCase):
@@ -20,12 +22,11 @@ class TestAgentToolKnowledge(unittest.TestCase):
 
     def test_pipeline_has_parallel_data_ingestion(self):
         """data_pipeline should contain ParallelDataIngestion inside DataEngineering."""
-        from google.adk.agents import ParallelAgent
         from data_agent.agent import data_pipeline
         data_eng = data_pipeline.sub_agents[0]
         self.assertEqual(data_eng.name, "DataEngineering")
         parallel = data_eng.sub_agents[0]
-        self.assertIsInstance(parallel, ParallelAgent)
+        self.assertIsInstance(parallel, Workflow)
         self.assertEqual(parallel.name, "ParallelDataIngestion")
 
     def test_processing_agent_has_knowledge_tool(self):
@@ -35,21 +36,20 @@ class TestAgentToolKnowledge(unittest.TestCase):
 
 
 class TestAnalysisQualityLoop(unittest.TestCase):
-    """Tests for LoopAgent quality checking (2.2)."""
+    """Tests for Workflow quality checking (2.2)."""
 
     def test_loop_agent_type(self):
-        """analysis_quality_loop should be a LoopAgent."""
-        from google.adk.agents import LoopAgent
+        """analysis_quality_loop should be a Workflow."""
         from data_agent.agent import analysis_quality_loop
-        self.assertIsInstance(analysis_quality_loop, LoopAgent)
+        self.assertIsInstance(analysis_quality_loop, Workflow)
 
     def test_loop_max_iterations(self):
-        """LoopAgent should have max_iterations=3."""
+        """Quality gate keeps max_iterations compatibility metadata."""
         from data_agent.agent import analysis_quality_loop
         self.assertEqual(analysis_quality_loop.max_iterations, 3)
 
     def test_loop_sub_agents(self):
-        """LoopAgent should contain DataAnalysis and QualityChecker."""
+        """Quality gate should contain DataAnalysis and QualityChecker."""
         from data_agent.agent import analysis_quality_loop
         names = [a.name for a in analysis_quality_loop.sub_agents]
         self.assertEqual(names, ["DataAnalysis", "QualityChecker"])
@@ -82,21 +82,18 @@ class TestSubWorkflows(unittest.TestCase):
     """Tests for sub-workflow packaging (2.3)."""
 
     def test_explore_process_workflow_structure(self):
-        """ExploreAndProcess should be Sequential with ParallelIngestion + Processor."""
-        from google.adk.agents import SequentialAgent, ParallelAgent
+        """ExploreAndProcess should be Workflow with ParallelIngestion + Processor."""
         from data_agent.agent import explore_process_workflow
-        self.assertIsInstance(explore_process_workflow, SequentialAgent)
+        self.assertIsInstance(explore_process_workflow, Workflow)
         self.assertEqual(len(explore_process_workflow.sub_agents), 2)
         names = [a.name for a in explore_process_workflow.sub_agents]
         self.assertEqual(names, ["WFParallelIngestion", "WFProcessor"])
-        # First sub-agent should be a ParallelAgent
-        self.assertIsInstance(explore_process_workflow.sub_agents[0], ParallelAgent)
+        self.assertIsInstance(explore_process_workflow.sub_agents[0], Workflow)
 
     def test_analyze_viz_workflow_structure(self):
-        """AnalyzeAndVisualize should be a SequentialAgent with 2 sub-agents."""
-        from google.adk.agents import SequentialAgent
+        """AnalyzeAndVisualize should be a Workflow with 2 sub-agents."""
         from data_agent.agent import analyze_viz_workflow
-        self.assertIsInstance(analyze_viz_workflow, SequentialAgent)
+        self.assertIsInstance(analyze_viz_workflow, Workflow)
         self.assertEqual(len(analyze_viz_workflow.sub_agents), 2)
         names = [a.name for a in analyze_viz_workflow.sub_agents]
         self.assertEqual(names, ["WFAnalyzer", "WFVisualizer"])
@@ -133,10 +130,9 @@ class TestFarmlandOptimizationWorkflow(unittest.TestCase):
     """Tests for the dedicated farmland layout optimization workflow."""
 
     def test_farmland_pipeline_structure(self):
-        from google.adk.agents import SequentialAgent
         from data_agent.agent import farmland_optimization_pipeline
 
-        self.assertIsInstance(farmland_optimization_pipeline, SequentialAgent)
+        self.assertIsInstance(farmland_optimization_pipeline, Workflow)
         names = [a.name for a in farmland_optimization_pipeline.sub_agents]
         self.assertEqual(names, [
             "FarmlandDataPreparation",

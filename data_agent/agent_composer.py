@@ -209,7 +209,7 @@ def compose_agent(profile: DataProfile):
     Returns an LlmAgent instance or None if composition fails.
     """
     try:
-        from google.adk.agents import LlmAgent
+        from google.adk.agents.llm_agent import LlmAgent
         from .custom_skills import _get_toolset_registry
         from .agent import get_model_for_tier
 
@@ -251,13 +251,14 @@ def compose_agent(profile: DataProfile):
 def compose_pipeline(profiles: list[DataProfile]):
     """Compose a multi-stage pipeline from multiple DataProfiles.
 
-    Returns a SequentialAgent or None.
+    Returns a Workflow or None.
     """
     if not profiles:
         return None
 
     try:
-        from google.adk.agents import SequentialAgent
+        from google.adk.workflow import Workflow
+        from .adk_compat import set_workflow_compat_attrs
 
         agents = []
         for i, profile in enumerate(profiles):
@@ -269,11 +270,11 @@ def compose_pipeline(profiles: list[DataProfile]):
         if not agents:
             return None
 
-        pipeline = SequentialAgent(
+        pipeline = Workflow(
             name="DynamicPipeline",
-            sub_agents=agents,
+            edges=[("START", *agents)],
         )
-        return pipeline
+        return set_workflow_compat_attrs(pipeline, sub_agents=agents)
 
     except Exception as e:
         logger.warning("Pipeline composition failed: %s", e)

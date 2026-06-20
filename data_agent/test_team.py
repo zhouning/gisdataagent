@@ -3,6 +3,10 @@ import unittest
 from unittest.mock import patch, MagicMock
 import asyncio
 
+from google.adk.workflow import Workflow
+
+from data_agent.adk_compat import logical_child_names
+
 
 # ---------------------------------------------------------------------------
 # F3: Pipeline structural tests (v9.0.2 — ParallelDataIngestion in DataEngineering)
@@ -12,13 +16,12 @@ class TestPipelineStructure(unittest.TestCase):
     """Verify optimization pipeline structure after v9.0.2 parallel ingestion."""
 
     def test_data_pipeline_is_sequential(self):
-        from google.adk.agents import SequentialAgent
         from data_agent.agent import data_pipeline
-        self.assertIsInstance(data_pipeline, SequentialAgent)
+        self.assertIsInstance(data_pipeline, Workflow)
 
     def test_pipeline_has_four_stages(self):
         from data_agent.agent import data_pipeline
-        self.assertEqual(len(data_pipeline.sub_agents), 4)
+        self.assertEqual(len(logical_child_names(data_pipeline)), 4)
 
     def test_knowledge_tool_replaces_parallel(self):
         """knowledge_agent is now an AgentTool, not a parallel peer."""
@@ -28,12 +31,11 @@ class TestPipelineStructure(unittest.TestCase):
 
     def test_parallel_data_ingestion_in_pipeline(self):
         """DataEngineering should contain ParallelDataIngestion."""
-        from google.adk.agents import ParallelAgent
         from data_agent.agent import data_pipeline
         data_eng = data_pipeline.sub_agents[0]
         self.assertEqual(data_eng.name, "DataEngineering")
         parallel = data_eng.sub_agents[0]
-        self.assertIsInstance(parallel, ParallelAgent)
+        self.assertIsInstance(parallel, Workflow)
         self.assertEqual(parallel.name, "ParallelDataIngestion")
 
 

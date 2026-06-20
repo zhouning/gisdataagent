@@ -20,6 +20,10 @@ from typing import Any, Optional
 
 from google.genai import types
 
+from .adk_compat import install_adk_warning_filters, logical_children
+
+install_adk_warning_filters()
+
 logger = logging.getLogger("data_agent.agent_hooks")
 
 
@@ -162,16 +166,13 @@ async def after_pipeline_agent(
 def attach_lifecycle_hooks(agent: Any, pipeline_type: str) -> None:
     """Recursively attach before/after callbacks to all LlmAgents in a tree.
 
-    Only attaches to ``LlmAgent`` instances (not SequentialAgent,
-    ParallelAgent, or LoopAgent shell agents) to avoid double-counting.
-
     Existing callbacks are preserved — hooks are prepended to the list.
 
     Args:
         agent: The root agent (pipeline) to walk.
         pipeline_type: Pipeline type string stored in session state.
     """
-    from google.adk.agents import LlmAgent
+    from google.adk.agents.llm_agent import LlmAgent
 
     def _walk_and_attach(node: Any) -> None:
         if isinstance(node, LlmAgent):
@@ -198,10 +199,7 @@ def attach_lifecycle_hooks(agent: Any, pipeline_type: str) -> None:
             else:
                 node.after_agent_callback = after_pipeline_agent
 
-        # Recurse into sub_agents
-        sub_agents = getattr(node, "sub_agents", None)
-        if sub_agents:
-            for sub in sub_agents:
-                _walk_and_attach(sub)
+        for sub in logical_children(node):
+            _walk_and_attach(sub)
 
     _walk_and_attach(agent)

@@ -31,7 +31,6 @@ if sys.platform == "win32":
 
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
-import seaborn as sns
 from dotenv import load_dotenv
 
 # Add project root so ``data_agent`` package is importable.
@@ -106,6 +105,12 @@ def configure_plotting_font():
     if selected:
         plt.rcParams["font.sans-serif"] = [selected] + plt.rcParams["font.sans-serif"]
         plt.rcParams["axes.unicode_minus"] = False
+
+
+def _load_seaborn():
+    """Load seaborn lazily so threshold/config imports stay lightweight."""
+    import seaborn as sns
+    return sns
 
 # ---------------------------------------------------------------------------
 # Per-pipeline evaluation
@@ -267,6 +272,7 @@ def _suggest_fix(error_text: str) -> str:
 def generate_charts(pipeline_results: dict):
     """Generate per-pipeline pass-rate bar chart with timing annotations."""
     configure_plotting_font()
+    sns = _load_seaborn()
     sns.set_theme(style="whitegrid")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 

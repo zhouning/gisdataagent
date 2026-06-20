@@ -25,6 +25,10 @@ from typing import Any, Optional
 from google.genai import types
 from google.adk.plugins.base_plugin import BasePlugin
 
+from .adk_compat import install_adk_warning_filters, logical_children
+
+install_adk_warning_filters()
+
 logger = logging.getLogger("data_agent.guardrails")
 
 # Environment variable to disable guardrails (testing/debugging)
@@ -205,9 +209,6 @@ async def hallucination_guard(
 def attach_guardrails(agent: Any) -> None:
     """Recursively attach guardrail callbacks to all LlmAgents in a tree.
 
-    Only attaches to ``LlmAgent`` instances (not SequentialAgent,
-    ParallelAgent, or LoopAgent shell agents).
-
     Existing callbacks are preserved — guardrails are prepended to the list.
 
     Args:
@@ -217,7 +218,7 @@ def attach_guardrails(agent: Any) -> None:
         logger.info("Guardrails disabled via GUARDRAILS_DISABLED=1")
         return
 
-    from google.adk.agents import LlmAgent
+    from google.adk.agents.llm_agent import LlmAgent
 
     def _walk_and_attach(node: Any) -> None:
         if isinstance(node, LlmAgent):
@@ -243,11 +244,8 @@ def attach_guardrails(agent: Any) -> None:
             else:
                 node.after_agent_callback = output_guards
 
-        # Recurse into sub_agents
-        sub_agents = getattr(node, "sub_agents", None)
-        if sub_agents:
-            for sub in sub_agents:
-                _walk_and_attach(sub)
+        for sub in logical_children(node):
+            _walk_and_attach(sub)
 
     _walk_and_attach(agent)
     logger.info("Guardrails attached to agent tree")

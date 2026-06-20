@@ -306,10 +306,15 @@ def _quality_gate_check(tool_response: dict) -> tuple:
     """
     resp_str = str(tool_response.get("result", "") or tool_response.get("message", ""))
 
-    # Extract file paths from response
-    paths = re.findall(r'[A-Za-z]:[\\\/][\w\\\/._-]+\.\w{2,5}', resp_str)
-    if not paths:
-        paths = re.findall(r'uploads[\\\/][\w\\\/._-]+\.\w{2,5}', resp_str)
+    # Extract file paths from response.
+    path_patterns = [
+        r'[A-Za-z]:[\\\/][^\s"\'<>]+\.\w{2,5}',
+        r'\/[^\s"\'<>]+\.\w{2,5}',
+        r'uploads[\\\/][^\s"\'<>]+\.\w{2,5}',
+    ]
+    paths = []
+    for pattern in path_patterns:
+        paths.extend(re.findall(pattern, resp_str))
 
     if not paths:
         return ("pass", "")

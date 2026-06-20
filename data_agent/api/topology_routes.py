@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
+from ..adk_compat import logical_children
 from ..observability import get_logger
 
 logger = get_logger("topology_api")
@@ -69,12 +70,10 @@ def _extract_agents(agent, parent_id, agents_out, toolsets_out, seen_toolsets, p
         instruction = inst
 
     children = []
-    sub_agents = getattr(agent, 'sub_agents', None)
-    if sub_agents:
-        for child in sub_agents:
-            child_id = _extract_agents(child, agent_id, agents_out, toolsets_out,
-                                       seen_toolsets, pipeline_label)
-            children.append(child_id)
+    for child in logical_children(agent):
+        child_id = _extract_agents(child, agent_id, agents_out, toolsets_out,
+                                   seen_toolsets, pipeline_label)
+        children.append(child_id)
 
     mentionable = agent_id in _MENTIONABLE_SUB_AGENTS or agent_id in _PIPELINE_META
 

@@ -7,6 +7,9 @@ parallelization, and _make_semantic_prefetch factory.
 
 import unittest
 
+from google.adk.agents.llm_agent import LlmAgent
+from google.adk.workflow import Workflow
+
 
 def _model_name(model):
     """Extract model name string from a Gemini object or pass through strings."""
@@ -21,9 +24,8 @@ class TestParallelDataIngestion(unittest.TestCase):
     """Verify ParallelDataIngestion wraps DataExploration + SemanticPreFetch."""
 
     def test_is_parallel_agent(self):
-        from google.adk.agents import ParallelAgent
         from data_agent.agent import parallel_data_ingestion
-        self.assertIsInstance(parallel_data_ingestion, ParallelAgent)
+        self.assertIsInstance(parallel_data_ingestion, Workflow)
 
     def test_name(self):
         from data_agent.agent import parallel_data_ingestion
@@ -57,7 +59,6 @@ class TestSemanticPreFetchAgent(unittest.TestCase):
     """Verify SemanticPreFetch agent configuration."""
 
     def test_is_llm_agent(self):
-        from google.adk.agents import LlmAgent
         from data_agent.agent import semantic_prefetch_agent
         self.assertIsInstance(semantic_prefetch_agent, LlmAgent)
 
@@ -91,12 +92,10 @@ class TestDataEngineeringStructure(unittest.TestCase):
         self.assertEqual(names, ["ParallelDataIngestion", "DataProcessing"])
 
     def test_first_sub_is_parallel(self):
-        from google.adk.agents import ParallelAgent
         from data_agent.agent import data_engineering_agent
-        self.assertIsInstance(data_engineering_agent.sub_agents[0], ParallelAgent)
+        self.assertIsInstance(data_engineering_agent.sub_agents[0], Workflow)
 
     def test_second_sub_is_llm(self):
-        from google.adk.agents import LlmAgent
         from data_agent.agent import data_engineering_agent
         self.assertIsInstance(data_engineering_agent.sub_agents[1], LlmAgent)
 
@@ -129,10 +128,9 @@ class TestPlannerParallelWorkflow(unittest.TestCase):
     """Verify planner's ExploreAndProcess uses parallel ingestion."""
 
     def test_explore_process_has_parallel_first(self):
-        from google.adk.agents import ParallelAgent
         from data_agent.agent import explore_process_workflow
         first = explore_process_workflow.sub_agents[0]
-        self.assertIsInstance(first, ParallelAgent)
+        self.assertIsInstance(first, Workflow)
         self.assertEqual(first.name, "WFParallelIngestion")
 
     def test_wf_parallel_has_explorer_and_prefetch(self):
@@ -177,38 +175,28 @@ class TestSemanticPreFetchFactory(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Agent Hooks compatibility — ParallelAgent in attach_lifecycle_hooks
+# Agent Hooks compatibility — Workflow in attach_lifecycle_hooks
 # ---------------------------------------------------------------------------
 
-class TestHooksWithParallelAgent(unittest.TestCase):
-    """Verify attach_lifecycle_hooks skips ParallelAgent but processes children."""
+class TestHooksWithWorkflow(unittest.TestCase):
+    """Verify attach_lifecycle_hooks skips Workflow shells but processes children."""
 
-    def test_hooks_skip_parallel_agent(self):
-        from unittest.mock import MagicMock
-        from google.adk.agents import LlmAgent, ParallelAgent
+    def test_hooks_skip_workflow_shell(self):
         from data_agent.agent_hooks import attach_lifecycle_hooks
+        from data_agent.agent import _parallel_workflow
 
-        child1 = MagicMock(spec=LlmAgent)
-        child1.name = "C1"
-        child1.before_agent_callback = None
-        child1.after_agent_callback = None
-        child1.sub_agents = []
+        child1 = LlmAgent(name="C1", instruction="Test", model="gemini-2.0-flash")
+        child2 = LlmAgent(name="C2", instruction="Test", model="gemini-2.0-flash")
 
-        child2 = MagicMock(spec=LlmAgent)
-        child2.name = "C2"
-        child2.before_agent_callback = None
-        child2.after_agent_callback = None
-        child2.sub_agents = []
-
-        parallel = MagicMock(spec=ParallelAgent)
-        parallel.name = "TestParallel"
-        parallel.sub_agents = [child1, child2]
+        parallel = _parallel_workflow("TestParallel", [child1, child2])
 
         attach_lifecycle_hooks(parallel, "optimization")
 
-        # Children should get callbacks, ParallelAgent itself should not
-        self.assertIsNotNone(child1.before_agent_callback)
-        self.assertIsNotNone(child2.after_agent_callback)
+        # Children should get callbacks, Workflow itself should not
+        c1 = next(node for node in parallel.graph.nodes if node.name == "C1")
+        c2 = next(node for node in parallel.graph.nodes if node.name == "C2")
+        self.assertIsNotNone(c1.before_agent_callback)
+        self.assertIsNotNone(c2.after_agent_callback)
 
 
 if __name__ == "__main__":

@@ -512,7 +512,7 @@ def build_custom_agent(skill: dict):
     Uses TOOLSET_REGISTRY to instantiate toolsets by name.
     Uses get_model_for_tier() for dynamic model selection.
     """
-    from google.adk.agents import LlmAgent
+    from google.adk.agents.llm_agent import LlmAgent
     from .agent import get_model_for_tier
     from .utils import _self_correction_after_tool
 

@@ -9,6 +9,8 @@ import unittest
 from unittest.mock import patch, MagicMock, PropertyMock
 
 import pytest
+from google.adk.agents.llm_agent import LlmAgent
+from google.adk.workflow import Workflow
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +168,6 @@ class TestAttachLifecycleHooks(unittest.TestCase):
 
     def test_attaches_to_llm_agents(self):
         from data_agent.agent_hooks import attach_lifecycle_hooks
-        from google.adk.agents import LlmAgent
 
         # Create mock LlmAgent
         agent = MagicMock(spec=LlmAgent)
@@ -183,19 +184,17 @@ class TestAttachLifecycleHooks(unittest.TestCase):
 
     def test_skips_non_llm_agents(self):
         from data_agent.agent_hooks import attach_lifecycle_hooks
-        from google.adk.agents import SequentialAgent
 
-        agent = MagicMock(spec=SequentialAgent)
+        agent = MagicMock(spec=Workflow)
         agent.name = "SeqAgent"
         agent.sub_agents = []
 
         attach_lifecycle_hooks(agent, "general")
-        # SequentialAgent should NOT get callbacks
+        # Workflow shell should NOT get callbacks
         # (no before_agent_callback set)
 
     def test_recurses_sub_agents(self):
         from data_agent.agent_hooks import attach_lifecycle_hooks
-        from google.adk.agents import LlmAgent, SequentialAgent
 
         child1 = MagicMock(spec=LlmAgent)
         child1.name = "Child1"
@@ -209,7 +208,7 @@ class TestAttachLifecycleHooks(unittest.TestCase):
         child2.after_agent_callback = None
         child2.sub_agents = []
 
-        parent = MagicMock(spec=SequentialAgent)
+        parent = MagicMock(spec=Workflow)
         parent.name = "Parent"
         parent.sub_agents = [child1, child2]
 
@@ -221,7 +220,6 @@ class TestAttachLifecycleHooks(unittest.TestCase):
 
     def test_preserves_existing_callbacks(self):
         from data_agent.agent_hooks import attach_lifecycle_hooks, before_pipeline_agent
-        from google.adk.agents import LlmAgent
 
         existing_before = MagicMock()
         agent = MagicMock(spec=LlmAgent)

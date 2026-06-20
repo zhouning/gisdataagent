@@ -1,0 +1,62 @@
+{
+  "type": "FeatureCollection",
+  "name": "sample_parcels",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "EPSG:4326"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 1, "DLBM": "0101", "SLOPE": 2.3, "AREA": 1200.5, "TBMJ": 1200.5},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5000, 29.5000], [106.5010, 29.5000], [106.5010, 29.5010], [106.5000, 29.5010], [106.5000, 29.5000]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 2, "DLBM": "0102", "SLOPE": 3.1, "AREA": 980.2, "TBMJ": 980.2},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5012, 29.5000], [106.5022, 29.5000], [106.5022, 29.5010], [106.5012, 29.5010], [106.5012, 29.5000]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 3, "DLBM": "0103", "SLOPE": 1.8, "AREA": 1430.0, "TBMJ": 1430.0},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5024, 29.5000], [106.5034, 29.5000], [106.5034, 29.5010], [106.5024, 29.5010], [106.5024, 29.5000]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 4, "DLBM": "0301", "SLOPE": 12.7, "AREA": 1675.4, "TBMJ": 1675.4},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5036, 29.5000], [106.5046, 29.5000], [106.5046, 29.5010], [106.5036, 29.5010], [106.5036, 29.5000]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 5, "DLBM": "0302", "SLOPE": 15.4, "AREA": 1522.8, "TBMJ": 1522.8},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5048, 29.5000], [106.5058, 29.5000], [106.5058, 29.5010], [106.5048, 29.5010], [106.5048, 29.5000]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 6, "DLBM": "0101", "SLOPE": 4.6, "AREA": 1118.7, "TBMJ": 1118.7},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5000, 29.5012], [106.5010, 29.5012], [106.5010, 29.5022], [106.5000, 29.5022], [106.5000, 29.5012]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 7, "DLBM": "0102", "SLOPE": 5.2, "AREA": 1088.9, "TBMJ": 1088.9},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5012, 29.5012], [106.5022, 29.5012], [106.5022, 29.5022], [106.5012, 29.5022], [106.5012, 29.5012]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 8, "DLBM": "0301", "SLOPE": 10.9, "AREA": 1386.3, "TBMJ": 1386.3},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5024, 29.5012], [106.5034, 29.5012], [106.5034, 29.5022], [106.5024, 29.5022], [106.5024, 29.5012]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 9, "DLBM": "0302", "SLOPE": 14.1, "AREA": 1294.6, "TBMJ": 1294.6},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5036, 29.5012], [106.5046, 29.5012], [106.5046, 29.5022], [106.5036, 29.5022], [106.5036, 29.5012]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"OBJECTID": 10, "DLBM": "0103", "SLOPE": 6.8, "AREA": 1176.1, "TBMJ": 1176.1},
+      "geometry": {"type": "Polygon", "coordinates": [[[106.5048, 29.5012], [106.5058, 29.5012], [106.5058, 29.5022], [106.5048, 29.5022], [106.5048, 29.5012]]]}
+    }
+  ]
+}

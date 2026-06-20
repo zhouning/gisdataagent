@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from typing import AsyncGenerator
 
-from google.adk.agents import BaseAgent
+from google.adk.agents.base_agent import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.genai import types

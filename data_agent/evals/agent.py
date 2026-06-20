@@ -1,8 +1,7 @@
 """Evaluation-only agent module.
 
-Provides a synthetic umbrella ``root_agent`` that wraps all four production
-pipelines so that ``AgentEvaluator.evaluate()`` can target any pipeline via
-the ``agent_name`` parameter.
+Provides a synthetic umbrella ``root_agent`` that lists all four production
+pipelines for offline structure checks.
 
 Production code (``app.py``) continues to use the individual pipeline agents
 directly via semantic routing — this module is never imported at runtime.
@@ -20,23 +19,28 @@ Usage::
     )
 """
 
-from google.adk.agents import LlmAgent
+from google.adk.workflow import JoinNode, Workflow
 
 from data_agent.agent import (
-    MODEL_FAST,
     data_pipeline,
     governance_pipeline,
     general_pipeline,
     planner_agent,
 )
+from data_agent.adk_compat import set_workflow_compat_attrs
 
-root_agent = LlmAgent(
+_join = JoinNode(name="EvalUmbrellaJoin")
+
+root_agent = Workflow(
     name="EvalUmbrella",
-    model=MODEL_FAST,
-    instruction=(
-        "You are an evaluation dispatcher. "
-        "Route the user request to the appropriate sub-pipeline."
-    ),
+    description="Evaluation umbrella for structure checks.",
+    edges=[
+        ("START", (data_pipeline, governance_pipeline, general_pipeline, planner_agent)),
+        ((data_pipeline, governance_pipeline, general_pipeline, planner_agent), _join),
+    ],
+)
+set_workflow_compat_attrs(
+    root_agent,
     sub_agents=[
         data_pipeline,
         governance_pipeline,
