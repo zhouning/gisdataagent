@@ -473,8 +473,9 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
           if (!geojsonData) continue;
 
-          // Switch to 3D if too many features to avoid crashing Leaflet
-          if (geojsonData.features && geojsonData.features.length > 2000) {
+          // Switch to 3D only for very large layers; SCCA demo outputs should stay in 2D
+          // so the choropleth legend and popups remain easy to read.
+          if (geojsonData.features && geojsonData.features.length > 10000) {
             layerConfig.geojsonData = geojsonData; // Cache it so Map3DView doesn't have to re-fetch
             setViewMode('3d');
             return; // Abort 2D rendering
@@ -531,7 +532,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     const has3D = layers.some(l =>
       l.type === 'extrusion' || l.type === 'column' || l.type === 'arc' ||
       l.type === 'mvt' || l.extruded || l.elevation_column || 
-      (l.geojsonData && l.geojsonData.features && l.geojsonData.features.length > 2000)
+      (l.geojsonData && l.geojsonData.features && l.geojsonData.features.length > 10000)
     );
     if (has3D) setViewMode('3d');
   }, [layers]);
@@ -683,13 +684,14 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       {/* Legend for choropleth/bubble */}
       {choroplethLayer && choroplethLayer.breaks && (
         <div className="map-legend">
-          <div className="map-legend-title">{choroplethLayer.value_column || '值'}</div>
+          <div className="map-legend-title">{choroplethLayer.legend_title || choroplethLayer.value_column || '值'}</div>
           {choroplethLayer.breaks.map((b, i) => {
             const colors = COLOR_RAMPS[choroplethLayer.color_scheme || 'YlOrRd'];
+            const color = pickRampColor(colors, i, choroplethLayer.breaks!.length);
             return (
               <div key={i} className="map-legend-item">
-                <span className="map-legend-color" style={{ background: colors[i] || colors[colors.length - 1] }} />
-                <span className="map-legend-label">{i === 0 ? `≤ ${b}` : `${choroplethLayer.breaks![i - 1]} - ${b}`}</span>
+                <span className="map-legend-color" style={{ background: color }} />
+                <span className="map-legend-label">{i === 0 ? `≤ ${formatLegendNumber(b)}` : `${formatLegendNumber(choroplethLayer.breaks![i - 1])} - ${formatLegendNumber(b)}`}</span>
               </div>
             );
           })}
@@ -966,7 +968,8 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
         style: (feature) => {
           const val = feature?.properties?.[value_column] ?? 0;
           const colorIdx = breaks.findIndex((b) => val <= b);
-          const fillColor = colors[colorIdx >= 0 ? colorIdx : colors.length - 1];
+          const idx = colorIdx >= 0 ? colorIdx : breaks.length - 1;
+          const fillColor = pickRampColor(colors, idx, breaks.length);
           return {
             fillColor,
             color: '#666',
@@ -1175,4 +1178,19 @@ function highlightAssociatedFeatures(
       }),
   });
   highlightLayerRef.current.addTo(map);
+}
+
+function formatLegendNumber(value: number): string {
+  if (!Number.isFinite(value)) return '—';
+  if (value !== 0 && Math.abs(value) < 0.001) return value.toExponential(1);
+  if (Math.abs(value) >= 1000) return value.toFixed(0);
+  if (Math.abs(value) >= 10) return value.toFixed(1);
+  return value.toFixed(2);
+}
+
+function pickRampColor(colors: string[], index: number, steps: number): string {
+  if (!colors.length) return '#999999';
+  if (steps <= 1) return colors[colors.length - 1];
+  const colorIndex = Math.round((index / (steps - 1)) * (colors.length - 1));
+  return colors[Math.max(0, Math.min(colors.length - 1, colorIndex))];
 }

@@ -123,6 +123,70 @@ async def causal_scenarios(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+async def scca_cases(request: Request):
+    """GET /api/causal/scca/cases — list built-in SCCA workflows."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    from ..scca_service import list_scca_cases
+
+    try:
+        return JSONResponse(list_scca_cases())
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def scca_run(request: Request):
+    """POST /api/causal/scca/run — execute a built-in SCCA workflow."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _role = _set_user_context(user)
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+
+    case_id = body.get("case_id")
+    if not isinstance(case_id, str) or not case_id.strip():
+        return JSONResponse({"error": "case_id 必填"}, status_code=400)
+
+    row_limit = body.get("row_limit")
+    if row_limit in ("", None):
+        parsed_row_limit = None
+    else:
+        try:
+            parsed_row_limit = int(row_limit)
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "row_limit 必须是整数"}, status_code=400)
+
+    from ..scca_service import run_scca_case
+
+    try:
+        result = await asyncio.to_thread(
+            run_scca_case,
+            case_id.strip(),
+            row_limit=parsed_row_limit,
+            user_id=username,
+        )
+        map_update = result.get("map_update") if isinstance(result, dict) else None
+        if isinstance(map_update, dict) and map_update.get("layers"):
+            _queue_map_update(username, map_update)
+            result["map_update_queued"] = True
+        return JSONResponse(result)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except FileNotFoundError as e:
+        return JSONResponse({"error": str(e)}, status_code=404)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 def get_causal_routes() -> list:
     """Return Starlette routes for causal reasoning endpoints."""
     return [
@@ -130,4 +194,13 @@ def get_causal_routes() -> list:
         Route("/api/causal/counterfactual", causal_counterfactual, methods=["POST"]),
         Route("/api/causal/explain", causal_explain, methods=["POST"]),
         Route("/api/causal/scenarios", causal_scenarios, methods=["POST"]),
+        Route("/api/causal/scca/cases", scca_cases, methods=["GET"]),
+        Route("/api/causal/scca/run", scca_run, methods=["POST"]),
     ]
+
+
+def _queue_map_update(user_id: str, map_config: dict):
+    from ..frontend_api import _pending_lock, pending_map_updates
+
+    with _pending_lock:
+        pending_map_updates[user_id] = map_config

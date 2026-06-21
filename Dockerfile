@@ -63,6 +63,7 @@ RUN apt-get purge -y build-essential python3-dev && \
 
 # ---- Copy application code --------------------------------------------------
 COPY data_agent/ /app/data_agent/
+COPY geocausal/ /app/geocausal/
 COPY --from=frontend-builder /build/dist/ /app/frontend/dist/
 COPY .chainlit/ /app/.chainlit/
 COPY public/ /app/public/

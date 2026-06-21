@@ -667,8 +667,15 @@ async def _api_upload_user_file(request: Request):
 _file_list_route = Route("/api/user/files", endpoint=_api_list_user_files, methods=["GET"])
 _file_upload_route = Route("/api/user/files", endpoint=_api_upload_user_file, methods=["POST"])
 _file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
+
+
+def _is_frontend_fallback_route(route) -> bool:
+    path = getattr(route, "path", None)
+    return path == "/{full_path:path}" or type(route).__name__ == "_IncludedRouter"
+
+
 for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+    if _is_frontend_fallback_route(_r):
         chainlit_app.router.routes.insert(_i, _file_list_route)
         chainlit_app.router.routes.insert(_i + 1, _file_upload_route)
         break
@@ -1053,7 +1060,7 @@ except Exception as _fe_err:
 # Register the greedy file serve route AFTER frontend_api routes to avoid
 # /api/user/files/{filename:path} swallowing /api/user/files/browse etc.
 for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
+    if _is_frontend_fallback_route(_r):
         chainlit_app.router.routes.insert(_i, _file_serve_route)
         break
 else:

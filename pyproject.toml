@@ -13,6 +13,9 @@ dependencies = [
     "shapely>=2.0",
     "pandas>=2.0",
     "numpy>=1.24",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "statsmodels>=0.14",
     "duckdb>=0.10",
     "pyyaml>=6.0",
     "python-dotenv>=1.0",
@@ -88,7 +91,14 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["data_agent*"]
+include = ["data_agent*", "geocausal*"]
+
+[tool.setuptools.package-data]
+data_agent = [
+    "scca_samples/data/*.csv",
+    "scca_samples/spatial/county_data/*",
+    "scca_samples/spatial/chongqing_uhi_points/*",
+]
 
 [tool.pytest.ini_options]
 filterwarnings = [

@@ -42,6 +42,8 @@ __pycache__/
 *.kml
 *.kmz
 !demos/**/*.geojson
+!data_agent/scca_samples/
+!data_agent/scca_samples/**
 
 # User uploads
 data_agent/uploads/

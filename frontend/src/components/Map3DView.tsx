@@ -85,6 +85,11 @@ function isCategorizedLegendLayer(layer: MapLayer) {
     && Boolean(layer.category_colors || layer.style_map);
 }
 
+function isChoroplethLegendLayer(layer: MapLayer) {
+  return (layer.type === 'choropleth' || layer.type === 'bubble')
+    && Boolean(layer.breaks && layer.color_scheme);
+}
+
 export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewProps) {
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
@@ -260,7 +265,7 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
           getFillColor: (f: any) => {
             if (layer.value_column && layer.breaks && f.properties) {
               const val = Number(f.properties[layer.value_column]) || 0;
-              return getBreakColor(val, layer.breaks);
+              return getBreakColor(val, layer.breaks, layer.color_scheme);
             }
             return fillColor;
           },
@@ -436,7 +441,7 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
         getFillColor: (f: any) => {
           if (layer.value_column && layer.breaks && f.properties) {
             const val = Number(f.properties[layer.value_column]) || 0;
-            return getBreakColor(val, layer.breaks);
+            return getBreakColor(val, layer.breaks, layer.color_scheme);
           }
           return fillColor;
         },
@@ -544,23 +549,83 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
             })}
         </div>
       )}
+
+      {/* Legend for choropleth layers */}
+      {layers.some(l => isChoroplethLegendLayer(l) && layerVisibility[l.name] !== false) && (
+        <div style={{
+          position: 'absolute', bottom: 24, left: 12, zIndex: 1000,
+          background: 'rgba(0,0,0,0.85)', border: '1px solid #333', borderRadius: 6,
+          padding: '8px 12px', maxWidth: 240, maxHeight: 300, overflowY: 'auto',
+        }}>
+          {layers
+            .filter(l => isChoroplethLegendLayer(l) && layerVisibility[l.name] !== false)
+            .map(layer => {
+              const colors = getRampColors(layer.color_scheme);
+              return (
+                <div key={layer.name} style={{ marginBottom: 6 }}>
+                  <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+                    {layer.legend_title || layer.value_column || layer.name}
+                  </div>
+                  {(layer.breaks || []).map((b, i) => (
+                    <div key={`${layer.name}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>
+                      <span style={{
+                        display: 'inline-block', width: 14, height: 14, borderRadius: 2,
+                        background: rgbaToCss(colors[Math.min(i, colors.length - 1)]),
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ color: '#ccc', fontSize: 11 }}>
+                        {i === 0 ? `≤ ${formatLegendNumber(b)}` : `${formatLegendNumber((layer.breaks || [])[i - 1])} - ${formatLegendNumber(b)}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }
 
 // Color ramp for choropleth breaks (YlOrRd-like)
-function getBreakColor(value: number, breaks: number[]): [number, number, number, number] {
-  const colors: [number, number, number, number][] = [
-    [255, 255, 178, 200],
-    [254, 204, 92, 200],
-    [253, 141, 60, 200],
-    [240, 59, 32, 200],
-    [189, 0, 38, 200],
-  ];
+function getBreakColor(value: number, breaks: number[], scheme?: string): [number, number, number, number] {
+  const colors = getRampColors(scheme);
   for (let i = 0; i < breaks.length; i++) {
     if (value <= breaks[i]) {
       return colors[Math.min(i, colors.length - 1)];
     }
   }
   return colors[colors.length - 1];
+}
+
+function getRampColors(scheme?: string): [number, number, number, number][] {
+  if (scheme === 'RdYlGn') {
+    return [
+      [215, 48, 39, 210],
+      [252, 141, 89, 210],
+      [255, 255, 191, 210],
+      [145, 207, 96, 210],
+      [26, 152, 80, 210],
+    ];
+  }
+  return [
+    [255, 255, 178, 200],
+    [254, 204, 92, 200],
+    [253, 141, 60, 200],
+    [240, 59, 32, 200],
+    [189, 0, 38, 200],
+  ];
+}
+
+function rgbaToCss(color: [number, number, number, number]): string {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+}
+
+function formatLegendNumber(value: number): string {
+  if (!Number.isFinite(value)) return '—';
+  if (value !== 0 && Math.abs(value) < 0.001) return value.toExponential(1);
+  if (Math.abs(value) >= 1000) return value.toFixed(0);
+  if (Math.abs(value) >= 10) return value.toFixed(1);
+  return value.toFixed(2);
 }
