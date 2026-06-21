@@ -5,6 +5,7 @@ import importlib.util
 
 SCRIPT = Path("scripts/validate_twm_data_foundation.py")
 RUNNER_SCRIPT = Path("scripts/run_twm_synthetic_experiment.py")
+VALIDATION_BUNDLE_SCRIPT = Path("scripts/run_twm_validation_bundle.py")
 
 
 def _load_script_module():
@@ -17,6 +18,14 @@ def _load_script_module():
 
 def _load_runner_module():
     spec = importlib.util.spec_from_file_location("run_twm_synthetic_experiment", RUNNER_SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_validation_bundle_module():
+    spec = importlib.util.spec_from_file_location("run_twm_validation_bundle", VALIDATION_BUNDLE_SCRIPT)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
@@ -103,9 +112,9 @@ def test_audit_observed_history_schema_accepts_production_ready_rows(tmp_path):
     path.write_text(
         "\n".join(
             [
-                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,synthetic,not_for_production",
-                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,False,False",
-                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,False,False",
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production",
+                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_blocked_condition_review,False,SYN-R00,2026Q1,False,False",
+                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,restore,mixed_risk_restore_allowed,True,SYN-R03,2026Q1,False,False",
             ]
         )
         + "\n",
@@ -122,6 +131,120 @@ def test_audit_observed_history_schema_accepts_production_ready_rows(tmp_path):
     assert audit["row_quality"]["production_treated_count"] == 1
     assert audit["row_quality"]["production_control_count"] == 1
     assert audit["row_quality"]["rows_with_neighbors"] == 2
+    assert audit["policy_history_quality"]["status"] == "pass"
+    assert audit["policy_history_quality"]["production_policy_row_count"] == 2
+    assert audit["policy_history_quality"]["allowed_count"] == 1
+    assert audit["policy_history_quality"]["blocked_count"] == 1
+    assert audit["policy_history_quality"]["region_policy_key_count"] == 2
+    assert audit["policy_history_quality"]["region_action_policy_key_count"] == 2
+    assert audit["policy_history_quality"]["mixed_allowed_policy_counts"] == {"mixed_risk_restore_allowed": 1}
+
+
+def test_audit_observed_history_schema_keeps_policy_history_gate_separate(tmp_path):
+    module = _load_script_module()
+    path = tmp_path / "production_causal_only_history.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,synthetic,not_for_production",
+                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,False,False",
+                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    audit = module.audit_observed_history_schema(path)
+
+    assert audit["status"] == "pass"
+    assert audit["missing_data_gates"] == []
+    assert audit["policy_history_quality"]["status"] == "review"
+    assert "production_policy_rows" in audit["policy_history_quality"]["missing_policy_gates"]
+    assert "mixed_risk_allowed_policy_coverage" in audit["policy_history_quality"]["missing_policy_gates"]
+
+
+def test_production_policy_history_alignment_passes_when_real_coverage_meets_synthetic_benchmark(tmp_path):
+    module = _load_script_module()
+    production_path = tmp_path / "production_policy_history.csv"
+    production_path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production",
+                "P-1,APR-P-1,PRJ-P-1,approved,0.31,block-1,,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,True,PROD-R01,2026Q1,False,False",
+                "P-2,APR-P-2,PRJ-P-2,approved,0.28,block-2,,106.21,29.61,1100,0.80,protect,mixed_risk_protect_allowed,True,PROD-R02,2026Q1,False,False",
+                "P-3,APR-P-3,PRJ-P-3,approved,0.34,block-3,,106.22,29.62,1200,0.78,restore,mixed_risk_restore_allowed,True,PROD-R03,2026Q2,False,False",
+                "P-4,APR-P-4,PRJ-P-4,in_review,0.08,block-4,,106.23,29.63,1300,0.76,approve_with_conditions,mixed_risk_blocked_condition_review,False,PROD-R04,2026Q2,False,False",
+                "P-5,APR-P-5,PRJ-P-5,in_review,0.07,block-5,,106.24,29.64,1400,0.74,protect,mixed_risk_protect_blocked,False,PROD-R05,2026Q3,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    production_quality = module.audit_observed_history_schema(production_path)["policy_history_quality"]
+    synthetic_summary = {
+        "policy_coverage_benchmark": {
+            "status": "generated",
+            "required_allowed_count": 3,
+            "required_blocked_count": 2,
+            "required_region_policy_key_count": 5,
+            "required_region_action_policy_key_count": 5,
+            "required_mixed_allowed_policies": [
+                "mixed_risk_allowed_with_conditions",
+                "mixed_risk_protect_allowed",
+                "mixed_risk_restore_allowed",
+            ],
+        }
+    }
+
+    alignment = module.production_policy_history_alignment(production_quality, synthetic_summary)
+
+    assert alignment["schema"] == "territory_world_model.production_policy_history_alignment.v1"
+    assert alignment["status"] == "pass"
+    assert alignment["missing"] == []
+    assert alignment["observed"]["region_policy_key_count"] == 5
+    assert alignment["required"]["region_action_policy_key_count"] == 5
+    assert alignment["mixed_allowed_policy_coverage"]["missing"] == []
+
+
+def test_production_policy_history_alignment_reviews_undercovered_real_policy_history(tmp_path):
+    module = _load_script_module()
+    production_path = tmp_path / "production_policy_history_undercovered.csv"
+    production_path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production",
+                "P-1,APR-P-1,PRJ-P-1,approved,0.31,block-1,,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,True,PROD-R01,2026Q1,False,False",
+                "P-2,APR-P-2,PRJ-P-2,approved,0.28,block-2,,106.21,29.61,1100,0.80,protect,mixed_risk_protect_allowed,True,PROD-R01,2026Q1,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    production_quality = module.audit_observed_history_schema(production_path)["policy_history_quality"]
+    synthetic_summary = {
+        "policy_coverage_benchmark": {
+            "status": "generated",
+            "required_allowed_count": 3,
+            "required_blocked_count": 2,
+            "required_region_policy_key_count": 5,
+            "required_region_action_policy_key_count": 5,
+            "required_mixed_allowed_policies": [
+                "mixed_risk_allowed_with_conditions",
+                "mixed_risk_protect_allowed",
+                "mixed_risk_restore_allowed",
+            ],
+        }
+    }
+
+    alignment = module.production_policy_history_alignment(production_quality, synthetic_summary)
+
+    assert alignment["status"] == "review"
+    assert "production_policy_history_quality" in alignment["missing"]
+    assert "blocked_policy_count_below_synthetic_unseen_benchmark" in alignment["missing"]
+    assert "region_policy_key_count_below_synthetic_unseen_benchmark" in alignment["missing"]
+    assert "mixed_allowed_policy_coverage_below_synthetic_unseen_benchmark" in alignment["missing"]
+    assert alignment["mixed_allowed_policy_coverage"]["missing"] == ["mixed_risk_restore_allowed"]
 
 
 def test_audit_observed_history_schema_reviews_demo_flags(tmp_path):
@@ -159,6 +282,11 @@ def test_write_observed_history_template_outputs_expected_columns(tmp_path):
     assert "unit_id" in header
     assert "approval_status" in header
     assert "neighbors" in header
+    assert "action_type" in header
+    assert "action_mask_policy" in header
+    assert "action_mask_allowed" in header
+    assert "region_code" in header
+    assert "period" in header
     assert "synthetic" in header
     assert "not_for_production" in header
 
@@ -211,6 +339,7 @@ def test_write_twm_structural_validation_observed_history_generates_balanced_fix
 
     assert summary["status"] == "generated"
     assert summary["pair_count"] == 6
+    assert b"\r\n" not in path.read_bytes()
     assert len(rows) == 12
     assert quality["treated_count"] == 6
     assert quality["control_count"] == 6
@@ -283,6 +412,21 @@ def test_write_twm_synthetic_experiment_foundation_generates_splits_and_roles(tm
     assert summary["holdout_oracle_group_count"] == 4
     assert summary["holdout_oracle_action_type_count"] >= 2
     assert len(summary["holdout_oracle_action_counts"]) >= 2
+    required_mixed_allowed_policies = {
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed",
+    }
+    assert required_mixed_allowed_policies.issubset(summary["candidate_mixed_allowed_policy_counts"])
+    assert all(summary["candidate_mixed_allowed_policy_counts"][policy] > 0 for policy in required_mixed_allowed_policies)
+    assert "train" in summary["action_mask_policy_counts_by_split"]
+    benchmark = summary["policy_coverage_benchmark"]
+    assert benchmark["schema"] == "territory_world_model.synthetic_policy_coverage_benchmark.v1"
+    assert set(benchmark["modes"]) == {"region_policy", "region_action_policy"}
+    assert benchmark["required_allowed_count"] >= 0
+    assert benchmark["required_blocked_count"] >= 0
+    assert benchmark["required_region_policy_key_count"] == benchmark["modes"]["region_policy"]["unseen_key_count"]
+    assert benchmark["required_region_action_policy_key_count"] == benchmark["modes"]["region_action_policy"]["unseen_key_count"]
     assert "action_mask_allowed" in rows[0]
     assert "action_mask_policy" in rows[0]
     assert set(summary["mixed_action_mask_action_types"]) - {"defer_review"}
@@ -309,6 +453,41 @@ def test_write_twm_synthetic_experiment_foundation_generates_splits_and_roles(tm
         "test",
         "test",
     ]
+
+
+def test_synthetic_experiment_policy_coverage_benchmark_tracks_default_unseen_fixture(tmp_path):
+    module = _load_script_module()
+    dataset_root = tmp_path / "dataset"
+    (dataset_root / "tables").mkdir(parents=True)
+    (dataset_root / "relations").mkdir()
+    path = tmp_path / "synthetic_experiment.csv"
+
+    summary = module.write_twm_synthetic_experiment_foundation(
+        path,
+        dataset_root,
+        region_count=4,
+        period_count=8,
+        component_count=4,
+    )
+
+    required_mixed_allowed_policies = [
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed",
+    ]
+    benchmark = summary["policy_coverage_benchmark"]
+    assert benchmark["status"] == "generated"
+    assert benchmark["required_allowed_count"] == 6
+    assert benchmark["required_blocked_count"] == 4
+    assert benchmark["required_region_policy_key_count"] == 5
+    assert benchmark["required_region_action_policy_key_count"] == 5
+    assert benchmark["required_mixed_allowed_policies"] == required_mixed_allowed_policies
+    assert benchmark["modes"]["region_policy"]["example_count"] == 10
+    assert benchmark["modes"]["region_policy"]["allowed_count"] == 6
+    assert benchmark["modes"]["region_policy"]["blocked_count"] == 4
+    assert benchmark["modes"]["region_action_policy"]["example_count"] == 10
+    assert benchmark["modes"]["region_action_policy"]["allowed_count"] == 6
+    assert benchmark["modes"]["region_action_policy"]["blocked_count"] == 4
 
 
 def test_synthetic_experiment_default_gate_reviews_but_structural_check_passes(tmp_path):
@@ -376,6 +555,12 @@ def test_synthetic_experiment_runner_converts_csv_to_dynamics_dataset(tmp_path):
     assert dataset["summary"]["holdout_period_count"] == 2
     assert dataset["summary"]["max_holdout_steps_per_region"] == 2
     assert set(dataset["summary"]["mixed_action_mask_action_types"]) - {"defer_review"}
+    assert {
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed",
+    }.issubset(dataset["summary"]["candidate_mixed_allowed_policy_counts"])
+    assert "holdout" in dataset["summary"]["action_mask_policy_counts_by_split"]
     assert dataset["summary"]["claim_boundary"] == "synthetic_experiment_only_not_for_production"
     assert {item["labels"]["supervision_source"] for item in dataset["examples"]} == {"state_snapshots"}
     assert {item["provenance"]["data_role"] for item in dataset["examples"]} == {"synthetic_experiment_foundation"}
@@ -429,12 +614,39 @@ def test_synthetic_experiment_runner_executes_simulator_planner_loop(tmp_path):
     assert report["backend_comparison"]["mixed_action_mask_generalization"]["action_type_only_failure_count"] >= 1
     assert report["backend_comparison"]["mixed_action_mask_generalization"]["context_zero_false_allow_count"] >= 1
     assert report["backend_comparison"]["mixed_action_mask_generalization"]["selected_calibration"] == "context"
+    high_risk = report["backend_comparison"]["conditional_high_risk_feasibility"]
+    assert high_risk["schema"] == "territory_world_model.conditional_high_risk_feasibility.v1"
+    assert high_risk["subset"]["example_count"] > 0
+    assert high_risk["subset"]["conditional_allowed_count"] > 0
+    assert high_risk["subset"]["conditional_blocked_count"] > 0
+    assert high_risk["context_zero_false_allow_count"] >= 1
+    near_boundary = report["backend_comparison"]["near_boundary_mixed_risk_feasibility"]
+    assert near_boundary["schema"] == "territory_world_model.near_boundary_mixed_risk_backend_feasibility.v1"
+    assert near_boundary["subset"]["schema"] == "territory_world_model.near_boundary_mixed_risk_subset.v1"
+    assert near_boundary["subset"]["example_count"] > 0
+    assert near_boundary["subset"]["allowed_count"] > 0
+    assert near_boundary["subset"]["blocked_count"] > 0
+    holdout_mixed = report["backend_comparison"]["holdout_mixed_risk_feasibility"]
+    assert holdout_mixed["schema"] == "territory_world_model.holdout_mixed_risk_backend_feasibility.v1"
+    assert holdout_mixed["subset"]["schema"] == "territory_world_model.holdout_mixed_risk_subset.v1"
+    assert holdout_mixed["subset"]["example_count"] > 0
+    assert holdout_mixed["subset"]["blocked_count"] > 0
+    assert holdout_mixed["subset"]["region_count"] > 0
+    assert holdout_mixed["subset"]["period_count"] > 0
+    unseen_mixed = report["backend_comparison"]["unseen_mixed_risk_feasibility"]
+    assert unseen_mixed["schema"] == "territory_world_model.unseen_mixed_risk_backend_feasibility.v1"
+    assert unseen_mixed["subset"]["schema"] == "territory_world_model.unseen_mixed_risk_subset.v1"
+    assert unseen_mixed["subset"]["primary_mode"] == "time_policy"
+    assert "region_policy" in unseen_mixed["subset"]["modes"]
+    assert "time_policy" in unseen_mixed["subset"]["modes"]
     default_ranking = {
         item["candidate_id"]: item
         for item in report["backend_comparison"]["ranking"]
     }
     assert default_ranking["torch_multi_head_mlp_action_mask_calibrated"]["action_mask_diagnostics"]["confusion"]["false_allow"] > 0
     assert default_ranking["torch_multi_head_mlp_context_action_mask_calibrated"]["action_mask_diagnostics"]["confusion"]["false_allow"] == 0
+    assert default_ranking["torch_multi_head_mlp_action_mask_calibrated"]["conditional_high_risk_feasibility"]["confusion"]["false_allow"] > 0
+    assert default_ranking["torch_multi_head_mlp_context_action_mask_calibrated"]["conditional_high_risk_feasibility"]["confusion"]["false_allow"] == 0
     assert default_ranking["torch_multi_head_mlp"]["feature_contract_summary"]["has_action_mask_policy_context"] is True
     assert default_ranking["torch_multi_head_mlp"]["feature_contract_summary"]["has_action_mask_risk_context"] is True
     assert all(
@@ -509,9 +721,19 @@ def test_synthetic_experiment_runner_calibrates_graph_and_transformer_action_mas
     assert ranking["torch_spatiotemporal_transformer_context_action_mask_calibrated"]["action_mask_diagnostics"]["confusion"]["false_allow"] == 0
     transformer_raw_error = ranking["torch_spatiotemporal_transformer"]["metrics"]["mean_constraint_error"]
     assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["constraint_risk_calibration_weight"] == 0.0
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["constraint_risk_contextual_weight"] == 1.0
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["seed"] == 19
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["configured_epoch_count"] >= 20
     assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["risk_head_mode"] == "context_residual"
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["feasibility_head_mode"] == "context_residual"
     assert ranking["torch_spatiotemporal_transformer"]["architecture_summary"]["constraint_risk_head"] == "context_residual"
     assert set(ranking["torch_spatiotemporal_transformer"]["architecture_summary"]["constraint_risk_context_tokens"]) == {
+        "action",
+        "context",
+        "temporal",
+    }
+    assert ranking["torch_spatiotemporal_transformer"]["architecture_summary"]["action_mask_feasibility_head"] == "context_residual"
+    assert set(ranking["torch_spatiotemporal_transformer"]["architecture_summary"]["action_mask_feasibility_context_tokens"]) == {
         "action",
         "context",
         "temporal",
@@ -521,17 +743,252 @@ def test_synthetic_experiment_runner_calibrates_graph_and_transformer_action_mas
     assert transformer_calibrated["architecture_summary"]["constraint_risk_head"] == "context_residual"
     risk_calibration = transformer_calibrated["constraint_risk_calibration"]
     assert risk_calibration["status"] in {"pass", "review"}
+    assert risk_calibration["application_policy"] == "apply only when candidate and holdout MAE both improve"
     if risk_calibration["status"] == "pass":
+        assert risk_calibration["accepted"] is True
+        assert risk_calibration["candidate_split_improved"] is True
+        assert risk_calibration["holdout_improved"] is True
+        assert risk_calibration["applied_prediction_count"] > 0
         assert transformer_calibrated["metrics"]["mean_constraint_error"] < transformer_raw_error
     else:
-        assert set(risk_calibration["review_reasons"]) & {"low_prediction_variance", "degenerate_calibration_slope"}
+        assert risk_calibration["accepted"] is False
+        assert risk_calibration["applied_prediction_count"] == 0
+        assert transformer_calibrated["metrics"]["mean_constraint_error"] == transformer_raw_error
+        assert set(risk_calibration["review_reasons"]) & {
+            "low_prediction_variance",
+            "degenerate_calibration_slope",
+            "candidate_split_calibration_does_not_reduce_error",
+            "holdout_calibration_does_not_reduce_error",
+        }
     assert transformer_calibrated["action_mask_diagnostics"]["confusion"]["false_allow"] == 0
     head_probe = report["transformer_risk_head_probe"]
     assert head_probe["schema"] == "territory_world_model.transformer_risk_head_probe.v1"
-    assert head_probe["selected"]["risk_head_mode"] == "context_residual"
+    assert head_probe["weights"] == [0.0, 0.7, 1.2]
+    assert head_probe["selected"]["risk_head_mode"] in {"shared", "context_residual", "context_direct"}
+    assert head_probe["raw_selected"]["risk_head_mode"] in {"shared", "context_residual", "context_direct"}
+    assert head_probe["raw_selected"]["source"] == "transformer_risk_weight_probe_row"
+    assert head_probe["raw_candidate_count"] == sum(len(row["weight_rows"]) for row in head_probe["rows"])
+    assert head_probe["raw_candidate_count"] == len(head_probe["raw_candidate_rows"])
+    assert head_probe["raw_candidate_count"] == len(head_probe["rows"]) * len(head_probe["weights"])
+    assert "affine calibration" in head_probe["raw_selection_policy"]
+    raw_progress = head_probe["raw_progress_gate"]
+    assert raw_progress["schema"] == "territory_world_model.transformer_raw_risk_head_progress_gate.v1"
+    assert raw_progress["status"] in {"pass", "review"}
+    assert raw_progress["selected_risk_head_mode"] == head_probe["selected"]["risk_head_mode"]
+    assert raw_progress["raw_selected_risk_head_mode"] == head_probe["raw_selected"]["risk_head_mode"]
+    assert "raw learned risk head" in raw_progress["promotion_policy"]
+    assert "constraint_error_gap" in raw_progress["comparison"]
+    assert "holdout_mae_gap" in raw_progress["comparison"]
+    raw_grid = head_probe["raw_grid_audit"]
+    assert raw_grid["schema"] == "territory_world_model.transformer_raw_risk_head_grid_audit.v1"
+    assert raw_grid["candidate_count"] == head_probe["raw_candidate_count"]
+    assert len(raw_grid["rows"]) == head_probe["raw_candidate_count"]
+    assert raw_grid["status"] in {"pass", "review"}
+    assert raw_grid["reference"]["selected_risk_head_mode"] == head_probe["selected"]["risk_head_mode"]
+    assert raw_grid["reference"]["selected_weight"] == head_probe["selected"]["selected_weight"]
+    assert raw_grid["promotable_candidate_count"] == sum(1 for row in raw_grid["rows"] if row["promotable"])
+    assert isinstance(raw_grid["blocker_counts"], dict)
+    assert "raw candidate" in raw_grid["promotion_policy"]
+    promotion_candidate = head_probe["raw_promotion_candidate"]
+    assert promotion_candidate["schema"] == "territory_world_model.transformer_raw_risk_head_promotion_candidate.v1"
+    assert promotion_candidate["status"] in {"pass", "review"}
+    assert promotion_candidate["candidate_config"]["risk_head_mode"] == head_probe["raw_selected"]["risk_head_mode"]
+    assert promotion_candidate["promotion_scope"] == "synthetic_probe_candidate_only"
+    if raw_progress["status"] == "pass":
+        assert promotion_candidate["status"] == "pass"
+    else:
+        assert promotion_candidate["status"] == "review"
+    assert runner.transformer_risk_head_probe_selection_key(head_probe["selected"]) == min(
+        runner.transformer_risk_head_probe_selection_key(row)
+        for row in head_probe["rows"]
+    )
+    assert runner.transformer_raw_risk_head_probe_selection_key(head_probe["raw_selected"]) == min(
+        runner.transformer_raw_risk_head_probe_selection_key(row)
+        for row in head_probe["raw_candidate_rows"]
+    )
     probe_rows = {row["risk_head_mode"]: row for row in head_probe["rows"]}
-    assert probe_rows["context_residual"]["selected_candidate_split_mae_before"] < probe_rows["shared"]["selected_candidate_split_mae_before"]
+    assert set(probe_rows) == {"shared", "context_residual", "context_direct"}
+    assert probe_rows["shared"]["weight_rows"][0]["risk_head_context_tokens"] == []
+    assert set(probe_rows["context_residual"]["weight_rows"][0]["risk_head_context_tokens"]) == {
+        "action",
+        "context",
+        "temporal",
+    }
+    assert set(probe_rows["context_direct"]["weight_rows"][0]["risk_head_context_tokens"]) == {
+        "action",
+        "context",
+        "temporal",
+    }
+    high_risk = report["backend_comparison"]["conditional_high_risk_feasibility"]
+    assert high_risk["schema"] == "territory_world_model.conditional_high_risk_feasibility.v1"
+    assert high_risk["raw_context_residual_candidate_count"] >= 1
+    high_risk_rows = {
+        item["candidate_id"]: item
+        for item in high_risk["rows"]
+    }
+    assert high_risk_rows["torch_spatiotemporal_transformer"]["raw_context_residual_feasibility"] is True
+    assert high_risk_rows["torch_spatiotemporal_transformer"]["feasibility_head_mode"] == "context_residual"
+    assert high_risk_rows["torch_spatiotemporal_transformer"]["false_allow"] >= 0
+    assert set(high_risk_rows["torch_spatiotemporal_transformer"]["feasibility_context_tokens"]) == {
+        "action",
+        "context",
+        "temporal",
+    }
+    assert high_risk_rows["torch_spatiotemporal_transformer_context_action_mask_calibrated"]["false_allow"] == 0
+    near_boundary = report["backend_comparison"]["near_boundary_mixed_risk_feasibility"]
+    assert near_boundary["schema"] == "territory_world_model.near_boundary_mixed_risk_backend_feasibility.v1"
+    assert near_boundary["raw_context_residual_candidate_count"] >= 1
+    near_boundary_rows = {
+        item["candidate_id"]: item
+        for item in near_boundary["rows"]
+    }
+    assert near_boundary_rows["torch_spatiotemporal_transformer"]["raw_context_residual_feasibility"] is True
+    assert near_boundary_rows["torch_spatiotemporal_transformer"]["feasibility_head_mode"] == "context_residual"
+    assert near_boundary_rows["torch_spatiotemporal_transformer"]["example_count"] > 0
+    assert near_boundary_rows["torch_spatiotemporal_transformer_context_action_mask_calibrated"]["false_allow"] == 0
+    holdout_mixed = report["backend_comparison"]["holdout_mixed_risk_feasibility"]
+    assert holdout_mixed["schema"] == "territory_world_model.holdout_mixed_risk_backend_feasibility.v1"
+    assert holdout_mixed["raw_context_residual_candidate_count"] >= 1
+    holdout_mixed_rows = {
+        item["candidate_id"]: item
+        for item in holdout_mixed["rows"]
+    }
+    assert holdout_mixed_rows["torch_spatiotemporal_transformer"]["raw_context_residual_feasibility"] is True
+    assert holdout_mixed_rows["torch_spatiotemporal_transformer"]["region_count"] > 0
+    assert holdout_mixed_rows["torch_spatiotemporal_transformer"]["period_count"] > 0
+    assert holdout_mixed_rows["torch_spatiotemporal_transformer_context_action_mask_calibrated"]["false_allow"] == 0
+    unseen_mixed = report["backend_comparison"]["unseen_mixed_risk_feasibility"]
+    assert unseen_mixed["schema"] == "territory_world_model.unseen_mixed_risk_backend_feasibility.v1"
+    assert unseen_mixed["raw_context_residual_candidate_count"] >= 1
+    unseen_mixed_rows = {
+        item["candidate_id"]: item
+        for item in unseen_mixed["rows"]
+    }
+    assert unseen_mixed_rows["torch_spatiotemporal_transformer"]["raw_context_residual_feasibility"] is True
+    assert unseen_mixed_rows["torch_spatiotemporal_transformer"]["primary_mode"] == "time_policy"
+    assert unseen_mixed_rows["torch_spatiotemporal_transformer_context_action_mask_calibrated"]["false_allow"] == 0
     assert report["backend_comparison"]["candidate_count"] == 13
+
+
+def test_synthetic_experiment_runner_uses_prepared_foundation_for_raw_transformer_feasibility():
+    runner = _load_runner_module()
+    path = Path("docs/reports/twm_synthetic_experiment_foundation.csv")
+    assert path.exists()
+
+    report = runner.run_synthetic_experiment(path, include_transformer=True)
+
+    assert report["dataset_summary"]["example_count"] == 128
+    assert report["dataset_summary"]["holdout_ground_truth_example_count"] == 64
+    required_mixed_allowed_policies = {
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed",
+    }
+    assert required_mixed_allowed_policies.issubset(report["dataset_summary"]["candidate_mixed_allowed_policy_counts"])
+    assert required_mixed_allowed_policies.issubset(report["dataset_summary"]["holdout_mixed_allowed_policy_counts"])
+    high_risk = report["backend_comparison"]["conditional_high_risk_feasibility"]
+    assert high_risk["subset"]["example_count"] >= 56
+    assert high_risk["subset"]["conditional_allowed_count"] >= 24
+    assert high_risk["subset"]["conditional_blocked_count"] >= 32
+    rows = {
+        item["candidate_id"]: item
+        for item in high_risk["rows"]
+    }
+    raw_transformer = rows["torch_spatiotemporal_transformer"]
+    assert raw_transformer["raw_context_residual_feasibility"] is True
+    assert raw_transformer["false_allow"] == 0
+    assert raw_transformer["false_block"] <= 7
+    near_boundary = report["backend_comparison"]["near_boundary_mixed_risk_feasibility"]
+    assert near_boundary["schema"] == "territory_world_model.near_boundary_mixed_risk_backend_feasibility.v1"
+    assert near_boundary["subset"]["example_count"] >= 40
+    assert near_boundary["subset"]["allowed_count"] > 0
+    assert near_boundary["subset"]["blocked_count"] > 0
+    assert near_boundary["raw_context_residual_zero_error_count"] >= 1
+    near_boundary_rows = {
+        item["candidate_id"]: item
+        for item in near_boundary["rows"]
+    }
+    raw_transformer_near_boundary = near_boundary_rows["torch_spatiotemporal_transformer"]
+    assert raw_transformer_near_boundary["raw_context_residual_feasibility"] is True
+    assert raw_transformer_near_boundary["example_count"] >= 40
+    assert raw_transformer_near_boundary["allowed_count"] > 0
+    assert raw_transformer_near_boundary["blocked_count"] > 0
+    assert raw_transformer_near_boundary["false_allow"] == 0
+    assert raw_transformer_near_boundary["false_block"] == 0
+    holdout_mixed = report["backend_comparison"]["holdout_mixed_risk_feasibility"]
+    assert holdout_mixed["schema"] == "territory_world_model.holdout_mixed_risk_backend_feasibility.v1"
+    assert holdout_mixed["subset"]["example_count"] >= 29
+    assert holdout_mixed["subset"]["allowed_count"] >= 10
+    assert holdout_mixed["subset"]["blocked_count"] >= 19
+    assert holdout_mixed["subset"]["region_count"] >= 4
+    assert holdout_mixed["subset"]["period_count"] >= 4
+    assert holdout_mixed["raw_context_residual_zero_error_count"] >= 1
+    holdout_mixed_rows = {
+        item["candidate_id"]: item
+        for item in holdout_mixed["rows"]
+    }
+    raw_transformer_holdout_mixed = holdout_mixed_rows["torch_spatiotemporal_transformer"]
+    assert raw_transformer_holdout_mixed["raw_context_residual_feasibility"] is True
+    assert raw_transformer_holdout_mixed["example_count"] >= 29
+    assert raw_transformer_holdout_mixed["allowed_count"] >= 10
+    assert raw_transformer_holdout_mixed["blocked_count"] >= 19
+    assert raw_transformer_holdout_mixed["region_count"] >= 4
+    assert raw_transformer_holdout_mixed["period_count"] >= 4
+    assert raw_transformer_holdout_mixed["false_allow"] == 0
+    assert raw_transformer_holdout_mixed["false_block"] == 0
+    unseen_mixed = report["backend_comparison"]["unseen_mixed_risk_feasibility"]
+    assert unseen_mixed["schema"] == "territory_world_model.unseen_mixed_risk_backend_feasibility.v1"
+    assert unseen_mixed["subset"]["primary_mode"] == "time_policy"
+    assert unseen_mixed["subset"]["modes"]["time_policy"]["example_count"] >= 29
+    assert unseen_mixed["subset"]["modes"]["time_policy"]["allowed_count"] >= 10
+    assert unseen_mixed["subset"]["modes"]["time_policy"]["blocked_count"] >= 19
+    assert unseen_mixed["subset"]["modes"]["region_policy"]["example_count"] >= 10
+    assert unseen_mixed["subset"]["modes"]["region_policy"]["allowed_count"] >= 6
+    assert unseen_mixed["subset"]["modes"]["region_policy"]["blocked_count"] >= 4
+    assert required_mixed_allowed_policies.issubset(unseen_mixed["subset"]["modes"]["region_policy"]["policy_counts"])
+    assert unseen_mixed["subset"]["modes"]["region_action_policy"]["example_count"] >= 10
+    assert unseen_mixed["subset"]["modes"]["region_action_policy"]["allowed_count"] >= 6
+    assert unseen_mixed["subset"]["modes"]["region_action_policy"]["blocked_count"] >= 4
+    assert required_mixed_allowed_policies.issubset(unseen_mixed["subset"]["modes"]["region_action_policy"]["policy_counts"])
+    assert unseen_mixed["raw_context_residual_zero_error_count"] >= 1
+    unseen_mixed_rows = {
+        item["candidate_id"]: item
+        for item in unseen_mixed["rows"]
+    }
+    raw_transformer_unseen = unseen_mixed_rows["torch_spatiotemporal_transformer"]
+    assert raw_transformer_unseen["raw_context_residual_feasibility"] is True
+    assert raw_transformer_unseen["primary_mode"] == "time_policy"
+    assert raw_transformer_unseen["example_count"] >= 29
+    assert raw_transformer_unseen["allowed_count"] >= 10
+    assert raw_transformer_unseen["blocked_count"] >= 19
+    assert raw_transformer_unseen["false_allow"] == 0
+    assert raw_transformer_unseen["false_block"] == 0
+    assert raw_transformer_unseen["mode_summary"]["region_policy"]["example_count"] >= 10
+    assert raw_transformer_unseen["mode_summary"]["region_policy"]["allowed_count"] >= 6
+    assert raw_transformer_unseen["mode_summary"]["region_policy"]["false_allow"] == 0
+    assert raw_transformer_unseen["mode_summary"]["region_policy"]["false_block"] == 0
+    assert raw_transformer_unseen["mode_summary"]["region_action_policy"]["example_count"] >= 10
+    assert raw_transformer_unseen["mode_summary"]["region_action_policy"]["allowed_count"] >= 6
+    assert raw_transformer_unseen["mode_summary"]["region_action_policy"]["false_allow"] == 0
+    assert raw_transformer_unseen["mode_summary"]["region_action_policy"]["false_block"] == 0
+    ranking = {
+        item["candidate_id"]: item
+        for item in report["backend_comparison"]["ranking"]
+    }
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["configured_epoch_count"] >= 40
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["action_mask_allowed_positive_weight"] == 2.0
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["action_mask_conditioned_allowed_weight"] == 2.0
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["action_mask_mixed_blocked_weight"] >= 1.5
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["constraint_risk_contextual_weight"] == 1.0
+    assert ranking["torch_spatiotemporal_transformer"]["training_diagnostics"]["seed"] == 19
+    assert ranking["torch_spatiotemporal_transformer"]["architecture_summary"]["hidden_dim"] == 32
+    leakage = ranking["torch_spatiotemporal_transformer"]["input_leakage_audit"]
+    assert leakage["status"] == "pass"
+    assert leakage["forbidden_hit_count"] == 0
+    feature_names = "\n".join(ranking["torch_spatiotemporal_transformer"]["feature_contract_summary"]["action_mask_context_feature_names"])
+    assert "target.action_allowed" not in feature_names
+    assert "risk_proxy_source.target_fallback" not in feature_names
+    assert ranking["torch_spatiotemporal_transformer"]["planner_holdout_analysis"]["metrics"]["false_allow_selection_count"] == 0
 
 
 def test_synthetic_runner_probes_transformer_risk_calibration_weights(tmp_path):
@@ -560,18 +1017,532 @@ def test_synthetic_runner_probes_transformer_risk_calibration_weights(tmp_path):
     assert probe["status"] == "pass"
     assert report["backend_comparison"]["candidate_count"] == 10
     assert [row["weight"] for row in probe["rows"]] == [0.0, 0.7, 1.2]
+    assert probe["weights"] == [0.0, 0.7, 1.2]
     assert probe["selected"]["weight"] in {0.0, 0.7, 1.2}
     for row in probe["rows"]:
         assert row["risk_head_mode"] == "context_residual"
         assert set(row["risk_head_context_tokens"]) == {"action", "context", "temporal"}
+        assert row["constraint_risk_contextual_weight"] == 1.0
+        assert row["constraint_risk_weight_mean"] >= 1.0
+        assert row["constraint_risk_weight_max"] >= 1.0
+        assert row["feasibility_head_mode"] == "context_residual"
+        assert set(row["feasibility_head_context_tokens"]) == {"action", "context", "temporal"}
         assert row["training_status"] == "pass"
         assert "candidate_split_mae_before" in row
         assert "candidate_split_mae_after" in row
         assert "false_allow" in row
         assert "planner_mean_regret" in row
+        expected_accepted = (
+            row["calibration_status"] == "pass"
+            and row["candidate_split_improved"] is True
+            and row["holdout_improved"] is True
+        )
+        assert row["calibration_accepted"] is expected_accepted
+        if expected_accepted:
+            assert row["applied_prediction_count"] > 0
+        else:
+            assert row["applied_prediction_count"] == 0
     numeric_rows = [row for row in probe["rows"] if row["candidate_split_mae_before"] is not None]
     if numeric_rows:
-        assert probe["selected"]["candidate_split_mae_before"] <= numeric_rows[0]["candidate_split_mae_before"]
+        assert runner.transformer_risk_weight_probe_selection_key(probe["selected"]) == min(
+            runner.transformer_risk_weight_probe_selection_key(row)
+            for row in probe["rows"]
+        )
+    if probe["selected"]["calibration_status"] == "pass":
+        assert probe["selected"]["calibration_accepted"] is True
+        assert probe["selected"]["candidate_split_improved"] is True
+        assert probe["selected"]["holdout_improved"] is True
+        assert probe["selected"]["applied_prediction_count"] > 0
+
+
+def test_synthetic_runner_probes_transformer_contextual_risk_weights(tmp_path):
+    module = _load_script_module()
+    runner = _load_runner_module()
+    dataset_root = tmp_path / "dataset"
+    (dataset_root / "tables").mkdir(parents=True)
+    (dataset_root / "relations").mkdir()
+    path = tmp_path / "synthetic_experiment.csv"
+    module.write_twm_synthetic_experiment_foundation(
+        path,
+        dataset_root,
+        region_count=3,
+        period_count=4,
+        component_count=3,
+    )
+
+    report = runner.run_synthetic_experiment(
+        path,
+        include_transformer=True,
+        probe_transformer_risk_weights=[0.0, 1.0],
+        probe_transformer_risk_contextual_weights=[1.0, 2.5],
+        probe_transformer_risk_seeds=[19],
+    )
+
+    probe = report["transformer_risk_contextual_weight_probe"]
+    assert probe["schema"] == "territory_world_model.transformer_risk_contextual_weight_probe.v1"
+    assert probe["status"] == "pass"
+    assert probe["contextual_weights"] == [1.0, 2.5]
+    assert runner.parse_weight_list("1.0,2.5", min_value=1.0, max_value=4.0) == [1.0, 2.5]
+    assert runner.parse_int_list("19,23") == [19, 23]
+    assert probe["risk_weights"] == [0.0, 1.0]
+    assert [row["contextual_weight"] for row in probe["rows"]] == [1.0, 2.5]
+    assert probe["selected"]["contextual_weight"] in {1.0, 2.5}
+    assert probe["promotion_gate"]["schema"] == "territory_world_model.transformer_contextual_risk_weight_promotion_gate.v1"
+    assert probe["promotion_gate"]["status"] in {"pass", "review"}
+    assert probe["promotion_gate"]["promotion_scope"] == "synthetic_probe_candidate_only"
+    for row in probe["rows"]:
+        assert row["raw_candidate_count"] == 6
+        assert row["head_probe_status"] in {"pass", "review"}
+        assert row["raw_gate_status"] in {"pass", "review"}
+        assert "holdout_mae_gap" in row
+        assert isinstance(row["raw_gate_review_reasons"], list)
+        assert isinstance(row["raw_grid_blocker_counts"], dict)
+    assert runner.transformer_risk_contextual_weight_probe_selection_key(probe["selected"]) == min(
+        runner.transformer_risk_contextual_weight_probe_selection_key(row)
+        for row in probe["rows"]
+    )
+    seed_probe = report["transformer_risk_seed_reproducibility"]
+    assert seed_probe["schema"] == "territory_world_model.transformer_risk_seed_reproducibility_probe.v1"
+    assert seed_probe["seeds"] == [19]
+    assert seed_probe["gate"]["schema"] == "territory_world_model.transformer_seed_reproducibility_gate.v1"
+    assert seed_probe["gate"]["status"] == "review"
+    assert "fewer_than_two_transformer_seeds" in seed_probe["gate"]["review_reasons"]
+    assert len(seed_probe["rows"]) == 1
+    assert seed_probe["rows"][0]["seed"] == 19
+    assert seed_probe["rows"][0]["candidate_config"]["transformer_seed"] == 19
+    assert seed_probe["reproducibility_policy"].startswith("require at least two transformer seeds")
+
+
+def test_transformer_contextual_risk_weight_promotion_gate_passes_only_on_nonpositive_gaps():
+    runner = _load_runner_module()
+    selected = {
+        "contextual_weight": 3.8,
+        "risk_weights": [1.1, 1.2, 1.3],
+        "raw_gate_status": "pass",
+        "raw_selected_risk_head_mode": "shared",
+        "raw_selected_weight": 1.3,
+        "constraint_error_gap": -0.001,
+        "holdout_mae_gap": -0.002,
+        "planner_regret_gap": 0.0,
+        "raw_selected_false_allow": 0,
+        "raw_grid_promotable_candidate_count": 2,
+    }
+
+    gate = runner.transformer_contextual_risk_weight_promotion_gate(selected)
+
+    assert gate["schema"] == "territory_world_model.transformer_contextual_risk_weight_promotion_gate.v1"
+    assert gate["status"] == "pass"
+    assert gate["candidate_config"]["constraint_risk_contextual_weight"] == 3.8
+    assert gate["candidate_config"]["risk_head_mode"] == "shared"
+    assert gate["candidate_config"]["risk_calibration_weight"] == 1.3
+    assert gate["review_reasons"] == []
+
+    selected["holdout_mae_gap"] = 0.000001
+    blocked = runner.transformer_contextual_risk_weight_promotion_gate(selected)
+    assert blocked["status"] == "review"
+    assert "raw_holdout_mae_gap_positive" in blocked["review_reasons"]
+
+
+def test_transformer_seed_reproducibility_gate_requires_multiple_promoted_seeds():
+    runner = _load_runner_module()
+    promoted = {
+        "seed": 19,
+        "raw_gate_status": "pass",
+        "raw_promotion_candidate_status": "pass",
+    }
+    assert runner.transformer_seed_reproducibility_gate([promoted])["status"] == "review"
+
+    passed = runner.transformer_seed_reproducibility_gate(
+        [
+            promoted,
+            {
+                "seed": 23,
+                "raw_gate_status": "pass",
+                "raw_promotion_candidate_status": "pass",
+            },
+        ]
+    )
+    assert passed["status"] == "pass"
+    assert passed["pass_seed_count"] == 2
+
+    failed = runner.transformer_seed_reproducibility_gate(
+        [
+            promoted,
+            {
+                "seed": 23,
+                "raw_gate_status": "review",
+                "raw_promotion_candidate_status": "review",
+            },
+        ]
+    )
+    assert failed["status"] == "review"
+    assert failed["failed_seeds"] == [23]
+    assert "one_or_more_seed_runs_not_promoted" in failed["review_reasons"]
+
+
+def test_transformer_training_epoch_seed_stability_gate_selects_seed_stable_budget():
+    runner = _load_runner_module()
+    assert runner.normalize_transformer_training_epoch_probe_values([8, 80, 120, 120]) == [60, 80, 120]
+
+    unstable_seed_rows = [
+        {
+            "seed": 19,
+            "raw_gate_status": "review",
+            "raw_promotion_candidate_status": "review",
+            "raw_gate_review_reasons": ["raw_holdout_mae_above_calibrated_selection"],
+            "raw_promotion_review_reasons": ["raw_progress_gate_not_pass"],
+            "raw_grid_promotable_candidate_count": 0,
+            "candidate_config": {"transformer_seed": 19},
+            "comparison": {
+                "constraint_error_gap": -0.001,
+                "holdout_mae_gap": 0.002,
+                "planner_regret_gap": -0.003,
+                "raw_selected_false_allow": 0,
+            },
+        },
+        {
+            "seed": 23,
+            "raw_gate_status": "pass",
+            "raw_promotion_candidate_status": "pass",
+            "raw_grid_promotable_candidate_count": 2,
+            "candidate_config": {"transformer_seed": 23},
+            "comparison": {
+                "constraint_error_gap": -0.002,
+                "holdout_mae_gap": -0.004,
+                "planner_regret_gap": -0.005,
+                "raw_selected_false_allow": 0,
+            },
+        },
+    ]
+    stable_seed_rows = [
+        {
+            "seed": 19,
+            "raw_gate_status": "pass",
+            "raw_promotion_candidate_status": "pass",
+            "raw_grid_promotable_candidate_count": 1,
+            "candidate_config": {"transformer_seed": 19},
+            "comparison": {
+                "constraint_error_gap": -0.001,
+                "holdout_mae_gap": -0.002,
+                "planner_regret_gap": 0.0,
+                "raw_selected_false_allow": 0,
+            },
+        },
+        {
+            "seed": 23,
+            "raw_gate_status": "pass",
+            "raw_promotion_candidate_status": "pass",
+            "raw_grid_promotable_candidate_count": 2,
+            "candidate_config": {"transformer_seed": 23},
+            "comparison": {
+                "constraint_error_gap": -0.003,
+                "holdout_mae_gap": -0.004,
+                "planner_regret_gap": -0.005,
+                "raw_selected_false_allow": 0,
+            },
+        },
+    ]
+    unstable_gate = runner.transformer_seed_reproducibility_gate(unstable_seed_rows)
+    stable_gate = runner.transformer_seed_reproducibility_gate(stable_seed_rows)
+    unstable = runner.transformer_training_epoch_seed_stability_row(80, unstable_gate, unstable_seed_rows)
+    stable = runner.transformer_training_epoch_seed_stability_row(100, stable_gate, stable_seed_rows)
+
+    selected = min([unstable, stable], key=runner.transformer_training_epoch_seed_stability_selection_key)
+    gate = runner.transformer_training_epoch_seed_stability_gate([unstable, stable], selected)
+
+    assert selected["training_epoch_budget"] == 100
+    assert selected["seed_reproducibility_status"] == "pass"
+    assert selected["min_raw_grid_promotable_candidate_count"] == 1
+    assert unstable["raw_gate_blocker_counts"]["raw_holdout_mae_above_calibrated_selection"] == 1
+    assert gate["schema"] == "territory_world_model.transformer_training_epoch_seed_stability_gate.v1"
+    assert gate["status"] == "pass"
+    assert gate["selected_training_epoch_budget"] == 100
+    assert gate["pass_epoch_budget_count"] == 1
+
+    blocked = runner.transformer_training_epoch_seed_stability_gate([unstable], unstable)
+    assert blocked["status"] == "review"
+    assert "no_training_epoch_budget_passed_seed_reproducibility" in blocked["review_reasons"]
+
+
+def test_transformer_training_seed_stability_row_reports_near_miss_without_relaxing_gate():
+    runner = _load_runner_module()
+    seed_rows = [
+        {
+            "seed": 19,
+            "raw_gate_status": "pass",
+            "raw_promotion_candidate_status": "pass",
+            "raw_grid_promotable_candidate_count": 2,
+            "candidate_config": {"transformer_seed": 19, "learning_rate": 0.008},
+            "comparison": {
+                "constraint_error_gap": -0.001,
+                "holdout_mae_gap": -0.002,
+                "planner_regret_gap": 0.0,
+                "raw_selected_false_allow": 0,
+            },
+        },
+        {
+            "seed": 31,
+            "raw_gate_status": "review",
+            "raw_promotion_candidate_status": "review",
+            "raw_gate_review_reasons": [
+                "raw_constraint_error_above_calibrated_selection",
+                "raw_holdout_mae_above_calibrated_selection",
+            ],
+            "raw_promotion_review_reasons": [
+                "raw_progress_gate_not_pass",
+                "raw_grid_promotable_candidate_missing",
+            ],
+            "raw_grid_promotable_candidate_count": 0,
+            "candidate_config": {"transformer_seed": 31, "learning_rate": 0.008},
+            "comparison": {
+                "constraint_error_gap": 0.000027,
+                "holdout_mae_gap": 0.000028,
+                "planner_regret_gap": 0.0,
+                "raw_selected_false_allow": 0,
+            },
+        },
+        {
+            "seed": 37,
+            "raw_gate_status": "review",
+            "raw_promotion_candidate_status": "review",
+            "raw_gate_review_reasons": ["raw_selected_false_allow_nonzero"],
+            "raw_grid_promotable_candidate_count": 0,
+            "candidate_config": {"transformer_seed": 37, "learning_rate": 0.008},
+            "comparison": {
+                "constraint_error_gap": 0.000001,
+                "holdout_mae_gap": 0.0,
+                "planner_regret_gap": 0.0,
+                "raw_selected_false_allow": 1,
+            },
+        },
+    ]
+
+    gate = runner.transformer_seed_reproducibility_gate(seed_rows)
+    row = runner.transformer_training_epoch_seed_stability_row(100, gate, seed_rows)
+    audit = row["near_miss_audit"]
+
+    assert gate["status"] == "review"
+    assert row["seed_reproducibility_status"] == "review"
+    assert audit["schema"] == "territory_world_model.transformer_seed_near_miss_audit.v1"
+    assert audit["policy"].startswith("diagnostic only")
+    assert audit["failed_seed_count"] == 2
+    assert audit["near_miss_seed_count"] == 1
+    assert audit["near_miss_seeds"] == [31]
+    assert audit["near_miss_false_allow_count"] == 0
+    assert audit["max_positive_constraint_gap"] == 0.000027
+    assert audit["max_positive_holdout_gap"] == 0.000028
+    assert audit["max_raw_selected_false_allow_among_failed"] == 1
+    assert audit["rows"][0]["raw_promotion_review_reasons"] == [
+        "raw_progress_gate_not_pass",
+        "raw_grid_promotable_candidate_missing",
+    ]
+
+
+def test_transformer_training_hyperparameters_flow_into_backend_spec():
+    runner = _load_runner_module()
+
+    specs = runner.backend_experiment_specs(
+        mlp_epochs=8,
+        include_graph=False,
+        include_transformer=True,
+        transformer_risk_calibration_weight=0.0,
+        transformer_risk_contextual_weight=3.8,
+        transformer_learning_rate=0.008,
+        transformer_weight_decay=0.004,
+        transformer_dropout=0.15,
+        transformer_risk_head_mode="shared",
+        transformer_seed=23,
+    )
+    transformer_spec = next(item for item in specs if item["candidate_id"] == "torch_spatiotemporal_transformer")
+    config = transformer_spec["training_config"]
+
+    assert runner.transformer_training_learning_rate(0.2) == 0.05
+    assert runner.transformer_training_weight_decay(-1.0) == 0.0
+    assert runner.transformer_training_dropout(0.8) == 0.5
+    assert runner.normalize_transformer_learning_rate_probe_values([0.012, 0.008, 0.012]) == [0.008, 0.012]
+    assert runner.normalize_transformer_weight_decay_probe_values([0.0, 0.004, 0.004]) == [0.0, 0.004]
+    assert runner.normalize_transformer_dropout_probe_values([0.0, 0.15, 0.15]) == [0.0, 0.15]
+    assert config["epochs"] == 60
+    assert config["learning_rate"] == 0.008
+    assert config["weight_decay"] == 0.004
+    assert config["dropout"] == 0.15
+    assert config["constraint_risk_contextual_weight"] == 3.8
+    assert config["risk_head_mode"] == "shared"
+    assert config["seed"] == 23
+
+
+def test_transformer_training_hyperparameter_seed_stability_gate_selects_stable_config():
+    runner = _load_runner_module()
+    unstable_seed_rows = [
+        {
+            "seed": 19,
+            "raw_gate_status": "review",
+            "raw_promotion_candidate_status": "review",
+            "raw_gate_review_reasons": ["raw_planner_regret_above_calibrated_selection"],
+            "raw_promotion_review_reasons": ["raw_progress_gate_not_pass"],
+            "raw_grid_promotable_candidate_count": 0,
+            "candidate_config": {"transformer_seed": 19, "learning_rate": 0.012},
+            "comparison": {
+                "constraint_error_gap": -0.001,
+                "holdout_mae_gap": -0.002,
+                "planner_regret_gap": 0.001,
+                "raw_selected_false_allow": 0,
+            },
+        },
+        {
+            "seed": 23,
+            "raw_gate_status": "pass",
+            "raw_promotion_candidate_status": "pass",
+            "raw_grid_promotable_candidate_count": 2,
+            "candidate_config": {"transformer_seed": 23, "learning_rate": 0.012},
+            "comparison": {
+                "constraint_error_gap": -0.002,
+                "holdout_mae_gap": -0.003,
+                "planner_regret_gap": -0.004,
+                "raw_selected_false_allow": 0,
+            },
+        },
+    ]
+    stable_seed_rows = [
+        {
+            "seed": 19,
+            "raw_gate_status": "pass",
+            "raw_promotion_candidate_status": "pass",
+            "raw_grid_promotable_candidate_count": 1,
+            "candidate_config": {"transformer_seed": 19, "learning_rate": 0.008},
+            "comparison": {
+                "constraint_error_gap": -0.001,
+                "holdout_mae_gap": -0.002,
+                "planner_regret_gap": 0.0,
+                "raw_selected_false_allow": 0,
+            },
+        },
+        {
+            "seed": 23,
+            "raw_gate_status": "pass",
+            "raw_promotion_candidate_status": "pass",
+            "raw_grid_promotable_candidate_count": 1,
+            "candidate_config": {"transformer_seed": 23, "learning_rate": 0.008},
+            "comparison": {
+                "constraint_error_gap": -0.002,
+                "holdout_mae_gap": -0.003,
+                "planner_regret_gap": -0.004,
+                "raw_selected_false_allow": 0,
+            },
+        },
+    ]
+    unstable = runner.transformer_training_hyperparameter_seed_stability_row(
+        learning_rate=0.012,
+        weight_decay=0.001,
+        dropout=0.0,
+        gate=runner.transformer_seed_reproducibility_gate(unstable_seed_rows),
+        seed_rows=unstable_seed_rows,
+    )
+    stable = runner.transformer_training_hyperparameter_seed_stability_row(
+        learning_rate=0.008,
+        weight_decay=0.004,
+        dropout=0.15,
+        gate=runner.transformer_seed_reproducibility_gate(stable_seed_rows),
+        seed_rows=stable_seed_rows,
+    )
+
+    selected = min([unstable, stable], key=runner.transformer_training_hyperparameter_seed_stability_selection_key)
+    gate = runner.transformer_training_hyperparameter_seed_stability_gate([unstable, stable], selected)
+
+    assert selected["learning_rate"] == 0.008
+    assert selected["weight_decay"] == 0.004
+    assert selected["dropout"] == 0.15
+    assert selected["seed_reproducibility_status"] == "pass"
+    assert unstable["raw_gate_blocker_counts"]["raw_planner_regret_above_calibrated_selection"] == 1
+    assert gate["schema"] == "territory_world_model.transformer_training_hyperparameter_seed_stability_gate.v1"
+    assert gate["status"] == "pass"
+    assert gate["selected_config"] == {"learning_rate": 0.008, "weight_decay": 0.004, "dropout": 0.15}
+
+    blocked = runner.transformer_training_hyperparameter_seed_stability_gate([unstable], unstable)
+    assert blocked["status"] == "review"
+    assert "no_training_hyperparameter_config_passed_seed_reproducibility" in blocked["review_reasons"]
+
+
+def test_synthetic_runner_accepts_context_direct_transformer_risk_head(tmp_path):
+    module = _load_script_module()
+    runner = _load_runner_module()
+    dataset_root = tmp_path / "dataset"
+    (dataset_root / "tables").mkdir(parents=True)
+    (dataset_root / "relations").mkdir()
+    path = tmp_path / "synthetic_experiment.csv"
+    module.write_twm_synthetic_experiment_foundation(
+        path,
+        dataset_root,
+        region_count=3,
+        period_count=4,
+        component_count=3,
+    )
+
+    assert runner.risk_head_mode_or_default("context_direct") == "context_direct"
+    report = runner.run_synthetic_experiment(
+        path,
+        include_transformer=True,
+        transformer_risk_head_mode="context_direct",
+    )
+    ranking = {
+        item["candidate_id"]: item
+        for item in report["backend_comparison"]["ranking"]
+    }
+    raw_transformer = ranking["torch_spatiotemporal_transformer"]
+    assert raw_transformer["training_diagnostics"]["risk_head_mode"] == "context_direct"
+    assert raw_transformer["architecture_summary"]["constraint_risk_head"] == "context_direct"
+    assert set(raw_transformer["architecture_summary"]["constraint_risk_context_tokens"]) == {
+        "action",
+        "context",
+        "temporal",
+    }
+    assert raw_transformer["input_leakage_audit"]["status"] == "pass"
+    assert raw_transformer["input_leakage_audit"]["forbidden_hit_count"] == 0
+
+
+def test_synthetic_runner_raw_risk_head_progress_gate_reviews_when_raw_lags_calibration():
+    runner = _load_runner_module()
+    selected = {
+        "risk_head_mode": "context_residual",
+        "status": "pass",
+        "selected_weight": 1.2,
+        "selected_calibrated_mean_constraint_error": 0.02,
+        "selected_holdout_mae_after": 0.03,
+        "selected_planner_mean_regret": 0.01,
+        "selected_false_allow": 0,
+    }
+    raw_selected = {
+        "risk_head_mode": "context_direct",
+        "status": "pass",
+        "selected_weight": 0.0,
+        "selected_raw_mean_constraint_error": 0.025,
+        "selected_holdout_mae_before": 0.04,
+        "selected_planner_mean_regret": 0.02,
+        "selected_false_allow": 0,
+    }
+
+    gate = runner.transformer_raw_risk_head_progress_gate(selected, raw_selected)
+
+    assert gate["schema"] == "territory_world_model.transformer_raw_risk_head_progress_gate.v1"
+    assert gate["status"] == "review"
+    assert "raw_constraint_error_above_calibrated_selection" in gate["review_reasons"]
+    assert "raw_holdout_mae_above_calibrated_selection" in gate["review_reasons"]
+    assert "raw_planner_regret_above_calibrated_selection" in gate["review_reasons"]
+    assert gate["comparison"]["constraint_error_gap"] == 0.005
+
+    audit = runner.transformer_raw_risk_head_grid_audit(selected, [raw_selected])
+    assert audit["schema"] == "territory_world_model.transformer_raw_risk_head_grid_audit.v1"
+    assert audit["status"] == "review"
+    assert audit["candidate_count"] == 1
+    assert audit["promotable_candidate_count"] == 0
+    assert audit["blocker_counts"]["raw_constraint_error_above_calibrated_selection"] == 1
+    assert audit["blocker_counts"]["raw_holdout_mae_above_calibrated_selection"] == 1
+    assert audit["rows"][0]["promotable"] is False
+
+    promotion_candidate = runner.transformer_raw_risk_head_promotion_candidate(raw_selected, gate, audit)
+    assert promotion_candidate["schema"] == "territory_world_model.transformer_raw_risk_head_promotion_candidate.v1"
+    assert promotion_candidate["status"] == "review"
+    assert "raw_progress_gate_not_pass" in promotion_candidate["review_reasons"]
 
 
 def test_synthetic_runner_action_mask_diagnostics_identifies_false_allow():
@@ -672,6 +1643,53 @@ def test_synthetic_runner_action_mask_calibration_blocks_review_actions():
     assert calibrated["predictions"]["holdout-block"]["action_mask"]["required_reviews"] == ["synthetic_defer_review"]
     assert diagnostics["confusion"]["false_allow"] == 0
     assert diagnostics["accuracy"] == 1.0
+
+
+def test_synthetic_runner_constraint_risk_calibration_requires_holdout_improvement():
+    runner = _load_runner_module()
+    dataset = {
+        "examples": [
+            {
+                "id": "candidate-1",
+                "split": "candidate",
+                "targets": {"constraint_violation_probability": 0.2},
+            },
+            {
+                "id": "candidate-2",
+                "split": "candidate",
+                "targets": {"constraint_violation_probability": 0.8},
+            },
+            {
+                "id": "holdout-1",
+                "split": "holdout",
+                "targets": {"constraint_violation_probability": 0.1},
+            },
+        ]
+    }
+    candidate = {
+        "schema": "territory_world_model.neural_multi_head_dynamics_candidate_report.v1",
+        "status": "pass",
+        "candidate": {"model_name": "risk-test", "model_family": "test"},
+        "predictions": {
+            "candidate-1": {"constraint_violation_probability": 0.1},
+            "candidate-2": {"constraint_violation_probability": 0.9},
+            "holdout-1": {"constraint_violation_probability": 0.1},
+        },
+        "evidence_gate": {"status": "pass"},
+    }
+
+    risk_report = runner.constraint_risk_calibrated_candidate_report(candidate, dataset)
+    calibration = risk_report["constraint_risk_calibration"]
+
+    assert calibration["status"] == "review"
+    assert calibration["candidate_split_improved"] is True
+    assert calibration["holdout_improved"] is False
+    assert calibration["accepted"] is False
+    assert calibration["applied_prediction_count"] == 0
+    assert "holdout_calibration_does_not_reduce_error" in calibration["review_reasons"]
+    assert risk_report["candidate"]["constraint_risk_calibrated"] is False
+    assert risk_report["evidence_gate"]["constraint_risk_calibrated"] is False
+    assert risk_report["predictions"]["holdout-1"]["constraint_violation_probability"] == 0.1
 
 
 def test_synthetic_runner_context_action_mask_calibration_handles_mixed_action_type():
@@ -919,6 +1937,12 @@ def test_render_data_foundation_health_markdown_includes_key_gates():
         "summary": {
             "twm_dataset_rows": {"approval_records.csv": 90},
             "twm_production_ready_observed_history_rows": 0,
+            "production_policy_alignment_status": "not_provided",
+            "production_policy_alignment_missing": ["production_policy_history_not_provided"],
+            "production_policy_alignment_required": {
+                "region_policy_key_count": 10,
+                "region_action_policy_key_count": 10,
+            },
             "twm_structural_fixture_row_count": 48,
             "twm_structural_fixture_pair_count": 24,
             "twm_structural_fixture_default_status": "review",
@@ -972,6 +1996,9 @@ def test_render_data_foundation_health_markdown_includes_key_gates():
     assert "/tmp/synthetic_experiment.csv" in markdown
     assert "synthetic action-mask blocked rows" in markdown
     assert "Mixed action-mask action types" in markdown
+    assert "Production policy alignment" in markdown
+    assert "production policy alignment requirement" in markdown
+    assert "production_policy_history_not_provided" in markdown
 
 
 def test_payload_records_string_neighbors_drive_spatial_edges():
@@ -1402,3 +2429,52 @@ def test_validate_twm_evidence_augmented_matched_structural_check_runs_spatial_e
     assert summary["estimate"]["spatial"]["neighbor_edge_count"] == 6
     assert summary["estimate"]["spatial_estimator"]["status"] == "pass"
     assert summary["estimate"]["spatial_estimator"]["support"]["mixed_spatial_unit_count"] == 6
+
+
+def test_twm_validation_bundle_runner_executes_offline_demo_pipeline(tmp_path):
+    runner = _load_validation_bundle_module()
+
+    report = runner.run_validation_bundle(
+        bundle_dir=Path("data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion"),
+        optimization_dir=Path("data_agent/test_data/twm_bishan_demo/optimization"),
+        scenario="pytest_offline_validation_bundle",
+        horizon=2,
+    )
+    markdown_path = tmp_path / "twm_validation_bundle.md"
+    runner.write_validation_bundle_markdown(markdown_path, report)
+
+    assert report["schema"] == "territory_world_model.validation_bundle.v1"
+    assert report["status"] in {"pass", "review", "blocked"}
+    assert report["inputs"]["evidence_coverage"] == 0.85
+    assert report["state_summary"]["object_count"] > 0
+    assert report["state_summary"]["relation_count"] > 0
+    assert report["rule_summary"]["evaluated_rule_count"] >= 1
+    assert report["selected_plan_evaluation_bundle"]["schema"] == "territory_world_model.selected_plan_evaluation_bundle.v1"
+    assert report["selected_plan_evaluation_bundle"]["selected"]["candidate_id"]
+    assert report["validation_summary"]["stage_count"] >= 6
+    assert report["claim_ladder"]["schema"] == "territory_world_model.claim_ladder.v1"
+    assert report["sanitized_export_policy"]["exports_raw_geometries"] is False
+    assert report["sanitized_export_policy"]["exports_raw_state_objects"] is False
+    assert "raw geometries" in markdown_path.read_text(encoding="utf-8")
+
+
+def test_twm_validation_bundle_runner_requires_scca_stage_when_configured():
+    runner = _load_validation_bundle_module()
+
+    report = runner.run_validation_bundle(
+        bundle_dir=Path("data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion"),
+        optimization_dir=Path("data_agent/test_data/twm_bishan_demo/optimization"),
+        scenario="pytest_offline_validation_bundle_requires_scca",
+        horizon=2,
+        require_scca_pass=True,
+    )
+
+    stages = {stage["stage_code"]: stage for stage in report["validation_summary"]["stages"]}
+    assert "spatial_causal_evidence" in stages
+    assert stages["spatial_causal_evidence"]["status"] == "review"
+    assert stages["spatial_causal_evidence"]["evidence_summary"]["required"] is True
+    assert stages["spatial_causal_evidence"]["evidence_summary"]["provided"] is False
+    assert report["scca_summary"]["required"] is True
+    assert report["scca_summary"]["provided"] is False
+    assert report["scca_summary"]["status"] == "missing_required"
+    assert report["claim_ladder"]["current_level"] in {"L0", "L1"}

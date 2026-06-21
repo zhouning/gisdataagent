@@ -511,6 +511,7 @@ class TwmStateContractReport:
     temporal_support: dict[str, Any] = field(default_factory=dict)
     geofm_policy: dict[str, Any] = field(default_factory=dict)
     downstream_consumers: list[str] = field(default_factory=list)
+    claim_ladder: dict[str, Any] = field(default_factory=dict)
     claim_boundary: dict[str, Any] = field(default_factory=dict)
     recommendations: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=now_utc_iso)

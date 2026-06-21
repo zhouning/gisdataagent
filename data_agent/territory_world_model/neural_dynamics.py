@@ -512,12 +512,15 @@ def train_spatiotemporal_transformer_dynamics(
         hidden_dim=cfg["hidden_dim"],
         dropout=cfg["dropout"],
         risk_head_mode=cfg["risk_head_mode"],
+        feasibility_head_mode=cfg["feasibility_head_mode"],
         nn=nn,
         torch=torch,
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"])
     bce = nn.BCEWithLogitsLoss()
     mse = nn.MSELoss()
+    action_mask_weights = _action_mask_training_weights(train_examples, cfg, torch)
+    constraint_risk_weights = _constraint_risk_training_weights(train_examples, cfg, torch)
     losses: list[dict[str, float]] = []
     for epoch in range(cfg["epochs"]):
         model.train()
@@ -526,14 +529,16 @@ def train_spatiotemporal_transformer_dynamics(
         utility_pred = out[:, 2:3]
         area_pred = out[:, 0:1]
         constraint_prob = torch.sigmoid(out[:, 1:2])
+        constraint_bce = _weighted_binary_loss(out[:, 1:2], y_constraint, constraint_risk_weights, nn)
+        constraint_mse = _weighted_mse_loss(constraint_prob, y_constraint, constraint_risk_weights, torch)
         loss = (
             mse(area_pred, y_area)
-            + bce(out[:, 1:2], y_constraint)
-            + cfg["constraint_risk_calibration_weight"] * mse(constraint_prob, y_constraint)
+            + constraint_bce
+            + cfg["constraint_risk_calibration_weight"] * constraint_mse
             + 1.25 * mse(utility_pred, y_utility)
             + 0.7 * bce(out[:, 3:4], y_confidence)
             + 0.85 * mse(out[:, 4:5], y_calibration)
-            + 0.7 * bce(out[:, 5:6], y_allowed)
+            + 0.7 * _weighted_action_mask_loss(out[:, 5:6], y_allowed, action_mask_weights, nn)
             + cfg["ranking_weight"] * _pairwise_ranking_loss(utility_pred.squeeze(1), y_ranking, torch)
             + cfg["temporal_consistency_weight"] * _temporal_consistency_loss(area_pred, temporal_area_target, torch)
         )
@@ -593,6 +598,8 @@ def train_spatiotemporal_transformer_dynamics(
             "action_mask_context_feature_count": len(_action_mask_context_feature_names(token_feature_keys.get("context", []))),
             "constraint_risk_head": cfg["risk_head_mode"],
             "constraint_risk_context_tokens": list(getattr(model, "risk_head_context_tokens", ())),
+            "action_mask_feasibility_head": cfg["feasibility_head_mode"],
+            "action_mask_feasibility_context_tokens": list(getattr(model, "feasibility_head_context_tokens", ())),
             "hidden_dim": cfg["hidden_dim"],
             "dropout": cfg["dropout"],
             "heads": [
@@ -622,8 +629,24 @@ def train_spatiotemporal_transformer_dynamics(
             "prediction_count": len(predictions),
             "final_loss": losses[-1]["loss"] if losses else None,
             "loss_trace": losses,
+            "learning_rate": cfg["learning_rate"],
+            "weight_decay": cfg["weight_decay"],
+            "dropout": cfg["dropout"],
             "constraint_risk_calibration_weight": cfg["constraint_risk_calibration_weight"],
+            "constraint_risk_contextual_weight": cfg["constraint_risk_contextual_weight"],
+            "constraint_risk_weight_mean": round(float(constraint_risk_weights.mean().detach().cpu().item()), 6)
+            if constraint_risk_weights is not None
+            else 1.0,
+            "constraint_risk_weight_max": round(float(constraint_risk_weights.max().detach().cpu().item()), 6)
+            if constraint_risk_weights is not None
+            else 1.0,
+            "seed": cfg["seed"],
             "risk_head_mode": cfg["risk_head_mode"],
+            "feasibility_head_mode": cfg["feasibility_head_mode"],
+            "action_mask_allowed_positive_weight": cfg["action_mask_allowed_positive_weight"],
+            "action_mask_conditioned_allowed_weight": cfg["action_mask_conditioned_allowed_weight"],
+            "action_mask_blocked_negative_weight": cfg["action_mask_blocked_negative_weight"],
+            "action_mask_mixed_blocked_weight": cfg["action_mask_mixed_blocked_weight"],
         },
         "model_state_dict": _serializable_state_dict(model),
         "limitations": [
@@ -768,6 +791,7 @@ class _SpatiotemporalTransformerDynamicsModel:
         hidden_dim: int,
         dropout: float,
         risk_head_mode: str,
+        feasibility_head_mode: str,
         nn: Any,
         torch: Any,
     ):
@@ -776,9 +800,13 @@ class _SpatiotemporalTransformerDynamicsModel:
                 super().__init__()
                 self.token_order = tuple(token_dims)
                 self.risk_head_mode = risk_head_mode
+                self.feasibility_head_mode = feasibility_head_mode
                 self.risk_head_context_tokens = tuple(
                     name for name in ("action", "context", "temporal") if name in token_dims
-                ) if self.risk_head_mode == "context_residual" else tuple()
+                ) if self.risk_head_mode in {"context_residual", "context_direct"} else tuple()
+                self.feasibility_head_context_tokens = tuple(
+                    name for name in ("action", "context", "temporal") if name in token_dims
+                ) if self.feasibility_head_mode == "context_residual" else tuple()
                 self.token_encoders = nn.ModuleDict(
                     {
                         name: nn.Sequential(
@@ -818,6 +846,26 @@ class _SpatiotemporalTransformerDynamicsModel:
                     )
                 else:
                     self.constraint_risk_residual_head = None
+                if self.risk_head_mode == "context_direct":
+                    self.constraint_risk_direct_head = nn.Sequential(
+                        nn.Linear(hidden_dim * (1 + len(self.risk_head_context_tokens)), hidden_dim),
+                        nn.LayerNorm(hidden_dim),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(hidden_dim, 1),
+                    )
+                else:
+                    self.constraint_risk_direct_head = None
+                if self.feasibility_head_mode == "context_residual":
+                    self.action_mask_feasibility_residual_head = nn.Sequential(
+                        nn.Linear(hidden_dim * (1 + len(self.feasibility_head_context_tokens)), hidden_dim),
+                        nn.LayerNorm(hidden_dim),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(hidden_dim, 1),
+                    )
+                else:
+                    self.action_mask_feasibility_residual_head = None
 
             def forward(self, token_tensors: dict[str, Any]) -> Any:
                 encoded = []
@@ -830,14 +878,26 @@ class _SpatiotemporalTransformerDynamicsModel:
                 flattened = attended.reshape(attended.shape[0], -1)
                 pooled = self.pool(flattened)
                 out = self.head(pooled)
-                if self.constraint_risk_residual_head is None:
-                    return out
-                risk_inputs = [pooled]
                 token_index = {name: idx for idx, name in enumerate(self.token_order)}
-                for name in self.risk_head_context_tokens:
-                    risk_inputs.append(attended[:, token_index[name], :])
-                residual = self.constraint_risk_residual_head(torch.cat(risk_inputs, dim=1))
-                return torch.cat([out[:, 0:1], out[:, 1:2] + residual, out[:, 2:]], dim=1)
+                if self.constraint_risk_residual_head is not None:
+                    risk_inputs = [pooled]
+                    for name in self.risk_head_context_tokens:
+                        risk_inputs.append(attended[:, token_index[name], :])
+                    risk_residual = self.constraint_risk_residual_head(torch.cat(risk_inputs, dim=1))
+                    out = torch.cat([out[:, 0:1], out[:, 1:2] + risk_residual, out[:, 2:]], dim=1)
+                if self.constraint_risk_direct_head is not None:
+                    risk_inputs = [pooled]
+                    for name in self.risk_head_context_tokens:
+                        risk_inputs.append(attended[:, token_index[name], :])
+                    risk_logit = self.constraint_risk_direct_head(torch.cat(risk_inputs, dim=1))
+                    out = torch.cat([out[:, 0:1], risk_logit, out[:, 2:]], dim=1)
+                if self.action_mask_feasibility_residual_head is not None:
+                    feasibility_inputs = [pooled]
+                    for name in self.feasibility_head_context_tokens:
+                        feasibility_inputs.append(attended[:, token_index[name], :])
+                    feasibility_residual = self.action_mask_feasibility_residual_head(torch.cat(feasibility_inputs, dim=1))
+                    out = torch.cat([out[:, :5], out[:, 5:6] + feasibility_residual], dim=1)
+                return out
 
         return _SpatiotemporalTransformerDynamicsModule()
 
@@ -902,12 +962,40 @@ def _training_config(payload: dict[str, Any]) -> dict[str, Any]:
             0.0,
             min(2.0, float(safe_float(raw.get("constraint_risk_calibration_weight"), 0.0) or 0.0)),
         ),
+        "constraint_risk_contextual_weight": max(
+            1.0,
+            min(4.0, float(safe_float(raw.get("constraint_risk_contextual_weight"), 1.0) or 1.0)),
+        ),
+        "action_mask_allowed_positive_weight": max(
+            0.1,
+            min(8.0, float(safe_float(raw.get("action_mask_allowed_positive_weight"), 1.0) or 1.0)),
+        ),
+        "action_mask_conditioned_allowed_weight": max(
+            0.1,
+            min(8.0, float(safe_float(raw.get("action_mask_conditioned_allowed_weight"), 1.0) or 1.0)),
+        ),
+        "action_mask_blocked_negative_weight": max(
+            0.1,
+            min(8.0, float(safe_float(raw.get("action_mask_blocked_negative_weight"), 1.0) or 1.0)),
+        ),
+        "action_mask_mixed_blocked_weight": max(
+            0.1,
+            min(8.0, float(safe_float(raw.get("action_mask_mixed_blocked_weight"), 1.0) or 1.0)),
+        ),
         "risk_head_mode": _risk_head_mode(raw.get("risk_head_mode")),
+        "feasibility_head_mode": _feasibility_head_mode(raw.get("feasibility_head_mode")),
         "seed": safe_int(raw.get("seed"), 42) or 42,
     }
 
 
 def _risk_head_mode(value: Any) -> str:
+    mode = str(value or "shared").strip().lower()
+    if mode in {"context_direct", "context_residual", "shared"}:
+        return mode
+    return "shared"
+
+
+def _feasibility_head_mode(value: Any) -> str:
     mode = str(value or "shared").strip().lower()
     if mode in {"context_residual", "shared"}:
         return mode
@@ -929,8 +1017,8 @@ def _feature_row(example: dict[str, Any]) -> dict[str, float]:
     scenario = dict(example.get("scenario_context") or {})
     row: dict[str, float] = {}
     _flatten_numeric("state", current, row, max_depth=4)
-    _flatten_numeric("action", action, row, max_depth=3)
-    _flatten_numeric("scenario", scenario, row, max_depth=4)
+    _flatten_numeric("action", _pre_action_features(action), row, max_depth=3)
+    _flatten_numeric("scenario", _pre_scenario_features(scenario), row, max_depth=4)
     _one_hot(row, "action_type", str(action.get("action_type") or "unknown"))
     _one_hot(row, "target_role", str(action.get("target_role") or "unknown"))
     _one_hot(row, "scenario_name", str(scenario.get("scenario") or "unknown"))
@@ -972,7 +1060,7 @@ def _hierarchical_feature_groups(example: dict[str, Any]) -> dict[str, dict[str,
             "object_count": 1.0,
             "state_object_count": float(safe_float(current.get("object_count"), 0.0) or 0.0),
             "state_relation_count": float(safe_float(current.get("relation_count"), 0.0) or 0.0),
-            "total_area_proxy": _target_area_total(targets),
+            "total_area_proxy": float(safe_float(current.get("area_m2"), 0.0) or 0.0),
         },
         "relations": {},
         "action": {},
@@ -994,50 +1082,146 @@ def _hierarchical_feature_groups(example: dict[str, Any]) -> dict[str, dict[str,
     for key, value in sorted(relation_counts.items(), key=lambda item: str(item[0])):
         groups["relations"][f"relation_count.{_safe_feature_key(str(key))}"] = float(safe_float(value, 0.0) or 0.0)
     _flatten_numeric("quality", quality, groups["context"], max_depth=3)
-    _flatten_numeric("targets.constraint", {"constraint_violation_probability": targets.get("constraint_violation_probability")}, groups["context"], max_depth=2)
-    _flatten_numeric("provenance", provenance, groups["context"], max_depth=2)
     groups["context"].update(_action_mask_context_features(example))
     _flatten_numeric("temporal", _temporal_features_from_example(example), groups["temporal"], max_depth=4)
     groups["context"]["label.evidence_supported"] = 1.0 if labels.get("evidence_supported") else 0.0
-    groups["context"]["target.action_allowed"] = 1.0 if dict(targets.get("action_mask") or {}).get("allowed", True) else 0.0
-    _flatten_numeric("action", action, groups["action"], max_depth=3)
+    _flatten_numeric("action", _pre_action_features(action), groups["action"], max_depth=3)
     _one_hot(groups["action"], "action_type", str(action.get("action_type") or "unknown"))
     _one_hot(groups["action"], "target_role", str(action.get("target_role") or "unknown"))
     groups["action"]["target_object_count"] = float(len(action.get("target_objects") or []))
     groups["action"]["has_treatment"] = 1.0 if action.get("treatment") else 0.0
-    _flatten_numeric("scenario", scenario, groups["scenario"], max_depth=3)
+    _flatten_numeric("scenario", _pre_scenario_features(scenario), groups["scenario"], max_depth=3)
     _one_hot(groups["scenario"], "scenario_name", str(scenario.get("scenario") or "unknown"))
     return groups
 
 
 def _action_mask_context_features(example: dict[str, Any]) -> dict[str, float]:
     current = dict(example.get("current_state_summary") or {})
-    action = dict(example.get("action") or {})
-    parameters = dict(action.get("parameters") or {})
     scenario = dict(example.get("scenario_context") or {})
     provenance = dict(example.get("provenance") or {})
-    targets = dict(example.get("targets") or {})
     features: dict[str, float] = {}
 
     policy = str(scenario.get("action_mask_policy") or provenance.get("action_mask_policy") or "unspecified")
     _one_hot(features, "action_mask_context.policy", policy)
     normalized_policy = _safe_feature_key(policy)
-    features["action_mask_context.policy_requires_review"] = 1.0 if any(
+    policy_requires_review = any(
         item in normalized_policy for item in ("review", "block", "blocked", "hard")
+    )
+    policy_allows_action = "allow" in normalized_policy and not any(
+        item in normalized_policy for item in ("blocked", "block", "hard")
+    )
+    features["action_mask_context.policy_requires_review"] = 1.0 if policy_requires_review else 0.0
+    features["action_mask_context.policy_allows_action"] = 1.0 if policy_allows_action else 0.0
+    features["action_mask_context.policy_blocks_action"] = 1.0 if (
+        not policy_allows_action and policy_requires_review
+    ) else 0.0
+    features["action_mask_context.policy_mixed_risk"] = 1.0 if "mixed_risk" in normalized_policy else 0.0
+    features["action_mask_context.policy_has_conditions"] = 1.0 if "condition" in normalized_policy else 0.0
+    features["action_mask_context.policy_allows_with_conditions"] = 1.0 if (
+        policy_allows_action and "condition" in normalized_policy
     ) else 0.0
 
     baseline_risk = safe_float(current.get("baseline_risk_score"), None)
-    risk_delta = safe_float(parameters.get("constraint_risk_delta"), None)
-    if baseline_risk is not None or risk_delta is not None:
-        risk_proxy = float(baseline_risk or 0.0) + float(risk_delta or 0.0)
+    if baseline_risk is not None:
+        risk_proxy = float(baseline_risk or 0.0)
         features["action_mask_context.risk_proxy_source.current_action"] = 1.0
     else:
-        risk_proxy = float(safe_float(targets.get("constraint_violation_probability"), 0.0) or 0.0)
-        features["action_mask_context.risk_proxy_source.target_fallback"] = 1.0
+        risk_proxy = 0.0
+        features["action_mask_context.risk_proxy_source.missing_current_action"] = 1.0
     risk_proxy = _clamp01(risk_proxy)
     features["action_mask_context.risk_proxy"] = risk_proxy
     _one_hot(features, "action_mask_context.risk_bucket", _risk_bucket(risk_proxy))
     return features
+
+
+def _pre_action_features(action: dict[str, Any]) -> dict[str, Any]:
+    spatial_scope = dict(action.get("spatial_scope") or {})
+    parameters = dict(action.get("parameters") or {})
+    return {
+        "spatial_scope": spatial_scope,
+        "target_object_count": len(action.get("target_objects") or []),
+        "has_treatment": 1.0 if action.get("treatment") else 0.0,
+        "parameters": {
+            "counterfactual_group_present": 1.0 if parameters.get("counterfactual_group") else 0.0,
+        },
+    }
+
+
+def _pre_scenario_features(scenario: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "time_index": scenario.get("time_index"),
+        "synthetic_experiment": scenario.get("synthetic_experiment"),
+    }
+
+
+def _action_mask_training_weights(examples: list[dict[str, Any]], cfg: dict[str, Any], torch: Any) -> Any:
+    weights = []
+    for example in examples:
+        targets = dict(example.get("targets") or {})
+        action_mask = dict(targets.get("action_mask") or {})
+        allowed = bool(action_mask.get("allowed", True))
+        weight = 1.0
+        policy = str(
+            (example.get("scenario_context") or {}).get("action_mask_policy")
+            or (example.get("provenance") or {}).get("action_mask_policy")
+            or ""
+        )
+        normalized_policy = _safe_feature_key(policy)
+        if allowed:
+            weight *= float(cfg.get("action_mask_allowed_positive_weight") or 1.0)
+            if "condition" in normalized_policy or action_mask.get("required_reviews"):
+                weight *= float(cfg.get("action_mask_conditioned_allowed_weight") or 1.0)
+        else:
+            weight *= float(cfg.get("action_mask_blocked_negative_weight") or 1.0)
+            if "mixed_risk" in normalized_policy or action_mask.get("required_reviews") or action_mask.get("hard_blocks"):
+                weight *= float(cfg.get("action_mask_mixed_blocked_weight") or 1.0)
+        weights.append(float(weight))
+    return torch.tensor(weights, dtype=torch.float32).unsqueeze(1)
+
+
+def _constraint_risk_training_weights(examples: list[dict[str, Any]], cfg: dict[str, Any], torch: Any) -> Any:
+    contextual_weight = float(cfg.get("constraint_risk_contextual_weight") or 1.0)
+    if contextual_weight <= 1.0:
+        return torch.ones((len(examples), 1), dtype=torch.float32)
+    weights: list[float] = []
+    for example in examples:
+        current = dict(example.get("current_state_summary") or {})
+        scenario = dict(example.get("scenario_context") or {})
+        provenance = dict(example.get("provenance") or {})
+        baseline_risk = _clamp01(float(safe_float(current.get("baseline_risk_score"), 0.0) or 0.0))
+        policy = str(scenario.get("action_mask_policy") or provenance.get("action_mask_policy") or "")
+        normalized_policy = _safe_feature_key(policy)
+        context_score = baseline_risk
+        if "mixed_risk" in normalized_policy:
+            context_score = max(context_score, 0.55)
+        if any(item in normalized_policy for item in ("condition", "review")):
+            context_score = max(context_score, 0.65)
+        if any(item in normalized_policy for item in ("block", "blocked", "hard")):
+            context_score = max(context_score, 0.75)
+        weight = 1.0 + (contextual_weight - 1.0) * context_score
+        weights.append(round(float(weight), 6))
+    return torch.tensor(weights, dtype=torch.float32).unsqueeze(1)
+
+
+def _weighted_binary_loss(logits: Any, targets: Any, weights: Any, nn: Any) -> Any:
+    loss = nn.functional.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+    if weights is None or weights.numel() != loss.numel():
+        return loss.mean()
+    return (loss * weights).mean()
+
+
+def _weighted_mse_loss(predictions: Any, targets: Any, weights: Any, torch: Any) -> Any:
+    loss = (predictions - targets) ** 2
+    if weights is None or weights.numel() != loss.numel():
+        return loss.mean()
+    return (loss * weights).mean()
+
+
+def _weighted_action_mask_loss(logits: Any, targets: Any, weights: Any, nn: Any) -> Any:
+    loss = nn.functional.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+    if weights is None or weights.numel() != loss.numel():
+        return loss.mean()
+    return (loss * weights).mean()
 
 
 def _action_mask_context_feature_names(names: list[str]) -> list[str]:
@@ -1058,31 +1242,17 @@ def _risk_bucket(value: float) -> str:
 
 
 def _temporal_features_from_example(example: dict[str, Any]) -> dict[str, Any]:
-    targets = dict(example.get("targets") or {})
-    provenance = dict(example.get("provenance") or {})
     scenario = dict(example.get("scenario_context") or {})
-    latent = dict(targets.get("future_latent_state") or {})
-    delta = dict(latent.get("delta") or {})
-    current = dict(latent.get("current") or {})
-    observed_next = dict(latent.get("observed_next") or latent.get("projected") or {})
-    current_year = safe_float(latent.get("current_year"), safe_float(provenance.get("current_year"), None))
-    next_year = safe_float(latent.get("next_year"), safe_float(provenance.get("next_year"), None))
-    temporal_span = (float(next_year) - float(current_year)) if current_year is not None and next_year is not None else 0.0
+    current = dict(example.get("current_state_summary") or {})
+    time_index = safe_float(scenario.get("time_index"), safe_float(current.get("time_index"), 0.0))
     features = {
-        "has_observed_temporal_latent": 1.0 if current and observed_next else 0.0,
-        "has_delta": 1.0 if delta else 0.0,
-        "current_year": float(current_year or 0.0),
-        "next_year": float(next_year or 0.0),
-        "temporal_span_years": temporal_span,
+        "time_index": float(time_index or 0.0),
         "sample_type_temporal": 1.0 if str(example.get("sample_type") or "") == "temporal_state_transition" else 0.0,
-        "ground_truth": 1.0 if provenance.get("ground_truth") else 0.0,
-        "synthetic": 1.0 if provenance.get("synthetic") else 0.0,
-        "not_for_production": 1.0 if provenance.get("not_for_production") else 0.0,
-        "observed_treatment_effect": safe_float(scenario.get("observed_treatment_effect"), 0.0) or 0.0,
+        "baseline_state_score": safe_float(current.get("baseline_state_score"), 0.0) or 0.0,
+        "baseline_risk_score": safe_float(current.get("baseline_risk_score"), 0.0) or 0.0,
+        "quality_score": safe_float(current.get("quality_score"), 0.0) or 0.0,
+        "area_m2": safe_float(current.get("area_m2"), 0.0) or 0.0,
     }
-    _flatten_temporal_latent("current", current, features)
-    _flatten_temporal_latent("observed_next", observed_next, features)
-    _flatten_numeric("delta", delta, features, max_depth=4)
     return features
 
 

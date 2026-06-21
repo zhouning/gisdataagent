@@ -39,6 +39,32 @@ class TestFusionSemanticOntology(unittest.TestCase):
         self.assertGreater(ontology["summary"]["value_domain_count"], 0)
         self.assertGreater(ontology["summary"]["standard_source_count"], 0)
         self.assertGreater(ontology["summary"]["relationship_count"], 0)
+        self.assertEqual(ontology["semantic_stack"]["standard_platform"]["role"], "authority_source")
+        self.assertEqual(ontology["semantic_stack"]["twm"]["role"], "world_model_consumer")
+        self.assertEqual(
+            ontology["governance_contract"]["authority_chain"],
+            [
+                "standard_platform_release",
+                "ontology_package",
+                "semantic_layer_registration",
+                "mmfe_semantic_product",
+                "twm_state_input",
+            ],
+        )
+        self.assertGreater(len(ontology["governance_contract"]["standard_versions"]), 0)
+        self.assertEqual(
+            ontology["consumption_contract"]["primary_consumer"],
+            "territory_world_model",
+        )
+        self.assertGreater(len(ontology["consumption_contract"]["runtime_bindings"]), 0)
+        self.assertGreater(
+            ontology["summary"]["governed_field_count"],
+            0,
+        )
+        self.assertEqual(
+            ontology["summary"]["runtime_binding_count"],
+            len(ontology["consumption_contract"]["runtime_bindings"]),
+        )
 
         field_ids = {item["id"] for item in ontology["concepts"]["fields"]}
         self.assertIn("field:parcel_current.DLBM", field_ids)
@@ -49,6 +75,14 @@ class TestFusionSemanticOntology(unittest.TestCase):
         dlbm = next(item for item in ontology["concepts"]["fields"] if item["id"] == "field:parcel_current.DLBM")
         self.assertEqual(dlbm["value_domain"], "gb_t_21010_2017_land_use_code")
         self.assertIn("standard_source:gb-t-21010-2017", dlbm["standard_source_ids"])
+        self.assertEqual(
+            dlbm["governance_provenance"]["standard_id"],
+            "NR_ONE_MAP_TWM_CORE_2026",
+        )
+        self.assertIn(
+            "standard_reference",
+            dlbm["governance_provenance"]["evidence_types"],
+        )
 
     def test_write_semantic_ontology_package_and_validate_required_fields(self):
         from data_agent.fusion.semantic_ontology import (

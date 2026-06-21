@@ -30,6 +30,7 @@ DEFAULT_INPUT = REPO_ROOT / "docs/reports/twm_synthetic_experiment_foundation.cs
 DEFAULT_OUTPUT = REPO_ROOT / "docs/reports/twm_synthetic_experiment_runner_report.json"
 
 CLAIM_BOUNDARY = "synthetic_experiment_only_not_for_production"
+DEFAULT_TRANSFORMER_RISK_HEAD_PROBE_WEIGHTS = [0.0, 0.7, 1.2]
 
 DYNAMICS_LOSS_CONTRACT = {
     "transition_loss": "targets.future_latent_state.observed_next",
@@ -83,15 +84,58 @@ def main() -> None:
     parser.add_argument("--include-transformer", action="store_true")
     parser.add_argument("--transformer-risk-calibration-weight", type=float, default=0.0)
     parser.add_argument(
+        "--transformer-risk-contextual-weight",
+        type=float,
+        default=1.0,
+        help="Context-derived sample weighting for transformer constraint-risk loss; 1.0 preserves unweighted training.",
+    )
+    parser.add_argument("--transformer-learning-rate", type=float, default=0.012)
+    parser.add_argument("--transformer-weight-decay", type=float, default=0.001)
+    parser.add_argument("--transformer-dropout", type=float, default=0.0)
+    parser.add_argument("--transformer-seed", type=int, default=19)
+    parser.add_argument(
         "--transformer-risk-head-mode",
         default="context_residual",
-        choices=("shared", "context_residual"),
+        choices=("shared", "context_residual", "context_direct"),
         help="Transformer constraint-risk head structure for synthetic simulator experiments.",
     )
     parser.add_argument(
         "--probe-transformer-risk-weights",
         default="",
         help="Optional comma-separated transformer risk calibration weights to probe outside the main backend ranking.",
+    )
+    parser.add_argument(
+        "--probe-transformer-risk-contextual-weights",
+        default="",
+        help="Optional comma-separated context-derived sample weights to probe for transformer constraint-risk loss.",
+    )
+    parser.add_argument(
+        "--probe-transformer-risk-seeds",
+        default="",
+        help="Optional comma-separated transformer seeds to probe for raw learned risk-head reproducibility.",
+    )
+    parser.add_argument(
+        "--probe-transformer-training-epochs",
+        default="",
+        help=(
+            "Optional comma-separated transformer training epoch budgets to probe across the risk seed grid; "
+            "reports whether raw learned-head promotion is stable without changing defaults."
+        ),
+    )
+    parser.add_argument(
+        "--probe-transformer-learning-rates",
+        default="",
+        help="Optional comma-separated transformer learning rates to probe across the risk seed grid.",
+    )
+    parser.add_argument(
+        "--probe-transformer-weight-decays",
+        default="",
+        help="Optional comma-separated transformer weight decay values to probe across the risk seed grid.",
+    )
+    parser.add_argument(
+        "--probe-transformer-dropouts",
+        default="",
+        help="Optional comma-separated transformer dropout values to probe across the risk seed grid.",
     )
     args = parser.parse_args()
 
@@ -101,8 +145,39 @@ def main() -> None:
         include_graph=args.include_graph,
         include_transformer=args.include_transformer,
         transformer_risk_calibration_weight=args.transformer_risk_calibration_weight,
+        transformer_risk_contextual_weight=args.transformer_risk_contextual_weight,
+        transformer_learning_rate=args.transformer_learning_rate,
+        transformer_weight_decay=args.transformer_weight_decay,
+        transformer_dropout=args.transformer_dropout,
         transformer_risk_head_mode=args.transformer_risk_head_mode,
+        transformer_seed=args.transformer_seed,
         probe_transformer_risk_weights=parse_weight_list(args.probe_transformer_risk_weights),
+        probe_transformer_risk_contextual_weights=parse_weight_list(
+            args.probe_transformer_risk_contextual_weights,
+            min_value=1.0,
+            max_value=4.0,
+        ),
+        probe_transformer_risk_seeds=parse_int_list(args.probe_transformer_risk_seeds),
+        probe_transformer_training_epochs=parse_int_list(
+            args.probe_transformer_training_epochs,
+            min_value=1,
+            max_value=500,
+        ),
+        probe_transformer_learning_rates=parse_weight_list(
+            args.probe_transformer_learning_rates,
+            min_value=0.0001,
+            max_value=0.05,
+        ),
+        probe_transformer_weight_decays=parse_weight_list(
+            args.probe_transformer_weight_decays,
+            min_value=0.0,
+            max_value=0.1,
+        ),
+        probe_transformer_dropouts=parse_weight_list(
+            args.probe_transformer_dropouts,
+            min_value=0.0,
+            max_value=0.5,
+        ),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
@@ -116,8 +191,19 @@ def run_synthetic_experiment(
     include_graph: bool = False,
     include_transformer: bool = False,
     transformer_risk_calibration_weight: float = 0.0,
+    transformer_risk_contextual_weight: float = 1.0,
+    transformer_learning_rate: float = 0.012,
+    transformer_weight_decay: float = 0.001,
+    transformer_dropout: float = 0.0,
     transformer_risk_head_mode: str = "context_residual",
+    transformer_seed: int = 19,
     probe_transformer_risk_weights: list[float] | None = None,
+    probe_transformer_risk_contextual_weights: list[float] | None = None,
+    probe_transformer_risk_seeds: list[int] | None = None,
+    probe_transformer_training_epochs: list[int] | None = None,
+    probe_transformer_learning_rates: list[float] | None = None,
+    probe_transformer_weight_decays: list[float] | None = None,
+    probe_transformer_dropouts: list[float] | None = None,
 ) -> dict[str, Any]:
     rows = read_csv(input_path)
     svc = build_experiment_service()
@@ -188,7 +274,12 @@ def run_synthetic_experiment(
         include_graph=include_graph,
         include_transformer=include_transformer,
         transformer_risk_calibration_weight=transformer_risk_calibration_weight,
+        transformer_risk_contextual_weight=transformer_risk_contextual_weight,
+        transformer_learning_rate=transformer_learning_rate,
+        transformer_weight_decay=transformer_weight_decay,
+        transformer_dropout=transformer_dropout,
         transformer_risk_head_mode=transformer_risk_head_mode,
+        transformer_seed=transformer_seed,
     )
     transformer_risk_weight_probe = (
         run_transformer_risk_weight_probe(
@@ -199,6 +290,11 @@ def run_synthetic_experiment(
             mlp_epochs=mlp_epochs,
             weights=probe_transformer_risk_weights,
             risk_head_mode=transformer_risk_head_mode,
+            contextual_weight=transformer_risk_contextual_weight,
+            learning_rate=transformer_learning_rate,
+            weight_decay=transformer_weight_decay,
+            dropout=transformer_dropout,
+            transformer_seed=transformer_seed,
         )
         if include_transformer and probe_transformer_risk_weights
         else {}
@@ -210,8 +306,84 @@ def run_synthetic_experiment(
             dataset,
             payload,
             mlp_epochs=mlp_epochs,
+            weights=probe_transformer_risk_weights,
+            contextual_weight=transformer_risk_contextual_weight,
+            learning_rate=transformer_learning_rate,
+            weight_decay=transformer_weight_decay,
+            dropout=transformer_dropout,
+            transformer_seed=transformer_seed,
         )
         if include_transformer
+        else {}
+    )
+    transformer_risk_contextual_weight_probe = (
+        run_transformer_risk_contextual_weight_probe(
+            svc,
+            state_id,
+            dataset,
+            payload,
+            mlp_epochs=mlp_epochs,
+            risk_weights=probe_transformer_risk_weights,
+            contextual_weights=probe_transformer_risk_contextual_weights,
+            risk_head_mode=transformer_risk_head_mode,
+            learning_rate=transformer_learning_rate,
+            weight_decay=transformer_weight_decay,
+            dropout=transformer_dropout,
+            transformer_seed=transformer_seed,
+        )
+        if include_transformer and probe_transformer_risk_contextual_weights
+        else {}
+    )
+    transformer_risk_seed_reproducibility = (
+        run_transformer_risk_seed_reproducibility_probe(
+            svc,
+            state_id,
+            dataset,
+            payload,
+            mlp_epochs=mlp_epochs,
+            seeds=probe_transformer_risk_seeds,
+            risk_weights=probe_transformer_risk_weights,
+            contextual_weight=transformer_risk_contextual_weight,
+            learning_rate=transformer_learning_rate,
+            weight_decay=transformer_weight_decay,
+            dropout=transformer_dropout,
+        )
+        if include_transformer and probe_transformer_risk_seeds
+        else {}
+    )
+    transformer_training_epoch_seed_stability = (
+        run_transformer_training_epoch_seed_stability_probe(
+            svc,
+            state_id,
+            dataset,
+            payload,
+            training_epochs=probe_transformer_training_epochs,
+            seeds=probe_transformer_risk_seeds or [transformer_seed],
+            risk_weights=probe_transformer_risk_weights,
+            contextual_weight=transformer_risk_contextual_weight,
+            learning_rate=transformer_learning_rate,
+            weight_decay=transformer_weight_decay,
+            dropout=transformer_dropout,
+        )
+        if include_transformer and probe_transformer_training_epochs
+        else {}
+    )
+    transformer_training_hyperparameter_seed_stability = (
+        run_transformer_training_hyperparameter_seed_stability_probe(
+            svc,
+            state_id,
+            dataset,
+            payload,
+            mlp_epochs=mlp_epochs,
+            seeds=probe_transformer_risk_seeds or [transformer_seed],
+            risk_weights=probe_transformer_risk_weights,
+            contextual_weight=transformer_risk_contextual_weight,
+            learning_rates=probe_transformer_learning_rates or [transformer_learning_rate],
+            weight_decays=probe_transformer_weight_decays or [transformer_weight_decay],
+            dropouts=probe_transformer_dropouts or [transformer_dropout],
+        )
+        if include_transformer
+        and (probe_transformer_learning_rates or probe_transformer_weight_decays or probe_transformer_dropouts)
         else {}
     )
     action_mask_stress = run_action_mask_calibration_stress(dataset, baseline_prediction_report=fit_report)
@@ -273,6 +445,10 @@ def run_synthetic_experiment(
         "backend_comparison": backend_comparison,
         "transformer_risk_weight_probe": transformer_risk_weight_probe,
         "transformer_risk_head_probe": transformer_risk_head_probe,
+        "transformer_risk_contextual_weight_probe": transformer_risk_contextual_weight_probe,
+        "transformer_risk_seed_reproducibility": transformer_risk_seed_reproducibility,
+        "transformer_training_epoch_seed_stability": transformer_training_epoch_seed_stability,
+        "transformer_training_hyperparameter_seed_stability": transformer_training_hyperparameter_seed_stability,
         "action_mask_stress": action_mask_stress,
         "planner_holdout_analysis": backend_comparison.get("selected_planner_holdout_analysis") or {},
         "planner_rollout_matrix": backend_comparison.get("selected_planner_rollout_matrix") or {},
@@ -291,7 +467,7 @@ def build_experiment_service() -> TerritoryWorldModelService:
     return TerritoryWorldModelService(repository=TwmRepository(engine=None, persist_to_db=False))
 
 
-def parse_weight_list(raw: str | None) -> list[float]:
+def parse_weight_list(raw: str | None, *, min_value: float = 0.0, max_value: float = 2.0) -> list[float]:
     weights: list[float] = []
     for item in str(raw or "").split(","):
         item = item.strip()
@@ -299,9 +475,31 @@ def parse_weight_list(raw: str | None) -> list[float]:
             continue
         value = safe_float(item, None)
         if value is None:
-            raise ValueError(f"invalid risk calibration weight: {item}")
-        weights.append(round(max(0.0, min(2.0, float(value))), 6))
+            raise ValueError(f"invalid probe weight: {item}")
+        weights.append(round(max(float(min_value), min(float(max_value), float(value))), 6))
     return weights
+
+
+def parse_int_list(raw: str | None, *, min_value: int = 1, max_value: int = 999_999) -> list[int]:
+    values: list[int] = []
+    for item in str(raw or "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        value = safe_int(item, None)
+        if value is None:
+            raise ValueError(f"invalid integer probe value: {item}")
+        values.append(max(int(min_value), min(int(max_value), int(value))))
+    return values
+
+
+def normalize_transformer_risk_probe_weights(
+    weights: list[float] | None,
+    *,
+    default: list[float] | None = None,
+) -> list[float]:
+    source_weights = weights if weights else default or []
+    return sorted({round(max(0.0, min(2.0, float(weight))), 6) for weight in source_weights})
 
 
 def create_synthetic_experiment_state(
@@ -836,14 +1034,24 @@ def dataset_summary_from_examples(
     split_counts = Counter(str(item.get("split") or "") for item in examples)
     action_counts = Counter(str((item.get("action") or {}).get("action_type") or "") for item in examples)
     action_mask_counts: dict[str, dict[str, int]] = {}
+    policy_counts_by_split: dict[str, Counter] = {}
+    candidate_policy_counts: Counter = Counter()
+    holdout_policy_counts: Counter = Counter()
     action_mask_allowed_count = 0
     action_mask_blocked_count = 0
     for item in examples:
         action_type = str((item.get("action") or {}).get("action_type") or "")
+        split = str(item.get("split") or "unknown")
+        policy = action_mask_policy_for_example(item)
         mask = dict((item.get("targets") or {}).get("action_mask") or {})
         allowed = bool(mask.get("allowed", True))
         bucket = action_mask_counts.setdefault(action_type, {"allowed": 0, "blocked": 0, "total": 0})
         bucket["total"] += 1
+        policy_counts_by_split.setdefault(split, Counter())[policy] += 1
+        if split == "candidate":
+            candidate_policy_counts[policy] += 1
+        elif split == "holdout":
+            holdout_policy_counts[policy] += 1
         if allowed:
             bucket["allowed"] += 1
             action_mask_allowed_count += 1
@@ -880,6 +1088,22 @@ def dataset_summary_from_examples(
         "action_mask_blocked_count": action_mask_blocked_count,
         "mixed_action_mask_action_types": mixed_action_types,
         "action_mask_counts_by_action_type": dict(sorted(action_mask_counts.items())),
+        "action_mask_policy_counts_by_split": {
+            split: dict(sorted(counts.items()))
+            for split, counts in sorted(policy_counts_by_split.items())
+        },
+        "candidate_action_mask_policy_counts": dict(sorted(candidate_policy_counts.items())),
+        "holdout_action_mask_policy_counts": dict(sorted(holdout_policy_counts.items())),
+        "candidate_mixed_allowed_policy_counts": {
+            policy: count
+            for policy, count in sorted(candidate_policy_counts.items())
+            if "mixed_risk" in policy and "allowed" in policy
+        },
+        "holdout_mixed_allowed_policy_counts": {
+            policy: count
+            for policy, count in sorted(holdout_policy_counts.items())
+            if "mixed_risk" in policy and "allowed" in policy
+        },
         "region_count": len([item for item in regions if item]),
         "period_count": len([item for item in periods if item]),
         "holdout_period_count": len([item for item in holdout_periods if item]),
@@ -925,6 +1149,11 @@ def run_backend_comparison(
     include_transformer: bool,
     transformer_risk_calibration_weight: float,
     transformer_risk_head_mode: str,
+    transformer_risk_contextual_weight: float = 1.0,
+    transformer_learning_rate: float = 0.012,
+    transformer_weight_decay: float = 0.001,
+    transformer_dropout: float = 0.0,
+    transformer_seed: int = 19,
 ) -> dict[str, Any]:
     baseline_eval = baseline_fit_report.get("evaluation") or svc.dynamics_evaluation_report(
         state_id,
@@ -952,7 +1181,12 @@ def run_backend_comparison(
         include_graph=include_graph,
         include_transformer=include_transformer,
         transformer_risk_calibration_weight=transformer_risk_calibration_weight,
+        transformer_risk_contextual_weight=transformer_risk_contextual_weight,
+        transformer_learning_rate=transformer_learning_rate,
+        transformer_weight_decay=transformer_weight_decay,
+        transformer_dropout=transformer_dropout,
         transformer_risk_head_mode=transformer_risk_head_mode,
+        transformer_seed=transformer_seed,
     ):
         train_report = svc.train_dynamics_candidate(
             state_id,
@@ -1105,6 +1339,10 @@ def run_backend_comparison(
         "ranking": entries,
         "action_mask_summary": backend_action_mask_summary(entries),
         "mixed_action_mask_generalization": backend_mixed_action_mask_generalization(entries, dataset),
+        "conditional_high_risk_feasibility": backend_conditional_high_risk_feasibility(entries, dataset),
+        "near_boundary_mixed_risk_feasibility": backend_near_boundary_mixed_risk_feasibility(entries, dataset),
+        "holdout_mixed_risk_feasibility": backend_holdout_mixed_risk_feasibility(entries, dataset),
+        "unseen_mixed_risk_feasibility": backend_unseen_mixed_risk_feasibility(entries, dataset),
         "planner_holdout_summary": {
             "schema": "territory_world_model.backend_planner_holdout_summary.v1",
             "rows": planner_rows,
@@ -1150,8 +1388,13 @@ def run_transformer_risk_weight_probe(
     mlp_epochs: int,
     weights: list[float] | None,
     risk_head_mode: str = "context_residual",
+    contextual_weight: float = 1.0,
+    learning_rate: float = 0.012,
+    weight_decay: float = 0.001,
+    dropout: float = 0.0,
+    transformer_seed: int = 19,
 ) -> dict[str, Any]:
-    clean_weights = sorted({round(max(0.0, min(2.0, float(weight))), 6) for weight in (weights or [])})
+    clean_weights = normalize_transformer_risk_probe_weights(weights)
     rows: list[dict[str, Any]] = []
     for weight in clean_weights:
         specs = backend_experiment_specs(
@@ -1159,7 +1402,12 @@ def run_transformer_risk_weight_probe(
             include_graph=False,
             include_transformer=True,
             transformer_risk_calibration_weight=weight,
+            transformer_risk_contextual_weight=contextual_weight,
+            transformer_learning_rate=learning_rate,
+            transformer_weight_decay=weight_decay,
+            transformer_dropout=dropout,
             transformer_risk_head_mode=risk_head_mode,
+            transformer_seed=transformer_seed,
         )
         transformer_spec = next((spec for spec in specs if spec.get("candidate_id") == "torch_spatiotemporal_transformer"), None)
         if not transformer_spec:
@@ -1213,6 +1461,19 @@ def run_transformer_risk_weight_probe(
                     or transformer_spec["training_config"].get("risk_head_mode")
                 ),
                 "risk_head_context_tokens": architecture.get("constraint_risk_context_tokens") or [],
+                "constraint_risk_contextual_weight": diagnostics.get("constraint_risk_contextual_weight"),
+                "constraint_risk_weight_mean": diagnostics.get("constraint_risk_weight_mean"),
+                "constraint_risk_weight_max": diagnostics.get("constraint_risk_weight_max"),
+                "learning_rate": diagnostics.get("learning_rate") or transformer_spec["training_config"].get("learning_rate"),
+                "weight_decay": diagnostics.get("weight_decay") or transformer_spec["training_config"].get("weight_decay"),
+                "dropout": diagnostics.get("dropout") or transformer_spec["training_config"].get("dropout"),
+                "transformer_seed": diagnostics.get("seed") or transformer_spec["training_config"].get("seed"),
+                "feasibility_head_mode": (
+                    diagnostics.get("feasibility_head_mode")
+                    or architecture.get("action_mask_feasibility_head")
+                    or transformer_spec["training_config"].get("feasibility_head_mode")
+                ),
+                "feasibility_head_context_tokens": architecture.get("action_mask_feasibility_context_tokens") or [],
                 "training_status": diagnostics.get("status") or train_report.get("status"),
                 "training_evidence_missing": ((train_report.get("evidence_gate") or {}).get("missing") or []),
                 "final_loss": diagnostics.get("final_loss"),
@@ -1220,6 +1481,12 @@ def run_transformer_risk_weight_probe(
                 "calibrated_mean_constraint_error": (context_eval.get("metrics") or {}).get("mean_constraint_error"),
                 "candidate_split_mae_before": calibration.get("mean_absolute_error_before"),
                 "candidate_split_mae_after": calibration.get("mean_absolute_error_after"),
+                "candidate_split_improved": calibration.get("candidate_split_improved"),
+                "holdout_mae_before": calibration.get("holdout_mean_absolute_error_before"),
+                "holdout_mae_after": calibration.get("holdout_mean_absolute_error_after"),
+                "holdout_improved": calibration.get("holdout_improved"),
+                "calibration_accepted": calibration.get("accepted"),
+                "applied_prediction_count": calibration.get("applied_prediction_count"),
                 "calibration_status": calibration.get("status"),
                 "calibration_slope": calibration.get("slope"),
                 "calibration_intercept": calibration.get("intercept"),
@@ -1230,27 +1497,693 @@ def run_transformer_risk_weight_probe(
                 "rollout_mean_cumulative_regret": (((planner.get("rollout_matrix") or {}).get("metrics") or {}).get("mean_cumulative_regret")),
             }
         )
-    selected = min(
-        rows,
-        key=lambda row: (
-            numeric_or_default(row.get("candidate_split_mae_before"), 999.0),
-            numeric_or_default(row.get("calibrated_mean_constraint_error"), 999.0),
-            int(row.get("false_allow") or 0),
-            numeric_or_default(row.get("planner_mean_regret"), 999.0),
-        ),
-    ) if rows else {}
+    selected = min(rows, key=transformer_risk_weight_probe_selection_key) if rows else {}
     blocked_rows = [row for row in rows if row.get("training_status") == "blocked"]
     return {
         "schema": "territory_world_model.transformer_risk_weight_probe.v1",
         "claim_boundary": CLAIM_BOUNDARY,
         "status": "review" if blocked_rows else "pass" if rows else "review",
+        "weights": clean_weights,
         "rows": rows,
         "selected": selected,
         "interpretation": [
             "This probe trains transformer candidates with alternative risk calibration weights outside the main backend ranking.",
-            "Use candidate_split_mae_before to track whether risk calibration is being internalized before post-hoc affine correction.",
+            "Selection is holdout-aware: pass-status calibration, no holdout MAE degradation and zero false_allow outrank candidate-split fit.",
             "Rows remain synthetic experiment diagnostics and do not promote a production model.",
         ],
+    }
+
+
+def transformer_risk_weight_probe_selection_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    holdout_before = safe_float(row.get("holdout_mae_before"), None)
+    holdout_after = safe_float(row.get("holdout_mae_after"), None)
+    holdout_degrades = (
+        holdout_before is not None
+        and holdout_after is not None
+        and float(holdout_after) > float(holdout_before)
+    )
+    return (
+        0 if row.get("training_status") == "pass" else 1,
+        0 if row.get("calibration_status") == "pass" else 1,
+        1 if holdout_degrades else 0,
+        int(row.get("false_allow") or 0),
+        numeric_or_default(row.get("holdout_mae_after"), numeric_or_default(row.get("holdout_mae_before"), 999.0)),
+        numeric_or_default(row.get("planner_mean_regret"), 999.0),
+        numeric_or_default(row.get("candidate_split_mae_after"), numeric_or_default(row.get("candidate_split_mae_before"), 999.0)),
+        numeric_or_default(row.get("weight"), 999.0),
+    )
+
+
+def run_transformer_risk_contextual_weight_probe(
+    svc: TerritoryWorldModelService,
+    state_id: str,
+    dataset: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    mlp_epochs: int,
+    risk_weights: list[float] | None,
+    contextual_weights: list[float] | None,
+    risk_head_mode: str,
+    learning_rate: float = 0.012,
+    weight_decay: float = 0.001,
+    dropout: float = 0.0,
+    transformer_seed: int = 19,
+) -> dict[str, Any]:
+    clean_contextual_weights = normalize_transformer_contextual_probe_weights(contextual_weights)
+    clean_risk_weights = normalize_transformer_risk_probe_weights(
+        risk_weights,
+        default=DEFAULT_TRANSFORMER_RISK_HEAD_PROBE_WEIGHTS,
+    )
+    rows: list[dict[str, Any]] = []
+    for contextual_weight in clean_contextual_weights:
+        head_probe = run_transformer_risk_head_probe(
+            svc,
+            state_id,
+            dataset,
+            payload,
+            mlp_epochs=mlp_epochs,
+            weights=clean_risk_weights,
+            contextual_weight=contextual_weight,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            dropout=dropout,
+            transformer_seed=transformer_seed,
+        )
+        raw_gate = dict(head_probe.get("raw_progress_gate") or {})
+        raw_grid = dict(head_probe.get("raw_grid_audit") or {})
+        comparison = dict(raw_gate.get("comparison") or {})
+        selected = dict(head_probe.get("selected") or {})
+        raw_selected = dict(head_probe.get("raw_selected") or {})
+        rows.append(
+            {
+                "contextual_weight": contextual_weight,
+                "transformer_seed": transformer_seed,
+                "risk_weights": clean_risk_weights,
+                "risk_head_mode_argument": risk_head_mode,
+                "head_probe_status": head_probe.get("status"),
+                "selected_risk_head_mode": selected.get("risk_head_mode"),
+                "selected_weight": selected.get("selected_weight"),
+                "raw_selected_risk_head_mode": raw_selected.get("risk_head_mode"),
+                "raw_selected_weight": raw_selected.get("selected_weight"),
+                "learning_rate": learning_rate,
+                "weight_decay": weight_decay,
+                "dropout": dropout,
+                "selected_calibrated_mean_constraint_error": comparison.get("selected_calibrated_mean_constraint_error"),
+                "raw_selected_mean_constraint_error": comparison.get("raw_selected_mean_constraint_error"),
+                "constraint_error_gap": comparison.get("constraint_error_gap"),
+                "selected_holdout_mae_after_calibration": comparison.get("selected_holdout_mae_after_calibration"),
+                "raw_selected_holdout_mae_before_calibration": comparison.get("raw_selected_holdout_mae_before_calibration"),
+                "holdout_mae_gap": comparison.get("holdout_mae_gap"),
+                "selected_planner_mean_regret": comparison.get("selected_planner_mean_regret"),
+                "raw_selected_planner_mean_regret": comparison.get("raw_selected_planner_mean_regret"),
+                "planner_regret_gap": comparison.get("planner_regret_gap"),
+                "selected_false_allow": comparison.get("selected_false_allow"),
+                "raw_selected_false_allow": comparison.get("raw_selected_false_allow"),
+                "raw_gate_status": raw_gate.get("status"),
+                "raw_gate_review_reasons": raw_gate.get("review_reasons") or [],
+                "raw_grid_status": raw_grid.get("status"),
+                "raw_grid_promotable_candidate_count": raw_grid.get("promotable_candidate_count"),
+                "raw_grid_blocker_counts": raw_grid.get("blocker_counts") or {},
+                "raw_candidate_count": head_probe.get("raw_candidate_count"),
+            }
+        )
+    selected = min(rows, key=transformer_risk_contextual_weight_probe_selection_key) if rows else {}
+    promotion_gate = transformer_contextual_risk_weight_promotion_gate(selected)
+    return {
+        "schema": "territory_world_model.transformer_risk_contextual_weight_probe.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "status": "pass" if rows else "review",
+        "contextual_weights": clean_contextual_weights,
+        "transformer_seed": transformer_seed,
+        "risk_weights": clean_risk_weights,
+        "rows": rows,
+        "selected": selected,
+        "promotion_gate": promotion_gate,
+        "selection_policy": "prefer raw gate pass, lower holdout MAE gap, lower constraint error gap, lower planner regret gap and lower contextual weight",
+        "interpretation": [
+            "This probe changes only context-derived sample weighting for the transformer constraint-risk loss.",
+            "Contextual weighting uses current-state baseline risk and action-mask policy context, not holdout targets or target-derived features.",
+            "Rows remain synthetic diagnostics and do not promote production readiness.",
+        ],
+    }
+
+
+def normalize_transformer_contextual_probe_weights(weights: list[float] | None) -> list[float]:
+    return sorted({round(max(1.0, min(4.0, float(weight))), 6) for weight in (weights or [])})
+
+
+def transformer_risk_contextual_weight_probe_selection_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        0 if row.get("raw_gate_status") == "pass" else 1,
+        numeric_or_default(row.get("holdout_mae_gap"), 999.0),
+        numeric_or_default(row.get("constraint_error_gap"), 999.0),
+        numeric_or_default(row.get("planner_regret_gap"), 999.0),
+        numeric_or_default(row.get("contextual_weight"), 999.0),
+    )
+
+
+def transformer_contextual_risk_weight_promotion_gate(
+    selected: dict[str, Any],
+    *,
+    tolerance: float = 1e-9,
+) -> dict[str, Any]:
+    review_reasons: list[str] = []
+    if not selected:
+        review_reasons.append("contextual_weight_selection_missing")
+    if selected.get("raw_gate_status") != "pass":
+        review_reasons.append("raw_gate_not_pass")
+    if int(selected.get("raw_grid_promotable_candidate_count") or 0) < 1:
+        review_reasons.append("raw_grid_promotable_candidate_missing")
+    for key, reason in (
+        ("constraint_error_gap", "raw_constraint_error_gap_positive"),
+        ("holdout_mae_gap", "raw_holdout_mae_gap_positive"),
+        ("planner_regret_gap", "raw_planner_regret_gap_positive"),
+    ):
+        value = safe_float(selected.get(key), None)
+        if value is None:
+            review_reasons.append(f"{key}_missing")
+        elif value > tolerance:
+            review_reasons.append(reason)
+    if int(selected.get("raw_selected_false_allow") or 0) > 0:
+        review_reasons.append("raw_selected_false_allow_nonzero")
+    status = "pass" if not review_reasons else "review"
+    return {
+        "schema": "territory_world_model.transformer_contextual_risk_weight_promotion_gate.v1",
+        "status": status,
+        "candidate_config": {
+            "constraint_risk_contextual_weight": selected.get("contextual_weight"),
+            "risk_head_mode": selected.get("raw_selected_risk_head_mode"),
+            "risk_calibration_weight": selected.get("raw_selected_weight"),
+            "transformer_seed": selected.get("transformer_seed"),
+            "risk_weight_grid": selected.get("risk_weights") or [],
+        },
+        "comparison": {
+            "constraint_error_gap": selected.get("constraint_error_gap"),
+            "holdout_mae_gap": selected.get("holdout_mae_gap"),
+            "planner_regret_gap": selected.get("planner_regret_gap"),
+            "raw_selected_false_allow": selected.get("raw_selected_false_allow"),
+            "promotable_candidate_count": selected.get("raw_grid_promotable_candidate_count"),
+        },
+        "review_reasons": review_reasons,
+        "promotion_scope": "synthetic_probe_candidate_only",
+        "default_policy": "do not promote to default until strict synthetic pass is reproduced and real observed-history validation is provided",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def run_transformer_risk_seed_reproducibility_probe(
+    svc: TerritoryWorldModelService,
+    state_id: str,
+    dataset: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    mlp_epochs: int,
+    seeds: list[int] | None,
+    risk_weights: list[float] | None,
+    contextual_weight: float,
+    learning_rate: float = 0.012,
+    weight_decay: float = 0.001,
+    dropout: float = 0.0,
+) -> dict[str, Any]:
+    clean_seeds = normalize_transformer_seed_probe_values(seeds)
+    clean_risk_weights = normalize_transformer_risk_probe_weights(
+        risk_weights,
+        default=DEFAULT_TRANSFORMER_RISK_HEAD_PROBE_WEIGHTS,
+    )
+    rows: list[dict[str, Any]] = []
+    for seed in clean_seeds:
+        head_probe = run_transformer_risk_head_probe(
+            svc,
+            state_id,
+            dataset,
+            payload,
+            mlp_epochs=mlp_epochs,
+            weights=clean_risk_weights,
+            contextual_weight=contextual_weight,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            dropout=dropout,
+            transformer_seed=seed,
+        )
+        raw_gate = dict(head_probe.get("raw_progress_gate") or {})
+        raw_candidate = dict(head_probe.get("raw_promotion_candidate") or {})
+        raw_grid = dict(head_probe.get("raw_grid_audit") or {})
+        comparison = dict(raw_gate.get("comparison") or {})
+        candidate_config = dict(raw_candidate.get("candidate_config") or {})
+        rows.append(
+            {
+                "seed": seed,
+                "risk_weights": clean_risk_weights,
+                "constraint_risk_contextual_weight": contextual_weight,
+                "learning_rate": learning_rate,
+                "weight_decay": weight_decay,
+                "dropout": dropout,
+                "raw_gate_status": raw_gate.get("status"),
+                "raw_promotion_candidate_status": raw_candidate.get("status"),
+                "candidate_config": candidate_config,
+                "comparison": comparison,
+                "raw_gate_review_reasons": raw_gate.get("review_reasons") or [],
+                "raw_promotion_review_reasons": raw_candidate.get("review_reasons") or [],
+                "raw_grid_status": raw_grid.get("status"),
+                "raw_grid_promotable_candidate_count": raw_grid.get("promotable_candidate_count"),
+                "raw_candidate_count": head_probe.get("raw_candidate_count"),
+            }
+        )
+    gate = transformer_seed_reproducibility_gate(rows)
+    return {
+        "schema": "territory_world_model.transformer_risk_seed_reproducibility_probe.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "status": gate["status"],
+        "seeds": clean_seeds,
+        "risk_weights": clean_risk_weights,
+        "constraint_risk_contextual_weight": contextual_weight,
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "dropout": dropout,
+        "rows": rows,
+        "gate": gate,
+        "reproducibility_policy": "require at least two transformer seeds and every seed must pass the raw learned-head promotion candidate gate",
+        "interpretation": [
+            "This probe repeats the same raw learned risk-head candidate search across transformer initialization seeds.",
+            "It is synthetic evidence only and does not promote a production default without real observed-history validation.",
+        ],
+    }
+
+
+def normalize_transformer_seed_probe_values(seeds: list[int] | None) -> list[int]:
+    return sorted({max(1, min(999_999, int(seed))) for seed in (seeds or [])})
+
+
+def transformer_seed_reproducibility_gate(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    review_reasons: list[str] = []
+    pass_rows = [
+        row
+        for row in rows
+        if row.get("raw_gate_status") == "pass"
+        and row.get("raw_promotion_candidate_status") == "pass"
+    ]
+    if len(rows) < 2:
+        review_reasons.append("fewer_than_two_transformer_seeds")
+    failed_seeds = [
+        row.get("seed")
+        for row in rows
+        if row.get("raw_gate_status") != "pass"
+        or row.get("raw_promotion_candidate_status") != "pass"
+    ]
+    if failed_seeds:
+        review_reasons.append("one_or_more_seed_runs_not_promoted")
+    status = "pass" if not review_reasons else "review"
+    return {
+        "schema": "territory_world_model.transformer_seed_reproducibility_gate.v1",
+        "status": status,
+        "seed_count": len(rows),
+        "pass_seed_count": len(pass_rows),
+        "failed_seed_count": len(failed_seeds),
+        "failed_seeds": failed_seeds,
+        "review_reasons": review_reasons,
+        "promotion_scope": "synthetic_seed_reproducibility_only",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def run_transformer_training_epoch_seed_stability_probe(
+    svc: TerritoryWorldModelService,
+    state_id: str,
+    dataset: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    training_epochs: list[int] | None,
+    seeds: list[int] | None,
+    risk_weights: list[float] | None,
+    contextual_weight: float,
+    learning_rate: float = 0.012,
+    weight_decay: float = 0.001,
+    dropout: float = 0.0,
+) -> dict[str, Any]:
+    clean_epochs = normalize_transformer_training_epoch_probe_values(training_epochs)
+    clean_seeds = normalize_transformer_seed_probe_values(seeds)
+    clean_risk_weights = normalize_transformer_risk_probe_weights(
+        risk_weights,
+        default=DEFAULT_TRANSFORMER_RISK_HEAD_PROBE_WEIGHTS,
+    )
+    rows: list[dict[str, Any]] = []
+    for epoch_budget in clean_epochs:
+        seed_probe = run_transformer_risk_seed_reproducibility_probe(
+            svc,
+            state_id,
+            dataset,
+            payload,
+            mlp_epochs=epoch_budget,
+            seeds=clean_seeds,
+            risk_weights=clean_risk_weights,
+            contextual_weight=contextual_weight,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            dropout=dropout,
+        )
+        gate = dict(seed_probe.get("gate") or {})
+        seed_rows = [dict(row) for row in seed_probe.get("rows") or []]
+        rows.append(transformer_training_epoch_seed_stability_row(epoch_budget, gate, seed_rows))
+
+    selected = min(rows, key=transformer_training_epoch_seed_stability_selection_key) if rows else {}
+    gate = transformer_training_epoch_seed_stability_gate(rows, selected)
+    return {
+        "schema": "territory_world_model.transformer_training_epoch_seed_stability_probe.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "status": gate["status"],
+        "training_epochs": clean_epochs,
+        "seeds": clean_seeds,
+        "risk_weights": clean_risk_weights,
+        "constraint_risk_contextual_weight": contextual_weight,
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "dropout": dropout,
+        "rows": rows,
+        "selected": selected,
+        "gate": gate,
+        "selection_policy": "prefer epoch budgets whose seed reproducibility gate passes, then higher pass_seed_count, lower positive worst gaps and lower epoch budget",
+        "interpretation": [
+            "This probe tests whether raw learned risk-head promotion is stable across transformer seeds under alternative training budgets.",
+            "It does not relax raw learned-head promotion gates and does not change the default transformer training configuration.",
+            "Rows remain synthetic diagnostics and do not promote production readiness without real observed-history validation.",
+        ],
+    }
+
+
+def normalize_transformer_training_epoch_probe_values(values: list[int] | None) -> list[int]:
+    return sorted({transformer_training_epoch_count(max(1, min(500, int(value)))) for value in (values or [])})
+
+
+def transformer_training_epoch_seed_stability_row(
+    epoch_budget: int,
+    gate: dict[str, Any],
+    seed_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    blocker_counts: Counter[str] = Counter()
+    raw_grid_promotable_counts: list[int] = []
+    candidate_configs: list[dict[str, Any]] = []
+    comparisons: list[dict[str, Any]] = []
+    for seed_row in seed_rows:
+        blocker_counts.update(str(reason) for reason in (seed_row.get("raw_gate_review_reasons") or []))
+        blocker_counts.update(str(reason) for reason in (seed_row.get("raw_promotion_review_reasons") or []))
+        raw_grid_promotable_counts.append(int(seed_row.get("raw_grid_promotable_candidate_count") or 0))
+        candidate_configs.append(dict(seed_row.get("candidate_config") or {}))
+        comparisons.append(dict(seed_row.get("comparison") or {}))
+
+    worst_constraint_gap = max(
+        (numeric_or_default(item.get("constraint_error_gap"), 999.0) for item in comparisons),
+        default=None,
+    )
+    worst_holdout_gap = max(
+        (numeric_or_default(item.get("holdout_mae_gap"), 999.0) for item in comparisons),
+        default=None,
+    )
+    worst_planner_gap = max(
+        (numeric_or_default(item.get("planner_regret_gap"), 999.0) for item in comparisons),
+        default=None,
+    )
+    max_false_allow = max(
+        (int(item.get("raw_selected_false_allow") or 0) for item in comparisons),
+        default=0,
+    )
+    near_miss_audit = transformer_seed_near_miss_audit(seed_rows)
+    return {
+        "training_epoch_budget": int(epoch_budget),
+        "seed_reproducibility_status": gate.get("status"),
+        "seed_count": gate.get("seed_count", len(seed_rows)),
+        "pass_seed_count": gate.get("pass_seed_count", 0),
+        "failed_seed_count": gate.get("failed_seed_count", 0),
+        "failed_seeds": gate.get("failed_seeds") or [],
+        "review_reasons": gate.get("review_reasons") or [],
+        "raw_gate_blocker_counts": dict(sorted(blocker_counts.items())),
+        "min_raw_grid_promotable_candidate_count": min(raw_grid_promotable_counts) if raw_grid_promotable_counts else 0,
+        "max_raw_selected_false_allow": max_false_allow,
+        "worst_constraint_error_gap": worst_constraint_gap,
+        "worst_holdout_mae_gap": worst_holdout_gap,
+        "worst_planner_regret_gap": worst_planner_gap,
+        "near_miss_audit": near_miss_audit,
+        "candidate_configs": candidate_configs,
+        "seed_rows": seed_rows,
+    }
+
+
+def transformer_seed_near_miss_audit(seed_rows: list[dict[str, Any]], *, tolerance: float = 1e-4) -> dict[str, Any]:
+    near_miss_rows: list[dict[str, Any]] = []
+    positive_constraint_gaps: list[float] = []
+    positive_holdout_gaps: list[float] = []
+    positive_planner_gaps: list[float] = []
+    false_allow_counts: list[int] = []
+    for seed_row in seed_rows:
+        if seed_row.get("raw_gate_status") == "pass" and seed_row.get("raw_promotion_candidate_status") == "pass":
+            continue
+        comparison = dict(seed_row.get("comparison") or {})
+        constraint_gap = positive_gap(comparison.get("constraint_error_gap"))
+        holdout_gap = positive_gap(comparison.get("holdout_mae_gap"))
+        planner_gap = positive_gap(comparison.get("planner_regret_gap"))
+        raw_false_allow = int(comparison.get("raw_selected_false_allow") or 0)
+        max_positive_gap = max(constraint_gap, holdout_gap, planner_gap)
+        false_allow_counts.append(raw_false_allow)
+        positive_constraint_gaps.append(constraint_gap)
+        positive_holdout_gaps.append(holdout_gap)
+        positive_planner_gaps.append(planner_gap)
+        if raw_false_allow == 0 and max_positive_gap <= tolerance:
+            near_miss_rows.append(
+                {
+                    "seed": seed_row.get("seed"),
+                    "raw_gate_status": seed_row.get("raw_gate_status"),
+                    "raw_promotion_candidate_status": seed_row.get("raw_promotion_candidate_status"),
+                    "constraint_error_positive_gap": round(constraint_gap, 6),
+                    "holdout_mae_positive_gap": round(holdout_gap, 6),
+                    "planner_regret_positive_gap": round(planner_gap, 6),
+                    "raw_selected_false_allow": raw_false_allow,
+                    "raw_gate_review_reasons": seed_row.get("raw_gate_review_reasons") or [],
+                    "raw_promotion_review_reasons": seed_row.get("raw_promotion_review_reasons") or [],
+                    "candidate_config": dict(seed_row.get("candidate_config") or {}),
+                }
+            )
+
+    failed_count = sum(
+        1
+        for seed_row in seed_rows
+        if seed_row.get("raw_gate_status") != "pass"
+        or seed_row.get("raw_promotion_candidate_status") != "pass"
+    )
+    return {
+        "schema": "territory_world_model.transformer_seed_near_miss_audit.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "tolerance": tolerance,
+        "policy": "diagnostic only; strict seed reproducibility and raw learned-head promotion gates are unchanged",
+        "failed_seed_count": failed_count,
+        "near_miss_seed_count": len(near_miss_rows),
+        "near_miss_seeds": [row.get("seed") for row in near_miss_rows],
+        "near_miss_false_allow_count": sum(1 for row in near_miss_rows if int(row.get("raw_selected_false_allow") or 0) > 0),
+        "max_positive_constraint_gap": round(max(positive_constraint_gaps), 6) if positive_constraint_gaps else 0.0,
+        "max_positive_holdout_gap": round(max(positive_holdout_gaps), 6) if positive_holdout_gaps else 0.0,
+        "max_positive_planner_gap": round(max(positive_planner_gaps), 6) if positive_planner_gaps else 0.0,
+        "max_raw_selected_false_allow_among_failed": max(false_allow_counts) if false_allow_counts else 0,
+        "rows": near_miss_rows,
+    }
+
+
+def transformer_training_epoch_seed_stability_selection_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        0 if row.get("seed_reproducibility_status") == "pass" else 1,
+        -int(row.get("pass_seed_count") or 0),
+        positive_gap(row.get("worst_constraint_error_gap")),
+        positive_gap(row.get("worst_holdout_mae_gap")),
+        positive_gap(row.get("worst_planner_regret_gap")),
+        int(row.get("max_raw_selected_false_allow") or 0),
+        numeric_or_default(row.get("training_epoch_budget"), 999.0),
+    )
+
+
+def positive_gap(value: Any) -> float:
+    parsed = safe_float(value, None)
+    if parsed is None:
+        return 999.0
+    return max(0.0, float(parsed))
+
+
+def transformer_training_epoch_seed_stability_gate(
+    rows: list[dict[str, Any]],
+    selected: dict[str, Any],
+) -> dict[str, Any]:
+    review_reasons: list[str] = []
+    pass_rows = [row for row in rows if row.get("seed_reproducibility_status") == "pass"]
+    if not rows:
+        review_reasons.append("training_epoch_probe_missing")
+    if not pass_rows:
+        review_reasons.append("no_training_epoch_budget_passed_seed_reproducibility")
+    if selected and selected.get("seed_reproducibility_status") != "pass":
+        review_reasons.append("selected_epoch_budget_not_seed_stable")
+    status = "pass" if not review_reasons else "review"
+    return {
+        "schema": "territory_world_model.transformer_training_epoch_seed_stability_gate.v1",
+        "status": status,
+        "epoch_budget_count": len(rows),
+        "pass_epoch_budget_count": len(pass_rows),
+        "selected_training_epoch_budget": selected.get("training_epoch_budget"),
+        "selected_pass_seed_count": selected.get("pass_seed_count"),
+        "selected_failed_seeds": selected.get("failed_seeds") or [],
+        "review_reasons": review_reasons,
+        "promotion_scope": "synthetic_training_budget_stability_only",
+        "default_policy": "do not change transformer defaults until a seed-stable budget also clears downstream real observed-history validation",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def run_transformer_training_hyperparameter_seed_stability_probe(
+    svc: TerritoryWorldModelService,
+    state_id: str,
+    dataset: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    mlp_epochs: int,
+    seeds: list[int] | None,
+    risk_weights: list[float] | None,
+    contextual_weight: float,
+    learning_rates: list[float] | None,
+    weight_decays: list[float] | None,
+    dropouts: list[float] | None,
+) -> dict[str, Any]:
+    clean_seeds = normalize_transformer_seed_probe_values(seeds)
+    clean_risk_weights = normalize_transformer_risk_probe_weights(
+        risk_weights,
+        default=DEFAULT_TRANSFORMER_RISK_HEAD_PROBE_WEIGHTS,
+    )
+    clean_learning_rates = normalize_transformer_learning_rate_probe_values(learning_rates)
+    clean_weight_decays = normalize_transformer_weight_decay_probe_values(weight_decays)
+    clean_dropouts = normalize_transformer_dropout_probe_values(dropouts)
+    rows: list[dict[str, Any]] = []
+    for learning_rate in clean_learning_rates:
+        for weight_decay in clean_weight_decays:
+            for dropout in clean_dropouts:
+                seed_probe = run_transformer_risk_seed_reproducibility_probe(
+                    svc,
+                    state_id,
+                    dataset,
+                    payload,
+                    mlp_epochs=mlp_epochs,
+                    seeds=clean_seeds,
+                    risk_weights=clean_risk_weights,
+                    contextual_weight=contextual_weight,
+                    learning_rate=learning_rate,
+                    weight_decay=weight_decay,
+                    dropout=dropout,
+                )
+                gate = dict(seed_probe.get("gate") or {})
+                seed_rows = [dict(row) for row in seed_probe.get("rows") or []]
+                rows.append(
+                    transformer_training_hyperparameter_seed_stability_row(
+                        learning_rate=learning_rate,
+                        weight_decay=weight_decay,
+                        dropout=dropout,
+                        gate=gate,
+                        seed_rows=seed_rows,
+                    )
+                )
+
+    selected = min(rows, key=transformer_training_hyperparameter_seed_stability_selection_key) if rows else {}
+    gate = transformer_training_hyperparameter_seed_stability_gate(rows, selected)
+    return {
+        "schema": "territory_world_model.transformer_training_hyperparameter_seed_stability_probe.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "status": gate["status"],
+        "mlp_epochs": mlp_epochs,
+        "effective_transformer_epoch_budget": transformer_training_epoch_count(mlp_epochs),
+        "seeds": clean_seeds,
+        "risk_weights": clean_risk_weights,
+        "constraint_risk_contextual_weight": contextual_weight,
+        "learning_rates": clean_learning_rates,
+        "weight_decays": clean_weight_decays,
+        "dropouts": clean_dropouts,
+        "rows": rows,
+        "selected": selected,
+        "gate": gate,
+        "selection_policy": "prefer training hyperparameters whose seed reproducibility gate passes, then higher pass_seed_count, lower positive worst gaps and lower regularization magnitude",
+        "interpretation": [
+            "This probe tests whether raw learned risk-head promotion is stable across transformer seeds under alternative training hyperparameters.",
+            "It reuses the strict raw learned-head promotion gate and does not change defaults.",
+            "Rows remain synthetic diagnostics and do not promote production readiness without real observed-history validation.",
+        ],
+    }
+
+
+def normalize_transformer_learning_rate_probe_values(values: list[float] | None) -> list[float]:
+    return sorted({transformer_training_learning_rate(value) for value in (values or [])})
+
+
+def normalize_transformer_weight_decay_probe_values(values: list[float] | None) -> list[float]:
+    return sorted({transformer_training_weight_decay(value) for value in (values or [])})
+
+
+def normalize_transformer_dropout_probe_values(values: list[float] | None) -> list[float]:
+    return sorted({transformer_training_dropout(value) for value in (values or [])})
+
+
+def transformer_training_hyperparameter_seed_stability_row(
+    *,
+    learning_rate: float,
+    weight_decay: float,
+    dropout: float,
+    gate: dict[str, Any],
+    seed_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    row = transformer_training_epoch_seed_stability_row(0, gate, seed_rows)
+    row.pop("training_epoch_budget", None)
+    row.update(
+        {
+            "learning_rate": learning_rate,
+            "weight_decay": weight_decay,
+            "dropout": dropout,
+        }
+    )
+    return row
+
+
+def transformer_training_hyperparameter_seed_stability_selection_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        0 if row.get("seed_reproducibility_status") == "pass" else 1,
+        -int(row.get("pass_seed_count") or 0),
+        positive_gap(row.get("worst_constraint_error_gap")),
+        positive_gap(row.get("worst_holdout_mae_gap")),
+        positive_gap(row.get("worst_planner_regret_gap")),
+        int(row.get("max_raw_selected_false_allow") or 0),
+        numeric_or_default(row.get("dropout"), 999.0),
+        numeric_or_default(row.get("weight_decay"), 999.0),
+        numeric_or_default(row.get("learning_rate"), 999.0),
+    )
+
+
+def transformer_training_hyperparameter_seed_stability_gate(
+    rows: list[dict[str, Any]],
+    selected: dict[str, Any],
+) -> dict[str, Any]:
+    review_reasons: list[str] = []
+    pass_rows = [row for row in rows if row.get("seed_reproducibility_status") == "pass"]
+    if not rows:
+        review_reasons.append("training_hyperparameter_probe_missing")
+    if not pass_rows:
+        review_reasons.append("no_training_hyperparameter_config_passed_seed_reproducibility")
+    if selected and selected.get("seed_reproducibility_status") != "pass":
+        review_reasons.append("selected_hyperparameter_config_not_seed_stable")
+    status = "pass" if not review_reasons else "review"
+    return {
+        "schema": "territory_world_model.transformer_training_hyperparameter_seed_stability_gate.v1",
+        "status": status,
+        "hyperparameter_config_count": len(rows),
+        "pass_hyperparameter_config_count": len(pass_rows),
+        "selected_config": {
+            "learning_rate": selected.get("learning_rate"),
+            "weight_decay": selected.get("weight_decay"),
+            "dropout": selected.get("dropout"),
+        },
+        "selected_pass_seed_count": selected.get("pass_seed_count"),
+        "selected_failed_seeds": selected.get("failed_seeds") or [],
+        "review_reasons": review_reasons,
+        "promotion_scope": "synthetic_training_hyperparameter_stability_only",
+        "default_policy": "do not change transformer defaults until a seed-stable hyperparameter config also clears downstream real observed-history validation",
+        "claim_boundary": CLAIM_BOUNDARY,
     }
 
 
@@ -1261,56 +2194,369 @@ def run_transformer_risk_head_probe(
     payload: dict[str, Any],
     *,
     mlp_epochs: int,
+    weights: list[float] | None = None,
+    contextual_weight: float = 1.0,
+    learning_rate: float = 0.012,
+    weight_decay: float = 0.001,
+    dropout: float = 0.0,
+    transformer_seed: int = 19,
 ) -> dict[str, Any]:
-    weights = [0.0, 1.2]
+    clean_weights = normalize_transformer_risk_probe_weights(
+        weights,
+        default=DEFAULT_TRANSFORMER_RISK_HEAD_PROBE_WEIGHTS,
+    )
     rows: list[dict[str, Any]] = []
-    for mode in ("shared", "context_residual"):
+    raw_candidate_rows: list[dict[str, Any]] = []
+    for mode in ("shared", "context_residual", "context_direct"):
         probe = run_transformer_risk_weight_probe(
             svc,
             state_id,
             dataset,
             payload,
             mlp_epochs=mlp_epochs,
-            weights=weights,
+            weights=clean_weights,
             risk_head_mode=mode,
+            contextual_weight=contextual_weight,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            dropout=dropout,
+            transformer_seed=transformer_seed,
         )
         selected = dict(probe.get("selected") or {})
+        weight_rows = [dict(row) for row in probe.get("rows") or []]
+        raw_candidate_rows.extend(transformer_risk_head_weight_row_as_selection(row) for row in weight_rows)
         rows.append(
             {
                 "risk_head_mode": mode,
                 "status": probe.get("status"),
                 "selected_weight": selected.get("weight"),
                 "selected_raw_mean_constraint_error": selected.get("raw_mean_constraint_error"),
+                "selected_constraint_risk_contextual_weight": selected.get("constraint_risk_contextual_weight"),
+                "selected_constraint_risk_weight_mean": selected.get("constraint_risk_weight_mean"),
+                "selected_constraint_risk_weight_max": selected.get("constraint_risk_weight_max"),
+                "selected_learning_rate": selected.get("learning_rate"),
+                "selected_weight_decay": selected.get("weight_decay"),
+                "selected_dropout": selected.get("dropout"),
+                "selected_transformer_seed": selected.get("transformer_seed"),
                 "selected_candidate_split_mae_before": selected.get("candidate_split_mae_before"),
                 "selected_candidate_split_mae_after": selected.get("candidate_split_mae_after"),
+                "selected_holdout_mae_before": selected.get("holdout_mae_before"),
+                "selected_holdout_mae_after": selected.get("holdout_mae_after"),
+                "selected_calibration_status": selected.get("calibration_status"),
                 "selected_calibrated_mean_constraint_error": selected.get("calibrated_mean_constraint_error"),
                 "selected_false_allow": selected.get("false_allow"),
                 "selected_false_block": selected.get("false_block"),
                 "selected_planner_mean_regret": selected.get("planner_mean_regret"),
                 "selected_rollout_mean_cumulative_regret": selected.get("rollout_mean_cumulative_regret"),
-                "weight_rows": probe.get("rows") or [],
+                "weight_rows": weight_rows,
             }
         )
-    selected = min(
-        rows,
-        key=lambda row: (
-            numeric_or_default(row.get("selected_candidate_split_mae_before"), 999.0),
-            numeric_or_default(row.get("selected_raw_mean_constraint_error"), 999.0),
-            int(row.get("selected_false_allow") or 0),
-            numeric_or_default(row.get("selected_planner_mean_regret"), 999.0),
-        ),
-    ) if rows else {}
+    selected = min(rows, key=transformer_risk_head_probe_selection_key) if rows else {}
+    raw_selected = min(raw_candidate_rows, key=transformer_raw_risk_head_probe_selection_key) if raw_candidate_rows else {}
+    raw_progress_gate = transformer_raw_risk_head_progress_gate(selected, raw_selected)
+    raw_grid_audit = transformer_raw_risk_head_grid_audit(selected, raw_candidate_rows)
     return {
         "schema": "territory_world_model.transformer_risk_head_probe.v1",
         "claim_boundary": CLAIM_BOUNDARY,
         "status": "pass" if rows and not any(row.get("status") == "review" for row in rows) else "review",
+        "transformer_seed": transformer_seed,
+        "weights": clean_weights,
         "rows": rows,
+        "raw_candidate_count": len(raw_candidate_rows),
+        "raw_candidate_rows": raw_candidate_rows,
         "selected": selected,
+        "raw_selected": raw_selected,
+        "raw_progress_gate": raw_progress_gate,
+        "raw_grid_audit": raw_grid_audit,
+        "raw_promotion_candidate": transformer_raw_risk_head_promotion_candidate(
+            raw_selected,
+            raw_progress_gate,
+            raw_grid_audit,
+        ),
+        "selection_policy": "prefer accepted holdout calibration, zero false_allow, lower holdout MAE after calibration and lower planner regret",
+        "raw_selection_policy": "prefer pass status, zero false_allow, lower raw constraint error and lower holdout MAE before affine calibration",
         "interpretation": [
-            "This probe compares the shared transformer risk head against a context-residual head under the same synthetic foundation.",
-            "The context-residual head is intended to internalize action/context/temporal risk structure before post-hoc affine calibration.",
+            "This probe compares shared, context-residual and context-direct transformer risk heads under the same synthetic foundation.",
+            "Selection follows the weight probe policy: prefer pass-status calibration and holdout MAE improvement before candidate-split fit.",
+            "raw_selected is chosen from all risk-head/weight rows before affine calibration so post-hoc gains are not conflated with model structure.",
             "Rows remain synthetic diagnostics and do not promote production readiness.",
         ],
+    }
+
+
+def transformer_risk_head_weight_row_as_selection(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "risk_head_mode": row.get("risk_head_mode"),
+        "status": row.get("training_status"),
+        "selected_weight": row.get("weight"),
+        "selected_constraint_risk_contextual_weight": row.get("constraint_risk_contextual_weight"),
+        "selected_constraint_risk_weight_mean": row.get("constraint_risk_weight_mean"),
+        "selected_constraint_risk_weight_max": row.get("constraint_risk_weight_max"),
+        "selected_learning_rate": row.get("learning_rate"),
+        "selected_weight_decay": row.get("weight_decay"),
+        "selected_dropout": row.get("dropout"),
+        "selected_transformer_seed": row.get("transformer_seed"),
+        "selected_raw_mean_constraint_error": row.get("raw_mean_constraint_error"),
+        "selected_candidate_split_mae_before": row.get("candidate_split_mae_before"),
+        "selected_candidate_split_mae_after": row.get("candidate_split_mae_after"),
+        "selected_holdout_mae_before": row.get("holdout_mae_before"),
+        "selected_holdout_mae_after": row.get("holdout_mae_after"),
+        "selected_calibration_status": row.get("calibration_status"),
+        "selected_calibrated_mean_constraint_error": row.get("calibrated_mean_constraint_error"),
+        "selected_false_allow": row.get("false_allow"),
+        "selected_false_block": row.get("false_block"),
+        "selected_planner_mean_regret": row.get("planner_mean_regret"),
+        "selected_rollout_mean_cumulative_regret": row.get("rollout_mean_cumulative_regret"),
+        "source": "transformer_risk_weight_probe_row",
+    }
+
+
+def transformer_risk_head_probe_selection_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    holdout_before = safe_float(row.get("selected_holdout_mae_before"), None)
+    holdout_after = safe_float(row.get("selected_holdout_mae_after"), None)
+    holdout_degrades = (
+        holdout_before is not None
+        and holdout_after is not None
+        and float(holdout_after) > float(holdout_before)
+    )
+    return (
+        0 if row.get("status") == "pass" else 1,
+        0 if row.get("selected_calibration_status") == "pass" else 1,
+        1 if holdout_degrades else 0,
+        int(row.get("selected_false_allow") or 0),
+        numeric_or_default(row.get("selected_holdout_mae_after"), numeric_or_default(row.get("selected_holdout_mae_before"), 999.0)),
+        numeric_or_default(row.get("selected_planner_mean_regret"), 999.0),
+        numeric_or_default(row.get("selected_candidate_split_mae_after"), numeric_or_default(row.get("selected_candidate_split_mae_before"), 999.0)),
+    )
+
+
+def transformer_raw_risk_head_probe_selection_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        0 if row.get("status") == "pass" else 1,
+        int(row.get("selected_false_allow") or 0),
+        numeric_or_default(row.get("selected_raw_mean_constraint_error"), 999.0),
+        numeric_or_default(row.get("selected_holdout_mae_before"), 999.0),
+        numeric_or_default(row.get("selected_planner_mean_regret"), 999.0),
+        numeric_or_default(row.get("selected_weight"), 999.0),
+    )
+
+
+def transformer_raw_risk_head_progress_gate(
+    selected: dict[str, Any],
+    raw_selected: dict[str, Any],
+    *,
+    tolerance: float = 1e-9,
+) -> dict[str, Any]:
+    selected_calibrated_error = safe_float(selected.get("selected_calibrated_mean_constraint_error"), None)
+    if selected_calibrated_error is None:
+        selected_calibrated_error = safe_float(selected.get("selected_raw_mean_constraint_error"), None)
+    raw_constraint_error = safe_float(raw_selected.get("selected_raw_mean_constraint_error"), None)
+    selected_holdout_mae = safe_float(selected.get("selected_holdout_mae_after"), None)
+    if selected_holdout_mae is None:
+        selected_holdout_mae = safe_float(selected.get("selected_holdout_mae_before"), None)
+    raw_holdout_mae = safe_float(raw_selected.get("selected_holdout_mae_before"), None)
+    selected_planner_regret = safe_float(selected.get("selected_planner_mean_regret"), None)
+    raw_planner_regret = safe_float(raw_selected.get("selected_planner_mean_regret"), None)
+    selected_false_allow = int(selected.get("selected_false_allow") or 0)
+    raw_false_allow = int(raw_selected.get("selected_false_allow") or 0)
+    review_reasons: list[str] = []
+    if not selected or not raw_selected:
+        review_reasons.append("risk_head_selection_missing")
+    if raw_selected.get("status") != "pass":
+        review_reasons.append("raw_selected_status_not_pass")
+    if raw_false_allow > 0:
+        review_reasons.append("raw_selected_false_allow_nonzero")
+    if selected_calibrated_error is None or raw_constraint_error is None:
+        review_reasons.append("constraint_error_comparison_missing")
+    elif raw_constraint_error > selected_calibrated_error + tolerance:
+        review_reasons.append("raw_constraint_error_above_calibrated_selection")
+    if selected_holdout_mae is None or raw_holdout_mae is None:
+        review_reasons.append("holdout_mae_comparison_missing")
+    elif raw_holdout_mae > selected_holdout_mae + tolerance:
+        review_reasons.append("raw_holdout_mae_above_calibrated_selection")
+    if selected_planner_regret is None or raw_planner_regret is None:
+        review_reasons.append("planner_regret_comparison_missing")
+    elif raw_planner_regret > selected_planner_regret + tolerance:
+        review_reasons.append("raw_planner_regret_above_calibrated_selection")
+    status = "pass" if not review_reasons else "review"
+    return {
+        "schema": "territory_world_model.transformer_raw_risk_head_progress_gate.v1",
+        "status": status,
+        "selected_risk_head_mode": selected.get("risk_head_mode"),
+        "raw_selected_risk_head_mode": raw_selected.get("risk_head_mode"),
+        "selected_weight": selected.get("selected_weight"),
+        "raw_selected_weight": raw_selected.get("selected_weight"),
+        "comparison": {
+            "selected_calibrated_mean_constraint_error": selected_calibrated_error,
+            "raw_selected_mean_constraint_error": raw_constraint_error,
+            "constraint_error_gap": round(float(raw_constraint_error - selected_calibrated_error), 6)
+            if raw_constraint_error is not None and selected_calibrated_error is not None
+            else None,
+            "selected_holdout_mae_after_calibration": selected_holdout_mae,
+            "raw_selected_holdout_mae_before_calibration": raw_holdout_mae,
+            "holdout_mae_gap": round(float(raw_holdout_mae - selected_holdout_mae), 6)
+            if raw_holdout_mae is not None and selected_holdout_mae is not None
+            else None,
+            "selected_planner_mean_regret": selected_planner_regret,
+            "raw_selected_planner_mean_regret": raw_planner_regret,
+            "planner_regret_gap": round(float(raw_planner_regret - selected_planner_regret), 6)
+            if raw_planner_regret is not None and selected_planner_regret is not None
+            else None,
+            "selected_false_allow": selected_false_allow,
+            "raw_selected_false_allow": raw_false_allow,
+        },
+        "review_reasons": review_reasons,
+        "promotion_policy": "raw learned risk head must match or beat accepted calibrated selection before affine calibration",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def transformer_raw_risk_head_promotion_candidate(
+    raw_selected: dict[str, Any],
+    raw_progress_gate: dict[str, Any],
+    raw_grid_audit: dict[str, Any],
+) -> dict[str, Any]:
+    status = (
+        "pass"
+        if raw_progress_gate.get("status") == "pass"
+        and int(raw_grid_audit.get("promotable_candidate_count") or 0) >= 1
+        else "review"
+    )
+    review_reasons: list[str] = []
+    if raw_progress_gate.get("status") != "pass":
+        review_reasons.append("raw_progress_gate_not_pass")
+    if int(raw_grid_audit.get("promotable_candidate_count") or 0) < 1:
+        review_reasons.append("raw_grid_promotable_candidate_missing")
+    return {
+        "schema": "territory_world_model.transformer_raw_risk_head_promotion_candidate.v1",
+        "status": status,
+        "candidate_config": {
+            "constraint_risk_contextual_weight": raw_selected.get("selected_constraint_risk_contextual_weight"),
+            "risk_head_mode": raw_selected.get("risk_head_mode"),
+            "risk_calibration_weight": raw_selected.get("selected_weight"),
+            "learning_rate": raw_selected.get("selected_learning_rate"),
+            "weight_decay": raw_selected.get("selected_weight_decay"),
+            "dropout": raw_selected.get("selected_dropout"),
+            "transformer_seed": raw_selected.get("selected_transformer_seed"),
+        },
+        "training_weight_diagnostics": {
+            "constraint_risk_weight_mean": raw_selected.get("selected_constraint_risk_weight_mean"),
+            "constraint_risk_weight_max": raw_selected.get("selected_constraint_risk_weight_max"),
+        },
+        "comparison": dict(raw_progress_gate.get("comparison") or {}),
+        "review_reasons": review_reasons,
+        "promotion_scope": "synthetic_probe_candidate_only",
+        "default_policy": "do not replace affine calibration by default until reproduced on strict synthetic and real observed-history validation gates",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def transformer_raw_risk_head_grid_audit(
+    selected: dict[str, Any],
+    raw_candidate_rows: list[dict[str, Any]],
+    *,
+    tolerance: float = 1e-9,
+) -> dict[str, Any]:
+    selected_error = safe_float(selected.get("selected_calibrated_mean_constraint_error"), None)
+    if selected_error is None:
+        selected_error = safe_float(selected.get("selected_raw_mean_constraint_error"), None)
+    selected_holdout = safe_float(selected.get("selected_holdout_mae_after"), None)
+    if selected_holdout is None:
+        selected_holdout = safe_float(selected.get("selected_holdout_mae_before"), None)
+    selected_regret = safe_float(selected.get("selected_planner_mean_regret"), None)
+    selected_false_allow = int(selected.get("selected_false_allow") or 0)
+
+    rows: list[dict[str, Any]] = []
+    blocker_counts: Counter[str] = Counter()
+    for raw_row in raw_candidate_rows:
+        row = transformer_raw_risk_head_grid_audit_row(
+            raw_row,
+            selected_error=selected_error,
+            selected_holdout=selected_holdout,
+            selected_regret=selected_regret,
+            selected_false_allow=selected_false_allow,
+            tolerance=tolerance,
+        )
+        rows.append(row)
+        blocker_counts.update(row["blockers"])
+
+    promotable_rows = [row for row in rows if row.get("promotable")]
+    best_constraint = min(rows, key=lambda row: numeric_or_default(row.get("raw_mean_constraint_error"), 999.0)) if rows else {}
+    best_holdout = min(rows, key=lambda row: numeric_or_default(row.get("holdout_mae_before"), 999.0)) if rows else {}
+    best_regret = min(rows, key=lambda row: numeric_or_default(row.get("planner_mean_regret"), 999.0)) if rows else {}
+    return {
+        "schema": "territory_world_model.transformer_raw_risk_head_grid_audit.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "status": "pass" if promotable_rows else "review",
+        "candidate_count": len(rows),
+        "promotable_candidate_count": len(promotable_rows),
+        "reference": {
+            "selected_risk_head_mode": selected.get("risk_head_mode"),
+            "selected_weight": selected.get("selected_weight"),
+            "selected_calibrated_mean_constraint_error": selected_error,
+            "selected_holdout_mae_after_calibration": selected_holdout,
+            "selected_planner_mean_regret": selected_regret,
+            "selected_false_allow": selected_false_allow,
+        },
+        "best_raw_constraint_candidate": best_constraint,
+        "best_raw_holdout_candidate": best_holdout,
+        "best_raw_planner_candidate": best_regret,
+        "blocker_counts": dict(sorted(blocker_counts.items())),
+        "rows": rows,
+        "promotion_policy": "any raw candidate must match or beat the accepted calibrated selection on constraint error, holdout MAE, planner regret and false_allow before affine calibration",
+    }
+
+
+def transformer_raw_risk_head_grid_audit_row(
+    raw_row: dict[str, Any],
+    *,
+    selected_error: float | None,
+    selected_holdout: float | None,
+    selected_regret: float | None,
+    selected_false_allow: int,
+    tolerance: float,
+) -> dict[str, Any]:
+    raw_error = safe_float(raw_row.get("selected_raw_mean_constraint_error"), None)
+    raw_holdout = safe_float(raw_row.get("selected_holdout_mae_before"), None)
+    raw_regret = safe_float(raw_row.get("selected_planner_mean_regret"), None)
+    raw_false_allow = int(raw_row.get("selected_false_allow") or 0)
+    blockers: list[str] = []
+    if raw_row.get("status") != "pass":
+        blockers.append("raw_candidate_status_not_pass")
+    if raw_false_allow > selected_false_allow:
+        blockers.append("raw_candidate_false_allow_above_calibrated_selection")
+    if selected_error is None or raw_error is None:
+        blockers.append("constraint_error_comparison_missing")
+    elif raw_error > selected_error + tolerance:
+        blockers.append("raw_constraint_error_above_calibrated_selection")
+    if selected_holdout is None or raw_holdout is None:
+        blockers.append("holdout_mae_comparison_missing")
+    elif raw_holdout > selected_holdout + tolerance:
+        blockers.append("raw_holdout_mae_above_calibrated_selection")
+    if selected_regret is None or raw_regret is None:
+        blockers.append("planner_regret_comparison_missing")
+    elif raw_regret > selected_regret + tolerance:
+        blockers.append("raw_planner_regret_above_calibrated_selection")
+
+    return {
+        "risk_head_mode": raw_row.get("risk_head_mode"),
+        "weight": raw_row.get("selected_weight"),
+        "status": raw_row.get("status"),
+        "raw_mean_constraint_error": raw_error,
+        "constraint_error_gap": round(float(raw_error - selected_error), 6)
+        if raw_error is not None and selected_error is not None
+        else None,
+        "holdout_mae_before": raw_holdout,
+        "holdout_mae_gap": round(float(raw_holdout - selected_holdout), 6)
+        if raw_holdout is not None and selected_holdout is not None
+        else None,
+        "planner_mean_regret": raw_regret,
+        "planner_regret_gap": round(float(raw_regret - selected_regret), 6)
+        if raw_regret is not None and selected_regret is not None
+        else None,
+        "false_allow": raw_false_allow,
+        "promotable": not blockers,
+        "blockers": blockers,
     }
 
 
@@ -1407,6 +2653,1012 @@ def backend_mixed_action_mask_generalization(entries: list[dict[str, Any]], data
             "Context calibration uses action type, risk bucket and mask policy to remove false_allow on the current synthetic foundation, while false_block tracks conservative overblocking.",
         ],
     }
+
+
+def backend_conditional_high_risk_feasibility(entries: list[dict[str, Any]], dataset: dict[str, Any]) -> dict[str, Any]:
+    subset = conditional_high_risk_subset_summary(dataset)
+    rows = []
+    for entry in entries:
+        diagnostics = dict(entry.get("conditional_high_risk_feasibility") or {})
+        confusion = dict(diagnostics.get("confusion") or {})
+        architecture = dict(entry.get("architecture_summary") or {})
+        feasibility_head_mode = (
+            architecture.get("action_mask_feasibility_head")
+            or (entry.get("training_diagnostics") or {}).get("feasibility_head_mode")
+            or ""
+        )
+        rows.append(
+            {
+                "candidate_id": entry.get("candidate_id"),
+                "training_method": entry.get("training_method"),
+                "calibration": candidate_action_mask_calibration_strategy(entry),
+                "feasibility_head_mode": feasibility_head_mode,
+                "feasibility_context_tokens": architecture.get("action_mask_feasibility_context_tokens") or [],
+                "example_count": diagnostics.get("example_count"),
+                "conditional_allowed_count": diagnostics.get("conditional_allowed_count"),
+                "conditional_blocked_count": diagnostics.get("conditional_blocked_count"),
+                "strict_high_risk_count": diagnostics.get("strict_high_risk_count"),
+                "accuracy": diagnostics.get("accuracy"),
+                "false_allow": int(confusion.get("false_allow") or 0),
+                "false_block": int(confusion.get("false_block") or 0),
+                "missing_prediction": int(confusion.get("missing_prediction") or 0),
+                "hard_block_miss": int(diagnostics.get("hard_block_miss") or 0),
+                "status": diagnostics.get("status"),
+                "raw_context_residual_feasibility": (
+                    candidate_action_mask_calibration_strategy(entry) == "none"
+                    and feasibility_head_mode == "context_residual"
+                ),
+            }
+        )
+
+    strategy_summary = []
+    for calibration in ("none", "action_type", "context"):
+        items = [row for row in rows if row["calibration"] == calibration]
+        if not items:
+            continue
+        false_allows = [int(item.get("false_allow") or 0) for item in items]
+        false_blocks = [int(item.get("false_block") or 0) for item in items]
+        hard_block_misses = [int(item.get("hard_block_miss") or 0) for item in items]
+        accuracies = [numeric_or_default(item.get("accuracy"), 0.0) for item in items]
+        strategy_summary.append(
+            {
+                "calibration": calibration,
+                "candidate_count": len(items),
+                "min_false_allow": min(false_allows),
+                "max_false_allow": max(false_allows),
+                "min_false_block": min(false_blocks),
+                "max_false_block": max(false_blocks),
+                "min_hard_block_miss": min(hard_block_misses),
+                "max_hard_block_miss": max(hard_block_misses),
+                "mean_accuracy": round(sum(accuracies) / max(1, len(accuracies)), 6),
+                "zero_false_allow_count": sum(1 for item in items if int(item.get("false_allow") or 0) == 0),
+                "zero_error_count": sum(
+                    1
+                    for item in items
+                    if int(item.get("false_allow") or 0) == 0
+                    and int(item.get("false_block") or 0) == 0
+                    and int(item.get("missing_prediction") or 0) == 0
+                ),
+            }
+        )
+
+    raw_context_rows = [row for row in rows if row.get("raw_context_residual_feasibility")]
+    context_rows = [row for row in rows if row.get("calibration") == "context"]
+    selected = max(
+        rows,
+        key=lambda row: (
+            numeric_or_default(row.get("accuracy"), 0.0),
+            -int(row.get("false_allow") or 0),
+            -int(row.get("hard_block_miss") or 0),
+            -int(row.get("false_block") or 0),
+        ),
+    ) if rows else {}
+    return {
+        "schema": "territory_world_model.conditional_high_risk_feasibility.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "subset": subset,
+        "rows": rows,
+        "strategy_summary": strategy_summary,
+        "context_zero_false_allow_count": sum(1 for row in context_rows if int(row.get("false_allow") or 0) == 0),
+        "context_zero_error_count": sum(
+            1
+            for row in context_rows
+            if int(row.get("false_allow") or 0) == 0
+            and int(row.get("false_block") or 0) == 0
+            and int(row.get("missing_prediction") or 0) == 0
+        ),
+        "raw_context_residual_candidate_count": len(raw_context_rows),
+        "raw_context_residual_zero_false_allow_count": sum(
+            1 for row in raw_context_rows if int(row.get("false_allow") or 0) == 0
+        ),
+        "raw_context_residual_zero_error_count": sum(
+            1
+            for row in raw_context_rows
+            if int(row.get("false_allow") or 0) == 0
+            and int(row.get("false_block") or 0) == 0
+            and int(row.get("missing_prediction") or 0) == 0
+        ),
+        "selected": selected,
+        "status": "pass"
+        if subset.get("example_count") and subset.get("conditional_allowed_count") and subset.get("conditional_blocked_count")
+        else "review",
+        "interpretation": [
+            "This diagnostic isolates mixed-risk non-defer actions where the correct decision depends on policy and context rather than action type alone.",
+            "conditional_allowed_count tracks elevated-risk actions that should remain feasible; conditional_blocked_count tracks elevated-risk actions that should be blocked or reviewed.",
+            "raw_context_residual_* fields measure whether the learned transformer feasibility head can stand on its own before post-hoc context action-mask calibration.",
+            "Rows remain synthetic regression diagnostics and do not promote a production simulator.",
+        ],
+    }
+
+
+def backend_near_boundary_mixed_risk_feasibility(entries: list[dict[str, Any]], dataset: dict[str, Any]) -> dict[str, Any]:
+    subset = near_boundary_mixed_risk_subset_summary(dataset)
+    rows = []
+    for entry in entries:
+        diagnostics = dict(entry.get("near_boundary_mixed_risk_feasibility") or {})
+        confusion = dict(diagnostics.get("confusion") or {})
+        architecture = dict(entry.get("architecture_summary") or {})
+        feasibility_head_mode = (
+            architecture.get("action_mask_feasibility_head")
+            or (entry.get("training_diagnostics") or {}).get("feasibility_head_mode")
+            or ""
+        )
+        rows.append(
+            {
+                "candidate_id": entry.get("candidate_id"),
+                "training_method": entry.get("training_method"),
+                "calibration": candidate_action_mask_calibration_strategy(entry),
+                "feasibility_head_mode": feasibility_head_mode,
+                "feasibility_context_tokens": architecture.get("action_mask_feasibility_context_tokens") or [],
+                "example_count": diagnostics.get("example_count"),
+                "allowed_count": diagnostics.get("allowed_count"),
+                "blocked_count": diagnostics.get("blocked_count"),
+                "accuracy": diagnostics.get("accuracy"),
+                "false_allow": int(confusion.get("false_allow") or 0),
+                "false_block": int(confusion.get("false_block") or 0),
+                "missing_prediction": int(confusion.get("missing_prediction") or 0),
+                "raw_context_residual_feasibility": (
+                    candidate_action_mask_calibration_strategy(entry) == "none"
+                    and feasibility_head_mode == "context_residual"
+                ),
+            }
+        )
+    raw_context_rows = [row for row in rows if row.get("raw_context_residual_feasibility")]
+    selected = max(
+        rows,
+        key=lambda row: (
+            numeric_or_default(row.get("accuracy"), 0.0),
+            -int(row.get("false_allow") or 0),
+            -int(row.get("false_block") or 0),
+            -int(row.get("missing_prediction") or 0),
+        ),
+    ) if rows else {}
+    return {
+        "schema": "territory_world_model.near_boundary_mixed_risk_backend_feasibility.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "subset": subset,
+        "rows": rows,
+        "raw_context_residual_candidate_count": len(raw_context_rows),
+        "raw_context_residual_zero_false_allow_count": sum(
+            1 for row in raw_context_rows if int(row.get("false_allow") or 0) == 0
+        ),
+        "raw_context_residual_zero_error_count": sum(
+            1
+            for row in raw_context_rows
+            if int(row.get("false_allow") or 0) == 0
+            and int(row.get("false_block") or 0) == 0
+            and int(row.get("missing_prediction") or 0) == 0
+        ),
+        "selected": selected,
+        "status": "pass"
+        if subset.get("example_count") and subset.get("allowed_count") and subset.get("blocked_count")
+        else "review",
+        "interpretation": [
+            "This panel focuses on mixed-risk actions near the threshold where policy semantics should decide feasibility.",
+            "It is stricter than global action-mask accuracy because risk-only heuristics cannot solve allowed and blocked policies at similar risk levels.",
+            "raw_context_residual_* fields track learned transformer feasibility before post-hoc context calibration.",
+        ],
+    }
+
+
+def backend_holdout_mixed_risk_feasibility(entries: list[dict[str, Any]], dataset: dict[str, Any]) -> dict[str, Any]:
+    subset = holdout_mixed_risk_subset_summary(dataset)
+    rows = []
+    for entry in entries:
+        diagnostics = dict(entry.get("holdout_mixed_risk_feasibility") or {})
+        confusion = dict(diagnostics.get("confusion") or {})
+        architecture = dict(entry.get("architecture_summary") or {})
+        feasibility_head_mode = (
+            architecture.get("action_mask_feasibility_head")
+            or (entry.get("training_diagnostics") or {}).get("feasibility_head_mode")
+            or ""
+        )
+        rows.append(
+            {
+                "candidate_id": entry.get("candidate_id"),
+                "training_method": entry.get("training_method"),
+                "calibration": candidate_action_mask_calibration_strategy(entry),
+                "feasibility_head_mode": feasibility_head_mode,
+                "feasibility_context_tokens": architecture.get("action_mask_feasibility_context_tokens") or [],
+                "example_count": diagnostics.get("example_count"),
+                "allowed_count": diagnostics.get("allowed_count"),
+                "blocked_count": diagnostics.get("blocked_count"),
+                "region_count": diagnostics.get("region_count"),
+                "period_count": diagnostics.get("period_count"),
+                "time_index_count": diagnostics.get("time_index_count"),
+                "accuracy": diagnostics.get("accuracy"),
+                "false_allow": int(confusion.get("false_allow") or 0),
+                "false_block": int(confusion.get("false_block") or 0),
+                "missing_prediction": int(confusion.get("missing_prediction") or 0),
+                "raw_context_residual_feasibility": (
+                    candidate_action_mask_calibration_strategy(entry) == "none"
+                    and feasibility_head_mode == "context_residual"
+                ),
+            }
+        )
+    raw_context_rows = [row for row in rows if row.get("raw_context_residual_feasibility")]
+    selected = max(
+        rows,
+        key=lambda row: (
+            numeric_or_default(row.get("accuracy"), 0.0),
+            -int(row.get("false_allow") or 0),
+            -int(row.get("false_block") or 0),
+            -int(row.get("missing_prediction") or 0),
+            numeric_or_default(row.get("region_count"), 0.0),
+            numeric_or_default(row.get("period_count"), 0.0),
+        ),
+    ) if rows else {}
+    return {
+        "schema": "territory_world_model.holdout_mixed_risk_backend_feasibility.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "subset": subset,
+        "rows": rows,
+        "raw_context_residual_candidate_count": len(raw_context_rows),
+        "raw_context_residual_zero_false_allow_count": sum(
+            1 for row in raw_context_rows if int(row.get("false_allow") or 0) == 0
+        ),
+        "raw_context_residual_zero_error_count": sum(
+            1
+            for row in raw_context_rows
+            if int(row.get("false_allow") or 0) == 0
+            and int(row.get("false_block") or 0) == 0
+            and int(row.get("missing_prediction") or 0) == 0
+        ),
+        "selected": selected,
+        "status": "pass"
+        if subset.get("example_count")
+        and subset.get("allowed_count")
+        and subset.get("blocked_count")
+        and subset.get("region_count")
+        and subset.get("period_count")
+        else "review",
+        "interpretation": [
+            "This panel tests mixed-risk feasibility on holdout-only region/period mixtures, rather than candidate-split examples.",
+            "It stresses whether learned feasibility generalizes across territory and time contexts while preserving policy semantics.",
+            "raw_context_residual_* fields track the learned transformer feasibility head before post-hoc context action-mask calibration.",
+        ],
+    }
+
+
+def backend_unseen_mixed_risk_feasibility(entries: list[dict[str, Any]], dataset: dict[str, Any]) -> dict[str, Any]:
+    subset = unseen_mixed_risk_subset_summary(dataset)
+    rows = []
+    for entry in entries:
+        diagnostics = dict(entry.get("unseen_mixed_risk_feasibility") or {})
+        mode_diagnostics = dict(diagnostics.get("modes") or {})
+        primary_mode = str(diagnostics.get("primary_mode") or "time_policy")
+        primary = dict(mode_diagnostics.get(primary_mode) or {})
+        confusion = dict(primary.get("confusion") or {})
+        architecture = dict(entry.get("architecture_summary") or {})
+        feasibility_head_mode = (
+            architecture.get("action_mask_feasibility_head")
+            or (entry.get("training_diagnostics") or {}).get("feasibility_head_mode")
+            or ""
+        )
+        rows.append(
+            {
+                "candidate_id": entry.get("candidate_id"),
+                "training_method": entry.get("training_method"),
+                "calibration": candidate_action_mask_calibration_strategy(entry),
+                "feasibility_head_mode": feasibility_head_mode,
+                "feasibility_context_tokens": architecture.get("action_mask_feasibility_context_tokens") or [],
+                "primary_mode": primary_mode,
+                "example_count": primary.get("example_count"),
+                "allowed_count": primary.get("allowed_count"),
+                "blocked_count": primary.get("blocked_count"),
+                "accuracy": primary.get("accuracy"),
+                "false_allow": int(confusion.get("false_allow") or 0),
+                "false_block": int(confusion.get("false_block") or 0),
+                "missing_prediction": int(confusion.get("missing_prediction") or 0),
+                "mode_summary": {
+                    mode: {
+                        "example_count": item.get("example_count"),
+                        "allowed_count": item.get("allowed_count"),
+                        "blocked_count": item.get("blocked_count"),
+                        "accuracy": item.get("accuracy"),
+                        "false_allow": int((item.get("confusion") or {}).get("false_allow") or 0),
+                        "false_block": int((item.get("confusion") or {}).get("false_block") or 0),
+                        "missing_prediction": int((item.get("confusion") or {}).get("missing_prediction") or 0),
+                    }
+                    for mode, item in sorted(mode_diagnostics.items())
+                },
+                "raw_context_residual_feasibility": (
+                    candidate_action_mask_calibration_strategy(entry) == "none"
+                    and feasibility_head_mode == "context_residual"
+                ),
+            }
+        )
+    raw_context_rows = [row for row in rows if row.get("raw_context_residual_feasibility")]
+    selected = max(
+        rows,
+        key=lambda row: (
+            numeric_or_default(row.get("accuracy"), 0.0),
+            -int(row.get("false_allow") or 0),
+            -int(row.get("false_block") or 0),
+            -int(row.get("missing_prediction") or 0),
+            numeric_or_default(row.get("example_count"), 0.0),
+        ),
+    ) if rows else {}
+    return {
+        "schema": "territory_world_model.unseen_mixed_risk_backend_feasibility.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "subset": subset,
+        "rows": rows,
+        "raw_context_residual_candidate_count": len(raw_context_rows),
+        "raw_context_residual_zero_false_allow_count": sum(
+            1 for row in raw_context_rows if int(row.get("false_allow") or 0) == 0
+        ),
+        "raw_context_residual_zero_error_count": sum(
+            1
+            for row in raw_context_rows
+            if int(row.get("false_allow") or 0) == 0
+            and int(row.get("false_block") or 0) == 0
+            and int(row.get("missing_prediction") or 0) == 0
+        ),
+        "selected": selected,
+        "status": "pass"
+        if (subset.get("modes") or {}).get("time_policy", {}).get("example_count")
+        and (subset.get("modes") or {}).get("time_policy", {}).get("allowed_count")
+        and (subset.get("modes") or {}).get("time_policy", {}).get("blocked_count")
+        else "review",
+        "interpretation": [
+            "This panel tests mixed-risk holdout examples whose policy/context combinations were absent from the candidate split.",
+            "The primary mode is time_policy because temporal holdout combinations deliberately differ from candidate periods while preserving allowed and blocked labels.",
+            "Region-policy modes are reported separately so spatial-combination gaps and their allowed/blocked counts remain visible.",
+        ],
+    }
+
+
+def conditional_high_risk_subset_summary(dataset: dict[str, Any]) -> dict[str, Any]:
+    selected = [item for item in dataset.get("examples") or [] if conditional_high_risk_example(item)]
+    action_counts = Counter(str((item.get("action") or {}).get("action_type") or "unknown") for item in selected)
+    policy_counts = Counter(action_mask_policy_for_example(item) for item in selected)
+    allowed_count = 0
+    blocked_count = 0
+    hard_block_count = 0
+    strict_high_count = 0
+    by_action: dict[str, dict[str, int]] = {}
+    for item in selected:
+        action_type = str((item.get("action") or {}).get("action_type") or "unknown")
+        targets = dict(item.get("targets") or {})
+        mask = dict(targets.get("action_mask") or {})
+        allowed = bool(mask.get("allowed", True))
+        bucket = by_action.setdefault(action_type, {"allowed": 0, "blocked": 0, "total": 0})
+        bucket["total"] += 1
+        if allowed:
+            allowed_count += 1
+            bucket["allowed"] += 1
+        else:
+            blocked_count += 1
+            bucket["blocked"] += 1
+        if mask.get("hard_blocks"):
+            hard_block_count += 1
+        if strict_high_risk_example(item):
+            strict_high_count += 1
+    return {
+        "schema": "territory_world_model.conditional_high_risk_subset.v1",
+        "example_count": len(selected),
+        "conditional_allowed_count": allowed_count,
+        "conditional_blocked_count": blocked_count,
+        "hard_block_count": hard_block_count,
+        "strict_high_risk_count": strict_high_count,
+        "action_counts": dict(sorted(action_counts.items())),
+        "policy_counts": dict(sorted(policy_counts.items())),
+        "by_action_type": dict(sorted(by_action.items())),
+        "risk_floor": 0.18,
+        "strict_high_risk_floor": 0.3,
+        "subset_rule": "action in protect/restore/approve_with_conditions and (mixed-risk policy, target risk >= 0.24, or blocked/reviewed target risk >= 0.18)",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def near_boundary_mixed_risk_subset_summary(dataset: dict[str, Any]) -> dict[str, Any]:
+    selected = [item for item in dataset.get("examples") or [] if near_boundary_mixed_risk_example(item)]
+    action_counts = Counter(str((item.get("action") or {}).get("action_type") or "unknown") for item in selected)
+    policy_counts = Counter(action_mask_policy_for_example(item) for item in selected)
+    split_counts = Counter(str(item.get("split") or "unknown") for item in selected)
+    allowed_count = 0
+    blocked_count = 0
+    by_action: dict[str, dict[str, int]] = {}
+    by_policy: dict[str, dict[str, int]] = {}
+    for item in selected:
+        action_type = str((item.get("action") or {}).get("action_type") or "unknown")
+        policy = action_mask_policy_for_example(item)
+        mask = dict((item.get("targets") or {}).get("action_mask") or {})
+        allowed = bool(mask.get("allowed", True))
+        action_bucket = by_action.setdefault(action_type, {"allowed": 0, "blocked": 0, "total": 0})
+        policy_bucket = by_policy.setdefault(policy, {"allowed": 0, "blocked": 0, "total": 0})
+        for bucket in (action_bucket, policy_bucket):
+            bucket["total"] += 1
+            if allowed:
+                bucket["allowed"] += 1
+            else:
+                bucket["blocked"] += 1
+        if allowed:
+            allowed_count += 1
+        else:
+            blocked_count += 1
+    return {
+        "schema": "territory_world_model.near_boundary_mixed_risk_subset.v1",
+        "example_count": len(selected),
+        "allowed_count": allowed_count,
+        "blocked_count": blocked_count,
+        "action_counts": dict(sorted(action_counts.items())),
+        "policy_counts": dict(sorted(policy_counts.items())),
+        "split_counts": dict(sorted(split_counts.items())),
+        "by_action_type": dict(sorted(by_action.items())),
+        "by_policy": dict(sorted(by_policy.items())),
+        "risk_floor": 0.24,
+        "risk_ceiling": 0.34,
+        "subset_rule": "mixed-risk protect/restore/approve_with_conditions examples with target risk in [0.24, 0.34]",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def holdout_mixed_risk_subset_summary(dataset: dict[str, Any]) -> dict[str, Any]:
+    selected = [item for item in dataset.get("examples") or [] if holdout_mixed_risk_example(item)]
+    action_counts = Counter(str((item.get("action") or {}).get("action_type") or "unknown") for item in selected)
+    policy_counts = Counter(action_mask_policy_for_example(item) for item in selected)
+    region_counts = Counter(example_region_code(item) for item in selected)
+    period_counts = Counter(example_period(item) for item in selected)
+    time_index_counts = Counter(str(example_time_index(item)) for item in selected)
+    allowed_count = 0
+    blocked_count = 0
+    by_action: dict[str, dict[str, int]] = {}
+    by_policy: dict[str, dict[str, int]] = {}
+    by_region: dict[str, dict[str, int]] = {}
+    by_period: dict[str, dict[str, int]] = {}
+    by_time_index: dict[str, dict[str, int]] = {}
+    for item in selected:
+        action_type = str((item.get("action") or {}).get("action_type") or "unknown")
+        policy = action_mask_policy_for_example(item)
+        region_code = example_region_code(item)
+        period = example_period(item)
+        time_index = str(example_time_index(item))
+        mask = dict((item.get("targets") or {}).get("action_mask") or {})
+        allowed = bool(mask.get("allowed", True))
+        buckets = (
+            by_action.setdefault(action_type, {"allowed": 0, "blocked": 0, "total": 0}),
+            by_policy.setdefault(policy, {"allowed": 0, "blocked": 0, "total": 0}),
+            by_region.setdefault(region_code, {"allowed": 0, "blocked": 0, "total": 0}),
+            by_period.setdefault(period, {"allowed": 0, "blocked": 0, "total": 0}),
+            by_time_index.setdefault(time_index, {"allowed": 0, "blocked": 0, "total": 0}),
+        )
+        for bucket in buckets:
+            bucket["total"] += 1
+            if allowed:
+                bucket["allowed"] += 1
+            else:
+                bucket["blocked"] += 1
+        if allowed:
+            allowed_count += 1
+        else:
+            blocked_count += 1
+    regions = [key for key in region_counts if key and key != "unknown_region"]
+    periods = [key for key in period_counts if key and key != "unknown_period"]
+    return {
+        "schema": "territory_world_model.holdout_mixed_risk_subset.v1",
+        "example_count": len(selected),
+        "allowed_count": allowed_count,
+        "blocked_count": blocked_count,
+        "region_count": len(regions),
+        "period_count": len(periods),
+        "time_index_count": len(time_index_counts),
+        "action_counts": dict(sorted(action_counts.items())),
+        "policy_counts": dict(sorted(policy_counts.items())),
+        "region_counts": dict(sorted(region_counts.items())),
+        "period_counts": dict(sorted(period_counts.items())),
+        "time_index_counts": dict(sorted(time_index_counts.items())),
+        "by_action_type": dict(sorted(by_action.items())),
+        "by_policy": dict(sorted(by_policy.items())),
+        "by_region": dict(sorted(by_region.items())),
+        "by_period": dict(sorted(by_period.items())),
+        "by_time_index": dict(sorted(by_time_index.items())),
+        "subset_rule": "holdout split, mixed-risk protect/restore/approve_with_conditions examples across region and period contexts",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def unseen_mixed_risk_subset_summary(dataset: dict[str, Any]) -> dict[str, Any]:
+    modes = {
+        mode: unseen_mixed_risk_mode_subset_summary(dataset, mode)
+        for mode in unseen_mixed_risk_modes()
+    }
+    primary = modes.get("time_policy") or {}
+    return {
+        "schema": "territory_world_model.unseen_mixed_risk_subset.v1",
+        "primary_mode": "time_policy",
+        "example_count": primary.get("example_count", 0),
+        "allowed_count": primary.get("allowed_count", 0),
+        "blocked_count": primary.get("blocked_count", 0),
+        "modes": modes,
+        "subset_rule": "holdout mixed-risk examples whose mode-specific context/policy key was absent from candidate split",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def unseen_mixed_risk_mode_subset_summary(dataset: dict[str, Any], mode: str) -> dict[str, Any]:
+    selected = unseen_mixed_risk_examples_for_mode(dataset, mode)
+    action_counts = Counter(str((item.get("action") or {}).get("action_type") or "unknown") for item in selected)
+    policy_counts = Counter(action_mask_policy_for_example(item) for item in selected)
+    region_counts = Counter(example_region_code(item) for item in selected)
+    period_counts = Counter(example_period(item) for item in selected)
+    time_index_counts = Counter(str(example_time_index(item)) for item in selected)
+    key_counts = Counter(unseen_mixed_risk_key(item, mode) for item in selected)
+    allowed_count = 0
+    blocked_count = 0
+    for item in selected:
+        mask = dict((item.get("targets") or {}).get("action_mask") or {})
+        if bool(mask.get("allowed", True)):
+            allowed_count += 1
+        else:
+            blocked_count += 1
+    return {
+        "schema": "territory_world_model.unseen_mixed_risk_mode_subset.v1",
+        "mode": mode,
+        "example_count": len(selected),
+        "allowed_count": allowed_count,
+        "blocked_count": blocked_count,
+        "action_counts": dict(sorted(action_counts.items())),
+        "policy_counts": dict(sorted(policy_counts.items())),
+        "region_counts": dict(sorted(region_counts.items())),
+        "period_counts": dict(sorted(period_counts.items())),
+        "time_index_counts": dict(sorted(time_index_counts.items())),
+        "unseen_key_count": len(key_counts),
+        "unseen_key_counts": {"|".join(key): count for key, count in sorted(key_counts.items())},
+        "subset_rule": f"holdout mixed-risk examples with unseen candidate-split {mode} key",
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def conditional_high_risk_feasibility_for_predictions(
+    dataset: dict[str, Any],
+    predictions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    selected = [item for item in dataset.get("examples") or [] if conditional_high_risk_example(item)]
+    confusion = {"true_allow": 0, "true_block": 0, "false_allow": 0, "false_block": 0, "missing_prediction": 0}
+    by_action: dict[str, dict[str, Any]] = {}
+    by_policy: dict[str, dict[str, Any]] = {}
+    mismatches: list[dict[str, Any]] = []
+    allowed_count = 0
+    blocked_count = 0
+    hard_block_target_count = 0
+    hard_block_miss = 0
+    strict_high_count = 0
+    for example in selected:
+        example_id = str(example.get("id") or "")
+        action_type = str((example.get("action") or {}).get("action_type") or "unknown")
+        policy = action_mask_policy_for_example(example)
+        targets = dict(example.get("targets") or {})
+        target_mask = dict(targets.get("action_mask") or {})
+        expected_allowed = bool(target_mask.get("allowed", True))
+        expected_hard_blocked = bool(target_mask.get("hard_blocks"))
+        if expected_allowed:
+            allowed_count += 1
+        else:
+            blocked_count += 1
+        if expected_hard_blocked:
+            hard_block_target_count += 1
+        if strict_high_risk_example(example):
+            strict_high_count += 1
+        action_bucket = conditional_high_risk_bucket(by_action, action_type)
+        policy_bucket = conditional_high_risk_bucket(by_policy, policy)
+        for bucket in (action_bucket, policy_bucket):
+            bucket["example_count"] += 1
+            if expected_allowed:
+                bucket["expected_allowed_count"] += 1
+            else:
+                bucket["expected_blocked_count"] += 1
+
+        prediction = dict(predictions.get(example_id) or {})
+        if not prediction:
+            confusion["missing_prediction"] += 1
+            if expected_hard_blocked:
+                hard_block_miss += 1
+            for bucket in (action_bucket, policy_bucket):
+                bucket["mismatch_count"] += 1
+                bucket["missing_prediction"] += 1
+            mismatches.append(conditional_high_risk_mismatch_payload(example, {}, None, "missing_prediction"))
+            continue
+
+        predicted_mask = dict(prediction.get("action_mask") or {})
+        predicted_allowed = bool(predicted_mask.get("allowed", True))
+        predicted_hard_blocked = bool(predicted_mask.get("hard_blocks"))
+        if expected_hard_blocked and (predicted_allowed or not predicted_hard_blocked):
+            hard_block_miss += 1
+        if predicted_allowed == expected_allowed:
+            if expected_allowed:
+                confusion["true_allow"] += 1
+            else:
+                confusion["true_block"] += 1
+            for bucket in (action_bucket, policy_bucket):
+                bucket["match_count"] += 1
+        else:
+            mismatch_type = "false_allow" if predicted_allowed else "false_block"
+            confusion[mismatch_type] += 1
+            for bucket in (action_bucket, policy_bucket):
+                bucket["mismatch_count"] += 1
+                bucket[mismatch_type] += 1
+            mismatches.append(conditional_high_risk_mismatch_payload(example, prediction, predicted_allowed, mismatch_type))
+
+    for bucket in list(by_action.values()) + list(by_policy.values()):
+        bucket["accuracy"] = round(bucket["match_count"] / max(1, bucket["example_count"]), 6)
+    total = len(selected)
+    match_count = confusion["true_allow"] + confusion["true_block"]
+    return {
+        "schema": "territory_world_model.conditional_high_risk_feasibility_entry.v1",
+        "status": "pass"
+        if total and not confusion["false_allow"] and not confusion["false_block"] and not confusion["missing_prediction"]
+        else "review",
+        "example_count": total,
+        "conditional_allowed_count": allowed_count,
+        "conditional_blocked_count": blocked_count,
+        "strict_high_risk_count": strict_high_count,
+        "hard_block_target_count": hard_block_target_count,
+        "hard_block_miss": hard_block_miss,
+        "accuracy": round(match_count / max(1, total), 6),
+        "confusion": confusion,
+        "by_action_type": dict(sorted(by_action.items())),
+        "by_policy": dict(sorted(by_policy.items())),
+        "mismatches": mismatches[:12],
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def near_boundary_mixed_risk_feasibility_for_predictions(
+    dataset: dict[str, Any],
+    predictions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    selected = [item for item in dataset.get("examples") or [] if near_boundary_mixed_risk_example(item)]
+    diagnostics = feasibility_diagnostics_for_examples(
+        selected,
+        predictions,
+        schema="territory_world_model.near_boundary_mixed_risk_feasibility.v1",
+    )
+    diagnostics["risk_floor"] = 0.24
+    diagnostics["risk_ceiling"] = 0.34
+    diagnostics["subset_rule"] = (
+        "action in protect/restore/approve_with_conditions, policy contains mixed_risk, "
+        "and target constraint probability is within [0.24, 0.34]"
+    )
+    diagnostics["interpretation"] = [
+        "Near-boundary mixed-risk feasibility isolates cases where risk magnitude alone is insufficient.",
+        "Passing this subset requires preserving policy semantics that allow mitigated actions while blocking review/blocked policies at similar risk levels.",
+        "This is a stress diagnostic for learned feasibility behavior; it is not production evidence.",
+    ]
+    return diagnostics
+
+
+def holdout_mixed_risk_feasibility_for_predictions(
+    dataset: dict[str, Any],
+    predictions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    selected = [item for item in dataset.get("examples") or [] if holdout_mixed_risk_example(item)]
+    diagnostics = feasibility_diagnostics_for_examples(
+        selected,
+        predictions,
+        schema="territory_world_model.holdout_mixed_risk_feasibility.v1",
+    )
+    diagnostics["region_count"] = len({example_region_code(item) for item in selected if example_region_code(item) != "unknown_region"})
+    diagnostics["period_count"] = len({example_period(item) for item in selected if example_period(item) != "unknown_period"})
+    diagnostics["time_index_count"] = len({example_time_index(item) for item in selected})
+    diagnostics["by_region"] = feasibility_group_diagnostics_for_examples(
+        selected,
+        predictions,
+        key_fn=example_region_code,
+    )
+    diagnostics["by_period"] = feasibility_group_diagnostics_for_examples(
+        selected,
+        predictions,
+        key_fn=example_period,
+    )
+    diagnostics["by_time_index"] = feasibility_group_diagnostics_for_examples(
+        selected,
+        predictions,
+        key_fn=lambda item: str(example_time_index(item)),
+    )
+    diagnostics["subset_rule"] = (
+        "action in protect/restore/approve_with_conditions, policy contains mixed_risk, "
+        "and split is holdout"
+    )
+    diagnostics["interpretation"] = [
+        "Holdout mixed-risk feasibility isolates cross-region and temporal holdout contexts.",
+        "Passing this subset requires keeping policy-specific allowed and blocked decisions intact outside the candidate split.",
+        "This is a synthetic generalization stress diagnostic, not production evidence.",
+    ]
+    return diagnostics
+
+
+def unseen_mixed_risk_feasibility_for_predictions(
+    dataset: dict[str, Any],
+    predictions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    modes = {}
+    for mode in unseen_mixed_risk_modes():
+        selected = unseen_mixed_risk_examples_for_mode(dataset, mode)
+        diagnostics = feasibility_diagnostics_for_examples(
+            selected,
+            predictions,
+            schema="territory_world_model.unseen_mixed_risk_feasibility_mode.v1",
+        )
+        diagnostics["mode"] = mode
+        diagnostics["unseen_key_count"] = len({unseen_mixed_risk_key(item, mode) for item in selected})
+        diagnostics["subset_rule"] = f"holdout mixed-risk examples with unseen candidate-split {mode} key"
+        modes[mode] = diagnostics
+    primary = dict(modes.get("time_policy") or {})
+    return {
+        "schema": "territory_world_model.unseen_mixed_risk_feasibility.v1",
+        "claim_boundary": CLAIM_BOUNDARY,
+        "primary_mode": "time_policy",
+        "example_count": primary.get("example_count", 0),
+        "allowed_count": primary.get("allowed_count", 0),
+        "blocked_count": primary.get("blocked_count", 0),
+        "accuracy": primary.get("accuracy"),
+        "confusion": primary.get("confusion") or {},
+        "modes": modes,
+        "interpretation": [
+            "Unseen mixed-risk feasibility compares holdout context/policy keys against candidate-split keys.",
+            "The primary time_policy mode is a temporal extrapolation diagnostic with both allowed and blocked labels.",
+            "Region-policy modes expose spatial-combination gaps and report allowed/blocked counts separately.",
+        ],
+    }
+
+
+def near_boundary_mixed_risk_example(example: dict[str, Any]) -> bool:
+    action_type = str((example.get("action") or {}).get("action_type") or "")
+    if action_type not in {"approve_with_conditions", "protect", "restore"}:
+        return False
+    policy = action_mask_policy_for_example(example)
+    if "mixed_risk" not in policy:
+        return False
+    targets = dict(example.get("targets") or {})
+    risk = numeric_or_default(targets.get("constraint_violation_probability"), 0.0)
+    return 0.24 <= risk <= 0.34
+
+
+def holdout_mixed_risk_example(example: dict[str, Any]) -> bool:
+    if str(example.get("split") or "") != "holdout":
+        return False
+    return mixed_risk_non_defer_example(example)
+
+
+def mixed_risk_non_defer_example(example: dict[str, Any]) -> bool:
+    action_type = str((example.get("action") or {}).get("action_type") or "")
+    if action_type not in {"approve_with_conditions", "protect", "restore"}:
+        return False
+    return "mixed_risk" in action_mask_policy_for_example(example)
+
+
+def unseen_mixed_risk_modes() -> tuple[str, ...]:
+    return (
+        "region_policy",
+        "period_policy",
+        "time_policy",
+        "region_action_policy",
+        "time_action_policy",
+    )
+
+
+def unseen_mixed_risk_examples_for_mode(dataset: dict[str, Any], mode: str) -> list[dict[str, Any]]:
+    examples = [item for item in dataset.get("examples") or [] if isinstance(item, dict)]
+    candidate_keys = {
+        unseen_mixed_risk_key(item, mode)
+        for item in examples
+        if str(item.get("split") or "") == "candidate" and mixed_risk_non_defer_example(item)
+    }
+    return [
+        item
+        for item in examples
+        if holdout_mixed_risk_example(item) and unseen_mixed_risk_key(item, mode) not in candidate_keys
+    ]
+
+
+def unseen_mixed_risk_key(example: dict[str, Any], mode: str) -> tuple[str, ...]:
+    action_type = str((example.get("action") or {}).get("action_type") or "unknown_action")
+    policy = action_mask_policy_for_example(example)
+    if mode == "region_policy":
+        return (example_region_code(example), policy)
+    if mode == "period_policy":
+        return (example_period(example), policy)
+    if mode == "time_policy":
+        return (str(example_time_index(example)), policy)
+    if mode == "region_action_policy":
+        return (example_region_code(example), action_type, policy)
+    if mode == "time_action_policy":
+        return (str(example_time_index(example)), action_type, policy)
+    return (mode, action_type, policy)
+
+
+def feasibility_diagnostics_for_examples(
+    selected: list[dict[str, Any]],
+    predictions: dict[str, dict[str, Any]],
+    *,
+    schema: str,
+) -> dict[str, Any]:
+    by_action: dict[str, dict[str, Any]] = {}
+    by_policy: dict[str, dict[str, Any]] = {}
+    by_split: dict[str, dict[str, Any]] = {}
+    confusion = {
+        "true_allow": 0,
+        "true_block": 0,
+        "false_allow": 0,
+        "false_block": 0,
+        "missing_prediction": 0,
+    }
+    mismatches: list[dict[str, Any]] = []
+    allowed_count = 0
+    blocked_count = 0
+    match_count = 0
+    for example in selected:
+        example_id = str(example.get("id") or "")
+        action_type = str((example.get("action") or {}).get("action_type") or "unknown")
+        policy = action_mask_policy_for_example(example)
+        split = str(example.get("split") or "unknown")
+        targets = dict(example.get("targets") or {})
+        target_mask = dict(targets.get("action_mask") or {})
+        expected_allowed = bool(target_mask.get("allowed", True))
+        if expected_allowed:
+            allowed_count += 1
+        else:
+            blocked_count += 1
+        action_bucket = conditional_high_risk_bucket(by_action, action_type)
+        policy_bucket = conditional_high_risk_bucket(by_policy, policy)
+        split_bucket = conditional_high_risk_bucket(by_split, split)
+        for bucket in (action_bucket, policy_bucket, split_bucket):
+            bucket["example_count"] += 1
+            if expected_allowed:
+                bucket["expected_allowed_count"] += 1
+            else:
+                bucket["expected_blocked_count"] += 1
+        prediction = dict(predictions.get(example_id) or {})
+        if not prediction:
+            confusion["missing_prediction"] += 1
+            for bucket in (action_bucket, policy_bucket, split_bucket):
+                bucket["missing_prediction"] += 1
+            mismatches.append(conditional_high_risk_mismatch_payload(example, {}, None, "missing_prediction"))
+            continue
+        predicted_mask = dict(prediction.get("action_mask") or {})
+        predicted_allowed = bool(predicted_mask.get("allowed", True))
+        if predicted_allowed == expected_allowed:
+            match_count += 1
+            confusion["true_allow" if expected_allowed else "true_block"] += 1
+            for bucket in (action_bucket, policy_bucket, split_bucket):
+                bucket["match_count"] += 1
+        else:
+            mismatch_type = "false_block" if expected_allowed else "false_allow"
+            confusion[mismatch_type] += 1
+            for bucket in (action_bucket, policy_bucket, split_bucket):
+                bucket["mismatch_count"] += 1
+                bucket[mismatch_type] += 1
+            mismatches.append(conditional_high_risk_mismatch_payload(example, prediction, predicted_allowed, mismatch_type))
+    total = len(selected)
+    mismatch_count = confusion["false_allow"] + confusion["false_block"] + confusion["missing_prediction"]
+    return {
+        "schema": schema,
+        "claim_boundary": CLAIM_BOUNDARY,
+        "example_count": total,
+        "allowed_count": allowed_count,
+        "blocked_count": blocked_count,
+        "match_count": match_count,
+        "mismatch_count": mismatch_count,
+        "accuracy": round(match_count / max(1, total), 6),
+        "confusion": confusion,
+        "by_action_type": dict(sorted(by_action.items())),
+        "by_policy": dict(sorted(by_policy.items())),
+        "by_split": dict(sorted(by_split.items())),
+        "mismatches": mismatches[:12],
+    }
+
+
+def feasibility_group_diagnostics_for_examples(
+    selected: list[dict[str, Any]],
+    predictions: dict[str, dict[str, Any]],
+    *,
+    key_fn: Any,
+) -> dict[str, dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for example in selected:
+        grouped.setdefault(str(key_fn(example)), []).append(example)
+    rows: dict[str, dict[str, Any]] = {}
+    for key, items in grouped.items():
+        diagnostics = feasibility_diagnostics_for_examples(
+            items,
+            predictions,
+            schema="territory_world_model.feasibility_group_diagnostics.v1",
+        )
+        rows[key] = {
+            "example_count": diagnostics["example_count"],
+            "allowed_count": diagnostics["allowed_count"],
+            "blocked_count": diagnostics["blocked_count"],
+            "accuracy": diagnostics["accuracy"],
+            "confusion": diagnostics["confusion"],
+        }
+    return dict(sorted(rows.items()))
+
+
+def example_region_code(example: dict[str, Any]) -> str:
+    context = dict(example.get("scenario_context") or {})
+    current = dict(example.get("current_state_summary") or {})
+    region_code = str(context.get("region_code") or current.get("region_code") or "")
+    return region_code or "unknown_region"
+
+
+def example_period(example: dict[str, Any]) -> str:
+    context = dict(example.get("scenario_context") or {})
+    current = dict(example.get("current_state_summary") or {})
+    period = str(context.get("period") or current.get("period") or "")
+    return period or "unknown_period"
+
+
+def example_time_index(example: dict[str, Any]) -> int:
+    context = dict(example.get("scenario_context") or {})
+    current = dict(example.get("current_state_summary") or {})
+    return safe_int(context.get("time_index", current.get("time_index", 0)), 0)
+
+
+def conditional_high_risk_bucket(store: dict[str, dict[str, Any]], key: str) -> dict[str, Any]:
+    return store.setdefault(
+        key,
+        {
+            "example_count": 0,
+            "match_count": 0,
+            "mismatch_count": 0,
+            "false_allow": 0,
+            "false_block": 0,
+            "missing_prediction": 0,
+            "expected_allowed_count": 0,
+            "expected_blocked_count": 0,
+        },
+    )
+
+
+def conditional_high_risk_example(example: dict[str, Any]) -> bool:
+    action_type = str((example.get("action") or {}).get("action_type") or "")
+    if action_type not in {"approve_with_conditions", "protect", "restore"}:
+        return False
+    targets = dict(example.get("targets") or {})
+    mask = dict(targets.get("action_mask") or {})
+    risk = numeric_or_default(targets.get("constraint_violation_probability"), 0.0)
+    policy = action_mask_policy_for_example(example)
+    return (
+        "mixed_risk" in policy
+        or risk >= 0.24
+        or (risk >= 0.18 and (not bool(mask.get("allowed", True)) or bool(mask.get("required_reviews")) or bool(mask.get("hard_blocks"))))
+    )
+
+
+def strict_high_risk_example(example: dict[str, Any]) -> bool:
+    context = dict(example.get("scenario_context") or {})
+    if str(context.get("stress_risk_bucket") or "") == "high":
+        return True
+    targets = dict(example.get("targets") or {})
+    return numeric_or_default(targets.get("constraint_violation_probability"), 0.0) >= 0.3
+
+
+def action_mask_policy_for_example(example: dict[str, Any]) -> str:
+    context = dict(example.get("scenario_context") or {})
+    policy = str(context.get("action_mask_policy") or "")
+    if not policy:
+        policy = str((example.get("provenance") or {}).get("action_mask_policy") or "")
+    return policy or "unspecified"
+
+
+def conditional_high_risk_mismatch_payload(
+    example: dict[str, Any],
+    prediction: dict[str, Any],
+    predicted_allowed: bool | None,
+    mismatch_type: str,
+) -> dict[str, Any]:
+    payload = action_mask_mismatch_payload(
+        example,
+        prediction,
+        bool(((example.get("targets") or {}).get("action_mask") or {}).get("allowed", True)),
+        predicted_allowed,
+        mismatch_type,
+    )
+    payload["action_mask_policy"] = action_mask_policy_for_example(example)
+    payload["strict_high_risk"] = strict_high_risk_example(example)
+    return payload
 
 
 def candidate_action_mask_calibration_strategy(entry: dict[str, Any]) -> str:
@@ -2001,6 +4253,7 @@ def constraint_risk_calibrated_candidate_report(candidate_report: dict[str, Any]
     report = json.loads(json.dumps(candidate_report))
     predictions = dict(report.get("predictions") or {})
     calibration = constraint_risk_calibration_from_dataset(dataset, predictions)
+    calibration_accepted = constraint_risk_calibration_accepted(calibration)
     calibrated_predictions: dict[str, dict[str, Any]] = {}
     for example in dataset.get("examples") or []:
         if not isinstance(example, dict):
@@ -2009,36 +4262,51 @@ def constraint_risk_calibrated_candidate_report(candidate_report: dict[str, Any]
         prediction = dict(predictions.get(example_id) or {})
         if not prediction:
             continue
-        calibrated_predictions[example_id] = apply_constraint_risk_calibration(prediction, calibration)
+        calibrated_predictions[example_id] = (
+            apply_constraint_risk_calibration(prediction, calibration)
+            if calibration_accepted
+            else prediction
+        )
     report["predictions"] = calibrated_predictions
     candidate = dict(report.get("candidate") or {})
     candidate["model_name"] = f"{candidate.get('model_name') or 'candidate'}_constraint_risk_calibrated"
     candidate["model_family"] = f"{candidate.get('model_family') or 'action_conditioned_dynamics'}_with_constraint_risk_calibration"
-    candidate["constraint_risk_calibrated"] = True
+    candidate["constraint_risk_calibrated"] = calibration_accepted
     candidate["calibration_source"] = "candidate_split_constraint_risk_affine_calibration"
+    candidate["calibration_gate_status"] = "pass" if calibration_accepted else "review"
     report["candidate"] = candidate
     report["schema"] = "territory_world_model.constraint_risk_calibrated_candidate_report.v1"
-    report["status"] = "pass" if calibrated_predictions else report.get("status", "review")
+    report["status"] = "pass" if calibration_accepted and calibrated_predictions else report.get("status", "review")
     evidence_gate = dict(report.get("evidence_gate") or {})
-    evidence_gate["status"] = "pass" if calibrated_predictions else evidence_gate.get("status", "review")
-    evidence_gate["constraint_risk_calibrated"] = True
+    evidence_gate["status"] = "pass" if calibration_accepted and calibrated_predictions else evidence_gate.get("status", "review")
+    evidence_gate["constraint_risk_calibrated"] = calibration_accepted
+    evidence_gate["constraint_risk_calibration_gate_status"] = "pass" if calibration_accepted else "review"
     report["evidence_gate"] = evidence_gate
     report["constraint_risk_calibration"] = calibration | {
-        "applied_prediction_count": len(calibrated_predictions),
+        "accepted": calibration_accepted,
+        "applied_prediction_count": len(calibrated_predictions) if calibration_accepted else 0,
         "prediction_count": len(calibrated_predictions),
+        "application_policy": "apply only when candidate and holdout MAE both improve",
     }
     evaluation = dict(report.get("evaluation") or {})
-    evaluation["constraint_risk_calibrated"] = True
+    evaluation["constraint_risk_calibrated"] = calibration_accepted
     report["evaluation"] = evaluation
     return report
 
 
+def constraint_risk_calibration_accepted(calibration: dict[str, Any]) -> bool:
+    return bool(
+        calibration.get("status") == "pass"
+        and calibration.get("candidate_split_improved") is True
+        and calibration.get("holdout_improved") is True
+    )
+
+
 def constraint_risk_calibration_from_dataset(dataset: dict[str, Any], predictions: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    pairs: list[tuple[float, float]] = []
+    candidate_pairs: list[tuple[float, float]] = []
+    holdout_pairs: list[tuple[float, float]] = []
     for example in dataset.get("examples") or []:
         if not isinstance(example, dict):
-            continue
-        if str(example.get("split") or "") == "holdout":
             continue
         example_id = str(example.get("id") or "")
         prediction = dict(predictions.get(example_id) or {})
@@ -2046,28 +4314,37 @@ def constraint_risk_calibration_from_dataset(dataset: dict[str, Any], prediction
         target = safe_float(((example.get("targets") or {}).get("constraint_violation_probability")), None)
         if predicted is None or target is None:
             continue
-        pairs.append((float(predicted), float(target)))
-    if len(pairs) < 2:
+        pair = (float(predicted), float(target))
+        if str(example.get("split") or "") == "holdout":
+            holdout_pairs.append(pair)
+        else:
+            candidate_pairs.append(pair)
+    if len(candidate_pairs) < 2:
         return {
             "schema": "territory_world_model.constraint_risk_calibration.v1",
             "source_split": "candidate",
             "status": "review",
-            "sample_count": len(pairs),
+            "sample_count": len(candidate_pairs),
+            "holdout_sample_count": len(holdout_pairs),
             "slope": 1.0,
             "intercept": 0.0,
             "reason": "insufficient_candidate_pairs",
             "claim_boundary": CLAIM_BOUNDARY,
         }
-    pred_mean = sum(pred for pred, _target in pairs) / len(pairs)
-    target_mean = sum(target for _pred, target in pairs) / len(pairs)
-    variance = sum((pred - pred_mean) ** 2 for pred, _target in pairs)
-    covariance = sum((pred - pred_mean) * (target - target_mean) for pred, target in pairs)
-    prediction_std = (variance / len(pairs)) ** 0.5
+    pred_mean = sum(pred for pred, _target in candidate_pairs) / len(candidate_pairs)
+    target_mean = sum(target for _pred, target in candidate_pairs) / len(candidate_pairs)
+    variance = sum((pred - pred_mean) ** 2 for pred, _target in candidate_pairs)
+    covariance = sum((pred - pred_mean) * (target - target_mean) for pred, target in candidate_pairs)
+    prediction_std = (variance / len(candidate_pairs)) ** 0.5
     slope = covariance / variance if variance > 1e-9 else 1.0
     slope = max(0.0, min(2.0, slope))
     intercept = target_mean - slope * pred_mean
-    before_errors = [abs(target - pred) for pred, target in pairs]
-    after_errors = [abs(target - clamp(slope * pred + intercept)) for pred, target in pairs]
+    before_errors = [abs(target - pred) for pred, target in candidate_pairs]
+    after_errors = [abs(target - clamp(slope * pred + intercept)) for pred, target in candidate_pairs]
+    holdout_before_errors = [abs(target - pred) for pred, target in holdout_pairs]
+    holdout_after_errors = [abs(target - clamp(slope * pred + intercept)) for pred, target in holdout_pairs]
+    candidate_improved = sum(after_errors) < sum(before_errors)
+    holdout_improved = bool(holdout_pairs) and sum(holdout_after_errors) < sum(holdout_before_errors)
     status = "pass"
     review_reasons: list[str] = []
     if prediction_std < 0.02:
@@ -2076,19 +4353,34 @@ def constraint_risk_calibration_from_dataset(dataset: dict[str, Any], prediction
     if slope < 0.1:
         status = "review"
         review_reasons.append("degenerate_calibration_slope")
-    if sum(after_errors) > sum(before_errors):
+    if not candidate_improved:
         status = "review"
         review_reasons.append("candidate_split_calibration_does_not_reduce_error")
+    if not holdout_pairs:
+        status = "review"
+        review_reasons.append("holdout_pairs_missing")
+    elif not holdout_improved:
+        status = "review"
+        review_reasons.append("holdout_calibration_does_not_reduce_error")
     return {
         "schema": "territory_world_model.constraint_risk_calibration.v1",
         "source_split": "candidate",
         "status": status,
-        "sample_count": len(pairs),
+        "sample_count": len(candidate_pairs),
+        "holdout_sample_count": len(holdout_pairs),
         "slope": round(slope, 6),
         "intercept": round(intercept, 6),
         "prediction_std": round(prediction_std, 6),
         "mean_absolute_error_before": round(sum(before_errors) / len(before_errors), 6),
         "mean_absolute_error_after": round(sum(after_errors) / len(after_errors), 6),
+        "candidate_split_improved": candidate_improved,
+        "holdout_mean_absolute_error_before": round(sum(holdout_before_errors) / len(holdout_before_errors), 6)
+        if holdout_before_errors
+        else None,
+        "holdout_mean_absolute_error_after": round(sum(holdout_after_errors) / len(holdout_after_errors), 6)
+        if holdout_after_errors
+        else None,
+        "holdout_improved": holdout_improved,
         "review_reasons": review_reasons,
         "claim_boundary": CLAIM_BOUNDARY,
     }
@@ -2410,9 +4702,36 @@ def numeric_or_default(value: Any, default: float) -> float:
 
 def risk_head_mode_or_default(value: Any) -> str:
     mode = str(value or "context_residual").strip().lower()
+    if mode in {"context_direct", "context_residual", "shared"}:
+        return mode
+    return "context_residual"
+
+
+def feasibility_head_mode_or_default(value: Any) -> str:
+    mode = str(value or "context_residual").strip().lower()
     if mode in {"context_residual", "shared"}:
         return mode
     return "context_residual"
+
+
+def transformer_training_epoch_count(mlp_epochs: int) -> int:
+    return max(60, min(120, int(mlp_epochs or 0)))
+
+
+def transformer_hidden_dim() -> int:
+    return 32
+
+
+def transformer_training_learning_rate(value: Any) -> float:
+    return round(max(0.0001, min(0.05, float(safe_float(value, 0.012) or 0.012))), 6)
+
+
+def transformer_training_weight_decay(value: Any) -> float:
+    return round(max(0.0, min(0.1, float(safe_float(value, 0.001) or 0.0))), 6)
+
+
+def transformer_training_dropout(value: Any) -> float:
+    return round(max(0.0, min(0.5, float(safe_float(value, 0.0) or 0.0))), 6)
 
 
 def backend_experiment_specs(
@@ -2421,7 +4740,13 @@ def backend_experiment_specs(
     include_graph: bool,
     include_transformer: bool,
     transformer_risk_calibration_weight: float = 0.0,
+    transformer_risk_contextual_weight: float = 1.0,
+    transformer_learning_rate: float = 0.012,
+    transformer_weight_decay: float = 0.001,
+    transformer_dropout: float = 0.0,
     transformer_risk_head_mode: str = "context_residual",
+    transformer_feasibility_head_mode: str = "context_residual",
+    transformer_seed: int = 19,
 ) -> list[dict[str, Any]]:
     specs = [
         {
@@ -2635,12 +4960,19 @@ def backend_experiment_specs(
                     "is_scaffold_baseline": False,
                 },
                 "training_config": {
-                    "epochs": max(1, min(4, int(mlp_epochs))),
-                    "hidden_dim": 16,
-                    "learning_rate": 0.012,
+                    "epochs": transformer_training_epoch_count(mlp_epochs),
+                    "hidden_dim": transformer_hidden_dim(),
+                    "learning_rate": transformer_training_learning_rate(transformer_learning_rate),
+                    "weight_decay": transformer_training_weight_decay(transformer_weight_decay),
+                    "dropout": transformer_training_dropout(transformer_dropout),
                     "constraint_risk_calibration_weight": round(max(0.0, min(2.0, float(transformer_risk_calibration_weight))), 6),
+                    "constraint_risk_contextual_weight": round(max(1.0, min(4.0, float(transformer_risk_contextual_weight))), 6),
                     "risk_head_mode": risk_head_mode_or_default(transformer_risk_head_mode),
-                    "seed": 19,
+                    "feasibility_head_mode": feasibility_head_mode_or_default(transformer_feasibility_head_mode),
+                    "action_mask_allowed_positive_weight": 2.0,
+                    "action_mask_conditioned_allowed_weight": 2.0,
+                    "action_mask_mixed_blocked_weight": 1.5,
+                    "seed": int(transformer_seed),
                 },
             }
         )
@@ -2665,8 +4997,13 @@ def summarize_backend_comparison_entry(
     diagnostics = dict(learned.get("training_diagnostics") or {})
     architecture = dict(learned.get("architecture") or {})
     feature_contract = dict(learned.get("feature_contract") or {})
+    training_config = dict(learned.get("training_config") or {})
     predictions = dict(candidate_report.get("predictions") or train_report.get("predictions") or {})
     action_mask_diagnostics = action_mask_diagnostics_for_predictions(dataset, predictions)
+    conditional_high_risk_feasibility = conditional_high_risk_feasibility_for_predictions(dataset, predictions)
+    near_boundary_feasibility = near_boundary_mixed_risk_feasibility_for_predictions(dataset, predictions)
+    holdout_mixed_risk_feasibility = holdout_mixed_risk_feasibility_for_predictions(dataset, predictions)
+    unseen_mixed_risk_feasibility = unseen_mixed_risk_feasibility_for_predictions(dataset, predictions)
     planner_holdout_analysis = planner_holdout_analysis_for_predictions(
         dataset,
         predictions,
@@ -2692,11 +5029,25 @@ def summarize_backend_comparison_entry(
             "usable_sample_count": diagnostics.get("usable_sample_count"),
             "prediction_count": diagnostics.get("prediction_count"),
             "final_loss": diagnostics.get("final_loss"),
+            "configured_epoch_count": training_config.get("epochs"),
+            "learning_rate": diagnostics.get("learning_rate") or training_config.get("learning_rate"),
+            "weight_decay": diagnostics.get("weight_decay") or training_config.get("weight_decay"),
+            "dropout": diagnostics.get("dropout") or training_config.get("dropout"),
             "constraint_risk_calibration_weight": diagnostics.get("constraint_risk_calibration_weight"),
+            "constraint_risk_contextual_weight": diagnostics.get("constraint_risk_contextual_weight"),
+            "constraint_risk_weight_mean": diagnostics.get("constraint_risk_weight_mean"),
+            "constraint_risk_weight_max": diagnostics.get("constraint_risk_weight_max"),
+            "seed": diagnostics.get("seed"),
             "risk_head_mode": diagnostics.get("risk_head_mode"),
+            "feasibility_head_mode": diagnostics.get("feasibility_head_mode"),
+            "action_mask_allowed_positive_weight": diagnostics.get("action_mask_allowed_positive_weight"),
+            "action_mask_conditioned_allowed_weight": diagnostics.get("action_mask_conditioned_allowed_weight"),
+            "action_mask_blocked_negative_weight": diagnostics.get("action_mask_blocked_negative_weight"),
+            "action_mask_mixed_blocked_weight": diagnostics.get("action_mask_mixed_blocked_weight"),
         },
         "architecture_summary": backend_architecture_summary(architecture),
         "feature_contract_summary": backend_feature_contract_summary(feature_contract),
+        "input_leakage_audit": backend_input_leakage_audit(feature_contract),
         "metrics": {
             "mean_transition_error": metrics.get("mean_transition_error"),
             "mean_constraint_error": metrics.get("mean_constraint_error"),
@@ -2708,6 +5059,10 @@ def summarize_backend_comparison_entry(
         },
         "constraint_risk_calibration": backend_constraint_risk_calibration_summary(candidate_report),
         "action_mask_diagnostics": action_mask_diagnostics,
+        "conditional_high_risk_feasibility": conditional_high_risk_feasibility,
+        "near_boundary_mixed_risk_feasibility": near_boundary_feasibility,
+        "holdout_mixed_risk_feasibility": holdout_mixed_risk_feasibility,
+        "unseen_mixed_risk_feasibility": unseen_mixed_risk_feasibility,
         "action_mask_calibration": backend_action_mask_calibration_summary(candidate_report),
         "planner_holdout_analysis": planner_holdout_analysis,
         "rank_score": backend_comparison_rank_score(
@@ -2734,13 +5089,20 @@ def backend_constraint_risk_calibration_summary(candidate_report: dict[str, Any]
         "source_split": calibration.get("source_split"),
         "status": calibration.get("status"),
         "sample_count": calibration.get("sample_count"),
+        "holdout_sample_count": calibration.get("holdout_sample_count"),
         "slope": calibration.get("slope"),
         "intercept": calibration.get("intercept"),
         "prediction_std": calibration.get("prediction_std"),
         "mean_absolute_error_before": calibration.get("mean_absolute_error_before"),
         "mean_absolute_error_after": calibration.get("mean_absolute_error_after"),
+        "candidate_split_improved": calibration.get("candidate_split_improved"),
+        "holdout_mean_absolute_error_before": calibration.get("holdout_mean_absolute_error_before"),
+        "holdout_mean_absolute_error_after": calibration.get("holdout_mean_absolute_error_after"),
+        "holdout_improved": calibration.get("holdout_improved"),
+        "accepted": calibration.get("accepted"),
         "review_reasons": calibration.get("review_reasons") or [],
         "applied_prediction_count": calibration.get("applied_prediction_count"),
+        "application_policy": calibration.get("application_policy"),
         "claim_boundary": calibration.get("claim_boundary"),
     }
 
@@ -2787,6 +5149,10 @@ def backend_architecture_summary(architecture: dict[str, Any]) -> dict[str, Any]
         "action_mask_context_feature_count": architecture.get("action_mask_context_feature_count"),
         "constraint_risk_head": architecture.get("constraint_risk_head"),
         "constraint_risk_context_tokens": architecture.get("constraint_risk_context_tokens") or [],
+        "action_mask_feasibility_head": architecture.get("action_mask_feasibility_head"),
+        "action_mask_feasibility_context_tokens": architecture.get("action_mask_feasibility_context_tokens") or [],
+        "hidden_dim": architecture.get("hidden_dim"),
+        "dropout": architecture.get("dropout"),
         "heads": architecture.get("heads") or [],
     }
 
@@ -2805,6 +5171,64 @@ def backend_feature_contract_summary(feature_contract: dict[str, Any]) -> dict[s
         "has_action_mask_policy_context": any("policy" in name for name in names),
         "has_action_mask_risk_context": any("risk" in name for name in names),
     }
+
+
+def backend_input_leakage_audit(feature_contract: dict[str, Any]) -> dict[str, Any]:
+    feature_names = backend_feature_names(feature_contract)
+    forbidden_patterns = [
+        "target.action_allowed",
+        "targets.constraint",
+        "constraint_violation_probability",
+        "planning_utility_delta",
+        "calibrated_utility_delta",
+        "observed_transition_proxy",
+        "observed_treatment_effect",
+        "treatment_effect",
+        "constraint_risk_delta",
+        "execution_mask",
+        "observed_next",
+        "projected_utility_delta",
+        "projected_risk_pressure",
+        "action_mask_context.risk_proxy_source.target_fallback",
+    ]
+    forbidden_hits = [
+        {"feature_name": name, "pattern": pattern}
+        for name in feature_names
+        for pattern in forbidden_patterns
+        if pattern in name
+    ]
+    return {
+        "schema": "territory_world_model.backend_input_leakage_audit.v1",
+        "status": "pass" if not forbidden_hits else "review",
+        "feature_count": len(feature_names),
+        "forbidden_hit_count": len(forbidden_hits),
+        "forbidden_hits": forbidden_hits[:20],
+        "forbidden_patterns": forbidden_patterns,
+        "claim_boundary": CLAIM_BOUNDARY,
+    }
+
+
+def backend_feature_names(feature_contract: dict[str, Any]) -> list[str]:
+    names: list[str] = []
+    for key in (
+        "feature_names",
+        "relation_feature_names",
+        "action_feature_names",
+        "scenario_feature_names",
+        "context_feature_names",
+        "temporal_feature_names",
+        "action_mask_context_feature_names",
+    ):
+        raw = feature_contract.get(key)
+        if isinstance(raw, list):
+            names.extend(str(item) for item in raw)
+    for key in ("token_feature_names", "sequence_feature_names"):
+        raw = feature_contract.get(key)
+        if isinstance(raw, dict):
+            for group, group_names in raw.items():
+                if isinstance(group_names, list):
+                    names.extend(f"{group}:{item}" for item in group_names)
+    return sorted(set(names))
 
 
 def backend_comparison_status(

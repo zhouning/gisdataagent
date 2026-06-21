@@ -128,6 +128,22 @@
       "spatial_support": "must include cluster ids, neighbor ids, or complete x/y coordinates",
       "covariates": "must include at least one numeric adjustment covariate; stronger validation needs several pre-treatment covariates"
     },
+    "policy_history_gate": {
+      "purpose": "preflight real approval/review histories for TWM action-mask and unseen region/action-policy feasibility validation",
+      "minimum_columns": [
+        "action_type",
+        "action_mask_policy or policy_code",
+        "action_mask_allowed or feasibility_label",
+        "region_code/DKXZQDM/XZQDM or cluster",
+        "period/time_index or approval_date"
+      ],
+      "required_coverage": [
+        "both allowed and blocked feasibility labels",
+        "mixed-risk allowed policies such as allowed_with_conditions/protect_allowed/restore_allowed when available",
+        "multiple region-policy and region-action-policy combinations"
+      ],
+      "claim_boundary": "policy-history coverage only prepares real-data feasibility validation; it does not prove simulator accuracy by itself"
+    },
     "claim_boundary": "schema conformance only prepares data for evidence gates; it does not upgrade TWM claims without causal_calibration_report pass"
   },
   "twm_dataset_audit": {
@@ -459,6 +475,44 @@
       "production_treated_count": 0,
       "production_control_count": 0
     },
+    "policy_history_quality": {
+      "schema": "territory_world_model.production_policy_history_quality.v1",
+      "status": "review",
+      "row_count": 90,
+      "production_policy_row_count": 0,
+      "allowed_count": 0,
+      "blocked_count": 0,
+      "rows_with_policy": 0,
+      "rows_with_action_type": 0,
+      "rows_with_region": 0,
+      "rows_with_time": 0,
+      "action_counts": {},
+      "policy_counts": {},
+      "allowed_policy_counts": {},
+      "blocked_policy_counts": {},
+      "mixed_allowed_policy_counts": {},
+      "region_count": 0,
+      "region_policy_key_count": 0,
+      "region_action_policy_key_count": 0,
+      "time_policy_key_count": 0,
+      "region_counts": {},
+      "sample_region_policy_keys": {},
+      "sample_region_action_policy_keys": {},
+      "sample_time_policy_keys": {},
+      "missing_policy_gates": [
+        "production_policy_rows",
+        "allowed_policy_labels",
+        "blocked_policy_labels",
+        "action_mask_policy",
+        "action_type",
+        "region_context",
+        "temporal_context",
+        "region_policy_coverage",
+        "region_action_policy_coverage",
+        "mixed_risk_allowed_policy_coverage"
+      ],
+      "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
+    },
     "missing_data_gates": [
       "production_usable_rows",
       "production_treated_rows",
@@ -473,6 +527,13 @@
       "cluster/DKXZQDM/XZQDM or neighbors or x+y coordinates",
       "at least one numeric covariate such as area_m2, DKMJ, quality_score, risk_score"
     ],
+    "expected_policy_history_columns": [
+      "action_type",
+      "action_mask_policy or policy_code",
+      "action_mask_allowed or feasibility_label",
+      "region_code/DKXZQDM/XZQDM or cluster",
+      "period/time_index or approval_date"
+    ],
     "recommendations": [
       "provide rows with synthetic=false and not_for_production=false plus parseable treatment, outcome, spatial support and covariates",
       "include both approved/treated and review/rejected/control approval outcomes"
@@ -480,7 +541,6 @@
   },
   "production_observed_history_schema_audit": {
     "status": "not_provided",
-    "note": "pass --production-observed-history with a non-synthetic approval/review export to preflight production calibration data",
     "expected_minimum_columns": [
       "unit_id or project_id",
       "approval_status or treatment",
@@ -489,7 +549,44 @@
       "not_for_production",
       "cluster/DKXZQDM/XZQDM or neighbors or x+y coordinates",
       "at least one numeric covariate such as area_m2, DKMJ, quality_score, risk_score"
-    ]
+    ],
+    "expected_policy_history_columns": [
+      "action_type",
+      "action_mask_policy or policy_code",
+      "action_mask_allowed or feasibility_label",
+      "region_code/DKXZQDM/XZQDM or cluster",
+      "period/time_index or approval_date"
+    ],
+    "policy_history_quality": {
+      "schema": "territory_world_model.production_policy_history_quality.v1",
+      "status": "not_provided",
+      "row_count": 0,
+      "production_policy_row_count": 0,
+      "allowed_count": 0,
+      "blocked_count": 0,
+      "rows_with_policy": 0,
+      "rows_with_action_type": 0,
+      "rows_with_region": 0,
+      "rows_with_time": 0,
+      "action_counts": {},
+      "policy_counts": {},
+      "allowed_policy_counts": {},
+      "blocked_policy_counts": {},
+      "mixed_allowed_policy_counts": {},
+      "region_count": 0,
+      "region_policy_key_count": 0,
+      "region_action_policy_key_count": 0,
+      "time_policy_key_count": 0,
+      "region_counts": {},
+      "sample_region_policy_keys": {},
+      "sample_region_action_policy_keys": {},
+      "sample_time_policy_keys": {},
+      "missing_policy_gates": [
+        "production_policy_history_not_provided"
+      ],
+      "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
+    },
+    "note": "pass --production-observed-history with a non-synthetic approval/review export to preflight production calibration data"
   },
   "twm_structural_validation_fixture": {
     "schema": "territory_world_model.structural_validation_fixture.v1",
@@ -710,6 +807,44 @@
       "production_treated_count": 0,
       "production_control_count": 0
     },
+    "policy_history_quality": {
+      "schema": "territory_world_model.production_policy_history_quality.v1",
+      "status": "review",
+      "row_count": 48,
+      "production_policy_row_count": 0,
+      "allowed_count": 0,
+      "blocked_count": 0,
+      "rows_with_policy": 0,
+      "rows_with_action_type": 0,
+      "rows_with_region": 0,
+      "rows_with_time": 0,
+      "action_counts": {},
+      "policy_counts": {},
+      "allowed_policy_counts": {},
+      "blocked_policy_counts": {},
+      "mixed_allowed_policy_counts": {},
+      "region_count": 0,
+      "region_policy_key_count": 0,
+      "region_action_policy_key_count": 0,
+      "time_policy_key_count": 0,
+      "region_counts": {},
+      "sample_region_policy_keys": {},
+      "sample_region_action_policy_keys": {},
+      "sample_time_policy_keys": {},
+      "missing_policy_gates": [
+        "production_policy_rows",
+        "allowed_policy_labels",
+        "blocked_policy_labels",
+        "action_mask_policy",
+        "action_type",
+        "region_context",
+        "temporal_context",
+        "region_policy_coverage",
+        "region_action_policy_coverage",
+        "mixed_risk_allowed_policy_coverage"
+      ],
+      "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
+    },
     "missing_data_gates": [
       "production_usable_rows",
       "production_treated_rows",
@@ -723,6 +858,13 @@
       "not_for_production",
       "cluster/DKXZQDM/XZQDM or neighbors or x+y coordinates",
       "at least one numeric covariate such as area_m2, DKMJ, quality_score, risk_score"
+    ],
+    "expected_policy_history_columns": [
+      "action_type",
+      "action_mask_policy or policy_code",
+      "action_mask_allowed or feasibility_label",
+      "region_code/DKXZQDM/XZQDM or cluster",
+      "period/time_index or approval_date"
     ],
     "recommendations": [
       "provide rows with synthetic=false and not_for_production=false plus parseable treatment, outcome, spatial support and covariates",
@@ -1850,6 +1992,159 @@
         "total": 32
       }
     },
+    "action_mask_policy_counts_by_split": {
+      "test": {
+        "defer_review_always_review": 8,
+        "low_risk_allowed": 8,
+        "mixed_risk_allowed_with_conditions": 2,
+        "mixed_risk_blocked_condition_review": 4,
+        "mixed_risk_protect_allowed": 2,
+        "mixed_risk_protect_blocked": 3,
+        "mixed_risk_restore_allowed": 2,
+        "mixed_risk_restore_blocked": 3
+      },
+      "train": {
+        "defer_review_always_review": 16,
+        "low_risk_allowed": 24,
+        "mixed_risk_allowed_with_conditions": 3,
+        "mixed_risk_blocked_condition_review": 5,
+        "mixed_risk_protect_allowed": 4,
+        "mixed_risk_protect_blocked": 3,
+        "mixed_risk_restore_allowed": 4,
+        "mixed_risk_restore_blocked": 5
+      },
+      "validation": {
+        "defer_review_always_review": 8,
+        "low_risk_allowed": 11,
+        "mixed_risk_allowed_with_conditions": 2,
+        "mixed_risk_blocked_condition_review": 4,
+        "mixed_risk_protect_allowed": 1,
+        "mixed_risk_protect_blocked": 3,
+        "mixed_risk_restore_allowed": 1,
+        "mixed_risk_restore_blocked": 2
+      }
+    },
+    "candidate_action_mask_policy_counts": {
+      "defer_review_always_review": 16,
+      "low_risk_allowed": 24,
+      "mixed_risk_allowed_with_conditions": 3,
+      "mixed_risk_blocked_condition_review": 5,
+      "mixed_risk_protect_allowed": 4,
+      "mixed_risk_protect_blocked": 3,
+      "mixed_risk_restore_allowed": 4,
+      "mixed_risk_restore_blocked": 5
+    },
+    "holdout_action_mask_policy_counts": {
+      "defer_review_always_review": 16,
+      "low_risk_allowed": 19,
+      "mixed_risk_allowed_with_conditions": 4,
+      "mixed_risk_blocked_condition_review": 8,
+      "mixed_risk_protect_allowed": 3,
+      "mixed_risk_protect_blocked": 6,
+      "mixed_risk_restore_allowed": 3,
+      "mixed_risk_restore_blocked": 5
+    },
+    "candidate_mixed_allowed_policy_counts": {
+      "mixed_risk_allowed_with_conditions": 3,
+      "mixed_risk_protect_allowed": 4,
+      "mixed_risk_restore_allowed": 4
+    },
+    "holdout_mixed_allowed_policy_counts": {
+      "mixed_risk_allowed_with_conditions": 4,
+      "mixed_risk_protect_allowed": 3,
+      "mixed_risk_restore_allowed": 3
+    },
+    "policy_coverage_benchmark": {
+      "schema": "territory_world_model.synthetic_policy_coverage_benchmark.v1",
+      "status": "generated",
+      "source": "synthetic_experiment_unseen_mixed_risk_policy_fixture",
+      "modes": {
+        "region_policy": {
+          "schema": "territory_world_model.synthetic_unseen_policy_mode_benchmark.v1",
+          "mode": "region_policy",
+          "example_count": 10,
+          "allowed_count": 6,
+          "blocked_count": 4,
+          "action_counts": {
+            "approve_with_conditions": 4,
+            "protect": 4,
+            "restore": 2
+          },
+          "policy_counts": {
+            "mixed_risk_allowed_with_conditions": 2,
+            "mixed_risk_blocked_condition_review": 2,
+            "mixed_risk_protect_allowed": 2,
+            "mixed_risk_protect_blocked": 2,
+            "mixed_risk_restore_allowed": 2
+          },
+          "allowed_policy_counts": {
+            "mixed_risk_allowed_with_conditions": 2,
+            "mixed_risk_protect_allowed": 2,
+            "mixed_risk_restore_allowed": 2
+          },
+          "blocked_policy_counts": {
+            "mixed_risk_blocked_condition_review": 2,
+            "mixed_risk_protect_blocked": 2
+          },
+          "unseen_key_count": 5,
+          "unseen_key_counts": {
+            "SYN-R00|mixed_risk_blocked_condition_review": 2,
+            "SYN-R00|mixed_risk_protect_blocked": 2,
+            "SYN-R03|mixed_risk_allowed_with_conditions": 2,
+            "SYN-R03|mixed_risk_protect_allowed": 2,
+            "SYN-R03|mixed_risk_restore_allowed": 2
+          },
+          "subset_rule": "holdout mixed-risk approved rows with unseen candidate-split region_policy key"
+        },
+        "region_action_policy": {
+          "schema": "territory_world_model.synthetic_unseen_policy_mode_benchmark.v1",
+          "mode": "region_action_policy",
+          "example_count": 10,
+          "allowed_count": 6,
+          "blocked_count": 4,
+          "action_counts": {
+            "approve_with_conditions": 4,
+            "protect": 4,
+            "restore": 2
+          },
+          "policy_counts": {
+            "mixed_risk_allowed_with_conditions": 2,
+            "mixed_risk_blocked_condition_review": 2,
+            "mixed_risk_protect_allowed": 2,
+            "mixed_risk_protect_blocked": 2,
+            "mixed_risk_restore_allowed": 2
+          },
+          "allowed_policy_counts": {
+            "mixed_risk_allowed_with_conditions": 2,
+            "mixed_risk_protect_allowed": 2,
+            "mixed_risk_restore_allowed": 2
+          },
+          "blocked_policy_counts": {
+            "mixed_risk_blocked_condition_review": 2,
+            "mixed_risk_protect_blocked": 2
+          },
+          "unseen_key_count": 5,
+          "unseen_key_counts": {
+            "SYN-R00|approve_with_conditions|mixed_risk_blocked_condition_review": 2,
+            "SYN-R00|protect|mixed_risk_protect_blocked": 2,
+            "SYN-R03|approve_with_conditions|mixed_risk_allowed_with_conditions": 2,
+            "SYN-R03|protect|mixed_risk_protect_allowed": 2,
+            "SYN-R03|restore|mixed_risk_restore_allowed": 2
+          },
+          "subset_rule": "holdout mixed-risk approved rows with unseen candidate-split region_action_policy key"
+        }
+      },
+      "required_allowed_count": 6,
+      "required_blocked_count": 4,
+      "required_region_policy_key_count": 5,
+      "required_region_action_policy_key_count": 5,
+      "required_mixed_allowed_policies": [
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed"
+      ],
+      "claim_boundary": "synthetic coverage benchmark only defines real-data feasibility coverage targets; it is not production accuracy evidence"
+    },
     "rows_with_neighbors": 256,
     "rows_with_covariates": 256,
     "synthetic_count": 256,
@@ -2078,6 +2373,44 @@
       "production_treated_count": 0,
       "production_control_count": 0
     },
+    "policy_history_quality": {
+      "schema": "territory_world_model.production_policy_history_quality.v1",
+      "status": "review",
+      "row_count": 256,
+      "production_policy_row_count": 0,
+      "allowed_count": 0,
+      "blocked_count": 0,
+      "rows_with_policy": 0,
+      "rows_with_action_type": 0,
+      "rows_with_region": 0,
+      "rows_with_time": 0,
+      "action_counts": {},
+      "policy_counts": {},
+      "allowed_policy_counts": {},
+      "blocked_policy_counts": {},
+      "mixed_allowed_policy_counts": {},
+      "region_count": 0,
+      "region_policy_key_count": 0,
+      "region_action_policy_key_count": 0,
+      "time_policy_key_count": 0,
+      "region_counts": {},
+      "sample_region_policy_keys": {},
+      "sample_region_action_policy_keys": {},
+      "sample_time_policy_keys": {},
+      "missing_policy_gates": [
+        "production_policy_rows",
+        "allowed_policy_labels",
+        "blocked_policy_labels",
+        "action_mask_policy",
+        "action_type",
+        "region_context",
+        "temporal_context",
+        "region_policy_coverage",
+        "region_action_policy_coverage",
+        "mixed_risk_allowed_policy_coverage"
+      ],
+      "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
+    },
     "missing_data_gates": [
       "production_usable_rows",
       "production_treated_rows",
@@ -2091,6 +2424,13 @@
       "not_for_production",
       "cluster/DKXZQDM/XZQDM or neighbors or x+y coordinates",
       "at least one numeric covariate such as area_m2, DKMJ, quality_score, risk_score"
+    ],
+    "expected_policy_history_columns": [
+      "action_type",
+      "action_mask_policy or policy_code",
+      "action_mask_allowed or feasibility_label",
+      "region_code/DKXZQDM/XZQDM or cluster",
+      "period/time_index or approval_date"
     ],
     "recommendations": [
       "provide rows with synthetic=false and not_for_production=false plus parseable treatment, outcome, spatial support and covariates",
@@ -2134,20 +2474,12 @@
         "syn_component_r00_t02_c02",
         "syn_component_r00_t02_c03"
       ],
-      "stratum_count": 12,
+      "stratum_count": 4,
       "strata": [
-        "SYN-R00:township_0",
-        "SYN-R00:township_1",
-        "SYN-R00:township_2",
-        "SYN-R01:township_0",
-        "SYN-R01:township_1",
-        "SYN-R01:township_2",
-        "SYN-R02:township_0",
-        "SYN-R02:township_1",
-        "SYN-R02:township_2",
-        "SYN-R03:township_0",
-        "SYN-R03:township_1",
-        "SYN-R03:township_2"
+        "SYN-R00",
+        "SYN-R01",
+        "SYN-R02",
+        "SYN-R03"
       ],
       "neighbor_record_count": 256,
       "coordinate_record_count": 256,
@@ -2348,6 +2680,159 @@
           "total": 32
         }
       },
+      "action_mask_policy_counts_by_split": {
+        "test": {
+          "defer_review_always_review": 8,
+          "low_risk_allowed": 8,
+          "mixed_risk_allowed_with_conditions": 2,
+          "mixed_risk_blocked_condition_review": 4,
+          "mixed_risk_protect_allowed": 2,
+          "mixed_risk_protect_blocked": 3,
+          "mixed_risk_restore_allowed": 2,
+          "mixed_risk_restore_blocked": 3
+        },
+        "train": {
+          "defer_review_always_review": 16,
+          "low_risk_allowed": 24,
+          "mixed_risk_allowed_with_conditions": 3,
+          "mixed_risk_blocked_condition_review": 5,
+          "mixed_risk_protect_allowed": 4,
+          "mixed_risk_protect_blocked": 3,
+          "mixed_risk_restore_allowed": 4,
+          "mixed_risk_restore_blocked": 5
+        },
+        "validation": {
+          "defer_review_always_review": 8,
+          "low_risk_allowed": 11,
+          "mixed_risk_allowed_with_conditions": 2,
+          "mixed_risk_blocked_condition_review": 4,
+          "mixed_risk_protect_allowed": 1,
+          "mixed_risk_protect_blocked": 3,
+          "mixed_risk_restore_allowed": 1,
+          "mixed_risk_restore_blocked": 2
+        }
+      },
+      "candidate_action_mask_policy_counts": {
+        "defer_review_always_review": 16,
+        "low_risk_allowed": 24,
+        "mixed_risk_allowed_with_conditions": 3,
+        "mixed_risk_blocked_condition_review": 5,
+        "mixed_risk_protect_allowed": 4,
+        "mixed_risk_protect_blocked": 3,
+        "mixed_risk_restore_allowed": 4,
+        "mixed_risk_restore_blocked": 5
+      },
+      "holdout_action_mask_policy_counts": {
+        "defer_review_always_review": 16,
+        "low_risk_allowed": 19,
+        "mixed_risk_allowed_with_conditions": 4,
+        "mixed_risk_blocked_condition_review": 8,
+        "mixed_risk_protect_allowed": 3,
+        "mixed_risk_protect_blocked": 6,
+        "mixed_risk_restore_allowed": 3,
+        "mixed_risk_restore_blocked": 5
+      },
+      "candidate_mixed_allowed_policy_counts": {
+        "mixed_risk_allowed_with_conditions": 3,
+        "mixed_risk_protect_allowed": 4,
+        "mixed_risk_restore_allowed": 4
+      },
+      "holdout_mixed_allowed_policy_counts": {
+        "mixed_risk_allowed_with_conditions": 4,
+        "mixed_risk_protect_allowed": 3,
+        "mixed_risk_restore_allowed": 3
+      },
+      "policy_coverage_benchmark": {
+        "schema": "territory_world_model.synthetic_policy_coverage_benchmark.v1",
+        "status": "generated",
+        "source": "synthetic_experiment_unseen_mixed_risk_policy_fixture",
+        "modes": {
+          "region_policy": {
+            "schema": "territory_world_model.synthetic_unseen_policy_mode_benchmark.v1",
+            "mode": "region_policy",
+            "example_count": 10,
+            "allowed_count": 6,
+            "blocked_count": 4,
+            "action_counts": {
+              "approve_with_conditions": 4,
+              "protect": 4,
+              "restore": 2
+            },
+            "policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_protect_blocked": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "allowed_policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "blocked_policy_counts": {
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_blocked": 2
+            },
+            "unseen_key_count": 5,
+            "unseen_key_counts": {
+              "SYN-R00|mixed_risk_blocked_condition_review": 2,
+              "SYN-R00|mixed_risk_protect_blocked": 2,
+              "SYN-R03|mixed_risk_allowed_with_conditions": 2,
+              "SYN-R03|mixed_risk_protect_allowed": 2,
+              "SYN-R03|mixed_risk_restore_allowed": 2
+            },
+            "subset_rule": "holdout mixed-risk approved rows with unseen candidate-split region_policy key"
+          },
+          "region_action_policy": {
+            "schema": "territory_world_model.synthetic_unseen_policy_mode_benchmark.v1",
+            "mode": "region_action_policy",
+            "example_count": 10,
+            "allowed_count": 6,
+            "blocked_count": 4,
+            "action_counts": {
+              "approve_with_conditions": 4,
+              "protect": 4,
+              "restore": 2
+            },
+            "policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_protect_blocked": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "allowed_policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "blocked_policy_counts": {
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_blocked": 2
+            },
+            "unseen_key_count": 5,
+            "unseen_key_counts": {
+              "SYN-R00|approve_with_conditions|mixed_risk_blocked_condition_review": 2,
+              "SYN-R00|protect|mixed_risk_protect_blocked": 2,
+              "SYN-R03|approve_with_conditions|mixed_risk_allowed_with_conditions": 2,
+              "SYN-R03|protect|mixed_risk_protect_allowed": 2,
+              "SYN-R03|restore|mixed_risk_restore_allowed": 2
+            },
+            "subset_rule": "holdout mixed-risk approved rows with unseen candidate-split region_action_policy key"
+          }
+        },
+        "required_allowed_count": 6,
+        "required_blocked_count": 4,
+        "required_region_policy_key_count": 5,
+        "required_region_action_policy_key_count": 5,
+        "required_mixed_allowed_policies": [
+          "mixed_risk_allowed_with_conditions",
+          "mixed_risk_protect_allowed",
+          "mixed_risk_restore_allowed"
+        ],
+        "claim_boundary": "synthetic coverage benchmark only defines real-data feasibility coverage targets; it is not production accuracy evidence"
+      },
       "rows_with_neighbors": 256,
       "rows_with_covariates": 256,
       "synthetic_count": 256,
@@ -2394,20 +2879,12 @@
         "syn_component_r00_t02_c02",
         "syn_component_r00_t02_c03"
       ],
-      "stratum_count": 12,
+      "stratum_count": 4,
       "strata": [
-        "SYN-R00:township_0",
-        "SYN-R00:township_1",
-        "SYN-R00:township_2",
-        "SYN-R01:township_0",
-        "SYN-R01:township_1",
-        "SYN-R01:township_2",
-        "SYN-R02:township_0",
-        "SYN-R02:township_1",
-        "SYN-R02:township_2",
-        "SYN-R03:township_0",
-        "SYN-R03:township_1",
-        "SYN-R03:township_2"
+        "SYN-R00",
+        "SYN-R01",
+        "SYN-R02",
+        "SYN-R03"
       ],
       "neighbor_record_count": 256,
       "coordinate_record_count": 256,
@@ -5033,7 +5510,7 @@
         },
         "residual_spatial_autocorrelation": {
           "status": "pass",
-          "moran_like_i": -0.155185,
+          "moran_like_i": -0.298839,
           "edge_count": 128
         },
         "thresholds": {
@@ -5967,6 +6444,159 @@
           "blocked": 10,
           "total": 32
         }
+      },
+      "action_mask_policy_counts_by_split": {
+        "test": {
+          "defer_review_always_review": 8,
+          "low_risk_allowed": 8,
+          "mixed_risk_allowed_with_conditions": 2,
+          "mixed_risk_blocked_condition_review": 4,
+          "mixed_risk_protect_allowed": 2,
+          "mixed_risk_protect_blocked": 3,
+          "mixed_risk_restore_allowed": 2,
+          "mixed_risk_restore_blocked": 3
+        },
+        "train": {
+          "defer_review_always_review": 16,
+          "low_risk_allowed": 24,
+          "mixed_risk_allowed_with_conditions": 3,
+          "mixed_risk_blocked_condition_review": 5,
+          "mixed_risk_protect_allowed": 4,
+          "mixed_risk_protect_blocked": 3,
+          "mixed_risk_restore_allowed": 4,
+          "mixed_risk_restore_blocked": 5
+        },
+        "validation": {
+          "defer_review_always_review": 8,
+          "low_risk_allowed": 11,
+          "mixed_risk_allowed_with_conditions": 2,
+          "mixed_risk_blocked_condition_review": 4,
+          "mixed_risk_protect_allowed": 1,
+          "mixed_risk_protect_blocked": 3,
+          "mixed_risk_restore_allowed": 1,
+          "mixed_risk_restore_blocked": 2
+        }
+      },
+      "candidate_action_mask_policy_counts": {
+        "defer_review_always_review": 16,
+        "low_risk_allowed": 24,
+        "mixed_risk_allowed_with_conditions": 3,
+        "mixed_risk_blocked_condition_review": 5,
+        "mixed_risk_protect_allowed": 4,
+        "mixed_risk_protect_blocked": 3,
+        "mixed_risk_restore_allowed": 4,
+        "mixed_risk_restore_blocked": 5
+      },
+      "holdout_action_mask_policy_counts": {
+        "defer_review_always_review": 16,
+        "low_risk_allowed": 19,
+        "mixed_risk_allowed_with_conditions": 4,
+        "mixed_risk_blocked_condition_review": 8,
+        "mixed_risk_protect_allowed": 3,
+        "mixed_risk_protect_blocked": 6,
+        "mixed_risk_restore_allowed": 3,
+        "mixed_risk_restore_blocked": 5
+      },
+      "candidate_mixed_allowed_policy_counts": {
+        "mixed_risk_allowed_with_conditions": 3,
+        "mixed_risk_protect_allowed": 4,
+        "mixed_risk_restore_allowed": 4
+      },
+      "holdout_mixed_allowed_policy_counts": {
+        "mixed_risk_allowed_with_conditions": 4,
+        "mixed_risk_protect_allowed": 3,
+        "mixed_risk_restore_allowed": 3
+      },
+      "policy_coverage_benchmark": {
+        "schema": "territory_world_model.synthetic_policy_coverage_benchmark.v1",
+        "status": "generated",
+        "source": "synthetic_experiment_unseen_mixed_risk_policy_fixture",
+        "modes": {
+          "region_policy": {
+            "schema": "territory_world_model.synthetic_unseen_policy_mode_benchmark.v1",
+            "mode": "region_policy",
+            "example_count": 10,
+            "allowed_count": 6,
+            "blocked_count": 4,
+            "action_counts": {
+              "approve_with_conditions": 4,
+              "protect": 4,
+              "restore": 2
+            },
+            "policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_protect_blocked": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "allowed_policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "blocked_policy_counts": {
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_blocked": 2
+            },
+            "unseen_key_count": 5,
+            "unseen_key_counts": {
+              "SYN-R00|mixed_risk_blocked_condition_review": 2,
+              "SYN-R00|mixed_risk_protect_blocked": 2,
+              "SYN-R03|mixed_risk_allowed_with_conditions": 2,
+              "SYN-R03|mixed_risk_protect_allowed": 2,
+              "SYN-R03|mixed_risk_restore_allowed": 2
+            },
+            "subset_rule": "holdout mixed-risk approved rows with unseen candidate-split region_policy key"
+          },
+          "region_action_policy": {
+            "schema": "territory_world_model.synthetic_unseen_policy_mode_benchmark.v1",
+            "mode": "region_action_policy",
+            "example_count": 10,
+            "allowed_count": 6,
+            "blocked_count": 4,
+            "action_counts": {
+              "approve_with_conditions": 4,
+              "protect": 4,
+              "restore": 2
+            },
+            "policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_protect_blocked": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "allowed_policy_counts": {
+              "mixed_risk_allowed_with_conditions": 2,
+              "mixed_risk_protect_allowed": 2,
+              "mixed_risk_restore_allowed": 2
+            },
+            "blocked_policy_counts": {
+              "mixed_risk_blocked_condition_review": 2,
+              "mixed_risk_protect_blocked": 2
+            },
+            "unseen_key_count": 5,
+            "unseen_key_counts": {
+              "SYN-R00|approve_with_conditions|mixed_risk_blocked_condition_review": 2,
+              "SYN-R00|protect|mixed_risk_protect_blocked": 2,
+              "SYN-R03|approve_with_conditions|mixed_risk_allowed_with_conditions": 2,
+              "SYN-R03|protect|mixed_risk_protect_allowed": 2,
+              "SYN-R03|restore|mixed_risk_restore_allowed": 2
+            },
+            "subset_rule": "holdout mixed-risk approved rows with unseen candidate-split region_action_policy key"
+          }
+        },
+        "required_allowed_count": 6,
+        "required_blocked_count": 4,
+        "required_region_policy_key_count": 5,
+        "required_region_action_policy_key_count": 5,
+        "required_mixed_allowed_policies": [
+          "mixed_risk_allowed_with_conditions",
+          "mixed_risk_protect_allowed",
+          "mixed_risk_restore_allowed"
+        ],
+        "claim_boundary": "synthetic coverage benchmark only defines real-data feasibility coverage targets; it is not production accuracy evidence"
       },
       "rows_with_neighbors": 256,
       "rows_with_covariates": 256,
@@ -7037,9 +7667,20 @@
       "model_effect_count": 0,
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
-      "cluster_count": 1,
+      "cluster_count": 25,
       "clusters": [
-        "500227"
+        "500227",
+        "shared_parcel_component_000",
+        "shared_parcel_component_001",
+        "shared_parcel_component_002",
+        "shared_parcel_component_003",
+        "shared_parcel_component_004",
+        "shared_parcel_component_005",
+        "shared_parcel_component_006",
+        "shared_parcel_component_007",
+        "shared_parcel_component_008",
+        "shared_parcel_component_009",
+        "shared_parcel_component_010"
       ],
       "stratum_count": 1,
       "strata": [
@@ -7261,9 +7902,20 @@
       "model_effect_count": 0,
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
-      "cluster_count": 1,
+      "cluster_count": 25,
       "clusters": [
-        "500227"
+        "500227",
+        "shared_parcel_component_000",
+        "shared_parcel_component_001",
+        "shared_parcel_component_002",
+        "shared_parcel_component_003",
+        "shared_parcel_component_004",
+        "shared_parcel_component_005",
+        "shared_parcel_component_006",
+        "shared_parcel_component_007",
+        "shared_parcel_component_008",
+        "shared_parcel_component_009",
+        "shared_parcel_component_010"
       ],
       "stratum_count": 1,
       "strata": [
@@ -7311,10 +7963,10 @@
         "max_abs_standardized_mean_difference": 1.895332
       },
       "spatial": {
-        "status": "pass",
+        "status": "review",
         "spatial_record_count": 90,
         "neighbor_edge_count": 79,
-        "spatial_cluster_count": 1,
+        "spatial_cluster_count": 25,
         "neighborhood_exposure": {
           "status": "pass",
           "max_abs_exposure_gap": 0.75,
@@ -7834,14 +8486,158 @@
         },
         "cluster_balance": {
           "status": "pass",
-          "spatial_cluster_count": 1,
-          "max_abs_treatment_share_gap": 0.0,
+          "spatial_cluster_count": 25,
+          "max_abs_treatment_share_gap": 0.633333,
           "diagnostics": [
             {
               "cluster": "500227",
-              "record_count": 90,
-              "treatment_share": 0.366667,
-              "global_treatment_share_gap": 0.0
+              "record_count": 17,
+              "treatment_share": 0.647059,
+              "global_treatment_share_gap": 0.280392
+            },
+            {
+              "cluster": "shared_parcel_component_000",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_001",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_002",
+              "record_count": 3,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_003",
+              "record_count": 5,
+              "treatment_share": 0.4,
+              "global_treatment_share_gap": 0.033333
+            },
+            {
+              "cluster": "shared_parcel_component_004",
+              "record_count": 3,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.633333
+            },
+            {
+              "cluster": "shared_parcel_component_005",
+              "record_count": 4,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_006",
+              "record_count": 5,
+              "treatment_share": 0.6,
+              "global_treatment_share_gap": 0.233333
+            },
+            {
+              "cluster": "shared_parcel_component_007",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_008",
+              "record_count": 3,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_009",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_010",
+              "record_count": 4,
+              "treatment_share": 0.5,
+              "global_treatment_share_gap": 0.133333
+            },
+            {
+              "cluster": "shared_parcel_component_011",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.633333
+            },
+            {
+              "cluster": "shared_parcel_component_012",
+              "record_count": 6,
+              "treatment_share": 0.333333,
+              "global_treatment_share_gap": -0.033333
+            },
+            {
+              "cluster": "shared_parcel_component_013",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_014",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_015",
+              "record_count": 4,
+              "treatment_share": 0.5,
+              "global_treatment_share_gap": 0.133333
+            },
+            {
+              "cluster": "shared_parcel_component_016",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.633333
+            },
+            {
+              "cluster": "shared_parcel_component_017",
+              "record_count": 6,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_018",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_019",
+              "record_count": 3,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_020",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.633333
+            },
+            {
+              "cluster": "shared_parcel_component_021",
+              "record_count": 3,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_022",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.366667
+            },
+            {
+              "cluster": "shared_parcel_component_023",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.633333
             }
           ]
         },
@@ -7858,31 +8654,85 @@
       },
       "spatial_estimator": {
         "status": "review",
-        "effect": 0.619062,
-        "standard_error": 0.009425,
+        "effect": 0.645981,
+        "standard_error": 0.011719,
         "support": {
           "spatial_record_count": 90,
-          "spatial_unit_count": 1,
-          "mixed_spatial_unit_count": 1,
+          "spatial_unit_count": 25,
+          "mixed_spatial_unit_count": 6,
           "cross_treatment_neighbor_edge_count": 26,
           "treated_count": 33,
           "control_count": 57
         },
         "review_reasons": [
-          "insufficient_mixed_spatial_unit_pairs"
+          "spatial_treatment_concentration"
         ],
         "uncertainty": {
           "spatial_block_bootstrap": {
-            "status": "not_applicable",
-            "spatial_unit_count": 1,
-            "min_spatial_bootstrap_units": 3,
-            "note": "insufficient mixed spatial units for block bootstrap"
+            "status": "pass",
+            "method": "deterministic_spatial_unit_block_bootstrap",
+            "sample_count": 64,
+            "spatial_unit_count": 6,
+            "mean_effect": 0.694482,
+            "interval_95": [
+              0.6,
+              0.88125
+            ],
+            "interval_width": 0.28125,
+            "sign_stability": 1.0,
+            "thresholds": {
+              "max_spatial_bootstrap_interval_width": 1.0,
+              "min_spatial_bootstrap_sign_stability": 0.8
+            }
           },
           "geographic_holdout": {
-            "status": "not_applicable",
-            "spatial_unit_count": 1,
-            "min_spatial_holdout_units": 3,
-            "note": "insufficient mixed spatial units for geographic holdout"
+            "status": "pass",
+            "method": "leave_one_spatial_unit_out",
+            "spatial_unit_count": 6,
+            "max_abs_delta_from_full_effect": 0.114733,
+            "sign_agreement": 1.0,
+            "thresholds": {
+              "max_spatial_holdout_delta": 1.0,
+              "min_spatial_holdout_sign_agreement": 0.8
+            },
+            "diagnostics": [
+              {
+                "held_out_spatial_unit": "500227",
+                "effect_without_unit": 0.6,
+                "delta_from_full_effect": -0.045981,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_003",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_006",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_010",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_012",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_015",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              }
+            ]
           }
         }
       }
@@ -7902,6 +8752,7 @@
       "blocked": false,
       "missing": [
         "covariate_balance",
+        "spatial_interference",
         "spatial_estimator"
       ],
       "record_source": "observed_approval_review_history",
@@ -7944,6 +8795,7 @@
     "recommendations": [
       "collect balanced treated/control observational records before upgrading causal planning claims",
       "reduce treated/control covariate imbalance or add better adjustment covariates before upgrading causal claims",
+      "spatial spillover or clustered treatment concentration is too strong; add spatial adjustment or redefine causal units before upgrading claims",
       "spatial treatment-effect estimator did not pass support or uncertainty checks; keep causal scaling in review"
     ],
     "evidence_augmentation": {
@@ -8026,9 +8878,20 @@
       "model_effect_count": 0,
       "synthetic_record_count": 66,
       "not_for_production_record_count": 66,
-      "cluster_count": 1,
+      "cluster_count": 17,
       "clusters": [
-        "500227"
+        "500227",
+        "shared_parcel_component_000",
+        "shared_parcel_component_001",
+        "shared_parcel_component_002",
+        "shared_parcel_component_003",
+        "shared_parcel_component_004",
+        "shared_parcel_component_005",
+        "shared_parcel_component_006",
+        "shared_parcel_component_007",
+        "shared_parcel_component_008",
+        "shared_parcel_component_010",
+        "shared_parcel_component_011"
       ],
       "stratum_count": 1,
       "strata": [
@@ -8283,9 +9146,20 @@
       "model_effect_count": 0,
       "synthetic_record_count": 66,
       "not_for_production_record_count": 66,
-      "cluster_count": 1,
+      "cluster_count": 17,
       "clusters": [
-        "500227"
+        "500227",
+        "shared_parcel_component_000",
+        "shared_parcel_component_001",
+        "shared_parcel_component_002",
+        "shared_parcel_component_003",
+        "shared_parcel_component_004",
+        "shared_parcel_component_005",
+        "shared_parcel_component_006",
+        "shared_parcel_component_007",
+        "shared_parcel_component_008",
+        "shared_parcel_component_010",
+        "shared_parcel_component_011"
       ],
       "stratum_count": 1,
       "strata": [
@@ -8333,10 +9207,10 @@
         "max_abs_standardized_mean_difference": 1.761542
       },
       "spatial": {
-        "status": "pass",
+        "status": "review",
         "spatial_record_count": 66,
         "neighbor_edge_count": 59,
-        "spatial_cluster_count": 1,
+        "spatial_cluster_count": 17,
         "neighborhood_exposure": {
           "status": "pass",
           "max_abs_exposure_gap": 0.75,
@@ -8681,14 +9555,110 @@
         },
         "cluster_balance": {
           "status": "pass",
-          "spatial_cluster_count": 1,
-          "max_abs_treatment_share_gap": 0.0,
+          "spatial_cluster_count": 17,
+          "max_abs_treatment_share_gap": 0.5,
           "diagnostics": [
             {
               "cluster": "500227",
-              "record_count": 66,
+              "record_count": 17,
+              "treatment_share": 0.647059,
+              "global_treatment_share_gap": 0.147059
+            },
+            {
+              "cluster": "shared_parcel_component_000",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.5
+            },
+            {
+              "cluster": "shared_parcel_component_001",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.5
+            },
+            {
+              "cluster": "shared_parcel_component_002",
+              "record_count": 3,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.5
+            },
+            {
+              "cluster": "shared_parcel_component_003",
+              "record_count": 5,
+              "treatment_share": 0.4,
+              "global_treatment_share_gap": -0.1
+            },
+            {
+              "cluster": "shared_parcel_component_004",
+              "record_count": 3,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.5
+            },
+            {
+              "cluster": "shared_parcel_component_005",
+              "record_count": 4,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.5
+            },
+            {
+              "cluster": "shared_parcel_component_006",
+              "record_count": 5,
+              "treatment_share": 0.6,
+              "global_treatment_share_gap": 0.1
+            },
+            {
+              "cluster": "shared_parcel_component_007",
+              "record_count": 2,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.5
+            },
+            {
+              "cluster": "shared_parcel_component_008",
+              "record_count": 1,
+              "treatment_share": 0.0,
+              "global_treatment_share_gap": -0.5
+            },
+            {
+              "cluster": "shared_parcel_component_010",
+              "record_count": 4,
               "treatment_share": 0.5,
               "global_treatment_share_gap": 0.0
+            },
+            {
+              "cluster": "shared_parcel_component_011",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.5
+            },
+            {
+              "cluster": "shared_parcel_component_012",
+              "record_count": 6,
+              "treatment_share": 0.333333,
+              "global_treatment_share_gap": -0.166667
+            },
+            {
+              "cluster": "shared_parcel_component_015",
+              "record_count": 4,
+              "treatment_share": 0.5,
+              "global_treatment_share_gap": 0.0
+            },
+            {
+              "cluster": "shared_parcel_component_016",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.5
+            },
+            {
+              "cluster": "shared_parcel_component_020",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.5
+            },
+            {
+              "cluster": "shared_parcel_component_023",
+              "record_count": 2,
+              "treatment_share": 1.0,
+              "global_treatment_share_gap": 0.5
             }
           ]
         },
@@ -8705,31 +9675,85 @@
       },
       "spatial_estimator": {
         "status": "review",
-        "effect": 0.619691,
-        "standard_error": 0.009736,
+        "effect": 0.645981,
+        "standard_error": 0.011719,
         "support": {
           "spatial_record_count": 66,
-          "spatial_unit_count": 1,
-          "mixed_spatial_unit_count": 1,
+          "spatial_unit_count": 17,
+          "mixed_spatial_unit_count": 6,
           "cross_treatment_neighbor_edge_count": 26,
           "treated_count": 33,
           "control_count": 33
         },
         "review_reasons": [
-          "insufficient_mixed_spatial_unit_pairs"
+          "spatial_treatment_concentration"
         ],
         "uncertainty": {
           "spatial_block_bootstrap": {
-            "status": "not_applicable",
-            "spatial_unit_count": 1,
-            "min_spatial_bootstrap_units": 3,
-            "note": "insufficient mixed spatial units for block bootstrap"
+            "status": "pass",
+            "method": "deterministic_spatial_unit_block_bootstrap",
+            "sample_count": 64,
+            "spatial_unit_count": 6,
+            "mean_effect": 0.694482,
+            "interval_95": [
+              0.6,
+              0.88125
+            ],
+            "interval_width": 0.28125,
+            "sign_stability": 1.0,
+            "thresholds": {
+              "max_spatial_bootstrap_interval_width": 1.0,
+              "min_spatial_bootstrap_sign_stability": 0.8
+            }
           },
           "geographic_holdout": {
-            "status": "not_applicable",
-            "spatial_unit_count": 1,
-            "min_spatial_holdout_units": 3,
-            "note": "insufficient mixed spatial units for geographic holdout"
+            "status": "pass",
+            "method": "leave_one_spatial_unit_out",
+            "spatial_unit_count": 6,
+            "max_abs_delta_from_full_effect": 0.114733,
+            "sign_agreement": 1.0,
+            "thresholds": {
+              "max_spatial_holdout_delta": 1.0,
+              "min_spatial_holdout_sign_agreement": 0.8
+            },
+            "diagnostics": [
+              {
+                "held_out_spatial_unit": "500227",
+                "effect_without_unit": 0.6,
+                "delta_from_full_effect": -0.045981,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_003",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_006",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_010",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_012",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              },
+              {
+                "held_out_spatial_unit": "shared_parcel_component_015",
+                "effect_without_unit": 0.760714,
+                "delta_from_full_effect": 0.114733,
+                "same_sign_as_full": true
+              }
+            ]
           }
         }
       }
@@ -8749,6 +9773,7 @@
       "blocked": false,
       "missing": [
         "covariate_balance",
+        "spatial_interference",
         "spatial_estimator"
       ],
       "record_source": "observed_approval_review_history",
@@ -8791,6 +9816,7 @@
     "recommendations": [
       "collect balanced treated/control observational records before upgrading causal planning claims",
       "reduce treated/control covariate imbalance or add better adjustment covariates before upgrading causal claims",
+      "spatial spillover or clustered treatment concentration is too strong; add spatial adjustment or redefine causal units before upgrading claims",
       "spatial treatment-effect estimator did not pass support or uncertainty checks; keep causal scaling in review"
     ],
     "matching": {
@@ -10014,6 +11040,53 @@
     "planner": "planning consumers must use reports only when evidence gates pass; review status keeps claims conservative",
     "core_innovation": "hierarchical GIS state plus action-conditioned dynamics plus evidence/causal gates, not GeoFM or planning alone"
   },
+  "production_policy_history_alignment": {
+    "schema": "territory_world_model.production_policy_history_alignment.v1",
+    "status": "not_provided",
+    "production_policy_history_status": "not_provided",
+    "synthetic_benchmark_status": "generated",
+    "observed": {
+      "production_policy_row_count": 0,
+      "allowed_count": 0,
+      "blocked_count": 0,
+      "region_policy_key_count": 0,
+      "region_action_policy_key_count": 0,
+      "mixed_allowed_policy_counts": {}
+    },
+    "required": {
+      "allowed_count": 6,
+      "blocked_count": 4,
+      "region_policy_key_count": 5,
+      "region_action_policy_key_count": 5,
+      "mixed_allowed_policies": [
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed"
+      ]
+    },
+    "mixed_allowed_policy_coverage": {
+      "required": [
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed"
+      ],
+      "observed_counts": {},
+      "missing": [
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed"
+      ]
+    },
+    "missing": [
+      "production_policy_history_not_provided",
+      "allowed_policy_count_below_synthetic_unseen_benchmark",
+      "blocked_policy_count_below_synthetic_unseen_benchmark",
+      "region_policy_key_count_below_synthetic_unseen_benchmark",
+      "region_action_policy_key_count_below_synthetic_unseen_benchmark",
+      "mixed_allowed_policy_coverage_below_synthetic_unseen_benchmark"
+    ],
+    "claim_boundary": "coverage alignment prepares real action-mask feasibility validation only; it does not prove simulator accuracy or planner optimality"
+  },
   "summary": {
     "status": "review",
     "twm_dataset_rows": {
@@ -10033,6 +11106,49 @@
     "production_observed_history_schema_status": "not_provided",
     "production_observed_history_schema_missing_data_gates": [],
     "production_observed_history_schema_production_candidate_rows": 0,
+    "production_policy_history_status": "not_provided",
+    "production_policy_history_missing": [
+      "production_policy_history_not_provided"
+    ],
+    "production_policy_history_row_count": 0,
+    "production_policy_history_allowed_count": 0,
+    "production_policy_history_blocked_count": 0,
+    "production_policy_history_region_policy_key_count": 0,
+    "production_policy_history_region_action_policy_key_count": 0,
+    "production_policy_history_mixed_allowed_policy_counts": {},
+    "production_policy_alignment_status": "not_provided",
+    "production_policy_alignment_missing": [
+      "production_policy_history_not_provided",
+      "allowed_policy_count_below_synthetic_unseen_benchmark",
+      "blocked_policy_count_below_synthetic_unseen_benchmark",
+      "region_policy_key_count_below_synthetic_unseen_benchmark",
+      "region_action_policy_key_count_below_synthetic_unseen_benchmark",
+      "mixed_allowed_policy_coverage_below_synthetic_unseen_benchmark"
+    ],
+    "production_policy_alignment_required": {
+      "allowed_count": 6,
+      "blocked_count": 4,
+      "region_policy_key_count": 5,
+      "region_action_policy_key_count": 5,
+      "mixed_allowed_policies": [
+        "mixed_risk_allowed_with_conditions",
+        "mixed_risk_protect_allowed",
+        "mixed_risk_restore_allowed"
+      ]
+    },
+    "production_policy_alignment_observed": {
+      "production_policy_row_count": 0,
+      "allowed_count": 0,
+      "blocked_count": 0,
+      "region_policy_key_count": 0,
+      "region_action_policy_key_count": 0,
+      "mixed_allowed_policy_counts": {}
+    },
+    "production_policy_alignment_mixed_allowed_missing": [
+      "mixed_risk_allowed_with_conditions",
+      "mixed_risk_protect_allowed",
+      "mixed_risk_restore_allowed"
+    ],
     "twm_structural_fixture_status": "generated",
     "twm_structural_fixture_row_count": 48,
     "twm_structural_fixture_pair_count": 24,
@@ -10175,6 +11291,7 @@
     "twm_evidence_matched_structural_status": "review",
     "twm_evidence_matched_structural_missing": [
       "covariate_balance",
+      "spatial_interference",
       "spatial_estimator"
     ],
     "twm_evidence_matched_structural_neighbor_edge_count": 59,
@@ -10201,8 +11318,9 @@
     "paper7_caliper_matched_observed_effect": 0.048491,
     "paper7_caliper_matched_calibration_factor": 0.183205,
     "next_data_work": [
-      "turn post-hoc context action-mask calibration into a learned context-sensitive action-mask head and reduce conservative false_block overblocking",
-      "add harder context-generalization stress cases where high risk can be allowed with conditions instead of always blocked",
+      "broaden unseen allowed region/action-policy stress from synthetic mixed-risk fixtures to production-observed policy histories once production labels are available",
+      "keep raw learned feasibility-head diagnostics separate from post-hoc context action-mask calibration and transparent-baseline wins",
+      "continue replacing post-hoc transformer affine risk calibration with learned risk-head calibration under candidate and holdout MAE gates",
       "improve graph and transformer simulator candidates on planner-consumer rollout regret after adding action-mask context feature channels",
       "use structural-validation fixture only for simulator plumbing regression, not deployment claims",
       "use evidence-augmented matching diagnostics to synthesize harder control records and mixed spatial units",

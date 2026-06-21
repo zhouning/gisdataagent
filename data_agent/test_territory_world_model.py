@@ -10,6 +10,7 @@ from data_agent.api import territory_world_model_routes as routes
 
 
 MMFE_DIR = Path("data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion")
+OPTIMIZATION_DIR = Path("data_agent/test_data/twm_bishan_demo/optimization")
 
 
 def _build_service():
@@ -605,6 +606,192 @@ def test_beam_plan_accepts_custom_ranking_policy_for_experimental_selection():
     assert custom_report["selected"]["ranking_policy_id"] == "confidence_sensitive_policy"
 
 
+def test_farmland_layout_optimization_capability_reports_planner_consumer_boundary():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+
+    report = svc.farmland_layout_optimization_capability_report(state_id, {})
+
+    assert report["schema"] == "territory_world_model.farmland_layout_optimization_capability_report.v1"
+    assert report["status"] == "review"
+    assert report["decision"] == "planner_consumer_only_not_equivalent"
+    assert report["current_capabilities"]["constrained_beam_ranking"] is True
+    assert report["current_capabilities"]["built_in_layout_generator"] is False
+    assert report["current_capabilities"]["built_in_model_free_drl_policy_search"] is False
+    assert report["current_capabilities"]["built_in_model_based_mpc_search"] is False
+    assert report["planner_contract"]["role"] == "consumer_and_auditor_of_candidate_layout_plans"
+    assert "layout_search_or_policy_generator" in report["equivalence_assessment"]["missing"]
+    assert "multi_head_dynamics_candidate_report" in report["equivalence_assessment"]["missing"]
+    assert report["claim_boundary"]["production_claim"] == "not_supported_without_real_observed_history_and_holdout_validation"
+
+
+def test_farmland_layout_optimization_capability_can_mark_paper_level_candidate_with_required_evidence():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+
+    report = svc.farmland_layout_optimization_capability_report(
+        state_id,
+        {
+            "candidate_actions": [
+                {"candidate_id": "layout_a", "action_type": "protect", "target_role": "parcel"},
+                {"candidate_id": "layout_b", "action_type": "restore", "target_role": "parcel"},
+            ],
+            "dynamics_candidate_report": {
+                "schema": "territory_world_model.dynamics_fit_report.v1",
+                "status": "pass",
+                "evidence_gate": {"status": "pass", "passed": True},
+            },
+            "optimizer_evidence": {
+                "algorithm_family": "paper9_model_based_world_model_mpc",
+                "validation": {
+                    "spatial_holdout": "pass",
+                    "temporal_holdout": "pass",
+                    "hard_constraint_recheck": "pass",
+                    "planning_lift": "pass",
+                },
+            },
+        },
+    )
+
+    assert report["status"] == "pass"
+    assert report["decision"] == "paper_level_equivalence_candidate"
+    assert report["equivalence_assessment"]["missing"] == []
+    assert report["inputs"]["candidate_action_count"] == 2
+    assert report["inputs"]["has_dynamics_candidate_report"] is True
+    assert report["inputs"]["has_external_optimizer_evidence"] is True
+    assert report["hard_constraint_policy"]["required"] is True
+    assert "TWM-FARM-001" in report["hard_constraint_policy"]["supported_channels"]
+
+
+def test_loads_farmland_layout_candidate_actions_from_optimization_fixture():
+    svc = _build_service()
+
+    payload = svc.farmland_layout_candidate_actions_from_optimization_bundle(OPTIMIZATION_DIR)
+
+    assert payload["schema"] == "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1"
+    assert payload["status"] == "pass"
+    assert payload["summary"]["candidate_count"] == 7
+    assert payload["summary"]["legal_feasible_count"] == 2
+    assert payload["summary"]["blocked_count"] == 5
+    actions = {item["candidate_id"]: item for item in payload["candidate_actions"]}
+    assert actions["SCN-BALANCED"]["execution_mask"]["allowed"] is True
+    assert actions["SCN-BASELINE-CURRENT"]["execution_mask"]["allowed"] is True
+    assert actions["SCN-WM-V21-REFERENCE"]["execution_mask"]["allowed"] is False
+    assert "CONSTRAINT-PBF" in actions["SCN-WM-V21-REFERENCE"]["execution_mask"]["hard_blocks"]
+    assert actions["SCN-WM-V21-REFERENCE"]["parameters"]["constraint_violation_probability"] >= 0.75
+    assert payload["optimizer_evidence"]["validation"]["hard_constraint_recheck"] == "pass"
+    assert payload["optimizer_evidence"]["validation"]["spatial_holdout"] == "not_provided"
+
+
+def test_farmland_layout_capability_auto_loads_optimization_bundle_as_partial_equivalence():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+
+    report = svc.farmland_layout_optimization_capability_report(
+        state_id,
+        {
+            "optimization_dir": str(OPTIMIZATION_DIR),
+            "dynamics_candidate_report": {
+                "schema": "territory_world_model.dynamics_fit_report.v1",
+                "status": "pass",
+                "evidence_gate": {"status": "pass", "passed": True},
+            },
+        },
+    )
+
+    assert report["inputs"]["optimization_bundle_loaded"] is True
+    assert report["inputs"]["candidate_action_count"] == 7
+    assert report["optimization_bundle"]["summary"]["legal_feasible_count"] == 2
+    assert report["decision"] == "partial_equivalence_review_required"
+    assert "spatial_holdout_validation" in report["equivalence_assessment"]["missing"]
+    assert "planning_lift_benchmark" in report["equivalence_assessment"]["missing"]
+
+
+def test_farmland_layout_optimization_bundle_beam_plan_blocks_high_score_infeasible_candidate():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+
+    report = svc.farmland_layout_beam_plan_from_optimization_bundle(
+        state_id,
+        OPTIMIZATION_DIR,
+        {
+            "scenario": "fixture_bundle_beam",
+            "evidence_coverage": 0.8,
+            "candidate_metric_overrides": {
+                "SCN-WM-V21-REFERENCE": {
+                    "planning_utility_delta": 2.0,
+                    "constraint_violation_probability": 0.0,
+                    "confidence": 1.0,
+                }
+            },
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.farmland_layout_optimization_beam_plan_report.v1"
+    assert report["status"] == "review"
+    assert report["optimization_bundle"]["summary"]["candidate_count"] == 7
+    assert report["selection_audit"]["legal_feasible_count"] == 2
+    assert report["selection_audit"]["blocked_count"] == 5
+    assert "SCN-WM-V21-REFERENCE" in report["selection_audit"]["hard_blocked_candidate_ids"]
+    assert report["selection_audit"]["selected_candidate_id"] in {"SCN-BALANCED", "SCN-BASELINE-CURRENT"}
+    assert report["selection_audit"]["selected_from_legal_feasible_space"] is True
+    assert report["selection_audit"]["selected_hard_blocked"] is False
+    assert report["selection_audit"]["hard_constraint_filter_enforced"] is True
+    assert report["beam_plan"]["selected"]["candidate_id"] != "SCN-WM-V21-REFERENCE"
+    blocked = {
+        item["candidate_id"]: item
+        for item in report["beam_plan"]["candidates"]
+        if item["candidate_id"] == "SCN-WM-V21-REFERENCE"
+    }["SCN-WM-V21-REFERENCE"]
+    assert blocked["selection_status"] == "hard_blocked"
+    assert blocked["forecast"]["planning_utility_delta"] == 2.0
+    assert report["claim_boundary"]["optimizer_metric_projection"] == "used_as_candidate_forecast_input_only"
+    assert report["claim_boundary"]["production_claim"] == "not_supported_from_fixture_bundle_without_real_observed_history_and_holdout_validation"
+
+
+def test_selected_plan_evaluation_bundle_runs_selected_rollout_and_validation_from_optimization_bundle():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    report = svc.selected_plan_evaluation_bundle(
+        state_id,
+        {
+            "optimization_dir": str(OPTIMIZATION_DIR),
+            "scenario": "selected_bundle_eval",
+            "horizon": 2,
+            "evidence_coverage": 0.82,
+            "candidate_metric_overrides": {
+                "SCN-WM-V21-REFERENCE": {
+                    "planning_utility_delta": 3.0,
+                    "constraint_violation_probability": 0.0,
+                    "confidence": 1.0,
+                }
+            },
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.selected_plan_evaluation_bundle.v1"
+    assert report["source"]["kind"] == "farmland_layout_optimization_bundle"
+    assert report["planning"]["selection_audit"]["selected_from_legal_feasible_space"] is True
+    assert report["planning"]["selection_audit"]["selected_hard_blocked"] is False
+    assert report["selected"]["candidate_id"] != "SCN-WM-V21-REFERENCE"
+    assert report["selected_action"]["scenario"] in {"SCN-BALANCED", "SCN-BASELINE-CURRENT"}
+    assert report["counterfactual_rollout"]["horizon"] == 2
+    assert report["counterfactual_rollout"]["intervention_steps"][0]["action"]["scenario"] == report["selected_action"]["scenario"]
+    assert report["validation_report"]["summary"]["stage_count"] == 6
+    assert report["evidence_gate"]["status"] in {"pass", "review"}
+    assert "selected_hard_blocked" not in report["evidence_gate"]["missing"]
+    assert report["claim_boundary"]["selected_from_legal_feasible_space"] is True
+    assert report["claim_boundary"]["production_claim"] == "not_supported_without_real_observed_history_holdout_validation_and_human_review"
+
+
 def test_state_contract_report_exposes_hierarchical_token_boundary():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
@@ -624,6 +811,9 @@ def test_state_contract_report_exposes_hierarchical_token_boundary():
     assert token_status["block"] in {"available", "review"}
     assert token_status["township"] in {"review", "missing"}
     assert "action_conditioned_forecast" in report["downstream_consumers"]
+    assert report["claim_ladder"]["schema"] == "territory_world_model.claim_ladder.v1"
+    assert report["claim_ladder"]["current_level"] in {"L0", "L1"}
+    assert report["claim_boundary"]["claim_level"] == report["claim_ladder"]["current_level"]
     assert report["claim_boundary"]["status"] in {"review", "blocked", "pass"}
 
 
@@ -658,8 +848,138 @@ def test_validation_report_outputs_layered_evidence_ladder():
         "gis_deployability",
     } == stage_codes
     assert report["overall_status"] in {"pass", "review", "blocked"}
+    assert report["summary"]["claim_ladder"]["schema"] == "territory_world_model.claim_ladder.v1"
+    assert report["summary"]["claim_ladder"]["current_level"] == "L0"
     assert report["summary"]["validation_ladder"][0] == "state_build"
     assert any(stage["evidence"] for stage in report["stages"])
+
+
+def test_validation_report_claim_ladder_can_be_promoted_with_explicit_gate_facts():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    report = svc.validation_report(
+        state_id,
+        {
+            "scenario": "validation_claim_upgrade",
+            "horizon": 2,
+            "evidence_coverage": 0.9,
+            "claim_gate_facts": {
+                "state_build_pass": {"status": "pass", "source": "state_contract_audit"},
+                "future_state_holdout_pass": {"status": "pass", "source": "observed_holdout"},
+                "counterfactual_calibration_pass": {"status": "pass", "source": "causal_validation"},
+                "spatial_estimator_pass_or_not_applicable": {"status": "pass", "source": "spatial_adapter"},
+                "planning_lift_pass": {"status": "pass", "source": "planner_holdout"},
+                "geofm_gate_decision": {"status": "pass", "source": "b0_b1_gate"},
+                "gis_audit_pass": {"status": "pass", "source": "audit_bundle"},
+                "human_review_completed": {"status": "pass", "source": "review_queue"},
+            },
+        },
+    )
+
+    assert report["summary"]["claim_ladder"]["current_level"] == "L4"
+    assert report["summary"]["claim_ladder"]["current_claim"] == "deployable_gis_supported"
+    level_status = {item["level"]: item["status"] for item in report["summary"]["claim_ladder"]["levels"]}
+    assert level_status == {"L0": "pass", "L1": "pass", "L2": "pass", "L3": "pass", "L4": "pass"}
+
+
+def test_validation_report_require_scca_pass_blocks_claim_upgrade_without_scca():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    report = svc.validation_report(
+        state_id,
+        {
+            "scenario": "validation_requires_scca",
+            "horizon": 2,
+            "evidence_coverage": 0.9,
+            "require_scca_pass": True,
+            "claim_gate_facts": {
+                "state_build_pass": {"status": "pass", "source": "state_contract_audit"},
+                "future_state_holdout_pass": {"status": "pass", "source": "observed_holdout"},
+                "counterfactual_calibration_pass": {"status": "pass", "source": "causal_validation"},
+                "spatial_estimator_pass_or_not_applicable": {"status": "pass", "source": "manual_override_should_not_win"},
+                "planning_lift_pass": {"status": "pass", "source": "planner_holdout"},
+                "geofm_gate_decision": {"status": "pass", "source": "b0_b1_gate"},
+                "gis_audit_pass": {"status": "pass", "source": "audit_bundle"},
+                "human_review_completed": {"status": "pass", "source": "review_queue"},
+            },
+        },
+    )
+
+    scca_stage = next(stage for stage in report["stages"] if stage["stage_code"] == "spatial_causal_evidence")
+    assert report["summary"]["stage_count"] == 7
+    assert scca_stage["status"] == "review"
+    assert scca_stage["evidence"]["required"] is True
+    assert scca_stage["evidence"]["provided"] is False
+    assert "SCCA causal evidence report is required but not provided" in scca_stage["gaps"]
+    claim_ladder = report["summary"]["claim_ladder"]
+    assert claim_ladder["current_level"] == "L1"
+    l2 = next(level for level in claim_ladder["levels"] if level["level"] == "L2")
+    spatial_requirement = next(req for req in l2["requirements"] if req["gate"] == "spatial_estimator_pass_or_not_applicable")
+    assert spatial_requirement["status"] == "review"
+    assert spatial_requirement["evidence"]["scca_required"] is True
+
+
+def test_validation_report_accepts_passing_scca_as_spatial_causal_gate():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    scca = svc.scca_causal_evidence_report(
+        state_id,
+        {
+            "scca_result": {
+                "case_id": "validation_scca",
+                "row_count": 120,
+                "credibility_decision": "strong_support",
+                "evidence_grade": "core_support",
+                "effect_estimates": [{"estimator": "spatial_neighbor_adjusted_ols", "coef": 0.07, "p_value": 0.03}],
+                "balance_summary": [{"covariate": "cov1", "standardized_mean_difference": 0.1}],
+                "spatial_diagnostics": {"graph": {"edge_count": 240}, "residual_moran": {"moran_i": 0.03}},
+            },
+            "thresholds": {"min_row_count": 80},
+        },
+    )
+
+    report = svc.validation_report(
+        state_id,
+        {
+            "scenario": "validation_scca_pass",
+            "horizon": 2,
+            "evidence_coverage": 0.9,
+            "require_scca_pass": True,
+            "scca_causal_evidence_report": scca,
+            "claim_gate_facts": {
+                "state_build_pass": {"status": "pass", "source": "state_contract_audit"},
+                "future_state_holdout_pass": {"status": "pass", "source": "observed_holdout"},
+                "counterfactual_calibration_pass": {"status": "pass", "source": "causal_validation"},
+                "planning_lift_pass": {"status": "pass", "source": "planner_holdout"},
+                "geofm_gate_decision": {"status": "pass", "source": "b0_b1_gate"},
+                "gis_audit_pass": {"status": "pass", "source": "audit_bundle"},
+                "human_review_completed": {"status": "pass", "source": "review_queue"},
+            },
+        },
+    )
+
+    scca_stage = next(stage for stage in report["stages"] if stage["stage_code"] == "spatial_causal_evidence")
+    assert report["summary"]["stage_count"] == 7
+    assert scca_stage["status"] == "pass"
+    assert scca_stage["evidence"]["evidence_gate"]["status"] == "pass"
+    assert scca_stage["evidence"]["calibration_hint"]["can_support_twm_causal_calibration"] is True
+    claim_ladder = report["summary"]["claim_ladder"]
+    assert claim_ladder["current_level"] == "L4"
+    l2 = next(level for level in claim_ladder["levels"] if level["level"] == "L2")
+    spatial_requirement = next(req for req in l2["requirements"] if req["gate"] == "spatial_estimator_pass_or_not_applicable")
+    assert spatial_requirement["status"] == "pass"
+    assert spatial_requirement["evidence"]["scca_status"] == "pass"
 
 
 def test_validation_report_propagates_dynamics_candidate_into_counterfactual_stage():
@@ -1387,6 +1707,9 @@ def test_train_dynamics_candidate_supports_spatiotemporal_transformer_trainer_co
                 "hidden_dim": 16,
                 "learning_rate": 0.02,
                 "constraint_risk_calibration_weight": 0.55,
+                "constraint_risk_contextual_weight": 2.5,
+                "risk_head_mode": "context_direct",
+                "feasibility_head_mode": "context_residual",
                 "seed": 13,
             },
             "thresholds": {
@@ -1414,11 +1737,22 @@ def test_train_dynamics_candidate_supports_spatiotemporal_transformer_trainer_co
     assert architecture["temporal_token_present"] is True
     assert architecture["sequence_token_count"] >= 9
     assert architecture["action_mask_context_feature_count"] >= 1
+    assert architecture["constraint_risk_head"] == "context_direct"
+    assert set(architecture["constraint_risk_context_tokens"]) == {"action", "context", "temporal"}
+    assert architecture["action_mask_feasibility_head"] == "context_residual"
+    assert set(architecture["action_mask_feasibility_context_tokens"]) == {"action", "context", "temporal"}
     assert report["learned_parameters"]["feature_contract"]["flat_vector_allowed"] is False
     assert "temporal" in report["learned_parameters"]["feature_contract"]["sequence_feature_names"]
     assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
     assert report["learned_parameters"]["training_config"]["constraint_risk_calibration_weight"] == 0.55
+    assert report["learned_parameters"]["training_config"]["constraint_risk_contextual_weight"] == 2.5
     assert report["learned_parameters"]["training_diagnostics"]["constraint_risk_calibration_weight"] == 0.55
+    assert report["learned_parameters"]["training_diagnostics"]["constraint_risk_contextual_weight"] == 2.5
+    assert report["learned_parameters"]["training_diagnostics"]["constraint_risk_weight_mean"] >= 1.0
+    assert report["learned_parameters"]["training_diagnostics"]["constraint_risk_weight_max"] >= 1.0
+    assert report["learned_parameters"]["training_diagnostics"]["seed"] == 13
+    assert report["learned_parameters"]["training_diagnostics"]["risk_head_mode"] == "context_direct"
+    assert report["learned_parameters"]["training_diagnostics"]["feasibility_head_mode"] == "context_residual"
     assert report["learned_parameters"]["training_diagnostics"]["prediction_count"] >= 1
     first_prediction = next(iter(report["predictions"].values()))
     assert first_prediction["hierarchical_token_summary"]["attention_backbone"] is True
@@ -2072,6 +2406,185 @@ def test_causal_calibration_report_passes_with_balanced_observations():
     assert report["estimate"]["spatial_estimator"]["status"] == "not_applicable"
     assert report["calibration"]["calibration_factor"] > 1.0
     assert report["evidence_gate"]["status"] == "pass"
+
+
+def test_scca_causal_evidence_report_accepts_external_spatial_causal_payload():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+
+    report = svc.scca_causal_evidence_report(
+        state_id,
+        {
+            "scca_result": {
+                "case_id": "county_social_capital",
+                "case_label": "County social capital",
+                "row_count": 120,
+                "column_count": 18,
+                "exposure": "SocialAssoc",
+                "outcome": "AveAgeDeath",
+                "confounders": ["UnemployRate", "pHHinPoverty"],
+                "context_columns": ["Shape_Length", "Shape_Area"],
+                "credibility_decision": "strong_support",
+                "evidence_grade": "core_support",
+                "effect_estimates": [
+                    {
+                        "estimator": "baseline_adjusted_ols",
+                        "coef": 0.04,
+                        "p_value": 0.07,
+                        "ci_lower": 0.01,
+                        "ci_upper": 0.08,
+                        "status": "ok",
+                    },
+                    {
+                        "estimator": "spatial_neighbor_adjusted_ols",
+                        "coef": 0.035,
+                        "p_value": 0.04,
+                        "neighbor_exposure_coef": 0.012,
+                        "sign_stable": True,
+                        "status": "ok",
+                    },
+                ],
+                "balance_summary": [
+                    {"covariate": "UnemployRate", "standardized_mean_difference": 0.12},
+                    {"covariate": "pHHinPoverty", "standardized_mean_difference": -0.18},
+                ],
+                "spatial_diagnostics": {
+                    "graph": {"method": "queen", "edge_count": 240},
+                    "residual_moran": {"moran_i": 0.08, "permutation_p_value": 0.31},
+                    "exposure_moran": {"moran_i": 0.16, "permutation_p_value": 0.05},
+                },
+            },
+            "thresholds": {
+                "min_row_count": 80,
+                "max_p_value": 0.1,
+            },
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.scca_causal_evidence_report.v1"
+    assert report["status"] == "pass"
+    assert report["boundary"]["replaces_twm_simulator"] is False
+    assert report["study"]["case_id"] == "county_social_capital"
+    assert report["effect"]["estimator"] == "spatial_neighbor_adjusted_ols"
+    assert report["effect"]["coef"] == 0.035
+    assert report["balance"]["max_abs_standardized_mean_difference"] == 0.18
+    assert report["spatial_diagnostics"]["edge_count"] == 240
+    assert report["evidence_gate"]["status"] == "pass"
+    assert report["calibration_hint"]["can_support_twm_causal_calibration"] is True
+
+
+def test_scca_causal_evidence_report_loads_scca_output_directory(tmp_path):
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+
+    output_dir = tmp_path / "scca_run"
+    output_dir.mkdir()
+    (output_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "case_id": "chongqing_uhi",
+                "row_count": 96,
+                "column_count": 14,
+                "exposure": "floor",
+                "outcome": "LST",
+                "confounders": ["rs_NDVI", "rs_NDBI"],
+                "context_columns": ["centroid_x", "centroid_y"],
+                "credibility_decision": "moderate_support",
+                "evidence_grade": "bounded_support",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (output_dir / "effect_estimates.csv").write_text(
+        "\n".join(
+            [
+                "estimator,coef,p_value,neighbor_exposure_coef,sign_stable,status",
+                "baseline_adjusted_ols,0.12,0.08,,True,ok",
+                "spatial_neighbor_adjusted_ols,0.10,0.05,0.02,True,ok",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "balance_summary.csv").write_text(
+        "\n".join(
+            [
+                "covariate,standardized_mean_difference",
+                "rs_NDVI,0.11",
+                "rs_NDBI,-0.19",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "spatial_diagnostics.json").write_text(
+        json.dumps(
+            {
+                "graph": {"method": "knn", "edge_count": 128},
+                "residual_moran": {"moran_i": 0.06, "permutation_p_value": 0.42},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = svc.scca_causal_evidence_report(
+        state_id,
+        {
+            "scca_output_dir": str(output_dir),
+            "thresholds": {"min_row_count": 80},
+        },
+    )
+
+    assert report["status"] == "pass"
+    assert report["provenance"]["output_dir"] == str(output_dir)
+    assert report["provenance"]["loaded_from_path"] == str(output_dir / "manifest.json")
+    assert report["credibility"]["evidence_grade"] == "bounded_support"
+    assert report["effect"]["coef"] == 0.1
+    assert report["spatial_diagnostics"]["graph_method"] == "knn"
+
+
+def test_causal_calibration_report_embeds_scca_causal_evidence_without_replacing_local_estimator():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    records = []
+    for idx in range(6):
+        records.append({"unit_id": f"scca-c-{idx}", "treatment": 0, "outcome": 0.10 + idx * 0.005, "stratum": "project"})
+        records.append({"unit_id": f"scca-t-{idx}", "treatment": 1, "outcome": 0.20 + idx * 0.005, "stratum": "project"})
+
+    scca = svc.scca_causal_evidence_report(
+        state_id,
+        {
+            "scca_result": {
+                "case_id": "external_scca",
+                "row_count": 120,
+                "credibility_decision": "strong_support",
+                "evidence_grade": "core_support",
+                "effect_estimates": [{"estimator": "spatial_neighbor_adjusted_ols", "coef": 0.09, "p_value": 0.03}],
+                "spatial_diagnostics": {"residual_moran": {"moran_i": 0.04}},
+            }
+        },
+    )
+    report = svc.causal_calibration_report(
+        state_id,
+        {
+            "model_effect": 0.05,
+            "records": records,
+            "scca_causal_evidence_report": scca,
+            "thresholds": {"min_records": 10, "min_treated": 5, "min_control": 5},
+        },
+    )
+
+    assert report["status"] == "pass"
+    assert report["estimate"]["estimator"]["primary"] == "augmented_ipw_ate"
+    assert report["evidence_gate"]["scca_causal_evidence"]["provided"] is True
+    assert report["evidence_gate"]["scca_causal_evidence"]["status"] == "pass"
+    assert report["provenance"]["scca_causal_evidence_report"]["schema"] == "territory_world_model.scca_causal_evidence_report.v1"
 
 
 def test_causal_calibration_report_uses_observed_approval_history_before_state_objects():
@@ -2790,6 +3303,14 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_counterfactual_rollout_async" in names
     assert "twm_beam_plan" in names
     assert "twm_beam_plan_async" in names
+    assert "twm_farmland_layout_optimization_capability" in names
+    assert "twm_farmland_layout_optimization_capability_async" in names
+    assert "twm_load_farmland_layout_candidates" in names
+    assert "twm_load_farmland_layout_candidates_async" in names
+    assert "twm_farmland_layout_optimization_beam_plan" in names
+    assert "twm_farmland_layout_optimization_beam_plan_async" in names
+    assert "twm_selected_plan_evaluation_bundle" in names
+    assert "twm_selected_plan_evaluation_bundle_async" in names
     assert "twm_validation_report" in names
     assert "twm_validation_report_async" in names
     assert "twm_world_model_profile" in names
@@ -2816,6 +3337,8 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_geofm_downstream_experiment_report_async" in names
     assert "twm_causal_calibration_report" in names
     assert "twm_causal_calibration_report_async" in names
+    assert "twm_scca_causal_evidence_report" in names
+    assert "twm_scca_causal_evidence_report_async" in names
 
 
 def test_twm_forecast_tool_accepts_dynamics_candidate_report(monkeypatch):
@@ -3022,6 +3545,59 @@ def test_twm_routes_create_list_and_forecast(monkeypatch):
     assert beam_payload["schema"] == "territory_world_model.beam_plan_report.v1"
     assert len(beam_payload["ranking"]) == 2
 
+    capability_req = _fake_request(
+        "POST",
+        json.dumps(
+            {
+                "candidate_actions": [
+                    {"candidate_id": "route-a", "action_type": "inspect", "target_role": "project"},
+                    {"candidate_id": "route-b", "action_type": "protect", "target_role": "project"},
+                ]
+            }
+        ).encode("utf-8"),
+        path_params={"id": state["state_version"]["id"]},
+    )
+    capability_resp = asyncio.run(routes.twm_farmland_layout_optimization_capability(capability_req))
+    assert capability_resp.status_code == 200
+    capability_payload = json.loads(capability_resp.body)
+    assert capability_payload["schema"] == "territory_world_model.farmland_layout_optimization_capability_report.v1"
+    assert capability_payload["planner_contract"]["role"] == "consumer_and_auditor_of_candidate_layout_plans"
+
+    candidates_req = _fake_request(
+        "POST",
+        json.dumps({"optimization_dir": str(OPTIMIZATION_DIR)}).encode("utf-8"),
+        path_params={"id": state["state_version"]["id"]},
+    )
+    candidates_resp = asyncio.run(routes.twm_farmland_layout_candidates(candidates_req))
+    assert candidates_resp.status_code == 200
+    candidates_payload = json.loads(candidates_resp.body)
+    assert candidates_payload["schema"] == "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1"
+    assert candidates_payload["summary"]["candidate_count"] == 7
+
+    optimization_beam_req = _fake_request(
+        "POST",
+        json.dumps({"optimization_dir": str(OPTIMIZATION_DIR), "evidence_coverage": 0.8}).encode("utf-8"),
+        path_params={"id": state["state_version"]["id"]},
+    )
+    optimization_beam_resp = asyncio.run(routes.twm_farmland_layout_optimization_beam_plan(optimization_beam_req))
+    assert optimization_beam_resp.status_code == 200
+    optimization_beam_payload = json.loads(optimization_beam_resp.body)
+    assert optimization_beam_payload["schema"] == "territory_world_model.farmland_layout_optimization_beam_plan_report.v1"
+    assert optimization_beam_payload["selection_audit"]["selected_from_legal_feasible_space"] is True
+
+    selected_bundle_req = _fake_request(
+        "POST",
+        json.dumps({"optimization_dir": str(OPTIMIZATION_DIR), "horizon": 2, "evidence_coverage": 0.8}).encode("utf-8"),
+        path_params={"id": state["state_version"]["id"]},
+    )
+    selected_bundle_resp = asyncio.run(routes.twm_selected_plan_evaluation_bundle(selected_bundle_req))
+    assert selected_bundle_resp.status_code == 200
+    selected_bundle_payload = json.loads(selected_bundle_resp.body)
+    assert selected_bundle_payload["schema"] == "territory_world_model.selected_plan_evaluation_bundle.v1"
+    assert selected_bundle_payload["planning"]["selection_audit"]["selected_from_legal_feasible_space"] is True
+    assert selected_bundle_payload["counterfactual_rollout"]["horizon"] == 2
+    assert selected_bundle_payload["validation_report"]["summary"]["stage_count"] == 6
+
     validation_req = _fake_request(
         "POST",
         b'{"scenario":"route_validation","horizon":2,"evidence_coverage":0.7}',
@@ -3054,6 +3630,7 @@ def test_twm_routes_create_list_and_forecast(monkeypatch):
     state_contract_payload = json.loads(state_contract_resp.body)
     assert state_contract_payload["schema"] == "territory_world_model.state_contract_report.v1"
     assert state_contract_payload["hierarchy"]["schema"] == "territory_world_model.hierarchical_state_contract.v1"
+    assert state_contract_payload["claim_ladder"]["schema"] == "territory_world_model.claim_ladder.v1"
 
     backend_req = _fake_request(
         "POST",
@@ -3189,3 +3766,27 @@ def test_twm_routes_create_list_and_forecast(monkeypatch):
     calibration_payload = json.loads(calibration_resp.body)
     assert calibration_payload["schema"] == "territory_world_model.causal_calibration_report.v1"
     assert calibration_payload["status"] == "pass"
+
+    scca_req = _fake_request(
+        "POST",
+        json.dumps(
+            {
+                "scca_result": {
+                    "case_id": "route_scca",
+                    "row_count": 88,
+                    "credibility_decision": "strong_support",
+                    "evidence_grade": "core_support",
+                    "effect_estimates": [
+                        {"estimator": "spatial_neighbor_adjusted_ols", "coef": 0.06, "p_value": 0.04}
+                    ],
+                    "spatial_diagnostics": {"residual_moran": {"moran_i": 0.02}},
+                }
+            }
+        ).encode("utf-8"),
+        path_params={"id": state["state_version"]["id"]},
+    )
+    scca_resp = asyncio.run(routes.twm_scca_causal_evidence_report(scca_req))
+    assert scca_resp.status_code == 200
+    scca_payload = json.loads(scca_resp.body)
+    assert scca_payload["schema"] == "territory_world_model.scca_causal_evidence_report.v1"
+    assert scca_payload["status"] == "pass"

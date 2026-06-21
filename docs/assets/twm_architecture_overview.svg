@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="465.374437pt" height="296.5896pt" viewBox="0 0 465.374437 296.5896" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-06-21T20:37:53.315750</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 296.5896 
+L 465.374437 296.5896 
+L 465.374437 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 84.839539 181.593173 
+L 380.534899 181.593173 
+Q 392.587699 181.593173 392.587699 173.127485 
+L 392.587699 106.530739 
+Q 392.587699 98.065051 380.534899 98.065051 
+L 84.839539 98.065051 
+Q 72.786739 98.065051 72.786739 106.530739 
+L 72.786739 173.127485 
+Q 72.786739 181.593173 84.839539 181.593173 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #fbfcfd; stroke: #0f4d92; stroke-width: 1.15; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 124.201229 62.226972 
+Q 134.255163 62.226972 143.079259 62.226972 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 139.879259 60.626972 
+L 143.079259 62.226972 
+L 139.879259 63.826972 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #767676; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 220.627062 62.226972 
+Q 232.688286 62.226972 243.519672 62.226972 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 240.319672 60.626972 
+L 243.519672 62.226972 
+L 240.319672 63.826972 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #767676; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 168.394094 140.393491 
+Q 181.460324 140.393491 193.129013 140.393491 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #0f4d92; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 189.929013 138.793491 
+L 193.129013 140.393491 
+L 189.929013 141.993491 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #0f4d92; stroke: #0f4d92; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 270.842894 140.393491 
+Q 283.909124 140.393491 295.577813 140.393491 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #2b7c83; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 292.377813 138.793491 
+L 295.577813 140.393491 
+L 292.377813 141.993491 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #2b7c83; stroke: #2b7c83; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 319.720674 82.460805 
+Q 326.284816 101.850767 326.995403 121.078721 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 328.476133 117.821814 
+L 326.995403 121.078721 
+L 325.278316 117.939993 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #767676; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 343.859851 122.429361 
+Q 351.9915 100.656204 365.312825 83.132418 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 362.102513 84.711627 
+L 365.312825 83.132418 
+L 364.650005 86.648193 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #767676; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 180.79828 81.665558 
+Q 153.87969 99.480517 132.463645 121.962636 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 135.82929 120.749196 
+L 132.463645 121.962636 
+L 133.51228 118.542056 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #767676; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 281.277396 81.735288 
+Q 256.330012 99.71986 236.822621 121.881788 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 240.13794 120.536921 
+L 236.822621 121.881788 
+L 237.735919 118.422613 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #767676; stroke: #767676; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 132.237901 210.376512 
+Q 139.278666 210.376512 145.089594 210.376512 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 141.889594 208.776512 
+L 145.089594 210.376512 
+L 141.889594 211.976512 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #606060; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 218.616301 210.376512 
+Q 225.657066 210.376512 231.467994 210.376512 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 228.267994 208.776512 
+L 231.467994 210.376512 
+L 228.267994 211.976512 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #606060; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 304.994701 210.376512 
+Q 312.035466 210.376512 317.846394 210.376512 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 314.646394 208.776512 
+L 317.846394 210.376512 
+L 314.646394 211.976512 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #606060; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 354.473353 195.823007 
+Q 347.109937 177.248136 345.451656 158.570336 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #b64342; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 344.140919 161.899295 
+L 345.451656 158.570336 
+L 347.328381 161.616301 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #b64342; stroke: #b64342; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 97.07279 195.938075 
+Q 107.226745 177.693681 111.473945 158.50842 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #b64342; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 109.220103 161.286943 
+L 111.473945 158.50842 
+L 112.344458 161.978608 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #b64342; stroke: #b64342; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 353.30116 223.621659 
+Q 330.556554 230.237101 311.723358 242.469886 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 315.278491 242.0686 
+L 311.723358 242.469886 
+L 313.535409 239.385008 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #606060; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 254.794808 256.091227 
+Q 232.688127 256.091227 211.811282 256.091227 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 215.011282 257.691227 
+L 211.811282 256.091227 
+L 215.011282 254.491227 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #606060; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 154.386415 243.873485 
+Q 124.62887 238.189062 98.938507 224.594008 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 101.018514 227.504947 
+L 98.938507 224.594008 
+L 102.515263 224.676565 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #606060; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 308.841241 242.246201 
+Q 300.240084 142.547293 378.767116 82.524139 
+" clip-path="url(#p746bcc03e4)" style="fill: none; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 375.253105 83.196247 
+L 378.767116 82.524139 
+L 377.196395 85.738612 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #606060; stroke: #606060; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 52.698739 85.648709 
+L 119.390899 85.648709 
+Q 129.434899 85.648709 129.434899 78.593969 
+L 129.434899 45.859975 
+Q 129.434899 38.805235 119.390899 38.805235 
+L 52.698739 38.805235 
+Q 42.654739 38.805235 42.654739 45.859975 
+L 42.654739 78.593969 
+Q 42.654739 85.648709 52.698739 85.648709 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #f5f6f7; stroke: #767676; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 149.121139 85.648709 
+L 215.813299 85.648709 
+Q 225.857299 85.648709 225.857299 78.593969 
+L 225.857299 45.859975 
+Q 225.857299 38.805235 215.813299 38.805235 
+L 149.121139 38.805235 
+Q 139.077139 38.805235 139.077139 45.859975 
+L 139.077139 78.593969 
+Q 139.077139 85.648709 149.121139 85.648709 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #f5f6f7; stroke: #767676; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_22">
+    <path d="M 249.561139 85.648709 
+L 316.253299 85.648709 
+Q 326.297299 85.648709 326.297299 78.593969 
+L 326.297299 45.859975 
+Q 326.297299 38.805235 316.253299 38.805235 
+L 249.561139 38.805235 
+Q 239.517139 38.805235 239.517139 45.859975 
+L 239.517139 78.593969 
+Q 239.517139 85.648709 249.561139 85.648709 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #f5f6f7; stroke: #767676; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_23">
+    <path d="M 345.983539 85.648709 
+L 412.675699 85.648709 
+Q 422.719699 85.648709 422.719699 78.593969 
+L 422.719699 45.859975 
+Q 422.719699 38.805235 412.675699 38.805235 
+L 345.983539 38.805235 
+Q 335.939539 38.805235 335.939539 45.859975 
+L 335.939539 78.593969 
+Q 335.939539 85.648709 345.983539 85.648709 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #f5f6f7; stroke: #767676; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 96.892339 160.428953 
+L 163.584499 160.428953 
+Q 173.628499 160.428953 173.628499 153.374213 
+L 173.628499 127.694959 
+Q 173.628499 120.640219 163.584499 120.640219 
+L 96.892339 120.640219 
+Q 86.848339 120.640219 86.848339 127.694959 
+L 86.848339 153.374213 
+Q 86.848339 160.428953 96.892339 160.428953 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #dceaf7; stroke: #0f4d92; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 199.341139 160.428953 
+L 266.033299 160.428953 
+Q 276.077299 160.428953 276.077299 153.374213 
+L 276.077299 127.694959 
+Q 276.077299 120.640219 266.033299 120.640219 
+L 199.341139 120.640219 
+Q 189.297139 120.640219 189.297139 127.694959 
+L 189.297139 153.374213 
+Q 189.297139 160.428953 199.341139 160.428953 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #ddf2f0; stroke: #2b7c83; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_26">
+    <path d="M 301.789939 160.428953 
+L 368.482099 160.428953 
+Q 378.526099 160.428953 378.526099 153.374213 
+L 378.526099 127.694959 
+Q 378.526099 120.640219 368.482099 120.640219 
+L 301.789939 120.640219 
+Q 291.745939 120.640219 291.745939 127.694959 
+L 291.745939 153.374213 
+Q 291.745939 160.428953 301.789939 160.428953 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #e3f2e4; stroke: #3e8f52; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_27">
+    <path d="M 64.751539 228.154457 
+L 127.426099 228.154457 
+Q 137.470099 228.154457 137.470099 221.099717 
+L 137.470099 199.653307 
+Q 137.470099 192.598567 127.426099 192.598567 
+L 64.751539 192.598567 
+Q 54.707539 192.598567 54.707539 199.653307 
+L 54.707539 221.099717 
+Q 54.707539 228.154457 64.751539 228.154457 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #f8e2e0; stroke: #b64342; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_28">
+    <path d="M 151.129939 228.154457 
+L 213.804499 228.154457 
+Q 223.848499 228.154457 223.848499 221.099717 
+L 223.848499 199.653307 
+Q 223.848499 192.598567 213.804499 192.598567 
+L 151.129939 192.598567 
+Q 141.085939 192.598567 141.085939 199.653307 
+L 141.085939 221.099717 
+Q 141.085939 228.154457 151.129939 228.154457 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #f7e5d6; stroke: #b56a2c; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_29">
+    <path d="M 237.508339 228.154457 
+L 300.182899 228.154457 
+Q 310.226899 228.154457 310.226899 221.099717 
+L 310.226899 199.653307 
+Q 310.226899 192.598567 300.182899 192.598567 
+L 237.508339 192.598567 
+Q 227.464339 192.598567 227.464339 199.653307 
+L 227.464339 221.099717 
+Q 227.464339 228.154457 237.508339 228.154457 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #ece7f5; stroke: #6b5fa6; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_30">
+    <path d="M 323.886739 228.154457 
+L 386.561299 228.154457 
+Q 396.605299 228.154457 396.605299 221.099717 
+L 396.605299 199.653307 
+Q 396.605299 192.598567 386.561299 192.598567 
+L 323.886739 192.598567 
+Q 313.842739 192.598567 313.842739 199.653307 
+L 313.842739 221.099717 
+Q 313.842739 228.154457 323.886739 228.154457 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #f8e2e0; stroke: #b64342; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_31">
+    <path d="M 106.936339 273.304793 
+L 205.769299 273.304793 
+Q 215.813299 273.304793 215.813299 266.250053 
+L 215.813299 246.214591 
+Q 215.813299 239.159851 205.769299 239.159851 
+L 106.936339 239.159851 
+Q 96.892339 239.159851 96.892339 246.214591 
+L 96.892339 266.250053 
+Q 96.892339 273.304793 106.936339 273.304793 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #ffffff; stroke: #767676; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_32">
+    <path d="M 259.605139 273.304793 
+L 358.438099 273.304793 
+Q 368.482099 273.304793 368.482099 266.250053 
+L 368.482099 246.214591 
+Q 368.482099 239.159851 358.438099 239.159851 
+L 259.605139 239.159851 
+Q 249.561139 239.159851 249.561139 246.214591 
+L 249.561139 266.250053 
+Q 249.561139 273.304793 259.605139 273.304793 
+z
+" clip-path="url(#p746bcc03e4)" style="fill: #ffffff; stroke: #767676; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #272727" x="232.687219" y="25.675152" transform="rotate(-0 232.687219 25.675152)">面向自然资源治理的地理空间世界模型（TWM）总体技术架构</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 6.9px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #4d4d4d" x="232.687219" y="34.014673" transform="rotate(-0 232.687219 34.014673)">核心主张：以层次化空间治理状态为中心，将权威数据、法定规则、行动推演、规划优化、因果校准和证据审计组织为闭环</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(63.294819 53.122656)">权威数据与标准</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(56.794819 60.624316)">国土调查 / 变更调查</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(50.294819 68.174218)">规划一张图 / 三条控制线</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(56.794819 75.692382)">审批监管 / 遥感监测</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(159.717219 53.158964)">语义组织与融合</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(166.217219 60.594609)">本体语义层</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(146.717219 68.046757)">多模态地理空间语义融合</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(153.415773 75.604277)">对象-关系-规则-证据</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(260.157219 53.108945)">候选行动与情景</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(253.657219 60.627109)">规划调整 / 用途管制</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(253.657219 68.127499)">保护修复 / 整治治理</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(253.657219 75.653281)">审批审查 / 监管行动</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(359.829619 53.228154)">业务输出入口</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(350.079619 60.672685)">风险预警 / 方案比选</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(350.079619 68.115947)">证据审计 / 人工复核</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(346.829619 75.560478)">业务系统与智能体调用</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 9.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #0f4d92" x="232.687219" y="113.246993" transform="rotate(-0 232.687219 113.246993)">TWM 核心：状态-行动-规则-证据联合建模</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(100.763419 131.47307)">层次化空间治理状态</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(108.538473 138.868686)">地块-片区-区县</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(103.013446 146.444682)">规划分区-管控边界</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(108.538473 153.937523)">项目-规则-证据</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(209.762219 131.470384)">行动条件模拟器</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(203.212219 138.897982)">规则模型 / 空间统计</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(195.241176 146.465023)">图模型 / 时空 Transformer</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(213.037219 153.966819)">行业模型组合</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(315.486019 131.407059)">多头推演输出</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(322.036019 138.924207)">未来状态</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(305.661019 146.459266)">约束风险 / 规划效用</text>
+    <text style="font-weight: 700; font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(305.661019 154.009676)">不确定性 / 证据缺口</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(79.838819 205.113416)">硬约束门控</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(76.588819 212.556678)">法定规则优先</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(70.088819 219.968201)">禁止高分越界方案</text>
+   </g>
+   <g id="text_12">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(159.717219 205.032547)">规划器与优化器</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(149.967219 212.550711)">束搜索 / 模型预测控制</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(156.467219 220.010477)">外部优化方案接入</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(233.095619 205.114813)">因果校准与空间因果证据</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(236.345619 212.566961)">观测历史 / 反事实检验</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(247.142728 219.986102)">SCCA 证据增强</text>
+   </g>
+   <g id="text_14">
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(325.974019 205.090819)">证据门控与验证阶梯</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(329.224019 212.494725)">通过 / 复核 / 阻断</text>
+    <text style="font-weight: 700; font-size: 6.5px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(329.224019 220.004002)">结论可信等级控制</text>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(139.352819 254.577213)">可审计成果</text>
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(75.306912 262.442369)">GIS 图层 / 指标表 / 风险清单 / 方案排序 / 证据链报告</text>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(278.421619 254.536174)">人工复核与业务闭环</text>
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(241.021619 262.477033)">专家确认 / 责任留痕 / 规则修订 / 模型再验证</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 6.2px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #606060" x="232.687219" y="283.448" transform="rotate(-0 232.687219 283.448)">说明：规划器、深度学习模型和外部优化算法不是 TWM 的全部；TWM 的关键在于治理状态表达、行动条件推演、法定规则约束、因果证据校准和可审计验证闭环。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p746bcc03e4">
+   <rect x="31.807219" y="7.2" width="401.76" height="282.1896"/>
+  </clipPath>
+ </defs>
+</svg>

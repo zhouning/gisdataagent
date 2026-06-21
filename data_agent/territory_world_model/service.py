@@ -49,6 +49,7 @@ from .models import (
     now_utc_iso,
 )
 from .causal_calibration import estimate_observational_treatment_effect
+from .claim_ladder import evaluate_claim_ladder
 from .spatial_causal_estimator import SPATIAL_CAUSAL_ESTIMATOR_SCHEMA
 from .neural_dynamics import (
     HIERARCHICAL_GRAPH_DYNAMICS_SCHEMA,
@@ -62,7 +63,7 @@ from .planner import TerritoryWorldModelPlanner
 from .repository import TwmRepository, get_twm_repository
 from .rule_evaluator import RuleEvaluator, evaluate_rules
 from .state_builder import StateBuilder, build_state_from_bundle
-from .utils import compact_text, read_csv, safe_float, safe_int, truthy
+from .utils import compact_text, read_csv, read_json, safe_float, safe_int, truthy
 
 
 _INSTANCE_LOCK = threading.Lock()
@@ -103,6 +104,7 @@ class TerritoryWorldModelService:
                 "geofm_ablation_gate": True,
                 "geofm_downstream_experiment": True,
                 "causal_calibration": True,
+                "scca_causal_evidence": True,
                 "action_mask": True,
                 "dynamics_readiness": True,
                 "dynamics_evaluation": True,
@@ -112,6 +114,7 @@ class TerritoryWorldModelService:
                 "training_objective": True,
                 "beam_plan": True,
                 "state_contract": True,
+                "claim_ladder": True,
             },
             "updated_at": now_utc_iso(),
         }
@@ -233,11 +236,18 @@ class TerritoryWorldModelService:
         constraint_channels = self._state_contract_constraint_channels(rule_hits, evidence_items, review_tasks)
         temporal_support = self._state_contract_temporal_support(state, payload)
         geofm_policy = self._state_contract_geofm_policy(state, payload)
+        claim_ladder = self._state_contract_claim_ladder(
+            token_contract=token_contract,
+            constraint_channels=constraint_channels,
+            temporal_support=temporal_support,
+            geofm_policy=geofm_policy,
+        )
         claim_boundary = self._state_contract_claim_boundary(
             token_contract=token_contract,
             constraint_channels=constraint_channels,
             temporal_support=temporal_support,
             geofm_policy=geofm_policy,
+            claim_ladder=claim_ladder,
         )
         report = TwmStateContractReport(
             state_version_id=state_version_id,
@@ -256,6 +266,7 @@ class TerritoryWorldModelService:
                 "beam_plan",
                 "counterfactual_rollout",
             ],
+            claim_ladder=claim_ladder,
             claim_boundary=claim_boundary,
             recommendations=self._state_contract_recommendations(
                 token_contract=token_contract,
@@ -840,7 +851,14 @@ class TerritoryWorldModelService:
             forecast_plan = self.forecast(state_version_id, action_payload)
             candidate = self._beam_candidate_from_forecast(idx, action_payload, forecast_plan, ranking_policy)
             candidates.append(candidate)
-        candidates.sort(key=lambda item: (item["rank_score"], item["confidence"]), reverse=True)
+        candidates.sort(
+            key=lambda item: (
+                not self._beam_candidate_hard_blocked(item),
+                item["rank_score"],
+                item["confidence"],
+            ),
+            reverse=True,
+        )
         limit = max(1, int(payload.get("limit") or payload.get("beam_width") or len(candidates) or 1))
         ranking = []
         for rank, candidate in enumerate(candidates[:limit], start=1):
@@ -856,13 +874,17 @@ class TerritoryWorldModelService:
                     "confidence": candidate["confidence"],
                     "ranking_policy_id": ranking_policy.get("policy_id"),
                     "evidence_gate_status": candidate["evidence_gate"].get("status"),
+                    "selection_status": candidate.get("selection_status"),
                     "claim_status": candidate["claim_status"],
                 }
             )
-        selected = candidates[0] if candidates else {}
+        eligible_candidates = [candidate for candidate in candidates if not self._beam_candidate_hard_blocked(candidate)]
+        selected = eligible_candidates[0] if eligible_candidates else {}
         evidence_gate = self._beam_evidence_gate(candidates)
         status = "pass" if evidence_gate.get("passed") else "review"
         if not candidates:
+            status = "blocked"
+        elif not eligible_candidates:
             status = "blocked"
         report = TwmBeamPlanReport(
             state_version_id=state_version_id,
@@ -877,6 +899,354 @@ class TerritoryWorldModelService:
             recommendations=self._beam_plan_recommendations(candidates, evidence_gate),
         )
         return report.to_dict()
+
+    def farmland_layout_optimization_capability_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        bundle_adapter = {}
+        optimization_dir = payload.get("optimization_dir") or payload.get("optimization_bundle_dir")
+        if optimization_dir and not (payload.get("candidate_actions") or payload.get("actions")):
+            bundle_adapter = self.farmland_layout_candidate_actions_from_optimization_bundle(optimization_dir, payload)
+            payload = {
+                **payload,
+                "candidate_actions": bundle_adapter.get("candidate_actions") or [],
+                "optimizer_evidence": bundle_adapter.get("optimizer_evidence") or payload.get("optimizer_evidence") or {},
+            }
+        actions = payload.get("candidate_actions") or payload.get("actions") or []
+        if isinstance(actions, dict):
+            actions = [actions]
+        candidate_count = len([item for item in actions if isinstance(item, dict)])
+        dynamics_candidate = self._candidate_report_from_payload(payload)
+        has_dynamics_candidate = bool(dynamics_candidate)
+        dynamics_gate = dict(dynamics_candidate.get("evidence_gate") or {})
+        if not dynamics_gate and dynamics_candidate:
+            dynamics_gate = dict((dynamics_candidate.get("evaluation") or {}).get("evidence_gate") or {})
+        optimizer_evidence = dict(payload.get("optimizer_evidence") or {})
+        external_optimizer = str(
+            payload.get("external_optimizer")
+            or optimizer_evidence.get("algorithm_family")
+            or optimizer_evidence.get("name")
+            or ""
+        ).strip()
+        has_external_generator = bool(external_optimizer or optimizer_evidence)
+        hard_constraint_policy = {
+            "schema": "territory_world_model.farmland_layout_hard_constraint_policy.v1",
+            "required": True,
+            "supported_channels": [
+                "action_mask.allowed",
+                "action_mask.hard_blocks",
+                "TWM-FARM-001",
+                "TWM-ECO-001",
+                "scenario_constraint_violations",
+            ],
+            "ranking_rule": "hard-blocked or infeasible candidates must not be promoted as recommended plans",
+        }
+        current_capabilities = {
+            "schema": "territory_world_model.farmland_layout_planner_capabilities.v1",
+            "candidate_plan_consumption": True,
+            "constrained_beam_ranking": True,
+            "action_mask_hard_constraint_filter": True,
+            "counterfactual_rollout_comparison": True,
+            "multi_head_simulator_consumption": True,
+            "evidence_gated_claims": True,
+            "audit_trace": True,
+            "built_in_layout_generator": False,
+            "built_in_model_free_drl_policy_search": False,
+            "built_in_model_based_mpc_search": False,
+        }
+        equivalence = self._farmland_layout_equivalence_assessment(
+            candidate_count=candidate_count,
+            has_dynamics_candidate=has_dynamics_candidate,
+            dynamics_gate=dynamics_gate,
+            has_external_generator=has_external_generator,
+            optimizer_evidence=optimizer_evidence,
+        )
+        planner_contract = {
+            "schema": "territory_world_model.farmland_layout_optimization_planner_contract.v1",
+            "role": "consumer_and_auditor_of_candidate_layout_plans",
+            "not_role": "standalone_replacement_for_paper1_to_4_or_paper9_layout_search_backend",
+            "can_do_now": [
+                "consume candidate layout actions or scenario plans",
+                "apply hard-constraint and review gates before ranking",
+                "rank feasible candidates with utility/risk/confidence policies",
+                "run counterfactual rollout for selected interventions",
+                "attach evidence and claim boundary to planning outputs",
+            ],
+            "requires_for_paper_level_equivalence": [
+                "candidate layout generator from DRL, MPC, heuristic, Pareto search or external Paper9 backend",
+                "real or quasi-real observed-history validation",
+                "spatial and temporal holdout evaluation",
+                "hard-constraint infeasible-plan rejection test",
+                "planning-lift benchmark against paper baselines",
+            ],
+            "paper_mapping": {
+                "paper1_to_4_model_free_drl": "can be integrated as candidate generator/policy backend; TWM planner audits and ranks outputs",
+                "paper9_model_based_world_model_mpc": "can be integrated as simulator/search backend; TWM planner consumes outputs under evidence and hard-constraint gates",
+                "current_twm_planner": "constrained beam/ranking consumer over simulator heads, not yet a full standalone farmland layout optimizer",
+            },
+        }
+        report = {
+            "schema": "territory_world_model.farmland_layout_optimization_capability_report.v1",
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": equivalence["status"],
+            "decision": equivalence["decision"],
+            "current_capabilities": current_capabilities,
+            "planner_contract": planner_contract,
+            "hard_constraint_policy": hard_constraint_policy,
+            "inputs": {
+                "candidate_action_count": candidate_count,
+                "has_dynamics_candidate_report": has_dynamics_candidate,
+                "dynamics_candidate_gate_status": dynamics_gate.get("status"),
+                "has_external_optimizer_evidence": has_external_generator,
+                "external_optimizer": external_optimizer,
+                "optimization_bundle_loaded": bool(bundle_adapter),
+                "optimization_dir": str(optimization_dir or ""),
+            },
+            "optimization_bundle": {
+                "schema": bundle_adapter.get("schema"),
+                "status": bundle_adapter.get("status"),
+                "summary": bundle_adapter.get("summary") or {},
+                "optimizer_evidence": bundle_adapter.get("optimizer_evidence") or {},
+            } if bundle_adapter else {},
+            "equivalence_assessment": equivalence,
+            "recommendations": self._farmland_layout_capability_recommendations(equivalence, candidate_count, has_external_generator),
+            "claim_boundary": {
+                "production_claim": "not_supported_without_real_observed_history_and_holdout_validation",
+                "paper_level_claim": equivalence["decision"],
+                "policy": "TWM may claim planner-consumer and audit capability now; full farmland layout optimization equivalence requires generator/search backend and validation gates",
+            },
+            "created_at": now_utc_iso(),
+        }
+        return report
+
+    def farmland_layout_candidate_actions_from_optimization_bundle(
+        self,
+        optimization_dir: str | Path,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload = dict(payload or {})
+        root = Path(optimization_dir)
+        if not root.exists():
+            raise FileNotFoundError(f"optimization bundle not found: {root}")
+        candidates = read_csv(root / "scenario_candidates.csv")
+        feasibility_rows = read_csv(root / "scenario_feasibility.csv") if (root / "scenario_feasibility.csv").exists() else []
+        metric_rows = read_csv(root / "scenario_metrics.csv") if (root / "scenario_metrics.csv").exists() else []
+        violation_rows = read_csv(root / "scenario_constraint_violations.csv") if (root / "scenario_constraint_violations.csv").exists() else []
+        pareto = read_json(root / "pareto_summary.json") if (root / "pareto_summary.json").exists() else {}
+        feasibility_by_id = {str(row.get("scenario_id") or ""): row for row in feasibility_rows}
+        metrics_by_id: dict[str, list[dict[str, Any]]] = {}
+        for row in metric_rows:
+            metrics_by_id.setdefault(str(row.get("scenario_id") or ""), []).append(row)
+        violations_by_id: dict[str, list[dict[str, Any]]] = {}
+        for row in violation_rows:
+            violations_by_id.setdefault(str(row.get("scenario_id") or ""), []).append(row)
+
+        actions: list[dict[str, Any]] = []
+        for row in candidates:
+            scenario_id = str(row.get("scenario_id") or "").strip()
+            if not scenario_id:
+                continue
+            feasibility = dict(feasibility_by_id.get(scenario_id) or row)
+            metrics = metrics_by_id.get(scenario_id) or []
+            violations = violations_by_id.get(scenario_id) or []
+            blocked = (
+                str(feasibility.get("hard_constraint_status") or row.get("hard_constraint_status") or "") != "legal_feasible"
+                or truthy(feasibility.get("excluded_from_recommendation") or row.get("excluded_from_recommendation"))
+            )
+            requires_review = truthy(feasibility.get("requires_legal_review") or row.get("requires_legal_review"))
+            hard_blocks = [
+                str(item.get("constraint_id") or item.get("objective_id") or "")
+                for item in violations
+                if str(item.get("severity") or "").lower() in {"critical", "blocking"}
+            ]
+            hard_blocks = [item for item in hard_blocks if item]
+            if blocked and not hard_blocks:
+                hard_blocks = ["hard_constraint_violation"]
+            weighted_score = self._optimization_weighted_score(scenario_id, pareto, metrics)
+            utility = self._optimization_utility_from_metrics(metrics, weighted_score)
+            risk = self._optimization_risk_from_feasibility(feasibility, violations)
+            confidence = 0.72 if not blocked else 0.38
+            actions.append(
+                {
+                    "candidate_id": scenario_id,
+                    "action_type": self._optimization_action_type(row),
+                    "target_role": str(payload.get("target_role") or "scenario"),
+                    "magnitude": round(max(0.0, safe_float(row.get("project_count"), 0.0) or 0.0), 4),
+                    "scenario": scenario_id,
+                    "description": str(row.get("description_zh") or row.get("scenario_name_zh") or scenario_id),
+                    "legal_intent": "farmland layout optimization under statutory hard constraints",
+                    "execution_mask": {
+                        "allowed": not blocked,
+                        "hard_blocks": hard_blocks,
+                        "required_reviews": ["legal_review"] if requires_review else [],
+                        "confidence": confidence,
+                        "hard_constraint_status": feasibility.get("hard_constraint_status") or row.get("hard_constraint_status"),
+                        "excluded_from_recommendation": blocked,
+                    },
+                    "parameters": {
+                        "scenario_name_zh": row.get("scenario_name_zh"),
+                        "scenario_type": row.get("scenario_type"),
+                        "source": row.get("source"),
+                        "optimization_scope": feasibility.get("optimization_scope") or row.get("optimization_scope"),
+                        "weighted_score": weighted_score,
+                        "planning_utility_delta": utility,
+                        "constraint_violation_probability": risk,
+                        "hard_constraint_violation_m2": safe_float(feasibility.get("hard_constraint_violation_m2"), 0.0),
+                        "pbf_overlap_m2": safe_float(feasibility.get("pbf_overlap_m2"), 0.0),
+                        "eco_overlap_m2": safe_float(feasibility.get("eco_overlap_m2"), 0.0),
+                    },
+                    "provenance": {
+                        "optimization_dir": str(root),
+                        "synthetic": truthy(row.get("synthetic")),
+                        "not_for_production": truthy(row.get("not_for_production")),
+                        "source": "twm_optimization_fixture",
+                    },
+                }
+            )
+        legal_count = sum(1 for action in actions if (action.get("execution_mask") or {}).get("allowed"))
+        blocked_count = len(actions) - legal_count
+        return {
+            "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+            "status": "pass" if actions else "review",
+            "optimization_dir": str(root),
+            "candidate_actions": actions,
+            "optimizer_evidence": {
+                "algorithm_family": str(payload.get("algorithm_family") or pareto.get("method") or "hard_constraint_filter_then_pareto_summary"),
+                "validation": {
+                    "hard_constraint_recheck": "pass" if actions and legal_count + blocked_count == len(actions) else "review",
+                    "spatial_holdout": payload.get("spatial_holdout_validation") or "not_provided",
+                    "temporal_holdout": payload.get("temporal_holdout_validation") or "not_provided",
+                    "planning_lift": payload.get("planning_lift_benchmark") or "not_provided",
+                },
+                "pareto_summary": {
+                    "scenario_count": pareto.get("scenario_count", len(actions)),
+                    "legal_feasible_scenario_count": pareto.get("legal_feasible_scenario_count", legal_count),
+                    "blocked_scenario_count": pareto.get("blocked_scenario_count", blocked_count),
+                    "comparison_scope": pareto.get("comparison_scope"),
+                    "method": pareto.get("method"),
+                    "not_for_production": pareto.get("not_for_production", True),
+                },
+            },
+            "summary": {
+                "candidate_count": len(actions),
+                "legal_feasible_count": legal_count,
+                "blocked_count": blocked_count,
+                "hard_constraint_policy": pareto.get("hard_constraint_policy_zh"),
+                "claim_boundary": "optimization_fixture_only_not_for_production",
+            },
+        }
+
+    def farmland_layout_beam_plan_from_optimization_bundle(
+        self,
+        state_version_id: str,
+        optimization_dir: str | Path,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        adapter = self.farmland_layout_candidate_actions_from_optimization_bundle(optimization_dir, payload)
+        candidate_actions = [dict(item) for item in adapter.get("candidate_actions") or [] if isinstance(item, dict)]
+        beam_payload = dict(payload)
+        beam_payload["scenario"] = str(payload.get("scenario") or "farmland_layout_optimization_bundle")
+        beam_payload["candidate_actions"] = candidate_actions
+        beam_payload["optimizer_evidence"] = adapter.get("optimizer_evidence") or {}
+        if "dynamics_candidate_report" not in beam_payload and truthy(payload.get("use_optimizer_metric_projection", True)):
+            beam_payload["dynamics_candidate_report"] = self._optimizer_metric_projection_report_from_candidate_actions(
+                candidate_actions,
+                adapter,
+                payload,
+            )
+            beam_payload["optimizer_metric_projection_applied"] = True
+        beam_report = self.beam_plan(state_version_id, beam_payload)
+        selection_audit = self._farmland_layout_bundle_beam_selection_audit(adapter, beam_report)
+        not_for_production = bool(
+            ((adapter.get("optimizer_evidence") or {}).get("pareto_summary") or {}).get("not_for_production", True)
+        )
+        if not selection_audit.get("eligible_candidate_count"):
+            status = "blocked"
+        elif selection_audit.get("selected_from_legal_feasible_space") and beam_report.get("status") == "pass" and not not_for_production:
+            status = "pass"
+        else:
+            status = "review"
+        return {
+            "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "scenario": beam_payload["scenario"],
+            "optimization_bundle": {
+                "schema": adapter.get("schema"),
+                "status": adapter.get("status"),
+                "optimization_dir": adapter.get("optimization_dir"),
+                "summary": adapter.get("summary") or {},
+                "optimizer_evidence": adapter.get("optimizer_evidence") or {},
+            },
+            "beam_plan": beam_report,
+            "selection_audit": selection_audit,
+            "claim_boundary": {
+                "production_claim": "not_supported_from_fixture_bundle_without_real_observed_history_and_holdout_validation",
+                "planner_role": "consumer_and_auditor_of_external_farmland_layout_candidates",
+                "hard_constraint_rule": "hard-blocked candidates remain visible for audit but cannot be selected as recommended plans",
+                "optimizer_metric_projection": (
+                    "used_as_candidate_forecast_input_only"
+                    if beam_payload.get("optimizer_metric_projection_applied")
+                    else "not_applied"
+                ),
+            },
+            "recommendations": self._farmland_layout_bundle_beam_recommendations(adapter, beam_report, selection_audit),
+            "created_at": now_utc_iso(),
+        }
+
+    def selected_plan_evaluation_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+
+        planning_bundle = self._selected_plan_source_bundle(state_version_id, payload)
+        beam_report = self._selected_plan_beam_report(planning_bundle)
+        selected = dict(beam_report.get("selected") or {})
+        selected_action = self._selected_plan_action(selected)
+        selection_audit = self._selected_plan_selection_audit(planning_bundle, beam_report, selected)
+        rollout_payload = self._selected_plan_rollout_payload(payload, selected_action, selected)
+        rollout = self.counterfactual_rollout(state_version_id, rollout_payload)
+        validation_payload = self._selected_plan_validation_payload(payload, selected_action, rollout_payload)
+        validation = self.validation_report(state_version_id, validation_payload)
+        evidence_gate = self._selected_plan_bundle_evidence_gate(selection_audit, beam_report, rollout, validation)
+        status = "pass" if evidence_gate.get("status") == "pass" else "review"
+        if evidence_gate.get("blocked"):
+            status = "blocked"
+        return {
+            "schema": "territory_world_model.selected_plan_evaluation_bundle.v1",
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "source": planning_bundle.get("source") or {},
+            "selected": selected,
+            "selected_action": selected_action,
+            "planning": planning_bundle,
+            "counterfactual_rollout": rollout,
+            "validation_report": validation,
+            "evidence_gate": evidence_gate,
+            "claim_boundary": {
+                "production_claim": "not_supported_without_real_observed_history_holdout_validation_and_human_review",
+                "planning_claim": (
+                    "selected_plan_supported_for_review"
+                    if status in {"pass", "review"} and selected_action
+                    else "selected_plan_not_supported"
+                ),
+                "hard_constraint_policy": "selected hard-blocked plans cannot be promoted even when optimizer or model scores are high",
+                "selected_from_legal_feasible_space": bool(selection_audit.get("selected_from_legal_feasible_space")),
+                "validation_overall_status": validation.get("overall_status"),
+            },
+            "recommendations": self._selected_plan_bundle_recommendations(evidence_gate, selection_audit, validation),
+            "created_at": now_utc_iso(),
+        }
 
     def validation_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -932,6 +1302,31 @@ class TerritoryWorldModelService:
             self._validation_planning_stage(rollout),
             self._validation_deployability_stage(audit, evidence_items, review_tasks),
         ]
+        scca_report_for_validation = self._payload_or_build_scca_causal_evidence_report(state_version_id, payload)
+        if scca_report_for_validation and "scca_causal_evidence_report" not in payload:
+            payload["scca_causal_evidence_report"] = scca_report_for_validation
+        scca_stage = self._validation_scca_stage(state_version_id, payload)
+        if scca_stage is not None:
+            stages.append(scca_stage)
+        validation_ladder = [
+            "state_build",
+            "future_state_prediction",
+            "constraint_prediction",
+            "counterfactual_rollout",
+            "planning_lift",
+            "gis_deployability",
+        ]
+        if scca_stage is not None:
+            validation_ladder.append("spatial_causal_evidence")
+        claim_ladder = self._validation_claim_ladder(
+            state=state,
+            payload=payload,
+            forecast=forecast,
+            rollout=rollout,
+            audit=audit,
+            review_tasks=review_tasks,
+            stages=stages,
+        )
         blocking_gaps = [gap for stage in stages if stage.status in {"blocked", "review"} for gap in stage.gaps]
         overall_status = "pass" if all(stage.status == "pass" for stage in stages) else "review"
         if any(stage.status == "blocked" for stage in stages):
@@ -947,14 +1342,8 @@ class TerritoryWorldModelService:
                 "review_stage_count": sum(1 for stage in stages if stage.status == "review"),
                 "blocked_stage_count": sum(1 for stage in stages if stage.status == "blocked"),
                 "blocking_gaps": blocking_gaps,
-                "validation_ladder": [
-                    "state_build",
-                    "future_state_prediction",
-                    "constraint_prediction",
-                    "counterfactual_rollout",
-                    "planning_lift",
-                    "gis_deployability",
-                ],
+                "claim_ladder": claim_ladder,
+                "validation_ladder": validation_ladder,
             },
         )
         return report.to_dict()
@@ -1673,14 +2062,18 @@ class TerritoryWorldModelService:
         if model_effect is None:
             model_effect = self._model_effect_from_rollout(state_version_id, payload)
         calibration = self._causal_calibration_from_estimate(estimate, model_effect)
+        scca_report = self._payload_scca_causal_evidence_report(payload)
         evidence_gate = self._causal_evidence_gate(
             records=records,
             estimate=estimate,
             calibration=calibration,
             thresholds=thresholds,
             record_source=record_source,
+            scca_report=scca_report,
         )
         recommendations = self._causal_calibration_recommendations(evidence_gate, estimate, calibration, record_source)
+        if scca_report:
+            recommendations.extend(self._scca_causal_evidence_recommendations(scca_report))
         status = "pass" if evidence_gate.get("status") == "pass" else "review"
         if evidence_gate.get("blocked"):
             status = "blocked"
@@ -1707,11 +2100,352 @@ class TerritoryWorldModelService:
                 "record_count": len(records),
                 "rule_hit_count": len(self.repository.list_rule_hits(state_version_id=state_version_id)),
                 "record_inventory": self._causal_record_inventory(records),
+                "scca_causal_evidence_report": scca_report or None,
                 "method_note": "primary estimator comes from the local causal calibration backend and remains observational rather than randomized identification",
             },
             recommendations=recommendations,
         )
         return report.to_dict()
+
+    def scca_causal_evidence_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+
+        scca_payload = self._load_scca_payload(payload)
+        thresholds = self._scca_causal_evidence_thresholds(payload)
+        effect = self._scca_primary_effect(scca_payload)
+        balance = self._scca_balance_summary(scca_payload)
+        spatial = self._scca_spatial_summary(scca_payload)
+        gate = self._scca_causal_evidence_gate(
+            scca_payload=scca_payload,
+            effect=effect,
+            balance=balance,
+            spatial=spatial,
+            thresholds=thresholds,
+        )
+        status = str(gate.get("status") or "review")
+        report = {
+            "schema": "territory_world_model.scca_causal_evidence_report.v1",
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "algorithm": "SCCA",
+            "role": "external_spatial_causal_evidence",
+            "boundary": {
+                "replaces_twm_simulator": False,
+                "replaces_twm_planner": False,
+                "usable_as": [
+                    "causal_calibration_support",
+                    "spatial_interference_diagnostic",
+                    "evidence_grade_signal",
+                ],
+                "claim_boundary": "SCCA evidence can support causal calibration but does not by itself prove TWM production accuracy.",
+            },
+            "study": {
+                "case_id": scca_payload.get("case_id") or scca_payload.get("case_name"),
+                "case_label": scca_payload.get("case_label") or scca_payload.get("label"),
+                "exposure": scca_payload.get("exposure"),
+                "outcome": scca_payload.get("outcome"),
+                "row_count": safe_int(scca_payload.get("row_count"), None),
+                "column_count": safe_int(scca_payload.get("column_count"), None),
+                "confounder_count": len(scca_payload.get("confounders") or []),
+                "context_columns": list(scca_payload.get("context_columns") or []),
+            },
+            "effect": effect,
+            "balance": balance,
+            "spatial_diagnostics": spatial,
+            "credibility": {
+                "decision": scca_payload.get("credibility_decision") or (scca_payload.get("credibility") or {}).get("decision"),
+                "evidence_grade": scca_payload.get("evidence_grade") or (scca_payload.get("credibility") or {}).get("evidence_grade"),
+                "reasons": list(scca_payload.get("evidence_grade_reasons") or (scca_payload.get("credibility") or {}).get("reasons") or []),
+                "robustness_interpretation": scca_payload.get("robustness_interpretation"),
+            },
+            "evidence_gate": gate,
+            "calibration_hint": self._scca_calibration_hint(effect, gate),
+            "provenance": {
+                "state_version_id": state_version_id,
+                "source": scca_payload.get("_source") or "payload",
+                "output_dir": scca_payload.get("output_dir"),
+                "files": dict(scca_payload.get("files") or {}),
+                "loaded_from_path": scca_payload.get("_loaded_from_path"),
+            },
+            "recommendations": self._scca_causal_evidence_recommendations({"evidence_gate": gate, "effect": effect}),
+        }
+        return jsonable(report)
+
+    def _load_scca_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw = payload.get("scca_result") or payload.get("scca_report") or payload.get("scca_payload")
+        if isinstance(raw, dict):
+            result = dict(raw)
+            result.setdefault("_source", "payload")
+            return result
+
+        path_value = (
+            payload.get("scca_output_dir")
+            or payload.get("scca_dir")
+            or payload.get("output_dir")
+            or payload.get("scca_manifest_path")
+            or payload.get("manifest_path")
+        )
+        if not path_value:
+            return {"_source": "empty_payload"}
+        path = Path(str(path_value)).expanduser()
+        output_dir = path.parent if path.is_file() else path
+        if not output_dir.exists():
+            raise FileNotFoundError(f"SCCA output path not found: {output_dir}")
+
+        manifest = {}
+        for candidate in (path if path.is_file() else output_dir / "manifest.json", output_dir / "analysis_manifest.json"):
+            if candidate.exists():
+                try:
+                    manifest = read_json(candidate)
+                    manifest["_loaded_from_path"] = str(candidate)
+                    break
+                except Exception:
+                    manifest = {}
+
+        result = dict(manifest)
+        result.setdefault("_source", "scca_output_dir")
+        result["output_dir"] = str(output_dir)
+        result.setdefault("effect_estimates", read_csv(output_dir / "effect_estimates.csv") if (output_dir / "effect_estimates.csv").exists() else [])
+        result.setdefault("balance_summary", read_csv(output_dir / "balance_summary.csv") if (output_dir / "balance_summary.csv").exists() else [])
+        for key, filename in (
+            ("credibility_report", "credibility_report.json"),
+            ("spatial_diagnostics", "spatial_diagnostics.json"),
+            ("data_profile", "data_profile.json"),
+            ("robustness", "robustness_manifest.json"),
+        ):
+            target = output_dir / filename
+            if target.exists() and key not in result:
+                try:
+                    result[key] = read_json(target)
+                except Exception:
+                    result[key] = {}
+        credibility = dict(result.get("credibility_report") or {})
+        for source_key, target_key in (
+            ("decision", "credibility_decision"),
+            ("evidence_grade", "evidence_grade"),
+            ("evidence_grade_reasons", "evidence_grade_reasons"),
+        ):
+            if target_key not in result and source_key in credibility:
+                result[target_key] = credibility.get(source_key)
+        return result
+
+    def _scca_causal_evidence_thresholds(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw = dict(payload.get("thresholds") or payload.get("scca_thresholds") or {})
+        return {
+            "min_row_count": int(raw.get("min_row_count", 30)),
+            "max_p_value": float(raw.get("max_p_value", 0.1)),
+            "max_balance_smd": float(raw.get("max_balance_smd", 0.35)),
+            "max_residual_moran_abs": float(raw.get("max_residual_moran_abs", 0.35)),
+            "accepted_credibility": set(raw.get("accepted_credibility") or ["strong_support", "moderate_support"]),
+            "accepted_evidence_grades": set(raw.get("accepted_evidence_grades") or ["core_support", "bounded_support"]),
+            "require_spatial_diagnostics": bool(raw.get("require_spatial_diagnostics", True)),
+        }
+
+    def _scca_primary_effect(self, scca_payload: dict[str, Any]) -> dict[str, Any]:
+        rows = scca_payload.get("effect_estimates")
+        if not isinstance(rows, list):
+            rows = []
+        preferred = (
+            "spatial_slx_model",
+            "spatial_lag_adjusted_ols",
+            "spatial_neighbor_adjusted_ols",
+            "baseline_adjusted_ols",
+        )
+        selected: dict[str, Any] = {}
+        for name in preferred:
+            for row in rows:
+                if isinstance(row, dict) and str(row.get("estimator") or row.get("model") or "") == name:
+                    selected = dict(row)
+                    break
+            if selected:
+                break
+        if not selected and rows:
+            selected = dict(next((row for row in rows if isinstance(row, dict)), {}) or {})
+
+        summary = dict(scca_payload.get("result_summary") or {})
+        if not selected:
+            for key in preferred:
+                candidate = summary.get(key)
+                if isinstance(candidate, dict):
+                    selected = dict(candidate)
+                    selected.setdefault("estimator", key)
+                    break
+
+        coef = safe_float(
+            selected.get("coef"),
+            safe_float(selected.get("total_effect"), safe_float(selected.get("direct_effect"), None)),
+        )
+        p_value = safe_float(
+            selected.get("p_value"),
+            safe_float(selected.get("total_p_value"), safe_float(selected.get("direct_p_value"), None)),
+        )
+        return {
+            "estimator": selected.get("estimator") or selected.get("model") or "not_available",
+            "status": selected.get("status") or ("available" if coef is not None else "missing"),
+            "coef": round(float(coef), 6) if coef is not None else None,
+            "p_value": round(float(p_value), 6) if p_value is not None else None,
+            "ci_lower": safe_float(selected.get("ci_lower"), safe_float(selected.get("total_ci_lower"), None)),
+            "ci_upper": safe_float(selected.get("ci_upper"), safe_float(selected.get("total_ci_upper"), None)),
+            "neighbor_exposure_coef": safe_float(selected.get("neighbor_exposure_coef"), None),
+            "sign_stable": selected.get("sign_stable"),
+            "raw": selected,
+        }
+
+    def _scca_balance_summary(self, scca_payload: dict[str, Any]) -> dict[str, Any]:
+        rows = scca_payload.get("balance_summary")
+        if not isinstance(rows, list):
+            rows = []
+        smd_values = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for key in ("standardized_mean_difference", "abs_smd", "smd", "max_abs_standardized_mean_difference"):
+                value = safe_float(row.get(key), None)
+                if value is not None:
+                    smd_values.append(abs(float(value)))
+                    break
+        max_abs_smd = max(smd_values) if smd_values else None
+        return {
+            "covariate_count": len(rows),
+            "max_abs_standardized_mean_difference": round(max_abs_smd, 6) if max_abs_smd is not None else None,
+            "status": "available" if rows else "missing",
+        }
+
+    def _scca_spatial_summary(self, scca_payload: dict[str, Any]) -> dict[str, Any]:
+        spatial = dict(scca_payload.get("spatial_diagnostics") or {})
+        result_summary = dict(scca_payload.get("result_summary") or {})
+        if not spatial:
+            spatial = dict(result_summary.get("spatial_diagnostics") or {})
+        residual = dict(spatial.get("residual_moran") or {})
+        exposure = dict(spatial.get("exposure_moran") or {})
+        graph = dict(spatial.get("graph") or {})
+        residual_i = safe_float(
+            residual.get("moran_i"),
+            safe_float(spatial.get("residual_moran_i"), None),
+        )
+        exposure_i = safe_float(
+            exposure.get("moran_i"),
+            safe_float(spatial.get("exposure_moran_i"), None),
+        )
+        return {
+            "status": "available" if spatial else "missing",
+            "graph_method": graph.get("method") or spatial.get("graph_method"),
+            "edge_count": safe_int(graph.get("edge_count"), safe_int(spatial.get("edge_count"), 0)),
+            "residual_moran_i": round(float(residual_i), 6) if residual_i is not None else None,
+            "residual_moran_p_value": safe_float(
+                residual.get("permutation_p_value"),
+                safe_float(spatial.get("residual_moran_p_value"), None),
+            ),
+            "exposure_moran_i": round(float(exposure_i), 6) if exposure_i is not None else None,
+            "exposure_moran_p_value": safe_float(
+                exposure.get("permutation_p_value"),
+                safe_float(spatial.get("exposure_moran_p_value"), None),
+            ),
+            "interpretation": spatial.get("interpretation"),
+        }
+
+    def _scca_causal_evidence_gate(
+        self,
+        *,
+        scca_payload: dict[str, Any],
+        effect: dict[str, Any],
+        balance: dict[str, Any],
+        spatial: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        missing: list[str] = []
+        row_count = safe_int(scca_payload.get("row_count"), 0)
+        if row_count < int(thresholds["min_row_count"]):
+            missing.append("min_row_count")
+        if effect.get("coef") is None:
+            missing.append("effect_estimate")
+        p_value = safe_float(effect.get("p_value"), None)
+        if p_value is not None and p_value > float(thresholds["max_p_value"]):
+            missing.append("effect_significance")
+        max_smd = safe_float(balance.get("max_abs_standardized_mean_difference"), None)
+        if max_smd is not None and max_smd > float(thresholds["max_balance_smd"]):
+            missing.append("covariate_balance")
+        if thresholds.get("require_spatial_diagnostics") and spatial.get("status") == "missing":
+            missing.append("spatial_diagnostics")
+        residual_moran = safe_float(spatial.get("residual_moran_i"), None)
+        if residual_moran is not None and abs(float(residual_moran)) > float(thresholds["max_residual_moran_abs"]):
+            missing.append("residual_spatial_autocorrelation")
+        credibility = str(scca_payload.get("credibility_decision") or (scca_payload.get("credibility") or {}).get("decision") or "")
+        evidence_grade = str(scca_payload.get("evidence_grade") or (scca_payload.get("credibility") or {}).get("evidence_grade") or "")
+        if credibility and credibility not in thresholds["accepted_credibility"]:
+            missing.append("credibility_decision")
+        if evidence_grade and evidence_grade not in thresholds["accepted_evidence_grades"]:
+            missing.append("evidence_grade")
+        passed = not missing
+        return {
+            "passed": passed,
+            "status": "pass" if passed else "review",
+            "blocked": False,
+            "missing": missing,
+            "thresholds": {
+                **thresholds,
+                "accepted_credibility": sorted(thresholds["accepted_credibility"]),
+                "accepted_evidence_grades": sorted(thresholds["accepted_evidence_grades"]),
+            },
+            "row_count": row_count,
+            "credibility_decision": credibility or None,
+            "evidence_grade": evidence_grade or None,
+        }
+
+    def _scca_calibration_hint(self, effect: dict[str, Any], gate: dict[str, Any]) -> dict[str, Any]:
+        coef = safe_float(effect.get("coef"), None)
+        return {
+            "status": "pass" if gate.get("status") == "pass" and coef is not None else "review",
+            "observed_effect": round(float(coef), 6) if coef is not None else None,
+            "effect_source": effect.get("estimator"),
+            "can_support_twm_causal_calibration": bool(gate.get("status") == "pass" and coef is not None),
+        }
+
+    def _payload_scca_causal_evidence_report(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw = payload.get("scca_causal_evidence_report") or payload.get("scca_evidence_report")
+        if isinstance(raw, dict):
+            return dict(raw)
+        return {}
+
+    def _payload_or_build_scca_causal_evidence_report(self, state_version_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        report = self._payload_scca_causal_evidence_report(payload)
+        if report:
+            return report
+        has_scca_payload = any(
+            key in payload
+            for key in (
+                "scca_result",
+                "scca_report",
+                "scca_payload",
+                "scca_output_dir",
+                "scca_dir",
+                "scca_path",
+                "scca_manifest_path",
+            )
+        )
+        if not has_scca_payload:
+            return {}
+        return self.scca_causal_evidence_report(state_version_id, payload)
+
+    def _scca_causal_evidence_recommendations(self, scca_report: dict[str, Any]) -> list[str]:
+        gate = dict(scca_report.get("evidence_gate") or {})
+        effect = dict(scca_report.get("effect") or {})
+        recommendations: list[str] = []
+        if gate.get("status") != "pass":
+            recommendations.append("keep SCCA evidence as review-only until row count, effect, balance, spatial diagnostics and credibility gates pass")
+        if "min_row_count" in (gate.get("missing") or []):
+            recommendations.append("increase SCCA sample size before using it to support TWM causal claims")
+        if "effect_estimate" in (gate.get("missing") or []):
+            recommendations.append("provide SCCA effect_estimates.csv or result_summary with an estimable spatial causal coefficient")
+        if "spatial_diagnostics" in (gate.get("missing") or []):
+            recommendations.append("provide SCCA spatial_diagnostics.json before upgrading spatial causal evidence")
+        if gate.get("status") == "pass" and effect.get("coef") is not None:
+            recommendations.append("use SCCA as external spatial causal support, not as a replacement for TWM simulator validation")
+        return recommendations
 
     def _scenario_context_with_causal_calibration(
         self,
@@ -1736,6 +2470,125 @@ class TerritoryWorldModelService:
         report = self.causal_calibration_report(state_version_id, nested_payload)
         scenario_context["causal_calibration"] = report
         return scenario_context
+
+    def _validation_claim_ladder(
+        self,
+        *,
+        state: TwmStateVersion,
+        payload: dict[str, Any],
+        forecast: dict[str, Any],
+        rollout: dict[str, Any],
+        audit: dict[str, Any],
+        review_tasks: list[Any],
+        stages: list[TwmValidationStage],
+    ) -> dict[str, Any]:
+        stage_status = {stage.stage_code: stage.status for stage in stages}
+        forecast_gate = dict(((forecast.get("forecast") or {}).get("evidence_gate")) or {})
+        rollout_gate = dict(rollout.get("evidence_gate") or {})
+        calibration_summary = dict(rollout.get("calibration_summary") or {})
+        explicit_facts = dict(payload.get("claim_gate_facts") or {}) if isinstance(payload.get("claim_gate_facts"), dict) else {}
+        geofm_report = payload.get("geofm_gate_report")
+        geofm_used = bool(payload.get("uses_geofm") or payload.get("geofm_required") or isinstance(geofm_report, dict))
+        geofm_status = "not_applicable"
+        if geofm_used:
+            geofm_status = "pass" if isinstance(geofm_report, dict) and (geofm_report.get("gate_status") or geofm_report.get("status")) == "pass" else "review"
+
+        causal_report = self._payload_causal_report(payload)
+        causal_used = bool(payload.get("treatment") or payload.get("causal_calibration") or causal_report)
+        scca_report = self._payload_scca_causal_evidence_report(payload)
+        require_scca = truthy(payload.get("require_scca_pass") or payload.get("require_scca_causal_evidence"))
+        scca_gate = dict(scca_report.get("evidence_gate") or {})
+        scca_status = str(scca_gate.get("status") or scca_report.get("status") or "not_provided")
+        spatial_status = "not_applicable"
+        if scca_report:
+            spatial_status = "pass" if scca_status == "pass" else "review"
+        elif require_scca:
+            spatial_status = "review"
+        elif causal_used:
+            spatial_report = dict((causal_report.get("estimate") or {}).get("spatial_estimator") or {}) if causal_report else {}
+            spatial_gate = dict((spatial_report.get("evidence_gate") or spatial_report.get("gate") or {}))
+            if spatial_gate:
+                spatial_status = "pass" if spatial_gate.get("status") == "pass" or spatial_gate.get("passed") else "review"
+            else:
+                spatial_status = "review"
+
+        incomplete_reviews = [
+            getattr(task, "id", "")
+            for task in review_tasks
+            if getattr(task, "status", "") not in {"approved", "closed", "resolved", "confirmed", "dismissed"}
+        ]
+        facts: dict[str, Any] = {
+            "state_build_pass": {
+                "status": stage_status.get("state_build", "review"),
+                "state_version_id": state.id,
+                "build_status": state.build_status,
+            },
+            "future_state_holdout_pass": {
+                "status": "review",
+                "stage_status": stage_status.get("future_state_prediction", "review"),
+                "forecast_gate_status": forecast_gate.get("status", "review"),
+                "reason": "explicit holdout or observed temporal-validation evidence is required before L1 promotion",
+            },
+            "counterfactual_calibration_pass": {
+                "status": "pass" if stage_status.get("counterfactual_rollout") == "pass" and rollout_gate.get("status") == "pass" and not calibration_summary.get("calibration_required") else "review",
+                "stage_status": stage_status.get("counterfactual_rollout", "review"),
+                "rollout_gate_status": rollout_gate.get("status", "review"),
+                "calibration_required": bool(calibration_summary.get("calibration_required")),
+            },
+            "spatial_estimator_pass_or_not_applicable": {
+                "status": spatial_status,
+                "causal_claim_requested": causal_used,
+                "scca_required": require_scca,
+                "scca_provided": bool(scca_report),
+                "scca_status": scca_status,
+                "scca_missing": list(scca_gate.get("missing") or []) if scca_gate else (["scca_causal_evidence_report"] if require_scca and not scca_report else []),
+            },
+            "planning_lift_pass": {
+                "status": stage_status.get("planning_lift", "review"),
+            },
+            "geofm_gate_decision": {
+                "status": geofm_status,
+                "geofm_used": geofm_used,
+                "decision": (geofm_report or {}).get("decision") if isinstance(geofm_report, dict) else "not_used",
+            },
+            "gis_audit_pass": {
+                "status": "pass" if stage_status.get("gis_deployability") == "pass" and audit.get("evidence_gate_passed") else "review",
+                "stage_status": stage_status.get("gis_deployability", "review"),
+                "evidence_gate_passed": bool(audit.get("evidence_gate_passed")),
+            },
+            "human_review_completed": {
+                "status": "pass" if not incomplete_reviews else "review",
+                "incomplete_review_task_count": len(incomplete_reviews),
+            },
+        }
+        facts.update(explicit_facts)
+        if require_scca and scca_status != "pass":
+            facts["spatial_estimator_pass_or_not_applicable"] = {
+                "status": "review",
+                "causal_claim_requested": causal_used,
+                "scca_required": True,
+                "scca_provided": bool(scca_report),
+                "scca_status": scca_status,
+                "scca_missing": list(scca_gate.get("missing") or []) if scca_gate else ["scca_causal_evidence_report"],
+                "reason": "require_scca_pass prevents spatial causal gate promotion without passing SCCA evidence",
+            }
+        return evaluate_claim_ladder(facts)
+
+    def _payload_causal_report(self, payload: dict[str, Any]) -> dict[str, Any]:
+        explicit = payload.get("causal_calibration_report")
+        if isinstance(explicit, dict):
+            return explicit
+        context = payload.get("scenario_context")
+        if isinstance(context, dict):
+            nested = context.get("causal_calibration") or context.get("causal_calibration_report")
+            if isinstance(nested, dict):
+                return nested
+        nested_payload = payload.get("causal_calibration")
+        if isinstance(nested_payload, dict):
+            nested_report = nested_payload.get("report") or nested_payload.get("causal_calibration_report")
+            if isinstance(nested_report, dict):
+                return nested_report
+        return {}
 
     def _validation_state_stage(self, state: TwmStateVersion, state_bundle: dict[str, Any]) -> TwmValidationStage:
         object_count = int(state.object_count or len(state_bundle.get("objects") or []))
@@ -1871,6 +2724,43 @@ class TerritoryWorldModelService:
             },
             gaps=gaps,
             next_actions=[] if status == "pass" else ["run candidate ranking or constrained beam search before claiming planning lift"],
+        )
+
+    def _validation_scca_stage(self, state_version_id: str, payload: dict[str, Any]) -> TwmValidationStage | None:
+        require_scca = truthy(payload.get("require_scca_pass") or payload.get("require_scca_causal_evidence"))
+        scca_report = self._payload_or_build_scca_causal_evidence_report(state_version_id, payload)
+        if not require_scca and not scca_report:
+            return None
+        gate = dict(scca_report.get("evidence_gate") or {}) if scca_report else {}
+        effect = dict(scca_report.get("effect") or {}) if scca_report else {}
+        calibration_hint = dict(scca_report.get("calibration_hint") or {}) if scca_report else {}
+        gaps: list[str] = []
+        if not scca_report:
+            gaps.append("SCCA causal evidence report is required but not provided")
+        elif gate.get("status") != "pass":
+            gaps.append("SCCA causal evidence gate did not pass")
+            for item in gate.get("missing") or []:
+                gaps.append(f"SCCA missing {item}")
+        if require_scca and scca_report and calibration_hint.get("can_support_twm_causal_calibration") is False:
+            gaps.append("SCCA calibration hint does not support TWM causal calibration")
+        status = "pass" if not gaps else "review"
+        return TwmValidationStage(
+            stage_code="spatial_causal_evidence",
+            stage_name="Spatial Causal Evidence",
+            status=status,
+            claim="External SCCA evidence is available to support spatial causal calibration without replacing TWM rollout validation.",
+            evidence={
+                "required": require_scca,
+                "provided": bool(scca_report),
+                "report_schema": scca_report.get("schema") if scca_report else None,
+                "status": scca_report.get("status") if scca_report else "missing",
+                "evidence_gate": gate,
+                "effect": effect,
+                "calibration_hint": calibration_hint,
+                "boundary": scca_report.get("boundary") if scca_report else {},
+            },
+            gaps=gaps,
+            next_actions=[] if status == "pass" else ["provide passing SCCA evidence or disable require_scca_pass for non-causal validation"],
         )
 
     def _validation_deployability_stage(
@@ -2267,7 +3157,17 @@ class TerritoryWorldModelService:
             "ranking_policy_id": ranking_policy.get("policy_id"),
             "evidence_gate": evidence_gate,
             "claim_status": "claim_supported" if evidence_gate.get("status") == "pass" and not blocked else "review_required",
+            "selection_status": "hard_blocked" if blocked else ("eligible" if evidence_gate.get("status") == "pass" else "review"),
         }
+
+    def _beam_candidate_hard_blocked(self, candidate: dict[str, Any]) -> bool:
+        evidence_gate = dict(candidate.get("evidence_gate") or {})
+        action_mask = dict(evidence_gate.get("action_mask") or {})
+        return (
+            evidence_gate.get("status") == "blocked"
+            or bool(action_mask.get("hard_blocks"))
+            or not action_mask.get("allowed", True)
+        )
 
     def _beam_evidence_gate(self, candidates: list[dict[str, Any]]) -> dict[str, Any]:
         missing: list[str] = []
@@ -2300,6 +3200,476 @@ class TerritoryWorldModelService:
             recommendations.append("do not let review/blocked dynamics candidates drive planning rank")
         recommendations.append("validate selected candidate with counterfactual rollout before operational GIS deployment")
         return recommendations
+
+    def _selected_plan_source_bundle(self, state_version_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        optimization_dir = payload.get("optimization_dir") or payload.get("optimization_bundle_dir")
+        if optimization_dir:
+            planning_report = self.farmland_layout_beam_plan_from_optimization_bundle(state_version_id, optimization_dir, payload)
+            return {
+                "source": {
+                    "kind": "farmland_layout_optimization_bundle",
+                    "optimization_dir": str(optimization_dir),
+                },
+                "optimization_bundle": planning_report.get("optimization_bundle") or {},
+                "beam_plan": planning_report.get("beam_plan") or {},
+                "selection_audit": planning_report.get("selection_audit") or {},
+                "claim_boundary": planning_report.get("claim_boundary") or {},
+                "recommendations": planning_report.get("recommendations") or [],
+                "status": planning_report.get("status"),
+                "schema": planning_report.get("schema"),
+            }
+        existing_beam = payload.get("beam_plan_report") or payload.get("beam_plan")
+        if isinstance(existing_beam, dict):
+            return {
+                "source": {"kind": "provided_beam_plan_report"},
+                "beam_plan": dict(existing_beam),
+                "selection_audit": {},
+                "status": existing_beam.get("status"),
+                "schema": existing_beam.get("schema"),
+            }
+        beam_payload = dict(payload)
+        beam_report = self.beam_plan(state_version_id, beam_payload)
+        return {
+            "source": {"kind": "beam_plan"},
+            "beam_plan": beam_report,
+            "selection_audit": {},
+            "status": beam_report.get("status"),
+            "schema": beam_report.get("schema"),
+        }
+
+    def _selected_plan_beam_report(self, planning_bundle: dict[str, Any]) -> dict[str, Any]:
+        return dict(planning_bundle.get("beam_plan") or {})
+
+    def _selected_plan_action(self, selected: dict[str, Any]) -> dict[str, Any]:
+        action = dict(selected.get("action") or {})
+        if not action and selected:
+            action = {
+                "action_type": selected.get("action_type") or "inspect",
+                "target_role": selected.get("target_role") or "project",
+                "magnitude": selected.get("magnitude") or 1.0,
+                "scenario": selected.get("scenario") or selected.get("candidate_id") or "selected_plan",
+            }
+        if selected.get("candidate_id") and not action.get("candidate_id"):
+            action["candidate_id"] = selected.get("candidate_id")
+        if selected.get("candidate_id") and not action.get("scenario"):
+            action["scenario"] = selected.get("candidate_id")
+        if selected.get("forecast") and "parameters" not in action:
+            forecast = dict(selected.get("forecast") or {})
+            action["parameters"] = {
+                "selected_forecast_utility": forecast.get("planning_utility_delta"),
+                "selected_forecast_risk": forecast.get("constraint_violation_probability"),
+                "selected_forecast_confidence": (forecast.get("uncertainty") or {}).get("confidence"),
+            }
+        return {key: value for key, value in action.items() if value is not None}
+
+    def _selected_plan_selection_audit(
+        self,
+        planning_bundle: dict[str, Any],
+        beam_report: dict[str, Any],
+        selected: dict[str, Any],
+    ) -> dict[str, Any]:
+        audit = dict(planning_bundle.get("selection_audit") or {})
+        candidates = [dict(item) for item in beam_report.get("candidates") or [] if isinstance(item, dict)]
+        selected_id = str(selected.get("candidate_id") or audit.get("selected_candidate_id") or "")
+        selected_candidate = selected
+        if selected_id:
+            selected_candidate = next((item for item in candidates if str(item.get("candidate_id") or "") == selected_id), selected)
+        selected_hard_blocked = self._beam_candidate_hard_blocked(dict(selected_candidate or {})) if selected_candidate else False
+        eligible_count = sum(1 for candidate in candidates if not self._beam_candidate_hard_blocked(candidate))
+        blocked_ids = [
+            str(candidate.get("candidate_id") or "")
+            for candidate in candidates
+            if self._beam_candidate_hard_blocked(candidate) and str(candidate.get("candidate_id") or "")
+        ]
+        selected_from_legal = audit.get("selected_from_legal_feasible_space")
+        if selected_from_legal is None:
+            selected_from_legal = bool(selected_id) and not selected_hard_blocked
+        return {
+            "schema": "territory_world_model.selected_plan_selection_audit.v1",
+            **audit,
+            "candidate_count": audit.get("candidate_count", len(candidates)),
+            "eligible_candidate_count": audit.get("eligible_candidate_count", eligible_count),
+            "hard_blocked_candidate_ids": audit.get("hard_blocked_candidate_ids", blocked_ids),
+            "selected_candidate_id": selected_id,
+            "selected_hard_blocked": bool(audit.get("selected_hard_blocked", selected_hard_blocked)),
+            "selected_from_legal_feasible_space": bool(selected_from_legal),
+            "beam_status": beam_report.get("status"),
+            "beam_evidence_gate_status": (beam_report.get("evidence_gate") or {}).get("status"),
+        }
+
+    def _selected_plan_rollout_payload(
+        self,
+        payload: dict[str, Any],
+        selected_action: dict[str, Any],
+        selected: dict[str, Any],
+    ) -> dict[str, Any]:
+        scenario = str(payload.get("scenario") or selected_action.get("scenario") or selected.get("candidate_id") or "selected_plan_evaluation")
+        baseline_action = payload.get("baseline_action")
+        if not isinstance(baseline_action, dict):
+            baseline_action = {
+                "action_type": "inspect",
+                "target_role": selected_action.get("target_role") or payload.get("target_role") or "project",
+                "magnitude": 1.0,
+                "scenario": f"{scenario}:baseline",
+                "description": "baseline action before selected plan",
+            }
+        intervention = dict(selected_action or {})
+        intervention.setdefault("action_type", payload.get("intervention_action_type") or "protect")
+        intervention.setdefault("target_role", payload.get("target_role") or "project")
+        intervention.setdefault("magnitude", payload.get("intervention_magnitude") or payload.get("magnitude") or 1.0)
+        intervention.setdefault("scenario", scenario)
+        intervention.setdefault("description", selected.get("candidate_id") or "selected plan intervention")
+        rollout_payload = {
+            "scenario": scenario,
+            "horizon": int(payload.get("horizon") or 3),
+            "evidence_coverage": payload.get("evidence_coverage"),
+            "baseline_action": baseline_action,
+            "intervention_actions": [intervention],
+            "scenario_context": dict(payload.get("scenario_context") or {}),
+        }
+        self._copy_dynamics_candidate_payload(payload, rollout_payload)
+        if payload.get("causal_calibration"):
+            rollout_payload["causal_calibration"] = payload.get("causal_calibration")
+        if payload.get("causal_calibration_report"):
+            rollout_payload["causal_calibration_report"] = payload.get("causal_calibration_report")
+        return rollout_payload
+
+    def _selected_plan_validation_payload(
+        self,
+        payload: dict[str, Any],
+        selected_action: dict[str, Any],
+        rollout_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        validation_payload = {
+            "scenario": rollout_payload.get("scenario") or payload.get("scenario") or "selected_plan_validation",
+            "horizon": rollout_payload.get("horizon") or payload.get("horizon") or 3,
+            "evidence_coverage": payload.get("evidence_coverage"),
+            "target_role": selected_action.get("target_role") or payload.get("target_role") or "project",
+            "action_type": selected_action.get("action_type") or payload.get("action_type") or "protect",
+            "magnitude": selected_action.get("magnitude") or payload.get("magnitude") or 1.0,
+            "baseline_action": rollout_payload.get("baseline_action"),
+            "intervention_actions": rollout_payload.get("intervention_actions"),
+            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "parameters": dict(selected_action.get("parameters") or payload.get("parameters") or {}),
+        }
+        for key in (
+            "treatment",
+            "claim_gate_facts",
+            "geofm_gate_report",
+            "causal_calibration",
+            "causal_calibration_report",
+            "uses_geofm",
+            "geofm_required",
+            "scca_causal_evidence_report",
+            "scca_evidence_report",
+            "scca_result",
+            "scca_report",
+            "scca_payload",
+            "scca_output_dir",
+            "scca_dir",
+            "scca_path",
+            "scca_manifest_path",
+            "require_scca_pass",
+            "require_scca_causal_evidence",
+        ):
+            if key in payload:
+                validation_payload[key] = payload[key]
+        self._copy_dynamics_candidate_payload(payload, validation_payload)
+        return validation_payload
+
+    def _selected_plan_bundle_evidence_gate(
+        self,
+        selection_audit: dict[str, Any],
+        beam_report: dict[str, Any],
+        rollout: dict[str, Any],
+        validation: dict[str, Any],
+    ) -> dict[str, Any]:
+        missing: list[str] = []
+        blocked = False
+        if not selection_audit.get("selected_candidate_id"):
+            missing.append("selected_candidate")
+            blocked = True
+        if selection_audit.get("selected_hard_blocked"):
+            missing.append("selected_hard_blocked")
+            blocked = True
+        if not selection_audit.get("selected_from_legal_feasible_space"):
+            missing.append("legal_feasible_selection")
+        beam_gate = dict(beam_report.get("evidence_gate") or {})
+        if beam_gate.get("status") != "pass":
+            missing.append("beam_plan_evidence_gate")
+        rollout_gate = dict(rollout.get("evidence_gate") or {})
+        if rollout_gate.get("status") != "pass":
+            missing.append("counterfactual_rollout_evidence_gate")
+        if validation.get("overall_status") == "blocked":
+            missing.append("validation_blocked")
+            blocked = True
+        elif validation.get("overall_status") != "pass":
+            missing.append("validation_review")
+        status = "blocked" if blocked else ("pass" if not missing else "review")
+        return {
+            "schema": "territory_world_model.selected_plan_evidence_gate.v1",
+            "passed": status == "pass",
+            "status": status,
+            "blocked": blocked,
+            "missing": missing,
+            "selection_audit": selection_audit,
+            "beam_gate": beam_gate,
+            "rollout_gate": rollout_gate,
+            "validation_status": validation.get("overall_status"),
+        }
+
+    def _selected_plan_bundle_recommendations(
+        self,
+        evidence_gate: dict[str, Any],
+        selection_audit: dict[str, Any],
+        validation: dict[str, Any],
+    ) -> list[str]:
+        recommendations: list[str] = []
+        if selection_audit.get("selected_hard_blocked"):
+            recommendations.append("do not promote the selected plan because it is hard-blocked")
+        if not selection_audit.get("selected_from_legal_feasible_space"):
+            recommendations.append("complete legal-feasible selection audit before using the selected plan operationally")
+        if "counterfactual_rollout_evidence_gate" in (evidence_gate.get("missing") or []):
+            recommendations.append("increase evidence coverage or causal calibration before relying on the counterfactual rollout")
+        if validation.get("overall_status") != "pass":
+            recommendations.append("treat the bundle as review-only until validation stages and claim ladder are upgraded")
+        recommendations.append("connect real observed-history and human review results before production deployment")
+        return recommendations
+
+    def _farmland_layout_equivalence_assessment(
+        self,
+        *,
+        candidate_count: int,
+        has_dynamics_candidate: bool,
+        dynamics_gate: dict[str, Any],
+        has_external_generator: bool,
+        optimizer_evidence: dict[str, Any],
+    ) -> dict[str, Any]:
+        missing: list[str] = []
+        if candidate_count < 2:
+            missing.append("multiple_candidate_layout_actions")
+        if not has_dynamics_candidate:
+            missing.append("multi_head_dynamics_candidate_report")
+        elif dynamics_gate.get("status") not in {"pass", "accepted"}:
+            missing.append("passing_dynamics_candidate_gate")
+        if not has_external_generator:
+            missing.append("layout_search_or_policy_generator")
+        validation = dict(optimizer_evidence.get("validation") or {})
+        if validation.get("spatial_holdout") not in {True, "pass", "passed"}:
+            missing.append("spatial_holdout_validation")
+        if validation.get("temporal_holdout") not in {True, "pass", "passed"}:
+            missing.append("temporal_holdout_validation")
+        if validation.get("hard_constraint_recheck") not in {True, "pass", "passed"}:
+            missing.append("hard_constraint_recheck")
+        if validation.get("planning_lift") not in {True, "pass", "passed"}:
+            missing.append("planning_lift_benchmark")
+        if not missing:
+            decision = "paper_level_equivalence_candidate"
+            status = "pass"
+        elif has_external_generator and has_dynamics_candidate and candidate_count >= 2:
+            decision = "partial_equivalence_review_required"
+            status = "review"
+        else:
+            decision = "planner_consumer_only_not_equivalent"
+            status = "review"
+        return {
+            "schema": "territory_world_model.farmland_layout_optimization_equivalence_assessment.v1",
+            "status": status,
+            "decision": decision,
+            "missing": missing,
+            "evidence": {
+                "candidate_action_count": candidate_count,
+                "has_dynamics_candidate_report": has_dynamics_candidate,
+                "dynamics_candidate_gate_status": dynamics_gate.get("status"),
+                "has_external_generator": has_external_generator,
+                "validation": validation,
+            },
+        }
+
+    def _farmland_layout_capability_recommendations(
+        self,
+        equivalence: dict[str, Any],
+        candidate_count: int,
+        has_external_generator: bool,
+    ) -> list[str]:
+        recommendations: list[str] = []
+        if candidate_count < 2:
+            recommendations.append("provide at least two candidate farmland layout actions or scenarios before claiming optimization")
+        if not has_external_generator:
+            recommendations.append("connect Paper1-4 DRL, Paper9 MPC/world-model search, Pareto search or heuristic generator as candidate source")
+        for missing in equivalence.get("missing") or []:
+            if missing == "hard_constraint_recheck":
+                recommendations.append("re-run every generated layout through TWM hard-constraint and action-mask checks")
+            if missing == "planning_lift_benchmark":
+                recommendations.append("compare selected layout against paper baselines using planning lift, regret and infeasible-plan rejection")
+            if missing in {"spatial_holdout_validation", "temporal_holdout_validation"}:
+                recommendations.append("add spatial and temporal holdout validation before equivalence claims")
+        if not recommendations:
+            recommendations.append("treat this as a candidate equivalence claim and still require real observed-history validation before production use")
+        return recommendations
+
+    def _optimizer_metric_projection_report_from_candidate_actions(
+        self,
+        candidate_actions: list[dict[str, Any]],
+        adapter: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        overrides = dict(payload.get("candidate_metric_overrides") or payload.get("optimizer_metric_overrides") or {})
+        predictions: dict[str, dict[str, Any]] = {}
+        for idx, action in enumerate(candidate_actions):
+            candidate_id = str(action.get("candidate_id") or action.get("id") or f"candidate:{idx}")
+            parameters = dict(action.get("parameters") or {})
+            execution_mask = dict(action.get("execution_mask") or {})
+            override = dict(overrides.get(candidate_id) or {})
+            utility = float(
+                safe_float(
+                    override.get("planning_utility_delta", parameters.get("planning_utility_delta", parameters.get("weighted_score"))),
+                    0.0,
+                )
+                or 0.0
+            )
+            risk = float(
+                safe_float(
+                    override.get("constraint_violation_probability", parameters.get("constraint_violation_probability")),
+                    0.0,
+                )
+                or 0.0
+            )
+            confidence = float(safe_float(override.get("confidence", execution_mask.get("confidence")), 0.6) or 0.0)
+            predictions[f"candidate:{idx}"] = {
+                "candidate_id": candidate_id,
+                "constraint_violation_probability": round(max(0.0, min(1.0, risk)), 6),
+                "planning_utility_delta": round(max(-1.0, min(2.0, utility)), 6),
+                "uncertainty": {
+                    "confidence": round(max(0.0, min(1.0, confidence)), 6),
+                    "source": "optimizer_metric_projection",
+                },
+                "calibration": {
+                    "source": "optimizer_metric_projection",
+                    "not_for_production": ((adapter.get("optimizer_evidence") or {}).get("pareto_summary") or {}).get("not_for_production", True),
+                },
+            }
+        return {
+            "schema": "territory_world_model.optimizer_metric_projection_report.v1",
+            "status": "pass" if predictions else "review",
+            "candidate": {
+                "model_name": "optimizer_metric_projection",
+                "source_schema": adapter.get("schema"),
+            },
+            "predictions": predictions,
+            "evaluation": {"status": "pass" if predictions else "review", "evidence_gate": {"status": "pass" if predictions else "review"}},
+            "evidence_gate": {"status": "pass" if predictions else "review", "passed": bool(predictions)},
+        }
+
+    def _farmland_layout_bundle_beam_selection_audit(self, adapter: dict[str, Any], beam_report: dict[str, Any]) -> dict[str, Any]:
+        actions = [dict(item) for item in adapter.get("candidate_actions") or [] if isinstance(item, dict)]
+        action_by_id = {str(action.get("candidate_id") or ""): action for action in actions}
+        legal_ids = [
+            candidate_id
+            for candidate_id, action in action_by_id.items()
+            if candidate_id and bool((action.get("execution_mask") or {}).get("allowed"))
+        ]
+        blocked_ids = [
+            candidate_id
+            for candidate_id, action in action_by_id.items()
+            if candidate_id and not bool((action.get("execution_mask") or {}).get("allowed"))
+        ]
+        beam_candidates = [dict(item) for item in beam_report.get("candidates") or [] if isinstance(item, dict)]
+        beam_by_id = {str(item.get("candidate_id") or ""): item for item in beam_candidates}
+        eligible_ids = [candidate_id for candidate_id, candidate in beam_by_id.items() if candidate_id and not self._beam_candidate_hard_blocked(candidate)]
+        selected = dict(beam_report.get("selected") or {})
+        selected_id = str(selected.get("candidate_id") or "")
+        selected_action = dict(action_by_id.get(selected_id) or {})
+        selected_mask = dict(selected_action.get("execution_mask") or {})
+        selected_beam = dict(beam_by_id.get(selected_id) or selected)
+        selected_hard_blocked = bool(selected_id) and self._beam_candidate_hard_blocked(selected_beam)
+        selected_from_legal = bool(selected_id) and selected_id in legal_ids and not selected_hard_blocked
+        return {
+            "schema": "territory_world_model.farmland_layout_bundle_beam_selection_audit.v1",
+            "candidate_count": len(actions),
+            "legal_feasible_count": len(legal_ids),
+            "blocked_count": len(blocked_ids),
+            "eligible_candidate_count": len(eligible_ids),
+            "legal_feasible_candidate_ids": legal_ids,
+            "hard_blocked_candidate_ids": blocked_ids,
+            "eligible_candidate_ids": eligible_ids,
+            "selected_candidate_id": selected_id,
+            "selected_allowed": bool(selected_mask.get("allowed", bool(selected_id))),
+            "selected_hard_blocks": list(selected_mask.get("hard_blocks") or []),
+            "selected_hard_blocked": selected_hard_blocked,
+            "selected_from_legal_feasible_space": selected_from_legal,
+            "hard_constraint_filter_enforced": selected_from_legal or (not selected_id and not legal_ids),
+        }
+
+    def _farmland_layout_bundle_beam_recommendations(
+        self,
+        adapter: dict[str, Any],
+        beam_report: dict[str, Any],
+        selection_audit: dict[str, Any],
+    ) -> list[str]:
+        recommendations: list[str] = []
+        if selection_audit.get("blocked_count"):
+            recommendations.append("keep hard-blocked optimization scenarios as audit or stress-test cases only")
+        if not selection_audit.get("selected_candidate_id"):
+            recommendations.append("no legal feasible candidate was selected; do not promote this optimization bundle")
+        elif not selection_audit.get("selected_from_legal_feasible_space"):
+            recommendations.append("block promotion because the selected candidate is outside the legal feasible space")
+        if ((adapter.get("optimizer_evidence") or {}).get("pareto_summary") or {}).get("not_for_production", True):
+            recommendations.append("treat this bundle as engineering fixture output, not a production optimization result")
+        if beam_report.get("status") != "pass":
+            recommendations.append("upgrade evidence coverage, observed-history validation and holdout tests before production use")
+        recommendations.append("run counterfactual rollout and human legal review on the selected candidate before operational GIS deployment")
+        return recommendations
+
+    def _optimization_weighted_score(self, scenario_id: str, pareto: dict[str, Any], metrics: list[dict[str, Any]]) -> float:
+        for key in ("ranked_scenarios", "all_scenario_ranked", "non_dominated_scenarios", "blocked_scenarios"):
+            for row in pareto.get(key) or []:
+                if str(row.get("scenario_id") or "") == scenario_id:
+                    return round(float(safe_float(row.get("weighted_score"), 0.0) or 0.0), 6)
+        return round(
+            sum(float(safe_float(row.get("weighted_score"), 0.0) or 0.0) for row in metrics),
+            6,
+        )
+
+    def _optimization_utility_from_metrics(self, metrics: list[dict[str, Any]], weighted_score: float) -> float:
+        score = float(weighted_score or 0.0)
+        for row in metrics:
+            objective = str(row.get("objective_id") or "")
+            value = float(safe_float(row.get("normalized_score"), 0.0) or 0.0)
+            weight = float(safe_float(row.get("weight"), 1.0) or 1.0)
+            if objective in {"farmland_gain_m2", "development_area_m2", "compactness_score", "robustness_score", "slope_improvement_pct", "contiguity_gain"}:
+                score += 0.05 * value * weight
+            if objective in {"farmland_loss_m2", "planning_conflict_m2", "adjustment_cost_proxy", "review_load_count"}:
+                score -= 0.03 * (1.0 - value) * weight
+        return round(max(-1.0, min(2.0, score)), 6)
+
+    def _optimization_risk_from_feasibility(self, feasibility: dict[str, Any], violations: list[dict[str, Any]]) -> float:
+        hard_violation = float(safe_float(feasibility.get("hard_constraint_violation_m2"), 0.0) or 0.0)
+        pbf = float(safe_float(feasibility.get("pbf_overlap_m2"), 0.0) or 0.0)
+        eco = float(safe_float(feasibility.get("eco_overlap_m2"), 0.0) or 0.0)
+        risk = min(0.85, hard_violation / 1_000_000.0 + pbf / 1_500_000.0 + eco / 1_500_000.0)
+        if str(feasibility.get("hard_constraint_status") or "") != "legal_feasible":
+            risk = max(risk, 0.72)
+        if truthy(feasibility.get("requires_legal_review")):
+            risk = max(risk, 0.55)
+        if any(str(item.get("severity") or "").lower() in {"critical", "blocking"} for item in violations):
+            risk = max(risk, 0.75)
+        return round(max(0.0, min(1.0, risk)), 6)
+
+    def _optimization_action_type(self, row: dict[str, Any]) -> str:
+        scenario_type = str(row.get("scenario_type") or "").lower()
+        scenario_id = str(row.get("scenario_id") or "").lower()
+        if "baseline" in scenario_type or "baseline" in scenario_id:
+            return "inspect"
+        if "eco" in scenario_id or "ecological" in scenario_id:
+            return "protect"
+        if "development" in scenario_id:
+            return "develop_with_constraints"
+        if "review" in scenario_id:
+            return "defer_review"
+        if "balanced" in scenario_id:
+            return "optimize_layout"
+        return "optimize_layout"
 
     def _candidate_report_from_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         backend_report = payload.get("dynamics_backend_report")
@@ -3651,6 +5021,7 @@ class TerritoryWorldModelService:
         calibration: dict[str, Any],
         thresholds: dict[str, Any],
         record_source: str,
+        scca_report: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         missing: list[str] = []
         if estimate.get("usable_record_count", 0) < thresholds["min_records"]:
@@ -3686,6 +5057,9 @@ class TerritoryWorldModelService:
             missing.append("synthetic_records")
         if nfp_count and not thresholds.get("allow_not_for_production"):
             missing.append("not_for_production_records")
+        scca_status = "not_provided"
+        if scca_report:
+            scca_status = str((scca_report.get("evidence_gate") or {}).get("status") or scca_report.get("status") or "review")
         passed = not missing
         return {
             "passed": passed,
@@ -3693,6 +5067,11 @@ class TerritoryWorldModelService:
             "blocked": False,
             "missing": missing,
             "record_source": record_source,
+            "scca_causal_evidence": {
+                "provided": bool(scca_report),
+                "status": scca_status,
+                "used_as_required_gate": False,
+            },
             "synthetic_record_count": synthetic_count,
             "not_for_production_record_count": nfp_count,
             "thresholds": thresholds,
@@ -6341,6 +7720,35 @@ class TerritoryWorldModelService:
             "state_encoder_policy": "explicit GIS features remain primary; GeoFM embedding is gated and ablatable",
         }
 
+    def _state_contract_claim_ladder(
+        self,
+        *,
+        token_contract: dict[str, Any],
+        constraint_channels: dict[str, Any],
+        temporal_support: dict[str, Any],
+        geofm_policy: dict[str, Any],
+    ) -> dict[str, Any]:
+        facts = {
+            "state_build_pass": {
+                "status": "pass" if not token_contract.get("missing_required_levels") and constraint_channels.get("evidence_item_count", 0) > 0 else "blocked",
+                "hierarchy_status": "pass" if not token_contract.get("missing_required_levels") else "blocked",
+                "missing_required_levels": list(token_contract.get("missing_required_levels") or []),
+                "evidence_item_count": int(constraint_channels.get("evidence_item_count", 0) or 0),
+            },
+            "future_state_holdout_pass": {
+                "status": "pass" if temporal_support.get("status") == "pass" else "review",
+                "temporal_support_status": temporal_support.get("status", "missing"),
+                "history_delta_available": bool(temporal_support.get("history_delta_available")),
+                "year_count": int(temporal_support.get("year_count", 0) or 0),
+            },
+            "geofm_gate_decision": {
+                "status": "pass" if geofm_policy.get("gate_status") == "pass" else "review",
+                "gate_status": geofm_policy.get("gate_status", "review"),
+                "decision": geofm_policy.get("decision", "review_required"),
+            },
+        }
+        return evaluate_claim_ladder(facts)
+
     def _state_contract_claim_boundary(
         self,
         *,
@@ -6348,6 +7756,7 @@ class TerritoryWorldModelService:
         constraint_channels: dict[str, Any],
         temporal_support: dict[str, Any],
         geofm_policy: dict[str, Any],
+        claim_ladder: dict[str, Any],
     ) -> dict[str, Any]:
         missing = list(token_contract.get("missing_required_levels") or [])
         review_levels = list(token_contract.get("review_required_levels") or [])
@@ -6368,9 +7777,13 @@ class TerritoryWorldModelService:
         if geofm_policy.get("gate_status") != "pass":
             review.append("geofm_not_promoted")
         status = "blocked" if blockers else "review" if review else "pass"
+        claim_level = str(claim_ladder.get("current_level") or "L0")
+        claim_status = str(claim_ladder.get("current_claim") or "unsupported")
         return {
             "status": status,
             "claim_scope": "state_contract_ready_for_trainable_dynamics" if status == "pass" else "contract_or_review_only" if status == "review" else "insufficient_for_hierarchical_twm",
+            "claim_level": claim_level,
+            "claim_status": claim_status,
             "blockers": blockers,
             "review_items": review,
             "allowed_claims": [
@@ -6378,7 +7791,8 @@ class TerritoryWorldModelService:
                 "deterministic_forecast_contract",
                 "review_gated_planning_consumer",
             ]
-            + (["trainable_dynamics_input_contract"] if status in {"pass", "review"} else []),
+            + (["trainable_dynamics_input_contract"] if status in {"pass", "review"} else [])
+            + (["state_prediction_supported"] if claim_level in {"L1", "L2", "L3", "L4"} else []),
             "disallowed_claims": [
                 "flat_vector_world_model",
                 "ungated_geofm_world_model",

@@ -885,6 +885,10 @@ def _render_semantic_ontology_doc(ontology: dict, timestamp: str) -> str:
 | Concept relationships | {summary.get('relationship_count')} |
 | Accepted fields | {summary.get('accepted_field_count')} |
 | Review fields | {summary.get('review_field_count')} |
+| Governed fields | {summary.get('governed_field_count')} |
+| Runtime bindings | {summary.get('runtime_binding_count')} |
+| TWM required runtime roles | {summary.get('twm_required_runtime_role_count')} |
+| Official verified sources | {summary.get('official_verified_source_count')} |
 | Production gaps | {summary.get('production_gap_count')} |
 
 # Standard Roles

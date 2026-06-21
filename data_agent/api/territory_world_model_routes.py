@@ -305,6 +305,96 @@ async def twm_beam_plan(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=400)
 
 
+async def twm_farmland_layout_optimization_capability(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.farmland_layout_optimization_capability_report(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_farmland_layout_candidates(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    optimization_dir = body.get("optimization_dir") or body.get("optimization_bundle_dir")
+    if not optimization_dir:
+        return JSONResponse({"error": "optimization_dir is required"}, status_code=400)
+    try:
+        return JSONResponse(svc.farmland_layout_candidate_actions_from_optimization_bundle(optimization_dir, body))
+    except FileNotFoundError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_farmland_layout_optimization_beam_plan(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    optimization_dir = body.get("optimization_dir") or body.get("optimization_bundle_dir")
+    if not optimization_dir:
+        return JSONResponse({"error": "optimization_dir is required"}, status_code=400)
+    try:
+        return JSONResponse(svc.farmland_layout_beam_plan_from_optimization_bundle(request.path_params["id"], optimization_dir, body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except FileNotFoundError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_selected_plan_evaluation_bundle(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.selected_plan_evaluation_bundle(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except FileNotFoundError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 async def twm_validation_report(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -565,6 +655,28 @@ async def twm_causal_calibration_report(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=400)
 
 
+async def twm_scca_causal_evidence_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.scca_causal_evidence_report(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except FileNotFoundError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 def get_territory_world_model_routes() -> list[Route]:
     return [
         Route("/api/twm/status", endpoint=twm_status, methods=["GET"]),
@@ -582,6 +694,10 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/states/{id}/action-mask-report", endpoint=twm_action_mask_report, methods=["POST"]),
         Route("/api/twm/states/{id}/counterfactual-rollout", endpoint=twm_counterfactual_rollout, methods=["POST"]),
         Route("/api/twm/states/{id}/beam-plan", endpoint=twm_beam_plan, methods=["POST"]),
+        Route("/api/twm/states/{id}/farmland-layout-optimization-capability", endpoint=twm_farmland_layout_optimization_capability, methods=["POST"]),
+        Route("/api/twm/states/{id}/farmland-layout-candidates", endpoint=twm_farmland_layout_candidates, methods=["POST"]),
+        Route("/api/twm/states/{id}/farmland-layout-optimization-beam-plan", endpoint=twm_farmland_layout_optimization_beam_plan, methods=["POST"]),
+        Route("/api/twm/states/{id}/selected-plan-evaluation-bundle", endpoint=twm_selected_plan_evaluation_bundle, methods=["POST"]),
         Route("/api/twm/states/{id}/validation-report", endpoint=twm_validation_report, methods=["POST"]),
         Route("/api/twm/states/{id}/world-model-profile", endpoint=twm_world_model_profile, methods=["POST"]),
         Route("/api/twm/states/{id}/state-contract-report", endpoint=twm_state_contract_report, methods=["POST"]),
@@ -595,6 +711,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/states/{id}/geofm-ablation-gate", endpoint=twm_geofm_ablation_gate, methods=["POST"]),
         Route("/api/twm/states/{id}/geofm-downstream-experiment-report", endpoint=twm_geofm_downstream_experiment_report, methods=["POST"]),
         Route("/api/twm/states/{id}/causal-calibration-report", endpoint=twm_causal_calibration_report, methods=["POST"]),
+        Route("/api/twm/states/{id}/scca-causal-evidence-report", endpoint=twm_scca_causal_evidence_report, methods=["POST"]),
         Route("/api/twm/scenarios", endpoint=twm_scenarios, methods=["GET", "POST"]),
         Route("/api/twm/scenarios/{id}/compare", endpoint=twm_scenario_compare, methods=["GET", "POST"]),
     ]

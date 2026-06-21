@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="428.237961pt" height="286.056pt" viewBox="0 0 428.237961 286.056" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-06-21T20:47:51.735085</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 286.056 
+L 428.237961 286.056 
+L 428.237961 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 125.72234 66.96432 
+Q 146.824273 66.96432 166.528665 66.96432 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #0f4d92; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 163.528665 65.46432 
+L 166.528665 66.96432 
+L 163.528665 68.46432 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #0f4d92; stroke: #0f4d92; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 260.31194 66.96432 
+Q 281.413873 66.96432 301.118265 66.96432 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #6b5fa6; stroke-width: 1.25; stroke-linecap: round"/>
+    <path d="M 298.118265 65.46432 
+L 301.118265 66.96432 
+L 298.118265 68.46432 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #6b5fa6; stroke: #6b5fa6; stroke-width: 1.25; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 109.650591 132.976728 
+Q 119.704525 132.976728 128.640424 132.976728 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #606060; stroke-linecap: round"/>
+    <path d="M 125.640424 131.476728 
+L 128.640424 132.976728 
+L 125.640424 134.476728 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #606060; stroke: #606060; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 198.037791 132.976728 
+Q 208.091725 132.976728 217.027624 132.976728 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #606060; stroke-linecap: round"/>
+    <path d="M 214.027624 131.476728 
+L 217.027624 132.976728 
+L 214.027624 134.476728 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #606060; stroke: #606060; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 286.424991 132.976728 
+Q 296.478925 132.976728 305.414824 132.976728 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #606060; stroke-linecap: round"/>
+    <path d="M 302.414824 131.476728 
+L 305.414824 132.976728 
+L 302.414824 134.476728 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #606060; stroke: #606060; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 338.681987 145.576914 
+Q 247.086828 138.088941 162.930996 171.687418 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #2b7c83; stroke-width: 1.15; stroke-linecap: round"/>
+    <path d="M 166.273329 171.968148 
+L 162.930996 171.687418 
+L 165.16098 169.181989 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #2b7c83; stroke: #2b7c83; stroke-width: 1.15; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 161.877429 185.949648 
+Q 200.053478 185.949648 236.887886 185.949648 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #b56a2c; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 233.887886 184.449648 
+L 236.887886 185.949648 
+L 233.887886 187.449648 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #b56a2c; stroke: #b56a2c; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 286.899765 199.983666 
+Q 275.661685 209.372609 268.173963 220.434967 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #3e8f52; stroke-width: 1.15; stroke-linecap: round"/>
+    <path d="M 271.097761 218.791371 
+L 268.173963 220.434967 
+L 268.613366 217.109771 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #3e8f52; stroke: #3e8f52; stroke-width: 1.15; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 108.157293 235.974998 
+Q 68.505461 200.722465 71.307909 148.916152 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #b64342; stroke-width: 1.05; stroke-linecap: round"/>
+    <path d="M 69.648052 151.830749 
+L 71.307909 148.916152 
+L 72.643672 151.992796 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #b64342; stroke: #b64342; stroke-width: 1.05; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 214.428898 221.189171 
+Q 220.074385 184.682001 220.143338 148.914873 
+" clip-path="url(#paaa36d9741)" style="fill: none; stroke: #b64342; stroke-width: 1.05; stroke-linecap: round"/>
+    <path d="M 218.637557 151.911976 
+L 220.143338 148.914873 
+L 221.637552 151.917759 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #b64342; stroke: #b64342; stroke-width: 1.05; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 36.94282 90.326736 
+L 122.11594 90.326736 
+Q 130.15114 90.326736 130.15114 84.893616 
+L 130.15114 49.035024 
+Q 130.15114 43.601904 122.11594 43.601904 
+L 36.94282 43.601904 
+Q 28.90762 43.601904 28.90762 49.035024 
+L 28.90762 84.893616 
+Q 28.90762 90.326736 36.94282 90.326736 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #dceaf7; stroke: #0f4d92; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 171.53242 90.326736 
+L 256.70554 90.326736 
+Q 264.74074 90.326736 264.74074 84.893616 
+L 264.74074 49.035024 
+Q 264.74074 43.601904 256.70554 43.601904 
+L 171.53242 43.601904 
+Q 163.49722 43.601904 163.49722 49.035024 
+L 163.49722 84.893616 
+Q 163.49722 90.326736 171.53242 90.326736 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #ece7f5; stroke: #6b5fa6; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 306.12202 90.326736 
+L 391.29514 90.326736 
+Q 399.33034 90.326736 399.33034 84.893616 
+L 399.33034 49.035024 
+Q 399.33034 43.601904 391.29514 43.601904 
+L 306.12202 43.601904 
+Q 298.08682 43.601904 298.08682 49.035024 
+L 298.08682 84.893616 
+Q 298.08682 90.326736 306.12202 90.326736 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #ddf2f0; stroke: #2b7c83; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 44.97802 150.091056 
+L 106.04554 150.091056 
+Q 114.08074 150.091056 114.08074 144.657936 
+L 114.08074 121.023864 
+Q 114.08074 115.590744 106.04554 115.590744 
+L 44.97802 115.590744 
+Q 36.94282 115.590744 36.94282 121.023864 
+L 36.94282 144.657936 
+Q 36.94282 150.091056 44.97802 150.091056 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #ffffff; stroke: #0f4d92; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 133.36522 150.091056 
+L 194.43274 150.091056 
+Q 202.46794 150.091056 202.46794 144.657936 
+L 202.46794 121.023864 
+Q 202.46794 115.590744 194.43274 115.590744 
+L 133.36522 115.590744 
+Q 125.33002 115.590744 125.33002 121.023864 
+L 125.33002 144.657936 
+Q 125.33002 150.091056 133.36522 150.091056 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #ffffff; stroke: #6b5fa6; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 221.75242 150.091056 
+L 282.81994 150.091056 
+Q 290.85514 150.091056 290.85514 144.657936 
+L 290.85514 121.023864 
+Q 290.85514 115.590744 282.81994 115.590744 
+L 221.75242 115.590744 
+Q 213.71722 115.590744 213.71722 121.023864 
+L 213.71722 144.657936 
+Q 213.71722 150.091056 221.75242 150.091056 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #ffffff; stroke: #6b5fa6; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 310.13962 150.091056 
+L 371.20714 150.091056 
+Q 379.24234 150.091056 379.24234 144.657936 
+L 379.24234 121.023864 
+Q 379.24234 115.590744 371.20714 115.590744 
+L 310.13962 115.590744 
+Q 302.10442 115.590744 302.10442 121.023864 
+L 302.10442 144.657936 
+Q 302.10442 150.091056 310.13962 150.091056 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #ffffff; stroke: #2b7c83; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 65.06602 203.063976 
+L 158.27434 203.063976 
+Q 166.30954 203.063976 166.30954 197.630856 
+L 166.30954 173.996784 
+Q 166.30954 168.563664 158.27434 168.563664 
+L 65.06602 168.563664 
+Q 57.03082 168.563664 57.03082 173.996784 
+L 57.03082 197.630856 
+Q 57.03082 203.063976 65.06602 203.063976 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #f7e5d6; stroke: #b56a2c; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 241.84042 203.063976 
+L 335.04874 203.063976 
+Q 343.08394 203.063976 343.08394 197.630856 
+L 343.08394 173.996784 
+Q 343.08394 168.563664 335.04874 168.563664 
+L 241.84042 168.563664 
+Q 233.80522 168.563664 233.80522 173.996784 
+L 233.80522 197.630856 
+Q 233.80522 203.063976 241.84042 203.063976 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #e3f2e4; stroke: #3e8f52; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 111.26842 256.036896 
+L 316.96954 256.036896 
+Q 325.00474 256.036896 325.00474 250.603776 
+L 325.00474 224.253144 
+Q 325.00474 218.820024 316.96954 218.820024 
+L 111.26842 218.820024 
+Q 103.23322 218.820024 103.23322 224.253144 
+L 103.23322 250.603776 
+Q 103.23322 256.036896 111.26842 256.036896 
+z
+" clip-path="url(#paaa36d9741)" style="fill: #f8e2e0; stroke: #b64342; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #272727" x="214.11898" y="24.85796" transform="rotate(-0 214.11898 24.85796)">TWM 前序工程底座：标准治理、语义组织与多模态语义产品生产</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 6.55px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #4d4d4d" x="214.11898" y="32.116927" transform="rotate(-0 214.11898 32.116927)">核心主张：TWM 的可信状态不是模型凭空生成，而是由权威标准、本体规则、运行时语义映射和 MMFE 语义产品共同支撑</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(57.30438 58.269007)">权威标准治理层</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(50.95438 65.465859)">数据标准全生命周期</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(36.461002 72.669974)">采集-分析-起草-审定-发布-派生</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(28.72938 79.920086)">数据元 / 值域 / 质量规则 / 角色契约</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(191.89398 58.336019)">语义基础设施层</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(172.84398 65.492926)">本体：等价 / 派生 / 推理规则</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(160.337953 72.689778)">语义层：业务词汇-表字段-单位-坐标系</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(176.01898 79.909628)">运行时语义解析与字段绑定</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(316.95858 58.312137)">多模态语义产品生产层</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(302.959807 65.438782)">MMFE 多模态地理空间语义融合</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(312.983877 72.665896)">探测-对齐-融合-质检-发布</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(310.60858 79.87001)">语义图 / 证据包 / 数据产品</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 5.6px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #606060" x="147.02506" y="99.822666" transform="rotate(-0 147.02506 99.822666)">派生语义提示 / 值域 / 质检规则</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 5.6px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #606060" x="281.2129" y="99.834041" transform="rotate(-0 281.2129 99.834041)">字段语义 / 推理规则 / 运行时绑定</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(63.31178 128.000626)">标准平台</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(63.31178 134.883904)">权威来源</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(38.91178 141.804392)">版本化 / 审定 / 发布 / 回滚</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(151.69898 127.958517)">本体规则</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(151.69898 134.841795)">概念等价</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(136.44898 141.74833)">派生字段 / 分类推理</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(243.13618 127.972852)">语义层</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(233.98618 134.834037)">业务术语解析</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(215.68618 141.746385)">表 / 列 / 单位 / 坐标系绑定</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(318.07574 127.960099)">MMFE 执行引擎</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(328.47338 134.858494)">多源对齐</text>
+    <text style="font-weight: 700; font-size: 6.1px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(307.12338 141.801076)">融合 / 质检 / 可解释发布</text>
+   </g>
+   <g id="text_12">
+    <text style="font-weight: 700; font-size: 6.25px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(83.54518 180.72175)">语义产品与发布资产</text>
+    <text style="font-weight: 700; font-size: 6.25px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(69.666274 187.988742)">semantic.json / 语义图 / 本体包</text>
+    <text style="font-weight: 700; font-size: 6.25px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(62.035903 195.154914)">OKF / STAC / 向量索引 / Lakehouse</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 6.25px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(264.244873 177.297345)">TWM 可消费输入</text>
+    <text style="font-weight: 700; font-size: 6.25px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(257.385498 184.410646)">对象-关系-规则-证据包</text>
+    <text style="font-weight: 700; font-size: 6.25px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(250.94458 191.57756)">一张图角色契约 / 质量报告</text>
+    <text style="font-weight: 700; font-size: 6.25px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(260.31958 198.630099)">可构建空间治理状态</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 5.8px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #606060" x="200.05738" y="179.719405" transform="rotate(-0 200.05738 179.719405)">语义产品进入 TWM</text>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(195.06898 232.34591)">治理反馈闭环</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(145.082078 239.534289)">TWM 运行证据、规则命中、复核结论、数据缺口</text>
+    <text style="font-weight: 700; font-size: 6.35px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; fill: #272727" transform="translate(134.74398 246.745666)">反向进入标准修订、语义补齐、值域完善和质检规则增强</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 6.05px; font-family: 'Songti SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #606060" x="214.11898" y="270.601416" transform="rotate(-0 214.11898 270.601416)">说明：本体和语义层是工程手段，MMFE 是语义产品生产器；它们共同把原始数据和标准规则转化为 TWM 可推演、可审计、可复核的空间治理状态材料。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="paaa36d9741">
+   <rect x="13.23898" y="7.2" width="401.76" height="271.656"/>
+  </clipPath>
+ </defs>
+</svg>

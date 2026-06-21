@@ -111,6 +111,14 @@ PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS = [
     "at least one numeric covariate such as area_m2, DKMJ, quality_score, risk_score",
 ]
 
+PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS = [
+    "action_type",
+    "action_mask_policy or policy_code",
+    "action_mask_allowed or feasibility_label",
+    "region_code/DKXZQDM/XZQDM or cluster",
+    "period/time_index or approval_date",
+]
+
 TWM_EVIDENCE_MATCHING_COVARIATES = [
     "DKMJ",
     "area_m2",
@@ -254,11 +262,14 @@ def main() -> None:
         "production_observed_history_contract": production_observed_history_contract(),
         "twm_dataset_audit": audit_twm_dataset(twm_dataset),
         "twm_observed_history_schema_audit": audit_observed_history_schema(twm_dataset / "tables" / "approval_records.csv"),
-        "production_observed_history_schema_audit": audit_observed_history_schema(production_observed_history) if production_observed_history else {
-            "status": "not_provided",
-            "note": "pass --production-observed-history with a non-synthetic approval/review export to preflight production calibration data",
-            "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
-        },
+        "production_observed_history_schema_audit": (
+            audit_observed_history_schema(production_observed_history)
+            if production_observed_history
+            else {
+                **audit_observed_history_schema(None),
+                "note": "pass --production-observed-history with a non-synthetic approval/review export to preflight production calibration data",
+            }
+        ),
         "twm_structural_validation_fixture": structural_fixture_summary,
         "twm_structural_validation_schema_audit": audit_observed_history_schema(structural_observed_history) if structural_observed_history else {
             "status": "skipped",
@@ -319,6 +330,10 @@ def main() -> None:
             "core_innovation": "hierarchical GIS state plus action-conditioned dynamics plus evidence/causal gates, not GeoFM or planning alone",
         },
     }
+    report["production_policy_history_alignment"] = production_policy_history_alignment(
+        (report.get("production_observed_history_schema_audit") or {}).get("policy_history_quality") or {},
+        synthetic_experiment_summary,
+    )
     report["summary"] = summarize_validation(report)
 
     output = Path(args.output).expanduser()
@@ -389,15 +404,36 @@ def production_observed_history_contract() -> dict[str, Any]:
             "spatial_support": "must include cluster ids, neighbor ids, or complete x/y coordinates",
             "covariates": "must include at least one numeric adjustment covariate; stronger validation needs several pre-treatment covariates",
         },
+        "policy_history_gate": {
+            "purpose": "preflight real approval/review histories for TWM action-mask and unseen region/action-policy feasibility validation",
+            "minimum_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
+            "required_coverage": [
+                "both allowed and blocked feasibility labels",
+                "mixed-risk allowed policies such as allowed_with_conditions/protect_allowed/restore_allowed when available",
+                "multiple region-policy and region-action-policy combinations",
+            ],
+            "claim_boundary": "policy-history coverage only prepares real-data feasibility validation; it does not prove simulator accuracy by itself",
+        },
         "claim_boundary": "schema conformance only prepares data for evidence gates; it does not upgrade TWM claims without causal_calibration_report pass",
     }
 
 
 def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
     if path is None:
-        return {"status": "not_provided", "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS}
+        return {
+            "status": "not_provided",
+            "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
+            "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
+            "policy_history_quality": _empty_observed_policy_history_quality("not_provided"),
+        }
     if not path.exists():
-        return {"status": "missing", "path": str(path), "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS}
+        return {
+            "status": "missing",
+            "path": str(path),
+            "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
+            "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
+            "policy_history_quality": _empty_observed_policy_history_quality("missing"),
+        }
 
     rows = read_csv(path)
     fields = list(rows[0].keys()) if rows else []
@@ -419,6 +455,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
             missing_groups.append(group["group"])
 
     row_quality = _observed_history_row_quality(rows)
+    policy_history_quality = _observed_policy_history_quality(rows)
     missing_data_gates = []
     if row_quality["production_candidate_row_count"] <= 0:
         missing_data_gates.append("production_usable_rows")
@@ -446,8 +483,10 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
         "field_groups": group_reports,
         "missing_required_groups": missing_groups,
         "row_quality": row_quality,
+        "policy_history_quality": policy_history_quality,
         "missing_data_gates": missing_data_gates,
         "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
+        "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
         "recommendations": _observed_history_schema_recommendations(missing_groups, missing_data_gates),
     }
 
@@ -472,6 +511,14 @@ def write_observed_history_template(path: Path) -> None:
         "risk_score",
         "rule_hit_count",
         "review_task_count",
+        "action_type",
+        "action_mask_policy",
+        "action_mask_allowed",
+        "action_mask_required_reviews",
+        "action_mask_hard_blocks",
+        "region_code",
+        "period",
+        "time_index",
         "propensity_score",
         "evidence_weight",
         "synthetic",
@@ -479,7 +526,7 @@ def write_observed_history_template(path: Path) -> None:
         "source_path",
     ]
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
 
 
@@ -585,7 +632,12 @@ def write_twm_structural_validation_observed_history(path: Path, dataset_root: P
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=STRUCTURAL_VALIDATION_OBSERVED_HISTORY_FIELDS, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=STRUCTURAL_VALIDATION_OBSERVED_HISTORY_FIELDS,
+            extrasaction="ignore",
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
     return structural_validation_fixture_summary(path, rows, source_rows)
@@ -668,6 +720,29 @@ def write_twm_synthetic_experiment_foundation(
                     region_idx=region_idx,
                     period_idx=period_idx,
                 )
+                candidate_coverage_floor = synthetic_experiment_candidate_coverage_constraint_floor(
+                    action_type=action_type,
+                    split=split,
+                    region_idx=region_idx,
+                    period_idx=period_idx,
+                    period_count=period_count,
+                    component_idx=component_idx,
+                )
+                if candidate_coverage_floor is not None:
+                    constraint_probability = baseline_risk + action_profile["constraint_risk_delta"]
+                    if constraint_probability < candidate_coverage_floor:
+                        baseline_risk = round(min(0.46, baseline_risk + candidate_coverage_floor - constraint_probability), 6)
+                        rule_hit_count = 1 if baseline_risk >= 0.22 else 0
+                        high_rule_hit_count = 1 if baseline_risk >= 0.34 else 0
+                        confirmed_violation_count = 1 if baseline_risk >= 0.6 and component_idx % 2 == 0 else 0
+                        action_profile = synthetic_experiment_action_profile(
+                            action_type=action_type,
+                            preferred_action=preferred_action,
+                            baseline_risk=baseline_risk,
+                            review_penalty=review_penalty,
+                            region_idx=region_idx,
+                            period_idx=period_idx,
+                        )
                 treatment_effect = action_profile["treatment_effect"]
                 baseline_state_score = round(0.45 + 0.08 * quality_score - 0.22 * baseline_risk, 6)
                 control_next_state = round(baseline_state_score - 0.012 * baseline_risk + 0.004 * (period_idx % 3), 6)
@@ -763,7 +838,12 @@ def write_twm_synthetic_experiment_foundation(
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=SYNTHETIC_EXPERIMENT_FOUNDATION_FIELDS, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=SYNTHETIC_EXPERIMENT_FOUNDATION_FIELDS,
+            extrasaction="ignore",
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
     return synthetic_experiment_foundation_summary(path, rows, source_rows)
@@ -796,6 +876,7 @@ def synthetic_experiment_foundation_summary(path: Path, rows: list[dict[str, Any
     scenarios = sorted({str(row.get("scenario_id") or "") for row in rows if row.get("scenario_id")})
     oracle = synthetic_experiment_oracle_summary(rows)
     action_mask = synthetic_experiment_action_mask_summary(rows)
+    policy_coverage = synthetic_experiment_policy_coverage_benchmark(rows)
     return {
         "schema": "territory_world_model.synthetic_experiment_foundation.v1",
         "status": "generated",
@@ -818,6 +899,12 @@ def synthetic_experiment_foundation_summary(path: Path, rows: list[dict[str, Any
         "action_mask_blocked_count": action_mask["blocked_count"],
         "mixed_action_mask_action_types": action_mask["mixed_action_types"],
         "action_mask_counts_by_action_type": action_mask["by_action_type"],
+        "action_mask_policy_counts_by_split": action_mask["policy_counts_by_split"],
+        "candidate_action_mask_policy_counts": action_mask["candidate_policy_counts"],
+        "holdout_action_mask_policy_counts": action_mask["holdout_policy_counts"],
+        "candidate_mixed_allowed_policy_counts": action_mask["candidate_mixed_allowed_policy_counts"],
+        "holdout_mixed_allowed_policy_counts": action_mask["holdout_mixed_allowed_policy_counts"],
+        "policy_coverage_benchmark": policy_coverage,
         "rows_with_neighbors": quality["rows_with_neighbors"],
         "rows_with_covariates": quality["rows_with_covariates"],
         "synthetic_count": quality["synthetic_count"],
@@ -825,6 +912,71 @@ def synthetic_experiment_foundation_summary(path: Path, rows: list[dict[str, Any
         "data_role": "synthetic_experiment_foundation",
         "claim_boundary": "synthetic multi-region, multi-period experiment data for TWM development; not production ground truth",
     }
+
+
+def synthetic_experiment_candidate_coverage_constraint_floor(
+    *,
+    action_type: str,
+    split: str,
+    region_idx: int,
+    period_idx: int,
+    period_count: int,
+    component_idx: int,
+) -> float | None:
+    """Seed train split with mixed-risk allowed policy contexts.
+
+    The synthetic foundation is a structural regression fixture. The candidate
+    split must include mitigated-but-allowed policy contexts so learned
+    feasibility heads are not forced to extrapolate every allowed mixed-risk
+    decision from holdout-only labels.
+    """
+
+    if split != "train" or action_type not in {"approve_with_conditions", "protect", "restore"}:
+        return None
+    if synthetic_experiment_holdout_unseen_allowed_region_policy_candidate_gap(
+        action_type=action_type,
+        region_idx=region_idx,
+        period_idx=period_idx,
+        period_count=period_count,
+    ):
+        return None
+    holdout_period_count = synthetic_experiment_holdout_period_count(period_count)
+    holdout_start = max(1, period_count - holdout_period_count)
+    candidate_tail_start = max(0, holdout_start - 2)
+    if period_idx < candidate_tail_start:
+        return None
+    if synthetic_experiment_action_mask_phase_requires_review(
+        action_type=action_type,
+        region_idx=region_idx,
+        period_idx=period_idx,
+        component_idx=component_idx,
+    ):
+        return None
+    return 0.31
+
+
+def synthetic_experiment_holdout_unseen_allowed_region_policy_candidate_gap(
+    *,
+    action_type: str,
+    region_idx: int,
+    period_idx: int,
+    period_count: int,
+) -> bool:
+    """Reserve allowed region/policy combinations for holdout-only stress.
+
+    The candidate split still contains every mixed-risk allowed policy family in
+    other regions. These gaps create explicit unseen allowed region-policy
+    diagnostics across multiple action families without feeding target-derived
+    labels to the simulator.
+    """
+
+    if action_type not in {"approve_with_conditions", "protect", "restore"}:
+        return False
+    holdout_period_count = synthetic_experiment_holdout_period_count(period_count)
+    holdout_start = max(1, period_count - holdout_period_count)
+    if region_idx < 3 or period_idx >= holdout_start:
+        return False
+    return True
 
 
 def synthetic_experiment_action_mask_label(
@@ -845,7 +997,12 @@ def synthetic_experiment_action_mask_label(
         required_reviews.append("synthetic_defer_review")
         policy = "defer_review_always_review"
     elif action_type == "approve_with_conditions":
-        if risk >= 0.18 and (region_idx + period_idx) % 2 == 0:
+        if risk >= 0.18 and synthetic_experiment_action_mask_phase_requires_review(
+            action_type=action_type,
+            region_idx=region_idx,
+            period_idx=period_idx,
+            component_idx=component_idx,
+        ):
             allowed = False
             required_reviews.append("mixed_risk_condition_review")
             policy = "mixed_risk_blocked_condition_review"
@@ -853,14 +1010,24 @@ def synthetic_experiment_action_mask_label(
             required_reviews.append("conditional_approval_monitoring") if risk >= 0.28 else None
             policy = "mixed_risk_allowed_with_conditions" if risk >= 0.28 else "low_risk_allowed"
     elif action_type == "restore":
-        if risk >= 0.18 and (period_idx + region_idx) % 3 == 0:
+        if risk >= 0.18 and synthetic_experiment_action_mask_phase_requires_review(
+            action_type=action_type,
+            region_idx=region_idx,
+            period_idx=period_idx,
+            component_idx=component_idx,
+        ):
             allowed = False
             required_reviews.append("restoration_high_risk_phasing_review")
             policy = "mixed_risk_restore_blocked"
         else:
             policy = "mixed_risk_restore_allowed" if risk >= 0.28 else "low_risk_allowed"
     elif action_type == "protect":
-        if risk >= 0.18 and (region_idx + period_idx + component_idx) % 3 == 1:
+        if risk >= 0.18 and synthetic_experiment_action_mask_phase_requires_review(
+            action_type=action_type,
+            region_idx=region_idx,
+            period_idx=period_idx,
+            component_idx=component_idx,
+        ):
             allowed = False
             required_reviews.append("protection_boundary_conflict_review")
             policy = "mixed_risk_protect_blocked"
@@ -876,17 +1043,45 @@ def synthetic_experiment_action_mask_label(
     }
 
 
+def synthetic_experiment_action_mask_phase_requires_review(
+    *,
+    action_type: str,
+    region_idx: int,
+    period_idx: int,
+    component_idx: int,
+) -> bool:
+    if action_type == "defer_review":
+        return True
+    if action_type == "approve_with_conditions":
+        return (region_idx + period_idx) % 2 == 0
+    if action_type == "restore":
+        return (period_idx + region_idx) % 3 == 0
+    if action_type == "protect":
+        return (region_idx + period_idx + component_idx) % 3 == 1
+    return False
+
+
 def synthetic_experiment_action_mask_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     by_action: dict[str, dict[str, int]] = {}
+    policy_counts_by_split: dict[str, Counter] = {}
+    candidate_policy_counts: Counter = Counter()
+    holdout_policy_counts: Counter = Counter()
     allowed_count = 0
     blocked_count = 0
     for row in rows:
         if str(row.get("approval_status") or "").lower() != "approved":
             continue
         action_type = str(row.get("action_type") or "")
+        split = str(row.get("split") or "unknown")
+        policy = str(row.get("action_mask_policy") or "unspecified")
         allowed = truthy(row.get("action_mask_allowed"))
         bucket = by_action.setdefault(action_type, {"allowed": 0, "blocked": 0, "total": 0})
         bucket["total"] += 1
+        policy_counts_by_split.setdefault(split, Counter())[policy] += 1
+        if split == "train":
+            candidate_policy_counts[policy] += 1
+        else:
+            holdout_policy_counts[policy] += 1
         if allowed:
             bucket["allowed"] += 1
             allowed_count += 1
@@ -899,7 +1094,126 @@ def synthetic_experiment_action_mask_summary(rows: list[dict[str, Any]]) -> dict
         "blocked_count": blocked_count,
         "mixed_action_types": mixed,
         "by_action_type": dict(sorted(by_action.items())),
+        "policy_counts_by_split": {
+            split: dict(sorted(counts.items()))
+            for split, counts in sorted(policy_counts_by_split.items())
+        },
+        "candidate_policy_counts": dict(sorted(candidate_policy_counts.items())),
+        "holdout_policy_counts": dict(sorted(holdout_policy_counts.items())),
+        "candidate_mixed_allowed_policy_counts": {
+            policy: count
+            for policy, count in sorted(candidate_policy_counts.items())
+            if "mixed_risk" in policy and "allowed" in policy
+        },
+        "holdout_mixed_allowed_policy_counts": {
+            policy: count
+            for policy, count in sorted(holdout_policy_counts.items())
+            if "mixed_risk" in policy and "allowed" in policy
+        },
     }
+
+
+def synthetic_experiment_policy_coverage_benchmark(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    modes = {
+        mode: synthetic_experiment_unseen_policy_mode_summary(rows, mode)
+        for mode in ("region_policy", "region_action_policy")
+    }
+    required_mixed_allowed_policies = sorted(
+        {
+            policy
+            for summary in modes.values()
+            for policy in (summary.get("allowed_policy_counts") or {})
+            if _observed_policy_is_mixed_allowed(str(policy))
+        }
+    )
+    return {
+        "schema": "territory_world_model.synthetic_policy_coverage_benchmark.v1",
+        "status": "generated" if any((item.get("example_count") or 0) > 0 for item in modes.values()) else "review",
+        "source": "synthetic_experiment_unseen_mixed_risk_policy_fixture",
+        "modes": modes,
+        "required_allowed_count": max((int(item.get("allowed_count") or 0) for item in modes.values()), default=0),
+        "required_blocked_count": max((int(item.get("blocked_count") or 0) for item in modes.values()), default=0),
+        "required_region_policy_key_count": int((modes.get("region_policy") or {}).get("unseen_key_count") or 0),
+        "required_region_action_policy_key_count": int((modes.get("region_action_policy") or {}).get("unseen_key_count") or 0),
+        "required_mixed_allowed_policies": required_mixed_allowed_policies,
+        "claim_boundary": "synthetic coverage benchmark only defines real-data feasibility coverage targets; it is not production accuracy evidence",
+    }
+
+
+def synthetic_experiment_unseen_policy_mode_summary(rows: list[dict[str, Any]], mode: str) -> dict[str, Any]:
+    approved_rows = [
+        row
+        for row in rows
+        if str(row.get("approval_status") or "").strip().lower() == "approved"
+        and _synthetic_experiment_mixed_risk_non_defer_row(row)
+    ]
+    candidate_keys = {
+        _synthetic_experiment_policy_key(row, mode)
+        for row in approved_rows
+        if _synthetic_experiment_policy_split(row) == "candidate"
+    }
+    selected = [
+        row
+        for row in approved_rows
+        if _synthetic_experiment_policy_split(row) == "holdout"
+        and _synthetic_experiment_policy_key(row, mode) not in candidate_keys
+    ]
+    action_counts: Counter = Counter()
+    policy_counts: Counter = Counter()
+    allowed_policy_counts: Counter = Counter()
+    blocked_policy_counts: Counter = Counter()
+    key_counts: Counter = Counter()
+    allowed_count = 0
+    blocked_count = 0
+    for row in selected:
+        action_type = str(row.get("action_type") or "unknown_action")
+        policy = str(row.get("action_mask_policy") or "unspecified")
+        allowed = truthy(row.get("action_mask_allowed"))
+        action_counts[action_type] += 1
+        policy_counts[policy] += 1
+        key_counts[_synthetic_experiment_policy_key(row, mode)] += 1
+        if allowed:
+            allowed_count += 1
+            allowed_policy_counts[policy] += 1
+        else:
+            blocked_count += 1
+            blocked_policy_counts[policy] += 1
+    return {
+        "schema": "territory_world_model.synthetic_unseen_policy_mode_benchmark.v1",
+        "mode": mode,
+        "example_count": len(selected),
+        "allowed_count": allowed_count,
+        "blocked_count": blocked_count,
+        "action_counts": dict(sorted(action_counts.items())),
+        "policy_counts": dict(sorted(policy_counts.items())),
+        "allowed_policy_counts": dict(sorted(allowed_policy_counts.items())),
+        "blocked_policy_counts": dict(sorted(blocked_policy_counts.items())),
+        "unseen_key_count": len(key_counts),
+        "unseen_key_counts": {"|".join(key): count for key, count in sorted(key_counts.items())},
+        "subset_rule": f"holdout mixed-risk approved rows with unseen candidate-split {mode} key",
+    }
+
+
+def _synthetic_experiment_policy_split(row: dict[str, Any]) -> str:
+    return "candidate" if str(row.get("split") or "").strip().lower() == "train" else "holdout"
+
+
+def _synthetic_experiment_mixed_risk_non_defer_row(row: dict[str, Any]) -> bool:
+    action_type = str(row.get("action_type") or "").strip()
+    if action_type not in {"approve_with_conditions", "protect", "restore"}:
+        return False
+    return "mixed_risk" in str(row.get("action_mask_policy") or "")
+
+
+def _synthetic_experiment_policy_key(row: dict[str, Any], mode: str) -> tuple[str, ...]:
+    region = str(row.get("region_code") or "unknown_region")
+    action_type = str(row.get("action_type") or "unknown_action")
+    policy = str(row.get("action_mask_policy") or "unspecified")
+    if mode == "region_policy":
+        return (region, policy)
+    if mode == "region_action_policy":
+        return (region, action_type, policy)
+    return (mode, region, action_type, policy)
 
 
 def synthetic_experiment_action_profile(
@@ -1072,6 +1386,269 @@ def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "production_treated_count": production_treated_count,
         "production_control_count": production_control_count,
     }
+
+
+def _observed_policy_history_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    production_rows = [
+        row
+        for row in rows
+        if _observed_policy_history_production_ready(row)
+    ]
+    action_counts: Counter = Counter()
+    policy_counts: Counter = Counter()
+    allowed_policy_counts: Counter = Counter()
+    blocked_policy_counts: Counter = Counter()
+    region_counts: Counter = Counter()
+    region_policy_counts: Counter = Counter()
+    region_action_policy_counts: Counter = Counter()
+    time_policy_counts: Counter = Counter()
+    allowed_count = 0
+    blocked_count = 0
+    rows_with_policy = 0
+    rows_with_action_type = 0
+    rows_with_region = 0
+    rows_with_time = 0
+    for row in production_rows:
+        action_type = _observed_policy_action_type(row)
+        policy = _observed_policy_label(row)
+        allowed = _observed_policy_allowed(row)
+        region = _observed_policy_region(row)
+        time_key = _observed_policy_time_key(row)
+        if action_type:
+            rows_with_action_type += 1
+            action_counts[action_type] += 1
+        if policy:
+            rows_with_policy += 1
+            policy_counts[policy] += 1
+        if region:
+            rows_with_region += 1
+            region_counts[region] += 1
+        if time_key:
+            rows_with_time += 1
+        if allowed is True:
+            allowed_count += 1
+            if policy:
+                allowed_policy_counts[policy] += 1
+        elif allowed is False:
+            blocked_count += 1
+            if policy:
+                blocked_policy_counts[policy] += 1
+        if region and policy:
+            region_policy_counts[f"{region}|{policy}"] += 1
+        if region and action_type and policy:
+            region_action_policy_counts[f"{region}|{action_type}|{policy}"] += 1
+        if time_key and policy:
+            time_policy_counts[f"{time_key}|{policy}"] += 1
+
+    mixed_allowed_policy_counts = {
+        policy: count
+        for policy, count in sorted(allowed_policy_counts.items())
+        if _observed_policy_is_mixed_allowed(policy)
+    }
+    missing = []
+    if not production_rows:
+        missing.append("production_policy_rows")
+    if allowed_count <= 0:
+        missing.append("allowed_policy_labels")
+    if blocked_count <= 0:
+        missing.append("blocked_policy_labels")
+    if rows_with_policy <= 0:
+        missing.append("action_mask_policy")
+    if rows_with_action_type <= 0:
+        missing.append("action_type")
+    if rows_with_region <= 0:
+        missing.append("region_context")
+    if rows_with_time <= 0:
+        missing.append("temporal_context")
+    if len(region_policy_counts) <= 0:
+        missing.append("region_policy_coverage")
+    if len(region_action_policy_counts) <= 0:
+        missing.append("region_action_policy_coverage")
+    if not mixed_allowed_policy_counts:
+        missing.append("mixed_risk_allowed_policy_coverage")
+    return {
+        "schema": "territory_world_model.production_policy_history_quality.v1",
+        "status": "pass" if not missing else "review",
+        "row_count": len(rows),
+        "production_policy_row_count": len(production_rows),
+        "allowed_count": allowed_count,
+        "blocked_count": blocked_count,
+        "rows_with_policy": rows_with_policy,
+        "rows_with_action_type": rows_with_action_type,
+        "rows_with_region": rows_with_region,
+        "rows_with_time": rows_with_time,
+        "action_counts": dict(sorted(action_counts.items())),
+        "policy_counts": dict(sorted(policy_counts.items())),
+        "allowed_policy_counts": dict(sorted(allowed_policy_counts.items())),
+        "blocked_policy_counts": dict(sorted(blocked_policy_counts.items())),
+        "mixed_allowed_policy_counts": mixed_allowed_policy_counts,
+        "region_count": len(region_counts),
+        "region_policy_key_count": len(region_policy_counts),
+        "region_action_policy_key_count": len(region_action_policy_counts),
+        "time_policy_key_count": len(time_policy_counts),
+        "region_counts": dict(sorted(region_counts.items())),
+        "sample_region_policy_keys": dict(sorted(region_policy_counts.items())[:12]),
+        "sample_region_action_policy_keys": dict(sorted(region_action_policy_counts.items())[:12]),
+        "sample_time_policy_keys": dict(sorted(time_policy_counts.items())[:12]),
+        "missing_policy_gates": missing,
+        "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim",
+    }
+
+
+def _empty_observed_policy_history_quality(status: str) -> dict[str, Any]:
+    return {
+        "schema": "territory_world_model.production_policy_history_quality.v1",
+        "status": status,
+        "row_count": 0,
+        "production_policy_row_count": 0,
+        "allowed_count": 0,
+        "blocked_count": 0,
+        "rows_with_policy": 0,
+        "rows_with_action_type": 0,
+        "rows_with_region": 0,
+        "rows_with_time": 0,
+        "action_counts": {},
+        "policy_counts": {},
+        "allowed_policy_counts": {},
+        "blocked_policy_counts": {},
+        "mixed_allowed_policy_counts": {},
+        "region_count": 0,
+        "region_policy_key_count": 0,
+        "region_action_policy_key_count": 0,
+        "time_policy_key_count": 0,
+        "region_counts": {},
+        "sample_region_policy_keys": {},
+        "sample_region_action_policy_keys": {},
+        "sample_time_policy_keys": {},
+        "missing_policy_gates": ["production_policy_history_not_provided" if status == "not_provided" else "production_policy_history_missing"],
+        "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim",
+    }
+
+
+def production_policy_history_alignment(production_quality: dict[str, Any], synthetic_summary: dict[str, Any]) -> dict[str, Any]:
+    benchmark = synthetic_summary.get("policy_coverage_benchmark") or {}
+    production_status = str(production_quality.get("status") or "not_provided")
+    observed = {
+        "production_policy_row_count": int(production_quality.get("production_policy_row_count") or 0),
+        "allowed_count": int(production_quality.get("allowed_count") or 0),
+        "blocked_count": int(production_quality.get("blocked_count") or 0),
+        "region_policy_key_count": int(production_quality.get("region_policy_key_count") or 0),
+        "region_action_policy_key_count": int(production_quality.get("region_action_policy_key_count") or 0),
+        "mixed_allowed_policy_counts": dict(production_quality.get("mixed_allowed_policy_counts") or {}),
+    }
+    required = {
+        "allowed_count": int(benchmark.get("required_allowed_count") or 0),
+        "blocked_count": int(benchmark.get("required_blocked_count") or 0),
+        "region_policy_key_count": int(benchmark.get("required_region_policy_key_count") or 0),
+        "region_action_policy_key_count": int(benchmark.get("required_region_action_policy_key_count") or 0),
+        "mixed_allowed_policies": list(benchmark.get("required_mixed_allowed_policies") or []),
+    }
+    missing: list[str] = []
+    if production_status == "not_provided":
+        missing.append("production_policy_history_not_provided")
+    elif production_status != "pass":
+        missing.append("production_policy_history_quality")
+    if not benchmark or benchmark.get("status") == "skipped":
+        missing.append("synthetic_policy_coverage_benchmark")
+    if benchmark:
+        if observed["allowed_count"] < required["allowed_count"]:
+            missing.append("allowed_policy_count_below_synthetic_unseen_benchmark")
+        if observed["blocked_count"] < required["blocked_count"]:
+            missing.append("blocked_policy_count_below_synthetic_unseen_benchmark")
+        if observed["region_policy_key_count"] < required["region_policy_key_count"]:
+            missing.append("region_policy_key_count_below_synthetic_unseen_benchmark")
+        if observed["region_action_policy_key_count"] < required["region_action_policy_key_count"]:
+            missing.append("region_action_policy_key_count_below_synthetic_unseen_benchmark")
+        missing_mixed_policies = [
+            policy
+            for policy in required["mixed_allowed_policies"]
+            if int((observed["mixed_allowed_policy_counts"] or {}).get(policy) or 0) <= 0
+        ]
+        if missing_mixed_policies:
+            missing.append("mixed_allowed_policy_coverage_below_synthetic_unseen_benchmark")
+    else:
+        missing_mixed_policies = []
+
+    if production_status == "not_provided":
+        status = "not_provided"
+    else:
+        status = "pass" if not missing else "review"
+    return {
+        "schema": "territory_world_model.production_policy_history_alignment.v1",
+        "status": status,
+        "production_policy_history_status": production_status,
+        "synthetic_benchmark_status": benchmark.get("status"),
+        "observed": observed,
+        "required": required,
+        "mixed_allowed_policy_coverage": {
+            "required": required["mixed_allowed_policies"],
+            "observed_counts": observed["mixed_allowed_policy_counts"],
+            "missing": missing_mixed_policies,
+        },
+        "missing": missing,
+        "claim_boundary": "coverage alignment prepares real action-mask feasibility validation only; it does not prove simulator accuracy or planner optimality",
+    }
+
+
+def _observed_policy_history_production_ready(row: dict[str, Any]) -> bool:
+    synthetic_present = _row_has_any(row, "synthetic")
+    nfp_present = _row_has_any(row, "not_for_production", "not_for_prod")
+    if not synthetic_present or not nfp_present:
+        return False
+    if truthy(_row_attr(row, "synthetic")) or truthy(_row_attr(row, "not_for_production", "not_for_prod")):
+        return False
+    return bool(_observed_policy_action_type(row) or _observed_policy_label(row) or _observed_policy_allowed(row) is not None)
+
+
+def _observed_policy_action_type(row: dict[str, Any]) -> str:
+    return str(_row_attr(row, "action_type", "action", "decision_action", "planning_action") or "").strip()
+
+
+def _observed_policy_label(row: dict[str, Any]) -> str:
+    return str(_row_attr(row, "action_mask_policy", "policy_code", "policy_label", "feasibility_policy") or "").strip()
+
+
+def _observed_policy_allowed(row: dict[str, Any]) -> bool | None:
+    raw = _row_attr(row, "action_mask_allowed", "feasibility_allowed", "allowed", "is_allowed")
+    if raw not in (None, ""):
+        if isinstance(raw, bool):
+            return raw
+        normalized = str(raw).strip().lower()
+        if normalized in {"1", "true", "yes", "y", "allowed", "allow", "pass", "approved"}:
+            return True
+        if normalized in {"0", "false", "no", "n", "blocked", "block", "review", "requires_review", "rejected", "denied"}:
+            return False
+    label = str(_row_attr(row, "feasibility_label", "action_mask_label", "mask_label") or "").strip().lower()
+    if label:
+        if "allow" in label or label in {"pass", "approved"}:
+            return True
+        if any(item in label for item in ("block", "review", "reject", "deny")):
+            return False
+    policy = _observed_policy_label(row).lower()
+    if policy:
+        if "allow" in policy and not any(item in policy for item in ("block", "blocked", "review")):
+            return True
+        if any(item in policy for item in ("block", "blocked", "review")):
+            return False
+    return None
+
+
+def _observed_policy_region(row: dict[str, Any]) -> str:
+    return str(_row_attr(row, "region_code", "cluster", "spatial_cluster", "block_id", "township_id", "county_code", "DKXZQDM", "XZQDM") or "").strip()
+
+
+def _observed_policy_time_key(row: dict[str, Any]) -> str:
+    return str(_row_attr(row, "period", "time_index", "approval_date", "decision_date", "year", "quarter") or "").strip()
+
+
+def _observed_policy_is_mixed_allowed(policy: str) -> bool:
+    normalized = policy.strip().lower()
+    return bool(
+        normalized
+        and "allow" in normalized
+        and not any(item in normalized for item in ("block", "blocked", "review"))
+        and any(item in normalized for item in ("mixed", "condition", "protect", "restore"))
+    )
 
 
 def _observed_history_schema_recommendations(missing_groups: list[str], missing_data_gates: list[str]) -> list[str]:
@@ -2284,6 +2861,8 @@ def summarize_validation(report: dict[str, Any]) -> dict[str, Any]:
     data_audit = report.get("twm_dataset_audit") or {}
     schema_audit = report.get("twm_observed_history_schema_audit") or {}
     production_schema_audit = report.get("production_observed_history_schema_audit") or {}
+    production_policy_quality = production_schema_audit.get("policy_history_quality") or {}
+    production_policy_alignment = report.get("production_policy_history_alignment") or {}
     relation_aug = spatial_gate.get("relation_augmentation") or {}
     return {
         "status": "review",
@@ -2298,6 +2877,21 @@ def summarize_validation(report: dict[str, Any]) -> dict[str, Any]:
         "production_observed_history_schema_status": production_schema_audit.get("status"),
         "production_observed_history_schema_missing_data_gates": production_schema_audit.get("missing_data_gates", []),
         "production_observed_history_schema_production_candidate_rows": (production_schema_audit.get("row_quality") or {}).get("production_candidate_row_count", 0),
+        "production_policy_history_status": production_policy_quality.get("status"),
+        "production_policy_history_missing": production_policy_quality.get("missing_policy_gates", []),
+        "production_policy_history_row_count": production_policy_quality.get("production_policy_row_count", 0),
+        "production_policy_history_allowed_count": production_policy_quality.get("allowed_count", 0),
+        "production_policy_history_blocked_count": production_policy_quality.get("blocked_count", 0),
+        "production_policy_history_region_policy_key_count": production_policy_quality.get("region_policy_key_count", 0),
+        "production_policy_history_region_action_policy_key_count": production_policy_quality.get("region_action_policy_key_count", 0),
+        "production_policy_history_mixed_allowed_policy_counts": production_policy_quality.get("mixed_allowed_policy_counts", {}),
+        "production_policy_alignment_status": production_policy_alignment.get("status"),
+        "production_policy_alignment_missing": production_policy_alignment.get("missing", []),
+        "production_policy_alignment_required": production_policy_alignment.get("required", {}),
+        "production_policy_alignment_observed": production_policy_alignment.get("observed", {}),
+        "production_policy_alignment_mixed_allowed_missing": (
+            (production_policy_alignment.get("mixed_allowed_policy_coverage") or {}).get("missing", [])
+        ),
         "twm_structural_fixture_status": structural_fixture.get("status"),
         "twm_structural_fixture_row_count": structural_fixture.get("row_count", 0),
         "twm_structural_fixture_pair_count": structural_fixture.get("pair_count", 0),
@@ -2383,8 +2977,9 @@ def summarize_validation(report: dict[str, Any]) -> dict[str, Any]:
         "paper7_caliper_matched_observed_effect": (paper7_caliper_matched_gate.get("calibration") or {}).get("observed_effect"),
         "paper7_caliper_matched_calibration_factor": (paper7_caliper_matched_gate.get("calibration") or {}).get("calibration_factor"),
         "next_data_work": [
-            "turn post-hoc context action-mask calibration into a learned context-sensitive action-mask head and reduce conservative false_block overblocking",
-            "add harder context-generalization stress cases where high risk can be allowed with conditions instead of always blocked",
+            "broaden unseen allowed region/action-policy stress from synthetic mixed-risk fixtures to production-observed policy histories once production labels are available",
+            "keep raw learned feasibility-head diagnostics separate from post-hoc context action-mask calibration and transparent-baseline wins",
+            "continue replacing post-hoc transformer affine risk calibration with learned risk-head calibration under candidate and holdout MAE gates",
             "improve graph and transformer simulator candidates on planner-consumer rollout regret after adding action-mask context feature channels",
             "use structural-validation fixture only for simulator plumbing regression, not deployment claims",
             "use evidence-augmented matching diagnostics to synthesize harder control records and mixed spatial units",
@@ -2428,9 +3023,15 @@ def render_data_foundation_health_markdown(report: dict[str, Any]) -> str:
     ]
     for name, count in (summary.get("twm_dataset_rows") or {}).items():
         lines.append(f"| `{name}` | {count} | local TWM fixture table |")
+    production_policy_alignment_required = summary.get("production_policy_alignment_required") or {}
     lines.extend(
         [
             f"| production-ready observed rows | {summary.get('twm_production_ready_observed_history_rows', 0)} | must be non-synthetic and production-usable |",
+            f"| production policy-history rows | {summary.get('production_policy_history_row_count', 0)} | non-synthetic rows with action/policy feasibility fields |",
+            f"| production policy allowed/blocked rows | {summary.get('production_policy_history_allowed_count', 0)} / {summary.get('production_policy_history_blocked_count', 0)} | action-mask feasibility labels for real policy validation |",
+            f"| production region-policy keys | {summary.get('production_policy_history_region_policy_key_count', 0)} | real region + policy combinations for unseen-policy checks |",
+            f"| production region-action-policy keys | {summary.get('production_policy_history_region_action_policy_key_count', 0)} | real region + action + policy combinations |",
+            f"| production policy alignment requirement | {production_policy_alignment_required.get('region_policy_key_count', 0)} / {production_policy_alignment_required.get('region_action_policy_key_count', 0)} | synthetic unseen region-policy / region-action-policy key baseline |",
             f"| structural validation fixture rows | {summary.get('twm_structural_fixture_row_count', 0)} | synthetic/not-for-production simulator regression fixture |",
             f"| structural validation fixture pairs | {summary.get('twm_structural_fixture_pair_count', 0)} | balanced treated/control pairs |",
             f"| synthetic experiment rows | {summary.get('twm_synthetic_experiment_row_count', 0)} | multi-region multi-period simulator/planner experiment foundation |",
@@ -2450,6 +3051,8 @@ def render_data_foundation_health_markdown(report: dict[str, Any]) -> str:
             "| Gate | Status | Missing / Key Evidence |",
             "|---|---|---|",
             _markdown_gate_row("Local observed history", summary.get("twm_observed_history_status"), summary.get("twm_observed_history_missing")),
+            _markdown_gate_row("Production policy history", summary.get("production_policy_history_status"), summary.get("production_policy_history_missing")),
+            _markdown_gate_row("Production policy alignment", summary.get("production_policy_alignment_status"), summary.get("production_policy_alignment_missing")),
             _markdown_gate_row("Structural fixture default", summary.get("twm_structural_fixture_default_status"), summary.get("twm_structural_fixture_default_missing")),
             _markdown_gate_row("Structural fixture structural check", summary.get("twm_structural_fixture_structural_status"), summary.get("twm_structural_fixture_structural_missing")),
             _markdown_gate_row("Synthetic experiment default", summary.get("twm_synthetic_experiment_default_status"), summary.get("twm_synthetic_experiment_default_missing")),
@@ -2491,6 +3094,8 @@ def render_data_foundation_health_markdown(report: dict[str, Any]) -> str:
             "- Synthetic rows can drive development, regression and ablation experiments.",
             "- Default evidence gates remain conservative, so deployment-level claim promotion still requires an explicit gate pass.",
             "- Structural checks are used to verify renderer/simulator/planner plumbing and causal/spatial diagnostics.",
+            "- Production policy-history checks only validate that real action-mask labels exist for feasibility testing; they do not prove simulator accuracy by themselves.",
+            "- Production policy alignment compares real policy-history coverage with the synthetic unseen-policy fixture; it is a data-readiness gate, not a model-accuracy gate.",
             "",
             "## Next Data Work",
             "",

@@ -17,7 +17,7 @@ from typing import Any
 
 
 SEMANTIC_ONTOLOGY_SCHEMA = "mmfe.semantic_ontology.v1"
-SEMANTIC_ONTOLOGY_VERSION = "0.1"
+SEMANTIC_ONTOLOGY_VERSION = "0.2"
 
 
 def build_semantic_ontology_package(
@@ -63,6 +63,23 @@ def build_semantic_ontology_package(
     relation_types = _build_relation_types(relations)
     rules = _build_rules(bundle.get("rule_bindings") or [], relation_types)
     objectives = _build_objectives((bundle.get("optimization_summary") or {}).get("objectives") or [], relation_types)
+    governance_contract = _build_governance_contract(
+        bundle=bundle,
+        fields=field_concepts,
+        value_domains=value_domains,
+        standard_sources=standard_source_concepts,
+    )
+    consumption_contract = _build_consumption_contract(
+        bundle=bundle,
+        state=state,
+        standard_roles=standard_roles,
+        object_types=object_types,
+        fields=field_concepts,
+        semantic_keys=semantic_keys,
+        relation_types=relation_types,
+        rules=rules,
+        objectives=objectives,
+    )
     relationships = _build_relationships(
         standard_roles=standard_roles,
         object_types=object_types,
@@ -96,7 +113,10 @@ def build_semantic_ontology_package(
             "product_version": manifest.get("version"),
             "created_at": manifest.get("created_at"),
         },
-        "summary": _build_summary(concepts, relationships),
+        "semantic_stack": _build_semantic_stack(),
+        "governance_contract": governance_contract,
+        "consumption_contract": consumption_contract,
+        "summary": _build_summary(concepts, relationships, governance_contract, consumption_contract),
         "concepts": concepts,
         "relationships": relationships,
     }
@@ -130,6 +150,23 @@ def validate_semantic_ontology_package(payload: dict) -> dict:
     relationships = payload.get("relationships")
     if not isinstance(relationships, list):
         errors.append("relationships must be a list")
+    governance_contract = payload.get("governance_contract")
+    if not isinstance(governance_contract, dict):
+        errors.append("governance_contract must be a JSON object")
+        governance_contract = {}
+    else:
+        if not isinstance(governance_contract.get("standard_versions"), list):
+            errors.append("governance_contract.standard_versions must be a list")
+        if not isinstance(governance_contract.get("standard_source_status"), dict):
+            errors.append("governance_contract.standard_source_status must be a JSON object")
+    consumption_contract = payload.get("consumption_contract")
+    if not isinstance(consumption_contract, dict):
+        errors.append("consumption_contract must be a JSON object")
+    else:
+        if not isinstance(consumption_contract.get("twm_state_requirements"), dict):
+            errors.append("consumption_contract.twm_state_requirements must be a JSON object")
+        if not isinstance(consumption_contract.get("runtime_bindings"), list):
+            errors.append("consumption_contract.runtime_bindings must be a list")
     summary = payload.get("summary") or {}
     if not isinstance(summary.get("field_count"), int):
         errors.append("summary.field_count must be an integer")
@@ -281,6 +318,11 @@ def _build_standard_sources(rows: list[dict]) -> list[dict]:
             "can_download": _to_bool(row.get("can_download")),
             "can_online_preview": _to_bool(row.get("can_online_preview")),
             "not_for_production_gap": _to_bool(row.get("not_for_production_gap")),
+            "local_path": row.get("local_path") or "",
+            "publication_date": row.get("publication_date") or "",
+            "implementation_date": row.get("implementation_date") or "",
+            "status": row.get("status") or "",
+            "standard_type": row.get("standard_type") or "",
         })
     return sorted(_dedupe_by_id(concepts), key=lambda item: item["id"])
 
@@ -387,9 +429,190 @@ def _build_fields(
             "contract_requirement": row.get("contract_requirement") or "",
             "standard_reference": standard_ref,
             "standard_source_ids": source_ids,
+            "governance_provenance": _field_governance_provenance(row, standard_ref, source_ids),
             "not_for_production": _to_bool(row.get("not_for_production")),
         })
     return sorted(concepts, key=lambda item: item["id"])
+
+
+def _build_semantic_stack() -> dict:
+    """Describe the intended producer/consumer boundary of this package."""
+    return {
+        "standard_platform": {
+            "role": "authority_source",
+            "responsibility": "manage standard versions, clauses, data elements, value domains, QC rules and derivations",
+            "feeds": ["ontology", "semantic_layer", "mmfe", "twm"],
+        },
+        "ontology": {
+            "role": "concept_rule_contract",
+            "responsibility": "represent object types, roles, fields, value domains, relation types and rule semantics",
+            "feeds": ["semantic_layer", "mmfe", "twm_state_builder"],
+        },
+        "semantic_layer": {
+            "role": "runtime_grounding",
+            "responsibility": "resolve business terms to tables, columns, units, value semantics and spatial metadata",
+            "feeds": ["nl2semantic2sql", "mmfe"],
+        },
+        "mmfe": {
+            "role": "semantic_product_builder",
+            "responsibility": "align and fuse multimodal data into semantic products with lineage and quality signals",
+            "feeds": ["twm", "lakehouse", "vector_retrieval", "okf"],
+        },
+        "twm": {
+            "role": "world_model_consumer",
+            "responsibility": "consume semantic products as hierarchical object-relation-rule-evidence state inputs",
+            "feeds": ["planner", "audit", "standard_feedback"],
+        },
+    }
+
+
+def _build_governance_contract(
+    *,
+    bundle: dict,
+    fields: list[dict],
+    value_domains: list[dict],
+    standard_sources: list[dict],
+) -> dict:
+    """Capture how ontology concepts are grounded in governed standards."""
+    standard_summary = bundle.get("standard_summary") or {}
+    standard_versions: dict[str, dict] = {}
+
+    if standard_summary:
+        version_key = _standard_version_key(
+            standard_summary.get("standard_id") or standard_summary.get("standard_name_zh"),
+            standard_summary.get("standard_version") or standard_summary.get("version"),
+        )
+        if version_key:
+            standard_versions[version_key] = {
+                "standard_id": standard_summary.get("standard_id") or "",
+                "standard_name_zh": standard_summary.get("standard_name_zh") or "",
+                "standard_version": standard_summary.get("standard_version") or standard_summary.get("version") or "",
+                "lifecycle_status": standard_summary.get("lifecycle_status") or standard_summary.get("status") or "",
+                "source": "mmfe_bundle.standard_summary",
+            }
+
+    for field in fields:
+        ref = field.get("standard_reference") or {}
+        version_key = _standard_version_key(ref.get("standard_id"), ref.get("standard_version"))
+        if not version_key:
+            continue
+        standard_versions.setdefault(version_key, {
+            "standard_id": ref.get("standard_id") or "",
+            "standard_name_zh": ref.get("standard_name_zh") or "",
+            "standard_version": ref.get("standard_version") or "",
+            "lifecycle_status": ref.get("standard_status") or "",
+            "source": "field.standard_reference",
+        })
+
+    source_status = Counter(source.get("retrieval_status") or "unknown" for source in standard_sources)
+    official_sources = [
+        source["id"]
+        for source in standard_sources
+        if str(source.get("retrieval_status") or "").startswith("official_") or source.get("official_url")
+    ]
+    production_gap_sources = [
+        source["id"]
+        for source in standard_sources
+        if source.get("not_for_production_gap")
+    ]
+
+    return {
+        "authority_chain": [
+            "standard_platform_release",
+            "ontology_package",
+            "semantic_layer_registration",
+            "mmfe_semantic_product",
+            "twm_state_input",
+        ],
+        "standard_versions": sorted(standard_versions.values(), key=lambda item: (item.get("standard_id"), item.get("standard_version"))),
+        "standard_source_status": {
+            "source_count": len(standard_sources),
+            "official_verified_source_count": len(official_sources),
+            "production_gap_source_count": len(production_gap_sources),
+            "retrieval_status_distribution": dict(source_status),
+            "official_source_ids": official_sources,
+            "production_gap_source_ids": production_gap_sources,
+        },
+        "coverage": {
+            "governed_field_count": sum(1 for field in fields if (field.get("standard_reference") or {}).get("standard_id")),
+            "field_with_standard_source_count": sum(1 for field in fields if field.get("standard_source_ids")),
+            "field_with_value_domain_count": sum(1 for field in fields if field.get("value_domain")),
+            "value_domain_with_standard_source_count": sum(1 for domain in value_domains if domain.get("standard_source_ids")),
+        },
+    }
+
+
+def _build_consumption_contract(
+    *,
+    bundle: dict,
+    state: dict,
+    standard_roles: list[dict],
+    object_types: list[dict],
+    fields: list[dict],
+    semantic_keys: list[dict],
+    relation_types: list[dict],
+    rules: list[dict],
+    objectives: list[dict],
+) -> dict:
+    """Capture the runtime contract MMFE exposes to TWM and related consumers."""
+    twm_consumption = bundle.get("twm_consumption") or {}
+    role_bindings = twm_consumption.get("role_bindings")
+    if not isinstance(role_bindings, list):
+        role_bindings = state.get("object_role_registry") if isinstance(state, dict) else []
+    if not isinstance(role_bindings, list):
+        role_bindings = []
+
+    runtime_bindings = []
+    for binding in role_bindings:
+        if not isinstance(binding, dict):
+            continue
+        role = str(binding.get("role") or "").strip()
+        if not role:
+            continue
+        runtime_bindings.append({
+            "role": role,
+            "standard_role": binding.get("standard_role") or role,
+            "object_type": binding.get("object_type") or "",
+            "source_path": binding.get("source_path") or "",
+            "field_count": _safe_int(binding.get("field_count"), 0),
+            "quality_score": _safe_float(binding.get("quality_score"), None),
+            "semantic_readiness": binding.get("semantic_readiness") or "",
+            "twm_binding_keys": sorted((binding.get("twm_binding") or {}).keys()),
+        })
+
+    state_requirements = {
+        "standard_role_count": len(standard_roles),
+        "object_type_count": len(object_types),
+        "semantic_key_count": len(semantic_keys),
+        "relation_type_count": len(relation_types),
+        "rule_count": len(rules),
+        "optimization_objective_count": len(objectives),
+        "required_runtime_role_count": len(runtime_bindings),
+        "not_for_production_role_count": sum(1 for role in standard_roles if role.get("not_for_production")),
+        "review_field_count": sum(1 for field in fields if field.get("requires_review")),
+    }
+    if isinstance(state, dict) and state:
+        state_requirements.update({
+            "state_input_schema": state.get("schema") or state.get("version") or "",
+            "state_component_count": len(state.get("state_components") or []),
+            "object_role_registry_count": len(state.get("object_role_registry") or []),
+        })
+
+    return {
+        "primary_consumer": "territory_world_model",
+        "runtime_policy": twm_consumption.get("state_builder_policy") or "load_semantic_product_then_dereference_raw_sources",
+        "raw_data_usage": twm_consumption.get("raw_data_usage") or "source_of_truth_geometry_and_attributes",
+        "semantic_product_usage": twm_consumption.get("semantic_product_usage") or "role_binding_quality_lineage_evidence_and_ai_grounding",
+        "twm_state_requirements": state_requirements,
+        "runtime_bindings": sorted(runtime_bindings, key=lambda item: (item["standard_role"], item["role"])),
+        "downstream_consumers": [
+            "territory_world_model.state_builder",
+            "territory_world_model.rule_evaluator",
+            "territory_world_model.planner",
+            "okf_exporter",
+            "stac_publisher",
+        ],
+    }
 
 
 def _build_relation_types(rows: list[dict]) -> list[dict]:
@@ -537,10 +760,19 @@ def _build_relationships(
     return _dedupe_edges(relationships)
 
 
-def _build_summary(concepts: dict[str, list[dict]], relationships: list[dict]) -> dict:
+def _build_summary(
+    concepts: dict[str, list[dict]],
+    relationships: list[dict],
+    governance_contract: dict | None = None,
+    consumption_contract: dict | None = None,
+) -> dict:
     fields = concepts.get("fields") or []
     standard_sources = concepts.get("standard_sources") or []
     value_domains = concepts.get("value_domains") or []
+    governance_contract = governance_contract or {}
+    consumption_contract = consumption_contract or {}
+    source_status = governance_contract.get("standard_source_status") or {}
+    twm_requirements = consumption_contract.get("twm_state_requirements") or {}
     return {
         "standard_role_count": len(concepts.get("standard_roles") or []),
         "object_type_count": len(concepts.get("object_types") or []),
@@ -558,6 +790,10 @@ def _build_summary(concepts: dict[str, list[dict]], relationships: list[dict]) -
         "relationship_count": len(relationships),
         "accepted_field_count": sum(1 for item in fields if item.get("alignment_decision") == "accept"),
         "review_field_count": sum(1 for item in fields if item.get("requires_review")),
+        "governed_field_count": (governance_contract.get("coverage") or {}).get("governed_field_count", 0),
+        "runtime_binding_count": len(consumption_contract.get("runtime_bindings") or []),
+        "twm_required_runtime_role_count": twm_requirements.get("required_runtime_role_count", 0),
+        "official_verified_source_count": source_status.get("official_verified_source_count", 0),
         "production_gap_count": sum(1 for item in standard_sources if item.get("not_for_production_gap")),
         "not_for_production": any(
             item.get("not_for_production")
@@ -620,6 +856,30 @@ def _sample_domain_values(rows: list[dict], limit: int = 8) -> list[dict]:
             if len(values) >= limit:
                 return values
     return values
+
+
+def _field_governance_provenance(row: dict, standard_ref: dict, standard_source_ids: list[str]) -> dict:
+    """Compact provenance used by TWM/evidence audit without parsing raw evidence blobs."""
+    evidence = _json_list(row.get("evidence_json"))
+    evidence_types = sorted({str(item.get("type")) for item in evidence if isinstance(item, dict) and item.get("type")})
+    return {
+        "standard_id": standard_ref.get("standard_id") or "",
+        "standard_version": standard_ref.get("standard_version") or row.get("standard_version") or "",
+        "standard_status": standard_ref.get("standard_status") or row.get("lifecycle_status") or "",
+        "standard_role": standard_ref.get("standard_role") or row.get("standard_role") or "",
+        "standard_tables": standard_ref.get("standard_tables") or [],
+        "source_documents": standard_ref.get("source_documents") or [],
+        "standard_source_ids": list(standard_source_ids),
+        "evidence_types": evidence_types,
+    }
+
+
+def _standard_version_key(standard_id: Any, version: Any) -> str:
+    standard_id_text = str(standard_id or "").strip()
+    version_text = str(version or "").strip()
+    if not standard_id_text and not version_text:
+        return ""
+    return f"{standard_id_text}@{version_text}"
 
 
 def _field_id(layer_role: Any, field_name: Any) -> str:

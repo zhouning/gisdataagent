@@ -241,6 +241,78 @@ async def twm_beam_plan_async(state_version_id: str, payload_json: str = "") -> 
     return await asyncio.to_thread(twm_beam_plan, state_version_id, payload_json)
 
 
+def twm_farmland_layout_optimization_capability(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().farmland_layout_optimization_capability_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_farmland_layout_optimization_capability_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_farmland_layout_optimization_capability, state_version_id, payload_json)
+
+
+def twm_load_farmland_layout_candidates(optimization_dir: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().farmland_layout_candidate_actions_from_optimization_bundle(optimization_dir, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "optimization_dir": optimization_dir})
+
+
+async def twm_load_farmland_layout_candidates_async(optimization_dir: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_load_farmland_layout_candidates, optimization_dir, payload_json)
+
+
+def twm_farmland_layout_optimization_beam_plan(state_version_id: str, optimization_dir: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().farmland_layout_beam_plan_from_optimization_bundle(state_version_id, optimization_dir, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id, "optimization_dir": optimization_dir})
+
+
+async def twm_farmland_layout_optimization_beam_plan_async(state_version_id: str, optimization_dir: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_farmland_layout_optimization_beam_plan, state_version_id, optimization_dir, payload_json)
+
+
+def twm_selected_plan_evaluation_bundle(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().selected_plan_evaluation_bundle(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_selected_plan_evaluation_bundle_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_selected_plan_evaluation_bundle, state_version_id, payload_json)
+
+
 def twm_validation_report(state_version_id: str, payload_json: str = "") -> str:
     payload: dict[str, Any] = {}
     if payload_json:
@@ -475,6 +547,24 @@ async def twm_causal_calibration_report_async(state_version_id: str, payload_jso
     return await asyncio.to_thread(twm_causal_calibration_report, state_version_id, payload_json)
 
 
+def twm_scca_causal_evidence_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().scca_causal_evidence_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_scca_causal_evidence_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_scca_causal_evidence_report, state_version_id, payload_json)
+
+
 def twm_list_rule_hits(state_version_id: str, severity: str = "", status: str = "") -> str:
     return _json({"hits": _svc().get_rule_hits(state_version_id, severity=severity or None, status=status or None)})
 
@@ -497,6 +587,10 @@ _SYNC_FUNCS = [
     twm_action_mask_report,
     twm_counterfactual_rollout,
     twm_beam_plan,
+    twm_farmland_layout_optimization_capability,
+    twm_load_farmland_layout_candidates,
+    twm_farmland_layout_optimization_beam_plan,
+    twm_selected_plan_evaluation_bundle,
     twm_validation_report,
     twm_world_model_profile,
     twm_state_contract_report,
@@ -510,6 +604,7 @@ _SYNC_FUNCS = [
     twm_geofm_ablation_gate,
     twm_geofm_downstream_experiment_report,
     twm_causal_calibration_report,
+    twm_scca_causal_evidence_report,
     twm_list_rule_hits,
     twm_status_detail,
 ]
@@ -521,6 +616,10 @@ _LONG_RUNNING_FUNCS = [
     twm_action_mask_report_async,
     twm_counterfactual_rollout_async,
     twm_beam_plan_async,
+    twm_farmland_layout_optimization_capability_async,
+    twm_load_farmland_layout_candidates_async,
+    twm_farmland_layout_optimization_beam_plan_async,
+    twm_selected_plan_evaluation_bundle_async,
     twm_validation_report_async,
     twm_world_model_profile_async,
     twm_state_contract_report_async,
@@ -534,6 +633,7 @@ _LONG_RUNNING_FUNCS = [
     twm_geofm_ablation_gate_async,
     twm_geofm_downstream_experiment_report_async,
     twm_causal_calibration_report_async,
+    twm_scca_causal_evidence_report_async,
 ]
 
 

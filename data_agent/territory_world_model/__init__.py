@@ -1,5 +1,6 @@
 """Territorial World Model validation scaffold."""
 
+from .claim_ladder import CLAIM_LEVEL_REQUIREMENTS, evaluate_claim_ladder
 from .evidence import build_evidence_chain, evidence_checksum
 from .models import (
     StateBuildResult,
@@ -57,6 +58,7 @@ from .state_builder import StateBuilder, build_state_from_bundle, load_state_sou
 
 __all__ = [
     "StateBuildResult",
+    "CLAIM_LEVEL_REQUIREMENTS",
     "TerritoryWorldModelAction",
     "TerritoryWorldModelForecast",
     "TerritoryWorldModelPlanner",
@@ -107,6 +109,7 @@ __all__ = [
     "build_evidence_chain",
     "build_state_from_bundle",
     "evidence_checksum",
+    "evaluate_claim_ladder",
     "evaluate_rules",
     "estimate_spatial_treatment_effect",
     "get_territory_world_model_service",

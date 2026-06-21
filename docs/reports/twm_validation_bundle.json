@@ -1,0 +1,428 @@
+{
+  "schema": "territory_world_model.validation_bundle.v1",
+  "created_at": "2026-06-21T14:36:14.335942+00:00",
+  "status": "review",
+  "inputs": {
+    "bundle_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion",
+    "optimization_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/optimization",
+    "scca_output_dir": null,
+    "scca_result_json": null,
+    "require_scca_pass": false,
+    "include_auxiliary_tables": true,
+    "scenario": "offline_validation_bundle",
+    "horizon": 3,
+    "evidence_coverage": 0.85
+  },
+  "project": {
+    "id": "c45e36b1-fd06-4bb9-92a7-e5f3cdd4156f",
+    "name": "TWM Offline Validation Bundle",
+    "region_code": "500227",
+    "business_scenario": "planning_supervision",
+    "status": "draft"
+  },
+  "state_summary": {
+    "state_version_id": "3c94f8a8-705b-4a0b-b80d-42b125a20e93",
+    "project_id": "c45e36b1-fd06-4bb9-92a7-e5f3cdd4156f",
+    "label": "offline_validation_bundle: state build",
+    "build_status": "ready",
+    "object_count": 5745,
+    "relation_count": 10349,
+    "object_counts_by_role": {
+      "admin_unit": 5,
+      "parcel": 4900,
+      "annual_change": 78,
+      "eco_redline": 10,
+      "pbf": 14,
+      "planning_zone": 5,
+      "project": 60,
+      "remote_sensing_tile": 11,
+      "urban_boundary": 5,
+      "approval_record": 60,
+      "enforcement_event": 92,
+      "multimodal_evidence_index": 173,
+      "rule_evaluation": 240,
+      "review_task": 92
+    },
+    "relation_counts_by_type": {
+      "project_overlaps_parcel": 358,
+      "project_overlaps_permanent_basic_farmland": 39,
+      "project_overlaps_ecological_redline": 28,
+      "project_overlaps_planning_zone": 151,
+      "project_overlaps_urban_development_boundary": 7,
+      "project_observed_by_remote_sensing_tile": 71,
+      "annual_change_of_parcel": 4900,
+      "project_within_admin_unit": 4795
+    },
+    "metric_crs": "EPSG:32648",
+    "quality_summary": {
+      "evidence_coverage": null,
+      "manifest_quality_score": 0.85,
+      "synthetic_object_count": 836,
+      "not_for_production_object_count": 5736,
+      "qa_disabled_object_count": 60
+    },
+    "semantic_product": {
+      "product_id": "sfp-twm-dc2a707aabda0c01",
+      "product_type": "semantic_fusion_product",
+      "version": "1.1-twm-mmfe-bundle"
+    },
+    "production_policy": {
+      "contains_synthetic_sources": true,
+      "not_for_production": true,
+      "authoritative_data_required_for_production": true
+    },
+    "warnings": [
+      "TWM validation scaffold: not for production use."
+    ]
+  },
+  "rule_summary": {
+    "rule_set_id": "ddd557eb-5ecc-4527-a4be-52f0e825a493",
+    "default_rule_count": 7,
+    "evaluated_rule_count": 7,
+    "hit_count": 96,
+    "review_task_count": 95,
+    "evidence_item_count": 380,
+    "severity_distribution": {
+      "blocking": 1,
+      "high": 44,
+      "critical": 2,
+      "medium": 49
+    },
+    "warnings": []
+  },
+  "audit_summary": {
+    "rule_hit_count": 96,
+    "confirmed_count": 0,
+    "dismissed_count": 0,
+    "mitigation_count": 0,
+    "evidence_gate_passed": true,
+    "evidence_gate_summary": {
+      "evidence_item_count": 380,
+      "all_have_checksum": true
+    },
+    "rule_summary": {
+      "severity_distribution": {
+        "high": 44,
+        "medium": 49,
+        "critical": 2,
+        "blocking": 1
+      }
+    }
+  },
+  "selected_plan_evaluation_bundle": {
+    "schema": "territory_world_model.selected_plan_evaluation_bundle.v1",
+    "status": "review",
+    "source": {
+      "kind": "farmland_layout_optimization_bundle",
+      "optimization_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/optimization"
+    },
+    "selected": {
+      "candidate_id": "SCN-BASELINE-CURRENT",
+      "rank": 1,
+      "rank_score": 0.756167,
+      "utility": 0.834167,
+      "risk": 0.0,
+      "confidence": 0.72,
+      "claim_status": "review_required",
+      "selection_status": "review",
+      "evidence_gate_status": "review",
+      "action": {
+        "action_type": "inspect",
+        "target_role": "scenario",
+        "magnitude": 1.0,
+        "scenario": "SCN-BASELINE-CURRENT",
+        "description": null,
+        "legal_intent": null,
+        "execution_mask": {}
+      }
+    },
+    "planning_summary": {
+      "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+      "status": "review",
+      "scenario": null,
+      "candidate_count": 7,
+      "ranking_count": 7,
+      "eligible_candidate_count": 2,
+      "selected_from_legal_feasible_space": true,
+      "optimization_bundle": {
+        "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+        "status": "pass",
+        "optimization_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/optimization",
+        "summary": {
+          "candidate_count": 7,
+          "legal_feasible_count": 2,
+          "blocked_count": 5,
+          "hard_constraint_policy": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+          "claim_boundary": "optimization_fixture_only_not_for_production"
+        },
+        "optimizer_evidence": {
+          "algorithm_family": "hard_constraint_filter_then_normalized_weighted_score_and_non_dominated_sorting",
+          "validation": {
+            "hard_constraint_recheck": "pass",
+            "spatial_holdout": "not_provided",
+            "temporal_holdout": "not_provided",
+            "planning_lift": "not_provided"
+          },
+          "pareto_summary": {
+            "scenario_count": 7,
+            "legal_feasible_scenario_count": 2,
+            "blocked_scenario_count": 5,
+            "comparison_scope": "legal_feasible_space",
+            "method": "hard_constraint_filter_then_normalized_weighted_score_and_non_dominated_sorting",
+            "not_for_production": true
+          }
+        }
+      }
+    },
+    "rollout_summary": {
+      "status": null,
+      "horizon": 3,
+      "step_count": 0,
+      "final_delta": {
+        "step_index": 2,
+        "utility_delta_lift": 0.0,
+        "constraint_probability_delta": 0.0,
+        "confidence_delta": 0.0
+      },
+      "evidence_gate": {
+        "passed": false,
+        "status": "review",
+        "missing": [
+          "not_for_production",
+          "qa_use_for_rules"
+        ],
+        "min_coverage": 0.85,
+        "step_count": 6
+      }
+    },
+    "evidence_gate": {
+      "schema": "territory_world_model.selected_plan_evidence_gate.v1",
+      "passed": false,
+      "status": "review",
+      "blocked": false,
+      "missing": [
+        "beam_plan_evidence_gate",
+        "counterfactual_rollout_evidence_gate",
+        "validation_review"
+      ],
+      "selection_audit": {
+        "schema": "territory_world_model.farmland_layout_bundle_beam_selection_audit.v1",
+        "candidate_count": 7,
+        "legal_feasible_count": 2,
+        "blocked_count": 5,
+        "eligible_candidate_count": 2,
+        "legal_feasible_candidate_ids": [
+          "SCN-BASELINE-CURRENT",
+          "SCN-BALANCED"
+        ],
+        "hard_blocked_candidate_ids": [
+          "SCN-WM-V21-REFERENCE",
+          "SCN-LOW-RISK",
+          "SCN-DEVELOPMENT-PRIORITY",
+          "SCN-ECOLOGICAL-PRIORITY",
+          "SCN-REVIEW-FOCUS"
+        ],
+        "eligible_candidate_ids": [
+          "SCN-BASELINE-CURRENT",
+          "SCN-BALANCED"
+        ],
+        "selected_candidate_id": "SCN-BASELINE-CURRENT",
+        "selected_allowed": true,
+        "selected_hard_blocks": [],
+        "selected_hard_blocked": false,
+        "selected_from_legal_feasible_space": true,
+        "hard_constraint_filter_enforced": true,
+        "beam_status": "review",
+        "beam_evidence_gate_status": "review"
+      },
+      "beam_gate": {
+        "passed": false,
+        "status": "review",
+        "missing": [
+          "not_for_production",
+          "qa_use_for_rules",
+          "action_mask_allowed",
+          "action_mask_hard_blocks"
+        ],
+        "candidate_count": 7,
+        "claim_supported_count": 0,
+        "candidate_statuses": [
+          "review",
+          "review",
+          "review",
+          "review",
+          "review",
+          "review",
+          "review"
+        ]
+      },
+      "rollout_gate": {
+        "passed": false,
+        "status": "review",
+        "missing": [
+          "not_for_production",
+          "qa_use_for_rules"
+        ],
+        "min_coverage": 0.85,
+        "step_count": 6
+      },
+      "validation_status": "review"
+    },
+    "claim_boundary": {
+      "production_claim": "not_supported_without_real_observed_history_holdout_validation_and_human_review",
+      "planning_claim": "selected_plan_supported_for_review",
+      "hard_constraint_policy": "selected hard-blocked plans cannot be promoted even when optimizer or model scores are high",
+      "selected_from_legal_feasible_space": true,
+      "validation_overall_status": "review"
+    },
+    "recommendations": [
+      "increase evidence coverage or causal calibration before relying on the counterfactual rollout",
+      "treat the bundle as review-only until validation stages and claim ladder are upgraded",
+      "connect real observed-history and human review results before production deployment"
+    ],
+    "created_at": "2026-06-21T14:36:14.335248+00:00"
+  },
+  "validation_summary": {
+    "overall_status": "review",
+    "stage_count": 6,
+    "passed_stage_count": 1,
+    "review_stage_count": 5,
+    "blocked_stage_count": 0,
+    "validation_ladder": [
+      "state_build",
+      "future_state_prediction",
+      "constraint_prediction",
+      "counterfactual_rollout",
+      "planning_lift",
+      "gis_deployability"
+    ],
+    "blocking_gaps": [
+      "state contains not_for_production objects",
+      "constraint violation probability is high",
+      "blocking or critical rule hits remain open",
+      "counterfactual rollout evidence gate did not pass",
+      "intervention does not improve planning utility over baseline",
+      "95 review tasks are still pending"
+    ],
+    "stages": [
+      {
+        "stage_code": "state_build",
+        "title": null,
+        "status": "review",
+        "metrics": {},
+        "gaps": [
+          "state contains not_for_production objects"
+        ],
+        "evidence_summary": {}
+      },
+      {
+        "stage_code": "future_state_prediction",
+        "title": null,
+        "status": "pass",
+        "metrics": {},
+        "gaps": [],
+        "evidence_summary": {}
+      },
+      {
+        "stage_code": "constraint_prediction",
+        "title": null,
+        "status": "review",
+        "metrics": {},
+        "gaps": [
+          "constraint violation probability is high",
+          "blocking or critical rule hits remain open"
+        ],
+        "evidence_summary": {
+          "rule_hit_count": 96
+        }
+      },
+      {
+        "stage_code": "counterfactual_rollout",
+        "title": null,
+        "status": "review",
+        "metrics": {},
+        "gaps": [
+          "counterfactual rollout evidence gate did not pass"
+        ],
+        "evidence_summary": {
+          "evidence_gate_status": "review",
+          "evidence_gate_missing": [
+            "not_for_production",
+            "qa_use_for_rules"
+          ]
+        }
+      },
+      {
+        "stage_code": "planning_lift",
+        "title": null,
+        "status": "review",
+        "metrics": {},
+        "gaps": [
+          "intervention does not improve planning utility over baseline"
+        ],
+        "evidence_summary": {}
+      },
+      {
+        "stage_code": "gis_deployability",
+        "title": null,
+        "status": "review",
+        "metrics": {},
+        "gaps": [
+          "95 review tasks are still pending"
+        ],
+        "evidence_summary": {
+          "evidence_item_count": 380,
+          "review_task_count": 95
+        }
+      }
+    ]
+  },
+  "claim_ladder": {
+    "schema": "territory_world_model.claim_ladder.v1",
+    "current_level": "L0",
+    "current_claim": "unsupported",
+    "level_status": {
+      "L0": "pass",
+      "L1": "review",
+      "L2": "review",
+      "L3": "review",
+      "L4": "review"
+    },
+    "next_level": null,
+    "blocking_requirements": []
+  },
+  "scca_summary": {
+    "required": false,
+    "provided": false,
+    "status": "not_provided",
+    "evidence_gate_status": "not_provided"
+  },
+  "sanitized_export_policy": {
+    "schema": "territory_world_model.sanitized_export_policy.v1",
+    "exports_raw_geometries": false,
+    "exports_raw_state_objects": false,
+    "exports_raw_row_attributes": false,
+    "exports_source_file_contents": false,
+    "allowed_content": [
+      "counts",
+      "stage statuses",
+      "evidence gate summaries",
+      "selected candidate summary",
+      "claim ladder state",
+      "recommendations"
+    ],
+    "intended_use": "air-gapped validation feedback and non-sensitive progress reporting"
+  },
+  "claim_boundary": {
+    "production_accuracy_claim": "not_supported_until_real_authoritative_observed_history_holdout_validation_passes",
+    "offline_validation_claim": "supports inner-network repeatable smoke/regression validation of the current TWM pipeline",
+    "raw_data_policy": "raw objects, geometries and row-level attributes are not exported by this report"
+  },
+  "recommendations": [
+    "connect real observed-history and human review results before production deployment",
+    "increase evidence coverage or causal calibration before relying on the counterfactual rollout",
+    "replace demo/not-for-production data with authoritative observed history before claiming production accuracy",
+    "resolve validation blocking/review gaps before promoting the selected plan claim",
+    "treat the bundle as review-only until validation stages and claim ladder are upgraded"
+  ]
+}
