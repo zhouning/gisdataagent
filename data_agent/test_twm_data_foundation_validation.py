@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import importlib.util
+import json
 
 
 SCRIPT = Path("scripts/validate_twm_data_foundation.py")
@@ -30,6 +31,60 @@ def _load_validation_bundle_module():
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
+
+
+def _write_policy_benchmark_csv(path: Path) -> None:
+    header = (
+        "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,"
+        "region_code,period,split,action_type,action_mask_policy,action_mask_allowed,synthetic,not_for_production"
+    )
+    rows = [header]
+    policies = [
+        ("mixed_risk_allowed_with_conditions", "approve_with_conditions", "True"),
+        ("mixed_risk_protect_allowed", "protect", "True"),
+        ("mixed_risk_restore_allowed", "restore", "True"),
+        ("mixed_risk_blocked_condition_review", "approve_with_conditions", "False"),
+        ("mixed_risk_protect_blocked", "protect", "False"),
+    ]
+    for idx, (policy, action, allowed) in enumerate(policies):
+        rows.append(
+            f"U-C-{idx},APR-C-{idx},PRJ-C-{idx},approved,0.20,block-{idx},,106.{idx},29.{idx},1000,0.8,"
+            f"R-C-{idx},2026Q1,candidate,{action},{policy},{allowed},True,True"
+        )
+        rows.append(
+            f"U-H-{idx},APR-H-{idx},PRJ-H-{idx},approved,0.24,block-{idx},,106.{idx},29.{idx},1000,0.8,"
+            f"R-H-{idx},2026Q2,holdout,{action},{policy},{allowed},True,True"
+        )
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def _write_production_policy_history_csv(path: Path, *, include_all_policies: bool = True) -> None:
+    header = (
+        "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,"
+        "action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production"
+    )
+    rows = [header]
+    policies = [
+        ("mixed_risk_allowed_with_conditions", "approve_with_conditions", "True", "approved"),
+        ("mixed_risk_protect_allowed", "protect", "True", "approved"),
+        ("mixed_risk_restore_allowed", "restore", "True", "approved"),
+        ("mixed_risk_blocked_condition_review", "approve_with_conditions", "False", "in_review"),
+        ("mixed_risk_protect_blocked", "protect", "False", "in_review"),
+    ]
+    if include_all_policies:
+        selected = policies + policies
+    else:
+        selected = [
+            policies[0],
+            policies[1],
+            policies[3],
+        ]
+    for idx, (policy, action, allowed, approval_status) in enumerate(selected):
+        rows.append(
+            f"P-{idx},APR-P-{idx},PRJ-P-{idx},{approval_status},0.{30 + idx},block-{idx},,106.{idx},29.{idx},1000,0.82,"
+            f"{action},{policy},{allowed},PROD-R{idx},2026Q{1 + idx},False,False"
+        )
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
 
 def test_paper7_rows_to_causal_records_maps_empirical_dataset(tmp_path):
@@ -2453,6 +2508,13 @@ def test_twm_validation_bundle_runner_executes_offline_demo_pipeline(tmp_path):
     assert report["selected_plan_evaluation_bundle"]["selected"]["candidate_id"]
     assert report["validation_summary"]["stage_count"] >= 6
     assert report["claim_ladder"]["schema"] == "territory_world_model.claim_ladder.v1"
+    assert report["production_observed_history_preflight"]["schema"] == "territory_world_model.production_observed_history_preflight.v1"
+    assert report["production_observed_history_preflight"]["status"] == "not_provided"
+    assert report["production_readiness_gate"]["schema"] == "territory_world_model.production_readiness_gate.v1"
+    assert report["production_readiness_gate"]["required"] is False
+    assert report["production_readiness_gate"]["status"] == "review"
+    assert "production_observed_history_preflight_pass" in report["production_readiness_gate"]["missing"]
+    assert report["status"] == "review"
     assert report["sanitized_export_policy"]["exports_raw_geometries"] is False
     assert report["sanitized_export_policy"]["exports_raw_state_objects"] is False
     assert "raw geometries" in markdown_path.read_text(encoding="utf-8")
@@ -2478,3 +2540,240 @@ def test_twm_validation_bundle_runner_requires_scca_stage_when_configured():
     assert report["scca_summary"]["provided"] is False
     assert report["scca_summary"]["status"] == "missing_required"
     assert report["claim_ladder"]["current_level"] in {"L0", "L1"}
+
+
+def test_twm_validation_bundle_strict_production_readiness_blocks_missing_evidence():
+    runner = _load_validation_bundle_module()
+
+    report = runner.run_validation_bundle(
+        bundle_dir=Path("data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion"),
+        optimization_dir=Path("data_agent/test_data/twm_bishan_demo/optimization"),
+        scenario="pytest_strict_production_readiness",
+        horizon=2,
+        require_production_readiness=True,
+    )
+
+    gate = report["production_readiness_gate"]
+    assert gate["required"] is True
+    assert gate["status"] == "blocked"
+    assert report["status"] == "blocked"
+    assert "production_observed_history_preflight_pass" in gate["missing"]
+    assert "claim_ladder_deployable" in gate["missing"]
+
+
+def test_twm_validation_bundle_production_readiness_gate_passes_complete_evidence():
+    runner = _load_validation_bundle_module()
+
+    gate = runner.build_production_readiness_gate(
+        selected_bundle={
+            "status": "pass",
+            "evidence_gate": {"status": "pass"},
+            "claim_boundary": {"validation_overall_status": "pass"},
+        },
+        validation_report={
+            "overall_status": "pass",
+            "stages": [{"stage_code": "gis_deployability", "status": "pass"}],
+        },
+        claim_ladder={"current_level": "L4"},
+        production_preflight={"status": "pass"},
+        production_scale_readiness={"status": "pass"},
+        scca_report={"evidence_gate": {"status": "pass"}},
+        require_scca_pass=True,
+        require_production_readiness=True,
+    )
+
+    assert gate["required"] is True
+    assert gate["status"] == "pass"
+    assert gate["missing"] == []
+    assert {check["gate"]: check["status"] for check in gate["checks"]} == {
+        "selected_plan_bundle_pass": "pass",
+        "validation_report_pass": "pass",
+        "claim_ladder_deployable": "pass",
+        "production_observed_history_preflight_pass": "pass",
+        "production_scale_readiness_pass": "pass",
+        "human_review_and_audit_pass": "pass",
+        "scca_causal_evidence_pass": "pass",
+    }
+
+
+def test_twm_validation_bundle_production_scale_readiness_reports_not_provided():
+    runner = _load_validation_bundle_module()
+
+    report = runner.build_production_scale_readiness(
+        production_scale_profile=None,
+        state_summary={"object_count": 5745, "relation_count": 10349},
+    )
+
+    assert report["schema"] == "territory_world_model.production_scale_readiness.v1"
+    assert report["status"] == "not_provided"
+    assert report["scale_tier"] == "local_or_county_scale"
+    assert report["observed"]["local_state_object_count"] == 5745
+    assert "production_scale_profile_provided" in report["missing"]
+
+
+def test_twm_validation_bundle_production_scale_readiness_passes_national_profile(tmp_path):
+    runner = _load_validation_bundle_module()
+    profile_path = tmp_path / "production_scale_profile.json"
+    profile_path.write_text(
+        """
+{
+  "schema": "territory_world_model.production_scale_profile.v1",
+  "example_only": false,
+  "not_for_production": false,
+  "layers": [
+    {
+      "name": "national_parcels",
+      "row_count": 120000000,
+      "storage_format": "geoparquet",
+      "partition_columns": ["province_code", "year"],
+      "spatial_index": "s2",
+      "tiling": "quadkey"
+    }
+  ],
+  "storage": {
+    "table_format": "iceberg",
+    "object_store": "minio"
+  },
+  "compute": {
+    "engine": "spark",
+    "spatial_engine": "sedona",
+    "distributed": true
+  },
+  "validation": {
+    "sampling_strategy": "stratified_spatial_temporal_holdout"
+  },
+  "serving": {
+    "tiling": "vector_tile_pyramid"
+  }
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = runner.build_production_scale_readiness(production_scale_profile=profile_path)
+
+    assert report["status"] == "pass"
+    assert report["scale_tier"] == "hundred_million_scale"
+    assert report["observed"]["max_layer_row_count"] == 120000000
+    assert report["observed"]["requires_distributed_compute"] is True
+    assert report["missing"] == []
+
+
+def test_twm_validation_bundle_production_scale_readiness_reviews_missing_distributed_gates(tmp_path):
+    runner = _load_validation_bundle_module()
+    profile_path = tmp_path / "weak_scale_profile.json"
+    profile_path.write_text(
+        """
+{
+  "schema": "territory_world_model.production_scale_profile.v1",
+  "example_only": false,
+  "not_for_production": false,
+  "layers": [
+    {
+      "name": "national_parcels",
+      "row_count": 120000000,
+      "storage_format": "shapefile"
+    }
+  ],
+  "compute": {
+    "engine": "postgres"
+  }
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = runner.build_production_scale_readiness(production_scale_profile=profile_path)
+
+    assert report["status"] == "review"
+    assert report["scale_tier"] == "hundred_million_scale"
+    assert "lakehouse_storage" in report["missing"]
+    assert "partition_strategy" in report["missing"]
+    assert "spatial_index_strategy" in report["missing"]
+    assert "distributed_compute" in report["missing"]
+    assert "national_scale_sampling_or_tiling" in report["missing"]
+
+
+def test_twm_validation_bundle_production_scale_template_is_not_accepted_as_real_profile(tmp_path):
+    runner = _load_validation_bundle_module()
+    template_path = tmp_path / "twm_production_scale_profile_template.json"
+
+    runner.write_production_scale_profile_template(template_path)
+    report = runner.build_production_scale_readiness(production_scale_profile=template_path)
+
+    assert template_path.exists()
+    assert report["schema"] == "territory_world_model.production_scale_readiness.v1"
+    assert report["status"] == "review"
+    assert "production_scale_profile_not_example" in report["missing"]
+    template = json.loads(template_path.read_text(encoding="utf-8"))
+    assert template["schema"] == "territory_world_model.production_scale_profile.v1"
+    assert template["example_only"] is True
+    assert template["not_for_production"] is True
+
+
+def test_twm_validation_bundle_exit_code_supports_strict_ci_blocking():
+    runner = _load_validation_bundle_module()
+
+    assert runner.validation_bundle_exit_code({"status": "blocked"}, fail_on_blocked=True) == 2
+    assert runner.validation_bundle_exit_code({"status": "review"}, fail_on_blocked=True) == 0
+    assert runner.validation_bundle_exit_code({"status": "pass"}, fail_on_blocked=True) == 0
+    assert runner.validation_bundle_exit_code({"status": "blocked"}, fail_on_blocked=False) == 0
+
+
+def test_twm_validation_bundle_production_preflight_reports_not_provided():
+    runner = _load_validation_bundle_module()
+
+    report = runner.build_production_observed_history_preflight(production_observed_history=None)
+
+    assert report["schema"] == "territory_world_model.production_observed_history_preflight.v1"
+    assert report["status"] == "not_provided"
+    assert report["schema_audit"]["status"] == "not_provided"
+    assert report["policy_history_quality"]["status"] == "not_provided"
+    assert report["policy_history_alignment"]["status"] == "not_provided"
+    assert "production_policy_history_not_provided" in report["policy_history_alignment"]["missing"]
+
+
+def test_twm_validation_bundle_production_preflight_passes_real_policy_coverage(tmp_path):
+    runner = _load_validation_bundle_module()
+    benchmark_path = tmp_path / "synthetic_policy_benchmark.csv"
+    production_path = tmp_path / "production_observed_history.csv"
+    _write_policy_benchmark_csv(benchmark_path)
+    _write_production_policy_history_csv(production_path, include_all_policies=True)
+
+    report = runner.build_production_observed_history_preflight(
+        production_observed_history=production_path,
+        synthetic_experiment_foundation=benchmark_path,
+    )
+
+    assert report["status"] == "pass"
+    assert report["schema_audit"]["status"] == "pass"
+    assert report["schema_audit"]["row_quality"]["production_candidate_row_count"] == 10
+    assert report["policy_history_quality"]["status"] == "pass"
+    assert report["policy_history_quality"]["allowed_count"] == 6
+    assert report["policy_history_quality"]["blocked_count"] == 4
+    assert report["policy_history_alignment"]["status"] == "pass"
+    assert report["policy_history_alignment"]["missing"] == []
+    assert report["synthetic_policy_coverage_benchmark"]["required_region_policy_key_count"] == 10
+
+
+def test_twm_validation_bundle_production_preflight_reviews_undercovered_policy_history(tmp_path):
+    runner = _load_validation_bundle_module()
+    benchmark_path = tmp_path / "synthetic_policy_benchmark.csv"
+    production_path = tmp_path / "production_undercovered_history.csv"
+    _write_policy_benchmark_csv(benchmark_path)
+    _write_production_policy_history_csv(production_path, include_all_policies=False)
+
+    report = runner.build_production_observed_history_preflight(
+        production_observed_history=production_path,
+        synthetic_experiment_foundation=benchmark_path,
+    )
+
+    assert report["status"] == "review"
+    assert report["schema_audit"]["status"] == "pass"
+    assert report["policy_history_quality"]["status"] == "pass"
+    assert report["policy_history_alignment"]["status"] == "review"
+    assert "production_policy_history_quality" not in report["policy_history_alignment"]["missing"]
+    assert "blocked_policy_count_below_synthetic_unseen_benchmark" in report["policy_history_alignment"]["missing"]
+    assert "mixed_allowed_policy_coverage_below_synthetic_unseen_benchmark" in report["policy_history_alignment"]["missing"]

@@ -1,0 +1,55 @@
+{
+  "schema": "territory_world_model.production_scale_profile.v1",
+  "example_only": true,
+  "not_for_production": true,
+  "profile_id": "replace_with_inner_network_profile_id",
+  "created_by": "replace_with_role_or_team",
+  "created_at": "YYYY-MM-DD",
+  "scope": {
+    "region_scope": "national_or_province_or_city",
+    "business_scope": "natural_resource_planning_or_land_use_control",
+    "sensitivity": "sanitized_metadata_only"
+  },
+  "layers": [
+    {
+      "name": "sanitized_layer_alias",
+      "row_count": 120000000,
+      "storage_format": "geoparquet",
+      "lakehouse_table": true,
+      "partition_columns": [
+        "province_code",
+        "year"
+      ],
+      "spatial_index": "s2_or_h3_or_hilbert_or_quadkey",
+      "tiling": "quadkey_or_vector_tile_pyramid",
+      "sampling_strategy": "stratified_spatial_temporal_holdout",
+      "notes": "replace values with sanitized production metadata; do not include raw geometries or row-level attributes"
+    }
+  ],
+  "storage": {
+    "table_format": "iceberg_or_delta_or_hudi_or_geoparquet",
+    "object_store": "minio_or_hdfs_or_secure_object_store",
+    "partition_columns": [
+      "province_code",
+      "year"
+    ],
+    "spatial_index": "s2_or_h3_or_hilbert_or_quadkey"
+  },
+  "compute": {
+    "engine": "spark",
+    "spatial_engine": "sedona",
+    "sql_engine": "trino_or_spark_sql",
+    "distributed": true,
+    "worker_count": "replace_with_sanitized_capacity_bucket"
+  },
+  "validation": {
+    "sampling_strategy": "stratified_spatial_temporal_holdout",
+    "chunking": "administrative_partition_plus_spatial_tile",
+    "holdout_policy": "province_time_or_tile_based_holdout"
+  },
+  "serving": {
+    "tiling": "vector_tile_pyramid",
+    "tile_cache": "configured"
+  },
+  "claim_boundary": "template only; set example_only=false and not_for_production=false only after replacing every example value with sanitized real production metadata"
+}

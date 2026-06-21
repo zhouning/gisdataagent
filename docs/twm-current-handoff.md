@@ -1723,10 +1723,168 @@ Current data-validation continuation implemented:
      - `git diff --check -- scripts/run_twm_validation_bundle.py data_agent/test_twm_data_foundation_validation.py docs/reports/twm_validation_bundle.json docs/reports/twm_validation_bundle.md`
      - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_data_foundation_validation.py -k "validation_bundle_runner"`
      - Result: `2 passed, 44 deselected in 65.80s (0:01:05)`.
+123. Connected production observed-history preflight into the offline validation bundle:
+   - Files: `scripts/run_twm_validation_bundle.py`, `data_agent/test_twm_data_foundation_validation.py`, `docs/reports/twm_validation_bundle.json`, `docs/reports/twm_validation_bundle.md`, `docs/twm-current-handoff.md`.
+   - New CLI arguments:
+     - `--production-observed-history <real.csv>`
+     - `--synthetic-experiment-foundation <benchmark.csv>`
+   - New report section schema: `territory_world_model.production_observed_history_preflight.v1`.
+   - The runner now reuses the data-foundation validator's existing gates:
+     - `audit_observed_history_schema`
+     - `production_policy_history_alignment`
+     - `synthetic_experiment_foundation_summary`
+   - This keeps production observed-history rules consistent between:
+     - `scripts/validate_twm_data_foundation.py`
+     - `scripts/run_twm_validation_bundle.py`
+   - Behavior:
+     - no `--production-observed-history` -> preflight status `not_provided`; ordinary offline smoke validation still runs.
+     - missing path -> preflight status `blocked`.
+     - provided file with schema pass and policy-history alignment pass -> preflight status `pass`.
+     - provided file with schema pass but policy coverage below the synthetic unseen-policy benchmark -> preflight status `review`.
+   - Default refreshed report:
+     - `docs/reports/twm_validation_bundle.json`
+     - `docs/reports/twm_validation_bundle.md`
+     - Current production preflight is `not_provided` because no real non-synthetic observed-history CSV has been supplied.
+   - Boundary remains explicit: this is a data-readiness preflight only. Even a pass does not prove TWM production accuracy without holdout validation and human review gates.
+   - Regression:
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q scripts/run_twm_validation_bundle.py data_agent/test_twm_data_foundation_validation.py`
+     - `git diff --check -- scripts/run_twm_validation_bundle.py data_agent/test_twm_data_foundation_validation.py`
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_data_foundation_validation.py -k "production_preflight"`
+     - Result: `3 passed, 46 deselected in 0.41s`.
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_data_foundation_validation.py -k "validation_bundle_runner or production_preflight"`
+     - Result: `5 passed, 44 deselected in 64.29s (0:01:04)`.
+124. Added a strict production-readiness gate to the offline validation bundle:
+   - Files: `scripts/run_twm_validation_bundle.py`, `data_agent/test_twm_data_foundation_validation.py`, `docs/reports/twm_validation_bundle.json`, `docs/reports/twm_validation_bundle.md`, `docs/twm-current-handoff.md`.
+   - New CLI argument:
+     - `--require-production-readiness`
+   - New report section schema:
+     - `territory_world_model.production_readiness_gate.v1`
+   - Gate checks:
+     - selected-plan evaluation bundle must pass.
+     - validation report must pass.
+     - claim ladder must reach `L4`.
+     - real observed-history schema and policy-history alignment must pass.
+     - human review, audit and GIS deployability gates must pass.
+     - SCCA evidence must pass when `--require-scca-pass` is enabled.
+   - Default behavior remains suitable for offline smoke/regression validation:
+     - missing production observed-history produces `production_readiness_gate.status=review`, not `blocked`.
+     - top-level bundle status remains `review`, so it cannot be misread as production-ready.
+   - Strict behavior:
+     - with `--require-production-readiness`, missing or failed production evidence produces `production_readiness_gate.status=blocked`.
+     - the top-level validation bundle status becomes `blocked`.
+     - CLI writes JSON/Markdown first, then returns exit code `2` when `--require-production-readiness` or `--fail-on-blocked` is active and the bundle is blocked.
+   - Default refreshed report:
+     - `docs/reports/twm_validation_bundle.json`
+     - `docs/reports/twm_validation_bundle.md`
+     - Current bundle status: `review`.
+     - Current readiness gate: `required=False`, `status=review`, missing `selected_plan_bundle_pass`, `validation_report_pass`, `claim_ladder_deployable`, `production_observed_history_preflight_pass`, `human_review_and_audit_pass`.
+   - Boundary remains strict: this gate is a deployment punch list and does not turn demo or synthetic data into production evidence.
+   - Regression:
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q scripts/run_twm_validation_bundle.py data_agent/test_twm_data_foundation_validation.py`
+     - `git diff --check -- scripts/run_twm_validation_bundle.py data_agent/test_twm_data_foundation_validation.py docs/reports/twm_validation_bundle.json docs/reports/twm_validation_bundle.md docs/twm-current-handoff.md`
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_data_foundation_validation.py -k "validation_bundle_runner or production_preflight or production_readiness"`
+     - Result: `8 passed, 44 deselected in 97.02s (0:01:37)`.
+     - `/Users/zhouning/gisdataagent/.venv/bin/python scripts/run_twm_validation_bundle.py --require-production-readiness --output /private/tmp/twm_validation_bundle_strict.json --markdown-output /private/tmp/twm_validation_bundle_strict.md`
+     - Result: wrote both reports and exited with code `2`, as expected for the current missing production evidence.
+125. Added a TWM validation-bundle smoke entrypoint for inner-network deployment rehearsals:
+   - Files: `scripts/smoke_twm_validation_bundle.sh`, `data_agent/test_twm_validation_bundle_smoke_script.py`, `docs/twm-current-handoff.md`.
+   - Purpose:
+     - provide one stable shell entrypoint for Docker, air-gapped CI and manual inner-network acceptance runs.
+     - keep all sensitive real-data paths outside the script through environment variables.
+     - keep the smoke path conservative: default run writes reports and returns `0`; strict production-readiness run writes reports and returns `2` when blocked.
+   - Environment controls:
+     - `TWM_PRODUCTION_OBSERVED_HISTORY`
+     - `TWM_PRODUCTION_SCALE_PROFILE`
+     - `TWM_REQUIRE_PRODUCTION_READINESS`
+     - `TWM_FAIL_ON_BLOCKED`
+     - `TWM_REQUIRE_SCCA_PASS`
+     - `TWM_SCCA_OUTPUT_DIR`
+     - `TWM_SCCA_RESULT_JSON`
+     - `TWM_VALIDATION_OUTPUT`
+     - `TWM_VALIDATION_MARKDOWN_OUTPUT`
+     - `TWM_BUNDLE_DIR`
+     - `TWM_OPTIMIZATION_DIR`
+     - `TWM_SYNTHETIC_EXPERIMENT_FOUNDATION`
+   - Verified behavior:
+     - `bash scripts/smoke_twm_validation_bundle.sh`
+       - Result: refreshed `docs/reports/twm_validation_bundle.json` and `docs/reports/twm_validation_bundle.md`, exit code `0`.
+     - `TWM_REQUIRE_PRODUCTION_READINESS=1 TWM_VALIDATION_OUTPUT=/private/tmp/twm_validation_bundle_smoke_strict.json TWM_VALIDATION_MARKDOWN_OUTPUT=/private/tmp/twm_validation_bundle_smoke_strict.md bash scripts/smoke_twm_validation_bundle.sh`
+       - Result: wrote both strict reports and exited with code `2`, as expected because real production observed-history is not supplied.
+   - Regression:
+     - `bash -n scripts/smoke_twm_validation_bundle.sh`
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_validation_bundle_smoke_script.py`
+     - Result: `2 passed in 0.02s`.
+126. Added production scale-readiness diagnostics for million/hundred-million-scale inner-network data:
+   - Files: `scripts/run_twm_validation_bundle.py`, `scripts/smoke_twm_validation_bundle.sh`, `data_agent/test_twm_data_foundation_validation.py`, `data_agent/test_twm_validation_bundle_smoke_script.py`, `docs/reports/twm_validation_bundle.json`, `docs/reports/twm_validation_bundle.md`, `docs/twm-current-handoff.md`.
+   - New CLI argument:
+     - `--production-scale-profile <profile.json>`
+   - New smoke environment variable:
+     - `TWM_PRODUCTION_SCALE_PROFILE`
+   - New report section schema:
+     - `territory_world_model.production_scale_readiness.v1`
+   - Purpose:
+     - account for real inner-network data that may be million-scale in normal cases and hundred-million-scale for national layers.
+     - keep this as a production readiness gate, not a replacement for existing TWM simulator/planner/model work.
+     - avoid false confidence from local demo data by requiring a sanitized scale profile before claiming national-scale readiness.
+   - The scale profile is sanitized metadata only. It can describe:
+     - layer/table row counts.
+     - storage format such as GeoParquet, Parquet, Iceberg, Delta, Hudi or ORC.
+     - administrative/time/spatial partition columns.
+     - spatial index, grid, tile, S2/H3/Hilbert/quadkey strategy.
+     - distributed compute engine such as Spark/Sedona, Flink, Dask, Ray, Trino/Presto or distributed SQL.
+     - sampling, tiling, chunking or pyramid strategy for hundred-million-scale validation/serving.
+   - Gate behavior:
+     - no scale profile -> `status=not_provided`; ordinary offline smoke validation still runs as `review`.
+     - missing profile path -> `status=blocked`.
+     - million-scale layers require lakehouse/columnar storage, partitioning and spatial indexing.
+     - ten-million-scale and larger layers additionally require distributed compute.
+     - hundred-million-scale layers additionally require sampling/tiling/chunking/pyramid strategy.
+     - strict production readiness now requires `production_scale_readiness_pass`.
+   - Default refreshed report:
+     - `docs/reports/twm_validation_bundle.json`
+     - `docs/reports/twm_validation_bundle.md`
+     - Current scale readiness is `not_provided`, `scale_tier=local_or_county_scale`, missing `production_scale_profile_provided`.
+     - Current production readiness missing list now includes `production_scale_readiness_pass`.
+   - Regression:
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q scripts/run_twm_validation_bundle.py data_agent/test_twm_data_foundation_validation.py data_agent/test_twm_validation_bundle_smoke_script.py`
+     - `bash -n scripts/smoke_twm_validation_bundle.sh`
+     - `git diff --check -- scripts/run_twm_validation_bundle.py scripts/smoke_twm_validation_bundle.sh data_agent/test_twm_data_foundation_validation.py data_agent/test_twm_validation_bundle_smoke_script.py docs/reports/twm_validation_bundle.json docs/reports/twm_validation_bundle.md docs/twm-current-handoff.md`
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_validation_bundle_smoke_script.py data_agent/test_twm_data_foundation_validation.py -k "validation_bundle_runner or production_preflight or production_readiness or production_scale or strict_ci_blocking or twm_validation_bundle_smoke_script"`
+     - Result: `13 passed, 44 deselected in 97.03s (0:01:37)`.
+     - `bash scripts/smoke_twm_validation_bundle.sh`
+     - Result: refreshed validation bundle reports, exit code `0`.
+     - `TWM_REQUIRE_PRODUCTION_READINESS=1 TWM_VALIDATION_OUTPUT=/private/tmp/twm_validation_bundle_scale_strict.json TWM_VALIDATION_MARKDOWN_OUTPUT=/private/tmp/twm_validation_bundle_scale_strict.md bash scripts/smoke_twm_validation_bundle.sh`
+     - Result: wrote both strict reports and exited with code `2`; missing gates include `production_scale_readiness_pass`.
+127. Added a sanitized production-scale profile template for inner-network teams:
+   - Files: `scripts/run_twm_validation_bundle.py`, `data_agent/test_twm_data_foundation_validation.py`, `docs/reports/twm_validation_bundle.json`, `docs/reports/twm_production_scale_profile_template.json`, `docs/twm-current-handoff.md`.
+   - New CLI argument:
+     - `--scale-profile-template-output <profile.json>`
+   - Default generated template:
+     - `docs/reports/twm_production_scale_profile_template.json`
+   - New report section schema:
+     - `territory_world_model.production_scale_profile_contract.v1`
+   - Purpose:
+     - give inner-network operators a concrete, sanitized metadata format for describing million/hundred-million-scale production layers.
+     - avoid requiring raw geometries, row-level attributes or sensitive file paths outside the secure environment.
+     - keep the template from being confused with real production evidence.
+   - Template behavior:
+     - generated profile has `example_only=true` and `not_for_production=true`.
+     - `build_production_scale_readiness` now rejects example templates through `production_scale_profile_not_example`.
+     - real profiles must set `example_only=false` and `not_for_production=false` after replacing every example value with sanitized production metadata.
+   - Default refreshed report:
+     - `outputs.production_scale_profile_template=/Users/zhouning/gisdataagent/docs/reports/twm_production_scale_profile_template.json`.
+   - Regression:
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q scripts/run_twm_validation_bundle.py data_agent/test_twm_data_foundation_validation.py data_agent/test_twm_validation_bundle_smoke_script.py`
+     - `bash -n scripts/smoke_twm_validation_bundle.sh`
+     - `git diff --check -- scripts/run_twm_validation_bundle.py scripts/smoke_twm_validation_bundle.sh data_agent/test_twm_data_foundation_validation.py data_agent/test_twm_validation_bundle_smoke_script.py docs/reports/twm_validation_bundle.json docs/reports/twm_validation_bundle.md docs/twm-current-handoff.md`
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_validation_bundle_smoke_script.py data_agent/test_twm_data_foundation_validation.py -k "validation_bundle_runner or production_preflight or production_readiness or production_scale or strict_ci_blocking or twm_validation_bundle_smoke_script"`
+     - Result: `14 passed, 44 deselected in 98.49s (0:01:38)`.
+     - `bash scripts/smoke_twm_validation_bundle.sh`
+     - Result: refreshed validation bundle reports and generated the scale profile template, exit code `0`.
 
 Next session should continue with:
 
-1. Use `scripts/run_twm_validation_bundle.py` and `scripts/validate_twm_data_foundation.py --production-observed-history <real.csv>` together against a real non-synthetic approval/review export in an inner-network environment; review both selected-plan validation and `production_policy_history_alignment`, and keep requiring raw transformer false_allow `0` while tracking conservative false_block separately.
+1. In the inner-network environment, run `scripts/smoke_twm_validation_bundle.sh` with `TWM_PRODUCTION_OBSERVED_HISTORY=<real.csv>`, `TWM_PRODUCTION_SCALE_PROFILE=<profile.json>` and `TWM_REQUIRE_PRODUCTION_READINESS=1`; also run `scripts/validate_twm_data_foundation.py --production-observed-history <real.csv>` against the same real non-synthetic approval/review export; compare selected-plan validation, production observed-history preflight, production scale readiness and `production_policy_history_alignment`.
 2. Continue seed-stability work for raw learned-head calibration. Current status: the first two-seed stable synthetic config is `epoch=100`, `learning_rate=0.008`, `weight_decay=0.004`, `dropout=0.0`, `contextual_weight=3.8`, risk weights `1.0,1.1,1.2,1.3,1.4`, seeds `19,23`; the same config over seeds `19,23,29,31,37` reaches `4/5` passing seeds, with seed `31` failing only by tiny positive constraint/holdout gaps and raw selected `false_allow=0`. Do not change defaults until this is reproduced across a broader seed set and real observed-history validation.
 3. Keep conditional feasibility diagnostics separate from risk-head error metrics and from transparent-baseline results.
 4. Keep `twm_structural_validation_observed_history.csv` as a regression fixture only; never use it to claim deployment causal support.
