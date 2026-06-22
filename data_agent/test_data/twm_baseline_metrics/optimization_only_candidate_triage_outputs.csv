@@ -1,0 +1,6 @@
+candidate_id,rank,selected,legal_feasible,blocked,review_only,rejection_reason,planner_regret_against_human_oracle
+basea,1,true,true,false,false,,0.18
+baseb,2,true,false,true,false,,0.21
+basec,3,true,false,true,false,hard constraint conflict,0.12
+based,4,false,false,true,false,,0.16
+basee,5,false,false,false,true,review evidence gap,0.14

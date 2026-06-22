@@ -1,0 +1,178 @@
+{
+  "schema": "territory_world_model.dynamics_backend_cache_verification.v1",
+  "generated_at": "2026-06-22T08:04:45Z",
+  "base_url": "http://localhost:8000",
+  "auth": {
+    "method": "POST /login",
+    "username": "admin",
+    "cookie_received": true
+  },
+  "constraints": {
+    "mock_used": false,
+    "smoke_test_used": false,
+    "unit_fake_request_used": false,
+    "data_source": "data_agent/test_data/twm_bishan_multi_admin_eval",
+    "purpose": "authenticated existing-data regression for dynamics_backend_report cache/performance"
+  },
+  "totals": {
+    "request_count": 6,
+    "ok_count": 6,
+    "fail_count": 0
+  },
+  "records": [
+    {
+      "name": "auth.login_admin_password",
+      "method": "POST",
+      "path": "/login",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 128.2,
+      "timeout_s": 30,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {}
+    },
+    {
+      "name": "multi_admin.create_project",
+      "method": "POST",
+      "path": "/api/twm/projects",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 3.6,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft"
+      }
+    },
+    {
+      "name": "multi_admin.build_state",
+      "method": "POST",
+      "path": "/api/twm/projects/6b18dd88-de28-46f0-a876-b8c2e339a7c2/build-state",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 80936.8,
+      "timeout_s": 420,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version": {
+          "id": "faa0571b-adcb-484a-8041-e99d19d4a3b9",
+          "object_count": 22531,
+          "relation_count": 43329,
+          "build_status": "ready"
+        }
+      }
+    },
+    {
+      "name": "multi_admin.evaluate_rules",
+      "method": "POST",
+      "path": "/api/twm/states/faa0571b-adcb-484a-8041-e99d19d4a3b9/evaluate-rules",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 107851.1,
+      "timeout_s": 180,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "summary": {
+          "state_version_id": "faa0571b-adcb-484a-8041-e99d19d4a3b9",
+          "rule_count": 7,
+          "hit_count": 140,
+          "review_task_count": 139,
+          "data_quality_hit_count": 1,
+          "approval_consistency_hit_count": 56,
+          "evidence_item_count": 556
+        },
+        "state_version_id": "faa0571b-adcb-484a-8041-e99d19d4a3b9"
+      }
+    },
+    {
+      "name": "multi_admin.dynamics_backend_report.first",
+      "method": "POST",
+      "path": "/api/twm/states/faa0571b-adcb-484a-8041-e99d19d4a3b9/dynamics-backend-report",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 61326.1,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_backend_report.v1",
+        "status": "blocked",
+        "project_id": "6b18dd88-de28-46f0-a876-b8c2e339a7c2",
+        "state_version_id": "faa0571b-adcb-484a-8041-e99d19d4a3b9",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness",
+            "multi_head_output",
+            "forecast_adapter",
+            "candidate_gate",
+            "non_scaffold_backend"
+          ]
+        },
+        "gate_summary": {
+          "blocked_gates": [
+            "readiness",
+            "multi_head_output",
+            "forecast_adapter",
+            "candidate_gate",
+            "non_scaffold_backend"
+          ],
+          "claim_boundary": "adapter_or_review_only",
+          "backend_ready": false
+        }
+      }
+    },
+    {
+      "name": "multi_admin.dynamics_backend_report.second",
+      "method": "POST",
+      "path": "/api/twm/states/faa0571b-adcb-484a-8041-e99d19d4a3b9/dynamics-backend-report",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 2.4,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_backend_report.v1",
+        "status": "blocked",
+        "project_id": "6b18dd88-de28-46f0-a876-b8c2e339a7c2",
+        "state_version_id": "faa0571b-adcb-484a-8041-e99d19d4a3b9",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness",
+            "multi_head_output",
+            "forecast_adapter",
+            "candidate_gate",
+            "non_scaffold_backend"
+          ]
+        },
+        "gate_summary": {
+          "blocked_gates": [
+            "readiness",
+            "multi_head_output",
+            "forecast_adapter",
+            "candidate_gate",
+            "non_scaffold_backend"
+          ],
+          "claim_boundary": "adapter_or_review_only",
+          "backend_ready": false
+        }
+      }
+    }
+  ],
+  "failures": [],
+  "project_id": "6b18dd88-de28-46f0-a876-b8c2e339a7c2",
+  "state_id": "faa0571b-adcb-484a-8041-e99d19d4a3b9",
+  "performance": {
+    "first_ms": 61326.1,
+    "second_ms": 2.4,
+    "speedup_ratio": 25552.542,
+    "first_under_previous_timeout_45s": false,
+    "second_under_10s": true
+  }
+}

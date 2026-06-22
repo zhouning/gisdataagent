@@ -1,0 +1,4 @@
+metric,value
+hard_constraint_conflict_recall,0.91
+missed_blocking_conflict_rate,0.04
+evidence_link_completeness,0.8

@@ -5,7 +5,15 @@ from types import SimpleNamespace
 
 from starlette.requests import Request
 
-from data_agent.territory_world_model import TerritoryWorldModelService, TwmRepository, TwmStateVersion
+from data_agent.territory_world_model import (
+    StateBuildResult,
+    TerritoryWorldModelService,
+    TwmProject,
+    TwmRepository,
+    TwmRuleEvaluationResult,
+    TwmStateObject,
+    TwmStateVersion,
+)
 from data_agent.api import territory_world_model_routes as routes
 
 
@@ -83,6 +91,98 @@ def _observed_dynamics_dataset(seed_dataset: dict, *, count: int = 6) -> dict:
         "action_mask_loss": "targets.action_mask.allowed",
     }
     return dataset
+
+
+def _save_lightweight_twm_state(service: TerritoryWorldModelService):
+    project = TwmProject(name="Lightweight readiness project", region_code="500227")
+    state_version = TwmStateVersion(
+        project_id=project.id,
+        object_count=1,
+        relation_count=0,
+        build_status="ready",
+        summary={
+            "hierarchy_tokens": {"county": ["500227"]},
+            "object_counts_by_role": {"parcel": 1},
+        },
+        quality_summary={"evidence_coverage": 0.82},
+    )
+    state_object = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PARCEL-LIGHT-001",
+        source_role="parcel",
+        canonical_role="parcel",
+        attributes={"admin_code": "500227", "area_m2": 1000.0},
+        quality_score=0.9,
+    )
+    service.repository.save_state_bundle(
+        StateBuildResult(
+            project=project,
+            state_version=state_version,
+            objects=[state_object],
+            relations=[],
+            object_counts_by_role={"parcel": 1},
+            relation_counts_by_type={},
+            hierarchy_tokens={"county": ["500227"]},
+            quality_summary=state_version.quality_summary,
+        )
+    )
+    return project, state_version
+
+
+def _minimal_observed_dynamics_dataset(state_version_id: str, project_id: str, *, count: int = 6) -> dict:
+    examples = []
+    for idx in range(count):
+        temporal = idx < max(1, count // 2)
+        examples.append(
+            {
+                "id": f"minimal-observed-{idx}",
+                "sample_type": "temporal_state_transition" if temporal else "action_conditioned_forecast",
+                "split": "holdout" if idx >= count - 2 else "candidate",
+                "action": {"action_type": "inspect", "target_role": "parcel"},
+                "targets": {
+                    "future_latent_state": {"observed_next": {"total_area_m2": 1000.0 + idx}},
+                    "constraint_violation_probability": round(0.1 + idx * 0.01, 4),
+                    "planning_utility_delta": round(0.2 + idx * 0.02, 4),
+                    "uncertainty": {"confidence": 0.82},
+                    "calibration": {"calibrated_utility_delta": round(0.2 + idx * 0.02, 4)},
+                    "action_mask": {"allowed": True},
+                },
+                "labels": {
+                    "supervision_source": "state_snapshots" if temporal else "expert_action_log",
+                    "evidence_supported": True,
+                    "ranking_score": round(0.1 + idx * 0.01, 4),
+                },
+                "provenance": {
+                    "state_version_id": state_version_id,
+                    "ground_truth": True,
+                },
+                "not_for_training_reasons": [],
+            }
+        )
+    return {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "state_version_id": state_version_id,
+        "project_id": project_id,
+        "examples": examples,
+        "summary": {
+            "example_count": len(examples),
+            "forecast_scaffold_example_count": 0,
+            "temporal_transition_example_count": sum(1 for item in examples if item["sample_type"] == "temporal_state_transition"),
+            "usable_example_count": len(examples),
+            "review_example_count": 0,
+            "supervision_sources": {"state_snapshots": 3, "expert_action_log": 3},
+            "loss_contract": {
+                "transition_loss": "targets.future_latent_state",
+                "constraint_loss": "targets.constraint_violation_probability",
+                "planning_ranking_loss": "labels.ranking_score",
+                "calibration_loss": "targets.calibration",
+                "uncertainty_calibration_loss": "targets.uncertainty.confidence",
+                "evidence_consistency_loss": "evidence_gate.status",
+                "action_mask_loss": "targets.action_mask.allowed",
+            },
+        },
+    }
 
 
 def test_state_build_loads_mmfe_bundle_and_auxiliary_tables():
@@ -1176,6 +1276,95 @@ def test_dynamics_readiness_report_passes_with_evidence_supported_observed_datas
     ]
 
 
+def test_dynamics_readiness_report_skips_optional_geofm_and_causal_gates(monkeypatch):
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    def fail_geofm(*_args, **_kwargs):
+        raise AssertionError("GeoFM gate should not run when it is optional and no GeoFM evidence is provided")
+
+    def fail_causal(*_args, **_kwargs):
+        raise AssertionError("causal calibration should not run when it is optional and no causal evidence is provided")
+
+    monkeypatch.setattr(svc, "geofm_ablation_gate", fail_geofm)
+    monkeypatch.setattr(svc, "causal_calibration_report", fail_causal)
+
+    report = svc.dynamics_readiness_report(state_version.id, {"dataset": dataset})
+
+    assert report["status"] == "pass"
+    geofm_gate = report["gate_results"]["geofm_gate"]
+    causal_gate = report["gate_results"]["causal_calibration"]
+    assert geofm_gate == {
+        "passed": True,
+        "required": False,
+        "status": "not_required",
+        "decision": "not_required",
+        "source": "skipped_optional_gate",
+    }
+    assert causal_gate == {
+        "passed": True,
+        "required": False,
+        "status": "not_required",
+        "method": "not_required",
+        "source": "skipped_optional_gate",
+    }
+    assert report["gate_results"]["summary"]["blocked_gates"] == []
+
+
+def test_dynamics_readiness_report_computes_explicitly_required_optional_gates(monkeypatch):
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+    calls = {"geofm": 0, "causal": 0}
+
+    first = svc.dynamics_readiness_report(state_version.id, {"dataset": dataset})
+    assert first["gate_results"]["geofm_gate"]["source"] == "skipped_optional_gate"
+    assert first["gate_results"]["causal_calibration"]["source"] == "skipped_optional_gate"
+
+    def fake_geofm(state_version_id, payload):
+        calls["geofm"] += 1
+        assert state_version_id == state_version.id
+        assert payload["require_geofm_pass"] is True
+        return {"gate_status": "pass", "decision": "retain_geofm_for_downstream_planning"}
+
+    def fake_causal(state_version_id, payload):
+        calls["causal"] += 1
+        assert state_version_id == state_version.id
+        assert payload["require_causal_pass"] is True
+        return {"status": "pass", "method": "unit_required_gate"}
+
+    monkeypatch.setattr(svc, "geofm_ablation_gate", fake_geofm)
+    monkeypatch.setattr(svc, "causal_calibration_report", fake_causal)
+
+    required = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_geofm_pass": True,
+            "require_causal_pass": True,
+        },
+    )
+
+    assert calls == {"geofm": 1, "causal": 1}
+    assert required["status"] == "pass"
+    assert required["gate_results"]["geofm_gate"] == {
+        "passed": True,
+        "required": True,
+        "status": "pass",
+        "decision": "retain_geofm_for_downstream_planning",
+        "source": "computed",
+    }
+    assert required["gate_results"]["causal_calibration"] == {
+        "passed": True,
+        "required": True,
+        "status": "pass",
+        "method": "unit_required_gate",
+        "source": "computed",
+    }
+    assert required["gate_results"]["summary"]["blocked_gates"] == []
+
+
 def test_dynamics_evaluation_report_blocks_scaffold_or_missing_ground_truth_claims():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
@@ -1457,6 +1646,74 @@ def test_dynamics_backend_report_blocks_missing_multi_head_predictions():
     assert report["status"] == "blocked"
     assert "multi_head_output" in report["gate_results"]["summary"]["blocked_gates"]
     assert report["evidence_gate"]["status"] == "blocked"
+
+
+def test_report_cache_hits_and_invalidates_after_rule_evaluation(monkeypatch):
+    svc = _build_service()
+    project = TwmProject(name="Cache invalidation project", region_code="500227")
+    state_version = TwmStateVersion(
+        project_id=project.id,
+        object_count=1,
+        relation_count=0,
+        build_status="ready",
+        summary={"hierarchy_tokens": {"county": ["500227"]}, "object_counts_by_role": {"parcel": 1}},
+        quality_summary={"evidence_coverage": 0.8},
+    )
+    state_object = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PARCEL-CACHE-001",
+        source_role="parcel",
+        canonical_role="parcel",
+        attributes={"admin_code": "500227"},
+        quality_score=0.9,
+    )
+    svc.repository.save_state_bundle(
+        StateBuildResult(
+            project=project,
+            state_version=state_version,
+            objects=[state_object],
+            relations=[],
+            object_counts_by_role={"parcel": 1},
+            relation_counts_by_type={},
+            hierarchy_tokens={"county": ["500227"]},
+            quality_summary=state_version.quality_summary,
+        )
+    )
+
+    original_get_state_bundle = svc.repository.get_state_bundle
+    bundle_calls = {"count": 0}
+
+    def counted_get_state_bundle(state_version_id):
+        bundle_calls["count"] += 1
+        return original_get_state_bundle(state_version_id)
+
+    monkeypatch.setattr(svc.repository, "get_state_bundle", counted_get_state_bundle)
+
+    first = svc.state_contract_report(state_version.id, {})
+    second = svc.state_contract_report(state_version.id, {})
+
+    assert first["schema"] == "territory_world_model.state_contract_report.v1"
+    assert second == first
+    assert bundle_calls["count"] == 1
+
+    def fake_evaluate_state(*_args, **_kwargs):
+        return TwmRuleEvaluationResult(
+            state_version_id=state_version.id,
+            summary={
+                "state_version_id": state_version.id,
+                "rule_count": 0,
+                "hit_count": 0,
+                "evidence_item_count": 0,
+            },
+        )
+
+    monkeypatch.setattr(svc.rule_evaluator, "evaluate_state", fake_evaluate_state)
+    svc.evaluate_rules(state_version.id, {"include_default_rules": False})
+    after_invalidation = svc.state_contract_report(state_version.id, {})
+
+    assert after_invalidation["schema"] == "territory_world_model.state_contract_report.v1"
+    assert bundle_calls["count"] == 3
 
 
 def test_training_objective_report_scores_multi_head_losses_from_passed_backend():
@@ -3283,6 +3540,627 @@ def test_forecast_ignores_review_causal_calibration_report():
 
     assert review["forecast"]["planning_utility_delta"] == base["forecast"]["planning_utility_delta"]
     assert review["forecast"]["calibration"]["utility_scale_adjustment"] == 1.0
+
+
+def test_business_scenarios_are_business_first_templates():
+    svc = _build_service()
+    scenarios = svc.list_business_scenarios()
+
+    farmland = next(item for item in scenarios if item["id"] == "farmland_protection_review")
+    assert farmland["decision_question"].startswith("拟建或调整项目")
+    assert farmland["default_action_type"] == "protect"
+    assert "永久基本农田" in farmland["required_evidence"]
+    assert "合法可行备选方案" in farmland["decision_outputs"]
+
+
+def test_business_scenarios_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_business_scenarios(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["scenarios"][0]["decision_question"]
+    assert {item["id"] for item in body["scenarios"]} >= {
+        "farmland_protection_review",
+        "construction_project_compliance",
+        "territorial_plan_adjustment",
+    }
+
+
+def test_research_positioning_states_core_claims_and_falsification_conditions():
+    svc = _build_service()
+    positioning = svc.research_positioning()
+
+    core_names = {item["name"] for item in positioning["core_technology"]}
+    assert "Hierarchical GIS object-relation-rule-evidence state" in core_names
+    assert "Action-conditioned multi-head territorial dynamics" in core_names
+    assert positioning["unmet_need_hypotheses"]
+    assert "Rule-only spatial compliance engine" in positioning["baselines_to_beat"]
+    assert any("stopped" in item for item in positioning["falsification_conditions"])
+    assert "synthetic fixtures" in " ".join(positioning["minimum_evaluation_plan"])
+
+
+def test_research_positioning_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_research_positioning(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["research_question"].startswith("Can a governance-oriented geospatial world model")
+    assert body["claim_boundary"].startswith("Current TWM is a rigorous prototype")
+
+
+def test_research_claim_matrix_binds_claims_to_baselines_and_falsification():
+    svc = _build_service()
+    matrix = svc.research_claim_matrix()
+
+    assert matrix["schema"] == "territory_world_model.research_claim_matrix.v1"
+    assert matrix["status"] == "review"
+    assert matrix["current_data_gate"]["production_ready_observed_history_rows"] == 0
+    claim_ids = {item["claim_id"] for item in matrix["claims"]}
+    assert {
+        "C1_state_conflict_recall",
+        "C2_audit_defensibility",
+        "C3_action_conditioned_triage",
+        "C4_standard_contract_ingestion",
+    }.issubset(claim_ids)
+    c1 = next(item for item in matrix["claims"] if item["claim_id"] == "C1_state_conflict_recall")
+    assert c1["baseline"] == "manual_gis_overlay_checklist"
+    assert c1["gate"]["claim_level"] == "prototype_scaffold"
+    assert "production_observed_history" in c1["gate"]["missing"]
+    assert any(metric["name"] == "hard_constraint_conflict_recall" for metric in c1["metrics"])
+    baseline_ids = {item["baseline_id"] for item in matrix["baselines"]}
+    assert "rule_only_spatial_compliance_engine" in baseline_ids
+    assert matrix["next_experiments"][0]["priority"] == "P0"
+    assert "组件" in matrix["mentor_answer"]
+
+
+def test_research_claim_matrix_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_research_claim_matrix(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.research_claim_matrix.v1"
+    assert body["claims"][0]["gate"]["status"] == "review"
+    assert any(item["baseline_id"] == "manual_gis_overlay_checklist" for item in body["baselines"])
+
+
+def test_baseline_comparison_report_requires_named_baseline_evidence():
+    svc = _build_service()
+    report = svc.baseline_comparison_report({"claim_id": "C1_state_conflict_recall"})
+
+    assert report["schema"] == "territory_world_model.baseline_comparison_report.v1"
+    assert report["status"] == "review"
+    assert report["upgrade_decision"] == "baseline_evidence_not_provided"
+    assert "baseline_metrics" in report["evidence_gate"]["missing"]
+    assert "comparable_metrics" in report["evidence_gate"]["missing"]
+    assert report["claim"]["claim_id"] == "C1_state_conflict_recall"
+
+
+def test_baseline_export_schema_defines_same_case_contract():
+    svc = _build_service()
+    schema = svc.baseline_export_schema()
+
+    assert schema["schema"] == "territory_world_model.baseline_export_schema.v1"
+    assert schema["same_case_join_requirements"]["minimum_overlap_ratio"] == 0.8
+    assert schema["validation_api"]["endpoint"] == "POST /api/twm/baseline-export-validation-report"
+    export_types = {item["export_type"]: item for item in schema["export_types"]}
+    assert "manual_overlay" in export_types
+    assert "rule_only_engine" in export_types
+    assert "optimization_or_simulator_ranking" in export_types
+    assert "case_id" in export_types["manual_overlay"]["required_columns"]
+    assert "C1_state_conflict_recall" in export_types["manual_overlay"]["compatible_claims"]
+
+
+def test_baseline_export_templates_define_real_sanitized_collection_contracts():
+    svc = _build_service()
+    templates = svc.baseline_export_templates()
+
+    assert templates["schema"] == "territory_world_model.baseline_export_templates.v1"
+    assert "real/sanitized same-case CSV collection templates" in templates["purpose"]
+    by_claim = {item["claim_id"]: item for item in templates["templates"]}
+    assert {"C1_state_conflict_recall", "C2_audit_defensibility", "C3_action_conditioned_triage"}.issubset(by_claim)
+
+    c1 = by_claim["C1_state_conflict_recall"]
+    assert c1["baseline_id"] == "manual_gis_overlay_checklist"
+    assert c1["same_case_join_key"] == "case_id"
+    assert {"case_id", "ground_truth_conflict", "detected_conflict", "evidence_linked"}.issubset(c1["headers"]["twm"])
+    assert "case_id,project_id,region_code" in c1["csv_header"]["twm"]
+    assert c1["sample_rows"]["twm"][0]["sanitization_level"] == "real_sanitized"
+    assert c1["validation_payload_template"]["claim_id"] == "C1_state_conflict_recall"
+
+    c2 = by_claim["C2_audit_defensibility"]
+    assert {"case_id", "evidence_linked", "unsupported_recommendation", "review_task_predicted"}.issubset(c2["headers"]["baseline"])
+    assert "review_task_precision" in {item["metric"] for item in c2["metric_column_map"]}
+
+    c3 = by_claim["C3_action_conditioned_triage"]
+    assert c3["same_case_join_key"] == "candidate_id"
+    assert {"candidate_id", "rank", "selected", "legal_feasible", "planner_regret_against_human_oracle"}.issubset(
+        c3["headers"]["twm"]
+    )
+    assert c3["minimum_real_data_gate"]["minimum_overlap_ratio"] == 0.8
+    assert "production_policy_action_labels" in c3["minimum_real_data_gate"]["claim_gate_missing"]
+    assert c3["not_for_production"] is True
+
+
+def test_baseline_export_validation_passes_same_case_manual_overlay_fixture():
+    svc = _build_service()
+    report = svc.baseline_export_validation_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+
+    assert report["schema"] == "territory_world_model.baseline_export_validation_report.v1"
+    assert report["status"] == "pass"
+    assert report["coverage"]["overlap_count"] == 10
+    assert report["coverage"]["coverage_ratio"] == 1.0
+    assert report["column_inventory"]["join_key"] == "case_id"
+    assert report["column_inventory"]["missing_required"] == {"twm": [], "baseline": [], "claim_parser": []}
+    assert "_join_ids" not in report["column_inventory"]["twm"]
+    assert "hard_constraint_conflict_recall" in report["parser_compatibility"]["comparable_metrics"]
+    assert report["blocking_errors"] == []
+
+
+def test_baseline_export_validation_blocks_non_same_case_candidate_fixture():
+    svc = _build_service()
+    report = svc.baseline_export_validation_report(
+        {
+            "claim_id": "C3_action_conditioned_triage",
+            "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_outputs.csv",
+        }
+    )
+
+    assert report["status"] == "blocked"
+    assert report["column_inventory"]["join_key"] == "candidate_id"
+    assert report["coverage"]["overlap_count"] == 0
+    assert "same_case_overlap_missing" in report["blocking_errors"]
+    assert "planner_regret_against_human_oracle" in report["parser_compatibility"]["comparable_metrics"]
+    assert any("same historical case or candidate IDs" in item for item in report["next_actions"])
+
+
+def test_baseline_export_validation_passes_same_case_candidate_fixture():
+    svc = _build_service()
+    report = svc.baseline_export_validation_report(
+        {
+            "claim_id": "C3_action_conditioned_triage",
+            "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_same_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_same_case_outputs.csv",
+        }
+    )
+
+    assert report["status"] == "pass"
+    assert report["column_inventory"]["join_key"] == "candidate_id"
+    assert report["coverage"]["overlap_count"] == 5
+    assert report["coverage"]["coverage_ratio"] == 1.0
+    assert report["column_inventory"]["twm"]["synthetic_rows"] == 5
+    assert "synthetic_rows_present_export_is_regression_only" in report["warnings"]
+    assert {"candidate_rejection_reason_coverage", "legal_feasible_topk_precision", "planner_regret_against_human_oracle"}.issubset(
+        set(report["parser_compatibility"]["comparable_metrics"])
+    )
+
+
+def test_baseline_export_validation_can_save_run_card():
+    svc = _build_service()
+    project = svc.create_project({"name": "Export validation card project", "region_code": "500227"}, username="tester")
+    report = svc.baseline_export_validation_report(
+        {
+            "claim_id": "C3_action_conditioned_triage",
+            "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+            "project_id": project["id"],
+            "base_state_version_id": "state-demo",
+            "save_run_card": True,
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_same_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_same_case_outputs.csv",
+        }
+    )
+
+    scenario_id = report["scenario_card"]["scenario_id"]
+    scenario = svc.repository.get_scenario(scenario_id)
+    assert scenario is not None
+    assert scenario.project_id == project["id"]
+    assert scenario.base_state_version_id == "state-demo"
+    assert scenario.scenario_type == "baseline_export_validation"
+    assert scenario.status == "pass"
+    assert scenario.metadata["kind"] == "baseline_export_validation_run_card"
+    assert scenario.metadata["coverage"]["overlap_count"] == 5
+    assert scenario.metadata["column_inventory"]["join_key"] == "candidate_id"
+    assert scenario.metadata["not_for_production"] is True
+
+
+def test_baseline_export_import_stages_csv_for_validation():
+    svc = _build_service()
+    csv_text = "\n".join(
+        [
+            "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation,not_for_production,sanitization_level",
+            "u001,true,true,true,false,true,synthetic_regression",
+            "u002,true,false,true,false,true,synthetic_regression",
+        ]
+    )
+
+    imported = svc.import_baseline_export(
+        {
+            "filename": "../unsafe name.csv",
+            "source_role": "twm",
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "batch_id": "unit test batch",
+            "content": csv_text,
+        },
+        username="tester@example.com",
+    )
+
+    assert imported["schema"] == "territory_world_model.baseline_export_import.v1"
+    assert imported["status"] == "pass"
+    assert imported["path"].startswith("data_agent/uploads/twm_baseline_exports/tester_example.com/unit_test_batch/twm_")
+    assert imported["path"].endswith("unsafe_name.csv")
+    assert imported["row_count"] == 2
+    assert "hard_constraint_conflict_recall" in imported["preview_metrics"]
+
+    report = svc.baseline_export_validation_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_case_output_path": imported["path"],
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+    assert report["column_inventory"]["join_key"] == "case_id"
+    assert "same_case_overlap_missing" in report["blocking_errors"]
+
+
+def test_baseline_evidence_pipeline_blocks_comparison_when_export_not_same_case():
+    svc = _build_service()
+    report = svc.baseline_evidence_pipeline_report(
+        {
+            "claim_id": "C3_action_conditioned_triage",
+            "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_outputs.csv",
+            "save_run_card": True,
+        }
+    )
+
+    assert report["schema"] == "territory_world_model.baseline_evidence_pipeline_report.v1"
+    assert report["status"] == "blocked"
+    assert report["pipeline_decision"] == "export_validation_blocked"
+    assert report["steps"]["export_validation"]["status"] == "blocked"
+    assert "same_case_overlap_missing" in report["steps"]["export_validation"]["blocking_errors"]
+    assert report["steps"]["baseline_comparison"]["status"] == "skipped"
+    assert report["baseline_comparison"] is None
+    assert report["steps"]["baseline_comparison"]["skipped_reason"] == "export_validation_blocked"
+
+
+def test_baseline_evidence_pipeline_saves_validation_and_comparison_cards():
+    svc = _build_service()
+    project = svc.create_project({"name": "Evidence pipeline project", "region_code": "500227"}, username="tester")
+    report = svc.baseline_evidence_pipeline_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "project_id": project["id"],
+            "base_state_version_id": "state-demo",
+            "save_run_card": True,
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+
+    assert report["status"] == "review"
+    assert report["pipeline_decision"] == "metrics_pass_but_data_gate_blocks_upgrade"
+    assert report["steps"]["export_validation"]["status"] == "pass"
+    assert report["steps"]["baseline_comparison"]["status"] == "review"
+    validation_card = report["steps"]["export_validation"]["scenario_card"]
+    comparison_card = report["steps"]["baseline_comparison"]["scenario_card"]
+    assert validation_card["scenario_type"] == "baseline_export_validation"
+    assert comparison_card["scenario_type"] == "baseline_comparison"
+    assert svc.repository.get_scenario(validation_card["scenario_id"]).metadata["kind"] == "baseline_export_validation_run_card"
+    assert svc.repository.get_scenario(comparison_card["scenario_id"]).metadata["kind"] == "baseline_comparison_run_card"
+
+
+def test_baseline_export_routes_return_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    schema_response = asyncio.run(routes.twm_baseline_export_schema(_fake_request()))
+    schema_body = json.loads(schema_response.body)
+    assert schema_response.status_code == 200
+    assert schema_body["schema"] == "territory_world_model.baseline_export_schema.v1"
+
+    templates_response = asyncio.run(routes.twm_baseline_export_templates(_fake_request()))
+    templates_body = json.loads(templates_response.body)
+    assert templates_response.status_code == 200
+    assert templates_body["schema"] == "territory_world_model.baseline_export_templates.v1"
+    assert {item["claim_id"] for item in templates_body["templates"]} >= {
+        "C1_state_conflict_recall",
+        "C2_audit_defensibility",
+        "C3_action_conditioned_triage",
+    }
+
+    import_request = _fake_request(
+        "POST",
+        json.dumps(
+            {
+                "filename": "route_twm.csv",
+                "source_role": "twm",
+                "claim_id": "C1_state_conflict_recall",
+                "baseline_id": "manual_gis_overlay_checklist",
+                "batch_id": "route-test",
+                "content": "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation\nr001,true,true,true,false\n",
+            }
+        ).encode("utf-8"),
+    )
+    import_response = asyncio.run(routes.twm_baseline_export_import(import_request))
+    import_body = json.loads(import_response.body)
+    assert import_response.status_code == 200
+    assert import_body["schema"] == "territory_world_model.baseline_export_import.v1"
+    assert import_body["path"].endswith("twm_route_twm.csv")
+
+    pipeline_request = _fake_request(
+        "POST",
+        json.dumps(
+            {
+                "claim_id": "C1_state_conflict_recall",
+                "baseline_id": "manual_gis_overlay_checklist",
+                "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+                "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+            }
+        ).encode("utf-8"),
+    )
+    pipeline_response = asyncio.run(routes.twm_baseline_evidence_pipeline_report(pipeline_request))
+    pipeline_body = json.loads(pipeline_response.body)
+    assert pipeline_response.status_code == 200
+    assert pipeline_body["schema"] == "territory_world_model.baseline_evidence_pipeline_report.v1"
+    assert pipeline_body["steps"]["export_validation"]["status"] == "pass"
+
+    validation_request = _fake_request(
+        "POST",
+        json.dumps(
+            {
+                "claim_id": "C1_state_conflict_recall",
+                "baseline_id": "manual_gis_overlay_checklist",
+                "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+                "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+            }
+        ).encode("utf-8"),
+    )
+    validation_response = asyncio.run(routes.twm_baseline_export_validation_report(validation_request))
+    validation_body = json.loads(validation_response.body)
+
+    assert validation_response.status_code == 200
+    assert validation_body["schema"] == "territory_world_model.baseline_export_validation_report.v1"
+    assert validation_body["status"] == "pass"
+
+
+def test_baseline_comparison_report_keeps_metrics_pass_blocked_by_data_gate():
+    svc = _build_service()
+    report = svc.baseline_comparison_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_metrics": {
+                "hard_constraint_conflict_recall": 0.97,
+                "missed_blocking_conflict_rate": 0.01,
+                "evidence_link_completeness": 0.92,
+            },
+            "baseline_metrics": {
+                "hard_constraint_conflict_recall": 0.91,
+                "missed_blocking_conflict_rate": 0.04,
+                "evidence_link_completeness": 0.8,
+            },
+        }
+    )
+
+    assert report["status"] == "review"
+    assert report["upgrade_decision"] == "metrics_pass_but_data_gate_blocks_upgrade"
+    assert report["inputs"]["provided_metric_count"] == 3
+    assert report["inputs"]["passed_metric_count"] == 3
+    assert report["evidence_gate"]["metrics_pass"] is True
+    assert report["evidence_gate"]["claim_gate_clear"] is False
+    assert "production_observed_history" in report["evidence_gate"]["missing"]
+
+
+def test_baseline_comparison_report_loads_metric_files():
+    svc = _build_service()
+    report = svc.baseline_comparison_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_metrics_path": "data_agent/test_data/twm_baseline_metrics/twm_metrics.json",
+            "baseline_metrics_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_metrics.csv",
+        }
+    )
+
+    assert report["status"] == "review"
+    assert report["upgrade_decision"] == "metrics_pass_but_data_gate_blocks_upgrade"
+    assert report["inputs"]["twm_metric_count"] == 3
+    assert report["inputs"]["baseline_metric_count"] == 3
+    assert report["inputs"]["twm_metrics_source"].endswith("twm_metrics.json")
+    assert report["inputs"]["baseline_metrics_source"].endswith("manual_overlay_metrics.csv")
+    assert report["inputs"]["metric_source_errors"] == {
+        "twm": None,
+        "baseline": None,
+        "twm_cases": None,
+        "baseline_cases": None,
+    }
+
+
+def test_baseline_comparison_report_aggregates_case_level_outputs():
+    svc = _build_service()
+    report = svc.baseline_comparison_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+
+    comparisons = {item["name"]: item for item in report["metric_comparisons"]}
+    assert report["status"] == "review"
+    assert report["upgrade_decision"] == "metrics_pass_but_data_gate_blocks_upgrade"
+    assert report["inputs"]["twm_case_count"] == 10
+    assert report["inputs"]["baseline_case_count"] == 10
+    assert comparisons["hard_constraint_conflict_recall"]["twm_value"] == 1.0
+    assert comparisons["hard_constraint_conflict_recall"]["baseline_value"] == 0.9
+    assert comparisons["missed_blocking_conflict_rate"]["twm_value"] == 0.0
+    assert comparisons["missed_blocking_conflict_rate"]["baseline_value"] == 0.1
+    assert comparisons["evidence_link_completeness"]["baseline_value"] == 0.7
+    assert report["inputs"]["metric_source_errors"]["twm_cases"] is None
+    assert report["inputs"]["metric_source_errors"]["baseline_cases"] is None
+
+
+def test_baseline_comparison_report_aggregates_audit_case_outputs():
+    svc = _build_service()
+    report = svc.baseline_comparison_report(
+        {
+            "claim_id": "C2_audit_defensibility",
+            "baseline_id": "rule_only_spatial_compliance_engine",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+
+    comparisons = {item["name"]: item for item in report["metric_comparisons"]}
+    assert report["upgrade_decision"] == "metrics_pass_but_data_gate_blocks_upgrade"
+    assert comparisons["audit_trail_completeness"]["twm_value"] == 1.0
+    assert comparisons["audit_trail_completeness"]["baseline_value"] == 0.7
+    assert comparisons["unsupported_recommendation_rate"]["twm_value"] == 0.0
+    assert comparisons["unsupported_recommendation_rate"]["baseline_value"] == 0.1
+    assert comparisons["unsupported_recommendation_rate"]["status"] == "pass"
+    assert comparisons["review_task_precision"]["twm_value"] == 1.0
+    assert comparisons["review_task_precision"]["baseline_value"] == 0.666667
+
+
+def test_baseline_comparison_report_aggregates_candidate_triage_outputs():
+    svc = _build_service()
+    report = svc.baseline_comparison_report(
+        {
+            "claim_id": "C3_action_conditioned_triage",
+            "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_outputs.csv",
+        }
+    )
+
+    comparisons = {item["name"]: item for item in report["metric_comparisons"]}
+    assert report["upgrade_decision"] == "no_metric_lift_over_baseline"
+    assert comparisons["candidate_rejection_reason_coverage"]["twm_value"] == 1.0
+    assert comparisons["candidate_rejection_reason_coverage"]["baseline_value"] == 0.5
+    assert comparisons["legal_feasible_topk_precision"]["twm_value"] == 0.666667
+    assert comparisons["legal_feasible_topk_precision"]["baseline_value"] == 0.333333
+    assert comparisons["planner_regret_against_human_oracle"]["twm_value"] == 0.04
+    assert comparisons["planner_regret_against_human_oracle"]["baseline_value"] == 0.162
+    assert comparisons["planner_regret_against_human_oracle"]["status"] == "pass"
+
+
+def test_baseline_comparison_report_can_save_scenario_run_card():
+    svc = _build_service()
+    project = svc.create_project({"name": "Baseline card project", "region_code": "500227"}, username="tester")
+    report = svc.baseline_comparison_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "project_id": project["id"],
+            "base_state_version_id": "state-demo",
+            "save_run_card": True,
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+
+    scenario_id = report["scenario_card"]["scenario_id"]
+    scenario = svc.repository.get_scenario(scenario_id)
+    assert scenario is not None
+    assert scenario.project_id == project["id"]
+    assert scenario.base_state_version_id == "state-demo"
+    assert scenario.scenario_type == "baseline_comparison"
+    assert scenario.metadata["kind"] == "baseline_comparison_run_card"
+    assert scenario.metadata["baseline_sources"]["twm_case_count"] == 10
+    assert scenario.metadata["baseline_sources"]["baseline_case_count"] == 10
+    assert scenario.metadata["evidence_gate"]["claim_gate_clear"] is False
+    assert scenario.metadata["not_for_production"] is True
+
+
+def test_baseline_comparison_report_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    request = _fake_request(
+        "POST",
+        json.dumps(
+            {
+                "claim_id": "C2_audit_defensibility",
+                "baseline_id": "rule_only_spatial_compliance_engine",
+                "twm_metrics": {"audit_trail_completeness": 0.91},
+                "baseline_metrics": {"audit_trail_completeness": 0.82},
+            }
+        ).encode("utf-8"),
+    )
+
+    response = asyncio.run(routes.twm_baseline_comparison_report(request))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.baseline_comparison_report.v1"
+    assert body["claim"]["claim_id"] == "C2_audit_defensibility"
+    assert body["metric_comparisons"][0]["status"] == "pass"
+
+
+def test_data_foundation_assessment_states_current_data_boundary():
+    svc = _build_service()
+    assessment = svc.data_foundation_assessment()
+
+    assert assessment["schema"] == "territory_world_model.data_foundation_assessment.v1"
+    assert assessment["status"] == "review"
+    assert assessment["landing_readiness"]["engineering_mvp_supported"] is True
+    assert assessment["landing_readiness"]["production_deployment_supported"] is False
+    assert assessment["validation_snapshot"]["production_ready_observed_history_rows"] == 0
+    assert assessment["validation_snapshot"]["production_policy_history_status"] == "not_provided"
+    dataset_ids = {item["id"] for item in assessment["datasets"]}
+    assert {
+        "twm_bishan_demo",
+        "twm_bishan_multi_admin_eval",
+        "twm_one_map_village_standard_sample",
+    }.issubset(dataset_ids)
+    multi_admin = next(item for item in assessment["datasets"] if item["id"] == "twm_bishan_multi_admin_eval")
+    assert multi_admin["not_for_production"] is True
+    assert any(item["path"] == "tables/approval_records.csv" and item["count"] == 90 for item in multi_admin["files"])
+    assert any(item["problem"] == "工程 MVP 与回归测试" for item in assessment["supported_problems"])
+    assert any(item["claim"] == "生产级审批结论" for item in assessment["unsupported_claims"])
+    assert assessment["required_next_data"][0]["priority"] == "P0"
+    assert "工程和研究假设验证" in assessment["mentor_answer"]["short_answer"]
+
+
+def test_data_foundation_assessment_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_assessment(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.data_foundation_assessment.v1"
+    assert body["landing_readiness"]["predictive_or_causal_claim_supported"] is False
+    assert body["validation_snapshot"]["synthetic_experiment"]["row_count"] >= 256
 
 
 def test_twm_toolset_lists_sync_and_long_running_tools():

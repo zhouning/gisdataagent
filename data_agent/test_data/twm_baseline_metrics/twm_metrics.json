@@ -1,0 +1,7 @@
+{
+  "metrics": {
+    "hard_constraint_conflict_recall": 0.97,
+    "missed_blocking_conflict_rate": 0.01,
+    "evidence_link_completeness": 0.92
+  }
+}

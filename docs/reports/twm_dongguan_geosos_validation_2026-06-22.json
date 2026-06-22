@@ -1,0 +1,768 @@
+{
+  "schema": "territory_world_model.dongguan_geosos_validation_report.v1",
+  "status": "pass",
+  "claim_boundary": "geosos_dongguan_tutorial_benchmark_not_production_twm",
+  "source": {
+    "zip_path": "/Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip",
+    "dataset": "GeoSOS DongGuan 80m tutorial data",
+    "task": "land-use transition benchmark adapter for TWM comparison validation"
+  },
+  "data_profile": {
+    "raster_profile": {
+      "schema": "territory_world_model.geosos_raster_profile.v1",
+      "years": [
+        2000,
+        2005,
+        2006
+      ],
+      "shape": [
+        648,
+        946
+      ],
+      "crs": "PROJCS[\"Krasovsky_1940_Albers\",GEOGCS[\"Unknown datum based upon the Krassowsky 1940 ellipsoid\",DATUM[\"Not_specified_based_on_Krassowsky_1940_ellipsoid\",SPHEROID[\"Krassowsky 1940\",6378245,298.3,AUTHORITY[\"EPSG\",\"7024\"]],AUTHORITY[\"EPSG\",\"6024\"]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",12],PARAMETER[\"longitude_of_center\",110],PARAMETER[\"standard_parallel_1\",25],PARAMETER[\"standard_parallel_2\",47],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "resolution": [
+        80.0,
+        80.0
+      ],
+      "cell_area_m2": 6400.0,
+      "cell_area_ha": 0.64,
+      "nodata": 0.0
+    },
+    "landuse_types": {
+      "schema": "territory_world_model.geosos_landuse_info.v1",
+      "types": {
+        "1": {
+          "value": 1,
+          "zh": "耕地",
+          "en": "Arable Land"
+        },
+        "2": {
+          "value": 2,
+          "zh": "林地",
+          "en": "Woodland"
+        },
+        "3": {
+          "value": 3,
+          "zh": "草地",
+          "en": "Meadow"
+        },
+        "4": {
+          "value": 4,
+          "zh": "水域",
+          "en": "Water"
+        },
+        "5": {
+          "value": 5,
+          "zh": "城乡建设用地",
+          "en": "Construction Land"
+        },
+        "6": {
+          "value": 6,
+          "zh": "未利用地",
+          "en": "Unused Land"
+        }
+      },
+      "convert_values": [
+        1,
+        3,
+        6
+      ],
+      "urban_values": [
+        5
+      ],
+      "not_to_convert_values": [
+        2,
+        4
+      ],
+      "null_value": -9999
+    },
+    "suitability_matrix": {
+      "schema": "territory_world_model.geosos_suitability_matrix.v1",
+      "rows": [
+        {
+          "source_type": "1",
+          "allowed_targets": {
+            "1": true,
+            "2": true,
+            "3": false,
+            "4": false,
+            "5": true,
+            "6": true
+          }
+        },
+        {
+          "source_type": "2",
+          "allowed_targets": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": false,
+            "5": false,
+            "6": true
+          }
+        },
+        {
+          "source_type": "3",
+          "allowed_targets": {
+            "1": true,
+            "2": false,
+            "3": true,
+            "4": false,
+            "5": false,
+            "6": true
+          }
+        },
+        {
+          "source_type": "4",
+          "allowed_targets": {
+            "1": false,
+            "2": false,
+            "3": false,
+            "4": true,
+            "5": false,
+            "6": false
+          }
+        },
+        {
+          "source_type": "5",
+          "allowed_targets": {
+            "1": false,
+            "2": false,
+            "3": false,
+            "4": false,
+            "5": true,
+            "6": false
+          }
+        },
+        {
+          "source_type": "6",
+          "allowed_targets": {
+            "1": false,
+            "2": false,
+            "3": false,
+            "4": false,
+            "5": false,
+            "6": true
+          }
+        }
+      ]
+    },
+    "transition_summaries": [
+      {
+        "schema": "territory_world_model.geosos_transition_summary.v1",
+        "start_year": 2000,
+        "end_year": 2005,
+        "valid_cell_count": 378749,
+        "changed_cell_count": 100587,
+        "unchanged_cell_count": 278162,
+        "changed_ratio": 0.265577,
+        "changed_area_ha": 64375.68,
+        "top_changes": [
+          {
+            "from": 1,
+            "to": 5,
+            "from_label": "耕地",
+            "to_label": "城乡建设用地",
+            "cell_count": 29136,
+            "area_ha": 18647.04
+          },
+          {
+            "from": 2,
+            "to": 5,
+            "from_label": "林地",
+            "to_label": "城乡建设用地",
+            "cell_count": 15308,
+            "area_ha": 9797.12
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "from_label": "耕地",
+            "to_label": "林地",
+            "cell_count": 8619,
+            "area_ha": 5516.16
+          },
+          {
+            "from": 1,
+            "to": 4,
+            "from_label": "耕地",
+            "to_label": "水域",
+            "cell_count": 8110,
+            "area_ha": 5190.4
+          },
+          {
+            "from": 5,
+            "to": 1,
+            "from_label": "城乡建设用地",
+            "to_label": "耕地",
+            "cell_count": 6915,
+            "area_ha": 4425.6
+          },
+          {
+            "from": 4,
+            "to": 5,
+            "from_label": "水域",
+            "to_label": "城乡建设用地",
+            "cell_count": 6089,
+            "area_ha": 3896.96
+          },
+          {
+            "from": 5,
+            "to": 2,
+            "from_label": "城乡建设用地",
+            "to_label": "林地",
+            "cell_count": 5098,
+            "area_ha": 3262.72
+          },
+          {
+            "from": 4,
+            "to": 1,
+            "from_label": "水域",
+            "to_label": "耕地",
+            "cell_count": 3860,
+            "area_ha": 2470.4
+          },
+          {
+            "from": 2,
+            "to": 1,
+            "from_label": "林地",
+            "to_label": "耕地",
+            "cell_count": 3822,
+            "area_ha": 2446.08
+          },
+          {
+            "from": 3,
+            "to": 2,
+            "from_label": "草地",
+            "to_label": "林地",
+            "cell_count": 3391,
+            "area_ha": 2170.24
+          },
+          {
+            "from": 5,
+            "to": 4,
+            "from_label": "城乡建设用地",
+            "to_label": "水域",
+            "cell_count": 2521,
+            "area_ha": 1613.44
+          },
+          {
+            "from": 2,
+            "to": 4,
+            "from_label": "林地",
+            "to_label": "水域",
+            "cell_count": 2217,
+            "area_ha": 1418.88
+          }
+        ]
+      },
+      {
+        "schema": "territory_world_model.geosos_transition_summary.v1",
+        "start_year": 2005,
+        "end_year": 2006,
+        "valid_cell_count": 378754,
+        "changed_cell_count": 21306,
+        "unchanged_cell_count": 357448,
+        "changed_ratio": 0.056253,
+        "changed_area_ha": 13635.84,
+        "top_changes": [
+          {
+            "from": 1,
+            "to": 5,
+            "from_label": "耕地",
+            "to_label": "城乡建设用地",
+            "cell_count": 11187,
+            "area_ha": 7159.68
+          },
+          {
+            "from": 2,
+            "to": 5,
+            "from_label": "林地",
+            "to_label": "城乡建设用地",
+            "cell_count": 6726,
+            "area_ha": 4304.64
+          },
+          {
+            "from": 1,
+            "to": 4,
+            "from_label": "耕地",
+            "to_label": "水域",
+            "cell_count": 1129,
+            "area_ha": 722.56
+          },
+          {
+            "from": 4,
+            "to": 5,
+            "from_label": "水域",
+            "to_label": "城乡建设用地",
+            "cell_count": 744,
+            "area_ha": 476.16
+          },
+          {
+            "from": 3,
+            "to": 5,
+            "from_label": "草地",
+            "to_label": "城乡建设用地",
+            "cell_count": 586,
+            "area_ha": 375.04
+          },
+          {
+            "from": 1,
+            "to": 2,
+            "from_label": "耕地",
+            "to_label": "林地",
+            "cell_count": 535,
+            "area_ha": 342.4
+          },
+          {
+            "from": 4,
+            "to": 1,
+            "from_label": "水域",
+            "to_label": "耕地",
+            "cell_count": 282,
+            "area_ha": 180.48
+          },
+          {
+            "from": 6,
+            "to": 5,
+            "from_label": "未利用地",
+            "to_label": "城乡建设用地",
+            "cell_count": 45,
+            "area_ha": 28.8
+          },
+          {
+            "from": 4,
+            "to": 2,
+            "from_label": "水域",
+            "to_label": "林地",
+            "cell_count": 35,
+            "area_ha": 22.4
+          },
+          {
+            "from": 5,
+            "to": 2,
+            "from_label": "城乡建设用地",
+            "to_label": "林地",
+            "cell_count": 28,
+            "area_ha": 17.92
+          },
+          {
+            "from": 2,
+            "to": 1,
+            "from_label": "林地",
+            "to_label": "耕地",
+            "cell_count": 9,
+            "area_ha": 5.76
+          }
+        ]
+      }
+    ],
+    "sample_stride": 24,
+    "max_examples_per_transition": 96
+  },
+  "state": {
+    "state_version_id": "cccb1190-c484-41a4-a187-e86fd4b3f8f8",
+    "project_id": "98c5b78f-050f-4ec2-bc46-b92e9a0641aa",
+    "object_count": 206,
+    "relation_count": 965,
+    "summary": {
+      "object_counts_by_role": {
+        "county": 1,
+        "township": 1,
+        "block": 4,
+        "landuse_class": 6,
+        "transition_period": 2,
+        "parcel": 192
+      },
+      "relation_counts_by_type": {
+        "county_contains_township": 1,
+        "township_contains_block": 4,
+        "county_contains_cell_sample": 192,
+        "cell_sample_has_landuse_class": 192,
+        "transition_period_observes_cell_sample": 192,
+        "project_overlaps_planning_zone": 192,
+        "annual_change_of_parcel": 192
+      },
+      "metric_crs": "PROJCS[\"Krasovsky_1940_Albers\",GEOGCS[\"Unknown datum based upon the Krassowsky 1940 ellipsoid\",DATUM[\"Not_specified_based_on_Krassowsky_1940_ellipsoid\",SPHEROID[\"Krassowsky 1940\",6378245,298.3,AUTHORITY[\"EPSG\",\"7024\"]],AUTHORITY[\"EPSG\",\"6024\"]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",12],PARAMETER[\"longitude_of_center\",110],PARAMETER[\"standard_parallel_1\",25],PARAMETER[\"standard_parallel_2\",47],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "raster_profile": {
+        "schema": "territory_world_model.geosos_raster_profile.v1",
+        "years": [
+          2000,
+          2005,
+          2006
+        ],
+        "shape": [
+          648,
+          946
+        ],
+        "crs": "PROJCS[\"Krasovsky_1940_Albers\",GEOGCS[\"Unknown datum based upon the Krassowsky 1940 ellipsoid\",DATUM[\"Not_specified_based_on_Krassowsky_1940_ellipsoid\",SPHEROID[\"Krassowsky 1940\",6378245,298.3,AUTHORITY[\"EPSG\",\"7024\"]],AUTHORITY[\"EPSG\",\"6024\"]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",12],PARAMETER[\"longitude_of_center\",110],PARAMETER[\"standard_parallel_1\",25],PARAMETER[\"standard_parallel_2\",47],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+        "resolution": [
+          80.0,
+          80.0
+        ],
+        "cell_area_m2": 6400.0,
+        "cell_area_ha": 0.64,
+        "nodata": 0.0
+      },
+      "claim_boundary": "geosos_dongguan_tutorial_benchmark_not_production_twm"
+    }
+  },
+  "dataset_summary": {
+    "schema": "territory_world_model.geosos_dongguan_dynamics_dataset_summary.v1",
+    "source_path": "/Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip",
+    "example_count": 192,
+    "candidate_example_count": 96,
+    "holdout_example_count": 96,
+    "observed_temporal_example_count": 192,
+    "usable_example_count": 192,
+    "synthetic_example_count": 0,
+    "not_for_production_example_count": 192,
+    "split_counts": {
+      "candidate": 96,
+      "holdout": 96
+    },
+    "action_counts": {
+      "landuse_convert": 23,
+      "maintain": 71,
+      "restricted_change": 2,
+      "urban_expand": 96
+    },
+    "action_mask_blocked_count": 50,
+    "transition_summary_count": 2,
+    "loss_contract": {
+      "transition_loss": "targets.future_latent_state.observed_next",
+      "constraint_loss": "targets.constraint_violation_probability",
+      "planning_ranking_loss": "labels.ranking_score",
+      "calibration_loss": "targets.calibration.observed_transition_proxy",
+      "uncertainty_calibration_loss": "targets.uncertainty.confidence",
+      "evidence_consistency_loss": "evidence_gate.status",
+      "action_mask_loss": "targets.action_mask.allowed"
+    },
+    "claim_boundary": "geosos_dongguan_tutorial_benchmark_not_production_twm",
+    "ground_truth_example_count": 192,
+    "holdout_ground_truth_example_count": 96
+  },
+  "readiness": {
+    "schema": "territory_world_model.dynamics_readiness_report.v1",
+    "status": "pass",
+    "training_scope": "trainable_action_conditioned_dynamics",
+    "sample_inventory": {
+      "example_count": 192,
+      "usable_example_count": 192,
+      "review_example_count": 0,
+      "holdout_example_count": 96,
+      "candidate_example_count": 96,
+      "observed_temporal_example_count": 192,
+      "synthetic_temporal_example_count": 0,
+      "forecast_scaffold_example_count": 0,
+      "scaffold_example_count": 0,
+      "evidence_supported_count": 192,
+      "action_mask_blocked_count": 50,
+      "by_sample_type": {
+        "temporal_state_transition": 192
+      },
+      "by_split": {
+        "candidate": 96,
+        "holdout": 96
+      },
+      "by_supervision_source": {
+        "state_snapshots": 192
+      },
+      "blocked_reason_counts": {},
+      "target_head_coverage": {
+        "future_latent_state": 192,
+        "constraint_violation_probability": 192,
+        "planning_utility_delta": 192,
+        "uncertainty": 192,
+        "calibration": 192,
+        "action_mask": 192
+      },
+      "scaffold_ratio": 0.0,
+      "review_ratio": 0.0,
+      "ranking_score_range": {
+        "min": -0.758,
+        "max": 0.004
+      }
+    },
+    "blocked_gates": [],
+    "claim_boundary": "trainable_dynamics_ready"
+  },
+  "fit": {
+    "schema": "territory_world_model.dynamics_fit_report.v1",
+    "status": "pass",
+    "candidate": {
+      "model_name": "geosos_transition_group_baseline",
+      "model_version": "dongguan_80m_v1",
+      "model_family": "action_conditioned_landuse_transition_baseline",
+      "uses_geofm": false,
+      "uses_causal_calibration": false,
+      "is_scaffold_baseline": false,
+      "metadata": {
+        "claim_boundary": "geosos_dongguan_tutorial_benchmark_not_production_twm"
+      }
+    },
+    "sample_count": 192,
+    "action_parameter_count": 4,
+    "prediction_count": 192,
+    "evidence_gate": {
+      "passed": true,
+      "blocked": false,
+      "status": "pass",
+      "missing": []
+    },
+    "evaluation_status": "pass"
+  },
+  "evaluation": {
+    "schema": "territory_world_model.dynamics_evaluation_report.v1",
+    "status": "pass",
+    "candidate": {
+      "model_name": "geosos_transition_group_baseline",
+      "model_version": "dongguan_80m_v1",
+      "model_family": "action_conditioned_landuse_transition_baseline",
+      "uses_geofm": false,
+      "uses_causal_calibration": false,
+      "is_scaffold_baseline": false,
+      "metadata": {
+        "claim_boundary": "geosos_dongguan_tutorial_benchmark_not_production_twm"
+      }
+    },
+    "metrics": {
+      "evaluated_example_count": 192,
+      "ground_truth_example_count": 192,
+      "holdout_example_count": 96,
+      "mean_transition_error": 0.0,
+      "mean_constraint_error": 0.105362,
+      "mean_utility_error": 0.04913,
+      "ranking_correlation_proxy": 0.0,
+      "mean_confidence": 0.790417,
+      "action_mask_accuracy": 1.0
+    },
+    "evidence_gate": {
+      "passed": true,
+      "blocked": false,
+      "status": "pass",
+      "missing": [],
+      "thresholds": {
+        "min_ground_truth_examples": 2,
+        "max_mean_transition_error": 0.35,
+        "max_mean_constraint_error": 0.35,
+        "max_mean_utility_error": 0.35,
+        "min_ranking_correlation_proxy": -1.0
+      }
+    },
+    "sample_inventory": {
+      "dataset_example_count": 192,
+      "prediction_count": 192,
+      "evaluated_example_ids": [
+        "dongguan:2000:2005:0:24:264",
+        "dongguan:2000:2005:10:96:48",
+        "dongguan:2000:2005:11:96:120",
+        "dongguan:2000:2005:12:96:192",
+        "dongguan:2000:2005:13:96:336",
+        "dongguan:2000:2005:14:96:408",
+        "dongguan:2000:2005:15:96:552",
+        "dongguan:2000:2005:16:96:696",
+        "dongguan:2000:2005:17:96:720",
+        "dongguan:2000:2005:18:120:48",
+        "dongguan:2000:2005:19:120:264",
+        "dongguan:2000:2005:1:24:336",
+        "dongguan:2000:2005:20:120:288",
+        "dongguan:2000:2005:21:120:408",
+        "dongguan:2000:2005:22:120:480",
+        "dongguan:2000:2005:23:120:504",
+        "dongguan:2000:2005:24:120:552",
+        "dongguan:2000:2005:25:120:624",
+        "dongguan:2000:2005:26:120:648",
+        "dongguan:2000:2005:27:120:672",
+        "dongguan:2000:2005:28:120:720",
+        "dongguan:2000:2005:29:120:744",
+        "dongguan:2000:2005:2:48:192",
+        "dongguan:2000:2005:30:120:768",
+        "dongguan:2000:2005:31:144:240",
+        "dongguan:2000:2005:32:144:360",
+        "dongguan:2000:2005:33:144:432",
+        "dongguan:2000:2005:34:144:480",
+        "dongguan:2000:2005:35:144:504",
+        "dongguan:2000:2005:36:144:528",
+        "dongguan:2000:2005:37:144:552",
+        "dongguan:2000:2005:38:144:576",
+        "dongguan:2000:2005:39:144:600",
+        "dongguan:2000:2005:3:48:336",
+        "dongguan:2000:2005:40:144:624",
+        "dongguan:2000:2005:41:144:672",
+        "dongguan:2000:2005:42:144:696",
+        "dongguan:2000:2005:43:168:24",
+        "dongguan:2000:2005:44:168:168",
+        "dongguan:2000:2005:45:168:192",
+        "dongguan:2000:2005:46:168:312",
+        "dongguan:2000:2005:47:168:408",
+        "dongguan:2000:2005:48:0:264",
+        "dongguan:2000:2005:49:24:360",
+        "dongguan:2000:2005:4:48:552",
+        "dongguan:2000:2005:50:48:360",
+        "dongguan:2000:2005:51:48:696",
+        "dongguan:2000:2005:52:96:72",
+        "dongguan:2000:2005:53:96:216",
+        "dongguan:2000:2005:54:96:432"
+      ],
+      "ground_truth_example_count": 192,
+      "holdout_example_count": 96
+    }
+  },
+  "backend": {
+    "schema": "territory_world_model.dynamics_backend_report.v1",
+    "status": "pass",
+    "backend": {
+      "backend_id": "geosos_transition_group_baseline",
+      "backend_type": "transparent_benchmark_baseline",
+      "model_name": "geosos_transition_group_baseline",
+      "model_version": "dongguan_80m_v1",
+      "model_family": "landuse_transition_group_means",
+      "trainable": false,
+      "action_conditioned": true,
+      "uses_geofm": false,
+      "uses_causal_calibration": false,
+      "is_scaffold_baseline": false,
+      "metadata": {
+        "claim_boundary": "geosos_dongguan_tutorial_benchmark_not_production_twm"
+      }
+    },
+    "evidence_gate": {
+      "passed": true,
+      "blocked": false,
+      "status": "pass",
+      "missing": [],
+      "backend_id": "geosos_transition_group_baseline",
+      "readiness_status": "pass"
+    },
+    "claim_boundary": {
+      "status": "pass",
+      "claim_scope": "backend_can_drive_forecast_rollout_and_beam",
+      "allowed_claims": [
+        "backend_contract_checked",
+        "candidate_report_adapter_available",
+        "forecast_backend_candidate"
+      ],
+      "disallowed_claims": [
+        "production_ready_world_model",
+        "ungated_trainable_dynamics"
+      ],
+      "blocked_gates": []
+    },
+    "blocked_gates": []
+  },
+  "objective": {
+    "schema": "territory_world_model.training_objective_report.v1",
+    "status": "pass",
+    "evidence_gate": {
+      "passed": true,
+      "status": "pass",
+      "missing": [],
+      "backend_status": "pass",
+      "training_claim": "objective_contract_ready"
+    },
+    "loss_components": {
+      "transition_loss": {
+        "value": 0.0,
+        "coverage": 192,
+        "coverage_ratio": 1.0,
+        "weight": 1.0
+      },
+      "constraint_loss": {
+        "value": 0.105362,
+        "coverage": 192,
+        "coverage_ratio": 1.0,
+        "weight": 1.0
+      },
+      "planning_ranking_loss": {
+        "value": 1.0,
+        "coverage": 192,
+        "coverage_ratio": 1.0,
+        "weight": 1.2
+      },
+      "calibration_loss": {
+        "value": 0.04913,
+        "coverage": 192,
+        "coverage_ratio": 1.0,
+        "weight": 0.8
+      },
+      "uncertainty_calibration_loss": {
+        "value": 0.0,
+        "coverage": 192,
+        "coverage_ratio": 1.0,
+        "weight": 0.8
+      },
+      "evidence_consistency_loss": {
+        "value": 0.0,
+        "coverage": 192,
+        "coverage_ratio": 1.0,
+        "weight": 0.6
+      },
+      "action_mask_loss": {
+        "value": 0.0,
+        "coverage": 192,
+        "coverage_ratio": 1.0,
+        "weight": 0.9
+      }
+    },
+    "ranking_diagnostics": {
+      "ranking_correlation_proxy": 0.0,
+      "pair_count": 192,
+      "largest_mismatches": [
+        {
+          "example_id": "dongguan:2000:2005:12:96:192",
+          "predicted_utility": 0.19,
+          "target_ranking_score": -0.628,
+          "delta": 0.818
+        },
+        {
+          "example_id": "dongguan:2000:2005:23:120:504",
+          "predicted_utility": 0.19,
+          "target_ranking_score": -0.628,
+          "delta": 0.818
+        },
+        {
+          "example_id": "dongguan:2000:2005:28:120:720",
+          "predicted_utility": 0.19,
+          "target_ranking_score": -0.628,
+          "delta": 0.818
+        },
+        {
+          "example_id": "dongguan:2000:2005:29:120:744",
+          "predicted_utility": 0.19,
+          "target_ranking_score": -0.628,
+          "delta": 0.818
+        },
+        {
+          "example_id": "dongguan:2000:2005:37:144:552",
+          "predicted_utility": 0.19,
+          "target_ranking_score": -0.628,
+          "delta": 0.818
+        }
+      ],
+      "objective": "maximize planning utility while preserving ranking consistency against target_ranking_score"
+    },
+    "calibration_diagnostics": {
+      "mean_absolute_calibration_gap": 0.04913,
+      "calibration_pair_count": 192,
+      "objective": "align calibrated utility with observed_transition_proxy or calibrated_utility_delta targets"
+    }
+  },
+  "comparison_interpretation": {
+    "what_this_validates": [
+      "GeoSOS tutorial zip can be ingested into a TWM action-conditioned multi-head dynamics contract.",
+      "2000->2005 and 2005->2006 observed land-use transitions can be represented as ground-truth temporal examples.",
+      "The transparent transition-group baseline is now available as a named comparison baseline inside the TWM report chain."
+    ],
+    "what_this_does_not_validate": [
+      "It does not prove TWM beats GeoSOS/FLUS pixel-level simulation.",
+      "It does not provide real approval actions, policy interventions, human review outcomes or causal treatment labels.",
+      "It does not upgrade TWM to production readiness for natural-resource governance."
+    ],
+    "next_tasks": [
+      "Add a pixel/grid holdout metric against an actual GeoSOS/FLUS output map if such output is available.",
+      "Add a land-use CA or FLUS-compatible baseline runner for same-case comparison.",
+      "Attach real planning boundaries, approval records and review outcomes before making governance-action claims."
+    ]
+  }
+}

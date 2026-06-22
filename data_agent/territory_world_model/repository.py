@@ -52,12 +52,12 @@ def _geom_wkt(value: Any) -> str:
     return getattr(value, "wkt", "") if value is not None else ""
 
 
-def _bbox_json(value: Any) -> list[Any] | None:
+def _bbox_json(value: Any) -> str | None:
     if value is None:
         return None
     if isinstance(value, (list, tuple)):
-        return list(value)
-    return jsonable(value)
+        return _json(list(value))
+    return _json(jsonable(value))
 
 
 class TwmRepository:
@@ -279,6 +279,7 @@ class TwmRepository:
                     input_changes JSONB NOT NULL DEFAULT '{}'::jsonb,
                     source_model TEXT,
                     status TEXT NOT NULL DEFAULT 'draft',
+                    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
                 )
                 """,
@@ -299,6 +300,7 @@ class TwmRepository:
             with self.engine.connect() as conn:
                 for statement in ddl:
                     conn.execute(text(statement))
+                conn.execute(text("ALTER TABLE twm_scenario ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb"))
                 conn.commit()
             _TABLES_READY = True
         return True
@@ -822,7 +824,7 @@ class TwmRepository:
                  :source_asset_id, :source_feature_id, :source_path, :canonical_role,
                  CAST(:attributes AS JSONB), :semantic_tags, :quality_score,
                  :synthetic, :not_for_production, :qa_use_for_rules,
-                 :geometry_crs, :geom_wkt, :bbox_json)
+                 :geometry_crs, :geom_wkt, CAST(:bbox_json AS JSONB))
             ON CONFLICT (id) DO UPDATE SET
                 state_version_id = EXCLUDED.state_version_id,
                 object_type = EXCLUDED.object_type,
@@ -1093,11 +1095,11 @@ class TwmRepository:
             """
             INSERT INTO twm_scenario
                 (id, project_id, base_state_version_id, name, scenario_type,
-                 input_changes, source_model, status, created_at)
+                 input_changes, source_model, status, metadata, created_at)
             VALUES
                 (:id, :project_id, :base_state_version_id, :name,
                  :scenario_type, CAST(:input_changes AS JSONB), :source_model,
-                 :status, :created_at)
+                 :status, CAST(:metadata AS JSONB), :created_at)
             ON CONFLICT (id) DO UPDATE SET
                 project_id = EXCLUDED.project_id,
                 base_state_version_id = EXCLUDED.base_state_version_id,
@@ -1105,7 +1107,8 @@ class TwmRepository:
                 scenario_type = EXCLUDED.scenario_type,
                 input_changes = EXCLUDED.input_changes,
                 source_model = EXCLUDED.source_model,
-                status = EXCLUDED.status
+                status = EXCLUDED.status,
+                metadata = EXCLUDED.metadata
             """,
             {
                 "id": scenario.id,
@@ -1116,6 +1119,7 @@ class TwmRepository:
                 "input_changes": _json(scenario.input_changes),
                 "source_model": scenario.source_model,
                 "status": scenario.status,
+                "metadata": _json(scenario.metadata),
                 "created_at": scenario.created_at,
             },
         )

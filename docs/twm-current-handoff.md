@@ -1,6 +1,6 @@
 # TWM Current Handoff
 
-Last updated: 2026-06-21
+Last updated: 2026-06-22
 
 This document is the continuation entry point for Territory World Model (TWM)
 development in this repository.
@@ -43,10 +43,343 @@ TWM has an end-to-end prototype surface in `data_agent/territory_world_model/`:
   - optional D2/D3/D4 auto-inference from dynamics dataset plus B0/B1 prediction maps
   - downstream experiment report that wraps B0/B1 variants, architecture audit, D2/D3/D4 evidence and the gate decision
   - deterministic B0/B1 prediction scaffold for dataset-only experiment reports, explicitly marked review-only
+- land-use simulation/optimization benchmark adapters:
+  - GeoSOS DongGuan 80m validation adapter for 2000->2005 and 2005->2006 transition examples
+  - GeoSOS DongGuan 80m independent transition-dynamics experiment: train 2000->2005 and evaluate 2005->2006
+  - official GeoSOS-FLUS V2.4 sample comparison against package-provided FLUS outputs
+  - public land-cover benchmark entry point for local multi-period raster stacks such as GLC_FCS30D, Dynamic World exports or MODIS annual products
+  - explicit split between `forecast_demand` formal prediction and `oracle_demand` upper-bound diagnostics
 
 The implementation remains a rigorous scaffold/candidate implementation, not a
 final production-scale territorial world model. Claim upgrade is still governed
 by readiness, backend, objective, causal, GeoFM and validation gates.
+
+## Public Land-Cover Benchmark Progress
+
+Implemented on 2026-06-22:
+
+- `scripts/build_twm_public_landcover_benchmark.py`
+- `data_agent/test_twm_public_landcover_benchmark.py`
+- `docs/twm-public-landcover-benchmark-2026-06-22.md`
+- `docs/reports/twm_public_landcover_benchmark_2026-06-22.json`
+- rendered assets:
+  - `docs/assets/twm_public_landcover_benchmark_maps.png`
+  - `docs/assets/twm_public_landcover_benchmark_metrics.png`
+
+Current validation run uses the existing real GeoSOS DongGuan 80m zip as a
+public-benchmark adapter, not synthetic mock data:
+
+- source: `/Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip`
+- region count: 1
+- rolling case: `2000->2005` train, `2005->2006` holdout
+- valid cells: 378,749
+- driver layers loaded from `Variables Data`: `dtcity`, `dtfreeway`,
+  `dtrailway`, `dtroad`, plus near-distance derivatives
+
+Current single-case metrics:
+
+- persistence: OA `0.943746`, Change FoM `0.000000`
+- Markov transition projection: OA `0.928715`, Change FoM `0.041221`
+- TWM independent transition with forecast demand: OA `0.931324`, Change FoM
+  `0.057363`
+- TWM independent transition with oracle demand: OA `0.913423`, Change FoM
+  `0.107556`
+
+Current ablation diagnostics on the same DongGuan case:
+
+- no drivers: Change FoM delta `-0.000576`, OA delta `-0.000085`
+- no neighborhood: Change FoM delta `-0.019592`, OA delta `-0.002648`
+- no transition prior: Change FoM delta `0.000000`, OA delta `0.000000`
+- no demand projection: Change FoM delta `+0.021196`, OA delta `-0.303407`,
+  target-demand absolute error `26976`
+
+Interpretation:
+
+- The formal forecast-demand TWM candidate beats Markov on both Change FoM and
+  OA in this DongGuan rolling case.
+- The strongest positive component in this single-case ablation is
+  neighborhood context; driver features are weakly positive; transition prior
+  has no visible marginal effect in this case.
+- Removing demand projection can raise change-detection FoM, but it creates a
+  large demand violation and a severe OA drop, so it is a diagnostic rather
+  than a valid planning/simulation candidate.
+- The oracle-demand candidate uses target-year class totals and must be treated
+  only as an upper-bound diagnostic.
+- This still does not establish cross-region generalization or general
+  superiority over FLUS; a public multi-region manifest is the next required
+  evidence layer.
+
+Implemented real public multi-region data download on 2026-06-22:
+
+- GEE project: `ee-zn19860115`
+- proxy used for GEE access: `127.0.0.1:7897`
+- source collection: `GOOGLE/DYNAMICWORLD/V1`
+- annual reducer: yearly mode of the `label` band
+- years: 2017-2023
+- administrative boundary source:
+  `/Users/zhouning/Downloads/shp/xiangzhen.shp`
+- selected regions: 20 township/street administrative units
+- downloaded rasters: 140 GeoTIFFs
+- downloaded external driver rasters: 60 GeoTIFFs
+- external driver layers: `srtm_elevation`, `srtm_slope`,
+  `viirs_nightlight_mean`
+- failed downloads: 0
+- local manifest:
+  `data/twm_public_landcover/gee_dynamic_world/twm_dynamic_world_manifest.json`
+- download status:
+  `docs/reports/twm_gee_dynamic_world_download_status_2026-06-22.json`
+- downloader script:
+  `scripts/download_twm_gee_dynamic_world_benchmark.py`
+
+The 20-region Dynamic World benchmark is now a real downloaded public-data
+benchmark, not a mock/smoke substitute:
+
+- report:
+  `docs/reports/twm_dynamic_world_admin20_benchmark_2026-06-22.json`
+- illustrated markdown:
+  `docs/twm-dynamic-world-admin20-benchmark-2026-06-22.md`
+- region count: 20
+- rolling cases: 100
+
+Current aggregate metrics on Dynamic World admin20:
+
+- persistence: OA `0.925218`, Change FoM `0.000000`
+- Markov transition projection: OA `0.903706`, Change FoM `0.045569`
+- TWM independent transition with forecast demand: OA `0.908289`, Change FoM
+  `0.072289`
+- TWM hierarchical pooled transition with forecast demand: OA `0.908282`,
+  Change FoM `0.072135`
+- TWM calibrated hierarchical pooled transition with forecast demand: OA
+  `0.908280`, Change FoM `0.072235`
+- TWM leave-region-out cross-region smoothed transition with forecast demand:
+  OA `0.908285`, Change FoM `0.072275`
+- no drivers ablation: OA `0.908293`, Change FoM `0.072575`
+- no neighborhood ablation: OA `0.905953`, Change FoM `0.058692`
+- no transition prior ablation: OA `0.908287`, Change FoM `0.072329`
+- TWM independent transition with oracle demand: OA `0.920055`, Change FoM
+  `0.129043`
+- no demand projection ablation: OA `0.684568`, Change FoM `0.145773`,
+  target-demand absolute error `938088`
+
+Aggregate component diagnostics on the same formal forecast-demand benchmark:
+
+- full TWM vs Markov: Change FoM delta `+0.026720`, OA delta `+0.004583`
+- full TWM vs hierarchical pooled transition candidate: Change FoM delta
+  `+0.000154`, OA delta `+0.000007`
+- full TWM vs calibrated hierarchical pooled transition candidate: Change FoM
+  delta `+0.000054`, OA delta `+0.000009`
+- full TWM vs leave-region-out cross-region smoothed transition candidate:
+  Change FoM delta `+0.000014`, OA delta `+0.000004`
+- external drivers: Change FoM delta `-0.000286`, OA delta `-0.000004`
+- neighborhood context: Change FoM delta `+0.013597`, OA delta `+0.002336`
+- transition prior: Change FoM delta `-0.000040`, OA delta `+0.000002`
+- demand projection constraint: no-demand projection has higher Change FoM but
+  causes `938088` aggregate target-demand absolute error, so it remains a
+  diagnostic rather than a valid simulator/planner output
+
+Training stability update:
+
+- The public benchmark logistic transition backend now captures convergence
+  warnings and records per-source-class training diagnostics instead of
+  leaking sklearn warnings to stdout.
+- Current admin20 main TWM forecast candidate diagnostics:
+  - cases: 100
+  - source-class fits attempted/reported: 900
+  - fitted source classes: 591
+  - fallback source classes: 309
+  - hard fallback source classes: 309
+  - local-or-pooled model source classes: 591
+  - fallback rate: `0.343333`
+  - solver distribution: `lbfgs:590`, `newton-cg:1`
+- Fallbacks are primarily `fallback_global_prior`, meaning the corresponding
+  source class lacked enough observed target-class diversity in that rolling
+  case. This is a data sparsity/rare-transition issue, not a runtime failure.
+- Added hierarchical pooled fallback candidate:
+  - candidate id: `twm_hierarchical_transition_forecast_demand`
+  - local fitted source classes: 591
+  - pooled fallback source classes: 309
+  - hard fallback source classes: 0
+  - local-or-pooled model coverage: `1.000000`
+  - aggregate Change FoM: `0.072135`
+- Interpretation of the hierarchical candidate: it solves the hard fallback
+  coverage problem, but it does not improve aggregate predictive performance
+  over the original independent candidate (`0.072135` vs `0.072289` Change
+  FoM). This means the simple same-case pooled fallback is not yet a better
+  dynamics model; it is useful as a diagnostic and coverage baseline.
+- Added calibrated hierarchical pooled fallback candidate:
+  - candidate id: `twm_calibrated_hierarchical_transition_forecast_demand`
+  - local fitted source classes: 591
+  - pooled fallback source classes: 309
+  - hard fallback source classes: 0
+  - local-or-pooled model coverage: `1.000000`
+  - mean pooled fallback weight selected by train-period calibration: `0.307500`
+  - aggregate Change FoM: `0.072235`
+- Interpretation of the calibrated candidate: it improves over pure pooled
+  fallback (`0.072235` vs `0.072135`) by using pooled fallback conservatively,
+  but it still does not outperform the original independent candidate
+  (`0.072289`). The result supports calibrated smoothing as a useful diagnostic,
+  not as a new best model.
+- Added leave-region-out cross-region transition smoothing candidate:
+  - candidate id: `twm_cross_region_smoothed_transition_forecast_demand`
+  - it builds peer transition priors from other administrative regions in the
+    same training period and explicitly excludes the target region;
+  - smoothing weights are selected only from the target region's training
+    `t0->t1` transition counts using leave-one-out transition likelihood;
+  - it keeps formal forecast-demand validity: target-demand absolute error `0`
+    and no target-year class totals are used;
+  - cross-region support covered 900/900 source classes;
+  - calibrated smoothing was actually positive for 534/900 source classes;
+  - mean smoothing weight: `0.105999`;
+  - aggregate Change FoM: `0.072275`.
+- Interpretation of the cross-region smoothing candidate: it beats Markov and
+  is a real leave-region-out peer-support test, but it still does not outperform
+  the independent TWM candidate (`0.072275` vs `0.072289`). This is useful
+  evidence that naive empirical-Bayes cross-region smoothing is not enough.
+  The next modelling task should be structured region-holdout parameter
+  sharing, transition-pair smoothing and stronger mechanistic covariates, not
+  simply more global pooling.
+- Engineering optimization after adding the calibrated candidate:
+  - pure hierarchical and calibrated hierarchical now share the same fitted
+    pooled/local logistic models in each rolling case;
+  - candidate-specific probability cubes are rendered from the shared fit using
+    different fallback weights (`1.0` and auto-calibrated);
+  - the cross-region smoothing candidate reuses the independent TWM probability
+    cube and only adds count-based peer-prior smoothing, avoiding extra sklearn
+    classifier fits;
+  - admin20 aggregate metrics are stable after the refactor;
+  - focused regression suite passed: `6 passed`.
+
+Interpretation for mentor review:
+
+- We now have actual multi-region, multi-year public land-use/land-cover change
+  data downloaded through GEE and aligned to administrative units.
+- In the formal forecast-demand setting, TWM independent transition improves
+  mean Change FoM over Markov (`0.072289` vs `0.045569`) and has slightly higher
+  OA (`0.908289` vs `0.903706`) across 100 rolling cases.
+- Persistence still has higher OA because most land-cover pixels are stable;
+  OA alone is therefore not sufficient for change simulation assessment.
+- The no-demand-projection ablation has the highest Change FoM but massive
+  demand violation and poor OA, so it remains a diagnostic, not a valid
+  simulator/planner candidate.
+- The current Dynamic World manifest now has external SRTM elevation, SRTM
+  slope and VIIRS nightlight driver rasters. They do not improve aggregate
+  Change FoM in the current 100m admin20 setup: no-driver is slightly higher
+  than full TWM (`0.072575` vs `0.072289`). This should be read as a driver
+  adequacy finding, not as proof that drivers are useless. The current drivers
+  are coarse/static; the next data task is to add stronger accessibility,
+  road-network, population, planning-policy and economic covariates.
+- The strongest verified positive component in the current public benchmark is
+  neighborhood context: removing it drops mean Change FoM from `0.072289` to
+  `0.058692`.
+- First pooled/hierarchical and leave-region-out cross-region smoothing
+  candidates have been implemented. They improve coverage and provide useful
+  diagnostics, but none of them currently beats the independent TWM dynamics
+  candidate on aggregate Change FoM. The next model task is structured
+  rare-transition smoothing, region-holdout parameter sharing, stronger
+  covariates and lower-cost candidate reuse.
+
+## Data Foundation Assessment For Mentor Review
+
+The current TWM test foundation is useful, but its claim boundary is narrow.
+It supports engineering and research-hypothesis validation; it does not yet
+support production deployment or real causal/predictive claims.
+
+Current local test datasets:
+
+- `data_agent/test_data/twm_bishan_demo`
+  - 4,900 current parcel features, 60 synthetic projects, 14 synthetic PBF
+    features, 10 synthetic eco-redline features, 5 planning zones, 78 annual
+    changes.
+  - Auxiliary governance tables include 60 approval records, 92 review tasks,
+    240 rule-evaluation rows, 10 state snapshots and 173 multimodal evidence
+    rows.
+  - It also contains real Sentinel-2 imagery, but the governance layers used
+    for approval/review logic are synthetic or not-for-production.
+- `data_agent/test_data/twm_bishan_multi_admin_eval`
+  - 21,218 current parcel features, 90 synthetic projects, 14 synthetic PBF
+    features, 10 synthetic eco-redline features, 5 planning zones, 266 annual
+    changes.
+  - Auxiliary governance tables include 90 approval records, 114 review tasks,
+    360 rule-evaluation rows, 10 state snapshots and 224 multimodal evidence
+    rows.
+  - The validation report shows `production_ready_observed_history_rows = 0`;
+    approval/review/rule rows are synthetic/not-for-production.
+- `data_agent/test_data/twm_one_map_village_standard_sample`
+  - 2,217 parcel features from the village-planning standard sample structure,
+    plus standard-compatible planning-zone, boundary and governance substitute
+    layers.
+  - It validates One Map role-contract compatibility, not production
+    correctness. The package is explicitly `not_for_production=true`.
+
+The generated data-foundation health report currently says:
+
+- overall status: `review`
+- production observed history: none
+- production policy history: `not_provided`
+- production-ready observed rows: `0`
+- structural validation fixture: 48 rows / 24 pairs, structural check `pass`,
+  default gate `review`
+- synthetic experiment foundation: 256 rows / 128 pairs, 4 regions, 8 periods,
+  train/validation/test split, action-mask allowed/blocked 64/64, structural
+  check `pass`, default gate `review`
+- Paper7 caliper-matched validation passes as an external causal-calibration
+  branch, but it is not a substitute for TWM production approval histories
+
+What this data foundation can support:
+
+- engineering MVP and regression tests for state construction, role binding,
+  rule evaluation, evidence chains, review tasks and audit reports
+- business-review scaffolding for exposing hard-constraint conflicts, evidence
+  gaps and manual-review tasks
+- constrained planner-consumer plumbing: candidate loading, hard-constraint
+  filtering, beam ranking, action-mask safety-head experiments and validation
+  gate behavior
+- standard-structure compatibility checks for One Map village-planning data
+
+What it cannot support yet:
+
+- production approval/pass/fail recommendations
+- validated real-world territorial-governance forecasts
+- causal claims that TWM improves real approval or planning outcomes
+- proof that action-conditioned dynamics generalize to real policy histories
+- proof that TWM already beats manual GIS overlay, rule-only engines, land-use
+  simulators or optimization-only baselines
+
+导师口径 should be frank:
+
+> 目前 TWM 靠谱的部分是工程和研究假设验证，不是生产落地证明。现有数据能说明对象-关系-规则-证据框架能跑通，也能暴露真实落地还缺哪些数据；但在真实审批历史、权威管控边界版本、政策动作可行性标签和 baseline 对比缺失前，不能声称 TWM 已经解决真实国土治理决策。
+
+The research question should therefore be narrowed to real workflow pain
+points that the current scaffold can measure once production data arrive:
+
+- Does object-relation-rule-evidence state reduce missed hard-constraint
+  conflicts versus layer-by-layer manual GIS review?
+- Does evidence-gated review improve audit-trail completeness and reduce
+  unsupported recommendations versus rule-only engines?
+- Does action-conditioned planning help explain why candidate schemes are
+  illegal, under-evidenced or review-only, compared with optimization-only
+  scoring?
+
+Minimum next data work:
+
+- P0: real or sanitized project approval/review/remediation/enforcement history
+  with project geometry, dates, decision result, rule outcomes, review tasks,
+  evidence links and final disposition
+- P0: authoritative PBF, eco-redline, urban-development-boundary and planning
+  zone versions with effective dates and policy clauses
+- P1: real action-mask or policy-feasibility labels covering action type,
+  policy code, allowed/blocked/conditional status, region and period
+- P1: multi-period parcel/state snapshots and remote-sensing/change evidence
+  with evidence-quality labels
+- P2: baseline outputs from manual overlay, rule-only engine, land-use
+  simulator and/or optimization-only workflows for the same cases
+
+Implemented surface for this review:
+
+- `TerritoryWorldModelService.data_foundation_assessment()`
+- `GET /api/twm/data-foundation-assessment`
+- TWM frontend tab “数据基础” panel showing verdict, dataset counts,
+  supported problems, unsupported claims and next data requirements
 
 ## Key Files
 
@@ -1882,6 +2215,1265 @@ Current data-validation continuation implemented:
      - `bash scripts/smoke_twm_validation_bundle.sh`
      - Result: refreshed validation bundle reports and generated the scale profile template, exit code `0`.
 
+## 2026-06-22 Frontend and Roadmap Continuation
+
+This continuation moved TWM from API/tool-only access toward an operator-facing
+DataPanel workflow.
+
+Completed in this pass:
+
+1. Added a dedicated frontend tab:
+   - `frontend/src/components/datapanel/TerritoryWorldModelTab.tsx`
+   - Mounted as `TWM` under the DataPanel intelligence group.
+   - Provides a compact workflow for:
+     - TWM status refresh.
+     - project creation and selection.
+     - existing state selection.
+     - MMFE/TWM bundle state build.
+     - default rule evaluation.
+     - audit report.
+     - action-conditioned forecast.
+     - validation ladder.
+     - optimization bundle candidate loading.
+     - farmland-layout beam selection.
+   - Default presets point at the three existing TWM regression bundles:
+     - `data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion`
+     - `data_agent/test_data/twm_bishan_multi_admin_eval`
+     - `data_agent/test_data/twm_one_map_village_standard_sample`
+2. Added compact TWM frontend styling in `frontend/src/styles/layout.css`.
+3. Added a project-scoped state listing API for the frontend:
+   - `GET /api/twm/projects/{id}/states`
+   - service method: `TerritoryWorldModelService.list_states(project_id=...)`
+4. Hardened the TWM tab API client after the first browser smoke surfaced
+   `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`:
+   - requests now send `Accept: application/json`.
+   - responses are read as text first and parsed only when they are JSON.
+   - HTML/static fallback responses now produce an explicit backend route/deploy diagnostic instead of a raw JSON parser exception.
+5. Local runtime recovery on 2026-06-22:
+   - The running `gisdataagent-app-1` container on port 8000 was an older image with no `data_agent/territory_world_model` package and no `/api/twm/*` routes.
+   - `docker compose build app` failed before image creation because current `requirements.txt` pins `starlette==0.50.0` while `google-adk==2.3.0` requires `starlette>=1.0.1,<2`.
+   - To restore the local TWM tab without changing dependency versions, the current TWM package, TWM routes, updated `frontend_api.py`, `self_evolution` route dependencies and built frontend `dist/` were copied into the running app container, then `docker compose restart app` was run.
+   - Verification after restart:
+     - frontend API mounted `428` endpoints.
+     - `/api/twm/status` through both `127.0.0.1:8000` and Vite proxy `127.0.0.1:5173` returned JSON `401 Unauthorized` when unauthenticated instead of HTML.
+
+Remaining roadmap items to keep explicit:
+
+1. Frontend hardening:
+   - add route-level/playwright coverage for the TWM tab once a local authenticated dev workflow is available.
+   - add a map handoff for TWM risk layers when backend exports a map-ready risk layer payload.
+   - add evidence drawer and review-task update controls rather than only showing summarized rule hits.
+2. Standards Platform Phase 6:
+   - implement `data_agent/standards_platform/derivation/strategies/spatial_policy_rule.py`.
+   - register `to_spatial_policy_rule` in the derivation runner.
+   - ensure generated `twm_policy_rule` rows are draft/disabled by default and linked through `std_derived_link`.
+   - add `data_agent/standards_platform/tests/test_spatial_policy_rule_strategy.py`.
+3. Audit/catalog lineage Phase 7:
+   - export risk layer GeoJSON/FlatGeobuf from TWM evaluation.
+   - register generated audit/risk assets into `agent_data_assets`.
+   - write `agent_asset_lineage` rows connecting inputs, state version, rule set, rule hits and reports.
+4. Scenario and Paper9 adapter Phase 8/9:
+   - convert selected optimization/Paper9 outputs into durable `twm_scenario` records.
+   - keep hard-blocked candidates visible for audit but excluded from recommended selection.
+   - add a direct `world_model_adapter.py` only if it reduces duplication against existing WorldModel v2.1 service calls.
+5. Production validation:
+   - keep synthetic/demo fixtures as regression evidence only.
+   - require real observed approval/review history and sanitized production scale profile before L4/deployment claims.
+6. Build/deployment hygiene:
+   - fix the Docker dependency conflict between `google-adk==2.3.0` and `starlette==0.50.0`; the app image cannot be rebuilt reproducibly until this is resolved.
+   - replace the local hot-sync recovery above with a clean image rebuild and `docker compose up -d app` once dependency resolution is fixed.
+
+## 2026-06-22 Business-First TWM Continuation
+
+This pass responds to the advisor concern that current TWM can read as technical
+stacking without enough business-scene grounding. The direction is valid: keep
+the world-model machinery, but force each visible workflow to start from a
+business decision question, required evidence, expected decision output and
+guardrails.
+
+Completed:
+
+1. Added first-class TWM business scenario templates in `TerritoryWorldModelService.list_business_scenarios()`:
+   - `farmland_protection_review`: farmland protection and occupation-compensation review.
+   - `construction_project_compliance`: construction land-use compliance pre-review.
+   - `territorial_plan_adjustment`: territorial plan adjustment simulation and comparison.
+2. Added `GET /api/twm/business-scenarios` so frontend and agents consume the
+   same backend business templates instead of hard-coding task semantics only in UI.
+3. Updated the TWM DataPanel tab to place business task selection above technical operations:
+   - selected scenario drives project `business_scenario`, project description and metadata.
+   - selected scenario drives default action type, target role, validation scenario, evidence coverage and horizon.
+   - the tab now shows decision question, required evidence and expected outputs before rule/forecast/beam actions.
+4. Added targeted regressions:
+   - business scenario service contract.
+   - business scenario route JSON response.
+
+Interpretation of the advisor critique:
+
+1. Correct concern:
+   - The implementation has accumulated many valid components: MMFE state build, rule evidence, causal calibration, GeoFM gate, dynamics training, validation ladder, beam planning.
+   - Without a business-scene spine, this can look like a catalogue of technical capabilities rather than a decision-support system.
+2. What should change:
+   - TWM should be explained and demonstrated around concrete territorial governance workflows: farmland protection review, construction project compliance, and plan adjustment scenario evaluation.
+   - Each workflow should declare the decision question, data/evidence required, action alternatives, risk outputs, human review points and what the system refuses to decide.
+3. What should not change:
+   - Do not discard the world-model architecture. The technical pieces are useful if they are subordinated to scenario-specific evidence and decision gates.
+   - Do not claim production readiness from synthetic fixtures or benchmark-only validation.
+4. Product/research reframing:
+   - TWM is not "a bigger model for GIS"; it is a governance decision simulator that keeps object/relation state, policy constraints, evidence provenance and action-conditioned forecast in one auditable loop.
+   - The next evaluations should measure whether it reduces missed compliance conflicts, shortens evidence review, improves plan-option triage, and produces defensible audit trails.
+
+Remaining business-grounding work:
+
+1. For each scenario, write a one-page workflow spec: actor, trigger, input data, decision question, evidence threshold, output, refusal cases, audit record.
+2. Add scenario-specific rule bundles and review-task labels rather than relying only on default rules.
+3. Export scenario run cards from the frontend: selected state, evidence coverage, top risks, recommended next human action and why automation cannot finalize approval.
+4. Add evaluation metrics aligned to business outcomes:
+   - missed hard-constraint conflict rate.
+   - evidence completeness before/after TWM.
+   - review-task precision.
+   - plan candidate rejection reason coverage.
+   - audit trail completeness.
+5. Interview or simulate at least one planning/land-use operator workflow before adding more model backends.
+
+## 2026-06-22 Research-Positioning Continuation
+
+This continuation responds to the advisor's stricter research questions:
+
+- What is the TWM core technology?
+- Is there real innovation, or only component stacking?
+- Is the target need genuinely unmet?
+- What evidence would falsify the TWM claim?
+
+Completed:
+
+1. Added `TerritoryWorldModelService.research_positioning()` as a first-class,
+   queryable research-positioning contract.
+2. Added `GET /api/twm/research-positioning`.
+3. Added the TWM frontend "研究边界" panel:
+   - research question.
+   - core technology claims.
+   - innovation hypotheses and required tests.
+   - unmet-need hypotheses.
+   - falsification conditions.
+4. Added regressions for service and route JSON contracts.
+
+Current rigorous answer to the advisor:
+
+1. Core technology:
+   - Hierarchical GIS object-relation-rule-evidence state.
+   - Action-conditioned multi-head territorial dynamics.
+   - Evidence-gated and causally calibrated claim ladder.
+2. Innovation claim:
+   - Do not claim "first geospatial simulation".
+   - The defensible claim is architectural: organizing policy-constrained GIS state, action-conditioned forecast, evidence provenance, causal calibration and audit-ready claim validation into one territorial governance world-model loop.
+3. Unmet-need hypothesis:
+   - Real planning/land-use workflows often split overlay analysis, policy-rule checks, approval evidence, scenario comparison and audit records across separate tools.
+   - Existing land-use simulators are strong for pattern transition, but the TWM target is action consequence, rule validity, evidence sufficiency and review/approval boundary.
+   - This is still a hypothesis until validated by real workflow interviews and baseline comparisons.
+4. Required baselines:
+   - manual GIS overlay plus checklist review.
+   - rule-only spatial compliance engine.
+   - land-use simulation baselines such as FLUS/PLUS/CLUE-S/CA-Markov where the task is pattern transition.
+   - optimization-only candidate ranking without evidence-gated claim validation.
+5. Falsification boundary:
+   - If interviews show the decisions are already well solved by existing tools, narrow or stop TWM.
+   - If TWM does not improve missed hard-constraint conflict rate, evidence completeness, review-task precision, rejection-reason coverage or audit-trail completeness over baselines, the innovation claim is unsupported.
+   - If action-conditioned dynamics cannot be validated beyond synthetic fixtures, TWM remains a review scaffold, not a production decision model.
+
+Next research-grounding tasks:
+
+1. Convert the frontend research-positioning panel into a downloadable run card after a scenario run.
+2. Add route/API support for baseline comparison reports so TWM outputs always stand next to at least one simpler baseline.
+3. Collect or simulate structured operator interviews for the three current business scenarios before adding more technical modules.
+4. Add real-data retrospective approval replay once production/sanitized histories are available.
+
+## 2026-06-22 Research Claim Matrix Continuation
+
+This pass turns the advisor-facing question "凭什么比现有方法好" into a
+first-class TWM contract instead of a narrative-only answer.
+
+Completed:
+
+1. Added `TerritoryWorldModelService.research_claim_matrix()`.
+2. Added `GET /api/twm/research-claim-matrix`.
+3. Added the TWM frontend "主张矩阵" panel:
+   - current data gate.
+   - research claims.
+   - required baseline per claim.
+   - missing evidence gates.
+   - first metric per claim.
+   - next experiments.
+4. Added targeted service, route and frontend-route regressions.
+
+Current claim matrix:
+
+1. `C1_state_conflict_recall`
+   - Claim: object-relation-rule-evidence state reduces missed hard-constraint
+     conflicts versus manual GIS overlay plus checklist review.
+   - Current status: engineering scaffold only; production conflict recall is
+     unvalidated.
+   - Missing gates: production observed history and named real workflow
+     baseline.
+2. `C2_audit_defensibility`
+   - Claim: evidence-gated review improves audit defensibility versus
+     rule-only spatial compliance engines.
+   - Current status: scaffold supported, real audit quality unvalidated.
+   - Missing gates: production observed history and named real workflow
+     baseline.
+3. `C3_action_conditioned_triage`
+   - Claim: action-conditioned dynamics improves plan-option triage versus
+     land-use simulators or optimization-only candidate ranking.
+   - Current status: experimental synthetic-only.
+   - Missing gates: production observed history and real policy/action labels.
+4. `C4_standard_contract_ingestion`
+   - Claim: role-contract ingestion reduces onboarding errors versus ad hoc
+     layer mapping.
+   - Current status: standard structure supported, cross-region performance
+     unvalidated.
+   - Missing gate: cross-region standard samples.
+
+Updated rigorous answer:
+
+TWM's innovation cannot be justified by listing components. Each claim must
+name the unmet business need, the simpler baseline, the minimum real-data
+evidence, metrics and falsification condition. With the current data foundation,
+all four claims remain `review/prototype_scaffold`. This is good research
+hygiene: it prevents synthetic fixtures from being misread as production
+evidence and makes the next data acquisition target concrete.
+
+Next highest-value development:
+
+1. Add scenario run cards:
+   - selected business problem.
+   - data foundation status.
+   - top rule hits and evidence gaps.
+   - selected claim matrix rows.
+   - why the system cannot approve automatically.
+2. Add operator interview/task-timing template to document whether the
+   proposed unmet need is real.
+3. Feed `baseline_comparison_report` from real/sanitized baseline files rather
+   than only frontend demonstration metrics.
+
+## 2026-06-22 Baseline Comparison Report Continuation
+
+This pass makes the research claim matrix operational: TWM can now produce a
+baseline comparison report that names the claim, the baseline, comparable
+metrics, missing evidence gates and whether the claim can be upgraded.
+
+Completed:
+
+1. Added `TerritoryWorldModelService.baseline_comparison_report(payload)`.
+2. Added `POST /api/twm/baseline-comparison-report`.
+3. Added frontend "基线对比" action inside the TWM "主张矩阵" panel.
+4. Added regressions for:
+   - missing baseline evidence stays `review`.
+   - passing synthetic/demo metrics still cannot upgrade when production data
+     gates are missing.
+   - route JSON response.
+   - frontend route mounting.
+
+Important claim boundary:
+
+- The new report compares supplied TWM metrics and baseline metrics.
+- It does not create real baseline evidence by itself.
+- The frontend currently sends demonstration metrics so the UI can show the
+  contract and the data-gate refusal path.
+- Real upgrade requires case-aligned baseline outputs from manual GIS overlay,
+  rule-only engine, simulator or optimization-only ranking for the same real
+  or sanitized cases.
+
+Baseline comparison report decisions:
+
+- `baseline_evidence_not_provided`: no comparable TWM/baseline metrics.
+- `metrics_pass_but_data_gate_blocks_upgrade`: metrics look better, but
+  production history / policy labels / named workflow baseline gates are still
+  missing.
+- `no_metric_lift_over_baseline`: comparable metrics exist but TWM does not
+  beat the simpler baseline.
+- `eligible_for_retrospective_evidence`: metrics and real-data gates pass; this
+  still needs held-out repetition before any pilot claim.
+
+Next implementation target:
+
+1. Replace path-based metric inputs with uploaded/imported baseline output
+   records once an authenticated file workflow is available.
+2. Add a scenario run card that embeds:
+   - data foundation verdict.
+   - claim matrix row.
+   - baseline comparison report.
+   - refusal reason for production approval.
+3. Add richer parser support for case-level manual/rule-only baseline outputs,
+   not only aggregate metric files.
+
+## 2026-06-22 Baseline Metric File Input Continuation
+
+This pass moves baseline comparison beyond hard-coded frontend demonstration
+metrics.
+
+Completed:
+
+1. `baseline_comparison_report` now accepts:
+   - `twm_metrics_path`
+   - `baseline_metrics_path`
+   - aliases `twm_result_path` and `baseline_result_path`
+2. Supported metric file formats:
+   - JSON object containing `metrics`, `summary`, `scores` or `result`.
+   - CSV in `metric,value` / `metric_name,value` / `name,score` form.
+   - CSV wide-table form using the first row as metric columns.
+3. Added test fixtures:
+   - `data_agent/test_data/twm_baseline_metrics/twm_metrics.json`
+   - `data_agent/test_data/twm_baseline_metrics/manual_overlay_metrics.csv`
+4. Added frontend path inputs in the TWM "主张矩阵" panel:
+   - `TWM metrics file`
+   - `Baseline metrics file`
+5. The report now records metric source paths and source errors in
+   `inputs.metric_source_errors`.
+
+Boundary:
+
+- These files are aggregate metric inputs, not raw case-level validation.
+- They are enough to test whether a named baseline comparison can be consumed
+  and whether the data gate blocks overclaiming.
+- They are not enough to prove production superiority unless the metric files
+  are generated from real/sanitized same-case baseline runs.
+
+Next:
+
+1. Extend case-level baseline-output parser beyond conflict/audit rows:
+   - rule-only hit rows.
+   - optimizer/simulator candidate-ranking rows.
+2. Store baseline source metadata in scenario run cards.
+3. Add uploaded/imported baseline file workflow after authenticated file
+   management is available in the UI.
+
+## 2026-06-22 Case-Level Baseline Parser Continuation
+
+This pass moves baseline comparison from aggregate metric files toward
+case-level evaluation.
+
+Completed:
+
+1. `baseline_comparison_report` now accepts:
+   - `twm_case_output_path`
+   - `baseline_case_output_path`
+   - aliases `twm_case_result_path` and `baseline_case_result_path`
+2. Supported case-level CSV fields:
+   - `case_id`
+   - `ground_truth_conflict` / `actual_conflict` / `truth_conflict`
+   - `detected_conflict` / `predicted_conflict` / `hit`
+   - `evidence_linked` / `evidence_complete` / `has_evidence`
+   - `unsupported_recommendation` / `unsupported_claim`
+   - optional `review_task_predicted` and `review_task_true_positive`
+3. Automatic aggregate metrics currently produced:
+   - `hard_constraint_conflict_recall`
+   - `missed_blocking_conflict_rate`
+   - `evidence_link_completeness`
+   - `audit_trail_completeness`
+   - `unsupported_recommendation_rate`
+   - optional `review_task_precision`
+4. Added case-level fixtures:
+   - `data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv`
+   - `data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv`
+5. Added frontend path inputs:
+   - `TWM case outputs`
+   - `Baseline case outputs`
+
+Boundary:
+
+- This parser can aggregate same-case comparison rows into claim-matrix metrics.
+- The current fixture rows are still not production evidence.
+- Real validation requires rows exported from the same real/sanitized project
+  set for TWM and the named baseline.
+
+Next:
+
+1. Store baseline source metadata in scenario run cards.
+2. Add uploaded/imported baseline file workflow after authenticated file
+   management is available in the UI.
+3. Replace synthetic comparison fixtures with real/sanitized same-case exports
+   before making any retrospective-evidence claim.
+
+## 2026-06-22 C2/C3 Case Parser and Source UI Continuation
+
+Completed:
+
+1. Extended case-level aggregation beyond C1 conflict recall:
+   - C2 audit metrics now aggregate `audit_trail_completeness`,
+     `unsupported_recommendation_rate` and `review_task_precision`.
+   - C3 candidate-triage metrics now aggregate
+     `candidate_rejection_reason_coverage`,
+     `legal_feasible_topk_precision` and
+     `planner_regret_against_human_oracle`.
+2. Added candidate-triage fixtures:
+   - `data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_outputs.csv`
+   - `data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_outputs.csv`
+3. Updated the TWM frontend claim-matrix panel:
+   - added a `Research claim` selector for C1/C2/C3 baseline comparison;
+   - switches C3 to candidate-triage fixture paths;
+   - displays metric source, case source, row count and parser errors in the
+     baseline comparison report.
+4. Verified locally:
+   - `9 passed, 79 deselected` for
+     `data_agent/test_territory_world_model.py -k "baseline_comparison_report or research_claim_matrix"`;
+   - `2 passed, 82 deselected` for
+     `data_agent/test_frontend_api.py -k "route_paths or mount_before_catchall"`;
+   - `npm --prefix frontend run build` passed;
+   - `git diff --check` passed.
+5. Synced the running `gisdataagent-app-1` container with updated service,
+   frontend dist and all baseline fixtures. HTTP unauthenticated POST to
+   `/api/twm/baseline-comparison-report` now returns JSON `401`, not HTML.
+
+Boundary:
+
+- C1 and C2 synthetic fixtures pass the metric thresholds but remain blocked by
+  the real-data evidence gate.
+- C3 candidate-triage fixture intentionally remains `no_metric_lift_over_baseline`
+  because `legal_feasible_topk_precision` is below threshold; do not upgrade the
+  action-conditioned triage claim from this fixture.
+- These are regression/demo rows, not production evidence.
+
+Next:
+
+1. Add a first-class uploaded/imported baseline file workflow once authenticated
+   file management exists in the UI.
+2. Store selected baseline source metadata with scenario run cards or saved
+   validation reports.
+3. Prepare a real/sanitized same-case export schema for each baseline:
+   manual overlay, rule-only engine and optimization/simulator ranking.
+
+## 2026-06-22 Baseline Run-Card Persistence Continuation
+
+Completed:
+
+1. Added `metadata` to `TwmScenario` and `twm_scenario` persistence.
+   - The DB schema now uses `ALTER TABLE ... ADD COLUMN IF NOT EXISTS metadata`
+     so existing `twm_scenario` tables can be upgraded in place.
+2. `baseline_comparison_report` now supports optional run-card persistence via:
+   - `save_scenario`
+   - `persist_scenario`
+   - `save_run_card`
+3. Saved baseline comparison scenario cards include:
+   - claim and baseline IDs;
+   - TWM/baseline metric source paths;
+   - TWM/baseline case source paths;
+   - case row counts;
+   - parser errors;
+   - metric comparisons;
+   - evidence gate;
+   - upgrade decision;
+   - `not_for_production=true`.
+4. The TWM frontend now sends `save_run_card` when a project or state is
+   selected, and displays the returned scenario/run-card ID in the baseline
+   comparison report.
+5. Verified:
+   - local targeted pytest:
+     `10 passed, 79 deselected` for
+     `data_agent/test_territory_world_model.py -k "baseline_comparison_report or research_claim_matrix"`;
+   - `npm --prefix frontend run build` passed;
+   - `git diff --check` passed;
+   - synced and restarted `gisdataagent-app-1`;
+   - container run-card persistence reads back `baseline_comparison` scenario
+     metadata with 10/10 case counts.
+
+Boundary:
+
+- Run cards preserve provenance and evidence-gate decisions; they do not upgrade
+  synthetic fixtures into production evidence.
+- Existing saved cards should be treated as audit breadcrumbs for experiments,
+  not as immutable WORM audit records.
+
+Next:
+
+1. Add a UI list/filter for saved baseline comparison run cards.
+2. Add authenticated baseline file upload/import workflow.
+3. Define the real/sanitized same-case baseline export schema and generate a
+   sample validator before collecting production-like rows.
+
+## 2026-06-22 Saved Run-Card UI Continuation
+
+Completed:
+
+1. Added a saved baseline comparison run-card panel to the TWM frontend tab.
+   - Loads `/api/twm/scenarios?project_id=...`.
+   - Filters to `scenario_type=baseline_comparison` or
+     `metadata.kind=baseline_comparison_run_card`.
+   - Supports claim filtering.
+   - Shows status/upgrade decision, claim, baseline, TWM/baseline case counts,
+     parser-error summary and missing evidence gates.
+2. Baseline comparison still refreshes the saved run-card list immediately after
+   a card is saved.
+3. Verified:
+   - `npm --prefix frontend run build` passed;
+   - `data_agent/test_frontend_api.py -k "route_paths or mount_before_catchall"`
+     passed with `2 passed, 82 deselected`;
+   - `data_agent/test_territory_world_model.py -k "baseline_comparison_report or create_list_and_forecast"`
+     passed with `9 passed, 80 deselected`;
+   - `git diff --check` passed;
+   - synced new `frontend/dist` into `gisdataagent-app-1` and restarted it;
+   - `/api/twm/scenarios` and `/api/twm/baseline-comparison-report` return JSON
+     `401` when unauthenticated, not HTML.
+
+Boundary:
+
+- The UI lists saved experiment provenance; it does not turn run cards into
+  production audit records.
+- Cards remain project-scoped. Cross-project/global experiment review still
+  needs a separate view.
+
+Next:
+
+1. Add authenticated baseline file upload/import workflow.
+2. Add optional compare/drill-down action from a saved card into full scenario
+   metadata when needed.
+
+## 2026-06-22 Same-Case Baseline Export Validation Continuation
+
+Completed:
+
+1. Added `TerritoryWorldModelService.baseline_export_schema()`.
+   - Defines first-class export contracts for:
+     - `manual_overlay`;
+     - `rule_only_engine`;
+     - `optimization_or_simulator_ranking`.
+   - Records required columns, recommended provenance/sanitization columns,
+     compatible claims and the same-case join policy.
+2. Added `TerritoryWorldModelService.baseline_export_validation_report(payload)`.
+   - Checks repo-local CSV path safety, readability and row counts.
+   - Checks required columns for the chosen export/baseline.
+   - Detects same-case join key (`case_id` or `candidate_id`) and overlap.
+   - Reports duplicate join IDs, not-for-production/sanitization markers,
+     synthetic regression rows and parser-compatible metrics.
+   - Returns blocking errors, warnings, coverage, column inventory and next
+     actions without exposing full case-ID lists.
+3. Added API endpoints:
+   - `GET /api/twm/baseline-export-schema`
+   - `POST /api/twm/baseline-export-validation-report`
+4. Added TWM frontend controls in the research/baseline panel.
+   - The same case-output path inputs now support a `导出校验` action before
+     `基线对比`.
+   - The UI displays overlap, join key, row counts, parser metrics, blocking
+     errors, missing columns, warnings and next actions.
+5. Updated C1/C2 baseline CSV fixtures with explicit
+   `not_for_production=true` and `sanitization_level=synthetic_regression`.
+
+Validation:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_territory_world_model.py -k "baseline_export or baseline_comparison_report"`
+  passed: `12 passed, 81 deselected`.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_frontend_api.py -k "route_paths or mount_before_catchall"`
+  passed: `2 passed, 82 deselected`.
+- `npm --prefix frontend run build` passed with existing Vite warnings about
+  `spawn` externalization and large chunks.
+- `git diff --check` passed.
+
+Important boundary:
+
+- C1/C2 fixtures are structurally same-case and pass the export validator, but
+  they are explicitly `synthetic_regression`; they remain regression/demo
+  evidence only.
+- C3 candidate-triage fixtures still aggregate metrics for parser testing, but
+  the new validator correctly blocks them as non-same-case because TWM
+  `candidate_id`s and baseline `candidate_id`s do not overlap. This is an
+  intentional rigor gate and should not be weakened.
+- Passing export validation means the files are comparable. It does not prove
+  TWM solves an unmet business need; claim upgrade still requires real or
+  sanitized production-like histories, workflow baseline evidence and metric
+  lift.
+
+Next:
+
+1. Add authenticated baseline file upload/import workflow and persist uploaded
+   file provenance with saved run cards.
+2. Prepare a C3 same-case candidate fixture or real/sanitized candidate export
+   where TWM and optimization/simulator outputs share candidate IDs.
+3. When real/sanitized approval data are available, run export validation first,
+   then baseline comparison, then data-foundation validation with
+   `TWM_REQUIRE_PRODUCTION_READINESS=1`.
+
+## 2026-06-22 C3 Same-Case Export And Validation Run-Card Continuation
+
+Completed:
+
+1. Added C3 same-case synthetic regression fixtures:
+   - `data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_same_case_outputs.csv`
+   - `data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_same_case_outputs.csv`
+   - Both files share `candidate_id` values, include `case_id`, and carry
+     `not_for_production=true` plus `sanitization_level=synthetic_regression`.
+2. `baseline_export_validation_report` now supports optional run-card
+   persistence through `save_run_card`, `save_scenario` or `persist_scenario`.
+   - Saved cards use `scenario_type=baseline_export_validation`.
+   - Metadata kind is `baseline_export_validation_run_card`.
+   - Metadata stores claim/export spec, source summaries, column inventory,
+     same-case coverage, parser compatibility, blocking errors, warnings and
+     next actions.
+3. The TWM frontend C3 claim preset now defaults to the same-case C3 fixture,
+   while the older non-overlapping C3 fixture remains as a negative regression
+   test.
+4. The frontend `导出校验` action now sends project/state context, saves a
+   validation run card when possible, refreshes saved cards and lists both
+   baseline comparison cards and export-validation cards.
+
+Validation:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_territory_world_model.py -k "baseline_export or baseline_comparison_report"`
+  passed: `14 passed, 81 deselected`.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_frontend_api.py -k "route_paths or mount_before_catchall"`
+  passed: `2 passed, 82 deselected`.
+- `npm --prefix frontend run build` passed with existing Vite warnings about
+  `spawn` externalization and large chunks.
+
+Boundary:
+
+- The new C3 same-case fixture is still synthetic regression data. It proves
+  the same-case validation path and parser compatibility, not real TWM
+  triage superiority.
+- The old non-overlapping C3 fixture should remain in tests because it proves
+  the validator blocks aggregate-only or mismatched candidate comparisons.
+
+Next:
+
+1. Add authenticated upload/import workflow for baseline CSVs instead of
+   typing repository paths manually.
+2. Add an optional frontend drill-down for validation run-card metadata.
+3. Replace synthetic same-case fixtures with real or sanitized exported
+   approval/candidate rows before any claim upgrade.
+
+## 2026-06-22 Baseline CSV Import Workflow Continuation
+
+Completed:
+
+1. Added `TerritoryWorldModelService.import_baseline_export(payload, username)`.
+   - Accepts CSV text plus filename/source role/claim/baseline metadata.
+   - Enforces a 5 MB payload limit.
+   - Sanitizes filenames, user tokens and batch IDs.
+   - Writes staged CSV files under
+     `data_agent/uploads/twm_baseline_exports/<user>/<batch>/`.
+   - Returns a repo-local path that can be fed directly into
+     `baseline_export_validation_report` and `baseline_comparison_report`.
+   - Returns row count, column inventory and parser preview metrics.
+2. Added API endpoint:
+   - `POST /api/twm/baseline-export-import`
+3. Added frontend file import controls in the TWM baseline panel.
+   - Users can import a TWM CSV or baseline CSV from local disk.
+   - The browser reads the selected CSV and submits it to the TWM import API.
+   - The returned staged path is written back into the corresponding case-output
+     input, so the next `导出校验` and `基线对比` actions use the staged file.
+   - The latest import summary shows role, filename, row count and first columns.
+4. Added tests for service-level import and route-level JSON import.
+
+Validation:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_territory_world_model.py -k "baseline_export or baseline_comparison_report"`
+  passed: `15 passed, 81 deselected`.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_frontend_api.py -k "route_paths or mount_before_catchall"`
+  passed: `2 passed, 82 deselected`.
+- `npm --prefix frontend run build` passed with existing Vite warnings about
+  `spawn` externalization and large chunks.
+
+Boundary:
+
+- This is a staging/import workflow, not an evidence upgrade. Imported CSVs
+  must still pass same-case export validation, baseline comparison and real-data
+  gates before any claim can move beyond prototype/regression evidence.
+- Staged import files live under ignored `data_agent/uploads/`; do not treat
+  them as curated fixtures unless explicitly copied into `test_data` with a
+  documented purpose.
+
+Next:
+
+1. Add optional frontend drill-down for validation run-card metadata.
+2. Add a one-click flow: import both CSVs -> run export validation -> run
+   baseline comparison -> save both run cards.
+3. Add real/sanitized production export templates for C1/C2/C3 collection.
+
+## 2026-06-22 Baseline Evidence Pipeline Continuation
+
+Completed:
+
+1. Added `TerritoryWorldModelService.baseline_evidence_pipeline_report(payload)`.
+   - Runs `baseline_export_validation_report` first.
+   - Blocks metric comparison when export validation has blocking errors such
+     as missing same-case overlap.
+   - Runs `baseline_comparison_report` only after validation passes the
+     blocking gate.
+   - Can save both validation and comparison run cards with one request.
+2. Added API endpoint:
+   - `POST /api/twm/baseline-evidence-pipeline-report`
+3. Added frontend `证据流水线` action in the TWM baseline panel.
+   - The button uses current claim, baseline, metric paths, case paths,
+     project and state context.
+   - It displays pipeline decision, export-validation status, comparison
+     status/skipped reason and saved-card coverage.
+   - It also syncs child validation/comparison reports back into the existing
+     detail panels.
+4. Added regression tests:
+   - non-same-case C3 exports are blocked and comparison is skipped;
+   - same-case C1 fixture saves both validation and comparison cards;
+   - route-level JSON response for the pipeline endpoint.
+
+Validation:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_territory_world_model.py -k "baseline_export or baseline_comparison_report or baseline_evidence_pipeline"`
+  passed: `17 passed, 81 deselected`.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_frontend_api.py -k "route_paths or mount_before_catchall"`
+  passed: `2 passed, 82 deselected`.
+- `npm --prefix frontend run build` passed with existing Vite warnings about
+  `spawn` externalization and large chunks.
+
+Boundary:
+
+- The pipeline enforces order and run-card provenance. It still does not
+  promote synthetic regression evidence into real retrospective evidence.
+- This change is specifically intended to prevent aggregate metric comparison
+  from bypassing same-case validation.
+
+Next:
+
+1. Add optional frontend drill-down for validation and comparison run-card
+   metadata.
+2. Add real/sanitized production export templates for C1/C2/C3 collection.
+3. Add a combined import wizard that stages both CSVs before running the
+   evidence pipeline.
+
+## 2026-06-22 Saved Run-Card Drill-Down Continuation
+
+Completed:
+
+1. Added frontend drill-down for saved TWM baseline run cards.
+   - Each saved card now has a `Details` / `Hide` toggle.
+   - Export-validation cards show same-case coverage, join key, missing
+     columns, comparable parser metrics, blocking errors and warnings.
+   - Baseline-comparison cards show metric comparison deltas and evidence-gate
+     missing items.
+2. Extended frontend metadata typing for saved scenario cards so validation and
+   comparison metadata can be rendered without a separate API call.
+3. Added responsive styling for detail panels so long metric names, paths and
+   warnings stay inside the card.
+
+Validation:
+
+- `npm --prefix frontend run build` passed with existing Vite warnings about
+  `spawn` externalization and large chunks.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_frontend_api.py -k "route_paths or mount_before_catchall"`
+  passed: `2 passed, 82 deselected`.
+- `git diff --check` passed.
+
+Boundary:
+
+- Drill-down renders metadata already stored in run cards. It does not add
+  immutable audit storage or external review signing.
+
+Next:
+
+1. Add real/sanitized production export templates for C1/C2/C3 collection.
+2. Add a combined import wizard that stages both CSVs before running the
+   evidence pipeline.
+3. Add optional full metadata JSON copy/export for mentor review.
+
+## 2026-06-22 Real/Sanitized Baseline Export Templates Continuation
+
+Completed:
+
+1. Added first-class real/sanitized export templates for C1/C2/C3:
+   - Service method: `TerritoryWorldModelService.baseline_export_templates()`.
+   - API: `GET /api/twm/baseline-export-templates`.
+   - Templates cover TWM and baseline CSV headers, sample sanitized rows,
+     required/recommended columns, field descriptions, metric-column mapping,
+     collection steps, minimum real-row gates and same-case join requirements.
+2. Added frontend template panel inside the TWM baseline evidence section.
+   - The selected research claim now shows its CSV headers, required fields,
+     real-data gate, metric field mapping and a drill-down for field/sanitization
+     constraints before users import CSVs.
+   - The panel uses the same JSON-safety fetch path as the rest of the TWM tab,
+     so stale HTML fallback responses surface as explicit API format errors.
+3. Added tests:
+   - Service test confirms C1/C2/C3 templates exist and include the expected
+     required fields.
+   - Route test confirms `/api/twm/baseline-export-templates` returns JSON.
+   - Frontend route mount test includes the new endpoint.
+
+Validation:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_territory_world_model.py -k "baseline_export_templates or baseline_export_routes_return_json"`
+  passed: `2 passed, 97 deselected`.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_frontend_api.py -k "route_paths"`
+  passed: `1 passed, 83 deselected`.
+- `npm --prefix frontend run build` passed with existing Vite warnings about
+  `spawn` externalization and large chunks.
+
+Boundary:
+
+- These templates make the real/sanitized collection contract explicit. They
+  still do not supply real production evidence, workflow interview evidence or
+  retrospective baseline lift by themselves.
+- C1/C2/C3 remain prototype-scaffold claims until same-case real/sanitized
+  exports pass validation and beat the named simpler baselines.
+
+Next:
+
+1. Add a combined import wizard that stages both TWM and baseline CSVs before
+   running the evidence pipeline.
+2. Add optional full metadata JSON copy/export for mentor review.
+3. Replace synthetic same-case fixtures with real or properly sanitized
+   same-case exports when internal data is available.
+
+## 2026-06-22 Authenticated Existing-Data E2E Continuation
+
+Completed:
+
+1. Ran a full authenticated TWM E2E against the live local app at
+   `http://localhost:8000` using `admin/admin123`.
+   - Report JSON:
+     `docs/reports/twm_e2e_existing_data_2026-06-22.json`
+   - Report Markdown:
+     `docs/reports/twm_e2e_existing_data_2026-06-22.md`
+   - Test constraints recorded in the report:
+     `mock_used=false`, `smoke_test_used=false`,
+     `unit_fake_request_used=false`.
+2. The run used only existing local data sources:
+   - `data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion`
+   - `data_agent/test_data/twm_bishan_multi_admin_eval`
+   - `data_agent/test_data/twm_one_map_village_standard_sample`
+   - `data_agent/test_data/twm_baseline_metrics`
+3. Full E2E result before the final fix:
+   - `110` authenticated HTTP requests;
+   - `106` OK;
+   - `4` failures.
+4. State construction and core workflow results:
+   - Bishan demo: `5745` objects, `10349` relations, `96` rule hits,
+     `95` review tasks, `380` evidence items.
+   - Bishan multi-admin: `22531` objects, `43329` relations, `140` rule hits,
+     `139` review tasks, `556` evidence items.
+   - One Map village: `5494` objects, `2632` relations, `72` rule hits,
+     `72` review tasks, `288` evidence items.
+5. Optimization-bundle candidate loading worked on all three datasets:
+   - Bishan demo: `7` candidates, `2` legal feasible, `5` blocked.
+   - Bishan multi-admin: `7` candidates, `3` legal feasible, `4` blocked.
+   - One Map village: `7` candidates, `1` legal feasible, `6` blocked.
+   - All candidate summaries retain
+     `claim_boundary=optimization_fixture_only_not_for_production`.
+6. Fixed the shared `train-dynamics-candidate` 400 defect.
+   - Root cause: `_dynamics_backend_descriptor()` assumed
+     `payload["backend"]` was a mapping, while the E2E request used the valid
+     string form `"backend": "transparent"`.
+   - Fix: normalize backend payloads through `_payload_mapping()` and map
+     `transparent` / `baseline` / `scaffold` to the deterministic scaffold
+     backend type.
+7. Ran a targeted authenticated HTTP regression after the fix.
+   - Report JSON:
+     `docs/reports/twm_train_dynamics_candidate_fix_verify_2026-06-22.json`
+   - Report Markdown:
+     `docs/reports/twm_train_dynamics_candidate_fix_verify_2026-06-22.md`
+   - Result: `10` requests, `10` OK, `0` failed.
+   - All three datasets now return HTTP `200` for
+     `train-dynamics-candidate`.
+
+Boundary:
+
+- The fixed `train-dynamics-candidate` endpoint now returns a proper
+  evidence-gated report, but the report status is still `blocked` on all three
+  datasets.
+- The blocking reasons are:
+  `readiness_pass`, `backend_report`, and `non_scaffold_trainer`.
+- This is the correct current behavior. It means the endpoint no longer has an
+  implementation error, but the existing data and transparent scaffold are not
+  sufficient to claim a trainable production dynamics model.
+- The full E2E still exposed a real performance defect:
+  `bishan_multi_admin.dynamics_backend_report` timed out at `45s`.
+  Related heavy endpoints on the same dataset are slow:
+  state build `~82s`, rule evaluation `~108s`, training objective `~103s`,
+  dynamics readiness/evaluation/fit `~60-66s`, and optimization beam plan
+  `~46s`.
+- Baseline evidence remains gated:
+  C1/C2 metric comparisons pass but are blocked from claim upgrade by data
+  gates; C3 evidence remains blocked where same-case overlap or comparable
+  production evidence is missing.
+
+Next:
+
+1. Optimize `dynamics_backend_report` and related repeated dataset/state
+   computations for large states, especially the multi-admin fixture.
+2. Keep `train-dynamics-candidate` as a blocked evidence-gated report until
+   real observed temporal examples, a passed backend report and a non-scaffold
+   trainer are available.
+3. Re-run the full authenticated E2E after the performance fix; the current
+   post-fix targeted regression proves only the previously failing train route.
+4. Do not weaken the data gates: current synthetic/not-for-production fixtures
+   remain engineering and regression evidence, not production proof.
+
+## 2026-06-22 Dynamics Backend Hot-Path Cache Continuation
+
+Completed:
+
+1. Added in-process report caches to `TerritoryWorldModelService` for repeated
+   TWM dynamics/report paths on the same state and equivalent payload:
+   - `state_contract_report`
+   - `dynamics_training_examples`
+   - `dynamics_readiness_report`
+   - `dynamics_backend_report`
+   - `geofm_ablation_gate`
+   - `causal_calibration_report`
+2. Added cache-key normalization for dynamics datasets.
+   - Full dataset payloads are fingerprinted by state/project, summary,
+     supervision-source counts, loss contract and sample inventory.
+   - This avoids serializing large dataset objects directly into cache keys.
+3. Moved cache lookup before expensive `get_state_bundle()` calls where safe.
+   - Repeated `dynamics_backend_report`, `geofm_ablation_gate` and
+     `causal_calibration_report` calls no longer deep-copy all multi-admin
+     objects/relations before checking for cached results.
+4. Cache invalidation remains tied to state-changing operations:
+   - `build_state(project_id=...)` clears report caches for the project.
+   - `evaluate_rules(state_version_id=...)` clears report caches for the state.
+
+Validation:
+
+- Local compile passed:
+  `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q data_agent/territory_world_model/service.py`
+- Diff whitespace check passed:
+  `git diff --check -- data_agent/territory_world_model/service.py docs/twm-current-handoff.md`
+- Synced the updated service into `gisdataagent-app-1` and restarted the app
+  container.
+- Ran authenticated existing-data HTTP verification against
+  `http://localhost:8000` using `admin/admin123`.
+  - Report JSON:
+    `docs/reports/twm_dynamics_backend_cache_verify_2026-06-22.json`
+  - Report Markdown:
+    `docs/reports/twm_dynamics_backend_cache_verify_2026-06-22.md`
+  - Constraints recorded in the report:
+    `mock_used=false`, `smoke_test_used=false`,
+    `unit_fake_request_used=false`.
+  - Data source:
+    `data_agent/test_data/twm_bishan_multi_admin_eval`.
+  - Result: `6` authenticated HTTP requests, `6` OK, `0` failed.
+  - State size: `22531` objects and `43329` relations.
+  - Rule evaluation result: `140` rule hits, `139` review tasks,
+    `556` evidence items.
+  - `dynamics_backend_report.first`: HTTP `200`, status `blocked`,
+    `61326.1 ms`.
+  - `dynamics_backend_report.second`: HTTP `200`, status `blocked`,
+    `2.4 ms`.
+  - Speedup ratio: `25552.542`.
+  - `second_under_10s=true`.
+
+Boundary:
+
+- This fixes the repeated-call/hot-path latency for TWM backend report panels
+  and linked frontend interactions after the first computation.
+- It does not fix the cold-path performance defect:
+  - `build_state`: `80936.8 ms`;
+  - `evaluate_rules`: `107851.1 ms`;
+  - first `dynamics_backend_report`: `61326.1 ms`;
+  - `first_under_previous_timeout_45s=false`.
+- The backend report status remains correctly `blocked`.
+  Missing gates are still:
+  `readiness`, `multi_head_output`, `forecast_adapter`, `candidate_gate`,
+  and `non_scaffold_backend`.
+- The cache improves engineering usability; it does not upgrade TWM's evidence
+  status or prove production dynamics readiness.
+
+Next:
+
+1. Optimize cold-path large-state computation:
+   - avoid repeated deep copies in repository bundle access;
+   - index or pre-aggregate relation/rule/evidence lookups by state;
+   - profile `planner.forecast` calls inside training/readiness/GeoFM
+     derivations.
+2. Add targeted regression coverage for cache invalidation semantics:
+   cache hit on repeated read-only report calls, cache miss after
+   `evaluate_rules`, and cache miss after `build_state`.
+3. Re-run the full authenticated existing-data E2E after cold-path optimization,
+   not just the targeted backend cache verification.
+
+## 2026-06-22 Technical Route Review And Cache Regression Continuation
+
+Completed:
+
+1. Reviewed `docs/twm-technical-route-comparison-2026-06-22.md`.
+   - Main classification is correct:
+     TWM should be positioned as a simulator-centered,
+     action-conditioned, decision-coupled and evidence-gated geospatial world
+     model.
+   - The document correctly separates:
+     - GIS-operational renderer as state/observation rendering;
+     - territorial simulator as the TWM core;
+     - planner/beam/MPC as downstream consumers;
+     - GeoFM/SCCA/Transformer as optional enhancement or evidence components,
+       not the TWM identity by themselves.
+2. Added a code-review note to the technical route document.
+   - The route can support "technical positioning is reasonable".
+   - It cannot support "TWM is a theoretically new world-model category" or
+     "production-grade prediction/causal/planning claims are already proven".
+   - Recommended external phrasing:
+     TWM is a governance-oriented geospatial world-model prototype centered on
+     an auditable territorial simulator.
+3. Added a lightweight cache invalidation regression test:
+   - `test_report_cache_hits_and_invalidates_after_rule_evaluation`
+   - Verifies repeated `state_contract_report` calls hit cache and do not
+     repeatedly fetch the full state bundle.
+   - Verifies `evaluate_rules` invalidates report caches, so the next report
+     recomputes against current state/rule evidence.
+
+Validation:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_territory_world_model.py -k "report_cache_hits_and_invalidates_after_rule_evaluation"`
+  passed: `1 passed, 99 deselected`.
+- `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q data_agent/territory_world_model/service.py data_agent/test_territory_world_model.py`
+  passed.
+- `git diff --check -- data_agent/test_territory_world_model.py docs/twm-technical-route-comparison-2026-06-22.md data_agent/territory_world_model/service.py docs/twm-current-handoff.md`
+  passed.
+
+Boundary:
+
+- This is a route-positioning and regression-safety continuation, not a claim
+  upgrade.
+- The technical route remains scientifically plausible, but must still be
+  proven with real/sanitized histories, same-case baseline comparisons,
+  holdout validation, spatial causal diagnostics and human review outcomes.
+- The cache regression covers `state_contract_report` invalidation after rule
+  evaluation. Additional tests should still cover `build_state` project-level
+  invalidation and backend/readiness cache behavior.
+
+Next:
+
+1. Add `build_state` project-level cache invalidation coverage.
+2. Add focused tests for `dynamics_backend_report` / `dynamics_readiness_report`
+   cache keys with explicit dataset fingerprints.
+3. Continue cold-path optimization for large multi-admin states.
+
+## 2026-06-22 Readiness Optional Gate Cold-Path Continuation
+
+Completed:
+
+1. Optimized `dynamics_readiness_report` cold path for optional enhancement
+   gates.
+   - Default readiness evaluation no longer computes
+     `geofm_ablation_gate` when GeoFM is not required and no GeoFM evidence is
+     supplied.
+   - Default readiness evaluation no longer computes
+     `causal_calibration_report` when causal calibration is not required and no
+     causal evidence is supplied.
+   - Explicit payload reports (`geofm_gate_report`,
+     `causal_calibration_report`) are still consumed directly.
+   - Explicit requirements (`require_geofm_pass`, `require_causal_pass`) still
+     force the corresponding gate to compute.
+2. Extended the readiness cache key with the payload fields that determine
+   optional gate computation.
+   - This prevents a default `not_required` readiness result from being reused
+     for a later explicit GeoFM or causal requirement.
+3. Added lightweight regression coverage:
+   - `test_dynamics_readiness_report_skips_optional_geofm_and_causal_gates`
+   - `test_dynamics_readiness_report_computes_explicitly_required_optional_gates`
+   - The tests use an in-memory state bundle and observed dataset, avoiding
+     mock/smoke E2E claims while keeping the regression fast and precise.
+
+Validation:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_territory_world_model.py -k "dynamics_readiness_report_skips_optional_geofm_and_causal_gates or dynamics_readiness_report_computes_explicitly_required_optional_gates"`
+  passed: `2 passed, 100 deselected`.
+- `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q data_agent/territory_world_model/service.py data_agent/test_territory_world_model.py`
+  passed.
+- `git diff --check -- data_agent/territory_world_model/service.py data_agent/test_territory_world_model.py docs/twm-current-handoff.md`
+  passed.
+
+Boundary:
+
+- This is a cold-path control-flow optimization and regression-safety
+  improvement.
+- It does not upgrade GeoFM or causal calibration to production-ready evidence.
+- It does not remove the need for real/sanitized observed histories, holdout
+  validation, same-case baselines and spatial causal diagnostics.
+
+Next:
+
+1. Run the broader readiness test subset after this change.
+2. Continue cold-path optimization by removing unnecessary full-bundle deep
+   copies from readiness/backend existence checks.
+3. Re-run authenticated existing-data E2E after the next cold-path reduction.
+
+## 2026-06-22 GeoSOS DongGuan 80m Comparison Validation Project
+
+Completed:
+
+1. Promoted `/Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip`
+   from a feasibility discussion into a reproducible TWM comparison-validation
+   project.
+   - New runner: `scripts/run_twm_dongguan_geosos_validation.py`.
+   - Output report:
+     `docs/reports/twm_dongguan_geosos_validation_2026-06-22.json`.
+   - New regression test:
+     `data_agent/test_twm_dongguan_geosos_validation.py`.
+2. The runner directly parses the real GeoSOS tutorial ZIP:
+   - `Config Files/DefaultLanduseInfo.xml`
+   - `Config Files/SuitableMatrix.xml`
+   - `Landuse Data/landuse2000.tif`
+   - `Landuse Data/landuse2005.tif`
+   - `Landuse Data/landuse2006.tif`
+3. The adapter builds a TWM-compatible benchmark state and dataset:
+   - maps sampled land-use cells to parcel-like TWM tokens;
+   - adds block, township and county context tokens;
+   - adds required TWM hierarchy relations including
+     `annual_change_of_parcel` and `project_overlaps_planning_zone`;
+   - emits `territory_world_model.dynamics_training_dataset.v1` examples
+     with multi-head targets for future latent state, constraint probability,
+     planning utility, uncertainty, calibration and action mask.
+4. Real ZIP validation passed through the current TWM report chain:
+   - runner status: `pass`;
+   - dataset examples: `192`;
+   - candidate examples: `96`;
+   - holdout examples: `96`;
+   - observed temporal examples: `192`;
+   - synthetic examples: `0`;
+   - not-for-production examples: `192`;
+   - readiness status: `pass`;
+   - fit status: `pass`;
+   - evaluation status: `pass`;
+   - backend status: `pass`;
+   - training objective status: `pass`.
+5. Real transition inventory from the ZIP:
+   - `2000 -> 2005`: `378749` valid cells, `100587` changed cells,
+     changed ratio `0.265577`, changed area `64375.68 ha`.
+   - `2005 -> 2006`: `378754` valid cells, `21306` changed cells,
+     changed ratio `0.056253`, changed area `13635.84 ha`.
+   - Dominant changes include `耕地 -> 城乡建设用地` and
+     `林地 -> 城乡建设用地`.
+6. Validation metrics for the transparent transition-group baseline:
+   - evaluated examples: `192`;
+   - ground-truth examples: `192`;
+   - holdout examples: `96`;
+   - mean transition error: `0.0`;
+   - mean constraint error: `0.105362`;
+   - mean utility error: `0.04913`;
+   - action-mask accuracy: `1.0`.
+
+Validation:
+
+- `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q scripts/run_twm_dongguan_geosos_validation.py data_agent/test_twm_dongguan_geosos_validation.py`
+  passed.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_dongguan_geosos_validation.py`
+  passed: `1 passed`.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python scripts/run_twm_dongguan_geosos_validation.py --input /Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip --output docs/reports/twm_dongguan_geosos_validation_2026-06-22.json --sample-stride 24 --max-examples-per-transition 96`
+  emitted status `pass`.
+
+Boundary:
+
+- This establishes an executable GeoSOS DongGuan tutorial benchmark adapter for
+  TWM, not a claim that TWM beats GeoSOS/FLUS.
+- The current report validates ingestion, TWM state-contract compatibility,
+  dynamics dataset construction, readiness, fit/evaluation/backend/objective
+  gates on sampled observed land-use transitions.
+- It does not include an actual GeoSOS/FLUS predicted output map, so it cannot
+  yet report same-pixel accuracy superiority over GeoSOS/FLUS.
+- It does not include real planning approvals, policy actions, human review
+  outcomes or causal treatment labels, so it cannot support production
+  governance or causal-effect claims.
+
+Next:
+
+1. Add a same-case land-use simulation baseline:
+   - either import actual GeoSOS/FLUS output if available;
+   - or implement a transparent CA/transition baseline against the same
+     `2000 -> 2005` train and `2005 -> 2006` holdout task.
+2. Add pixel/grid-level metrics: overall accuracy, transition precision/recall,
+   construction-land expansion F1, figure-of-merit style change accuracy and
+   confusion matrix.
+3. Add a fuller raster backend path that can score all valid cells, not only the
+   sampled TWM dynamics examples.
+4. Keep the project labelled `not_for_production` until real governance
+   histories, planning-control layers and review outcomes are attached.
+
+## 2026-06-22 DongGuan Pixel Simulation and Planning Optimization Follow-up
+
+User challenged that the previous DongGuan work only proved data adaptation and
+TWM gates, not simulation/optimization output. I agreed and added a separate
+pixel/grid simulation + planner comparison task.
+
+Added:
+
+- `scripts/run_twm_dongguan_geosos_simulation_optimization.py`
+- new regression coverage in `data_agent/test_twm_dongguan_geosos_validation.py`
+- `docs/reports/twm_dongguan_geosos_simopt_2026-06-22.json`
+- `docs/twm-dongguan-geosos-simulation-optimization-2026-06-22.md`
+- rendered figures:
+  - `docs/assets/twm_dongguan_simopt_prediction_maps.png`
+  - `docs/assets/twm_dongguan_simopt_change_comparison.png`
+  - `docs/assets/twm_dongguan_simopt_metrics.png`
+  - `docs/assets/twm_dongguan_simopt_planner_candidates.png`
+
+What the new task does:
+
+1. Uses the real GeoSOS DongGuan ZIP.
+2. Uses `2000 -> 2005` as the training/calibration period.
+3. Uses `2005 -> 2006` as the holdout period.
+4. Reads land-use rasters and the driver layers:
+   - `dtcity`
+   - `dtfreeway`
+   - `dtrailway`
+   - `dtroad`
+5. Produces full pixel/grid prediction maps and same-pixel metrics.
+6. Compares transparent candidates:
+   - `persistence`
+   - `markov_pair_budget`
+   - `ca_neighborhood`
+   - `flus_like_proxy`
+   - `twm_balanced`
+   - `twm_compact_growth`
+   - `twm_accessibility_corridor`
+   - `twm_arable_protection`
+7. Adds a TWM planner ranking over policy-style objectives:
+   - demand fit
+   - suitability/constraint score
+   - arable/woodland protection
+   - compactness
+   - accessibility
+   - ex-post change FoM diagnostic
+
+Real run command:
+
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python scripts/run_twm_dongguan_geosos_simulation_optimization.py --input /Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip --output docs/reports/twm_dongguan_geosos_simopt_2026-06-22.json --markdown-output docs/twm-dongguan-geosos-simulation-optimization-2026-06-22.md`
+
+Real run status:
+
+- `status: pass`
+- valid cells: `378749`
+- best transparent baseline by change FoM: `ca_neighborhood`
+- best TWM candidate by change FoM: `twm_compact_growth`
+- planner-selected candidate: `twm_accessibility_corridor`
+
+Key real-run metrics:
+
+- `persistence`: OA `0.943746`, change FoM `0.0`, urban F1 `0.0`
+- `markov_pair_budget`: OA `0.898537`, change FoM `0.045612`,
+  urban F1 `0.075408`, suitability violation rate `0.567899`
+- `ca_neighborhood`: OA `0.927881`, change FoM `0.053373`,
+  urban F1 `0.092136`, violation rate `0.0`
+- `flus_like_proxy`: OA `0.927643`, change FoM `0.051637`,
+  urban F1 `0.088712`, violation rate `0.0`
+- `twm_compact_growth`: OA `0.927733`, change FoM `0.052301`,
+  urban F1 `0.089986`, violation rate `0.0`
+- `twm_accessibility_corridor`: OA `0.925397`, change FoM `0.050567`,
+  urban F1 `0.086498`, violation rate `0.0`
+- `twm_arable_protection`: OA `0.929349`, change FoM `0.045882`,
+  urban F1 `0.075958`, violation rate `0.0`
+
+Validation:
+
+- `/Users/zhouning/gisdataagent/.venv/bin/python -m compileall -q scripts/run_twm_dongguan_geosos_simulation_optimization.py data_agent/test_twm_dongguan_geosos_validation.py`
+  passed.
+- `PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj /Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_dongguan_geosos_validation.py`
+  passed: `2 passed`.
+
+Boundary:
+
+- This is now a renderer/simulator/planner output benchmark, not just a data
+  adapter.
+- It still does **not** prove TWM beats official GeoSOS/FLUS because the
+  provided ZIP does not include a GeoSOS/FLUS predicted 2006 output map.
+- `flus_like_proxy` is a transparent proxy using Markov demand, neighborhood,
+  driver accessibility, suitability matrix and conversion constraints. It must
+  not be cited as official FLUS.
+- To claim official baseline comparison, next work must obtain/export actual
+  GeoSOS/FLUS prediction output and add it as a row in the same metrics table.
+
 Next session should continue with:
 
 1. In the inner-network environment, run `scripts/smoke_twm_validation_bundle.sh` with `TWM_PRODUCTION_OBSERVED_HISTORY=<real.csv>`, `TWM_PRODUCTION_SCALE_PROFILE=<profile.json>` and `TWM_REQUIRE_PRODUCTION_READINESS=1`; also run `scripts/validate_twm_data_foundation.py --production-observed-history <real.csv>` against the same real non-synthetic approval/review export; compare selected-plan validation, production observed-history preflight, production scale readiness and `production_policy_history_alignment`.
@@ -1893,6 +3485,137 @@ Next session should continue with:
 7. Keep GeoFM optional: feed the GeoFM downstream experiment report from explicit synthetic cross-region planning runs and temporal holdouts, then compare auto-inferred checks against explicit experiment reports.
 8. Deepen ArcGIS/frontend deployment loop for causal calibration, synthetic experiment review and GeoFM review outputs.
 
+## GeoSOS-FLUS V2.4 Official Sample Baseline
+
+User provided official GeoSOS/FLUS downloads from `http://www.geosimulation.cn/FLUS.html`:
+
+- `/Users/zhouning/Downloads/GeoSOS-FLUS Manual_En 2019.pdf`
+- `/Users/zhouning/Downloads/FLUS_console.zip`
+- `/Users/zhouning/Downloads/paralleled FLUS_V2.4.zip`
+- local paper copy also exists: `/Users/zhouning/Downloads/2017LUP-FLUS.pdf`
+
+Assessment result:
+
+- `paralleled FLUS_V2.4.zip` is better than the earlier
+  `1TutorialData_DongGuan_80m.zip` for official baseline comparison.
+- It contains the manual-described Dongguan sample inputs:
+  `dg2001coor.tif`, `dg2006true.tif`, `restrictedarea.tif`,
+  `Probability-of-occurrence.tif`, DEM/slope/aspect/distance drivers,
+  `config_mp.log`, `config_color.log`, `output.log`.
+- It also contains package-provided FLUS result rasters:
+  `simulationResult.tif` and `simulationResult1.tif`.
+- `output.log` records saving `simulationResult.tif`; both result rasters
+  match the FLUS future-pixel demand on the full output raster.
+- `FLUS_console.zip` includes C++ ANN and simulation code, but it is a
+  Windows/Visual-Studio native project and is not immediately runnable on
+  macOS without a separate port/build task.
+
+New reproducible scripts and reports:
+
+- `scripts/assess_flus_v24_baseline.py`
+  - outputs `docs/reports/twm_flus_v24_baseline_assessment_2026-06-22.json`
+  - outputs `docs/twm-flus-v24-data-baseline-assessment-2026-06-22.md`
+  - renders `docs/assets/twm_flus_v24_*`
+- `scripts/run_twm_flus_v24_simulation_optimization.py`
+  - outputs `docs/reports/twm_flus_v24_simopt_2026-06-22.json`
+  - outputs `docs/twm-flus-v24-simulation-optimization-2026-06-22.md`
+  - renders `docs/assets/twm_flus_v24_simopt_*`
+
+Real V2.4 assessment metrics against `dg2006true.tif`:
+
+- `persistence_2001_as_2006`: OA `0.600771`, Kappa `0.499726`,
+  change FoM `0.0`, urban F1 `0.0`
+- `official_simulationResult`: OA `0.602491`, Kappa `0.487845`,
+  change FoM `0.290021`, urban F1 `0.287516`
+- `official_simulationResult1`: OA `0.601659`, Kappa `0.486773`,
+  change FoM `0.292161`, urban F1 `0.288706`
+- `probability_argmax_not_ca_result`: OA `0.484879`, Kappa `0.350820`,
+  change FoM `0.424199`, urban F1 `0.366715`, but demand/restriction/cost
+  violations show it is not the final CA simulation result.
+
+TWM V2.4 same-grid simulation/optimization run:
+
+- command: `/Users/zhouning/gisdataagent/.venv/bin/python scripts/run_twm_flus_v24_simulation_optimization.py`
+- status: `pass`
+- official FLUS best by change FoM: `official_simulationResult1`
+- TWM best by change FoM: `twm_competitive_quota_change_seeking`
+- planner-selected TWM candidate: `twm_driver_only_compact_growth`
+- independent TWM suitability candidate now exceeds official FLUS on change
+  FoM without using the FLUS probability raster:
+  - `twm_independent_logit_change_seeking`: change FoM `0.306413`,
+    OA `0.593721`, Kappa `0.476546`, demand error `0`, restricted/cost
+    violations `0`
+  - official `simulationResult1`: change FoM `0.292161`, OA `0.601659`,
+    Kappa `0.486773`
+- FLUS-informed competitive-quota candidates still provide a stronger upper
+  bound, but must be described as probability-product fusion rather than
+  independent superiority:
+  - `twm_competitive_quota_balanced`: change FoM `0.343228`, OA `0.593191`,
+    Kappa `0.475862`
+  - `twm_competitive_quota_change_seeking`: change FoM `0.381297`,
+    OA `0.539089`, Kappa `0.406157`
+- interpretation: independent TWM now beats the official FLUS sample on the
+  change-location metric, but not on overall OA/Kappa. This is progress, not a
+  full superiority claim.
+
+Boundary for user/mentor:
+
+- This is now a real official-sample FLUS baseline comparison, not just a
+  proxy baseline.
+- Current independent TWM logit-suitability candidate beats the official FLUS
+  sample output on change FoM, but it does **not** beat it on overall OA/Kappa.
+- Several additional TWM candidates use `Probability-of-occurrence.tif` from
+  the FLUS package; those candidates are FLUS-informed and cannot be described
+  as independent TWM superiority.
+- The honest next research task is to move from single-period independent
+  suitability learning to multi-period independent dynamics learning, then
+  repeat this comparison across more cases/periods.
+
+Independent dynamics continuation completed:
+
+- new script: `scripts/run_twm_dongguan_independent_dynamics.py`
+- new report: `docs/twm-dongguan-independent-dynamics-2026-06-22.md`
+- new JSON: `docs/reports/twm_dongguan_independent_dynamics_2026-06-22.json`
+- new assets:
+  - `docs/assets/twm_dongguan_independent_dynamics_maps.png`
+  - `docs/assets/twm_dongguan_independent_dynamics_metrics.png`
+- new regression test: `data_agent/test_twm_dongguan_independent_dynamics.py`
+- command:
+  - `/Users/zhouning/gisdataagent/.venv/bin/python scripts/run_twm_dongguan_independent_dynamics.py`
+- test:
+  - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_dongguan_independent_dynamics.py data_agent/test_twm_flus_v24_simulation_optimization.py`
+  - result: `2 passed`
+
+Independent dynamics design:
+
+- trains on DongGuan 80m observed `2000->2005`
+- predicts `2005->2006`
+- uses 2006 only for holdout demand and ex-post metrics
+- learns per-source transition probabilities from drivers, neighborhood
+  features and observed source/target transition labels
+- projects predicted transitions to 2006 class totals under the GeoSOS
+  suitability matrix
+
+Independent dynamics metrics:
+
+- `markov_pair_budget_projection`: change FoM `0.065371`, OA `0.920858`,
+  Kappa `0.887048`, urban F1 `0.113853`
+- `twm_independent_transition_logit`: change FoM `0.084358`, OA `0.906355`,
+  Kappa `0.866279`, urban F1 `0.162286`, violations `0`
+- `twm_independent_transition_change_seeking`: change FoM `0.100769`,
+  OA `0.863593`, Kappa `0.804365`, urban F1 `0.166182`, violations `0`
+
+Boundary:
+
+- This proves a first independent transition-dynamics training/evaluation
+  chain, and it beats the transparent Markov projection on change FoM.
+- It does not prove a stable multi-period world model because there is still
+  only one observed training transition pair in the 80 m package.
+- It is not an official FLUS comparison because the 80 m package lacks an
+  official FLUS output raster.
+- Next step is multi-period/multi-city dynamics plus an independent demand
+  model rather than holdout-derived class totals.
+
 ## Important Working Notes
 
 - Do not treat GeoFM as the default main model. It must pass downstream gates.
@@ -1900,3 +3623,66 @@ Next session should continue with:
 - Do not collapse TWM state into a flat vector. Keep parcel/block/township/county token semantics.
 - Keep `forecast`, `rollout`, `beam_plan`, `dynamics_backend_report`, and `training_objective_report` contract-compatible.
 - The repository has unrelated local changes in other areas. Avoid staging non-TWM changes unless explicitly requested.
+
+## Window-Close Save Point 2026-06-23
+
+This section is the entry point for resuming TWM work in a new window.
+
+Current branch:
+
+- `feat/v12-extensible-platform`
+
+Latest work completed before save:
+
+- Added and documented GeoSOS/FLUS and public land-cover benchmark work.
+- Generated the mentor/customer/leadership Word report:
+  `docs/twm-geosos-flus-comparison-summary-2026-06-23.docx`.
+- Added supporting summary figures:
+  - `docs/assets/twm_flus_positioning_boundary.png`
+  - `docs/assets/twm_flus_v24_key_metric_comparison.png`
+  - `docs/assets/twm_dynamic_world_admin20_key_metrics.png`
+- Added public Dynamic World admin20 benchmark with 20 regions, 100 rolling
+  cases and leave-region-out cross-region smoothing diagnostics.
+- Added official GeoSOS-FLUS V2.4 sample runner and reports with official FLUS
+  baseline rows and TWM candidate rows.
+- Added DongGuan 80m validation/simulation/independent dynamics scripts,
+  reports, assets and regression tests.
+- Added TWM frontend tab/API/data-foundation work from the ongoing development
+  sequence.
+
+Most recent focused regression command:
+
+```bash
+/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q \
+  data_agent/test_twm_dynamic_world_admin20_artifacts.py \
+  data_agent/test_twm_public_landcover_benchmark.py \
+  data_agent/test_twm_dongguan_independent_dynamics.py \
+  data_agent/test_twm_flus_v24_simulation_optimization.py
+```
+
+Latest observed result:
+
+```text
+6 passed in 18.02s
+```
+
+Important local-data note:
+
+- The large Dynamic World raster stack under `data/twm_public_landcover/` is
+  local/ignored data and is not intended to be committed. The reproducible
+  downloader and benchmark reports are committed; use
+  `scripts/download_twm_gee_dynamic_world_benchmark.py` with GEE project
+  `ee-zn19860115` if the raster stack must be recreated.
+
+Recommended next TWM tasks:
+
+1. Train stronger independent TWM suitability/dynamics with road/accessibility,
+   population, planning-policy and economic activity covariates.
+2. Add true region-holdout and temporal-holdout parameter-sharing experiments,
+   not only same-case or naive cross-region smoothing.
+3. Build an independent demand/scenario model so simulator quality is not
+   conflated with target-year class-total leakage.
+4. Add repeated/random-seed sensitivity runs for the FLUS V2.4 TWM allocation
+   candidates.
+5. Continue real governance-data work: approval/review/enforcement histories,
+   authoritative control-line versions, rule outcomes and evidence links.

@@ -434,6 +434,16 @@ class StateBuilder:
                 }
                 continue
 
+            if suffix in {".json", ".jsonl"}:
+                record_lookup[binding.id] = {
+                    "binding": binding,
+                    "path": str(source_path),
+                    "records": [],
+                    "metric_crs": None,
+                    "kind": "metadata",
+                }
+                continue
+
             if gpd is None:
                 raise RuntimeError("geopandas is required to read geospatial state inputs")
             gdf = gpd.read_file(source_path)

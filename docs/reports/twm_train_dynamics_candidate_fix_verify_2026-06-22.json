@@ -1,0 +1,358 @@
+{
+  "schema": "territory_world_model.train_dynamics_candidate_fix_verification.v1",
+  "generated_at": "2026-06-22T07:27:12Z",
+  "base_url": "http://localhost:8000",
+  "auth": {
+    "method": "POST /login",
+    "username": "admin",
+    "cookie_received": true
+  },
+  "constraints": {
+    "mock_used": false,
+    "smoke_test_used": false,
+    "unit_fake_request_used": false,
+    "data_sources": [
+      "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion",
+      "data_agent/test_data/twm_bishan_multi_admin_eval",
+      "data_agent/test_data/twm_one_map_village_standard_sample"
+    ],
+    "purpose": "targeted authenticated HTTP regression for train-dynamics-candidate after the full E2E failure"
+  },
+  "totals": {
+    "request_count": 10,
+    "ok_count": 10,
+    "fail_count": 0
+  },
+  "datasets": [
+    {
+      "dataset": {
+        "key": "bishan_demo",
+        "name": "Bishan demo MMFE semantic fusion",
+        "bundle_dir": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion",
+        "region_code": "500227",
+        "business_scenario": "farmland_protection_review",
+        "build_timeout": 240,
+        "train_timeout": 120
+      },
+      "project_id": "d1eb03bf-a55e-4f49-b7ed-bff14178a431",
+      "state_id": "c1580a0d-21b0-4a91-8a69-b9bb9cca7968",
+      "build_summary": {
+        "state_version": {
+          "id": "c1580a0d-21b0-4a91-8a69-b9bb9cca7968",
+          "object_count": 5745,
+          "relation_count": 10349,
+          "build_status": "ready"
+        }
+      },
+      "train_summary": {
+        "schema": "territory_world_model.train_dynamics_report.v1",
+        "status": "blocked",
+        "project_id": "d1eb03bf-a55e-4f49-b7ed-bff14178a431",
+        "state_version_id": "c1580a0d-21b0-4a91-8a69-b9bb9cca7968",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness_pass",
+            "backend_report",
+            "non_scaffold_trainer"
+          ],
+          "claim_scope": "trainer_blocked"
+        },
+        "recommendations": [
+          "improve observed temporal and usable examples before training a dynamics candidate",
+          "ensure trained predictions pass dynamics_backend_report before forecast consumption",
+          "replace scaffold trainer with a real neural/statistical optimizer before claiming trainable TWM dynamics"
+        ]
+      }
+    },
+    {
+      "dataset": {
+        "key": "bishan_multi_admin",
+        "name": "Bishan multi-admin evaluation",
+        "bundle_dir": "data_agent/test_data/twm_bishan_multi_admin_eval",
+        "region_code": "500227",
+        "business_scenario": "construction_project_compliance",
+        "build_timeout": 420,
+        "train_timeout": 180
+      },
+      "project_id": "0b71f56b-2dcb-49ac-afdb-2d4195bdd9e7",
+      "state_id": "f10d9012-f979-475d-976b-908236f84372",
+      "build_summary": {
+        "state_version": {
+          "id": "f10d9012-f979-475d-976b-908236f84372",
+          "object_count": 22531,
+          "relation_count": 43329,
+          "build_status": "ready"
+        }
+      },
+      "train_summary": {
+        "schema": "territory_world_model.train_dynamics_report.v1",
+        "status": "blocked",
+        "project_id": "0b71f56b-2dcb-49ac-afdb-2d4195bdd9e7",
+        "state_version_id": "f10d9012-f979-475d-976b-908236f84372",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness_pass",
+            "backend_report",
+            "non_scaffold_trainer"
+          ],
+          "claim_scope": "trainer_blocked"
+        },
+        "recommendations": [
+          "improve observed temporal and usable examples before training a dynamics candidate",
+          "ensure trained predictions pass dynamics_backend_report before forecast consumption",
+          "replace scaffold trainer with a real neural/statistical optimizer before claiming trainable TWM dynamics"
+        ]
+      }
+    },
+    {
+      "dataset": {
+        "key": "one_map_village",
+        "name": "One Map village standard sample",
+        "bundle_dir": "data_agent/test_data/twm_one_map_village_standard_sample",
+        "region_code": "500227",
+        "business_scenario": "territorial_plan_adjustment",
+        "build_timeout": 240,
+        "train_timeout": 120
+      },
+      "project_id": "b14e07dd-3654-492b-b741-0bd9998a2cc7",
+      "state_id": "9b008b36-14df-444c-9ef2-500e27583493",
+      "build_summary": {
+        "state_version": {
+          "id": "9b008b36-14df-444c-9ef2-500e27583493",
+          "object_count": 5494,
+          "relation_count": 2632,
+          "build_status": "ready"
+        }
+      },
+      "train_summary": {
+        "schema": "territory_world_model.train_dynamics_report.v1",
+        "status": "blocked",
+        "project_id": "b14e07dd-3654-492b-b741-0bd9998a2cc7",
+        "state_version_id": "9b008b36-14df-444c-9ef2-500e27583493",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness_pass",
+            "backend_report",
+            "non_scaffold_trainer"
+          ],
+          "claim_scope": "trainer_blocked"
+        },
+        "recommendations": [
+          "improve observed temporal and usable examples before training a dynamics candidate",
+          "ensure trained predictions pass dynamics_backend_report before forecast consumption",
+          "replace scaffold trainer with a real neural/statistical optimizer before claiming trainable TWM dynamics"
+        ]
+      }
+    }
+  ],
+  "records": [
+    {
+      "name": "auth.login_admin_password",
+      "method": "POST",
+      "path": "/login",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 141.1,
+      "timeout_s": 30,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {}
+    },
+    {
+      "name": "bishan_demo.create_project",
+      "method": "POST",
+      "path": "/api/twm/projects",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 4.0,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft"
+      }
+    },
+    {
+      "name": "bishan_demo.build_state",
+      "method": "POST",
+      "path": "/api/twm/projects/d1eb03bf-a55e-4f49-b7ed-bff14178a431/build-state",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 16301.0,
+      "timeout_s": 240,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version": {
+          "id": "c1580a0d-21b0-4a91-8a69-b9bb9cca7968",
+          "object_count": 5745,
+          "relation_count": 10349,
+          "build_status": "ready"
+        }
+      }
+    },
+    {
+      "name": "bishan_demo.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/c1580a0d-21b0-4a91-8a69-b9bb9cca7968/train-dynamics-candidate",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 5633.5,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.train_dynamics_report.v1",
+        "status": "blocked",
+        "project_id": "d1eb03bf-a55e-4f49-b7ed-bff14178a431",
+        "state_version_id": "c1580a0d-21b0-4a91-8a69-b9bb9cca7968",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness_pass",
+            "backend_report",
+            "non_scaffold_trainer"
+          ],
+          "claim_scope": "trainer_blocked"
+        },
+        "recommendations": [
+          "improve observed temporal and usable examples before training a dynamics candidate",
+          "ensure trained predictions pass dynamics_backend_report before forecast consumption",
+          "replace scaffold trainer with a real neural/statistical optimizer before claiming trainable TWM dynamics"
+        ]
+      }
+    },
+    {
+      "name": "bishan_multi_admin.create_project",
+      "method": "POST",
+      "path": "/api/twm/projects",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 3.2,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.build_state",
+      "method": "POST",
+      "path": "/api/twm/projects/0b71f56b-2dcb-49ac-afdb-2d4195bdd9e7/build-state",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 84164.7,
+      "timeout_s": 420,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version": {
+          "id": "f10d9012-f979-475d-976b-908236f84372",
+          "object_count": 22531,
+          "relation_count": 43329,
+          "build_status": "ready"
+        }
+      }
+    },
+    {
+      "name": "bishan_multi_admin.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/f10d9012-f979-475d-976b-908236f84372/train-dynamics-candidate",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 19201.8,
+      "timeout_s": 180,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.train_dynamics_report.v1",
+        "status": "blocked",
+        "project_id": "0b71f56b-2dcb-49ac-afdb-2d4195bdd9e7",
+        "state_version_id": "f10d9012-f979-475d-976b-908236f84372",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness_pass",
+            "backend_report",
+            "non_scaffold_trainer"
+          ],
+          "claim_scope": "trainer_blocked"
+        },
+        "recommendations": [
+          "improve observed temporal and usable examples before training a dynamics candidate",
+          "ensure trained predictions pass dynamics_backend_report before forecast consumption",
+          "replace scaffold trainer with a real neural/statistical optimizer before claiming trainable TWM dynamics"
+        ]
+      }
+    },
+    {
+      "name": "one_map_village.create_project",
+      "method": "POST",
+      "path": "/api/twm/projects",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 5.7,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft"
+      }
+    },
+    {
+      "name": "one_map_village.build_state",
+      "method": "POST",
+      "path": "/api/twm/projects/b14e07dd-3654-492b-b741-0bd9998a2cc7/build-state",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 8686.9,
+      "timeout_s": 240,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version": {
+          "id": "9b008b36-14df-444c-9ef2-500e27583493",
+          "object_count": 5494,
+          "relation_count": 2632,
+          "build_status": "ready"
+        }
+      }
+    },
+    {
+      "name": "one_map_village.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/9b008b36-14df-444c-9ef2-500e27583493/train-dynamics-candidate",
+      "status_code": 200,
+      "ok": true,
+      "elapsed_ms": 3714.0,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.train_dynamics_report.v1",
+        "status": "blocked",
+        "project_id": "b14e07dd-3654-492b-b741-0bd9998a2cc7",
+        "state_version_id": "9b008b36-14df-444c-9ef2-500e27583493",
+        "evidence_gate": {
+          "status": "blocked",
+          "missing": [
+            "readiness_pass",
+            "backend_report",
+            "non_scaffold_trainer"
+          ],
+          "claim_scope": "trainer_blocked"
+        },
+        "recommendations": [
+          "improve observed temporal and usable examples before training a dynamics candidate",
+          "ensure trained predictions pass dynamics_backend_report before forecast consumption",
+          "replace scaffold trainer with a real neural/statistical optimizer before claiming trainable TWM dynamics"
+        ]
+      }
+    }
+  ],
+  "failures": []
+}

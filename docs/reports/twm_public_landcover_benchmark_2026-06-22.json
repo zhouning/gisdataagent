@@ -1,0 +1,802 @@
+{
+  "schema": "territory_world_model.public_landcover_benchmark.v1",
+  "status": "pass",
+  "claim_boundary": "public_or_public_like_landcover_benchmark_engineering_validation_not_production_or_general_superiority_claim",
+  "source": {
+    "source_type": "dongguan_zip_adapter",
+    "zip_path": "/Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip",
+    "dataset_id": "GeoSOS DongGuan 80m tutorial data"
+  },
+  "data_profile": {
+    "region_count": 1,
+    "case_count": 1,
+    "regions": [
+      {
+        "region_id": "dongguan_80m",
+        "years": [
+          2000,
+          2005,
+          2006
+        ],
+        "shape": [
+          648,
+          946
+        ],
+        "classes": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        },
+        "cell_area_ha": 0.64,
+        "driver_layers": [
+          "dtcity",
+          "dtfreeway",
+          "dtrailway",
+          "dtroad",
+          "near_city",
+          "near_freeway",
+          "near_railway",
+          "near_road"
+        ],
+        "source": {
+          "source_type": "dongguan_zip_adapter",
+          "zip_path": "/Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip",
+          "dataset_id": "GeoSOS DongGuan 80m tutorial data"
+        }
+      }
+    ]
+  },
+  "benchmark_design": {
+    "temporal_protocol": "rolling_three_frame_train_validate: train t0->t1 and evaluate t1->t2",
+    "spatial_protocol": "each region is evaluated independently; multi-region manifests enable region-level aggregation",
+    "candidate_ids": [
+      "persistence",
+      "markov_transition_projection",
+      "twm_independent_transition_forecast_demand",
+      "twm_ablation_no_drivers_forecast_demand",
+      "twm_ablation_no_neighborhood_forecast_demand",
+      "twm_ablation_no_transition_prior_forecast_demand",
+      "twm_ablation_no_demand_projection",
+      "twm_independent_transition_oracle_demand"
+    ],
+    "demand_modes": {
+      "forecast_demand": "Class totals are projected only from t0 and t1; this is the formal prediction setting.",
+      "oracle_demand": "Class totals are copied from t2; this is an upper-bound diagnostic and must not be used as a real forecast claim.",
+      "no_demand_projection": "No class-total projection or quota repair is applied; this is a component ablation, not a planning forecast."
+    }
+  },
+  "experiments": [
+    {
+      "case_id": "dongguan_80m_2000_2005_2006",
+      "region_id": "dongguan_80m",
+      "train_period": "2000->2005",
+      "holdout_period": "2005->2006",
+      "valid_cell_count": 378749,
+      "cell_area_ha": 0.64,
+      "class_labels": {
+        "1": "耕地",
+        "2": "林地",
+        "3": "草地",
+        "4": "水域",
+        "5": "城乡建设用地",
+        "6": "未利用地"
+      },
+      "demand": {
+        "forecast_counts": {
+          "1": 71254,
+          "2": 105504,
+          "3": 4278,
+          "4": 43742,
+          "5": 153424,
+          "6": 547
+        },
+        "oracle_counts": {
+          "1": 64801,
+          "2": 100062,
+          "3": 4708,
+          "4": 43462,
+          "5": 165255,
+          "6": 461
+        },
+        "forecast_total_abs_error_against_oracle": 24522
+      },
+      "candidate_metadata": {
+        "persistence": {
+          "backend": "no_change_baseline",
+          "demand_mode": "forecast_demand",
+          "uses_holdout_labels_for_training": false,
+          "target_counts": {
+            "1": 71254,
+            "2": 105504,
+            "3": 4278,
+            "4": 43742,
+            "5": 153424,
+            "6": 547
+          }
+        },
+        "markov_transition_projection": {
+          "backend": "observed_pair_markov_transition_projection",
+          "demand_mode": "forecast_demand",
+          "uses_holdout_labels_for_training": false,
+          "target_counts": {
+            "1": 71254,
+            "2": 105504,
+            "3": 4278,
+            "4": 43742,
+            "5": 153424,
+            "6": 547
+          }
+        },
+        "twm_independent_transition_forecast_demand": {
+          "backend": "action_conditioned_logit_neighborhood_transition",
+          "demand_mode": "forecast_demand",
+          "uses_holdout_labels_for_training": false,
+          "component_flags": {
+            "driver_features": true,
+            "neighborhood_features": true,
+            "transition_prior": true,
+            "demand_projection": true
+          },
+          "target_counts": {
+            "1": 71254,
+            "2": 105504,
+            "3": 4278,
+            "4": 43742,
+            "5": 153424,
+            "6": 547
+          }
+        },
+        "twm_ablation_no_drivers_forecast_demand": {
+          "backend": "action_conditioned_logit_neighborhood_transition",
+          "ablation_of": "twm_independent_transition_forecast_demand",
+          "demand_mode": "forecast_demand",
+          "uses_holdout_labels_for_training": false,
+          "component_flags": {
+            "driver_features": false,
+            "neighborhood_features": true,
+            "transition_prior": true,
+            "demand_projection": true
+          },
+          "target_counts": {
+            "1": 71254,
+            "2": 105504,
+            "3": 4278,
+            "4": 43742,
+            "5": 153424,
+            "6": 547
+          }
+        },
+        "twm_ablation_no_neighborhood_forecast_demand": {
+          "backend": "action_conditioned_logit_transition",
+          "ablation_of": "twm_independent_transition_forecast_demand",
+          "demand_mode": "forecast_demand",
+          "uses_holdout_labels_for_training": false,
+          "component_flags": {
+            "driver_features": true,
+            "neighborhood_features": false,
+            "transition_prior": true,
+            "demand_projection": true
+          },
+          "target_counts": {
+            "1": 71254,
+            "2": 105504,
+            "3": 4278,
+            "4": 43742,
+            "5": 153424,
+            "6": 547
+          }
+        },
+        "twm_ablation_no_transition_prior_forecast_demand": {
+          "backend": "action_conditioned_logit_neighborhood_transition",
+          "ablation_of": "twm_independent_transition_forecast_demand",
+          "demand_mode": "forecast_demand",
+          "uses_holdout_labels_for_training": false,
+          "component_flags": {
+            "driver_features": true,
+            "neighborhood_features": true,
+            "transition_prior": false,
+            "demand_projection": true
+          },
+          "target_counts": {
+            "1": 71254,
+            "2": 105504,
+            "3": 4278,
+            "4": 43742,
+            "5": 153424,
+            "6": 547
+          }
+        },
+        "twm_ablation_no_demand_projection": {
+          "backend": "action_conditioned_logit_neighborhood_transition",
+          "ablation_of": "twm_independent_transition_forecast_demand",
+          "demand_mode": "no_demand_projection",
+          "uses_holdout_labels_for_training": false,
+          "component_flags": {
+            "driver_features": true,
+            "neighborhood_features": true,
+            "transition_prior": true,
+            "demand_projection": false
+          },
+          "target_counts": {
+            "1": 71254,
+            "2": 105504,
+            "3": 4278,
+            "4": 43742,
+            "5": 153424,
+            "6": 547
+          }
+        },
+        "twm_independent_transition_oracle_demand": {
+          "backend": "action_conditioned_logit_neighborhood_transition",
+          "demand_mode": "oracle_demand",
+          "uses_holdout_labels_for_training": false,
+          "uses_holdout_class_totals": true,
+          "component_flags": {
+            "driver_features": true,
+            "neighborhood_features": true,
+            "transition_prior": true,
+            "demand_projection": true
+          },
+          "target_counts": {
+            "1": 64801,
+            "2": 100062,
+            "3": 4708,
+            "4": 43462,
+            "5": 165255,
+            "6": 461
+          }
+        }
+      },
+      "metrics": {
+        "persistence": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.943746,
+          "kappa": 0.92071,
+          "correct_cell_count": 357443,
+          "predicted_change_count": 0,
+          "actual_change_count": 21306,
+          "change_hit_count": 0,
+          "change_false_alarm_count": 0,
+          "change_miss_count": 21306,
+          "change_precision": 0.0,
+          "change_recall": 0.0,
+          "change_f1": 0.0,
+          "change_fom": 0.0,
+          "predicted_changed_area_ha": 0.0,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 6107,
+            "2": 695,
+            "3": 1016,
+            "4": 348,
+            "5": 7429,
+            "6": 41
+          },
+          "target_total_demand_abs_error": 15636,
+          "oracle_total_demand_abs_error": 38656,
+          "macro_f1": 0.946601,
+          "per_class_f1": {
+            "1": 0.907556,
+            "2": 0.964448,
+            "3": 0.941412,
+            "4": 0.974786,
+            "5": 0.937941,
+            "6": 0.953464
+          }
+        },
+        "markov_transition_projection": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.928715,
+          "kappa": 0.898755,
+          "correct_cell_count": 351750,
+          "predicted_change_count": 7818,
+          "actual_change_count": 21306,
+          "change_hit_count": 1153,
+          "change_false_alarm_count": 6665,
+          "change_miss_count": 20153,
+          "change_precision": 0.14748,
+          "change_recall": 0.054116,
+          "change_f1": 0.079179,
+          "change_fom": 0.041221,
+          "predicted_changed_area_ha": 5003.52,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0
+          },
+          "target_total_demand_abs_error": 0,
+          "oracle_total_demand_abs_error": 24522,
+          "macro_f1": 0.91493,
+          "per_class_f1": {
+            "1": 0.873132,
+            "2": 0.961375,
+            "3": 0.847318,
+            "4": 0.970896,
+            "5": 0.922176,
+            "6": 0.914683
+          }
+        },
+        "twm_independent_transition_forecast_demand": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.931324,
+          "kappa": 0.90246,
+          "correct_cell_count": 352738,
+          "predicted_change_count": 7818,
+          "actual_change_count": 21306,
+          "change_hit_count": 1580,
+          "change_false_alarm_count": 6238,
+          "change_miss_count": 19726,
+          "change_precision": 0.202098,
+          "change_recall": 0.074158,
+          "change_f1": 0.108502,
+          "change_fom": 0.057363,
+          "predicted_changed_area_ha": 5003.52,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0
+          },
+          "target_total_demand_abs_error": 0,
+          "oracle_total_demand_abs_error": 24522,
+          "macro_f1": 0.918808,
+          "per_class_f1": {
+            "1": 0.877072,
+            "2": 0.96227,
+            "3": 0.86223,
+            "4": 0.970896,
+            "5": 0.925696,
+            "6": 0.914683
+          }
+        },
+        "twm_ablation_no_drivers_forecast_demand": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.931239,
+          "kappa": 0.90234,
+          "correct_cell_count": 352706,
+          "predicted_change_count": 7818,
+          "actual_change_count": 21306,
+          "change_hit_count": 1565,
+          "change_false_alarm_count": 6253,
+          "change_miss_count": 19741,
+          "change_precision": 0.200179,
+          "change_recall": 0.073453,
+          "change_f1": 0.107472,
+          "change_fom": 0.056787,
+          "predicted_changed_area_ha": 5003.52,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0
+          },
+          "target_total_demand_abs_error": 0,
+          "oracle_total_demand_abs_error": 24522,
+          "macro_f1": 0.918555,
+          "per_class_f1": {
+            "1": 0.877101,
+            "2": 0.962163,
+            "3": 0.860895,
+            "4": 0.970896,
+            "5": 0.92559,
+            "6": 0.914683
+          }
+        },
+        "twm_ablation_no_neighborhood_forecast_demand": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.928676,
+          "kappa": 0.898699,
+          "correct_cell_count": 351735,
+          "predicted_change_count": 7818,
+          "actual_change_count": 21306,
+          "change_hit_count": 1060,
+          "change_false_alarm_count": 6758,
+          "change_miss_count": 20246,
+          "change_precision": 0.135585,
+          "change_recall": 0.049751,
+          "change_f1": 0.072792,
+          "change_fom": 0.037771,
+          "predicted_changed_area_ha": 5003.52,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0
+          },
+          "target_total_demand_abs_error": 0,
+          "oracle_total_demand_abs_error": 24522,
+          "macro_f1": 0.914821,
+          "per_class_f1": {
+            "1": 0.869913,
+            "2": 0.962562,
+            "3": 0.848208,
+            "4": 0.970896,
+            "5": 0.922665,
+            "6": 0.914683
+          }
+        },
+        "twm_ablation_no_transition_prior_forecast_demand": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.931324,
+          "kappa": 0.90246,
+          "correct_cell_count": 352738,
+          "predicted_change_count": 7818,
+          "actual_change_count": 21306,
+          "change_hit_count": 1580,
+          "change_false_alarm_count": 6238,
+          "change_miss_count": 19726,
+          "change_precision": 0.202098,
+          "change_recall": 0.074158,
+          "change_f1": 0.108502,
+          "change_fom": 0.057363,
+          "predicted_changed_area_ha": 5003.52,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0
+          },
+          "target_total_demand_abs_error": 0,
+          "oracle_total_demand_abs_error": 24522,
+          "macro_f1": 0.918808,
+          "per_class_f1": {
+            "1": 0.877072,
+            "2": 0.96227,
+            "3": 0.86223,
+            "4": 0.970896,
+            "5": 0.925696,
+            "6": 0.914683
+          }
+        },
+        "twm_ablation_no_demand_projection": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.627917,
+          "kappa": 0.478864,
+          "correct_cell_count": 237823,
+          "predicted_change_count": 138887,
+          "actual_change_count": 21306,
+          "change_hit_count": 11668,
+          "change_false_alarm_count": 127219,
+          "change_miss_count": 9638,
+          "change_precision": 0.084011,
+          "change_recall": 0.547639,
+          "change_f1": 0.145674,
+          "change_fom": 0.078559,
+          "predicted_changed_area_ha": 88887.68,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 3370,
+            "2": 3128,
+            "3": 4159,
+            "4": 5626,
+            "5": 6990,
+            "6": 3703
+          },
+          "target_total_demand_abs_error": 26976,
+          "oracle_total_demand_abs_error": 37642,
+          "macro_f1": 0.482179,
+          "per_class_f1": {
+            "1": 0.473799,
+            "2": 0.690276,
+            "3": 0.332141,
+            "4": 0.506259,
+            "5": 0.708469,
+            "6": 0.182127
+          }
+        },
+        "twm_independent_transition_oracle_demand": {
+          "schema": "territory_world_model.public_landcover_pixel_metric.v1",
+          "valid_cell_count": 378749,
+          "overall_accuracy": 0.913423,
+          "kappa": 0.875828,
+          "correct_cell_count": 345958,
+          "predicted_change_count": 19328,
+          "actual_change_count": 21306,
+          "change_hit_count": 3946,
+          "change_false_alarm_count": 15382,
+          "change_miss_count": 17360,
+          "change_precision": 0.20416,
+          "change_recall": 0.185206,
+          "change_f1": 0.194222,
+          "change_fom": 0.107556,
+          "predicted_changed_area_ha": 12369.92,
+          "actual_changed_area_ha": 13635.84,
+          "target_demand_abs_error": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 0,
+            "6": 0
+          },
+          "target_total_demand_abs_error": 0,
+          "oracle_total_demand_abs_error": 0,
+          "macro_f1": 0.912728,
+          "per_class_f1": {
+            "1": 0.840836,
+            "2": 0.945294,
+            "3": 0.906967,
+            "4": 0.974023,
+            "5": 0.906865,
+            "6": 0.902386
+          }
+        }
+      },
+      "ablation_summary": {
+        "status": "pass",
+        "full_candidate_id": "twm_independent_transition_forecast_demand",
+        "rows": [
+          {
+            "candidate_id": "twm_ablation_no_drivers_forecast_demand",
+            "change_fom_delta_vs_full": -0.000576,
+            "overall_accuracy_delta_vs_full": -8.5e-05,
+            "change_f1_delta_vs_full": -0.00103,
+            "target_demand_abs_error_delta_vs_full": 0,
+            "predicted_change_delta_vs_full": 0
+          },
+          {
+            "candidate_id": "twm_ablation_no_neighborhood_forecast_demand",
+            "change_fom_delta_vs_full": -0.019592,
+            "overall_accuracy_delta_vs_full": -0.002648,
+            "change_f1_delta_vs_full": -0.03571,
+            "target_demand_abs_error_delta_vs_full": 0,
+            "predicted_change_delta_vs_full": 0
+          },
+          {
+            "candidate_id": "twm_ablation_no_transition_prior_forecast_demand",
+            "change_fom_delta_vs_full": 0.0,
+            "overall_accuracy_delta_vs_full": 0.0,
+            "change_f1_delta_vs_full": 0.0,
+            "target_demand_abs_error_delta_vs_full": 0,
+            "predicted_change_delta_vs_full": 0
+          },
+          {
+            "candidate_id": "twm_ablation_no_demand_projection",
+            "change_fom_delta_vs_full": 0.021196,
+            "overall_accuracy_delta_vs_full": -0.303407,
+            "change_f1_delta_vs_full": 0.037172,
+            "target_demand_abs_error_delta_vs_full": 26976,
+            "predicted_change_delta_vs_full": 131069
+          }
+        ],
+        "components_with_positive_change_fom_contribution": [
+          "drivers",
+          "neighborhood"
+        ],
+        "ablations_with_higher_change_fom_than_full": [
+          "twm_ablation_no_demand_projection"
+        ],
+        "interpretation": "Negative ablation delta means the removed component improved the full candidate on that metric in this case."
+      },
+      "best_forecast_by_change_fom": "twm_independent_transition_forecast_demand",
+      "best_oracle_by_change_fom": "twm_independent_transition_oracle_demand",
+      "claim_boundary": "single rolling case; only aggregate multi-region results should be used for research claims"
+    }
+  ],
+  "summary": {
+    "aggregate_by_candidate": {
+      "persistence": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.943746,
+        "mean_kappa": 0.92071,
+        "mean_change_fom": 0.0,
+        "mean_change_f1": 0.0,
+        "mean_macro_f1": 0.946601,
+        "total_target_demand_abs_error": 15636,
+        "total_oracle_demand_abs_error": 38656
+      },
+      "markov_transition_projection": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.928715,
+        "mean_kappa": 0.898755,
+        "mean_change_fom": 0.041221,
+        "mean_change_f1": 0.079179,
+        "mean_macro_f1": 0.91493,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      "twm_independent_transition_forecast_demand": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.931324,
+        "mean_kappa": 0.90246,
+        "mean_change_fom": 0.057363,
+        "mean_change_f1": 0.108502,
+        "mean_macro_f1": 0.918808,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      "twm_ablation_no_drivers_forecast_demand": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.931239,
+        "mean_kappa": 0.90234,
+        "mean_change_fom": 0.056787,
+        "mean_change_f1": 0.107472,
+        "mean_macro_f1": 0.918555,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      "twm_ablation_no_neighborhood_forecast_demand": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.928676,
+        "mean_kappa": 0.898699,
+        "mean_change_fom": 0.037771,
+        "mean_change_f1": 0.072792,
+        "mean_macro_f1": 0.914821,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      "twm_ablation_no_transition_prior_forecast_demand": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.931324,
+        "mean_kappa": 0.90246,
+        "mean_change_fom": 0.057363,
+        "mean_change_f1": 0.108502,
+        "mean_macro_f1": 0.918808,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      "twm_ablation_no_demand_projection": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.627917,
+        "mean_kappa": 0.478864,
+        "mean_change_fom": 0.078559,
+        "mean_change_f1": 0.145674,
+        "mean_macro_f1": 0.482179,
+        "total_target_demand_abs_error": 26976,
+        "total_oracle_demand_abs_error": 37642
+      },
+      "twm_independent_transition_oracle_demand": {
+        "case_count": 1,
+        "mean_overall_accuracy": 0.913423,
+        "mean_kappa": 0.875828,
+        "mean_change_fom": 0.107556,
+        "mean_change_f1": 0.194222,
+        "mean_macro_f1": 0.912728,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 0
+      }
+    },
+    "ranking_by_mean_change_fom": [
+      {
+        "candidate_id": "twm_independent_transition_oracle_demand",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.913423,
+        "mean_kappa": 0.875828,
+        "mean_change_fom": 0.107556,
+        "mean_change_f1": 0.194222,
+        "mean_macro_f1": 0.912728,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 0
+      },
+      {
+        "candidate_id": "twm_ablation_no_demand_projection",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.627917,
+        "mean_kappa": 0.478864,
+        "mean_change_fom": 0.078559,
+        "mean_change_f1": 0.145674,
+        "mean_macro_f1": 0.482179,
+        "total_target_demand_abs_error": 26976,
+        "total_oracle_demand_abs_error": 37642
+      },
+      {
+        "candidate_id": "twm_independent_transition_forecast_demand",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.931324,
+        "mean_kappa": 0.90246,
+        "mean_change_fom": 0.057363,
+        "mean_change_f1": 0.108502,
+        "mean_macro_f1": 0.918808,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      {
+        "candidate_id": "twm_ablation_no_transition_prior_forecast_demand",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.931324,
+        "mean_kappa": 0.90246,
+        "mean_change_fom": 0.057363,
+        "mean_change_f1": 0.108502,
+        "mean_macro_f1": 0.918808,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      {
+        "candidate_id": "twm_ablation_no_drivers_forecast_demand",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.931239,
+        "mean_kappa": 0.90234,
+        "mean_change_fom": 0.056787,
+        "mean_change_f1": 0.107472,
+        "mean_macro_f1": 0.918555,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      {
+        "candidate_id": "markov_transition_projection",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.928715,
+        "mean_kappa": 0.898755,
+        "mean_change_fom": 0.041221,
+        "mean_change_f1": 0.079179,
+        "mean_macro_f1": 0.91493,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      {
+        "candidate_id": "twm_ablation_no_neighborhood_forecast_demand",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.928676,
+        "mean_kappa": 0.898699,
+        "mean_change_fom": 0.037771,
+        "mean_change_f1": 0.072792,
+        "mean_macro_f1": 0.914821,
+        "total_target_demand_abs_error": 0,
+        "total_oracle_demand_abs_error": 24522
+      },
+      {
+        "candidate_id": "persistence",
+        "case_count": 1,
+        "mean_overall_accuracy": 0.943746,
+        "mean_kappa": 0.92071,
+        "mean_change_fom": 0.0,
+        "mean_change_f1": 0.0,
+        "mean_macro_f1": 0.946601,
+        "total_target_demand_abs_error": 15636,
+        "total_oracle_demand_abs_error": 38656
+      }
+    ],
+    "best_candidate_by_mean_change_fom": "twm_independent_transition_oracle_demand"
+  },
+  "renderer": {
+    "rendered": true,
+    "assets": {
+      "metrics": "assets/twm_public_landcover_benchmark_metrics.png",
+      "maps": "assets/twm_public_landcover_benchmark_maps.png"
+    }
+  },
+  "interpretation": {
+    "what_this_adds": [
+      "A generic benchmark entry point for local public land-cover raster stacks such as GLC_FCS30D, Dynamic World exports or MODIS annual land-cover products.",
+      "The same evaluator can also ingest the existing DongGuan sample as a real-data adapter, so development does not depend on synthetic fixtures.",
+      "The report separates forecast-demand results from oracle-demand upper bounds, preventing target-year class totals from being hidden inside a claimed forecast."
+    ],
+    "what_is_still_missing": [
+      "A true TWM paper claim still needs a multi-region manifest from public data rather than one tutorial region.",
+      "The current independent dynamics candidate uses transparent logit/neighborhood transition modelling, not a fully trained neural world model.",
+      "A rigorous FLUS comparison still needs consistent multi-region baselines and scenario-demand assumptions, not only package-provided sample outputs."
+    ],
+    "next_tasks": [
+      "Build a GLC_FCS30D manifest for 20-50 regions and years such as 2000/2005/2010/2015/2020/2022.",
+      "Add region-holdout aggregation, where model parameters are trained on source regions and evaluated on unseen target regions.",
+      "Add ablations for no-neighborhood, no-drivers, no-transition-prior and no-demand-projection variants.",
+      "Add a non-leaky scenario/demand model using historical trends and external covariates before making policy forecasting claims."
+    ]
+  }
+}

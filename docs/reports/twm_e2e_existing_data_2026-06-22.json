@@ -1,0 +1,3016 @@
+{
+  "schema": "territory_world_model.authenticated_e2e_existing_data_report.v1",
+  "generated_at": "2026-06-22T07:00:30Z",
+  "base_url": "http://localhost:8000",
+  "auth": {
+    "method": "POST /login",
+    "username": "admin",
+    "cookie_received": true
+  },
+  "constraints": {
+    "mock_used": false,
+    "smoke_test_used": false,
+    "unit_fake_request_used": false,
+    "data_sources": [
+      "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion",
+      "data_agent/test_data/twm_bishan_multi_admin_eval",
+      "data_agent/test_data/twm_one_map_village_standard_sample",
+      "data_agent/test_data/twm_baseline_metrics"
+    ]
+  },
+  "totals": {
+    "request_count": 110,
+    "ok_count": 106,
+    "fail_count": 4
+  },
+  "datasets": [
+    {
+      "dataset": {
+        "key": "bishan_demo",
+        "name": "Bishan demo MMFE semantic fusion",
+        "bundle_dir": "data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion",
+        "optimization_dir": "data_agent/test_data/twm_bishan_demo/optimization",
+        "region_code": "500227",
+        "business_scenario": "farmland_protection_review",
+        "action_type": "protect",
+        "target_role": "project",
+        "scenario": "e2e_bishan_farmland_review",
+        "timeouts": {
+          "build": 240,
+          "heavy": 90,
+          "default": 45
+        }
+      },
+      "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+      "state_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+      "state_summary": {
+        "project": {
+          "id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+          "name": "E2E Bishan demo MMFE semantic fusion 1782111635"
+        },
+        "state_version": {
+          "id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+          "object_count": 5745,
+          "relation_count": 10349,
+          "build_status": "ready"
+        },
+        "warnings": [
+          "TWM validation scaffold: not for production use."
+        ]
+      },
+      "rule_summary": {
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "hits_count": 96,
+        "summary": {
+          "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+          "rule_count": 7,
+          "hit_count": 96,
+          "review_task_count": 95,
+          "data_quality_hit_count": 1,
+          "approval_consistency_hit_count": 36,
+          "evidence_item_count": 380
+        },
+        "warnings": []
+      },
+      "training_examples_summary": {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "examples_count": 4,
+        "summary": {
+          "example_count": 4,
+          "forecast_scaffold_example_count": 3,
+          "temporal_transition_example_count": 1,
+          "usable_example_count": 0,
+          "review_example_count": 4
+        }
+      },
+      "candidate_summary": {
+        "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+        "status": "pass",
+        "summary": {
+          "candidate_count": 7,
+          "legal_feasible_count": 2,
+          "blocked_count": 5,
+          "hard_constraint_policy": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+          "claim_boundary": "optimization_fixture_only_not_for_production"
+        }
+      },
+      "optimization_beam_summary": {
+        "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "dataset": {
+        "key": "bishan_multi_admin",
+        "name": "Bishan multi-admin evaluation",
+        "bundle_dir": "data_agent/test_data/twm_bishan_multi_admin_eval",
+        "optimization_dir": "data_agent/test_data/twm_bishan_multi_admin_eval/optimization",
+        "region_code": "500227",
+        "business_scenario": "construction_project_compliance",
+        "action_type": "inspect",
+        "target_role": "project",
+        "scenario": "e2e_multi_admin_compliance",
+        "timeouts": {
+          "build": 360,
+          "heavy": 120,
+          "default": 45
+        }
+      },
+      "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+      "state_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+      "state_summary": {
+        "project": {
+          "id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+          "name": "E2E Bishan multi-admin evaluation 1782111808"
+        },
+        "state_version": {
+          "id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+          "object_count": 22531,
+          "relation_count": 43329,
+          "build_status": "ready"
+        },
+        "warnings": [
+          "no contract sidecar was found; role bindings were derived from manifest sources"
+        ]
+      },
+      "rule_summary": {
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "hits_count": 140,
+        "summary": {
+          "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+          "rule_count": 7,
+          "hit_count": 140,
+          "review_task_count": 139,
+          "data_quality_hit_count": 1,
+          "approval_consistency_hit_count": 56,
+          "evidence_item_count": 556
+        },
+        "warnings": []
+      },
+      "training_examples_summary": {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "examples_count": 4,
+        "summary": {
+          "example_count": 4,
+          "forecast_scaffold_example_count": 3,
+          "temporal_transition_example_count": 1,
+          "usable_example_count": 0,
+          "review_example_count": 4
+        }
+      },
+      "candidate_summary": {
+        "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+        "status": "pass",
+        "summary": {
+          "candidate_count": 7,
+          "legal_feasible_count": 3,
+          "blocked_count": 4,
+          "hard_constraint_policy": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+          "claim_boundary": "optimization_fixture_only_not_for_production"
+        }
+      },
+      "optimization_beam_summary": {
+        "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "dataset": {
+        "key": "one_map_village",
+        "name": "One Map village standard sample",
+        "bundle_dir": "data_agent/test_data/twm_one_map_village_standard_sample",
+        "optimization_dir": "data_agent/test_data/twm_one_map_village_standard_sample/optimization",
+        "region_code": "500227",
+        "business_scenario": "territorial_plan_adjustment",
+        "action_type": "convert",
+        "target_role": "scenario",
+        "scenario": "e2e_one_map_plan_adjustment",
+        "timeouts": {
+          "build": 240,
+          "heavy": 90,
+          "default": 45
+        }
+      },
+      "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+      "state_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+      "state_summary": {
+        "project": {
+          "id": "8988ce77-9f38-444b-9328-76c9037d46af",
+          "name": "E2E One Map village standard sample 1782112817"
+        },
+        "state_version": {
+          "id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+          "object_count": 5494,
+          "relation_count": 2632,
+          "build_status": "ready"
+        },
+        "warnings": [
+          "no contract sidecar was found; role bindings were derived from manifest sources"
+        ]
+      },
+      "rule_summary": {
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "hits_count": 72,
+        "summary": {
+          "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+          "rule_count": 7,
+          "hit_count": 72,
+          "review_task_count": 72,
+          "data_quality_hit_count": 0,
+          "approval_consistency_hit_count": 0,
+          "evidence_item_count": 288
+        },
+        "warnings": []
+      },
+      "training_examples_summary": {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "examples_count": 4,
+        "summary": {
+          "example_count": 4,
+          "forecast_scaffold_example_count": 3,
+          "temporal_transition_example_count": 1,
+          "usable_example_count": 0,
+          "review_example_count": 4
+        }
+      },
+      "candidate_summary": {
+        "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+        "status": "pass",
+        "summary": {
+          "candidate_count": 7,
+          "legal_feasible_count": 1,
+          "blocked_count": 6,
+          "hard_constraint_policy": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+          "claim_boundary": "optimization_fixture_only_not_for_production"
+        }
+      },
+      "optimization_beam_summary": {
+        "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+        "status": "review",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    }
+  ],
+  "baseline_results": [
+    {
+      "case": {
+        "key": "c1_manual_overlay",
+        "claim_id": "C1_state_conflict_recall",
+        "baseline_id": "manual_gis_overlay_checklist",
+        "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+        "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        "twm_metrics_path": "data_agent/test_data/twm_baseline_metrics/twm_metrics.json",
+        "baseline_metrics_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_metrics.csv"
+      },
+      "validation": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "review",
+        "coverage": {
+          "overlap_count": 10,
+          "coverage_ratio": 1.0
+        },
+        "parser_compatibility": {
+          "status": "pass",
+          "comparable_metrics": [
+            "hard_constraint_conflict_recall",
+            "missed_blocking_conflict_rate",
+            "evidence_link_completeness"
+          ]
+        },
+        "blocking_errors": [],
+        "warnings": [
+          "not_for_production_or_sanitization_flag_missing"
+        ]
+      },
+      "comparison": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "metrics_pass_but_data_gate_blocks_upgrade",
+        "metric_comparisons": [
+          {
+            "name": "hard_constraint_conflict_recall",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.9,
+            "delta": 0.1
+          },
+          {
+            "name": "missed_blocking_conflict_rate",
+            "status": "pass",
+            "twm_value": 0.0,
+            "baseline_value": 0.1,
+            "delta": 0.1
+          },
+          {
+            "name": "evidence_link_completeness",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.7,
+            "delta": 0.3
+          }
+        ]
+      },
+      "pipeline": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "review",
+        "pipeline_decision": "metrics_pass_but_data_gate_blocks_upgrade"
+      }
+    },
+    {
+      "case": {
+        "key": "c2_rule_only",
+        "claim_id": "C2_audit_defensibility",
+        "baseline_id": "rule_only_spatial_compliance_engine",
+        "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+        "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv"
+      },
+      "validation": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "review",
+        "coverage": {
+          "overlap_count": 10,
+          "coverage_ratio": 1.0
+        },
+        "parser_compatibility": {
+          "status": "pass",
+          "comparable_metrics": [
+            "audit_trail_completeness",
+            "unsupported_recommendation_rate",
+            "review_task_precision"
+          ]
+        },
+        "blocking_errors": [],
+        "warnings": [
+          "not_for_production_or_sanitization_flag_missing"
+        ]
+      },
+      "comparison": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "metrics_pass_but_data_gate_blocks_upgrade",
+        "metric_comparisons": [
+          {
+            "name": "audit_trail_completeness",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.7,
+            "delta": 0.3
+          },
+          {
+            "name": "unsupported_recommendation_rate",
+            "status": "pass",
+            "twm_value": 0.0,
+            "baseline_value": 0.1,
+            "delta": 0.1
+          },
+          {
+            "name": "review_task_precision",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.666667,
+            "delta": 0.333333
+          }
+        ]
+      },
+      "pipeline": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "review",
+        "pipeline_decision": "metrics_pass_but_data_gate_blocks_upgrade"
+      }
+    },
+    {
+      "case": {
+        "key": "c3_same_case_optimization",
+        "claim_id": "C3_action_conditioned_triage",
+        "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+        "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_same_case_outputs.csv",
+        "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_same_case_outputs.csv"
+      },
+      "validation": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "blocked",
+        "coverage": {
+          "overlap_count": 0,
+          "coverage_ratio": 0.0
+        },
+        "parser_compatibility": {
+          "status": "review",
+          "comparable_metrics": []
+        },
+        "blocking_errors": [
+          "twm_case_output_path:file_not_found",
+          "baseline_case_output_path:file_not_found",
+          "twm_case_output_empty",
+          "baseline_case_output_empty",
+          "twm_missing_required_columns:candidate_id,rank,selected,legal_feasible,planner_regret_against_human_oracle",
+          "baseline_missing_required_columns:candidate_id,rank,selected,legal_feasible,planner_regret_against_human_oracle",
+          "same_case_join_key_missing"
+        ],
+        "warnings": [
+          "claim_parser_columns_missing_or_partial:candidate_id,rank,legal_feasible,planner_regret_against_human_oracle",
+          "not_for_production_or_sanitization_flag_missing",
+          "no_claim_metrics_recovered_by_current_parser"
+        ]
+      },
+      "comparison": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "baseline_evidence_not_provided",
+        "metric_comparisons": [
+          {
+            "name": "candidate_rejection_reason_coverage",
+            "status": "missing",
+            "twm_value": null,
+            "baseline_value": null,
+            "delta": null
+          },
+          {
+            "name": "legal_feasible_topk_precision",
+            "status": "missing",
+            "twm_value": null,
+            "baseline_value": null,
+            "delta": null
+          },
+          {
+            "name": "planner_regret_against_human_oracle",
+            "status": "missing",
+            "twm_value": null,
+            "baseline_value": null,
+            "delta": null
+          }
+        ]
+      },
+      "pipeline": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "blocked",
+        "pipeline_decision": "export_validation_blocked"
+      }
+    },
+    {
+      "case": {
+        "key": "c3_non_same_case_negative_control",
+        "claim_id": "C3_action_conditioned_triage",
+        "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+        "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_outputs.csv",
+        "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_outputs.csv"
+      },
+      "validation": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "blocked",
+        "coverage": {
+          "overlap_count": 0,
+          "coverage_ratio": 0.0
+        },
+        "parser_compatibility": {
+          "status": "pass",
+          "comparable_metrics": [
+            "candidate_rejection_reason_coverage",
+            "legal_feasible_topk_precision",
+            "planner_regret_against_human_oracle"
+          ]
+        },
+        "blocking_errors": [
+          "same_case_overlap_missing"
+        ],
+        "warnings": [
+          "not_for_production_or_sanitization_flag_missing"
+        ]
+      },
+      "comparison": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "no_metric_lift_over_baseline",
+        "metric_comparisons": [
+          {
+            "name": "candidate_rejection_reason_coverage",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.5,
+            "delta": 0.5
+          },
+          {
+            "name": "legal_feasible_topk_precision",
+            "status": "review",
+            "twm_value": 0.666667,
+            "baseline_value": 0.333333,
+            "delta": 0.333334
+          },
+          {
+            "name": "planner_regret_against_human_oracle",
+            "status": "pass",
+            "twm_value": 0.04,
+            "baseline_value": 0.162,
+            "delta": 0.122
+          }
+        ]
+      },
+      "pipeline": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "blocked",
+        "pipeline_decision": "export_validation_blocked"
+      }
+    }
+  ],
+  "records": [
+    {
+      "name": "auth.login_admin_password",
+      "method": "POST",
+      "path": "/login",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 126.8,
+      "timeout_s": 30,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {}
+    },
+    {
+      "name": "global.status",
+      "method": "GET",
+      "path": "/api/twm/status",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 3.1,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "ready",
+        "version": "0.1.0",
+        "repository": {
+          "backend": "db+memory",
+          "project_count": 0,
+          "layer_binding_count": 0,
+          "state_version_count": 0,
+          "state_object_count": 0,
+          "state_relation_count": 0,
+          "rule_set_count": 0,
+          "policy_rule_count": 0,
+          "rule_hit_count": 0,
+          "evidence_item_count": 0,
+          "review_task_count": 0,
+          "scenario_count": 0,
+          "scenario_metric_count": 0
+        }
+      }
+    },
+    {
+      "name": "global.business_scenarios",
+      "method": "GET",
+      "path": "/api/twm/business-scenarios",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1.0,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "scenarios_count": 3
+      }
+    },
+    {
+      "name": "global.research_positioning",
+      "method": "GET",
+      "path": "/api/twm/research-positioning",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1.1,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {}
+    },
+    {
+      "name": "global.research_claim_matrix",
+      "method": "GET",
+      "path": "/api/twm/research-claim-matrix",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1195.6,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.research_claim_matrix.v1",
+        "status": "review",
+        "claims_count": 4
+      }
+    },
+    {
+      "name": "global.data_foundation_assessment",
+      "method": "GET",
+      "path": "/api/twm/data-foundation-assessment",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1025.3,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.data_foundation_assessment.v1",
+        "status": "review",
+        "datasets_count": 3
+      }
+    },
+    {
+      "name": "global.baseline_export_schema",
+      "method": "GET",
+      "path": "/api/twm/baseline-export-schema",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1141.5,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_export_schema.v1"
+      }
+    },
+    {
+      "name": "global.baseline_export_templates",
+      "method": "GET",
+      "path": "/api/twm/baseline-export-templates",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2350.6,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_export_templates.v1",
+        "templates_count": 3
+      }
+    },
+    {
+      "name": "bishan_demo.create_project",
+      "method": "POST",
+      "path": "/api/twm/projects",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 3.4,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft",
+        "id": "04b232a2-941e-4324-906d-95ab695d0c1b"
+      }
+    },
+    {
+      "name": "bishan_demo.project_detail",
+      "method": "GET",
+      "path": "/api/twm/projects/04b232a2-941e-4324-906d-95ab695d0c1b",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1.7,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft",
+        "id": "04b232a2-941e-4324-906d-95ab695d0c1b"
+      }
+    },
+    {
+      "name": "bishan_demo.build_state",
+      "method": "POST",
+      "path": "/api/twm/projects/04b232a2-941e-4324-906d-95ab695d0c1b/build-state",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 16092.5,
+      "timeout_s": 240,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project": {
+          "id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+          "name": "E2E Bishan demo MMFE semantic fusion 1782111635"
+        },
+        "state_version": {
+          "id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+          "object_count": 5745,
+          "relation_count": 10349,
+          "build_status": "ready"
+        },
+        "warnings": [
+          "TWM validation scaffold: not for production use."
+        ]
+      }
+    },
+    {
+      "name": "bishan_demo.list_states",
+      "method": "GET",
+      "path": "/api/twm/projects/04b232a2-941e-4324-906d-95ab695d0c1b/states",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 116.0,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "states_count": 1
+      }
+    },
+    {
+      "name": "bishan_demo.state_detail",
+      "method": "GET",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 4071.5,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version": {
+          "id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+          "object_count": 5745,
+          "relation_count": 10349,
+          "build_status": "ready"
+        },
+        "hits_count": 0
+      }
+    },
+    {
+      "name": "bishan_demo.evaluate_rules",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/evaluate-rules",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 15790.7,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "hits_count": 96,
+        "summary": {
+          "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+          "rule_count": 7,
+          "hit_count": 96,
+          "review_task_count": 95,
+          "data_quality_hit_count": 1,
+          "approval_consistency_hit_count": 36,
+          "evidence_item_count": 380
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "bishan_demo.rule_hits",
+      "method": "GET",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/rule-hits",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 30.2,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "hits_count": 96
+      }
+    },
+    {
+      "name": "bishan_demo.audit_report",
+      "method": "GET",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/audit-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1583.3,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.forecast",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/forecast",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2197.3,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "summary": {
+          "scenario": "e2e_bishan_farmland_review",
+          "risk_pressure": 1.0,
+          "utility_delta": -0.56
+        }
+      }
+    },
+    {
+      "name": "bishan_demo.action_mask_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/action-mask-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1389.9,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.action_mask_report.v1",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.counterfactual_rollout",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/counterfactual-rollout",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 947.2,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "summary": {
+          "schema": "territory_world_model.counterfactual_rollout.v1",
+          "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+          "scenario": "e2e_bishan_farmland_review",
+          "horizon": 3,
+          "planning_lift": 0.45,
+          "risk_delta": 0.0,
+          "claim_status": "review_required"
+        }
+      }
+    },
+    {
+      "name": "bishan_demo.beam_plan",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/beam-plan",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 7674.0,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.beam_plan_report.v1",
+        "status": "blocked",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "candidates_count": 3
+      }
+    },
+    {
+      "name": "bishan_demo.validation_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/validation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 4551.0,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "stages_count": 6,
+        "summary": {
+          "stage_count": 6,
+          "passed_stage_count": 2,
+          "review_stage_count": 4,
+          "blocked_stage_count": 0
+        }
+      }
+    },
+    {
+      "name": "bishan_demo.world_model_profile",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/world-model-profile",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 7492.3,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "summary": {
+          "capability_count": 5,
+          "pass_count": 4,
+          "review_count": 1
+        }
+      }
+    },
+    {
+      "name": "bishan_demo.state_contract_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/state-contract-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1383.5,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.state_contract_report.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.dynamics_backend_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/dynamics-backend-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 12390.9,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_backend_report.v1",
+        "status": "blocked",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.training_objective_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/training-objective-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 13261.1,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.training_objective_report.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.dynamics_training_examples",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/dynamics-training-examples",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 6095.0,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d",
+        "examples_count": 4,
+        "summary": {
+          "example_count": 4,
+          "forecast_scaffold_example_count": 3,
+          "temporal_transition_example_count": 1,
+          "usable_example_count": 0,
+          "review_example_count": 4
+        }
+      }
+    },
+    {
+      "name": "bishan_demo.dynamics_readiness_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/dynamics-readiness-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 10148.4,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_readiness_report.v1",
+        "status": "blocked",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.dynamics_evaluation_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/dynamics-evaluation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 11102.1,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_evaluation_report.v1",
+        "status": "blocked",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.fit_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/fit-dynamics-candidate",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 11021.3,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_fit_report.v1",
+        "status": "blocked",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/train-dynamics-candidate",
+      "status_code": 400,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 18227.4,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "dictionary update sequence element #0 has length 1; 2 is required",
+      "summary": {}
+    },
+    {
+      "name": "bishan_demo.geofm_ablation_gate",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/geofm-ablation-gate",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 827.1,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.geofm_ablation_gate.v1",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.geofm_downstream_experiment_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/geofm-downstream-experiment-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1770.8,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.geofm_downstream_experiment_report.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.causal_calibration_report",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/causal-calibration-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200,
+        400
+      ],
+      "ok": true,
+      "elapsed_ms": 980.9,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.causal_calibration_report.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.scca_causal_evidence_report_no_payload",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/scca-causal-evidence-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200,
+        400
+      ],
+      "ok": true,
+      "elapsed_ms": 23.0,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.scca_causal_evidence_report.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.farmland_layout_candidates",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/farmland-layout-candidates",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2.9,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+        "status": "pass",
+        "summary": {
+          "candidate_count": 7,
+          "legal_feasible_count": 2,
+          "blocked_count": 5,
+          "hard_constraint_policy": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+          "claim_boundary": "optimization_fixture_only_not_for_production"
+        }
+      }
+    },
+    {
+      "name": "bishan_demo.farmland_layout_optimization_beam_plan",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/farmland-layout-optimization-beam-plan",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 7765.2,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.selected_plan_evaluation_bundle",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/selected-plan-evaluation-bundle",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 14001.4,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.selected_plan_evaluation_bundle.v1",
+        "status": "review",
+        "project_id": "04b232a2-941e-4324-906d-95ab695d0c1b",
+        "state_version_id": "759d4334-87f9-43c6-acf1-a2c5056f0f6d"
+      }
+    },
+    {
+      "name": "bishan_demo.scenarios_list",
+      "method": "GET",
+      "path": "/api/twm/scenarios?project_id=04b232a2-941e-4324-906d-95ab695d0c1b",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2.9,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "scenarios_count": 0
+      }
+    },
+    {
+      "name": "bishan_multi_admin.create_project",
+      "method": "POST",
+      "path": "/api/twm/projects",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2.9,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft",
+        "id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.project_detail",
+      "method": "GET",
+      "path": "/api/twm/projects/7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1.1,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft",
+        "id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.build_state",
+      "method": "POST",
+      "path": "/api/twm/projects/7f8ef6b1-84f4-42f9-a2f6-0f063a098d98/build-state",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 82370.8,
+      "timeout_s": 360,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project": {
+          "id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+          "name": "E2E Bishan multi-admin evaluation 1782111808"
+        },
+        "state_version": {
+          "id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+          "object_count": 22531,
+          "relation_count": 43329,
+          "build_status": "ready"
+        },
+        "warnings": [
+          "no contract sidecar was found; role bindings were derived from manifest sources"
+        ]
+      }
+    },
+    {
+      "name": "bishan_multi_admin.list_states",
+      "method": "GET",
+      "path": "/api/twm/projects/7f8ef6b1-84f4-42f9-a2f6-0f063a098d98/states",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 10.0,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "states_count": 1
+      }
+    },
+    {
+      "name": "bishan_multi_admin.state_detail",
+      "method": "GET",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 14868.7,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version": {
+          "id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+          "object_count": 22531,
+          "relation_count": 43329,
+          "build_status": "ready"
+        },
+        "hits_count": 0
+      }
+    },
+    {
+      "name": "bishan_multi_admin.evaluate_rules",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/evaluate-rules",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 107687.7,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "hits_count": 140,
+        "summary": {
+          "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+          "rule_count": 7,
+          "hit_count": 140,
+          "review_task_count": 139,
+          "data_quality_hit_count": 1,
+          "approval_consistency_hit_count": 56,
+          "evidence_item_count": 556
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "bishan_multi_admin.rule_hits",
+      "method": "GET",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/rule-hits",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 31.0,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "hits_count": 140
+      }
+    },
+    {
+      "name": "bishan_multi_admin.audit_report",
+      "method": "GET",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/audit-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 8119.4,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.forecast",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/forecast",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 12671.7,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "summary": {
+          "scenario": "e2e_multi_admin_compliance",
+          "risk_pressure": 1.0,
+          "utility_delta": -0.49
+        }
+      }
+    },
+    {
+      "name": "bishan_multi_admin.action_mask_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/action-mask-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 8374.2,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.action_mask_report.v1",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.counterfactual_rollout",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/counterfactual-rollout",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 4538.5,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "summary": {
+          "schema": "territory_world_model.counterfactual_rollout.v1",
+          "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+          "scenario": "e2e_multi_admin_compliance",
+          "horizon": 3,
+          "planning_lift": 0.03,
+          "risk_delta": 0.0,
+          "claim_status": "review_required"
+        }
+      }
+    },
+    {
+      "name": "bishan_multi_admin.beam_plan",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/beam-plan",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 44492.5,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.beam_plan_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "candidates_count": 3
+      }
+    },
+    {
+      "name": "bishan_multi_admin.validation_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/validation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 26438.4,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "stages_count": 6,
+        "summary": {
+          "stage_count": 6,
+          "passed_stage_count": 2,
+          "review_stage_count": 4,
+          "blocked_stage_count": 0
+        }
+      }
+    },
+    {
+      "name": "bishan_multi_admin.world_model_profile",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/world-model-profile",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 43155.6,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "summary": {
+          "capability_count": 5,
+          "pass_count": 4,
+          "review_count": 1
+        }
+      }
+    },
+    {
+      "name": "bishan_multi_admin.state_contract_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/state-contract-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 8345.4,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.state_contract_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.dynamics_backend_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/dynamics-backend-report",
+      "status_code": "timeout",
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 45002.7,
+      "timeout_s": 45,
+      "content_type": "",
+      "error": "request_timeout: HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=45)",
+      "summary": {}
+    },
+    {
+      "name": "bishan_multi_admin.training_objective_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/training-objective-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 102629.5,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.training_objective_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.dynamics_training_examples",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/dynamics-training-examples",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 35582.0,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132",
+        "examples_count": 4,
+        "summary": {
+          "example_count": 4,
+          "forecast_scaffold_example_count": 3,
+          "temporal_transition_example_count": 1,
+          "usable_example_count": 0,
+          "review_example_count": 4
+        }
+      }
+    },
+    {
+      "name": "bishan_multi_admin.dynamics_readiness_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/dynamics-readiness-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 60101.8,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_readiness_report.v1",
+        "status": "blocked",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.dynamics_evaluation_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/dynamics-evaluation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 66188.7,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_evaluation_report.v1",
+        "status": "blocked",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.fit_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/fit-dynamics-candidate",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 66249.2,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_fit_report.v1",
+        "status": "blocked",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/train-dynamics-candidate",
+      "status_code": 400,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 112671.6,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "dictionary update sequence element #0 has length 1; 2 is required",
+      "summary": {}
+    },
+    {
+      "name": "bishan_multi_admin.geofm_ablation_gate",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/geofm-ablation-gate",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 5187.6,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.geofm_ablation_gate.v1",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.geofm_downstream_experiment_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/geofm-downstream-experiment-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 10419.4,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.geofm_downstream_experiment_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.causal_calibration_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/causal-calibration-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200,
+        400
+      ],
+      "ok": true,
+      "elapsed_ms": 5531.4,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.causal_calibration_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.scca_causal_evidence_report_no_payload",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/scca-causal-evidence-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200,
+        400
+      ],
+      "ok": true,
+      "elapsed_ms": 3.4,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.scca_causal_evidence_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.farmland_layout_candidates",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/farmland-layout-candidates",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 3.7,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+        "status": "pass",
+        "summary": {
+          "candidate_count": 7,
+          "legal_feasible_count": 3,
+          "blocked_count": 4,
+          "hard_constraint_policy": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+          "claim_boundary": "optimization_fixture_only_not_for_production"
+        }
+      }
+    },
+    {
+      "name": "bishan_multi_admin.farmland_layout_optimization_beam_plan",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/farmland-layout-optimization-beam-plan",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 46528.9,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.selected_plan_evaluation_bundle",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/selected-plan-evaluation-bundle",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 86332.2,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.selected_plan_evaluation_bundle.v1",
+        "status": "review",
+        "project_id": "7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+        "state_version_id": "bd564739-a3a4-4b14-b658-ca1d93e45132"
+      }
+    },
+    {
+      "name": "bishan_multi_admin.scenarios_list",
+      "method": "GET",
+      "path": "/api/twm/scenarios?project_id=7f8ef6b1-84f4-42f9-a2f6-0f063a098d98",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1.4,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "scenarios_count": 0
+      }
+    },
+    {
+      "name": "one_map_village.create_project",
+      "method": "POST",
+      "path": "/api/twm/projects",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2.7,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft",
+        "id": "8988ce77-9f38-444b-9328-76c9037d46af"
+      }
+    },
+    {
+      "name": "one_map_village.project_detail",
+      "method": "GET",
+      "path": "/api/twm/projects/8988ce77-9f38-444b-9328-76c9037d46af",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1.1,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "status": "draft",
+        "id": "8988ce77-9f38-444b-9328-76c9037d46af"
+      }
+    },
+    {
+      "name": "one_map_village.build_state",
+      "method": "POST",
+      "path": "/api/twm/projects/8988ce77-9f38-444b-9328-76c9037d46af/build-state",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 8896.4,
+      "timeout_s": 240,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project": {
+          "id": "8988ce77-9f38-444b-9328-76c9037d46af",
+          "name": "E2E One Map village standard sample 1782112817"
+        },
+        "state_version": {
+          "id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+          "object_count": 5494,
+          "relation_count": 2632,
+          "build_status": "ready"
+        },
+        "warnings": [
+          "no contract sidecar was found; role bindings were derived from manifest sources"
+        ]
+      }
+    },
+    {
+      "name": "one_map_village.list_states",
+      "method": "GET",
+      "path": "/api/twm/projects/8988ce77-9f38-444b-9328-76c9037d46af/states",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 6.0,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "states_count": 1
+      }
+    },
+    {
+      "name": "one_map_village.state_detail",
+      "method": "GET",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1593.5,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version": {
+          "id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+          "object_count": 5494,
+          "relation_count": 2632,
+          "build_status": "ready"
+        },
+        "hits_count": 0
+      }
+    },
+    {
+      "name": "one_map_village.evaluate_rules",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/evaluate-rules",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 758.5,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "hits_count": 72,
+        "summary": {
+          "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+          "rule_count": 7,
+          "hit_count": 72,
+          "review_task_count": 72,
+          "data_quality_hit_count": 0,
+          "approval_consistency_hit_count": 0,
+          "evidence_item_count": 288
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "one_map_village.rule_hits",
+      "method": "GET",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/rule-hits",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 31.7,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "hits_count": 72
+      }
+    },
+    {
+      "name": "one_map_village.audit_report",
+      "method": "GET",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/audit-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 211.1,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.forecast",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/forecast",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 409.9,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "summary": {
+          "scenario": "e2e_one_map_plan_adjustment",
+          "risk_pressure": 1.0,
+          "utility_delta": -0.63
+        }
+      }
+    },
+    {
+      "name": "one_map_village.action_mask_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/action-mask-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 211.6,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.action_mask_report.v1",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.counterfactual_rollout",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/counterfactual-rollout",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 199.9,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "summary": {
+          "schema": "territory_world_model.counterfactual_rollout.v1",
+          "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+          "scenario": "e2e_one_map_plan_adjustment",
+          "horizon": 3,
+          "planning_lift": 0.08,
+          "risk_delta": 0.0,
+          "claim_status": "review_required"
+        }
+      }
+    },
+    {
+      "name": "one_map_village.beam_plan",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/beam-plan",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1617.8,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.beam_plan_report.v1",
+        "status": "blocked",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "candidates_count": 3
+      }
+    },
+    {
+      "name": "one_map_village.validation_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/validation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 816.0,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "stages_count": 6,
+        "summary": {
+          "stage_count": 6,
+          "passed_stage_count": 2,
+          "review_stage_count": 4,
+          "blocked_stage_count": 0
+        }
+      }
+    },
+    {
+      "name": "one_map_village.world_model_profile",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/world-model-profile",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1401.1,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "summary": {
+          "capability_count": 5,
+          "pass_count": 4,
+          "review_count": 1
+        }
+      }
+    },
+    {
+      "name": "one_map_village.state_contract_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/state-contract-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 214.2,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.state_contract_report.v1",
+        "status": "blocked",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.dynamics_backend_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/dynamics-backend-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2778.8,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_backend_report.v1",
+        "status": "blocked",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.training_objective_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/training-objective-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2790.4,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.training_objective_report.v1",
+        "status": "review",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.dynamics_training_examples",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/dynamics-training-examples",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1219.5,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c",
+        "examples_count": 4,
+        "summary": {
+          "example_count": 4,
+          "forecast_scaffold_example_count": 3,
+          "temporal_transition_example_count": 1,
+          "usable_example_count": 0,
+          "review_example_count": 4
+        }
+      }
+    },
+    {
+      "name": "one_map_village.dynamics_readiness_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/dynamics-readiness-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2169.7,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_readiness_report.v1",
+        "status": "blocked",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.dynamics_evaluation_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/dynamics-evaluation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2372.6,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_evaluation_report.v1",
+        "status": "blocked",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.fit_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/fit-dynamics-candidate",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2367.5,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.dynamics_fit_report.v1",
+        "status": "blocked",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/train-dynamics-candidate",
+      "status_code": 400,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 4301.2,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "dictionary update sequence element #0 has length 1; 2 is required",
+      "summary": {}
+    },
+    {
+      "name": "one_map_village.geofm_ablation_gate",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/geofm-ablation-gate",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 200.0,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.geofm_ablation_gate.v1",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.geofm_downstream_experiment_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/geofm-downstream-experiment-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 392.0,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.geofm_downstream_experiment_report.v1",
+        "status": "review",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.causal_calibration_report",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/causal-calibration-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200,
+        400
+      ],
+      "ok": true,
+      "elapsed_ms": 350.9,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.causal_calibration_report.v1",
+        "status": "review",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.scca_causal_evidence_report_no_payload",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/scca-causal-evidence-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200,
+        400
+      ],
+      "ok": true,
+      "elapsed_ms": 2.3,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.scca_causal_evidence_report.v1",
+        "status": "review",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.farmland_layout_candidates",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/farmland-layout-candidates",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2.1,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
+        "status": "pass",
+        "summary": {
+          "candidate_count": 7,
+          "legal_feasible_count": 1,
+          "blocked_count": 6,
+          "hard_constraint_policy": "永久基本农田和生态保护红线作为法定硬约束先过滤；超过工程容差的方案仅保留为压力测试或复核样本，不进入合法可推荐空间的 Pareto 排序。",
+          "claim_boundary": "optimization_fixture_only_not_for_production"
+        }
+      }
+    },
+    {
+      "name": "one_map_village.farmland_layout_optimization_beam_plan",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/farmland-layout-optimization-beam-plan",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1956.6,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.farmland_layout_optimization_beam_plan_report.v1",
+        "status": "review",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.selected_plan_evaluation_bundle",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/selected-plan-evaluation-bundle",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 3356.0,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.selected_plan_evaluation_bundle.v1",
+        "status": "review",
+        "project_id": "8988ce77-9f38-444b-9328-76c9037d46af",
+        "state_version_id": "c43e99cf-29d7-4ae2-8cd2-4734e098f70c"
+      }
+    },
+    {
+      "name": "one_map_village.scenarios_list",
+      "method": "GET",
+      "path": "/api/twm/scenarios?project_id=8988ce77-9f38-444b-9328-76c9037d46af",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1.8,
+      "timeout_s": 45,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "scenarios_count": 0
+      }
+    },
+    {
+      "name": "baseline.c1_manual_overlay.export_validation",
+      "method": "POST",
+      "path": "/api/twm/baseline-export-validation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2562.5,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "review",
+        "coverage": {
+          "overlap_count": 10,
+          "coverage_ratio": 1.0
+        },
+        "parser_compatibility": {
+          "status": "pass",
+          "comparable_metrics": [
+            "hard_constraint_conflict_recall",
+            "missed_blocking_conflict_rate",
+            "evidence_link_completeness"
+          ]
+        },
+        "blocking_errors": [],
+        "warnings": [
+          "not_for_production_or_sanitization_flag_missing"
+        ]
+      }
+    },
+    {
+      "name": "baseline.c1_manual_overlay.comparison",
+      "method": "POST",
+      "path": "/api/twm/baseline-comparison-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1483.2,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "metrics_pass_but_data_gate_blocks_upgrade",
+        "metric_comparisons": [
+          {
+            "name": "hard_constraint_conflict_recall",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.9,
+            "delta": 0.1
+          },
+          {
+            "name": "missed_blocking_conflict_rate",
+            "status": "pass",
+            "twm_value": 0.0,
+            "baseline_value": 0.1,
+            "delta": 0.1
+          },
+          {
+            "name": "evidence_link_completeness",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.7,
+            "delta": 0.3
+          }
+        ]
+      }
+    },
+    {
+      "name": "baseline.c1_manual_overlay.evidence_pipeline",
+      "method": "POST",
+      "path": "/api/twm/baseline-evidence-pipeline-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 3907.5,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "review",
+        "pipeline_decision": "metrics_pass_but_data_gate_blocks_upgrade"
+      }
+    },
+    {
+      "name": "baseline.c2_rule_only.export_validation",
+      "method": "POST",
+      "path": "/api/twm/baseline-export-validation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2738.6,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "review",
+        "coverage": {
+          "overlap_count": 10,
+          "coverage_ratio": 1.0
+        },
+        "parser_compatibility": {
+          "status": "pass",
+          "comparable_metrics": [
+            "audit_trail_completeness",
+            "unsupported_recommendation_rate",
+            "review_task_precision"
+          ]
+        },
+        "blocking_errors": [],
+        "warnings": [
+          "not_for_production_or_sanitization_flag_missing"
+        ]
+      }
+    },
+    {
+      "name": "baseline.c2_rule_only.comparison",
+      "method": "POST",
+      "path": "/api/twm/baseline-comparison-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1414.7,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "metrics_pass_but_data_gate_blocks_upgrade",
+        "metric_comparisons": [
+          {
+            "name": "audit_trail_completeness",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.7,
+            "delta": 0.3
+          },
+          {
+            "name": "unsupported_recommendation_rate",
+            "status": "pass",
+            "twm_value": 0.0,
+            "baseline_value": 0.1,
+            "delta": 0.1
+          },
+          {
+            "name": "review_task_precision",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.666667,
+            "delta": 0.333333
+          }
+        ]
+      }
+    },
+    {
+      "name": "baseline.c2_rule_only.evidence_pipeline",
+      "method": "POST",
+      "path": "/api/twm/baseline-evidence-pipeline-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 3915.2,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "review",
+        "pipeline_decision": "metrics_pass_but_data_gate_blocks_upgrade"
+      }
+    },
+    {
+      "name": "baseline.c3_same_case_optimization.export_validation",
+      "method": "POST",
+      "path": "/api/twm/baseline-export-validation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2459.1,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "blocked",
+        "coverage": {
+          "overlap_count": 0,
+          "coverage_ratio": 0.0
+        },
+        "parser_compatibility": {
+          "status": "review",
+          "comparable_metrics": []
+        },
+        "blocking_errors": [
+          "twm_case_output_path:file_not_found",
+          "baseline_case_output_path:file_not_found",
+          "twm_case_output_empty",
+          "baseline_case_output_empty",
+          "twm_missing_required_columns:candidate_id,rank,selected,legal_feasible,planner_regret_against_human_oracle",
+          "baseline_missing_required_columns:candidate_id,rank,selected,legal_feasible,planner_regret_against_human_oracle",
+          "same_case_join_key_missing"
+        ],
+        "warnings": [
+          "claim_parser_columns_missing_or_partial:candidate_id,rank,legal_feasible,planner_regret_against_human_oracle",
+          "not_for_production_or_sanitization_flag_missing",
+          "no_claim_metrics_recovered_by_current_parser"
+        ]
+      }
+    },
+    {
+      "name": "baseline.c3_same_case_optimization.comparison",
+      "method": "POST",
+      "path": "/api/twm/baseline-comparison-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1172.6,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "baseline_evidence_not_provided",
+        "metric_comparisons": [
+          {
+            "name": "candidate_rejection_reason_coverage",
+            "status": "missing",
+            "twm_value": null,
+            "baseline_value": null,
+            "delta": null
+          },
+          {
+            "name": "legal_feasible_topk_precision",
+            "status": "missing",
+            "twm_value": null,
+            "baseline_value": null,
+            "delta": null
+          },
+          {
+            "name": "planner_regret_against_human_oracle",
+            "status": "missing",
+            "twm_value": null,
+            "baseline_value": null,
+            "delta": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "baseline.c3_same_case_optimization.evidence_pipeline",
+      "method": "POST",
+      "path": "/api/twm/baseline-evidence-pipeline-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2658.1,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "blocked",
+        "pipeline_decision": "export_validation_blocked"
+      }
+    },
+    {
+      "name": "baseline.c3_non_same_case_negative_control.export_validation",
+      "method": "POST",
+      "path": "/api/twm/baseline-export-validation-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2657.5,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "blocked",
+        "coverage": {
+          "overlap_count": 0,
+          "coverage_ratio": 0.0
+        },
+        "parser_compatibility": {
+          "status": "pass",
+          "comparable_metrics": [
+            "candidate_rejection_reason_coverage",
+            "legal_feasible_topk_precision",
+            "planner_regret_against_human_oracle"
+          ]
+        },
+        "blocking_errors": [
+          "same_case_overlap_missing"
+        ],
+        "warnings": [
+          "not_for_production_or_sanitization_flag_missing"
+        ]
+      }
+    },
+    {
+      "name": "baseline.c3_non_same_case_negative_control.comparison",
+      "method": "POST",
+      "path": "/api/twm/baseline-comparison-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 1347.9,
+      "timeout_s": 60,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_comparison_report.v1",
+        "status": "review",
+        "upgrade_decision": "no_metric_lift_over_baseline",
+        "metric_comparisons": [
+          {
+            "name": "candidate_rejection_reason_coverage",
+            "status": "pass",
+            "twm_value": 1.0,
+            "baseline_value": 0.5,
+            "delta": 0.5
+          },
+          {
+            "name": "legal_feasible_topk_precision",
+            "status": "review",
+            "twm_value": 0.666667,
+            "baseline_value": 0.333333,
+            "delta": 0.333334
+          },
+          {
+            "name": "planner_regret_against_human_oracle",
+            "status": "pass",
+            "twm_value": 0.04,
+            "baseline_value": 0.162,
+            "delta": 0.122
+          }
+        ]
+      }
+    },
+    {
+      "name": "baseline.c3_non_same_case_negative_control.evidence_pipeline",
+      "method": "POST",
+      "path": "/api/twm/baseline-evidence-pipeline-report",
+      "status_code": 200,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": true,
+      "elapsed_ms": 2571.5,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "",
+      "summary": {
+        "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+        "status": "blocked",
+        "pipeline_decision": "export_validation_blocked"
+      }
+    }
+  ],
+  "failures": [
+    {
+      "name": "bishan_demo.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/759d4334-87f9-43c6-acf1-a2c5056f0f6d/train-dynamics-candidate",
+      "status_code": 400,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 18227.4,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "dictionary update sequence element #0 has length 1; 2 is required",
+      "summary": {}
+    },
+    {
+      "name": "bishan_multi_admin.dynamics_backend_report",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/dynamics-backend-report",
+      "status_code": "timeout",
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 45002.7,
+      "timeout_s": 45,
+      "content_type": "",
+      "error": "request_timeout: HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=45)",
+      "summary": {}
+    },
+    {
+      "name": "bishan_multi_admin.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/bd564739-a3a4-4b14-b658-ca1d93e45132/train-dynamics-candidate",
+      "status_code": 400,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 112671.6,
+      "timeout_s": 120,
+      "content_type": "application/json",
+      "error": "dictionary update sequence element #0 has length 1; 2 is required",
+      "summary": {}
+    },
+    {
+      "name": "one_map_village.train_dynamics_candidate",
+      "method": "POST",
+      "path": "/api/twm/states/c43e99cf-29d7-4ae2-8cd2-4734e098f70c/train-dynamics-candidate",
+      "status_code": 400,
+      "expected_status_codes": [
+        200
+      ],
+      "ok": false,
+      "elapsed_ms": 4301.2,
+      "timeout_s": 90,
+      "content_type": "application/json",
+      "error": "dictionary update sequence element #0 has length 1; 2 is required",
+      "summary": {}
+    }
+  ],
+  "notes": [
+    "This run uses real authenticated HTTP requests against the local running app.",
+    "Per-request timeouts are recorded as E2E failures instead of being mocked or skipped."
+  ]
+}

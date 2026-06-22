@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
+import re
 import threading
 from pathlib import Path
 from typing import Any, Iterable
@@ -68,10 +70,1016 @@ from .utils import compact_text, read_csv, read_json, safe_float, safe_int, trut
 
 _INSTANCE_LOCK = threading.Lock()
 _INSTANCE: "TerritoryWorldModelService | None" = None
+TWM_BASELINE_EXPORT_MAX_BYTES = 5 * 1024 * 1024
 
 
 def _json(data: Any) -> str:
     return json.dumps(jsonable(data), ensure_ascii=False, default=str)
+
+
+TWM_BUSINESS_SCENARIOS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "farmland_protection_review",
+        "label": "耕地保护与占补平衡审查",
+        "decision_question": "拟建或调整项目是否触碰永久基本农田、生态红线，或造成耕地保护目标风险？",
+        "operator_goal": "在审查前暴露项目合规风险、证据缺口和可替代空间方案。",
+        "primary_roles": ["project", "parcel", "permanent_basic_farmland", "eco_redline", "planning_zone"],
+        "required_evidence": ["项目范围", "现状地类图斑", "永久基本农田", "生态保护红线", "审批/补正记录"],
+        "default_action_type": "protect",
+        "default_target_role": "project",
+        "default_scenario": "farmland_protection_review",
+        "default_evidence_coverage": 0.78,
+        "default_horizon": 3,
+        "decision_outputs": ["风险命中优先级", "证据审计包", "合法可行备选方案"],
+        "guardrails": ["硬约束命中不直接给通过建议", "合成数据只能作为演示和回归证据"],
+    },
+    {
+        "id": "construction_project_compliance",
+        "label": "建设项目用地合规预审",
+        "decision_question": "项目选址、规模和审批状态是否与用途管制分区、城镇开发边界和已有审查意见一致？",
+        "operator_goal": "把项目落地前的用地冲突、补正事项和审批一致性风险前置给业务人员。",
+        "primary_roles": ["project", "parcel", "planning_zone", "urban_boundary", "review_task"],
+        "required_evidence": ["建设项目范围", "用途管制分区", "城镇开发边界", "审查意见", "历史审批状态"],
+        "default_action_type": "inspect",
+        "default_target_role": "project",
+        "default_scenario": "construction_project_compliance",
+        "default_evidence_coverage": 0.72,
+        "default_horizon": 2,
+        "decision_outputs": ["审批一致性风险", "补正证据清单", "人工复核任务"],
+        "guardrails": ["缺少审批记录时只给复核建议", "边界外建设风险必须保留人工审查"],
+    },
+    {
+        "id": "territorial_plan_adjustment",
+        "label": "国土空间用途调整推演",
+        "decision_question": "用途调整或空间优化方案会怎样影响保护约束、规划效用和后续监管压力？",
+        "operator_goal": "在方案比选阶段比较调整收益、约束风险和可解释证据，而不是只输出最优数值。",
+        "primary_roles": ["scenario", "parcel", "planning_zone", "project", "control_boundary"],
+        "required_evidence": ["现状空间格局", "规划分区", "硬约束边界", "候选调整方案", "历史监管样本"],
+        "default_action_type": "convert",
+        "default_target_role": "scenario",
+        "default_scenario": "territorial_plan_adjustment",
+        "default_evidence_coverage": 0.68,
+        "default_horizon": 5,
+        "decision_outputs": ["方案效用/风险排序", "反事实推演摘要", "不可推荐方案原因"],
+        "guardrails": ["硬约束方案不得进入推荐集", "预测结论必须带证据覆盖和不确定性"],
+    },
+)
+
+
+TWM_RESEARCH_POSITIONING: dict[str, Any] = {
+    "research_question": (
+        "Can a governance-oriented geospatial world model improve territorial planning "
+        "decisions by coupling hierarchical GIS state, policy constraints, evidence provenance "
+        "and action-conditioned forecast in one auditable loop?"
+    ),
+    "core_technology": [
+        {
+            "name": "Hierarchical GIS object-relation-rule-evidence state",
+            "claim": "TWM represents parcels, projects, control boundaries, planning zones, approvals, evidence and rules as a linked state rather than as a flat feature table.",
+            "why_it_matters": "Territorial governance decisions depend on object roles, spatial relations, policy clauses and evidence provenance at the same time.",
+        },
+        {
+            "name": "Action-conditioned multi-head territorial dynamics",
+            "claim": "TWM forecasts future latent state, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions.",
+            "why_it_matters": "The decision object is not only land-use change, but the consequence of governance actions under hard constraints and evidence limits.",
+        },
+        {
+            "name": "Evidence-gated and causally calibrated claim ladder",
+            "claim": "TWM separates deterministic rule evidence, observational causal calibration and validation gates before upgrading any operational claim.",
+            "why_it_matters": "A system can be useful while still refusing to overclaim when data are synthetic, underidentified or missing production evidence.",
+        },
+    ],
+    "innovation_hypotheses": [
+        {
+            "hypothesis": "The novelty is architectural integration, not that GIS simulation itself is new.",
+            "test": "Compare against land-use simulators, GIS rule engines and optimization tools on whether they jointly expose action-conditioned forecast, policy evidence and audit-ready claim boundaries.",
+        },
+        {
+            "hypothesis": "Object-relation-rule-evidence state reduces missed compliance conflicts compared with layer-by-layer manual review.",
+            "test": "Measure hard-constraint conflict recall and false review burden on held-out real approval/review cases.",
+        },
+        {
+            "hypothesis": "Evidence-gated forecasts improve decision defensibility compared with black-box planning scores.",
+            "test": "Audit whether every recommended or rejected option carries source evidence, rule clause, uncertainty and human-review reason.",
+        },
+    ],
+    "unmet_need_hypotheses": [
+        "Planning and land-use review workflows still fragment spatial overlays, policy checks, approval evidence and scenario comparison across separate tools.",
+        "Existing land-use simulators emphasize spatial pattern transition, while operational review needs action consequences, rule validity and audit boundaries.",
+        "Optimization tools can rank candidates, but often do not preserve why a candidate is illegal, under-evidenced or only reviewable rather than approvable.",
+    ],
+    "baselines_to_beat": [
+        "Manual GIS overlay plus checklist review",
+        "Rule-only spatial compliance engine",
+        "Land-use simulation models such as FLUS/PLUS/CLUE-S/CA-Markov for pattern transition",
+        "Optimization-only farmland or planning candidate ranking without evidence-gated claim validation",
+    ],
+    "falsification_conditions": [
+        "If real workflow interviews show the target decisions are already well solved by existing tools, TWM should be narrowed or stopped.",
+        "If TWM does not improve hard-constraint conflict recall, evidence completeness or audit-trail quality over baselines, the claimed contribution is not supported.",
+        "If action-conditioned dynamics cannot be validated beyond synthetic fixtures, TWM must remain a review scaffold rather than a production decision model.",
+    ],
+    "minimum_evaluation_plan": [
+        "Collect real or sanitized approval/review histories with project geometry, rule outcomes, evidence links and final decisions.",
+        "Benchmark against manual overlay, rule-only engine and at least one land-use simulation or optimization baseline where appropriate.",
+        "Report missed hard-constraint conflicts, review-task precision, evidence completeness, candidate rejection reason coverage and audit-trail completeness.",
+        "Keep synthetic fixtures for regression only; do not use them as production-effect evidence.",
+    ],
+    "claim_boundary": (
+        "Current TWM is a rigorous prototype and review scaffold. Its defensible near-term claim is auditable decision support "
+        "for territorial governance workflows; production-grade predictive claims require real observed histories, baseline comparisons and external validation."
+    ),
+}
+
+
+TWM_DATA_FOUNDATION_DATASETS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "twm_bishan_demo",
+        "label": "Bishan demo engineering fixture",
+        "path": "data_agent/test_data/twm_bishan_demo",
+        "nature": "mixed_real_imagery_plus_synthetic_governance_fixture",
+        "positioning": "工程 MVP 与回归测试主数据包；含真实 Sentinel-2 影像，但项目、PBF、生态红线、审批/复核等治理对象为合成或 not-for-production。",
+        "files": {
+            "parcel_current.geojson": "feature",
+            "synthetic_projects.geojson": "feature",
+            "synthetic_pbf.geojson": "feature",
+            "synthetic_eco_redline.geojson": "feature",
+            "synthetic_planning_zones.geojson": "feature",
+            "synthetic_annual_change.geojson": "feature",
+            "tables/approval_records.csv": "row",
+            "tables/review_tasks.csv": "row",
+            "tables/rule_evaluation.csv": "row",
+            "tables/state_snapshots.csv": "row",
+            "tables/multimodal_evidence_index.csv": "row",
+        },
+    },
+    {
+        "id": "twm_bishan_multi_admin_eval",
+        "label": "Bishan multi-admin evaluation fixture",
+        "path": "data_agent/test_data/twm_bishan_multi_admin_eval",
+        "nature": "synthetic_multi_admin_governance_fixture",
+        "positioning": "多行政单元压力测试与数据基础体检主对象；结构覆盖更宽，但关键业务历史仍为 synthetic/not-for-production。",
+        "files": {
+            "parcel_current.geojson": "feature",
+            "synthetic_projects.geojson": "feature",
+            "synthetic_pbf.geojson": "feature",
+            "synthetic_eco_redline.geojson": "feature",
+            "synthetic_planning_zones.geojson": "feature",
+            "synthetic_annual_change.geojson": "feature",
+            "tables/approval_records.csv": "row",
+            "tables/review_tasks.csv": "row",
+            "tables/rule_evaluation.csv": "row",
+            "tables/state_snapshots.csv": "row",
+            "tables/multimodal_evidence_index.csv": "row",
+        },
+    },
+    {
+        "id": "twm_one_map_village_standard_sample",
+        "label": "One Map village standard sample",
+        "path": "data_agent/test_data/twm_one_map_village_standard_sample",
+        "nature": "standard_structure_sample_with_synthetic_substitutes",
+        "positioning": "用于验证自然资源一张图村规划样例能否按 TWM 角色契约接入；所有数据均 not-for-production。",
+        "files": {
+            "parcel_current.geojson": "feature",
+            "synthetic_projects.geojson": "feature",
+            "synthetic_pbf.geojson": "feature",
+            "synthetic_eco_redline.geojson": "feature",
+            "synthetic_planning_zones.geojson": "feature",
+            "synthetic_annual_change.geojson": "feature",
+            "synthetic_urban_boundary.geojson": "feature",
+            "tables/approval_records.csv": "row",
+            "tables/review_tasks.csv": "row",
+            "tables/rule_evaluation.csv": "row",
+            "tables/state_snapshots.csv": "row",
+            "tables/multimodal_evidence_index.csv": "row",
+        },
+    },
+)
+
+
+TWM_DATA_FOUNDATION_SUPPORTED_PROBLEMS: tuple[dict[str, str], ...] = (
+    {
+        "problem": "工程 MVP 与回归测试",
+        "support": "可验证项目创建、状态构建、角色绑定、规则评价、证据链、审计报告、前端 TWM 工作流是否跑通。",
+    },
+    {
+        "problem": "业务审查脚手架",
+        "support": "可模拟耕地保护、生态红线、用途管制、审批一致性、复核任务等对象之间的关系和风险暴露逻辑。",
+    },
+    {
+        "problem": "优化/规划消费者链路",
+        "support": "可测试候选方案载入、硬约束过滤、beam ranking、action-mask 安全头和验证口径是否按证据门控降级。",
+    },
+    {
+        "problem": "一张图标准适配",
+        "support": "可检查字段别名、角色契约、值域、图斑/分区/管控边界等标准结构能否被 TWM 状态模型消费。",
+    },
+)
+
+
+TWM_DATA_FOUNDATION_UNSUPPORTED_CLAIMS: tuple[dict[str, str], ...] = (
+    {
+        "claim": "生产级审批结论",
+        "reason": "当前审批、复核、执法、规则命中和项目样本主要为 synthetic/not-for-production，不能替代真实业务责任链。",
+    },
+    {
+        "claim": "真实治理效果预测或因果改进",
+        "reason": "尚无非合成的生产观察历史、真实 treated/control 样本、真实政策动作可行性标签和跨期审批结果。",
+    },
+    {
+        "claim": "行动条件动态模型已被真实数据验证",
+        "reason": "结构性和合成实验门通过的是管线与诊断能力，默认证据门仍为 review，不能升级为生产准确性证明。",
+    },
+    {
+        "claim": "TWM 已证明优于现有业务工具",
+        "reason": "仍缺真实工作流基线对比，如 manual GIS overlay、rule-only engine、土地利用模拟或优化工具的同题评测。",
+    },
+)
+
+
+TWM_DATA_FOUNDATION_REQUIRED_NEXT_DATA: tuple[dict[str, Any], ...] = (
+    {
+        "priority": "P0",
+        "data": "真实或脱敏的项目审批/复核/补正/执法历史",
+        "minimum": "项目几何、申请/决定日期、审批结果、复核任务、规则命中、证据链接、最终处置结果。",
+        "unlocks": "生产观察历史、业务效果评估、人工审查负担和漏检风险基线。",
+    },
+    {
+        "priority": "P0",
+        "data": "权威管控边界与规划约束版本",
+        "minimum": "永久基本农田、生态保护红线、城镇开发边界、用途管制分区、规划版本与生效时间。",
+        "unlocks": "真实硬约束冲突判断、规则条款追溯、跨版本政策动作可行性验证。",
+    },
+    {
+        "priority": "P1",
+        "data": "真实 action-mask/政策可行性标签",
+        "minimum": "action_type、policy_code、allowed/blocked/conditional 标签、region、period、人工复核原因。",
+        "unlocks": "动作可行性安全头、未见地区/政策泛化、方案推荐边界。",
+    },
+    {
+        "priority": "P1",
+        "data": "真实时序状态快照与遥感/变更证据",
+        "minimum": "多期图斑、年度变更、项目落地结果、遥感证据索引和证据质量标注。",
+        "unlocks": "行动条件动态、反事实推演、预测不确定性和证据覆盖校准。",
+    },
+    {
+        "priority": "P2",
+        "data": "现有工具链基线结果",
+        "minimum": "人工叠加清单、rule-only 输出、土地利用模拟/优化工具输出、耗时和错误记录。",
+        "unlocks": "证明 TWM 是否真正解决未满足需求，而不是技术堆砌。",
+    },
+)
+
+
+TWM_RESEARCH_CLAIM_MATRIX: tuple[dict[str, Any], ...] = (
+    {
+        "claim_id": "C1_state_conflict_recall",
+        "claim": "Object-relation-rule-evidence state reduces missed hard-constraint conflicts compared with layer-by-layer manual GIS review.",
+        "business_need": "项目用地预审需要同时看项目范围、现状图斑、PBF、生态红线、用途分区、审批证据和规则条款；分散叠加容易漏掉冲突或证据缺口。",
+        "core_technology": "Hierarchical GIS object-relation-rule-evidence state",
+        "baseline": "manual_gis_overlay_checklist",
+        "minimum_data": [
+            "真实或脱敏项目几何",
+            "权威 PBF/生态红线/用途管制边界版本",
+            "人工审查清单或历史规则命中",
+            "最终处置结果",
+        ],
+        "metrics": [
+            {"name": "hard_constraint_conflict_recall", "direction": "higher_is_better", "minimum_pass": 0.95},
+            {"name": "missed_blocking_conflict_rate", "direction": "lower_is_better", "maximum_pass": 0.02},
+            {"name": "evidence_link_completeness", "direction": "higher_is_better", "minimum_pass": 0.9},
+        ],
+        "current_evidence": "Synthetic fixtures verify the pipeline and rule/evidence object model, but do not validate real conflict recall.",
+        "current_status": "engineering_supported_production_unvalidated",
+        "falsification": "If TWM misses the same hard constraints as manual overlay, or only matches manual results while adding overhead, this claim fails.",
+    },
+    {
+        "claim_id": "C2_audit_defensibility",
+        "claim": "Evidence-gated review improves audit defensibility compared with rule-only spatial compliance engines.",
+        "business_need": "业务人员不仅要知道命中了哪条规则，还要知道证据来源、缺口、人工复核原因和为什么不能自动给审批结论。",
+        "core_technology": "Evidence-gated and causally calibrated claim ladder",
+        "baseline": "rule_only_spatial_compliance_engine",
+        "minimum_data": [
+            "真实规则条款和版本",
+            "规则命中证据链接",
+            "复核任务与补正记录",
+            "审计抽查结论",
+        ],
+        "metrics": [
+            {"name": "audit_trail_completeness", "direction": "higher_is_better", "minimum_pass": 0.9},
+            {"name": "unsupported_recommendation_rate", "direction": "lower_is_better", "maximum_pass": 0.01},
+            {"name": "review_task_precision", "direction": "higher_is_better", "minimum_pass": 0.75},
+        ],
+        "current_evidence": "Current rule hits, evidence items and review tasks are synthetic/not-for-production; useful for regression, not for audit quality proof.",
+        "current_status": "scaffold_supported_real_audit_unvalidated",
+        "falsification": "If rule-only output gives equivalent audit completeness and lower burden on real cases, TWM's evidence-gated contribution is unsupported.",
+    },
+    {
+        "claim_id": "C3_action_conditioned_triage",
+        "claim": "Action-conditioned dynamics improves plan-option triage compared with land-use simulators or optimization-only candidate ranking.",
+        "business_need": "方案比选要解释候选方案为什么非法、证据不足、只能复核或可继续推进，而不只是给空间格局转移或单一优化分数。",
+        "core_technology": "Action-conditioned multi-head territorial dynamics",
+        "baseline": "land_use_simulator_or_optimization_only_ranking",
+        "minimum_data": [
+            "多期真实状态快照",
+            "候选方案与实际处置结果",
+            "action_type 与政策可行性标签",
+            "方案审查意见和后续监管结果",
+        ],
+        "metrics": [
+            {"name": "candidate_rejection_reason_coverage", "direction": "higher_is_better", "minimum_pass": 0.85},
+            {"name": "legal_feasible_topk_precision", "direction": "higher_is_better", "minimum_pass": 0.8},
+            {"name": "planner_regret_against_human_oracle", "direction": "lower_is_better", "maximum_pass": 0.15},
+        ],
+        "current_evidence": "Synthetic experiment foundation supports action-mask and beam-plan plumbing; no real action-conditioned dynamics validation yet.",
+        "current_status": "experimental_synthetic_only",
+        "falsification": "If action-conditioned outputs cannot beat simpler rule-filtered candidate ranking on real held-out cases, keep this as a review scaffold only.",
+    },
+    {
+        "claim_id": "C4_standard_contract_ingestion",
+        "claim": "Role-contract based ingestion reduces standard-data onboarding errors compared with ad hoc layer mapping.",
+        "business_need": "自然资源一张图、村规划样例和地方业务字段常存在别名、值域和角色差异，手工映射容易造成语义错配。",
+        "core_technology": "Hierarchical GIS object-relation-rule-evidence state",
+        "baseline": "ad_hoc_layer_mapping",
+        "minimum_data": [
+            "多个地区的一张图/村规划样例",
+            "字段别名与值域标准",
+            "人工验收记录",
+            "映射错误和修复日志",
+        ],
+        "metrics": [
+            {"name": "role_binding_accuracy", "direction": "higher_is_better", "minimum_pass": 0.95},
+            {"name": "value_domain_violation_detection_recall", "direction": "higher_is_better", "minimum_pass": 0.9},
+            {"name": "onboarding_rework_rate", "direction": "lower_is_better", "maximum_pass": 0.1},
+        ],
+        "current_evidence": "One Map village standard sample validates structural compatibility but not cross-region production onboarding performance.",
+        "current_status": "standard_structure_supported_cross_region_unvalidated",
+        "falsification": "If role-contract ingestion does not reduce mapping errors or rework over ad hoc mapping, this contribution should be dropped.",
+    },
+)
+
+
+TWM_RESEARCH_BASELINES: tuple[dict[str, Any], ...] = (
+    {
+        "baseline_id": "manual_gis_overlay_checklist",
+        "label": "Manual GIS overlay plus checklist review",
+        "tests": "当前业务是否已能通过人工叠加和清单审查稳定解决硬约束冲突发现。",
+        "minimum_output": ["人工命中清单", "证据截图或图层记录", "复核意见", "最终处置"],
+        "why_needed": "如果人工流程已经高召回且审计完整，TWM 的增量价值必须体现在效率、证据完整性或复核负担上。",
+    },
+    {
+        "baseline_id": "rule_only_spatial_compliance_engine",
+        "label": "Rule-only spatial compliance engine",
+        "tests": "规则叠加本身是否已经足以发现风险；TWM 是否额外提供证据门控和审计边界。",
+        "minimum_output": ["规则命中", "严重级别", "空间关系", "条款引用"],
+        "why_needed": "防止把 rule engine 能解决的问题包装成 world model 创新。",
+    },
+    {
+        "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+        "label": "Land-use simulator or optimization-only ranking",
+        "tests": "传统模拟/优化能否完成方案排序；TWM 是否更好解释非法、证据不足和 review-only 方案。",
+        "minimum_output": ["候选方案排序", "空间变化预测或优化分数", "约束命中结果"],
+        "why_needed": "防止把已有土地利用模拟或优化能力重复实现为新方法。",
+    },
+    {
+        "baseline_id": "ad_hoc_layer_mapping",
+        "label": "Ad hoc layer and field mapping",
+        "tests": "角色契约是否真正减少接入错误，而不是只增加配置复杂度。",
+        "minimum_output": ["字段映射表", "值域检查结果", "人工修复记录"],
+        "why_needed": "验证 TWM 状态契约对数据落地的实际收益。",
+    },
+)
+
+
+TWM_RESEARCH_NEXT_EXPERIMENTS: tuple[dict[str, Any], ...] = (
+    {
+        "priority": "P0",
+        "experiment": "Retrospective approval replay",
+        "question": "在真实或脱敏历史项目上，TWM 是否比 manual/rule-only baseline 少漏掉硬约束冲突，并生成更完整证据链？",
+        "required_data": ["项目几何", "权威边界版本", "规则命中", "审批/复核结果", "人工基线输出"],
+        "decision": "通过后才能把 C1/C2 从 scaffold 提升到 retrospective evidence。",
+    },
+    {
+        "priority": "P0",
+        "experiment": "Operator workflow interview and task timing",
+        "question": "目标业务是否真有未满足需求，TWM 是否减少查证时间或复核返工？",
+        "required_data": ["操作员流程记录", "任务耗时", "补正/返工原因", "现有工具输出"],
+        "decision": "如果需求已被现有工具很好解决，应收窄或停止对应场景。",
+    },
+    {
+        "priority": "P1",
+        "experiment": "Plan-option triage benchmark",
+        "question": "在真实候选方案上，TWM 是否比优化-only ranking 更能解释非法、证据不足和 review-only 原因？",
+        "required_data": ["候选方案", "action feasibility labels", "审查意见", "监管结果"],
+        "decision": "通过后才允许升级 C3 的 action-conditioned dynamics claim。",
+    },
+    {
+        "priority": "P1",
+        "experiment": "Cross-region standard ingestion audit",
+        "question": "角色契约在多个地区/标准样例上是否减少接入错误和返工？",
+        "required_data": ["多地区一张图样例", "字段别名", "值域标准", "验收记录"],
+        "decision": "通过后才允许升级 C4 的标准适配 claim。",
+    },
+)
+
+
+TWM_BASELINE_EXPORT_TYPES: tuple[dict[str, Any], ...] = (
+    {
+        "export_type": "manual_overlay",
+        "baseline_id": "manual_gis_overlay_checklist",
+        "label": "Manual GIS overlay plus checklist export",
+        "business_use": "Retrospective approval replay for C1 hard-constraint conflict recall and C2 audit defensibility.",
+        "expected_source": "人工叠加清单、审查记录、证据截图/图层版本和最终处置结果的脱敏同案导出。",
+        "required_columns": [
+            "case_id",
+            "ground_truth_conflict",
+            "detected_conflict",
+            "evidence_linked",
+            "unsupported_recommendation",
+        ],
+        "recommended_columns": [
+            "project_id",
+            "region_code",
+            "review_date",
+            "rule_version",
+            "authority_boundary_version",
+            "final_disposition",
+            "review_task_predicted",
+            "review_task_true_positive",
+            "evidence_uri",
+            "not_for_production",
+            "sanitization_level",
+        ],
+        "compatible_claims": ["C1_state_conflict_recall", "C2_audit_defensibility"],
+    },
+    {
+        "export_type": "rule_only_engine",
+        "baseline_id": "rule_only_spatial_compliance_engine",
+        "label": "Rule-only spatial compliance engine export",
+        "business_use": "Compare whether deterministic rule overlay already solves evidence and review-task needs without TWM state/claim gates.",
+        "expected_source": "规则引擎在同一批项目/图斑上的规则命中、空间关系、严重级别和条款引用导出。",
+        "required_columns": [
+            "case_id",
+            "detected_conflict",
+            "evidence_linked",
+            "unsupported_recommendation",
+        ],
+        "recommended_columns": [
+            "ground_truth_conflict",
+            "rule_id",
+            "severity",
+            "spatial_relation",
+            "rule_version",
+            "evidence_uri",
+            "review_task_predicted",
+            "review_task_true_positive",
+            "not_for_production",
+            "sanitization_level",
+        ],
+        "compatible_claims": ["C1_state_conflict_recall", "C2_audit_defensibility"],
+    },
+    {
+        "export_type": "optimization_or_simulator_ranking",
+        "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+        "label": "Land-use simulator or optimization-only ranking export",
+        "business_use": "Plan-option triage benchmark for whether TWM explains illegal/review-only/evidence-gap options better than ranking alone.",
+        "expected_source": "同一批候选方案的模拟/优化排序、可行性、被拒原因和人工/专家排序结果。",
+        "required_columns": [
+            "candidate_id",
+            "rank",
+            "selected",
+            "legal_feasible",
+            "planner_regret_against_human_oracle",
+        ],
+        "recommended_columns": [
+            "case_id",
+            "scenario_id",
+            "action_type",
+            "blocked",
+            "review_only",
+            "rejection_reason",
+            "human_oracle_rank",
+            "selected_utility",
+            "oracle_utility",
+            "not_for_production",
+            "sanitization_level",
+        ],
+        "compatible_claims": ["C3_action_conditioned_triage"],
+    },
+)
+
+
+TWM_BASELINE_EXPORT_TEMPLATE_SPECS: tuple[dict[str, Any], ...] = (
+    {
+        "claim_id": "C1_state_conflict_recall",
+        "baseline_id": "manual_gis_overlay_checklist",
+        "export_type": "manual_overlay",
+        "label": "C1 same-case hard-constraint conflict recall export",
+        "business_question": "同一批历史项目中，TWM 是否比人工叠加清单更少漏掉永久基本农田、生态红线、用途管制等硬约束冲突？",
+        "same_case_join_key": "case_id",
+        "twm_filename": "twm_c1_conflict_recall_sanitized.csv",
+        "baseline_filename": "manual_overlay_c1_conflict_recall_sanitized.csv",
+        "twm_header": [
+            "case_id",
+            "project_id",
+            "region_code",
+            "review_date",
+            "ground_truth_conflict",
+            "detected_conflict",
+            "evidence_linked",
+            "unsupported_recommendation",
+            "rule_version",
+            "authority_boundary_version",
+            "final_disposition",
+            "evidence_uri",
+            "not_for_production",
+            "sanitization_level",
+            "source_system",
+            "export_batch_id",
+        ],
+        "baseline_header": [
+            "case_id",
+            "project_id",
+            "region_code",
+            "review_date",
+            "ground_truth_conflict",
+            "detected_conflict",
+            "evidence_linked",
+            "unsupported_recommendation",
+            "rule_version",
+            "authority_boundary_version",
+            "final_disposition",
+            "evidence_uri",
+            "not_for_production",
+            "sanitization_level",
+            "source_system",
+            "export_batch_id",
+        ],
+        "sample_rows": {
+            "twm": [
+                {
+                    "case_id": "anon-case-001",
+                    "project_id": "anon-project-001",
+                    "region_code": "anon-region",
+                    "review_date": "2025-06",
+                    "ground_truth_conflict": "true",
+                    "detected_conflict": "true",
+                    "evidence_linked": "true",
+                    "unsupported_recommendation": "false",
+                    "rule_version": "rule-v2025q2",
+                    "authority_boundary_version": "boundary-v2025q2",
+                    "final_disposition": "reject_or_revise",
+                    "evidence_uri": "evidence://anon/c1/001",
+                    "not_for_production": "true",
+                    "sanitization_level": "real_sanitized",
+                    "source_system": "twm_state_rule_evidence",
+                    "export_batch_id": "batch-c1-YYYYMM",
+                }
+            ],
+            "baseline": [
+                {
+                    "case_id": "anon-case-001",
+                    "project_id": "anon-project-001",
+                    "region_code": "anon-region",
+                    "review_date": "2025-06",
+                    "ground_truth_conflict": "true",
+                    "detected_conflict": "true",
+                    "evidence_linked": "false",
+                    "unsupported_recommendation": "false",
+                    "rule_version": "rule-v2025q2",
+                    "authority_boundary_version": "boundary-v2025q2",
+                    "final_disposition": "reject_or_revise",
+                    "evidence_uri": "evidence://anon/manual/001",
+                    "not_for_production": "true",
+                    "sanitization_level": "real_sanitized",
+                    "source_system": "manual_overlay_checklist",
+                    "export_batch_id": "batch-c1-YYYYMM",
+                }
+            ],
+        },
+        "field_descriptions": [
+            {
+                "name": "case_id",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "脱敏后的稳定同案 ID，TWM 与 baseline 必须一致。",
+                "metric_use": "用于 same-case overlap；没有它不能证明两边比较的是同一批项目。",
+                "sanitization": "用不可逆匿名 ID 替代真实项目编号。",
+            },
+            {
+                "name": "ground_truth_conflict",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "由最终处置、复核结论或专家复标确认的硬约束冲突真值。",
+                "metric_use": "作为 hard_constraint_conflict_recall 和 missed_blocking_conflict_rate 的分母。",
+                "sanitization": "仅保留布尔标签，不导出敏感原文。",
+            },
+            {
+                "name": "detected_conflict",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "TWM 或人工叠加清单是否在审查阶段发现该冲突。",
+                "metric_use": "与 ground_truth_conflict 组合计算召回和漏检率。",
+                "sanitization": "仅保留布尔标签。",
+            },
+            {
+                "name": "evidence_linked",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "是否能追溯到图层版本、规则条款、截图或审查证据。",
+                "metric_use": "计算 evidence_link_completeness，防止只报风险不报依据。",
+                "sanitization": "证据链接应指向内部脱敏索引，不导出原始文件路径。",
+            },
+            {
+                "name": "unsupported_recommendation",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "系统是否在证据不足或硬约束未解时仍给出推进性建议。",
+                "metric_use": "作为证据门控的安全反例；C1/C2 都需要压低该值。",
+                "sanitization": "仅保留布尔标签和脱敏原因。",
+            },
+        ],
+        "metric_column_map": [
+            {
+                "metric": "hard_constraint_conflict_recall",
+                "columns": ["ground_truth_conflict", "detected_conflict"],
+                "supports_claim_when": "TWM 在同案数据上召回率高于人工 baseline，并达到 claim threshold。",
+            },
+            {
+                "metric": "missed_blocking_conflict_rate",
+                "columns": ["ground_truth_conflict", "detected_conflict"],
+                "supports_claim_when": "TWM 漏检率低于人工 baseline，并低于允许上限。",
+            },
+            {
+                "metric": "evidence_link_completeness",
+                "columns": ["evidence_linked", "evidence_uri"],
+                "supports_claim_when": "TWM 给出的风险能稳定连接到证据和规则版本。",
+            },
+        ],
+        "collection_steps": [
+            "从同一批历史项目抽取项目几何、权威边界版本、最终处置和人工叠加清单结果。",
+            "先由业务或复核人员确定 ground_truth_conflict，再分别导出 TWM 和人工 baseline 检出结果。",
+            "保持 case_id 在两份 CSV 中一致；不一致的项目不得进入 baseline comparison。",
+            "先调用 baseline_export_validation_report，通过后再调用 baseline_evidence_pipeline_report。",
+        ],
+        "production_collection": {
+            "sampling_unit": "historical approval or pre-review case",
+            "minimum_real_rows": 100,
+            "minimum_overlap_ratio": 0.8,
+            "notes": "100 行只是早期回放门槛；论文或试点结论还需要按地区、时间和冲突类型做 power/sensitivity analysis。",
+        },
+    },
+    {
+        "claim_id": "C2_audit_defensibility",
+        "baseline_id": "rule_only_spatial_compliance_engine",
+        "export_type": "rule_only_engine",
+        "label": "C2 evidence-gated audit defensibility export",
+        "business_question": "同一批审查案件中，TWM 是否比 rule-only 空间合规引擎提供更完整、可复核、不过度承诺的审计证据？",
+        "same_case_join_key": "case_id",
+        "twm_filename": "twm_c2_audit_defensibility_sanitized.csv",
+        "baseline_filename": "rule_only_c2_audit_defensibility_sanitized.csv",
+        "twm_header": [
+            "case_id",
+            "project_id",
+            "region_code",
+            "review_date",
+            "detected_conflict",
+            "evidence_linked",
+            "unsupported_recommendation",
+            "review_task_predicted",
+            "review_task_true_positive",
+            "rule_id",
+            "severity",
+            "spatial_relation",
+            "rule_version",
+            "evidence_uri",
+            "audit_reviewer_disposition",
+            "not_for_production",
+            "sanitization_level",
+            "source_system",
+            "export_batch_id",
+        ],
+        "baseline_header": [
+            "case_id",
+            "project_id",
+            "region_code",
+            "review_date",
+            "detected_conflict",
+            "evidence_linked",
+            "unsupported_recommendation",
+            "review_task_predicted",
+            "review_task_true_positive",
+            "rule_id",
+            "severity",
+            "spatial_relation",
+            "rule_version",
+            "evidence_uri",
+            "audit_reviewer_disposition",
+            "not_for_production",
+            "sanitization_level",
+            "source_system",
+            "export_batch_id",
+        ],
+        "sample_rows": {
+            "twm": [
+                {
+                    "case_id": "anon-case-021",
+                    "project_id": "anon-project-021",
+                    "region_code": "anon-region",
+                    "review_date": "2025-07",
+                    "detected_conflict": "true",
+                    "evidence_linked": "true",
+                    "unsupported_recommendation": "false",
+                    "review_task_predicted": "true",
+                    "review_task_true_positive": "true",
+                    "rule_id": "pbf_overlap_blocking",
+                    "severity": "blocking",
+                    "spatial_relation": "intersects",
+                    "rule_version": "rule-v2025q3",
+                    "evidence_uri": "evidence://anon/c2/021",
+                    "audit_reviewer_disposition": "manual_review_required",
+                    "not_for_production": "true",
+                    "sanitization_level": "real_sanitized",
+                    "source_system": "twm_evidence_gate",
+                    "export_batch_id": "batch-c2-YYYYMM",
+                }
+            ],
+            "baseline": [
+                {
+                    "case_id": "anon-case-021",
+                    "project_id": "anon-project-021",
+                    "region_code": "anon-region",
+                    "review_date": "2025-07",
+                    "detected_conflict": "true",
+                    "evidence_linked": "false",
+                    "unsupported_recommendation": "true",
+                    "review_task_predicted": "false",
+                    "review_task_true_positive": "false",
+                    "rule_id": "pbf_overlap_blocking",
+                    "severity": "blocking",
+                    "spatial_relation": "intersects",
+                    "rule_version": "rule-v2025q3",
+                    "evidence_uri": "evidence://anon/rule-only/021",
+                    "audit_reviewer_disposition": "rule_hit_only",
+                    "not_for_production": "true",
+                    "sanitization_level": "real_sanitized",
+                    "source_system": "rule_only_engine",
+                    "export_batch_id": "batch-c2-YYYYMM",
+                }
+            ],
+        },
+        "field_descriptions": [
+            {
+                "name": "case_id",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "脱敏后的稳定审查案件 ID。",
+                "metric_use": "用于 same-case audit comparison。",
+                "sanitization": "不可逆匿名化；同一案件在两份 CSV 中保持一致。",
+            },
+            {
+                "name": "evidence_linked",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "规则命中是否可追溯到证据包、图层版本和条款。",
+                "metric_use": "计算 audit_trail_completeness。",
+                "sanitization": "仅导出 evidence_uri 或证据索引，不导出原始涉密附件。",
+            },
+            {
+                "name": "unsupported_recommendation",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "是否在缺少证据、存在硬约束或需要人工复核时仍输出通过/推进建议。",
+                "metric_use": "计算 unsupported_recommendation_rate。",
+                "sanitization": "仅导出布尔值和脱敏处置类别。",
+            },
+            {
+                "name": "review_task_predicted",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "系统是否创建或建议人工复核任务。",
+                "metric_use": "与 review_task_true_positive 组合计算 review_task_precision。",
+                "sanitization": "仅导出布尔标签。",
+            },
+            {
+                "name": "review_task_true_positive",
+                "required": False,
+                "applies_to": ["twm", "baseline"],
+                "description": "复核任务是否被业务人员确认必要。",
+                "metric_use": "为 review_task_precision 提供人工确认标签。",
+                "sanitization": "只导出确认结果，不导出人员姓名。",
+            },
+        ],
+        "metric_column_map": [
+            {
+                "metric": "audit_trail_completeness",
+                "columns": ["evidence_linked", "evidence_uri", "rule_version"],
+                "supports_claim_when": "TWM 证据链完整率高于 rule-only baseline。",
+            },
+            {
+                "metric": "unsupported_recommendation_rate",
+                "columns": ["unsupported_recommendation"],
+                "supports_claim_when": "TWM 更少在证据不足时给出推进性建议。",
+            },
+            {
+                "metric": "review_task_precision",
+                "columns": ["review_task_predicted", "review_task_true_positive"],
+                "supports_claim_when": "TWM 触发的复核任务更接近业务人员确认的必要复核。",
+            },
+        ],
+        "collection_steps": [
+            "锁定同一批审查案件和同一套规则版本，分别运行 TWM evidence gate 与 rule-only baseline。",
+            "由业务复核人员确认 review_task_true_positive 和 audit_reviewer_disposition。",
+            "确保 evidence_uri 指向可审计但已脱敏的证据索引。",
+            "先通过 export validation，再把完整指标提交给 baseline comparison。",
+        ],
+        "production_collection": {
+            "sampling_unit": "review case or rule-hit case",
+            "minimum_real_rows": 100,
+            "minimum_overlap_ratio": 0.8,
+            "notes": "必须包含真实或脱敏复核结论；只有规则命中日志不足以证明审计可辩护性。",
+        },
+    },
+    {
+        "claim_id": "C3_action_conditioned_triage",
+        "baseline_id": "land_use_simulator_or_optimization_only_ranking",
+        "export_type": "optimization_or_simulator_ranking",
+        "label": "C3 action-conditioned plan-option triage export",
+        "business_question": "同一批候选方案中，TWM 是否比模拟/优化-only 排序更能把合法可行、非法、证据不足和 review-only 方案区分清楚？",
+        "same_case_join_key": "candidate_id",
+        "twm_filename": "twm_c3_action_conditioned_triage_sanitized.csv",
+        "baseline_filename": "optimization_only_c3_candidate_triage_sanitized.csv",
+        "twm_header": [
+            "candidate_id",
+            "case_id",
+            "scenario_id",
+            "action_type",
+            "rank",
+            "selected",
+            "legal_feasible",
+            "blocked",
+            "review_only",
+            "rejection_reason",
+            "planner_regret_against_human_oracle",
+            "human_oracle_rank",
+            "selected_utility",
+            "oracle_utility",
+            "evidence_uri",
+            "not_for_production",
+            "sanitization_level",
+            "source_system",
+            "export_batch_id",
+        ],
+        "baseline_header": [
+            "candidate_id",
+            "case_id",
+            "scenario_id",
+            "action_type",
+            "rank",
+            "selected",
+            "legal_feasible",
+            "blocked",
+            "review_only",
+            "rejection_reason",
+            "planner_regret_against_human_oracle",
+            "human_oracle_rank",
+            "selected_utility",
+            "oracle_utility",
+            "evidence_uri",
+            "not_for_production",
+            "sanitization_level",
+            "source_system",
+            "export_batch_id",
+        ],
+        "sample_rows": {
+            "twm": [
+                {
+                    "candidate_id": "anon-candidate-301",
+                    "case_id": "anon-case-301",
+                    "scenario_id": "anon-scenario-301",
+                    "action_type": "convert",
+                    "rank": "1",
+                    "selected": "true",
+                    "legal_feasible": "true",
+                    "blocked": "false",
+                    "review_only": "false",
+                    "rejection_reason": "",
+                    "planner_regret_against_human_oracle": "0.04",
+                    "human_oracle_rank": "1",
+                    "selected_utility": "0.86",
+                    "oracle_utility": "0.90",
+                    "evidence_uri": "evidence://anon/c3/301",
+                    "not_for_production": "true",
+                    "sanitization_level": "real_sanitized",
+                    "source_system": "twm_action_conditioned_planner",
+                    "export_batch_id": "batch-c3-YYYYMM",
+                }
+            ],
+            "baseline": [
+                {
+                    "candidate_id": "anon-candidate-301",
+                    "case_id": "anon-case-301",
+                    "scenario_id": "anon-scenario-301",
+                    "action_type": "convert",
+                    "rank": "1",
+                    "selected": "true",
+                    "legal_feasible": "false",
+                    "blocked": "true",
+                    "review_only": "true",
+                    "rejection_reason": "pbf_overlap_missing_evidence",
+                    "planner_regret_against_human_oracle": "0.22",
+                    "human_oracle_rank": "4",
+                    "selected_utility": "0.68",
+                    "oracle_utility": "0.90",
+                    "evidence_uri": "evidence://anon/optimization/301",
+                    "not_for_production": "true",
+                    "sanitization_level": "real_sanitized",
+                    "source_system": "optimization_only_ranking",
+                    "export_batch_id": "batch-c3-YYYYMM",
+                }
+            ],
+        },
+        "field_descriptions": [
+            {
+                "name": "candidate_id",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "脱敏后的候选方案 ID，TWM 与 baseline 必须一致。",
+                "metric_use": "C3 same-case comparison 的主 join key。",
+                "sanitization": "不可逆匿名化；保留同一候选方案跨系统一致性。",
+            },
+            {
+                "name": "rank",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "候选方案排序，数值越小优先级越高。",
+                "metric_use": "用于确定 top-k 方案集合。",
+                "sanitization": "不包含真实地块或主体名称。",
+            },
+            {
+                "name": "selected",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "该候选方案是否进入推荐或 top-k 集合。",
+                "metric_use": "与 legal_feasible 组合计算 legal_feasible_topk_precision。",
+                "sanitization": "仅导出布尔标签。",
+            },
+            {
+                "name": "legal_feasible",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "候选方案在当前硬约束和证据条件下是否合法可行。",
+                "metric_use": "判断推荐集是否包含非法或只能复核的方案。",
+                "sanitization": "仅导出布尔标签和脱敏原因。",
+            },
+            {
+                "name": "planner_regret_against_human_oracle",
+                "required": True,
+                "applies_to": ["twm", "baseline"],
+                "description": "相对人工/专家 oracle 的效用损失。",
+                "metric_use": "越低说明排序越接近人工可接受方案。",
+                "sanitization": "导出归一化差值，不导出敏感收益测算细节。",
+            },
+            {
+                "name": "rejection_reason",
+                "required": False,
+                "applies_to": ["twm", "baseline"],
+                "description": "非法、证据不足或 review-only 的脱敏原因。",
+                "metric_use": "计算 candidate_rejection_reason_coverage。",
+                "sanitization": "使用标准原因枚举，不导出原始审查意见全文。",
+            },
+        ],
+        "metric_column_map": [
+            {
+                "metric": "candidate_rejection_reason_coverage",
+                "columns": ["blocked", "review_only", "rejection_reason"],
+                "supports_claim_when": "TWM 对被阻断或只能复核的候选方案提供更完整原因。",
+            },
+            {
+                "metric": "legal_feasible_topk_precision",
+                "columns": ["rank", "selected", "legal_feasible", "blocked"],
+                "supports_claim_when": "TWM 推荐集中的合法可行比例高于优化-only baseline。",
+            },
+            {
+                "metric": "planner_regret_against_human_oracle",
+                "columns": ["planner_regret_against_human_oracle", "selected_utility", "oracle_utility"],
+                "supports_claim_when": "TWM 相对人工 oracle 的平均 regret 更低。",
+            },
+        ],
+        "collection_steps": [
+            "为同一批候选方案保留稳定 candidate_id，并记录 action_type、排序、推荐集和人工/专家 oracle。",
+            "用同一规则版本和同一证据截面分别运行 TWM action-conditioned triage 与模拟/优化-only baseline。",
+            "把非法、证据不足和 review-only 原因归一到标准枚举，避免导出原始敏感审查文本。",
+            "先确认 candidate_id overlap，再比较 top-k precision、reason coverage 和 regret。",
+        ],
+        "production_collection": {
+            "sampling_unit": "candidate plan option",
+            "minimum_real_rows": 50,
+            "minimum_overlap_ratio": 0.8,
+            "notes": "C3 必须有真实或脱敏 action feasibility labels 和人工/专家排序；只有优化分数不足以验证 action-conditioned dynamics。",
+        },
+    },
+)
 
 
 class TerritoryWorldModelService:
@@ -82,6 +1090,13 @@ class TerritoryWorldModelService:
         self.state_builder = StateBuilder()
         self.rule_evaluator = RuleEvaluator(repository=self.repository)
         self.planner = TerritoryWorldModelPlanner()
+        self._report_cache_lock = threading.RLock()
+        self._state_contract_cache: dict[tuple[str, str], dict[str, Any]] = {}
+        self._dynamics_training_cache: dict[tuple[str, str], dict[str, Any]] = {}
+        self._dynamics_readiness_cache: dict[tuple[str, str], dict[str, Any]] = {}
+        self._dynamics_backend_cache: dict[tuple[str, str], dict[str, Any]] = {}
+        self._geofm_gate_cache: dict[tuple[str, str], dict[str, Any]] = {}
+        self._causal_calibration_cache: dict[tuple[str, str], dict[str, Any]] = {}
 
     def status(self) -> dict[str, Any]:
         repo_status = self.repository.status()
@@ -119,9 +1134,1479 @@ class TerritoryWorldModelService:
             "updated_at": now_utc_iso(),
         }
 
+    def _report_cache_key(
+        self,
+        state_version_id: str,
+        payload: dict[str, Any],
+        *,
+        include: tuple[str, ...],
+    ) -> tuple[str, str]:
+        material = {key: self._report_cache_value(key, payload.get(key)) for key in include if key in payload}
+        return state_version_id, json.dumps(jsonable(material), ensure_ascii=False, default=str, sort_keys=True)
+
+    def _report_cache_value(self, key: str, value: Any) -> Any:
+        if key in {"dataset", "dynamics_training_dataset"} and isinstance(value, dict):
+            return self._dynamics_dataset_cache_fingerprint(value)
+        return value
+
+    def _dynamics_dataset_cache_fingerprint(self, dataset: dict[str, Any]) -> dict[str, Any]:
+        summary = dict(dataset.get("summary") or {})
+        return {
+            "state_version_id": dataset.get("state_version_id"),
+            "project_id": dataset.get("project_id"),
+            "summary": {
+                "example_count": summary.get("example_count"),
+                "forecast_scaffold_example_count": summary.get("forecast_scaffold_example_count"),
+                "temporal_transition_example_count": summary.get("temporal_transition_example_count"),
+                "usable_example_count": summary.get("usable_example_count"),
+                "review_example_count": summary.get("review_example_count"),
+                "temporal_holdout": summary.get("temporal_holdout"),
+                "supervision_sources": summary.get("supervision_sources"),
+                "loss_contract": summary.get("loss_contract"),
+            },
+            "inventory": self._dynamics_sample_inventory(dataset),
+        }
+
+    def _cache_get(self, cache: dict[tuple[str, str], dict[str, Any]], key: tuple[str, str]) -> dict[str, Any] | None:
+        with self._report_cache_lock:
+            value = cache.get(key)
+            return deepcopy(value) if value is not None else None
+
+    def _cache_set(self, cache: dict[tuple[str, str], dict[str, Any]], key: tuple[str, str], value: dict[str, Any]) -> None:
+        with self._report_cache_lock:
+            cache[key] = deepcopy(value)
+
+    def _clear_report_cache(self, *, project_id: str | None = None, state_version_id: str | None = None) -> None:
+        with self._report_cache_lock:
+            if state_version_id:
+                self._state_contract_cache = {
+                    key: value for key, value in self._state_contract_cache.items() if key[0] != state_version_id
+                }
+                self._dynamics_training_cache = {
+                    key: value for key, value in self._dynamics_training_cache.items() if key[0] != state_version_id
+                }
+                self._dynamics_readiness_cache = {
+                    key: value for key, value in self._dynamics_readiness_cache.items() if key[0] != state_version_id
+                }
+                self._dynamics_backend_cache = {
+                    key: value for key, value in self._dynamics_backend_cache.items() if key[0] != state_version_id
+                }
+                self._geofm_gate_cache = {
+                    key: value for key, value in self._geofm_gate_cache.items() if key[0] != state_version_id
+                }
+                self._causal_calibration_cache = {
+                    key: value for key, value in self._causal_calibration_cache.items() if key[0] != state_version_id
+                }
+                return
+            if project_id:
+                state_ids = {item.id for item in self.repository.list_state_versions(project_id=project_id)}
+                self._state_contract_cache = {
+                    key: value for key, value in self._state_contract_cache.items() if key[0] not in state_ids
+                }
+                self._dynamics_training_cache = {
+                    key: value for key, value in self._dynamics_training_cache.items() if key[0] not in state_ids
+                }
+                self._dynamics_readiness_cache = {
+                    key: value for key, value in self._dynamics_readiness_cache.items() if key[0] not in state_ids
+                }
+                self._dynamics_backend_cache = {
+                    key: value for key, value in self._dynamics_backend_cache.items() if key[0] not in state_ids
+                }
+                self._geofm_gate_cache = {
+                    key: value for key, value in self._geofm_gate_cache.items() if key[0] not in state_ids
+                }
+                self._causal_calibration_cache = {
+                    key: value for key, value in self._causal_calibration_cache.items() if key[0] not in state_ids
+                }
+                return
+            self._state_contract_cache.clear()
+            self._dynamics_training_cache.clear()
+            self._dynamics_readiness_cache.clear()
+            self._dynamics_backend_cache.clear()
+            self._geofm_gate_cache.clear()
+            self._causal_calibration_cache.clear()
+
     # ------------------------------------------------------------------
     # Project / binding lifecycle
     # ------------------------------------------------------------------
+
+    def list_business_scenarios(self) -> list[dict[str, Any]]:
+        return [json.loads(_json(item)) for item in TWM_BUSINESS_SCENARIOS]
+
+    def research_positioning(self) -> dict[str, Any]:
+        return json.loads(_json(TWM_RESEARCH_POSITIONING))
+
+    def research_claim_matrix(self) -> dict[str, Any]:
+        data_foundation = self.data_foundation_assessment()
+        production_rows = safe_int(
+            data_foundation.get("validation_snapshot", {}).get("production_ready_observed_history_rows"),
+            0,
+        )
+        policy_rows = safe_int(
+            data_foundation.get("validation_snapshot", {}).get("production_policy_history_row_count"),
+            0,
+        )
+        if production_rows > 0 and policy_rows > 0:
+            overall_status = "candidate"
+        else:
+            overall_status = "review"
+        result = {
+            "schema": "territory_world_model.research_claim_matrix.v1",
+            "status": overall_status,
+            "generated_at": now_utc_iso(),
+            "research_question": TWM_RESEARCH_POSITIONING["research_question"],
+            "claim_boundary": (
+                "Every TWM research claim must name the unmet business need, a simpler baseline, minimum real-data evidence, "
+                "metrics and falsification conditions before it can be upgraded beyond prototype status."
+            ),
+            "current_data_gate": {
+                "status": data_foundation.get("status", "review"),
+                "production_ready_observed_history_rows": production_rows,
+                "production_policy_history_row_count": policy_rows,
+                "production_deployment_supported": data_foundation.get("landing_readiness", {}).get("production_deployment_supported", False),
+                "predictive_or_causal_claim_supported": data_foundation.get("landing_readiness", {}).get("predictive_or_causal_claim_supported", False),
+            },
+            "claims": [self._research_claim_with_gate(item, production_rows, policy_rows) for item in TWM_RESEARCH_CLAIM_MATRIX],
+            "baselines": list(TWM_RESEARCH_BASELINES),
+            "next_experiments": list(TWM_RESEARCH_NEXT_EXPERIMENTS),
+            "decision_policy": {
+                "promote_to_retrospective_evidence": [
+                    "real_or_sanitized_history_present",
+                    "named_baseline_output_present",
+                    "metric_thresholds_reported",
+                    "unsupported_recommendation_gate_pass",
+                ],
+                "promote_to_pilot": [
+                    "retrospective_metrics_pass",
+                    "operator_workflow_need_confirmed",
+                    "external_review_of_claim_boundary",
+                    "human_in_the_loop_guardrail_active",
+                ],
+                "stop_or_narrow": [
+                    "baseline_solves_target_need",
+                    "no_metric_lift_over_simpler_method",
+                    "real_data_unavailable_for_core_claim",
+                    "business_users_reject_decision_question",
+                ],
+            },
+            "mentor_answer": (
+                "TWM 的创新性不能靠列举模型组件来证明。当前应把每个主张绑定到真实业务问题、简单基线、数据门槛和可证伪指标；"
+                "在生产历史和 baseline 对比缺失前，TWM 只能主张工程原型和审查脚手架，不能主张生产级 world model。"
+            ),
+        }
+        return json.loads(_json(result))
+
+    def baseline_export_schema(self) -> dict[str, Any]:
+        claim_matrix = self.research_claim_matrix()
+        claims_by_id = {item["claim_id"]: item for item in claim_matrix["claims"]}
+        baselines_by_id = {item["baseline_id"]: item for item in claim_matrix["baselines"]}
+        export_types = []
+        for item in TWM_BASELINE_EXPORT_TYPES:
+            compatible_claims = []
+            for claim_id in item.get("compatible_claims", []):
+                claim = claims_by_id.get(str(claim_id))
+                if claim:
+                    compatible_claims.append(
+                        {
+                            "claim_id": claim["claim_id"],
+                            "claim": claim["claim"],
+                            "metrics": claim.get("metrics", []),
+                            "minimum_data": claim.get("minimum_data", []),
+                        }
+                    )
+            export_types.append(
+                {
+                    **item,
+                    "baseline": baselines_by_id.get(str(item.get("baseline_id")), {}),
+                    "compatible_claim_details": compatible_claims,
+                }
+            )
+        return json.loads(
+            _json(
+                {
+                    "schema": "territory_world_model.baseline_export_schema.v1",
+                    "generated_at": now_utc_iso(),
+                    "purpose": (
+                        "Define the minimum real or sanitized same-case exports required before TWM baseline comparisons can support "
+                        "retrospective evidence instead of synthetic regression evidence."
+                    ),
+                    "same_case_join_requirements": {
+                        "primary_join_key": "case_id for approval/review cases; candidate_id for plan-option candidate rows",
+                        "minimum_overlap_ratio": 0.8,
+                        "required_for_claim_upgrade": True,
+                        "policy": (
+                            "TWM and baseline outputs must cover the same historical projects, parcels, candidates or review cases. "
+                            "Aggregate-only metrics are acceptable for smoke tests but cannot promote research claims."
+                        ),
+                    },
+                    "privacy_and_sanitization": {
+                        "accepted_data_classes": ["real_sanitized", "real_internal_review", "synthetic_regression"],
+                        "recommended_columns": ["not_for_production", "sanitization_level", "source_system", "export_batch_id"],
+                        "minimum_rule": (
+                            "Production or sensitive project/person identifiers must be removed or replaced by stable anonymous IDs; "
+                            "geometry may be generalized if case joins, rule hits and final dispositions remain traceable."
+                        ),
+                    },
+                    "export_types": export_types,
+                    "validation_api": {
+                        "endpoint": "POST /api/twm/baseline-export-validation-report",
+                        "required_payload": ["twm_case_output_path", "baseline_case_output_path"],
+                        "optional_payload": ["claim_id", "baseline_id", "export_type"],
+                    },
+                    "claim_boundary": (
+                        "Passing this schema check only means the baseline export is structurally comparable. It does not by itself prove "
+                        "TWM has solved an unmet business need."
+                    ),
+                }
+            )
+        )
+
+    def baseline_export_templates(self) -> dict[str, Any]:
+        schema = self.baseline_export_schema()
+        claim_matrix = self.research_claim_matrix()
+        claims_by_id = {item["claim_id"]: item for item in claim_matrix["claims"]}
+        baselines_by_id = {item["baseline_id"]: item for item in claim_matrix["baselines"]}
+        export_types = {item["export_type"]: item for item in schema.get("export_types", [])}
+        templates = [
+            self._baseline_export_template_public(item, claims_by_id, baselines_by_id, export_types)
+            for item in TWM_BASELINE_EXPORT_TEMPLATE_SPECS
+        ]
+        return json.loads(
+            _json(
+                {
+                    "schema": "territory_world_model.baseline_export_templates.v1",
+                    "generated_at": now_utc_iso(),
+                    "purpose": (
+                        "Provide real/sanitized same-case CSV collection templates for the C1/C2/C3 TWM research claims. "
+                        "These templates are for evidence collection and validation, not for direct production deployment."
+                    ),
+                    "templates": templates,
+                    "global_sanitization_rules": [
+                        "Replace real project, parcel, candidate, organization and person identifiers with stable anonymous IDs.",
+                        "Keep the same anonymous join key across TWM and baseline exports; otherwise the comparison is invalid.",
+                        "Use evidence_uri as an internal sanitized evidence index instead of raw file paths or sensitive text.",
+                        "Set not_for_production=true unless the export has passed internal data-governance release review.",
+                        "Preserve rule_version, boundary_version and source_system because metric results are not interpretable without lineage.",
+                    ],
+                    "validation_flow": [
+                        "Fill both TWM and baseline CSVs for the same cases or candidates.",
+                        "Import or place the CSVs inside the repository workspace.",
+                        "Run POST /api/twm/baseline-export-validation-report and fix blockers.",
+                        "Only after export validation passes, run POST /api/twm/baseline-evidence-pipeline-report.",
+                    ],
+                    "claim_boundary": (
+                        "Templates reduce ambiguity in data collection. They do not prove TWM innovation or production value until "
+                        "real/sanitized same-case exports beat the named simpler baselines under the claim metrics."
+                    ),
+                }
+            )
+        )
+
+    def import_baseline_export(self, payload: dict[str, Any] | None = None, username: str = "anonymous") -> dict[str, Any]:
+        payload = dict(payload or {})
+        raw_csv = payload.get("content") or payload.get("csv") or payload.get("text") or ""
+        if not isinstance(raw_csv, str) or not raw_csv.strip():
+            raise ValueError("CSV content is required")
+        content = raw_csv.encode("utf-8")
+        if len(content) > TWM_BASELINE_EXPORT_MAX_BYTES:
+            raise ValueError(f"CSV content exceeds {TWM_BASELINE_EXPORT_MAX_BYTES // 1024 // 1024}MB limit")
+        original_name = compact_text(payload.get("filename") or payload.get("name") or "baseline_export.csv")
+        safe_name = self._safe_baseline_export_filename(original_name)
+        source_role = compact_text(payload.get("source_role") or payload.get("role") or "baseline").lower()
+        if source_role not in {"twm", "baseline"}:
+            source_role = "baseline"
+        claim_id = compact_text(payload.get("claim_id") or "unspecified_claim")
+        baseline_id = compact_text(payload.get("baseline_id") or "unspecified_baseline")
+        batch_id = self._safe_baseline_export_token(payload.get("batch_id") or payload.get("export_batch_id") or now_utc_iso())
+        user_token = self._safe_baseline_export_token(username or "anonymous")
+        target_dir = self._repo_root() / "data_agent" / "uploads" / "twm_baseline_exports" / user_token / batch_id
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = (target_dir / f"{source_role}_{safe_name}").resolve()
+        repo_root = self._repo_root().resolve()
+        if repo_root not in target_path.parents:
+            raise ValueError("resolved baseline export path escapes repository")
+        target_path.write_text(raw_csv, encoding="utf-8")
+        relative_path = target_path.relative_to(repo_root).as_posix()
+        source = self._load_baseline_export_records(relative_path)
+        records = source.get("records", [])
+        if source.get("error"):
+            raise ValueError(f"imported CSV is not readable: {source['error']}")
+        columns = sorted(self._record_columns(records))
+        preview_metrics = self._aggregate_case_metrics(records)
+        return json.loads(
+            _json(
+                {
+                    "schema": "territory_world_model.baseline_export_import.v1",
+                    "status": "pass" if records else "review",
+                    "generated_at": now_utc_iso(),
+                    "path": relative_path,
+                    "filename": target_path.name,
+                    "source_role": source_role,
+                    "claim_id": claim_id,
+                    "baseline_id": baseline_id,
+                    "export_batch_id": batch_id,
+                    "row_count": len(records),
+                    "columns": columns,
+                    "preview_metrics": preview_metrics,
+                    "not_for_production": True,
+                    "next_actions": [
+                        "use this returned path as twm_case_output_path or baseline_case_output_path",
+                        "run baseline_export_validation_report before using this export in a comparison",
+                    ],
+                    "claim_boundary": (
+                        "Imported baseline CSVs are staged for TWM validation. Importing a file does not make it production evidence."
+                    ),
+                }
+            )
+        )
+
+    def baseline_export_validation_report(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        schema = self.baseline_export_schema()
+        export_types = list(schema.get("export_types") or [])
+        claim_matrix = self.research_claim_matrix()
+        claims_by_id = {item["claim_id"]: item for item in claim_matrix["claims"]}
+        claim_id = compact_text(payload.get("claim_id") or "C1_state_conflict_recall")
+        claim = claims_by_id.get(claim_id) or claim_matrix["claims"][0]
+        baseline_id = compact_text(payload.get("baseline_id") or claim.get("baseline"))
+        export_type_id = compact_text(payload.get("export_type"))
+        export_spec = self._baseline_export_spec(export_types, export_type_id, baseline_id, claim["claim_id"])
+        twm_source = self._load_baseline_export_records(payload.get("twm_case_output_path") or payload.get("twm_case_result_path"))
+        baseline_source = self._load_baseline_export_records(payload.get("baseline_case_output_path") or payload.get("baseline_case_result_path"))
+        join_key = self._baseline_export_join_key(twm_source, baseline_source, export_spec)
+        twm_inventory = self._baseline_export_record_inventory(twm_source.get("records", []), join_key)
+        baseline_inventory = self._baseline_export_record_inventory(baseline_source.get("records", []), join_key)
+        overlap = self._baseline_export_overlap(twm_inventory, baseline_inventory)
+        twm_required = self._missing_columns(twm_inventory["columns"], export_spec.get("required_columns", []))
+        baseline_required = self._missing_columns(baseline_inventory["columns"], export_spec.get("required_columns", []))
+        claim_required = self._missing_columns(
+            set(twm_inventory["columns"]) | set(baseline_inventory["columns"]),
+            self._claim_export_required_columns(claim["claim_id"]),
+        )
+        parser_probe = self._baseline_export_parser_probe(twm_source, baseline_source, claim)
+        public_twm_inventory = self._baseline_export_public_inventory(twm_inventory)
+        public_baseline_inventory = self._baseline_export_public_inventory(baseline_inventory)
+
+        blocking_errors: list[str] = []
+        warnings: list[str] = []
+        if twm_source.get("error"):
+            blocking_errors.append(f"twm_case_output_path:{twm_source['error']}")
+        if baseline_source.get("error"):
+            blocking_errors.append(f"baseline_case_output_path:{baseline_source['error']}")
+        if twm_inventory["row_count"] <= 0:
+            blocking_errors.append("twm_case_output_empty")
+        if baseline_inventory["row_count"] <= 0:
+            blocking_errors.append("baseline_case_output_empty")
+        if twm_required:
+            blocking_errors.append(f"twm_missing_required_columns:{','.join(twm_required)}")
+        if baseline_required:
+            blocking_errors.append(f"baseline_missing_required_columns:{','.join(baseline_required)}")
+        if not join_key:
+            blocking_errors.append("same_case_join_key_missing")
+        elif overlap["overlap_count"] <= 0:
+            blocking_errors.append("same_case_overlap_missing")
+        elif overlap["coverage_ratio"] < float(schema["same_case_join_requirements"]["minimum_overlap_ratio"]):
+            blocking_errors.append("same_case_overlap_below_threshold")
+        if claim_required:
+            warnings.append(f"claim_parser_columns_missing_or_partial:{','.join(claim_required)}")
+        if twm_inventory["duplicate_join_ids"]:
+            warnings.append("twm_duplicate_join_ids")
+        if baseline_inventory["duplicate_join_ids"]:
+            warnings.append("baseline_duplicate_join_ids")
+        if twm_inventory["not_for_production_rows"] <= 0 and baseline_inventory["not_for_production_rows"] <= 0:
+            warnings.append("not_for_production_or_sanitization_flag_missing")
+        if not parser_probe["comparable_metrics"]:
+            warnings.append("no_claim_metrics_recovered_by_current_parser")
+
+        status = "blocked" if blocking_errors else "review" if warnings else "pass"
+        if twm_inventory["synthetic_rows"] > 0 or baseline_inventory["synthetic_rows"] > 0:
+            warnings.append("synthetic_rows_present_export_is_regression_only")
+
+        result = {
+            "schema": "territory_world_model.baseline_export_validation_report.v1",
+            "status": status,
+            "generated_at": now_utc_iso(),
+            "claim": {
+                "claim_id": claim["claim_id"],
+                "claim": claim["claim"],
+                "baseline_id": baseline_id,
+                "metrics": claim.get("metrics", []),
+            },
+            "export_spec": {
+                "export_type": export_spec.get("export_type"),
+                "baseline_id": export_spec.get("baseline_id"),
+                "label": export_spec.get("label"),
+                "required_columns": export_spec.get("required_columns", []),
+                "recommended_columns": export_spec.get("recommended_columns", []),
+            },
+            "sources": {
+                "twm": self._baseline_export_source_summary(twm_source),
+                "baseline": self._baseline_export_source_summary(baseline_source),
+            },
+            "column_inventory": {
+                "join_key": join_key,
+                "twm": public_twm_inventory,
+                "baseline": public_baseline_inventory,
+                "missing_required": {
+                    "twm": twm_required,
+                    "baseline": baseline_required,
+                    "claim_parser": claim_required,
+                },
+            },
+            "coverage": overlap,
+            "parser_compatibility": parser_probe,
+            "blocking_errors": list(dict.fromkeys(blocking_errors)),
+            "warnings": list(dict.fromkeys(warnings)),
+            "next_actions": self._baseline_export_validation_next_actions(status, blocking_errors, warnings),
+            "claim_boundary": (
+                "This validation checks whether real or sanitized TWM/baseline outputs are structurally comparable on the same cases. "
+                "Research or production claims still require metric lift, workflow need confirmation and external review."
+            ),
+        }
+        if truthy(payload.get("save_scenario") or payload.get("persist_scenario") or payload.get("save_run_card")):
+            result["scenario_card"] = self._save_baseline_export_validation_scenario(payload, result)
+        return json.loads(_json(result))
+
+    def baseline_comparison_report(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        claim_matrix = self.research_claim_matrix()
+        claims_by_id = {item["claim_id"]: item for item in claim_matrix["claims"]}
+        baselines_by_id = {item["baseline_id"]: item for item in claim_matrix["baselines"]}
+        claim_id = str(payload.get("claim_id") or "C1_state_conflict_recall")
+        claim = claims_by_id.get(claim_id) or claim_matrix["claims"][0]
+        baseline_id = str(payload.get("baseline_id") or claim.get("baseline") or "")
+        baseline = baselines_by_id.get(baseline_id, {"baseline_id": baseline_id, "label": baseline_id or "unspecified"})
+        twm_metric_source = self._load_metric_source(payload.get("twm_metrics_path") or payload.get("twm_result_path"))
+        baseline_metric_source = self._load_metric_source(payload.get("baseline_metrics_path") or payload.get("baseline_result_path"))
+        twm_case_source = self._load_case_metric_source(payload.get("twm_case_output_path") or payload.get("twm_case_result_path"))
+        baseline_case_source = self._load_case_metric_source(payload.get("baseline_case_output_path") or payload.get("baseline_case_result_path"))
+        twm_metrics = self._normalize_metric_payload(payload.get("twm_metrics") or payload.get("twm_result") or {})
+        baseline_metrics = self._normalize_metric_payload(payload.get("baseline_metrics") or payload.get("baseline_result") or {})
+        twm_metrics.update(twm_metric_source.get("metrics", {}))
+        baseline_metrics.update(baseline_metric_source.get("metrics", {}))
+        twm_metrics.update(twm_case_source.get("metrics", {}))
+        baseline_metrics.update(baseline_case_source.get("metrics", {}))
+        metric_comparisons = [
+            self._compare_research_metric(metric, twm_metrics, baseline_metrics)
+            for metric in claim.get("metrics", [])
+        ]
+        provided_metric_count = sum(1 for item in metric_comparisons if item["status"] != "missing")
+        passed_metric_count = sum(1 for item in metric_comparisons if item["status"] == "pass")
+        missing: list[str] = []
+        if not twm_metrics:
+            missing.append("twm_metrics")
+        if not baseline_metrics:
+            missing.append("baseline_metrics")
+        missing.extend(str(item) for item in claim.get("gate", {}).get("missing", []) if item)
+        if provided_metric_count <= 0:
+            missing.append("comparable_metrics")
+        enough_metrics = provided_metric_count > 0 and passed_metric_count == provided_metric_count
+        claim_gate_clear = not claim.get("gate", {}).get("missing")
+        status = "pass" if enough_metrics and claim_gate_clear and not missing else "review"
+        upgrade_decision = "remain_prototype_scaffold"
+        if provided_metric_count <= 0:
+            upgrade_decision = "baseline_evidence_not_provided"
+        elif enough_metrics and claim_gate_clear:
+            upgrade_decision = "eligible_for_retrospective_evidence"
+        elif enough_metrics:
+            upgrade_decision = "metrics_pass_but_data_gate_blocks_upgrade"
+        elif provided_metric_count > 0:
+            upgrade_decision = "no_metric_lift_over_baseline"
+        result = {
+            "schema": "territory_world_model.baseline_comparison_report.v1",
+            "status": status,
+            "generated_at": now_utc_iso(),
+            "claim": {
+                "claim_id": claim["claim_id"],
+                "claim": claim["claim"],
+                "current_status": claim.get("current_status"),
+                "gate": claim.get("gate", {}),
+                "falsification": claim.get("falsification"),
+            },
+            "baseline": baseline,
+            "inputs": {
+                "twm_metric_count": len(twm_metrics),
+                "baseline_metric_count": len(baseline_metrics),
+                "provided_metric_count": provided_metric_count,
+                "passed_metric_count": passed_metric_count,
+                "twm_metrics_source": twm_metric_source.get("source") or "payload" if twm_metrics else "none",
+                "baseline_metrics_source": baseline_metric_source.get("source") or "payload" if baseline_metrics else "none",
+                "twm_case_source": twm_case_source.get("source") or "none",
+                "baseline_case_source": baseline_case_source.get("source") or "none",
+                "twm_case_count": safe_int(twm_case_source.get("case_count"), 0),
+                "baseline_case_count": safe_int(baseline_case_source.get("case_count"), 0),
+                "metric_source_errors": {
+                    "twm": twm_metric_source.get("error"),
+                    "baseline": baseline_metric_source.get("error"),
+                    "twm_cases": twm_case_source.get("error"),
+                    "baseline_cases": baseline_case_source.get("error"),
+                },
+            },
+            "metric_comparisons": metric_comparisons,
+            "evidence_gate": {
+                "status": status,
+                "missing": list(dict.fromkeys(missing)),
+                "claim_gate_clear": claim_gate_clear,
+                "metrics_pass": enough_metrics,
+            },
+            "upgrade_decision": upgrade_decision,
+            "claim_boundary": (
+                "This report can compare metrics against a named baseline, but it does not upgrade TWM claims unless real-data gates "
+                "and metric thresholds both pass."
+            ),
+            "next_actions": self._baseline_comparison_next_actions(upgrade_decision, baseline_id),
+        }
+        if truthy(payload.get("save_scenario") or payload.get("persist_scenario") or payload.get("save_run_card")):
+            result["scenario_card"] = self._save_baseline_comparison_scenario(payload, result)
+        return json.loads(_json(result))
+
+    def baseline_evidence_pipeline_report(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        validation_payload = dict(payload)
+        validation_payload["save_run_card"] = truthy(
+            payload.get("save_validation_run_card")
+            if "save_validation_run_card" in payload
+            else payload.get("save_run_card") or payload.get("save_scenario") or payload.get("persist_scenario")
+        )
+        validation = self.baseline_export_validation_report(validation_payload)
+        blocking_errors = list(validation.get("blocking_errors") or [])
+        warnings = list(validation.get("warnings") or [])
+        run_comparison = not blocking_errors and not truthy(payload.get("validate_only"))
+        comparison: dict[str, Any] | None = None
+        pipeline_status = "blocked" if blocking_errors else "review"
+        pipeline_decision = "export_validation_blocked"
+        if run_comparison:
+            comparison_payload = dict(payload)
+            comparison_payload["save_run_card"] = truthy(
+                payload.get("save_comparison_run_card")
+                if "save_comparison_run_card" in payload
+                else payload.get("save_run_card") or payload.get("save_scenario") or payload.get("persist_scenario")
+            )
+            comparison = self.baseline_comparison_report(comparison_payload)
+            pipeline_status = "pass" if comparison.get("upgrade_decision") == "eligible_for_retrospective_evidence" else "review"
+            pipeline_decision = str(comparison.get("upgrade_decision") or "comparison_completed")
+        elif not blocking_errors:
+            pipeline_decision = "validation_passed_comparison_skipped"
+        result = {
+            "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+            "status": pipeline_status,
+            "generated_at": now_utc_iso(),
+            "claim_id": payload.get("claim_id") or validation.get("claim", {}).get("claim_id"),
+            "baseline_id": payload.get("baseline_id") or validation.get("claim", {}).get("baseline_id"),
+            "steps": {
+                "export_validation": {
+                    "status": validation.get("status"),
+                    "blocking_errors": blocking_errors,
+                    "warnings": warnings,
+                    "scenario_card": validation.get("scenario_card"),
+                },
+                "baseline_comparison": {
+                    "status": comparison.get("status") if comparison else "skipped",
+                    "upgrade_decision": comparison.get("upgrade_decision") if comparison else None,
+                    "scenario_card": comparison.get("scenario_card") if comparison else None,
+                    "skipped_reason": "export_validation_blocked" if blocking_errors else "validate_only" if truthy(payload.get("validate_only")) else None,
+                },
+            },
+            "export_validation": validation,
+            "baseline_comparison": comparison,
+            "pipeline_decision": pipeline_decision,
+            "next_actions": self._baseline_evidence_pipeline_next_actions(validation, comparison),
+            "claim_boundary": (
+                "The pipeline enforces same-case export validation before metric comparison. A completed pipeline still does not upgrade "
+                "TWM claims unless real-data gates, workflow need evidence and metric thresholds pass."
+            ),
+        }
+        return json.loads(_json(result))
+
+    def _load_case_metric_source(self, raw_path: Any) -> dict[str, Any]:
+        path_text = compact_text(raw_path)
+        if not path_text:
+            return {"source": "", "metrics": {}, "case_count": 0}
+        path = Path(path_text)
+        if not path.is_absolute():
+            path = self._repo_root() / path
+        try:
+            resolved = path.resolve()
+            repo_root = self._repo_root().resolve()
+            if repo_root not in resolved.parents and resolved != repo_root:
+                return {"source": str(path_text), "metrics": {}, "case_count": 0, "error": "path_outside_repo"}
+            if not resolved.exists():
+                return {"source": str(path_text), "metrics": {}, "case_count": 0, "error": "file_not_found"}
+            if resolved.suffix.lower() != ".csv":
+                return {"source": str(path_text), "metrics": {}, "case_count": 0, "error": "unsupported_case_file"}
+            records = read_csv(resolved)
+            return {
+                "source": str(path_text),
+                "metrics": self._aggregate_case_metrics(records),
+                "case_count": len(records),
+            }
+        except Exception as exc:
+            return {"source": str(path_text), "metrics": {}, "case_count": 0, "error": str(exc)}
+
+    def _aggregate_case_metrics(self, records: list[dict[str, Any]]) -> dict[str, float]:
+        if not records:
+            return {}
+        positives = [row for row in records if self._row_truthy(row, ("ground_truth_conflict", "actual_conflict", "truth_conflict"))]
+        detected_positives = [
+            row for row in positives
+            if self._row_truthy(row, ("detected_conflict", "predicted_conflict", "hit"))
+        ]
+        missed_positives = max(0, len(positives) - len(detected_positives))
+        evidence_rows = [
+            row for row in records
+            if self._row_truthy(row, ("evidence_linked", "evidence_complete", "has_evidence"))
+        ]
+        unsupported_rows = [
+            row for row in records
+            if self._row_truthy(row, ("unsupported_recommendation", "unsupported_claim"))
+        ]
+        metrics: dict[str, float] = {}
+        if positives:
+            metrics["hard_constraint_conflict_recall"] = len(detected_positives) / len(positives)
+            metrics["missed_blocking_conflict_rate"] = missed_positives / len(positives)
+        metrics["evidence_link_completeness"] = len(evidence_rows) / len(records)
+        metrics["audit_trail_completeness"] = len(evidence_rows) / len(records)
+        metrics["unsupported_recommendation_rate"] = len(unsupported_rows) / len(records)
+        review_precision = self._case_review_task_precision(records)
+        if review_precision is not None:
+            metrics["review_task_precision"] = review_precision
+        triage_metrics = self._aggregate_candidate_triage_metrics(records)
+        metrics.update(triage_metrics)
+        return {key: round(value, 6) for key, value in metrics.items()}
+
+    def _case_review_task_precision(self, records: list[dict[str, Any]]) -> float | None:
+        predicted = [
+            row for row in records
+            if self._row_truthy(row, ("review_task_predicted", "review_predicted", "review_task_created"))
+        ]
+        if not predicted:
+            return None
+        true_positive = [
+            row for row in predicted
+            if self._row_truthy(row, ("review_task_true_positive", "review_true_positive", "review_needed", "needs_review"))
+        ]
+        return len(true_positive) / len(predicted)
+
+    def _aggregate_candidate_triage_metrics(self, records: list[dict[str, Any]]) -> dict[str, float]:
+        candidate_rows = [
+            row for row in records
+            if any(key in row for key in ("candidate_id", "ranking_score", "rank", "selected", "legal_feasible", "human_oracle_rank"))
+        ]
+        if not candidate_rows:
+            return {}
+        reason_rows = [
+            row for row in candidate_rows
+            if self._row_has_text(row, ("rejection_reason", "blocked_reason", "review_reason", "evidence_gap_reason", "constraint_reason"))
+            or self._row_truthy(row, ("rejection_reason_covered", "reason_covered"))
+        ]
+        requires_reason = [
+            row for row in candidate_rows
+            if self._row_truthy(row, ("blocked", "illegal", "evidence_gap", "review_only"))
+            or self._case_status(row) in {"blocked", "illegal", "review", "review_only", "conditional"}
+        ]
+        metrics: dict[str, float] = {}
+        if requires_reason:
+            covered = [
+                row for row in requires_reason
+                if row in reason_rows or self._row_truthy(row, ("rejection_reason_covered", "reason_covered"))
+            ]
+            metrics["candidate_rejection_reason_coverage"] = len(covered) / len(requires_reason)
+
+        topk = self._topk_candidate_rows(candidate_rows)
+        if topk:
+            legal_topk = [
+                row for row in topk
+                if self._row_truthy(row, ("legal_feasible", "is_legal_feasible", "feasible", "allowed"))
+                and not self._row_truthy(row, ("blocked", "illegal"))
+            ]
+            metrics["legal_feasible_topk_precision"] = len(legal_topk) / len(topk)
+
+        regret_values = []
+        for row in candidate_rows:
+            regret = safe_float(row.get("planner_regret_against_human_oracle"), None)
+            if regret is None:
+                selected_utility = safe_float(row.get("selected_utility"), None)
+                oracle_utility = safe_float(row.get("oracle_utility") or row.get("human_oracle_utility"), None)
+                if selected_utility is not None and oracle_utility is not None:
+                    regret = max(0.0, float(oracle_utility) - float(selected_utility))
+            if regret is not None:
+                regret_values.append(float(regret))
+        if regret_values:
+            metrics["planner_regret_against_human_oracle"] = sum(regret_values) / len(regret_values)
+        return metrics
+
+    def _topk_candidate_rows(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        scored: list[tuple[float, int, dict[str, Any]]] = []
+        for idx, row in enumerate(records):
+            selected = self._row_truthy(row, ("selected", "topk", "in_topk", "recommended"))
+            rank = safe_float(row.get("rank") or row.get("candidate_rank"), None)
+            score = safe_float(row.get("ranking_score") or row.get("score") or row.get("utility_score"), None)
+            if selected:
+                order = rank if rank is not None else idx
+                scored.append((float(order), idx, row))
+            elif rank is not None:
+                scored.append((float(rank), idx, row))
+            elif score is not None:
+                scored.append((-float(score), idx, row))
+        if not scored:
+            return []
+        selected_rows = [item for item in scored if self._row_truthy(item[2], ("selected", "topk", "in_topk", "recommended"))]
+        if selected_rows:
+            return [item[2] for item in sorted(selected_rows, key=lambda item: (item[0], item[1]))]
+        ordered = sorted(scored, key=lambda item: (item[0], item[1]))
+        topk = min(3, len(ordered))
+        return [item[2] for item in ordered[:topk]]
+
+    def _row_truthy(self, row: dict[str, Any], keys: Iterable[str]) -> bool:
+        return any(truthy(row.get(key)) for key in keys if key in row)
+
+    def _row_has_text(self, row: dict[str, Any], keys: Iterable[str]) -> bool:
+        return any(bool(compact_text(row.get(key))) for key in keys if key in row)
+
+    def _case_status(self, row: dict[str, Any]) -> str:
+        return compact_text(row.get("case_status") or row.get("candidate_status") or row.get("status")).lower()
+
+    def _load_metric_source(self, raw_path: Any) -> dict[str, Any]:
+        path_text = compact_text(raw_path)
+        if not path_text:
+            return {"source": "", "metrics": {}}
+        path = Path(path_text)
+        if not path.is_absolute():
+            path = self._repo_root() / path
+        try:
+            resolved = path.resolve()
+            repo_root = self._repo_root().resolve()
+            if repo_root not in resolved.parents and resolved != repo_root:
+                return {"source": str(path_text), "metrics": {}, "error": "path_outside_repo"}
+            if not resolved.exists():
+                return {"source": str(path_text), "metrics": {}, "error": "file_not_found"}
+            if resolved.suffix.lower() == ".csv":
+                return {"source": str(path_text), "metrics": self._load_metric_csv(resolved)}
+            if resolved.suffix.lower() == ".json":
+                return {"source": str(path_text), "metrics": self._normalize_metric_payload(read_json(resolved))}
+        except Exception as exc:
+            return {"source": str(path_text), "metrics": {}, "error": str(exc)}
+        return {"source": str(path_text), "metrics": {}, "error": "unsupported_metric_file"}
+
+    def _load_metric_csv(self, path: Path) -> dict[str, float]:
+        records = read_csv(path)
+        metrics: dict[str, float] = {}
+        if not records:
+            return metrics
+        first = records[0]
+        metric_key = next((key for key in ("metric", "metric_name", "name") if key in first), "")
+        value_key = next((key for key in ("value", "score", "metric_value") if key in first), "")
+        if metric_key and value_key:
+            for row in records:
+                name = compact_text(row.get(metric_key))
+                value = safe_float(row.get(value_key), None)
+                if name and value is not None:
+                    metrics[name] = float(value)
+            return metrics
+        for key, raw in first.items():
+            value = safe_float(raw, None)
+            if value is not None:
+                metrics[str(key)] = float(value)
+        return metrics
+
+    def _normalize_metric_payload(self, value: Any) -> dict[str, float]:
+        if not isinstance(value, dict):
+            return {}
+        candidates: dict[str, Any] = {}
+        for key in ("metrics", "summary", "scores", "result"):
+            if isinstance(value.get(key), dict):
+                candidates.update(value[key])
+        candidates.update(value)
+        normalized: dict[str, float] = {}
+        for key, raw in candidates.items():
+            num = safe_float(raw, None)
+            if num is not None:
+                normalized[str(key)] = float(num)
+        return normalized
+
+    def _compare_research_metric(self, metric: dict[str, Any], twm_metrics: dict[str, float], baseline_metrics: dict[str, float]) -> dict[str, Any]:
+        name = str(metric.get("name") or "")
+        direction = str(metric.get("direction") or "higher_is_better")
+        twm_value = twm_metrics.get(name)
+        baseline_value = baseline_metrics.get(name)
+        threshold_key = "minimum_pass" if direction == "higher_is_better" else "maximum_pass"
+        threshold = safe_float(metric.get(threshold_key), None)
+        if twm_value is None or baseline_value is None:
+            return {
+                "name": name,
+                "direction": direction,
+                "status": "missing",
+                "twm_value": twm_value,
+                "baseline_value": baseline_value,
+                "threshold": threshold,
+                "delta": None,
+            }
+        if direction == "lower_is_better":
+            delta = round(baseline_value - twm_value, 6)
+            threshold_pass = threshold is None or twm_value <= threshold
+            baseline_lift = twm_value < baseline_value
+        else:
+            delta = round(twm_value - baseline_value, 6)
+            threshold_pass = threshold is None or twm_value >= threshold
+            baseline_lift = twm_value > baseline_value
+        status = "pass" if threshold_pass and baseline_lift else "review"
+        return {
+            "name": name,
+            "direction": direction,
+            "status": status,
+            "twm_value": round(twm_value, 6),
+            "baseline_value": round(baseline_value, 6),
+            "threshold": threshold,
+            "delta": delta,
+            "threshold_pass": threshold_pass,
+            "baseline_lift": baseline_lift,
+        }
+
+    def _baseline_export_spec(
+        self,
+        export_types: list[dict[str, Any]],
+        export_type_id: str,
+        baseline_id: str,
+        claim_id: str,
+    ) -> dict[str, Any]:
+        if export_type_id:
+            for item in export_types:
+                if item.get("export_type") == export_type_id:
+                    return dict(item)
+        if baseline_id:
+            for item in export_types:
+                if item.get("baseline_id") == baseline_id:
+                    return dict(item)
+        for item in export_types:
+            if claim_id in set(item.get("compatible_claims") or []):
+                return dict(item)
+        return dict(export_types[0]) if export_types else {}
+
+    def _baseline_export_template_public(
+        self,
+        template: dict[str, Any],
+        claims_by_id: dict[str, dict[str, Any]],
+        baselines_by_id: dict[str, dict[str, Any]],
+        export_types: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        export_type = str(template.get("export_type") or "")
+        export_spec = dict(export_types.get(export_type) or {})
+        claim_id = str(template.get("claim_id") or "")
+        baseline_id = str(template.get("baseline_id") or "")
+        twm_header = [str(item) for item in template.get("twm_header", [])]
+        baseline_header = [str(item) for item in template.get("baseline_header", [])]
+        required_columns = list(dict.fromkeys(
+            [str(item) for item in export_spec.get("required_columns", [])]
+            + self._claim_export_required_columns(claim_id)
+        ))
+        recommended_columns = list(dict.fromkeys([str(item) for item in export_spec.get("recommended_columns", [])]))
+        return {
+            **template,
+            "claim": claims_by_id.get(claim_id, {}),
+            "baseline": baselines_by_id.get(baseline_id, {}),
+            "export_spec": {
+                "export_type": export_type,
+                "baseline_id": baseline_id,
+                "label": export_spec.get("label") or template.get("label"),
+                "required_columns": required_columns,
+                "recommended_columns": recommended_columns,
+                "compatible_claims": export_spec.get("compatible_claims") or [claim_id],
+            },
+            "required_columns": required_columns,
+            "recommended_columns": recommended_columns,
+            "headers": {
+                "twm": twm_header,
+                "baseline": baseline_header,
+            },
+            "csv_header": {
+                "twm": ",".join(twm_header),
+                "baseline": ",".join(baseline_header),
+            },
+            "validation_payload_template": {
+                "claim_id": claim_id,
+                "baseline_id": baseline_id,
+                "export_type": export_type,
+                "twm_case_output_path": f"data_agent/uploads/twm_baseline_exports/<user>/<batch>/{template.get('twm_filename')}",
+                "baseline_case_output_path": f"data_agent/uploads/twm_baseline_exports/<user>/<batch>/{template.get('baseline_filename')}",
+            },
+            "minimum_real_data_gate": {
+                "same_case_join_key": template.get("same_case_join_key"),
+                "minimum_overlap_ratio": template.get("production_collection", {}).get(
+                    "minimum_overlap_ratio",
+                    0.8,
+                ),
+                "minimum_real_rows": template.get("production_collection", {}).get("minimum_real_rows"),
+                "claim_gate_missing": claims_by_id.get(claim_id, {}).get("gate", {}).get("missing", []),
+            },
+            "not_for_production": True,
+        }
+
+    def _safe_baseline_export_filename(self, filename: str) -> str:
+        name = Path(filename).name or "baseline_export.csv"
+        if not name.lower().endswith(".csv"):
+            name = f"{Path(name).stem or 'baseline_export'}.csv"
+        name = re.sub(r"[^A-Za-z0-9._-]+", "_", name)
+        return name[:120] or "baseline_export.csv"
+
+    def _safe_baseline_export_token(self, value: Any) -> str:
+        token = re.sub(r"[^A-Za-z0-9._-]+", "_", compact_text(value))
+        return token.strip("._-")[:80] or "default"
+
+    def _load_baseline_export_records(self, raw_path: Any) -> dict[str, Any]:
+        path_text = compact_text(raw_path)
+        if not path_text:
+            return {"source": "", "records": [], "error": "path_required"}
+        path = Path(path_text)
+        if not path.is_absolute():
+            path = self._repo_root() / path
+        try:
+            resolved = path.resolve()
+            repo_root = self._repo_root().resolve()
+            if repo_root not in resolved.parents and resolved != repo_root:
+                return {"source": path_text, "records": [], "error": "path_outside_repo"}
+            if not resolved.exists():
+                return {"source": path_text, "records": [], "error": "file_not_found"}
+            if resolved.suffix.lower() != ".csv":
+                return {"source": path_text, "records": [], "error": "unsupported_export_file"}
+            records = read_csv(resolved)
+            return {"source": path_text, "resolved_path": str(resolved), "records": records}
+        except Exception as exc:
+            return {"source": path_text, "records": [], "error": str(exc)}
+
+    def _baseline_export_join_key(
+        self,
+        twm_source: dict[str, Any],
+        baseline_source: dict[str, Any],
+        export_spec: dict[str, Any],
+    ) -> str:
+        twm_columns = self._record_columns(twm_source.get("records", []))
+        baseline_columns = self._record_columns(baseline_source.get("records", []))
+        common = twm_columns & baseline_columns
+        preferred = ["case_id", "candidate_id", "project_id", "scenario_id"]
+        required_columns = set(export_spec.get("required_columns") or [])
+        if "candidate_id" in required_columns:
+            preferred = ["candidate_id", "case_id", "scenario_id", "project_id"]
+        for key in preferred:
+            if key in common:
+                return key
+        return ""
+
+    def _baseline_export_record_inventory(self, records: list[dict[str, Any]], join_key: str) -> dict[str, Any]:
+        columns = sorted(self._record_columns(records))
+        join_ids: list[str] = []
+        if join_key:
+            for row in records:
+                value = compact_text(row.get(join_key))
+                if value:
+                    join_ids.append(value)
+        duplicate_ids = sorted({item for item in join_ids if join_ids.count(item) > 1})
+        not_for_production_rows = [
+            row for row in records
+            if self._row_truthy(row, ("not_for_production", "synthetic", "is_synthetic"))
+            or compact_text(row.get("sanitization_level")).lower() in {"sanitized", "anonymous", "anonymized", "deidentified", "de-identified"}
+        ]
+        synthetic_rows = [
+            row for row in records
+            if self._row_truthy(row, ("synthetic", "is_synthetic"))
+            or compact_text(row.get("sample_type")).lower().startswith("synthetic")
+            or "synthetic" in compact_text(row.get("sanitization_level") or row.get("data_class")).lower()
+        ]
+        return {
+            "row_count": len(records),
+            "columns": columns,
+            "join_id_count": len(join_ids),
+            "unique_join_id_count": len(set(join_ids)),
+            "duplicate_join_ids": duplicate_ids[:20],
+            "not_for_production_rows": len(not_for_production_rows),
+            "synthetic_rows": len(synthetic_rows),
+            "_join_ids": sorted(set(join_ids)),
+        }
+
+    def _baseline_export_public_inventory(self, inventory: dict[str, Any]) -> dict[str, Any]:
+        return {key: value for key, value in inventory.items() if not str(key).startswith("_")}
+
+    def _baseline_export_overlap(self, twm_inventory: dict[str, Any], baseline_inventory: dict[str, Any]) -> dict[str, Any]:
+        # The inventories intentionally expose counts only. Recompute IDs from callers' records would leak no extra
+        # detail, but keeping overlap summarized avoids returning large/sensitive case lists through the API.
+        return self._baseline_export_overlap_from_ids(
+            set(twm_inventory.get("_join_ids") or []),
+            set(baseline_inventory.get("_join_ids") or []),
+            twm_inventory,
+            baseline_inventory,
+        )
+
+    def _baseline_export_overlap_from_ids(
+        self,
+        twm_ids: set[str],
+        baseline_ids: set[str],
+        twm_inventory: dict[str, Any],
+        baseline_inventory: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not twm_ids or not baseline_ids:
+            return {
+                "overlap_count": 0,
+                "twm_unique_case_count": len(twm_ids),
+                "baseline_unique_case_count": len(baseline_ids),
+                "coverage_ratio": 0.0,
+                "twm_only_count": len(twm_ids),
+                "baseline_only_count": len(baseline_ids),
+            }
+        overlap = twm_ids & baseline_ids
+        denominator = max(1, min(len(twm_ids), len(baseline_ids)))
+        return {
+            "overlap_count": len(overlap),
+            "twm_unique_case_count": len(twm_ids),
+            "baseline_unique_case_count": len(baseline_ids),
+            "coverage_ratio": round(len(overlap) / denominator, 6),
+            "twm_only_count": len(twm_ids - baseline_ids),
+            "baseline_only_count": len(baseline_ids - twm_ids),
+            "sample_overlap_ids": sorted(overlap)[:10],
+        }
+
+    def _record_columns(self, records: list[dict[str, Any]]) -> set[str]:
+        columns: set[str] = set()
+        for row in records:
+            columns.update(str(key) for key in row.keys())
+        return columns
+
+    def _missing_columns(self, columns: Iterable[str], required: Iterable[str]) -> list[str]:
+        present = set(columns)
+        return [str(item) for item in required if str(item) not in present]
+
+    def _claim_export_required_columns(self, claim_id: str) -> list[str]:
+        if claim_id == "C3_action_conditioned_triage":
+            return ["candidate_id", "rank", "legal_feasible", "planner_regret_against_human_oracle"]
+        if claim_id == "C2_audit_defensibility":
+            return ["case_id", "evidence_linked", "unsupported_recommendation", "review_task_predicted"]
+        return ["case_id", "ground_truth_conflict", "detected_conflict", "evidence_linked"]
+
+    def _baseline_export_parser_probe(
+        self,
+        twm_source: dict[str, Any],
+        baseline_source: dict[str, Any],
+        claim: dict[str, Any],
+    ) -> dict[str, Any]:
+        twm_metrics = self._aggregate_case_metrics(twm_source.get("records", []))
+        baseline_metrics = self._aggregate_case_metrics(baseline_source.get("records", []))
+        claim_metric_names = [str(item.get("name") or "") for item in claim.get("metrics", []) if item.get("name")]
+        comparable = [name for name in claim_metric_names if name in twm_metrics and name in baseline_metrics]
+        return {
+            "status": "pass" if comparable else "review",
+            "claim_metric_names": claim_metric_names,
+            "comparable_metrics": comparable,
+            "twm_recovered_metrics": sorted(twm_metrics),
+            "baseline_recovered_metrics": sorted(baseline_metrics),
+        }
+
+    def _baseline_export_source_summary(self, source: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "source": source.get("source") or "",
+            "resolved_path": source.get("resolved_path"),
+            "row_count": len(source.get("records", [])),
+            "error": source.get("error"),
+        }
+
+    def _baseline_export_validation_next_actions(
+        self,
+        status: str,
+        blocking_errors: list[str],
+        warnings: list[str],
+    ) -> list[str]:
+        if status == "pass":
+            return [
+                "run baseline_comparison_report on the validated same-case exports",
+                "package metrics, case coverage and workflow notes for mentor/external review",
+            ]
+        actions: list[str] = []
+        if any("missing_required_columns" in item for item in blocking_errors):
+            actions.append("export the missing required columns from the TWM and baseline systems")
+        if any("same_case" in item for item in blocking_errors):
+            actions.append("join TWM and baseline outputs on the same historical case or candidate IDs")
+        if any("path" in item or "file" in item for item in blocking_errors):
+            actions.append("provide readable CSV exports inside the repository workspace")
+        if any("claim_parser_columns" in item for item in warnings):
+            actions.append("add the claim-specific parser columns before using this export for metric evidence")
+        if any("not_for_production" in item for item in warnings):
+            actions.append("mark whether the export is sanitized, internal-review-only or synthetic regression data")
+        actions.append("keep TWM claims at prototype scaffold level until validation passes on real or sanitized same-case data")
+        return list(dict.fromkeys(actions))
+
+    def _baseline_evidence_pipeline_next_actions(
+        self,
+        validation: dict[str, Any],
+        comparison: dict[str, Any] | None,
+    ) -> list[str]:
+        blocking_errors = list(validation.get("blocking_errors") or [])
+        if blocking_errors:
+            return [
+                "fix export validation blockers before running metric comparison",
+                *list(validation.get("next_actions") or [])[:3],
+            ]
+        if comparison is None:
+            return [
+                "run baseline comparison after reviewing export validation warnings",
+                *list(validation.get("next_actions") or [])[:2],
+            ]
+        decision = str(comparison.get("upgrade_decision") or "")
+        if decision == "metrics_pass_but_data_gate_blocks_upgrade":
+            return [
+                "keep this result as regression evidence until real production history gates pass",
+                *list(comparison.get("next_actions") or [])[:2],
+            ]
+        if decision == "no_metric_lift_over_baseline":
+            return [
+                "do not add model complexity until the simpler baseline gap is understood",
+                *list(comparison.get("next_actions") or [])[:2],
+            ]
+        if decision == "eligible_for_retrospective_evidence":
+            return [
+                "package validation and comparison run cards for external review",
+                "repeat on held-out region/time split before any pilot claim",
+            ]
+        return list(comparison.get("next_actions") or validation.get("next_actions") or [])
+
+    def _save_baseline_export_validation_scenario(self, payload: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
+        project_id = compact_text(payload.get("project_id"))
+        state_version_id = compact_text(payload.get("base_state_version_id") or payload.get("state_version_id"))
+        claim = dict(report.get("claim") or {})
+        export_spec = dict(report.get("export_spec") or {})
+        sources = dict(report.get("sources") or {})
+        scenario = TwmScenario(
+            project_id=project_id,
+            base_state_version_id=state_version_id,
+            name=compact_text(payload.get("scenario_name"))
+            or f"Baseline export validation: {claim.get('claim_id') or 'claim'} vs {export_spec.get('baseline_id') or 'baseline'}",
+            scenario_type="baseline_export_validation",
+            input_changes={
+                "claim_id": claim.get("claim_id"),
+                "baseline_id": claim.get("baseline_id") or export_spec.get("baseline_id"),
+                "export_type": export_spec.get("export_type"),
+                "twm_case_output_path": payload.get("twm_case_output_path") or payload.get("twm_case_result_path"),
+                "baseline_case_output_path": payload.get("baseline_case_output_path") or payload.get("baseline_case_result_path"),
+            },
+            source_model="territory_world_model.baseline_export_validation_report.v1",
+            status=str(report.get("status") or "review"),
+            metadata={
+                "kind": "baseline_export_validation_run_card",
+                "report_schema": report.get("schema"),
+                "generated_at": report.get("generated_at"),
+                "claim": claim,
+                "export_spec": export_spec,
+                "sources": sources,
+                "column_inventory": report.get("column_inventory") or {},
+                "coverage": report.get("coverage") or {},
+                "parser_compatibility": report.get("parser_compatibility") or {},
+                "blocking_errors": report.get("blocking_errors") or [],
+                "warnings": report.get("warnings") or [],
+                "next_actions": report.get("next_actions") or [],
+                "claim_boundary": report.get("claim_boundary"),
+                "not_for_production": True,
+            },
+        )
+        saved = self.repository.save_scenario(scenario)
+        return {
+            "scenario_id": saved.id,
+            "scenario_type": saved.scenario_type,
+            "status": saved.status,
+            "metadata_kind": saved.metadata.get("kind"),
+        }
+
+    def _baseline_comparison_next_actions(self, upgrade_decision: str, baseline_id: str) -> list[str]:
+        if upgrade_decision == "eligible_for_retrospective_evidence":
+            return [
+                "package case-level evidence and baseline outputs for external review",
+                "repeat on a held-out region/time split before pilot claim",
+            ]
+        if upgrade_decision == "metrics_pass_but_data_gate_blocks_upgrade":
+            return [
+                "collect real or sanitized production history required by the claim gate",
+                f"keep {baseline_id or 'baseline'} comparison as synthetic/regression evidence only",
+            ]
+        if upgrade_decision == "no_metric_lift_over_baseline":
+            return [
+                "inspect failed metrics and simplify the TWM claim",
+                "do not add new model backends until the baseline gap is understood",
+            ]
+        return [
+            "provide both TWM metrics and named baseline metrics for the same cases",
+            "keep the claim at prototype scaffold level",
+        ]
+
+    def _save_baseline_comparison_scenario(self, payload: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
+        project_id = compact_text(payload.get("project_id"))
+        state_version_id = compact_text(payload.get("base_state_version_id") or payload.get("state_version_id"))
+        claim = dict(report.get("claim") or {})
+        baseline = dict(report.get("baseline") or {})
+        inputs = dict(report.get("inputs") or {})
+        scenario = TwmScenario(
+            project_id=project_id,
+            base_state_version_id=state_version_id,
+            name=compact_text(payload.get("scenario_name"))
+            or f"Baseline comparison: {claim.get('claim_id') or 'claim'} vs {baseline.get('baseline_id') or 'baseline'}",
+            scenario_type="baseline_comparison",
+            input_changes={
+                "claim_id": claim.get("claim_id"),
+                "baseline_id": baseline.get("baseline_id"),
+                "twm_metrics_path": payload.get("twm_metrics_path") or payload.get("twm_result_path"),
+                "baseline_metrics_path": payload.get("baseline_metrics_path") or payload.get("baseline_result_path"),
+                "twm_case_output_path": payload.get("twm_case_output_path") or payload.get("twm_case_result_path"),
+                "baseline_case_output_path": payload.get("baseline_case_output_path") or payload.get("baseline_case_result_path"),
+            },
+            source_model="territory_world_model.baseline_comparison_report.v1",
+            status=str(report.get("upgrade_decision") or report.get("status") or "review"),
+            metadata={
+                "kind": "baseline_comparison_run_card",
+                "report_schema": report.get("schema"),
+                "generated_at": report.get("generated_at"),
+                "claim": claim,
+                "baseline": baseline,
+                "baseline_sources": {
+                    "twm_metrics_source": inputs.get("twm_metrics_source"),
+                    "baseline_metrics_source": inputs.get("baseline_metrics_source"),
+                    "twm_case_source": inputs.get("twm_case_source"),
+                    "baseline_case_source": inputs.get("baseline_case_source"),
+                    "twm_case_count": inputs.get("twm_case_count"),
+                    "baseline_case_count": inputs.get("baseline_case_count"),
+                    "metric_source_errors": inputs.get("metric_source_errors"),
+                },
+                "metric_comparisons": report.get("metric_comparisons") or [],
+                "evidence_gate": report.get("evidence_gate") or {},
+                "upgrade_decision": report.get("upgrade_decision"),
+                "claim_boundary": report.get("claim_boundary"),
+                "not_for_production": True,
+            },
+        )
+        saved = self.repository.save_scenario(scenario)
+        return {
+            "scenario_id": saved.id,
+            "scenario_type": saved.scenario_type,
+            "status": saved.status,
+            "metadata_kind": saved.metadata.get("kind"),
+        }
+
+    def _research_claim_with_gate(self, claim: dict[str, Any], production_rows: int, policy_rows: int) -> dict[str, Any]:
+        missing_gate: list[str] = []
+        if production_rows <= 0:
+            missing_gate.append("production_observed_history")
+        if claim["claim_id"] == "C3_action_conditioned_triage" and policy_rows <= 0:
+            missing_gate.append("production_policy_action_labels")
+        if claim["claim_id"] in {"C1_state_conflict_recall", "C2_audit_defensibility"}:
+            missing_gate.append("named_real_workflow_baseline")
+        if claim["claim_id"] == "C4_standard_contract_ingestion":
+            missing_gate.append("cross_region_standard_samples")
+        gate_status = "review" if missing_gate else "candidate"
+        return {
+            **claim,
+            "gate": {
+                "status": gate_status,
+                "claim_level": "prototype_scaffold" if missing_gate else "retrospective_candidate",
+                "missing": missing_gate,
+                "production_rows": production_rows,
+                "policy_rows": policy_rows,
+            },
+        }
+
+    def data_foundation_assessment(self) -> dict[str, Any]:
+        validation = self._load_data_foundation_validation()
+        validation_summary = validation.get("summary", {}) if isinstance(validation, dict) else {}
+        dataset_summaries = [self._data_foundation_dataset_summary(item) for item in TWM_DATA_FOUNDATION_DATASETS]
+        production_rows = safe_int(validation_summary.get("twm_production_ready_observed_history_rows"), 0)
+        policy_rows = safe_int(validation_summary.get("production_policy_history_row_count"), 0)
+        synthetic_rows = safe_int(validation_summary.get("twm_synthetic_experiment_row_count"), 0)
+        structural_rows = safe_int(validation_summary.get("twm_structural_fixture_row_count"), 0)
+        structural_status = str(validation_summary.get("twm_structural_fixture_structural_status") or "unknown")
+        synthetic_status = str(validation_summary.get("twm_synthetic_experiment_structural_status") or "unknown")
+        status = "review"
+        if production_rows > 0 and policy_rows > 0:
+            status = "candidate"
+        if production_rows >= 1000 and policy_rows >= 100 and structural_status == "pass" and synthetic_status == "pass":
+            status = "ready_for_pilot_validation"
+        landing_readiness = {
+            "status": status,
+            "verdict": (
+                "当前数据基础足以支撑 TWM 工程化原型、规则/证据/审计链路和合成实验验证；"
+                "不足以支撑生产级审批结论、真实预测效果或真实因果改进声明。"
+            ),
+            "production_deployment_supported": False,
+            "engineering_mvp_supported": True,
+            "business_review_scaffold_supported": True,
+            "predictive_or_causal_claim_supported": False,
+            "key_blockers": [
+                "生产可用观察历史行数为 0",
+                "生产政策动作历史未提供",
+                "关键审批、复核、规则评价和项目样本主要为 synthetic/not-for-production",
+                "尚缺真实 workflow baseline 对比来证明未满足需求与改进幅度",
+            ],
+        }
+        if production_rows > 0:
+            landing_readiness["key_blockers"][0] = f"生产可用观察历史行数仍不足：{production_rows}"
+        if policy_rows > 0:
+            landing_readiness["key_blockers"][1] = f"生产政策动作历史仍不足：{policy_rows}"
+
+        result = {
+            "schema": "territory_world_model.data_foundation_assessment.v1",
+            "status": status,
+            "generated_at": now_utc_iso(),
+            "landing_readiness": landing_readiness,
+            "datasets": dataset_summaries,
+            "validation_snapshot": {
+                "source": "docs/reports/twm_data_foundation_validation.json",
+                "status": validation_summary.get("status", "unknown"),
+                "production_ready_observed_history_rows": production_rows,
+                "production_policy_history_status": validation_summary.get("production_policy_history_status", "not_provided"),
+                "production_policy_history_row_count": policy_rows,
+                "production_policy_allowed_count": safe_int(validation_summary.get("production_policy_history_allowed_count"), 0),
+                "production_policy_blocked_count": safe_int(validation_summary.get("production_policy_history_blocked_count"), 0),
+                "structural_fixture": {
+                    "row_count": structural_rows,
+                    "pair_count": safe_int(validation_summary.get("twm_structural_fixture_pair_count"), 0),
+                    "structural_status": structural_status,
+                    "default_status": validation_summary.get("twm_structural_fixture_default_status", "unknown"),
+                },
+                "synthetic_experiment": {
+                    "row_count": synthetic_rows,
+                    "pair_count": safe_int(validation_summary.get("twm_synthetic_experiment_pair_count"), 0),
+                    "region_count": safe_int(validation_summary.get("twm_synthetic_experiment_region_count"), 0),
+                    "period_count": safe_int(validation_summary.get("twm_synthetic_experiment_period_count"), 0),
+                    "split_counts": validation_summary.get("twm_synthetic_experiment_split_counts", {}),
+                    "action_mask_allowed_count": safe_int(validation_summary.get("twm_synthetic_experiment_action_mask_allowed_count"), 0),
+                    "action_mask_blocked_count": safe_int(validation_summary.get("twm_synthetic_experiment_action_mask_blocked_count"), 0),
+                    "structural_status": synthetic_status,
+                    "default_status": validation_summary.get("twm_synthetic_experiment_default_status", "unknown"),
+                },
+                "local_observed_history": {
+                    "status": validation_summary.get("twm_observed_history_status", "unknown"),
+                    "missing": validation_summary.get("twm_observed_history_missing", []),
+                    "relation_neighbor_edge_count": safe_int(validation_summary.get("twm_relation_neighbor_edge_count"), 0),
+                },
+                "project_review_context": {
+                    "project_count": safe_int(validation_summary.get("twm_project_review_context_project_count"), 0),
+                    "rule_eval_count": safe_int(validation_summary.get("twm_project_review_context_rule_eval_count"), 0),
+                    "review_task_count": safe_int(validation_summary.get("twm_project_review_context_review_task_count"), 0),
+                },
+                "external_support": {
+                    "paper7_caliper_matched_status": validation_summary.get("paper7_caliper_matched_status", "unknown"),
+                    "paper7_caliper_matched_pair_count": safe_int(validation_summary.get("paper7_caliper_matched_pair_count"), 0),
+                    "boundary": "Paper7 可作为因果校准分支外部支持，但不能替代 TWM 生产审批历史验证。",
+                },
+            },
+            "supported_problems": list(TWM_DATA_FOUNDATION_SUPPORTED_PROBLEMS),
+            "unsupported_claims": list(TWM_DATA_FOUNDATION_UNSUPPORTED_CLAIMS),
+            "problem_data_fit": [
+                {
+                    "business_problem": "耕地保护与占补平衡审查",
+                    "current_fit": "partial",
+                    "why": "图斑、PBF、生态红线、项目、规则命中和证据链结构齐备，但关键边界和审批记录仍非生产数据。",
+                    "safe_output": "风险暴露、证据缺口、人工复核任务和候选方案审计。",
+                    "unsafe_output": "自动审批通过/不通过或真实政策效果承诺。",
+                },
+                {
+                    "business_problem": "建设项目用地合规预审",
+                    "current_fit": "partial",
+                    "why": "可模拟项目-分区-边界-复核任务关系，但缺真实项目流转、补正、处置和监管闭环历史。",
+                    "safe_output": "合规预审工作流原型和审查清单。",
+                    "unsafe_output": "生产级项目合规结论。",
+                },
+                {
+                    "business_problem": "国土空间用途调整推演",
+                    "current_fit": "experimental",
+                    "why": "合成多期样本可测动作条件动态和 planner consumer，但缺真实跨期状态和政策动作标签。",
+                    "safe_output": "反事实推演管线、action-mask 和 beam-plan 方法验证。",
+                    "unsafe_output": "真实区域规划效果预测。",
+                },
+            ],
+            "required_next_data": list(TWM_DATA_FOUNDATION_REQUIRED_NEXT_DATA),
+            "mentor_answer": {
+                "short_answer": (
+                    "目前 TWM 靠谱的部分是工程和研究假设验证，不是生产落地证明。"
+                    "数据基础能说明 TWM 的对象-关系-规则-证据框架可跑通，也能暴露哪些业务问题需要真实数据继续验证；"
+                    "但在真实审批历史和政策动作标签缺失前，不能声称它已经解决真实国土治理决策。"
+                ),
+                "research_judgment": (
+                    "下一阶段应把研究问题收敛到真实未满足需求：跨图层规则审查、证据链完整性、审查任务优先级和方案不可行原因解释。"
+                    "这些问题需要用真实或脱敏业务样本与 manual/rule-only/simulator/optimizer baseline 对比。"
+                ),
+            },
+            "source_reports": {
+                "health_markdown": "docs/reports/twm_data_foundation_health.md",
+                "validation_json": "docs/reports/twm_data_foundation_validation.json",
+            },
+        }
+        return json.loads(_json(result))
+
+    def _load_data_foundation_validation(self) -> dict[str, Any]:
+        path = self._repo_root() / "docs" / "reports" / "twm_data_foundation_validation.json"
+        if not path.exists():
+            return {}
+        try:
+            return read_json(path)
+        except Exception:
+            return {}
+
+    def _data_foundation_dataset_summary(self, spec: dict[str, Any]) -> dict[str, Any]:
+        root = self._repo_root() / str(spec["path"])
+        manifest = read_json(root / "dataset_manifest.json") if (root / "dataset_manifest.json").exists() else {}
+        files: list[dict[str, Any]] = []
+        total_count = 0
+        synthetic_count = 0
+        not_for_production_count = 0
+        for rel_path, unit in dict(spec.get("files") or {}).items():
+            audit = self._data_foundation_file_audit(root / rel_path)
+            count = safe_int(audit.get("count"), 0)
+            total_count += count
+            synthetic_count += safe_int(audit.get("synthetic_count"), 0)
+            not_for_production_count += safe_int(audit.get("not_for_production_count"), 0)
+            files.append({
+                "path": rel_path,
+                "unit": unit,
+                **audit,
+            })
+        return {
+            "id": spec["id"],
+            "label": spec["label"],
+            "path": spec["path"],
+            "exists": root.exists(),
+            "nature": spec["nature"],
+            "positioning": spec["positioning"],
+            "not_for_production": bool(manifest.get("not_for_production", True)),
+            "description": manifest.get("description_zh") or manifest.get("description") or "",
+            "file_count": len(files),
+            "total_count": total_count,
+            "synthetic_count": synthetic_count,
+            "not_for_production_count": not_for_production_count,
+            "files": files,
+            "claim_boundary": "该数据包用于测试和适配验证；not_for_production=true 时不得作为真实治理结论依据。",
+        }
+
+    def _data_foundation_file_audit(self, path: Path) -> dict[str, Any]:
+        if not path.exists():
+            return {"exists": False, "count": 0, "synthetic_count": 0, "not_for_production_count": 0}
+        try:
+            if path.suffix.lower() == ".csv":
+                records = read_csv(path)
+                return self._data_foundation_records_audit(records)
+            if path.suffix.lower() in {".geojson", ".json"}:
+                payload = read_json(path)
+                features = payload.get("features")
+                if isinstance(features, list):
+                    records = [dict(item.get("properties") or {}) for item in features if isinstance(item, dict)]
+                    return self._data_foundation_records_audit(records)
+                return {"exists": True, "count": len(payload), "synthetic_count": 0, "not_for_production_count": 0}
+        except Exception:
+            return {"exists": True, "count": 0, "synthetic_count": 0, "not_for_production_count": 0, "read_error": True}
+        return {"exists": True, "count": 0, "synthetic_count": 0, "not_for_production_count": 0}
+
+    def _data_foundation_records_audit(self, records: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "exists": True,
+            "count": len(records),
+            "synthetic_count": sum(1 for item in records if truthy(item.get("synthetic") or item.get("source_synthetic"))),
+            "not_for_production_count": sum(1 for item in records if truthy(item.get("not_for_production") or item.get("not_for_prod"))),
+        }
+
+    @staticmethod
+    def _repo_root() -> Path:
+        return Path(__file__).resolve().parents[2]
 
     def create_project(self, payload: dict[str, Any], username: str = "") -> dict[str, Any]:
         project = TwmProject(
@@ -205,7 +2690,11 @@ class TerritoryWorldModelService:
             )
 
         self.repository.save_state_bundle(result)
+        self._clear_report_cache(project_id=project_id)
         return result.to_dict()
+
+    def list_states(self, project_id: str | None = None) -> list[dict[str, Any]]:
+        return [item.to_dict() for item in self.repository.list_state_versions(project_id=project_id)]
 
     def get_state(self, state_version_id: str) -> dict[str, Any] | None:
         bundle = self.repository.get_state_bundle(state_version_id)
@@ -222,6 +2711,14 @@ class TerritoryWorldModelService:
 
     def state_contract_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
+        cache_key = self._report_cache_key(
+            state_version_id,
+            payload,
+            include=("thresholds", "geofm_gate_report"),
+        )
+        cached = self._cache_get(self._state_contract_cache, cache_key)
+        if cached is not None:
+            return cached
         state = self.repository.get_state_version(state_version_id)
         state_bundle = self.repository.get_state_bundle(state_version_id)
         if state is None or state_bundle is None:
@@ -275,17 +2772,49 @@ class TerritoryWorldModelService:
                 geofm_policy=geofm_policy,
             ),
         )
-        return report.to_dict()
+        result = report.to_dict()
+        self._cache_set(self._state_contract_cache, cache_key, result)
+        return deepcopy(result)
 
     def dynamics_backend_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
         state = self.repository.get_state_version(state_version_id)
-        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        cache_key = self._report_cache_key(
+            state_version_id,
+            payload,
+            include=(
+                "dataset",
+                "scenario",
+                "evidence_coverage",
+                "horizon",
+                "actions",
+                "scenario_context",
+                "split",
+                "temporal_holdout",
+                "thresholds",
+                "backend",
+                "dynamics_backend",
+                "candidate_report",
+                "dynamics_candidate_report",
+                "fit_report",
+                "dynamics_fit_report",
+                "dynamics_candidate",
+                "predictions",
+                "geofm_gate_report",
+                "causal_calibration_report",
+            ),
+        )
+        cached = self._cache_get(self._dynamics_backend_cache, cache_key)
+        if cached is not None:
+            return cached
+        if self.repository.get_state_bundle(state_version_id) is None:
             raise LookupError(f"state not found: {state_version_id}")
         dataset_payload = payload.get("dataset")
         dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
         state_contract = self.state_contract_report(state_version_id, payload)
-        readiness = self.dynamics_readiness_report(state_version_id, {"dataset": dataset, **payload})
+        readiness = self.dynamics_readiness_report(state_version_id, {**payload, "dataset": dataset})
         backend = self._dynamics_backend_descriptor(payload)
         input_contract = self._dynamics_backend_input_contract(state_contract, backend)
         output_contract = self._dynamics_backend_output_contract(payload)
@@ -314,7 +2843,9 @@ class TerritoryWorldModelService:
             claim_boundary=claim_boundary,
             recommendations=self._dynamics_backend_recommendations(gate_results, evidence_gate, backend),
         )
-        return report.to_dict()
+        result = report.to_dict()
+        self._cache_set(self._dynamics_backend_cache, cache_key, result)
+        return deepcopy(result)
 
     def training_objective_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -497,6 +3028,7 @@ class TerritoryWorldModelService:
             model_output=payload.get("model_output") if payload else None,
             scenario_context=payload.get("scenario_context") if payload else None,
         )
+        self._clear_report_cache(state_version_id=state_version_id)
         return result.to_dict()
 
     def get_rule_hits(self, state_version_id: str, *, severity: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
@@ -577,6 +3109,7 @@ class TerritoryWorldModelService:
             input_changes=dict(payload.get("input_changes") or {}),
             source_model=payload.get("source_model"),
             status=str(payload.get("status") or "draft").strip() or "draft",
+            metadata=dict(payload.get("metadata") or {}),
         )
         saved = self.repository.save_scenario(scenario)
         metrics = payload.get("metrics") or []
@@ -1549,6 +4082,26 @@ class TerritoryWorldModelService:
 
     def dynamics_training_examples(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
+        cache_key = self._report_cache_key(
+            state_version_id,
+            payload,
+            include=(
+                "scenario",
+                "evidence_coverage",
+                "horizon",
+                "actions",
+                "scenario_context",
+                "split",
+                "temporal_holdout",
+                "thresholds",
+                "include_synthetic",
+                "max_examples",
+                "limit",
+            ),
+        )
+        cached = self._cache_get(self._dynamics_training_cache, cache_key)
+        if cached is not None:
+            return cached
         state_bundle = self.repository.get_state_bundle(state_version_id)
         state = self.repository.get_state_version(state_version_id)
         if state_bundle is None or state is None:
@@ -1704,12 +4257,106 @@ class TerritoryWorldModelService:
                 ],
             },
         )
-        return dataset.to_dict()
+        result = dataset.to_dict()
+        self._cache_set(self._dynamics_training_cache, cache_key, result)
+        return deepcopy(result)
 
     def dynamics_readiness_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
         state = self.repository.get_state_version(state_version_id)
-        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        cache_key = self._report_cache_key(
+            state_version_id,
+            payload,
+            include=(
+                "dataset",
+                "scenario",
+                "evidence_coverage",
+                "horizon",
+                "actions",
+                "scenario_context",
+                "split",
+                "temporal_holdout",
+                "thresholds",
+                "require_geofm_pass",
+                "require_causal_pass",
+                "uses_geofm",
+                "geofm_required",
+                "uses_causal_calibration",
+                "causal_required",
+                "causal_calibration_required",
+                "geofm_gate_report",
+                "causal_calibration_report",
+                "baseline_metrics",
+                "augmented_metrics",
+                "geofm_metrics",
+                "baseline_predictions",
+                "b0_predictions",
+                "baseline_dynamics_predictions",
+                "augmented_predictions",
+                "geofm_predictions",
+                "b1_predictions",
+                "augmented_dynamics_predictions",
+                "baseline_dynamics_candidate_report",
+                "b0_candidate_report",
+                "augmented_dynamics_candidate_report",
+                "geofm_candidate_report",
+                "b1_candidate_report",
+                "geofm_dynamics_evaluation_report",
+                "augmented_dynamics_evaluation_report",
+                "dynamics_evaluation_report",
+                "extended_validation",
+                "architecture_audit",
+                "geofm_architecture_audit",
+                "adapter",
+                "geofm_adapter",
+                "backbone",
+                "geofm_backbone",
+                "data_validation",
+                "geofm_data_validation",
+                "geofm_backbone_name",
+                "geofm_architecture",
+                "fused_qkv",
+                "geofm_adapter_type",
+                "geofm_adapter_target_modules",
+                "geofm_input_modalities",
+                "records",
+                "observations",
+                "observed_history",
+                "observed_history_path",
+                "approval_review_history_path",
+                "approval_history_path",
+                "observed_approval_history_path",
+                "causal_thresholds",
+                "model_effect",
+                "baseline_action",
+                "intervention_actions",
+                "treatment",
+                "treatment_name",
+                "outcome",
+                "outcome_name",
+                "positive_label",
+                "outcome_direction",
+                "action_type",
+                "target_role",
+                "magnitude",
+                "parameters",
+                "scca_causal_evidence_report",
+                "scca_evidence_report",
+                "scca_result",
+                "scca_report",
+                "scca_payload",
+                "scca_output_dir",
+                "scca_dir",
+                "scca_path",
+                "scca_manifest_path",
+            ),
+        )
+        cached = self._cache_get(self._dynamics_readiness_cache, cache_key)
+        if cached is not None:
+            return cached
+        if self.repository.get_state_bundle(state_version_id) is None:
             raise LookupError(f"state not found: {state_version_id}")
         dataset_payload = payload.get("dataset")
         dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
@@ -1729,6 +4376,7 @@ class TerritoryWorldModelService:
             gate_results=gate_results,
             thresholds=thresholds,
         )
+        state_contract = self.state_contract_report(state_version_id, payload)
         report = TwmDynamicsReadinessReport(
             state_version_id=state_version_id,
             project_id=state.project_id,
@@ -1737,10 +4385,12 @@ class TerritoryWorldModelService:
             sample_inventory=sample_inventory,
             thresholds=thresholds,
             gate_results=gate_results,
-            target_model_contract=self._dynamics_target_model_contract(dataset, gate_results),
+            target_model_contract=self._dynamics_target_model_contract(dataset, gate_results, state_contract=state_contract),
             recommendations=recommendations,
         )
-        return report.to_dict()
+        result = report.to_dict()
+        self._cache_set(self._dynamics_readiness_cache, cache_key, result)
+        return deepcopy(result)
 
     def dynamics_evaluation_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -1849,9 +4499,70 @@ class TerritoryWorldModelService:
 
     def geofm_ablation_gate(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
-        state_bundle = self.repository.get_state_bundle(state_version_id)
         state = self.repository.get_state_version(state_version_id)
-        if state_bundle is None or state is None:
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        cache_key = self._report_cache_key(
+            state_version_id,
+            payload,
+            include=(
+                "dataset",
+                "dynamics_training_dataset",
+                "scenario",
+                "evidence_coverage",
+                "thresholds",
+                "baseline_metrics",
+                "augmented_metrics",
+                "geofm_metrics",
+                "baseline_predictions",
+                "b0_predictions",
+                "baseline_dynamics_predictions",
+                "augmented_predictions",
+                "geofm_predictions",
+                "b1_predictions",
+                "augmented_dynamics_predictions",
+                "baseline_dynamics_candidate_report",
+                "b0_candidate_report",
+                "augmented_dynamics_candidate_report",
+                "geofm_candidate_report",
+                "b1_candidate_report",
+                "geofm_dynamics_evaluation_report",
+                "augmented_dynamics_evaluation_report",
+                "dynamics_evaluation_report",
+                "extended_validation",
+                "architecture_audit",
+                "geofm_architecture_audit",
+                "adapter",
+                "geofm_adapter",
+                "backbone",
+                "geofm_backbone",
+                "data_validation",
+                "geofm_data_validation",
+                "geofm_backbone_name",
+                "geofm_architecture",
+                "fused_qkv",
+                "geofm_adapter_type",
+                "geofm_adapter_target_modules",
+                "geofm_input_modalities",
+                "adapter_capacity_score",
+                "trainable_parameter_ratio",
+                "domain_shift_score",
+                "label_quality",
+                "geographic_split",
+                "temporal_holdout",
+                "production_labels",
+                "action_type",
+                "target_role",
+                "magnitude",
+                "parameters",
+                "scenario_context",
+            ),
+        )
+        cached = self._cache_get(self._geofm_gate_cache, cache_key)
+        if cached is not None:
+            return cached
+        state_bundle = self.repository.get_state_bundle(state_version_id)
+        if state_bundle is None:
             raise LookupError(f"state not found: {state_version_id}")
 
         thresholds = self._geofm_gate_thresholds(payload)
@@ -1950,7 +4661,9 @@ class TerritoryWorldModelService:
             },
             recommendations=recommendations,
         )
-        return report.to_dict()
+        result = report.to_dict()
+        self._cache_set(self._geofm_gate_cache, cache_key, result)
+        return deepcopy(result)
 
     def geofm_downstream_experiment_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -2048,9 +4761,54 @@ class TerritoryWorldModelService:
 
     def causal_calibration_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
-        state_bundle = self.repository.get_state_bundle(state_version_id)
         state = self.repository.get_state_version(state_version_id)
-        if state_bundle is None or state is None:
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        cache_key = self._report_cache_key(
+            state_version_id,
+            payload,
+            include=(
+                "records",
+                "observations",
+                "observed_history",
+                "observed_history_path",
+                "approval_review_history_path",
+                "approval_history_path",
+                "observed_approval_history_path",
+                "thresholds",
+                "causal_thresholds",
+                "model_effect",
+                "baseline_action",
+                "intervention_actions",
+                "action_type",
+                "target_role",
+                "magnitude",
+                "parameters",
+                "scenario",
+                "scenario_context",
+                "evidence_coverage",
+                "horizon",
+                "treatment",
+                "treatment_name",
+                "outcome",
+                "outcome_name",
+                "positive_label",
+                "outcome_direction",
+                "scca_causal_evidence_report",
+                "scca_evidence_report",
+                "scca_result",
+                "scca_report",
+                "scca_payload",
+                "scca_output_dir",
+                "scca_dir",
+                "scca_path",
+                "scca_manifest_path",
+            ),
+        )
+        cached = self._cache_get(self._causal_calibration_cache, cache_key)
+        if cached is not None:
+            return cached
+        if self.repository.get_state_bundle(state_version_id) is None:
             raise LookupError(f"state not found: {state_version_id}")
 
         treatment_name = str(payload.get("treatment") or payload.get("treatment_name") or "planning_intervention")
@@ -2105,7 +4863,9 @@ class TerritoryWorldModelService:
             },
             recommendations=recommendations,
         )
-        return report.to_dict()
+        result = report.to_dict()
+        self._cache_set(self._causal_calibration_cache, cache_key, result)
+        return deepcopy(result)
 
     def scca_causal_evidence_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -3707,9 +6467,19 @@ class TerritoryWorldModelService:
         return candidate
 
     def _dynamics_backend_descriptor(self, payload: dict[str, Any]) -> dict[str, Any]:
-        backend = dict(payload.get("backend") or payload.get("dynamics_backend") or {})
+        raw_backend = payload.get("backend")
+        if raw_backend in (None, ""):
+            raw_backend = payload.get("dynamics_backend")
+        backend = self._payload_mapping(raw_backend)
         candidate_report = self._raw_backend_candidate_report(payload)
-        backend_type = str(backend.get("backend_type") or backend.get("type") or ("external_candidate" if candidate_report else "deterministic_scaffold"))
+        backend_type = str(
+            backend.get("backend_type")
+            or backend.get("type")
+            or backend.get("training_method")
+            or ("external_candidate" if candidate_report else "deterministic_scaffold")
+        )
+        if backend_type in {"transparent", "baseline", "scaffold"}:
+            backend_type = "deterministic_scaffold"
         return {
             "backend_id": str(backend.get("backend_id") or backend.get("id") or backend.get("model_name") or backend_type),
             "backend_type": backend_type,
@@ -6608,9 +9378,112 @@ class TerritoryWorldModelService:
             "min_holdout_examples": safe_int(raw.get("min_holdout_examples"), 1) or 1,
             "max_scaffold_ratio": float(safe_float(raw.get("max_scaffold_ratio"), 0.5) or 0.5),
             "max_review_ratio": float(safe_float(raw.get("max_review_ratio"), 0.35) or 0.35),
-            "require_geofm_pass": bool(raw.get("require_geofm_pass", False)),
-            "require_causal_pass": bool(raw.get("require_causal_pass", False)),
+            "require_geofm_pass": truthy(raw.get("require_geofm_pass")) or truthy(payload.get("require_geofm_pass")),
+            "require_causal_pass": truthy(raw.get("require_causal_pass")) or truthy(payload.get("require_causal_pass")),
         }
+
+    def _dynamics_payload_value_provided(self, value: Any) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return bool(value.strip())
+        if isinstance(value, (dict, list, tuple, set)):
+            return bool(value)
+        return True
+
+    def _dynamics_should_compute_geofm_gate(self, payload: dict[str, Any], thresholds: dict[str, Any]) -> bool:
+        if thresholds.get("require_geofm_pass"):
+            return True
+        if any(truthy(payload.get(key)) for key in ("require_geofm_pass", "uses_geofm", "geofm_required")):
+            return True
+        for container_key in ("backend", "dynamics_backend", "candidate", "trainer"):
+            raw = payload.get(container_key)
+            if isinstance(raw, dict) and any(truthy(raw.get(key)) for key in ("uses_geofm", "geofm_required")):
+                return True
+        evidence_keys = (
+            "baseline_metrics",
+            "augmented_metrics",
+            "geofm_metrics",
+            "baseline_predictions",
+            "b0_predictions",
+            "baseline_dynamics_predictions",
+            "augmented_predictions",
+            "geofm_predictions",
+            "b1_predictions",
+            "augmented_dynamics_predictions",
+            "baseline_dynamics_candidate_report",
+            "b0_candidate_report",
+            "augmented_dynamics_candidate_report",
+            "geofm_candidate_report",
+            "b1_candidate_report",
+            "geofm_dynamics_evaluation_report",
+            "augmented_dynamics_evaluation_report",
+            "dynamics_evaluation_report",
+            "extended_validation",
+            "architecture_audit",
+            "geofm_architecture_audit",
+            "adapter",
+            "geofm_adapter",
+            "backbone",
+            "geofm_backbone",
+            "data_validation",
+            "geofm_data_validation",
+            "geofm_backbone_name",
+            "geofm_architecture",
+            "fused_qkv",
+            "geofm_adapter_type",
+            "geofm_adapter_target_modules",
+            "geofm_input_modalities",
+        )
+        return any(self._dynamics_payload_value_provided(payload.get(key)) for key in evidence_keys)
+
+    def _dynamics_should_compute_causal_gate(self, payload: dict[str, Any], thresholds: dict[str, Any]) -> bool:
+        if thresholds.get("require_causal_pass"):
+            return True
+        if any(
+            truthy(payload.get(key))
+            for key in (
+                "require_causal_pass",
+                "uses_causal_calibration",
+                "causal_required",
+                "causal_calibration_required",
+            )
+        ):
+            return True
+        for container_key in ("backend", "dynamics_backend", "candidate", "trainer"):
+            raw = payload.get(container_key)
+            if isinstance(raw, dict) and any(
+                truthy(raw.get(key)) for key in ("uses_causal_calibration", "causal_required", "causal_calibration_required")
+            ):
+                return True
+        evidence_keys = (
+            "records",
+            "observations",
+            "observed_history",
+            "observed_history_path",
+            "approval_review_history_path",
+            "approval_history_path",
+            "observed_approval_history_path",
+            "model_effect",
+            "baseline_action",
+            "intervention_actions",
+            "treatment",
+            "treatment_name",
+            "outcome",
+            "outcome_name",
+            "positive_label",
+            "outcome_direction",
+            "scca_causal_evidence_report",
+            "scca_evidence_report",
+            "scca_result",
+            "scca_report",
+            "scca_payload",
+            "scca_output_dir",
+            "scca_dir",
+            "scca_path",
+            "scca_manifest_path",
+        )
+        return any(self._dynamics_payload_value_provided(payload.get(key)) for key in evidence_keys)
 
     def _dynamics_sample_inventory(self, dataset: dict[str, Any]) -> dict[str, Any]:
         examples = [dict(item) for item in dataset.get("examples") or [] if isinstance(item, dict)]
@@ -6765,20 +9638,48 @@ class TerritoryWorldModelService:
             },
         }
         geofm_payload = payload.get("geofm_gate_report")
-        geofm_gate = dict(geofm_payload) if isinstance(geofm_payload, dict) else self.geofm_ablation_gate(state_version_id, payload)
+        geofm_required = bool(thresholds["require_geofm_pass"])
+        if isinstance(geofm_payload, dict):
+            geofm_gate = dict(geofm_payload)
+            geofm_source = "payload"
+        elif self._dynamics_should_compute_geofm_gate(payload, thresholds):
+            geofm_gate = self.geofm_ablation_gate(state_version_id, payload)
+            geofm_source = "computed"
+        else:
+            geofm_gate = {
+                "gate_status": "not_required",
+                "decision": "not_required",
+            }
+            geofm_source = "skipped_optional_gate"
+
         causal_payload = payload.get("causal_calibration_report")
-        causal_gate = dict(causal_payload) if isinstance(causal_payload, dict) else self.causal_calibration_report(state_version_id, payload)
+        causal_required = bool(thresholds["require_causal_pass"])
+        if isinstance(causal_payload, dict):
+            causal_gate = dict(causal_payload)
+            causal_source = "payload"
+        elif self._dynamics_should_compute_causal_gate(payload, thresholds):
+            causal_gate = self.causal_calibration_report(state_version_id, payload)
+            causal_source = "computed"
+        else:
+            causal_gate = {
+                "status": "not_required",
+                "method": "not_required",
+            }
+            causal_source = "skipped_optional_gate"
+
         gates["geofm_gate"] = {
-            "passed": geofm_gate.get("gate_status") == "pass",
-            "required": bool(thresholds["require_geofm_pass"]),
+            "passed": geofm_gate.get("gate_status") == "pass" or (not geofm_required and geofm_gate.get("gate_status") == "not_required"),
+            "required": geofm_required,
             "status": geofm_gate.get("gate_status", "review"),
             "decision": geofm_gate.get("decision", "review_required"),
+            "source": geofm_source,
         }
         gates["causal_calibration"] = {
-            "passed": causal_gate.get("status") == "pass",
-            "required": bool(thresholds["require_causal_pass"]),
+            "passed": causal_gate.get("status") == "pass" or (not causal_required and causal_gate.get("status") == "not_required"),
+            "required": causal_required,
             "status": causal_gate.get("status", "review"),
             "method": causal_gate.get("method", ""),
+            "source": causal_source,
         }
         trainable_gates = [
             "sample_volume",
@@ -6820,10 +9721,17 @@ class TerritoryWorldModelService:
             return "limited_experiment_only"
         return "contract_only"
 
-    def _dynamics_target_model_contract(self, dataset: dict[str, Any], gate_results: dict[str, Any]) -> dict[str, Any]:
+    def _dynamics_target_model_contract(
+        self,
+        dataset: dict[str, Any],
+        gate_results: dict[str, Any],
+        *,
+        state_contract: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         summary = dict(dataset.get("summary") or {})
         state_version_id = str(dataset.get("state_version_id") or "")
-        state_contract = self.state_contract_report(state_version_id, {}) if state_version_id else {}
+        if state_contract is None:
+            state_contract = self.state_contract_report(state_version_id, {}) if state_version_id else {}
         return {
             "schema": "territory_world_model.trainable_dynamics_contract.v1",
             "state_encoder": {
@@ -6880,7 +9788,7 @@ class TerritoryWorldModelService:
         return recommendations
 
     def _dynamics_candidate_descriptor(self, payload: dict[str, Any]) -> dict[str, Any]:
-        raw = dict(payload.get("candidate") or {})
+        raw = self._payload_mapping(payload.get("candidate"))
         name = str(raw.get("model_name") or payload.get("model_name") or "deterministic_scaffold_baseline")
         version = str(raw.get("model_version") or payload.get("model_version") or "current")
         return {
@@ -6894,7 +9802,7 @@ class TerritoryWorldModelService:
         }
 
     def _fit_candidate_descriptor(self, payload: dict[str, Any]) -> dict[str, Any]:
-        raw = dict(payload.get("candidate") or {})
+        raw = self._payload_mapping(payload.get("candidate"))
         return {
             "model_name": str(raw.get("model_name") or payload.get("model_name") or "hierarchical_baseline_dynamics"),
             "model_version": str(raw.get("model_version") or payload.get("model_version") or "fit_scaffold_v1"),
@@ -6906,8 +9814,17 @@ class TerritoryWorldModelService:
         }
 
     def _train_dynamics_trainer_descriptor(self, payload: dict[str, Any]) -> dict[str, Any]:
-        raw = dict(payload.get("trainer") or payload.get("candidate") or {})
-        training_method = str(raw.get("training_method") or payload.get("training_method") or "weighted_multi_head_group_means")
+        raw = self._payload_mapping(payload.get("trainer") or payload.get("candidate") or payload.get("backend"))
+        training_method = str(
+            raw.get("training_method")
+            or raw.get("backend")
+            or raw.get("backend_type")
+            or payload.get("training_method")
+            or payload.get("backend")
+            or "weighted_multi_head_group_means"
+        )
+        if training_method in {"transparent", "baseline", "scaffold"}:
+            training_method = "weighted_multi_head_group_means"
         transformer = training_method in {"torch_spatiotemporal_transformer", "spatiotemporal_transformer_dynamics", "torch_spatiotemporal_transformer_dynamics"}
         neural = training_method in {"torch_multi_head_mlp", "neural_multi_head_mlp"}
         graph = training_method in {"torch_hierarchical_graph", "hierarchical_graph_dynamics", "torch_hierarchical_graph_dynamics"}
@@ -6951,6 +9868,13 @@ class TerritoryWorldModelService:
             "is_scaffold_trainer": not (neural or graph or transformer),
             "metadata": dict(raw.get("metadata") or {}),
         }
+
+    def _payload_mapping(self, value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return dict(value)
+        if isinstance(value, str) and value.strip():
+            return {"model_name": value.strip(), "training_method": value.strip()}
+        return {}
 
     def _use_neural_dynamics_trainer(self, trainer: dict[str, Any]) -> bool:
         return str(trainer.get("training_method") or "") in {"torch_multi_head_mlp", "neural_multi_head_mlp"}

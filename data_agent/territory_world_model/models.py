@@ -256,6 +256,7 @@ class TwmScenario:
     input_changes: dict[str, Any] = field(default_factory=dict)
     source_model: str | None = None
     status: str = "draft"
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=now_utc_iso)
 
     def to_dict(self) -> dict[str, Any]:

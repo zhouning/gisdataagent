@@ -1,0 +1,772 @@
+{
+  "schema": "territory_world_model.flus_v24_baseline_assessment.v1",
+  "status": "pass",
+  "source_files": {
+    "manual": "/Users/zhouning/Downloads/GeoSOS-FLUS Manual_En 2019.pdf",
+    "source_zip": "/Users/zhouning/Downloads/FLUS_console.zip",
+    "v24_zip": "/Users/zhouning/Downloads/paralleled FLUS_V2.4.zip"
+  },
+  "manual": {
+    "status": "read",
+    "page_count": 21,
+    "found_terms": [
+      "dg2001coor.tif",
+      "dg2006true.tif",
+      "restrictedarea.tif",
+      "Probability-of-occurrence.tif",
+      "ANN",
+      "Kappa",
+      "FoM"
+    ],
+    "supports_dataset_role": true,
+    "method_summary": [
+      "The manual describes GeoSOS-FLUS as a multi-type land-use simulation tool coupling human and natural effects.",
+      "The workflow contains ANN-based probability-of-occurrence estimation and a CA allocation/simulation module.",
+      "The tutorial data roles include start-year land use, validation-year land use, restricted area, driving factors and validation outputs."
+    ],
+    "evidence_snippets": [
+      {
+        "term": "dg2001coor.tif",
+        "snippet": "le model or compared with your simulation results. Category File Name Definition Usage Land use pattern dg2001coor.tif Land use classification data of 2001 in Dongguan, including five type of land use Model input dg2006true"
+      },
+      {
+        "term": "dg2006true.tif",
+        "snippet": "01coor.tif Land use classification data of 2001 in Dongguan, including five type of land use Model input dg2006true.tif Land use classification data of 2006 in Dongguan Precision validation Maps of restricted areas restrict"
+      },
+      {
+        "term": "restrictedarea.tif",
+        "snippet": "true.tif Land use classification data of 2006 in Dongguan Precision validation Maps of restricted areas restrictedarea.tif Open water Designating the areas where land use change is restricted Driving factors dem_dg.tif Elevatio"
+      },
+      {
+        "term": "Kappa",
+        "snippet": "the result by clicking the button. 3.3. Precision validation of simulation GeoSOS-FLUS provides a kappa statistic tool and a FoM statistic tool for measuring agreement between simulation result and actual land us"
+      },
+      {
+        "term": "FoM",
+        "snippet": "button. 3.3. Precision validation of simulation GeoSOS-FLUS provides a kappa statistic tool and a FoM statistic tool for measuring agreement between simulation result and actual land use pattern. 3.3.1. Kapp"
+      }
+    ]
+  },
+  "source_zip": {
+    "status": "read",
+    "file_count": 357,
+    "selected_files": [
+      "FLUS/nntrain.cpp",
+      "FLUS/nntrain.h",
+      "FLUS/simulationprocess.cpp",
+      "FLUS/simulationprocess.h",
+      "FLUS/TiffDataRead.cpp",
+      "FLUS/TiffDataRead.h",
+      "FLUS/TiffDataWrite.cpp",
+      "FLUS/TiffDataWrite.h",
+      "FLUS_console.sln",
+      "FLUS_console/ccsy/CCregionMakovChain.csv",
+      "FLUS_console/FilesGenerate/config.log",
+      "FLUS_console/FilesGenerate/Demand.csv",
+      "FLUS_console/FilesGenerate/logFileSimulation.log",
+      "FLUS_console/FilesGenerate/logFileTrain.log",
+      "FLUS_console/FilesGenerate/logFileUpdate.log",
+      "FLUS_console/FLUS_console.cpp",
+      "FLUS_console/FLUS_console.vcxproj",
+      "FLUS_console/Release/FLUS_console.log",
+      "FLUS_console/stdafx.cpp",
+      "FLUS_console/stdafx.h",
+      "FLUS_console/targetver.h",
+      "FLUS_console/x64/Debug/FLUS_console.Build.CppClean.log",
+      "FLUS_console/x64/Debug/FLUS_console.log",
+      "FLUS_console/x64/Release/FLUS_console.Build.CppClean.log",
+      "FLUS_console/x64/Release/FLUS_console.log",
+      "GDAL_x64/data/compdcs.csv",
+      "GDAL_x64/data/coordinate_axis.csv",
+      "GDAL_x64/data/datum_shift.csv",
+      "GDAL_x64/data/ellipsoid.csv",
+      "GDAL_x64/data/gcs.csv",
+      "GDAL_x64/data/gcs.override.csv",
+      "GDAL_x64/data/gdal_datum.csv",
+      "GDAL_x64/data/geoccs.csv",
+      "GDAL_x64/data/gt_datum.csv",
+      "GDAL_x64/data/gt_ellips.csv",
+      "GDAL_x64/data/pcs.csv",
+      "GDAL_x64/data/pcs.override.csv",
+      "GDAL_x64/data/prime_meridian.csv",
+      "GDAL_x64/data/projop_wparm.csv",
+      "GDAL_x64/data/s57agencies.csv",
+      "GDAL_x64/data/s57attributes.csv",
+      "GDAL_x64/data/s57attributes_aml.csv",
+      "GDAL_x64/data/s57attributes_iw.csv",
+      "GDAL_x64/data/s57expectedinput.csv",
+      "GDAL_x64/data/s57objectclasses.csv",
+      "GDAL_x64/data/s57objectclasses_aml.csv",
+      "GDAL_x64/data/s57objectclasses_iw.csv",
+      "GDAL_x64/data/stateplane.csv",
+      "GDAL_x64/data/unit_of_measure.csv",
+      "GDAL_x64/data/vertcs.csv",
+      "GDAL_x64/data/vertcs.override.csv",
+      "GDAL_x64/include/cplkeywordparser.h",
+      "GDAL_x64/include/cpl_atomic_ops.h",
+      "GDAL_x64/include/cpl_config.h",
+      "GDAL_x64/include/cpl_config_extras.h",
+      "GDAL_x64/include/cpl_conv.h",
+      "GDAL_x64/include/cpl_csv.h",
+      "GDAL_x64/include/cpl_error.h",
+      "GDAL_x64/include/cpl_hash_set.h",
+      "GDAL_x64/include/cpl_http.h",
+      "GDAL_x64/include/cpl_list.h",
+      "GDAL_x64/include/cpl_minixml.h",
+      "GDAL_x64/include/cpl_minizip_ioapi.h",
+      "GDAL_x64/include/cpl_minizip_unzip.h",
+      "GDAL_x64/include/cpl_minizip_zip.h",
+      "GDAL_x64/include/cpl_multiproc.h",
+      "GDAL_x64/include/cpl_odbc.h",
+      "GDAL_x64/include/cpl_port.h",
+      "GDAL_x64/include/cpl_quad_tree.h",
+      "GDAL_x64/include/cpl_string.h",
+      "GDAL_x64/include/cpl_time.h",
+      "GDAL_x64/include/cpl_vsi.h",
+      "GDAL_x64/include/cpl_vsi_virtual.h",
+      "GDAL_x64/include/cpl_win32ce_api.h",
+      "GDAL_x64/include/cpl_wince.h",
+      "GDAL_x64/include/gdal.h",
+      "GDAL_x64/include/gdalgrid.h",
+      "GDAL_x64/include/gdaljp2metadata.h",
+      "GDAL_x64/include/gdalwarper.h",
+      "GDAL_x64/include/gdalwarpkernel_opencl.h"
+    ],
+    "contains_ann_and_simulation_code": true,
+    "not_immediately_runnable_on_macos_reason": "The package is a Visual Studio/C++ project and source files include Windows-specific headers; running it directly on macOS would require a separate port/build setup.",
+    "config_log": "[Path of land use data]\r\nF:/xunleidownload/GeoSOS-FLUS V2.0 /GeoSOS-FLUS V2.0/testdata/dg2001coor.tif\r\n[Path of probability data]\r\nF:/xunleidownload/GeoSOS-FLUS V2.0 /GeoSOS-FLUS V2.0/testdata/Probability-of-occurrence.tif\r\n[Path of simulation result]\r\nF:/xunleidownload/GeoSOS-FLUS V2.0 /GeoSOS-FLUS V2.0/testdata/simulationResult.tif\r\n[Path of restricted area]\r\nF:/xunleidownload/GeoSOS-FLUS V2.0 /GeoSOS-FLUS V2.0/testdata/restrictedarea.tif\r\n[Number of types]\r\n5\r\n[Future Pixels]\r\n80016\r\n54427\r\n43599\r\n42433\r\n28446\r\n[Cost Matrix]\r\n1,0,0,0,0\r\n0,1,0,0,0\r\n1,1,1,1,0\r\n1,0,1,1,0\r\n1,0,1,0,1\r\n[Intensity of neighborhood]\r\n1\r\n0.9\r\n0.5\r\n1\r\n0.1\r\n[Maximum Number Of Iterations]\r\n300\r\n[Size of neighborhood]\r\n3\r\n[Accelerated factor]\r\n0.1\r\n",
+    "demand_csv": "Year,城市,水体,耕地,林地,果园\r\n2001,52494,54427,57182,48336,36483\r\n2002,57998,54427,54466,47155,34875\r\n2003,63503,54427,51749,45975,33268\r\n2004,69007,54427,49032,44794,31661\r\n2005,74512,54427,46316,43614,30053\r\n2006,80016,54427,43599,42433,28446\r\n"
+  },
+  "v24_package": {
+    "testdata_path_inside_zip": "FLUS_V2.4/testdata",
+    "config_color": {
+      "1": {
+        "index": 1,
+        "initial_count_from_color_log": 46989,
+        "label": "Urban land",
+        "rgb": [
+          170,
+          0,
+          127
+        ]
+      },
+      "2": {
+        "index": 2,
+        "initial_count_from_color_log": 54427,
+        "label": "Water area",
+        "rgb": [
+          0,
+          0,
+          255
+        ]
+      },
+      "3": {
+        "index": 3,
+        "initial_count_from_color_log": 59899,
+        "label": "Cropland",
+        "rgb": [
+          0,
+          255,
+          0
+        ]
+      },
+      "4": {
+        "index": 4,
+        "initial_count_from_color_log": 49516,
+        "label": "Forest land",
+        "rgb": [
+          0,
+          85,
+          0
+        ]
+      },
+      "5": {
+        "index": 5,
+        "initial_count_from_color_log": 38090,
+        "label": "Orchard",
+        "rgb": [
+          255,
+          255,
+          0
+        ]
+      }
+    },
+    "config_mp": {
+      "raw": "[Number of types]\n5\n[Future Pixels]\n80016\n54427\n43599\n42433\n28446\n[Cost Matrix]\n1,0,0,0,0\n0,1,0,0,0\n1,1,1,1,0\n1,0,1,1,0\n1,0,1,0,1\n[Intensity of neighborhood]\n1\n0.9\n0.5\n1\n0.1\n[Maximum Number Of Iterations]\n300\n[Size of neighborhood]\n3\n[Accelerated factor]\n0.1\n",
+      "number_of_types": 5,
+      "future_pixels": {
+        "1": 80016,
+        "2": 54427,
+        "3": 43599,
+        "4": 42433,
+        "5": 28446
+      },
+      "cost_matrix": [
+        [
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          1,
+          0,
+          1
+        ]
+      ],
+      "neighborhood_intensity": [
+        1.0,
+        0.9,
+        0.5,
+        1.0,
+        0.1
+      ],
+      "maximum_iterations": 300,
+      "neighborhood_size": 3,
+      "accelerated_factor": 0.1
+    },
+    "output_log_tail": "Number of pixels of each land use at 168 iteration,79878,54427,43602,42568,28446\nNumber of pixels of each land use at 169 iteration,79908,54427,43601,42539,28446\nNumber of pixels of each land use at 170 iteration,79925,54427,43617,42506,28446\nNumber of pixels of each land use at 171 iteration,79960,54427,43603,42485,28446\nNumber of pixels of each land use at 172 iteration,79979,54427,43612,42457,28446\nNumber of pixels of each land use at 173 iteration,80006,54427,43605,42437,28446\n\nSave image at: C:/Users/Someone/Desktop/GeoSOS-FLUS V1.0 Beta/testdata/simulationResult.tif\n\nTime used: 73.3590 s\n\nThe simulation is finished!",
+    "raster_profile": {
+      "dg2001coor.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "int32",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 2147483647.0
+      },
+      "dg2006true.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "int32",
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 2147483647.0
+      },
+      "simulationResult.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "uint8",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 0.0
+      },
+      "simulationResult1.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "uint8",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 0.0
+      },
+      "Probability-of-occurrence.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 5,
+        "dtype": "float32",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -1.0
+      },
+      "restrictedarea.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "int32",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 2147483647.0
+      },
+      "common": {
+        "valid_cell_count": 248920,
+        "cell_area_m2": 10000.0,
+        "cell_area_ha": 1.0
+      }
+    },
+    "raster_counts": {
+      "dg2001coor.tif": {
+        "1": 46989,
+        "2": 54427,
+        "3": 59899,
+        "4": 49516,
+        "5": 38090,
+        "2147483647": 158887
+      },
+      "dg2006true.tif": {
+        "1": 80016,
+        "2": 54230,
+        "3": 43599,
+        "4": 42433,
+        "5": 28653,
+        "2147483647": 158877
+      },
+      "simulationResult.tif": {
+        "1": 80016,
+        "2": 54427,
+        "3": 43599,
+        "4": 42433,
+        "5": 28446,
+        "0": 158887
+      },
+      "simulationResult1.tif": {
+        "1": 80016,
+        "2": 54427,
+        "3": 43599,
+        "4": 42433,
+        "5": 28446,
+        "0": 158887
+      },
+      "restrictedarea.tif": {
+        "1": 194494,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "0": 54427,
+        "2147483647": 158887
+      }
+    },
+    "drivers": {
+      "dem_dg.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "slope.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028230607370965e+38,
+        "min": 0.0,
+        "max": 0.062397439032793045
+      },
+      "Aspect.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028230607370965e+38,
+        "min": -1.0,
+        "max": 360.0
+      },
+      "tocity_dg.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0009605661034584045,
+        "max": 0.9993352890014648
+      },
+      "distotown.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.003613001899793744,
+        "max": 0.9996408224105835
+      },
+      "distohighway.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0005506686866283417,
+        "max": 0.9893258810043335
+      },
+      "distoroad.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0,
+        "max": 0.9909719228744507
+      },
+      "distorailway.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "ProximityWater.tif": {
+        "status": "missing"
+      }
+    }
+  },
+  "baseline_metrics": {
+    "persistence_2001_as_2006": {
+      "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+      "valid_cell_count": 248920,
+      "overall_accuracy": 0.600771,
+      "kappa": 0.499726,
+      "correct_cell_count": 149544,
+      "predicted_change_count": 0,
+      "actual_change_count": 99376,
+      "change_hit_count": 0,
+      "change_false_alarm_count": 0,
+      "change_miss_count": 99376,
+      "change_precision": 0.0,
+      "change_recall": 0.0,
+      "change_f1": 0.0,
+      "change_fom": 0.0,
+      "transition_hit_on_changed_cells": 0,
+      "transition_accuracy_on_actual_change": 0.0,
+      "urban_expansion_hit_count": 0,
+      "predicted_urban_expansion_count": 0,
+      "actual_urban_expansion_count": 37550,
+      "urban_expansion_precision": 0.0,
+      "urban_expansion_recall": 0.0,
+      "urban_expansion_f1": 0.0,
+      "predicted_counts": {
+        "1": 46989,
+        "2": 54427,
+        "3": 59899,
+        "4": 49515,
+        "5": 38090
+      },
+      "predicted_counts_full_raster": {
+        "1": 46989,
+        "2": 54427,
+        "3": 59899,
+        "4": 49516,
+        "5": 38090
+      },
+      "truth_counts": {
+        "1": 80014,
+        "2": 54226,
+        "3": 43599,
+        "4": 42428,
+        "5": 28653
+      },
+      "future_pixel_demand_mae": 13210.8,
+      "future_pixel_demand_rmse": 17318.477728,
+      "macro_f1": 0.592383,
+      "per_class_f1": {
+        "1": 0.668709,
+        "2": 0.592418,
+        "3": 0.543257,
+        "4": 0.647184,
+        "5": 0.510346
+      }
+    },
+    "official_simulationResult": {
+      "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+      "valid_cell_count": 248920,
+      "overall_accuracy": 0.602491,
+      "kappa": 0.487845,
+      "correct_cell_count": 149972,
+      "predicted_change_count": 44589,
+      "actual_change_count": 99376,
+      "change_hit_count": 32366,
+      "change_false_alarm_count": 12223,
+      "change_miss_count": 67010,
+      "change_precision": 0.725874,
+      "change_recall": 0.325692,
+      "change_f1": 0.449637,
+      "change_fom": 0.290021,
+      "transition_hit_on_changed_cells": 12651,
+      "transition_accuracy_on_actual_change": 0.127304,
+      "urban_expansion_hit_count": 10146,
+      "predicted_urban_expansion_count": 33027,
+      "actual_urban_expansion_count": 37550,
+      "urban_expansion_precision": 0.307203,
+      "urban_expansion_recall": 0.2702,
+      "urban_expansion_f1": 0.287516,
+      "predicted_counts": {
+        "1": 80016,
+        "2": 54427,
+        "3": 43599,
+        "4": 42432,
+        "5": 28446
+      },
+      "predicted_counts_full_raster": {
+        "1": 80016,
+        "2": 54427,
+        "3": 43599,
+        "4": 42433,
+        "5": 28446
+      },
+      "truth_counts": {
+        "1": 80014,
+        "2": 54226,
+        "3": 43599,
+        "4": 42428,
+        "5": 28653
+      },
+      "future_pixel_demand_mae": 0.0,
+      "future_pixel_demand_rmse": 0.0,
+      "macro_f1": 0.58572,
+      "per_class_f1": {
+        "1": 0.657502,
+        "2": 0.592418,
+        "3": 0.534255,
+        "4": 0.663681,
+        "5": 0.480744
+      }
+    },
+    "official_simulationResult1": {
+      "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+      "valid_cell_count": 248920,
+      "overall_accuracy": 0.601659,
+      "kappa": 0.486773,
+      "correct_cell_count": 149765,
+      "predicted_change_count": 45452,
+      "actual_change_count": 99376,
+      "change_hit_count": 32746,
+      "change_false_alarm_count": 12706,
+      "change_miss_count": 66630,
+      "change_precision": 0.720452,
+      "change_recall": 0.329516,
+      "change_f1": 0.452205,
+      "change_fom": 0.292161,
+      "transition_hit_on_changed_cells": 12927,
+      "transition_accuracy_on_actual_change": 0.130082,
+      "urban_expansion_hit_count": 10188,
+      "predicted_urban_expansion_count": 33027,
+      "actual_urban_expansion_count": 37550,
+      "urban_expansion_precision": 0.308475,
+      "urban_expansion_recall": 0.271318,
+      "urban_expansion_f1": 0.288706,
+      "predicted_counts": {
+        "1": 80016,
+        "2": 54427,
+        "3": 43599,
+        "4": 42432,
+        "5": 28446
+      },
+      "predicted_counts_full_raster": {
+        "1": 80016,
+        "2": 54427,
+        "3": 43599,
+        "4": 42433,
+        "5": 28446
+      },
+      "truth_counts": {
+        "1": 80014,
+        "2": 54226,
+        "3": 43599,
+        "4": 42428,
+        "5": 28653
+      },
+      "future_pixel_demand_mae": 0.0,
+      "future_pixel_demand_rmse": 0.0,
+      "macro_f1": 0.584652,
+      "per_class_f1": {
+        "1": 0.658027,
+        "2": 0.592418,
+        "3": 0.526274,
+        "4": 0.666462,
+        "5": 0.480078
+      }
+    },
+    "probability_argmax_not_ca_result": {
+      "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+      "valid_cell_count": 248920,
+      "overall_accuracy": 0.484879,
+      "kappa": 0.35082,
+      "correct_cell_count": 120696,
+      "predicted_change_count": 124464,
+      "actual_change_count": 99376,
+      "change_hit_count": 66671,
+      "change_false_alarm_count": 57793,
+      "change_miss_count": 32705,
+      "change_precision": 0.535665,
+      "change_recall": 0.670896,
+      "change_f1": 0.595702,
+      "change_fom": 0.424199,
+      "transition_hit_on_changed_cells": 28945,
+      "transition_accuracy_on_actual_change": 0.291268,
+      "urban_expansion_hit_count": 14054,
+      "predicted_urban_expansion_count": 39098,
+      "actual_urban_expansion_count": 37550,
+      "urban_expansion_precision": 0.359456,
+      "urban_expansion_recall": 0.374274,
+      "urban_expansion_f1": 0.366715,
+      "predicted_counts": {
+        "1": 68387,
+        "2": 34999,
+        "3": 55418,
+        "4": 31013,
+        "5": 59103
+      },
+      "predicted_counts_full_raster": {
+        "1": 68387,
+        "2": 34999,
+        "3": 55418,
+        "4": 31013,
+        "5": 59103
+      },
+      "truth_counts": {
+        "1": 80014,
+        "2": 54226,
+        "3": 43599,
+        "4": 42428,
+        "5": 28653
+      },
+      "future_pixel_demand_mae": 16990.6,
+      "future_pixel_demand_rmse": 18561.452718,
+      "macro_f1": 0.483336,
+      "per_class_f1": {
+        "1": 0.554174,
+        "2": 0.392625,
+        "3": 0.404961,
+        "4": 0.658842,
+        "5": 0.40608
+      }
+    }
+  },
+  "renderer": {
+    "rendered": true,
+    "assets": {
+      "landuse_baselines": "assets/twm_flus_v24_landuse_baselines.png",
+      "baseline_metrics": "assets/twm_flus_v24_baseline_metrics.png",
+      "change_baselines": "assets/twm_flus_v24_change_baselines.png",
+      "probability_bands": "assets/twm_flus_v24_probability_bands.png"
+    }
+  },
+  "evidence": {
+    "manual_supports_dataset_role": true,
+    "output_log_saves_simulation_result": true,
+    "simulation_result_counts_match_future_pixels": true,
+    "simulation_result1_counts_match_future_pixels": true,
+    "source_zip_contains_ann_and_simulation_code": true
+  },
+  "judgement": {
+    "is_better_than_previous_data_for_flus_baseline": true,
+    "confidence": "high",
+    "reason": {
+      "previous_dongguan_80m_zip": "Good for TWM ingestion, transition-contract validation and proxy baselines, but it did not include an official GeoSOS/FLUS output map in the files used earlier.",
+      "flus_v24_zip": "Better for baseline comparison because it bundles start map, truth map, probability-of-occurrence map, restriction map, driving factors, FLUS config/logs and apparent official simulation output rasters.",
+      "recommended_role": "Use the FLUS V2.4 package as a separate official FLUS baseline task; keep the earlier DongGuan 80m package for TWM data-contract and renderer/simulator/planner continuity tests."
+    },
+    "claim_boundary": [
+      "simulationResult.tif and simulationResult1.tif are treated as package-provided official FLUS sample outputs because they are bundled in the official V2.4 testdata and output.log records saving simulationResult.tif.",
+      "This assessment does not prove that TWM outperforms FLUS; it only establishes a stronger official baseline dataset for same-grid comparison.",
+      "The package is still a tutorial/sample case, not a full natural-resource governance dataset with planning approvals, interventions and review outcomes."
+    ]
+  },
+  "next_tasks": [
+    "Add a TWM V2.4 runner that uses dg2001coor.tif as initial state, dg2006true.tif as holdout truth, FLUS future-pixel demand as scenario demand, and restrictedarea/cost matrix as action masks.",
+    "Use Probability-of-occurrence.tif as a FLUS-informed suitability input, but keep it separate from the official CA result row.",
+    "Generate TWM simulation and planner candidate maps on the same 531x768, 100 m grid and compare them with official_simulationResult using OA, Kappa, change FoM, urban expansion F1, demand fit and restricted-area violations.",
+    "If FLUS_console is to be executed directly, treat it as a porting/build task because the provided project is Windows/Visual-Studio oriented and depends on GDAL/ALGLIB/OpenCV-style native code.",
+    "Do not claim that TWM beats GeoSOS/FLUS until the TWM V2.4 runner has produced same-case maps and the official baseline row remains in the same metric table."
+  ]
+}

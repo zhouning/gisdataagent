@@ -23,6 +23,140 @@ async def twm_status(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=500)
 
 
+async def twm_business_scenarios(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse({"scenarios": get_territory_world_model_service().list_business_scenarios()})
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_research_positioning(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().research_positioning())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_research_claim_matrix(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().research_claim_matrix())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_baseline_export_schema(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().baseline_export_schema())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_baseline_export_templates(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().baseline_export_templates())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_baseline_export_validation_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(get_territory_world_model_service().baseline_export_validation_report(body))
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_baseline_export_import(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _role = _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(get_territory_world_model_service().import_baseline_export(body, username=username))
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_baseline_comparison_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(get_territory_world_model_service().baseline_comparison_report(body))
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_baseline_evidence_pipeline_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(get_territory_world_model_service().baseline_evidence_pipeline_report(body))
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_data_foundation_assessment(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().data_foundation_assessment())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
 async def twm_projects(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -75,6 +209,15 @@ async def twm_project_bindings(request: Request):
         return JSONResponse(svc.bind_layer(project_id, body))
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_project_states(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    return JSONResponse({"states": svc.list_states(project_id=request.path_params["id"])})
 
 
 async def twm_build_state(request: Request):
@@ -680,9 +823,20 @@ async def twm_scca_causal_evidence_report(request: Request):
 def get_territory_world_model_routes() -> list[Route]:
     return [
         Route("/api/twm/status", endpoint=twm_status, methods=["GET"]),
+        Route("/api/twm/business-scenarios", endpoint=twm_business_scenarios, methods=["GET"]),
+        Route("/api/twm/research-positioning", endpoint=twm_research_positioning, methods=["GET"]),
+        Route("/api/twm/research-claim-matrix", endpoint=twm_research_claim_matrix, methods=["GET"]),
+        Route("/api/twm/baseline-export-schema", endpoint=twm_baseline_export_schema, methods=["GET"]),
+        Route("/api/twm/baseline-export-templates", endpoint=twm_baseline_export_templates, methods=["GET"]),
+        Route("/api/twm/baseline-export-import", endpoint=twm_baseline_export_import, methods=["POST"]),
+        Route("/api/twm/baseline-export-validation-report", endpoint=twm_baseline_export_validation_report, methods=["POST"]),
+        Route("/api/twm/baseline-comparison-report", endpoint=twm_baseline_comparison_report, methods=["POST"]),
+        Route("/api/twm/baseline-evidence-pipeline-report", endpoint=twm_baseline_evidence_pipeline_report, methods=["POST"]),
+        Route("/api/twm/data-foundation-assessment", endpoint=twm_data_foundation_assessment, methods=["GET"]),
         Route("/api/twm/projects", endpoint=twm_projects, methods=["GET", "POST"]),
         Route("/api/twm/projects/{id}", endpoint=twm_project_detail, methods=["GET"]),
         Route("/api/twm/projects/{id}/layer-bindings", endpoint=twm_project_bindings, methods=["GET", "POST"]),
+        Route("/api/twm/projects/{id}/states", endpoint=twm_project_states, methods=["GET"]),
         Route("/api/twm/projects/{id}/build-state", endpoint=twm_build_state, methods=["POST"]),
         Route("/api/twm/states/{id}", endpoint=twm_state_detail, methods=["GET"]),
         Route("/api/twm/states/{id}/evaluate-rules", endpoint=twm_evaluate_rules, methods=["POST"]),

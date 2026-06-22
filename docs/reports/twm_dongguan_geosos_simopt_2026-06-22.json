@@ -1,0 +1,729 @@
+{
+  "schema": "territory_world_model.dongguan_geosos_simulation_optimization_report.v1",
+  "status": "pass",
+  "claim_boundary": "geosos_dongguan_pixel_benchmark_not_actual_flus_output",
+  "source": {
+    "zip_path": "/Users/zhouning/Downloads/1TutorialData_DongGuan_80m.zip",
+    "dataset": "GeoSOS DongGuan 80m tutorial data",
+    "task": "pixel/grid simulation and planning optimization comparison"
+  },
+  "data_profile": {
+    "raster_profile": {
+      "schema": "territory_world_model.geosos_raster_profile.v1",
+      "years": [
+        2000,
+        2005,
+        2006
+      ],
+      "shape": [
+        648,
+        946
+      ],
+      "crs": "PROJCS[\"Krasovsky_1940_Albers\",GEOGCS[\"Unknown datum based upon the Krassowsky 1940 ellipsoid\",DATUM[\"Not_specified_based_on_Krassowsky_1940_ellipsoid\",SPHEROID[\"Krassowsky 1940\",6378245,298.3,AUTHORITY[\"EPSG\",\"7024\"]],AUTHORITY[\"EPSG\",\"6024\"]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",12],PARAMETER[\"longitude_of_center\",110],PARAMETER[\"standard_parallel_1\",25],PARAMETER[\"standard_parallel_2\",47],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "resolution": [
+        80.0,
+        80.0
+      ],
+      "cell_area_m2": 6400.0,
+      "cell_area_ha": 0.64,
+      "nodata": 0.0
+    },
+    "landuse_types": {
+      "schema": "territory_world_model.geosos_landuse_info.v1",
+      "types": {
+        "1": {
+          "value": 1,
+          "zh": "耕地",
+          "en": "Arable Land"
+        },
+        "2": {
+          "value": 2,
+          "zh": "林地",
+          "en": "Woodland"
+        },
+        "3": {
+          "value": 3,
+          "zh": "草地",
+          "en": "Meadow"
+        },
+        "4": {
+          "value": 4,
+          "zh": "水域",
+          "en": "Water"
+        },
+        "5": {
+          "value": 5,
+          "zh": "城乡建设用地",
+          "en": "Construction Land"
+        },
+        "6": {
+          "value": 6,
+          "zh": "未利用地",
+          "en": "Unused Land"
+        }
+      },
+      "convert_values": [
+        1,
+        3,
+        6
+      ],
+      "urban_values": [
+        5
+      ],
+      "not_to_convert_values": [
+        2,
+        4
+      ],
+      "null_value": -9999
+    },
+    "driver_layers": {
+      "dtcity": {
+        "status": "loaded",
+        "min": 0.7536117434501648,
+        "max": 1.0
+      },
+      "dtfreeway": {
+        "status": "loaded",
+        "min": 0.8511860966682434,
+        "max": 1.0
+      },
+      "dtrailway": {
+        "status": "loaded",
+        "min": 0.7528481483459473,
+        "max": 1.0
+      },
+      "dtroad": {
+        "status": "loaded",
+        "min": 0.850418746471405,
+        "max": 1.0
+      },
+      "urban_access": {
+        "status": "derived",
+        "min": 0.0,
+        "max": 1.0
+      }
+    },
+    "training_period": "2000->2005",
+    "holdout_period": "2005->2006",
+    "valid_cell_count": 378749,
+    "cell_area_ha": 0.64
+  },
+  "simulator": {
+    "training_transition_profile": {
+      "schema": "territory_world_model.geosos_transition_training_profile.v1",
+      "train_years": 5,
+      "horizon_years": 1,
+      "pair_counts": {
+        "1->1": 61680,
+        "1->2": 8619,
+        "1->3": 228,
+        "1->4": 8110,
+        "1->5": 29136,
+        "1->6": 125,
+        "2->1": 3822,
+        "2->2": 87646,
+        "2->3": 640,
+        "2->4": 2217,
+        "2->5": 15308,
+        "2->6": 41,
+        "3->1": 1084,
+        "3->2": 3391,
+        "3->3": 4236,
+        "3->4": 375,
+        "3->5": 1287,
+        "4->1": 3860,
+        "4->2": 1445,
+        "4->3": 78,
+        "4->4": 30148,
+        "4->5": 6089,
+        "4->6": 33,
+        "5->1": 6915,
+        "5->2": 5098,
+        "5->3": 112,
+        "5->4": 2521,
+        "5->5": 94175,
+        "5->6": 30,
+        "6->4": 23,
+        "6->6": 277
+      },
+      "source_counts": {
+        "1": 107898,
+        "2": 109674,
+        "3": 10373,
+        "4": 41653,
+        "5": 108851,
+        "6": 300
+      },
+      "target_counts": {
+        "1": 77361,
+        "2": 106199,
+        "3": 5294,
+        "4": 43394,
+        "5": 145995,
+        "6": 506
+      },
+      "projected_pair_budgets": {
+        "1->2": 1724,
+        "1->3": 46,
+        "1->4": 1622,
+        "1->5": 5827,
+        "1->6": 25,
+        "2->1": 764,
+        "2->3": 128,
+        "2->4": 443,
+        "2->5": 3062,
+        "2->6": 8,
+        "3->1": 217,
+        "3->2": 678,
+        "3->4": 75,
+        "3->5": 257,
+        "4->1": 772,
+        "4->2": 289,
+        "4->3": 16,
+        "4->5": 1218,
+        "4->6": 7,
+        "5->1": 1383,
+        "5->2": 1020,
+        "5->3": 22,
+        "5->4": 504,
+        "5->6": 6,
+        "6->4": 5
+      },
+      "projected_class_delta_budget": {
+        "1": -6107,
+        "2": -695,
+        "3": -1016,
+        "4": 348,
+        "5": 7429,
+        "6": 41
+      },
+      "changed_cell_budget": 20118
+    },
+    "candidate_count": 8,
+    "candidates": [
+      "persistence",
+      "markov_pair_budget",
+      "ca_neighborhood",
+      "flus_like_proxy",
+      "twm_balanced",
+      "twm_compact_growth",
+      "twm_accessibility_corridor",
+      "twm_arable_protection"
+    ],
+    "baseline_candidate_ids": [
+      "persistence",
+      "markov_pair_budget",
+      "ca_neighborhood",
+      "flus_like_proxy"
+    ],
+    "twm_candidate_ids": [
+      "twm_balanced",
+      "twm_compact_growth",
+      "twm_accessibility_corridor",
+      "twm_arable_protection"
+    ],
+    "metrics": {
+      "persistence": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.943746,
+        "kappa": 0.92071,
+        "correct_cell_count": 357443,
+        "predicted_change_count": 0,
+        "actual_change_count": 21306,
+        "change_hit_count": 0,
+        "change_false_alarm_count": 0,
+        "change_miss_count": 21306,
+        "change_precision": 0.0,
+        "change_recall": 0.0,
+        "change_f1": 0.0,
+        "change_fom": 0.0,
+        "transition_accuracy_on_actual_change": 0.0,
+        "urban_expansion_precision": 0.0,
+        "urban_expansion_recall": 0.0,
+        "urban_expansion_f1": 0.0,
+        "urban_expansion_hit_count": 0,
+        "predicted_urban_expansion_count": 0,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 0.0,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 0.0,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 0,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 0,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 0,
+        "suitability_violation_rate": 0.0,
+        "macro_f1": 0.946601,
+        "per_class_f1": {
+          "1": 0.907556,
+          "2": 0.964448,
+          "3": 0.941412,
+          "4": 0.974786,
+          "5": 0.937941,
+          "6": 0.953464
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      },
+      "markov_pair_budget": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.898537,
+        "kappa": 0.855893,
+        "correct_cell_count": 340320,
+        "predicted_change_count": 20118,
+        "actual_change_count": 21306,
+        "change_hit_count": 1807,
+        "change_false_alarm_count": 18311,
+        "change_miss_count": 19499,
+        "change_precision": 0.08982,
+        "change_recall": 0.084812,
+        "change_f1": 0.087244,
+        "change_fom": 0.045612,
+        "transition_accuracy_on_actual_change": 0.055759,
+        "urban_expansion_precision": 0.107873,
+        "urban_expansion_recall": 0.057964,
+        "urban_expansion_f1": 0.075408,
+        "urban_expansion_hit_count": 1118,
+        "predicted_urban_expansion_count": 10364,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 12875.52,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 6632.96,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 5827,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 3062,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 11425,
+        "suitability_violation_rate": 0.567899,
+        "macro_f1": 0.880877,
+        "per_class_f1": {
+          "1": 0.832993,
+          "2": 0.927561,
+          "3": 0.794703,
+          "4": 0.920565,
+          "5": 0.904678,
+          "6": 0.904762
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      },
+      "ca_neighborhood": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.927881,
+        "kappa": 0.897727,
+        "correct_cell_count": 351434,
+        "predicted_change_count": 8693,
+        "actual_change_count": 21306,
+        "change_hit_count": 1520,
+        "change_false_alarm_count": 7173,
+        "change_miss_count": 19786,
+        "change_precision": 0.174853,
+        "change_recall": 0.071341,
+        "change_f1": 0.101337,
+        "change_fom": 0.053373,
+        "transition_accuracy_on_actual_change": 0.054632,
+        "urban_expansion_precision": 0.198558,
+        "urban_expansion_recall": 0.059985,
+        "urban_expansion_f1": 0.092136,
+        "urban_expansion_hit_count": 1157,
+        "predicted_urban_expansion_count": 5827,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 5563.52,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 3729.28,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 5827,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 0,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 0,
+        "suitability_violation_rate": 0.0,
+        "macro_f1": 0.925118,
+        "per_class_f1": {
+          "1": 0.861021,
+          "2": 0.952565,
+          "3": 0.912337,
+          "4": 0.974786,
+          "5": 0.928002,
+          "6": 0.922
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      },
+      "flus_like_proxy": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.927643,
+        "kappa": 0.89739,
+        "correct_cell_count": 351344,
+        "predicted_change_count": 8693,
+        "actual_change_count": 21306,
+        "change_hit_count": 1473,
+        "change_false_alarm_count": 7220,
+        "change_miss_count": 19833,
+        "change_precision": 0.169447,
+        "change_recall": 0.069135,
+        "change_f1": 0.098203,
+        "change_fom": 0.051637,
+        "transition_accuracy_on_actual_change": 0.052614,
+        "urban_expansion_precision": 0.191179,
+        "urban_expansion_recall": 0.057756,
+        "urban_expansion_f1": 0.088712,
+        "urban_expansion_hit_count": 1114,
+        "predicted_urban_expansion_count": 5827,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 5563.52,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 3729.28,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 5827,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 0,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 0,
+        "suitability_violation_rate": 0.0,
+        "macro_f1": 0.924957,
+        "per_class_f1": {
+          "1": 0.860327,
+          "2": 0.952565,
+          "3": 0.912337,
+          "4": 0.974786,
+          "5": 0.92773,
+          "6": 0.922
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      },
+      "twm_balanced": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.927638,
+        "kappa": 0.897383,
+        "correct_cell_count": 351342,
+        "predicted_change_count": 8693,
+        "actual_change_count": 21306,
+        "change_hit_count": 1472,
+        "change_false_alarm_count": 7221,
+        "change_miss_count": 19834,
+        "change_precision": 0.169332,
+        "change_recall": 0.069089,
+        "change_f1": 0.098137,
+        "change_fom": 0.0516,
+        "transition_accuracy_on_actual_change": 0.052567,
+        "urban_expansion_precision": 0.191007,
+        "urban_expansion_recall": 0.057704,
+        "urban_expansion_f1": 0.088632,
+        "urban_expansion_hit_count": 1113,
+        "predicted_urban_expansion_count": 5827,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 5563.52,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 3729.28,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 5827,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 0,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 0,
+        "suitability_violation_rate": 0.0,
+        "macro_f1": 0.924954,
+        "per_class_f1": {
+          "1": 0.860313,
+          "2": 0.952565,
+          "3": 0.912337,
+          "4": 0.974786,
+          "5": 0.927724,
+          "6": 0.922
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      },
+      "twm_compact_growth": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.927733,
+        "kappa": 0.897517,
+        "correct_cell_count": 351378,
+        "predicted_change_count": 8693,
+        "actual_change_count": 21306,
+        "change_hit_count": 1491,
+        "change_false_alarm_count": 7202,
+        "change_miss_count": 19815,
+        "change_precision": 0.171517,
+        "change_recall": 0.06998,
+        "change_f1": 0.099403,
+        "change_fom": 0.052301,
+        "transition_accuracy_on_actual_change": 0.053365,
+        "urban_expansion_precision": 0.193925,
+        "urban_expansion_recall": 0.058586,
+        "urban_expansion_f1": 0.089986,
+        "urban_expansion_hit_count": 1130,
+        "predicted_urban_expansion_count": 5827,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 5563.52,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 3729.28,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 5827,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 0,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 0,
+        "suitability_violation_rate": 0.0,
+        "macro_f1": 0.925019,
+        "per_class_f1": {
+          "1": 0.860593,
+          "2": 0.952565,
+          "3": 0.912337,
+          "4": 0.974786,
+          "5": 0.927831,
+          "6": 0.922
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      },
+      "twm_accessibility_corridor": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.925397,
+        "kappa": 0.894112,
+        "correct_cell_count": 350493,
+        "predicted_change_count": 9567,
+        "actual_change_count": 21306,
+        "change_hit_count": 1486,
+        "change_false_alarm_count": 8081,
+        "change_miss_count": 19820,
+        "change_precision": 0.155326,
+        "change_recall": 0.069746,
+        "change_f1": 0.096265,
+        "change_fom": 0.050567,
+        "transition_accuracy_on_actual_change": 0.053084,
+        "urban_expansion_precision": 0.167736,
+        "urban_expansion_recall": 0.058275,
+        "urban_expansion_f1": 0.086498,
+        "urban_expansion_hit_count": 1124,
+        "predicted_urban_expansion_count": 6701,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 6122.88,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 4288.64,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 6701,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 0,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 0,
+        "suitability_violation_rate": 0.0,
+        "macro_f1": 0.923343,
+        "per_class_f1": {
+          "1": 0.853125,
+          "2": 0.952565,
+          "3": 0.912337,
+          "4": 0.974786,
+          "5": 0.925243,
+          "6": 0.922
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      },
+      "twm_arable_protection": {
+        "schema": "territory_world_model.geosos_pixel_metric.v1",
+        "valid_cell_count": 378749,
+        "overall_accuracy": 0.929349,
+        "kappa": 0.899913,
+        "correct_cell_count": 351990,
+        "predicted_change_count": 7644,
+        "actual_change_count": 21306,
+        "change_hit_count": 1270,
+        "change_false_alarm_count": 6374,
+        "change_miss_count": 20036,
+        "change_precision": 0.166143,
+        "change_recall": 0.059608,
+        "change_f1": 0.087737,
+        "change_fom": 0.045882,
+        "transition_accuracy_on_actual_change": 0.043227,
+        "urban_expansion_precision": 0.191293,
+        "urban_expansion_recall": 0.047387,
+        "urban_expansion_f1": 0.075958,
+        "urban_expansion_hit_count": 914,
+        "predicted_urban_expansion_count": 4778,
+        "actual_urban_expansion_count": 19288,
+        "predicted_changed_area_ha": 4892.16,
+        "actual_changed_area_ha": 13635.84,
+        "predicted_urban_expansion_area_ha": 3057.92,
+        "actual_urban_expansion_area_ha": 12344.32,
+        "predicted_arable_to_urban_count": 4778,
+        "actual_arable_to_urban_count": 11187,
+        "predicted_woodland_to_urban_count": 0,
+        "actual_woodland_to_urban_count": 6726,
+        "suitability_violation_count": 0,
+        "suitability_violation_rate": 0.0,
+        "macro_f1": 0.926223,
+        "per_class_f1": {
+          "1": 0.866106,
+          "2": 0.952565,
+          "3": 0.912337,
+          "4": 0.974786,
+          "5": 0.929544,
+          "6": 0.922
+        },
+        "landuse_labels": {
+          "1": "耕地",
+          "2": "林地",
+          "3": "草地",
+          "4": "水域",
+          "5": "城乡建设用地",
+          "6": "未利用地"
+        }
+      }
+    },
+    "best_baseline_by_change_fom": "ca_neighborhood",
+    "best_twm_by_change_fom": "twm_compact_growth",
+    "selected_planner_candidate": "twm_accessibility_corridor"
+  },
+  "planner": {
+    "schema": "territory_world_model.dongguan_geosos_planner_report.v1",
+    "status": "pass",
+    "planner_role": "rank_twm_policy_scenarios_using_simulator_outputs",
+    "target_urban_expansion_budget_cells": 10364,
+    "target_urban_expansion_budget_area_ha": 6632.96,
+    "ranking_policy": {
+      "demand_fit": 0.26,
+      "constraint_score": 0.22,
+      "protection_score": 0.18,
+      "compactness": 0.16,
+      "accessibility": 0.12,
+      "ex_post_change_fom_diagnostic": 0.06
+    },
+    "ranking": [
+      {
+        "candidate_id": "twm_accessibility_corridor",
+        "policy_score": 0.595274,
+        "demand_fit": 0.646565,
+        "constraint_score": 1.0,
+        "protection_score": 0.25,
+        "compactness": 0.343288,
+        "accessibility": 0.868387,
+        "ex_post_change_fom": 0.050567,
+        "ex_post_overall_accuracy": 0.925397,
+        "predicted_urban_expansion_area_ha": 4288.64,
+        "predicted_arable_to_urban_area_ha": 4288.64
+      },
+      {
+        "candidate_id": "twm_compact_growth",
+        "policy_score": 0.594242,
+        "demand_fit": 0.562235,
+        "constraint_score": 1.0,
+        "protection_score": 0.25,
+        "compactness": 0.546551,
+        "accessibility": 0.770626,
+        "ex_post_change_fom": 0.052301,
+        "ex_post_overall_accuracy": 0.927733,
+        "predicted_urban_expansion_area_ha": 3729.28,
+        "predicted_arable_to_urban_area_ha": 3729.28
+      },
+      {
+        "candidate_id": "twm_balanced",
+        "policy_score": 0.592875,
+        "demand_fit": 0.562235,
+        "constraint_score": 1.0,
+        "protection_score": 0.25,
+        "compactness": 0.504998,
+        "accessibility": 0.81499,
+        "ex_post_change_fom": 0.0516,
+        "ex_post_overall_accuracy": 0.927638,
+        "predicted_urban_expansion_area_ha": 3729.28,
+        "predicted_arable_to_urban_area_ha": 3729.28
+      },
+      {
+        "candidate_id": "twm_arable_protection",
+        "policy_score": 0.565812,
+        "demand_fit": 0.461019,
+        "constraint_score": 1.0,
+        "protection_score": 0.25,
+        "compactness": 0.495605,
+        "accessibility": 0.824149,
+        "ex_post_change_fom": 0.045882,
+        "ex_post_overall_accuracy": 0.929349,
+        "predicted_urban_expansion_area_ha": 3057.92,
+        "predicted_arable_to_urban_area_ha": 3057.92
+      }
+    ],
+    "selected_candidate_id": "twm_accessibility_corridor",
+    "claim_boundary": "policy_ranking_on_tutorial_data_not_production_decision"
+  },
+  "renderer": {
+    "assets": {
+      "prediction_maps": "assets/twm_dongguan_simopt_prediction_maps.png",
+      "metrics": "assets/twm_dongguan_simopt_metrics.png",
+      "planner_candidates": "assets/twm_dongguan_simopt_planner_candidates.png",
+      "change_comparison": "assets/twm_dongguan_simopt_change_comparison.png"
+    },
+    "rendered": true
+  },
+  "comparison_interpretation": {
+    "what_this_adds_over_previous_validation": [
+      "It produces full pixel/grid prediction maps for the 2005->2006 holdout period.",
+      "It computes same-pixel metrics against landuse2006.tif.",
+      "It adds transparent baseline candidates and TWM planning scenarios on the same data.",
+      "It renders simulator and planner outputs as comparison figures."
+    ],
+    "what_this_still_does_not_validate": [
+      "It is not an actual GeoSOS/FLUS software run because no GeoSOS/FLUS predicted output map is available in the provided data.",
+      "The flus_like_proxy is a transparent proxy using Markov demand, neighborhood, suitability and conversion constraints; it must not be cited as the official FLUS result.",
+      "The planner optimizes policy-style objectives, so the selected plan may not maximize ex-post pixel accuracy."
+    ],
+    "next_tasks": [
+      "Export or obtain the actual GeoSOS/FLUS 2006 predicted map and add it as an official baseline row.",
+      "Add a calibrated ANN/logistic suitability model over dtcity, dtroad, dtfreeway and dtrailway.",
+      "Add production governance layers before claiming TWM beats GeoSOS/FLUS in natural-resource decision support."
+    ]
+  }
+}

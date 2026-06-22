@@ -9,7 +9,7 @@ from .models import TwmLayerBinding, TwmSemanticBundle
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MANIFEST_NAMES = ("twm_mmfe_semantic_product.json", "semantic_product.json")
+MANIFEST_NAMES = ("twm_mmfe_semantic_product.json", "semantic_product.json", "dataset_manifest.json")
 CONTRACT_NAMES = ("twm_state_input_contract.json", "twm_state_input.json")
 RELATION_NAMES = ("twm_mmfe_semantic_relations.csv", "semantic_relations.csv")
 
@@ -103,9 +103,32 @@ def _object_type_for(canonical_role: str, row: dict[str, Any]) -> str:
     return "feature"
 
 
+def _manifest_layer_by_path(manifest: dict[str, Any], raw_path: str) -> dict[str, Any]:
+    layers = manifest.get("layers")
+    if not isinstance(layers, dict):
+        return {}
+    normalized = str(raw_path or "").strip()
+    for key, value in layers.items():
+        if not isinstance(value, dict):
+            continue
+        layer_path = str(value.get("path") or "").strip()
+        if key == normalized or layer_path == normalized or Path(layer_path).name == Path(normalized).name:
+            return value
+    return {}
+
+
 def _layer_binding_from_row(row: dict[str, Any], manifest_path: Path, root: Path) -> TwmLayerBinding:
     canonical_role = _canonical_role(row)
+    manifest: dict[str, Any] = {}
+    try:
+        manifest = _read_json(manifest_path)
+    except Exception:
+        manifest = {}
+    raw_source_path = str(row.get("source_path") or row.get("path") or "")
+    layer_meta = _manifest_layer_by_path(manifest, raw_source_path)
     quality_value = row.get("quality_score")
+    if quality_value in (None, ""):
+        quality_value = layer_meta.get("quality_score")
     quality_score = None
     if quality_value not in (None, ""):
         try:
@@ -113,8 +136,15 @@ def _layer_binding_from_row(row: dict[str, Any], manifest_path: Path, root: Path
         except Exception:
             quality_score = None
 
-    synthetic = str(row.get("synthetic") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
-    not_for_production = str(row.get("not_for_production") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+    layer_synthetic_counts = layer_meta.get("synthetic_counts") if isinstance(layer_meta.get("synthetic_counts"), dict) else {}
+    synthetic = (
+        str(row.get("synthetic") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+        or (safe_count(layer_synthetic_counts.get("True")) > 0 and safe_count(layer_synthetic_counts.get("False")) <= 0)
+    )
+    not_for_production = (
+        str(row.get("not_for_production") or manifest.get("not_for_production") or "").strip().lower()
+        in {"1", "true", "yes", "y", "on"}
+    )
     field_mapping = row.get("twm_binding") or row.get("field_mapping") or {}
     if isinstance(field_mapping, str) and field_mapping.strip():
         try:
@@ -130,7 +160,12 @@ def _layer_binding_from_row(row: dict[str, Any], manifest_path: Path, root: Path
     if row.get("field_count") not in (None, ""):
         quality_snapshot["field_count"] = row.get("field_count")
 
-    source_path = _resolve_path(root, str(row.get("source_path") or row.get("path") or ""))
+    if not quality_snapshot and layer_meta:
+        for key in ("rows", "crs", "geometry_types", "synthetic_counts"):
+            if key in layer_meta:
+                quality_snapshot[key] = layer_meta.get(key)
+
+    source_path = _resolve_path(root, raw_source_path)
     return TwmLayerBinding(
         role=str(row.get("role") or row.get("semantic_domain") or canonical_role),
         canonical_role=canonical_role,
@@ -139,11 +174,12 @@ def _layer_binding_from_row(row: dict[str, Any], manifest_path: Path, root: Path
             row.get("role_alias_zh")
             or row.get("business_role_zh")
             or row.get("standard_role_alias_zh")
+            or layer_meta.get("alias_zh")
             or row.get("role")
             or canonical_role
         ),
         source_path=source_path,
-        semantic_product_path=str(manifest_path),
+        semantic_product_path=str(row.get("semantic_product_path") or manifest_path),
         asset_id=int(row["asset_id"]) if str(row.get("asset_id") or "").strip().isdigit() else None,
         time_label=str(row.get("time_label") or ""),
         valid_from=str(row.get("valid_from") or "") or None,
@@ -154,10 +190,18 @@ def _layer_binding_from_row(row: dict[str, Any], manifest_path: Path, root: Path
             "business_role_zh": row.get("business_role_zh") or "",
             "semantic_readiness": row.get("semantic_readiness") or "",
             "role_alias_zh": row.get("role_alias_zh") or "",
+            "layer_alias_zh": layer_meta.get("alias_zh") or "",
         },
         synthetic=synthetic,
         not_for_production=not_for_production,
     )
+
+
+def safe_count(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except Exception:
+        return 0
 
 
 def load_semantic_bundle(bundle_dir: str | Path) -> TwmSemanticBundle:
@@ -181,6 +225,8 @@ def load_semantic_bundle(bundle_dir: str | Path) -> TwmSemanticBundle:
         role_rows = [row for row in contract["role_bindings"] if isinstance(row, dict)]
     elif isinstance(contract.get("object_role_registry"), list):
         role_rows = [row for row in contract["object_role_registry"] if isinstance(row, dict)]
+    elif isinstance(manifest.get("recommended_layer_bindings"), list):
+        role_rows = [row for row in manifest["recommended_layer_bindings"] if isinstance(row, dict)]
     elif isinstance(manifest.get("sources"), list):
         role_rows = [row for row in manifest["sources"] if isinstance(row, dict)]
 

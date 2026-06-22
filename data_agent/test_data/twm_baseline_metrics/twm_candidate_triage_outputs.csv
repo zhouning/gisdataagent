@@ -1,0 +1,6 @@
+candidate_id,rank,selected,legal_feasible,blocked,review_only,rejection_reason,planner_regret_against_human_oracle
+twma,1,true,true,false,false,,0.04
+twmb,2,true,true,false,false,,0.06
+twmc,3,true,false,true,false,hard constraint conflict,0.02
+twmd,4,false,false,true,false,missing policy evidence,0.05
+twme,5,false,false,false,true,review evidence gap,0.03

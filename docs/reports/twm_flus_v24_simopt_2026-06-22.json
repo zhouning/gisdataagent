@@ -1,0 +1,1481 @@
+{
+  "schema": "territory_world_model.flus_v24_simulation_optimization_report.v1",
+  "status": "pass",
+  "claim_boundary": "official_flus_v24_sample_baseline_with_twm_candidates_not_production_claim",
+  "source": {
+    "v24_zip": "/Users/zhouning/Downloads/paralleled FLUS_V2.4.zip",
+    "dataset": "GeoSOS-FLUS V2.4 official sample testdata",
+    "task": "TWM renderer/simulator/planner same-grid comparison against package-provided FLUS outputs"
+  },
+  "data_profile": {
+    "raster_profile": {
+      "dg2001coor.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "int32",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 2147483647.0
+      },
+      "dg2006true.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "int32",
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 2147483647.0
+      },
+      "simulationResult.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "uint8",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 0.0
+      },
+      "simulationResult1.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "uint8",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 0.0
+      },
+      "Probability-of-occurrence.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 5,
+        "dtype": "float32",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -1.0
+      },
+      "restrictedarea.tif": {
+        "shape": [
+          531,
+          768
+        ],
+        "band_count": 1,
+        "dtype": "int32",
+        "crs": "EPSG:32649",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": 2147483647.0
+      },
+      "common": {
+        "valid_cell_count": 248920,
+        "cell_area_m2": 10000.0,
+        "cell_area_ha": 1.0
+      }
+    },
+    "driver_layers": {
+      "dem_dg.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "slope.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028230607370965e+38,
+        "min": 0.0,
+        "max": 0.062397439032793045
+      },
+      "Aspect.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028230607370965e+38,
+        "min": -1.0,
+        "max": 360.0
+      },
+      "tocity_dg.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0009605661034584045,
+        "max": 0.9993352890014648
+      },
+      "distotown.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.003613001899793744,
+        "max": 0.9996408224105835
+      },
+      "distohighway.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0005506686866283417,
+        "max": 0.9893258810043335
+      },
+      "distoroad.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0,
+        "max": 0.9909719228744507
+      },
+      "distorailway.tif": {
+        "status": "loaded",
+        "shape": [
+          531,
+          768
+        ],
+        "crs": "",
+        "resolution": [
+          100.0,
+          100.0
+        ],
+        "nodata": -3.4028234663852886e+38,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "ProximityWater.tif": {
+        "status": "missing"
+      }
+    },
+    "classes": {
+      "1": {
+        "index": 1,
+        "initial_count_from_color_log": 46989,
+        "label": "Urban land",
+        "rgb": [
+          170,
+          0,
+          127
+        ]
+      },
+      "2": {
+        "index": 2,
+        "initial_count_from_color_log": 54427,
+        "label": "Water area",
+        "rgb": [
+          0,
+          0,
+          255
+        ]
+      },
+      "3": {
+        "index": 3,
+        "initial_count_from_color_log": 59899,
+        "label": "Cropland",
+        "rgb": [
+          0,
+          255,
+          0
+        ]
+      },
+      "4": {
+        "index": 4,
+        "initial_count_from_color_log": 49516,
+        "label": "Forest land",
+        "rgb": [
+          0,
+          85,
+          0
+        ]
+      },
+      "5": {
+        "index": 5,
+        "initial_count_from_color_log": 38090,
+        "label": "Orchard",
+        "rgb": [
+          255,
+          255,
+          0
+        ]
+      }
+    },
+    "future_pixels": {
+      "1": 80016,
+      "2": 54427,
+      "3": 43599,
+      "4": 42433,
+      "5": 28446
+    },
+    "cost_matrix": [
+      [
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        0,
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        0,
+        1,
+        0,
+        1
+      ]
+    ],
+    "neighborhood_intensity": [
+      1.0,
+      0.9,
+      0.5,
+      1.0,
+      0.1
+    ]
+  },
+  "simulator": {
+    "baseline_candidate_ids": [
+      "official_simulationResult",
+      "official_simulationResult1",
+      "probability_argmax_not_ca_result"
+    ],
+    "twm_candidate_ids": [
+      "twm_driver_only_compact_growth",
+      "twm_independent_logit_quota_balanced",
+      "twm_independent_logit_change_seeking",
+      "twm_flus_probability_demand",
+      "twm_hybrid_compact_access",
+      "twm_uncertainty_aware",
+      "twm_farmland_protection",
+      "twm_competitive_quota_balanced",
+      "twm_competitive_quota_change_seeking"
+    ],
+    "candidate_metadata": {
+      "twm_driver_only_compact_growth": {
+        "uses_flus_probability": false,
+        "description": "Demand-constrained allocation using distance drivers, urban neighborhood and terrain penalty.",
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_independent_logit_quota_balanced": {
+        "uses_flus_probability": false,
+        "description": "Independent multinomial-logit suitability trained from 2001 land use and driving factors, then allocated with exact multi-class quota projection.",
+        "allocation": "independent_logit_quota_projection",
+        "params": {
+          "probability_weight": 1.0,
+          "neighborhood_weight": 0.16,
+          "stay_inertia": -0.08,
+          "urban_accessibility_weight": 0.18,
+          "terrain_penalty_weight": 0.03,
+          "margin_weight": 0.02,
+          "stable_hash_weight": 0.01,
+          "nonurban_low_access_weight": 0.02,
+          "sample_stride": 2
+        },
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_independent_logit_change_seeking": {
+        "uses_flus_probability": false,
+        "description": "Independent multinomial-logit suitability candidate with lower inertia for change localization diagnostics.",
+        "allocation": "independent_logit_quota_projection",
+        "params": {
+          "probability_weight": 1.0,
+          "neighborhood_weight": 0.0,
+          "stay_inertia": -0.24,
+          "urban_accessibility_weight": 0.34,
+          "terrain_penalty_weight": 0.03,
+          "margin_weight": 0.0,
+          "stable_hash_weight": 0.01,
+          "nonurban_low_access_weight": 0.02,
+          "sample_stride": 2
+        },
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_flus_probability_demand": {
+        "uses_flus_probability": true,
+        "description": "Demand-constrained allocation using FLUS probability-of-occurrence as the dominant suitability field.",
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_hybrid_compact_access": {
+        "uses_flus_probability": true,
+        "description": "Hybrid suitability that combines FLUS probability, compact urban growth and transport accessibility.",
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_uncertainty_aware": {
+        "uses_flus_probability": true,
+        "description": "Hybrid suitability that rewards high urban probability margin over competing land-use classes.",
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_farmland_protection": {
+        "uses_flus_probability": true,
+        "description": "Hybrid suitability that penalizes converting cells with high cropland persistence probability.",
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_competitive_quota_balanced": {
+        "uses_flus_probability": true,
+        "description": "Multi-class competitive quota projection with exact demand repair; balances change localization with stable-area preservation.",
+        "allocation": "competitive_quota_projection",
+        "params": {
+          "probability_weight": 0.7,
+          "neighborhood_weight": 0.18,
+          "stay_inertia": -0.15,
+          "urban_accessibility_weight": 0.22,
+          "terrain_penalty_weight": 0.03,
+          "margin_weight": 0.0,
+          "stable_hash_weight": 0.01,
+          "nonurban_low_access_weight": 0.02
+        },
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      },
+      "twm_competitive_quota_change_seeking": {
+        "uses_flus_probability": true,
+        "description": "Multi-class competitive quota projection tuned to expose likely changed cells; useful as a change-detection-oriented simulator candidate.",
+        "allocation": "competitive_quota_projection",
+        "params": {
+          "probability_weight": 0.7,
+          "neighborhood_weight": 0.04,
+          "stay_inertia": -0.15,
+          "urban_accessibility_weight": 0.22,
+          "terrain_penalty_weight": 0.03,
+          "margin_weight": 0.0,
+          "stable_hash_weight": 0.01,
+          "nonurban_low_access_weight": 0.02
+        },
+        "target_deltas": {
+          "1": 33027,
+          "2": 0,
+          "3": -16300,
+          "4": -7083,
+          "5": -9644
+        }
+      }
+    },
+    "metrics": {
+      "official_simulationResult": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.602491,
+        "kappa": 0.487845,
+        "correct_cell_count": 149972,
+        "predicted_change_count": 44589,
+        "actual_change_count": 99376,
+        "change_hit_count": 32366,
+        "change_false_alarm_count": 12223,
+        "change_miss_count": 67010,
+        "change_precision": 0.725874,
+        "change_recall": 0.325692,
+        "change_f1": 0.449637,
+        "change_fom": 0.290021,
+        "transition_hit_on_changed_cells": 12651,
+        "transition_accuracy_on_actual_change": 0.127304,
+        "urban_expansion_hit_count": 10146,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.307203,
+        "urban_expansion_recall": 0.2702,
+        "urban_expansion_f1": 0.287516,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.58572,
+        "per_class_f1": {
+          "1": 0.657502,
+          "2": 0.592418,
+          "3": 0.534255,
+          "4": 0.663681,
+          "5": 0.480744
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 435,
+        "cost_matrix_violation_rate": 0.009756,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "official_simulationResult1": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.601659,
+        "kappa": 0.486773,
+        "correct_cell_count": 149765,
+        "predicted_change_count": 45452,
+        "actual_change_count": 99376,
+        "change_hit_count": 32746,
+        "change_false_alarm_count": 12706,
+        "change_miss_count": 66630,
+        "change_precision": 0.720452,
+        "change_recall": 0.329516,
+        "change_f1": 0.452205,
+        "change_fom": 0.292161,
+        "transition_hit_on_changed_cells": 12927,
+        "transition_accuracy_on_actual_change": 0.130082,
+        "urban_expansion_hit_count": 10188,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.308475,
+        "urban_expansion_recall": 0.271318,
+        "urban_expansion_f1": 0.288706,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.584652,
+        "per_class_f1": {
+          "1": 0.658027,
+          "2": 0.592418,
+          "3": 0.526274,
+          "4": 0.666462,
+          "5": 0.480078
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 426,
+        "cost_matrix_violation_rate": 0.009373,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "probability_argmax_not_ca_result": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.484879,
+        "kappa": 0.35082,
+        "correct_cell_count": 120696,
+        "predicted_change_count": 124464,
+        "actual_change_count": 99376,
+        "change_hit_count": 66671,
+        "change_false_alarm_count": 57793,
+        "change_miss_count": 32705,
+        "change_precision": 0.535665,
+        "change_recall": 0.670896,
+        "change_f1": 0.595702,
+        "change_fom": 0.424199,
+        "transition_hit_on_changed_cells": 28945,
+        "transition_accuracy_on_actual_change": 0.291268,
+        "urban_expansion_hit_count": 14054,
+        "predicted_urban_expansion_count": 39098,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.359456,
+        "urban_expansion_recall": 0.374274,
+        "urban_expansion_f1": 0.366715,
+        "predicted_counts": {
+          "1": 68387,
+          "2": 34999,
+          "3": 55418,
+          "4": 31013,
+          "5": 59103
+        },
+        "predicted_counts_full_raster": {
+          "1": 68387,
+          "2": 34999,
+          "3": 55418,
+          "4": 31013,
+          "5": 59103
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 16990.6,
+        "future_pixel_demand_rmse": 18561.452718,
+        "macro_f1": 0.483336,
+        "per_class_f1": {
+          "1": 0.554174,
+          "2": 0.392625,
+          "3": 0.404961,
+          "4": 0.658842,
+          "5": 0.40608
+        },
+        "restricted_change_violation_count": 36151,
+        "restricted_change_violation_rate": 0.290451,
+        "cost_matrix_violation_count": 84219,
+        "cost_matrix_violation_rate": 0.676648,
+        "full_raster_demand_abs_error": {
+          "1": 11629,
+          "2": 19428,
+          "3": 11819,
+          "4": 11420,
+          "5": 30657
+        },
+        "full_raster_total_demand_abs_error": 84953,
+        "full_raster_demand_fit": 0.829358
+      },
+      "twm_driver_only_compact_growth": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.593612,
+        "kappa": 0.476406,
+        "correct_cell_count": 147762,
+        "predicted_change_count": 33027,
+        "actual_change_count": 99376,
+        "change_hit_count": 21846,
+        "change_false_alarm_count": 11181,
+        "change_miss_count": 77530,
+        "change_precision": 0.661459,
+        "change_recall": 0.219832,
+        "change_f1": 0.329993,
+        "change_fom": 0.197599,
+        "transition_hit_on_changed_cells": 9399,
+        "transition_accuracy_on_actual_change": 0.09458,
+        "urban_expansion_hit_count": 9399,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.284585,
+        "urban_expansion_recall": 0.250306,
+        "urban_expansion_f1": 0.266347,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.576326,
+        "per_class_f1": {
+          "1": 0.648166,
+          "2": 0.592418,
+          "3": 0.511044,
+          "4": 0.660853,
+          "5": 0.46915
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_independent_logit_quota_balanced": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.597714,
+        "kappa": 0.481691,
+        "correct_cell_count": 148783,
+        "predicted_change_count": 42653,
+        "actual_change_count": 99376,
+        "change_hit_count": 31030,
+        "change_false_alarm_count": 11623,
+        "change_miss_count": 68346,
+        "change_precision": 0.727499,
+        "change_recall": 0.312248,
+        "change_f1": 0.436953,
+        "change_fom": 0.279552,
+        "transition_hit_on_changed_cells": 10862,
+        "transition_accuracy_on_actual_change": 0.109302,
+        "urban_expansion_hit_count": 8731,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.264359,
+        "urban_expansion_recall": 0.232517,
+        "urban_expansion_f1": 0.247418,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.583704,
+        "per_class_f1": {
+          "1": 0.639818,
+          "2": 0.592418,
+          "3": 0.539875,
+          "4": 0.658237,
+          "5": 0.48817
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_independent_logit_change_seeking": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.593721,
+        "kappa": 0.476546,
+        "correct_cell_count": 147789,
+        "predicted_change_count": 47717,
+        "actual_change_count": 99376,
+        "change_hit_count": 34500,
+        "change_false_alarm_count": 13217,
+        "change_miss_count": 64876,
+        "change_precision": 0.723013,
+        "change_recall": 0.347166,
+        "change_f1": 0.469091,
+        "change_fom": 0.306413,
+        "transition_hit_on_changed_cells": 11462,
+        "transition_accuracy_on_actual_change": 0.11534,
+        "urban_expansion_hit_count": 8636,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.261483,
+        "urban_expansion_recall": 0.229987,
+        "urban_expansion_f1": 0.244726,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.579198,
+        "per_class_f1": {
+          "1": 0.63863,
+          "2": 0.592418,
+          "3": 0.536641,
+          "4": 0.640867,
+          "5": 0.487434
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_flus_probability_demand": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.591596,
+        "kappa": 0.473808,
+        "correct_cell_count": 147260,
+        "predicted_change_count": 33027,
+        "actual_change_count": 99376,
+        "change_hit_count": 21958,
+        "change_false_alarm_count": 11069,
+        "change_miss_count": 77418,
+        "change_precision": 0.66485,
+        "change_recall": 0.220959,
+        "change_f1": 0.331684,
+        "change_fom": 0.198814,
+        "transition_hit_on_changed_cells": 8785,
+        "transition_accuracy_on_actual_change": 0.088402,
+        "urban_expansion_hit_count": 8785,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.265994,
+        "urban_expansion_recall": 0.233955,
+        "urban_expansion_f1": 0.248948,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.575545,
+        "per_class_f1": {
+          "1": 0.640492,
+          "2": 0.592418,
+          "3": 0.508337,
+          "4": 0.664106,
+          "5": 0.472373
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_hybrid_compact_access": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.597851,
+        "kappa": 0.481867,
+        "correct_cell_count": 148817,
+        "predicted_change_count": 33027,
+        "actual_change_count": 99376,
+        "change_hit_count": 22653,
+        "change_false_alarm_count": 10374,
+        "change_miss_count": 76723,
+        "change_precision": 0.685893,
+        "change_recall": 0.227952,
+        "change_f1": 0.342183,
+        "change_fom": 0.206405,
+        "transition_hit_on_changed_cells": 9647,
+        "transition_accuracy_on_actual_change": 0.097076,
+        "urban_expansion_hit_count": 9647,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.292094,
+        "urban_expansion_recall": 0.256911,
+        "urban_expansion_f1": 0.273375,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.581173,
+        "per_class_f1": {
+          "1": 0.651265,
+          "2": 0.592418,
+          "3": 0.519943,
+          "4": 0.665873,
+          "5": 0.476366
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_uncertainty_aware": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.565419,
+        "kappa": 0.440081,
+        "correct_cell_count": 140744,
+        "predicted_change_count": 33027,
+        "actual_change_count": 99376,
+        "change_hit_count": 17440,
+        "change_false_alarm_count": 15587,
+        "change_miss_count": 81936,
+        "change_precision": 0.528053,
+        "change_recall": 0.175495,
+        "change_f1": 0.263438,
+        "change_fom": 0.151701,
+        "transition_hit_on_changed_cells": 6787,
+        "transition_accuracy_on_actual_change": 0.068296,
+        "urban_expansion_hit_count": 6787,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.205499,
+        "urban_expansion_recall": 0.180746,
+        "urban_expansion_f1": 0.192329,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.548471,
+        "per_class_f1": {
+          "1": 0.615522,
+          "2": 0.592418,
+          "3": 0.500883,
+          "4": 0.573769,
+          "5": 0.459763
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_farmland_protection": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.597682,
+        "kappa": 0.481649,
+        "correct_cell_count": 148775,
+        "predicted_change_count": 33027,
+        "actual_change_count": 99376,
+        "change_hit_count": 22683,
+        "change_false_alarm_count": 10344,
+        "change_miss_count": 76693,
+        "change_precision": 0.686802,
+        "change_recall": 0.228254,
+        "change_f1": 0.342636,
+        "change_fom": 0.206735,
+        "transition_hit_on_changed_cells": 9575,
+        "transition_accuracy_on_actual_change": 0.096351,
+        "urban_expansion_hit_count": 9575,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.289914,
+        "urban_expansion_recall": 0.254993,
+        "urban_expansion_f1": 0.271335,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.581076,
+        "per_class_f1": {
+          "1": 0.650366,
+          "2": 0.592418,
+          "3": 0.521044,
+          "4": 0.665991,
+          "5": 0.47556
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_competitive_quota_balanced": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.593191,
+        "kappa": 0.475862,
+        "correct_cell_count": 147657,
+        "predicted_change_count": 55881,
+        "actual_change_count": 99376,
+        "change_hit_count": 39672,
+        "change_false_alarm_count": 16209,
+        "change_miss_count": 59704,
+        "change_precision": 0.709937,
+        "change_recall": 0.399211,
+        "change_f1": 0.511049,
+        "change_fom": 0.343228,
+        "transition_hit_on_changed_cells": 14322,
+        "transition_accuracy_on_actual_change": 0.144119,
+        "urban_expansion_hit_count": 9860,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.298544,
+        "urban_expansion_recall": 0.262583,
+        "urban_expansion_f1": 0.279411,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42432,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.575939,
+        "per_class_f1": {
+          "1": 0.653927,
+          "2": 0.592418,
+          "3": 0.499644,
+          "4": 0.648268,
+          "5": 0.485438
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      },
+      "twm_competitive_quota_change_seeking": {
+        "schema": "territory_world_model.flus_v24_pixel_metric.v1",
+        "valid_cell_count": 248920,
+        "overall_accuracy": 0.539089,
+        "kappa": 0.406157,
+        "correct_cell_count": 134190,
+        "predicted_change_count": 79234,
+        "actual_change_count": 99376,
+        "change_hit_count": 49304,
+        "change_false_alarm_count": 29930,
+        "change_miss_count": 50072,
+        "change_precision": 0.622258,
+        "change_recall": 0.496136,
+        "change_f1": 0.552086,
+        "change_fom": 0.381297,
+        "transition_hit_on_changed_cells": 14576,
+        "transition_accuracy_on_actual_change": 0.146675,
+        "urban_expansion_hit_count": 8987,
+        "predicted_urban_expansion_count": 33027,
+        "actual_urban_expansion_count": 37550,
+        "urban_expansion_precision": 0.272111,
+        "urban_expansion_recall": 0.239334,
+        "urban_expansion_f1": 0.254672,
+        "predicted_counts": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43598,
+          "4": 42433,
+          "5": 28446
+        },
+        "predicted_counts_full_raster": {
+          "1": 80016,
+          "2": 54427,
+          "3": 43599,
+          "4": 42433,
+          "5": 28446
+        },
+        "truth_counts": {
+          "1": 80014,
+          "2": 54226,
+          "3": 43599,
+          "4": 42428,
+          "5": 28653
+        },
+        "future_pixel_demand_mae": 0.0,
+        "future_pixel_demand_rmse": 0.0,
+        "macro_f1": 0.514814,
+        "per_class_f1": {
+          "1": 0.643017,
+          "2": 0.592418,
+          "3": 0.3621,
+          "4": 0.496247,
+          "5": 0.480289
+        },
+        "restricted_change_violation_count": 0,
+        "restricted_change_violation_rate": 0.0,
+        "cost_matrix_violation_count": 0,
+        "cost_matrix_violation_rate": 0.0,
+        "full_raster_demand_abs_error": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        },
+        "full_raster_total_demand_abs_error": 0,
+        "full_raster_demand_fit": 1.0
+      }
+    },
+    "best_official_flus_by_change_fom": "official_simulationResult1",
+    "best_twm_by_change_fom": "twm_competitive_quota_change_seeking",
+    "selected_planner_candidate": "twm_driver_only_compact_growth"
+  },
+  "planner": {
+    "schema": "territory_world_model.flus_v24_planner_report.v1",
+    "status": "pass",
+    "planner_role": "rank_twm_candidates_against_flus_v24_demand_constraints",
+    "ranking_policy": {
+      "demand_fit": 0.24,
+      "restriction_score": 0.18,
+      "cost_score": 0.14,
+      "compactness": 0.13,
+      "accessibility": 0.11,
+      "source_diversity": 0.1,
+      "ex_post_change_fom_diagnostic": 0.06,
+      "ex_post_urban_expansion_f1_diagnostic": 0.04
+    },
+    "ranking": [
+      {
+        "candidate_id": "twm_driver_only_compact_growth",
+        "policy_score": 0.77484,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.119187,
+        "accessibility": 0.748533,
+        "source_diversity": 0.944973,
+        "ex_post_change_fom": 0.197599,
+        "ex_post_urban_expansion_f1": 0.266347,
+        "predicted_change_count": 33027
+      },
+      {
+        "candidate_id": "twm_hybrid_compact_access",
+        "policy_score": 0.772902,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.116401,
+        "accessibility": 0.726852,
+        "source_diversity": 0.944973,
+        "ex_post_change_fom": 0.206405,
+        "ex_post_urban_expansion_f1": 0.273375,
+        "predicted_change_count": 33027
+      },
+      {
+        "candidate_id": "twm_competitive_quota_change_seeking",
+        "policy_score": 0.771895,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.090884,
+        "accessibility": 0.731433,
+        "source_diversity": 0.865581,
+        "ex_post_change_fom": 0.381297,
+        "ex_post_urban_expansion_f1": 0.254672,
+        "predicted_change_count": 79234
+      },
+      {
+        "candidate_id": "twm_independent_logit_change_seeking",
+        "policy_score": 0.771855,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.119153,
+        "accessibility": 0.653975,
+        "source_diversity": 0.962539,
+        "ex_post_change_fom": 0.306413,
+        "ex_post_urban_expansion_f1": 0.244726,
+        "predicted_change_count": 47717
+      },
+      {
+        "candidate_id": "twm_farmland_protection",
+        "policy_score": 0.771613,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.109335,
+        "accessibility": 0.724041,
+        "source_diversity": 0.944973,
+        "ex_post_change_fom": 0.206735,
+        "ex_post_urban_expansion_f1": 0.271335,
+        "predicted_change_count": 33027
+      },
+      {
+        "candidate_id": "twm_competitive_quota_balanced",
+        "policy_score": 0.769927,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.116253,
+        "accessibility": 0.716934,
+        "source_diversity": 0.84181,
+        "ex_post_change_fom": 0.343228,
+        "ex_post_urban_expansion_f1": 0.279411,
+        "predicted_change_count": 55881
+      },
+      {
+        "candidate_id": "twm_independent_logit_quota_balanced",
+        "policy_score": 0.768382,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.119709,
+        "accessibility": 0.646573,
+        "source_diversity": 0.950266,
+        "ex_post_change_fom": 0.279552,
+        "ex_post_urban_expansion_f1": 0.247418,
+        "predicted_change_count": 42653
+      },
+      {
+        "candidate_id": "twm_flus_probability_demand",
+        "policy_score": 0.765264,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.082012,
+        "accessibility": 0.711072,
+        "source_diversity": 0.944973,
+        "ex_post_change_fom": 0.198814,
+        "ex_post_urban_expansion_f1": 0.248948,
+        "predicted_change_count": 33027
+      },
+      {
+        "candidate_id": "twm_uncertainty_aware",
+        "policy_score": 0.755758,
+        "demand_fit": 1.0,
+        "restriction_score": 1.0,
+        "cost_score": 1.0,
+        "compactness": 0.074609,
+        "accessibility": 0.679695,
+        "source_diversity": 0.944973,
+        "ex_post_change_fom": 0.151701,
+        "ex_post_urban_expansion_f1": 0.192329,
+        "predicted_change_count": 33027
+      }
+    ],
+    "selected_candidate_id": "twm_driver_only_compact_growth",
+    "claim_boundary": "planner_ranking_on_official_sample_not_production_decision"
+  },
+  "renderer": {
+    "rendered": true,
+    "assets": {
+      "prediction_maps": "assets/twm_flus_v24_simopt_prediction_maps.png",
+      "metrics": "assets/twm_flus_v24_simopt_metrics.png",
+      "change_comparison": "assets/twm_flus_v24_simopt_change_comparison.png",
+      "planner_ranking": "assets/twm_flus_v24_simopt_planner_ranking.png"
+    }
+  },
+  "interpretation": {
+    "what_is_now_validated": [
+      "TWM can ingest the FLUS V2.4 sample rasters and produce same-grid candidate simulation maps.",
+      "Official FLUS package outputs remain in the metric table as explicit baseline rows.",
+      "The renderer produces side-by-side land-use, change and metric figures for FLUS and TWM candidates.",
+      "The planner can rank TWM candidates under demand-fit, restriction, compactness, accessibility and ex-post diagnostic criteria."
+    ],
+    "what_must_not_be_overclaimed": [
+      "The FLUS-informed TWM candidates use Probability-of-occurrence.tif from the FLUS package, so they are not independent from FLUS suitability modelling.",
+      "This is a tutorial/sample benchmark, not a full natural-resource governance deployment dataset.",
+      "A higher change FoM on this sample would be an experimental progress signal, not yet a publishable claim that TWM generally beats GeoSOS/FLUS."
+    ],
+    "next_tasks": [
+      "Add repeated/random-seed sensitivity runs for TWM candidate allocation.",
+      "Train an independent TWM suitability model from the driving factors instead of relying on the FLUS probability map.",
+      "Add a direct FLUS-console reproduction task only after the Windows/C++ build dependency issue is handled.",
+      "Extend the comparison to multiple cities or periods before making high-level research claims."
+    ]
+  }
+}

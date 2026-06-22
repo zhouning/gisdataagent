@@ -1,0 +1,6 @@
+candidate_id,case_id,rank,selected,legal_feasible,blocked,review_only,rejection_reason,planner_regret_against_human_oracle,not_for_production,sanitization_level
+cand001,case-a,1,true,true,false,false,,0.18,true,synthetic_regression
+cand002,case-a,2,true,false,true,false,,0.21,true,synthetic_regression
+cand003,case-a,3,true,false,true,false,hard constraint conflict,0.12,true,synthetic_regression
+cand004,case-b,4,false,false,true,false,,0.16,true,synthetic_regression
+cand005,case-b,5,false,false,false,true,review evidence gap,0.14,true,synthetic_regression

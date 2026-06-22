@@ -411,6 +411,10 @@ class TestRouteMount(unittest.TestCase):
         self.assertIn("/api/admin/users", paths)
         self.assertIn("/api/admin/metrics/summary", paths)
         self.assertIn("/api/twm/status", paths)
+        self.assertIn("/api/twm/research-claim-matrix", paths)
+        self.assertIn("/api/twm/baseline-export-templates", paths)
+        self.assertIn("/api/twm/baseline-comparison-report", paths)
+        self.assertIn("/api/twm/data-foundation-assessment", paths)
         self.assertIn("/api/twm/states/{id}/forecast", paths)
 
     def test_mount_before_catchall(self):
