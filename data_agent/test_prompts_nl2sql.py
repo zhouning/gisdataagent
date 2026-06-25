@@ -31,6 +31,15 @@ def test_load_model_level_override_takes_precedence():
     assert "No unsolicited GROUP BY" in model_text
 
 
+def test_can_disable_model_level_override_for_reproduction(monkeypatch):
+    """Reproduction runs can force the historical family-level prompt."""
+    monkeypatch.setenv("NL2SQL_DISABLE_MODEL_PROMPT_OVERRIDE", "1")
+    family_text = prompts_nl2sql.load_system_instruction("gemini")
+    model_text = prompts_nl2sql.load_system_instruction("gemini", model_name="gemini-3.5-flash")
+    assert model_text == family_text
+    assert "Minimal-Modification Principle" not in model_text
+
+
 def test_load_unknown_model_falls_back_to_family():
     """Unknown model_name falls back to family-level instruction."""
     family_text = prompts_nl2sql.load_system_instruction("gemini")
@@ -68,6 +77,19 @@ def test_qwen_directory_exists_for_phase_3():
     from pathlib import Path
     qwen_dir = Path(prompts_nl2sql.__file__).resolve().parent / "qwen"
     assert qwen_dir.exists() and qwen_dir.is_dir()
+
+
+def test_qwen_system_instruction_has_family_specific_harness_notes():
+    text = prompts_nl2sql.load_system_instruction("qwen")
+
+    assert "Qwen family harness notes" in text
+    assert "Do not append clauses after a semicolon" in text
+    assert "geometry column is `shape`" in text
+    assert "ST_Contains(...::geography" in text
+    assert "write/destructive" in text
+    assert "normal read-only query constraints" in text
+    assert "undefined table or CTE named `target`" in text
+    assert "`道路名称`" in text
 
 
 def test_common_domain_facts_exists():

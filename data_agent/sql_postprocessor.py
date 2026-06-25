@@ -217,6 +217,23 @@ def _regex_fallback_fix(sql: str, column_map: dict) -> tuple[str, list[str]]:
     return "".join(parts), corrections
 
 
+def _prune_invalid_trailing_clause_after_semicolon(sql: str) -> tuple[str, bool]:
+    """Prune malformed tails such as ``LIMIT 20; AND col IS NOT NULL``.
+
+    Some local chat models emit a valid SELECT and then append a WHERE/AND/OR
+    fragment after the statement terminator. PostgreSQL treats that as a
+    syntax error; the safe productized behavior is to keep the complete
+    read-only statement before the semicolon and drop the orphaned fragment.
+    """
+    text = (sql or "").strip()
+    if not re.match(r"^(?:SELECT|WITH)\b", text, flags=re.IGNORECASE):
+        return sql, False
+    match = re.search(r";\s*(?:AND|OR|WHERE)\b", text, flags=re.IGNORECASE)
+    if not match:
+        return sql, False
+    return text[:match.start()].rstrip(), True
+
+
 def explain_row_estimate(sql: str, timeout_ms: int = 2000) -> Optional[int]:
     """Ask the PostgreSQL planner for estimated row count via EXPLAIN (FORMAT JSON).
 
@@ -272,6 +289,10 @@ def postprocess_sql(
         PostprocessResult with sql, corrections, rejected, reject_reason.
     """
     result = PostprocessResult(sql=raw_sql)
+    raw_sql, pruned_trailing_clause = _prune_invalid_trailing_clause_after_semicolon(raw_sql)
+    if pruned_trailing_clause:
+        result.sql = raw_sql
+        result.corrections.append("Invalid trailing clause after semicolon pruned")
 
     try:
         parsed = sqlglot.parse_one(raw_sql, dialect="postgres")

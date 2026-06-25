@@ -163,6 +163,7 @@ def dump_schema() -> str:
 
 
 _SCHEMA_CACHE = None
+_SCHEMA_ALLOWED_TABLES_CACHE: set[str] | None = None
 
 
 def get_schema() -> str:
@@ -170,6 +171,27 @@ def get_schema() -> str:
     if _SCHEMA_CACHE is None:
         _SCHEMA_CACHE = dump_schema()
     return _SCHEMA_CACHE
+
+
+def _schema_allowed_tables() -> set[str]:
+    """Return table names present in the benchmark schema dump."""
+    global _SCHEMA_ALLOWED_TABLES_CACHE
+    if _SCHEMA_ALLOWED_TABLES_CACHE is not None:
+        return set(_SCHEMA_ALLOWED_TABLES_CACHE)
+    schema = get_schema()
+    tables: set[str] = set()
+    pattern = re.compile(
+        r"\bCREATE\s+TABLE\s+"
+        r"(?:(?:\"?public\"?)\.)?"
+        r"(?P<table>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)",
+        flags=re.IGNORECASE,
+    )
+    for match in pattern.finditer(schema or ""):
+        table = match.group("table").strip('"')
+        if table:
+            tables.add(table)
+    _SCHEMA_ALLOWED_TABLES_CACHE = set(tables)
+    return tables
 
 
 def execute_pg(sql: str, timeout_ms: int = 60_000) -> dict:
@@ -668,6 +690,37 @@ def _extract_sql_from_high_level_tool_result(payload) -> str:
     return ""
 
 
+def _extract_sql_from_high_level_tool_result_lenient(payload) -> str:
+    """Extract SQL even from an error payload for deterministic outer rewrites."""
+    if payload is None:
+        return ""
+    if isinstance(payload, dict):
+        if isinstance(payload.get("sql"), str) and payload.get("sql"):
+            return payload["sql"]
+        for key in ("result", "response", "output"):
+            sql = _extract_sql_from_high_level_tool_result_lenient(payload.get(key))
+            if sql:
+                return sql
+        return ""
+    if isinstance(payload, str):
+        text = payload.strip()
+        if not text:
+            return ""
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            parsed = None
+        if isinstance(parsed, dict):
+            return _extract_sql_from_high_level_tool_result_lenient(parsed)
+        m = re.search(r'"sql"\s*:\s*"(?P<sql>(?:\\.|[^"\\])*)"', text)
+        if m:
+            try:
+                return json.loads(f'"{m.group("sql")}"')
+            except Exception:
+                return m.group("sql")
+    return ""
+
+
 def _extract_high_level_tool_error(result) -> str:
     """Extract a structured error from run_nl2semantic2sql tool logs."""
     for entry in (getattr(result, "tool_execution_log", None) or [])[::-1]:
@@ -718,6 +771,8 @@ def _extract_error_from_high_level_tool_result(payload) -> str:
 
 
 def _should_attempt_direct_full_fallback(error: str) -> bool:
+    if os.environ.get("NL2SQL_DISABLE_DIRECT_FULL_FALLBACK") == "1":
+        return False
     error_l = (error or "").lower()
     if not error_l:
         return True
@@ -741,6 +796,8 @@ def _direct_full_fallback(question: str) -> dict:
         return {"sql": "", "error": f"direct_fallback_exception:{exc}"}
 
     sql = _extract_sql_from_high_level_tool_result(payload)
+    if not sql:
+        sql = _extract_sql_from_high_level_tool_result_lenient(payload)
     error = _extract_error_from_high_level_tool_result(payload)
     return {"sql": sql, "error": error}
 
@@ -748,7 +805,22 @@ def _direct_full_fallback(question: str) -> dict:
 def _should_use_direct_full_path() -> bool:
     family = (os.environ.get("NL2SQL_AGENT_FAMILY") or "").lower()
     model_name = (os.environ.get("NL2SQL_AGENT_MODEL") or "").lower()
-    return family == "gemma" or "gemma" in model_name
+    qwen_direct = os.environ.get("NL2SQL_QWEN_DIRECT_FULL", "").lower() in {
+        "1", "true", "yes", "on",
+    }
+    if family == "gemma" or "gemma" in model_name:
+        return True
+    return qwen_direct and (family == "qwen" or "qwen" in model_name)
+
+
+def _active_full_prompt_family() -> str:
+    family = (os.environ.get("NL2SQL_AGENT_FAMILY") or "").strip().lower()
+    if family in {"gemma", "qwen"}:
+        return family
+    model_name = (os.environ.get("NL2SQL_AGENT_MODEL") or "").lower()
+    if "qwen" in model_name:
+        return "qwen"
+    return "gemma"
 
 
 def _apply_full_semantic_rewrites(question: str, pred_sql: str) -> str:
@@ -761,6 +833,7 @@ def _apply_full_semantic_rewrites(question: str, pred_sql: str) -> str:
     """
     if not pred_sql:
         return pred_sql
+    pred_sql = _strip_invalid_trailing_clause_after_semicolon(pred_sql)
     try:
         from data_agent import nl2sql_grounding as _grounding
         from data_agent.nl2sql_executor import (
@@ -768,12 +841,22 @@ def _apply_full_semantic_rewrites(question: str, pred_sql: str) -> str:
             apply_gemma_semantic_rewrites,
         )
 
-        payload = _grounding.build_nl2sql_context(question, family="gemma")
+        payload = _grounding.build_nl2sql_context(question, family=_active_full_prompt_family())
         payload = _augment_payload_with_sql_referenced_tables(pred_sql, payload)
         rewritten, _ = apply_gemma_semantic_rewrites(question, pred_sql, payload)
         return rewritten or pred_sql
     except Exception:
         return pred_sql
+
+
+def _strip_invalid_trailing_clause_after_semicolon(sql: str) -> str:
+    text = (sql or "").strip()
+    if not re.match(r"^(?:SELECT|WITH)\b", text, flags=re.IGNORECASE):
+        return sql
+    match = re.search(r";\s*(?:AND|OR|WHERE)\b", text, flags=re.IGNORECASE)
+    if not match:
+        return sql
+    return text[:match.start()].rstrip()
 
 
 async def full_generate(question: str) -> dict:
@@ -792,7 +875,7 @@ async def full_generate(question: str) -> dict:
             if baseline_sql.strip().upper().startswith(("SELECT", "WITH")):
                 pred_sql = baseline_sql
                 token_count += int(baseline.get("tokens") or 0)
-                report_text = "gemma_direct_empty_baseline_fallback"
+                report_text = f"{_active_full_prompt_family()}_direct_empty_baseline_fallback"
                 if baseline.get("error"):
                     upstream_error = str(baseline.get("error"))
     else:
@@ -830,6 +913,7 @@ async def full_generate(question: str) -> dict:
 
         token_count = result.total_input_tokens + result.total_output_tokens
         report_text = result.report_text or ""
+        tool_log = getattr(result, "tool_execution_log", None) or []
         pred_sql = _extract_full_pred_sql(result)
         upstream_error = result.error or _extract_high_level_tool_error(result)
 
@@ -848,7 +932,8 @@ async def full_generate(question: str) -> dict:
     # buckets F and G.
     if pred_sql:
         from data_agent.runtime_guards import is_safe_sql
-        ok, reason = is_safe_sql(pred_sql)
+        allowed_tables = _schema_allowed_tables()
+        ok, reason = is_safe_sql(pred_sql, allowed_tables or None)
         if not ok:
             # Return empty SQL + guard label so scorer records this as a failure
             # with explicit reason, NOT as a correct query. The agent's raw
@@ -876,13 +961,16 @@ async def full_generate(question: str) -> dict:
             _cleaned = _re.sub(r"[;\s]+$", "", pred_sql)
             pred_sql = f"{_cleaned} LIMIT 100000"
 
-    return {
+    out = {
         "status": "ok" if pred_sql else "no_sql",
         "sql": pred_sql,
         "error": upstream_error or None,
         "tokens": token_count,
         "report": report_text[:500],
     }
+    if os.environ.get("CQ_EVAL_CAPTURE_TOOL_LOG") == "1":
+        out["tool_log"] = tool_log[:12] if "tool_log" in locals() else []
+    return out
 
 
 # ============================================================================
@@ -976,6 +1064,9 @@ async def run_one(q: dict, mode: str) -> dict:
         gen = await full_generate(q["question"])
 
     pred_sql = gen.get("sql", "")
+    if mode == "full" and pred_sql:
+        pred_sql = _apply_full_semantic_rewrites(q["question"], pred_sql)
+        gen["sql"] = pred_sql
 
     # Robustness questions
     is_robustness = difficulty == "Robustness" or target_metric in (

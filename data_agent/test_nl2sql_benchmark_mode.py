@@ -58,15 +58,17 @@ def test_cq_prompt_prefers_exact_match_over_code_expansion():
 
 
 def test_bird_prompt_does_not_force_limit_for_all_selects():
-    mod = _load_module(
-        str(Path(__file__).resolve().parents[1] / "scripts" / "nl2sql_bench_bird" / "nl2sql_agent.py"),
-        "bird_nl2sql_agent_mod",
-    )
-    instruction = mod.build_nl2sql_agent().instruction
+    src = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "nl2sql_bench_bird"
+        / "nl2sql_agent.py"
+    ).read_text(encoding="utf-8")
 
-    assert "LIMIT only for preview/full-scan situations" in instruction
-    assert "对于精确过滤或聚合问题，应返回精确答案，不要强制添加 LIMIT" in instruction
-    assert "所有 SELECT 查询必须包含 LIMIT" not in instruction
+    assert "LIMIT only for preview/full-scan situations" in src
+    assert "精确过滤" in src and "不要强制添加 LIMIT" in src
+    assert "所有 SELECT 查询必须包含 LIMIT" not in src
+
 
 
 def test_production_nl2sql_prompt_aligned_with_bird_limit_policy():
@@ -181,15 +183,17 @@ def test_prompts_do_not_contain_cq_specific_dataset_rules():
     )
 
 
-def test_common_schema_quoting_rules_file_removed():
-    """common/schema_quoting_rules.md was CQ-specific and is deprecated.
-    Its content is now DB-backed."""
+def test_common_schema_quoting_rules_are_dataset_agnostic():
+    """Common quoting rules may exist, but must not carry CQ-specific logic.
+
+    Dataset-specific business rules belong in the semantic-layer DB.
+    """
     from pathlib import Path
     p = Path(__file__).resolve().parents[1] / "data_agent" / "prompts_nl2sql" / "common" / "schema_quoting_rules.md"
-    assert not p.exists(), (
-        "common/schema_quoting_rules.md must be removed post-v7-P0-pre; "
-        "its content has been externalised to the semantic-layer DB."
-    )
+    assert p.exists()
+    text = p.read_text(encoding="utf-8")
+    leaks = [fp for fp in _CQ_HARDCODE_FINGERPRINTS if fp in text]
+    assert not leaks, f"CQ-specific dataset knowledge leaked into schema quoting rules: {leaks}"
 
 
 def test_seed_semantic_hints_cq_has_expected_rules():

@@ -314,6 +314,36 @@ def test_regex_fallback_preserves_string_literals():
     assert '"Floor" > 10' in fixed  # column fixed
 
 
+def test_postprocess_prunes_qwen_clause_appended_after_semicolon_limit():
+    from data_agent.sql_postprocessor import postprocess_sql
+
+    result = postprocess_sql(
+        'SELECT p."名称" FROM cq_amap_poi_2024 AS p LIMIT 50; '
+        'AND p."名称" IS NOT NULL',
+        table_schemas=_POI_SCHEMA,
+    )
+
+    assert result.rejected is False
+    assert result.sql == 'SELECT p."名称" FROM cq_amap_poi_2024 AS p LIMIT 50'
+    assert "IS NOT NULL" not in result.sql
+    assert any("trailing" in c.lower() for c in result.corrections)
+
+
+def test_postprocess_prunes_qwen_where_appended_after_semicolon():
+    from data_agent.sql_postprocessor import postprocess_sql
+
+    result = postprocess_sql(
+        'WITH ranked AS (SELECT 1 AS rn) SELECT rn FROM ranked; '
+        'WHERE rn = 1',
+        table_schemas={},
+    )
+
+    assert result.rejected is False
+    assert result.sql == "WITH ranked AS (SELECT 1 AS rn) SELECT rn FROM ranked"
+    assert "WHERE rn = 1" not in result.sql
+    assert any("trailing" in c.lower() for c in result.corrections)
+
+
 def test_postprocess_large_table_guard_injects_limit_regardless_of_intent():
     """Large-table guard is intent-independent: naturally phrased "show me all X"
     queries classify as ATTRIBUTE_FILTER, bypassing the old intent-gated LIMIT

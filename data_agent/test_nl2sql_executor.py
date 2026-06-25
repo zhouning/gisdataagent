@@ -269,6 +269,19 @@ def test_extract_sql_keeps_cte_with_final_select():
     assert _extract_sql(text) == text
 
 
+def test_extract_sql_prefers_outer_query_over_nested_select_fragment():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    sql = (
+        "SELECT r.name, ST_Distance(r.geometry::geography, p.geometry::geography) AS dist_m "
+        "FROM roads AS r CROSS JOIN ("
+        "SELECT geometry FROM pois WHERE name = 'Central' LIMIT 1"
+        ") AS p ORDER BY r.geometry <-> p.geometry LIMIT 5"
+    )
+
+    assert _extract_sql(sql) == sql
+
+
 def test_safe_preview_fallback_selects_all_for_backup_request():
     from data_agent.nl2sql_executor import _build_safe_preview_sql
 
@@ -392,6 +405,162 @@ def test_refuse_nl2sql_question_detects_missing_explicit_column_request():
 
     assert _should_refuse_nl2sql_question(
         "查询道路表中的 speed_limit 和 lane_count 字段。",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_detects_missing_explicit_table_request():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "cq_land_use_dltb",
+            "columns": [{"column_name": "BSM", "aliases": []}],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "从 cq_weather_stations 表中获取昨天的降雨量数据。",
+        payload,
+    ) is True
+    assert _should_refuse_nl2sql_question(
+        "从 cq_land_use_dltb 表中查询图斑编号（BSM）。",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_detects_ungrounded_explicit_metric_request():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "cq_land_use_dltb",
+            "columns": [
+                {"column_name": "BSM", "aliases": ["图斑编号"]},
+                {"column_name": "TBMJ", "aliases": ["面积"]},
+                {"column_name": "geometry", "aliases": ["几何"], "is_geometry": True},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "从 cq_land_use_dltb 表中查询每个地块的评估价格（appraisal_value）。",
+        payload,
+    ) is True
+    assert _should_refuse_nl2sql_question(
+        "提取所有地块的几何中心点（Centroid），返回文本格式坐标（WKT）和图斑编号（BSM）。",
+        payload,
+    ) is False
+
+    payload["candidate_tables"][0]["columns"].append({
+        "column_name": "appraisal_value",
+        "aliases": ["评估价格"],
+    })
+    assert _should_refuse_nl2sql_question(
+        "从 cq_land_use_dltb 表中查询每个地块的评估价格（appraisal_value）。",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_detects_unsupported_business_metric():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "unknown",
+        "candidate_tables": [{
+            "table_name": "cq_district_population",
+            "columns": [
+                {"column_name": "区划名称", "aliases": ["区县"]},
+                {"column_name": "常住人口", "aliases": ["人口"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "查询重庆市各区县的房价数据（均价、涨幅等）。",
+        payload,
+    ) is True
+    assert _should_refuse_nl2sql_question(
+        "查询重庆市各区县的空气质量指数（AQI）分布情况。",
+        payload,
+    ) is True
+
+
+def test_refuse_nl2sql_question_skips_metric_guard_for_grounded_non_unknown_intent():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "attribute_filter",
+        "candidate_tables": [{
+            "table_name": "cq_baidu_aoi_2024",
+            "columns": [
+                {"column_name": "人均价格_元", "aliases": ["人均价格"]},
+                {"column_name": "名称", "aliases": ["AOI 名称"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "查询人均价格（人均价格_元字段）在 100 到 500 之间的 AOI 名称。",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_allows_filter_literals_units_and_format_hints():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "cq_osm_roads_2021",
+            "columns": [
+                {"column_name": "fclass", "aliases": ["道路等级"]},
+                {"column_name": "geometry", "aliases": ["几何"], "is_geometry": True},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "统计 cq_osm_roads_2021 中每种道路等级（fclass）的道路数量和总长度（千米，保留 2 位小数）。",
+        payload,
+    ) is False
+
+    land_payload = {
+        "candidate_tables": [{
+            "table_name": "cq_land_use_dltb",
+            "columns": [
+                {"column_name": "DLMC", "aliases": ["地类名称"]},
+                {"column_name": "BSM", "aliases": ["图斑编号"]},
+            ],
+        }],
+    }
+    assert _should_refuse_nl2sql_question(
+        "提取所有'有林地'（DLMC = '有林地'）图斑编号（BSM）。",
+        land_payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_allows_sql_functions_keywords_and_sort_hints():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "unknown",
+        "candidate_tables": [{
+            "table_name": "cq_osm_roads_2021",
+            "columns": [
+                {"column_name": "fclass", "aliases": []},
+                {"column_name": "name", "aliases": ["道路名称"]},
+                {"column_name": "objectid", "aliases": []},
+                {"column_name": "geometry", "aliases": [], "is_geometry": True},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "对 cq_osm_roads_2021 中 fclass 为 'footway' 的道路，计算空间合并（ST_Union 后 ST_Envelope），返回 WKT。",
+        payload,
+    ) is False
+    assert _should_refuse_nl2sql_question(
+        "对每条 fclass 为 'primary' 的有名字道路（name IS NOT NULL），按 objectid 升序返回。",
         payload,
     ) is False
 
@@ -855,6 +1024,110 @@ def test_run_nl2semantic2sql_retries_ungrounded_sql_referenced_table():
     assert "gemma_ungrounded_table_retry" in result["corrections"]
 
 
+def test_run_nl2semantic2sql_uses_active_qwen_family_for_context(monkeypatch):
+    from data_agent import nl2sql_executor
+
+    payload = _cq_context("cq_osm_roads_2021")
+    payload.update({
+        "grounding_prompt": "GROUNDING",
+        "few_shots": [],
+        "_hint_injection_stats": {"candidate_tables": 1, "few_shots": 0},
+    })
+    seen = {}
+
+    class FakeResult:
+        rejected = False
+        reject_reason = ""
+        corrections = []
+
+        def __init__(self, sql):
+            self.sql = sql
+
+    def fake_build_context(question, family=None):
+        seen["family"] = family
+        return payload
+
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "qwen")
+    with patch("data_agent.nl2sql_executor.build_nl2sql_context", side_effect=fake_build_context), \
+         patch("data_agent.nl2sql_executor._generate_gemma_sql", return_value="SELECT COUNT(*) FROM cq_osm_roads_2021"), \
+         patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda sql, *a, **kw: FakeResult(sql)), \
+         patch("data_agent.nl2sql_executor.execute_safe_sql", return_value='{"status":"ok","rows":1,"data":[{"count":1}]}'), \
+         patch("data_agent.nl2sql_executor._auto_curate"):
+        result = json.loads(nl2sql_executor.run_nl2semantic2sql("count roads"))
+
+    assert seen["family"] == "qwen"
+    assert result["status"] == "ok"
+
+
+def test_run_nl2semantic2sql_qwen_prompt_includes_family_harness_notes(monkeypatch):
+    from data_agent import nl2sql_executor
+
+    payload = _cq_context("cq_dltb", "cq_baidu_aoi_2024")
+    payload.update({
+        "grounding_prompt": "GROUNDING",
+        "few_shots": [],
+        "_hint_injection_stats": {"candidate_tables": 2, "few_shots": 0},
+    })
+    captured = {}
+
+    class FakeResult:
+        rejected = False
+        reject_reason = ""
+        corrections = []
+
+        def __init__(self, sql):
+            self.sql = sql
+
+    def fake_generate(prompt, model_name=None):
+        captured["prompt"] = prompt
+        return "SELECT COUNT(*) FROM cq_dltb"
+
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "qwen")
+    with patch("data_agent.nl2sql_executor.build_nl2sql_context", return_value=payload), \
+         patch("data_agent.nl2sql_executor._generate_gemma_sql", side_effect=fake_generate), \
+         patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda sql, *a, **kw: FakeResult(sql)), \
+         patch("data_agent.nl2sql_executor.execute_safe_sql", return_value='{"status":"ok","rows":1,"data":[{"count":1}]}'), \
+         patch("data_agent.nl2sql_executor._auto_curate"):
+        result = json.loads(nl2sql_executor.run_nl2semantic2sql("count parcels"))
+
+    prompt = captured["prompt"]
+    assert result["status"] == "ok"
+    assert "Qwen family harness notes" in prompt
+    assert "Do not append clauses after a semicolon" in prompt
+    assert "geometry column is `shape`" in prompt
+    assert "ST_Contains" in prompt and "not geography" in prompt
+    assert "write/destructive" in prompt
+
+
+def test_sql_reference_hydration_uses_physical_schema_fallback():
+    from data_agent.nl2sql_executor import _augment_payload_with_sql_referenced_tables
+
+    payload = {"candidate_tables": []}
+    physical_schema = {
+        "status": "success",
+        "table_name": "cq_dltb",
+        "geometry_type": "MULTIPOLYGON",
+        "srid": 4610,
+        "columns": [
+            {"column_name": "objectid", "data_type": "integer", "is_geometry": False},
+            {"column_name": "dlmc", "data_type": "text", "is_geometry": False},
+            {"column_name": "shape", "data_type": "USER-DEFINED", "is_geometry": True},
+        ],
+    }
+
+    with patch("data_agent.nl2sql_executor.describe_table_semantic", return_value={"status": "error"}), \
+         patch("data_agent.nl2sql_executor._describe_physical_table", return_value=physical_schema) as mock_physical:
+        out = _augment_payload_with_sql_referenced_tables(
+            "SELECT geometry FROM public.cq_dltb WHERE dlmc = '茶园'",
+            payload,
+        )
+
+    assert mock_physical.call_args.args[0] == "cq_dltb"
+    assert out["candidate_tables"][0]["table_name"] == "cq_dltb"
+    assert out["candidate_tables"][0]["columns"][2]["column_name"] == "shape"
+    assert out["candidate_tables"][0]["columns"][2]["is_geometry"] is True
+
+
 def test_candidate_from_described_schema_preserves_source_synonyms():
     from data_agent.nl2sql_executor import _candidate_from_described_schema
 
@@ -987,7 +1260,7 @@ def test_gemma_semantic_rewrite_center_building_dataset_is_not_area_filter():
         context,
     )
 
-    assert "ST_Transform(b.geometry, 4610)" in rewritten
+    assert "ST_Transform(d.shape, 4326)" in rewritten
     assert "semantic_srid_transform" in corrections
 
 
@@ -1109,6 +1382,152 @@ def test_gemma_semantic_rewrite_cq_dltb_lowercase_schema():
     assert "semantic_column_alias" in corrections
 
 
+def test_semantic_rewrite_cq_dltb_subquery_geometry_projection_uses_shape():
+    from data_agent.nl2sql_executor import apply_gemma_semantic_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_amap_poi_2024",
+                "columns": [
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(Point,4326)",
+                    },
+                ],
+                "schema_complete": True,
+            },
+            {
+                "table_name": "cq_dltb",
+                "columns": [
+                    {"column_name": "objectid", "quoted_ref": "objectid", "needs_quoting": False},
+                    {"column_name": "dlmc", "quoted_ref": "dlmc", "needs_quoting": False},
+                    {
+                        "column_name": "shape",
+                        "quoted_ref": "shape",
+                        "is_geometry": True,
+                        "aliases": ["几何信息"],
+                        "pg_type": "geometry(MultiPolygon,4610)",
+                    },
+                ],
+                "schema_complete": True,
+            },
+            {
+                "table_name": "cq_baidu_aoi_2024",
+                "columns": [
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {"column_name": "shape", "quoted_ref": "shape", "is_geometry": True},
+                ],
+                "schema_complete": True,
+            },
+        ],
+    }
+    sql = """SELECT
+  p."名称",
+  ST_Distance(p.geometry::geography, t.shape::geography) AS distance_meters
+FROM
+  public.cq_amap_poi_2024 p,
+  (
+    SELECT geometry
+    FROM public.cq_dltb
+    WHERE dlmc = '茶园'
+    ORDER BY objectid ASC
+    LIMIT 1
+  ) t
+ORDER BY p.geometry <-> t.shape LIMIT 5;"""
+
+    rewritten, corrections = apply_gemma_semantic_rewrites(
+        "找到距离某个地类为'茶园'的图斑最近的 5 个高德 POI",
+        sql,
+        context,
+    )
+
+    compact = " ".join(rewritten.split())
+    assert "SELECT shape FROM public.cq_dltb" in compact
+    assert "SELECT geometry FROM public.cq_dltb" not in compact
+    assert "ST_Distance(ST_Transform(p.geometry, 4610)::geography, t.shape::geography)" in compact
+    assert "ORDER BY ST_Transform(p.geometry, 4610) <-> t.shape" in compact
+    assert (
+        "semantic_column_alias" in corrections
+        or "semantic_subquery_geometry_projection" in corrections
+    )
+    assert "semantic_subquery_srid_transform" in corrections
+
+
+def test_subquery_geometry_projection_rewrite_handles_multiline_local_scope():
+    from data_agent.nl2sql_semantic_rewrite import (
+        ColumnInfo,
+        TableInfo,
+        _rewrite_subquery_geometry_projection_aliases,
+    )
+
+    tables = [
+        TableInfo(
+            table_name="cq_dltb",
+            columns=[
+                ColumnInfo(
+                    table_name="cq_dltb",
+                    column_name="shape",
+                    quoted_ref="shape",
+                    is_geometry=True,
+                )
+            ],
+        )
+    ]
+    sql = """(
+    SELECT geometry
+    FROM public.cq_dltb
+    WHERE dlmc = '茶园'
+) t"""
+
+    rewritten, changed = _rewrite_subquery_geometry_projection_aliases(sql, tables)
+
+    assert changed is True
+    assert "SELECT shape" in rewritten
+    assert "SELECT geometry" not in rewritten
+
+
+def test_semantic_rewrite_does_not_global_replace_local_shape_with_geometry():
+    from data_agent.nl2sql_executor import apply_gemma_semantic_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_amap_poi_2024",
+                "columns": [
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "cq_dltb",
+                "columns": [
+                    {"column_name": "shape", "quoted_ref": "shape", "is_geometry": True},
+                    {"column_name": "dlmc", "quoted_ref": "dlmc"},
+                ],
+            },
+        ],
+    }
+    sql = """WITH target AS (
+  SELECT ST_Transform(shape, 4326) AS geom
+  FROM public.cq_dltb
+  WHERE dlmc = '茶园'
+  LIMIT 1
+)
+SELECT p.geometry FROM public.cq_amap_poi_2024 p, target t"""
+
+    rewritten, _ = apply_gemma_semantic_rewrites(
+        "nearest POI to tea garden parcel",
+        sql,
+        context,
+    )
+
+    assert "ST_Transform(shape, 4326)" in rewritten
+    assert "ST_Transform(geometry, 4326)" not in rewritten
+
+
 def test_gemma_semantic_rewrite_land_use_uppercase_schema():
     from data_agent.nl2sql_executor import apply_gemma_semantic_rewrites
 
@@ -1210,7 +1629,7 @@ def test_gemma_semantic_rewrite_amap_to_cq_dltb_srid_transform():
         context,
     )
 
-    assert "ST_Intersects(ST_Transform(p.geometry, 4610), d.shape)" in rewritten
+    assert "ST_Intersects(p.geometry, ST_Transform(d.shape, 4326))" in rewritten
     assert "semantic_srid_transform" in corrections
 
 

@@ -2,7 +2,7 @@
 
 Reads three sets of jsonl:
   A. baseline (no grounding):       baseline mode of any minimod run (5 samples)
-  B. grounding only (no patch):     full mode of 5-22 recheck (3 samples)
+  B. grounding only (no patch):     full mode of 5-22 recheck (5 samples)
   C. grounding + patch (mini-mod):  full mode of N=5 minimod run (5 samples)
 
 For each cell, reports:
@@ -40,7 +40,7 @@ FAMILY = "gemini-3.5-flash"
 
 CONDITIONS = [
     ("A: no-grounding (baseline mode of N=5 mm run)", A_RUN, "baseline", 5),
-    ("B: grounding only (full mode of 5-22 recheck)", B_RUN, "full", 3),
+    ("B: grounding only (full mode of 5-22 recheck)", B_RUN, "full", 5),
     ("C: grounding + minimod (full mode of N=5 mm run)", C_RUN, "full", 5),
 ]
 

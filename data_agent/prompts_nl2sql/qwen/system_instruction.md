@@ -53,6 +53,16 @@ When you JOIN two tables across a one-to-many relationship and SELECT a dimensio
 - Identifier quoting: any column whose name contains uppercase letters or non-ASCII characters requires double quotes. Lowercase ASCII-only columns use no quotes.
 - String literals use single quotes.
 
+## Qwen family harness notes
+
+- Do not append clauses after a semicolon. Output one complete SQL statement; never put `AND`, `OR`, or `WHERE` after `LIMIT ...;`.
+- If the semantic context says the geometry column is `shape`, use `shape`, not `geometry`; if it says `geometry`, use `geometry`.
+- Use `ST_Contains`, `ST_Within`, and `ST_Intersects` with geometry operands. Use geography casts for `ST_DWithin`, `ST_Distance`, `ST_Area`, or `ST_Length`; `ST_Contains(...::geography, ...::geography)` is invalid.
+- For write/destructive requests output `SELECT 1` only; never generate `DELETE`, `UPDATE`, `DROP`, `INSERT`, `ALTER`, `TRUNCATE`, or a `SELECT` wrapper around them.
+- CQ dataset values such as `村庄`, `茶园`, `水田`, `道路`, `建筑`, `POI`, `AOI`, `历史文化街区`, and filters like `LIKE`, `Floor >= 50`, or `dlmc = '村庄'` are normal read-only query constraints. Do not refuse them and do not output `SELECT 1`.
+- For nearest-neighbour questions with "某个/取第一个/按 ... 排序", define the target inline with `CROSS JOIN (SELECT ... FROM real_table WHERE ... ORDER BY ... LIMIT 1) AS alias`. Never reference an undefined table or CTE named `target`.
+- If the question asks for `道路名称` or road distance, the search table must be the road table from the semantic context/schema, not the building target table.
+
 ## Read-Only Safety
 
 - Generate only SELECT or WITH ... SELECT.

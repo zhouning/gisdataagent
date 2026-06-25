@@ -141,7 +141,8 @@ def load_v7_questions_first_n(n: int) -> list[dict]:
 
 async def run_family(model_name: str, family: str, qs: list[dict],
                      out_dir: Path, *, sample_idx: int = 1,
-                     total_samples: int = 1) -> dict:
+                     total_samples: int = 1,
+                     modes: tuple[str, ...] = ("baseline", "full")) -> dict:
     """Run baseline + full on ``qs`` for one family. Returns summary dict."""
     print(f"\n{'=' * 80}")
     suffix = f"  sample {sample_idx}/{total_samples}" if total_samples > 1 else ""
@@ -166,9 +167,26 @@ async def run_family(model_name: str, family: str, qs: list[dict],
     from run_cq_eval import (
         _init_runtime, baseline_generate_family_aware,
         compare_results, evaluate_robustness, execute_pg, full_generate,
+        _should_attempt_direct_full_fallback, _should_use_direct_full_path,
     )
     from run_v7_iteration import classify_failure
     _init_runtime()
+    # Some imported production modules load data_agent/.env with override=True.
+    # Re-pin the per-cell model after runtime initialisation so benchmark cells
+    # are not silently replaced by the deployment default NL2SQL_AGENT_MODEL.
+    os.environ["NL2SQL_BASELINE_MODEL"] = model_name
+    os.environ["NL2SQL_AGENT_MODEL"] = model_name
+    os.environ["NL2SQL_AGENT_FAMILY"] = family
+    if os.environ.get("CQ_EVAL_DEBUG_CONFIG") == "1":
+        print(
+            "[debug-config] "
+            f"NL2SQL_DISABLE_DIRECT_FULL_FALLBACK={os.environ.get('NL2SQL_DISABLE_DIRECT_FULL_FALLBACK')!r} "
+            f"should_fallback_empty={_should_attempt_direct_full_fallback('')} "
+            f"should_use_direct_path={_should_use_direct_full_path()} "
+            f"NL2SQL_AGENT_FAMILY={os.environ.get('NL2SQL_AGENT_FAMILY')!r} "
+            f"NL2SQL_AGENT_MODEL={os.environ.get('NL2SQL_AGENT_MODEL')!r}",
+            flush=True,
+        )
 
     fam_dir = out_dir / model_name.replace("/", "_")
     if total_samples > 1:
@@ -177,8 +195,21 @@ async def run_family(model_name: str, family: str, qs: list[dict],
 
     fam_summary: dict = {"model": model_name, "family": family,
                          "sample_idx": sample_idx, "modes": {}}
+    if not qs:
+        print(f"[{model_name}] no matching questions; skipping requested modes", flush=True)
+        for mode in modes:
+            fam_summary["modes"][mode] = {
+                "ex": 0, "n": 0, "ex_rate": None,
+                "valid": 0,
+                "duration_sec": 0.0,
+                "failure_bins": {},
+            }
+        (fam_dir / "summary.json").write_text(
+            json.dumps(fam_summary, ensure_ascii=False, indent=2),
+            encoding="utf-8")
+        return fam_summary
 
-    for mode in ("baseline", "full"):
+    for mode in modes:
         records_path = fam_dir / f"records_{mode}.jsonl"
 
         # Per-question resume: load any partial records and skip qids that
@@ -298,6 +329,8 @@ async def run_family(model_name: str, family: str, qs: list[dict],
                     "gen_error": (gen.get("error") or "")[:300],
                     "hint_injection_stats": hint_stats,
                 }
+                if gen.get("tool_log") is not None:
+                    rec["tool_log"] = gen.get("tool_log")
             else:
                 pred_res = execute_pg(pred_sql) if pred_sql else \
                     {"status": "error", "rows": None, "error": "empty"}
@@ -324,6 +357,8 @@ async def run_family(model_name: str, family: str, qs: list[dict],
                     "gen_error": (gen.get("error") or "")[:300],
                     "hint_injection_stats": hint_stats,
                 }
+                if gen.get("tool_log") is not None:
+                    rec["tool_log"] = gen.get("tool_log")
             records.append(rec)
             new_records_this_run += 1
             mark = "✓" if rec["ex"] else "✗"
@@ -418,7 +453,19 @@ async def main() -> int:
     ap.add_argument("--qids", type=str, default=None,
                     help="comma-separated list of qids to filter (debug / ablation). "
                          "When set, --limit is ignored and only matching qids are run.")
+    ap.add_argument("--modes", choices=("both", "baseline", "full"), default="both",
+                    help="which evaluation mode(s) to run")
+    ap.add_argument("--disable-model-prompt-override", action="store_true",
+                    help="force family-level prompt even when a model-level prompt exists")
+    ap.add_argument("--disable-direct-full-fallback", action="store_true",
+                    help="disable productized direct NL2Semantic2SQL fallback in full mode")
     args = ap.parse_args()
+
+    modes = ("baseline", "full") if args.modes == "both" else (args.modes,)
+    if args.disable_model_prompt_override:
+        os.environ["NL2SQL_DISABLE_MODEL_PROMPT_OVERRIDE"] = "1"
+    if args.disable_direct_full_fallback:
+        os.environ["NL2SQL_DISABLE_DIRECT_FULL_FALLBACK"] = "1"
 
     questions = load_v7_questions_first_n(args.limit)
     if args.qids:
@@ -440,7 +487,7 @@ async def main() -> int:
         allowed = {s.strip() for s in args.only.split(",")}
         families = [(m, f) for m, f in families if m in allowed]
     print(f"[smoke-b] running {len(families)} families × {len(questions)}q × "
-          f"2 modes × N={args.samples}")
+          f"{'+'.join(modes)} mode(s) × N={args.samples}")
     print(f"[smoke-b] out_dir: {out_dir}")
 
     matrix: dict = {
@@ -458,6 +505,7 @@ async def main() -> int:
                 fam_summary = await run_family(
                     model_name, family, questions, out_dir,
                     sample_idx=sample_idx, total_samples=args.samples,
+                    modes=modes,
                 )
                 fam_entries.append(fam_summary)
             except Exception as e:

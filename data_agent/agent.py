@@ -1019,7 +1019,13 @@ def _build_mention_nl2sql_agent():
     family = family_of(model_obj)
     model_str = (getattr(model_obj, "model", "") or "").lower()
 
-    if family == "gemma" and "ollama_chat/" in model_str:
+    qwen_direct = os.environ.get("NL2SQL_QWEN_DIRECT_FULL", "").lower() in {
+        "1", "true", "yes", "on",
+    }
+    if (
+        (family == "gemma" or (family == "qwen" and qwen_direct))
+        and "ollama_chat/" in model_str
+    ):
         from .nl2semantic2sql_direct_agent import DirectNL2SemanticSQLAgent
         return DirectNL2SemanticSQLAgent(
             name="MentionNL2SQL",

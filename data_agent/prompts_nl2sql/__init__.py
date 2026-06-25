@@ -14,6 +14,7 @@ Public API:
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 _BASE = Path(__file__).resolve().parent
@@ -39,7 +40,10 @@ def load_system_instruction(family: str, model_name: str | None = None) -> str:
     over-engineering tendency vs gemini-2.5-flash's well-behaved baseline).
     """
     text = None
-    if model_name:
+    disable_model_override = os.environ.get(
+        "NL2SQL_DISABLE_MODEL_PROMPT_OVERRIDE", ""
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    if model_name and not disable_model_override:
         text = _read_or_none(_BASE / model_name / "system_instruction.md")
     if text is None:
         text = _read_or_none(_BASE / family / "system_instruction.md")

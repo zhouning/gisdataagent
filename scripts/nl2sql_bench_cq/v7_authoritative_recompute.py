@@ -3,8 +3,8 @@
 Resolves the two-batch contradiction in v6 by recomputing every headline
 number under ONE uniform convention:
 
-  * All three conditions (A/B/C) at N=3 (truncate A,C to first 3 samples).
-  * Per-question MAJORITY VOTE across the 3 samples (ex_mv = 1 iff >=2/3 pass).
+  * All three conditions (A/B/C) at a uniform sample count.
+  * Per-question MAJORITY VOTE across the samples.
   * A SINGLE McNemar exact two-sided test on the majority-voted per-question
     table (not pooled across samples -- this addresses the Codex concern that
     pooling repeated observations inflates significance).
@@ -33,6 +33,7 @@ A_RUN = ROOT / "data_agent/nl2sql_eval_results/v7_gemini35_minimod_n3_20260524"
 B_RUN = ROOT / "data_agent/nl2sql_eval_results/v7_gemini35_recheck_n3_2026-05-22_095253"
 C_RUN = A_RUN
 FAMILY = "gemini-3.5-flash"
+CAP = 5
 
 SUBSETS = [
     ("Overall (125q)", lambda r: True),
@@ -44,7 +45,7 @@ SUBSETS = [
 ]
 
 
-def load_samples(run_dir: Path, family: str, mode: str, cap: int = 3):
+def load_samples(run_dir: Path, family: str, mode: str, cap: int = CAP):
     fam_dir = run_dir / family
     out = []
     for sd in sorted(fam_dir.glob("sample_*"),
@@ -61,7 +62,7 @@ def load_samples(run_dir: Path, family: str, mode: str, cap: int = 3):
 
 
 def majority_vote(samples):
-    """Return {qid: {'ex': mv, 'difficulty': ...}} via >=2/3 majority."""
+    """Return {qid: {'ex': mv, 'difficulty': ...}} via strict majority."""
     votes = defaultdict(list)
     meta = {}
     for recs in samples:
@@ -111,14 +112,14 @@ def paired_mv(mv_a, mv_x, filter_fn):
 
 def main():
     print("=" * 78)
-    print("AUTHORITATIVE RECOMPUTE (uniform N=3, per-question majority vote)")
+    print(f"AUTHORITATIVE RECOMPUTE (uniform N={CAP}, per-question majority vote)")
     print("=" * 78)
 
-    A = load_samples(A_RUN, FAMILY, "baseline", cap=3)
-    B = load_samples(B_RUN, FAMILY, "full", cap=3)
-    C = load_samples(C_RUN, FAMILY, "full", cap=3)
+    A = load_samples(A_RUN, FAMILY, "baseline", cap=CAP)
+    B = load_samples(B_RUN, FAMILY, "full", cap=CAP)
+    C = load_samples(C_RUN, FAMILY, "full", cap=CAP)
     print(f"\nLoaded samples: A={len(A)}  B={len(B)}  C={len(C)} "
-          f"(all capped to N=3)\n")
+          f"(all capped to N={CAP})\n")
 
     mv_a = majority_vote(A)
     mv_b = majority_vote(B)

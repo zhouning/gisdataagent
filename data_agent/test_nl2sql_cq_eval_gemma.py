@@ -34,6 +34,31 @@ def test_cq_full_agent_uses_single_tool_for_gemma_ollama(monkeypatch):
     assert isinstance(agent, DirectNL2SemanticSQLAgent)
 
 
+def test_cq_full_agent_uses_single_tool_for_qwen_ollama(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/nl2sql_agent.py",
+        "cq_nl2sql_agent_qwen_test",
+    )
+    from data_agent.nl2semantic2sql_direct_agent import DirectNL2SemanticSQLAgent
+
+    class FakeQwenModel:
+        model = "ollama_chat/Qwen3.6:35b"
+
+    monkeypatch.setenv("NL2SQL_AGENT_MODEL", "qwen3.6-35b-host228")
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "")
+    monkeypatch.setenv("NL2SQL_QWEN_DIRECT_FULL", "1")
+    monkeypatch.setattr("data_agent.model_gateway.create_model", lambda model_name: FakeQwenModel())
+    monkeypatch.setattr("data_agent.model_gateway.family_of", lambda model_obj: "qwen")
+    monkeypatch.setattr(
+        "data_agent.prompts_nl2sql.load_system_instruction",
+        lambda family, model_name=None: "qwen instruction",
+    )
+
+    agent = mod.build_nl2sql_agent()
+
+    assert isinstance(agent, DirectNL2SemanticSQLAgent)
+
+
 def test_cq_full_generate_extracts_sql_from_high_level_tool(monkeypatch):
     mod = _load_script_module(
         "scripts/nl2sql_bench_cq/run_cq_eval.py",
@@ -86,6 +111,27 @@ def test_cq_full_generate_extracts_error_from_high_level_tool():
     assert mod._extract_high_level_tool_error(result) == "gemma_sql_generation_failed:timeout"
 
 
+def test_cq_direct_fallback_preserves_sql_from_error_payload(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_direct_error_sql_test",
+    )
+
+    tool_payload = {
+        "status": "error",
+        "sql": "WITH x AS (SELECT 1) SELECT * FROM x; AND invalid_tail",
+        "execution": {"status": "error", "error": "syntax error at or near AND"},
+    }
+    monkeypatch.setattr(
+        "data_agent.nl2sql_executor.run_nl2semantic2sql",
+        lambda question: json.dumps(tool_payload, ensure_ascii=False),
+    )
+
+    result = mod._direct_full_fallback("cte with trailing clause")
+
+    assert result["sql"] == "WITH x AS (SELECT 1) SELECT * FROM x; AND invalid_tail"
+
+
 def test_cq_full_generate_does_not_extract_sql_from_rejected_high_level_tool():
     mod = _load_script_module(
         "scripts/nl2sql_bench_cq/run_cq_eval.py",
@@ -110,6 +156,34 @@ def test_cq_full_generate_does_not_extract_sql_from_rejected_high_level_tool():
 
     assert mod._extract_full_pred_sql(result) == ""
     assert mod._extract_high_level_tool_error(result) == "runtime_guard:hallucinated_table:hallucinated_table"
+
+
+def test_cq_full_generate_rejects_schema_external_table(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_schema_guard_test",
+    )
+
+    monkeypatch.setenv("NL2SQL_AGENT_MODEL", "gemma4-31b-host228")
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "gemma")
+    monkeypatch.setattr(
+        mod,
+        "_direct_full_fallback",
+        lambda question: {"sql": "SELECT * FROM public.cq_weather_stations", "error": None},
+    )
+    monkeypatch.setattr(mod, "_apply_full_semantic_rewrites", lambda question, sql: sql)
+    monkeypatch.setattr(
+        mod,
+        "get_schema",
+        lambda: 'CREATE TABLE public.cq_land_use_dltb (\n  "BSM" text,\n);',
+    )
+    mod._SCHEMA_ALLOWED_TABLES_CACHE = None
+
+    result = asyncio.run(mod.full_generate("weather station rainfall"))
+
+    assert result["status"] == "guard_rejected"
+    assert result["sql"] == ""
+    assert "runtime_guard:hallucinated_table:public.cq_weather_stations" in result["error"]
 
 
 def test_cq_full_semantic_rewrite_runs_after_sql_extraction(monkeypatch):
@@ -229,6 +303,54 @@ def test_cq_full_generate_uses_direct_tool_first_for_gemma_model(monkeypatch):
     assert gen["tokens"] == 0
 
 
+def test_cq_full_generate_uses_direct_tool_first_for_qwen_model(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_qwen_direct_first_test",
+    )
+
+    tool_payload = {
+        "status": "ok",
+        "sql": "SELECT COUNT(*) FROM cq_osm_roads_2021",
+        "execution": {"status": "ok", "rows": 1},
+    }
+
+    monkeypatch.setenv("NL2SQL_AGENT_MODEL", "qwen3.6-35b-host228")
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "qwen")
+    monkeypatch.setenv("NL2SQL_QWEN_DIRECT_FULL", "1")
+    monkeypatch.setattr(
+        "data_agent.nl2sql_executor.run_nl2semantic2sql",
+        lambda question: json.dumps(tool_payload, ensure_ascii=False),
+    )
+    monkeypatch.setattr(
+        "data_agent.pipeline_runner.run_pipeline_headless",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("pipeline should not run")),
+    )
+
+    gen = asyncio.run(mod.full_generate("count roads"))
+
+    assert gen["status"] == "ok"
+    assert gen["sql"] == "SELECT COUNT(*) FROM cq_osm_roads_2021 LIMIT 100000"
+    assert gen["tokens"] == 0
+
+
+def test_cq_full_generate_qwen_direct_is_opt_in(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_qwen_direct_opt_in_test",
+    )
+
+    monkeypatch.setenv("NL2SQL_AGENT_MODEL", "qwen3.6-35b-host228")
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "qwen")
+    monkeypatch.delenv("NL2SQL_QWEN_DIRECT_FULL", raising=False)
+
+    assert mod._should_use_direct_full_path() is False
+
+    monkeypatch.setenv("NL2SQL_QWEN_DIRECT_FULL", "1")
+
+    assert mod._should_use_direct_full_path() is True
+
+
 def test_cq_full_generate_uses_baseline_when_gemma_direct_returns_empty(monkeypatch):
     mod = _load_script_module(
         "scripts/nl2sql_bench_cq/run_cq_eval.py",
@@ -311,6 +433,42 @@ def test_run_one_baseline_uses_configured_family_model(monkeypatch):
 
     assert calls == {"family": ("count rows", "gemma4-26b-host228")}
     assert rec["ex"] == 1
+
+
+def test_run_one_full_reapplies_semantic_rewrite_before_scoring(monkeypatch):
+    mod = _load_script_module(
+        "scripts/nl2sql_bench_cq/run_cq_eval.py",
+        "cq_run_eval_full_scoring_rewrite_test",
+    )
+
+    q = {
+        "id": "TEST_FULL_REWRITE",
+        "difficulty": "Easy",
+        "category": "Aggregation",
+        "question": "count rows",
+        "golden_sql": "SELECT 1",
+    }
+
+    async def fake_full_generate(question):
+        return {"status": "ok", "sql": "SELECT 1; AND invalid_tail", "error": None, "tokens": 0}
+
+    calls = []
+
+    def fake_execute_pg(sql, timeout_ms=60_000):
+        calls.append(sql)
+        if sql == "SELECT 1":
+            return {"status": "ok", "rows": [(1,)]}
+        return {"status": "error", "rows": None, "error": "raw sql reached scorer"}
+
+    monkeypatch.setattr(mod, "full_generate", fake_full_generate)
+    monkeypatch.setattr(mod, "_apply_full_semantic_rewrites", lambda question, sql: "SELECT 1")
+    monkeypatch.setattr(mod, "execute_pg", fake_execute_pg)
+
+    rec = asyncio.run(mod.run_one(q, "full"))
+
+    assert rec["pred_sql"] == "SELECT 1"
+    assert rec["ex"] == 1
+    assert calls == ["SELECT 1", "SELECT 1"]
 
 
 def test_baseline_family_aware_uses_configurable_litellm_timeout(monkeypatch):
