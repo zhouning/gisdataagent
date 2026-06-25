@@ -12,6 +12,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from data_agent.territory_world_model import TerritoryWorldModelService, TwmRepository, jsonable, now_utc_iso
+from data_agent.territory_world_model.deployment_punch_list import build_deployment_punch_list
 from data_agent.territory_world_model.utils import read_csv, read_json
 from scripts.validate_twm_data_foundation import (
     audit_observed_history_schema,
@@ -202,11 +203,17 @@ def run_validation_bundle(
         require_scca_pass=require_scca_pass,
         require_production_readiness=require_production_readiness,
     )
+    bundle_status = validation_bundle_status(selected_bundle, validation_report, production_preflight, readiness_gate)
+    deployment_punch_list = build_deployment_punch_list(
+        schema="territory_world_model.validation_bundle_deployment_punch_list.v1",
+        status=bundle_status,
+        readiness_gate=readiness_gate,
+    )
 
     report = {
         "schema": "territory_world_model.validation_bundle.v1",
         "created_at": now_utc_iso(),
-        "status": validation_bundle_status(selected_bundle, validation_report, production_preflight, readiness_gate),
+        "status": bundle_status,
         "inputs": {
             "bundle_dir": str(bundle_path),
             "optimization_dir": str(optimization_path) if optimization_path else None,
@@ -237,6 +244,7 @@ def run_validation_bundle(
         "production_scale_profile_contract": production_scale_profile_contract(),
         "production_scale_readiness": scale_readiness,
         "production_readiness_gate": readiness_gate,
+        "deployment_punch_list": deployment_punch_list,
         "sanitized_export_policy": sanitized_export_policy(),
         "claim_boundary": {
             "production_accuracy_claim": "not_supported_until_real_authoritative_observed_history_holdout_validation_passes",
@@ -1233,6 +1241,7 @@ def sanitized_export_policy() -> dict[str, Any]:
             "production policy-history coverage diagnostics",
             "production scale readiness diagnostics",
             "production readiness gate summary",
+            "deployment punch list",
             "recommendations",
         ],
         "intended_use": "air-gapped validation feedback and non-sensitive progress reporting",
@@ -1308,6 +1317,7 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
     production = report.get("production_observed_history_preflight") or {}
     scale = report.get("production_scale_readiness") or {}
     readiness = report.get("production_readiness_gate") or {}
+    punch_list = report.get("deployment_punch_list") or {}
     production_schema = production.get("schema_audit") or {}
     production_policy = production.get("policy_history_quality") or {}
     production_temporal = production.get("temporal_validation_quality") or {}
@@ -1411,9 +1421,30 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Status: `{readiness.get('status')}`",
         f"- Missing gates: `{readiness.get('missing', [])}`",
         "",
+        "## Deployment Punch List",
+        "",
+        f"- Status: `{punch_list.get('status')}`",
+        f"- Required: `{punch_list.get('required')}`",
+        f"- Open actions: `{punch_list.get('open_action_count', 0)}`",
+        f"- Blocking actions: `{punch_list.get('blocking_action_count', 0)}`",
+        "",
+        "| Gate | Phase | Status | Resolution |",
+        "|---|---|---|---|",
+    ]
+    for action in punch_list.get("actions") or []:
+        resolution = str(action.get("resolution") or "").replace("|", "\\|")
+        lines.append(
+            f"| `{action.get('gate')}` | `{action.get('phase')}` | `{action.get('status')}` | {resolution} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Validation Stages",
+            "",
         "| Stage | Status | Key Gaps |",
         "|---|---|---|",
-    ]
+        ]
+    )
     for stage in validation.get("stages") or []:
         gaps = ", ".join(str(item) for item in stage.get("gaps") or []) or "none"
         lines.append(f"| `{stage.get('stage_code')}` | `{stage.get('status')}` | {gaps} |")

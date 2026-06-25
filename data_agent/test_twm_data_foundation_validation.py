@@ -2616,10 +2616,18 @@ def test_twm_validation_bundle_runner_executes_offline_demo_pipeline(tmp_path):
     assert report["production_readiness_gate"]["required"] is False
     assert report["production_readiness_gate"]["status"] == "review"
     assert "production_observed_history_preflight_pass" in report["production_readiness_gate"]["missing"]
+    assert report["deployment_punch_list"]["schema"] == "territory_world_model.validation_bundle_deployment_punch_list.v1"
+    assert report["deployment_punch_list"]["status"] == "review"
+    bundle_gates = {item["gate"]: item for item in report["deployment_punch_list"]["actions"]}
+    assert bundle_gates["production_observed_history_preflight_pass"]["phase"] == "observed_history"
+    assert bundle_gates["production_observed_history_preflight_pass"]["blocks_current_run"] is False
     assert report["status"] == "review"
     assert report["sanitized_export_policy"]["exports_raw_geometries"] is False
     assert report["sanitized_export_policy"]["exports_raw_state_objects"] is False
-    assert "raw geometries" in markdown_path.read_text(encoding="utf-8")
+    markdown = markdown_path.read_text(encoding="utf-8")
+    assert "raw geometries" in markdown
+    assert "Deployment Punch List" in markdown
+    assert "production_observed_history_preflight_pass" in markdown
 
 
 def test_twm_validation_bundle_markdown_includes_production_normalization_summary():
@@ -2721,6 +2729,12 @@ def test_twm_validation_bundle_strict_production_readiness_blocks_missing_eviden
     assert report["status"] == "blocked"
     assert "production_observed_history_preflight_pass" in gate["missing"]
     assert "claim_ladder_deployable" in gate["missing"]
+    assert report["deployment_punch_list"]["status"] == "blocked"
+    assert report["deployment_punch_list"]["blocking_action_count"] >= 1
+    assert any(
+        item["gate"] == "claim_ladder_deployable" and item["blocks_current_run"] is True
+        for item in report["deployment_punch_list"]["actions"]
+    )
 
 
 def test_twm_validation_bundle_production_readiness_gate_passes_complete_evidence():

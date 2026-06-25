@@ -852,6 +852,124 @@ def build_formal_forecast_comparison(experiments: list[dict[str, Any]]) -> dict[
         "product_mode_recommendations": build_product_mode_recommendations(aggregate, paired_deltas),
         "demand_projection_diagnostics": build_demand_projection_diagnostics(experiments),
         "temporal_strata_vs_flus": build_temporal_strata_vs_flus(experiments),
+        "robustness_audit": build_candidate_robustness_audit(experiments),
+    }
+
+
+def build_candidate_robustness_audit(experiments: list[dict[str, Any]]) -> dict[str, Any]:
+    rows_by_candidate: dict[str, list[dict[str, Any]]] = {}
+    for experiment in experiments:
+        metrics = experiment.get("metrics") or {}
+        metadata = experiment.get("candidate_metadata") or {}
+        flus_metric = metrics.get(FLUS_CANDIDATE_ID)
+        if not flus_metric:
+            continue
+        holdout_year = _extract_holdout_year(experiment)
+        region_id = str(experiment.get("region_id") or "unknown")
+        for candidate_id, candidate_metadata in metadata.items():
+            if candidate_id == FLUS_CANDIDATE_ID:
+                continue
+            if candidate_metadata.get("demand_mode") != "forecast_demand":
+                continue
+            metric = metrics.get(candidate_id)
+            if not metric:
+                continue
+            rows_by_candidate.setdefault(candidate_id, []).append(
+                {
+                    "case_id": str(experiment.get("case_id") or ""),
+                    "region_id": region_id,
+                    "holdout_year": holdout_year,
+                    "change_fom_delta": float(metric["change_fom"]) - float(flus_metric["change_fom"]),
+                    "overall_accuracy_delta": float(metric["overall_accuracy"]) - float(flus_metric["overall_accuracy"]),
+                    "macro_f1_delta": float(metric["macro_f1"]) - float(flus_metric["macro_f1"]),
+                    "change_f1_delta": float(metric["change_f1"]) - float(flus_metric["change_f1"]),
+                }
+            )
+    return {
+        candidate_id: _summarize_candidate_robustness_rows(rows)
+        for candidate_id, rows in sorted(rows_by_candidate.items())
+        if rows
+    }
+
+
+def _summarize_candidate_robustness_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    change_deltas = [float(row["change_fom_delta"]) for row in rows]
+    oa_deltas = [float(row["overall_accuracy_delta"]) for row in rows]
+    macro_deltas = [float(row["macro_f1_delta"]) for row in rows]
+    by_year = _summarize_robustness_group(rows, key="holdout_year")
+    by_region = _summarize_robustness_group(rows, key="region_id")
+    year_means = [float(row["mean_change_fom_delta"]) for row in by_year.values()]
+    region_means = [float(row["mean_change_fom_delta"]) for row in by_region.values()]
+    mean_change_delta = round(float(np.mean(change_deltas)), 6)
+    mean_oa_delta = round(float(np.mean(oa_deltas)), 6)
+    mean_macro_delta = round(float(np.mean(macro_deltas)), 6)
+    negative_year_count = sum(1 for value in year_means if value < 0.0)
+    negative_region_count = sum(1 for value in region_means if value < 0.0)
+    map_metric_gap = mean_oa_delta < 0.0 or mean_macro_delta < 0.0
+    sign_test_p = _exact_two_sided_sign_test_p_value(
+        wins=sum(1 for value in change_deltas if value > 0.0),
+        losses=sum(1 for value in change_deltas if value < 0.0),
+    )
+    status = "pass"
+    if mean_change_delta <= 0.0 or negative_year_count or negative_region_count or map_metric_gap:
+        status = "review"
+    if mean_change_delta <= 0.0:
+        claim = "no_change_fom_advantage"
+    elif negative_year_count or negative_region_count:
+        claim = "change_fom_positive_but_not_strata_robust"
+    elif map_metric_gap:
+        claim = "change_fom_positive_but_map_metrics_trail_flus"
+    elif sign_test_p <= 0.05:
+        claim = "change_fom_positive_and_strata_robust_on_evaluated_cases"
+    else:
+        claim = "change_fom_positive_but_statistical_support_limited"
+        status = "review"
+    return {
+        "schema": "territory_world_model.forecast_candidate_robustness_audit.v1",
+        "status": status,
+        "baseline_candidate_id": FLUS_CANDIDATE_ID,
+        "paired_case_count": len(rows),
+        "mean_change_fom_delta": mean_change_delta,
+        "median_change_fom_delta": round(float(np.median(change_deltas)), 6),
+        "change_fom_sign_test_p_value": sign_test_p,
+        "wins_by_change_fom": sum(1 for value in change_deltas if value > 0.0),
+        "losses_by_change_fom": sum(1 for value in change_deltas if value < 0.0),
+        "ties_by_change_fom": sum(1 for value in change_deltas if value == 0.0),
+        "overall_accuracy_mean_delta": mean_oa_delta,
+        "macro_f1_mean_delta": mean_macro_delta,
+        "map_metric_gap": map_metric_gap,
+        "holdout_year_count": len(by_year),
+        "negative_holdout_year_count": negative_year_count,
+        "min_holdout_year_mean_change_fom_delta": round(float(min(year_means)), 6) if year_means else None,
+        "region_count": len(by_region),
+        "negative_region_count": negative_region_count,
+        "min_region_mean_change_fom_delta": round(float(min(region_means)), 6) if region_means else None,
+        "generalization_claim": claim,
+        "by_holdout_year": by_year,
+        "by_region": by_region,
+    }
+
+
+def _summarize_robustness_group(rows: list[dict[str, Any]], *, key: str) -> dict[str, dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(str(row.get(key) or "unknown"), []).append(row)
+    return {
+        group: _summarize_robustness_group_rows(group_rows)
+        for group, group_rows in sorted(grouped.items())
+        if group_rows
+    }
+
+
+def _summarize_robustness_group_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    deltas = [float(row["change_fom_delta"]) for row in rows]
+    return {
+        "case_count": len(rows),
+        "mean_change_fom_delta": round(float(np.mean(deltas)), 6),
+        "median_change_fom_delta": round(float(np.median(deltas)), 6),
+        "wins_by_change_fom": sum(1 for value in deltas if value > 0.0),
+        "losses_by_change_fom": sum(1 for value in deltas if value < 0.0),
+        "ties_by_change_fom": sum(1 for value in deltas if value == 0.0),
     }
 
 

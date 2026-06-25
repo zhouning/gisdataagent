@@ -651,3 +651,11 @@ The next scientifically rigorous step is not to tune on holdout scores. Recommen
 3. Validate whether persistence demand still outperforms linear and Markov demand on additional regions or alternative temporal splits.
 4. Validate the pair false-alarm guard on additional regions or alternative temporal splits before treating the 2023 closure as general.
 5. Keep OA and macro-F1 as explicit secondary objectives, because change-FoM and demand gains still do not close the FLUS conservative-precision advantage.
+
+Engineering update on 2026-06-25: the formal comparison JSON now includes a
+`robustness_audit` block for every forecast-demand TWM candidate with paired
+FLUS metrics. It summarizes change-FoM deltas by holdout year and by region,
+flags negative strata, records OA/macro-F1 map-metric gaps, and emits a bounded
+machine-readable `generalization_claim`. This does not change the 2026-06-24
+metrics above; it makes future additional-region or alternative-split runs
+harder to overclaim.

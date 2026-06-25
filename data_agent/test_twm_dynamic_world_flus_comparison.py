@@ -1412,6 +1412,82 @@ def test_formal_forecast_summary_reports_temporal_strata_paired_diagnostics():
     assert summary["temporal_strata_vs_flus"]["twm_candidate"]["worst_holdout_year_by_mean_change_fom_delta"] == "2023"
 
 
+def test_formal_forecast_summary_reports_candidate_robustness_audit():
+    module = _load_module()
+
+    def metric(*, change_fom: float, oa: float = 0.8, macro_f1: float = 0.4) -> dict[str, float | int]:
+        return {
+            "overall_accuracy": oa,
+            "kappa": 0.60,
+            "change_fom": change_fom,
+            "change_f1": 0.20,
+            "macro_f1": macro_f1,
+            "target_total_demand_abs_error": 0,
+            "oracle_total_demand_abs_error": 0,
+            "change_hit_count": 1,
+            "change_false_alarm_count": 1,
+            "change_miss_count": 1,
+            "actual_change_count": 2,
+        }
+
+    experiments = [
+        {
+            "case_id": "region_a_2021",
+            "region_id": "region_a",
+            "holdout_period": "2020->2021",
+            "candidate_metadata": {
+                "flus_console_direct": {"demand_mode": "forecast_demand", "uses_holdout_labels_for_training": False},
+                "twm_candidate": {"demand_mode": "forecast_demand", "uses_holdout_labels_for_training": False},
+            },
+            "metrics": {
+                "flus_console_direct": metric(change_fom=0.20),
+                "twm_candidate": metric(change_fom=0.30, oa=0.78, macro_f1=0.38),
+            },
+        },
+        {
+            "case_id": "region_a_2022",
+            "region_id": "region_a",
+            "holdout_period": "2021->2022",
+            "candidate_metadata": {
+                "flus_console_direct": {"demand_mode": "forecast_demand", "uses_holdout_labels_for_training": False},
+                "twm_candidate": {"demand_mode": "forecast_demand", "uses_holdout_labels_for_training": False},
+            },
+            "metrics": {
+                "flus_console_direct": metric(change_fom=0.24),
+                "twm_candidate": metric(change_fom=0.18, oa=0.77, macro_f1=0.39),
+            },
+        },
+        {
+            "case_id": "region_b_2022",
+            "region_id": "region_b",
+            "holdout_period": "2021->2022",
+            "candidate_metadata": {
+                "flus_console_direct": {"demand_mode": "forecast_demand", "uses_holdout_labels_for_training": False},
+                "twm_candidate": {"demand_mode": "forecast_demand", "uses_holdout_labels_for_training": False},
+            },
+            "metrics": {
+                "flus_console_direct": metric(change_fom=0.20),
+                "twm_candidate": metric(change_fom=0.35, oa=0.79, macro_f1=0.41),
+            },
+        },
+    ]
+
+    summary = module.build_formal_forecast_comparison(experiments)
+    audit = summary["robustness_audit"]["twm_candidate"]
+
+    assert audit["schema"] == "territory_world_model.forecast_candidate_robustness_audit.v1"
+    assert audit["status"] == "review"
+    assert audit["paired_case_count"] == 3
+    assert audit["mean_change_fom_delta"] == 0.063333
+    assert audit["min_holdout_year_mean_change_fom_delta"] == 0.045
+    assert audit["min_region_mean_change_fom_delta"] == 0.02
+    assert audit["negative_holdout_year_count"] == 0
+    assert audit["negative_region_count"] == 0
+    assert audit["overall_accuracy_mean_delta"] < 0
+    assert audit["map_metric_gap"] is True
+    assert audit["generalization_claim"] == "change_fom_positive_but_map_metrics_trail_flus"
+
+
 def test_recompute_twm_experiments_reuses_existing_flus_metrics_without_rerunning_flus(tmp_path):
     module = _load_module()
     case = _synthetic_case(module, tmp_path)

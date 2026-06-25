@@ -8,8 +8,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from data_agent.territory_world_model.deployment_punch_list import build_deployment_punch_list
+
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "docs/reports/twm_production_onboarding"
 
 
@@ -214,6 +218,11 @@ def build_onboarding_summary(
     validation_preflight = validation_bundle_report.get("production_observed_history_preflight") or {}
     readiness = validation_bundle_report.get("production_readiness_gate") or {}
     scale = validation_bundle_report.get("production_scale_readiness") or {}
+    deployment_punch_list = build_deployment_punch_list(
+        schema="territory_world_model.production_onboarding_punch_list.v1",
+        status=onboarding_status(data_foundation_summary, validation_bundle_report),
+        readiness_gate=readiness,
+    )
     data_normalized = data_foundation_normalization.get("output_path")
     bundle_normalized = validation_normalization.get("output_path")
     normalized_output = data_normalized or bundle_normalized or (str(normalized_history) if normalized_history else None)
@@ -251,6 +260,7 @@ def build_onboarding_summary(
             "readiness_missing": readiness.get("missing", []),
         },
         "production_scale_profile": str(production_scale_profile) if production_scale_profile else None,
+        "deployment_punch_list": deployment_punch_list,
         "commands": commands,
         "outputs": {key: str(value) for key, value in outputs.items()},
         "claim_boundary": "onboarding summary checks ingestion and validation wiring only; it does not certify production accuracy or legal approval readiness",
@@ -272,6 +282,7 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
     observed = summary.get("observed_history") or {}
     data_foundation = summary.get("data_foundation") or {}
     bundle = summary.get("validation_bundle") or {}
+    punch_list = summary.get("deployment_punch_list") or {}
     outputs = summary.get("outputs") or {}
     lines = [
         "# TWM Production Onboarding Summary",
@@ -308,9 +319,28 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
         f"- Readiness gate: `{bundle.get('readiness_gate_status')}`",
         f"- Readiness missing: `{bundle.get('readiness_missing', [])}`",
         "",
-        "## Outputs",
+        "## Deployment Punch List",
         "",
+        f"- Status: `{punch_list.get('status')}`",
+        f"- Required: `{punch_list.get('required')}`",
+        f"- Open actions: `{punch_list.get('open_action_count', 0)}`",
+        f"- Blocking actions: `{punch_list.get('blocking_action_count', 0)}`",
+        "",
+        "| Gate | Phase | Status | Resolution |",
+        "|---|---|---|---|",
     ]
+    for action in punch_list.get("actions") or []:
+        resolution = str(action.get("resolution") or "").replace("|", "\\|")
+        lines.append(
+            f"| `{action.get('gate')}` | `{action.get('phase')}` | `{action.get('status')}` | {resolution} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Outputs",
+            "",
+        ]
+    )
     for key, value in outputs.items():
         lines.append(f"- {key}: `{value}`")
     lines.append("")

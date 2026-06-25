@@ -78,6 +78,7 @@ def test_twm_production_onboarding_runs_foundation_and_bundle_from_raw_export(tm
     summary_path = output_dir / "twm_production_onboarding_summary.json"
     markdown_path = output_dir / "twm_production_onboarding_summary.md"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    markdown = markdown_path.read_text(encoding="utf-8")
 
     assert normalized_path.exists()
     assert markdown_path.exists()
@@ -90,6 +91,16 @@ def test_twm_production_onboarding_runs_foundation_and_bundle_from_raw_export(tm
     assert summary["validation_bundle"]["readiness_gate_status"] == "review"
     assert summary["outputs"]["data_foundation_report"] == str(output_dir / "twm_data_foundation_validation.json")
     assert summary["outputs"]["validation_bundle_report"] == str(output_dir / "twm_validation_bundle.json")
+    punch_list = summary["deployment_punch_list"]
+    assert punch_list["schema"] == "territory_world_model.production_onboarding_punch_list.v1"
+    assert punch_list["status"] == "review"
+    gates = {item["gate"]: item for item in punch_list["actions"]}
+    assert "production_scale_readiness_pass" in gates
+    assert gates["production_scale_readiness_pass"]["phase"] == "production_scale"
+    assert gates["production_scale_readiness_pass"]["blocks_current_run"] is False
+    assert "production_observed_history_preflight_pass" not in gates
+    assert "## Deployment Punch List" in markdown
+    assert "production_scale_readiness_pass" in markdown
 
 
 def test_twm_production_onboarding_accepts_already_normalized_observed_history(tmp_path):
@@ -147,6 +158,13 @@ def test_twm_production_onboarding_writes_summary_when_strict_readiness_blocks(t
     assert summary["status"] == "blocked"
     assert summary["validation_bundle"]["readiness_gate_status"] == "blocked"
     assert "production_scale_readiness_pass" in summary["validation_bundle"]["readiness_missing"]
+    punch_list = summary["deployment_punch_list"]
+    assert punch_list["status"] == "blocked"
+    assert punch_list["blocking_action_count"] >= 1
+    assert any(
+        item["gate"] == "production_scale_readiness_pass" and item["blocks_current_run"] is True
+        for item in punch_list["actions"]
+    )
     assert summary["commands"][1]["returncode"] == 2
 
 

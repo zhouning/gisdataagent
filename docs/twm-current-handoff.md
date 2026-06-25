@@ -74,8 +74,12 @@ If a new window opens, start here:
 - current engineering additions that should stay visible:
   - raw observed-history normalization in the validation stack
   - `scripts/run_twm_production_onboarding.py`
+  - shared machine-readable `deployment_punch_list` in validation-bundle and
+    onboarding summary/markdown reports
   - `to_spatial_policy_rule` derivation strategy and tests
   - Dynamic World admin20 comparison scripts and fixed-seed FLUS evidence
+  - formal TWM-vs-FLUS `robustness_audit` summary for holdout-year,
+    region-level and map-metric claim checks
 
 The safest continuation rule is unchanged: keep TWM focused on real usable
 territorial workflow support, not paper-first overclaiming.
